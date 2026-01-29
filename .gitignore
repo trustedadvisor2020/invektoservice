@@ -1,0 +1,83 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+
+# Rider
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment files
+*.env
+*.env.local
+*.env.*.local
+.env
+appsettings.*.local.json
+
+# Secrets
+**/secrets/
+*.pfx
+*.key
+*.pem
+
+# Redis & RabbitMQ data
+dump.rdb
+*.mnesia
+
+# Logs
+*.log
+nlog-*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Publish output
+publish/
+
+# Infrastructure data
+infra/redis/data/
+infra/rabbitmq/data/
+infra/grafana/data/
+infra/prometheus/data/

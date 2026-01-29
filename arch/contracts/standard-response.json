@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StandardResponse",
+  "description": "Standard API response format for all Invekto services",
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether the request was successful"
+    },
+    "data": {
+      "description": "Response payload (null on error)"
+    },
+    "error": {
+      "type": ["object", "null"],
+      "description": "Error details (null on success)",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2,3}-[A-Z]{2,4}-[0-9]{3}$",
+          "description": "Error code in SVC-CAT-NNN format",
+          "examples": ["CHA-VAL-001", "INV-SYS-003"]
+        },
+        "message": {
+          "type": "string",
+          "description": "User-friendly error message"
+        },
+        "details": {
+          "type": ["string", "null"],
+          "description": "Technical details (null in production)"
+        },
+        "traceId": {
+          "type": "string",
+          "description": "Correlation ID for debugging"
+        }
+      },
+      "required": ["code", "message", "traceId"]
+    },
+    "meta": {
+      "type": "object",
+      "description": "Response metadata",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "description": "Unique request identifier"
+        },
+        "processingTimeMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Server processing time in milliseconds"
+        },
+        "serviceVersion": {
+          "type": "string",
+          "description": "Service version"
+        },
+        "isDegraded": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if serving from fallback/cache"
+        },
+        "degradedReason": {
+          "type": ["string", "null"],
+          "description": "Reason for degraded mode"
+        },
+        "jobId": {
+          "type": ["string", "null"],
+          "description": "Async job ID if request was queued"
+        }
+      },
+      "required": ["requestId", "processingTimeMs"]
+    }
+  },
+  "required": ["success", "meta"],
+  "examples": [
+    {
+      "success": true,
+      "data": {
+        "analysisId": "abc123",
+        "score": 0.85
+      },
+      "error": null,
+      "meta": {
+        "requestId": "req-001",
+        "processingTimeMs": 42,
+        "serviceVersion": "1.0.0",
+        "isDegraded": false
+      }
+    },
+    {
+      "success": false,
+      "data": null,
+      "error": {
+        "code": "CHA-VAL-001",
+        "message": "Invalid chat format",
+        "details": null,
+        "traceId": "trace-abc123"
+      },
+      "meta": {
+        "requestId": "req-002",
+        "processingTimeMs": 5
+      }
+    }
+  ]
+}

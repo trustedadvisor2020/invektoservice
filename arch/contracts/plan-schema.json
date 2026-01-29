@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImplementationPlan",
+  "description": "Schema for feature implementation plans",
+  "type": "object",
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[0-9]{8}-[a-z0-9-]+$",
+      "description": "Plan identifier (YYYYMMDD-feature-name)",
+      "examples": ["20260129-chat-analysis-api"]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Brief description of the change"
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+      "description": "Risk level of the change"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PLANNING", "IN_PROGRESS", "REVIEW", "DONE", "BLOCKED"],
+      "description": "Current status"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "allowed_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files that may be modified in this plan"
+    },
+    "verification_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["Data", "Tenant/Auth", "Lifecycle", "Process/Policy"],
+            "description": "Question category"
+          },
+          "question": {
+            "type": "string",
+            "description": "Verification question"
+          }
+        },
+        "required": ["category", "question"]
+      },
+      "description": "Questions for Codex to verify"
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "PASS", "FAIL"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "output": {
+          "type": "string",
+          "description": "Build output (truncated if long)"
+        }
+      }
+    },
+    "git_diff": {
+      "type": "object",
+      "properties": {
+        "patch_truncated": {
+          "type": "string",
+          "description": "First 50KB of diff"
+        },
+        "sha256": {
+          "type": "string",
+          "description": "Hash of full diff"
+        },
+        "full_path": {
+          "type": "string",
+          "description": "Path to full diff file"
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "insertions": { "type": "integer" },
+            "deletions": { "type": "integer" },
+            "files_count": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "files_changed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "is_new": { "type": "boolean" }
+        },
+        "required": ["path", "is_new"]
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "PASS", "FAIL", "UNKNOWN"]
+        },
+        "source": {
+          "type": "string",
+          "description": "Where verdict came from"
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "code_quality_gate": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "result": { "type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"] },
+              "evidence": { "type": "string" }
+            }
+          }
+        },
+        "cove_verification": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "result": { "type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"] },
+              "reasoning": { "type": "string" }
+            }
+          }
+        },
+        "blocking_issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "iteration": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "escalation_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "escalation_reason": {
+      "type": "string"
+    },
+    "escalation_category": {
+      "type": "string",
+      "enum": [
+        "DECISION_CONFLICT",
+        "TOOL_LIMITATION",
+        "PLAN_ASSUMPTION_WRONG",
+        "SCOPE_INSUFFICIENT",
+        "ARCHITECTURE_CONFLICT"
+      ]
+    }
+  },
+  "required": ["slug", "summary", "risk", "status", "created_at", "allowed_files", "verification_questions"]
+}
