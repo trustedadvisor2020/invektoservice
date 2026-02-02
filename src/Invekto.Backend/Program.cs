@@ -3,6 +3,7 @@ using System.Text;
 using Invekto.Backend.Services;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
+using Invekto.Shared.DTOs.ChatAnalysis;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 
@@ -152,7 +153,8 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 app.MapPost("/api/v1/chat/analyze", async (
     HttpContext ctx,
     ChatAnalysisClient chatClient,
-    JsonLinesLogger jsonLogger) =>
+    JsonLinesLogger jsonLogger,
+    ChatAnalysisRequest? analysisRequest) =>
 {
     // Pass-through X-Request-Id if provided, otherwise generate new
     var context = RequestContext.CreateWithPassThrough(
@@ -162,7 +164,26 @@ app.MapPost("/api/v1/chat/analyze", async (
 
     var sw = System.Diagnostics.Stopwatch.StartNew();
 
-    var result = await chatClient.AnalyzeAsync(context);
+    // Validate request
+    if (analysisRequest == null || string.IsNullOrWhiteSpace(analysisRequest.PhoneNumber))
+    {
+        sw.Stop();
+        jsonLogger.RequestError(
+            "Invalid request: missing phoneNumber",
+            context,
+            "/api/v1/chat/analyze",
+            sw.ElapsedMilliseconds,
+            ErrorCodes.GeneralValidation);
+
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.GeneralValidation,
+                "Geçersiz istek: phoneNumber zorunlu",
+                context.RequestId),
+            statusCode: 400);
+    }
+
+    var result = await chatClient.AnalyzeAsync(context, analysisRequest);
     sw.Stop();
 
     if (result.IsSuccess)

@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
+using Invekto.Shared.DTOs.ChatAnalysis;
 
 namespace Invekto.Backend.Services;
 
@@ -19,15 +20,19 @@ public sealed class ChatAnalysisClient
         _logger = logger;
     }
 
-    public async Task<ChatAnalysisResult> AnalyzeAsync(RequestContext context, CancellationToken ct = default)
+    public async Task<ChatAnalysisResult> AnalyzeAsync(
+        RequestContext context,
+        ChatAnalysisRequest analysisRequest,
+        CancellationToken ct = default)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/analyze");
-        request.Headers.Add(HeaderNames.RequestId, context.RequestId);
-        request.Headers.Add(HeaderNames.TenantId, context.TenantId);
-        request.Headers.Add(HeaderNames.ChatId, context.ChatId);
-
         try
         {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/analyze");
+            request.Headers.Add(HeaderNames.RequestId, context.RequestId);
+            request.Headers.Add(HeaderNames.TenantId, context.TenantId);
+            request.Headers.Add(HeaderNames.ChatId, context.ChatId);
+            request.Content = JsonContent.Create(analysisRequest);
+
             var response = await _httpClient.SendAsync(request, ct);
 
             if (response.IsSuccessStatusCode)
@@ -37,7 +42,7 @@ public sealed class ChatAnalysisClient
                     var data = await response.Content.ReadFromJsonAsync<ChatAnalysisResponse>(ct);
 
                     // Check for null/invalid body
-                    if (data == null || string.IsNullOrEmpty(data.Status))
+                    if (data == null || string.IsNullOrEmpty(data.RequestId))
                     {
                         _logger.LogWarning("ChatAnalysis returned invalid/empty body for {RequestId}", context.RequestId);
                         return ChatAnalysisResult.Partial(
@@ -102,13 +107,7 @@ public sealed class ChatAnalysisClient
     }
 }
 
-public sealed class ChatAnalysisResponse
-{
-    public string? RequestId { get; set; }
-    public string? Status { get; set; }
-    public string? Message { get; set; }
-    public DateTime Timestamp { get; set; }
-}
+// ChatAnalysisResponse is now in Invekto.Shared.DTOs.ChatAnalysis
 
 public sealed class ChatAnalysisResult
 {
@@ -118,7 +117,7 @@ public sealed class ChatAnalysisResult
     public string? Warning { get; init; }
     public string? ErrorCode { get; init; }
 
-    public static ChatAnalysisResult Success(ChatAnalysisResponse? data) => new()
+    public static ChatAnalysisResult Success(ChatAnalysisResponse data) => new()
     {
         IsSuccess = true,
         IsPartial = false,

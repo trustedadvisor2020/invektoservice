@@ -1,0 +1,187 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260202-chatanalysis-integration",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-02T16:00:00Z",
+  "updated_at": "2026-02-02T18:30:00Z",
+  "plan": {
+    "summary": "ChatAnalysis servisine gerçek iş mantığı: WapCRM'den sohbet çekme + Claude Haiku ile sentiment/kategorizasyon analizi",
+    "q_intent": "Telefon numarası geldiğinde WapCRM'den sohbet çek, Claude ile analiz et, JSON sonuç dön",
+    "interview_notes": "Input: phoneNumber + instanceId + tenantId. WapCRM SecretKey config'den. Claude Haiku kullanılacak. Kategoriler: Destek, Satış, Şikayet, Bilgi. Sentiment: positive/negative/neutral. Claude API key servis başına ayrı."
+  },
+  "allowed_files": [
+    "arch/contracts/chat-analysis.json",
+    "arch/errors.md",
+    "arch/plans/20260202-chatanalysis-integration.json",
+    "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisRequest.cs",
+    "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisResponse.cs",
+    "src/Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs",
+    "src/Invekto.Shared/Constants/AnalysisCategories.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.ChatAnalysis/Services/WapCrmClient.cs",
+    "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs",
+    "src/Invekto.ChatAnalysis/Program.cs",
+    "src/Invekto.ChatAnalysis/appsettings.json",
+    "src/Invekto.Backend/Services/ChatAnalysisClient.cs",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/contracts/chat-analysis.json", "change": "New - API contract for chat analysis", "is_new": true },
+    { "path": "arch/errors.md", "change": "Add new error codes for WapCRM and Claude (INV-CA-003 to INV-CA-007)", "is_new": false },
+    { "path": "arch/plans/20260202-chatanalysis-integration.json", "change": "Plan JSON", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisRequest.cs", "change": "New - Request DTO with phoneNumber and instanceId", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisResponse.cs", "change": "New - Response DTO with sentiment, category, confidence, summary", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs", "change": "New - WapCRM API response models", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/AnalysisCategories.cs", "change": "New - Category and sentiment constants", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add WapCRM and Claude error codes", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/Services/WapCrmClient.cs", "change": "New - WapCRM API client with 600ms timeout", "is_new": true },
+    { "path": "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs", "change": "New - Claude Haiku analyzer with JSON parsing", "is_new": true },
+    { "path": "src/Invekto.ChatAnalysis/Program.cs", "change": "Update endpoint with real WapCRM+Claude logic", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/appsettings.json", "change": "Add WapCRM and Claude config sections", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "081E1B14838AE0A305E63731D667D258F55062114BC8A3D4DEE70A32B9D9FDDD",
+    "full_path": "arch/plans/diffs/20260202-chatanalysis-integration.diff",
+    "stats": {
+      "insertions": 1061,
+      "deletions": 28,
+      "files_count": 15
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln",
+    "timestamp": "2026-02-02T18:25:00Z",
+    "duration_ms": 1060,
+    "output_tail": "Build succeeded.\n    0 Warning(s)\n    0 Error(s)",
+    "error_summary": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does WapCrmClient correctly call /messagelistforphone with X-CIB-SecretKey header?",
+      "category": "Integration",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does ClaudeAnalyzer return valid sentiment (positive/negative/neutral) and category (Destek/Satis/Sikayet/Bilgi)?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Is 600ms timeout enforced for WapCRM calls (Stage-0 requirement)?",
+      "category": "Performance",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Are Claude API errors properly handled and differentiated from WapCRM errors?",
+      "category": "Error Handling",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "arch/session-memory.md",
+      ".claude/"
+    ],
+    "non_goals": [
+      "Multi-tenant SecretKey management",
+      "Database storage of analysis results",
+      "Webhook receiver for WapCRM"
+    ],
+    "intentional_exclusions": [
+      "Caching of analysis results (Stage-1)",
+      "Batch analysis (Stage-1)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.ChatAnalysis/Services/WapCrmClient.cs:48-98 (HTTP + JSON errors)",
+      "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs:54-107 (HTTP + JSON errors)",
+      "src/Invekto.ChatAnalysis/Program.cs:103-193 (Main endpoint try-catch)"
+    ],
+    "user_facing_errors": [
+      "400 Bad Request: Geçersiz istek: phoneNumber zorunlu",
+      "404 Not Found: Bu numara için mesaj bulunamadı",
+      "502 Bad Gateway: CRM servisine bağlanılamadı / Analiz servisi hatası",
+      "500 Internal Server Error: Analiz işlemi başarısız oldu"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All errors are logged via JsonLinesLogger and returned to caller with appropriate error codes"
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Müşteri temsilcisi manuel sohbet okuyup anlam çıkarıyor",
+      "suggestion": "Otomatik sentiment + kategori ile anında içgörü",
+      "aha_moment": "Temsilci sohbeti açmadan müşterinin 'kızgın, şikayet' olduğunu görür"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Sohbet analizi uzun sürüyor",
+      "suggestion": "Claude Haiku ile hızlı analiz (<1 saniye)",
+      "aha_moment": "Analiz sonucu saniyeler içinde hazır"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "API hataları belirsiz",
+      "suggestion": "WapCRM ve Claude hataları ayrı kodlarla",
+      "aha_moment": "Hata kaynağı (WapCRM mi, AI mı) anında belli"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Satış fırsatları kaçırılıyor",
+      "suggestion": "Kategori=Satış olanlar öncelikli listelenir",
+      "aha_moment": "Satış potansiyeli olan sohbetler üstte"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Şikayet sohbetleri geç fark ediliyor",
+      "suggestion": "Kategori=Şikayet + sentiment=negative → alert",
+      "aha_moment": "Kritik şikayetler anında görünür"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-02T19:00:00Z",
+    "iteration": 2,
+    "code_quality_gate": {
+      "CQ1_error_handling": "PASS",
+      "CQ2_silent_failure": "PASS",
+      "CQ3_minimal_diff": "PASS",
+      "CQ4_no_duplicate": "PASS",
+      "CQ5_pattern_compliance": "PASS",
+      "CQ6_performance": "PASS",
+      "CQ7_no_tech_debt": "PASS",
+      "CQ8_breaking_change": "FORCE_PASS - Q approved: old API was placeholder, new API is correct design"
+    },
+    "cove_verification": {
+      "Q1_wapcrm_header": "PASS",
+      "Q2_valid_sentiment_category": "PASS",
+      "Q3_600ms_timeout": "PASS",
+      "Q4_error_differentiation": "PASS"
+    },
+    "blocking_issues": [],
+    "fixed_in_iteration_2": [
+      "ClaudeAnalyzer: ParseAnalysis returns (result, parseFailed, parseError) tuple, warning logged, confidence=0 on fallback",
+      "Backend ChatAnalysisClient: Updated to new contract, sends body with phoneNumber/instanceId, uses Shared ChatAnalysisResponse",
+      "Backend Program.cs: Endpoint accepts ChatAnalysisRequest body, validates phoneNumber"
+    ],
+    "q_override": {
+      "type": "FORCE_PASS",
+      "reason": "CQ8 breaking change is intentional - old API was placeholder, new API is correct implementation per Q decision",
+      "approved_at": "2026-02-02T19:00:00Z"
+    }
+  }
+}

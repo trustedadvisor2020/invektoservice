@@ -20,6 +20,11 @@ public static class ErrorCodes
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
+    public const string ChatAnalysisWapCrmError = "INV-CA-003";
+    public const string ChatAnalysisWapCrmTimeout = "INV-CA-004";
+    public const string ChatAnalysisClaudeError = "INV-CA-005";
+    public const string ChatAnalysisClaudeTimeout = "INV-CA-006";
+    public const string ChatAnalysisNoMessages = "INV-CA-007";
 
     // Auth errors (INV-AUTH-xxx)
     public const string AuthUnauthorized = "INV-AUTH-001";

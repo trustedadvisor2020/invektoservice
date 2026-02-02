@@ -55,6 +55,11 @@ INV-{SERVICE}-{NUMBER}
 |------|-------------|--------------|
 | INV-CA-001 | Invalid payload | Geçersiz istek formatı. |
 | INV-CA-002 | Processing failed | Analiz işlemi başarısız oldu. |
+| INV-CA-003 | WapCRM API error | CRM servisine bağlanılamadı. |
+| INV-CA-004 | WapCRM timeout | CRM servisi yanıt vermedi. |
+| INV-CA-005 | Claude API error | Analiz servisi hatası. |
+| INV-CA-006 | Claude timeout | Analiz servisi yanıt vermedi. |
+| INV-CA-007 | No messages found | Bu numara için mesaj bulunamadı. |
 
 ---
 

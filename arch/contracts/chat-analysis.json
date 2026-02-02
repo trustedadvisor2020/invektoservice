@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChatAnalysis API Contract",
+  "version": "1.0.0",
+  "description": "Chat Analysis microservice request/response contract",
+
+  "request": {
+    "endpoint": "POST /api/v1/analyze",
+    "headers": {
+      "X-Request-Id": { "type": "string", "required": true, "description": "Unique request identifier" },
+      "X-Tenant-Id": { "type": "string", "required": true, "description": "Tenant identifier" },
+      "X-Chat-Id": { "type": "string", "required": false, "description": "Chat session identifier" }
+    },
+    "body": {
+      "type": "object",
+      "required": ["phoneNumber", "instanceId"],
+      "properties": {
+        "phoneNumber": {
+          "type": "string",
+          "description": "Customer phone number (e.g., 905xxxxxxxxx)",
+          "pattern": "^[0-9]{10,15}$"
+        },
+        "instanceId": {
+          "type": "integer",
+          "description": "WapCRM instance ID from /api/Instances"
+        }
+      }
+    }
+  },
+
+  "response": {
+    "success": {
+      "statusCode": 200,
+      "body": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string" },
+          "phoneNumber": { "type": "string" },
+          "messageCount": { "type": "integer", "description": "Number of messages analyzed" },
+          "analysis": {
+            "type": "object",
+            "properties": {
+              "sentiment": {
+                "type": "string",
+                "enum": ["positive", "negative", "neutral"],
+                "description": "Overall sentiment of the conversation"
+              },
+              "category": {
+                "type": "string",
+                "enum": ["Destek", "Satis", "Sikayet", "Bilgi"],
+                "description": "Primary category of the conversation"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Confidence score (0-1)"
+              },
+              "summary": {
+                "type": "string",
+                "description": "Brief summary of the conversation (max 200 chars)"
+              }
+            }
+          },
+          "analyzedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "error": {
+      "statusCode": [400, 500, 502, 504],
+      "body": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    }
+  },
+
+  "definitions": {
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "errorCode": { "type": "string", "pattern": "^INV-[A-Z]+-[0-9]{3}$" },
+        "message": { "type": "string" },
+        "details": { "type": "string", "nullable": true },
+        "requestId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+
+  "errorCodes": {
+    "INV-CA-001": "Invalid payload (missing phoneNumber or instanceId)",
+    "INV-CA-002": "Processing failed (general error)",
+    "INV-CA-003": "WapCRM API error",
+    "INV-CA-004": "WapCRM timeout",
+    "INV-CA-005": "Claude API error",
+    "INV-CA-006": "Claude timeout",
+    "INV-CA-007": "No messages found for phone number"
+  }
+}
