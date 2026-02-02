@@ -1,10 +1,10 @@
-<!-- VERSION: 1.0 | UPDATED: 2026-01-29 | Persist After Compact | Auto Workflow -->
+<!-- VERSION: 1.0 | UPDATED: 2026-02-01 | Persist After Compact | Auto Workflow Active -->
 <!-- COMPACT SONRASI: Auto workflow aktif kalır. Interview → Plan → Dev → Build → /rev → Codex → Commit -->
-# INVEKTO MICROSERVICE SYSTEM
+# InvektoServis
 
-Backend microservice altyapısı. .NET 8.0 + Redis + RabbitMQ + Nginx.
+Başka sistemler tarafından kullanılacak, kendi içinde bağımsız mikro servisler barındıran platform.
 
-## SESSION INIT (CRITICAL - HER SESSION BAŞINDA)
+## 🚀 SESSION INIT (CRITICAL - HER SESSION BAŞINDA)
 
 **Her session başladığında (plan modunda bile) şu adımlar OTOMATİK uygulanır:**
 
@@ -13,6 +13,7 @@ Backend microservice altyapısı. .NET 8.0 + Redis + RabbitMQ + Nginx.
    - `arch/session-memory.md` → Son durumu anla
    - `arch/active-work.md` → Devam eden işler
    - `arch/lessons-learned.md` → Tekrarlanan hatalar
+   - `.claude/agents/INVEKTO_BASE.prompt.md` → Global kurallar
 3. **Interview ile Başla:** Q ne isterse, önce AskUserQuestion ile gri noktaları çöz
 
 **BU ADIMLAR ATLANAMAZ!** Plan mode veya başka mode farketmez.
@@ -20,158 +21,315 @@ Backend microservice altyapısı. .NET 8.0 + Redis + RabbitMQ + Nginx.
 ## Naming & Roles
 
 - The developer is **Q**. Always refer to Q in comments, logs, and explanations.
-- You are a coding agent working inside the **InvektoServis** repository.
-- When in doubt about requirements or tradeoffs, explicitly ask Q before proceeding.
+- You are a coding agent working inside the **InvektoServis** monorepo. Assume **no prior memory** outside what is in this repository and this file.
+- When in doubt about requirements or tradeoffs, explicitly ask Q before proceeding with risky or irreversible changes.
 
 ## Tech Stack
 
 | Component | Stack |
 |-----------|-------|
-| Microservices | .NET 8.0, ASP.NET Core, Minimal APIs |
-| Messaging | RabbitMQ 3.12+ |
-| Cache/State | Redis 7.x |
-| Gateway | Nginx for Windows |
-| Database | SQL Server (Backend owns data) |
-| Resilience | Polly (Circuit Breaker, Retry, Bulkhead) |
-| Observability | OpenTelemetry, Prometheus, Jaeger, Loki, Grafana |
+| Backend | (Servis bazlı - her mikro servis kendi stack'ini tanımlar) |
+| Frontend | (İhtiyaca göre) |
+| Database | (Servis bazlı - SQL Server, PostgreSQL, MongoDB, etc.) |
+| API Gateway | (İhtiyaca göre) |
+| Message Queue | (İhtiyaca göre - RabbitMQ, Kafka, etc.) |
+
+## Mikro Servis Mimarisi
+
+```
+InvektoServis/
+├── services/                    # Bağımsız mikro servisler
+│   ├── service-a/              # Her servis kendi dizininde
+│   │   ├── src/
+│   │   ├── package.json
+│   │   └── README.md
+│   ├── service-b/
+│   └── ...
+├── shared/                      # Paylaşılan kod
+│   ├── contracts/              # API kontratları
+│   ├── utils/                  # Ortak utility'ler
+│   └── types/                  # Paylaşılan type'lar
+├── gateway/                     # API Gateway (opsiyonel)
+└── deploy/                      # Deploy scriptleri
+```
+
+### Mikro Servis Kuralları
+
+1. **Bağımsızlık:** Her servis kendi başına deploy edilebilir
+2. **İzolasyon:** Servisler arası iletişim sadece API/Event üzerinden
+3. **Kendi DB'si:** Her servis kendi database'ine sahip olabilir
+4. **Versiyon:** Her servis bağımsız versiyonlanır
 
 ## Infrastructure
 
-- **Windows-only environment** (dev + production)
-- **NO Docker** in production (Windows Services)
-- Nginx handles reverse proxy + rate limiting
-- Redis for hot path (idempotency, rate limits, cache)
-- RabbitMQ for async messaging with retry queues
+- **Domain Yapısı:**
+  - Production: `api.invekto.com` (veya tanımlanacak)
+  - Staging: `dev.invekto.com`
 
-## Environment Separation (CRITICAL)
+## Environment Separation
 
-**Dev PC and Production Server are DIFFERENT Windows machines!**
+**Dev PC and Production Server are DIFFERENT machines!**
 
 | Aspect | Dev PC | Production Server |
 |--------|--------|-------------------|
-| Machine | Q's local Windows PC | Remote Windows Server |
-| OS | **Windows** | **Windows** (NO Linux) |
-| Services | Manual `dotnet run` | NSSM Windows Services |
-| Path | `c:\CRMs\InvektoServis\` | TBD |
-
-**IMPORTANT:**
-- All commands MUST be Windows-based (PowerShell, cmd, .bat)
-- NO Linux commands (bash, sh, chmod, etc.)
+| Machine | Developer's local PC | Remote Server |
+| OS | Windows | Windows/Linux |
+| Services | Manuel `npm run dev` | Docker/PM2/K8s |
+| Path | `C:\CRMs\InvektoServis\` | `/app/invekto/` veya benzeri |
 
 **Windows PowerShell Rules (CRITICAL):**
 - **ALWAYS use PowerShell wrapper for Bash tool:** `powershell -NoProfile -Command "..."`
-- NEVER use raw bash/Linux syntax - this is Windows, not Linux
+- NEVER use raw bash/Linux syntax on Windows
 - `&&` chaining does NOT work - use `;` to chain commands
-- Example: `powershell -NoProfile -Command "cd c:\path; dotnet build"`
-
-### Port Allocation
-
-| Service | Port |
-|---------|------|
-| Nginx Gateway | 80 (HTTP), 443 (HTTPS) |
-| Chat Analysis | 5001 |
-| Admin API | 5010 |
-| Redis | 6379 |
-| RabbitMQ | 5672, 15672 (management) |
-| Prometheus | 9090 |
-| Grafana | 3000 |
+- Example: `powershell -NoProfile -Command "cd c:\path; npm run build"`
 
 ## Commands
 
 | Task | Command |
 |------|---------|
-| Build service | `dotnet build src/Invekto.{Service}/` |
-| Run service | `dotnet run --project src/Invekto.{Service}/` |
-| Run tests | `dotnet test tests/` |
+| Service dev | `cd services/{name} && npm run dev` |
+| Service build | `cd services/{name} && npm run build` |
+| Service test | `cd services/{name} && npm test` |
+| All services | `npm run dev:all` (root'tan) |
 
-> Auto workflow otomatik uygulanır - `/auto` yazmaya gerek yok.
+> 💡 Auto workflow otomatik uygulanır - `/auto` yazmaya gerek yok.
+>
+> **COMPACT SONRASI:** Auto workflow aktif kalır. Session sıfırlansa bile tüm kod değişiklikleri auto.md kurallarını takip eder: Interview → Plan → Dev → Build → /rev → Codex → Commit
 
 ## Enterprise Code Quality Standards
 
 **MANDATORY for ALL code written in this codebase:**
 
-1. **Enterprise-Grade Quality:** All code must be production-ready.
-2. **System Integrity First:** Every change must not break existing functionality.
-3. **Rule & Pattern Compliance:** Follow existing codebase patterns and arch/ documentation.
-4. **Ask Q When Unclear:** Logic wrong, missing info, multiple approaches → ASK Q
-5. **Q Interview (MANDATORY):** Her kod değişikliği öncesi interview yap.
-6. **Heavy Load Ready:** System will serve thousands of concurrent users.
-7. **User-Friendly Error Messages:** Errors must be specific and actionable.
+1. **Enterprise-Grade Quality:** All code must be production-ready, not just "working". Consider edge cases, error handling, performance, and maintainability.
+
+2. **System Integrity First:** Never just "complete the task". Every change must:
+   - Not break existing functionality
+   - Improve overall system health where possible
+   - Consider impact on other components/services
+
+3. **Rule & Pattern Compliance:** All code must follow:
+   - Existing codebase patterns
+   - arch/ documentation rules
+   - Contract schemas exactly as defined
+
+4. **Ask Q When Unclear:**
+   - Logic seems wrong or inconsistent → ASK Q
+   - Missing information to implement correctly → ASK Q
+   - Multiple valid approaches exist → ASK Q
+   - Something "smells wrong" → ASK Q
+
+5. **🎯 Q Interview (MANDATORY):**
+   - Her kod değişikliği öncesi interview yap
+   - **Konu ne kadar açık görünürse görünsün, TÜM gri noktalar çözülene kadar sor**
+   - "Açık görünüyor" ≠ "Soru sormaya gerek yok"
+   - Her varsayım = potansiyel yanlış yön
+   - Q "skip interview" demeden koda geçme
+
+6. **Heavy Load Ready:** System will serve **thousands of concurrent users** under stress. Code must:
+   - Handle concurrent access safely
+   - Avoid memory leaks and resource exhaustion
+   - Be optimized for performance
+   - Degrade gracefully under load
+
+7. **User-Friendly Error Messages:** Errors must be:
+   - **Specific:** Not "An error occurred" but "Service 'UserAuth' failed: Token expired"
+   - **Actionable:** Tell user what they can do to fix it
+   - **Localized context:** Include relevant IDs, names, values
+   - Use error codes from `arch/errors.md`
 
 ## Critical Rules
 
-### Source of Truth
+### Ignored Folders
 
-- **Master Plan:** `plans/00_master_implementation_plan.md` = TEK GERÇEK KAYNAK
-- **Contracts:** `arch/contracts/` = API ve data contract'ları
-- **Error Codes:** `arch/errors.md` = Hata kodları
+- **`temp/`** - Geçici dosyalar. Git'e ekleme, kod yazarken dikkate alma.
 
-### Key Architecture Principles
+### 🔴 SINGLE SOURCE OF TRUTH: DB Schema (MOST CRITICAL)
 
-1. **Backend = Source of Truth:** Microservices sadece işlem yapar, veri Backend'de kalır
-2. **Redis = Hot Path:** Idempotency, rate limiting, cache için
-3. **RabbitMQ = Async:** 5 retry queue + DLQ
-4. **Polly = Resilience:** Circuit breaker, retry, bulkhead, timeout
-5. **No Inter-Service Auth:** Internal network güvenli kabul edilir
+**Her servis için DB şeması için tek gerçek kaynak tanımla!**
 
-### Retry Strategy
+| DB Değişikliği | Şema dosyasına YANSIT |
+|----------------|------------------------|
+| Yeni tablo | ✅ CREATE TABLE ekle |
+| Yeni kolon | ✅ CREATE TABLE + ALTER migration |
+| Kolon silme | ✅ CREATE TABLE'dan çıkar |
+| Yeni index | ✅ CREATE INDEX ekle |
+| Yeni FK/constraint | ✅ ADD CONSTRAINT ekle |
 
-| Type | Config |
-|------|--------|
-| Sync | Max 1 retry, 150ms total overhead |
-| Async | 5 retries: 2s → 10s → 30s → 2m → 10m → DLQ |
-| Circuit Breaker | 50% failure threshold, 30s break |
+**KURAL:** Kod yazarken yeni tablo/kolon kullanacaksan → **ÖNCE şemaya ekle, SONRA kodu yaz!**
+
+### ⚠️ DB-CODE SYNC CHECK
+
+**Kod ve DB senkronize olmayabilir!** Her yeni özellik yazarken:
+
+1. **Tablo var mı?** - Kodda kullanılan tablo DB'de gerçekten var mı kontrol et
+2. **Kolon var mı?** - Kullanılan her kolon DB'de mevcut mu kontrol et
+3. **Veri tipi doğru mu?** - Kolon tipleri kod beklentisiyle uyuşuyor mu
+4. **Migration gerekli mi?** - Yeni tablo/kolon lazımsa önce migration yaz
+
+**ASLA varsayma - her zaman kontrol et!**
+
+### 🐍 SNAKE_CASE CONVENTION (DB & CODE)
+
+**Tüm DB kolon adları `snake_case` olmalı!** PascalCase veya camelCase YASAK.
+
+| ❌ Yanlış | ✅ Doğru |
+|-----------|----------|
+| `UserId` | `user_id` |
+| `CreatedAt` | `created_at` |
+| `ServiceName` | `service_name` |
+
+### Mikro Servis İzolasyonu
+
+**Bir serviste yapılan değişiklik diğer servisleri ETKİLEMEZ!**
+
+| Soru | Cevap |
+|------|-------|
+| Bu değişiklik hangi servis(ler)i etkiliyor? | Belirle |
+| Etkilemediğim servisler için regression riski var mı? | Kontrol et |
+| Shared kod değişiyorsa | TÜM etkilenen servisleri test et |
+
+---
+
+1. **DB:** Servis bazlı - her mikro servis kendi DB yapısını tanımlar
+2. **Auth:** Servisler arası SERVICE_TOKEN veya OAuth2
+3. **Errors:** Use `arch/errors.md` codes (INV-xxx)
+4. **Contracts:** Never invent schema. Use `arch/contracts/*.json`
 
 ## Architecture Reference
 
-**KURAL: Kod yazmadan ÖNCE ilgili `arch/` veya `plans/` dokümanını oku!**
+**🚨 KURAL: Kod yazmadan ÖNCE ilgili `arch/` dokümanını oku!**
 
 | Yazacağın Kod | Önce Oku |
 |---------------|----------|
-| Infrastructure | `plans/00_master_implementation_plan.md` Phase 1 |
-| Resilience/Polly | `plans/00_master_implementation_plan.md` Phase 2 |
-| Messaging/Queue | `plans/00_master_implementation_plan.md` Phase 3 |
+| DB değişikliği | `arch/db/` + servis şeması |
 | Error handling | `arch/errors.md` |
 | API contract | `arch/contracts/` |
+| Yeni servis | `arch/docs/microservice-guide.md` |
 
 All rules in `arch/`:
-- `arch/errors.md` - Error codes
+- `arch/env.md` - Environment variables
+- `arch/errors.md` - Error codes (INV-*)
 - `arch/contracts/` - Data contracts
+- `arch/db/` - Schema definitions
+- `arch/logging.md` - Log format
+- `arch/plans/` - Feature implementation plans
 - `arch/session-memory.md` - Session context
 - `arch/active-work.md` - In-progress task tracker
 - `arch/lessons-learned.md` - Common mistakes and patterns
+- `arch/docs/` - Teknik dokümanlar
 
 ## Agent Prompts
 
+All agents in `.claude/agents/`:
+- `INVEKTO_BASE.prompt.md` - Global rules (inherited by all)
+- `INVEKTO_PLAN_AGENT.prompt.md` - Planning (for /auto)
+- `INVEKTO_DEV_AGENT.prompt.md` - Implementation (for /auto)
+- `INVEKTO_AUDIT_AGENT.prompt.md` - Codebase audit (Q triggers manually)
+
 Skills in `.claude/commands/`:
-- `auto.md` - Default workflow (otomatik uygulanır)
-- `rev.md` - Review protocol
+- `auto.md` - Default workflow (otomatik uygulanır, /auto yazmaya gerek yok)
+- `rev.md` - Review protocol (v3.0 - /rev komutu)
+- `aha.md` - Detaylı aha moment analizi (`/aha` ile çağrılır)
+- `learn.md` - Session learnings kayıt (`/learn` ile çağrılır)
+- `push.md` - Git push shortcut (`/push` ile çağrılır)
 
-## Workflow (v1.0)
+**AHA Moments:**
+- **Plan içinde (zorunlu):** Her plan 5 basit AHA suggestion içerir (UX/SPEED/RELIABILITY/SALES/SUPPORT)
+- **Detaylı analiz (opsiyonel):** `/aha` komutu ile derin analiz yapılabilir
 
-> **PERSIST AFTER COMPACT:** Bu workflow session sıfırlansa bile aktif kalır.
+## 🤖 Sub-Agents (Otomatik Tetikleme)
+
+**Q'nun agent adı hatırlamasına GEREK YOK!** Aşağıdaki durumlarda ilgili agent OTOMATİK çağrılmalı:
+
+### Otomatik Tetikleme Kuralları
+
+| Durum | Agent | Tetikleme |
+|-------|-------|-----------|
+| Build gerekli | `build-runner` | Kod değişikliği sonrası |
+| DB sorgusu gerekli | `db-query` | Veri sorulduğunda |
+
+### Agent Detayları
+
+| Agent | Model | Güvenlik |
+|-------|-------|----------|
+| `build-runner` | haiku | Sadece build komutları |
+| `db-query` | haiku | **SADECE SELECT** - write YASAK |
+
+---
+
+## Workflow (v3.1 - Copy-Paste)
+
+> **🔄 PERSIST AFTER COMPACT:** Bu bölüm session sıfırlansa bile geçerlidir.
 
 **AUTO WORKFLOW = DEFAULT DAVRANIS**
 
-**Her kod değişikliği otomatik olarak auto.md kurallarını takip eder.**
+**Her kod degisikligi otomatik olarak auto.md kurallarini takip eder.**
+`/auto` yazmaya GEREK YOK - sadece ne istedigini soyle.
 
-**Otomatik Akış:**
-1. Q bir şey ister → AskUserQuestion ile interview
+**v3.1 Farki:**
+- Interview: AskUserQuestion tool ile (duz metin YASAK)
+- Plan JSON: TUM risk seviyeleri icin ZORUNLU
+- Codex review: TUM risk seviyeleri icin ZORUNLU (LOW dahil)
+- Copy-paste yontemine DONDU
+
+**Otomatik Akis:**
+1. Q bir sey ister -> AskUserQuestion ile interview
 2. Agent risk'i belirler (LOW/MEDIUM/HIGH/CRITICAL)
-3. Plan JSON oluşturulur
-4. Implement → Build
-5. /rev → Q copy-paste → Codex → PASS/FAIL
+3. Plan JSON olusturulur (TUM risk seviyeleri)
+4. Implement -> Build
+5. /rev -> Q copy-paste -> Codex -> PASS/FAIL (TUM risk seviyeleri)
+
+**Review Akisi (v3.1 - Copy-Paste):**
+```
+DevAgent kod yazar -> Build PASS
+    |
+DevAgent /rev calistirir (TUM risk seviyeleri)
+    |
+🚨 ZORUNLU: Q'ya Codex prompt gosterilir
+    |
+Q AYRI Codex penceresine yapistirir
+    |
+Codex 2 BLOK uretir (Code Quality + CoVe)
+    |
+Q verdict bildirir
+    |
+DevAgent /rev verdict PASS|FAIL
+    |
+PASS -> commit -> DONE
+FAIL -> fix -> /rev (max 3 iter)
+```
+
+**🚨 HARD RULE:** /rev sonrasi Codex prompt'u Q'ya gosterilmeden ASLA commit yapilamaz!
+
+**Escalation Kategorileri (3 iter sonrasi):**
+| Kategori | Aciklama |
+|----------|----------|
+| DECISION_CONFLICT | Tasarim karari gerekiyor |
+| TOOL_LIMITATION | Arac/framework limiti |
+| PLAN_ASSUMPTION_WRONG | Plan varsayimi yanlis |
+| SCOPE_INSUFFICIENT | Scope yetersiz |
+| ARCHITECTURE_CONFLICT | Mimari celiski |
+
+**Q'nun yapacagi:** Interview cevapla -> Plan onayla -> Copy-paste koprusu -> Izle.
+
+**Risk-Based Trigger:**
+| Risk | Build PASS Sonrasi |
+|------|-------------------|
+| LOW | /rev -> Q copy-paste -> Codex |
+| MEDIUM | /rev -> Q copy-paste -> Codex |
+| HIGH | /rev -> Q copy-paste -> Codex |
+| CRITICAL | /rev + Q onay bekle |
 
 ## Execution
 
 - Execute without interruption for clear tasks
-- Read arch/ and plans/ before any task
+- Read arch/ before any task
 - If rule conflicts with code, fix code (arch is truth)
 - No tests, no docs unless requested
 
 **Execution discipline:**
-- Treat any **surprise** as a signal your mental model is wrong.
-- If you lose track of the original goal, say so explicitly and reconstruct.
+- Treat any **surprise** (unexpected error, missing file, different output) as a signal your mental model is wrong. Stop, explain to Q what surprised you, and update your plan.
+- If you lose track of the original goal or constraints, say so explicitly (`"I'm losing the thread"`) and reconstruct the goal from this file + the latest instructions from Q before continuing.
 
 ## Ask Before Acting
 
@@ -182,15 +340,16 @@ Skills in `.claude/commands/`:
 - Changing shared contracts/schemas
 - Adding new dependencies
 - Modifying auth/security logic
+- Adding new microservice
 
-**Proceed directly:**
+**Proceed directly (auto workflow implicit):**
 - Clear instruction = direkt başla, auto workflow otomatik uygulanır
-- Q override komutları: `STOP`, `SKIP CODEX`, `FORCE PASS`
+- Q override komutları: `STOP`, `SKIP CODEX`, `FORCE PASS` (sadece Q'nun açık izni ile)
 
 ## Architecture Compliance
 
 **Before writing code:**
-1. Read relevant arch/ and plans/ files
+1. Read relevant arch/ files
 2. Check existing patterns in codebase
 3. Verify contract fields exist in arch/contracts/
 4. Use error codes from arch/errors.md
@@ -199,10 +358,10 @@ Skills in `.claude/commands/`:
 **Code review checklist:**
 - [ ] Uses existing patterns, not new inventions
 - [ ] Error codes match arch/errors.md
-- [ ] Follows retry/circuit breaker strategy
 - [ ] No hardcoded endpoints/ports
-- [ ] Idempotency where needed
+- [ ] Mikro servis izolasyonu korunuyor
+- [ ] Shared kod değişikliği varsa tüm servisler kontrol edildi
 
 ---
 
-**Full workflow details in `.claude/commands/auto.md` and `agents.md`.**
+**Full Q-Mode reasoning protocol and failure handling rules are defined in `INVEKTO_BASE.prompt.md`.**

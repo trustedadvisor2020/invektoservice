@@ -1,27 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell *)",
-      "Bash(dotnet *)",
-      "Bash(git *)",
-      "Bash(dir *)",
-      "Bash(copy *)",
-      "Bash(del *)",
-      "Bash(if not exist *)",
-      "Bash(findstr *)",
-      "Bash(sc query *)",
-      "Bash(cmd /c *)",
-      "Skill(*)",
-      "SlashCommand(*)",
-      "Skill(rev)",
-      "Skill(rev:*)",
-      "Skill(auto)",
-      "Skill(auto:*)",
-      "Read(//c/**)",
-      "Bash(cd:*)",
-      "Bash(find:*)"
-    ],
-    "deny": []
-  },
-  "language": "turkish"
+      "Bash(powershell:*)"
+    ]
+  }
 }

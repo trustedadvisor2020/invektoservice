@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{2D97BB8D-A179-4B02-AABE-097A26C8ECFD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Shared", "src\Invekto.Shared\Invekto.Shared.csproj", "{15F8FD75-7433-4D26-A091-8B804B50C75C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.ChatAnalysis", "src\Invekto.ChatAnalysis\Invekto.ChatAnalysis.csproj", "{A47EFF60-9716-4E83-823C-1A6AD0F4180B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Backend", "src\Invekto.Backend\Invekto.Backend.csproj", "{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{15F8FD75-7433-4D26-A091-8B804B50C75C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15F8FD75-7433-4D26-A091-8B804B50C75C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15F8FD75-7433-4D26-A091-8B804B50C75C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15F8FD75-7433-4D26-A091-8B804B50C75C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A47EFF60-9716-4E83-823C-1A6AD0F4180B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A47EFF60-9716-4E83-823C-1A6AD0F4180B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A47EFF60-9716-4E83-823C-1A6AD0F4180B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A47EFF60-9716-4E83-823C-1A6AD0F4180B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{15F8FD75-7433-4D26-A091-8B804B50C75C} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+		{A47EFF60-9716-4E83-823C-1A6AD0F4180B} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+	EndGlobalSection
+EndGlobal

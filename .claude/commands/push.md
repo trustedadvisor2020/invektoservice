@@ -1,56 +1,79 @@
-# Push Skill
+---
+description: Git add, commit and push all changes to GitHub
+---
 
-Git commit ve push işlemlerini otomatize eder.
+# /push [message]
+
+> Quick command to push all changes to GitHub with auto-generated commit message.
+
+## Usage
+
+```
+/push                    # Auto-generate commit message from changes
+/push "fix: bug fix"     # Use custom commit message
+```
 
 ## Workflow
 
-1. **Status Check:** `git status` ile değişiklikleri listele
-2. **Stage:** Değişiklikleri staging'e ekle (kullanıcı onayı ile)
-3. **Commit:** Anlamlı commit message ile commit oluştur
-4. **Push:** Remote'a push et
+### Step 1: Check Status
+Run these commands in parallel:
+- `git status` - See all changed files
+- `git diff --stat` - See change statistics
+- `git log -3 --oneline` - See recent commits for style reference
 
-## Instructions
+### Step 2: Analyze Changes
+Look at the changes and determine:
+- What type of change (feat, fix, refactor, docs)
+- Which components/services affected
+- Brief summary of what was done
 
-Bu skill çağrıldığında:
-
-1. Önce `git status` çalıştır ve değişiklikleri göster
-2. Eğer commit edilmemiş değişiklik varsa:
-   - Değişiklikleri özetle
-   - Commit message öner (conventional commits formatında)
-   - Kullanıcıdan onay al
-3. Commit sonrası `git push -u origin <branch>` çalıştır
-4. Push başarılıysa sonucu raporla
-
-## Commit Message Format
-
+### Step 3: Stage All Changes
 ```
-<type>(<scope>): <description>
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+git add -A
 ```
 
-**Types:**
-- `feat`: Yeni özellik
-- `fix`: Bug fix
-- `refactor`: Kod düzenleme
-- `docs`: Dokümantasyon
-- `chore`: Bakım işleri
-- `test`: Test ekleme
+### Step 4: Create Commit
+If `[message]` argument provided, use it. Otherwise auto-generate from changes.
 
-## Safety Rules
-
-- ASLA `--force` kullanma
-- ASLA `main`/`master`'a direkt push yapma (uyar)
-- Sensitive dosyaları (.env, secrets) ASLA commit'leme
-- Her zaman kullanıcı onayı al
-
-## Example Usage
-
+Commit message format:
 ```
-/push
+{type}: {brief description}
+
+- {detail 1}
+- {detail 2}
+
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-Agent otomatik olarak:
-1. Değişiklikleri analiz eder
-2. Commit message önerir
-3. Q onayı ile push eder
+Types:
+- `feat` - New feature
+- `fix` - Bug fix
+- `refactor` - Code refactoring
+- `docs` - Documentation
+- `chore` - Maintenance tasks
+
+### Step 5: Push to Remote
+```
+git push origin {current_branch}
+```
+
+### Step 6: Confirm
+Show:
+- Commit hash
+- Branch
+- Files changed count
+- Push status
+
+## Example Output
+
+```
+✓ Commit: abc1234
+✓ Branch: master
+✓ Files: 12 changed
+✓ Pushed to origin/master
+```
+
+## Notes
+- Always pushes to current branch
+- Never force push
+- Skip if no changes detected

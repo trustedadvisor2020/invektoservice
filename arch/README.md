@@ -1,62 +1,61 @@
-# Architecture Documentation
+# InvektoServis Architecture
 
-> Single source of truth for Invekto Microservice System architecture.
+Bu klasör projenin mimari dokümanlarını içerir.
 
-## Structure
+## Klasör Yapısı
 
 ```
 arch/
-├── README.md               # This file
-├── session-memory.md       # Session context (where we left off)
-├── active-work.md          # In-progress task tracker
-├── lessons-learned.md      # Common mistakes and patterns
-├── errors.md               # Error codes registry
-│
-├── contracts/              # Data contracts
-│   ├── standard-response.json
+├── README.md           # Bu dosya
+├── errors.md           # Error codes (INV-xxx)
+├── env.md              # Environment variables
+├── logging.md          # Loglama standartları
+├── session-memory.md   # Session durumu (runtime)
+├── active-work.md      # Devam eden işler
+├── lessons-learned.md  # Öğrenilen dersler
+├── contracts/          # Data contracts
 │   └── plan-schema.json
-│
-└── plans/                  # Feature implementation plans
-    └── diffs/              # Git diffs for review
+├── db/                 # Database şemaları
+│   └── README.md
+├── docs/               # Teknik dokümanlar
+│   └── microservice-guide.md
+└── plans/              # Feature planları
+    └── diffs/          # Codex review diff'leri
 ```
 
-## Key Documents
+## Önemli Kurallar
 
-| Document | Purpose |
-|----------|---------|
-| `session-memory.md` | Session continuity - last task, decisions |
-| `active-work.md` | Track in-progress work, blockers |
-| `lessons-learned.md` | Patterns and anti-patterns |
-| `errors.md` | Standard error codes |
+1. **arch/ tek gerçek kaynak** - Kurallar burada tanımlı
+2. **Kod yazmadan ÖNCE oku** - İlgili dokümanı oku
+3. **Contracts değişmez** - Schema değişikliği Q onayı gerektirir
+4. **Error codes kullan** - `arch/errors.md`'den kod al
 
-## Reading Order (Per Session)
+## Mikro Servis Mimarisi
 
-1. `session-memory.md` - What happened last time?
-2. `active-work.md` - Any pending tasks?
-3. `lessons-learned.md` - Patterns to remember
-4. Relevant `contracts/` for the task
-5. Master plan: `plans/00_master_implementation_plan.md`
+InvektoServis bağımsız mikro servislerden oluşur:
 
-## Contracts
+```
+services/
+├── service-a/          # Her servis kendi başına deploy edilebilir
+├── service-b/
+└── ...
 
-JSON Schema files defining API contracts:
-- `standard-response.json` - Standard API response format
-- `plan-schema.json` - Implementation plan format
+shared/                 # Paylaşılan kod
+├── contracts/          # Servisler arası API kontratları
+├── types/              # Paylaşılan type'lar
+└── utils/              # Ortak utility'ler
+```
 
-## Plans
+### Servis İzolasyonu
 
-Feature implementation plans in JSON format:
-- Named: `YYYYMMDD-feature-name.json`
-- Diffs stored in: `plans/diffs/`
+- Her servis kendi DB'sine sahip olabilir
+- Servisler arası iletişim API/Event üzerinden
+- Shared kod değişikliği tüm servisleri etkiler
 
-## Rules
+## Session Dosyaları
 
-1. **arch/ = Truth** - If code conflicts with arch/, fix the code
-2. **Read before write** - Always read relevant docs before coding
-3. **Update after done** - Keep session-memory and active-work current
-4. **Learn from mistakes** - Add new patterns to lessons-learned
-
----
-
-**Maintained by:** Q + Claude
-**Last Updated:** 2026-01-29
+| Dosya | Amaç | Güncelleme |
+|-------|------|------------|
+| `session-memory.md` | Son durum | Her session sonunda |
+| `active-work.md` | Devam eden işler | İş başlayınca/bitince |
+| `lessons-learned.md` | Öğrenilen dersler | Q onayıyla |

@@ -1,35 +1,61 @@
 # Active Work Tracker
 
-> Yarım kalan işlerin takibi. Her session başında kontrol edilir.
+> Devam eden işler. Session başında kontrol et.
 
 ## In Progress
 
-| Slug | Status | Blocker | Next Step | Priority |
-|------|--------|---------|-----------|----------|
-| phase-1-infra | Pending | - | Redis kurulumu | HIGH |
+| Slug | Status | Started | Description |
+|------|--------|---------|-------------|
+| (none) | - | - | Henüz aktif iş yok |
 
-## Waiting for Review
-
-| Slug | Codex Result | Action Needed |
-|------|--------------|---------------|
-| - | - | - |
+---
 
 ## Recently Completed
 
-| Slug | Completed | Notes |
-|------|-----------|-------|
-| phase-0-foundation | 2026-01-29 | Solution, Contracts, Infrastructure, CI |
+| Slug | Completed | Description |
+|------|-----------|-------------|
+| 20260202-stage0-scaffold | 2026-02-02 | Stage-0 scaffold: Backend + ChatAnalysis + Shared |
+| 20260201-initial-setup | 2026-02-01 | Proje workflow yapısı kuruldu |
 
-## Backlog
+---
 
-| Feature | Priority | Phase | Notes |
-|---------|----------|-------|-------|
-| Solution structure | HIGH | 0 | .sln, projects |
-| Invekto.Contracts | HIGH | 0 | Shared DTOs |
-| Error code registry | HIGH | 0 | arch/errors.md |
-| Redis setup | HIGH | 1 | Windows service |
-| RabbitMQ setup | HIGH | 1 | Queue topology |
-| Nginx setup | HIGH | 1 | Reverse proxy |
-| Polly policies | MEDIUM | 2 | Resilience |
-| Health checks | MEDIUM | 2 | Infrastructure |
-| Messaging/Outbox | MEDIUM | 3 | RabbitMQ integration |
+## Blocked
+
+| Slug | Blocked Since | Reason | Waiting For |
+|------|---------------|--------|-------------|
+| (none) | - | - | - |
+
+---
+
+## Stage-0 Checklist
+
+| Item | Status |
+|------|--------|
+| Solution yapısı | ✅ |
+| Invekto.Shared | ✅ |
+| Invekto.ChatAnalysis | ✅ |
+| Invekto.Backend | ✅ |
+| /health endpoint | ✅ |
+| /ops endpoint | ✅ |
+| JSON Lines logger | ✅ |
+| 600ms timeout | ✅ |
+| 0 retry | ✅ |
+| Windows Service ready | ✅ |
+| Build PASS | ✅ |
+
+---
+
+## Usage
+
+### Yeni İş Başlatma
+```markdown
+| {slug} | IN_PROGRESS | {tarih} | {açıklama} |
+```
+
+### İş Tamamlama
+1. In Progress'ten kaldır
+2. Recently Completed'a ekle
+
+### İş Engellenirse
+1. In Progress'ten Blocked'a taşı
+2. Waiting For alanını doldur

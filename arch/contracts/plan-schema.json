@@ -1,177 +1,427 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ImplementationPlan",
-  "description": "Schema for feature implementation plans",
+  "$id": "plan-v3.json",
+  "title": "Plan Schema v3.0",
+  "description": "JSON Plan Schema for Codex Review Protocol v3.0",
   "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_protocol_version",
+    "slug",
+    "risk",
+    "status",
+    "created_at",
+    "updated_at",
+    "plan",
+    "allowed_files",
+    "files_changed",
+    "git_diff",
+    "build",
+    "scope_discipline",
+    "error_handling",
+    "aha_moments",
+    "verdict"
+  ],
   "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "3.0",
+      "description": "Schema version - must be 3.0"
+    },
+    "review_protocol_version": {
+      "type": "string",
+      "const": "3.0",
+      "description": "Review protocol version - must be 3.0"
+    },
     "slug": {
       "type": "string",
       "pattern": "^[0-9]{8}-[a-z0-9-]+$",
-      "description": "Plan identifier (YYYYMMDD-feature-name)",
-      "examples": ["20260129-chat-analysis-api"]
-    },
-    "summary": {
-      "type": "string",
-      "maxLength": 500,
-      "description": "Brief description of the change"
+      "description": "Task identifier in YYYYMMDD-feature-name format",
+      "examples": ["20260201-user-service", "20260201-add-api-endpoint"]
     },
     "risk": {
       "type": "string",
       "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
-      "description": "Risk level of the change"
+      "description": "Risk level of the task"
     },
     "status": {
       "type": "string",
-      "enum": ["PLANNING", "IN_PROGRESS", "REVIEW", "DONE", "BLOCKED"],
-      "description": "Current status"
+      "enum": ["PLANNING", "IN_PROGRESS", "REVIEW", "DONE"],
+      "description": "Current status of the task"
     },
     "created_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when plan was created"
     },
     "updated_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "q_intent"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "description": "What is being done and why (1-2 sentences)"
+        },
+        "q_intent": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Q's original request verbatim"
+        },
+        "interview_notes": {
+          "type": ["string", "null"],
+          "description": "Points clarified during interview"
+        }
+      }
     },
     "allowed_files": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "Files that may be modified in this plan"
-    },
-    "verification_questions": {
-      "type": "array",
+      "minItems": 1,
       "items": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string",
-            "enum": ["Data", "Tenant/Auth", "Lifecycle", "Process/Policy"],
-            "description": "Question category"
-          },
-          "question": {
-            "type": "string",
-            "description": "Verification question"
-          }
-        },
-        "required": ["category", "question"]
+        "type": "string",
+        "description": "File path relative to repo root"
       },
-      "description": "Questions for Codex to verify"
-    },
-    "build": {
-      "type": "object",
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": ["PENDING", "PASS", "FAIL"]
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "output": {
-          "type": "string",
-          "description": "Build output (truncated if long)"
-        }
-      }
-    },
-    "git_diff": {
-      "type": "object",
-      "properties": {
-        "patch_truncated": {
-          "type": "string",
-          "description": "First 50KB of diff"
-        },
-        "sha256": {
-          "type": "string",
-          "description": "Hash of full diff"
-        },
-        "full_path": {
-          "type": "string",
-          "description": "Path to full diff file"
-        },
-        "stats": {
-          "type": "object",
-          "properties": {
-            "insertions": { "type": "integer" },
-            "deletions": { "type": "integer" },
-            "files_count": { "type": "integer" }
-          }
-        }
-      }
+      "description": "Whitelist of files that may be modified for THIS task only"
     },
     "files_changed": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "is_new"],
         "properties": {
-          "path": { "type": "string" },
-          "is_new": { "type": "boolean" }
+          "path": {
+            "type": "string",
+            "description": "File path relative to repo root"
+          },
+          "change": {
+            "type": ["string", "null"],
+            "description": "What changed in this file"
+          },
+          "is_new": {
+            "type": "boolean",
+            "description": "True if this is a newly created file"
+          },
+          "deleted": {
+            "type": "boolean",
+            "default": false,
+            "description": "True if file was deleted"
+          }
+        }
+      },
+      "description": "Actual files changed (populated after implementation)"
+    },
+    "git_diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stats"],
+      "properties": {
+        "patch_truncated": {
+          "type": ["string", "null"],
+          "maxLength": 51200,
+          "description": "First 50KB of the diff (truncated if larger)"
         },
-        "required": ["path", "is_new"]
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "description": "SHA256 hash of the full diff file"
+        },
+        "full_path": {
+          "type": ["string", "null"],
+          "description": "Path to full diff file: arch/plans/diffs/{slug}.diff"
+        },
+        "stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["insertions", "deletions", "files_count"],
+          "properties": {
+            "insertions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deletions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "files_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
       }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": ["string", "null"],
+          "enum": ["PASS", "FAIL", "N/A", null],
+          "description": "Build status - N/A for documentation-only changes"
+        },
+        "command": {
+          "type": ["string", "null"],
+          "description": "Build command that was executed"
+        },
+        "timestamp": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When build was executed"
+        },
+        "duration_ms": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Build duration in milliseconds"
+        },
+        "output_tail": {
+          "type": ["string", "null"],
+          "description": "Last 50 lines of build output"
+        },
+        "error_summary": {
+          "type": ["string", "null"],
+          "description": "Summary of build errors if any"
+        }
+      }
+    },
+    "verification_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "category"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^Q[0-9]+$",
+            "description": "Unique question ID (Q1, Q2, Q3, etc.)"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 20,
+            "description": "The verification question"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["Data", "Auth", "Lifecycle", "Process/Policy"],
+            "description": "Question category for coverage check"
+          },
+          "codex_answer": {
+            "type": ["string", "null"],
+            "description": "Codex's answer to this question"
+          },
+          "codex_result": {
+            "type": ["string", "null"],
+            "enum": ["PASS", "FAIL", "UNKNOWN", null],
+            "description": "Codex's verdict for this question"
+          }
+        }
+      },
+      "description": "Verification questions for Codex review"
+    },
+    "scope_discipline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["forbidden_areas", "non_goals", "intentional_exclusions"],
+      "properties": {
+        "forbidden_areas": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files/areas that must NOT be touched"
+        },
+        "non_goals": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Things explicitly NOT in scope"
+        },
+        "intentional_exclusions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Things intentionally left out"
+        }
+      }
+    },
+    "error_handling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["silent_failure_risk"],
+      "properties": {
+        "try_catch_locations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File:line locations of try-catch blocks"
+        },
+        "user_facing_errors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "User-facing error messages"
+        },
+        "silent_failure_risk": {
+          "type": "boolean",
+          "description": "True if there's risk of silent failure"
+        },
+        "silent_failure_explanation": {
+          "type": ["string", "null"],
+          "description": "Why silent failure is/isn't a risk"
+        }
+      }
+    },
+    "aha_moments": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "user_pain", "suggestion", "aha_moment"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["UX", "SPEED", "RELIABILITY", "SALES", "SUPPORT"],
+            "description": "AHA moment category"
+          },
+          "user_pain": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Specific user pain point this addresses"
+          },
+          "suggestion": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Concrete suggestion to implement"
+          },
+          "aha_moment": {
+            "type": "string",
+            "minLength": 10,
+            "description": "The exact moment user realizes value"
+          }
+        }
+      },
+      "description": "5 AHA moment suggestions (REQUIRED for all risk levels)"
     },
     "verdict": {
       "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "iteration"],
       "properties": {
         "status": {
-          "type": "string",
-          "enum": ["PENDING", "PASS", "FAIL", "UNKNOWN"]
+          "type": ["string", "null"],
+          "enum": ["PASS", "FAIL", "UNKNOWN", null],
+          "description": "Overall verdict status"
         },
         "source": {
-          "type": "string",
-          "description": "Where verdict came from"
+          "type": ["string", "null"],
+          "enum": ["CODEX_TEXT_VIA_Q", null],
+          "description": "Source of verdict"
         },
         "received_at": {
-          "type": "string",
-          "format": "date-time"
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When Q provided the Codex output"
+        },
+        "updated_by": {
+          "type": ["string", "null"],
+          "description": "Who updated the verdict (DevAgent)"
+        },
+        "updated_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When verdict was written to JSON"
+        },
+        "raw_text": {
+          "type": ["string", "null"],
+          "description": "Raw Codex output (fallback if parsing fails)"
         },
         "code_quality_gate": {
           "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "result": { "type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"] },
-              "evidence": { "type": "string" }
-            }
+          "additionalProperties": false,
+          "properties": {
+            "CQ1": { "$ref": "#/$defs/cq_result" },
+            "CQ2": { "$ref": "#/$defs/cq_result" },
+            "CQ3": { "$ref": "#/$defs/cq_result" },
+            "CQ4": { "$ref": "#/$defs/cq_result" },
+            "CQ5": { "$ref": "#/$defs/cq_result" },
+            "CQ6": { "$ref": "#/$defs/cq_result" },
+            "CQ7": { "$ref": "#/$defs/cq_result" },
+            "CQ8": { "$ref": "#/$defs/cq_result" }
           }
         },
         "cove_verification": {
           "type": "object",
           "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "result": { "type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"] },
-              "reasoning": { "type": "string" }
-            }
-          }
+            "$ref": "#/$defs/cove_result"
+          },
+          "description": "CoVe verification results keyed by Q1, Q2, etc."
         },
         "blocking_issues": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "type": "string" },
+          "description": "List of blocking issues (required if FAIL)"
         },
         "iteration": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0,
+          "default": 0,
+          "description": "Current iteration count"
+        },
+        "escalation_required": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if max iterations reached"
+        },
+        "escalation_reason": {
+          "type": ["string", "null"],
+          "description": "Reason for escalation"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "cq_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": ["string", "null"],
+          "enum": ["PASS", "FAIL", "UNKNOWN", null]
+        },
+        "evidence": {
+          "type": ["string", "null"]
         }
       }
     },
-    "escalation_required": {
-      "type": "boolean",
-      "default": false
-    },
-    "escalation_reason": {
-      "type": "string"
-    },
-    "escalation_category": {
-      "type": "string",
-      "enum": [
-        "DECISION_CONFLICT",
-        "TOOL_LIMITATION",
-        "PLAN_ASSUMPTION_WRONG",
-        "SCOPE_INSUFFICIENT",
-        "ARCHITECTURE_CONFLICT"
-      ]
+    "cove_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": ["string", "null"],
+          "enum": ["PASS", "FAIL", "UNKNOWN", null]
+        },
+        "reasoning": {
+          "type": ["string", "null"]
+        }
+      }
     }
   },
-  "required": ["slug", "summary", "risk", "status", "created_at", "allowed_files", "verification_questions"]
+  "if": {
+    "properties": {
+      "risk": { "enum": ["MEDIUM", "HIGH", "CRITICAL"] }
+    }
+  },
+  "then": {
+    "properties": {
+      "verification_questions": {
+        "minItems": 3
+      }
+    },
+    "required": ["verification_questions"]
+  }
 }

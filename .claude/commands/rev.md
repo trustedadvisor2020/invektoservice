@@ -2,9 +2,9 @@
 description: Codex review hazırlığı - JSON güncelleme + verdict işleme
 ---
 
-# /rev - Codex Review Hazırlığı (v1.0)
+# /rev - Codex Review Hazırlığı (v3.0)
 
-> **PERSIST AFTER COMPACT:** Session sıfırlansa bile staged değişiklikler Codex review gerektirir.
+> **🔄 PERSIST AFTER COMPACT:** Session sıfırlansa bile staged değişiklikler Codex review gerektirir.
 
 Codex is a **reviewer only**.
 Codex never implements code.
@@ -29,6 +29,9 @@ Build PASS olduktan sonra çalıştırılır. JSON plan dosyasını günceller.
 
 3. Build PASS kanıtı var mı? (build.timestamp)
    → Yoksa: "Build kanıtı yok. Önce build çalıştırın."
+
+4. allowed_files scope kontrolü
+   → Diff'te olup allowed_files'ta olmayan dosya varsa WARN
 ```
 
 **JSON Güncellemeleri:**
@@ -47,9 +50,9 @@ Build PASS olduktan sonra çalıştırılır. JSON plan dosyasını günceller.
     }
   },
   "files_changed": [
-    { "path": "file.cs", "is_new": false }
+    { "path": "file.ts", "is_new": false }
   ],
-  "updated_at": "2026-01-29T12:00:00Z"
+  "updated_at": "2026-02-01T12:00:00Z"
 }
 ```
 
@@ -86,7 +89,7 @@ Sadece validation yapar, JSON güncellemez.
 
 ======================================================================
 
-### 3. `/rev verdict <PASS|FAIL|UNKNOWN> [issue]` - Q'dan Gelen Verdict İşleme
+### 3. `/rev verdict <PASS|FAIL|UNKNOWN> [issue]` - Verdict İşleme
 
 Q, Codex output'unu DevAgent'a ilettiğinde kullanılır.
 
@@ -105,25 +108,14 @@ Q, Codex output'unu DevAgent'a ilettiğinde kullanılır.
 ✅ /rev verdict FAIL "CQ2 failed: silent failure in catch block"
 ```
 
-**JSON Güncellemeleri:**
+**Iteration Artışı:**
 
-```json
-{
-  "verdict": {
-    "status": "PASS | FAIL | UNKNOWN",
-    "source": "CODEX_TEXT_VIA_Q",
-    "received_at": "2026-01-29T12:00:00Z",
-    "code_quality_gate": {
-      "CQ1": { "result": "PASS", "evidence": "..." },
-      "CQ2": { "result": "PASS", "evidence": "..." }
-    },
-    "cove_verification": {
-      "Q1": { "result": "PASS", "reasoning": "..." }
-    },
-    "blocking_issues": [],
-    "iteration": 1
-  }
-}
+```
+iteration SADECE /rev verdict çağrısında artar:
+
+/rev (review hazırlığı)     → iteration'a DOKUNMAZ
+/rev verdict PASS           → iteration++
+/rev verdict FAIL           → iteration++
 ```
 
 **Escalation Trigger:**
@@ -166,22 +158,22 @@ UNKNOWN → Q escalate
 ## KRİTİK KURALLAR
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  1. Codex DOSYA DEĞİŞTİRMEZ!                            │
-│     → JSON okur, 2 blok TEXT output verir               │
-│                                                          │
-│  2. verdict.* alanlarını KİM doldurur?                  │
-│     → DevAgent (Q'dan aldığı bilgiyle)                  │
-│                                                          │
-│  3. FAIL + boş blocking_issues = ERROR!                 │
-│     → DevAgent /rev verdict FAIL yaparken issue zorunlu │
-│                                                          │
-│  4. iteration 3'e ulaşınca → Q escalate                 │
-│     → Yeni iter'a Q izni olmadan geçilemez              │
-│                                                          │
-│  5. Scope violation = HARD FAIL                         │
-│     → allowed_files dışı değişiklik kabul edilmez       │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  1. Codex DOSYA DEĞİŞTİRMEZ!                        │
+│     → JSON okur, 2 blok TEXT output verir           │
+│                                                      │
+│  2. verdict.* alanlarını KİM doldurur?              │
+│     → DevAgent (Q'dan aldığı bilgiyle)              │
+│                                                      │
+│  3. FAIL + boş blocking_issues = ERROR!             │
+│     → DevAgent /rev verdict FAIL yaparken issue zorunlu│
+│                                                      │
+│  4. iteration 3'e ulaşınca → Q escalate             │
+│     → Yeni iter'a Q izni olmadan geçilemez          │
+│                                                      │
+│  5. Scope violation = HARD FAIL                     │
+│     → allowed_files dışı değişiklik kabul edilmez   │
+└─────────────────────────────────────────────────────┘
 ```
 
 ======================================================================
@@ -199,9 +191,31 @@ Evidence: {dosya:satır + mesaj formatı}
 
 CQ2: "Silent failure üretebilir mi?"
 Result: PASS | FAIL | UNKNOWN
-Evidence: {catch blokları}
+Evidence: {catch blokları + broad try-catch + early-return}
 
-... (CQ3-CQ8)
+CQ3: "Diff minimum mu? Scope dışı refactor var mı?"
+Result: PASS | FAIL | UNKNOWN
+Evidence: {değişen dosya/satır sayısı}
+
+CQ4: "Bu kod codebase'de zaten var mı? (duplicate)"
+Result: PASS | FAIL | UNKNOWN
+Evidence: {grep/search sonucu}
+
+CQ5: "Codebase pattern'larına uyuyor mu?"
+Result: PASS | FAIL | UNKNOWN
+Evidence: {naming, error handling, dosya yapısı}
+
+CQ6: "Performans sorunu var mı? (O(n²), N+1 query, memory leak)"
+Result: PASS | FAIL | UNKNOWN
+Evidence: {nested loops, döngü içi query, kapatılmayan resource}
+
+CQ7: "Yeni TODO/HACK/FIXME eklendi mi?"
+Result: PASS | FAIL | UNKNOWN
+Evidence: {yeni eklenen tech debt marker'ları}
+
+CQ8: "Breaking change var mı? (API contract, export, shared type)"
+Result: PASS | FAIL | UNKNOWN
+Evidence: {kaldırılan export, değişen interface}
 
 CODE QUALITY VERDICT: PASS | FAIL
 
@@ -209,9 +223,15 @@ CODE QUALITY VERDICT: PASS | FAIL
 
 Q1: {verification sorusu}
 Result: PASS | FAIL | UNKNOWN
-Reasoning: {kısa açıklama}
+Reasoning: {kısa, somut açıklama}
 
-... (Q2-Qn)
+Q2: {verification sorusu}
+Result: PASS | FAIL | UNKNOWN
+Reasoning: {kısa, somut açıklama}
+
+Q3: {verification sorusu}
+Result: PASS | FAIL | UNKNOWN
+Reasoning: {kısa, somut açıklama}
 
 CoVe VERDICT: PASS | FAIL
 
@@ -228,8 +248,8 @@ BLOCKING ISSUES: [liste veya "None"]
 | Q Komutu | Etki |
 |----------|------|
 | `STOP` | Tüm işlemi durdur |
-| `SKIP CODEX` | /rev'i atla, direkt commit |
-| `FORCE PASS` | Verdict override |
+| `SKIP CODEX` | /rev'i atla, direkt commit (sadece Q izniyle) |
+| `FORCE PASS` | Verdict override (sadece Q izniyle) |
 
 ======================================================================
 
@@ -240,3 +260,5 @@ Codex enforces correctness.
 DevAgent implements + /rev çalıştırır.
 Q owns decisions + copy-paste köprüsü.
 ```
+
+This rule overrides convenience and speed.
