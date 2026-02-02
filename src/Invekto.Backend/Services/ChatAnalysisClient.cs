@@ -32,24 +32,59 @@ public sealed class ChatAnalysisClient
 
             if (response.IsSuccessStatusCode)
             {
-                var data = await response.Content.ReadFromJsonAsync<ChatAnalysisResponse>(ct);
-                return ChatAnalysisResult.Success(data);
+                try
+                {
+                    var data = await response.Content.ReadFromJsonAsync<ChatAnalysisResponse>(ct);
+
+                    // Check for null/invalid body
+                    if (data == null || string.IsNullOrEmpty(data.Status))
+                    {
+                        _logger.LogWarning("ChatAnalysis returned invalid/empty body for {RequestId}", context.RequestId);
+                        return ChatAnalysisResult.Partial(
+                            "Microservice returned invalid response",
+                            ErrorCodes.BackendMicroserviceInvalidResponse);
+                    }
+
+                    return ChatAnalysisResult.Success(data);
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    _logger.LogWarning(ex, "ChatAnalysis returned malformed JSON for {RequestId}", context.RequestId);
+                    return ChatAnalysisResult.Partial(
+                        "Microservice returned malformed response",
+                        ErrorCodes.BackendMicroserviceInvalidResponse);
+                }
             }
 
-            _logger.LogWarning("ChatAnalysis returned {StatusCode} for {RequestId}",
-                response.StatusCode, context.RequestId);
+            // Non-success status codes
+            var statusCode = (int)response.StatusCode;
+            _logger.LogWarning("ChatAnalysis returned {StatusCode} for {RequestId}", statusCode, context.RequestId);
 
-            return ChatAnalysisResult.Partial($"Microservice returned {response.StatusCode}");
+            if (statusCode >= 500)
+            {
+                return ChatAnalysisResult.Partial(
+                    $"Microservice error ({statusCode})",
+                    ErrorCodes.BackendMicroserviceError);
+            }
+
+            // 4xx = client error (different from 5xx server error)
+            return ChatAnalysisResult.Partial(
+                $"Microservice client error ({statusCode})",
+                ErrorCodes.BackendMicroserviceClientError);
         }
         catch (TaskCanceledException)
         {
             _logger.LogWarning("ChatAnalysis timeout for {RequestId}", context.RequestId);
-            return ChatAnalysisResult.Partial("Microservice timeout");
+            return ChatAnalysisResult.Partial(
+                "Microservice timeout",
+                ErrorCodes.BackendMicroserviceTimeout);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "ChatAnalysis unavailable for {RequestId}", context.RequestId);
-            return ChatAnalysisResult.Partial("Microservice unavailable");
+            return ChatAnalysisResult.Partial(
+                "Microservice unavailable",
+                ErrorCodes.BackendMicroserviceUnavailable);
         }
     }
 
@@ -81,6 +116,7 @@ public sealed class ChatAnalysisResult
     public bool IsPartial { get; init; }
     public ChatAnalysisResponse? Data { get; init; }
     public string? Warning { get; init; }
+    public string? ErrorCode { get; init; }
 
     public static ChatAnalysisResult Success(ChatAnalysisResponse? data) => new()
     {
@@ -89,10 +125,11 @@ public sealed class ChatAnalysisResult
         Data = data
     };
 
-    public static ChatAnalysisResult Partial(string warning) => new()
+    public static ChatAnalysisResult Partial(string warning, string errorCode) => new()
     {
         IsSuccess = false,
         IsPartial = true,
-        Warning = warning
+        Warning = warning,
+        ErrorCode = errorCode
     };
 }

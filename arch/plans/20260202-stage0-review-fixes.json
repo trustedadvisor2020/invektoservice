@@ -1,0 +1,185 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260202-stage0-review-fixes",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-02T14:00:00Z",
+  "updated_at": "2026-02-02T15:35:00Z",
+  "plan": {
+    "summary": "Fix Stage-0 review findings: /ops Basic Auth + last 100 errors/slow/search, log contract fix, log retention cleanup, config-driven ports, error code differentiation, null body check",
+    "q_intent": "Codex review findings düzeltmeleri - High: /ops auth + features, Medium: log contract + retention + config, Low: error codes + null check",
+    "interview_notes": "/ops JSON only, X-Request-Id pass-through, log contract sadece request/response için, /ops Basic Auth"
+  },
+  "allowed_files": [
+    "arch/errors.md",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/ChatAnalysisClient.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.ChatAnalysis/Program.cs",
+    "src/Invekto.ChatAnalysis/appsettings.json",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/RequestContext.cs",
+    "src/Invekto.Shared/Logging/JsonLinesLogger.cs",
+    "src/Invekto.Shared/Logging/LogCleanupService.cs",
+    "src/Invekto.Shared/Logging/Reader/LogReader.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/errors.md", "change": "Add INV-BE-003, INV-BE-004 error codes", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Add Basic Auth, /ops/errors, /ops/slow, /ops/search, log cleanup, config-driven settings", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/ChatAnalysisClient.cs", "change": "Add null body check, differentiate error codes (timeout/unavailable/5xx/invalid)", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "change": "Add Ops and Microservice config sections", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/Program.cs", "change": "Config-driven port, pass-through requestId, proper log methods", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/appsettings.json", "change": "Add Service.ListenPort config", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add BackendMicroserviceError, BackendMicroserviceInvalidResponse, Auth codes", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/RequestContext.cs", "change": "Add CreateWithPassThrough for X-Request-Id pass-through", "is_new": false },
+    { "path": "src/Invekto.Shared/Logging/JsonLinesLogger.cs", "change": "Add LogRequest (enforced fields) vs LogSystem (relaxed), deprecate old methods", "is_new": false },
+    { "path": "src/Invekto.Shared/Logging/LogCleanupService.cs", "change": "New - 30 day log retention cleanup service", "is_new": true },
+    { "path": "src/Invekto.Shared/Logging/Reader/LogReader.cs", "change": "New - Log reader for /ops (errors, slow, search)", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "C6BC1BB0A44C115F393C711D073A00F1A14C4ABCA52CEE85F00857AD5FDD7D4A",
+    "full_path": "arch/plans/diffs/20260202-stage0-review-fixes.diff",
+    "stats": {
+      "insertions": 750,
+      "deletions": 52,
+      "files_count": 13
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln",
+    "timestamp": "2026-02-02T14:25:00Z",
+    "duration_ms": 4940,
+    "output_tail": "Build succeeded.\n    0 Warning(s)\n    0 Error(s)",
+    "error_summary": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does /ops require Basic Auth and return 401 without valid credentials?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does /ops/errors return last 100 ERROR level logs from JSONL files?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Are error codes correctly differentiated (timeout vs unavailable vs 5xx vs invalid response)?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does LogCleanupService delete log files older than 30 days?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "arch/contracts/",
+      "arch/session-memory.md",
+      ".claude/"
+    ],
+    "non_goals": [
+      "New API endpoints beyond /ops/*",
+      "Database integration",
+      "Full observability stack"
+    ],
+    "intentional_exclusions": [
+      "HTML ops dashboard (JSON only per Q decision)",
+      "Trace ID support (Stage-0 uses requestId only)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Program.cs:56-66 (Basic Auth validation)",
+      "src/Invekto.Backend/Services/ChatAnalysisClient.cs:35-56 (JSON parsing)",
+      "src/Invekto.Shared/Logging/LogCleanupService.cs:31-52 (Cleanup errors swallowed)",
+      "src/Invekto.Shared/Logging/Reader/LogReader.cs:86-96 (Malformed JSON skipped)"
+    ],
+    "user_facing_errors": [
+      "401 Unauthorized with WWW-Authenticate header for /ops",
+      "400 Bad Request for missing requestId in /ops/search"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Log cleanup errors are intentionally swallowed (non-critical background task). All other errors are logged or returned to caller."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Ops user can't quickly find why a request failed",
+      "suggestion": "Add /ops/search?requestId=xxx to trace requests across services",
+      "aha_moment": "User searches requestId and sees complete request journey in seconds"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Identifying slow requests requires manual log grep",
+      "suggestion": "/ops/slow with configurable threshold surfaces bottlenecks instantly",
+      "aha_moment": "User opens /ops/slow and immediately sees top 100 slowest requests"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Error investigation requires SSH + grep",
+      "suggestion": "/ops/errors provides last 100 errors via authenticated API",
+      "aha_moment": "User sees all recent errors without touching server directly"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Customer reports vague 'it's slow' without details",
+      "suggestion": "Pass-through X-Request-Id allows customer to share exact request trace",
+      "aha_moment": "Support asks for requestId, customer provides it, issue resolved in minutes"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Disk fills up with old logs, service crashes",
+      "suggestion": "LogCleanupService auto-deletes logs older than 30 days",
+      "aha_moment": "Ops never worries about disk space, logs auto-rotate"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-02T15:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-02T15:50:00Z",
+    "raw_text": "PASS (with the usual caveat that tests were not run)",
+    "code_quality_gate": {
+      "CQ1_correctness": "PASS",
+      "CQ2_security": "PASS",
+      "CQ3_reliability": "PASS",
+      "CQ4_performance": "PASS",
+      "CQ5_maintainability": "PASS",
+      "CQ6_tests": "NOT_RUN",
+      "CQ7_compatibility": "PASS",
+      "CQ8_compliance": "PASS"
+    },
+    "cove_verification": {
+      "Q1_basic_auth": "PASS - /ops* enforces Basic Auth, returns 401 with WWW-Authenticate",
+      "Q2_last_100_errors": "PASS - case-insensitive parsing, timestamp sort",
+      "Q3_error_codes": "PASS - timeout/unavailable/5xx/4xx/invalid differentiated",
+      "Q4_log_cleanup": "PASS - deletes .jsonl files older than retention"
+    },
+    "blocking_issues": [],
+    "fixed_in_iteration_2": [
+      "[High] LogReader JSON deserialize case-insensitive → PropertyNameCaseInsensitive + JsonPropertyName added",
+      "[Medium] InsertRange ordering → Changed to AddRange + OrderByDescending(timestamp)",
+      "[Medium] Single log path → LogReader now supports multiple directories via constructor",
+      "[Low] 4xx = INV-BE-003 → Added INV-BE-005 BackendMicroserviceClientError for 4xx",
+      "[Medium] Early-break misses other dirs → Only early-break for single directory, scan all for multiple"
+    ],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

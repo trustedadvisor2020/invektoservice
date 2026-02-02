@@ -1,0 +1,1093 @@
+diff --git a/arch/errors.md b/arch/errors.md
+index b94a4a9..f7bd94e 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -43,6 +43,9 @@ INV-{SERVICE}-{NUMBER}
+ |------|-------------|--------------|
+ | INV-BE-001 | Microservice unavailable | Servis geçici olarak kullanılamıyor. |
+ | INV-BE-002 | Microservice timeout | Servis yanıt vermedi. Lütfen tekrar deneyin. |
++| INV-BE-003 | Microservice error (5xx) | Servis hatası. Lütfen tekrar deneyin. |
++| INV-BE-004 | Microservice invalid response | Servis geçersiz yanıt döndü. |
++| INV-BE-005 | Microservice client error (4xx) | İstek hatası. Lütfen parametreleri kontrol edin. |
+ 
+ ---
+ 
+diff --git a/arch/plans/20260202-stage0-review-fixes.json b/arch/plans/20260202-stage0-review-fixes.json
+new file mode 100644
+index 0000000..a7aa0f2
+--- /dev/null
++++ b/arch/plans/20260202-stage0-review-fixes.json
+@@ -0,0 +1,171 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260202-stage0-review-fixes",
++  "risk": "MEDIUM",
++  "status": "REVIEW",
++  "created_at": "2026-02-02T14:00:00Z",
++  "updated_at": "2026-02-02T15:35:00Z",
++  "plan": {
++    "summary": "Fix Stage-0 review findings: /ops Basic Auth + last 100 errors/slow/search, log contract fix, log retention cleanup, config-driven ports, error code differentiation, null body check",
++    "q_intent": "Codex review findings düzeltmeleri - High: /ops auth + features, Medium: log contract + retention + config, Low: error codes + null check",
++    "interview_notes": "/ops JSON only, X-Request-Id pass-through, log contract sadece request/response için, /ops Basic Auth"
++  },
++  "allowed_files": [
++    "arch/errors.md",
++    "src/Invekto.Backend/Program.cs",
++    "src/Invekto.Backend/Services/ChatAnalysisClient.cs",
++    "src/Invekto.Backend/appsettings.json",
++    "src/Invekto.ChatAnalysis/Program.cs",
++    "src/Invekto.ChatAnalysis/appsettings.json",
++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
++    "src/Invekto.Shared/DTOs/RequestContext.cs",
++    "src/Invekto.Shared/Logging/JsonLinesLogger.cs",
++    "src/Invekto.Shared/Logging/LogCleanupService.cs",
++    "src/Invekto.Shared/Logging/Reader/LogReader.cs"
++  ],
++  "files_changed": [
++    { "path": "arch/errors.md", "change": "Add INV-BE-003, INV-BE-004 error codes", "is_new": false },
++    { "path": "src/Invekto.Backend/Program.cs", "change": "Add Basic Auth, /ops/errors, /ops/slow, /ops/search, log cleanup, config-driven settings", "is_new": false },
++    { "path": "src/Invekto.Backend/Services/ChatAnalysisClient.cs", "change": "Add null body check, differentiate error codes (timeout/unavailable/5xx/invalid)", "is_new": false },
++    { "path": "src/Invekto.Backend/appsettings.json", "change": "Add Ops and Microservice config sections", "is_new": false },
++    { "path": "src/Invekto.ChatAnalysis/Program.cs", "change": "Config-driven port, pass-through requestId, proper log methods", "is_new": false },
++    { "path": "src/Invekto.ChatAnalysis/appsettings.json", "change": "Add Service.ListenPort config", "is_new": false },
++    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Add BackendMicroserviceError, BackendMicroserviceInvalidResponse, Auth codes", "is_new": false },
++    { "path": "src/Invekto.Shared/DTOs/RequestContext.cs", "change": "Add CreateWithPassThrough for X-Request-Id pass-through", "is_new": false },
++    { "path": "src/Invekto.Shared/Logging/JsonLinesLogger.cs", "change": "Add LogRequest (enforced fields) vs LogSystem (relaxed), deprecate old methods", "is_new": false },
++    { "path": "src/Invekto.Shared/Logging/LogCleanupService.cs", "change": "New - 30 day log retention cleanup service", "is_new": true },
++    { "path": "src/Invekto.Shared/Logging/Reader/LogReader.cs", "change": "New - Log reader for /ops (errors, slow, search)", "is_new": true }
++  ],
++  "git_diff": {
++    "patch_truncated": null,
++    "sha256": "FA7C9A7EF24D60E0753FDEC1B71778A87C828DF8ECAF82A1ACCD274C8BC49074",
++    "full_path": "arch/plans/diffs/20260202-stage0-review-fixes.diff",
++    "stats": {
++      "insertions": 744,
++      "deletions": 52,
++      "files_count": 13
++    }
++  },
++  "build": {
++    "status": "PASS",
++    "command": "dotnet build InvektoServis.sln",
++    "timestamp": "2026-02-02T14:25:00Z",
++    "duration_ms": 4940,
++    "output_tail": "Build succeeded.\n    0 Warning(s)\n    0 Error(s)",
++    "error_summary": null
++  },
++  "verification_questions": [
++    {
++      "id": "Q1",
++      "question": "Does /ops require Basic Auth and return 401 without valid credentials?",
++      "category": "Auth",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q2",
++      "question": "Does /ops/errors return last 100 ERROR level logs from JSONL files?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q3",
++      "question": "Are error codes correctly differentiated (timeout vs unavailable vs 5xx vs invalid response)?",
++      "category": "Process/Policy",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q4",
++      "question": "Does LogCleanupService delete log files older than 30 days?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    }
++  ],
++  "scope_discipline": {
++    "forbidden_areas": [
++      "arch/contracts/",
++      "arch/session-memory.md",
++      ".claude/"
++    ],
++    "non_goals": [
++      "New API endpoints beyond /ops/*",
++      "Database integration",
++      "Full observability stack"
++    ],
++    "intentional_exclusions": [
++      "HTML ops dashboard (JSON only per Q decision)",
++      "Trace ID support (Stage-0 uses requestId only)"
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "src/Invekto.Backend/Program.cs:56-66 (Basic Auth validation)",
++      "src/Invekto.Backend/Services/ChatAnalysisClient.cs:35-56 (JSON parsing)",
++      "src/Invekto.Shared/Logging/LogCleanupService.cs:31-52 (Cleanup errors swallowed)",
++      "src/Invekto.Shared/Logging/Reader/LogReader.cs:86-96 (Malformed JSON skipped)"
++    ],
++    "user_facing_errors": [
++      "401 Unauthorized with WWW-Authenticate header for /ops",
++      "400 Bad Request for missing requestId in /ops/search"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "Log cleanup errors are intentionally swallowed (non-critical background task). All other errors are logged or returned to caller."
++  },
++  "aha_moments": [
++    {
++      "category": "UX",
++      "user_pain": "Ops user can't quickly find why a request failed",
++      "suggestion": "Add /ops/search?requestId=xxx to trace requests across services",
++      "aha_moment": "User searches requestId and sees complete request journey in seconds"
++    },
++    {
++      "category": "SPEED",
++      "user_pain": "Identifying slow requests requires manual log grep",
++      "suggestion": "/ops/slow with configurable threshold surfaces bottlenecks instantly",
++      "aha_moment": "User opens /ops/slow and immediately sees top 100 slowest requests"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Error investigation requires SSH + grep",
++      "suggestion": "/ops/errors provides last 100 errors via authenticated API",
++      "aha_moment": "User sees all recent errors without touching server directly"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Customer reports vague 'it's slow' without details",
++      "suggestion": "Pass-through X-Request-Id allows customer to share exact request trace",
++      "aha_moment": "Support asks for requestId, customer provides it, issue resolved in minutes"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Disk fills up with old logs, service crashes",
++      "suggestion": "LogCleanupService auto-deletes logs older than 30 days",
++      "aha_moment": "Ops never worries about disk space, logs auto-rotate"
++    }
++  ],
++  "verdict": {
++    "status": "REVIEW",
++    "source": "CODEX_TEXT_VIA_Q",
++    "received_at": "2026-02-02T15:30:00Z",
++    "updated_by": "DevAgent",
++    "updated_at": "2026-02-02T15:35:00Z",
++    "raw_text": null,
++    "code_quality_gate": {},
++    "cove_verification": {},
++    "blocking_issues": [],
++    "fixed_in_iteration_2": [
++      "[High] LogReader JSON deserialize case-insensitive → PropertyNameCaseInsensitive + JsonPropertyName added",
++      "[Medium] InsertRange ordering → Changed to AddRange + OrderByDescending(timestamp)",
++      "[Medium] Single log path → LogReader now supports multiple directories via constructor",
++      "[Low] 4xx = INV-BE-003 → Added INV-BE-005 BackendMicroserviceClientError for 4xx",
++      "[Medium] Early-break misses other dirs → Only early-break for single directory, scan all for multiple"
++    ],
++    "iteration": 2,
++    "escalation_required": false,
++    "escalation_reason": null
++  }
++}
+diff --git a/arch/plans/diffs/20260202-stage0-review-fixes.diff b/arch/plans/diffs/20260202-stage0-review-fixes.diff
+new file mode 100644
+index 0000000..dce9f78
+Binary files /dev/null and b/arch/plans/diffs/20260202-stage0-review-fixes.diff differ
+diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
+index 0ca09b9..20691b5 100644
+--- a/src/Invekto.Backend/Program.cs
++++ b/src/Invekto.Backend/Program.cs
+@@ -1,36 +1,86 @@
++using System.Net.Http.Headers;
++using System.Text;
+ using Invekto.Backend.Services;
+ using Invekto.Shared.Constants;
+ using Invekto.Shared.DTOs;
+ using Invekto.Shared.Logging;
++using Invekto.Shared.Logging.Reader;
+ 
+ var builder = WebApplication.CreateBuilder(args);
+ 
+-// Register JSON Lines logger
++// Read configuration
+ var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
+-builder.Services.AddSingleton(new JsonLinesLogger(
+-    ServiceConstants.BackendServiceName,
+-    logPath));
++var opsUsername = builder.Configuration["Ops:Username"] ?? "admin";
++var opsPassword = builder.Configuration["Ops:Password"] ?? "admin123"; // Stage-0 default
++var slowThresholdMs = builder.Configuration.GetValue<int>("Ops:SlowThresholdMs", 500);
++var microserviceUrl = builder.Configuration["Microservice:ChatAnalysis:Url"]
++    ?? $"http://localhost:{ServiceConstants.ChatAnalysisPort}";
++var microserviceLogPath = builder.Configuration["Microservice:ChatAnalysis:LogPath"];
++
++// Register JSON Lines logger
++builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
++
++// Register log reader for /ops (aggregate backend + microservice logs)
++var logPaths = new List<string> { logPath };
++if (!string.IsNullOrEmpty(microserviceLogPath))
++{
++    logPaths.Add(microserviceLogPath);
++}
++builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
++
++// Register log cleanup service (30 day retention)
++builder.Services.AddSingleton<LogCleanupService>(sp =>
++    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
+ 
+ // Configure ChatAnalysis HTTP client with 600ms timeout (Stage-0 rule)
+ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
+ {
+-    client.BaseAddress = new Uri($"http://localhost:{ServiceConstants.ChatAnalysisPort}");
++    client.BaseAddress = new Uri(microserviceUrl);
+     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+ });
+ 
+ var app = builder.Build();
+ 
++// Start log cleanup service
++_ = app.Services.GetRequiredService<LogCleanupService>();
++
+ var logger = app.Services.GetRequiredService<JsonLinesLogger>();
+ 
+-// Health endpoint
++// Health endpoint (no auth, no logging)
+ app.MapGet("/health", () =>
+ {
+     return Results.Ok(HealthResponse.Ok(ServiceConstants.BackendServiceName));
+ });
+ 
+-// OPS endpoint - Stage-0 minimum troubleshooting
+-app.MapGet("/ops", async (ChatAnalysisClient chatClient) =>
++// Basic Auth check for /ops endpoints
++bool ValidateOpsAuth(HttpContext ctx)
+ {
++    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
++    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Basic "))
++        return false;
++
++    try
++    {
++        var encoded = authHeader["Basic ".Length..];
++        var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
++        var parts = decoded.Split(':', 2);
++        return parts.Length == 2 && parts[0] == opsUsername && parts[1] == opsPassword;
++    }
++    catch
++    {
++        return false;
++    }
++}
++
++// OPS endpoint - Stage-0 troubleshooting dashboard
++app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, LogReader logReader) =>
++{
++    if (!ValidateOpsAuth(ctx))
++    {
++        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
++        return Results.Unauthorized();
++    }
++
+     var chatHealthy = await chatClient.CheckHealthAsync();
+ 
+     var ops = new
+@@ -46,20 +96,67 @@ app.MapGet("/ops", async (ChatAnalysisClient chatClient) =>
+         {
+             stage = "Stage-0",
+             timeout_ms = ServiceConstants.BackendToMicroserviceTimeoutMs,
+-            retry_count = ServiceConstants.RetryCount
++            retry_count = ServiceConstants.RetryCount,
++            slow_threshold_ms = slowThresholdMs
+         }
+     };
+ 
+     return Results.Ok(ops);
+ });
+ 
++// OPS: Last 100 errors
++app.MapGet("/ops/errors", async (HttpContext ctx, LogReader logReader) =>
++{
++    if (!ValidateOpsAuth(ctx))
++    {
++        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
++        return Results.Unauthorized();
++    }
++
++    var errors = await logReader.GetLastErrorsAsync(100);
++    return Results.Ok(new { count = errors.Count, errors });
++});
++
++// OPS: Last 100 slow requests
++app.MapGet("/ops/slow", async (HttpContext ctx, LogReader logReader) =>
++{
++    if (!ValidateOpsAuth(ctx))
++    {
++        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
++        return Results.Unauthorized();
++    }
++
++    var slow = await logReader.GetLastSlowRequestsAsync(100);
++    return Results.Ok(new { count = slow.Count, threshold_ms = slowThresholdMs, requests = slow });
++});
++
++// OPS: Search by requestId
++app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? requestId) =>
++{
++    if (!ValidateOpsAuth(ctx))
++    {
++        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
++        return Results.Unauthorized();
++    }
++
++    if (string.IsNullOrWhiteSpace(requestId))
++    {
++        return Results.BadRequest(new { error = "requestId query parameter required" });
++    }
++
++    var entries = await logReader.SearchByRequestIdAsync(requestId);
++    return Results.Ok(new { requestId, count = entries.Count, entries });
++});
++
+ // Chat analysis proxy endpoint
+ app.MapPost("/api/v1/chat/analyze", async (
+     HttpContext ctx,
+     ChatAnalysisClient chatClient,
+     JsonLinesLogger jsonLogger) =>
+ {
+-    var context = RequestContext.Create(
++    // Pass-through X-Request-Id if provided, otherwise generate new
++    var context = RequestContext.CreateWithPassThrough(
++        ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault(),
+         ctx.Request.Headers[HeaderNames.TenantId].FirstOrDefault() ?? "default",
+         ctx.Request.Headers[HeaderNames.ChatId].FirstOrDefault() ?? "default");
+ 
+@@ -70,21 +167,27 @@ app.MapPost("/api/v1/chat/analyze", async (
+ 
+     if (result.IsSuccess)
+     {
+-        jsonLogger.Info("Chat analysis completed", context, "/api/v1/chat/analyze", sw.ElapsedMilliseconds);
++        jsonLogger.RequestInfo("Chat analysis completed", context, "/api/v1/chat/analyze", sw.ElapsedMilliseconds);
+         return Results.Ok(result.Data);
+     }
+ 
+-    // Stage-0: Return partial instead of fail
+-    jsonLogger.Warn($"Chat analysis partial: {result.Warning}", context, "/api/v1/chat/analyze", ErrorCodes.BackendMicroserviceTimeout);
++    // Stage-0: Return partial instead of fail, use correct error code
++    jsonLogger.RequestWarn(
++        $"Chat analysis partial: {result.Warning}",
++        context,
++        "/api/v1/chat/analyze",
++        sw.ElapsedMilliseconds,
++        result.ErrorCode ?? ErrorCodes.BackendMicroserviceError);
+ 
+     return Results.Ok(new
+     {
+         requestId = context.RequestId,
+         status = "partial",
+         warning = result.Warning,
++        errorCode = result.ErrorCode,
+         timestamp = DateTime.UtcNow
+     });
+ });
+ 
+-logger.Info($"Backend starting on port {ServiceConstants.BackendPort}");
++logger.SystemInfo($"Backend starting on port {ServiceConstants.BackendPort}");
+ app.Run();
+diff --git a/src/Invekto.Backend/Services/ChatAnalysisClient.cs b/src/Invekto.Backend/Services/ChatAnalysisClient.cs
+index 8dc90ea..27e59e7 100644
+--- a/src/Invekto.Backend/Services/ChatAnalysisClient.cs
++++ b/src/Invekto.Backend/Services/ChatAnalysisClient.cs
+@@ -32,24 +32,59 @@ public sealed class ChatAnalysisClient
+ 
+             if (response.IsSuccessStatusCode)
+             {
+-                var data = await response.Content.ReadFromJsonAsync<ChatAnalysisResponse>(ct);
+-                return ChatAnalysisResult.Success(data);
++                try
++                {
++                    var data = await response.Content.ReadFromJsonAsync<ChatAnalysisResponse>(ct);
++
++                    // Check for null/invalid body
++                    if (data == null || string.IsNullOrEmpty(data.Status))
++                    {
++                        _logger.LogWarning("ChatAnalysis returned invalid/empty body for {RequestId}", context.RequestId);
++                        return ChatAnalysisResult.Partial(
++                            "Microservice returned invalid response",
++                            ErrorCodes.BackendMicroserviceInvalidResponse);
++                    }
++
++                    return ChatAnalysisResult.Success(data);
++                }
++                catch (System.Text.Json.JsonException ex)
++                {
++                    _logger.LogWarning(ex, "ChatAnalysis returned malformed JSON for {RequestId}", context.RequestId);
++                    return ChatAnalysisResult.Partial(
++                        "Microservice returned malformed response",
++                        ErrorCodes.BackendMicroserviceInvalidResponse);
++                }
+             }
+ 
+-            _logger.LogWarning("ChatAnalysis returned {StatusCode} for {RequestId}",
+-                response.StatusCode, context.RequestId);
++            // Non-success status codes
++            var statusCode = (int)response.StatusCode;
++            _logger.LogWarning("ChatAnalysis returned {StatusCode} for {RequestId}", statusCode, context.RequestId);
++
++            if (statusCode >= 500)
++            {
++                return ChatAnalysisResult.Partial(
++                    $"Microservice error ({statusCode})",
++                    ErrorCodes.BackendMicroserviceError);
++            }
+ 
+-            return ChatAnalysisResult.Partial($"Microservice returned {response.StatusCode}");
++            // 4xx = client error (different from 5xx server error)
++            return ChatAnalysisResult.Partial(
++                $"Microservice client error ({statusCode})",
++                ErrorCodes.BackendMicroserviceClientError);
+         }
+         catch (TaskCanceledException)
+         {
+             _logger.LogWarning("ChatAnalysis timeout for {RequestId}", context.RequestId);
+-            return ChatAnalysisResult.Partial("Microservice timeout");
++            return ChatAnalysisResult.Partial(
++                "Microservice timeout",
++                ErrorCodes.BackendMicroserviceTimeout);
+         }
+         catch (HttpRequestException ex)
+         {
+             _logger.LogError(ex, "ChatAnalysis unavailable for {RequestId}", context.RequestId);
+-            return ChatAnalysisResult.Partial("Microservice unavailable");
++            return ChatAnalysisResult.Partial(
++                "Microservice unavailable",
++                ErrorCodes.BackendMicroserviceUnavailable);
+         }
+     }
+ 
+@@ -81,6 +116,7 @@ public sealed class ChatAnalysisResult
+     public bool IsPartial { get; init; }
+     public ChatAnalysisResponse? Data { get; init; }
+     public string? Warning { get; init; }
++    public string? ErrorCode { get; init; }
+ 
+     public static ChatAnalysisResult Success(ChatAnalysisResponse? data) => new()
+     {
+@@ -89,10 +125,11 @@ public sealed class ChatAnalysisResult
+         Data = data
+     };
+ 
+-    public static ChatAnalysisResult Partial(string warning) => new()
++    public static ChatAnalysisResult Partial(string warning, string errorCode) => new()
+     {
+         IsSuccess = false,
+         IsPartial = true,
+-        Warning = warning
++        Warning = warning,
++        ErrorCode = errorCode
+     };
+ }
+diff --git a/src/Invekto.Backend/appsettings.json b/src/Invekto.Backend/appsettings.json
+index 3035040..7b94b24 100644
+--- a/src/Invekto.Backend/appsettings.json
++++ b/src/Invekto.Backend/appsettings.json
+@@ -4,7 +4,19 @@
+       "Default": "Information",
+       "Microsoft.AspNetCore": "Warning"
+     },
+-    "FilePath": "logs"
++    "FilePath": "logs",
++    "AdditionalPaths": []
++  },
++  "Ops": {
++    "Username": "admin",
++    "Password": "admin123",
++    "SlowThresholdMs": 500
++  },
++  "Microservice": {
++    "ChatAnalysis": {
++      "Url": "http://localhost:7101",
++      "LogPath": "../Invekto.ChatAnalysis/logs"
++    }
+   },
+   "AllowedHosts": "*"
+ }
+diff --git a/src/Invekto.ChatAnalysis/Program.cs b/src/Invekto.ChatAnalysis/Program.cs
+index 0fd04cb..07c70fb 100644
+--- a/src/Invekto.ChatAnalysis/Program.cs
++++ b/src/Invekto.ChatAnalysis/Program.cs
+@@ -7,26 +7,33 @@ var builder = WebApplication.CreateBuilder(args);
+ // Windows Service support
+ builder.Host.UseWindowsService();
+ 
+-// Configure Kestrel to listen on port 7101
++// Read configuration
++var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.ChatAnalysisPort);
++var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
++
++// Configure Kestrel to listen on configured port
+ builder.WebHost.ConfigureKestrel(options =>
+ {
+-    options.ListenLocalhost(ServiceConstants.ChatAnalysisPort);
++    options.ListenLocalhost(listenPort);
+ });
+ 
+ // Register JSON Lines logger
+-var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
+-builder.Services.AddSingleton(new JsonLinesLogger(
+-    ServiceConstants.ChatAnalysisServiceName,
+-    logPath));
++builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.ChatAnalysisServiceName, logPath));
++
++// Register log cleanup service (30 day retention)
++builder.Services.AddSingleton<LogCleanupService>(sp =>
++    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
+ 
+ var app = builder.Build();
+ 
++// Start log cleanup service
++_ = app.Services.GetRequiredService<LogCleanupService>();
++
+ var logger = app.Services.GetRequiredService<JsonLinesLogger>();
+ 
+-// Health endpoint - Stage-0 requirement
++// Health endpoint - Stage-0 requirement (no logging for health checks)
+ app.MapGet("/health", () =>
+ {
+-    logger.Info("Health check requested", route: "/health");
+     return Results.Ok(HealthResponse.Ok(ServiceConstants.ChatAnalysisServiceName));
+ });
+ 
+@@ -36,19 +43,14 @@ app.MapGet("/ready", () =>
+     return Results.Ok(HealthResponse.Ok(ServiceConstants.ChatAnalysisServiceName));
+ });
+ 
+-// Placeholder for chat analysis endpoint
+-app.MapPost("/api/v1/analyze", (HttpContext ctx) =>
++// Chat analysis endpoint
++app.MapPost("/api/v1/analyze", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+ {
+-    var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+-    var tenantId = ctx.Request.Headers[HeaderNames.TenantId].FirstOrDefault() ?? "-";
+-    var chatId = ctx.Request.Headers[HeaderNames.ChatId].FirstOrDefault() ?? "-";
+-
+-    var context = new RequestContext
+-    {
+-        RequestId = requestId,
+-        TenantId = tenantId,
+-        ChatId = chatId
+-    };
++    // Pass-through X-Request-Id if provided
++    var context = RequestContext.CreateWithPassThrough(
++        ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault(),
++        ctx.Request.Headers[HeaderNames.TenantId].FirstOrDefault() ?? "-",
++        ctx.Request.Headers[HeaderNames.ChatId].FirstOrDefault() ?? "-");
+ 
+     var sw = System.Diagnostics.Stopwatch.StartNew();
+ 
+@@ -58,31 +60,36 @@ app.MapPost("/api/v1/analyze", (HttpContext ctx) =>
+         // For now, return a placeholder response
+         var result = new
+         {
+-            requestId,
++            requestId = context.RequestId,
+             status = "ok",
+             message = "Chat analysis placeholder - Stage-0",
+             timestamp = DateTime.UtcNow
+         };
+ 
+         sw.Stop();
+-        logger.Info("Chat analysis completed", context, "/api/v1/analyze", sw.ElapsedMilliseconds);
++        jsonLogger.RequestInfo("Chat analysis completed", context, "/api/v1/analyze", sw.ElapsedMilliseconds);
+ 
+         return Results.Ok(result);
+     }
+     catch (Exception ex)
+     {
+         sw.Stop();
+-        logger.Error($"Chat analysis failed: {ex.Message}", context, "/api/v1/analyze", ErrorCodes.ChatAnalysisProcessingFailed);
++        jsonLogger.RequestError(
++            $"Chat analysis failed: {ex.Message}",
++            context,
++            "/api/v1/analyze",
++            sw.ElapsedMilliseconds,
++            ErrorCodes.ChatAnalysisProcessingFailed);
+ 
+         return Results.Json(
+             ErrorResponse.Create(
+                 ErrorCodes.ChatAnalysisProcessingFailed,
+                 "Chat analysis processing failed",
+-                requestId,
++                context.RequestId,
+                 ex.Message),
+             statusCode: 500);
+     }
+ });
+ 
+-logger.Info($"ChatAnalysis service starting on port {ServiceConstants.ChatAnalysisPort}");
++logger.SystemInfo($"ChatAnalysis service starting on port {listenPort}");
+ app.Run();
+diff --git a/src/Invekto.ChatAnalysis/appsettings.json b/src/Invekto.ChatAnalysis/appsettings.json
+index 8993387..d2cb03b 100644
+--- a/src/Invekto.ChatAnalysis/appsettings.json
++++ b/src/Invekto.ChatAnalysis/appsettings.json
+@@ -5,5 +5,8 @@
+       "Microsoft.AspNetCore": "Warning"
+     },
+     "FilePath": "logs"
++  },
++  "Service": {
++    "ListenPort": 7101
+   }
+ }
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index 912ec6c..d16a54e 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -1,8 +1,7 @@
+ namespace Invekto.Shared.Constants;
+ 
+ /// <summary>
+-/// Error codes following INV-xxx pattern from arch/errors.md
+-/// Format: INV-{SERVICE}-{NUMBER}
++/// Error codes following INV-{SERVICE}-{NUMBER} pattern from arch/errors.md
+ /// </summary>
+ public static class ErrorCodes
+ {
+@@ -14,8 +13,15 @@ public static class ErrorCodes
+     // Backend errors (INV-BE-xxx)
+     public const string BackendMicroserviceUnavailable = "INV-BE-001";
+     public const string BackendMicroserviceTimeout = "INV-BE-002";
++    public const string BackendMicroserviceError = "INV-BE-003";           // 5xx from microservice
++    public const string BackendMicroserviceInvalidResponse = "INV-BE-004"; // Invalid/null JSON body
++    public const string BackendMicroserviceClientError = "INV-BE-005";     // 4xx from microservice (client error)
+ 
+     // ChatAnalysis errors (INV-CA-xxx)
+     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
+     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
++
++    // Auth errors (INV-AUTH-xxx)
++    public const string AuthUnauthorized = "INV-AUTH-001";
++    public const string AuthForbidden = "INV-AUTH-002";
+ }
+diff --git a/src/Invekto.Shared/DTOs/RequestContext.cs b/src/Invekto.Shared/DTOs/RequestContext.cs
+index 3378a9a..2702d7d 100644
+--- a/src/Invekto.Shared/DTOs/RequestContext.cs
++++ b/src/Invekto.Shared/DTOs/RequestContext.cs
+@@ -10,6 +10,9 @@ public sealed class RequestContext
+     public required string TenantId { get; init; }
+     public required string ChatId { get; init; }
+ 
++    /// <summary>
++    /// Create context with auto-generated RequestId
++    /// </summary>
+     public static RequestContext Create(string tenantId, string chatId)
+     {
+         return new RequestContext
+@@ -19,4 +22,23 @@ public sealed class RequestContext
+             ChatId = chatId
+         };
+     }
++
++    /// <summary>
++    /// Create context with pass-through RequestId (if provided) or generate new
++    /// Stage-0: Pass-through X-Request-Id from upstream if available
++    /// </summary>
++    public static RequestContext CreateWithPassThrough(
++        string? incomingRequestId,
++        string tenantId,
++        string chatId)
++    {
++        return new RequestContext
++        {
++            RequestId = string.IsNullOrWhiteSpace(incomingRequestId)
++                ? Guid.NewGuid().ToString("N")
++                : incomingRequestId,
++            TenantId = tenantId,
++            ChatId = chatId
++        };
++    }
+ }
+diff --git a/src/Invekto.Shared/Logging/JsonLinesLogger.cs b/src/Invekto.Shared/Logging/JsonLinesLogger.cs
+index 003f1f1..1efea05 100644
+--- a/src/Invekto.Shared/Logging/JsonLinesLogger.cs
++++ b/src/Invekto.Shared/Logging/JsonLinesLogger.cs
+@@ -1,4 +1,3 @@
+-using Invekto.Shared.Constants;
+ using Invekto.Shared.DTOs;
+ 
+ namespace Invekto.Shared.Logging;
+@@ -6,6 +5,10 @@ namespace Invekto.Shared.Logging;
+ /// <summary>
+ /// Simple JSON Lines file logger for Stage-0
+ /// Writes to: logs\YYYY-MM-DD.jsonl
++///
++/// Two log modes:
++/// - LogRequest: For API requests (enforces all required fields)
++/// - LogSystem: For startup/health/internal (relaxed fields)
+ /// </summary>
+ public sealed class JsonLinesLogger : IDisposable
+ {
+@@ -22,6 +25,73 @@ public sealed class JsonLinesLogger : IDisposable
+         Directory.CreateDirectory(_logDirectory);
+     }
+ 
++    /// <summary>
++    /// Log an API request/response with all required fields (Stage-0 contract)
++    /// </summary>
++    public void LogRequest(
++        string level,
++        string message,
++        RequestContext context,
++        string route,
++        long durationMs,
++        string status,
++        string? errorCode = null)
++    {
++        var entry = new LogEntry
++        {
++            Timestamp = DateTime.UtcNow,
++            Service = _serviceName,
++            Level = level,
++            RequestId = context.RequestId,
++            TenantId = context.TenantId,
++            ChatId = context.ChatId,
++            Route = route,
++            DurationMs = durationMs,
++            Status = status,
++            ErrorCode = errorCode,
++            Message = message
++        };
++
++        WriteLine(entry.ToJsonLine());
++    }
++
++    /// <summary>
++    /// Log system/internal events (startup, health checks, etc.)
++    /// Relaxed field requirements
++    /// </summary>
++    public void LogSystem(string level, string message)
++    {
++        var entry = new LogEntry
++        {
++            Timestamp = DateTime.UtcNow,
++            Service = _serviceName,
++            Level = level,
++            RequestId = "-",
++            TenantId = "-",
++            ChatId = "-",
++            Message = message
++        };
++
++        WriteLine(entry.ToJsonLine());
++    }
++
++    // Convenience methods for request logging
++    public void RequestInfo(string message, RequestContext context, string route, long durationMs)
++        => LogRequest("INFO", message, context, route, durationMs, "ok");
++
++    public void RequestWarn(string message, RequestContext context, string route, long durationMs, string errorCode)
++        => LogRequest("WARN", message, context, route, durationMs, "partial", errorCode);
++
++    public void RequestError(string message, RequestContext context, string route, long durationMs, string errorCode)
++        => LogRequest("ERROR", message, context, route, durationMs, "fail", errorCode);
++
++    // Convenience methods for system logging
++    public void SystemInfo(string message) => LogSystem("INFO", message);
++    public void SystemWarn(string message) => LogSystem("WARN", message);
++    public void SystemError(string message) => LogSystem("ERROR", message);
++
++    // Legacy methods (deprecated - use specific methods above)
++    [Obsolete("Use LogRequest or LogSystem instead")]
+     public void Log(
+         string level,
+         string message,
+@@ -49,12 +119,15 @@ public sealed class JsonLinesLogger : IDisposable
+         WriteLine(entry.ToJsonLine());
+     }
+ 
++    [Obsolete("Use RequestInfo instead")]
+     public void Info(string message, RequestContext? context = null, string? route = null, long? durationMs = null)
+         => Log("INFO", message, context, route, durationMs, "ok");
+ 
++    [Obsolete("Use RequestWarn instead")]
+     public void Warn(string message, RequestContext? context = null, string? route = null, string? errorCode = null)
+         => Log("WARN", message, context, route, status: "partial", errorCode: errorCode);
+ 
++    [Obsolete("Use RequestError instead")]
+     public void Error(string message, RequestContext? context = null, string? route = null, string? errorCode = null)
+         => Log("ERROR", message, context, route, status: "fail", errorCode: errorCode);
+ 
+diff --git a/src/Invekto.Shared/Logging/LogCleanupService.cs b/src/Invekto.Shared/Logging/LogCleanupService.cs
+new file mode 100644
+index 0000000..e5aaea2
+--- /dev/null
++++ b/src/Invekto.Shared/Logging/LogCleanupService.cs
+@@ -0,0 +1,64 @@
++using Invekto.Shared.Constants;
++
++namespace Invekto.Shared.Logging;
++
++/// <summary>
++/// Background service to clean up old log files
++/// Stage-0: 30 day retention
++/// </summary>
++public sealed class LogCleanupService : IDisposable
++{
++    private readonly string _logDirectory;
++    private readonly int _retentionDays;
++    private readonly Timer _timer;
++
++    public LogCleanupService(string logDirectory, int retentionDays = ServiceConstants.LogRetentionDays)
++    {
++        _logDirectory = logDirectory;
++        _retentionDays = retentionDays;
++
++        // Run cleanup daily at startup and then every 24 hours
++        _timer = new Timer(Cleanup, null, TimeSpan.Zero, TimeSpan.FromHours(24));
++    }
++
++    private void Cleanup(object? state)
++    {
++        try
++        {
++            if (!Directory.Exists(_logDirectory))
++                return;
++
++            var cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
++
++            foreach (var file in Directory.GetFiles(_logDirectory, "*.jsonl"))
++            {
++                var fileName = Path.GetFileNameWithoutExtension(file);
++
++                // Parse date from filename (YYYY-MM-DD)
++                if (DateTime.TryParse(fileName, out var fileDate))
++                {
++                    if (fileDate < cutoffDate)
++                    {
++                        try
++                        {
++                            File.Delete(file);
++                        }
++                        catch
++                        {
++                            // File may be locked
++                        }
++                    }
++                }
++            }
++        }
++        catch
++        {
++            // Swallow cleanup errors - non-critical
++        }
++    }
++
++    public void Dispose()
++    {
++        _timer.Dispose();
++    }
++}
+diff --git a/src/Invekto.Shared/Logging/Reader/LogReader.cs b/src/Invekto.Shared/Logging/Reader/LogReader.cs
+new file mode 100644
+index 0000000..01f6ffd
+--- /dev/null
++++ b/src/Invekto.Shared/Logging/Reader/LogReader.cs
+@@ -0,0 +1,197 @@
++using System.Text.Json;
++using System.Text.Json.Serialization;
++
++namespace Invekto.Shared.Logging.Reader;
++
++/// <summary>
++/// Reads and queries JSON Lines log files for /ops endpoint
++/// Stage-0: Last 100 errors, last 100 slow requests, requestId search
++/// Supports multiple log directories (backend + microservice)
++/// </summary>
++public sealed class LogReader
++{
++    private readonly string[] _logDirectories;
++    private readonly int _slowThresholdMs;
++    private static readonly JsonSerializerOptions JsonOptions = new()
++    {
++        PropertyNameCaseInsensitive = true
++    };
++
++    /// <summary>
++    /// Create log reader for single directory
++    /// </summary>
++    public LogReader(string logDirectory, int slowThresholdMs = 500)
++        : this(new[] { logDirectory }, slowThresholdMs)
++    {
++    }
++
++    /// <summary>
++    /// Create log reader for multiple directories (aggregated view)
++    /// </summary>
++    public LogReader(string[] logDirectories, int slowThresholdMs = 500)
++    {
++        _logDirectories = logDirectories;
++        _slowThresholdMs = slowThresholdMs;
++    }
++
++    /// <summary>
++    /// Get last N error log entries (most recent first, true global across all directories)
++    /// </summary>
++    public async Task<List<LogEntryDto>> GetLastErrorsAsync(int count = 100)
++    {
++        var entries = new List<LogEntryDto>();
++        var hasMultipleDirectories = _logDirectories.Length > 1;
++
++        foreach (var file in GetLogFilesSortedByDate())
++        {
++            var fileEntries = await ReadEntriesFromFileAsync(file, e => e.Level == "ERROR");
++            entries.AddRange(fileEntries);
++
++            // Only early-break for single directory; for multiple dirs, scan all for true global
++            if (!hasMultipleDirectories && entries.Count >= count)
++                break;
++        }
++
++        // Sort by timestamp descending to ensure most recent first across all directories
++        return entries
++            .OrderByDescending(e => e.Timestamp)
++            .Take(count)
++            .ToList();
++    }
++
++    /// <summary>
++    /// Get last N slow requests (durationMs > threshold, most recent first, true global)
++    /// </summary>
++    public async Task<List<LogEntryDto>> GetLastSlowRequestsAsync(int count = 100)
++    {
++        var entries = new List<LogEntryDto>();
++        var hasMultipleDirectories = _logDirectories.Length > 1;
++
++        foreach (var file in GetLogFilesSortedByDate())
++        {
++            var fileEntries = await ReadEntriesFromFileAsync(file, e =>
++                e.DurationMs.HasValue && e.DurationMs.Value > _slowThresholdMs);
++            entries.AddRange(fileEntries);
++
++            // Only early-break for single directory
++            if (!hasMultipleDirectories && entries.Count >= count)
++                break;
++        }
++
++        // Sort by timestamp descending
++        return entries
++            .OrderByDescending(e => e.Timestamp)
++            .Take(count)
++            .ToList();
++    }
++
++    /// <summary>
++    /// Search logs by requestId (scans all directories)
++    /// </summary>
++    public async Task<List<LogEntryDto>> SearchByRequestIdAsync(string requestId)
++    {
++        var entries = new List<LogEntryDto>();
++
++        foreach (var file in GetLogFilesSortedByDate())
++        {
++            var fileEntries = await ReadEntriesFromFileAsync(file, e =>
++                e.RequestId?.Contains(requestId, StringComparison.OrdinalIgnoreCase) == true);
++            entries.AddRange(fileEntries);
++        }
++
++        // Sort by timestamp descending
++        return entries.OrderByDescending(e => e.Timestamp).ToList();
++    }
++
++    private IEnumerable<string> GetLogFilesSortedByDate()
++    {
++        var allFiles = new List<string>();
++
++        foreach (var dir in _logDirectories)
++        {
++            if (Directory.Exists(dir))
++            {
++                allFiles.AddRange(Directory.GetFiles(dir, "*.jsonl"));
++            }
++        }
++
++        // Sort by filename descending (YYYY-MM-DD.jsonl format)
++        return allFiles.OrderByDescending(f => Path.GetFileName(f));
++    }
++
++    private async Task<List<LogEntryDto>> ReadEntriesFromFileAsync(string filePath, Func<LogEntryDto, bool> predicate)
++    {
++        var entries = new List<LogEntryDto>();
++
++        try
++        {
++            var lines = await File.ReadAllLinesAsync(filePath);
++
++            // Read from end for recency (newest entries last in file)
++            for (int i = lines.Length - 1; i >= 0; i--)
++            {
++                if (string.IsNullOrWhiteSpace(lines[i]))
++                    continue;
++
++                try
++                {
++                    var entry = JsonSerializer.Deserialize<LogEntryDto>(lines[i], JsonOptions);
++                    if (entry != null && predicate(entry))
++                    {
++                        entries.Add(entry);
++                    }
++                }
++                catch
++                {
++                    // Skip malformed lines
++                }
++            }
++        }
++        catch
++        {
++            // File may be locked or deleted
++        }
++
++        return entries;
++    }
++}
++
++/// <summary>
++/// DTO for reading log entries (matches LogEntry structure)
++/// Uses JsonPropertyName to match camelCase output from LogEntry
++/// </summary>
++public sealed class LogEntryDto
++{
++    [JsonPropertyName("timestamp")]
++    public DateTime? Timestamp { get; set; }
++
++    [JsonPropertyName("service")]
++    public string? Service { get; set; }
++
++    [JsonPropertyName("level")]
++    public string? Level { get; set; }
++
++    [JsonPropertyName("requestId")]
++    public string? RequestId { get; set; }
++
++    [JsonPropertyName("tenantId")]
++    public string? TenantId { get; set; }
++
++    [JsonPropertyName("chatId")]
++    public string? ChatId { get; set; }
++
++    [JsonPropertyName("route")]
++    public string? Route { get; set; }
++
++    [JsonPropertyName("durationMs")]
++    public long? DurationMs { get; set; }
++
++    [JsonPropertyName("status")]
++    public string? Status { get; set; }
++
++    [JsonPropertyName("errorCode")]
++    public string? ErrorCode { get; set; }
++
++    [JsonPropertyName("message")]
++    public string? Message { get; set; }
++}

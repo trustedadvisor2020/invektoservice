@@ -43,6 +43,9 @@ INV-{SERVICE}-{NUMBER}
 |------|-------------|--------------|
 | INV-BE-001 | Microservice unavailable | Servis geçici olarak kullanılamıyor. |
 | INV-BE-002 | Microservice timeout | Servis yanıt vermedi. Lütfen tekrar deneyin. |
+| INV-BE-003 | Microservice error (5xx) | Servis hatası. Lütfen tekrar deneyin. |
+| INV-BE-004 | Microservice invalid response | Servis geçersiz yanıt döndü. |
+| INV-BE-005 | Microservice client error (4xx) | İstek hatası. Lütfen parametreleri kontrol edin. |
 
 ---
 

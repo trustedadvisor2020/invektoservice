@@ -7,26 +7,33 @@ var builder = WebApplication.CreateBuilder(args);
 // Windows Service support
 builder.Host.UseWindowsService();
 
-// Configure Kestrel to listen on port 7101
+// Read configuration
+var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.ChatAnalysisPort);
+var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
+
+// Configure Kestrel to listen on configured port
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenLocalhost(ServiceConstants.ChatAnalysisPort);
+    options.ListenLocalhost(listenPort);
 });
 
 // Register JSON Lines logger
-var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
-builder.Services.AddSingleton(new JsonLinesLogger(
-    ServiceConstants.ChatAnalysisServiceName,
-    logPath));
+builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.ChatAnalysisServiceName, logPath));
+
+// Register log cleanup service (30 day retention)
+builder.Services.AddSingleton<LogCleanupService>(sp =>
+    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
 
 var app = builder.Build();
 
+// Start log cleanup service
+_ = app.Services.GetRequiredService<LogCleanupService>();
+
 var logger = app.Services.GetRequiredService<JsonLinesLogger>();
 
-// Health endpoint - Stage-0 requirement
+// Health endpoint - Stage-0 requirement (no logging for health checks)
 app.MapGet("/health", () =>
 {
-    logger.Info("Health check requested", route: "/health");
     return Results.Ok(HealthResponse.Ok(ServiceConstants.ChatAnalysisServiceName));
 });
 
@@ -36,19 +43,14 @@ app.MapGet("/ready", () =>
     return Results.Ok(HealthResponse.Ok(ServiceConstants.ChatAnalysisServiceName));
 });
 
-// Placeholder for chat analysis endpoint
-app.MapPost("/api/v1/analyze", (HttpContext ctx) =>
+// Chat analysis endpoint
+app.MapPost("/api/v1/analyze", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
 {
-    var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
-    var tenantId = ctx.Request.Headers[HeaderNames.TenantId].FirstOrDefault() ?? "-";
-    var chatId = ctx.Request.Headers[HeaderNames.ChatId].FirstOrDefault() ?? "-";
-
-    var context = new RequestContext
-    {
-        RequestId = requestId,
-        TenantId = tenantId,
-        ChatId = chatId
-    };
+    // Pass-through X-Request-Id if provided
+    var context = RequestContext.CreateWithPassThrough(
+        ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault(),
+        ctx.Request.Headers[HeaderNames.TenantId].FirstOrDefault() ?? "-",
+        ctx.Request.Headers[HeaderNames.ChatId].FirstOrDefault() ?? "-");
 
     var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -58,31 +60,36 @@ app.MapPost("/api/v1/analyze", (HttpContext ctx) =>
         // For now, return a placeholder response
         var result = new
         {
-            requestId,
+            requestId = context.RequestId,
             status = "ok",
             message = "Chat analysis placeholder - Stage-0",
             timestamp = DateTime.UtcNow
         };
 
         sw.Stop();
-        logger.Info("Chat analysis completed", context, "/api/v1/analyze", sw.ElapsedMilliseconds);
+        jsonLogger.RequestInfo("Chat analysis completed", context, "/api/v1/analyze", sw.ElapsedMilliseconds);
 
         return Results.Ok(result);
     }
     catch (Exception ex)
     {
         sw.Stop();
-        logger.Error($"Chat analysis failed: {ex.Message}", context, "/api/v1/analyze", ErrorCodes.ChatAnalysisProcessingFailed);
+        jsonLogger.RequestError(
+            $"Chat analysis failed: {ex.Message}",
+            context,
+            "/api/v1/analyze",
+            sw.ElapsedMilliseconds,
+            ErrorCodes.ChatAnalysisProcessingFailed);
 
         return Results.Json(
             ErrorResponse.Create(
                 ErrorCodes.ChatAnalysisProcessingFailed,
                 "Chat analysis processing failed",
-                requestId,
+                context.RequestId,
                 ex.Message),
             statusCode: 500);
     }
 });
 
-logger.Info($"ChatAnalysis service starting on port {ServiceConstants.ChatAnalysisPort}");
+logger.SystemInfo($"ChatAnalysis service starting on port {listenPort}");
 app.Run();
