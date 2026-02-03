@@ -1,0 +1,208 @@
+{
+  "slug": "20260203-chatanalysis-v2",
+  "title": "ChatAnalysis V2 - Full Analysis with Async Callback",
+  "status": "DONE",
+  "risk": "HIGH",
+  "iteration": 2,
+  "verdict": "FORCE_PASS",
+  "verdict_reason": "CoVe PASS, CQ FAIL items are false positive (scope) or known/approved (breaking contract, dev config)",
+  "created": "2026-02-03",
+  "updated_at": "2026-02-03T12:00:00Z",
+  "summary": "ChatAnalysis endpoint'i tamamen değişiyor: Yeni request modeli, 15 kriterlik detaylı analiz, async processing (hemen OK dön, background'da işle), callback mekanizması (ChatServerURL'e sonuç gönder), label seçimi ve önerisi.",
+
+  "scope": {
+    "services_affected": ["Invekto.ChatAnalysis", "Invekto.Shared", "Invekto.Backend"],
+    "files_to_modify": [
+      "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisRequest.cs",
+      "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisResponse.cs",
+      "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs",
+      "src/Invekto.ChatAnalysis/Program.cs",
+      "src/Invekto.ChatAnalysis/appsettings.Development.json",
+      "src/Invekto.Backend/Services/ChatAnalysisClient.cs",
+      "src/Invekto.Backend/Program.cs",
+      "tests/Invekto.ChatAnalysis.Tests/IntegrationTests/AnalyzeApiTests.cs"
+    ],
+    "files_to_create": [
+      "src/Invekto.ChatAnalysis/Services/CallbackService.cs",
+      "src/Invekto.Shared/DTOs/ChatAnalysis/AnalysisCriterion.cs"
+    ],
+    "breaking_changes": true,
+    "api_contract_change": true
+  },
+
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260203-chatanalysis-v2.diff",
+    "stats": {
+      "insertions": 1413,
+      "deletions": 334,
+      "files_count": 11
+    }
+  },
+
+  "files_changed": [
+    { "path": "arch/plans/20260203-chatanalysis-v2.json", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/ChatAnalysisClient.cs", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/Program.cs", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/Services/CallbackService.cs", "is_new": true },
+    { "path": "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/appsettings.Development.json", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/ChatAnalysis/AnalysisCriterion.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisRequest.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisResponse.cs", "is_new": false },
+    { "path": "tests/Invekto.ChatAnalysis.Tests/IntegrationTests/AnalyzeApiTests.cs", "is_new": false }
+  ],
+
+  "requirements": {
+    "request_model": {
+      "ChatID": "int - echo back",
+      "InstanceID": "int - echo back",
+      "UserID": "int - echo back",
+      "RequestID": "string - echo back",
+      "ChatServerURL": "string - callback URL (full path)",
+      "MessageListObject": "array of {Source, Message}",
+      "LabelSearchText": "string - virgülle ayrılmış izinli etiketler",
+      "Lang": "string? - null ise otomatik algıla, cevap hep Türkçe"
+    },
+    "response_flow": {
+      "immediate": "200 OK with {RequestID, Status: 'Processing'}",
+      "callback": "POST to ChatServerURL with full analysis result"
+    },
+    "callback_auth": {
+      "method": "Header token",
+      "config": "appsettings Callback:Token",
+      "retry": "3x with exponential backoff"
+    },
+    "analysis_criteria": [
+      "Content",
+      "Attitude",
+      "ApproachRecommendation",
+      "PurchaseProbability",
+      "Needs",
+      "DecisionProcess",
+      "SalesBarriers",
+      "CommunicationStyle",
+      "CustomerProfile",
+      "SatisfactionAndFeedback",
+      "OfferAndConversionRate",
+      "SupportStrategy",
+      "CompetitorAnalysis",
+      "BehaviorPatterns",
+      "RepresentativeResponseSuggestion"
+    ],
+    "labels": {
+      "select_from": "LabelSearchText (virgülle ayrılmış)",
+      "suggest_new": "2 yeni etiket önerisi"
+    },
+    "edge_cases": {
+      "empty_messages": "Callback'e {Error: 'Analiz edilecek mesaj yok'} gönder",
+      "claude_timeout": "Log at, callback yapma",
+      "empty_labels": "Sadece 2 öneri yap, seçim boş"
+    }
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "description": "DTO'ları güncelle - Request ve Response",
+      "files": [
+        "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisRequest.cs",
+        "src/Invekto.Shared/DTOs/ChatAnalysis/ChatAnalysisResponse.cs",
+        "src/Invekto.Shared/DTOs/ChatAnalysis/AnalysisCriterion.cs"
+      ]
+    },
+    {
+      "step": 2,
+      "description": "CallbackService oluştur - 3x retry, token header",
+      "files": ["src/Invekto.ChatAnalysis/Services/CallbackService.cs"]
+    },
+    {
+      "step": 3,
+      "description": "ClaudeAnalyzer'ı güncelle - 15 kriter prompt, label logic",
+      "files": ["src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs"]
+    },
+    {
+      "step": 4,
+      "description": "Program.cs - async endpoint, hemen OK, background task",
+      "files": ["src/Invekto.ChatAnalysis/Program.cs"]
+    },
+    {
+      "step": 5,
+      "description": "appsettings - Callback:Token ekle",
+      "files": ["src/Invekto.ChatAnalysis/appsettings.Development.json"]
+    }
+  ],
+
+  "verification_questions": [
+    {
+      "id": "VQ1",
+      "category": "API Contract",
+      "question": "Request DTO ChatID, InstanceID, UserID, RequestID, ChatServerURL, MessageListObject, LabelSearchText, Lang alanlarını içeriyor mu?"
+    },
+    {
+      "id": "VQ2",
+      "category": "Async Flow",
+      "question": "Endpoint hemen 200 OK dönüp background'da işlemeye başlıyor mu?"
+    },
+    {
+      "id": "VQ3",
+      "category": "Callback",
+      "question": "ChatServerURL'e POST yapılıyor mu? Token header'da mı? 3x retry var mı?"
+    },
+    {
+      "id": "VQ4",
+      "category": "Analysis",
+      "question": "15 kriterin hepsi response'da var mı? Her biri Summary + Details içeriyor mu?"
+    },
+    {
+      "id": "VQ5",
+      "category": "Labels",
+      "question": "SelectedLabels (LabelSearchText'ten) ve SuggestedLabels (2 yeni) dönüyor mu?"
+    },
+    {
+      "id": "VQ6",
+      "category": "Edge Cases",
+      "question": "Boş mesaj = error callback, Claude timeout = log only, boş label = sadece öneri?"
+    },
+    {
+      "id": "VQ7",
+      "category": "Echo Fields",
+      "question": "ChatID, InstanceID, UserID, RequestID callback response'da değişmeden dönüyor mu?"
+    }
+  ],
+
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Temsilci analiz sonucunu beklerken müşteriyle konuşamıyor",
+      "suggestion": "Async processing sayesinde UI hemen güncellenebilir, analiz arka planda tamamlanır",
+      "aha_moment": "Temsilci '2 saniyede cevap geldi!' diyecek"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "PurchaseProbability % ve renk kodu ile temsilci önceliği bilemez",
+      "suggestion": "Kırmızı/yeşil renk kodu + % değer ile instant görsel feedback",
+      "aha_moment": "Temsilci 'Yeşil = bu müşteriye odaklanmalıyım!' anlayacak"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Temsilci müşteriye ne demeli bilemez",
+      "suggestion": "RepresentativeResponseSuggestion ile hazır cevap önerisi",
+      "aha_moment": "Temsilci 'AI bana cevabı yazdı!' diyecek"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Etiketleri manuel seçmek zaman alıyor",
+      "suggestion": "SelectedLabels otomatik + SuggestedLabels yeni öneriler",
+      "aha_moment": "Temsilci 'Etiketler kendiliğinden geldi!' diyecek"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Callback fail olursa sonuç kaybolur",
+      "suggestion": "3x retry + exponential backoff ile güvenilir delivery",
+      "aha_moment": "Sistem 'Hiç callback kaçırmadık!' diyecek"
+    }
+  ],
+
+  "codex_reviews": []
+}

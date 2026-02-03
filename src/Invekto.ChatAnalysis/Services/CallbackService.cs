@@ -1,0 +1,109 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using Invekto.Shared.Logging;
+
+namespace Invekto.ChatAnalysis.Services;
+
+/// <summary>
+/// Service for sending analysis results to callback URLs
+/// Implements 3x retry with exponential backoff
+/// </summary>
+public sealed class CallbackService : IDisposable
+{
+    private readonly HttpClient _httpClient;
+    private readonly JsonLinesLogger _logger;
+    private readonly string _authToken;
+    private readonly JsonSerializerOptions _jsonOptions;
+
+    private const int MaxRetries = 3;
+    private const int BaseDelayMs = 1000; // 1s, 2s, 4s backoff
+
+    public CallbackService(string authToken, JsonLinesLogger logger)
+    {
+        _authToken = authToken ?? throw new ArgumentNullException(nameof(authToken));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null, // Keep PascalCase
+            WriteIndented = false
+        };
+    }
+
+    /// <summary>
+    /// Send callback to the specified URL with retry logic
+    /// </summary>
+    /// <typeparam name="T">Response type</typeparam>
+    /// <param name="callbackUrl">Full callback URL</param>
+    /// <param name="payload">Response payload</param>
+    /// <param name="requestId">Request ID for logging</param>
+    /// <returns>True if callback succeeded, false otherwise</returns>
+    public async Task<bool> SendCallbackAsync<T>(string callbackUrl, T payload, string requestId)
+    {
+        for (int attempt = 1; attempt <= MaxRetries; attempt++)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, callbackUrl);
+                request.Headers.Add("Authorization", $"Bearer {_authToken}");
+                request.Content = JsonContent.Create(payload, options: _jsonOptions);
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.SystemInfo($"Callback success: {callbackUrl} (attempt {attempt}), RequestID={requestId}");
+                    return true;
+                }
+
+                var errorBody = await response.Content.ReadAsStringAsync();
+                _logger.SystemWarn($"Callback failed: {callbackUrl} returned {(int)response.StatusCode}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Body={Truncate(errorBody, 200)}");
+
+                // Don't retry on 4xx errors (client errors)
+                if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+                {
+                    _logger.SystemError($"Callback permanently failed (4xx): {callbackUrl}, RequestID={requestId}");
+                    return false;
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.SystemWarn($"Callback timeout: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}");
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.SystemWarn($"Callback connection error: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Error={ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.SystemError($"Callback unexpected error: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Error={ex.Message}");
+            }
+
+            // Wait before retry (exponential backoff)
+            if (attempt < MaxRetries)
+            {
+                var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);
+                await Task.Delay(delay);
+            }
+        }
+
+        _logger.SystemError($"Callback failed after {MaxRetries} attempts: {callbackUrl}, RequestID={requestId}");
+        return false;
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        return value.Length <= maxLength ? value : value[..maxLength] + "...";
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
+    }
+}

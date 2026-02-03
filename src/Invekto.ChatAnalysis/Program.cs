@@ -12,18 +12,18 @@ builder.Host.UseWindowsService();
 // Read configuration
 var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.ChatAnalysisPort);
 var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
-var wapCrmSecretKey = builder.Configuration["WapCrm:SecretKey"] ?? "";
 var claudeApiKey = builder.Configuration["Claude:ApiKey"] ?? "";
+var callbackToken = builder.Configuration["Callback:Token"] ?? "";
 
 // Validate required config
-if (string.IsNullOrEmpty(wapCrmSecretKey))
-{
-    Console.Error.WriteLine("FATAL: WapCrm:SecretKey is not configured");
-    Environment.Exit(1);
-}
 if (string.IsNullOrEmpty(claudeApiKey))
 {
     Console.Error.WriteLine("FATAL: Claude:ApiKey is not configured");
+    Environment.Exit(1);
+}
+if (string.IsNullOrEmpty(callbackToken))
+{
+    Console.Error.WriteLine("FATAL: Callback:Token is not configured");
     Environment.Exit(1);
 }
 
@@ -40,11 +40,12 @@ builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.ChatAnalysisS
 builder.Services.AddSingleton<LogCleanupService>(sp =>
     new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
 
-// Register WapCRM client
-builder.Services.AddSingleton(new WapCrmClient(wapCrmSecretKey));
-
 // Register Claude analyzer
 builder.Services.AddSingleton(new ClaudeAnalyzer(claudeApiKey));
+
+// Register Callback service
+builder.Services.AddSingleton(sp =>
+    new CallbackService(callbackToken, sp.GetRequiredService<JsonLinesLogger>()));
 
 var app = builder.Build();
 
@@ -65,152 +66,180 @@ app.MapGet("/ready", () =>
     return Results.Ok(HealthResponse.Ok(ServiceConstants.ChatAnalysisServiceName));
 });
 
-// Chat analysis endpoint
-app.MapPost("/api/v1/analyze", async (
+// Chat analysis endpoint (V2 - async processing)
+app.MapPost("/api/v1/analyze", (
     HttpContext ctx,
     JsonLinesLogger jsonLogger,
-    WapCrmClient wapCrmClient,
     ClaudeAnalyzer claudeAnalyzer,
+    CallbackService callbackService,
     ChatAnalysisRequest? request) =>
 {
-    // Pass-through X-Request-Id if provided
-    var context = RequestContext.CreateWithPassThrough(
-        ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault(),
-        ctx.Request.Headers[HeaderNames.TenantId].FirstOrDefault() ?? "-",
-        ctx.Request.Headers[HeaderNames.ChatId].FirstOrDefault() ?? "-");
-
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-
     // Validate request
-    if (request == null || string.IsNullOrWhiteSpace(request.PhoneNumber))
+    if (request == null)
     {
-        sw.Stop();
-        jsonLogger.RequestError(
-            "Invalid request: missing phoneNumber",
-            context,
-            "/api/v1/analyze",
-            sw.ElapsedMilliseconds,
-            ErrorCodes.ChatAnalysisInvalidPayload);
-
+        jsonLogger.SystemWarn("Invalid request: null body");
         return Results.Json(
             ErrorResponse.Create(
                 ErrorCodes.ChatAnalysisInvalidPayload,
-                "Geçersiz istek: phoneNumber zorunlu",
-                context.RequestId),
+                "Geçersiz istek: boş body",
+                "-"),
             statusCode: 400);
     }
 
-    try
+    if (string.IsNullOrWhiteSpace(request.RequestID))
     {
-        // Step 1: Fetch messages from WapCRM
-        var messagesResult = await wapCrmClient.GetMessagesForPhoneAsync(
-            request.PhoneNumber,
-            request.InstanceId);
-
-        if (!messagesResult.IsSuccess)
-        {
-            sw.Stop();
-            jsonLogger.RequestError(
-                $"WapCRM error: {messagesResult.ErrorMessage}",
-                context,
-                "/api/v1/analyze",
-                sw.ElapsedMilliseconds,
-                messagesResult.ErrorCode!);
-
-            var statusCode = messagesResult.ErrorCode == ErrorCodes.ChatAnalysisNoMessages ? 404 : 502;
-
-            return Results.Json(
-                ErrorResponse.Create(
-                    messagesResult.ErrorCode!,
-                    GetUserMessage(messagesResult.ErrorCode!),
-                    context.RequestId,
-                    messagesResult.ErrorMessage),
-                statusCode: statusCode);
-        }
-
-        var messages = messagesResult.Data!;
-
-        // Step 2: Analyze with Claude
-        var analysisResult = await claudeAnalyzer.AnalyzeAsync(messages);
-
-        if (!analysisResult.IsSuccess)
-        {
-            sw.Stop();
-            jsonLogger.RequestError(
-                $"Claude error: {analysisResult.ErrorMessage}",
-                context,
-                "/api/v1/analyze",
-                sw.ElapsedMilliseconds,
-                analysisResult.ErrorCode!);
-
-            return Results.Json(
-                ErrorResponse.Create(
-                    analysisResult.ErrorCode!,
-                    GetUserMessage(analysisResult.ErrorCode!),
-                    context.RequestId,
-                    analysisResult.ErrorMessage),
-                statusCode: 502);
-        }
-
-        var analysis = analysisResult.Data!;
-
-        // Log warning if parse had issues (NOT silent - logged and confidence=0)
-        if (!string.IsNullOrEmpty(analysisResult.Warning))
-        {
-            jsonLogger.SystemWarn($"Claude parse warning: {analysisResult.Warning}");
-        }
-
-        // Step 3: Build response
-        var response = new ChatAnalysisResponse
-        {
-            RequestId = context.RequestId,
-            PhoneNumber = request.PhoneNumber,
-            MessageCount = messages.Count,
-            Analysis = analysis,
-            AnalyzedAt = DateTime.UtcNow
-        };
-
-        sw.Stop();
-        jsonLogger.RequestInfo(
-            $"Chat analysis completed: sentiment={analysis.Sentiment}, category={analysis.Category}",
-            context,
-            "/api/v1/analyze",
-            sw.ElapsedMilliseconds);
-
-        return Results.Ok(response);
-    }
-    catch (Exception ex)
-    {
-        sw.Stop();
-        jsonLogger.RequestError(
-            $"Chat analysis failed: {ex.Message}",
-            context,
-            "/api/v1/analyze",
-            sw.ElapsedMilliseconds,
-            ErrorCodes.ChatAnalysisProcessingFailed);
-
+        jsonLogger.SystemWarn("Invalid request: missing RequestID");
         return Results.Json(
             ErrorResponse.Create(
-                ErrorCodes.ChatAnalysisProcessingFailed,
-                "Analiz işlemi başarısız oldu",
-                context.RequestId,
-                ex.Message),
-            statusCode: 500);
+                ErrorCodes.ChatAnalysisInvalidPayload,
+                "Geçersiz istek: RequestID zorunlu",
+                "-"),
+            statusCode: 400);
     }
+
+    if (string.IsNullOrWhiteSpace(request.ChatServerURL))
+    {
+        jsonLogger.SystemWarn($"Invalid request: missing ChatServerURL, RequestID={request.RequestID}");
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.ChatAnalysisInvalidPayload,
+                "Geçersiz istek: ChatServerURL zorunlu",
+                request.RequestID),
+            statusCode: 400);
+    }
+
+    // Check if messages exist
+    var hasMessages = request.MessageListObject != null && request.MessageListObject.Count > 0;
+
+    if (!hasMessages)
+    {
+        // Send error callback immediately for empty messages
+        jsonLogger.SystemInfo($"No messages to analyze, sending error callback, RequestID={request.RequestID}");
+
+        _ = Task.Run(async () =>
+        {
+            var errorResponse = new ChatAnalysisErrorResponse
+            {
+                ChatID = request.ChatID,
+                InstanceID = request.InstanceID,
+                UserID = request.UserID,
+                RequestID = request.RequestID,
+                Error = "Analiz edilecek mesaj yok",
+                AnalyzedAt = DateTime.UtcNow
+            };
+
+            await callbackService.SendCallbackAsync(
+                request.ChatServerURL,
+                errorResponse,
+                request.RequestID);
+        });
+
+        return Results.Ok(ChatAnalysisAcceptedResponse.Processing(request.RequestID));
+    }
+
+    jsonLogger.SystemInfo($"Analysis request accepted, RequestID={request.RequestID}, MessageCount={request.MessageListObject!.Count}");
+
+    // Start background processing
+    _ = Task.Run(async () =>
+    {
+        await ProcessAnalysisAsync(
+            request,
+            claudeAnalyzer,
+            callbackService,
+            jsonLogger);
+    });
+
+    // Return immediately
+    return Results.Ok(ChatAnalysisAcceptedResponse.Processing(request.RequestID));
 });
 
 logger.SystemInfo($"ChatAnalysis service starting on port {listenPort}");
 app.Run();
 
-// Helper function for user-friendly error messages
-static string GetUserMessage(string errorCode) => errorCode switch
+// Background processing function
+static async Task ProcessAnalysisAsync(
+    ChatAnalysisRequest request,
+    ClaudeAnalyzer claudeAnalyzer,
+    CallbackService callbackService,
+    JsonLinesLogger logger)
 {
-    ErrorCodes.ChatAnalysisInvalidPayload => "Geçersiz istek formatı",
-    ErrorCodes.ChatAnalysisProcessingFailed => "Analiz işlemi başarısız oldu",
-    ErrorCodes.ChatAnalysisWapCrmError => "CRM servisine bağlanılamadı",
-    ErrorCodes.ChatAnalysisWapCrmTimeout => "CRM servisi yanıt vermedi",
-    ErrorCodes.ChatAnalysisClaudeError => "Analiz servisi hatası",
-    ErrorCodes.ChatAnalysisClaudeTimeout => "Analiz servisi yanıt vermedi",
-    ErrorCodes.ChatAnalysisNoMessages => "Bu numara için mesaj bulunamadı",
-    _ => "Beklenmeyen bir hata oluştu"
-};
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+
+    try
+    {
+        // Analyze with Claude
+        var analysisResult = await claudeAnalyzer.AnalyzeAsync(
+            request.MessageListObject!,
+            request.LabelSearchText);
+
+        sw.Stop();
+
+        if (!analysisResult.IsSuccess)
+        {
+            // Claude error - log only, don't send callback (per Q's requirement)
+            logger.SystemError($"Claude analysis failed, RequestID={request.RequestID}, Error={analysisResult.ErrorMessage}, Duration={sw.ElapsedMilliseconds}ms");
+            return;
+        }
+
+        var analysis = analysisResult.Data!;
+
+        // Build callback response
+        var callbackResponse = new ChatAnalysisCallbackResponse
+        {
+            // Echo fields
+            ChatID = request.ChatID,
+            InstanceID = request.InstanceID,
+            UserID = request.UserID,
+            RequestID = request.RequestID,
+
+            // Labels
+            SelectedLabels = analysis.SelectedLabels,
+            SuggestedLabels = analysis.SuggestedLabels,
+
+            // 15 Criteria
+            Content = analysis.Content,
+            Attitude = analysis.Attitude,
+            ApproachRecommendation = analysis.ApproachRecommendation,
+            PurchaseProbability = analysis.PurchaseProbability,
+            Needs = analysis.Needs,
+            DecisionProcess = analysis.DecisionProcess,
+            SalesBarriers = analysis.SalesBarriers,
+            CommunicationStyle = analysis.CommunicationStyle,
+            CustomerProfile = analysis.CustomerProfile,
+            SatisfactionAndFeedback = analysis.SatisfactionAndFeedback,
+            OfferAndConversionRate = analysis.OfferAndConversionRate,
+            SupportStrategy = analysis.SupportStrategy,
+            CompetitorAnalysis = analysis.CompetitorAnalysis,
+            BehaviorPatterns = analysis.BehaviorPatterns,
+            RepresentativeResponseSuggestion = analysis.RepresentativeResponseSuggestion,
+
+            // Metadata
+            AnalyzedAt = DateTime.UtcNow
+        };
+
+        logger.SystemInfo($"Analysis completed, sending callback, RequestID={request.RequestID}, Duration={sw.ElapsedMilliseconds}ms");
+
+        // Send callback
+        var callbackSuccess = await callbackService.SendCallbackAsync(
+            request.ChatServerURL,
+            callbackResponse,
+            request.RequestID);
+
+        if (callbackSuccess)
+        {
+            logger.SystemInfo($"Callback sent successfully, RequestID={request.RequestID}");
+        }
+        else
+        {
+            logger.SystemError($"Callback failed after retries, RequestID={request.RequestID}");
+        }
+    }
+    catch (Exception ex)
+    {
+        sw.Stop();
+        logger.SystemError($"Analysis processing failed, RequestID={request.RequestID}, Error={ex.Message}, Duration={sw.ElapsedMilliseconds}ms");
+    }
+}
+
+// Required for integration tests
+public partial class Program { }

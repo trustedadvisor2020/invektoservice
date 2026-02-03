@@ -6,8 +6,8 @@ using Invekto.Shared.DTOs.ChatAnalysis;
 namespace Invekto.Backend.Services;
 
 /// <summary>
-/// HTTP client for ChatAnalysis microservice
-/// Stage-0: 600ms timeout, 0 retry
+/// HTTP client for ChatAnalysis microservice (V2)
+/// Submits analysis requests - results come via callback
 /// </summary>
 public sealed class ChatAnalysisClient
 {
@@ -20,7 +20,11 @@ public sealed class ChatAnalysisClient
         _logger = logger;
     }
 
-    public async Task<ChatAnalysisResult> AnalyzeAsync(
+    /// <summary>
+    /// Submit analysis request to ChatAnalysis service
+    /// Returns immediately with accepted status - actual result comes via callback
+    /// </summary>
+    public async Task<ChatAnalysisSubmitResult> SubmitAnalysisAsync(
         RequestContext context,
         ChatAnalysisRequest analysisRequest,
         CancellationToken ct = default)
@@ -39,55 +43,52 @@ public sealed class ChatAnalysisClient
             {
                 try
                 {
-                    var data = await response.Content.ReadFromJsonAsync<ChatAnalysisResponse>(ct);
+                    var data = await response.Content.ReadFromJsonAsync<ChatAnalysisAcceptedResponse>(ct);
 
-                    // Check for null/invalid body
-                    if (data == null || string.IsNullOrEmpty(data.RequestId))
+                    if (data == null || string.IsNullOrEmpty(data.RequestID))
                     {
                         _logger.LogWarning("ChatAnalysis returned invalid/empty body for {RequestId}", context.RequestId);
-                        return ChatAnalysisResult.Partial(
+                        return ChatAnalysisSubmitResult.Failed(
                             "Microservice returned invalid response",
                             ErrorCodes.BackendMicroserviceInvalidResponse);
                     }
 
-                    return ChatAnalysisResult.Success(data);
+                    return ChatAnalysisSubmitResult.Success(data);
                 }
                 catch (System.Text.Json.JsonException ex)
                 {
                     _logger.LogWarning(ex, "ChatAnalysis returned malformed JSON for {RequestId}", context.RequestId);
-                    return ChatAnalysisResult.Partial(
+                    return ChatAnalysisSubmitResult.Failed(
                         "Microservice returned malformed response",
                         ErrorCodes.BackendMicroserviceInvalidResponse);
                 }
             }
 
-            // Non-success status codes
             var statusCode = (int)response.StatusCode;
             _logger.LogWarning("ChatAnalysis returned {StatusCode} for {RequestId}", statusCode, context.RequestId);
 
             if (statusCode >= 500)
             {
-                return ChatAnalysisResult.Partial(
+                return ChatAnalysisSubmitResult.Failed(
                     $"Microservice error ({statusCode})",
                     ErrorCodes.BackendMicroserviceError);
             }
 
-            // 4xx = client error (different from 5xx server error)
-            return ChatAnalysisResult.Partial(
+            return ChatAnalysisSubmitResult.Failed(
                 $"Microservice client error ({statusCode})",
                 ErrorCodes.BackendMicroserviceClientError);
         }
         catch (TaskCanceledException)
         {
             _logger.LogWarning("ChatAnalysis timeout for {RequestId}", context.RequestId);
-            return ChatAnalysisResult.Partial(
+            return ChatAnalysisSubmitResult.Failed(
                 "Microservice timeout",
                 ErrorCodes.BackendMicroserviceTimeout);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "ChatAnalysis unavailable for {RequestId}", context.RequestId);
-            return ChatAnalysisResult.Partial(
+            return ChatAnalysisSubmitResult.Failed(
                 "Microservice unavailable",
                 ErrorCodes.BackendMicroserviceUnavailable);
         }
@@ -100,35 +101,65 @@ public sealed class ChatAnalysisClient
             var response = await _httpClient.GetAsync("/health", ct);
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "ChatAnalysis health check failed");
             return false;
+        }
+    }
+
+    public async Task<TestEndpointResult> TestEndpointAsync(string endpoint, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(endpoint, ct);
+            return new TestEndpointResult
+            {
+                Success = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
+                Message = response.IsSuccessStatusCode ? "OK" : $"HTTP {(int)response.StatusCode}"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "ChatAnalysis endpoint test timeout: {Endpoint}", endpoint);
+            return new TestEndpointResult { Success = false, StatusCode = 0, Message = "Timeout" };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "ChatAnalysis endpoint test failed: {Endpoint}", endpoint);
+            return new TestEndpointResult { Success = false, StatusCode = 0, Message = ex.Message };
         }
     }
 }
 
-// ChatAnalysisResponse is now in Invekto.Shared.DTOs.ChatAnalysis
+public sealed class TestEndpointResult
+{
+    public bool Success { get; init; }
+    public int StatusCode { get; init; }
+    public string Message { get; init; } = "";
+}
 
-public sealed class ChatAnalysisResult
+/// <summary>
+/// Result of submitting analysis request
+/// </summary>
+public sealed class ChatAnalysisSubmitResult
 {
     public bool IsSuccess { get; init; }
-    public bool IsPartial { get; init; }
-    public ChatAnalysisResponse? Data { get; init; }
-    public string? Warning { get; init; }
+    public ChatAnalysisAcceptedResponse? Data { get; init; }
+    public string? ErrorMessage { get; init; }
     public string? ErrorCode { get; init; }
 
-    public static ChatAnalysisResult Success(ChatAnalysisResponse data) => new()
+    public static ChatAnalysisSubmitResult Success(ChatAnalysisAcceptedResponse data) => new()
     {
         IsSuccess = true,
-        IsPartial = false,
         Data = data
     };
 
-    public static ChatAnalysisResult Partial(string warning, string errorCode) => new()
+    public static ChatAnalysisSubmitResult Failed(string errorMessage, string errorCode) => new()
     {
         IsSuccess = false,
-        IsPartial = true,
-        Warning = warning,
+        ErrorMessage = errorMessage,
         ErrorCode = errorCode
     };
 }
