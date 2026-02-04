@@ -90,6 +90,79 @@ public sealed class JsonLinesLogger : IDisposable
     public void SystemWarn(string message) => LogSystem("WARN", message);
     public void SystemError(string message) => LogSystem("ERROR", message);
 
+    /// <summary>
+    /// Log HTTP traffic (request + response) with body content
+    /// </summary>
+    public void LogTraffic(
+        string level,
+        string message,
+        RequestContext context,
+        string route,
+        string method,
+        long durationMs,
+        int statusCode,
+        string? requestBody,
+        string? responseBody)
+    {
+        // Mask sensitive data in bodies
+        var maskedRequestBody = MaskSensitiveData(requestBody);
+        var maskedResponseBody = MaskSensitiveData(responseBody);
+
+        // Truncate very long bodies (max 5KB each)
+        const int maxBodyLength = 5000;
+        if (maskedRequestBody?.Length > maxBodyLength)
+            maskedRequestBody = maskedRequestBody[..maxBodyLength] + "...[TRUNCATED]";
+        if (maskedResponseBody?.Length > maxBodyLength)
+            maskedResponseBody = maskedResponseBody[..maxBodyLength] + "...[TRUNCATED]";
+
+        var entry = new LogEntry
+        {
+            Timestamp = DateTime.UtcNow,
+            Service = _serviceName,
+            Level = level,
+            RequestId = context.RequestId,
+            TenantId = context.TenantId,
+            ChatId = context.ChatId,
+            Route = route,
+            Method = method,
+            DurationMs = durationMs,
+            Status = statusCode >= 200 && statusCode < 400 ? "ok" : "fail",
+            StatusCode = statusCode,
+            RequestBody = maskedRequestBody,
+            ResponseBody = maskedResponseBody,
+            Message = message
+        };
+
+        WriteLine(entry.ToJsonLine());
+    }
+
+    /// <summary>
+    /// Mask sensitive data like API keys, passwords, tokens
+    /// </summary>
+    private static string? MaskSensitiveData(string? body)
+    {
+        if (string.IsNullOrEmpty(body)) return body;
+
+        // Patterns to mask
+        var patterns = new[]
+        {
+            (@"""[Pp]assword""\s*:\s*""[^""]*""", @"""password"":""***MASKED***"""),
+            (@"""[Aa]pi[Kk]ey""\s*:\s*""[^""]*""", @"""apiKey"":""***MASKED***"""),
+            (@"""[Ss]ecret[Kk]ey""\s*:\s*""[^""]*""", @"""secretKey"":""***MASKED***"""),
+            (@"""[Tt]oken""\s*:\s*""[^""]*""", @"""token"":""***MASKED***"""),
+            (@"sk-ant-[a-zA-Z0-9\-]+", "sk-ant-***MASKED***"),
+            (@"Bearer\s+[a-zA-Z0-9\-_\.]+", "Bearer ***MASKED***"),
+        };
+
+        var result = body;
+        foreach (var (pattern, replacement) in patterns)
+        {
+            result = System.Text.RegularExpressions.Regex.Replace(result, pattern, replacement);
+        }
+
+        return result;
+    }
+
     // Legacy methods (deprecated - use specific methods above)
     [Obsolete("Use LogRequest or LogSystem instead")]
     public void Log(

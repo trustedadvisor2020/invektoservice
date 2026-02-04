@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Invekto.Backend.Middleware;
 using Invekto.Backend.Services;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
@@ -47,6 +48,9 @@ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
 });
 
 var app = builder.Build();
+
+// Enable traffic logging middleware (logs all HTTP request/response)
+app.UseTrafficLogging();
 
 // Enable static file serving for Dashboard UI (wwwroot/)
 app.UseStaticFiles();
@@ -112,6 +116,106 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, LogRea
     };
 
     return Results.Ok(ops);
+});
+
+// OPS: Debug - show configured paths and file counts
+app.MapGet("/ops/debug", (HttpContext ctx) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    var backendLogExists = Directory.Exists(logPath);
+    var microserviceLogExists = !string.IsNullOrEmpty(microserviceLogPath) && Directory.Exists(microserviceLogPath);
+
+    var backendFiles = backendLogExists ? Directory.GetFiles(logPath, "*.jsonl") : Array.Empty<string>();
+    var microserviceFiles = microserviceLogExists ? Directory.GetFiles(microserviceLogPath!, "*.jsonl") : Array.Empty<string>();
+
+    return Results.Ok(new
+    {
+        config = new
+        {
+            logPath,
+            microserviceLogPath,
+            workingDirectory = Directory.GetCurrentDirectory()
+        },
+        backend = new
+        {
+            exists = backendLogExists,
+            files = backendFiles.Select(f => new { path = f, size = new FileInfo(f).Length })
+        },
+        microservice = new
+        {
+            exists = microserviceLogExists,
+            files = microserviceFiles.Select(f => new { path = f, size = new FileInfo(f).Length })
+        }
+    });
+});
+
+// OPS: Debug2 - test LogReader directly
+app.MapGet("/ops/debug2", async (HttpContext ctx, LogReader logReader) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    // Read first file manually with FileShare.ReadWrite
+    var testFile = Path.Combine(logPath, $"{DateTime.UtcNow:yyyy-MM-dd}.jsonl");
+    var fileExists = File.Exists(testFile);
+    string[] lines = Array.Empty<string>();
+    if (fileExists)
+    {
+        var lineList = new List<string>();
+        using var stream = new FileStream(testFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+            lineList.Add(line);
+        lines = lineList.ToArray();
+    }
+    var firstLine = lines.Length > 0 ? lines[0] : null;
+
+    // Try to parse first line
+    object? parsedEntry = null;
+    string? parseError = null;
+    if (firstLine != null)
+    {
+        try
+        {
+            parsedEntry = System.Text.Json.JsonSerializer.Deserialize<object>(firstLine);
+        }
+        catch (Exception ex)
+        {
+            parseError = ex.Message;
+        }
+    }
+
+    // Try LogReader query
+    var queryResult = await logReader.QueryLogsAsync(new Invekto.Shared.Logging.Reader.LogQueryOptions
+    {
+        Levels = new[] { "INFO", "WARN", "ERROR" },
+        Limit = 5
+    });
+
+    return Results.Ok(new
+    {
+        testFile,
+        fileExists,
+        lineCount = lines.Length,
+        firstLine,
+        parsedEntry,
+        parseError,
+        logReaderResult = new
+        {
+            count = queryResult.Entries.Count,
+            hasMore = queryResult.HasMore,
+            entries = queryResult.Entries
+        }
+    });
 });
 
 // OPS: Last 100 errors

@@ -17,15 +17,18 @@ public sealed class CallbackService : IDisposable
 
     private const int MaxRetries = 3;
     private const int BaseDelayMs = 1000; // 1s, 2s, 4s backoff
+    private const int DefaultTimeoutSeconds = 30;
+    private const int LastAttemptTimeoutSeconds = 60;
 
     public CallbackService(string authToken, JsonLinesLogger logger)
     {
         _authToken = authToken ?? throw new ArgumentNullException(nameof(authToken));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+        // HttpClient timeout will be set per-request
         _httpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(30)
+            Timeout = Timeout.InfiniteTimeSpan // We control timeout per-request
         };
 
         _jsonOptions = new JsonSerializerOptions
@@ -47,33 +50,32 @@ public sealed class CallbackService : IDisposable
     {
         for (int attempt = 1; attempt <= MaxRetries; attempt++)
         {
+            // Last attempt gets longer timeout (60s vs 30s)
+            var timeoutSeconds = attempt == MaxRetries ? LastAttemptTimeoutSeconds : DefaultTimeoutSeconds;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, callbackUrl);
                 request.Headers.Add("Authorization", $"Bearer {_authToken}");
                 request.Content = JsonContent.Create(payload, options: _jsonOptions);
 
-                var response = await _httpClient.SendAsync(request);
+                var response = await _httpClient.SendAsync(request, cts.Token);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.SystemInfo($"Callback success: {callbackUrl} (attempt {attempt}), RequestID={requestId}");
+                    _logger.SystemInfo($"Callback success: {callbackUrl} (attempt {attempt}, timeout={timeoutSeconds}s), RequestID={requestId}");
                     return true;
                 }
 
                 var errorBody = await response.Content.ReadAsStringAsync();
-                _logger.SystemWarn($"Callback failed: {callbackUrl} returned {(int)response.StatusCode}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Body={Truncate(errorBody, 200)}");
+                _logger.SystemWarn($"Callback failed: {callbackUrl} returned {(int)response.StatusCode}, attempt {attempt}/{MaxRetries}, timeout={timeoutSeconds}s, RequestID={requestId}, Body={Truncate(errorBody, 200)}");
 
-                // Don't retry on 4xx errors (client errors)
-                if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
-                {
-                    _logger.SystemError($"Callback permanently failed (4xx): {callbackUrl}, RequestID={requestId}");
-                    return false;
-                }
+                // Retry on ALL errors (4xx and 5xx) - removed 4xx early exit
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
-                _logger.SystemWarn($"Callback timeout: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}");
+                _logger.SystemWarn($"Callback timeout ({timeoutSeconds}s): {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}");
             }
             catch (HttpRequestException ex)
             {
@@ -84,7 +86,7 @@ public sealed class CallbackService : IDisposable
                 _logger.SystemError($"Callback unexpected error: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Error={ex.Message}");
             }
 
-            // Wait before retry (exponential backoff)
+            // Wait before retry (exponential backoff: 1s, 2s, 4s)
             if (attempt < MaxRetries)
             {
                 var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);

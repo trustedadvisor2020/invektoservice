@@ -4,9 +4,9 @@
 
 ## Last Update
 
-- **Date:** 2026-02-02
-- **Status:** Stage-0 Implementation Complete
-- **Last Task:** Backend + ChatAnalysis microservice scaffold
+- **Date:** 2026-02-03
+- **Status:** Chat Analysis V2 Complete
+- **Last Task:** V2 API with async callback, 15-criteria analysis, label selection
 
 ---
 
@@ -17,6 +17,10 @@
 - **Health Endpoints:** `/health`, `/ready` her iki serviste
 - **Ops Endpoint:** Backend `/ops` - servis durumlarını gösterir
 - **JSON Lines Logger:** `Invekto.Shared.Logging.JsonLinesLogger`
+- **Chat Analysis:** WapCRM'den sohbet çekme + Claude Haiku ile sentiment/kategori analizi
+  - Endpoint: POST `/api/v1/analyze` (phoneNumber, instanceId)
+  - Sentiment: positive, negative, neutral
+  - Kategoriler: Destek, Satis, Sikayet, Bilgi
 
 ### Tech Stack
 | Component | Technology |
@@ -33,10 +37,11 @@
 | ChatAnalysis | 7101 |
 
 ### Pending Work
-- [ ] Chat Analysis gerçek iş mantığı
-- [ ] Ops sayfası genişletme (son 100 hata, son 100 yavaş)
+- [x] ~~Chat Analysis gerçek iş mantığı~~ (Tamamlandı - WapCRM + Claude)
+- [x] ~~Ops sayfası genişletme~~ (Tamamlandı - /ops/errors, /ops/slow, /ops/search)
 - [ ] Windows Service olarak deploy testi
 - [ ] Production config (D:\Invekto\ yapısı)
+- [ ] WapCRM SecretKey configuration (appsettings.Development.json)
 
 ### Known Issues
 - (Henüz yok)

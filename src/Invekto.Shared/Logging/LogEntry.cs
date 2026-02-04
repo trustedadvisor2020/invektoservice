@@ -42,6 +42,19 @@ public sealed class LogEntry
     [JsonPropertyName("message")]
     public required string Message { get; init; }
 
+    // Traffic logging fields (optional)
+    [JsonPropertyName("method")]
+    public string? Method { get; init; }
+
+    [JsonPropertyName("requestBody")]
+    public string? RequestBody { get; init; }
+
+    [JsonPropertyName("responseBody")]
+    public string? ResponseBody { get; init; }
+
+    [JsonPropertyName("statusCode")]
+    public int? StatusCode { get; init; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
