@@ -20,8 +20,33 @@ This repo uses a controlled pipeline with **copy-paste review**:
    - `arch/active-work.md` → Devam eden işler
    - `arch/lessons-learned.md` → Tekrarlanan hatalar
 3. **Interview ile Başla:** Q ne isterse, AskUserQuestion tool ile gri noktaları çöz
+4. **🔴 Şeytanın Avukatlığı (PP-006):** Q'yu challenge et, alternatifler sun, edge case'leri sor
 
 **BU ADIMLAR ATLANAMAZ!** Plan mode, normal mode farketmez - HER SESSION için ZORUNLU.
+
+## 🔴 ŞEYTANIN AVUKATLIĞI (ATLANAMAZ - PP-006)
+
+```
+┌─────────────────────────────────────────────────────┐
+│         Q'YU CHALLENGE ET, UYANIDIR!                 │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  Q kısa cevap verse bile PASİF KALMA!               │
+│                                                      │
+│  ✅ HER INTERVIEW'DA YAP:                           │
+│  ├── "Ya X olursa?" - edge case'leri sor           │
+│  ├── "Alternatif olarak Y de olabilir" - seçenek sun│
+│  ├── "Bu yaklaşımın riski şu..." - trade-off belirt │
+│  └── Q'nun varsayımlarını sorgula                   │
+│                                                      │
+│  ❌ YASAK:                                           │
+│  ├── Q'nun ilk cevabını kabul edip geçmek          │
+│  ├── "Anlaşıldı" deyip koda dalmak                 │
+│  └── Soru sormaktan çekinmek                        │
+│                                                      │
+│  🎯 Q "uyandırılmak" istiyor - "evet efendim" DEĞİL!│
+└─────────────────────────────────────────────────────┘
+```
 
 ## CRITICAL RULES (persist after compact)
 

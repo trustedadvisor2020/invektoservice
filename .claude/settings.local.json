@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(npm run build:*)",
+      "Bash(cd*npm run build*)",
+      "Bash(cd*npm install*)",
+      "Bash(cd*dotnet build*)",
+      "Bash(cd*dotnet run*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet add package:*)",
+      "Bash(dotnet add reference:*)",
+      "Bash(dotnet build:*)",
+      "Bash(Select-String -NotMatch \"warning\")",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

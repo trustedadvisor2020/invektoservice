@@ -1,0 +1,274 @@
+
+STAGE-0 (BASIT) INVEKTO MICROSERVICE SISTEMI
+===========================================
+
+AMAC
+----
+Bu doküman “Stage-0” basit sistemi adım adım kurdurur.
+
+Stage-0 hedefi:
+- Hızlı ayağa kalksın.
+- Az parça ile çalışsın.
+- Basit deploy/rollback olsun.
+- Minimum troubleshooting (son hatalar / son yavaşlar / health).
+
+Stage-0 bilinçli olarak şunları içermez:
+- Redis, RabbitMQ, Nginiz, Prometheus/Jaeger/Loki/Grafana, outbox, DLQ, circuit breaker.
+
+BILEŞENLER (MINIMUM)
+--------------------
+1) Invekto Backend (mevcut)
+2) Tek Microservice (Windows Service olarak çalışacak, stateless)
+3) Log dosyaları + (opsiyonel) Windows Event Log
+4) Backend içinde basit “Ops” sayfası (tek endpoint/sayfa)
+
+GENEL AKIŞ
+----------
+UI -> Invekto Backend -> Microservice (HTTP) -> Invekto Backend -> UI
+
+KURULUM ÖNCESİ KARARLAR (SABITLE)
+--------------------------------
+A) Sunucu: Tek Windows Sunucu
+B) Microservice Port: 7101 (örnek; çakışmayan bir port seç)
+C) Log kök dizini: D:\Invekto\Logs\
+D) Deploy kök dizini:
+   - Backend: D:\Invekto\Backend\
+   - Microservice: D:\Invekto\Microservice\
+
+E) Timeout:
+   - Backend -> Microservice: 600ms (Stage-0’da da bunu uygula)
+F) Retry:
+   - Senkron retry = 0 (yasak)
+
+G) Kimlik:
+   - Her çağrıda backend microservice’e şu alanları geçirir:
+     tenantId, chatId, requestId
+
+NOT: Stage-0’da trace sistemi yok. requestId ile korelasyon yapacağız.
+
+============================================================
+1) DIZIN YAPISI (TEK SEFERLIK)
+============================================================
+
+ÖNERİLEN DİZİN YAPISI:
+
+D:\Invekto\
+  Backend\
+    current\
+    releases\
+    config\
+    logs\
+  Microservice\
+    current\
+    releases\
+    config\
+    logs\
+  Ops\
+    snapshots\
+    exports\
+
+Açıklama:
+- current: aktif çalışan sürüm
+- releases: zip açılan sürüm klasörleri (timestamp ile)
+- config: ortam dosyaları
+- logs: JSON loglar
+
+============================================================
+2) MICROSERVICE KURULUMU (WINDOWS SERVICE)
+============================================================
+
+2.1) Microservice binary’lerini yerleştir
+- Microservice uygulama dosyalarını:
+  D:\Invekto\Microservice\current\ içine koy.
+
+2.2) Config dosyası (kod yazmadan standart)
+D:\Invekto\Microservice\config\appsettings.prod.json (örnek isim)
+
+Config’te minimum alanlar:
+- listenPort: 7101
+- logPath: D:\Invekto\Microservice\logs\
+- environment: prod
+
+2.3) Health endpoint standardı
+Microservice’in en az 1 endpoint’i olmalı:
+- GET /health -> 200 OK + "ok"
+
+Bu endpoint şunlar için:
+- Servisin ayakta olduğunu görmek
+- Ops sayfasında “alive” göstermek
+
+2.4) Windows Service olarak kur
+Microservice’i Windows Service yapmak için iki yöntem:
+
+Yöntem-1 (tercih): Uygulama zaten Windows Service host’u ile geliyor.
+- Service adı: Invekto.Microservice.Chat (örnek)
+- DisplayName: Invekto Microservice Chat
+- Startup: Automatic
+- Log On: Local System (başlangıç için)
+
+Yöntem-2: sc.exe ile service tanımlama (binary service uyumluysa)
+Örnek komut (PATH’i kendi exe’ne göre değiştir):
+sc create "Invekto.Microservice.Chat" binPath= "D:\Invekto\Microservice\current\Microservice.exe --config D:\Invekto\Microservice\config\appsettings.prod.json" start= auto
+
+Service start:
+sc start "Invekto.Microservice.Chat"
+
+Service stop:
+sc stop "Invekto.Microservice.Chat"
+
+2.5) Crash-restart ayarı
+Servis “fail” olursa otomatik kalksın.
+Windows Services -> Properties -> Recovery
+- First failure: Restart the Service
+- Second failure: Restart the Service
+- Subsequent failures: Restart the Service
+- Restart service after: 1 minute
+
+============================================================
+3) FIREWALL (MINIMUM GÜVENLİK)
+============================================================
+
+Stage-0’da tek sunucudasın. Yine de:
+- Microservice portunu (7101) dış dünyaya açma.
+- Sadece localhost veya backend’in çalıştığı hosttan erişilsin.
+
+Seçenek-A (en basit):
+- Microservice sadece 127.0.0.1:7101 dinlesin.
+
+Seçenek-B (dinleme tüm IP ama firewall ile kısıt):
+- Windows Firewall inbound rule:
+  - Allow only local machine / backend process kullanıcı
+  - Dış IP’lere kapalı
+
+============================================================
+4) BACKEND ENTEGRASYONU (KURAL SETI)
+============================================================
+
+Backend’in microservice çağrısı için sabit kurallar:
+
+4.1) Timeout
+- Backend -> microservice timeout: 600ms
+
+4.2) Retry
+- Retry = 0
+- Timeout/5xx olursa backend kendi içinde:
+  - UI’ya “partial / warning” ile dönebilir
+  - veya “fail” döner (ama Stage-0’da partial tercih)
+
+4.3) Korelasyon alanları (her çağrıda)
+Backend microservice’e şunları gönderir:
+- requestId (unique)
+- tenantId
+- chatId
+
+Microservice log’unda bunlar zorunlu.
+
+4.4) Payload logging yasağı
+- Backend ve microservice payload içeriğini loglamaz.
+- Sadece payloadSize ve payloadHash (opsiyonel) loglanır.
+
+============================================================
+5) LOG STANDARDI (STAGE-0 MINIMUM)
+============================================================
+
+Her iki tarafta (backend + microservice) JSON satır log kullan:
+
+ZORUNLU ALANLAR:
+- timestamp (ISO)
+- service (Backend / MicroserviceName)
+- level (INFO/WARN/ERROR)
+- requestId
+- tenantId
+- chatId
+- route (endpoint adı)
+- durationMs
+- status (ok/fail/partial)
+- errorCode (varsa)
+- message (kısa)
+
+LOG DOSYA ROTASYONU (BASIT):
+- Günlük dosya: logs\YYYY-MM-DD.jsonl
+- 30 gün sakla (Stage-0)
+- Haftada 1 arşivle / sil
+
+============================================================
+6) OPS SAYFASI (BACKEND ICINDE, MINIMUM)
+============================================================
+
+Backend içine tek bir /ops sayfası koy.
+
+Ops sayfası minimum şunları gösterecek:
+- Health: backend OK + microservice /health sonucu
+- Son 100 hata: backend+microservice loglarından
+- Son 100 yavaş istek: threshold üstü
+- Arama: requestId ile iki tarafta arama
+
+GÜVENLİK (Stage-0 minimum):
+- Ops sayfasını public’e açma.
+- En azından backend login/basic auth ile koru.
+
+============================================================
+7) DEPLOY & ROLLBACK (SIMPLE)
+============================================================
+
+7.1) Release paketleme
+- backend_YYYYMMDD_HHMM.zip
+- microservice_YYYYMMDD_HHMM.zip
+
+7.2) Deploy (microservice)
+1) sc stop "Invekto.Microservice.Chat"
+2) current yedekle -> releases\YYYYMMDD_HHMM\
+3) yeni zip aç -> current’e kopyala
+4) sc start "Invekto.Microservice.Chat"
+5) smoke: GET http://127.0.0.1:7101/health => 200
+
+7.3) Rollback (microservice)
+1) service stop
+2) current’i kenara al
+3) releases’ten önceki sürümü current’e koy
+4) service start
+5) health kontrol
+
+============================================================
+8) SMOKE TEST (HER DEPLOY SONRASI)
+============================================================
+
+- Backend ayakta
+- Microservice /health 200
+- Backend->microservice 1 test çağrı
+- Ops sayfası: health OK, loglar akıyor
+
+============================================================
+9) STAGE-0 LIMITLERI
+============================================================
+
+- 10x ölçek yok
+- Burst’te P95 bozulabilir
+- Ağır işler UI’yı bekletir
+- Queue yok -> “nerede bekliyor” görünmez
+- requestId ile korelasyon yapılır (trace yok)
+
+============================================================
+10) STAGE-0 -> STAGE-1 (KISA)
+============================================================
+
+1) Redis
+2) RabbitMQ
+3) Nginx
+4) Observability stack
+5) Outbox
+
+============================================================
+11) FINAL CHECKLIST
+============================================================
+
+[ ] Dizin yapısı hazır
+[ ] Microservice current altında çalışıyor
+[ ] Windows Service kuruldu + recovery ayarlı
+[ ] /health 200
+[ ] Backend timeout 600ms, retry=0
+[ ] JSONL log standardı aktif
+[ ] /ops çalışıyor ve korumalı
+[ ] Deploy/rollback test edildi
+
+END.

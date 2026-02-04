@@ -3,7 +3,6 @@ import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LogsPage } from './pages/LogsPage';
-import { ChatAnalysisPage } from './pages/ChatAnalysisPage';
 import { Layout } from './components/Layout';
 
 function ProtectedRoute() {
@@ -27,7 +26,6 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/logs" element={<LogsPage />} />
-        <Route path="/analyze" element={<ChatAnalysisPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

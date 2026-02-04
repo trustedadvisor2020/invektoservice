@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Server, FileText, LogOut, LayoutDashboard, Sparkles } from 'lucide-react';
+import { Server, FileText, LogOut, LayoutDashboard } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface LayoutProps {
@@ -13,14 +13,13 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/analyze', label: 'Chat Analysis', icon: Sparkles },
     { path: '/logs', label: 'Logs', icon: FileText },
   ];
 
   return (
     <div className="min-h-screen flex bg-slate-100">
       {/* Sidebar */}
-      <aside className="w-60 bg-slate-800 flex flex-col shadow-lg">
+      <aside className="w-60 h-screen sticky top-0 bg-slate-800 flex flex-col shadow-lg">
         {/* Logo */}
         <div className="h-14 px-4 flex items-center border-b border-slate-700">
           <div className="flex items-center gap-2.5">
@@ -54,6 +53,11 @@ export function Layout({ children }: LayoutProps) {
             );
           })}
         </nav>
+
+        {/* Build Time */}
+        <div className="px-4 py-2 text-sm text-slate-400">
+          Build: {__BUILD_TIME__}
+        </div>
 
         {/* Logout */}
         <div className="p-3 border-t border-slate-700">

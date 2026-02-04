@@ -1,0 +1,235 @@
+Authentication
+WapCRM  Api kullanımı için yapılan Her Request(POST ve GET) işleminde “X-CIB-SecretKey” bilgisi Header içinde gönderilir.
+
+Bu bilgiye app.wapcrm.net adresine login olduktan sonra Ayarlar-> Api sayfasından ulaşabilirsiniz.
+
+
+Response
+WapCRM Api Tüm işlemlerinde aynı response modeli  dönmektedir.
+Model :
+{
+    "data": “”
+    "status": true,
+    "message": "Success",
+    "statusCode": "",
+    "requestID": "0f808f3e-dd82-4624-a84c-50669d30938b"
+}
+
+Data: Yapılan işleme göre içeriği değişmektedir Örneğin Kullanıcı listesi için istek yapılırsa işlem başarılı ise kullanıcı id ve isimlerinin bulunduğu array bulunur.
+
+Status : işlemin durumunu belirtir. True veya False değeri döner.
+Message: işlem ile ilgili mesaj verir Hata durumlarında Hata mesajı içerir.
+StatusCode: işlem kodu başarısız durumlarda işleme ait kodu belirtir.
+requestID: işleme atanmış benzersiz işlem numarasını belirtir. Hata ve yardım durumlarında destek ekibimizle bu  numarayı başlayabilirsiniz.
+
+
+
+
+Kullanıcı Listesi
+
+Sistemde bulunan kullanıcıları getirir. Api üzerinde kullanıcı bilgisi gerektiren işlemlerde bu bölümden dönen listedeki kullanıcılar ile işlem yapabilirsiniz.Request Tipi GET veya POST Olabilir
+
+Requuest URL :https://cxapi.wapcrm.net/api/users
+
+Hesap Listesi
+Sistemde bulunan müşterinin tanımlı Hesap listesini getirir. Api üzerinde telefon bilgisi gerektiren işlemlerde bu bölümden dönen telefonlar ile işlem yapabilirsiniz. Request Tipi GET veya POST Olabilir.
+
+Requuest URL : https://cxapi.wapcrm.net/api/Instances
+
+ 
+Mesaj Gönderme
+Mesaj gönderme işleminde kullanılır Request işleminde Json bir model gönderilir. Request Tipi POST Olabilir.
+
+Requuest URL :  https://cxapi.wapcrm.net/api/chatoperation
+
+
+{
+  "instanceID": 15,
+  "userID": 1,
+  "userKey":”wapcrm@wapcrm.net",
+  "chatPhoneNumber": "908504900290",
+    "chatAccountId":"-1001585485053",
+  "messageType": 1,
+  "messageText": "WapCRM Test Mesajı",
+  "fileurl":"https://cxapi.wapcrm.net/documents/wapcrm.jpeg",
+  "filename":"wapcrm. jpeg ",
+   "Incom":4
+}
+
+instanceID : Zorunlu alan “Telefon Listesi” işleminden dönen bilgiler bu alanda kullanılır.
+userID : Incom  alanı gönderilmez ise zorunlu alan  “Kullanıcı Listesi” işleminden dönen bilgiler bu alanda kullanılır.
+userKey: Incom alanı 4 olarak gönderilirse bu Alana kullanıcı email adresinin yazılması gerekmektedir ve zorunlu alandır.
+
+chatPhoneNumber: zorunlu alan ,Mesaj gönderilecek telefon numarasını belirtir. Türkiye numaraları için 905******** formatında ve 9 hane ve üzeri olmak zorundadır.
+chatAccountId: Mesaj gönderilmek istenilen hesap FACEBOOK, INSTAGRAM veya TELEGRAM ise bu alan zorunludur müşterinin ID bilgisi bu alanda gönderilir.
+messageType: zorunlu alan 1(Mesaj) veya 2(Resim) değerini alır.
+messageText: messageType alanı 1 gönderilirse girilmesi zorunlu alandır gönderilecek mesajı içerir.
+Fileurl: messageType alanı 2 gönderilirse girilmesi zorunlu alandır gönderilecek dosyanın alınacağı adres bilgisini içerir. Bu alandaki url üzerinde herhangi bir “Authentication” olmaması (her yerden erişilebilir) gerekmektedir.
+Filename: messageType alanı 2 gönderilirse girilmesi zorunlu alandır. Dosyanın ismini belirtir.
+Incom: wapcrm üzerinde bulunan kullanıcı id ile işlem yapılıyorsa gönderilmesi zorunlu değildir.
+Zoho CRM için Değer 4 olması gerekmektedir.
+
+
+
+
+
+
+
+
+
+
+ 
+Telefona Ait Mesaj Listesi
+
+Sistem üzerinden telefona ait tüm mesajları getirir, eğer sadece bir kanala ait mesaj listesi istenirse “INSTANCE ID” alanı gönderilmesi gerekmektedir. Request Tipi GET veya POST Olabilir
+
+Requuest URL :https://cxapi.wapcrm.net/api/messagelistforphone
+Request Model
+{
+  "instanceID": Zorunlu alan değildir . Kanala ait mesaj listesi raporlanmak isteniyorsa bu alanın gönderilmesi zorunludur.Bu alan giriliecek bilgileri “Hesap Listesi” metodu ile öğrenebilirsin
+  "chatPhoneNumber":Zorunlu Alandır. Raporlamak istediğiniz telefon numarasını belirtir.
+}
+
+
+Response Model :
+
+ "data": [
+ {
+            "channelnumber": Kanala Ait Telefon Numarası,
+
+            "sentdate": Mesaj Tarihi
+            "senttime": Mesaj Saati
+            "customernumber": Müşteri Telefon Numarası
+            "message": MESAJ
+            "messagesource": MESAJI GÖNDEREN;
+•	“ME” : Müşteri Temsilcisi
+•	“CUSTOMER” : Müşteri
+        }
+]
+
+
+
+Görüşme Raporları
+
+Sistem üzerinden yapılan aramaların raporunu getirir. Request Tipi GET veya POST Olabilir
+
+Requuest URL :https://cxapi.wapcrm.net/api/conversations
+Request Model
+{
+  "startDate":Başlangıç tarihi “YIL-AY-GÜN” formatında gönderilmesi gerekmektedir,
+  "enddate": Bitiş tarihi “YIL-AY-GÜN” formatında gönderilmesi gerekmektedir
+}
+
+Response Model :
+
+ "data": [
+        {
+            "id": GÖRÜŞME ID INT,
+            "createDate": GÖRÜŞME TARİH SAAT
+            "phoneNumber":TELEFON NUMARASI,
+            "note": GÖRÜŞME NOTU,
+            "dataListName": LİSTE ADI,
+            "customerFullName": MÜŞTERİ ADI SOYADI
+            "callResultParent": ARAMA SONUCU,
+            "callResultChild": ARAMA SONUCU ALT DURUM,
+            "userName": KULLANICI
+            "conversationResultDirection": ARAMA Yönü;
+1: GİDEN ARAMA
+2: GELEN ARAMA
+3: GELEN ARAMA KAÇAN ÇAĞRI,
+4: GİDEN ARAMA ULAŞILAMAYAN 
+            "callGuidId": ARAMA ID STRING,
+            "ringTime": ÇALDIRMA SÜRESİ,
+            "callTime": GÖRÜŞME SÜRESİ,
+            "transferredCall": ÇAĞRI TRANSFER EDİLDİ İSE TRUE DEĞERİNİ ALIR,
+            "tuUser": ÇAĞRININ TRANSFER EDİLDİĞİ KULLANICI,
+            "targetNumber": ÇAĞRININ TRANSFER EDİLDİĞİ TELEFON NUMARASI,
+            "pbxPhoneNumber": KANAL-HAT NUMARASI,
+            "pbxQueue": GELEN ARAMA ÇAĞRI KUYRUĞU,
+            "instanceName": KANAL-HAT ADI
+        }
+]
+Arama Sonuçları
+Uygulama üzerinden yapılan telefon görüşmelerinin seçilebilecek sonuçlarını getirir. Request Tipi GET veya POST Olabilir
+Requuest URL :https://cxapi.wapcrm.net/api/callresults
+Response Model :
+ "data": [
+        {
+  "id": 23, 
+            "parentID": 0,
+            "name": "Üst Sonuç",
+            "childItem": [
+                {
+                    "id": 21,
+                    "parentID": 23,
+                    "name": "Alt Sonuç1",
+                    "childItem": null
+                },
+                {
+                    "id": 49,
+                    "parentID": 23,
+                    "name": "Alt Sonuç 2",
+                    "childItem": null
+                }
+            ]
+
+      }
+]
+•	"id": sonuca ait kimliği belirtir,sonuç kaydetme işleminde bu alandaki bilgi kullanılır, 
+•	"parentID":bağlı olduğu üst sonucun kimliğini belirtir eğer “0” ise üst sonuç anlamına gelir,
+•	"name": Seçenek Adı
+•	"childItem":Seçeneğin alt seçeneklerini belirtir eğer bir alt sonuç ise null olarak gelmektedir.
+
+
+
+
+
+
+ 
+Arama Sonucu Kaydetme
+WapCRM sistemine arama sonucu kaydetmek için kullanılır. Request Tipi GET veya POST Olabilir
+Requuest URL :https://cxapi.wapcrm.net/api/addconversation
+
+Request Model
+{
+     Kırmızı renkte işaretlenmiş alanların gönderilmesi  zorunludur.
+    "PhoneNumber": Müşteri Telefon numarası,
+    "ExtensionNumber": Aramayı yapan dahili bilgisi,
+    "Note": Arama ile ilgili not bilgisi,
+    "PbxPhoneNumber": Müşterinin arandığı santral numarası,
+    "CallID": Aramaya ait Santral Çağrı(CAllid),
+    "ConversationType": Aramanın tipini belirtir,
+•	1:Giden Arama
+•	2:Gelen Arama
+•	3:Gelen Arama Kaçan Çağrı
+•	4:Giden Arama Cevaplanmamış Çağrı
+
+    "RingSecond":Çaldırma Süresi saniye formatından gönderilmelidir,
+    "CallTimeSecond": Görüşme Süresi saniye formatından gönderilmelidir,
+    "ConversationDateTimeSpan":Görüşmenin Yapıldığı zamanın TimeStamp bilgisi saniye formatında
+    "ResultID": Üst Sonuç ID,
+    "ChildResultID":Alt Sonuç ID
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

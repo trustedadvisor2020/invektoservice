@@ -124,6 +124,7 @@ InvektoServis/
    - "Açık görünüyor" ≠ "Soru sormaya gerek yok"
    - Her varsayım = potansiyel yanlış yön
    - Q "skip interview" demeden koda geçme
+   - **🔴 ŞEYTANIN AVUKATLIĞI (PP-006):** Q'yu challenge et, alternatifler sun, edge case'leri sor, trade-off'ları belirt - Q "uyandırılmak" istiyor, pasif kalmak DEĞİL!
 
 6. **Heavy Load Ready:** System will serve **thousands of concurrent users** under stress. Code must:
    - Handle concurrent access safely
