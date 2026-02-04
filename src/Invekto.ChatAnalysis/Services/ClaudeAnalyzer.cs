@@ -21,6 +21,11 @@ public sealed class ClaudeAnalyzer : IDisposable
     private const int MaxTokens = 4096; // Increased for 15 criteria
     private const int TimeoutMs = 30000; // 30 second timeout
 
+    /// <summary>
+    /// Supported output languages. Unsupported languages fall back to "tr".
+    /// </summary>
+    public static readonly HashSet<string> SupportedLanguages = new(StringComparer.OrdinalIgnoreCase) { "tr", "en" };
+
     public ClaudeAnalyzer(string apiKey)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -43,15 +48,24 @@ public sealed class ClaudeAnalyzer : IDisposable
     /// <summary>
     /// Analyze chat messages with 15 criteria and label selection
     /// </summary>
+    /// <param name="messages">List of conversation messages</param>
+    /// <param name="labelSearchText">Comma-separated available labels</param>
+    /// <param name="lang">Output language: "tr" (default), "en". Unsupported values fall back to "tr".</param>
+    /// <returns>Analysis result with language used in ActualLanguage property</returns>
     public async Task<ClaudeAnalysisResult> AnalyzeAsync(
         List<MessageItem> messages,
-        string? labelSearchText)
+        string? labelSearchText,
+        string lang = "tr")
     {
         try
         {
-            var conversationText = FormatConversation(messages);
+            // Normalize and validate language - fallback to Turkish for unsupported
+            var requestedLang = string.IsNullOrWhiteSpace(lang) ? "tr" : lang.ToLowerInvariant();
+            var language = SupportedLanguages.Contains(requestedLang) ? requestedLang : "tr";
+
+            var conversationText = FormatConversation(messages, language);
             var availableLabels = ParseLabels(labelSearchText);
-            var prompt = BuildPrompt(conversationText, availableLabels);
+            var prompt = BuildPrompt(conversationText, availableLabels, language);
 
             var request = new ClaudeRequest
             {
@@ -105,12 +119,16 @@ public sealed class ClaudeAnalyzer : IDisposable
         }
     }
 
-    private static string FormatConversation(List<MessageItem> messages)
+    private static string FormatConversation(List<MessageItem> messages, string language)
     {
         var sb = new StringBuilder();
+        var (agentLabel, customerLabel) = language == "en"
+            ? ("Agent", "Customer")
+            : ("Temsilci", "Müşteri");
+
         foreach (var msg in messages.Take(100)) // Limit to 100 messages
         {
-            var sender = msg.Source.ToUpperInvariant() == "AGENT" ? "Temsilci" : "Müşteri";
+            var sender = msg.Source.ToUpperInvariant() == "AGENT" ? agentLabel : customerLabel;
             sb.AppendLine($"{sender}: {msg.Message}");
         }
         return sb.ToString();
@@ -126,7 +144,14 @@ public sealed class ClaudeAnalyzer : IDisposable
             .ToList();
     }
 
-    private static string BuildPrompt(string conversation, List<string> availableLabels)
+    private static string BuildPrompt(string conversation, List<string> availableLabels, string language)
+    {
+        return language == "en"
+            ? BuildEnglishPrompt(conversation, availableLabels)
+            : BuildTurkishPrompt(conversation, availableLabels);
+    }
+
+    private static string BuildTurkishPrompt(string conversation, List<string> availableLabels)
     {
         var labelsSection = availableLabels.Count > 0
             ? $"Mevcut etiketler: {string.Join(", ", availableLabels)}"
@@ -174,6 +199,72 @@ SADECE JSON formatında cevap ver, başka metin ekleme:
 {{
   ""SelectedLabels"": [""etiket1"", ""etiket2""],
   ""SuggestedLabels"": [""yeni1"", ""yeni2""],
+  ""Content"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""Attitude"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""ApproachRecommendation"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""PurchaseProbability"": {{""Summary"": ""..."", ""Details"": ""..."", ""Percentage"": 0, ""Color"": ""red""}},
+  ""Needs"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""DecisionProcess"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SalesBarriers"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CommunicationStyle"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CustomerProfile"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SatisfactionAndFeedback"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""OfferAndConversionRate"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SupportStrategy"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CompetitorAnalysis"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""BehaviorPatterns"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""RepresentativeResponseSuggestion"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+    }
+
+    private static string BuildEnglishPrompt(string conversation, List<string> availableLabels)
+    {
+        var labelsSection = availableLabels.Count > 0
+            ? $"Available labels: {string.Join(", ", availableLabels)}"
+            : "No label list provided";
+
+        return $@"I'm giving you a customer-agent conversation and a label list. Analyze this conversation and respond in JSON format.
+
+{labelsSection}
+
+Conversation:
+{conversation}
+
+---
+
+Analyze the following 15 criteria. For each criterion:
+- ""Summary"": 1-2 word summary
+- ""Details"": At least 2 sentences explanation
+
+For PurchaseProbability additionally:
+- ""Percentage"": Number between 0-100
+- ""Color"": ""red"" (0-50) or ""green"" (51-100)
+
+Also:
+- ""SelectedLabels"": Select labels from available list that relate to the conversation (array)
+- ""SuggestedLabels"": Suggest 2 new labels not in the list (array)
+
+Criteria:
+1. Content: Which service or product the customer is interested in
+2. Attitude: Customer's attitude (positive, neutral, negative)
+3. ApproachRecommendation: Approach suggestion for the agent
+4. PurchaseProbability: Purchase probability (% and color)
+5. Needs: Customer's explicit/implicit needs
+6. DecisionProcess: Decision-making speed and comparison tendency
+7. SalesBarriers: Factors preventing purchase
+8. CommunicationStyle: Customer's tone and preferred communication style
+9. CustomerProfile: Demographic/psychographic profile and service suggestion
+10. SatisfactionAndFeedback: Satisfaction evaluation plan
+11. OfferAndConversionRate: Offer response and conversion analysis
+12. SupportStrategy: Long-term support strategy
+13. CompetitorAnalysis: Suggestion for highlighting competitive advantages
+14. BehaviorPatterns: Purchase behavior patterns
+15. RepresentativeResponseSuggestion: Ideal response suggestion for agent (1 sentence, clear, concise, appropriate for customer profile)
+
+Respond ONLY in JSON format, do not add any other text:
+{{
+  ""SelectedLabels"": [""label1"", ""label2""],
+  ""SuggestedLabels"": [""new1"", ""new2""],
   ""Content"": {{""Summary"": ""..."", ""Details"": ""...""}},
   ""Attitude"": {{""Summary"": ""..."", ""Details"": ""...""}},
   ""ApproachRecommendation"": {{""Summary"": ""..."", ""Details"": ""...""}},

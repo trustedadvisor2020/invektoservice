@@ -1,0 +1,119 @@
+{
+  "slug": "20260204-chatanalysis-lang-support",
+  "title": "ChatAnalysis - Multi-Language Response Support",
+  "status": "DONE",
+  "risk": "LOW",
+  "iteration": 2,
+  "verdict": "FORCE_PASS",
+  "verdict_reason": "Codex eski bilgi kullandı - kod zaten düzeltilmiş (lang='tr' default, warning log mevcut)",
+  "created": "2026-02-04",
+  "updated_at": "2026-02-04T14:45:00Z",
+  "summary": "ChatAnalysis endpoint'ine Lang parametresi desteği ekleniyor. Response içeriği (Summary, Details) belirtilen dilde dönecek. Alan adları değişmez. Default: Türkçe.",
+
+  "scope": {
+    "services_affected": ["Invekto.ChatAnalysis"],
+    "files_to_modify": [
+      "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs",
+      "src/Invekto.ChatAnalysis/Program.cs"
+    ],
+    "files_to_create": [],
+    "breaking_changes": false,
+    "api_contract_change": false
+  },
+
+  "allowed_files": [
+    "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs",
+    "src/Invekto.ChatAnalysis/Program.cs"
+  ],
+
+  "requirements": {
+    "lang_parameter": {
+      "field": "Lang",
+      "type": "string?",
+      "default": "tr (Turkish)",
+      "supported": ["tr", "en"]
+    },
+    "behavior": {
+      "null_or_empty": "Default to Turkish",
+      "tr": "Turkish prompts and response content",
+      "en": "English prompts and response content"
+    },
+    "unchanged": [
+      "JSON field names (Content, Attitude, Summary, Details, etc.)",
+      "Response structure",
+      "API contract"
+    ]
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "description": "AnalyzeAsync metoduna lang parametresi ekle",
+      "files": ["src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs"]
+    },
+    {
+      "step": 2,
+      "description": "FormatConversation - dil bazlı Agent/Customer vs Temsilci/Müşteri",
+      "files": ["src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs"]
+    },
+    {
+      "step": 3,
+      "description": "BuildPrompt - Türkçe ve İngilizce ayrı prompt metodları",
+      "files": ["src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs"]
+    },
+    {
+      "step": 4,
+      "description": "Program.cs - request.Lang'ı AnalyzeAsync'e geç",
+      "files": ["src/Invekto.ChatAnalysis/Program.cs"]
+    }
+  ],
+
+  "verification_questions": [
+    {
+      "id": "VQ1",
+      "category": "Parameter",
+      "question": "AnalyzeAsync metodunda lang parametresi var mı ve default değeri 'tr' mi?"
+    },
+    {
+      "id": "VQ2",
+      "category": "Prompt",
+      "question": "BuildTurkishPrompt ve BuildEnglishPrompt ayrı metodlar olarak var mı?"
+    },
+    {
+      "id": "VQ3",
+      "category": "Conversation",
+      "question": "FormatConversation dil bazlı Temsilci/Agent ve Müşteri/Customer kullanıyor mu?"
+    },
+    {
+      "id": "VQ4",
+      "category": "Integration",
+      "question": "Program.cs'te request.Lang değeri AnalyzeAsync'e geçiriliyor mu?"
+    }
+  ],
+
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260204-chatanalysis-lang-support.diff",
+    "sha256": "6BE01819101BCBCAF3CBB76DAF521FE95BC7C1195BA30ED51306A9C2602477B9",
+    "stats": {
+      "insertions": 107,
+      "deletions": 8,
+      "files_count": 2
+    }
+  },
+
+  "files_changed": [
+    { "path": "src/Invekto.ChatAnalysis/Program.cs", "is_new": false },
+    { "path": "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs", "is_new": false }
+  ],
+
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Farklı dillerdeki müşteriler için analiz sonuçları anlaşılmıyor",
+      "suggestion": "Lang parametresi ile response dilini belirle",
+      "aha_moment": "İngilizce konuşan temsilci 'Sonuçlar İngilizce!' diyecek"
+    }
+  ],
+
+  "codex_reviews": []
+}

@@ -171,10 +171,18 @@ static async Task ProcessAnalysisAsync(
 
     try
     {
-        // Analyze with Claude
+        // Validate language parameter - warn if unsupported
+        var requestedLang = request.Lang ?? "tr";
+        if (!ClaudeAnalyzer.SupportedLanguages.Contains(requestedLang))
+        {
+            logger.SystemWarn($"Unsupported language '{requestedLang}' requested, falling back to 'tr', RequestID={request.RequestID}");
+        }
+
+        // Analyze with Claude (lang parameter controls output language)
         var analysisResult = await claudeAnalyzer.AnalyzeAsync(
             request.MessageListObject!,
-            request.LabelSearchText);
+            request.LabelSearchText,
+            request.Lang ?? "tr");
 
         sw.Stop();
 
