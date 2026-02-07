@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
-import type { LogEntry, LogContextResponse } from '../lib/api';
+import { Search, Filter, RefreshCw, ChevronDown, ChevronUp, Clock, Layers } from 'lucide-react';
+import type { LogGroup, LogEntry } from '../lib/api';
 import { api } from '../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 import { Badge } from './ui/Badge';
@@ -10,7 +10,6 @@ import { Select } from './ui/Select';
 import { formatTimestamp, cn } from '../lib/utils';
 
 interface LogStreamProps {
-  initialEntries?: LogEntry[];
   initialFilter?: {
     levels?: string[];
     service?: string;
@@ -19,12 +18,58 @@ interface LogStreamProps {
   };
 }
 
-export function LogStream({ initialEntries = [], initialFilter }: LogStreamProps) {
-  const [entries, setEntries] = useState<LogEntry[]>(initialEntries);
+function formatDurationMs(ms: number | null): string {
+  if (ms == null) return '-';
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
+}
+
+function formatDurationMsDetailed(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${ms.toLocaleString('tr-TR')}ms (~${(ms / 1000).toFixed(0)}s)`;
+  return `${(ms / 60000).toFixed(1)}m`;
+}
+
+function formatTimeWithMs(timestamp: string): string {
+  const d = new Date(timestamp);
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  const ss = d.getSeconds().toString().padStart(2, '0');
+  const ms = d.getMilliseconds();
+  if (ms === 0) return `${hh}:${mm}:${ss}`;
+  return `${hh}:${mm}:${ss}.${ms.toString().padStart(3, '0')}`;
+}
+
+function computeStepDuration(
+  entry: LogEntry,
+  index: number,
+  entries: LogEntry[]
+): number | null {
+  // If entry has its own durationMs, use it
+  if (entry.durationMs != null && entry.durationMs > 0) return entry.durationMs;
+  // For first entry, no delta to compute
+  if (index === 0) return null;
+  // Compute delta from previous entry's timestamp
+  const prev = new Date(entries[index - 1].timestamp).getTime();
+  const curr = new Date(entry.timestamp).getTime();
+  const delta = curr - prev;
+  if (delta <= 0) return null;
+  return delta;
+}
+
+function getLevelVariant(level: string): 'error' | 'warning' | 'info' {
+  switch (level) {
+    case 'ERROR': return 'error';
+    case 'WARN': return 'warning';
+    default: return 'info';
+  }
+}
+
+export function LogStream({ initialFilter }: LogStreamProps) {
+  const [groups, setGroups] = useState<LogGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [context, setContext] = useState<LogContextResponse | null>(null);
-  const [contextLoading, setContextLoading] = useState(false);
 
   // Filters
   const [levels, setLevels] = useState<string[]>(initialFilter?.levels || ['ERROR', 'WARN', 'INFO']);
@@ -34,13 +79,13 @@ export function LogStream({ initialEntries = [], initialFilter }: LogStreamProps
   const fetchLogs = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.getLogs({
+      const response = await api.getLogsGrouped({
         level: levels,
         service: service || undefined,
         search: search || undefined,
-        limit: 100,
+        limit: 50,
       });
-      setEntries(response.entries);
+      setGroups(response.groups);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
     } finally {
@@ -60,38 +105,8 @@ export function LogStream({ initialEntries = [], initialFilter }: LogStreamProps
     );
   };
 
-  const handleExpand = async (entry: LogEntry, index: number) => {
-    const id = entry.id || `${index}`;
-    if (expandedId === id) {
-      setExpandedId(null);
-      setContext(null);
-      return;
-    }
-
-    setExpandedId(id);
-    setContextLoading(true);
-
-    try {
-      const parts = entry.id?.split('_line_') || [];
-      if (parts.length === 2) {
-        const file = `${parts[0]}.jsonl`;
-        const line = parseInt(parts[1], 10);
-        const ctx = await api.getLogContext(file, line, 5);
-        setContext(ctx);
-      }
-    } catch (error) {
-      console.error('Failed to fetch context:', error);
-    } finally {
-      setContextLoading(false);
-    }
-  };
-
-  const getLevelVariant = (level: string): 'error' | 'warning' | 'info' => {
-    switch (level) {
-      case 'ERROR': return 'error';
-      case 'WARN': return 'warning';
-      default: return 'info';
-    }
+  const toggleExpand = (requestId: string) => {
+    setExpandedId(prev => prev === requestId ? null : requestId);
   };
 
   return (
@@ -101,6 +116,7 @@ export function LogStream({ initialEntries = [], initialFilter }: LogStreamProps
           <CardTitle className="flex items-center gap-2">
             <Filter className="w-4 h-4 flex-shrink-0" />
             <span>Log Stream</span>
+            <span className="text-xs font-normal text-gray-400 ml-1">İşlem bazlı</span>
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoading}>
             <RefreshCw className={cn("w-4 h-4 flex-shrink-0", isLoading && "animate-spin")} />
@@ -149,103 +165,147 @@ export function LogStream({ initialEntries = [], initialFilter }: LogStreamProps
       </CardHeader>
 
       <CardContent className="flex-1 overflow-auto">
-        {isLoading && entries.length === 0 ? (
+        {isLoading && groups.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-gray-500">
             Loading...
           </div>
-        ) : entries.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-gray-500">
             No logs found
           </div>
         ) : (
-          <div className="space-y-1.5">
-            {entries.map((entry, index) => {
-              const id = entry.id || `${index}`;
-              const isExpanded = expandedId === id;
+          <div className="space-y-2">
+            {groups.map((group) => {
+              const isExpanded = expandedId === group.requestId;
 
               return (
                 <div
-                  key={id}
+                  key={group.requestId}
                   className={cn(
                     "border rounded-lg overflow-hidden transition-all duration-150",
                     isExpanded ? "border-blue-200 bg-blue-50/30" : "border-gray-200 hover:border-gray-300"
                   )}
                 >
+                  {/* Group header */}
                   <button
                     className="w-full px-3 py-2.5 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors"
-                    onClick={() => handleExpand(entry, index)}
+                    onClick={() => toggleExpand(group.requestId)}
                   >
-                    <Badge variant={getLevelVariant(entry.level)} className="shrink-0 w-14 justify-center">
-                      {entry.level}
+                    <Badge variant={getLevelVariant(group.level)} className="shrink-0 w-14 justify-center">
+                      {group.level}
                     </Badge>
                     <span className="text-xs text-gray-500 shrink-0 w-28 font-mono">
-                      {formatTimestamp(entry.timestamp)}
+                      {formatTimestamp(group.startTime)}
                     </span>
                     <span className="text-xs text-gray-400 shrink-0 w-24 truncate">
-                      {entry.service.replace('Invekto.', '')}
+                      {group.service.replace('Invekto.', '')}
                     </span>
                     <span className="flex-1 truncate text-sm text-gray-700">
-                      {entry.message}
+                      {group.summary}
                     </span>
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Duration */}
+                      {group.durationMs != null && (
+                        <span className={cn(
+                          "text-xs font-mono px-1.5 py-0.5 rounded",
+                          group.durationMs > 5000 ? "bg-red-100 text-red-700" :
+                          group.durationMs > 1000 ? "bg-amber-100 text-amber-700" :
+                          "bg-green-100 text-green-700"
+                        )}>
+                          <Clock className="w-3 h-3 inline mr-0.5" />
+                          {formatDurationMs(group.durationMs)}
+                        </span>
+                      )}
+                      {/* Entry count */}
+                      {group.entryCount > 1 && (
+                        <span className="text-xs text-gray-400 font-mono">
+                          <Layers className="w-3 h-3 inline mr-0.5" />
+                          {group.entryCount}
+                        </span>
+                      )}
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      )}
+                    </div>
                   </button>
 
+                  {/* Expanded: operation timeline */}
                   {isExpanded && (
                     <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                        {entry.requestId && entry.requestId !== '-' && (
-                          <div>
-                            <span className="text-xs text-gray-500">Request ID</span>
-                            <p className="font-mono text-xs text-gray-700 truncate">{entry.requestId}</p>
-                          </div>
-                        )}
-                        {entry.route && (
-                          <div>
-                            <span className="text-xs text-gray-500">Route</span>
-                            <p className="font-mono text-xs text-gray-700">{entry.route}</p>
-                          </div>
-                        )}
-                        {entry.durationMs !== undefined && (
-                          <div>
-                            <span className="text-xs text-gray-500">Duration</span>
-                            <p className="text-gray-700">{entry.durationMs}ms</p>
-                          </div>
-                        )}
-                        {entry.errorCode && (
-                          <div>
-                            <span className="text-xs text-gray-500">Error Code</span>
-                            <Badge variant="error">{entry.errorCode}</Badge>
-                          </div>
+                      {/* Operation header */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs text-gray-500">İşlem:</span>
+                        <span className="font-mono text-xs text-gray-700 break-all select-all">
+                          {group.requestId}
+                        </span>
+                        {group.route && (
+                          <>
+                            <span className="text-xs text-gray-400">|</span>
+                            <span className="font-mono text-xs text-gray-500">{group.route}</span>
+                          </>
                         )}
                       </div>
 
-                      {/* Context window */}
-                      {contextLoading ? (
-                        <div className="text-gray-500 text-center py-3">Loading context...</div>
-                      ) : context && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="text-xs text-gray-500 mb-2">Context (+-5 lines)</div>
-                          <div className="space-y-0.5 font-mono text-xs bg-white rounded-lg border border-gray-200 p-2">
-                            {context.before.map((ctx, i) => (
-                              <div key={`before-${i}`} className="text-gray-500 truncate py-0.5">
-                                {ctx.message}
-                              </div>
-                            ))}
-                            <div className="bg-amber-100 px-2 py-1 -mx-2 text-amber-800 truncate font-medium">
-                              {context.target.message}
-                            </div>
-                            {context.after.map((ctx, i) => (
-                              <div key={`after-${i}`} className="text-gray-500 truncate py-0.5">
-                                {ctx.message}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      {/* Timeline table */}
+                      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="w-full text-xs font-mono">
+                          <thead>
+                            <tr className="bg-gray-100 text-gray-500">
+                              <th className="text-left px-3 py-1.5 w-32">Zaman</th>
+                              <th className="text-left px-3 py-1.5">Adım</th>
+                              <th className="text-right px-3 py-1.5 w-32">Süre</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.entries.map((entry: LogEntry, i: number) => {
+                              const stepDuration = computeStepDuration(entry, i, group.entries);
+                              return (
+                                <tr
+                                  key={i}
+                                  className={cn(
+                                    "border-t border-gray-100",
+                                    entry.level === 'ERROR' ? "bg-red-50/50" :
+                                    entry.level === 'WARN' ? "bg-amber-50/50" : ""
+                                  )}
+                                >
+                                  <td className="px-3 py-1.5 text-gray-400 whitespace-nowrap align-top">
+                                    {formatTimeWithMs(entry.timestamp)}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-gray-700 align-top">
+                                    <div className="flex items-center gap-1.5">
+                                      {entry.level !== 'INFO' && (
+                                        <Badge
+                                          variant={getLevelVariant(entry.level)}
+                                          className="shrink-0 text-[10px] px-1 py-0"
+                                        >
+                                          {entry.level}
+                                        </Badge>
+                                      )}
+                                      <span>{entry.message}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right whitespace-nowrap align-top">
+                                    {stepDuration != null ? (
+                                      <span className={cn(
+                                        "px-1.5 py-0.5 rounded",
+                                        stepDuration > 5000 ? "bg-red-100 text-red-700" :
+                                        stepDuration > 1000 ? "bg-amber-100 text-amber-700" :
+                                        "bg-green-100 text-green-700"
+                                      )}>
+                                        {formatDurationMsDetailed(stepDuration)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-300">-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -257,3 +317,4 @@ export function LogStream({ initialEntries = [], initialFilter }: LogStreamProps
     </Card>
   );
 }
+

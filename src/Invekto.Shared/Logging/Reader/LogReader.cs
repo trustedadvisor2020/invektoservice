@@ -156,6 +156,92 @@ public sealed class LogReader
     }
 
     /// <summary>
+    /// Query logs grouped by requestId (for operation-based view)
+    /// </summary>
+    public async Task<LogGroupedResult> QueryLogsGroupedAsync(LogQueryOptions options)
+    {
+        var limit = options.Limit ?? 50;
+        // Fetch more raw entries to form complete groups
+        var rawOptions = new LogQueryOptions
+        {
+            Levels = options.Levels,
+            Service = options.Service,
+            Search = options.Search,
+            After = options.After,
+            Limit = limit * 10 // Fetch extra to ensure complete groups
+        };
+
+        var rawResult = await QueryLogsAsync(rawOptions);
+        var entries = rawResult.Entries;
+
+        // Group by requestId
+        var groups = new List<LogGroupDto>();
+
+        var grouped = entries
+            .GroupBy(e => e.RequestId ?? "-")
+            .ToList();
+
+        foreach (var group in grouped)
+        {
+            var orderedEntries = group.OrderBy(e => e.Timestamp).ToList();
+            var firstEntry = orderedEntries.First();
+            var lastEntry = orderedEntries.Last();
+
+            // Determine highest severity: ERROR > WARN > INFO
+            var highestLevel = "INFO";
+            if (group.Any(e => e.Level == "ERROR")) highestLevel = "ERROR";
+            else if (group.Any(e => e.Level == "WARN")) highestLevel = "WARN";
+
+            // Duration: prefer explicit durationMs, fallback to timestamp diff
+            long? durationMs = group
+                .Where(e => e.DurationMs.HasValue)
+                .Select(e => e.DurationMs)
+                .FirstOrDefault();
+
+            if (!durationMs.HasValue && firstEntry.Timestamp.HasValue && lastEntry.Timestamp.HasValue)
+            {
+                var diff = (lastEntry.Timestamp.Value - firstEntry.Timestamp.Value).TotalMilliseconds;
+                if (diff > 0) durationMs = (long)diff;
+            }
+
+            // Find the most informative message (prefer non-system messages)
+            var summary = group
+                .Where(e => !string.IsNullOrEmpty(e.Message) && e.Message != "-")
+                .OrderByDescending(e => e.Level == "ERROR" ? 2 : e.Level == "WARN" ? 1 : 0)
+                .Select(e => e.Message)
+                .FirstOrDefault() ?? "-";
+
+            groups.Add(new LogGroupDto
+            {
+                RequestId = group.Key,
+                StartTime = firstEntry.Timestamp,
+                EndTime = lastEntry.Timestamp,
+                DurationMs = durationMs,
+                Service = firstEntry.Service ?? "-",
+                Level = highestLevel,
+                Route = group.Select(e => e.Route).FirstOrDefault(r => !string.IsNullOrEmpty(r)),
+                Status = group.Select(e => e.Status).FirstOrDefault(s => !string.IsNullOrEmpty(s)),
+                ErrorCode = group.Select(e => e.ErrorCode).FirstOrDefault(c => !string.IsNullOrEmpty(c)),
+                EntryCount = orderedEntries.Count,
+                Summary = summary!,
+                Entries = orderedEntries
+            });
+        }
+
+        // Sort groups by most recent first
+        var sorted = groups
+            .OrderByDescending(g => g.StartTime)
+            .Take(limit)
+            .ToList();
+
+        return new LogGroupedResult
+        {
+            Groups = sorted,
+            HasMore = groups.Count > limit
+        };
+    }
+
+    /// <summary>
     /// Get context around a specific log entry (+-N lines)
     /// </summary>
     public async Task<LogContextResult> GetLogContextAsync(string fileName, int lineNumber, int range = 10)
@@ -447,6 +533,57 @@ public sealed class LogContextResult
     public LogEntryDto? Target { get; set; }
     public List<LogEntryDto> Before { get; set; } = new();
     public List<LogEntryDto> After { get; set; } = new();
+}
+
+/// <summary>
+/// A group of log entries sharing the same requestId (one operation)
+/// </summary>
+public sealed class LogGroupDto
+{
+    [JsonPropertyName("requestId")]
+    public string RequestId { get; set; } = "-";
+
+    [JsonPropertyName("startTime")]
+    public DateTime? StartTime { get; set; }
+
+    [JsonPropertyName("endTime")]
+    public DateTime? EndTime { get; set; }
+
+    [JsonPropertyName("durationMs")]
+    public long? DurationMs { get; set; }
+
+    [JsonPropertyName("service")]
+    public string Service { get; set; } = "-";
+
+    [JsonPropertyName("level")]
+    public string Level { get; set; } = "INFO";
+
+    [JsonPropertyName("route")]
+    public string? Route { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("errorCode")]
+    public string? ErrorCode { get; set; }
+
+    [JsonPropertyName("entryCount")]
+    public int EntryCount { get; set; }
+
+    [JsonPropertyName("summary")]
+    public string Summary { get; set; } = "-";
+
+    [JsonPropertyName("entries")]
+    public List<LogEntryDto> Entries { get; set; } = new();
+}
+
+/// <summary>
+/// Result of grouped log query
+/// </summary>
+public sealed class LogGroupedResult
+{
+    public List<LogGroupDto> Groups { get; set; } = new();
+    public bool HasMore { get; set; }
 }
 
 /// <summary>

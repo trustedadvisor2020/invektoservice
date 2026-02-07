@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Download } from 'lucide-react';
 import { api, type HealthResponse, type ErrorStatsResponse, type ServiceHealth } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
 import { HealthCard } from '../components/HealthCard';
@@ -56,10 +56,33 @@ export function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">Servis durumu ve metrikler</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={refreshHealth} disabled={healthLoading}>
-          <RefreshCw className={`w-4 h-4 flex-shrink-0 ${healthLoading ? 'animate-spin' : ''}`} />
-          <span>Yenile</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const link = document.createElement('a');
+              link.href = '/api/ops/postman';
+              link.download = 'InvektoServis.postman_collection.json';
+              // Add basic auth header via fetch, then trigger download
+              fetch('/api/ops/postman', { headers: api.getAuthHeaders() })
+                .then(r => r.blob())
+                .then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  link.href = url;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                });
+            }}
+          >
+            <Download className="w-4 h-4 flex-shrink-0" />
+            <span>Postman</span>
+          </Button>
+          <Button variant="secondary" size="sm" onClick={refreshHealth} disabled={healthLoading}>
+            <RefreshCw className={`w-4 h-4 flex-shrink-0 ${healthLoading ? 'animate-spin' : ''}`} />
+            <span>Yenile</span>
+          </Button>
+        </div>
       </div>
 
       {/* Alert banner */}
@@ -79,7 +102,7 @@ export function DashboardPage() {
             <HealthCard
               key={service.name}
               service={service}
-              onRestart={service.name.includes('ChatAnalysis') ? () => handleRestart(service) : undefined}
+              onRestart={() => handleRestart(service)}
               isRestarting={restartingService === service.name}
             />
           ))

@@ -112,13 +112,16 @@ app.MapPost("/api/v1/analyze", (
             statusCode: 400);
     }
 
+    // Set X-Request-Id so TrafficLogging middleware groups this with background steps
+    ctx.Request.Headers["X-Request-Id"] = request.RequestID;
+
     // Check if messages exist
     var hasMessages = request.MessageListObject != null && request.MessageListObject.Count > 0;
 
     if (!hasMessages)
     {
         // Send error callback immediately for empty messages
-        jsonLogger.SystemInfo($"No messages to analyze, sending error callback, RequestID={request.RequestID}");
+        jsonLogger.StepInfo("Mesaj yok, hata callback gönderiliyor", request.RequestID);
 
         _ = Task.Run(async () =>
         {
@@ -141,7 +144,7 @@ app.MapPost("/api/v1/analyze", (
         return Results.Ok(ChatAnalysisAcceptedResponse.Processing(request.RequestID));
     }
 
-    jsonLogger.SystemInfo($"Analysis request accepted, RequestID={request.RequestID}, MessageCount={request.MessageListObject!.Count}");
+    jsonLogger.StepInfo($"Analiz isteği alındı ({request.MessageListObject!.Count} mesaj)", request.RequestID);
 
     // Start background processing
     _ = Task.Run(async () =>
@@ -157,6 +160,30 @@ app.MapPost("/api/v1/analyze", (
     return Results.Ok(ChatAnalysisAcceptedResponse.Processing(request.RequestID));
 });
 
+// Endpoint discovery - returns all registered endpoints for this service (no auth, internal only)
+app.MapGet("/api/ops/endpoints", () =>
+{
+    var endpoints = new List<EndpointInfo>
+    {
+        // Internal API (called by Backend)
+        new() { Method = "POST", Path = "/api/v1/analyze", Description = "Chat analysis (async processing)", Auth = "none", Category = "API" },
+
+        // Health
+        new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
+        new() { Method = "GET", Path = "/ready", Description = "Readiness probe", Auth = "none", Category = "Health" },
+
+        // Discovery
+        new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
+    };
+
+    return Results.Ok(new EndpointDiscoveryResponse
+    {
+        Service = ServiceConstants.ChatAnalysisServiceName,
+        Port = ServiceConstants.ChatAnalysisPort,
+        Endpoints = endpoints
+    });
+});
+
 logger.SystemInfo($"ChatAnalysis service starting on port {listenPort}");
 app.Run();
 
@@ -167,6 +194,7 @@ static async Task ProcessAnalysisAsync(
     CallbackService callbackService,
     JsonLinesLogger logger)
 {
+    var rid = request.RequestID;
     var sw = System.Diagnostics.Stopwatch.StartNew();
 
     try
@@ -175,11 +203,11 @@ static async Task ProcessAnalysisAsync(
         var requestedLang = request.Lang ?? "tr";
         if (!ClaudeAnalyzer.SupportedLanguages.Contains(requestedLang))
         {
-            logger.SystemWarn($"Unsupported language '{requestedLang}' requested, falling back to 'tr', RequestID={request.RequestID}");
+            logger.StepWarn($"Desteklenmeyen dil '{requestedLang}', 'tr' kullanılıyor", rid);
         }
 
         // Analyze with Claude (lang parameter controls output language)
-        var analysisResult = await claudeAnalyzer.AnalyzeAsync(
+        var analysisResult = await claudeAnalyzer.AnalyzeParallelAsync(
             request.MessageListObject!,
             request.LabelSearchText,
             request.Lang ?? "tr");
@@ -189,9 +217,11 @@ static async Task ProcessAnalysisAsync(
         if (!analysisResult.IsSuccess)
         {
             // Claude error - log only, don't send callback (per Q's requirement)
-            logger.SystemError($"Claude analysis failed, RequestID={request.RequestID}, Error={analysisResult.ErrorMessage}, Duration={sw.ElapsedMilliseconds}ms");
+            logger.StepError($"Claude analiz hatası: {analysisResult.ErrorMessage}", rid, sw.ElapsedMilliseconds);
             return;
         }
+
+        logger.StepInfo("Claude analizi tamamlandı", rid, sw.ElapsedMilliseconds);
 
         var analysis = analysisResult.Data!;
 
@@ -229,7 +259,9 @@ static async Task ProcessAnalysisAsync(
             AnalyzedAt = DateTime.UtcNow
         };
 
-        logger.SystemInfo($"Analysis completed, sending callback, RequestID={request.RequestID}, Duration={sw.ElapsedMilliseconds}ms");
+        // Extract callback host for readable log
+        var callbackHost = new Uri(request.ChatServerURL).Host;
+        var cbSw = System.Diagnostics.Stopwatch.StartNew();
 
         // Send callback
         var callbackSuccess = await callbackService.SendCallbackAsync(
@@ -237,19 +269,21 @@ static async Task ProcessAnalysisAsync(
             callbackResponse,
             request.RequestID);
 
+        cbSw.Stop();
+
         if (callbackSuccess)
         {
-            logger.SystemInfo($"Callback sent successfully, RequestID={request.RequestID}");
+            logger.StepInfo($"Callback gönderildi ({callbackHost})", rid, cbSw.ElapsedMilliseconds);
         }
         else
         {
-            logger.SystemError($"Callback failed after retries, RequestID={request.RequestID}");
+            logger.StepError($"Callback başarısız ({callbackHost})", rid, cbSw.ElapsedMilliseconds);
         }
     }
     catch (Exception ex)
     {
         sw.Stop();
-        logger.SystemError($"Analysis processing failed, RequestID={request.RequestID}, Error={ex.Message}, Duration={sw.ElapsedMilliseconds}ms");
+        logger.StepError($"İşlem hatası: {ex.Message}", rid, sw.ElapsedMilliseconds);
     }
 }
 

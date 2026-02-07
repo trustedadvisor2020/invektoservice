@@ -46,6 +46,26 @@ export interface LogContextResponse {
   after: LogEntry[];
 }
 
+export interface LogGroup {
+  requestId: string;
+  startTime: string;
+  endTime: string;
+  durationMs: number | null;
+  service: string;
+  level: 'INFO' | 'WARN' | 'ERROR';
+  route?: string;
+  status?: string;
+  errorCode?: string;
+  entryCount: number;
+  summary: string;
+  entries: LogEntry[];
+}
+
+export interface LogGroupedResponse {
+  groups: LogGroup[];
+  hasMore: boolean;
+}
+
 export interface ErrorStatsBucket {
   hour: string;
   count: number;
@@ -60,6 +80,20 @@ export interface ServiceRestartResponse {
   success: boolean;
   service: string;
   message: string;
+}
+
+export interface EndpointInfo {
+  method: string;
+  path: string;
+  description: string;
+  auth: string | null;
+  category: string;
+}
+
+export interface EndpointDiscoveryResponse {
+  service: string;
+  port: number;
+  endpoints: EndpointInfo[];
 }
 
 // API Client
@@ -151,6 +185,23 @@ class OpsApiClient {
     return this.request<LogStreamResponse>(`/api/ops/logs/stream?${searchParams}`);
   }
 
+  async getLogsGrouped(params: {
+    level?: string[];
+    service?: string;
+    search?: string;
+    after?: string;
+    limit?: number;
+  }): Promise<LogGroupedResponse> {
+    const searchParams = new URLSearchParams();
+    if (params.level?.length) searchParams.set('level', params.level.join(','));
+    if (params.service) searchParams.set('service', params.service);
+    if (params.search) searchParams.set('search', params.search);
+    if (params.after) searchParams.set('after', params.after);
+    if (params.limit) searchParams.set('limit', params.limit.toString());
+
+    return this.request<LogGroupedResponse>(`/api/ops/logs/grouped?${searchParams}`);
+  }
+
   async getLogContext(file: string, line: number, range: number = 10): Promise<LogContextResponse> {
     const searchParams = new URLSearchParams({
       file,
@@ -170,6 +221,11 @@ class OpsApiClient {
     return this.request<ServiceRestartResponse>(`/api/ops/services/${serviceName}/restart`, {
       method: 'POST',
     });
+  }
+
+  // Endpoint discovery (aggregated from all services)
+  async getAllEndpoints(): Promise<{ services: EndpointDiscoveryResponse[] }> {
+    return this.request<{ services: EndpointDiscoveryResponse[] }>('/api/ops/endpoints');
   }
 
   // Legacy ops endpoints (for backward compatibility)

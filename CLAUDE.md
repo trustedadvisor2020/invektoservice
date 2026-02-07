@@ -205,6 +205,7 @@ InvektoServis/
 | DB değişikliği | `arch/db/` + servis şeması |
 | Error handling | `arch/errors.md` |
 | API contract | `arch/contracts/` |
+| Yeni endpoint | `arch/endpoints.md` |
 | Yeni servis | `arch/docs/microservice-guide.md` |
 
 All rules in `arch/`:
@@ -212,6 +213,7 @@ All rules in `arch/`:
 - `arch/errors.md` - Error codes (INV-*)
 - `arch/contracts/` - Data contracts
 - `arch/db/` - Schema definitions
+- `arch/endpoints.md` - Endpoint registration rules
 - `arch/logging.md` - Log format
 - `arch/plans/` - Feature implementation plans
 - `arch/session-memory.md` - Session context

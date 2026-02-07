@@ -91,6 +91,35 @@ public sealed class JsonLinesLogger : IDisposable
     public void SystemError(string message) => LogSystem("ERROR", message);
 
     /// <summary>
+    /// Log an operation step with a specific requestId (for grouping in dashboard timeline)
+    /// Use this for background processing steps that belong to a specific operation
+    /// </summary>
+    public void LogStep(string level, string message, string requestId, long? durationMs = null)
+    {
+        var entry = new LogEntry
+        {
+            Timestamp = DateTime.UtcNow,
+            Service = _serviceName,
+            Level = level,
+            RequestId = requestId,
+            TenantId = "-",
+            ChatId = "-",
+            DurationMs = durationMs,
+            Message = message
+        };
+
+        WriteLine(entry.ToJsonLine());
+    }
+
+    // Convenience methods for operation step logging
+    public void StepInfo(string message, string requestId, long? durationMs = null)
+        => LogStep("INFO", message, requestId, durationMs);
+    public void StepWarn(string message, string requestId, long? durationMs = null)
+        => LogStep("WARN", message, requestId, durationMs);
+    public void StepError(string message, string requestId, long? durationMs = null)
+        => LogStep("ERROR", message, requestId, durationMs);
+
+    /// <summary>
     /// Log HTTP traffic (request + response) with body content
     /// </summary>
     public void LogTraffic(
@@ -213,7 +242,8 @@ public sealed class JsonLinesLogger : IDisposable
             if (_currentFileName != fileName)
             {
                 _writer?.Dispose();
-                _writer = new StreamWriter(fileName, append: true) { AutoFlush = true };
+                var stream = new FileStream(fileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                _writer = new StreamWriter(stream) { AutoFlush = true };
                 _currentFileName = fileName;
             }
 

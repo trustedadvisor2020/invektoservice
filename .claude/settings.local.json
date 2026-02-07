@@ -17,6 +17,9 @@
       "Bash(Select-String -NotMatch \"warning\")",
       "Bash(git reset:*)",
       "Bash(git commit:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\CRMs\\InvektoServis"
     ]
   }
 }

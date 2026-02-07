@@ -64,26 +64,26 @@ public sealed class CallbackService : IDisposable
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.SystemInfo($"Callback success: {callbackUrl} (attempt {attempt}, timeout={timeoutSeconds}s), RequestID={requestId}");
+                    _logger.StepInfo($"Callback başarılı (attempt {attempt})", requestId);
                     return true;
                 }
 
                 var errorBody = await response.Content.ReadAsStringAsync();
-                _logger.SystemWarn($"Callback failed: {callbackUrl} returned {(int)response.StatusCode}, attempt {attempt}/{MaxRetries}, timeout={timeoutSeconds}s, RequestID={requestId}, Body={Truncate(errorBody, 200)}");
+                _logger.StepWarn($"Callback HTTP {(int)response.StatusCode}, attempt {attempt}/{MaxRetries}: {Truncate(errorBody, 200)}", requestId);
 
                 // Retry on ALL errors (4xx and 5xx) - removed 4xx early exit
             }
             catch (OperationCanceledException)
             {
-                _logger.SystemWarn($"Callback timeout ({timeoutSeconds}s): {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}");
+                _logger.StepWarn($"Callback timeout ({timeoutSeconds}s), attempt {attempt}/{MaxRetries}", requestId);
             }
             catch (HttpRequestException ex)
             {
-                _logger.SystemWarn($"Callback connection error: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Error={ex.Message}");
+                _logger.StepWarn($"Callback bağlantı hatası, attempt {attempt}/{MaxRetries}: {ex.Message}", requestId);
             }
             catch (Exception ex)
             {
-                _logger.SystemError($"Callback unexpected error: {callbackUrl}, attempt {attempt}/{MaxRetries}, RequestID={requestId}, Error={ex.Message}");
+                _logger.StepError($"Callback beklenmeyen hata, attempt {attempt}/{MaxRetries}: {ex.Message}", requestId);
             }
 
             // Wait before retry (exponential backoff: 1s, 2s, 4s)
@@ -94,7 +94,7 @@ public sealed class CallbackService : IDisposable
             }
         }
 
-        _logger.SystemError($"Callback failed after {MaxRetries} attempts: {callbackUrl}, RequestID={requestId}");
+        _logger.StepError($"Callback {MaxRetries} denemede başarısız: {callbackUrl}", requestId);
         return false;
     }
 

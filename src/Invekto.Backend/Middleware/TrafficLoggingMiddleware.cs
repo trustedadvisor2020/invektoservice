@@ -14,8 +14,9 @@ public sealed class TrafficLoggingMiddleware
     private readonly RequestDelegate _next;
     private readonly JsonLinesLogger _logger;
 
-    // Paths to skip logging (health checks, static files)
-    private static readonly string[] SkipPaths = { "/health", "/ops/debug", "/ops/debug2" };
+    // Paths to skip logging (health checks, dashboard UI, static assets)
+    private static readonly string[] SkipPaths = { "/health", "/api/ops/", "/ops", "/assets/", "/favicon", "/logs", "/login" };
+    private static readonly string[] SkipExtensions = { ".js", ".css", ".svg", ".png", ".ico", ".woff", ".woff2", ".map" };
 
     public TrafficLoggingMiddleware(RequestDelegate next, JsonLinesLogger logger)
     {
@@ -27,8 +28,9 @@ public sealed class TrafficLoggingMiddleware
     {
         var path = context.Request.Path.Value ?? "";
 
-        // Skip certain paths
-        if (SkipPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+        // Skip dashboard UI, static assets, and ops endpoints
+        if (SkipPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)) ||
+            SkipExtensions.Any(ext => path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
         {
             await _next(context);
             return;

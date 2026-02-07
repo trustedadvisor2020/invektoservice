@@ -17,9 +17,10 @@ public sealed class ClaudeAnalyzer : IDisposable
     private readonly JsonSerializerOptions _jsonOptions;
 
     private const string ApiUrl = "https://api.anthropic.com/v1/messages";
-    private const string Model = "claude-3-haiku-20240307";
-    private const int MaxTokens = 4096; // Increased for 15 criteria
-    private const int TimeoutMs = 30000; // 30 second timeout
+    private const string Model = "claude-3-5-haiku-20241022";
+    private const int MaxTokens = 8192; // claude-3-5-haiku max output token limit
+    private const int ParallelMaxTokens = 4096; // per-call limit for parallel mode (5-7 criteria per call)
+    private const int TimeoutMs = 120000; // 120 second timeout
 
     /// <summary>
     /// Supported output languages. Unsupported languages fall back to "tr".
@@ -116,6 +117,345 @@ public sealed class ClaudeAnalyzer : IDisposable
             return ClaudeAnalysisResult.Fail(
                 ErrorCodes.ChatAnalysisClaudeError,
                 $"Claude invalid JSON response: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Analyze chat messages using 3 parallel API calls for ~3x faster results.
+    /// Splits 15 criteria into 3 groups and runs concurrently.
+    /// Same output format as AnalyzeAsync.
+    /// </summary>
+    public async Task<ClaudeAnalysisResult> AnalyzeParallelAsync(
+        List<MessageItem> messages,
+        string? labelSearchText,
+        string lang = "tr")
+    {
+        try
+        {
+            var requestedLang = string.IsNullOrWhiteSpace(lang) ? "tr" : lang.ToLowerInvariant();
+            var language = SupportedLanguages.Contains(requestedLang) ? requestedLang : "tr";
+
+            var conversationText = FormatConversation(messages, language);
+            var availableLabels = ParseLabels(labelSearchText);
+
+            // 3 parallel API calls, each with a subset of criteria
+            var task1 = CallClaudeAsync(BuildParallelPromptLabelsCore(conversationText, availableLabels, language));
+            var task2 = CallClaudeAsync(BuildParallelPromptSales(conversationText, language));
+            var task3 = CallClaudeAsync(BuildParallelPromptStrategy(conversationText, language));
+
+            await Task.WhenAll(task1, task2, task3);
+
+            var r1 = task1.Result;
+            var r2 = task2.Result;
+            var r3 = task3.Result;
+
+            if (r1.Error != null)
+                return ClaudeAnalysisResult.Fail(ErrorCodes.ChatAnalysisClaudeError, $"Parallel call 1 (labels+core): {r1.Error}");
+            if (r2.Error != null)
+                return ClaudeAnalysisResult.Fail(ErrorCodes.ChatAnalysisClaudeError, $"Parallel call 2 (sales): {r2.Error}");
+            if (r3.Error != null)
+                return ClaudeAnalysisResult.Fail(ErrorCodes.ChatAnalysisClaudeError, $"Parallel call 3 (strategy): {r3.Error}");
+
+            return MergeParallelResults(r1.Json!, r2.Json!, r3.Json!, availableLabels);
+        }
+        catch (TaskCanceledException)
+        {
+            return ClaudeAnalysisResult.Fail(
+                ErrorCodes.ChatAnalysisClaudeTimeout,
+                $"Claude parallel timeout after {TimeoutMs}ms");
+        }
+        catch (HttpRequestException ex)
+        {
+            return ClaudeAnalysisResult.Fail(
+                ErrorCodes.ChatAnalysisClaudeError,
+                $"Claude connection error: {ex.Message}");
+        }
+    }
+
+    private async Task<(string? Json, string? Error)> CallClaudeAsync(string prompt)
+    {
+        try
+        {
+            var request = new ClaudeRequest
+            {
+                Model = Model,
+                MaxTokens = ParallelMaxTokens,
+                Messages = [new ClaudeMessage { Role = "user", Content = prompt }]
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(ApiUrl, request, _jsonOptions);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                return (null, $"Claude returned {(int)response.StatusCode}: {errorBody}");
+            }
+
+            var claudeResponse = await response.Content.ReadFromJsonAsync<ClaudeResponse>(_jsonOptions);
+
+            if (claudeResponse?.Content == null || claudeResponse.Content.Count == 0)
+                return (null, "Claude returned empty response");
+
+            var text = claudeResponse.Content[0].Text ?? "";
+            var jsonStart = text.IndexOf('{');
+            var jsonEnd = text.LastIndexOf('}');
+
+            if (jsonStart < 0 || jsonEnd <= jsonStart)
+                return (null, $"No valid JSON found: {Truncate(text, 100)}");
+
+            return (text.Substring(jsonStart, jsonEnd - jsonStart + 1), null);
+        }
+        catch (TaskCanceledException)
+        {
+            return (null, $"Timeout after {TimeoutMs}ms");
+        }
+        catch (HttpRequestException ex)
+        {
+            return (null, $"Connection error: {ex.Message}");
+        }
+    }
+
+    #region Parallel Prompt Builders
+
+    private static string BuildParallelPromptLabelsCore(string conversation, List<string> availableLabels, string language)
+    {
+        if (language == "en")
+        {
+            var labels = availableLabels.Count > 0
+                ? $"Available labels: {string.Join(", ", availableLabels)}"
+                : "No label list provided";
+
+            return $@"Analyze this customer-agent conversation. Respond ONLY in JSON.
+
+{labels}
+
+Conversation:
+{conversation}
+
+---
+
+For each criterion: ""Summary"" (1-2 words), ""Details"" (at least 2 sentences).
+PurchaseProbability: also ""Percentage"" (0-100), ""Color"" (""red"" if 0-50, ""green"" if 51-100).
+
+Criteria:
+1. Content: Which service/product the customer is interested in
+2. Attitude: Customer's attitude (positive, neutral, negative)
+3. ApproachRecommendation: Approach suggestion for the agent
+4. PurchaseProbability: Purchase probability with percentage
+5. Needs: Customer's explicit/implicit needs
+
+Also select relevant labels from the list (SelectedLabels) and suggest 2 new ones (SuggestedLabels).
+
+{{
+  ""SelectedLabels"": [""label1""],
+  ""SuggestedLabels"": [""new1"", ""new2""],
+  ""Content"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""Attitude"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""ApproachRecommendation"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""PurchaseProbability"": {{""Summary"": ""..."", ""Details"": ""..."", ""Percentage"": 0, ""Color"": ""red""}},
+  ""Needs"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+        }
+
+        var labelsTr = availableLabels.Count > 0
+            ? $"Mevcut etiketler: {string.Join(", ", availableLabels)}"
+            : "Mevcut etiket listesi yok";
+
+        return $@"Müşteri-temsilci konuşmasını analiz et. SADECE JSON formatında cevap ver.
+
+{labelsTr}
+
+Konuşma:
+{conversation}
+
+---
+
+Her kriter için: ""Summary"" (1-2 kelime), ""Details"" (en az 2 cümle).
+PurchaseProbability için ek: ""Percentage"" (0-100), ""Color"" (""red"" 0-50, ""green"" 51-100).
+
+Kriterler:
+1. Content: Müşterinin ilgilendiği hizmet/ürün
+2. Attitude: Müşteri tutumu (olumlu, nötr, negatif)
+3. ApproachRecommendation: Temsilciye yaklaşım önerisi
+4. PurchaseProbability: Satın alma olasılığı (% ve renk)
+5. Needs: Müşterinin açık/örtük ihtiyaçları
+
+Ayrıca mevcut etiketlerden ilgili olanları seç (SelectedLabels) ve 2 yeni etiket öner (SuggestedLabels).
+
+{{
+  ""SelectedLabels"": [""etiket1""],
+  ""SuggestedLabels"": [""yeni1"", ""yeni2""],
+  ""Content"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""Attitude"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""ApproachRecommendation"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""PurchaseProbability"": {{""Summary"": ""..."", ""Details"": ""..."", ""Percentage"": 0, ""Color"": ""red""}},
+  ""Needs"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+    }
+
+    private static string BuildParallelPromptSales(string conversation, string language)
+    {
+        if (language == "en")
+        {
+            return $@"Analyze this customer-agent conversation. Respond ONLY in JSON.
+
+Conversation:
+{conversation}
+
+---
+
+For each criterion: ""Summary"" (1-2 words), ""Details"" (at least 2 sentences).
+
+Criteria:
+1. DecisionProcess: Decision-making speed and comparison tendency
+2. SalesBarriers: Factors preventing purchase
+3. CommunicationStyle: Customer's tone and preferred communication style
+4. CustomerProfile: Demographic/psychographic profile and service suggestion
+5. SatisfactionAndFeedback: Satisfaction evaluation plan
+
+{{
+  ""DecisionProcess"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SalesBarriers"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CommunicationStyle"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CustomerProfile"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SatisfactionAndFeedback"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+        }
+
+        return $@"Müşteri-temsilci konuşmasını analiz et. SADECE JSON formatında cevap ver.
+
+Konuşma:
+{conversation}
+
+---
+
+Her kriter için: ""Summary"" (1-2 kelime), ""Details"" (en az 2 cümle).
+
+Kriterler:
+1. DecisionProcess: Karar alma hızı ve karşılaştırma eğilimi
+2. SalesBarriers: Satın almayı engelleyen faktörler
+3. CommunicationStyle: Müşterinin üslubu ve tercih ettiği iletişim şekli
+4. CustomerProfile: Demografik/psikografik profil ve hizmet önerisi
+5. SatisfactionAndFeedback: Memnuniyet değerlendirme planı
+
+{{
+  ""DecisionProcess"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SalesBarriers"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CommunicationStyle"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CustomerProfile"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SatisfactionAndFeedback"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+    }
+
+    private static string BuildParallelPromptStrategy(string conversation, string language)
+    {
+        if (language == "en")
+        {
+            return $@"Analyze this customer-agent conversation. Respond ONLY in JSON.
+
+Conversation:
+{conversation}
+
+---
+
+For each criterion: ""Summary"" (1-2 words), ""Details"" (at least 2 sentences).
+RepresentativeResponseSuggestion: Ideal response for the agent (1 clear sentence).
+
+Criteria:
+1. OfferAndConversionRate: Offer response and conversion analysis
+2. SupportStrategy: Long-term support strategy
+3. CompetitorAnalysis: Suggestion for highlighting competitive advantages
+4. BehaviorPatterns: Purchase behavior patterns
+5. RepresentativeResponseSuggestion: Ideal response suggestion for agent
+
+{{
+  ""OfferAndConversionRate"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SupportStrategy"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CompetitorAnalysis"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""BehaviorPatterns"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""RepresentativeResponseSuggestion"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+        }
+
+        return $@"Müşteri-temsilci konuşmasını analiz et. SADECE JSON formatında cevap ver.
+
+Konuşma:
+{conversation}
+
+---
+
+Her kriter için: ""Summary"" (1-2 kelime), ""Details"" (en az 2 cümle).
+RepresentativeResponseSuggestion: Temsilci için ideal cevap önerisi (1 cümle, açık, net).
+
+Kriterler:
+1. OfferAndConversionRate: Teklif tepkisi ve dönüşüm analizi
+2. SupportStrategy: Uzun vadeli destek stratejisi
+3. CompetitorAnalysis: Rekabet avantajlarını vurgulama önerisi
+4. BehaviorPatterns: Satın alma davranış desenleri
+5. RepresentativeResponseSuggestion: Temsilci için ideal cevap önerisi
+
+{{
+  ""OfferAndConversionRate"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""SupportStrategy"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""CompetitorAnalysis"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""BehaviorPatterns"": {{""Summary"": ""..."", ""Details"": ""...""}},
+  ""RepresentativeResponseSuggestion"": {{""Summary"": ""..."", ""Details"": ""...""}}
+}}";
+    }
+
+    #endregion
+
+    private ClaudeAnalysisResult MergeParallelResults(
+        string json1, string json2, string json3, List<string> availableLabels)
+    {
+        try
+        {
+            using var doc1 = JsonDocument.Parse(json1);
+            using var doc2 = JsonDocument.Parse(json2);
+            using var doc3 = JsonDocument.Parse(json3);
+
+            var r1 = doc1.RootElement;
+            var r2 = doc2.RootElement;
+            var r3 = doc3.RootElement;
+
+            var selectedLabels = availableLabels.Count == 0
+                ? new List<string>()
+                : ParseStringArray(r1, "SelectedLabels")
+                    .Where(l => availableLabels.Contains(l, StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+            var suggestedLabels = ParseStringArray(r1, "SuggestedLabels").Take(2).ToList();
+
+            var result = new FullAnalysisResult
+            {
+                SelectedLabels = selectedLabels,
+                SuggestedLabels = suggestedLabels,
+                // Call 1: Labels + Core
+                Content = ParseCriterion(r1, "Content"),
+                Attitude = ParseCriterion(r1, "Attitude"),
+                ApproachRecommendation = ParseCriterion(r1, "ApproachRecommendation"),
+                PurchaseProbability = ParsePurchaseProbability(r1),
+                Needs = ParseCriterion(r1, "Needs"),
+                // Call 2: Sales
+                DecisionProcess = ParseCriterion(r2, "DecisionProcess"),
+                SalesBarriers = ParseCriterion(r2, "SalesBarriers"),
+                CommunicationStyle = ParseCriterion(r2, "CommunicationStyle"),
+                CustomerProfile = ParseCriterion(r2, "CustomerProfile"),
+                SatisfactionAndFeedback = ParseCriterion(r2, "SatisfactionAndFeedback"),
+                // Call 3: Strategy
+                OfferAndConversionRate = ParseCriterion(r3, "OfferAndConversionRate"),
+                SupportStrategy = ParseCriterion(r3, "SupportStrategy"),
+                CompetitorAnalysis = ParseCriterion(r3, "CompetitorAnalysis"),
+                BehaviorPatterns = ParseCriterion(r3, "BehaviorPatterns"),
+                RepresentativeResponseSuggestion = ParseCriterion(r3, "RepresentativeResponseSuggestion")
+            };
+
+            return ClaudeAnalysisResult.Success(result);
+        }
+        catch (JsonException ex)
+        {
+            return ClaudeAnalysisResult.Fail(
+                ErrorCodes.ChatAnalysisClaudeError,
+                $"JSON parse error in parallel merge: {ex.Message}");
         }
     }
 

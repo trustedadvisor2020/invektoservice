@@ -108,6 +108,24 @@ public sealed class ChatAnalysisClient
         }
     }
 
+    public async Task<EndpointDiscoveryResponse?> GetEndpointsAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/ops/endpoints", ct);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<EndpointDiscoveryResponse>(ct);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ChatAnalysis endpoint discovery failed");
+            return null;
+        }
+    }
+
     public async Task<TestEndpointResult> TestEndpointAsync(string endpoint, CancellationToken ct = default)
     {
         try

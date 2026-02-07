@@ -1,0 +1,340 @@
+{
+  "info": {
+    "name": "InvektoServis API",
+    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- ChatAnalysis internal: No auth (localhost only)\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `ops_username`: Ops Basic Auth username\n- `ops_password`: Ops Basic Auth password",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000" },
+    { "key": "chatanalysis_url", "value": "http://localhost:7101" },
+    { "key": "ops_username", "value": "admin" },
+    { "key": "ops_password", "value": "admin123" }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "Backend - Public API",
+      "item": [
+        {
+          "name": "Chat Analyze (async)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-Id", "value": "test-{{$timestamp}}", "description": "Optional: correlation ID" },
+              { "key": "X-Tenant-Id", "value": "default", "description": "Optional: tenant ID" },
+              { "key": "X-Chat-Id", "value": "default", "description": "Optional: chat ID" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ChatID\": 12345,\n  \"InstanceID\": 1,\n  \"UserID\": 100,\n  \"RequestID\": \"test-req-001\",\n  \"ChatServerURL\": \"https://your-callback-url.com/api/callback\",\n  \"Lang\": \"tr\",\n  \"LabelSearchText\": \"Satis,Destek,Sikayet\",\n  \"MessageListObject\": [\n    {\n      \"Source\": \"CUSTOMER\",\n      \"Message\": \"Merhaba, urun fiyati hakkinda bilgi almak istiyorum\"\n    },\n    {\n      \"Source\": \"AGENT\",\n      \"Message\": \"Merhaba, size yardimci olabilirim. Hangi urun ile ilgileniyorsunuz?\"\n    },\n    {\n      \"Source\": \"CUSTOMER\",\n      \"Message\": \"Premium paket fiyati nedir?\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chat/analyze",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "chat", "analyze"]
+            },
+            "description": "Submit chat for async analysis.\n\n**Flow:** Request accepted immediately -> ChatAnalysis processes with Claude -> Result POSTed to ChatServerURL callback.\n\n**Required fields:** ChatID, InstanceID, UserID, RequestID, ChatServerURL, MessageListObject\n\n**Optional:** Lang (tr/en/de/fr/es/ar), LabelSearchText\n\n**Response:** `{ RequestID, Status: \"Processing\" }` (HTTP 200)"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Simple health check. No auth required.\n\nReturns: `{ Status, Service, Timestamp }`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Backend - Ops Dashboard",
+      "auth": {
+        "type": "basic",
+        "basic": [
+          { "key": "username", "value": "{{ops_username}}" },
+          { "key": "password", "value": "{{ops_password}}" }
+        ]
+      },
+      "item": [
+        {
+          "name": "All Services Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "health"]
+            },
+            "description": "Health status of all services with response times."
+          }
+        },
+        {
+          "name": "Endpoint Discovery",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/endpoints",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "endpoints"]
+            },
+            "description": "Returns all registered endpoints for all services (aggregated)."
+          }
+        },
+        {
+          "name": "Postman Collection Download",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/postman",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "postman"]
+            },
+            "description": "Download dynamically generated Postman collection (always in sync with actual endpoints)."
+          }
+        },
+        {
+          "name": "Log Stream",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/logs/stream?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "logs", "stream"],
+              "query": [
+                { "key": "level", "value": "ERROR", "disabled": true, "description": "Filter: INFO,WARN,ERROR (comma-separated)" },
+                { "key": "service", "value": "Invekto.ChatAnalysis", "disabled": true, "description": "Filter: service name" },
+                { "key": "search", "value": "timeout", "disabled": true, "description": "Free text search" },
+                { "key": "after", "value": "2026-02-06T00:00:00Z", "disabled": true, "description": "Only entries after this timestamp" },
+                { "key": "limit", "value": "50", "description": "Max entries (default: 100)" }
+              ]
+            },
+            "description": "Stream log entries with optional filters."
+          }
+        },
+        {
+          "name": "Log Stream (Grouped)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/logs/grouped?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "logs", "grouped"],
+              "query": [
+                { "key": "level", "value": "ERROR", "disabled": true },
+                { "key": "service", "value": "", "disabled": true },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Log entries grouped by requestId (operations view)."
+          }
+        },
+        {
+          "name": "Log Context",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/logs/context?file=2026-02-06.jsonl&line=10&range=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "logs", "context"],
+              "query": [
+                { "key": "file", "value": "2026-02-06.jsonl", "description": "Log file name" },
+                { "key": "line", "value": "10", "description": "Target line number" },
+                { "key": "range", "value": "10", "description": "Lines before/after (default: 10)" }
+              ]
+            },
+            "description": "Get context lines around a specific log entry."
+          }
+        },
+        {
+          "name": "Error Statistics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/stats/errors?hours=24",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "stats", "errors"],
+              "query": [
+                { "key": "hours", "value": "24", "description": "Hours to look back (default: 24)" }
+              ]
+            },
+            "description": "Error count bucketed by hour."
+          }
+        },
+        {
+          "name": "Restart Service",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/ops/services/Invekto.ChatAnalysis/restart",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "services", "Invekto.ChatAnalysis", "restart"]
+            },
+            "description": "Restart a Windows Service.\n\nValid service names:\n- `Invekto.Backend`\n- `Invekto.ChatAnalysis`"
+          }
+        },
+        {
+          "name": "Test Proxy - ChatAnalysis Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/ops/test/chatanalysis/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ops", "test", "chatanalysis", "health"]
+            },
+            "description": "Test proxy: forward request to ChatAnalysis service and return result with timing."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Backend - Legacy Ops",
+      "auth": {
+        "type": "basic",
+        "basic": [
+          { "key": "username", "value": "{{ops_username}}" },
+          { "key": "password", "value": "{{ops_password}}" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Ops Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ops",
+              "host": ["{{base_url}}"],
+              "path": ["ops"]
+            },
+            "description": "Legacy ops dashboard (plain JSON)."
+          }
+        },
+        {
+          "name": "Debug - Log Paths",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ops/debug",
+              "host": ["{{base_url}}"],
+              "path": ["ops", "debug"]
+            }
+          }
+        },
+        {
+          "name": "Debug - LogReader Test",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ops/debug2",
+              "host": ["{{base_url}}"],
+              "path": ["ops", "debug2"]
+            }
+          }
+        },
+        {
+          "name": "Last 100 Errors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ops/errors",
+              "host": ["{{base_url}}"],
+              "path": ["ops", "errors"]
+            }
+          }
+        },
+        {
+          "name": "Last 100 Slow Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ops/slow",
+              "host": ["{{base_url}}"],
+              "path": ["ops", "slow"]
+            }
+          }
+        },
+        {
+          "name": "Search by RequestId",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ops/search?requestId=test-req-001",
+              "host": ["{{base_url}}"],
+              "path": ["ops", "search"],
+              "query": [
+                { "key": "requestId", "value": "test-req-001" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ChatAnalysis - Direct (Internal)",
+      "description": "Direct access to ChatAnalysis service (port 7101).\nOnly accessible from localhost - use Backend proxy for external access.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{chatanalysis_url}}/health",
+              "host": ["{{chatanalysis_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Ready Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{chatanalysis_url}}/ready",
+              "host": ["{{chatanalysis_url}}"],
+              "path": ["ready"]
+            }
+          }
+        },
+        {
+          "name": "Analyze (direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ChatID\": 12345,\n  \"InstanceID\": 1,\n  \"UserID\": 100,\n  \"RequestID\": \"direct-test-001\",\n  \"ChatServerURL\": \"https://your-callback-url.com/api/callback\",\n  \"Lang\": \"tr\",\n  \"MessageListObject\": [\n    {\n      \"Source\": \"CUSTOMER\",\n      \"Message\": \"Merhaba, bilgi almak istiyorum\"\n    },\n    {\n      \"Source\": \"AGENT\",\n      \"Message\": \"Merhaba, nasil yardimci olabilirim?\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{chatanalysis_url}}/api/v1/analyze",
+              "host": ["{{chatanalysis_url}}"],
+              "path": ["api", "v1", "analyze"]
+            },
+            "description": "Direct call to ChatAnalysis (bypasses Backend). Only works from localhost."
+          }
+        },
+        {
+          "name": "Endpoint Discovery",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{chatanalysis_url}}/api/ops/endpoints",
+              "host": ["{{chatanalysis_url}}"],
+              "path": ["api", "ops", "endpoints"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
