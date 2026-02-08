@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, RefreshCw, ChevronDown, ChevronUp, Clock, Layers } from 'lucide-react';
+import { Search, Filter, RefreshCw, ChevronDown, ChevronUp, Clock, Layers, Activity, List } from 'lucide-react';
 import type { LogGroup, LogEntry } from '../lib/api';
 import { api } from '../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
@@ -8,6 +8,8 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { formatTimestamp, cn } from '../lib/utils';
+
+type ViewMode = 'business' | 'all';
 
 interface LogStreamProps {
   initialFilter?: {
@@ -66,10 +68,42 @@ function getLevelVariant(level: string): 'error' | 'warning' | 'info' {
   }
 }
 
+function shortenRoute(route?: string): string {
+  if (!route) return '';
+  // "/api/v1/chat/analyze" → "analyze"
+  // "/api/v1/webhook/event" → "webhook/event"
+  const parts = route.replace(/^\/api\/v\d+\//, '').split('/');
+  return parts.length > 2 ? parts.slice(-2).join('/') : parts.join('/');
+}
+
+function formatSmartSummary(group: LogGroup): { service: string; action: string; detail: string; isError: boolean } {
+  const service = group.service.replace('Invekto.', '');
+  const action = shortenRoute(group.route) || '-';
+  const isError = group.level === 'ERROR';
+
+  // Count step entries for detail
+  const stepCount = group.entryCount > 1 ? `${group.entryCount} adim` : '';
+
+  let detail: string;
+  if (isError) {
+    // Show error code or error summary
+    detail = group.errorCode || group.summary;
+  } else {
+    const status = group.status === 'ok' ? 'OK' : group.status || 'OK';
+    const parts: string[] = [];
+    if (stepCount) parts.push(stepCount);
+    parts.push(status);
+    detail = parts.join(' | ');
+  }
+
+  return { service, action, detail, isError };
+}
+
 export function LogStream({ initialFilter }: LogStreamProps) {
   const [groups, setGroups] = useState<LogGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('business');
 
   // Filters
   const [levels, setLevels] = useState<string[]>(initialFilter?.levels || ['ERROR', 'WARN', 'INFO']);
@@ -84,6 +118,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
         service: service || undefined,
         search: search || undefined,
         limit: 50,
+        category: viewMode === 'business' ? 'api,step' : 'all',
       });
       setGroups(response.groups);
     } catch (error) {
@@ -91,7 +126,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [levels, service, search]);
+  }, [levels, service, search, viewMode]);
 
   useEffect(() => {
     fetchLogs();
@@ -116,11 +151,39 @@ export function LogStream({ initialFilter }: LogStreamProps) {
           <CardTitle className="flex items-center gap-2">
             <Filter className="w-4 h-4 flex-shrink-0" />
             <span>Log Stream</span>
-            <span className="text-xs font-normal text-gray-400 ml-1">İşlem bazlı</span>
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoading}>
-            <RefreshCw className={cn("w-4 h-4 flex-shrink-0", isLoading && "animate-spin")} />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Business / All toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
+              <button
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                  viewMode === 'business'
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+                onClick={() => setViewMode('business')}
+              >
+                <Activity className="w-3 h-3" />
+                Business
+              </button>
+              <button
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                  viewMode === 'all'
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+                onClick={() => setViewMode('all')}
+              >
+                <List className="w-3 h-3" />
+                All
+              </button>
+            </div>
+            <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoading}>
+              <RefreshCw className={cn("w-4 h-4 flex-shrink-0", isLoading && "animate-spin")} />
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -197,12 +260,35 @@ export function LogStream({ initialFilter }: LogStreamProps) {
                     <span className="text-xs text-gray-500 shrink-0 w-28 font-mono">
                       {formatTimestamp(group.startTime)}
                     </span>
-                    <span className="text-xs text-gray-400 shrink-0 w-24 truncate">
-                      {group.service.replace('Invekto.', '')}
-                    </span>
-                    <span className="flex-1 truncate text-sm text-gray-700">
-                      {group.summary}
-                    </span>
+                    {viewMode === 'business' ? (
+                      /* Smart summary: Service > action > detail */
+                      (() => {
+                        const smart = formatSmartSummary(group);
+                        return (
+                          <span className="flex-1 flex items-center gap-1.5 truncate text-sm">
+                            <span className="font-medium text-gray-800">{smart.service}</span>
+                            <span className="text-gray-400">&rsaquo;</span>
+                            <span className="text-gray-600">{smart.action}</span>
+                            <span className="text-gray-400">&rsaquo;</span>
+                            {smart.isError ? (
+                              <span className="text-red-600 font-medium truncate">{smart.detail}</span>
+                            ) : (
+                              <span className="text-green-700">{smart.detail}</span>
+                            )}
+                          </span>
+                        );
+                      })()
+                    ) : (
+                      /* All mode: original layout */
+                      <>
+                        <span className="text-xs text-gray-400 shrink-0 w-24 truncate">
+                          {group.service.replace('Invekto.', '')}
+                        </span>
+                        <span className="flex-1 truncate text-sm text-gray-700">
+                          {group.summary}
+                        </span>
+                      </>
+                    )}
                     <div className="flex items-center gap-2 shrink-0">
                       {/* Duration */}
                       {group.durationMs != null && (

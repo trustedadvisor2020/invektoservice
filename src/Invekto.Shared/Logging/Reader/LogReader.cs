@@ -134,6 +134,14 @@ public sealed class LogReader
                 if (options.After.HasValue && e.Timestamp < options.After.Value)
                     return false;
 
+                // Category filter
+                if (options.Categories?.Length > 0)
+                {
+                    var cat = InferCategory(e);
+                    if (!options.Categories.Contains(cat, StringComparer.OrdinalIgnoreCase))
+                        return false;
+                }
+
                 return true;
             });
 
@@ -168,6 +176,7 @@ public sealed class LogReader
             Service = options.Service,
             Search = options.Search,
             After = options.After,
+            Categories = options.Categories,
             Limit = limit * 10 // Fetch extra to ensure complete groups
         };
 
@@ -211,6 +220,12 @@ public sealed class LogReader
                 .Select(e => e.Message)
                 .FirstOrDefault() ?? "-";
 
+            // Determine category from first entry with explicit category, or infer
+            var category = group
+                .Select(e => e.Category)
+                .FirstOrDefault(c => !string.IsNullOrEmpty(c))
+                ?? InferCategory(firstEntry);
+
             groups.Add(new LogGroupDto
             {
                 RequestId = group.Key,
@@ -223,6 +238,7 @@ public sealed class LogReader
                 Status = group.Select(e => e.Status).FirstOrDefault(s => !string.IsNullOrEmpty(s)),
                 ErrorCode = group.Select(e => e.ErrorCode).FirstOrDefault(c => !string.IsNullOrEmpty(c)),
                 EntryCount = orderedEntries.Count,
+                Category = category,
                 Summary = summary!,
                 Entries = orderedEntries
             });
@@ -337,6 +353,35 @@ public sealed class LogReader
                 .ToList(),
             Total = buckets.Values.Sum()
         };
+    }
+
+    /// <summary>
+    /// Infer category for old log entries that don't have explicit category field
+    /// </summary>
+    private static string InferCategory(LogEntryDto entry)
+    {
+        if (!string.IsNullOrEmpty(entry.Category))
+            return entry.Category;
+
+        // Health check routes
+        if (entry.Route is "/health" or "/ready")
+            return "health";
+
+        // System entries (no real requestId)
+        if (string.IsNullOrEmpty(entry.RequestId) || entry.RequestId == "-")
+            return "system";
+
+        // Traffic entries (HTTP method + route + status pattern)
+        if (!string.IsNullOrEmpty(entry.Message) &&
+            System.Text.RegularExpressions.Regex.IsMatch(entry.Message, @"^(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+/"))
+            return "traffic";
+
+        // Step entries: has requestId but no route, tenantId="-" (background processing steps)
+        if (string.IsNullOrEmpty(entry.Route) && entry.TenantId == "-")
+            return "step";
+
+        // Default: business API
+        return "api";
     }
 
     private async Task<List<LogEntryDto>> ReadEntriesWithIdFromFileAsync(string filePath, Func<LogEntryDto, bool> predicate)
@@ -500,6 +545,9 @@ public sealed class LogEntryDto
 
     [JsonPropertyName("message")]
     public string? Message { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
 }
 
 /// <summary>
@@ -513,6 +561,7 @@ public sealed class LogQueryOptions
     public DateTime? After { get; set; }
     public int? Limit { get; set; }
     public string? Cursor { get; set; }
+    public string[]? Categories { get; set; }
 }
 
 /// <summary>
@@ -569,6 +618,9 @@ public sealed class LogGroupDto
 
     [JsonPropertyName("entryCount")]
     public int EntryCount { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
 
     [JsonPropertyName("summary")]
     public string Summary { get; set; } = "-";

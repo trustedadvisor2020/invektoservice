@@ -32,6 +32,7 @@ export interface LogEntry {
   status?: string;
   errorCode?: string;
   message: string;
+  category?: string;
 }
 
 export interface LogStreamResponse {
@@ -57,6 +58,7 @@ export interface LogGroup {
   status?: string;
   errorCode?: string;
   entryCount: number;
+  category?: string;
   summary: string;
   entries: LogEntry[];
 }
@@ -191,6 +193,7 @@ class OpsApiClient {
     search?: string;
     after?: string;
     limit?: number;
+    category?: string;
   }): Promise<LogGroupedResponse> {
     const searchParams = new URLSearchParams();
     if (params.level?.length) searchParams.set('level', params.level.join(','));
@@ -198,6 +201,7 @@ class OpsApiClient {
     if (params.search) searchParams.set('search', params.search);
     if (params.after) searchParams.set('after', params.after);
     if (params.limit) searchParams.set('limit', params.limit.toString());
+    if (params.category) searchParams.set('category', params.category);
 
     return this.request<LogGroupedResponse>(`/api/ops/logs/grouped?${searchParams}`);
   }

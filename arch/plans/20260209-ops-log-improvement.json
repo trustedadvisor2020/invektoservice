@@ -1,0 +1,55 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260209-ops-log-improvement",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-09T00:30:00Z",
+  "updated_at": "2026-02-09T00:50:00Z",
+  "iteration": 3,
+  "plan": {
+    "summary": "GR-1.10: Ops Dashboard Log Iyilestirmesi. LogEntry'ye category alani eklendi (api/system/step/traffic/health). JsonLinesLogger her metoda otomatik category atiyor. LogReader'a category filtresi + InferCategory heuristic (eski loglar icin). API endpoint'e ?category parametresi (default: no filter = backward compatible). Dashboard business modda explicit api,step gonderiyor.",
+    "q_intent": "Dashboard'da sadece is mantigi eventlerini gorebilmek. Health check, ops, system loglari gurultu yapiyor. Temiz Business View + Akilli Ozet Kartlari istedi.",
+    "interview_notes": "Q secimi: 'Temiz Business View (Recommended)' + 'Akilli Ozet Kartlari'. Oncelik: Log iyilestirmesi GR-1.1 Automation'dan once. Business view default, All toggle ile tum loglar gorulebilir.",
+    "verification_questions": [
+      "Business view (default) sadece api+step kategorisini gosteriyor mu?",
+      "All toggle ile tum loglar (health, system, traffic dahil) gorunuyor mu?",
+      "Eski JSONL dosyalari (category alani olmayan) InferCategory ile dogru siniflandiriliyor mu?"
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Logging/LogEntry.cs",
+    "src/Invekto.Shared/Logging/JsonLinesLogger.cs",
+    "src/Invekto.Shared/Logging/Reader/LogReader.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/components/LogStream.tsx"
+  ],
+  "build": {
+    "backend": "PASS",
+    "frontend": "PASS",
+    "timestamp": "2026-02-09T00:45:00Z"
+  },
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260209-ops-log-improvement.diff",
+    "stats": {
+      "insertions": 237,
+      "deletions": 18,
+      "files_count": 7
+    }
+  },
+  "files_changed": [
+    { "path": "arch/plans/20260209-ops-log-improvement.json", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/LogStream.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Logging/JsonLinesLogger.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Logging/LogEntry.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Logging/Reader/LogReader.cs", "is_new": false }
+  ],
+  "verdict": {
+    "result": "PASS",
+    "blocking_issues": [],
+    "notes": "iter3 PASS. Tum fix'ler uygulandı: backward compatible API, InferCategory step heuristic, Dashboard explicit category gonderiyor."
+  }
+}

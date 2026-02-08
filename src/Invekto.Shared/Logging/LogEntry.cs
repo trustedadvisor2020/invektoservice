@@ -55,6 +55,13 @@ public sealed class LogEntry
     [JsonPropertyName("statusCode")]
     public int? StatusCode { get; init; }
 
+    /// <summary>
+    /// Log category for filtering: "api" | "system" | "step" | "traffic" | "health"
+    /// Nullable for backward compatibility with old JSONL files
+    /// </summary>
+    [JsonPropertyName("category")]
+    public string? Category { get; init; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull

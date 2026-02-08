@@ -49,7 +49,8 @@ public sealed class JsonLinesLogger : IDisposable
             DurationMs = durationMs,
             Status = status,
             ErrorCode = errorCode,
-            Message = message
+            Message = message,
+            Category = "api"
         };
 
         WriteLine(entry.ToJsonLine());
@@ -69,7 +70,8 @@ public sealed class JsonLinesLogger : IDisposable
             RequestId = "-",
             TenantId = "-",
             ChatId = "-",
-            Message = message
+            Message = message,
+            Category = "system"
         };
 
         WriteLine(entry.ToJsonLine());
@@ -105,7 +107,8 @@ public sealed class JsonLinesLogger : IDisposable
             TenantId = "-",
             ChatId = "-",
             DurationMs = durationMs,
-            Message = message
+            Message = message,
+            Category = "step"
         };
 
         WriteLine(entry.ToJsonLine());
@@ -159,7 +162,8 @@ public sealed class JsonLinesLogger : IDisposable
             StatusCode = statusCode,
             RequestBody = maskedRequestBody,
             ResponseBody = maskedResponseBody,
-            Message = message
+            Message = message,
+            Category = "traffic"
         };
 
         WriteLine(entry.ToJsonLine());

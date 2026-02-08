@@ -414,7 +414,8 @@ app.MapGet("/api/ops/logs/grouped", async (
     string? service,
     string? search,
     string? after,
-    int? limit) =>
+    int? limit,
+    string? category) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -422,13 +423,19 @@ app.MapGet("/api/ops/logs/grouped", async (
         return Results.Unauthorized();
     }
 
+    // Category filter: default = no filter (backward compatible), explicit values filter
+    string[]? categories = null;
+    if (!string.IsNullOrEmpty(category) && !category.Equals("all", StringComparison.OrdinalIgnoreCase))
+        categories = category.Split(',');
+
     var options = new LogQueryOptions
     {
         Levels = string.IsNullOrEmpty(level) ? null : level.Split(','),
         Service = service,
         Search = search,
         After = string.IsNullOrEmpty(after) ? null : DateTime.Parse(after),
-        Limit = limit ?? 50
+        Limit = limit ?? 50,
+        Categories = categories
     };
 
     var result = await logReader.QueryLogsGroupedAsync(options);
