@@ -40,6 +40,13 @@ public static class ErrorCodes
     public const string IntegrationUnknownEventType = "INV-INT-003";
     public const string IntegrationTenantNotFound = "INV-INT-004";
 
+    // Automation errors (INV-AT-xxx) -- GR-1.1
+    public const string AutomationInvalidFlowConfig = "INV-AT-001";
+    public const string AutomationFlowNotFound = "INV-AT-002";
+    public const string AutomationFaqNotFound = "INV-AT-003";
+    public const string AutomationIntentDetectionFailed = "INV-AT-004";
+    public const string AutomationSessionExpired = "INV-AT-005";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

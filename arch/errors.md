@@ -20,6 +20,7 @@ INV-{SERVICE}-{NUMBER}
 | GEN | General | Genel hatalar |
 | BE | Backend | Backend API hataları |
 | CA | ChatAnalysis | Chat Analysis microservice hataları |
+| AT | Automation | GR-1.1: Chatbot/Flow Builder hataları |
 | AUTH | Auth | Authentication hataları |
 | INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
 | DB | Database | Veritabanı hataları |
@@ -71,6 +72,18 @@ INV-{SERVICE}-{NUMBER}
 | INV-AUTH-001 | Token expired | Oturumunuz sona erdi. Lütfen tekrar giriş yapın. |
 | INV-AUTH-002 | Invalid token | Geçersiz oturum. |
 | INV-AUTH-003 | Unauthorized | Bu işlem için yetkiniz bulunmuyor. |
+
+---
+
+## AT - Automation Errors (GR-1.1)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-AT-001 | Invalid flow config | Chatbot akis konfigurasyonu gecersiz. |
+| INV-AT-002 | Flow not found | Bu tenant icin chatbot akisi tanimlanmamis. |
+| INV-AT-003 | FAQ not found | SSS kaydi bulunamadi. |
+| INV-AT-004 | Intent detection failed | Niyet algilama servisi hatasi. |
+| INV-AT-005 | Session expired | Sohbet oturumu sona erdi. |
 
 ---
 

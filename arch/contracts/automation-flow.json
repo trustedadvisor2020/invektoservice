@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "automation-flow-v1.json",
+  "title": "Automation Flow Config Contract",
+  "description": "GR-1.1: Chatbot flow configuration stored in chatbot_flows.flow_config (JSONB). Defines welcome message, menu options, off-hours message, and handoff threshold.",
+  "version": "1.0",
+
+  "type": "object",
+  "required": ["version", "welcome_message", "menu"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Flow config schema version"
+    },
+    "welcome_message": {
+      "type": "string",
+      "minLength": 1,
+      "description": "First message sent when a new conversation starts"
+    },
+    "menu": {
+      "type": "object",
+      "required": ["text", "options"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Menu header text shown before options"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["key", "label", "action"],
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "User input to select this option (e.g., '1', '2')"
+              },
+              "label": {
+                "type": "string",
+                "description": "Display text for the option"
+              },
+              "action": {
+                "type": "string",
+                "enum": ["reply", "faq", "handoff", "intent"],
+                "description": "Action to take: reply=static text, faq=search FAQ, handoff=transfer to agent, intent=AI detect"
+              },
+              "reply_text": {
+                "type": "string",
+                "description": "Static reply text (used when action=reply)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "off_hours_message": {
+      "type": "string",
+      "description": "Message sent outside working hours. If null, uses default."
+    },
+    "unknown_input_message": {
+      "type": "string",
+      "description": "Message when user input doesn't match any option. If null, uses default."
+    },
+    "handoff_confidence_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.5,
+      "description": "Below this confidence score, hand off to human agent"
+    }
+  },
+
+  "examples": {
+    "dental_clinic": {
+      "version": 1,
+      "welcome_message": "Hosgeldiniz! Ben dijital asistanınızım. Size nasıl yardımcı olabilirim?",
+      "menu": {
+        "text": "Lutfen bir secenek belirleyin:",
+        "options": [
+          { "key": "1", "label": "Randevu Al", "action": "reply", "reply_text": "Randevu icin 0212 XXX numarasını arayabilir veya web sitemizden online randevu alabilirsiniz." },
+          { "key": "2", "label": "Fiyat Bilgisi", "action": "faq" },
+          { "key": "3", "label": "Calisma Saatleri", "action": "reply", "reply_text": "Hafta ici 09:00-18:00, Cumartesi 10:00-14:00 arasinda hizmet vermekteyiz." },
+          { "key": "4", "label": "Diger Sorular", "action": "intent" },
+          { "key": "5", "label": "Temsilci ile Gorusme", "action": "handoff" }
+        ]
+      },
+      "off_hours_message": "Su anda mesai saatleri disindayiz. En kisa surede size donus yapacagiz.",
+      "unknown_input_message": "Anlayamadim. Lutfen menueden bir secenek belirleyin veya '0' yazarak ana menuye donun.",
+      "handoff_confidence_threshold": 0.5
+    }
+  }
+}

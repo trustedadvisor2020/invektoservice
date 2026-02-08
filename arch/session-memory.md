@@ -4,9 +4,9 @@
 
 ## Last Update
 
-- **Date:** 2026-02-08
-- **Status:** GR-1.9 Integration Bridge -- REVIEW
-- **Last Task:** Phase 1 baslatildi. JWT auth, webhook receiver, async callback, PostgreSQL altyapisi eklendi.
+- **Date:** 2026-02-09
+- **Status:** GR-1.1 IMPLEMENTED (BUILD PASS)
+- **Last Task:** GR-1.1 Invekto.Automation servisi implementasyonu tamamlandi. Chatbot engine, FAQ, intent detection, working hours, handoff. 4 PostgreSQL tablosu.
 
 ---
 
@@ -14,7 +14,7 @@
 
 ### Active Features
 - **Stage-0 Scaffold:** Backend + ChatAnalysis microservice calisir durumda
-- **Health Endpoints:** `/health`, `/ready` her iki serviste
+- **Health Endpoints:** `/health`, `/ready` tum servislerde
 - **Ops Endpoint:** Backend `/ops` - servis durumlarini gosterir
 - **JSON Lines Logger:** `Invekto.Shared.Logging.JsonLinesLogger`
 - **Chat Analysis:** WapCRM'den sohbet cekme + Claude Haiku ile sentiment/kategori analizi
@@ -27,6 +27,16 @@
   - PostgreSQL connection factory (NpgsqlDataSource, pooling)
   - DB schema: `arch/db/tenant-registry.sql`
   - API contracts: `arch/contracts/integration-webhook.json`, `integration-callback.json`
+- **GR-1.1 Automation Service (Port 7108):**
+  - Menu-based chatbot engine (welcome -> menu -> action)
+  - FAQ automation (keyword match, tenant bazli)
+  - Claude Haiku intent detection (bagimsiz, 5 intent)
+  - Mesai disi oto-cevap (tenant_registry.settings_json)
+  - Human handoff (confidence threshold + AI ozet)
+  - Chat session state tracking (PostgreSQL, restart-safe)
+  - DB schema: `arch/db/automation.sql` (chatbot_flows, faq_entries, chat_sessions, auto_reply_log)
+  - Flow contract: `arch/contracts/automation-flow.json`
+  - Error codes: INV-AT-001 ~ INV-AT-005
 
 ### Tech Stack
 | Component | Technology |
@@ -44,14 +54,33 @@
 | AgentAI | 7105 | Reserved (Phase 1) |
 | Integrations | 7106 | Reserved (Phase 2+) |
 | Outbound | 7107 | Reserved (Phase 1) |
-| Automation | 7108 | Reserved (Phase 1) |
+| Automation | 7108 | Implemented (GR-1.1) |
+
+### Deploy
+- **Script:** `dev-to-invekto-services.bat`
+- **Protokol:** FTPES (explicit TLS)
+- **FTP Host:** services.invekto.com
+- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`
+- **Sunucu Domain:** services.invekto.com
+- **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
+- **Service Manager:** NSSM (`E:\nssm.exe`)
+- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoDeployWatcher (auto-start, auto-restart)
+- **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
+- **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
+- **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
 
 ### Pending Work
 - [x] ~~Chat Analysis gerçek iş mantığı~~ (Tamamlandı - WapCRM + Claude)
 - [x] ~~Ops sayfası genişletme~~ (Tamamlandı - /ops/errors, /ops/slow, /ops/search)
-- [ ] Windows Service olarak deploy testi
-- [ ] Production config (D:\Invekto\ yapısı)
-- [ ] WapCRM SecretKey configuration (appsettings.Development.json)
+- [x] ~~GR-1.9 Integration Bridge~~ (Tamamlandı - JWT, webhook, callback, PostgreSQL)
+- [x] ~~Q: PostgreSQL kur~~ (Tamamlandi - invekto DB, pgAdmin)
+- [x] ~~Staging deploy testi~~ (Tamamlandi - FTPES + health OK)
+- [x] ~~appsettings.Production.json~~ (Tamamlandi - Backend + ChatAnalysis)
+- [x] ~~Windows Service kurulumu~~ (Tamamlandi - NSSM, auto-start, auto-restart)
+- [ ] Q: JWT claims dogrula (Main App token yapisi)
+- [ ] Q: tenant-registry.sql calistir (pgAdmin'de)
+- [ ] Callback URL per-request: MainAppCallbackClient zaten destekliyor
+- [x] ~~GR-1.1 Chatbot/Flow Builder~~ (Tamamlandi - Invekto.Automation servisi)
 
 ### Known Issues
 - (Henüz yok)
@@ -70,6 +99,11 @@
 | 2026-02-08 | Shared JWT key (HMAC-SHA256) | Basit, her iki taraf ayni key ile validate |
 | 2026-02-08 | PostgreSQL yeni servisler icin | Ana app SQL Server, yeni servisler PostgreSQL, tenant_id (int) eslestirme |
 | 2026-02-08 | Basit retry (3x + backoff) | Phase 1 icin yeterli, queue yok |
+| 2026-02-08 | FTPES deploy (E:\Invekto\) | Sunucu TLS zorunlu, E: diski Invekto icin ayrildi |
+| 2026-02-09 | Automation kendi Claude cagrisi | ChatAnalysis bagimsiz, mikroservis izolasyonu |
+| 2026-02-09 | Ayri faq_entries tablosu | Flow config'den izole, temiz CRUD |
+| 2026-02-09 | PostgreSQL chat_sessions | In-memory yerine DB (restart-safe) |
+| 2026-02-09 | Mesai saati tenant_registry.settings_json | Tum servisler erisebilir |
 
 ---
 
@@ -87,6 +121,10 @@ src/
 │   ├── Integration/          # GR-1.9: Callback client
 │   └── Logging/
 ├── Invekto.ChatAnalysis/     # Microservice (Port 7101)
+├── Invekto.Automation/       # GR-1.1: Chatbot/Flow Builder (Port 7108)
+│   ├── Data/                # AutomationRepository
+│   ├── Middleware/           # Traffic logging + JWT auth
+│   └── Services/            # FlowEngine, IntentDetector, FaqMatcher, WorkingHoursChecker, AutomationOrchestrator
 └── Invekto.Backend/          # Backend API (Port 5000)
     ├── Middleware/            # Traffic logging + JWT auth
     └── Services/
@@ -97,11 +135,12 @@ src/
 ## Context for Next Session
 
 Sonraki session'da:
-1. GR-1.9 Codex review tamamla (REVIEW durumunda)
-2. Q: JWT claims'i dogrula (Main App token yapisi)
-3. Q: PostgreSQL kur ve tenant-registry.sql calistir
-4. GR-1.1 (Chatbot/Flow Builder) baslat - Automation servisi :7108
-5. Windows Service deploy testi (hala bekliyor)
+1. Q: JWT claims dogrula (Main App token yapisi)
+2. Q: tenant-registry.sql + automation.sql calistir (pgAdmin'de)
+3. Q: appsettings.Production.json olustur (Automation icin)
+4. Q: NSSM ile InvektoAutomation servisi kur
+5. GR-1.1 Codex review + deploy
+6. Disaridan health test: http://services.invekto.com:7108/health
 
 ---
 

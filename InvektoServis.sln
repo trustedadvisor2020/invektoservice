@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Backend.Tests", "te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.ChatAnalysis.Tests", "tests\Invekto.ChatAnalysis.Tests\Invekto.ChatAnalysis.Tests.csproj", "{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Automation", "src\Invekto.Automation\Invekto.Automation.csproj", "{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}.Release|Any CPU.Build.0 = Release|Any CPU
+		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{15F8FD75-7433-4D26-A091-8B804B50C75C} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
@@ -53,5 +59,6 @@ Global
 		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
 		{E280C96A-76FA-4D3D-BAA5-27BDBEA71C9D} = {4858822B-FBD3-429F-9855-560EA526C9B1}
 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20} = {4858822B-FBD3-429F-9855-560EA526C9B1}
+		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
 	EndGlobalSection
 EndGlobal

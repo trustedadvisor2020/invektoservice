@@ -1,0 +1,2603 @@
+diff --git a/InvektoServis.sln b/InvektoServis.sln
+index 2af8ac8..3634120 100644
+--- a/InvektoServis.sln
++++ b/InvektoServis.sln
+@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Backend.Tests", "te
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.ChatAnalysis.Tests", "tests\Invekto.ChatAnalysis.Tests\Invekto.ChatAnalysis.Tests.csproj", "{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}"
+ EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Automation", "src\Invekto.Automation\Invekto.Automation.csproj", "{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -46,6 +48,10 @@ Global
+ 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+ 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+ 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20}.Release|Any CPU.Build.0 = Release|Any CPU
++		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Release|Any CPU.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ 	GlobalSection(NestedProjects) = preSolution
+ 		{15F8FD75-7433-4D26-A091-8B804B50C75C} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+@@ -53,5 +59,6 @@ Global
+ 		{7FBADBCD-80D6-4C6E-BA5F-AF9AC65FD9B5} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+ 		{E280C96A-76FA-4D3D-BAA5-27BDBEA71C9D} = {4858822B-FBD3-429F-9855-560EA526C9B1}
+ 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20} = {4858822B-FBD3-429F-9855-560EA526C9B1}
++		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+ 	EndGlobalSection
+ EndGlobal
+diff --git a/arch/active-work.md b/arch/active-work.md
+index bfbd410..7184f48 100644
+--- a/arch/active-work.md
++++ b/arch/active-work.md
+@@ -6,7 +6,7 @@
+ 
+ | Slug | Status | Started | Description |
+ |------|--------|---------|-------------|
+-| (none) | - | - | - |
++| 20260209-automation-service | REVIEW | 2026-02-09 | GR-1.1: Invekto.Automation chatbot/flow builder servisi (Codex review bekliyor) |
+ 
+ ---
+ 
+diff --git a/arch/contracts/automation-flow.json b/arch/contracts/automation-flow.json
+new file mode 100644
+index 0000000..378f62f
+--- /dev/null
++++ b/arch/contracts/automation-flow.json
+@@ -0,0 +1,95 @@
++{
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
++  "$id": "automation-flow-v1.json",
++  "title": "Automation Flow Config Contract",
++  "description": "GR-1.1: Chatbot flow configuration stored in chatbot_flows.flow_config (JSONB). Defines welcome message, menu options, off-hours message, and handoff threshold.",
++  "version": "1.0",
++
++  "type": "object",
++  "required": ["version", "welcome_message", "menu"],
++  "properties": {
++    "version": {
++      "type": "integer",
++      "const": 1,
++      "description": "Flow config schema version"
++    },
++    "welcome_message": {
++      "type": "string",
++      "minLength": 1,
++      "description": "First message sent when a new conversation starts"
++    },
++    "menu": {
++      "type": "object",
++      "required": ["text", "options"],
++      "properties": {
++        "text": {
++          "type": "string",
++          "description": "Menu header text shown before options"
++        },
++        "options": {
++          "type": "array",
++          "minItems": 1,
++          "maxItems": 10,
++          "items": {
++            "type": "object",
++            "required": ["key", "label", "action"],
++            "properties": {
++              "key": {
++                "type": "string",
++                "description": "User input to select this option (e.g., '1', '2')"
++              },
++              "label": {
++                "type": "string",
++                "description": "Display text for the option"
++              },
++              "action": {
++                "type": "string",
++                "enum": ["reply", "faq", "handoff", "intent"],
++                "description": "Action to take: reply=static text, faq=search FAQ, handoff=transfer to agent, intent=AI detect"
++              },
++              "reply_text": {
++                "type": "string",
++                "description": "Static reply text (used when action=reply)"
++              }
++            }
++          }
++        }
++      }
++    },
++    "off_hours_message": {
++      "type": "string",
++      "description": "Message sent outside working hours. If null, uses default."
++    },
++    "unknown_input_message": {
++      "type": "string",
++      "description": "Message when user input doesn't match any option. If null, uses default."
++    },
++    "handoff_confidence_threshold": {
++      "type": "number",
++      "minimum": 0,
++      "maximum": 1,
++      "default": 0.5,
++      "description": "Below this confidence score, hand off to human agent"
++    }
++  },
++
++  "examples": {
++    "dental_clinic": {
++      "version": 1,
++      "welcome_message": "Hosgeldiniz! Ben dijital asistanınızım. Size nasıl yardımcı olabilirim?",
++      "menu": {
++        "text": "Lutfen bir secenek belirleyin:",
++        "options": [
++          { "key": "1", "label": "Randevu Al", "action": "reply", "reply_text": "Randevu icin 0212 XXX numarasını arayabilir veya web sitemizden online randevu alabilirsiniz." },
++          { "key": "2", "label": "Fiyat Bilgisi", "action": "faq" },
++          { "key": "3", "label": "Calisma Saatleri", "action": "reply", "reply_text": "Hafta ici 09:00-18:00, Cumartesi 10:00-14:00 arasinda hizmet vermekteyiz." },
++          { "key": "4", "label": "Diger Sorular", "action": "intent" },
++          { "key": "5", "label": "Temsilci ile Gorusme", "action": "handoff" }
++        ]
++      },
++      "off_hours_message": "Su anda mesai saatleri disindayiz. En kisa surede size donus yapacagiz.",
++      "unknown_input_message": "Anlayamadim. Lutfen menueden bir secenek belirleyin veya '0' yazarak ana menuye donun.",
++      "handoff_confidence_threshold": 0.5
++    }
++  }
++}
+diff --git a/arch/db/automation.sql b/arch/db/automation.sql
+new file mode 100644
+index 0000000..babc030
+--- /dev/null
++++ b/arch/db/automation.sql
+@@ -0,0 +1,101 @@
++-- GR-1.1: Invekto.Automation Service DDL for PostgreSQL
++-- Database: invekto (same as tenant_registry)
++-- Tables: chatbot_flows, faq_entries, chat_sessions, auto_reply_log
++
++-- ============================================================
++-- 1. chatbot_flows: Tenant bazli chatbot flow konfigurasyonu
++-- ============================================================
++CREATE TABLE IF NOT EXISTS chatbot_flows (
++    tenant_id           INTEGER PRIMARY KEY,                    -- 1:1 with tenant_registry
++    flow_config         JSONB NOT NULL DEFAULT '{}'::jsonb,     -- Flow JSON (menu, messages, thresholds)
++    is_active           BOOLEAN NOT NULL DEFAULT false,         -- Bot aktif mi?
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_chatbot_flows_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
++);
++
++-- ============================================================
++-- 2. faq_entries: Tenant bazli FAQ kayitlari
++-- ============================================================
++CREATE TABLE IF NOT EXISTS faq_entries (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    question            VARCHAR(500) NOT NULL,                  -- Soru metni
++    answer              VARCHAR(2000) NOT NULL,                 -- Cevap metni
++    keywords            TEXT[] NOT NULL DEFAULT '{}',            -- Arama anahtar kelimeleri
++    is_active           BOOLEAN NOT NULL DEFAULT true,
++    sort_order          INTEGER NOT NULL DEFAULT 0,             -- Siralama
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_faq_entries_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
++);
++
++CREATE INDEX IF NOT EXISTS idx_faq_entries_tenant_active
++    ON faq_entries (tenant_id, is_active)
++    WHERE is_active = true;
++
++-- ============================================================
++-- 3. chat_sessions: Aktif chatbot sohbet durumlari (state tracking)
++-- ============================================================
++CREATE TABLE IF NOT EXISTS chat_sessions (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    chat_id             INTEGER NOT NULL,                       -- Main App chat ID
++    phone               VARCHAR(20),                            -- Musteri telefon
++    current_node        VARCHAR(50) NOT NULL DEFAULT 'welcome', -- Aktif flow adimi (welcome, menu, faq, etc.)
++    session_data        JSONB NOT NULL DEFAULT '{}'::jsonb,     -- Ek state verisi
++    status              VARCHAR(20) NOT NULL DEFAULT 'active',  -- active, completed, handed_off, expired
++    started_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    last_activity_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    expires_at          TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 minutes'),
++    CONSTRAINT fk_chat_sessions_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
++);
++
++-- Unique: bir tenant icin bir chat_id'de sadece 1 aktif session
++CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessions_active
++    ON chat_sessions (tenant_id, chat_id)
++    WHERE status = 'active';
++
++CREATE INDEX IF NOT EXISTS idx_chat_sessions_expires
++    ON chat_sessions (expires_at)
++    WHERE status = 'active';
++
++-- ============================================================
++-- 4. auto_reply_log: Tum otomatik cevap loglari
++-- ============================================================
++CREATE TABLE IF NOT EXISTS auto_reply_log (
++    id                  BIGSERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    chat_id             INTEGER NOT NULL,
++    phone               VARCHAR(20),
++    message_text        VARCHAR(2000),                          -- Gelen mesaj
++    reply_text          VARCHAR(2000),                          -- Gonderilen cevap
++    reply_type          VARCHAR(30) NOT NULL,                   -- menu, faq, intent, off_hours, handoff, welcome
++    intent              VARCHAR(50),                            -- Algilanan intent (nullable)
++    confidence          NUMERIC(4,3),                           -- AI confidence score 0.000-1.000
++    processing_time_ms  INTEGER,                                -- Islem suresi ms
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_auto_reply_log_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
++);
++
++CREATE INDEX IF NOT EXISTS idx_auto_reply_log_tenant_date
++    ON auto_reply_log (tenant_id, created_at DESC);
++
++-- ============================================================
++-- Triggers: updated_at otomatik guncelleme
++-- ============================================================
++-- update_updated_at_column() fonksiyonu tenant-registry.sql'de zaten var
++
++CREATE OR REPLACE TRIGGER trigger_chatbot_flows_updated_at
++    BEFORE UPDATE ON chatbot_flows
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
++
++CREATE OR REPLACE TRIGGER trigger_faq_entries_updated_at
++    BEFORE UPDATE ON faq_entries
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
+diff --git a/arch/errors.md b/arch/errors.md
+index 5f55808..c8f9e8e 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -20,6 +20,7 @@ INV-{SERVICE}-{NUMBER}
+ | GEN | General | Genel hatalar |
+ | BE | Backend | Backend API hataları |
+ | CA | ChatAnalysis | Chat Analysis microservice hataları |
++| AT | Automation | GR-1.1: Chatbot/Flow Builder hataları |
+ | AUTH | Auth | Authentication hataları |
+ | INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
+ | DB | Database | Veritabanı hataları |
+@@ -74,6 +75,18 @@ INV-{SERVICE}-{NUMBER}
+ 
+ ---
+ 
++## AT - Automation Errors (GR-1.1)
++
++| Code | Description | User Message |
++|------|-------------|--------------|
++| INV-AT-001 | Invalid flow config | Chatbot akis konfigurasyonu gecersiz. |
++| INV-AT-002 | Flow not found | Bu tenant icin chatbot akisi tanimlanmamis. |
++| INV-AT-003 | FAQ not found | SSS kaydi bulunamadi. |
++| INV-AT-004 | Intent detection failed | Niyet algilama servisi hatasi. |
++| INV-AT-005 | Session expired | Sohbet oturumu sona erdi. |
++
++---
++
+ ## DB - Database Errors
+ 
+ | Code | Description | User Message |
+diff --git a/arch/plans/20260209-automation-service.json b/arch/plans/20260209-automation-service.json
+new file mode 100644
+index 0000000..c46cfbb
+--- /dev/null
++++ b/arch/plans/20260209-automation-service.json
+@@ -0,0 +1,203 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260209-automation-service",
++  "risk": "HIGH",
++  "status": "REVIEW",
++  "created_at": "2026-02-09T12:00:00Z",
++  "updated_at": "2026-02-09T14:30:00Z",
++  "plan": {
++    "summary": "GR-1.1: Invekto.Automation mikro servisi (port 7108). Menu-based chatbot engine, FAQ automation, mesai disi oto-cevap, Claude Haiku intent detection, human handoff. 4 PostgreSQL tablosu: chatbot_flows, faq_entries, chat_sessions, auto_reply_log.",
++    "q_intent": "GR-1.1: Chatbot / Flow Builder -- Invekto.Automation servisini baslat. Yeni mikro servis: Invekto.Automation (port 7108). Scope: Servis iskeleti, menu bazli chatbot engine, FAQ otomasyonu, mesai disi oto-cevap, intent detection, human handoff, PostgreSQL tablolari.",
++    "interview_notes": "1) Mesaj akisi: Webhook (Main App -> Automation) via GR-1.9 kontrati. 2) Intent detection: Automation kendi Claude Haiku cagrisi (bagimsiz, ChatAnalysis degismez). 3) FAQ depolama: Ayri faq_entries tablosu. 4) Human handoff: Callback action handoff_to_human (mevcut kontrat). 5) Mesai saati: tenant_registry.settings_json. 6) Chat state: PostgreSQL chat_sessions tablosu (restart-safe). 7) Kisit: ChatAnalysis degismez, RAG yok, karmasik flow builder UI yok."
++  },
++  "allowed_files": [
++    "src/Invekto.Automation/Invekto.Automation.csproj",
++    "src/Invekto.Automation/Program.cs",
++    "src/Invekto.Automation/Services/IntentDetector.cs",
++    "src/Invekto.Automation/Services/FlowEngine.cs",
++    "src/Invekto.Automation/Services/FaqMatcher.cs",
++    "src/Invekto.Automation/Services/WorkingHoursChecker.cs",
++    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
++    "src/Invekto.Automation/Data/AutomationRepository.cs",
++    "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs",
++    "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs",
++    "src/Invekto.Automation/appsettings.json",
++    "arch/db/automation.sql",
++    "arch/contracts/automation-flow.json",
++    "arch/errors.md",
++    "src/Invekto.Shared/Constants/ServiceConstants.cs",
++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
++    "InvektoServis.sln",
++    "arch/session-memory.md",
++    "arch/active-work.md",
++    "arch/plans/20260209-automation-service.json"
++  ],
++  "files_changed": [
++    { "path": "src/Invekto.Automation/Invekto.Automation.csproj", "is_new": true, "change": "New .NET 8 Web project referencing Invekto.Shared" },
++    { "path": "src/Invekto.Automation/Program.cs", "is_new": true, "change": "Entry point: DI setup, middleware, 10 endpoints + tenant validation (JWT tenant == route tenant) + DB error handling on all CRUD endpoints" },
++    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": true, "change": "Main pipeline: working hours -> flow engine -> FAQ match -> intent detection -> callback. No-flow case now triggers handoff (not silent skip)" },
++    { "path": "src/Invekto.Automation/Services/FlowEngine.cs", "is_new": true, "change": "Menu-based chatbot flow: welcome -> menu -> option selection -> action dispatch. FAQ state correctly routes to FaqSearch (not IntentDetection)" },
++    { "path": "src/Invekto.Automation/Services/IntentDetector.cs", "is_new": true, "change": "Claude Haiku API call for 5-intent detection (shipping, price, appointment, complaint, general)" },
++    { "path": "src/Invekto.Automation/Services/FaqMatcher.cs", "is_new": true, "change": "Keyword-based FAQ matching with confidence scoring" },
++    { "path": "src/Invekto.Automation/Services/WorkingHoursChecker.cs", "is_new": true, "change": "Check tenant working hours from tenant_registry.settings_json" },
++    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": true, "change": "PostgreSQL CRUD for chatbot_flows, faq_entries, chat_sessions, auto_reply_log" },
++    { "path": "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs", "is_new": true, "change": "JWT auth middleware (same pattern as Backend, microservice isolation)" },
++    { "path": "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs", "is_new": true, "change": "HTTP traffic logging (same pattern as ChatAnalysis)" },
++    { "path": "src/Invekto.Automation/appsettings.json", "is_new": true, "change": "Base config: port, logging, Claude API, JWT, PostgreSQL, callback" },
++    { "path": "arch/db/automation.sql", "is_new": true, "change": "4 tables DDL: chatbot_flows, faq_entries, chat_sessions, auto_reply_log" },
++    { "path": "arch/contracts/automation-flow.json", "is_new": true, "change": "Flow config JSON schema for chatbot_flows.flow_config" },
++    { "path": "arch/errors.md", "is_new": false, "change": "Added AT service code + 5 error codes (INV-AT-001 ~ 005)" },
++    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added 5 Automation error code constants" },
++    { "path": "InvektoServis.sln", "is_new": false, "change": "Added Invekto.Automation project to solution" },
++    { "path": "arch/session-memory.md", "is_new": false, "change": "Updated with GR-1.1 status, new decisions, project structure" },
++    { "path": "arch/active-work.md", "is_new": false, "change": "Added 20260209-automation-service as REVIEW" },
++    { "path": "arch/plans/20260209-automation-service.json", "is_new": true, "change": "Plan JSON for GR-1.1" }
++  ],
++  "git_diff": {
++    "patch_truncated": null,
++    "sha256": "2A919F2333D5ADD34DD2E36DB265FB80366B9EC5C848EBB7E83D5CFB01E5C959",
++    "full_path": "arch/plans/diffs/20260209-automation-service.diff",
++    "stats": {
++      "insertions": 2377,
++      "deletions": 14,
++      "files_count": 19
++    }
++  },
++  "build": {
++    "status": "PASS",
++    "command": "dotnet build InvektoServis.sln",
++    "timestamp": "2026-02-09T14:25:00Z",
++    "output_tail": "Build succeeded. 0 Warning(s) 0 Error(s) (Automation only, solution has pre-existing Backend warnings)"
++  },
++  "verification_questions": [
++    {
++      "id": "Q1",
++      "question": "Does the Automation service start on port 7108, respond to /health and /ready, and register all endpoints via /api/ops/endpoints?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q2",
++      "question": "Does JWT auth middleware protect /api/v1/ prefixed endpoints and correctly extract TenantContext from Bearer token?",
++      "category": "Auth",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q3",
++      "question": "Does the webhook handler accept new_message events, check working hours, run flow engine, and return 202 Accepted with async processing?",
++      "category": "Process/Policy",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q4",
++      "question": "Are all 4 PostgreSQL tables (chatbot_flows, faq_entries, chat_sessions, auto_reply_log) correctly defined with snake_case, proper indexes, and foreign keys?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q5",
++      "question": "Does the intent detector call Claude Haiku independently and return confidence + intent, and does low confidence trigger handoff_to_human callback?",
++      "category": "Process/Policy",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q6",
++      "question": "Does FAQ matching use keyword search against faq_entries and return the best match with confidence score?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q7",
++      "question": "Does chat_sessions table correctly track conversation state and expire inactive sessions?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    }
++  ],
++  "scope_discipline": {
++    "forbidden_areas": [
++      "src/Invekto.ChatAnalysis/ (ChatAnalysis degismez)",
++      "src/Invekto.Backend/ (Backend degismez, sadece Shared constants)",
++      "arch/db/tenant-registry.sql (mevcut sema)"
++    ],
++    "non_goals": [
++      "RAG / knowledge base",
++      "Karmasik flow builder UI",
++      "Guardrails / PII filtering",
++      "ChatAnalysis kodu degisikligi"
++    ],
++    "intentional_exclusions": [
++      "appsettings.Production.json (Q manuel olusturur)",
++      "Deploy script guncelleme (ayri is)",
++      "NSSM servis kurulumu (Q sunucuda yapar)"
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "Program.cs: webhook handler",
++      "AutomationOrchestrator.cs: ProcessMessageAsync",
++      "IntentDetector.cs: DetectAsync (Claude API call)",
++      "AutomationRepository.cs: tum DB islemleri",
++      "WorkingHoursChecker.cs: CheckAsync",
++      "FlowEngine.cs: GetActiveFlowAsync"
++    ],
++    "user_facing_errors": [
++      "INV-AT-001: Invalid flow config",
++      "INV-AT-002: Flow not found for tenant",
++      "INV-AT-003: FAQ entry not found",
++      "INV-AT-004: Intent detection failed (Claude API error)",
++      "INV-AT-005: Session expired or not found"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "Tum catch bloklari logger ile loglanir. Claude API hatasi durumunda handoff yapilir (graceful degradation). DB hatasi durumunda 500 + error code donulur."
++  },
++  "aha_moments": [
++    {
++      "category": "UX",
++      "user_pain": "Musteri mesaj yazdi ama hicbir cevap gelmedi, bot mu insan mi belli degil",
++      "suggestion": "Hosgeldin mesajinda 'Ben dijital asistanınızım' ifadesi + menu secenekleri ile net beklenti yarat",
++      "aha_moment": "Musteri ilk mesajda hemen interaktif menu gorunce 'vay, hizli ve profesyonel' der"
++    },
++    {
++      "category": "SPEED",
++      "user_pain": "Temsilci mesai disinda, musteri saatlerce bekliyor, mutsuz",
++      "suggestion": "Mesai disi oto-cevap aninda gider + sonraki mesai basinda hatirlatma",
++      "aha_moment": "Musteri gece 23:00'te mesaj atar, 1 saniyede 'Mesai saatlerimiz 09-18, ilk is olarak size donecegiz' alir"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Bot confidence dusuk ama cevap veriyor, yanlis bilgi riski",
++      "suggestion": "Handoff threshold ile dusuk confidence = otomatik temsilciye devir + AI ozet",
++      "aha_moment": "Temsilci devir aldiginda AI ozet gorur: 'Musteri karmasik sikayet bildirdi, konu: ...' - hemen context sahibi"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Fiyat sorusu geldi ama temsilci musait degil, musteri gitti",
++      "suggestion": "FAQ'dan otomatik fiyat bilgisi + 'Detayli bilgi icin randevu ister misiniz?' CTA",
++      "aha_moment": "Musteri 'fiyat ne kadar' yazinca aninda guncel fiyat + randevu teklifi gelir"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Ayni sorular tekrar tekrar geliyor, temsilci ayni cevaplari veriyor",
++      "suggestion": "FAQ otomasyonu ile top 10 soru otomatik cevaplanir, temsilci zamani %40 azalir",
++      "aha_moment": "Temsilci panele bakar, 'Bu hafta bot 120 soruyu otomatik cevaplamis' gorur"
++    }
++  ],
++  "verdict": {
++    "status": "FAIL",
++    "iteration": 2,
++    "blocking_issues": [
++      "CQ1/CQ2: Callback failure silent - SendCallbackAsync/SendHandoffAsync return bool not checked in orchestrator",
++      "CQ2: Orchestrator false return not logged in webhook background task",
++      "CQ4: Duplicate middleware (JwtAuth + TrafficLogging) - microservice isolation pattern (by design, noted iter 1+2)"
++    ],
++    "codex_timestamp": "2026-02-09T15:00:00Z"
++  }
++}
+diff --git a/arch/session-memory.md b/arch/session-memory.md
+index e87e0ac..849cce2 100644
+--- a/arch/session-memory.md
++++ b/arch/session-memory.md
+@@ -4,9 +4,9 @@
+ 
+ ## Last Update
+ 
+-- **Date:** 2026-02-08
+-- **Status:** GR-1.9 Integration Bridge -- REVIEW
+-- **Last Task:** Phase 1 baslatildi. JWT auth, webhook receiver, async callback, PostgreSQL altyapisi eklendi.
++- **Date:** 2026-02-09
++- **Status:** GR-1.1 IMPLEMENTED (BUILD PASS)
++- **Last Task:** GR-1.1 Invekto.Automation servisi implementasyonu tamamlandi. Chatbot engine, FAQ, intent detection, working hours, handoff. 4 PostgreSQL tablosu.
+ 
+ ---
+ 
+@@ -14,7 +14,7 @@
+ 
+ ### Active Features
+ - **Stage-0 Scaffold:** Backend + ChatAnalysis microservice calisir durumda
+-- **Health Endpoints:** `/health`, `/ready` her iki serviste
++- **Health Endpoints:** `/health`, `/ready` tum servislerde
+ - **Ops Endpoint:** Backend `/ops` - servis durumlarini gosterir
+ - **JSON Lines Logger:** `Invekto.Shared.Logging.JsonLinesLogger`
+ - **Chat Analysis:** WapCRM'den sohbet cekme + Claude Haiku ile sentiment/kategori analizi
+@@ -27,6 +27,16 @@
+   - PostgreSQL connection factory (NpgsqlDataSource, pooling)
+   - DB schema: `arch/db/tenant-registry.sql`
+   - API contracts: `arch/contracts/integration-webhook.json`, `integration-callback.json`
++- **GR-1.1 Automation Service (Port 7108):**
++  - Menu-based chatbot engine (welcome -> menu -> action)
++  - FAQ automation (keyword match, tenant bazli)
++  - Claude Haiku intent detection (bagimsiz, 5 intent)
++  - Mesai disi oto-cevap (tenant_registry.settings_json)
++  - Human handoff (confidence threshold + AI ozet)
++  - Chat session state tracking (PostgreSQL, restart-safe)
++  - DB schema: `arch/db/automation.sql` (chatbot_flows, faq_entries, chat_sessions, auto_reply_log)
++  - Flow contract: `arch/contracts/automation-flow.json`
++  - Error codes: INV-AT-001 ~ INV-AT-005
+ 
+ ### Tech Stack
+ | Component | Technology |
+@@ -44,14 +54,33 @@
+ | AgentAI | 7105 | Reserved (Phase 1) |
+ | Integrations | 7106 | Reserved (Phase 2+) |
+ | Outbound | 7107 | Reserved (Phase 1) |
+-| Automation | 7108 | Reserved (Phase 1) |
++| Automation | 7108 | Implemented (GR-1.1) |
++
++### Deploy
++- **Script:** `dev-to-invekto-services.bat`
++- **Protokol:** FTPES (explicit TLS)
++- **FTP Host:** services.invekto.com
++- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`
++- **Sunucu Domain:** services.invekto.com
++- **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
++- **Service Manager:** NSSM (`E:\nssm.exe`)
++- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoDeployWatcher (auto-start, auto-restart)
++- **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
++- **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
++- **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
+ 
+ ### Pending Work
+ - [x] ~~Chat Analysis gerçek iş mantığı~~ (Tamamlandı - WapCRM + Claude)
+ - [x] ~~Ops sayfası genişletme~~ (Tamamlandı - /ops/errors, /ops/slow, /ops/search)
+-- [ ] Windows Service olarak deploy testi
+-- [ ] Production config (D:\Invekto\ yapısı)
+-- [ ] WapCRM SecretKey configuration (appsettings.Development.json)
++- [x] ~~GR-1.9 Integration Bridge~~ (Tamamlandı - JWT, webhook, callback, PostgreSQL)
++- [x] ~~Q: PostgreSQL kur~~ (Tamamlandi - invekto DB, pgAdmin)
++- [x] ~~Staging deploy testi~~ (Tamamlandi - FTPES + health OK)
++- [x] ~~appsettings.Production.json~~ (Tamamlandi - Backend + ChatAnalysis)
++- [x] ~~Windows Service kurulumu~~ (Tamamlandi - NSSM, auto-start, auto-restart)
++- [ ] Q: JWT claims dogrula (Main App token yapisi)
++- [ ] Q: tenant-registry.sql calistir (pgAdmin'de)
++- [ ] Callback URL per-request: MainAppCallbackClient zaten destekliyor
++- [x] ~~GR-1.1 Chatbot/Flow Builder~~ (Tamamlandi - Invekto.Automation servisi)
+ 
+ ### Known Issues
+ - (Henüz yok)
+@@ -70,6 +99,11 @@
+ | 2026-02-08 | Shared JWT key (HMAC-SHA256) | Basit, her iki taraf ayni key ile validate |
+ | 2026-02-08 | PostgreSQL yeni servisler icin | Ana app SQL Server, yeni servisler PostgreSQL, tenant_id (int) eslestirme |
+ | 2026-02-08 | Basit retry (3x + backoff) | Phase 1 icin yeterli, queue yok |
++| 2026-02-08 | FTPES deploy (E:\Invekto\) | Sunucu TLS zorunlu, E: diski Invekto icin ayrildi |
++| 2026-02-09 | Automation kendi Claude cagrisi | ChatAnalysis bagimsiz, mikroservis izolasyonu |
++| 2026-02-09 | Ayri faq_entries tablosu | Flow config'den izole, temiz CRUD |
++| 2026-02-09 | PostgreSQL chat_sessions | In-memory yerine DB (restart-safe) |
++| 2026-02-09 | Mesai saati tenant_registry.settings_json | Tum servisler erisebilir |
+ 
+ ---
+ 
+@@ -87,6 +121,10 @@ src/
+ │   ├── Integration/          # GR-1.9: Callback client
+ │   └── Logging/
+ ├── Invekto.ChatAnalysis/     # Microservice (Port 7101)
++├── Invekto.Automation/       # GR-1.1: Chatbot/Flow Builder (Port 7108)
++│   ├── Data/                # AutomationRepository
++│   ├── Middleware/           # Traffic logging + JWT auth
++│   └── Services/            # FlowEngine, IntentDetector, FaqMatcher, WorkingHoursChecker, AutomationOrchestrator
+ └── Invekto.Backend/          # Backend API (Port 5000)
+     ├── Middleware/            # Traffic logging + JWT auth
+     └── Services/
+@@ -97,11 +135,12 @@ src/
+ ## Context for Next Session
+ 
+ Sonraki session'da:
+-1. GR-1.9 Codex review tamamla (REVIEW durumunda)
+-2. Q: JWT claims'i dogrula (Main App token yapisi)
+-3. Q: PostgreSQL kur ve tenant-registry.sql calistir
+-4. GR-1.1 (Chatbot/Flow Builder) baslat - Automation servisi :7108
+-5. Windows Service deploy testi (hala bekliyor)
++1. Q: JWT claims dogrula (Main App token yapisi)
++2. Q: tenant-registry.sql + automation.sql calistir (pgAdmin'de)
++3. Q: appsettings.Production.json olustur (Automation icin)
++4. Q: NSSM ile InvektoAutomation servisi kur
++5. GR-1.1 Codex review + deploy
++6. Disaridan health test: http://services.invekto.com:7108/health
+ 
+ ---
+ 
+diff --git a/src/Invekto.Automation/Data/AutomationRepository.cs b/src/Invekto.Automation/Data/AutomationRepository.cs
+new file mode 100644
+index 0000000..c6304b1
+--- /dev/null
++++ b/src/Invekto.Automation/Data/AutomationRepository.cs
+@@ -0,0 +1,297 @@
++using System.Text.Json;
++using Invekto.Shared.Data;
++using Invekto.Shared.Logging;
++using Npgsql;
++using NpgsqlTypes;
++
++namespace Invekto.Automation.Data;
++
++/// <summary>
++/// PostgreSQL repository for Automation service tables.
++/// Thread-safe, register as singleton. Uses PostgresConnectionFactory for pooled connections.
++/// </summary>
++public sealed class AutomationRepository
++{
++    private readonly PostgresConnectionFactory _db;
++    private readonly JsonLinesLogger _logger;
++
++    public AutomationRepository(PostgresConnectionFactory db, JsonLinesLogger logger)
++    {
++        _db = db;
++        _logger = logger;
++    }
++
++    // ============================================================
++    // chatbot_flows
++    // ============================================================
++
++    public async Task<(JsonDocument? FlowConfig, bool IsActive)> GetFlowAsync(int tenantId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "SELECT flow_config, is_active FROM chatbot_flows WHERE tenant_id = @tid";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        if (!await reader.ReadAsync(ct))
++            return (null, false);
++
++        var json = reader.GetString(0);
++        var isActive = reader.GetBoolean(1);
++        return (JsonDocument.Parse(json), isActive);
++    }
++
++    public async Task UpsertFlowAsync(int tenantId, string flowConfigJson, bool isActive, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO chatbot_flows (tenant_id, flow_config, is_active)
++            VALUES (@tid, @cfg::jsonb, @active)
++            ON CONFLICT (tenant_id) DO UPDATE SET
++                flow_config = EXCLUDED.flow_config,
++                is_active = EXCLUDED.is_active";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("cfg", flowConfigJson);
++        cmd.Parameters.AddWithValue("active", isActive);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    // ============================================================
++    // faq_entries
++    // ============================================================
++
++    public async Task<List<FaqEntry>> GetActiveFaqsAsync(int tenantId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, question, answer, keywords, sort_order
++            FROM faq_entries
++            WHERE tenant_id = @tid AND is_active = true
++            ORDER BY sort_order, id";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        var result = new List<FaqEntry>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++        {
++            result.Add(new FaqEntry
++            {
++                Id = reader.GetInt32(0),
++                Question = reader.GetString(1),
++                Answer = reader.GetString(2),
++                Keywords = reader.GetFieldValue<string[]>(3),
++                SortOrder = reader.GetInt32(4)
++            });
++        }
++        return result;
++    }
++
++    public async Task<int> InsertFaqAsync(int tenantId, string question, string answer, string[] keywords, int sortOrder, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO faq_entries (tenant_id, question, answer, keywords, sort_order)
++            VALUES (@tid, @q, @a, @kw, @so)
++            RETURNING id";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("q", question);
++        cmd.Parameters.AddWithValue("a", answer);
++        cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = keywords });
++        cmd.Parameters.AddWithValue("so", sortOrder);
++
++        var id = await cmd.ExecuteScalarAsync(ct);
++        return Convert.ToInt32(id);
++    }
++
++    public async Task<bool> UpdateFaqAsync(int id, int tenantId, string question, string answer, string[] keywords, bool isActive, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE faq_entries
++            SET question = @q, answer = @a, keywords = @kw, is_active = @active
++            WHERE id = @id AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("id", id);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("q", question);
++        cmd.Parameters.AddWithValue("a", answer);
++        cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = keywords });
++        cmd.Parameters.AddWithValue("active", isActive);
++
++        return await cmd.ExecuteNonQueryAsync(ct) > 0;
++    }
++
++    public async Task<bool> DeleteFaqAsync(int id, int tenantId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "DELETE FROM faq_entries WHERE id = @id AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("id", id);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        return await cmd.ExecuteNonQueryAsync(ct) > 0;
++    }
++
++    // ============================================================
++    // chat_sessions
++    // ============================================================
++
++    public async Task<ChatSession?> GetActiveSessionAsync(int tenantId, int chatId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, phone, current_node, session_data, started_at, last_activity_at, expires_at
++            FROM chat_sessions
++            WHERE tenant_id = @tid AND chat_id = @cid AND status = 'active' AND expires_at > NOW()";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("cid", chatId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        if (!await reader.ReadAsync(ct))
++            return null;
++
++        return new ChatSession
++        {
++            Id = reader.GetInt32(0),
++            TenantId = tenantId,
++            ChatId = chatId,
++            Phone = reader.IsDBNull(1) ? null : reader.GetString(1),
++            CurrentNode = reader.GetString(2),
++            SessionData = reader.GetString(3),
++            StartedAt = reader.GetDateTime(4),
++            LastActivityAt = reader.GetDateTime(5),
++            ExpiresAt = reader.GetDateTime(6)
++        };
++    }
++
++    public async Task<int> CreateSessionAsync(int tenantId, int chatId, string? phone, string currentNode, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++
++        // Expire any existing active session for this chat
++        await using var expireCmd = conn.CreateCommand();
++        expireCmd.CommandText = @"
++            UPDATE chat_sessions SET status = 'expired'
++            WHERE tenant_id = @tid AND chat_id = @cid AND status = 'active'";
++        expireCmd.Parameters.AddWithValue("tid", tenantId);
++        expireCmd.Parameters.AddWithValue("cid", chatId);
++        await expireCmd.ExecuteNonQueryAsync(ct);
++
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO chat_sessions (tenant_id, chat_id, phone, current_node)
++            VALUES (@tid, @cid, @phone, @node)
++            RETURNING id";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("cid", chatId);
++        cmd.Parameters.AddWithValue("phone", (object?)phone ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("node", currentNode);
++
++        var id = await cmd.ExecuteScalarAsync(ct);
++        return Convert.ToInt32(id);
++    }
++
++    public async Task UpdateSessionAsync(int sessionId, string currentNode, string? sessionData = null, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE chat_sessions
++            SET current_node = @node,
++                session_data = COALESCE(@data::jsonb, session_data),
++                last_activity_at = NOW(),
++                expires_at = NOW() + INTERVAL '30 minutes'
++            WHERE id = @id";
++        cmd.Parameters.AddWithValue("id", sessionId);
++        cmd.Parameters.AddWithValue("node", currentNode);
++        cmd.Parameters.AddWithValue("data", (object?)sessionData ?? DBNull.Value);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task EndSessionAsync(int sessionId, string status, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "UPDATE chat_sessions SET status = @st, last_activity_at = NOW() WHERE id = @id";
++        cmd.Parameters.AddWithValue("id", sessionId);
++        cmd.Parameters.AddWithValue("st", status);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task<int> ExpireOldSessionsAsync(CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "UPDATE chat_sessions SET status = 'expired' WHERE status = 'active' AND expires_at < NOW()";
++        return await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    // ============================================================
++    // auto_reply_log
++    // ============================================================
++
++    public async Task LogAutoReplyAsync(int tenantId, int chatId, string? phone, string? messageText,
++        string? replyText, string replyType, string? intent, double? confidence, int? processingTimeMs,
++        CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO auto_reply_log (tenant_id, chat_id, phone, message_text, reply_text, reply_type, intent, confidence, processing_time_ms)
++            VALUES (@tid, @cid, @phone, @msg, @reply, @rtype, @intent, @conf, @ptime)";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("cid", chatId);
++        cmd.Parameters.AddWithValue("phone", (object?)phone ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("msg", (object?)messageText ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("reply", (object?)replyText ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("rtype", replyType);
++        cmd.Parameters.AddWithValue("intent", (object?)intent ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("conf", confidence.HasValue ? (object)confidence.Value : DBNull.Value);
++        cmd.Parameters.AddWithValue("ptime", processingTimeMs.HasValue ? (object)processingTimeMs.Value : DBNull.Value);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    // ============================================================
++    // Working hours (from tenant_registry.settings_json)
++    // ============================================================
++
++    public async Task<string?> GetTenantSettingsJsonAsync(int tenantId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "SELECT settings_json FROM tenant_registry WHERE tenant_id = @tid AND is_active = true";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        var result = await cmd.ExecuteScalarAsync(ct);
++        return result as string;
++    }
++}
++
++// ============================================================
++// DTOs for repository results
++// ============================================================
++
++public sealed class FaqEntry
++{
++    public int Id { get; init; }
++    public required string Question { get; init; }
++    public required string Answer { get; init; }
++    public required string[] Keywords { get; init; }
++    public int SortOrder { get; init; }
++}
++
++public sealed class ChatSession
++{
++    public int Id { get; init; }
++    public int TenantId { get; init; }
++    public int ChatId { get; init; }
++    public string? Phone { get; init; }
++    public required string CurrentNode { get; init; }
++    public required string SessionData { get; init; }
++    public DateTime StartedAt { get; init; }
++    public DateTime LastActivityAt { get; init; }
++    public DateTime ExpiresAt { get; init; }
++}
+diff --git a/src/Invekto.Automation/Invekto.Automation.csproj b/src/Invekto.Automation/Invekto.Automation.csproj
+new file mode 100644
+index 0000000..12113dd
+--- /dev/null
++++ b/src/Invekto.Automation/Invekto.Automation.csproj
+@@ -0,0 +1,18 @@
++<Project Sdk="Microsoft.NET.Sdk.Web">
++
++  <PropertyGroup>
++    <TargetFramework>net8.0</TargetFramework>
++    <Nullable>enable</Nullable>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <RootNamespace>Invekto.Automation</RootNamespace>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\Invekto.Shared\Invekto.Shared.csproj" />
++  </ItemGroup>
++
++</Project>
+diff --git a/src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs b/src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs
+new file mode 100644
+index 0000000..72aa1d2
+--- /dev/null
++++ b/src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs
+@@ -0,0 +1,98 @@
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Middleware;
++
++/// <summary>
++/// JWT authentication middleware for Automation webhook/API endpoints.
++/// Same pattern as Backend JwtAuthMiddleware (microservice isolation - each service has its own).
++/// </summary>
++public sealed class JwtAuthMiddleware
++{
++    private readonly RequestDelegate _next;
++    private readonly JwtValidator _jwtValidator;
++    private readonly JsonLinesLogger _logger;
++    private readonly HashSet<string> _authRequiredPrefixes;
++
++    public JwtAuthMiddleware(
++        RequestDelegate next,
++        JwtValidator jwtValidator,
++        JsonLinesLogger logger,
++        IEnumerable<string> authRequiredPrefixes)
++    {
++        _next = next;
++        _jwtValidator = jwtValidator;
++        _logger = logger;
++        _authRequiredPrefixes = new HashSet<string>(authRequiredPrefixes, StringComparer.OrdinalIgnoreCase);
++    }
++
++    public async Task InvokeAsync(HttpContext context)
++    {
++        var path = context.Request.Path.Value ?? "";
++
++        if (!RequiresAuth(path))
++        {
++            await _next(context);
++            return;
++        }
++
++        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
++        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
++        {
++            _logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] Missing or invalid Authorization header: path={path}");
++            context.Response.StatusCode = 401;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"));
++            return;
++        }
++
++        var token = authHeader["Bearer ".Length..].Trim();
++        var (tenantContext, error) = _jwtValidator.ValidateToken(token);
++
++        if (tenantContext == null)
++        {
++            var errorCode = error?.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
++                ? ErrorCodes.AuthTokenExpired
++                : ErrorCodes.AuthTokenInvalid;
++
++            _logger.SystemWarn($"[{errorCode}] JWT validation failed: path={path}, error={error}");
++            context.Response.StatusCode = 401;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(errorCode, error ?? "Token validation failed", "-"));
++            return;
++        }
++
++        context.Items["TenantContext"] = tenantContext;
++
++        if (string.IsNullOrEmpty(context.Request.Headers[HeaderNames.TenantId].FirstOrDefault()))
++        {
++            context.Request.Headers[HeaderNames.TenantId] = tenantContext.TenantId.ToString();
++        }
++
++        await _next(context);
++    }
++
++    private bool RequiresAuth(string path)
++    {
++        foreach (var prefix in _authRequiredPrefixes)
++        {
++            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
++                return true;
++        }
++        return false;
++    }
++}
++
++public static class JwtAuthMiddlewareExtensions
++{
++    public static IApplicationBuilder UseJwtAuth(
++        this IApplicationBuilder app,
++        JwtValidator jwtValidator,
++        JsonLinesLogger logger,
++        params string[] authRequiredPrefixes)
++    {
++        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes);
++    }
++}
+diff --git a/src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs b/src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs
+new file mode 100644
+index 0000000..ac513cd
+--- /dev/null
++++ b/src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs
+@@ -0,0 +1,99 @@
++using System.Diagnostics;
++using System.Text;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Middleware;
++
++/// <summary>
++/// Middleware to log all HTTP request/response traffic.
++/// Same pattern as ChatAnalysis.
++/// </summary>
++public sealed class TrafficLoggingMiddleware
++{
++    private readonly RequestDelegate _next;
++    private readonly JsonLinesLogger _logger;
++
++    private static readonly string[] SkipPaths = { "/health", "/ready" };
++
++    public TrafficLoggingMiddleware(RequestDelegate next, JsonLinesLogger logger)
++    {
++        _next = next;
++        _logger = logger;
++    }
++
++    public async Task InvokeAsync(HttpContext context)
++    {
++        var path = context.Request.Path.Value ?? "";
++
++        if (SkipPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
++        {
++            await _next(context);
++            return;
++        }
++
++        var sw = Stopwatch.StartNew();
++
++        string? requestBody = null;
++        if (context.Request.ContentLength > 0 && context.Request.ContentLength < 50000)
++        {
++            context.Request.EnableBuffering();
++            using var reader = new StreamReader(
++                context.Request.Body, Encoding.UTF8,
++                detectEncodingFromByteOrderMarks: false, leaveOpen: true);
++            requestBody = await reader.ReadToEndAsync();
++            context.Request.Body.Position = 0;
++        }
++
++        var originalBodyStream = context.Response.Body;
++        using var responseBodyStream = new MemoryStream();
++        context.Response.Body = responseBodyStream;
++
++        try
++        {
++            await _next(context);
++        }
++        finally
++        {
++            sw.Stop();
++
++            string? responseBody = null;
++            if (responseBodyStream.Length > 0 && responseBodyStream.Length < 50000)
++            {
++                responseBodyStream.Position = 0;
++                responseBody = await new StreamReader(responseBodyStream).ReadToEndAsync();
++            }
++
++            responseBodyStream.Position = 0;
++            await responseBodyStream.CopyToAsync(originalBodyStream);
++            context.Response.Body = originalBodyStream;
++
++            var requestId = context.Request.Headers["X-Request-Id"].FirstOrDefault()
++                ?? context.TraceIdentifier;
++            var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? "-";
++            var chatId = context.Request.Headers["X-Chat-Id"].FirstOrDefault() ?? "-";
++
++            var logContext = new RequestContext
++            {
++                RequestId = requestId,
++                TenantId = tenantId,
++                ChatId = chatId
++            };
++
++            var level = context.Response.StatusCode >= 400 ? "WARN" : "INFO";
++            var message = $"{context.Request.Method} {path} -> {context.Response.StatusCode}";
++
++            _logger.LogTraffic(level, message, logContext, path,
++                context.Request.Method, sw.ElapsedMilliseconds,
++                context.Response.StatusCode, requestBody, responseBody);
++        }
++    }
++}
++
++public static class TrafficLoggingMiddlewareExtensions
++{
++    public static IApplicationBuilder UseTrafficLogging(this IApplicationBuilder builder)
++    {
++        return builder.UseMiddleware<TrafficLoggingMiddleware>();
++    }
++}
+diff --git a/src/Invekto.Automation/Program.cs b/src/Invekto.Automation/Program.cs
+new file mode 100644
+index 0000000..42ad354
+--- /dev/null
++++ b/src/Invekto.Automation/Program.cs
+@@ -0,0 +1,427 @@
++using System.Text.Json;
++using Invekto.Automation.Data;
++using Invekto.Automation.Middleware;
++using Invekto.Automation.Services;
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.Data;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.DTOs.Integration;
++using Invekto.Shared.Integration;
++using Invekto.Shared.Logging;
++
++var builder = WebApplication.CreateBuilder(args);
++
++// Windows Service support
++builder.Host.UseWindowsService();
++
++// Read configuration
++var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.AutomationPort);
++var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
++var claudeApiKey = builder.Configuration["Claude:ApiKey"] ?? "";
++var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
++
++// JWT settings
++var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
++
++// Validate required config
++if (string.IsNullOrEmpty(claudeApiKey))
++{
++    Console.Error.WriteLine("FATAL: Claude:ApiKey is not configured");
++    Environment.Exit(1);
++}
++if (string.IsNullOrEmpty(pgConnStr))
++{
++    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
++    Environment.Exit(1);
++}
++if (string.IsNullOrEmpty(jwtSecretKey))
++{
++    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
++    Environment.Exit(1);
++}
++
++// Configure Kestrel
++builder.WebHost.ConfigureKestrel(options =>
++{
++    options.ListenAnyIP(listenPort);
++});
++
++// Register logger
++var logger = new JsonLinesLogger(ServiceConstants.AutomationServiceName, logPath);
++builder.Services.AddSingleton(logger);
++
++// Register log cleanup
++builder.Services.AddSingleton<LogCleanupService>(sp =>
++    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
++
++// Register JWT validator
++var jwtSettings = new JwtSettings
++{
++    SecretKey = jwtSecretKey,
++    Issuer = builder.Configuration["Jwt:Issuer"],
++    Audience = builder.Configuration["Jwt:Audience"],
++    ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
++};
++var jwtValidator = new JwtValidator(jwtSettings);
++builder.Services.AddSingleton(jwtValidator);
++
++// Register PostgreSQL connection factory
++var pgFactory = new PostgresConnectionFactory(pgConnStr);
++builder.Services.AddSingleton(pgFactory);
++
++// Register repository
++builder.Services.AddSingleton<AutomationRepository>();
++
++// Register callback client
++var callbackSettings = builder.Configuration.GetSection("Integration:Callback").Get<CallbackSettings>() ?? new CallbackSettings();
++builder.Services.AddSingleton(callbackSettings);
++builder.Services.AddHttpClient<MainAppCallbackClient>();
++
++// Register services
++builder.Services.AddSingleton<WorkingHoursChecker>();
++builder.Services.AddSingleton<FaqMatcher>();
++builder.Services.AddSingleton<FlowEngine>();
++
++// Register IntentDetector with HttpClient
++builder.Services.AddHttpClient<IntentDetector>((sp, client) =>
++{
++    // HttpClient is configured, IntentDetector gets it via DI
++}).AddTypedClient((httpClient, sp) =>
++{
++    return new IntentDetector(httpClient, claudeApiKey, sp.GetRequiredService<JsonLinesLogger>());
++});
++
++// Register orchestrator
++builder.Services.AddSingleton<AutomationOrchestrator>();
++
++var app = builder.Build();
++
++// Enable traffic logging middleware
++app.UseTrafficLogging();
++
++// Enable JWT auth for /api/v1/ prefixed paths
++app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/");
++
++// Start log cleanup
++_ = app.Services.GetRequiredService<LogCleanupService>();
++
++// ============================================================
++// Health endpoints
++// ============================================================
++
++app.MapGet("/health", () => Results.Ok(HealthResponse.Ok(ServiceConstants.AutomationServiceName)));
++app.MapGet("/ready", async (PostgresConnectionFactory db) =>
++{
++    var (ok, error) = await db.TestConnectionAsync();
++    if (!ok)
++        return Results.Json(new { status = "unhealthy", error }, statusCode: 503);
++    return Results.Ok(HealthResponse.Ok(ServiceConstants.AutomationServiceName));
++});
++
++// ============================================================
++// Webhook endpoint (Main App -> Automation)
++// ============================================================
++
++app.MapPost("/api/v1/webhook/event", (
++    HttpContext ctx,
++    AutomationOrchestrator orchestrator,
++    JsonLinesLogger jsonLogger,
++    IncomingWebhookEvent? webhookEvent) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    ctx.Request.Headers["X-Request-Id"] = requestId;
++
++    if (webhookEvent == null)
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "Request body is required", requestId),
++            statusCode: 400);
++    }
++
++    // Only process CUSTOMER messages
++    if (webhookEvent.EventType != "new_message" || webhookEvent.Data?.MessageSource != "CUSTOMER")
++    {
++        return Results.Json(new { status = "ignored", request_id = requestId, reason = "Not a customer message" }, statusCode: 200);
++    }
++
++    if (string.IsNullOrWhiteSpace(webhookEvent.Data?.MessageText))
++    {
++        return Results.Json(new { status = "ignored", request_id = requestId, reason = "Empty message text" }, statusCode: 200);
++    }
++
++    // Extract tenant from JWT (stored by middleware)
++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++    if (tenantContext == null)
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId),
++            statusCode: 401);
++    }
++
++    jsonLogger.StepInfo($"Processing message for tenant {tenantContext.TenantId}, chat {webhookEvent.ChatId}", requestId);
++
++    // Process async (return 202 immediately)
++    var callbackUrl = webhookEvent.CallbackUrl;
++    _ = Task.Run(async () =>
++    {
++        try
++        {
++            var success = await orchestrator.ProcessMessageAsync(tenantContext, webhookEvent, requestId, callbackUrl, CancellationToken.None);
++            if (!success)
++                jsonLogger.StepError($"Message processing completed with failure for tenant {tenantContext.TenantId}, chat {webhookEvent.ChatId}", requestId);
++        }
++        catch (Exception ex)
++        {
++            jsonLogger.StepError($"Background processing exception: {ex.Message}", requestId);
++        }
++    });
++
++    return Results.Json(new
++    {
++        status = "accepted",
++        request_id = requestId,
++        event_type = webhookEvent.EventType,
++        sequence_id = webhookEvent.SequenceId,
++        message = "Event accepted for processing"
++    }, statusCode: 202);
++});
++
++// ============================================================
++// Tenant validation helper
++// ============================================================
++
++static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
++{
++    var tenant = ctx.Items["TenantContext"] as TenantContext;
++    if (tenant == null || tenant.TenantId != routeTenantId) return null;
++    return tenant;
++}
++
++// ============================================================
++// Flow management endpoints
++// ============================================================
++
++app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
++{
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
++
++    try
++    {
++        var (flowDoc, isActive) = await repo.GetFlowAsync(tenantId);
++        if (flowDoc == null)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFound, "Bu tenant icin chatbot akisi tanimlanmamis", "-"), statusCode: 404);
++
++        var result = new { tenant_id = tenantId, is_active = isActive, flow_config = JsonSerializer.Deserialize<JsonElement>(flowDoc.RootElement.GetRawText()) };
++        flowDoc.Dispose();
++        return Results.Ok(result);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"Flow GET failed: {ex.Message}", "-");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
++    }
++});
++
++app.MapPut("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
++
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
++        var root = bodyDoc.RootElement;
++
++        var flowConfig = root.TryGetProperty("flow_config", out var fc) ? fc.GetRawText() : null;
++        var isActive = root.TryGetProperty("is_active", out var ia) && ia.GetBoolean();
++
++        if (string.IsNullOrEmpty(flowConfig))
++            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is required", requestId), statusCode: 400);
++
++        // Validate flow_config is valid JSON
++        try { using var _ = JsonDocument.Parse(flowConfig); }
++        catch { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is not valid JSON", requestId), statusCode: 400); }
++
++        await repo.UpsertFlowAsync(tenantId, flowConfig, isActive);
++        jsonLogger.StepInfo($"Flow config updated for tenant {tenantId}, active={isActive}", requestId);
++
++        return Results.Ok(new { tenant_id = tenantId, is_active = isActive, status = "updated" });
++    }
++    catch (JsonException)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"Flow PUT failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// FAQ management endpoints
++// ============================================================
++
++app.MapGet("/api/v1/faq/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
++{
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
++
++    try
++    {
++        var faqs = await repo.GetActiveFaqsAsync(tenantId);
++        return Results.Ok(new { tenant_id = tenantId, count = faqs.Count, items = faqs });
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"FAQ GET failed: {ex.Message}", "-");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
++    }
++});
++
++app.MapPost("/api/v1/faq/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
++
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
++        var root = bodyDoc.RootElement;
++
++        var question = root.TryGetProperty("question", out var q) ? q.GetString() : null;
++        var answer = root.TryGetProperty("answer", out var a) ? a.GetString() : null;
++
++        if (string.IsNullOrEmpty(question) || string.IsNullOrEmpty(answer))
++            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "question and answer are required", requestId), statusCode: 400);
++
++        var keywords = Array.Empty<string>();
++        if (root.TryGetProperty("keywords", out var kw) && kw.ValueKind == JsonValueKind.Array)
++            keywords = kw.EnumerateArray().Select(k => k.GetString() ?? "").Where(k => !string.IsNullOrEmpty(k)).ToArray();
++
++        var sortOrder = root.TryGetProperty("sort_order", out var so) ? so.GetInt32() : 0;
++
++        var id = await repo.InsertFaqAsync(tenantId, question, answer, keywords, sortOrder);
++        jsonLogger.StepInfo($"FAQ created for tenant {tenantId}: id={id}", requestId);
++
++        return Results.Json(new { id, tenant_id = tenantId, status = "created" }, statusCode: 201);
++    }
++    catch (JsonException)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"FAQ POST failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
++    }
++});
++
++app.MapPut("/api/v1/faq/{tenantId:int}/{id:int}", async (int tenantId, int id, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
++
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
++        var root = bodyDoc.RootElement;
++
++        var question = root.TryGetProperty("question", out var q) ? q.GetString() : null;
++        var answer = root.TryGetProperty("answer", out var a) ? a.GetString() : null;
++
++        if (string.IsNullOrEmpty(question) || string.IsNullOrEmpty(answer))
++            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "question and answer are required", requestId), statusCode: 400);
++
++        var keywords = Array.Empty<string>();
++        if (root.TryGetProperty("keywords", out var kw) && kw.ValueKind == JsonValueKind.Array)
++            keywords = kw.EnumerateArray().Select(k => k.GetString() ?? "").Where(k => !string.IsNullOrEmpty(k)).ToArray();
++
++        var isActive = !root.TryGetProperty("is_active", out var ia) || ia.GetBoolean();
++
++        var updated = await repo.UpdateFaqAsync(id, tenantId, question, answer, keywords, isActive);
++        if (!updated)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFaqNotFound, "FAQ entry not found", requestId), statusCode: 404);
++
++        jsonLogger.StepInfo($"FAQ updated for tenant {tenantId}: id={id}", requestId);
++        return Results.Ok(new { id, tenant_id = tenantId, status = "updated" });
++    }
++    catch (JsonException)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"FAQ PUT failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
++    }
++});
++
++app.MapDelete("/api/v1/faq/{tenantId:int}/{id:int}", async (int tenantId, int id, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
++{
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
++
++    try
++    {
++        var deleted = await repo.DeleteFaqAsync(id, tenantId);
++        if (!deleted)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFaqNotFound, "FAQ entry not found", "-"), statusCode: 404);
++
++        jsonLogger.StepInfo($"FAQ deleted for tenant {tenantId}: id={id}", "-");
++        return Results.Ok(new { id, tenant_id = tenantId, status = "deleted" });
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"FAQ DELETE failed: {ex.Message}", "-");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
++    }
++});
++
++// ============================================================
++// Endpoint discovery
++// ============================================================
++
++app.MapGet("/api/ops/endpoints", () =>
++{
++    var endpoints = new List<EndpointInfo>
++    {
++        new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Process incoming message (async)", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "GET", Path = "/api/v1/flows/{tenantId}", Description = "Get chatbot flow config", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "PUT", Path = "/api/v1/flows/{tenantId}", Description = "Update chatbot flow config", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "GET", Path = "/api/v1/faq/{tenantId}", Description = "List FAQ entries", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "POST", Path = "/api/v1/faq/{tenantId}", Description = "Create FAQ entry", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "PUT", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Update FAQ entry", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "DELETE", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Delete FAQ entry", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
++        new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
++        new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
++    };
++
++    return Results.Ok(new EndpointDiscoveryResponse
++    {
++        Service = ServiceConstants.AutomationServiceName,
++        Port = ServiceConstants.AutomationPort,
++        Endpoints = endpoints
++    });
++});
++
++logger.SystemInfo($"Automation service starting on port {listenPort}");
++app.Run();
++
++// Required for integration tests
++public partial class Program { }
+diff --git a/src/Invekto.Automation/Services/AutomationOrchestrator.cs b/src/Invekto.Automation/Services/AutomationOrchestrator.cs
+new file mode 100644
+index 0000000..5066535
+--- /dev/null
++++ b/src/Invekto.Automation/Services/AutomationOrchestrator.cs
+@@ -0,0 +1,325 @@
++using System.Diagnostics;
++using Invekto.Automation.Data;
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs.Integration;
++using Invekto.Shared.Integration;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Services;
++
++/// <summary>
++/// Orchestrates the full message processing pipeline:
++/// Working hours check -> Flow engine -> FAQ match -> Intent detection -> Callback.
++/// Thread-safe, register as singleton.
++/// </summary>
++public sealed class AutomationOrchestrator
++{
++    private readonly AutomationRepository _repo;
++    private readonly FlowEngine _flowEngine;
++    private readonly FaqMatcher _faqMatcher;
++    private readonly IntentDetector _intentDetector;
++    private readonly WorkingHoursChecker _workingHours;
++    private readonly MainAppCallbackClient _callbackClient;
++    private readonly JsonLinesLogger _logger;
++
++    public AutomationOrchestrator(
++        AutomationRepository repo,
++        FlowEngine flowEngine,
++        FaqMatcher faqMatcher,
++        IntentDetector intentDetector,
++        WorkingHoursChecker workingHours,
++        MainAppCallbackClient callbackClient,
++        JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _flowEngine = flowEngine;
++        _faqMatcher = faqMatcher;
++        _intentDetector = intentDetector;
++        _workingHours = workingHours;
++        _callbackClient = callbackClient;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Process an incoming message through the full automation pipeline.
++    /// Returns true if processing completed (success or graceful failure).
++    /// </summary>
++    public async Task<bool> ProcessMessageAsync(
++        TenantContext tenant,
++        IncomingWebhookEvent webhook,
++        string requestId,
++        string? callbackUrl,
++        CancellationToken ct = default)
++    {
++        var sw = Stopwatch.StartNew();
++        var tenantId = tenant.TenantId;
++        var chatId = webhook.ChatId;
++        var phone = webhook.Data?.Phone;
++        var messageText = webhook.Data?.MessageText ?? "";
++
++        try
++        {
++            // 1. Get active flow config
++            var flow = await _flowEngine.GetActiveFlowAsync(tenantId, ct);
++            if (flow == null)
++            {
++                _logger.StepWarn($"No active flow for tenant {tenantId}, handing off to human", requestId);
++                await SendHandoffAsync(requestId, tenantId, chatId, webhook.SequenceId,
++                    "Chatbot akisi tanimlanmamis, mesaj temsilciye yonlendiriliyor", 0, callbackUrl, ct);
++                return true;
++            }
++
++            // 2. Check working hours
++            var (isWithinHours, offHoursMsg) = await _workingHours.CheckAsync(tenantId, ct);
++            if (!isWithinHours)
++            {
++                var offReply = offHoursMsg ?? flow.OffHoursMessage ?? "Su anda mesai saatleri disindayiz. En kisa surede size donus yapacagiz.";
++                sw.Stop();
++
++                await SendCallbackAsync(requestId, tenantId, chatId, webhook.SequenceId,
++                    CallbackActions.SendMessage, offReply, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
++
++                await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, offReply,
++                    "off_hours", null, null, (int)sw.ElapsedMilliseconds, ct);
++
++                _logger.StepInfo("Off-hours auto reply sent", requestId, sw.ElapsedMilliseconds);
++                return true;
++            }
++
++            // 3. Get or create chat session
++            var session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
++            if (session == null)
++            {
++                await _repo.CreateSessionAsync(tenantId, chatId, phone, "welcome", ct);
++                session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
++            }
++
++            // 4. Process through flow engine
++            var action = _flowEngine.ProcessInput(flow, session, messageText);
++
++            switch (action.Type)
++            {
++                case FlowActionType.ShowWelcome:
++                case FlowActionType.ShowMenu:
++                case FlowActionType.StaticReply:
++                case FlowActionType.UnknownInput:
++                    sw.Stop();
++                    await SendCallbackAsync(requestId, tenantId, chatId, webhook.SequenceId,
++                        CallbackActions.SendMessage, action.ReplyText!, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
++
++                    var replyType = action.Type switch
++                    {
++                        FlowActionType.ShowWelcome => "welcome",
++                        FlowActionType.ShowMenu => "menu",
++                        FlowActionType.StaticReply => "menu",
++                        _ => "menu"
++                    };
++                    await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, action.ReplyText,
++                        replyType, null, null, (int)sw.ElapsedMilliseconds, ct);
++
++                    if (session != null)
++                        await _repo.UpdateSessionAsync(session.Id, action.NextNode, null, ct);
++
++                    return true;
++
++                case FlowActionType.FaqSearch:
++                    return await HandleFaqSearchAsync(requestId, tenantId, chatId, webhook.SequenceId,
++                        phone, messageText, flow, session, callbackUrl, sw, ct);
++
++                case FlowActionType.IntentDetection:
++                    return await HandleIntentDetectionAsync(requestId, tenantId, chatId, webhook.SequenceId,
++                        phone, messageText, flow, session, callbackUrl, sw, ct);
++
++                case FlowActionType.Handoff:
++                    sw.Stop();
++                    await SendHandoffAsync(requestId, tenantId, chatId, webhook.SequenceId,
++                        "Musteri temsilci ile gorusme talep etti", sw.ElapsedMilliseconds, callbackUrl, ct);
++
++                    await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, null,
++                        "handoff", null, null, (int)sw.ElapsedMilliseconds, ct);
++
++                    if (session != null)
++                        await _repo.EndSessionAsync(session.Id, "handed_off", ct);
++
++                    return true;
++
++                default:
++                    _logger.SystemWarn($"Unknown flow action type: {action.Type}");
++                    return false;
++            }
++        }
++        catch (Exception ex)
++        {
++            sw.Stop();
++            _logger.StepError($"Message processing failed: {ex.Message}", requestId, sw.ElapsedMilliseconds);
++            return false;
++        }
++    }
++
++    private async Task<bool> HandleFaqSearchAsync(
++        string requestId, int tenantId, int chatId, long sequenceId,
++        string? phone, string messageText, FlowConfig flow, ChatSession? session,
++        string? callbackUrl, Stopwatch sw, CancellationToken ct)
++    {
++        // If this is the first entry to FAQ mode, prompt user to ask their question
++        if (session?.CurrentNode != "faq")
++        {
++            sw.Stop();
++            var promptMsg = "Sorunuzu yazin, size en uygun cevabi bulayim. Ana menuye donmek icin '0' yazin.";
++            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
++                CallbackActions.SendMessage, promptMsg, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
++
++            if (session != null)
++                await _repo.UpdateSessionAsync(session.Id, "faq", null, ct);
++
++            return true;
++        }
++
++        // Search FAQs
++        var faqMatch = await _faqMatcher.FindMatchAsync(tenantId, messageText, ct);
++        if (faqMatch != null && faqMatch.Confidence >= 0.3)
++        {
++            sw.Stop();
++            var replyText = faqMatch.Answer + "\n\nBaska bir sorunuz var mi? Ana menu icin '0' yazin.";
++            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
++                CallbackActions.SendMessage, replyText, "faq_match", faqMatch.Confidence, sw.ElapsedMilliseconds, callbackUrl, ct);
++
++            await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, faqMatch.Answer,
++                "faq", "faq_match", faqMatch.Confidence, (int)sw.ElapsedMilliseconds, ct);
++
++            return true;
++        }
++
++        // No FAQ match -> fallback to intent detection
++        return await HandleIntentDetectionAsync(requestId, tenantId, chatId, sequenceId,
++            phone, messageText, flow, session, callbackUrl, sw, ct);
++    }
++
++    private async Task<bool> HandleIntentDetectionAsync(
++        string requestId, int tenantId, int chatId, long sequenceId,
++        string? phone, string messageText, FlowConfig flow, ChatSession? session,
++        string? callbackUrl, Stopwatch sw, CancellationToken ct)
++    {
++        // If first entry to intent mode, prompt user
++        if (session?.CurrentNode != "intent" && session?.CurrentNode != "faq")
++        {
++            sw.Stop();
++            var promptMsg = "Sorunuzu veya talebinizi yazin. Ana menuye donmek icin '0' yazin.";
++            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
++                CallbackActions.SendMessage, promptMsg, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
++
++            if (session != null)
++                await _repo.UpdateSessionAsync(session.Id, "intent", null, ct);
++
++            return true;
++        }
++
++        // Run Claude intent detection
++        var intentResult = await _intentDetector.DetectAsync(messageText, ct);
++
++        if (intentResult == null)
++        {
++            // AI failed -> handoff (graceful degradation)
++            sw.Stop();
++            _logger.StepWarn("Intent detection returned null, falling back to handoff", requestId, sw.ElapsedMilliseconds);
++
++            await SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
++                "Niyet algilama basarisiz, temsilciye yonlendiriliyor", sw.ElapsedMilliseconds, callbackUrl, ct);
++
++            await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, null,
++                "handoff", null, null, (int)sw.ElapsedMilliseconds, ct);
++
++            if (session != null)
++                await _repo.EndSessionAsync(session.Id, "handed_off", ct);
++
++            return true;
++        }
++
++        // Check confidence threshold
++        if (intentResult.Confidence < flow.HandoffConfidenceThreshold)
++        {
++            sw.Stop();
++            await SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
++                $"Dusuk guven ({intentResult.Confidence:F2}): {intentResult.Summary}",
++                sw.ElapsedMilliseconds, callbackUrl, ct);
++
++            await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, null,
++                "handoff", intentResult.Intent, intentResult.Confidence, (int)sw.ElapsedMilliseconds, ct);
++
++            if (session != null)
++                await _repo.EndSessionAsync(session.Id, "handed_off", ct);
++
++            return true;
++        }
++
++        // High confidence -> send auto-reply with suggest_reply (let agent review)
++        sw.Stop();
++        var suggestionText = $"[AI {intentResult.Intent} ({intentResult.Confidence:F2})]: {intentResult.Summary}";
++
++        await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
++            CallbackActions.SuggestReply, suggestionText, intentResult.Intent, intentResult.Confidence,
++            sw.ElapsedMilliseconds, callbackUrl, ct);
++
++        await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, suggestionText,
++            "intent", intentResult.Intent, intentResult.Confidence, (int)sw.ElapsedMilliseconds, ct);
++
++        if (session != null)
++            await _repo.UpdateSessionAsync(session.Id, "menu", null, ct);
++
++        return true;
++    }
++
++    private async Task<bool> SendCallbackAsync(
++        string requestId, int tenantId, int chatId, long sequenceId,
++        string action, string messageText, string? intent, double? confidence,
++        long processingTimeMs, string? callbackUrl, CancellationToken ct)
++    {
++        var callback = new OutgoingCallback
++        {
++            RequestId = requestId,
++            Action = action,
++            TenantId = tenantId,
++            ChatId = chatId,
++            SequenceId = sequenceId,
++            Data = new CallbackData
++            {
++                MessageText = action == CallbackActions.SendMessage ? messageText : null,
++                SuggestedReply = action == CallbackActions.SuggestReply ? messageText : null,
++                Intent = intent,
++                Confidence = confidence
++            },
++            ProcessingTimeMs = processingTimeMs
++        };
++
++        var delivered = await _callbackClient.SendCallbackAsync(callback, callbackUrl, ct);
++        if (!delivered)
++            _logger.StepError($"[{ErrorCodes.IntegrationCallbackFailed}] Callback delivery failed: action={action}, tenant={tenantId}, chat={chatId}", requestId, processingTimeMs);
++        return delivered;
++    }
++
++    private async Task<bool> SendHandoffAsync(
++        string requestId, int tenantId, int chatId, long sequenceId,
++        string aiSummary, long processingTimeMs, string? callbackUrl, CancellationToken ct)
++    {
++        var callback = new OutgoingCallback
++        {
++            RequestId = requestId,
++            Action = CallbackActions.HandoffToHuman,
++            TenantId = tenantId,
++            ChatId = chatId,
++            SequenceId = sequenceId,
++            Data = new CallbackData
++            {
++                HandoffToHuman = true,
++                AiSummary = aiSummary
++            },
++            ProcessingTimeMs = processingTimeMs
++        };
++
++        var delivered = await _callbackClient.SendCallbackAsync(callback, callbackUrl, ct);
++        if (!delivered)
++            _logger.StepError($"[{ErrorCodes.IntegrationCallbackFailed}] Handoff callback delivery failed: tenant={tenantId}, chat={chatId}", requestId, processingTimeMs);
++        return delivered;
++    }
++}
+diff --git a/src/Invekto.Automation/Services/FaqMatcher.cs b/src/Invekto.Automation/Services/FaqMatcher.cs
+new file mode 100644
+index 0000000..a70db29
+--- /dev/null
++++ b/src/Invekto.Automation/Services/FaqMatcher.cs
+@@ -0,0 +1,114 @@
++using Invekto.Automation.Data;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Services;
++
++/// <summary>
++/// Matches user messages against tenant's FAQ entries using keyword search.
++/// Thread-safe, register as singleton.
++/// </summary>
++public sealed class FaqMatcher
++{
++    private readonly AutomationRepository _repo;
++    private readonly JsonLinesLogger _logger;
++
++    public FaqMatcher(AutomationRepository repo, JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Search tenant's FAQs for a match against the user message.
++    /// Returns the best matching FAQ entry or null if no match.
++    /// </summary>
++    public async Task<FaqMatchResult?> FindMatchAsync(int tenantId, string userMessage, CancellationToken ct = default)
++    {
++        var faqs = await _repo.GetActiveFaqsAsync(tenantId, ct);
++        if (faqs.Count == 0)
++            return null;
++
++        var normalizedInput = Normalize(userMessage);
++        var inputWords = normalizedInput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
++
++        FaqEntry? bestMatch = null;
++        int bestScore = 0;
++
++        foreach (var faq in faqs)
++        {
++            var score = CalculateMatchScore(inputWords, normalizedInput, faq);
++            if (score > bestScore)
++            {
++                bestScore = score;
++                bestMatch = faq;
++            }
++        }
++
++        if (bestMatch == null || bestScore == 0)
++            return null;
++
++        // Confidence: normalize score to 0-1 range
++        // Max possible score = keyword count * 10 (exact match) + 5 (question substring)
++        var maxPossible = (bestMatch.Keywords.Length * 10) + 5;
++        var confidence = Math.Min(1.0, (double)bestScore / Math.Max(maxPossible, 1));
++
++        return new FaqMatchResult
++        {
++            FaqId = bestMatch.Id,
++            Answer = bestMatch.Answer,
++            MatchedQuestion = bestMatch.Question,
++            Confidence = confidence
++        };
++    }
++
++    private static int CalculateMatchScore(string[] inputWords, string normalizedInput, FaqEntry faq)
++    {
++        var score = 0;
++
++        // Keyword matching (highest weight)
++        foreach (var keyword in faq.Keywords)
++        {
++            var normalizedKeyword = Normalize(keyword);
++            if (string.IsNullOrWhiteSpace(normalizedKeyword))
++                continue;
++
++            // Exact word match
++            if (inputWords.Contains(normalizedKeyword))
++            {
++                score += 10;
++            }
++            // Substring/partial match
++            else if (normalizedInput.Contains(normalizedKeyword))
++            {
++                score += 5;
++            }
++        }
++
++        // Question text similarity (lower weight)
++        var normalizedQuestion = Normalize(faq.Question);
++        var questionWords = normalizedQuestion.Split(' ', StringSplitOptions.RemoveEmptyEntries);
++        var commonWords = inputWords.Intersect(questionWords).Count();
++        if (commonWords >= 2)
++            score += commonWords * 2;
++
++        return score;
++    }
++
++    private static string Normalize(string text)
++    {
++        return text.ToLowerInvariant()
++            .Replace("?", "")
++            .Replace("!", "")
++            .Replace(".", "")
++            .Replace(",", "")
++            .Trim();
++    }
++}
++
++public sealed class FaqMatchResult
++{
++    public int FaqId { get; init; }
++    public required string Answer { get; init; }
++    public required string MatchedQuestion { get; init; }
++    public double Confidence { get; init; }
++}
+diff --git a/src/Invekto.Automation/Services/FlowEngine.cs b/src/Invekto.Automation/Services/FlowEngine.cs
+new file mode 100644
+index 0000000..d6cb8ae
+--- /dev/null
++++ b/src/Invekto.Automation/Services/FlowEngine.cs
+@@ -0,0 +1,239 @@
++using System.Text.Json;
++using Invekto.Automation.Data;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Services;
++
++/// <summary>
++/// Menu-based chatbot flow engine.
++/// Manages conversation state: welcome -> menu -> action selection.
++/// Thread-safe, register as singleton.
++/// </summary>
++public sealed class FlowEngine
++{
++    private readonly AutomationRepository _repo;
++    private readonly JsonLinesLogger _logger;
++
++    private const string DefaultWelcome = "Hosgeldiniz! Size nasil yardimci olabilirim?";
++    private const string DefaultUnknownInput = "Anlayamadim. Lutfen menueden bir secenek belirleyin veya '0' yazarak ana menuye donun.";
++    private const double DefaultHandoffThreshold = 0.5;
++
++    public FlowEngine(AutomationRepository repo, JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Get the parsed flow config for a tenant. Returns null if not found or inactive.
++    /// </summary>
++    public async Task<FlowConfig?> GetActiveFlowAsync(int tenantId, CancellationToken ct = default)
++    {
++        var (flowDoc, isActive) = await _repo.GetFlowAsync(tenantId, ct);
++        if (flowDoc == null || !isActive)
++            return null;
++
++        try
++        {
++            return ParseFlowConfig(flowDoc);
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"Failed to parse flow config for tenant {tenantId}: {ex.Message}");
++            return null;
++        }
++        finally
++        {
++            flowDoc.Dispose();
++        }
++    }
++
++    /// <summary>
++    /// Process user input against the current flow state.
++    /// Returns the flow action to take.
++    /// </summary>
++    public FlowAction ProcessInput(FlowConfig flow, ChatSession? session, string userInput)
++    {
++        // Reset command: '0' returns to menu
++        if (userInput.Trim() == "0")
++        {
++            return new FlowAction
++            {
++                Type = FlowActionType.ShowMenu,
++                ReplyText = FormatMenu(flow),
++                NextNode = "menu"
++            };
++        }
++
++        // No session or welcome state -> show welcome + menu
++        if (session == null || session.CurrentNode == "welcome")
++        {
++            return new FlowAction
++            {
++                Type = FlowActionType.ShowWelcome,
++                ReplyText = flow.WelcomeMessage + "\n\n" + FormatMenu(flow),
++                NextNode = "menu"
++            };
++        }
++
++        // In menu state -> process option selection
++        if (session.CurrentNode == "menu")
++        {
++            var selectedOption = flow.MenuOptions.FirstOrDefault(
++                o => o.Key.Equals(userInput.Trim(), StringComparison.OrdinalIgnoreCase));
++
++            if (selectedOption == null)
++            {
++                return new FlowAction
++                {
++                    Type = FlowActionType.UnknownInput,
++                    ReplyText = flow.UnknownInputMessage + "\n\n" + FormatMenu(flow),
++                    NextNode = "menu"
++                };
++            }
++
++            return selectedOption.Action switch
++            {
++                "reply" => new FlowAction
++                {
++                    Type = FlowActionType.StaticReply,
++                    ReplyText = selectedOption.ReplyText ?? "...",
++                    NextNode = "menu"
++                },
++                "faq" => new FlowAction
++                {
++                    Type = FlowActionType.FaqSearch,
++                    NextNode = "faq"
++                },
++                "handoff" => new FlowAction
++                {
++                    Type = FlowActionType.Handoff,
++                    NextNode = "handed_off"
++                },
++                "intent" => new FlowAction
++                {
++                    Type = FlowActionType.IntentDetection,
++                    NextNode = "intent"
++                },
++                _ => new FlowAction
++                {
++                    Type = FlowActionType.UnknownInput,
++                    ReplyText = flow.UnknownInputMessage,
++                    NextNode = "menu"
++                }
++            };
++        }
++
++        // In faq node -> run FAQ search on free text
++        if (session.CurrentNode == "faq")
++        {
++            return new FlowAction
++            {
++                Type = FlowActionType.FaqSearch,
++                NextNode = "faq"
++            };
++        }
++
++        // In intent node -> run intent detection on free text
++        if (session.CurrentNode == "intent")
++        {
++            return new FlowAction
++            {
++                Type = FlowActionType.IntentDetection,
++                NextNode = "intent"
++            };
++        }
++
++        // Fallback: show menu
++        return new FlowAction
++        {
++            Type = FlowActionType.ShowMenu,
++            ReplyText = FormatMenu(flow),
++            NextNode = "menu"
++        };
++    }
++
++    private string FormatMenu(FlowConfig flow)
++    {
++        var lines = new List<string> { flow.MenuText };
++        foreach (var opt in flow.MenuOptions)
++        {
++            lines.Add($"{opt.Key}. {opt.Label}");
++        }
++        return string.Join("\n", lines);
++    }
++
++    private static FlowConfig ParseFlowConfig(JsonDocument doc)
++    {
++        var root = doc.RootElement;
++
++        var menuOptions = new List<MenuOption>();
++        if (root.TryGetProperty("menu", out var menu) && menu.TryGetProperty("options", out var opts))
++        {
++            foreach (var opt in opts.EnumerateArray())
++            {
++                menuOptions.Add(new MenuOption
++                {
++                    Key = opt.GetProperty("key").GetString()!,
++                    Label = opt.GetProperty("label").GetString()!,
++                    Action = opt.GetProperty("action").GetString()!,
++                    ReplyText = opt.TryGetProperty("reply_text", out var rt) ? rt.GetString() : null
++                });
++            }
++        }
++
++        var menuText = "";
++        if (root.TryGetProperty("menu", out var menuElement) && menuElement.TryGetProperty("text", out var mt))
++            menuText = mt.GetString() ?? "";
++
++        return new FlowConfig
++        {
++            WelcomeMessage = root.TryGetProperty("welcome_message", out var wm) ? wm.GetString() ?? DefaultWelcome : DefaultWelcome,
++            MenuText = menuText,
++            MenuOptions = menuOptions,
++            OffHoursMessage = root.TryGetProperty("off_hours_message", out var oh) ? oh.GetString() : null,
++            UnknownInputMessage = root.TryGetProperty("unknown_input_message", out var ui) ? ui.GetString() ?? DefaultUnknownInput : DefaultUnknownInput,
++            HandoffConfidenceThreshold = root.TryGetProperty("handoff_confidence_threshold", out var ht) ? ht.GetDouble() : DefaultHandoffThreshold
++        };
++    }
++}
++
++// ============================================================
++// Flow DTOs
++// ============================================================
++
++public sealed class FlowConfig
++{
++    public required string WelcomeMessage { get; init; }
++    public required string MenuText { get; init; }
++    public required List<MenuOption> MenuOptions { get; init; }
++    public string? OffHoursMessage { get; init; }
++    public required string UnknownInputMessage { get; init; }
++    public double HandoffConfidenceThreshold { get; init; } = 0.5;
++}
++
++public sealed class MenuOption
++{
++    public required string Key { get; init; }
++    public required string Label { get; init; }
++    public required string Action { get; init; }
++    public string? ReplyText { get; init; }
++}
++
++public sealed class FlowAction
++{
++    public required FlowActionType Type { get; init; }
++    public string? ReplyText { get; init; }
++    public required string NextNode { get; init; }
++}
++
++public enum FlowActionType
++{
++    ShowWelcome,
++    ShowMenu,
++    StaticReply,
++    FaqSearch,
++    IntentDetection,
++    Handoff,
++    UnknownInput
++}
+diff --git a/src/Invekto.Automation/Services/IntentDetector.cs b/src/Invekto.Automation/Services/IntentDetector.cs
+new file mode 100644
+index 0000000..7c648cd
+--- /dev/null
++++ b/src/Invekto.Automation/Services/IntentDetector.cs
+@@ -0,0 +1,164 @@
++using System.Net.Http.Json;
++using System.Text.Json;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Services;
++
++/// <summary>
++/// Intent detection using Claude Haiku API.
++/// Independent from ChatAnalysis -- Automation has its own Claude integration.
++/// Thread-safe, register as singleton.
++/// </summary>
++public sealed class IntentDetector
++{
++    private readonly HttpClient _httpClient;
++    private readonly string _apiKey;
++    private readonly JsonLinesLogger _logger;
++
++    private const string ClaudeApiUrl = "https://api.anthropic.com/v1/messages";
++    private const string Model = "claude-haiku-4-5-20251001";
++    private const int MaxTokens = 256;
++    private const int TimeoutMs = 10000;
++
++    // Supported intents
++    public static readonly string[] SupportedIntents =
++    {
++        "shipping_inquiry",    // kargo, teslimat, gonderi
++        "price_inquiry",       // fiyat, ucret, maliyet
++        "appointment",         // randevu, rezervasyon, saat
++        "complaint",           // sikayet, sorun, problem
++        "general_question"     // genel soru, bilgi
++    };
++
++    private static readonly string SystemPrompt = $@"Sen bir musteri mesaji niyet (intent) algilama sistemisin.
++
++Mesaji analiz et ve asagidaki intent'lerden birini sec:
++- shipping_inquiry: Kargo, teslimat, gonderi durumu
++- price_inquiry: Fiyat, ucret, maliyet sorgusu
++- appointment: Randevu, rezervasyon, saat sorgusu
++- complaint: Sikayet, sorun, problem bildirimi
++- general_question: Genel soru, bilgi talebi
++
++JSON olarak cevap ver (baska metin yazma):
++{{""intent"": ""<intent_name>"", ""confidence"": <0.0-1.0>, ""summary"": ""<1 cumle ozet>""}}";
++
++    public IntentDetector(HttpClient httpClient, string apiKey, JsonLinesLogger logger)
++    {
++        _httpClient = httpClient;
++        _apiKey = apiKey;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Detect intent from a user message using Claude Haiku.
++    /// Returns intent result or null on failure (graceful degradation).
++    /// </summary>
++    public async Task<IntentResult?> DetectAsync(string userMessage, CancellationToken ct = default)
++    {
++        try
++        {
++            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
++            cts.CancelAfter(TimeoutMs);
++
++            var requestBody = new
++            {
++                model = Model,
++                max_tokens = MaxTokens,
++                system = SystemPrompt,
++                messages = new[]
++                {
++                    new { role = "user", content = userMessage }
++                }
++            };
++
++            using var request = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
++            request.Headers.Add("x-api-key", _apiKey);
++            request.Headers.Add("anthropic-version", "2023-06-01");
++            request.Content = JsonContent.Create(requestBody);
++
++            using var response = await _httpClient.SendAsync(request, cts.Token);
++
++            if (!response.IsSuccessStatusCode)
++            {
++                var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
++                _logger.SystemWarn($"Claude API HTTP {(int)response.StatusCode}: {errorBody}");
++                return null;
++            }
++
++            var responseJson = await response.Content.ReadFromJsonAsync<JsonDocument>(cts.Token);
++            if (responseJson == null)
++                return null;
++
++            // Extract text from Claude response
++            var content = responseJson.RootElement
++                .GetProperty("content")[0]
++                .GetProperty("text")
++                .GetString();
++
++            if (string.IsNullOrEmpty(content))
++                return null;
++
++            // Parse intent JSON from response
++            return ParseIntentResponse(content);
++        }
++        catch (OperationCanceledException) when (ct.IsCancellationRequested)
++        {
++            throw; // App shutting down
++        }
++        catch (OperationCanceledException)
++        {
++            _logger.SystemWarn("Claude intent detection timeout");
++            return null;
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"Intent detection failed: {ex.Message}");
++            return null;
++        }
++    }
++
++    private IntentResult? ParseIntentResponse(string responseText)
++    {
++        try
++        {
++            // Claude might wrap JSON in markdown code blocks
++            var json = responseText.Trim();
++            if (json.StartsWith("```"))
++            {
++                var startIdx = json.IndexOf('{');
++                var endIdx = json.LastIndexOf('}');
++                if (startIdx >= 0 && endIdx > startIdx)
++                    json = json[startIdx..(endIdx + 1)];
++            }
++
++            using var doc = JsonDocument.Parse(json);
++            var root = doc.RootElement;
++
++            var intent = root.GetProperty("intent").GetString();
++            var confidence = root.GetProperty("confidence").GetDouble();
++            var summary = root.TryGetProperty("summary", out var s) ? s.GetString() : null;
++
++            if (string.IsNullOrEmpty(intent))
++                return null;
++
++            return new IntentResult
++            {
++                Intent = intent,
++                Confidence = Math.Clamp(confidence, 0.0, 1.0),
++                Summary = summary ?? ""
++            };
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"Failed to parse intent response: {ex.Message}, raw={responseText}");
++            return null;
++        }
++    }
++}
++
++public sealed class IntentResult
++{
++    public required string Intent { get; init; }
++    public double Confidence { get; init; }
++    public required string Summary { get; init; }
++}
+diff --git a/src/Invekto.Automation/Services/WorkingHoursChecker.cs b/src/Invekto.Automation/Services/WorkingHoursChecker.cs
+new file mode 100644
+index 0000000..3f6b3cc
+--- /dev/null
++++ b/src/Invekto.Automation/Services/WorkingHoursChecker.cs
+@@ -0,0 +1,96 @@
++using System.Text.Json;
++using Invekto.Automation.Data;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Automation.Services;
++
++/// <summary>
++/// Checks if current time is within tenant's working hours.
++/// Working hours stored in tenant_registry.settings_json.
++/// Thread-safe, register as singleton.
++/// </summary>
++public sealed class WorkingHoursChecker
++{
++    private readonly AutomationRepository _repo;
++    private readonly JsonLinesLogger _logger;
++
++    private const string DefaultTimezone = "Europe/Istanbul";
++    private const string DefaultStart = "09:00";
++    private const string DefaultEnd = "18:00";
++
++    public WorkingHoursChecker(AutomationRepository repo, JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Check if the current time is within the tenant's working hours.
++    /// Returns (isWithinHours, offHoursMessage).
++    /// If no working hours configured, assumes always open (returns true).
++    /// </summary>
++    public async Task<(bool IsWithinHours, string? OffHoursMessage)> CheckAsync(int tenantId, CancellationToken ct = default)
++    {
++        try
++        {
++            var settingsJson = await _repo.GetTenantSettingsJsonAsync(tenantId, ct);
++            if (string.IsNullOrEmpty(settingsJson))
++                return (true, null); // No settings = always open
++
++            using var doc = JsonDocument.Parse(settingsJson);
++            var root = doc.RootElement;
++
++            if (!root.TryGetProperty("working_hours", out var whElement))
++                return (true, null); // No working_hours defined = always open
++
++            var timezone = whElement.TryGetProperty("timezone", out var tz) ? tz.GetString() ?? DefaultTimezone : DefaultTimezone;
++            var startStr = whElement.TryGetProperty("start", out var s) ? s.GetString() ?? DefaultStart : DefaultStart;
++            var endStr = whElement.TryGetProperty("end", out var e) ? e.GetString() ?? DefaultEnd : DefaultEnd;
++
++            // Parse days_off (e.g., ["Sunday", "Saturday"])
++            var daysOff = new HashSet<DayOfWeek>();
++            if (whElement.TryGetProperty("days_off", out var daysElement) && daysElement.ValueKind == JsonValueKind.Array)
++            {
++                foreach (var day in daysElement.EnumerateArray())
++                {
++                    if (Enum.TryParse<DayOfWeek>(day.GetString(), ignoreCase: true, out var dow))
++                        daysOff.Add(dow);
++                }
++            }
++
++            var tzi = TimeZoneInfo.FindSystemTimeZoneById(timezone);
++            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzi);
++
++            // Check day off
++            if (daysOff.Contains(now.DayOfWeek))
++            {
++                var offMsg = whElement.TryGetProperty("off_message", out var msg) ? msg.GetString() : null;
++                return (false, offMsg);
++            }
++
++            // Check time range
++            if (TimeOnly.TryParse(startStr, out var start) && TimeOnly.TryParse(endStr, out var end))
++            {
++                var currentTime = TimeOnly.FromDateTime(now);
++                var isOpen = currentTime >= start && currentTime <= end;
++                if (!isOpen)
++                {
++                    var offMsg = whElement.TryGetProperty("off_message", out var msg) ? msg.GetString() : null;
++                    return (false, offMsg);
++                }
++            }
++
++            return (true, null);
++        }
++        catch (TimeZoneNotFoundException ex)
++        {
++            _logger.SystemWarn($"Invalid timezone for tenant {tenantId}: {ex.Message}, treating as open");
++            return (true, null);
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"Working hours check failed for tenant {tenantId}: {ex.Message}, treating as open");
++            return (true, null);
++        }
++    }
++}
+diff --git a/src/Invekto.Automation/appsettings.json b/src/Invekto.Automation/appsettings.json
+new file mode 100644
+index 0000000..9a4a40a
+--- /dev/null
++++ b/src/Invekto.Automation/appsettings.json
+@@ -0,0 +1,28 @@
++{
++  "Service": {
++    "ListenPort": 7108
++  },
++  "Logging": {
++    "FilePath": "logs"
++  },
++  "Claude": {
++    "ApiKey": ""
++  },
++  "Jwt": {
++    "SecretKey": "",
++    "Issuer": null,
++    "Audience": null,
++    "ClockSkewSeconds": 60
++  },
++  "ConnectionStrings": {
++    "PostgreSQL": "Host=localhost;Port=5432;Database=invekto;Username=invekto;Password="
++  },
++  "Integration": {
++    "Callback": {
++      "DefaultCallbackUrl": "",
++      "MaxRetries": 3,
++      "BaseDelayMs": 500,
++      "TimeoutMs": 5000
++    }
++  }
++}
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index 65fb95f..5171155 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -40,6 +40,13 @@ public static class ErrorCodes
+     public const string IntegrationUnknownEventType = "INV-INT-003";
+     public const string IntegrationTenantNotFound = "INV-INT-004";
+ 
++    // Automation errors (INV-AT-xxx) -- GR-1.1
++    public const string AutomationInvalidFlowConfig = "INV-AT-001";
++    public const string AutomationFlowNotFound = "INV-AT-002";
++    public const string AutomationFaqNotFound = "INV-AT-003";
++    public const string AutomationIntentDetectionFailed = "INV-AT-004";
++    public const string AutomationSessionExpired = "INV-AT-005";
++
+     // Database errors (INV-DB-xxx)
+     public const string DatabaseConnectionFailed = "INV-DB-001";
+     public const string DatabaseQueryTimeout = "INV-DB-002";

@@ -1,0 +1,210 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260209-automation-service",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-09T12:00:00Z",
+  "updated_at": "2026-02-09T15:45:00Z",
+  "plan": {
+    "summary": "GR-1.1: Invekto.Automation mikro servisi (port 7108). Menu-based chatbot engine, FAQ automation, mesai disi oto-cevap, Claude Haiku intent detection, human handoff. 4 PostgreSQL tablosu: chatbot_flows, faq_entries, chat_sessions, auto_reply_log.",
+    "q_intent": "GR-1.1: Chatbot / Flow Builder -- Invekto.Automation servisini baslat. Yeni mikro servis: Invekto.Automation (port 7108). Scope: Servis iskeleti, menu bazli chatbot engine, FAQ otomasyonu, mesai disi oto-cevap, intent detection, human handoff, PostgreSQL tablolari.",
+    "interview_notes": "1) Mesaj akisi: Webhook (Main App -> Automation) via GR-1.9 kontrati. 2) Intent detection: Automation kendi Claude Haiku cagrisi (bagimsiz, ChatAnalysis degismez). 3) FAQ depolama: Ayri faq_entries tablosu. 4) Human handoff: Callback action handoff_to_human (mevcut kontrat). 5) Mesai saati: tenant_registry.settings_json. 6) Chat state: PostgreSQL chat_sessions tablosu (restart-safe). 7) Kisit: ChatAnalysis degismez, RAG yok, karmasik flow builder UI yok."
+  },
+  "allowed_files": [
+    "src/Invekto.Automation/Invekto.Automation.csproj",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Services/IntentDetector.cs",
+    "src/Invekto.Automation/Services/FlowEngine.cs",
+    "src/Invekto.Automation/Services/FaqMatcher.cs",
+    "src/Invekto.Automation/Services/WorkingHoursChecker.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Automation/appsettings.json",
+    "arch/db/automation.sql",
+    "arch/contracts/automation-flow.json",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "InvektoServis.sln",
+    "arch/session-memory.md",
+    "arch/active-work.md",
+    "arch/plans/20260209-automation-service.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Automation/Invekto.Automation.csproj", "is_new": true, "change": "New .NET 8 Web project referencing Invekto.Shared" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": true, "change": "Entry point: DI setup, middleware, 10 endpoints + tenant validation (JWT tenant == route tenant) + DB error handling on all CRUD endpoints" },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": true, "change": "Main pipeline: working hours -> flow engine -> FAQ match -> intent detection -> callback. No-flow case now triggers handoff (not silent skip)" },
+    { "path": "src/Invekto.Automation/Services/FlowEngine.cs", "is_new": true, "change": "Menu-based chatbot flow: welcome -> menu -> option selection -> action dispatch. FAQ state correctly routes to FaqSearch (not IntentDetection)" },
+    { "path": "src/Invekto.Automation/Services/IntentDetector.cs", "is_new": true, "change": "Claude Haiku API call for 5-intent detection (shipping, price, appointment, complaint, general)" },
+    { "path": "src/Invekto.Automation/Services/FaqMatcher.cs", "is_new": true, "change": "Keyword-based FAQ matching with confidence scoring" },
+    { "path": "src/Invekto.Automation/Services/WorkingHoursChecker.cs", "is_new": true, "change": "Check tenant working hours from tenant_registry.settings_json" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": true, "change": "PostgreSQL CRUD for chatbot_flows, faq_entries, chat_sessions, auto_reply_log" },
+    { "path": "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs", "is_new": true, "change": "JWT auth middleware (same pattern as Backend, microservice isolation)" },
+    { "path": "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs", "is_new": true, "change": "HTTP traffic logging (same pattern as ChatAnalysis)" },
+    { "path": "src/Invekto.Automation/appsettings.json", "is_new": true, "change": "Base config: port, logging, Claude API, JWT, PostgreSQL, callback" },
+    { "path": "arch/db/automation.sql", "is_new": true, "change": "4 tables DDL: chatbot_flows, faq_entries, chat_sessions, auto_reply_log" },
+    { "path": "arch/contracts/automation-flow.json", "is_new": true, "change": "Flow config JSON schema for chatbot_flows.flow_config" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Added AT service code + 5 error codes (INV-AT-001 ~ 005)" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added 5 Automation error code constants" },
+    { "path": "InvektoServis.sln", "is_new": false, "change": "Added Invekto.Automation project to solution" },
+    { "path": "arch/session-memory.md", "is_new": false, "change": "Updated with GR-1.1 status, new decisions, project structure" },
+    { "path": "arch/active-work.md", "is_new": false, "change": "Added 20260209-automation-service as REVIEW" },
+    { "path": "arch/plans/20260209-automation-service.json", "is_new": true, "change": "Plan JSON for GR-1.1" }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "ECAF08FA3E2086498BDA5C6829DD23E430CDD745E500BB47A5AF7247F93B55F5",
+    "full_path": "arch/plans/diffs/20260209-automation-service.diff",
+    "stats": {
+      "insertions": 2384,
+      "deletions": 14,
+      "files_count": 19
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln",
+    "timestamp": "2026-02-09T15:15:00Z",
+    "output_tail": "Build succeeded. 0 Warning(s) 0 Error(s) (Automation only, solution has pre-existing Backend warnings)"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the Automation service start on port 7108, respond to /health and /ready, and register all endpoints via /api/ops/endpoints?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does JWT auth middleware protect /api/v1/ prefixed endpoints and correctly extract TenantContext from Bearer token?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the webhook handler accept new_message events, check working hours, run flow engine, and return 202 Accepted with async processing?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Are all 4 PostgreSQL tables (chatbot_flows, faq_entries, chat_sessions, auto_reply_log) correctly defined with snake_case, proper indexes, and foreign keys?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does the intent detector call Claude Haiku independently and return confidence + intent, and does low confidence trigger handoff_to_human callback?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "Does FAQ matching use keyword search against faq_entries and return the best match with confidence score?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Does chat_sessions table correctly track conversation state and expire inactive sessions?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/ (ChatAnalysis degismez)",
+      "src/Invekto.Backend/ (Backend degismez, sadece Shared constants)",
+      "arch/db/tenant-registry.sql (mevcut sema)"
+    ],
+    "non_goals": [
+      "RAG / knowledge base",
+      "Karmasik flow builder UI",
+      "Guardrails / PII filtering",
+      "ChatAnalysis kodu degisikligi"
+    ],
+    "intentional_exclusions": [
+      "appsettings.Production.json (Q manuel olusturur)",
+      "Deploy script guncelleme (ayri is)",
+      "NSSM servis kurulumu (Q sunucuda yapar)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs: webhook handler",
+      "AutomationOrchestrator.cs: ProcessMessageAsync",
+      "IntentDetector.cs: DetectAsync (Claude API call)",
+      "AutomationRepository.cs: tum DB islemleri",
+      "WorkingHoursChecker.cs: CheckAsync",
+      "FlowEngine.cs: GetActiveFlowAsync"
+    ],
+    "user_facing_errors": [
+      "INV-AT-001: Invalid flow config",
+      "INV-AT-002: Flow not found for tenant",
+      "INV-AT-003: FAQ entry not found",
+      "INV-AT-004: Intent detection failed (Claude API error)",
+      "INV-AT-005: Session expired or not found"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum catch bloklari logger ile loglanir. Claude API hatasi durumunda handoff yapilir (graceful degradation). DB hatasi durumunda 500 + error code donulur."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Musteri mesaj yazdi ama hicbir cevap gelmedi, bot mu insan mi belli degil",
+      "suggestion": "Hosgeldin mesajinda 'Ben dijital asistanınızım' ifadesi + menu secenekleri ile net beklenti yarat",
+      "aha_moment": "Musteri ilk mesajda hemen interaktif menu gorunce 'vay, hizli ve profesyonel' der"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Temsilci mesai disinda, musteri saatlerce bekliyor, mutsuz",
+      "suggestion": "Mesai disi oto-cevap aninda gider + sonraki mesai basinda hatirlatma",
+      "aha_moment": "Musteri gece 23:00'te mesaj atar, 1 saniyede 'Mesai saatlerimiz 09-18, ilk is olarak size donecegiz' alir"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bot confidence dusuk ama cevap veriyor, yanlis bilgi riski",
+      "suggestion": "Handoff threshold ile dusuk confidence = otomatik temsilciye devir + AI ozet",
+      "aha_moment": "Temsilci devir aldiginda AI ozet gorur: 'Musteri karmasik sikayet bildirdi, konu: ...' - hemen context sahibi"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Fiyat sorusu geldi ama temsilci musait degil, musteri gitti",
+      "suggestion": "FAQ'dan otomatik fiyat bilgisi + 'Detayli bilgi icin randevu ister misiniz?' CTA",
+      "aha_moment": "Musteri 'fiyat ne kadar' yazinca aninda guncel fiyat + randevu teklifi gelir"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Ayni sorular tekrar tekrar geliyor, temsilci ayni cevaplari veriyor",
+      "suggestion": "FAQ otomasyonu ile top 10 soru otomatik cevaplanir, temsilci zamani %40 azalir",
+      "aha_moment": "Temsilci panele bakar, 'Bu hafta bot 120 soruyu otomatik cevaplamis' gorur"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3,
+    "q_override": "FORCE PASS",
+    "q_override_reason": "Remaining issues are architectural decisions (async 202 pattern + microservice middleware isolation), not bugs. All real bugs fixed in iter 1+2.",
+    "blocking_issues": [],
+    "accepted_architectural_decisions": [
+      "CQ1: Async 202 webhook pattern - callback failure logged with INV-INT-002, no user-facing feedback possible (HTTP response already sent)",
+      "CQ4: Duplicate middleware - microservice isolation by design, Shared is class library without ASP.NET Core types"
+    ],
+    "codex_timestamp": "2026-02-09T15:45:00Z",
+    "codex_iteration_history": [
+      { "iter": 1, "result": "FAIL", "fixed": ["Tenant isolation gap", "FAQ routing bug", "Error handling gaps", "No-flow silent skip"] },
+      { "iter": 2, "result": "FAIL", "fixed": ["Callback return bool checking", "Webhook background task result logging"] },
+      { "iter": 3, "result": "FAIL", "q_override": "FORCE PASS", "accepted": ["Async pattern architectural constraint (CQ1)", "Middleware isolation by design (CQ4)"] }
+    ]
+  }
+}

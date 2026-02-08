@@ -14,6 +14,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260209-automation-service | 2026-02-09 | GR-1.1: Invekto.Automation chatbot/flow builder servisi (Codex 3 iter, Q FORCE PASS) |
 | 20260208-integration-bridge | 2026-02-08 | GR-1.9: Invekto <-> InvektoServis API koprusu (JWT, webhook, callback, PostgreSQL) |
 | 20260202-chatanalysis-integration | 2026-02-02 | WapCRM + Claude Haiku integration |
 | 20260202-stage0-review-fixes | 2026-02-02 | Ops auth + log reader fixes |
