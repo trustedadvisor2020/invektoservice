@@ -38,11 +38,32 @@ Adım 0.3: Grand Slam Offer tasarla
 ├── Kıtlık: "İlk 10 satıcıya özel fiyat"
 └── Fiyat: 3.000-5.000 TL/ay (temsilci maliyetinin %10-20'si)
 
+Adım 0.3b: Offer paketleme (Hormozi kuralı)
+├── Feature satma, sonuç sat
+├── "AI inbox" DEĞİL → "Kargo sorularının %50'si otomatik cevaplanır"
+├── Setup: White-glove onboarding (biz kuruyoruz)
+├── Garanti: 30 günde sonuç yoksa 2. ay ücretsiz
+├── Kıtlık: İlk 10 müşteriye özel fiyat
+└── Risk reversal: Para iade garantisi (ilk ay)
+
 Adım 0.4: İlk müşteriyi kapat
 ├── Teklif sun
 ├── Ödeme al (ilk ay önceden)
 └── Bu müşterinin spesifik ihtiyaçlarını haritalandır
 ```
+
+**⚠️ Ekip Gerçekliği (Lemkin uyarısı):**
+
+| Phase | Minimum Ekip | Gerçekçi Süre |
+|-------|-------------|---------------|
+| 0-1 | Solo founder | 6-8 hafta |
+| 2 | Solo + part-time yardım | 6-8 hafta |
+| 3 | 2 kişi (backend + product) | 8-10 hafta |
+| 4 | 3 kişi (+ security/DevOps) | 8-10 hafta |
+| 5+ | 4+ kişi (+ sales + support) | Ongoing |
+
+Bu plan toplam minimum 12-14 ay. "90 günde yapılır" yanıltıcıdır.
+Solo founder Phase 0-2'yi 12-16 haftada çıkarabilir ama Phase 3+ için ekip şart.
 
 **Phase 0 çıkışında elimizde:**
 - 1 ödeyen müşteri
@@ -54,6 +75,95 @@ Adım 0.4: İlk müşteriyi kapat
 - 10 görüşmede 0 ilgi → Niche yanlış, pivot et
 - İlgi var ama ödeme yok → Offer zayıf, güçlendir
 - Ödeme var → Phase 1'e geç
+
+#### Phase 0 — 3 Niche Paralel Validasyon (Q Kararı — 2026-02-08)
+
+> **Karar:** 3 niche'e aynı anda çıkılacak. Yukarıdaki Adım 0.1-0.4 e-ticaret için geçerli.
+> Aşağıda diş ve estetik niche'leri için paralel validasyon adımları ekleniyor.
+
+**Adım 0.1-DİŞ: Diş Kliniği Niche Validasyonu**
+
+```
+Adım 0.1-D: Niche tanım
+├── Karar: 2-5 ünitelik diş klinikleri (günde 30+ WhatsApp mesajı)
+├── Neden: Yüksek ARPU (7.5K TL/ay), net ağrı (no-show + fiyat soruları), WhatsApp ağırlıklı iletişim
+└── Avatar: [D1] Dr. Burak - 2-3 şubeli diş kliniği sahibi
+
+Adım 0.2-D: 10 potansiyel klinikle görüş
+├── Nereden bul: Diş hekimleri dernekleri, LinkedIn, yerel klinik ağları, Google Maps üst sıra klinikler
+├── Soru listesi:
+│   ├── Günde kaç WhatsApp mesajı alıyorsunuz?
+│   ├── En çok hangi sorular geliyor? (fiyat/randevu/tedavi bilgisi)
+│   ├── No-show oranınız nedir? Hatırlatma yapıyor musunuz?
+│   ├── Sekreter kaç kişi? Maaş?
+│   ├── Otomatik randevu + no-show önleme olsa ne kadar ödersiniz?
+│   └── Yurtdışından hasta geliyor mu? Hangi dillerde?
+└── Hedef: Pattern'i doğrula, no-show gerçekliğini ölç
+
+Adım 0.3-D: Grand Slam Offer — Diş
+├── Hayalin Sonuç: "No-show oranınız %60 düşer, fiyat soruları randevuya döner"
+├── Garanti: "30 günde no-show düşmezse 2. ay ücretsiz"
+├── Kıtlık: "İlk 5 kliniğe özel lansman fiyatı"
+├── Fiyat: 7.500 TL/ay (kayıp randevu gelirinin %5-10'u)
+└── Offer paketleme (Hormozi):
+    ├── "Randevu yönetim yazılımı" DEĞİL → "No-show oranını %60 düşürüyoruz"
+    ├── Setup: Biz kuruyoruz (slot tanımı + template ayarı + WhatsApp bağlantısı)
+    └── Risk reversal: İlk ay para iade garantisi
+
+Adım 0.4-D: İlk kliniği kapat
+├── Teklif sun
+├── Ödeme al (ilk ay önceden)
+└── Bu kliniğin spesifik ihtiyaçlarını haritalandır (hangi tedaviler, kaç doktor, mesai saatleri)
+```
+
+**Adım 0.1-ESTETİK: Estetik Klinik Niche Validasyonu**
+
+```
+Adım 0.1-A: Niche tanım
+├── Karar: Estetik klinikler (botox, dolgu, lazer, saç ekimi, medikal turizm)
+├── Neden: Çok yüksek ARPU (15-25K TL/ay), satış odaklı, Instagram/WhatsApp ağırlıklı lead akışı
+└── Avatar: [A1] Dr. Selin - Yüksek fiyatlı estetik işlemler + medikal turizm
+
+Adım 0.2-A: 10 potansiyel klinikle görüş
+├── Nereden bul: Instagram estetik sayfaları, Google Ads rakip analizi, medikal turizm acenteleri, sektör fuarları
+├── Soru listesi:
+│   ├── Lead'leriniz nereden geliyor? (Instagram, Google, referans, medikal turizm acentesi)
+│   ├── Instagram DM'den WhatsApp'a geçiş yapıyor musunuz? Nasıl?
+│   ├── Fiyat sorusu gelince ne yapıyorsunuz? (hemen söyleme vs randevuya çek)
+│   ├── Lead'den randevuya dönüşüm oranınız nedir?
+│   ├── Yurtdışından hasta var mı? Hangi ülkeler/diller?
+│   ├── Before/after fotoğraf paylaşım süreci nasıl?
+│   └── Aylık reklam bütçeniz nedir? ROI ölçüyor musunuz?
+└── Hedef: Lead dönüşüm ağrısını doğrula, medikal turizm potansiyelini ölç
+
+Adım 0.3-A: Grand Slam Offer — Estetik
+├── Hayalin Sonuç: "Lead'den randevuya dönüşüm %40 artar, yurtdışı hastalar AI ile anında cevap alır"
+├── Garanti: "30 günde randevu dönüşümü artmazsa 2. ay ücretsiz"
+├── Kıtlık: "İlk 5 kliniğe özel lansman fiyatı"
+├── Fiyat: 15.000-25.000 TL/ay (aylık reklam harcamasının %10-15'i)
+└── Offer paketleme (Hormozi):
+    ├── "CRM sistemi" DEĞİL → "Lead'lerinizin %40 fazlası randevuya dönüyor"
+    ├── Setup: Biz kuruyoruz (Instagram DM→WA geçişi + lead tracking + kampanya bağlantısı)
+    ├── Multi-language: İngilizce hastalar AI ile anında cevap alır
+    └── Risk reversal: İlk ay para iade garantisi
+
+Adım 0.4-A: İlk kliniği kapat
+├── Teklif sun
+├── Ödeme al (ilk ay önceden)
+└── Bu kliniğin spesifik ihtiyaçlarını haritalandır (hangi işlemler, dil ihtiyacı, reklam kanalları)
+```
+
+**Phase 0 — 3 Niche Paralel Çıkış Kriterleri:**
+
+| Kriter | E-ticaret | Diş | Estetik |
+|--------|-----------|-----|---------|
+| Görüşme | 10 satıcı | 10 klinik | 10 klinik |
+| İlgi | "Evet buna para veririm" ≥3 | "Evet buna para veririm" ≥3 | "Evet buna para veririm" ≥3 |
+| İlk ödeme | 1 satıcı | 1 klinik | 1 klinik |
+| DURMA sinyali | 10 görüşme 0 ilgi → pivot | 10 görüşme 0 ilgi → ertele | 10 görüşme 0 ilgi → ertele |
+
+> **Not:** E-ticaret'te DURMA = tamamen pivot. Sağlık niche'lerinde DURMA = erteleme (Phase 3-4'e kaydır).
+> Çünkü ortak altyapı e-ticaret'te de işe yarar, ama e-ticaret tamamen tutmazsa iş modeli sıkıntılı.
 
 ---
 
@@ -169,6 +279,226 @@ Bu akış tanımlı değilse:
   → İlk değer anı (aha moment) ölçülemez
   → 30 gün sonra neden kaldığını bilemezsin
 ```
+
+**Customer Onboarding Akışı (Lemkin kuralı — ilk 48 saat kritik):**
+
+```
+İLK 30 DAKİKA:
+  1. Hesap oluştur (email + şifre)
+  2. WhatsApp Business API bağla (BSP key gir → test mesajı → ✓)
+  3. Trendyol/HB API bağla (seller API key → test siparişi çek → ✓)
+  4. "Kargo Soruları" otomasyonunu AÇ (tek toggle)
+
+İLK 24 SAAT:
+  5. İlk otomatik cevap gönderildi → ⚡ AHA MOMENT
+  6. Dashboard'da ilk metrik görünür ("Bugün 3 mesaj otomatik cevaplandı")
+
+İLK 48 SAAT:
+  7. İlk haftalık mini-rapor email'i ("İlk 2 gününüzde X mesaj, Y dakika tasarruf")
+  8. Onboarding call (15dk) — feedback + ayar ince tuning
+
+< 48 saat içinde değer gösteremezsen → churn riski %70+
+```
+
+**AI Güven Eğrisi (Lenny kuralı):**
+
+Temsilcinin AI'ya güvenme süreci:
+
+Hafta 1: "Ben onaylamadan gitmesin" → Tüm AI cevapları suggest modunda
+Hafta 2: "Basit soruları göndersin" → Kargo soruları auto, kalanı suggest
+Hafta 3-4: "İade soruları da olabilir" → Güvenilen intent'ler artıyor
+Ay 2+: "%60 auto, %40 suggest" → Temsilci sadece karmaşık vakaları yönetiyor
+
+Yanlış cevap olursa:
+→ AI cevabı suggest'e düşer (o intent için)
+→ Temsilciye "AI bunu yanlış cevapladı — düzelttik" bildirimi
+→ Knowledge base güncellenir
+→ Güven kademeli geri yükselir
+
+KURAL: AI hiçbir zaman temsilciyi devre dışı bırakmaz. Temsilci her zaman override edebilir.
+
+#### Phase 1 — Diş Kliniği İlk Müşteri Akışı (3 Niche Paralel — 2026-02-08)
+
+> E-ticaret Adım 1.1-1.4 yukarıda. Aşağıda diş kliniği için paralel çalışma.
+
+```
+Adım 1.1-D: WhatsApp → Fiyat Sorusu Pipeline (minimal)
+├── Yapılacak:
+│   ├── Intent: "implant ne kadar" / "fiyat ne" / "tedavi ücreti"
+│   ├── Intent eşleşince → fiyat aralığı + ücretsiz muayene teklifi
+│   ├── Randevu alma intent'i: "randevu almak istiyorum" → slot öner
+│   └── Eşleşmezse → sekretere devret (human handoff)
+├── Yapılmayacak:
+│   ├── HBYS entegrasyonu (çok erken)
+│   ├── Tedavi planı detayı (doktor verir)
+│   └── Ödeme/depozit sistemi (Phase 3+)
+└── Servis: ChatAnalysis genişlemesi + Backend endpoint'ler
+
+Adım 1.2-D: Basit Randevu Motoru (minimal)
+├── Yapılacak:
+│   ├── Haftalık slot tanımı (gün + saat aralıkları)
+│   ├── Randevu al → WhatsApp teyit mesajı
+│   ├── T-48h hatırlatma (Outbound Engine gerektirir — basit cron job ile başla)
+│   ├── T-2h son hatırlatma
+│   └── İptal → slot boşalt
+├── Yapılmayacak:
+│   ├── Google Calendar sync (Phase 2+)
+│   ├── Bekleme listesi (Phase 2+)
+│   ├── Doktor bazlı slot (Phase 2+)
+│   └── Online ödeme (Phase 3+)
+└── Servis: Backend + basit cron hatırlatma
+
+Adım 1.3-D: Basit Dashboard (kliniğe gösterilecek)
+├── Yapılacak:
+│   ├── Kaç fiyat sorusu geldi
+│   ├── Kaç tanesi randevuya döndü (dönüşüm oranı)
+│   ├── No-show sayısı + oranı
+│   └── Haftalık trend
+└── Servis: Mevcut React dashboard genişler
+```
+
+**Diş Kliniği First-Value Flow:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  İLK KULLANICI DENEYİMİ — DİŞ KLİNİĞİ (Day 1)         │
+│                                                         │
+│  1. WhatsApp Business API bağla                         │
+│     └── BSP key gir → test mesajı → ✓ Bağlandı         │
+│                                                         │
+│  2. Randevu slotlarını tanımla                          │
+│     └── Haftalık çalışma saatleri + slot süresi (30dk)  │
+│                                                         │
+│  3. "Fiyat Soruları" + "Randevu" otomasyonunu AÇ       │
+│     └── Tek toggle: ON                                  │
+│                                                         │
+│  4. İlk fiyat sorusuna otomatik cevap + randevu teklifi │
+│     └── "İmplant 15.000-25.000 TL aralığındadır.       │
+│          Ücretsiz muayene için randevu alalım mı?"      │
+│     └── ⚡ AHA MOMENT: "Sekreter yerine AI cevapladı!"  │
+│                                                         │
+│  5. İlk no-show hatırlatması gönderildi                 │
+│     └── T-48h: "Yarınki randevunuzu onaylıyor musunuz?" │
+│                                                         │
+│  Day 7: "Bu hafta 12 fiyat sorusu → 4 randevu, 0 no-sh"│
+│  Day 30: "Bu ay 50 soru → 18 randevu, no-show %8"      │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Diş Kliniği Customer Onboarding (ilk 48 saat):**
+
+```
+İLK 30 DAKİKA:
+  1. Hesap oluştur (email + şifre)
+  2. WhatsApp Business API bağla (BSP key gir → test mesajı → ✓)
+  3. Haftalık randevu slotlarını tanımla (gün + saat + süre)
+  4. "Fiyat Soruları Otomasyonu" + "Randevu Alma" → AÇ (tek toggle)
+  5. Fiyat aralıklarını gir (implant: 15-25K, dolgu: 2-5K, kanal: 3-8K)
+
+İLK 24 SAAT:
+  6. İlk fiyat sorusuna otomatik cevap → ⚡ AHA MOMENT
+  7. İlk randevu hatırlatması gönderildi
+  8. Dashboard'da ilk metrik: "Bugün 3 fiyat sorusu, 1 randevu alındı"
+
+İLK 48 SAAT:
+  9. İlk mini-rapor: "2 gün: X fiyat sorusu, Y randevu, Z no-show önlendi"
+  10. Onboarding call (15dk) — doktor ile feedback + fiyat aralığı ince ayar
+```
+
+#### Phase 1 — Estetik Klinik İlk Müşteri Akışı (3 Niche Paralel — 2026-02-08)
+
+```
+Adım 1.1-A: Instagram DM → WhatsApp Pipeline (minimal)
+├── Yapılacak:
+│   ├── Intent: "fiyat ne kadar" / "botox" / "dolgu" / "randevu"
+│   ├── Instagram DM'den WhatsApp'a yönlendirme mesajı (manuel başlangıç)
+│   ├── Fiyat sorusuna → kişiselleştirilmiş aralık + konsültasyon teklifi
+│   ├── Before/after fotoğraf talebi → hazır galeri linki
+│   └── Eşleşmezse → operasyon sorumlusuna devret
+├── Yapılmayacak:
+│   ├── Instagram API entegrasyonu (manuel DM→WA yeterli başta)
+│   ├── Otomatik lead scoring (Phase 2+)
+│   └── Ödeme/depozit (Phase 3+)
+└── Servis: ChatAnalysis genişlemesi + Backend
+
+Adım 1.2-A: Basit Lead Tracking (minimal)
+├── Yapılacak:
+│   ├── Lead kaydı (isim, telefon, ilgi alanı, kaynak)
+│   ├── Lead durumu (yeni → iletişim → randevu → hasta)
+│   ├── Basit follow-up hatırlatma (T+24h cevap yoksa tekrar mesaj)
+│   └── Lead → randevu dönüşüm oranı
+├── Yapılmayacak:
+│   ├── Tam CRM pipeline (basit tablo yeterli)
+│   ├── Ads attribution (Phase 2+)
+│   └── Revenue tracking (Phase 3+)
+└── Servis: Backend + Dashboard
+
+Adım 1.3-A: Basit Dashboard (kliniğe gösterilecek)
+├── Yapılacak:
+│   ├── Kaç lead geldi (kaynak bazlı)
+│   ├── Lead → randevu dönüşüm oranı
+│   ├── Yanıt süresi (lead'e ilk cevap ne kadar sürede)
+│   └── Haftalık trend
+└── Servis: Mevcut React dashboard genişler
+```
+
+**Estetik Klinik First-Value Flow:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  İLK KULLANICI DENEYİMİ — ESTETİK KLİNİK (Day 1)       │
+│                                                         │
+│  1. WhatsApp Business API bağla                         │
+│     └── BSP key gir → test mesajı → ✓ Bağlandı         │
+│                                                         │
+│  2. Hizmet listesi + fiyat aralıkları gir               │
+│     └── Botox: X TL, Dolgu: Y TL, Lazer: Z TL          │
+│                                                         │
+│  3. "Lead Yönetimi" + "Fiyat Soruları" → AÇ            │
+│     └── Tek toggle: ON                                  │
+│                                                         │
+│  4. İlk lead'e otomatik cevap + konsültasyon teklifi    │
+│     └── "Botox 8.000-12.000 TL aralığındadır. Kişiye   │
+│          özel fiyat için ücretsiz konsültasyon alalım?"  │
+│     └── ⚡ AHA MOMENT: "Lead 5 dk içinde cevap aldı!"   │
+│                                                         │
+│  5. Follow-up: Cevap gelmediyse T+24h hatırlatma        │
+│                                                         │
+│  Day 7: "Bu hafta 20 lead → 6 konsültasyon randevusu"   │
+│  Day 30: "Bu ay 80 lead → 28 randevu → %35 dönüşüm"    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Estetik Klinik Customer Onboarding (ilk 48 saat):**
+
+```
+İLK 30 DAKİKA:
+  1. Hesap oluştur (email + şifre)
+  2. WhatsApp Business API bağla (BSP key gir → test mesajı → ✓)
+  3. Hizmet kataloğu gir (işlem adı + fiyat aralığı + süre)
+  4. "Lead Yönetimi" + "Fiyat Soruları" → AÇ (tek toggle)
+
+İLK 24 SAAT:
+  5. İlk lead'e otomatik cevap gönderildi → ⚡ AHA MOMENT
+  6. Dashboard'da ilk metrik: "Bugün 5 lead, 2 konsültasyon randevusu"
+  7. İlk follow-up hatırlatması gönderildi
+
+İLK 48 SAAT:
+  8. İlk mini-rapor: "2 gün: X lead, Y randevu, Z yanıt süresi"
+  9. Onboarding call (15dk) — feedback + hizmet fiyat ince ayar
+  10. Before/after galeri paylaşım akışı kurulumu
+```
+
+#### Phase 1 — 3 Niche Paralel Başarı Kriterleri
+
+| Kriter | E-ticaret | Diş | Estetik |
+|--------|-----------|-----|---------|
+| Aktif müşteri | 1 satıcı | 1 klinik | 1 klinik |
+| AHA moment | Kargo sorusu oto-cevap | Fiyat→randevu dönüşümü | Lead'e hızlı cevap |
+| Deflection rate | %30+ | N/A | N/A |
+| Dönüşüm oranı | N/A | Fiyat sorusu→randevu %20+ | Lead→randevu %25+ |
+| No-show önleme | N/A | %25→%10 altı | N/A |
+| 2. ay ödeme | Evet | Evet | Evet |
 
 **Phase 1 sonunda elimizde:**
 - 1 müşteri aktif kullanıyor
@@ -388,15 +718,178 @@ return_deflections (id, tenant_id, conversation_id, original_intent, reason_cate
 - [ ] Outbound mesaj gönderiliyor, delivery rate %90+ (teknik çalışıyor)
 - [ ] En az 1 B2B lead yakalandı ve sales team'e aktarıldı
 
+#### Phase 2 — Diş Kliniği Ölçekleme (3 Niche Paralel — 2026-02-08)
+
+> E-ticaret Adım 2.1-2.7 yukarıda. Aşağıda diş kliniği için paralel Phase 2 çalışması.
+
+```
+Adım 2.1-D: Intent genişletme (klinik feedback'ine göre)
+├── Phase 1'de öğrenilenler:
+│   ├── Hastalar en çok ne soruyor? → intent ekle
+│   ├── Fiyat cevapları doğru mu? → aralıkları ayarla
+│   └── Randevu motoru düzgün çalışıyor mu?
+├── Yapılacak:
+│   ├── Intent sayısını 3 → 8-10'a çıkar:
+│   │   ├── Fiyat sorusu (mevcut)
+│   │   ├── Randevu alma (mevcut)
+│   │   ├── Randevu değiştirme/iptal (YENİ)
+│   │   ├── Tedavi bilgisi (YENİ) → "İmplant ne kadar sürer?"
+│   │   ├── Acil durum (YENİ) → "Ağrım var" → doktor alert
+│   │   ├── Sigorta sorusu (YENİ) → "SGK karşılıyor mu?"
+│   │   ├── Adres/ulaşım (YENİ) → konum + yol tarifi
+│   │   └── Çalışma saatleri (YENİ)
+│   └── Confidence threshold (düşük güven → sekretere devret)
+└── Servis: ChatAnalysis genişleme
+
+Adım 2.2-D: Randevu Motoru v2
+├── Yapılacak:
+│   ├── Google Calendar sync (2-way)
+│   ├── Doktor bazlı slot yönetimi (specialist vs genel)
+│   ├── Bekleme listesi (iptal olursa → sıradaki hastaya sor)
+│   ├── No-show prediction (basit: 2+ kez no-show yapan hasta → extra hatırlatma)
+│   └── Randevu onay → otomatik hatırlatma zinciri (T-48h, T-2h)
+├── Yapılmayacak:
+│   ├── HBYS entegrasyonu
+│   ├── Online ödeme / depozit (Phase 3+)
+│   └── Tedavi planı yönetimi
+└── Servis: Backend genişleme
+
+Adım 2.3-D: Onboarding otomasyonu (5+ kliniğe ölçek)
+├── Yapılacak:
+│   ├── Self-service slot tanımı
+│   ├── Fiyat aralığı editor (tedavi → min/max TL)
+│   ├── Template özelleştirme (klinik adı, doktor adı)
+│   └── Tenant veri izolasyonu
+└── Servis: Backend + Dashboard
+
+Adım 2.4-D: Klinik Outbound v1
+├── Yapılacak:
+│   ├── Randevu hatırlatma otomasyonu (T-48h, T-2h — Phase 1'deki cron → Outbound Engine'e taşı)
+│   ├── Kontrol randevusu hatırlatma (tedavi sonrası T+30 gün)
+│   ├── Doğum günü / yıldönümü mesajı (basit template)
+│   └── Opt-out yönetimi
+├── Yapılmayacak:
+│   ├── Tedavi sonrası takip otomasyonu (Phase 3+)
+│   ├── Google yorum rica (Phase 3+)
+│   └── Referans sistemi (Phase 3+)
+└── Servis: Outbound Engine genişleme
+```
+
+**Diş Kliniği DB Tabloları (Phase 2 ek):**
+```sql
+-- Randevu Motoru v2
+appointments (id, tenant_id, patient_phone, patient_name, doctor_id, service_type,
+  slot_start, slot_end, status, reminder_sent_48h, reminder_sent_2h, confirmed,
+  no_show, no_show_count, created_at, updated_at)
+  -- status: 'booked' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+appointment_slots (id, tenant_id, doctor_id, day_of_week, start_time, end_time,
+  max_capacity, is_active, created_at)
+waitlist (id, tenant_id, patient_phone, preferred_date, preferred_time, service_type,
+  status, created_at)
+  -- status: 'waiting' | 'offered' | 'booked' | 'expired'
+service_pricing (id, tenant_id, service_name, price_min, price_max, duration_minutes,
+  description, is_active, created_at, updated_at)
+```
+
+#### Phase 2 — Estetik Klinik Ölçekleme (3 Niche Paralel — 2026-02-08)
+
+```
+Adım 2.1-A: Intent genişletme (klinik feedback'ine göre)
+├── Yapılacak:
+│   ├── Intent sayısını 3 → 10-12'ye çıkar:
+│   │   ├── Fiyat sorusu (mevcut)
+│   │   ├── Konsültasyon randevusu (mevcut)
+│   │   ├── Before/after fotoğraf talebi (YENİ)
+│   │   ├── İşlem detayı (YENİ) → "Botox ne kadar sürer?"
+│   │   ├── Kontrendikasyon (YENİ) → "Hamilelikte yapılır mı?"
+│   │   ├── İyileşme süreci (YENİ) → "Ne zaman normal hayata dönebilirim?"
+│   │   ├── Paket sorusu (YENİ) → "Botox + dolgu paketi var mı?"
+│   │   ├── Yabancı hasta (YENİ) → dil algılama + İngilizce cevap
+│   │   ├── Referans (YENİ) → "Arkadaşım geldi, bana indirim var mı?"
+│   │   └── Ödeme/taksit (YENİ) → "Taksit yapılır mı?"
+│   └── Confidence threshold (düşük güven → operasyon sorumlusuna devret)
+└── Servis: ChatAnalysis genişleme
+
+Adım 2.2-A: Lead Management v2
+├── Yapılacak:
+│   ├── Lead source tracking (Instagram, Google, referans, organik)
+│   ├── Lead scoring (basit: ilgi seviyesi + bütçe + zaman)
+│   ├── Pipeline view (yeni → iletişim → konsültasyon → randevu → hasta)
+│   ├── Follow-up otomasyonu (T+24h, T+72h, T+7gün)
+│   ├── "Sıcak lead" alert (yüksek skor → hemen ara)
+│   └── Lead → randevu → hasta dönüşüm funnel dashboard
+├── Yapılmayacak:
+│   ├── Tam CRM (pipeline view yeterli)
+│   ├── Ads API entegrasyonu (Phase 3+)
+│   └── Revenue/LTV tracking (Phase 3+)
+└── Servis: Backend + Dashboard
+
+Adım 2.3-A: Basit Ads Attribution
+├── Yapılacak:
+│   ├── UTM parameter capture (WhatsApp link'e UTM ekle)
+│   ├── Lead source → "Bu lead hangi kampanyadan geldi?"
+│   ├── Kampanya bazlı lead sayısı dashboard
+│   └── Cost-per-lead hesaplama (manuel reklam maliyeti girişi)
+├── Yapılmayacak:
+│   ├── Meta API entegrasyonu (Phase 3+)
+│   ├── Otomatik ROAS hesaplama (Phase 3+)
+│   └── Lookalike audience oluşturma
+└── Servis: Backend + Dashboard
+
+Adım 2.4-A: Multi-Language v1 (basit)
+├── Yapılacak:
+│   ├── Dil algılama (İngilizce mesaj gelince → İngilizce cevap)
+│   ├── İngilizce template seti (fiyat, randevu, bilgi)
+│   └── Yabancı hasta flag (dashboard'da "yabancı hasta" etiketi)
+├── Yapılmayacak:
+│   ├── Arapça (Phase 3+)
+│   ├── Otomatik çeviri (ayrı şablonlar)
+│   └── Medikal turizm paketi (Phase 3+)
+└── Servis: ChatAnalysis + Backend
+```
+
+**Estetik Klinik DB Tabloları (Phase 2 ek):**
+```sql
+-- Lead Management v2
+leads (id, tenant_id, phone, name, source, utm_source, utm_medium, utm_campaign,
+  interest, score, pipeline_status, assigned_to, last_contact_at, next_followup_at,
+  created_at, updated_at)
+  -- pipeline_status: 'new' | 'contacted' | 'consultation' | 'appointment' | 'patient' | 'lost'
+  -- source: 'instagram' | 'google' | 'referral' | 'organic' | 'whatsapp_ad'
+lead_activities (id, lead_id, tenant_id, activity_type, note, created_at)
+  -- activity_type: 'message_sent' | 'message_received' | 'call' | 'appointment_booked' | 'followup_scheduled'
+service_catalog (id, tenant_id, service_name, category, price_min, price_max,
+  duration_minutes, recovery_days, description_tr, description_en, is_active, created_at, updated_at)
+  -- category: 'botox' | 'filler' | 'laser' | 'hair' | 'surgery' | 'other'
+```
+
+#### Phase 2 — 3 Niche Paralel Başarı Kriterleri
+
+| Kriter | E-ticaret | Diş | Estetik |
+|--------|-----------|-----|---------|
+| Aktif müşteri | 5-10 satıcı | 3-5 klinik | 3-5 klinik |
+| MRR | 15-50K TL | 22-37K TL | 45-75K TL |
+| Deflection rate | %40+ | N/A | N/A |
+| Dönüşüm | İade çevirme %15+ | Fiyat→randevu %30+ | Lead→randevu %30+ |
+| No-show | N/A | %10 altı | N/A |
+| Outbound | Delivery %90+ | Hatırlatma çalışıyor | Follow-up çalışıyor |
+| Case study | 1 yayınlanabilir | 1 yayınlanabilir | 1 yayınlanabilir |
+
 ---
 
 ### Phase 3 — Knowledge Base + Akıllı Agent (Hafta 13-20)
 
 > *"AI accuracy = retention. Yanlış cevap veren AI, müşteri kaybettirir."*
 
+> **⚡ 3 Niche Paralel Güncelleme (2026-02-08):** Phase 3'te artık sağlık "hazırlık" değil,
+> 3 niche de Phase 0-2'den beri aktif. Phase 3'te Knowledge + AgentAI 3 niche'e birden serve eder:
+> - **E-ticaret:** Ürün bilgisi, iade politikası, kargo kuralları
+> - **Diş:** Tedavi bilgisi, fiyat detayı, sigorta kapsamı
+> - **Estetik:** İşlem detayı, kontrendikasyon, iyileşme süreci, multi-language
+
 **Müşteri ne kazanıyor:** "AI artık şirket verisinden cevap veriyor, sallama yapmıyor"
-**Revenue milestone:** 15-25 müşteri, MRR 50.000-125.000 TL
-**Satış dili:** "Ürün sorularınızı da otomatik cevaplayacağız — kendi verinizle"
+**Revenue milestone:** 15-25 e-ticaret + 7-13 diş + 5-10 estetik müşteri, toplam MRR 175.000-375.000 TL
+**Satış dili:** "Ürün/tedavi sorularınızı da otomatik cevaplayacağız — kendi verinizle"
 
 #### Adım adım:
 
@@ -553,17 +1046,20 @@ review_alerts (id, tenant_id, provider, external_review_id, rating, review_text,
 - Yorum kurtarma aktif, recovery rate ölçülüyor
 - İade çevirme tam akışta, kurtarılan gelir ölçülüyor
 - Multi-language AI (TR/EN) çalışıyor → sağlık niche'ine hazır
-- **Sağlık niche pilot:** İlk 1-2 klinikle görüşme başlayabilir
+- **⚡ 3 Niche Paralel:** Sağlık pilot değil, aktif. Diş 7-13, estetik 5-10 müşteri hedefi.
 
 **Başarı kriterleri (Phase 4'e geçiş şartı):**
-- [ ] 15+ aktif ödeyen müşteri
-- [ ] En az 3 müşteri knowledge base'i aktif kullanıyor
-- [ ] Deflection rate %50+ (Knowledge ile)
+- [ ] E-ticaret: 15+ aktif ödeyen müşteri
+- [ ] Diş: 7+ aktif ödeyen klinik
+- [ ] Estetik: 5+ aktif ödeyen klinik
+- [ ] En az 3 müşteri (her niche'ten 1+) knowledge base'i aktif kullanıyor
+- [ ] Deflection rate %50+ (e-ticaret, Knowledge ile)
+- [ ] Fiyat→randevu dönüşüm %35+ (diş, Knowledge ile)
+- [ ] Lead→randevu dönüşüm %35+ (estetik, Knowledge ile)
 - [ ] Outbound conversion rate %5+ (mesaj → aksiyon)
 - [ ] İade çevirme oranı %15+ (çevrilen / toplam iade)
 - [ ] Multi-language çalışıyor (en az TR + EN)
 - [ ] Kurumsal müşteri talepleri geliyor → "SSO var mı? Audit log var mı?"
-- [ ] Sağlık niche'inde en az 2 klinikle görüşülmüş
 
 ---
 
@@ -641,9 +1137,10 @@ Adım 4.5: Admin Panel
 │   └── PII redaction ayarları
 └── Servis: Dashboard genişleme
 
-Adım 4.6: Sağlık Niche Girişi (YENİ — Phase 3'te hazırlanan altyapı ile)
+Adım 4.6: Sağlık Niche Derinleştirme (⚡ 3 Niche Paralel — Phase 0'dan beri aktif)
+├── Not: Artık "giriş" değil, Phase 0-2'den beri aktif. Bu adım derinleştirme.
 ├── Yapılacak:
-│   ├── Sağlık sektörüne özel intent seti:
+│   ├── Sağlık sektörüne özel gelişmiş intent seti (Phase 1-2'deki basit set genişler):
 │   │   ├── "İmplant ne kadar?" → fiyat aralığı + ücretsiz muayene teklifi [S6]
 │   │   ├── Randevu alma/değiştirme/iptal
 │   │   ├── "Ağrım var" → acil triage (doktor alert vs randevu)
@@ -688,8 +1185,8 @@ waitlist (id, tenant_id, patient_phone, preferred_date, preferred_time, status, 
 ```
 
 **Phase 4 sonunda elimizde:**
-- 25-40 müşteri e-ticaret + 3-5 klinik (sağlık pilot)
-- MRR 125.000-300.000 TL (e-ticaret) + 25.000-75.000 TL (sağlık)
+- 25-40 müşteri e-ticaret + 10-20 diş klinik + 10-17 estetik klinik (⚡ 3 niche paralel)
+- MRR 125.000-300.000 TL (e-ticaret) + 75.000-150.000 TL (diş) + 150.000-250.000 TL (estetik)
 - SSO/2FA/Audit/PII enterprise-ready
 - İlk kurumsal kontrat imzalanabilir
 - Procurement checklist'in %90'ı karşılanıyor
@@ -700,8 +1197,10 @@ waitlist (id, tenant_id, patient_phone, preferred_date, preferred_time, status, 
 - [ ] Audit log çalışıyor, Supervisor erişiyor
 - [ ] PII maskeleme aktif
 - [ ] Kurumsal satış pipeline'ı açıldı
-- [ ] Sağlık pilot: en az 2 klinik aktif, no-show %25→%10 altında
-- [ ] Sağlık pilot: fiyat→randevu dönüşüm oranı %20+
+- [ ] Diş: 10+ klinik aktif, no-show %25→%10 altında
+- [ ] Diş: fiyat→randevu dönüşüm oranı %35+
+- [ ] Estetik: 10+ klinik aktif, lead→randevu dönüşüm %35+
+- [ ] Estetik: yabancı hasta oranı ölçülüyor
 
 ---
 
@@ -865,8 +1364,8 @@ medical_tourism_leads (id, tenant_id, patient_phone, patient_country, lang, trea
 | Sonuç | **Para toplar** | **Satış yapar** |
 
 **Phase 5 sonunda elimizde:**
-- 40-60 müşteri e-ticaret + 8-15 klinik sağlık
-- MRR 300.000-500.000 TL (e-ticaret) + 60.000-150.000 TL (sağlık)
+- 40-60 müşteri e-ticaret + 20-30 diş klinik + 17-25 estetik klinik (⚡ 3 niche paralel)
+- MRR 300.000-500.000 TL (e-ticaret) + 150.000-225.000 TL (diş) + 250.000-375.000 TL (estetik)
 - Revenue Agent aktif satış yapıyor
 - Abandoned cart recovery çalışıyor
 - Post-purchase proaktif satış aktif
@@ -893,6 +1392,19 @@ medical_tourism_leads (id, tenant_id, patient_phone, patient_country, lang, trea
 | Klinik | Fiyat→Randevu + No-Show Önleme + Agent Assist | 7.500 TL/ay |
 | Klinik Pro | + Tedavi Takibi + Yorum Motoru + Referans | 15.000 TL/ay |
 | Medikal Turizm | + Multi-language + Konaklama/Transfer paketi | 25.000+ TL/ay |
+
+**Expansion Model (Revenue Driver'lar):**
+
+Her müşterinin Invekto'ya daha fazla ödeme yapma nedenleri:
+
+| Driver | Nasıl Çalışır | Upsell Trigger |
+|--------|--------------|----------------|
+| Agent Seat | İlk 3 temsilci dahil, sonra +500 TL/seat | Ekip büyüyünce |
+| Conversation Volume | İlk 5.000 konuşma/ay, aşımda +0.50 TL | Yoğun sezon |
+| AI Credits | İlk 2.000 otomatik cevap/ay, sonra paket | Deflection arttıkça |
+| Integration Count | İlk 1 marketplace dahil, +2.000 TL/entegrasyon | HB, Shopify ekleme |
+| Outbound Volume | İlk 1.000 proaktif mesaj/ay, sonra +0.30 TL | Kampanya dönemleri |
+| Knowledge Storage | İlk 50MB doküman, sonra +500 TL/50MB | Ürün kataloğu büyüyünce |
 
 ---
 

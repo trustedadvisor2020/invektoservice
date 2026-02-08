@@ -1,6 +1,6 @@
 # Invekto Platform Roadmap v3.1
 
-> Kaynak: `ideas/fullidea.md` + Hormozi değer denklemi + 10 senaryo analizi (5 e-ticaret + 5 sağlık)
+> Kaynak: `ideas/fullidea.md` + Hormozi değer denklemi + 75 senaryo analizi (25 e-ticaret + 25 diş + 25 klinik/estetik)
 > Tarih: 2026-02-06
 > Durum: DRAFT — Q onayı bekleniyor
 > Felsefe: **Revenue first. Dual niche. Outbound + Inbound. Altyapı ihtiyaç oldukça.**
@@ -13,7 +13,7 @@
 |-------|--------|-------|
 | **roadmap.md** *(bu dosya)* | Navigator — strateji, mimari, özet | ~250 |
 | [roadmap-phases.md](roadmap-phases.md) | Phase 0-7 detaylı plan, DB tabloları, başarı kriterleri | ~960 |
-| [roadmap-scenarios.md](roadmap-scenarios.md) | 10 senaryo (S1-S10) + Outbound Engine gereksinimleri | ~100 |
+| [roadmap-scenarios.md](roadmap-scenarios.md) | 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + Outbound Engine gereksinimleri | ~100 |
 | [roadmap-reviews.md](roadmap-reviews.md) | 3 uzman review (Dunford, Lemkin, Lenny) + aksiyonlar | ~130 |
 
 ---
@@ -52,12 +52,105 @@ Her phase'in 3 soruya cevabı olmalı:
 
 > **Invekto:** Trendyol ve Hepsiburada satıcıları için WhatsApp üzerinden sipariş sonrası yükü
 > otomatik kapatan AI. Destek maliyetini düşürür, ekstra işe alıma gerek kalmaz.
+>
+> **English:** Invekto helps WhatsApp-based sellers automatically resolve support and close sales using AI agents.
+>
+> Kaynak: 75 senaryo analizi
 
 | Yapma | Yap |
 |-------|-----|
 | "AI-Powered Revenue & Support OS" | "Marketplace satıcıları için WhatsApp destek otomasyonu" |
 | "Omnichannel CRM platform" | "Kargo ve iade sorularını otomatik cevapla" |
 | 4 kategoriye aynı anda gir | 1 kategoride kanıtlan, sonra genişle |
+
+### 3 Niche Paralel Giriş (Q Kararı — 2026-02-08)
+
+> **Karar:** 3 niche'e aynı anda çıkılacak. Sağlık sektörü Phase 3-4'e ertelenmeyecek.
+> Reklam ve web siteleri sektör bazlı ayrılacak. Ortak altyapı tek, offer'lar ayrı.
+
+#### Üst Şemsiye Positioning
+
+> **Invekto:** WhatsApp'tan gelen müşteri mesajlarını AI ile otomatik yöneten iş asistanı.
+>
+> - **E-ticaret satıcıları için:** Kargo ve iade sorularını otomatik çözer, temsilci maliyetini düşürür.
+> - **Diş klinikleri için:** Fiyat sorularını randevuya çevirir, no-show'u %60 azaltır.
+> - **Estetik klinikleri için:** Lead'leri hastaya dönüştürür, medikal turizmi ölçekler.
+
+#### Ortak Altyapı (3 Sektörde %95+ Kullanım — 75 Senaryo Analizi)
+
+| Capability | E-ticaret | Diş | Estetik | Toplam |
+|------------|-----------|-----|---------|--------|
+| **C8: Agent Assist** | 25/25 | 25/25 | 25/25 | **75/75 (%100)** |
+| **C3: Templates** | 25/25 | 24/25 | 24/25 | **73/75 (%97)** |
+| **C1: Unified Inbox** | 25/25 | 24/25 | 23/25 | **72/75 (%96)** |
+| **C2: Routing** | 25/25 | 24/25 | 22/25 | **71/75 (%95)** |
+
+> Bu 4 capability = ürünün omurgası. Sektör farketmez, tek codebase, farklı config.
+
+#### Niche-Özel Capability'ler
+
+| Capability | Hangi Niche | Neden |
+|------------|------------|-------|
+| C7: Knowledge/RAG | E-ticaret + Diş | Bilgi tutarlılığı (ürün bilgisi / tedavi bilgisi) |
+| C11: E-commerce Integrations | Sadece E-ticaret | Trendyol/HB API |
+| C10: Revenue Agent | Estetik ağırlıklı | Ödeme/depozit/lead dönüşümü |
+| C12: Ads Attribution | Sadece Estetik | Click-to-WhatsApp kampanya tracking |
+| C4: Reporting | Estetik ağırlıklı | Conversion takibi |
+| C5/C6: Security | Diş + Estetik | KVKK sağlık verisi |
+
+#### 3 Ayrı Offer (Tek Platform)
+
+**OFFER 1: Invekto for Sellers (E-ticaret)**
+
+| Bileşen | Detay |
+|---------|-------|
+| Sonuç vaadi | "Kargo/iade sorularının %50'sini otomatik cevapla" |
+| Karar verici | Marketplace satıcısı (Mehmet) |
+| Fiyat | 3.000-5.000 TL/ay |
+| Garanti | 30 günde %50 oto-cevap yoksa 2. ay ücretsiz |
+| Niche özel | C11 (Trendyol/HB API) + C7 (Knowledge) |
+
+**OFFER 2: Invekto for Dental (Diş Klinikleri)**
+
+| Bileşen | Detay |
+|---------|-------|
+| Sonuç vaadi | "Fiyat sorularını randevuya çevir, no-show'u %60 azalt" |
+| Karar verici | Klinik sahibi (Dr. Burak) |
+| Fiyat | 7.500 TL/ay |
+| Garanti | 30 günde no-show düşmezse 2. ay ücretsiz |
+| Niche özel | Randevu motoru + No-show önleme + C7 (Knowledge) + C5/C6 (KVKK) |
+
+**OFFER 3: Invekto for Clinics (Estetik)**
+
+| Bileşen | Detay |
+|---------|-------|
+| Sonuç vaadi | "Lead'leri hastaya dönüştür, medikal turizmi ölçekle" |
+| Karar verici | Klinik sahibi (Dr. Selin) |
+| Fiyat | 15.000-25.000 TL/ay |
+| Garanti | 30 günde randevu dönüşümü artmazsa 2. ay ücretsiz |
+| Niche özel | C10 (Revenue) + C12 (Ads Attribution) + C4 (Reporting) + Multi-lang |
+
+#### Web & Reklam Stratejisi (3 Niche)
+
+| Kanal | Yapı |
+|-------|------|
+| Landing page | 3 ayrı sayfa: /sellers, /dental, /clinics |
+| Reklam | Sektör bazlı ayrı kampanyalar, farklı ağrı noktaları, farklı hedef kitle |
+| Demo | Sektöre özel demo flow (e-ticaret: kargo, diş: randevu, estetik: lead) |
+| Case study | Her sektörden ayrı case study hedeflenir |
+| LinkedIn / Sosyal | Sektör bazlı content (satıcı grupları vs sağlık profesyoneli grupları) |
+| SEO | 3 farklı anahtar kelime seti (WhatsApp otomasyon + sektör adı) |
+
+#### Niche Bazlı Satış Dili Karşılaştırması
+
+| | E-ticaret | Diş | Estetik |
+|--|-----------|-----|---------|
+| **Ağrı** | "Kargom nerede" mesaj yükü | "Fiyat ne kadar?" + no-show | Lead dönüşümü + medikal turizm |
+| **Sonuç** | Temsilci maliyeti %40 düşer | No-show %60 azalır | Randevu dönüşümü %40 artar |
+| **ROI dili** | 25.000 TL/ay tasarruf | Kayıp randevu geliri geri kazanılır | Lead başına maliyet düşer |
+| **İlk AHA** | Kargo sorusu otomatik cevaplandı | Fiyat sorusu randevuya döndü | Instagram lead'i WhatsApp'a geçti |
+| **Karar verici** | Satıcı / E-ticaret müdürü | Klinik sahibi / Diş hekimi | Klinik sahibi / Operasyon müdürü |
+| **Satın alma süreci** | Hızlı (1 hafta) | Orta (2-3 hafta) | Orta-Yavaş (3-4 hafta) |
 
 ---
 
@@ -67,10 +160,10 @@ Her phase'in 3 soruya cevabı olmalı:
 
 *"Kargo ve iade sorularını otomatik cevapla. Temsilci işe alma. Invekto çalışsın."*
 
-### Müşteri Avatarı (Niche: Trendyol/HB Satıcıları)
+### Müşteri Avatarları (6 Persona)
 
+#### [E1] Mehmet - Trendyol/HB D2C Satıcı (Primary)
 ```
-İsim: Mehmet
 İş: Trendyol'da günde 200+ sipariş yöneten e-ticaret satıcısı
 Ekip: 3 WhatsApp temsilcisi
 Günlük ağrı:
@@ -88,6 +181,46 @@ Invekto ile:
   → Sepet terk edenlere otomatik mesaj gidiyor
 Tasarruf: 1 temsilci azaltma = 25.000 TL/ay
 Invekto fiyatı: 5.000 TL/ay → 5x ROI
+```
+
+#### [E2] Ayşe - Shopify/WooCommerce D2C (5-20 kişi)
+```
+İş: Kendi sitesinden satış yapan orta ölçekli e-ticaret
+Ekip: 5-20 kişi
+Fark: Marketplace'e bağımlı değil, kendi müşteri tabanı var
+```
+
+#### [D1] Dr. Burak - Diş Klinik Sahibi
+```
+İş: 2-3 şubeli diş kliniği, günde 60+ WhatsApp mesajı
+Ekip: 2 sekreter
+Günlük ağrı:
+  → Günde 30+ "fiyat ne kadar" mesajı
+  → No-show oranı %25
+  → Tedavi sonrası takip unutuluyor
+```
+
+#### [D2] Elif - Diş Kliniği Ön Büro Koordinatörü
+```
+İş: Tek şubeli klinikte randevu ve hasta iletişimi
+Ekip: 1 sekreter yardımcısı
+Fark: Operasyonel verimlilik odaklı
+```
+
+#### [A1] Dr. Selin - Estetik Klinik Sahibi
+```
+İş: Yüksek fiyatlı estetik işlemler (botox, dolgu, lazer)
+Ekip: 3 kişi (sekreter + hasta koordinatörü + medikal turizm sorumlusu)
+Günlük ağrı:
+  → Yurtdışından hasta İngilizce yazıyor
+  → Fiyat soruları hassas (işleme göre değişken)
+```
+
+#### [A2] Zeynep - Estetik Klinik Operasyon + Satış Sorumlusu
+```
+İş: Lead takibi, randevu dönüşümü, medikal turizm koordinasyonu
+Ekip: 1-2 asistan
+Fark: Satış odaklı + multi-language ihtiyacı
 ```
 
 ### Grand Slam Offer (E-ticaret)
@@ -108,6 +241,23 @@ Değer Denklemi:
 
   Değer = (Yüksek × Yüksek) / (Düşük × Düşük) = ÇOK YÜKSEK
 ```
+
+### Offer Stratejisi (Hormozi Kuralı)
+
+**Feature satma, sonuç sat.**
+
+| ❌ Feature Dili | ✅ Sonuç Dili |
+|----------------|--------------|
+| "AI-powered inbox" | "Kargo sorularının %50'si otomatik cevaplanır" |
+| "Knowledge base entegrasyonu" | "Yanlış cevap oranı %80 düşer" |
+| "Outbound engine" | "No-show oranı %60 azalır" |
+| "Revenue agent" | "Sepet terk edenlerin %10'u geri döner" |
+
+**Hormozi 4 Bileşen:**
+- **Setup:** Biz kuruyoruz (white-glove onboarding)
+- **Garanti:** 30 günde sonuç yoksa 2. ay ücretsiz
+- **Kıtlık:** İlk 10 müşteriye özel fiyat
+- **Risk reversal:** Para iade garantisi
 
 ### İkinci Niche: Sağlık Sektörü (Phase 3-4'te Giriş)
 
@@ -155,20 +305,25 @@ Değer Denklemi:
 > **Neden sağlık?** Aynı altyapı (WhatsApp AI + Outbound), 3-5x daha yüksek ARPU.
 > E-ticaret niche'i kanıtlandıktan sonra Phase 3-4'te giriş.
 
+> **⚡ GÜNCELLENDİ (2026-02-08):** Sağlık sektörü artık Phase 0'dan itibaren paralel giriş.
+> Erteleme kararı kaldırıldı. 3 niche aynı anda validasyon + satış. Detay: yukarıdaki
+> "3 Niche Paralel Giriş" bölümü.
+
 ---
 
 ## Senaryo Portföyü (Özet)
 
 > Detay: bkz [roadmap-scenarios.md](roadmap-scenarios.md)
 
-10 senaryo, 2 niche, toplam aylık etki potansiyeli ~940K+ TL:
+**75 senaryo**, 3 sektör, 6 persona, toplam aylık etki potansiyeli hesaplanıyor:
 
-| Niche | Senaryolar | Toplam Etki |
-|-------|------------|-------------|
-| E-ticaret (S1-S5) | Yorum kurtarma, ürün soruları, iade çevirme, post-purchase satış, B2B lead | ~253K TL/ay |
-| Sağlık (S6-S10) | Fiyat→randevu, no-show önleme, tedavi takibi, medikal turizm, yorum motoru | ~690K+ TL/ay |
+| Sektör | Senaryolar | Personalar |
+|--------|------------|------------|
+| E-ticaret | 25 senaryo | [E1] Mehmet, [E2] Ayşe |
+| Diş Klinikleri | 25 senaryo | [D1] Dr. Burak, [D2] Elif |
+| Klinik/Estetik | 25 senaryo | [A1] Dr. Selin, [A2] Zeynep |
 
-**Kritik bulgu:** 10 senaryodan 7'si **Outbound Engine** gerektiriyor. Bu olmadan gelir potansiyelinin %70'i kilitli. Outbound Engine gereksinimleri ve detaylı senaryo tabloları: [roadmap-scenarios.md](roadmap-scenarios.md)
+**Kritik bulgu:** Senaryoların çoğu **Outbound Engine** gerektiriyor. Bu olmadan gelir potansiyelinin büyük kısmı kilitli. Outbound Engine gereksinimleri ve detaylı senaryo tabloları: [roadmap-scenarios.md](roadmap-scenarios.md)
 
 ---
 
@@ -188,6 +343,36 @@ Değer Denklemi:
 | **7** | 49+ | Omnichannel + Global | 1M+ | 100+ |
 
 Her phase'in detaylı adımları, DB tabloları, başarı kriterleri ve geçiş şartları: [roadmap-phases.md](roadmap-phases.md)
+
+### 3 Niche Paralel Phase Planı (Güncelleme — 2026-02-08)
+
+| Phase | Hafta | E-ticaret | Diş Klinikleri | Estetik Klinikleri |
+|-------|-------|-----------|----------------|-------------------|
+| **0** | 1-2 | 10 satıcıyla görüş + offer | 10 diş kliniğiyle görüş + offer | 10 estetik kliniğiyle görüş + offer |
+| **1** | 3-6 | İlk satıcı: kargo oto-cevap | İlk klinik: fiyat→randevu + no-show | İlk klinik: lead→WhatsApp + randevu |
+| **2** | 7-12 | 5-10 satıcı + Outbound v1 | 3-5 klinik + hatırlatma engine | 3-5 klinik + ads attribution |
+| **3** | 13-20 | Knowledge + Agent AI | Knowledge + tedavi bilgisi | Revenue Agent + multi-lang |
+| **4** | 21-28 | Auth + Audit + Enterprise | Auth + KVKK compliance | Auth + medikal turizm |
+| **5** | 29-36 | Revenue Agent + Cart Recovery | Yorum motoru + referans | Tam medikal turizm + AR |
+| **6** | 37-48 | Analytics + Ölçek | Analytics + Ölçek | Analytics + Ölçek |
+
+**3 Niche Paralel MRR Hedefi:**
+
+```
+Hafta:   1-2       3-6        7-12         13-20        21-28         29-36        37-48
+          │          │           │             │             │             │            │
+E-com:    0       3-5K       15-50K       50-125K      125-300K      300-500K     500K-1M
+Diş:      0       7.5K       22-37K       50-100K       75-150K      150-225K     225-450K
+Estetik:  0      15-25K      45-75K       75-150K      150-250K      250-375K     375-750K
+TOPLAM:   0      25-37K      82-162K     175-375K      350-700K      700K-1.1M    1.1M-2.2M
+          │          │           │             │             │             │            │
+E-com:    0          1         5-10         15-25         25-40         40-60       60-100
+Diş:      0          1          3-5          7-13         10-20         20-30       30-60
+Estetik:  0          1          3-5          5-10         10-17         17-25       25-50
+```
+
+> **Not:** Mevcut "Revenue Timeline (Dual Niche)" tablosu (aşağıda) e-ticaret + sağlık (birleşik) olarak
+> kalıyor. Bu tablo 3 niche'i ayrı ayrı gösteriyor. Gerçek sayılar müşteri validasyonuna göre ayarlanacak.
 
 ---
 
@@ -278,7 +463,7 @@ AgentAI (Phase 3'te doğar) farklı bir interaction pattern'e sahip:
 | Niche sayısı | 1 (herkes) | 2 (e-ticaret primary + sağlık secondary) |
 | Offer | Yok | Grand Slam Offer (niche bazlı 2 farklı) |
 | Dil | "RAG, pgvector, JWT" | "Kargo sorularını otomatik cevapla" |
-| Senaryo | 1 (kargom nerede) | 10 (5 e-ticaret + 5 sağlık) |
+| Senaryo | 1 (kargom nerede) | 75 (25 e-ticaret + 25 diş + 25 klinik/estetik) |
 | Outbound | Yok | Phase 2-3'te kritik bileşen (7/10 senaryo) |
 | Revenue Agent | Zayıf (ödeme linki) | Güçlü (ürün önerisi + margin + stok) |
 | Multi-language | Yok | Phase 3'te TR/EN, Phase 5'te +AR |
@@ -313,12 +498,27 @@ AgentAI (Phase 3'te doğar) farklı bir interaction pattern'e sahip:
 | Uzman | Teşhis | Aksiyon | Durum |
 |-------|--------|---------|-------|
 | **Dunford** | Positioning bulanık (4 kategori) | Tek cümle positioning eklendi | ✅ |
-| **Lemkin** | SaaS metrikleri eksik, Auth geç | Core metrics + Auth uyarısı eklendi | ✅ |
+| **Lemkin** | SaaS metrikleri eksik, Auth geç | Core metrics + Auth uyarısı + Expansion model eklendi | ✅ |
 | **Lenny** | User journey tanımsız | First-Value Flow eklendi | ✅ |
+| **Hormozi** | Offer katmanı eksik, feature satılıyor | Offer stratejisi + sonuç dili eklendi | ✅ |
 
 **Açık aksiyonlar:**
 - **Auth zamanlamasını izle** → Phase 3'te kurumsal talep ≥3 ise hızlandır
 - **Landing page yazıldığında** → Dunford positioning'i test et, başka bir şey ekleme
+
+---
+
+## Expansion Model (Revenue Drivers)
+
+| Driver | Açıklama | Phase |
+|--------|----------|-------|
+| Agent Seat | Temsilci başına ücretlendirme | Phase 2+ |
+| Conversation Volume | Aylık konuşma limiti + aşım ücreti | Phase 3+ |
+| AI Credits | AI otomatik cevap kullanımı (paket bazlı) | Phase 3+ |
+| Integration Count | Entegrasyon sayısına göre tier | Phase 4+ |
+| Outbound Messages | Proaktif mesaj gönderim hacmi | Phase 3+ |
+
+**Lemkin Kuralı:** SaaS'ta büyüme = yeni müşteri + mevcut müşteri genişlemesi (expansion). Expansion model net churn'ü negatife çevirir.
 
 ---
 
@@ -354,6 +554,12 @@ Odak:   SAT      ÇÖZMEK     ÖLÇEKLE+      AI+OUTBOUND   ENTERPRISE    SATIŞ
 6. **Ödeme gateway:** iyzico mu PayTR mi?
 7. **WapCRM ilişkisi:** Invekto bağımsız mı, yoksa WapCRM'in backend'i mi?
 8. **Ekip:** Solo mu, ekip mi?
+
+### Team Reality (Lemkin "tek kişiyle yazılmış" kuralı)
+9. **Phase 0-2 (12-16 hafta):** Solo founder yapılabilir mi? Gerçekçi süre nedir?
+10. **Phase 3+ (16+ hafta):** Minimum 2 kişi (1 backend + 1 product/sales) gerekiyor — kabul mü?
+11. **Phase 4+ (21+ hafta):** 3-4 kişi (+ security engineer + sales) — bu ekip yapısı gerçekçi mi?
+12. **Zaman gerçekliği:** Bu plan minimum 12 ay sürer, 90 gün DEĞİL. Kabul mü?
 
 ### Outbound Engine
 9. **WhatsApp Business API:** Meta Business API erişimi var mı? Hangi BSP (Business Solution Provider)?
