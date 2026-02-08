@@ -27,6 +27,21 @@ public static class ErrorCodes
     public const string ChatAnalysisNoMessages = "INV-CA-007";
 
     // Auth errors (INV-AUTH-xxx)
-    public const string AuthUnauthorized = "INV-AUTH-001";
-    public const string AuthForbidden = "INV-AUTH-002";
+    public const string AuthTokenExpired = "INV-AUTH-001";
+    public const string AuthTokenInvalid = "INV-AUTH-002";
+    public const string AuthUnauthorized = "INV-AUTH-003";
+
+    // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
+    public const string AuthForbidden = AuthTokenInvalid;
+
+    // Integration errors (INV-INT-xxx) -- GR-1.9
+    public const string IntegrationWebhookInvalidPayload = "INV-INT-001";
+    public const string IntegrationCallbackFailed = "INV-INT-002";
+    public const string IntegrationUnknownEventType = "INV-INT-003";
+    public const string IntegrationTenantNotFound = "INV-INT-004";
+
+    // Database errors (INV-DB-xxx)
+    public const string DatabaseConnectionFailed = "INV-DB-001";
+    public const string DatabaseQueryTimeout = "INV-DB-002";
+    public const string DatabaseDuplicateEntry = "INV-DB-003";
 }

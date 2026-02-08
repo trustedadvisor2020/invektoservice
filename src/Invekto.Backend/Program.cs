@@ -2,9 +2,13 @@ using System.Net.Http.Headers;
 using System.Text;
 using Invekto.Backend.Middleware;
 using Invekto.Backend.Services;
+using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
+using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.ChatAnalysis;
+using Invekto.Shared.DTOs.Integration;
+using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 
@@ -47,10 +51,61 @@ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
 });
 
+// ============================================
+// GR-1.9: INTEGRATION BRIDGE SETUP
+// ============================================
+
+// JWT Validator (singleton, thread-safe)
+JwtValidator? jwtValidator = null;
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+if (!string.IsNullOrEmpty(jwtSecretKey))
+{
+    var jwtSettings = new JwtSettings
+    {
+        SecretKey = jwtSecretKey,
+        Issuer = builder.Configuration["Jwt:Issuer"],
+        Audience = builder.Configuration["Jwt:Audience"],
+        ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
+    };
+    jwtValidator = new JwtValidator(jwtSettings);
+    builder.Services.AddSingleton(jwtValidator);
+}
+
+// PostgreSQL connection factory (singleton, thread-safe pooling)
+PostgresConnectionFactory? pgFactory = null;
+var pgConnectionString = builder.Configuration.GetConnectionString("PostgreSQL");
+if (!string.IsNullOrEmpty(pgConnectionString))
+{
+    pgFactory = new PostgresConnectionFactory(pgConnectionString);
+    builder.Services.AddSingleton(pgFactory);
+}
+
+// Callback client for async results to Main App
+var callbackUrl = builder.Configuration["Integration:Callback:DefaultCallbackUrl"];
+if (!string.IsNullOrEmpty(callbackUrl))
+{
+    var callbackSettings = new CallbackSettings
+    {
+        DefaultCallbackUrl = callbackUrl,
+        MaxRetries = builder.Configuration.GetValue<int>("Integration:Callback:MaxRetries", ServiceConstants.CallbackMaxRetries),
+        BaseDelayMs = builder.Configuration.GetValue<int>("Integration:Callback:BaseDelayMs", ServiceConstants.CallbackBaseDelayMs),
+        TimeoutMs = builder.Configuration.GetValue<int>("Integration:Callback:TimeoutMs", ServiceConstants.CallbackTimeoutMs)
+    };
+    builder.Services.AddSingleton(callbackSettings);
+    builder.Services.AddHttpClient<MainAppCallbackClient>();
+}
+
 var app = builder.Build();
 
 // Enable traffic logging middleware (logs all HTTP request/response)
 app.UseTrafficLogging();
+
+// GR-1.9: JWT auth middleware (only for /api/v1/webhook/ paths)
+if (jwtValidator != null)
+{
+    var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
+    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/");
+}
 
 // Enable static file serving for Dashboard UI (wwwroot/)
 app.UseStaticFiles();
@@ -538,6 +593,139 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
     }
 });
 
+// ============================================
+// GR-1.9: INTEGRATION WEBHOOK ENDPOINTS
+// ============================================
+
+// Webhook event receiver (Main App -> InvektoServis)
+// JWT auth enforced by middleware for /api/v1/webhook/ prefix
+app.MapPost("/api/v1/webhook/event", (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
+{
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    // Extract TenantContext (set by JWT middleware)
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+        sw.Stop();
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId),
+            statusCode: 401);
+    }
+
+    // Validate payload
+    if (webhookEvent == null)
+    {
+        sw.Stop();
+        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), "-");
+        jsonLogger.RequestError("Webhook: null payload", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationWebhookInvalidPayload);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    if (!WebhookEventTypes.IsValid(webhookEvent.EventType))
+    {
+        sw.Stop();
+        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), webhookEvent.ChatId.ToString());
+        jsonLogger.RequestError(
+            $"Webhook: unknown event_type={webhookEvent.EventType}", reqCtx,
+            "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationUnknownEventType);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.IntegrationUnknownEventType,
+                $"Unknown event_type: {webhookEvent.EventType}. Valid: new_message, conversation_closed, tag_changed, conversation_started, agent_assigned",
+                requestId),
+            statusCode: 400);
+    }
+
+    sw.Stop();
+    var context = RequestContext.CreateWithPassThrough(
+        requestId,
+        tenantContext.TenantId.ToString(),
+        webhookEvent.ChatId.ToString());
+
+    // Log the accepted event
+    jsonLogger.RequestInfo(
+        $"Webhook accepted: event={webhookEvent.EventType}, chat_id={webhookEvent.ChatId}, seq={webhookEvent.SequenceId}",
+        context, "/api/v1/webhook/event", sw.ElapsedMilliseconds);
+
+    // Latency monitoring
+    if (sw.ElapsedMilliseconds > ServiceConstants.IntegrationLatencyThresholdMs)
+    {
+        jsonLogger.SystemWarn(
+            $"Webhook acceptance exceeded {ServiceConstants.IntegrationLatencyThresholdMs}ms threshold: {sw.ElapsedMilliseconds}ms, event={webhookEvent.EventType}");
+    }
+
+    // Add processing time header
+    ctx.Response.Headers[HeaderNames.ProcessingTimeMs] = sw.ElapsedMilliseconds.ToString();
+
+    // Return 202 Accepted -- async processing will happen in future GR-1.1/1.2/1.3 services
+    return Results.Json(new
+    {
+        status = "accepted",
+        request_id = context.RequestId,
+        event_type = webhookEvent.EventType,
+        sequence_id = webhookEvent.SequenceId,
+        message = "Event accepted for processing"
+    }, statusCode: 202);
+});
+
+// Tenant verify endpoint (quick integration health check)
+app.MapGet("/api/v1/tenant/verify", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+
+    // This endpoint is under /api/v1/webhook/ prefix? No, it's under /api/v1/
+    // We need to manually check JWT here since it's not under the protected prefix
+    if (jwtValidator == null)
+    {
+        return Results.Ok(new
+        {
+            status = "warning",
+            message = "JWT validation not configured. Set Jwt:SecretKey in appsettings.",
+            jwt_configured = false,
+            postgres_configured = pgFactory != null
+        });
+    }
+
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
+            statusCode: 401);
+    }
+
+    var token = authHeader["Bearer ".Length..].Trim();
+    var (tc, error) = jwtValidator.ValidateToken(token);
+    if (tc == null)
+    {
+        // Use appropriate error code based on error message (matches middleware behavior)
+        var errorCode = error != null && error.Contains("expired")
+            ? ErrorCodes.AuthTokenExpired
+            : ErrorCodes.AuthTokenInvalid;
+        return Results.Json(
+            ErrorResponse.Create(errorCode, error ?? "Token validation failed", "-"),
+            statusCode: 401);
+    }
+
+    return Results.Ok(new
+    {
+        status = "ok",
+        tenant_id = tc.TenantId,
+        user_id = tc.UserId,
+        role = tc.Role,
+        jwt_configured = true,
+        postgres_configured = pgFactory != null,
+        message = "Integration bridge ready"
+    });
+});
+
+// ============================================
+// EXISTING API ENDPOINTS
+// ============================================
+
 // Chat analysis proxy endpoint (V2 - async with callback)
 app.MapPost("/api/v1/chat/analyze", async (
     HttpContext ctx,
@@ -632,6 +820,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
         {
             // Public API
             new() { Method = "POST", Path = "/api/v1/chat/analyze", Description = "Chat analysis (async, callback)", Auth = "none", Category = "API" },
+            // GR-1.9: Integration endpoints
+            new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Webhook receiver (Main App -> InvektoServis)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/tenant/verify", Description = "Tenant integration health check", Auth = "Bearer", Category = "API" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },

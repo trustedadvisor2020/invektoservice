@@ -1,0 +1,3471 @@
+diff --git a/arch/active-work.md b/arch/active-work.md
+index 5ee6af0..cb6f86e 100644
+--- a/arch/active-work.md
++++ b/arch/active-work.md
+@@ -6,7 +6,7 @@
+ 
+ | Slug | Status | Started | Description |
+ |------|--------|---------|-------------|
+-| (none) | - | - | Henüz aktif iş yok |
++| 20260208-integration-bridge | REVIEW | 2026-02-08 | GR-1.9: Invekto <-> InvektoServis API koprusu (JWT, webhook, callback, PostgreSQL) |
+ 
+ ---
+ 
+diff --git a/arch/contracts/integration-callback.json b/arch/contracts/integration-callback.json
+new file mode 100644
+index 0000000..db2c96c
+--- /dev/null
++++ b/arch/contracts/integration-callback.json
+@@ -0,0 +1,110 @@
++{
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
++  "$id": "integration-callback-v1.json",
++  "title": "Integration Callback Contract",
++  "description": "GR-1.9: InvektoServis -> Main App async callback format. InvektoServis sends this payload to Main App's callback endpoint after processing a webhook event.",
++  "version": "1.0",
++
++  "endpoint": {
++    "method": "POST",
++    "path": "{callback_url or Integration:Callback:DefaultCallbackUrl}",
++    "auth": "None (internal network, or add shared secret later)",
++    "retry": "3x with exponential backoff (500ms, 1s, 2s)"
++  },
++
++  "note_for_main_app": "Main App must implement a POST endpoint that accepts this JSON body. Return 2xx for success. Non-2xx triggers retry.",
++
++  "type": "object",
++  "required": ["request_id", "action", "tenant_id", "chat_id", "timestamp"],
++  "properties": {
++    "request_id": {
++      "type": "string",
++      "description": "Correlation ID -- matches X-Request-Id from original webhook"
++    },
++    "action": {
++      "type": "string",
++      "enum": ["send_message", "suggest_reply", "apply_tag", "handoff_to_human", "no_action"],
++      "description": "What Main App should do"
++    },
++    "tenant_id": {
++      "type": "integer",
++      "description": "Tenant ID (same as JWT tenant_id)"
++    },
++    "chat_id": {
++      "type": "integer",
++      "description": "Conversation/chat ID"
++    },
++    "sequence_id": {
++      "type": "integer",
++      "description": "Sequence ID from original webhook (for ordering)"
++    },
++    "data": {
++      "type": "object",
++      "description": "Action-specific payload",
++      "properties": {
++        "message_text": { "type": "string", "description": "Message to send (send_message)" },
++        "suggested_reply": { "type": "string", "description": "Reply suggestion for agent (suggest_reply)" },
++        "tag_name": { "type": "string", "description": "Tag to apply (apply_tag)" },
++        "handoff_to_human": { "type": "boolean", "description": "Transfer to human agent" },
++        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "AI confidence score" },
++        "ai_summary": { "type": "string", "description": "AI summary for agent context" },
++        "intent": { "type": "string", "description": "Detected intent (e.g., price_inquiry)" }
++      }
++    },
++    "processing_time_ms": {
++      "type": "integer",
++      "description": "How long InvektoServis took to process (milliseconds)"
++    },
++    "timestamp": {
++      "type": "string",
++      "format": "date-time",
++      "description": "When InvektoServis generated this callback (ISO 8601)"
++    }
++  },
++
++  "examples": {
++    "send_message_auto_reply": {
++      "request_id": "abc123",
++      "action": "send_message",
++      "tenant_id": 5,
++      "chat_id": 12345,
++      "sequence_id": 1001,
++      "data": {
++        "message_text": "Merhaba! Implant fiyatlarimiz 15.000-45.000 TL arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?",
++        "confidence": 0.92,
++        "intent": "price_inquiry"
++      },
++      "processing_time_ms": 145,
++      "timestamp": "2026-02-08T10:30:01Z"
++    },
++    "suggest_reply_agent_assist": {
++      "request_id": "def456",
++      "action": "suggest_reply",
++      "tenant_id": 5,
++      "chat_id": 12346,
++      "sequence_id": 1003,
++      "data": {
++        "suggested_reply": "Siparisaniz kargoya verildi, takip numarasi: TR123456789.",
++        "confidence": 0.78,
++        "intent": "cargo_inquiry",
++        "ai_summary": "Musteri kargo durumunu soruyor"
++      },
++      "processing_time_ms": 230,
++      "timestamp": "2026-02-08T11:00:01Z"
++    },
++    "handoff_low_confidence": {
++      "request_id": "ghi789",
++      "action": "handoff_to_human",
++      "tenant_id": 5,
++      "chat_id": 12347,
++      "sequence_id": 1005,
++      "data": {
++        "handoff_to_human": true,
++        "confidence": 0.35,
++        "ai_summary": "Musteri karmasik bir sikayet bildirdi, AI guven esigi altinda"
++      },
++      "processing_time_ms": 180,
++      "timestamp": "2026-02-08T11:15:01Z"
++    }
++  }
++}
+diff --git a/arch/contracts/integration-webhook.json b/arch/contracts/integration-webhook.json
+new file mode 100644
+index 0000000..a2d6a60
+--- /dev/null
++++ b/arch/contracts/integration-webhook.json
+@@ -0,0 +1,136 @@
++{
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
++  "$id": "integration-webhook-v1.json",
++  "title": "Integration Webhook Event Contract",
++  "description": "GR-1.9: Main App -> InvektoServis webhook event format. Main App sends this payload via POST /api/v1/webhook/event with Bearer JWT token.",
++  "version": "1.0",
++
++  "endpoint": {
++    "method": "POST",
++    "path": "/api/v1/webhook/event",
++    "auth": "Bearer JWT (shared HMAC-SHA256 key)",
++    "response": "202 Accepted (async processing)"
++  },
++
++  "headers": {
++    "required": {
++      "Authorization": "Bearer {jwt_token}",
++      "Content-Type": "application/json"
++    },
++    "optional": {
++      "X-Request-Id": "Correlation ID (auto-generated if missing)"
++    }
++  },
++
++  "jwt_claims": {
++    "required": {
++      "tenant_id": { "type": "integer", "description": "Tenant ID from Main App SQL Server" },
++      "user_id": { "type": "integer", "description": "User ID or system ID" },
++      "exp": { "type": "integer", "description": "Expiration timestamp (Unix)" }
++    },
++    "optional": {
++      "role": { "type": "string", "default": "agent", "enum": ["admin", "agent", "service"] },
++      "iat": { "type": "integer", "description": "Issued at timestamp" }
++    }
++  },
++
++  "type": "object",
++  "required": ["event_type", "chat_id", "timestamp"],
++  "properties": {
++    "event_type": {
++      "type": "string",
++      "enum": ["new_message", "conversation_closed", "tag_changed", "conversation_started", "agent_assigned"],
++      "description": "Type of event"
++    },
++    "sequence_id": {
++      "type": "integer",
++      "description": "Monotonically increasing sequence per tenant for ordering guarantee"
++    },
++    "chat_id": {
++      "type": "integer",
++      "description": "Conversation/chat ID in Main App"
++    },
++    "channel": {
++      "type": "string",
++      "enum": ["whatsapp", "web", "instagram", "facebook", "telegram", "email", "sms"],
++      "description": "Communication channel"
++    },
++    "data": {
++      "type": "object",
++      "description": "Event-specific payload",
++      "properties": {
++        "phone": { "type": "string", "description": "Customer phone (new_message)" },
++        "customer_name": { "type": "string", "description": "Customer name if known" },
++        "message_text": { "type": "string", "description": "Message content (new_message)" },
++        "message_source": { "type": "string", "enum": ["CUSTOMER", "AGENT"] },
++        "agent_id": { "type": "integer", "description": "Agent ID (agent_assigned)" },
++        "tag_name": { "type": "string", "description": "Tag name (tag_changed)" },
++        "tag_action": { "type": "string", "enum": ["added", "removed"] }
++      }
++    },
++    "timestamp": {
++      "type": "string",
++      "format": "date-time",
++      "description": "When event occurred in Main App (ISO 8601)"
++    },
++    "callback_url": {
++      "type": "string",
++      "format": "uri",
++      "description": "Override callback URL for this event. If null, uses tenant default."
++    }
++  },
++
++  "examples": {
++    "new_message": {
++      "event_type": "new_message",
++      "sequence_id": 1001,
++      "chat_id": 12345,
++      "channel": "whatsapp",
++      "data": {
++        "phone": "+905551234567",
++        "customer_name": "Ahmet Yilmaz",
++        "message_text": "Merhaba, implant fiyatini ogrenebilir miyim?",
++        "message_source": "CUSTOMER"
++      },
++      "timestamp": "2026-02-08T10:30:00Z",
++      "callback_url": null
++    },
++    "conversation_closed": {
++      "event_type": "conversation_closed",
++      "sequence_id": 1002,
++      "chat_id": 12345,
++      "channel": "whatsapp",
++      "data": {
++        "agent_id": 42
++      },
++      "timestamp": "2026-02-08T10:45:00Z"
++    }
++  },
++
++  "response_202": {
++    "status": "accepted",
++    "request_id": "abc123",
++    "event_type": "new_message",
++    "sequence_id": 1001,
++    "message": "Event accepted for processing"
++  },
++
++  "error_responses": {
++    "400_invalid_payload": {
++      "error_code": "INV-INT-001",
++      "message": "Request body is required"
++    },
++    "400_unknown_event": {
++      "error_code": "INV-INT-003",
++      "message": "Unknown event_type: xyz"
++    },
++    "401_no_token": {
++      "error_code": "INV-AUTH-003",
++      "message": "Bearer token required"
++    },
++    "401_expired": {
++      "error_code": "INV-AUTH-001",
++      "message": "Token expired"
++    }
++  }
++}
+diff --git a/arch/db/tenant-registry.sql b/arch/db/tenant-registry.sql
+new file mode 100644
+index 0000000..302f976
+--- /dev/null
++++ b/arch/db/tenant-registry.sql
+@@ -0,0 +1,41 @@
++-- GR-1.9: Tenant Registry DDL for PostgreSQL
++-- Database: invekto (per-environment: invekto_dev, invekto_staging, invekto_prod)
++-- This table maps Main App tenant_id (SQL Server int) to InvektoServis config.
++
++-- Create database (run once, manually)
++-- CREATE DATABASE invekto_dev;
++
++-- Tenant registry: stores per-tenant configuration for InvektoServis
++CREATE TABLE IF NOT EXISTS tenant_registry (
++    tenant_id           INTEGER PRIMARY KEY,         -- Main App SQL Server tenant_id (NOT auto-generated here)
++    tenant_name         VARCHAR(200) NOT NULL,
++    is_active           BOOLEAN NOT NULL DEFAULT true,
++    callback_url        VARCHAR(500),                -- Override callback URL (null = use default)
++    sector              VARCHAR(50),                 -- e.g., 'eticaret', 'dis_klinik', 'estetik', 'genel'
++    plan_tier           VARCHAR(20) NOT NULL DEFAULT 'basic', -- 'basic', 'pro', 'enterprise'
++    features_json       JSONB,                       -- Feature flags per tenant, e.g., {"chatbot": true, "broadcast": false}
++    settings_json       JSONB,                       -- Tenant-specific settings, e.g., {"working_hours": {...}}
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++
++-- Index for active tenants lookup
++CREATE INDEX IF NOT EXISTS idx_tenant_registry_active ON tenant_registry (is_active) WHERE is_active = true;
++
++-- Example: Insert a test tenant (Q runs this manually for dev)
++-- INSERT INTO tenant_registry (tenant_id, tenant_name, sector, plan_tier)
++-- VALUES (1, 'Test Tenant', 'genel', 'basic');
++
++-- Updated_at trigger
++CREATE OR REPLACE FUNCTION update_updated_at_column()
++RETURNS TRIGGER AS $$
++BEGIN
++    NEW.updated_at = NOW();
++    RETURN NEW;
++END;
++$$ LANGUAGE plpgsql;
++
++CREATE OR REPLACE TRIGGER trigger_tenant_registry_updated_at
++    BEFORE UPDATE ON tenant_registry
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
+diff --git a/arch/errors.md b/arch/errors.md
+index 5e04350..5f55808 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -21,6 +21,7 @@ INV-{SERVICE}-{NUMBER}
+ | BE | Backend | Backend API hataları |
+ | CA | ChatAnalysis | Chat Analysis microservice hataları |
+ | AUTH | Auth | Authentication hataları |
++| INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
+ | DB | Database | Veritabanı hataları |
+ | VAL | Validation | Validasyon hataları |
+ | EXT | External | Dış servis hataları |
+@@ -93,6 +94,17 @@ INV-{SERVICE}-{NUMBER}
+ 
+ ---
+ 
++## INT - Integration Errors (GR-1.9)
++
++| Code | Description | User Message |
++|------|-------------|--------------|
++| INV-INT-001 | Webhook payload invalid | Geçersiz webhook formatı. |
++| INV-INT-002 | Callback to Main App failed | Main App'e bildirim gönderilemedi. |
++| INV-INT-003 | Unknown webhook event type | Bilinmeyen event tipi. |
++| INV-INT-004 | Tenant not found in registry | Bu tenant kayıtlı değil. |
++
++---
++
+ ## EXT - External Service Errors
+ 
+ | Code | Description | User Message |
+diff --git a/arch/plans/20260208-integration-bridge.json b/arch/plans/20260208-integration-bridge.json
+new file mode 100644
+index 0000000..89cff5b
+--- /dev/null
++++ b/arch/plans/20260208-integration-bridge.json
+@@ -0,0 +1,214 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260208-integration-bridge",
++  "risk": "HIGH",
++  "status": "REVIEW",
++  "created_at": "2026-02-08T10:00:00Z",
++  "updated_at": "2026-02-08T21:10:00Z",
++  "plan": {
++    "summary": "GR-1.9: Invekto (Main App) ile InvektoServis arasinda API koprusu. JWT auth middleware, webhook receiver endpoint, async callback client, PostgreSQL altyapisi ve API kontratlari. Phase 1'in temeli -- diger tum ozellikler bu kopruye bagimli.",
++    "q_intent": "Phase 1'e basla, GR-1.9 (Invekto <-> InvektoServis Entegrasyonu) ile. Iki platform arasi API koprusu, auth token validation, tenant sync.",
++    "interview_notes": "Tech: .NET 8 devam. WapCRM = Invekto (ad degisiyor). Mesaj akisi: Webhook push (Main App -> InvektoServis). Auth: Shared JWT key. Tenant ID: int/bigint. Sadece InvektoServis tarafi yazilacak (Main App kontratlari tanimla). Webhook fail: 3x retry yeterli. Response: Async callback (202 kabul, sonra POST). Callback fail: 3x retry + sequence_id. PostgreSQL: GR-1.9'da kur. JWT claims: standart varsay (tenant_id, user_id, role) -- Q dogrulayacak."
++  },
++  "allowed_files": [
++    "src/Invekto.Shared/Invekto.Shared.csproj",
++    "src/Invekto.Shared/Constants/ServiceConstants.cs",
++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
++    "src/Invekto.Shared/Constants/HeaderNames.cs",
++    "src/Invekto.Shared/Auth/JwtValidator.cs",
++    "src/Invekto.Shared/Auth/JwtSettings.cs",
++    "src/Invekto.Shared/Auth/TenantContext.cs",
++    "src/Invekto.Shared/Integration/MainAppCallbackClient.cs",
++    "src/Invekto.Shared/Integration/CallbackSettings.cs",
++    "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs",
++    "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs",
++    "src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs",
++    "src/Invekto.Shared/Data/PostgresConnectionFactory.cs",
++    "src/Invekto.Backend/Program.cs",
++    "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs",
++    "src/Invekto.Backend/Invekto.Backend.csproj",
++    "src/Invekto.Backend/appsettings.json",
++    "src/Invekto.Backend/appsettings.Development.json",
++    "arch/errors.md",
++    "arch/endpoints.md",
++    "arch/session-memory.md",
++    "arch/active-work.md",
++    "arch/contracts/integration-webhook.json",
++    "arch/contracts/integration-callback.json",
++    "arch/db/tenant-registry.sql",
++    "arch/plans/20260208-integration-bridge.json",
++    "arch/plans/diffs/20260208-integration-bridge.diff"
++  ],
++  "files_changed": [
++    { "path": "src/Invekto.Shared/Invekto.Shared.csproj", "change": "Added NuGet: JWT + Npgsql packages", "is_new": false },
++    { "path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "change": "Added Phase 1 ports, callback retry constants, latency threshold", "is_new": false },
++    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added INT (integration) + DB error codes, fixed AUTH numbering", "is_new": false },
++    { "path": "src/Invekto.Shared/Constants/HeaderNames.cs", "change": "Added Authorization + ProcessingTimeMs headers", "is_new": false },
++    { "path": "src/Invekto.Shared/Auth/JwtSettings.cs", "change": "JWT config model (SecretKey, Issuer, Audience, ClockSkew)", "is_new": true },
++    { "path": "src/Invekto.Shared/Auth/TenantContext.cs", "change": "Extracted tenant info DTO (TenantId int, UserId int, Role string)", "is_new": true },
++    { "path": "src/Invekto.Shared/Auth/JwtValidator.cs", "change": "HMAC-SHA256 JWT validation + claim extraction, thread-safe", "is_new": true },
++    { "path": "src/Invekto.Shared/Data/PostgresConnectionFactory.cs", "change": "NpgsqlDataSource pooled connection factory, singleton", "is_new": true },
++    { "path": "src/Invekto.Shared/Integration/CallbackSettings.cs", "change": "Callback config model (URL, retries, backoff, timeout)", "is_new": true },
++    { "path": "src/Invekto.Shared/Integration/MainAppCallbackClient.cs", "change": "Async callback with 3x exponential backoff retry", "is_new": true },
++    { "path": "src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs", "change": "Event type constants + validation", "is_new": true },
++    { "path": "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs", "change": "Webhook payload DTO with event data", "is_new": true },
++    { "path": "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs", "change": "Callback payload DTO + CallbackActions constants", "is_new": true },
++    { "path": "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs", "change": "JWT auth middleware for /api/v1/webhook/ prefix only", "is_new": true },
++    { "path": "src/Invekto.Backend/Program.cs", "change": "Added JWT/PG/Callback DI, webhook endpoint, tenant verify endpoint, endpoint discovery update", "is_new": false },
++    { "path": "src/Invekto.Backend/appsettings.json", "change": "Added Jwt, ConnectionStrings:PostgreSQL, Integration:Callback sections", "is_new": false },
++    { "path": "src/Invekto.Backend/appsettings.Development.json", "change": "Added dev JWT key, PG connection, callback URL", "is_new": false },
++    { "path": "arch/errors.md", "change": "Added INT service code + 4 integration error codes", "is_new": false },
++    { "path": "arch/session-memory.md", "change": "Updated to Phase 1 / GR-1.9 status", "is_new": false },
++    { "path": "arch/active-work.md", "change": "Added 20260208-integration-bridge as IN_PROGRESS", "is_new": false },
++    { "path": "arch/contracts/integration-webhook.json", "change": "Main App -> InvektoServis webhook contract", "is_new": true },
++    { "path": "arch/contracts/integration-callback.json", "change": "InvektoServis -> Main App callback contract", "is_new": true },
++    { "path": "arch/db/tenant-registry.sql", "change": "PostgreSQL tenant_registry DDL + updated_at trigger", "is_new": true }
++  ],
++  "git_diff": {
++    "sha256": "4818ADE8CA245D5C1ACA4B7268E516B74DEDF6DE2BAC81CB0F8A2039702EAB88",
++    "full_path": "arch/plans/diffs/20260208-integration-bridge.diff",
++    "patch_truncated": true,
++    "full_size_bytes": 70182,
++    "stats": {
++      "insertions": 1418,
++      "deletions": 23,
++      "files_count": 24
++    }
++  },
++  "build": {
++    "status": "PASS",
++    "command": "dotnet build --no-incremental (Invekto.Backend)",
++    "timestamp": "2026-02-08T20:48:00Z",
++    "duration_ms": 2400,
++    "output_tail": "Build succeeded. 0 Error(s), 9 Warning(s)",
++    "error_summary": null
++  },
++  "verification_questions": [
++    {
++      "id": "Q1",
++      "question": "JWT validation middleware expired/invalid token'lari HTTP 401 + INV-AUTH-001/002 error code ile reddediyor mu?",
++      "category": "Auth",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q2",
++      "question": "JWT claims'ten (tenant_id, user_id, role) cikan degerler TenantContext DTO'suna dogru tip ile (tenant_id=int) aktariliyor mu?",
++      "category": "Auth",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q3",
++      "question": "Webhook endpoint 202 Accepted donup async isleme aliyor mu -- sync blocking yapmiyor mu?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q4",
++      "question": "Callback client fail durumunda exponential backoff ile 3x retry yapiyor mu, 3. retry sonrasi loglayip birakiryor mu?",
++      "category": "Process/Policy",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q5",
++      "question": "sequence_id hem IncomingWebhookEvent hem OutgoingCallback DTO'larinda mevcut mu -- ordering garantisi icin?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q6",
++      "question": "PostgreSQL connection factory thread-safe mi ve connection pooling kullaniyor mu (concurrent requests icin)?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q7",
++      "question": "Mevcut endpoint'ler (health, ops, chat/analyze) JWT middleware'den muaf mi -- geriye donuk uyumluluk bozulmuyor mu?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    }
++  ],
++  "scope_discipline": {
++    "forbidden_areas": [
++      "src/Invekto.ChatAnalysis/ (bu GR'da dokunulmaz)",
++      "src/Invekto.Backend/Dashboard/ (UI degisikligi yok)",
++      "src/Invekto.Backend/Services/ChatAnalysisClient.cs (mevcut proxy bozulmaz)"
++    ],
++    "non_goals": [
++      "Main App tarafinda kod yazmak (sadece kontrat tanimla)",
++      "Chatbot/Flow engine (GR-1.1)",
++      "Agent Assist (GR-1.2)",
++      "Broadcast (GR-1.3)",
++      "Yeni mikro servis olusturma (Automation/AgentAI/Outbound)"
++    ],
++    "intentional_exclusions": [
++      "WebSocket (Phase 1'de webhook + callback yeterli)",
++      "Message queue / RabbitMQ (Phase 1 icin over-engineering)",
++      "Rate limiting (GR-1.3 scope'unda)",
++      "Tenant CRUD API (Q manual olarak tenant ekleyecek, admin UI yok)"
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "JwtValidator.ValidateToken - invalid/expired token",
++      "MainAppCallbackClient.SendCallbackAsync - HTTP failures + retry",
++      "PostgresConnectionFactory.OpenConnectionAsync - connection failure",
++      "JwtAuthMiddleware.InvokeAsync - missing/invalid auth header",
++      "Webhook endpoint - null/malformed payload, unknown event type"
++    ],
++    "user_facing_errors": [
++      "INV-AUTH-001: Token expired -> Oturumunuz sona erdi",
++      "INV-AUTH-002: Invalid token -> Gecersiz oturum",
++      "INV-AUTH-003: Unauthorized -> Yetki yok",
++      "INV-INT-001: Webhook payload invalid -> Gecersiz webhook formati",
++      "INV-INT-002: Callback failed -> Main App'e bildirim gonderilemedi",
++      "INV-INT-003: Unknown event type -> Bilinmeyen event tipi",
++      "INV-DB-001: PostgreSQL connection failed -> Veritabani baglantisi kurulamadi"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "Tum hata durumlarinda loglama + error code donusu var. Callback failure 3x retry sonrasi loglanir, sessiz kalma yok."
++  },
++  "aha_moments": [
++    {
++      "category": "SPEED",
++      "user_pain": "Main App'ten InvektoServis'e geciste latency kaybi -- musteriler yavas cevap aliyor",
++      "suggestion": "Webhook endpoint'ine latency header (X-Processing-Time-Ms) ekle, 200ms asimini alarm olarak logla",
++      "aha_moment": "Dashboard'da 'ortalama AI cevap suresi: 180ms' gordugunde -- 'hizli calisiyor!' hissi"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "InvektoServis down olursa musteri mesajlari kaybolur",
++      "suggestion": "Webhook'ta aninda 202 don + async isle. Health endpoint'i Main App'in retry kararini desteklesin",
++      "aha_moment": "Main App retry mekanizmasiyla '%99.9 mesaj teslim orani' goruldugunde"
++    },
++    {
++      "category": "UX",
++      "user_pain": "Tenant setup karisik -- hangi tenant ID, hangi config?",
++      "suggestion": "GET /api/v1/tenant/verify endpoint'i: JWT ile gelen tenant_id gecerli mi, config tamam mi tek bakista goster",
++      "aha_moment": "Q yeni tenant ekleyince '/tenant/verify' ile aninda 'her sey tamam' onayini gorur"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Entegrasyon sorunlarini debug etmek zor -- hangi istek nereye gitti?",
++      "suggestion": "Her webhook + callback ciftine ayni correlation_id ver, ops/search ile butun akisi tek sorguda gor",
++      "aha_moment": "Musteri sikayet edince correlation_id ile 2 saniyede 'sorun burada' diyebilmek"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Yeni musteri entegrasyonu uzun suruyor -- satis kapanmadan demo yapamiyorum",
++      "suggestion": "Sandbox mode: test tenant_id + mock JWT ile hemen demo calistir. Satista 'bakin 5 dakikada entegre' de",
++      "aha_moment": "Musteri toplantisinda canli demo yapildiginda -- 'bu kadar basit mi?!' tepkisi"
++    }
++  ],
++  "verdict": {
++    "status": null,
++    "iteration": 0
++  }
++}
+diff --git a/arch/plans/diffs/20260208-integration-bridge.diff b/arch/plans/diffs/20260208-integration-bridge.diff
+new file mode 100644
+index 0000000..4353561
+--- /dev/null
++++ b/arch/plans/diffs/20260208-integration-bridge.diff
+@@ -0,0 +1,1726 @@
++diff --git a/arch/active-work.md b/arch/active-work.md
++index 5ee6af0..cb6f86e 100644
++--- a/arch/active-work.md
+++++ b/arch/active-work.md
++@@ -6,7 +6,7 @@
++ 
++ | Slug | Status | Started | Description |
++ |------|--------|---------|-------------|
++-| (none) | - | - | Henüz aktif iş yok |
+++| 20260208-integration-bridge | REVIEW | 2026-02-08 | GR-1.9: Invekto <-> InvektoServis API koprusu (JWT, webhook, callback, PostgreSQL) |
++ 
++ ---
++ 
++diff --git a/arch/contracts/integration-callback.json b/arch/contracts/integration-callback.json
++new file mode 100644
++index 0000000..db2c96c
++--- /dev/null
+++++ b/arch/contracts/integration-callback.json
++@@ -0,0 +1,110 @@
+++{
+++  "$schema": "https://json-schema.org/draft/2020-12/schema",
+++  "$id": "integration-callback-v1.json",
+++  "title": "Integration Callback Contract",
+++  "description": "GR-1.9: InvektoServis -> Main App async callback format. InvektoServis sends this payload to Main App's callback endpoint after processing a webhook event.",
+++  "version": "1.0",
+++
+++  "endpoint": {
+++    "method": "POST",
+++    "path": "{callback_url or Integration:Callback:DefaultCallbackUrl}",
+++    "auth": "None (internal network, or add shared secret later)",
+++    "retry": "3x with exponential backoff (500ms, 1s, 2s)"
+++  },
+++
+++  "note_for_main_app": "Main App must implement a POST endpoint that accepts this JSON body. Return 2xx for success. Non-2xx triggers retry.",
+++
+++  "type": "object",
+++  "required": ["request_id", "action", "tenant_id", "chat_id", "timestamp"],
+++  "properties": {
+++    "request_id": {
+++      "type": "string",
+++      "description": "Correlation ID -- matches X-Request-Id from original webhook"
+++    },
+++    "action": {
+++      "type": "string",
+++      "enum": ["send_message", "suggest_reply", "apply_tag", "handoff_to_human", "no_action"],
+++      "description": "What Main App should do"
+++    },
+++    "tenant_id": {
+++      "type": "integer",
+++      "description": "Tenant ID (same as JWT tenant_id)"
+++    },
+++    "chat_id": {
+++      "type": "integer",
+++      "description": "Conversation/chat ID"
+++    },
+++    "sequence_id": {
+++      "type": "integer",
+++      "description": "Sequence ID from original webhook (for ordering)"
+++    },
+++    "data": {
+++      "type": "object",
+++      "description": "Action-specific payload",
+++      "properties": {
+++        "message_text": { "type": "string", "description": "Message to send (send_message)" },
+++        "suggested_reply": { "type": "string", "description": "Reply suggestion for agent (suggest_reply)" },
+++        "tag_name": { "type": "string", "description": "Tag to apply (apply_tag)" },
+++        "handoff_to_human": { "type": "boolean", "description": "Transfer to human agent" },
+++        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "AI confidence score" },
+++        "ai_summary": { "type": "string", "description": "AI summary for agent context" },
+++        "intent": { "type": "string", "description": "Detected intent (e.g., price_inquiry)" }
+++      }
+++    },
+++    "processing_time_ms": {
+++      "type": "integer",
+++      "description": "How long InvektoServis took to process (milliseconds)"
+++    },
+++    "timestamp": {
+++      "type": "string",
+++      "format": "date-time",
+++      "description": "When InvektoServis generated this callback (ISO 8601)"
+++    }
+++  },
+++
+++  "examples": {
+++    "send_message_auto_reply": {
+++      "request_id": "abc123",
+++      "action": "send_message",
+++      "tenant_id": 5,
+++      "chat_id": 12345,
+++      "sequence_id": 1001,
+++      "data": {
+++        "message_text": "Merhaba! Implant fiyatlarimiz 15.000-45.000 TL arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?",
+++        "confidence": 0.92,
+++        "intent": "price_inquiry"
+++      },
+++      "processing_time_ms": 145,
+++      "timestamp": "2026-02-08T10:30:01Z"
+++    },
+++    "suggest_reply_agent_assist": {
+++      "request_id": "def456",
+++      "action": "suggest_reply",
+++      "tenant_id": 5,
+++      "chat_id": 12346,
+++      "sequence_id": 1003,
+++      "data": {
+++        "suggested_reply": "Siparisaniz kargoya verildi, takip numarasi: TR123456789.",
+++        "confidence": 0.78,
+++        "intent": "cargo_inquiry",
+++        "ai_summary": "Musteri kargo durumunu soruyor"
+++      },
+++      "processing_time_ms": 230,
+++      "timestamp": "2026-02-08T11:00:01Z"
+++    },
+++    "handoff_low_confidence": {
+++      "request_id": "ghi789",
+++      "action": "handoff_to_human",
+++      "tenant_id": 5,
+++      "chat_id": 12347,
+++      "sequence_id": 1005,
+++      "data": {
+++        "handoff_to_human": true,
+++        "confidence": 0.35,
+++        "ai_summary": "Musteri karmasik bir sikayet bildirdi, AI guven esigi altinda"
+++      },
+++      "processing_time_ms": 180,
+++      "timestamp": "2026-02-08T11:15:01Z"
+++    }
+++  }
+++}
++diff --git a/arch/contracts/integration-webhook.json b/arch/contracts/integration-webhook.json
++new file mode 100644
++index 0000000..aa7a3ef
++--- /dev/null
+++++ b/arch/contracts/integration-webhook.json
++@@ -0,0 +1,136 @@
+++{
+++  "$schema": "https://json-schema.org/draft/2020-12/schema",
+++  "$id": "integration-webhook-v1.json",
+++  "title": "Integration Webhook Event Contract",
+++  "description": "GR-1.9: Main App -> InvektoServis webhook event format. Main App sends this payload via POST /api/v1/webhook/event with Bearer JWT token.",
+++  "version": "1.0",
+++
+++  "endpoint": {
+++    "method": "POST",
+++    "path": "/api/v1/webhook/event",
+++    "auth": "Bearer JWT (shared HMAC-SHA256 key)",
+++    "response": "202 Accepted (async processing)"
+++  },
+++
+++  "headers": {
+++    "required": {
+++      "Authorization": "Bearer {jwt_token}",
+++      "Content-Type": "application/json"
+++    },
+++    "optional": {
+++      "X-Request-Id": "Correlation ID (auto-generated if missing)"
+++    }
+++  },
+++
+++  "jwt_claims": {
+++    "required": {
+++      "tenant_id": { "type": "integer", "description": "Tenant ID from Main App SQL Server" },
+++      "user_id": { "type": "integer", "description": "User ID or system ID" },
+++      "exp": { "type": "integer", "description": "Expiration timestamp (Unix)" }
+++    },
+++    "optional": {
+++      "role": { "type": "string", "default": "agent", "enum": ["admin", "agent", "service"] },
+++      "iat": { "type": "integer", "description": "Issued at timestamp" }
+++    }
+++  },
+++
+++  "type": "object",
+++  "required": ["event_type", "chat_id", "timestamp"],
+++  "properties": {
+++    "event_type": {
+++      "type": "string",
+++      "enum": ["new_message", "conversation_closed", "tag_changed", "conversation_started", "agent_assigned"],
+++      "description": "Type of event"
+++    },
+++    "sequence_id": {
+++      "type": "integer",
+++      "description": "Monotonically increasing sequence per tenant for ordering guarantee"
+++    },
+++    "chat_id": {
+++      "type": "integer",
+++      "description": "Conversation/chat ID in Main App"
+++    },
+++    "channel": {
+++      "type": "string",
+++      "enum": ["whatsapp", "web", "instagram", "facebook", "telegram", "email", "sms"],
+++      "description": "Communication channel"
+++    },
+++    "data": {
+++      "type": "object",
+++      "description": "Event-specific payload",
+++      "properties": {
+++        "phone": { "type": "string", "description": "Customer phone (new_message)" },
+++        "customer_name": { "type": "string", "description": "Customer name if known" },
+++        "message_text": { "type": "string", "description": "Message content (new_message)" },
+++        "message_source": { "type": "string", "enum": ["CUSTOMER", "AGENT"] },
+++        "agent_id": { "type": "integer", "description": "Agent ID (agent_assigned)" },
+++        "tag_name": { "type": "string", "description": "Tag name (tag_changed)" },
+++        "tag_action": { "type": "string", "enum": ["added", "removed"] }
+++      }
+++    },
+++    "timestamp": {
+++      "type": "string",
+++      "format": "date-time",
+++      "description": "When event occurred in Main App (ISO 8601)"
+++    },
+++    "callback_url": {
+++      "type": "string",
+++      "format": "uri",
+++      "description": "Override callback URL for this event. If null, uses tenant default."
+++    }
+++  },
+++
+++  "examples": {
+++    "new_message": {
+++      "event_type": "new_message",
+++      "sequence_id": 1001,
+++      "chat_id": 12345,
+++      "channel": "whatsapp",
+++      "data": {
+++        "phone": "+905551234567",
+++        "customer_name": "Ahmet Yilmaz",
+++        "message_text": "Merhaba, implant fiyatini ogrenebilir miyim?",
+++        "message_source": "CUSTOMER"
+++      },
+++      "timestamp": "2026-02-08T10:30:00Z",
+++      "callback_url": null
+++    },
+++    "conversation_closed": {
+++      "event_type": "conversation_closed",
+++      "sequence_id": 1002,
+++      "chat_id": 12345,
+++      "channel": "whatsapp",
+++      "data": {
+++        "agent_id": 42
+++      },
+++      "timestamp": "2026-02-08T10:45:00Z"
+++    }
+++  },
+++
+++  "response_202": {
+++    "status": "accepted",
+++    "request_id": "abc123",
+++    "event_type": "new_message",
+++    "sequence_id": 1001,
+++    "message": "Event queued for processing"
+++  },
+++
+++  "error_responses": {
+++    "400_invalid_payload": {
+++      "error_code": "INV-INT-001",
+++      "message": "Request body is required"
+++    },
+++    "400_unknown_event": {
+++      "error_code": "INV-INT-003",
+++      "message": "Unknown event_type: xyz"
+++    },
+++    "401_no_token": {
+++      "error_code": "INV-AUTH-003",
+++      "message": "Bearer token required"
+++    },
+++    "401_expired": {
+++      "error_code": "INV-AUTH-001",
+++      "message": "Token expired"
+++    }
+++  }
+++}
++diff --git a/arch/db/tenant-registry.sql b/arch/db/tenant-registry.sql
++new file mode 100644
++index 0000000..302f976
++--- /dev/null
+++++ b/arch/db/tenant-registry.sql
++@@ -0,0 +1,41 @@
+++-- GR-1.9: Tenant Registry DDL for PostgreSQL
+++-- Database: invekto (per-environment: invekto_dev, invekto_staging, invekto_prod)
+++-- This table maps Main App tenant_id (SQL Server int) to InvektoServis config.
+++
+++-- Create database (run once, manually)
+++-- CREATE DATABASE invekto_dev;
+++
+++-- Tenant registry: stores per-tenant configuration for InvektoServis
+++CREATE TABLE IF NOT EXISTS tenant_registry (
+++    tenant_id           INTEGER PRIMARY KEY,         -- Main App SQL Server tenant_id (NOT auto-generated here)
+++    tenant_name         VARCHAR(200) NOT NULL,
+++    is_active           BOOLEAN NOT NULL DEFAULT true,
+++    callback_url        VARCHAR(500),                -- Override callback URL (null = use default)
+++    sector              VARCHAR(50),                 -- e.g., 'eticaret', 'dis_klinik', 'estetik', 'genel'
+++    plan_tier           VARCHAR(20) NOT NULL DEFAULT 'basic', -- 'basic', 'pro', 'enterprise'
+++    features_json       JSONB,                       -- Feature flags per tenant, e.g., {"chatbot": true, "broadcast": false}
+++    settings_json       JSONB,                       -- Tenant-specific settings, e.g., {"working_hours": {...}}
+++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+++);
+++
+++-- Index for active tenants lookup
+++CREATE INDEX IF NOT EXISTS idx_tenant_registry_active ON tenant_registry (is_active) WHERE is_active = true;
+++
+++-- Example: Insert a test tenant (Q runs this manually for dev)
+++-- INSERT INTO tenant_registry (tenant_id, tenant_name, sector, plan_tier)
+++-- VALUES (1, 'Test Tenant', 'genel', 'basic');
+++
+++-- Updated_at trigger
+++CREATE OR REPLACE FUNCTION update_updated_at_column()
+++RETURNS TRIGGER AS $$
+++BEGIN
+++    NEW.updated_at = NOW();
+++    RETURN NEW;
+++END;
+++$$ LANGUAGE plpgsql;
+++
+++CREATE OR REPLACE TRIGGER trigger_tenant_registry_updated_at
+++    BEFORE UPDATE ON tenant_registry
+++    FOR EACH ROW
+++    EXECUTE FUNCTION update_updated_at_column();
++diff --git a/arch/errors.md b/arch/errors.md
++index 5e04350..5f55808 100644
++--- a/arch/errors.md
+++++ b/arch/errors.md
++@@ -21,6 +21,7 @@ INV-{SERVICE}-{NUMBER}
++ | BE | Backend | Backend API hataları |
++ | CA | ChatAnalysis | Chat Analysis microservice hataları |
++ | AUTH | Auth | Authentication hataları |
+++| INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
++ | DB | Database | Veritabanı hataları |
++ | VAL | Validation | Validasyon hataları |
++ | EXT | External | Dış servis hataları |
++@@ -93,6 +94,17 @@ INV-{SERVICE}-{NUMBER}
++ 
++ ---
++ 
+++## INT - Integration Errors (GR-1.9)
+++
+++| Code | Description | User Message |
+++|------|-------------|--------------|
+++| INV-INT-001 | Webhook payload invalid | Geçersiz webhook formatı. |
+++| INV-INT-002 | Callback to Main App failed | Main App'e bildirim gönderilemedi. |
+++| INV-INT-003 | Unknown webhook event type | Bilinmeyen event tipi. |
+++| INV-INT-004 | Tenant not found in registry | Bu tenant kayıtlı değil. |
+++
+++---
+++
++ ## EXT - External Service Errors
++ 
++ | Code | Description | User Message |
++diff --git a/arch/plans/20260208-integration-bridge.json b/arch/plans/20260208-integration-bridge.json
++new file mode 100644
++index 0000000..d837a3f
++--- /dev/null
+++++ b/arch/plans/20260208-integration-bridge.json
++@@ -0,0 +1,208 @@
+++{
+++  "schema_version": "3.0",
+++  "review_protocol_version": "3.0",
+++  "slug": "20260208-integration-bridge",
+++  "risk": "HIGH",
+++  "status": "REVIEW",
+++  "created_at": "2026-02-08T10:00:00Z",
+++  "updated_at": "2026-02-08T20:50:00Z",
+++  "plan": {
+++    "summary": "GR-1.9: Invekto (Main App) ile InvektoServis arasinda API koprusu. JWT auth middleware, webhook receiver endpoint, async callback client, PostgreSQL altyapisi ve API kontratlari. Phase 1'in temeli -- diger tum ozellikler bu kopruye bagimli.",
+++    "q_intent": "Phase 1'e basla, GR-1.9 (Invekto <-> InvektoServis Entegrasyonu) ile. Iki platform arasi API koprusu, auth token validation, tenant sync.",
+++    "interview_notes": "Tech: .NET 8 devam. WapCRM = Invekto (ad degisiyor). Mesaj akisi: Webhook push (Main App -> InvektoServis). Auth: Shared JWT key. Tenant ID: int/bigint. Sadece InvektoServis tarafi yazilacak (Main App kontratlari tanimla). Webhook fail: 3x retry yeterli. Response: Async callback (202 kabul, sonra POST). Callback fail: 3x retry + sequence_id. PostgreSQL: GR-1.9'da kur. JWT claims: standart varsay (tenant_id, user_id, role) -- Q dogrulayacak."
+++  },
+++  "allowed_files": [
+++    "src/Invekto.Shared/Invekto.Shared.csproj",
+++    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+++    "src/Invekto.Shared/Constants/HeaderNames.cs",
+++    "src/Invekto.Shared/Auth/JwtValidator.cs",
+++    "src/Invekto.Shared/Auth/JwtSettings.cs",
+++    "src/Invekto.Shared/Auth/TenantContext.cs",
+++    "src/Invekto.Shared/Integration/MainAppCallbackClient.cs",
+++    "src/Invekto.Shared/Integration/CallbackSettings.cs",
+++    "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs",
+++    "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs",
+++    "src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs",
+++    "src/Invekto.Shared/Data/PostgresConnectionFactory.cs",
+++    "src/Invekto.Backend/Program.cs",
+++    "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs",
+++    "src/Invekto.Backend/Invekto.Backend.csproj",
+++    "src/Invekto.Backend/appsettings.json",
+++    "src/Invekto.Backend/appsettings.Development.json",
+++    "arch/errors.md",
+++    "arch/endpoints.md",
+++    "arch/session-memory.md",
+++    "arch/active-work.md",
+++    "arch/contracts/integration-webhook.json",
+++    "arch/contracts/integration-callback.json",
+++    "arch/db/tenant-registry.sql"
+++  ],
+++  "files_changed": [
+++    { "path": "src/Invekto.Shared/Invekto.Shared.csproj", "change": "Added NuGet: JWT + Npgsql packages", "is_new": false },
+++    { "path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "change": "Added Phase 1 ports, callback retry constants, latency threshold", "is_new": false },
+++    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added INT (integration) + DB error codes, fixed AUTH numbering", "is_new": false },
+++    { "path": "src/Invekto.Shared/Constants/HeaderNames.cs", "change": "Added Authorization + ProcessingTimeMs headers", "is_new": false },
+++    { "path": "src/Invekto.Shared/Auth/JwtSettings.cs", "change": "JWT config model (SecretKey, Issuer, Audience, ClockSkew)", "is_new": true },
+++    { "path": "src/Invekto.Shared/Auth/TenantContext.cs", "change": "Extracted tenant info DTO (TenantId int, UserId int, Role string)", "is_new": true },
+++    { "path": "src/Invekto.Shared/Auth/JwtValidator.cs", "change": "HMAC-SHA256 JWT validation + claim extraction, thread-safe", "is_new": true },
+++    { "path": "src/Invekto.Shared/Data/PostgresConnectionFactory.cs", "change": "NpgsqlDataSource pooled connection factory, singleton", "is_new": true },
+++    { "path": "src/Invekto.Shared/Integration/CallbackSettings.cs", "change": "Callback config model (URL, retries, backoff, timeout)", "is_new": true },
+++    { "path": "src/Invekto.Shared/Integration/MainAppCallbackClient.cs", "change": "Async callback with 3x exponential backoff retry", "is_new": true },
+++    { "path": "src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs", "change": "Event type constants + validation", "is_new": true },
+++    { "path": "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs", "change": "Webhook payload DTO with event data", "is_new": true },
+++    { "path": "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs", "change": "Callback payload DTO + CallbackActions constants", "is_new": true },
+++    { "path": "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs", "change": "JWT auth middleware for /api/v1/webhook/ prefix only", "is_new": true },
+++    { "path": "src/Invekto.Backend/Program.cs", "change": "Added JWT/PG/Callback DI, webhook endpoint, tenant verify endpoint, endpoint discovery update", "is_new": false },
+++    { "path": "src/Invekto.Backend/appsettings.json", "change": "Added Jwt, ConnectionStrings:PostgreSQL, Integration:Callback sections", "is_new": false },
+++    { "path": "src/Invekto.Backend/appsettings.Development.json", "change": "Added dev JWT key, PG connection, callback URL", "is_new": false },
+++    { "path": "arch/errors.md", "change": "Added INT service code + 4 integration error codes", "is_new": false },
+++    { "path": "arch/session-memory.md", "change": "Updated to Phase 1 / GR-1.9 status", "is_new": false },
+++    { "path": "arch/active-work.md", "change": "Added 20260208-integration-bridge as IN_PROGRESS", "is_new": false },
+++    { "path": "arch/contracts/integration-webhook.json", "change": "Main App -> InvektoServis webhook contract", "is_new": true },
+++    { "path": "arch/contracts/integration-callback.json", "change": "InvektoServis -> Main App callback contract", "is_new": true },
+++    { "path": "arch/db/tenant-registry.sql", "change": "PostgreSQL tenant_registry DDL + updated_at trigger", "is_new": true }
+++  ],
+++  "git_diff": {
+++    "stats": {
+++      "insertions": 315,
+++      "deletions": 23,
+++      "files_count": 24
+++    }
+++  },
+++  "build": {
+++    "status": "PASS",
+++    "command": "dotnet build --no-incremental (Invekto.Backend)",
+++    "timestamp": "2026-02-08T20:48:00Z",
+++    "duration_ms": 2400,
+++    "output_tail": "Build succeeded. 0 Error(s), 9 Warning(s)",
+++    "error_summary": null
+++  },
+++  "verification_questions": [
+++    {
+++      "id": "Q1",
+++      "question": "JWT validation middleware expired/invalid token'lari HTTP 401 + INV-AUTH-001/002 error code ile reddediyor mu?",
+++      "category": "Auth",
+++      "codex_answer": null,
+++      "codex_result": null
+++    },
+++    {
+++      "id": "Q2",
+++      "question": "JWT claims'ten (tenant_id, user_id, role) cikan degerler TenantContext DTO'suna dogru tip ile (tenant_id=int) aktariliyor mu?",
+++      "category": "Auth",
+++      "codex_answer": null,
+++      "codex_result": null
+++    },
+++    {
+++      "id": "Q3",
+++      "question": "Webhook endpoint 202 Accepted donup async isleme aliyor mu -- sync blocking yapmiyor mu?",
+++      "category": "Lifecycle",
+++      "codex_answer": null,
+++      "codex_result": null
+++    },
+++    {
+++      "id": "Q4",
+++      "question": "Callback client fail durumunda exponential backoff ile 3x retry yapiyor mu, 3. retry sonrasi loglayip birakiryor mu?",
+++      "category": "Process/Policy",
+++      "codex_answer": null,
+++      "codex_result": null
+++    },
+++    {
+++      "id": "Q5",
+++      "question": "sequence_id hem IncomingWebhookEvent hem OutgoingCallback DTO'larinda mevcut mu -- ordering garantisi icin?",
+++      "category": "Data",
+++      "codex_answer": null,
+++      "codex_result": null
+++    },
+++    {
+++      "id": "Q6",
+++      "question": "PostgreSQL connection factory thread-safe mi ve connection pooling kullaniyor mu (concurrent requests icin)?",
+++      "category": "Data",
+++      "codex_answer": null,
+++      "codex_result": null
+++    },
+++    {
+++      "id": "Q7",
+++      "question": "Mevcut endpoint'ler (health, ops, chat/analyze) JWT middleware'den muaf mi -- geriye donuk uyumluluk bozulmuyor mu?",
+++      "category": "Lifecycle",
+++      "codex_answer": null,
+++      "codex_result": null
+++    }
+++  ],
+++  "scope_discipline": {
+++    "forbidden_areas": [
+++      "src/Invekto.ChatAnalysis/ (bu GR'da dokunulmaz)",
+++      "src/Invekto.Backend/Dashboard/ (UI degisikligi yok)",
+++      "src/Invekto.Backend/Services/ChatAnalysisClient.cs (mevcut proxy bozulmaz)"
+++    ],
+++    "non_goals": [
+++      "Main App tarafinda kod yazmak (sadece kontrat tanimla)",
+++      "Chatbot/Flow engine (GR-1.1)",
+++      "Agent Assist (GR-1.2)",
+++      "Broadcast (GR-1.3)",
+++      "Yeni mikro servis olusturma (Automation/AgentAI/Outbound)"
+++    ],
+++    "intentional_exclusions": [
+++      "WebSocket (Phase 1'de webhook + callback yeterli)",
+++      "Message queue / RabbitMQ (Phase 1 icin over-engineering)",
+++      "Rate limiting (GR-1.3 scope'unda)",
+++      "Tenant CRUD API (Q manual olarak tenant ekleyecek, admin UI yok)"
+++    ]
+++  },
+++  "error_handling": {
+++    "try_catch_locations": [
+++      "JwtValidator.ValidateToken - invalid/expired token",
+++      "MainAppCallbackClient.SendCallbackAsync - HTTP failures + retry",
+++      "PostgresConnectionFactory.OpenConnectionAsync - connection failure",
+++      "JwtAuthMiddleware.InvokeAsync - missing/invalid auth header",
+++      "Webhook endpoint - null/malformed payload, unknown event type"
+++    ],
+++    "user_facing_errors": [
+++      "INV-AUTH-001: Token expired -> Oturumunuz sona erdi",
+++      "INV-AUTH-002: Invalid token -> Gecersiz oturum",
+++      "INV-AUTH-003: Unauthorized -> Yetki yok",
+++      "INV-INT-001: Webhook payload invalid -> Gecersiz webhook formati",
+++      "INV-INT-002: Callback failed -> Main App'e bildirim gonderilemedi",
+++      "INV-INT-003: Unknown event type -> Bilinmeyen event tipi",
+++      "INV-DB-001: PostgreSQL connection failed -> Veritabani baglantisi kurulamadi"
+++    ],
+++    "silent_failure_risk": false,
+++    "silent_failure_explanation": "Tum hata durumlarinda loglama + error code donusu var. Callback failure 3x retry sonrasi loglanir, sessiz kalma yok."
+++  },
+++  "aha_moments": [
+++    {
+++      "category": "SPEED",
+++      "user_pain": "Main App'ten InvektoServis'e geciste latency kaybi -- musteriler yavas cevap aliyor",
+++      "suggestion": "Webhook endpoint'ine latency header (X-Processing-Time-Ms) ekle, 200ms asimini alarm olarak logla",
+++      "aha_moment": "Dashboard'da 'ortalama AI cevap suresi: 180ms' gordugunde -- 'hizli calisiyor!' hissi"
+++    },
+++    {
+++      "category": "RELIABILITY",
+++      "user_pain": "InvektoServis down olursa musteri mesajlari kaybolur",
+++      "suggestion": "Webhook'ta aninda 202 don + async isle. Health endpoint'i Main App'in retry kararini desteklesin",
+++      "aha_moment": "Main App retry mekanizmasiyla '%99.9 mesaj teslim orani' goruldugunde"
+++    },
+++    {
+++      "category": "UX",
+++      "user_pain": "Tenant setup karisik -- hangi tenant ID, hangi config?",
+++      "suggestion": "GET /api/v1/tenant/verify endpoint'i: JWT ile gelen tenant_id gecerli mi, config tamam mi tek bakista goster",
+++      "aha_moment": "Q yeni tenant ekleyince '/tenant/verify' ile aninda 'her sey tamam' onayini gorur"
+++    },
+++    {
+++      "category": "SUPPORT",
+++      "user_pain": "Entegrasyon sorunlarini debug etmek zor -- hangi istek nereye gitti?",
+++      "suggestion": "Her webhook + callback ciftine ayni correlation_id ver, ops/search ile butun akisi tek sorguda gor",
+++      "aha_moment": "Musteri sikayet edince correlation_id ile 2 saniyede 'sorun burada' diyebilmek"
+++    },
+++    {
+++      "category": "SALES",
+++      "user_pain": "Yeni musteri entegrasyonu uzun suruyor -- satis kapanmadan demo yapamiyorum",
+++      "suggestion": "Sandbox mode: test tenant_id + mock JWT ile hemen demo calistir. Satista 'bakin 5 dakikada entegre' de",
+++      "aha_moment": "Musteri toplantisinda canli demo yapildiginda -- 'bu kadar basit mi?!' tepkisi"
+++    }
+++  ],
+++  "verdict": {
+++    "status": null,
+++    "iteration": 0
+++  }
+++}
++diff --git a/arch/session-memory.md b/arch/session-memory.md
++index c36b3b2..e87e0ac 100644
++--- a/arch/session-memory.md
+++++ b/arch/session-memory.md
++@@ -4,23 +4,29 @@
++ 
++ ## Last Update
++ 
++-- **Date:** 2026-02-03
++-- **Status:** Chat Analysis V2 Complete
++-- **Last Task:** V2 API with async callback, 15-criteria analysis, label selection
+++- **Date:** 2026-02-08
+++- **Status:** GR-1.9 Integration Bridge -- REVIEW
+++- **Last Task:** Phase 1 baslatildi. JWT auth, webhook receiver, async callback, PostgreSQL altyapisi eklendi.
++ 
++ ---
++ 
++ ## Current State
++ 
++ ### Active Features
++-- **Stage-0 Scaffold:** Backend + ChatAnalysis microservice çalışır durumda
+++- **Stage-0 Scaffold:** Backend + ChatAnalysis microservice calisir durumda
++ - **Health Endpoints:** `/health`, `/ready` her iki serviste
++-- **Ops Endpoint:** Backend `/ops` - servis durumlarını gösterir
+++- **Ops Endpoint:** Backend `/ops` - servis durumlarini gosterir
++ - **JSON Lines Logger:** `Invekto.Shared.Logging.JsonLinesLogger`
++-- **Chat Analysis:** WapCRM'den sohbet çekme + Claude Haiku ile sentiment/kategori analizi
+++- **Chat Analysis:** WapCRM'den sohbet cekme + Claude Haiku ile sentiment/kategori analizi
++   - Endpoint: POST `/api/v1/analyze` (phoneNumber, instanceId)
++-  - Sentiment: positive, negative, neutral
++-  - Kategoriler: Destek, Satis, Sikayet, Bilgi
+++- **GR-1.9 Integration Bridge (Phase 1):**
+++  - JWT auth middleware (shared HMAC-SHA256 key, /api/v1/webhook/ prefix)
+++  - Webhook receiver: POST `/api/v1/webhook/event` (202 Accepted, async)
+++  - Tenant verify: GET `/api/v1/tenant/verify` (JWT health check)
+++  - Async callback client: MainAppCallbackClient (3x retry, exponential backoff)
+++  - PostgreSQL connection factory (NpgsqlDataSource, pooling)
+++  - DB schema: `arch/db/tenant-registry.sql`
+++  - API contracts: `arch/contracts/integration-webhook.json`, `integration-callback.json`
++ 
++ ### Tech Stack
++ | Component | Technology |
++@@ -31,10 +37,14 @@
++ | Logging | JSON Lines (custom) |
++ 
++ ### Ports
++-| Service | Port |
++-|---------|------|
++-| Backend | 5000 |
++-| ChatAnalysis | 7101 |
+++| Service | Port | Status |
+++|---------|------|--------|
+++| Backend | 5000 | Active |
+++| ChatAnalysis | 7101 | Active |
+++| AgentAI | 7105 | Reserved (Phase 1) |
+++| Integrations | 7106 | Reserved (Phase 2+) |
+++| Outbound | 7107 | Reserved (Phase 1) |
+++| Automation | 7108 | Reserved (Phase 1) |
++ 
++ ### Pending Work
++ - [x] ~~Chat Analysis gerçek iş mantığı~~ (Tamamlandı - WapCRM + Claude)
++@@ -52,9 +62,14 @@
++ 
++ | Date | Decision | Reason |
++ |------|----------|--------|
++-| 2026-02-01 | Mikro servis mimarisi | Bağımsız deploy, ölçeklenebilirlik |
++-| 2026-02-02 | .NET 8 stack | Windows Service native, backend ile aynı ekosistem |
++-| 2026-02-02 | Stage-0 önce | Full system yerine hızlı MVP |
+++| 2026-02-01 | Mikro servis mimarisi | Bagimsiz deploy, olceklenebilirlik |
+++| 2026-02-02 | .NET 8 stack | Windows Service native, backend ile ayni ekosistem |
+++| 2026-02-02 | Stage-0 once | Full system yerine hizli MVP |
+++| 2026-02-08 | .NET 8 devam (Node.js degil) | Solo founder, mevcut pattern, minimum surtuhnme |
+++| 2026-02-08 | Webhook push + async callback | Main App -> InvektoServis: webhook, InvektoServis -> Main App: async POST callback |
+++| 2026-02-08 | Shared JWT key (HMAC-SHA256) | Basit, her iki taraf ayni key ile validate |
+++| 2026-02-08 | PostgreSQL yeni servisler icin | Ana app SQL Server, yeni servisler PostgreSQL, tenant_id (int) eslestirme |
+++| 2026-02-08 | Basit retry (3x + backoff) | Phase 1 icin yeterli, queue yok |
++ 
++ ---
++ 
++@@ -63,11 +78,17 @@
++ ```
++ src/
++ ├── Invekto.Shared/           # Shared contracts, DTOs, logging
+++│   ├── Auth/                 # GR-1.9: JWT validation
++ │   ├── Constants/
+++│   ├── Data/                 # GR-1.9: PostgreSQL connection
++ │   ├── DTOs/
+++│   │   ├── ChatAnalysis/
+++│   │   └── Integration/      # GR-1.9: Webhook/Callback DTOs
+++│   ├── Integration/          # GR-1.9: Callback client
++ │   └── Logging/
++ ├── Invekto.ChatAnalysis/     # Microservice (Port 7101)
++ └── Invekto.Backend/          # Backend API (Port 5000)
+++    ├── Middleware/            # Traffic logging + JWT auth
++     └── Services/
++ ```
++ 
++@@ -76,9 +97,11 @@ src/
++ ## Context for Next Session
++ 
++ Sonraki session'da:
++-1. Chat Analysis servisine gerçek iş mantığı eklenecek
++-2. Ops sayfası genişletilecek (log okuma)
++-3. Windows Service deploy testi yapılacak
+++1. GR-1.9 Codex review tamamla (REVIEW durumunda)
+++2. Q: JWT claims'i dogrula (Main App token yapisi)
+++3. Q: PostgreSQL kur ve tenant-registry.sql calistir
+++4. GR-1.1 (Chatbot/Flow Builder) baslat - Automation servisi :7108
+++5. Windows Service deploy testi (hala bekliyor)
++ 
++ ---
++ 
++diff --git a/src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs b/src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs
++new file mode 100644
++index 0000000..788098b
++--- /dev/null
+++++ b/src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs
++@@ -0,0 +1,109 @@
+++using Invekto.Shared.Auth;
+++using Invekto.Shared.Constants;
+++using Invekto.Shared.DTOs;
+++using Invekto.Shared.Logging;
+++
+++namespace Invekto.Backend.Middleware;
+++
+++/// <summary>
+++/// JWT authentication middleware for webhook endpoints.
+++/// GR-1.9: Validates Bearer token, extracts TenantContext, stores in HttpContext.Items.
+++/// Only applies to paths that require auth (configured via path prefixes).
+++/// </summary>
+++public sealed class JwtAuthMiddleware
+++{
+++    private readonly RequestDelegate _next;
+++    private readonly JwtValidator _jwtValidator;
+++    private readonly JsonLinesLogger _logger;
+++    private readonly HashSet<string> _authRequiredPrefixes;
+++
+++    public JwtAuthMiddleware(
+++        RequestDelegate next,
+++        JwtValidator jwtValidator,
+++        JsonLinesLogger logger,
+++        IEnumerable<string> authRequiredPrefixes)
+++    {
+++        _next = next;
+++        _jwtValidator = jwtValidator;
+++        _logger = logger;
+++        _authRequiredPrefixes = new HashSet<string>(authRequiredPrefixes, StringComparer.OrdinalIgnoreCase);
+++    }
+++
+++    public async Task InvokeAsync(HttpContext context)
+++    {
+++        var path = context.Request.Path.Value ?? "";
+++
+++        // Only check auth for configured prefixes
+++        if (!RequiresAuth(path))
+++        {
+++            await _next(context);
+++            return;
+++        }
+++
+++        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+++        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+++        {
+++            _logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] Missing or invalid Authorization header: path={path}");
+++            context.Response.StatusCode = 401;
+++            await context.Response.WriteAsJsonAsync(
+++                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"));
+++            return;
+++        }
+++
+++        var token = authHeader["Bearer ".Length..].Trim();
+++        var (tenantContext, error) = _jwtValidator.ValidateToken(token);
+++
+++        if (tenantContext == null)
+++        {
+++            var errorCode = error?.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
+++                ? ErrorCodes.AuthTokenExpired
+++                : ErrorCodes.AuthTokenInvalid;
+++
+++            _logger.SystemWarn($"[{errorCode}] JWT validation failed: path={path}, error={error}");
+++            context.Response.StatusCode = 401;
+++            await context.Response.WriteAsJsonAsync(
+++                ErrorResponse.Create(errorCode, error ?? "Token validation failed", "-"));
+++            return;
+++        }
+++
+++        // Store TenantContext for downstream handlers
+++        context.Items["TenantContext"] = tenantContext;
+++
+++        // Also set correlation headers for logging
+++        if (string.IsNullOrEmpty(context.Request.Headers[HeaderNames.TenantId].FirstOrDefault()))
+++        {
+++            context.Request.Headers[HeaderNames.TenantId] = tenantContext.TenantId.ToString();
+++        }
+++
+++        await _next(context);
+++    }
+++
+++    private bool RequiresAuth(string path)
+++    {
+++        foreach (var prefix in _authRequiredPrefixes)
+++        {
+++            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+++                return true;
+++        }
+++        return false;
+++    }
+++}
+++
+++/// <summary>
+++/// Extension methods for registering JWT auth middleware.
+++/// </summary>
+++public static class JwtAuthMiddlewareExtensions
+++{
+++    /// <summary>
+++    /// Add JWT auth middleware that protects paths starting with specified prefixes.
+++    /// Existing endpoints (health, ops, chat/analyze) are NOT affected.
+++    /// </summary>
+++    public static IApplicationBuilder UseJwtAuth(
+++        this IApplicationBuilder app,
+++        JwtValidator jwtValidator,
+++        JsonLinesLogger logger,
+++        params string[] authRequiredPrefixes)
+++    {
+++        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes);
+++    }
+++}
++diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
++index a5c7a5e..b4faa56 100644
++--- a/src/Invekto.Backend/Program.cs
+++++ b/src/Invekto.Backend/Program.cs
++@@ -2,9 +2,13 @@ using System.Net.Http.Headers;
++ using System.Text;
++ using Invekto.Backend.Middleware;
++ using Invekto.Backend.Services;
+++using Invekto.Shared.Auth;
++ using Invekto.Shared.Constants;
+++using Invekto.Shared.Data;
++ using Invekto.Shared.DTOs;
++ using Invekto.Shared.DTOs.ChatAnalysis;
+++using Invekto.Shared.DTOs.Integration;
+++using Invekto.Shared.Integration;
++ using Invekto.Shared.Logging;
++ using Invekto.Shared.Logging.Reader;
++ 
++@@ -47,11 +51,62 @@ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
++     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
++ });
++ 
+++// ============================================
+++// GR-1.9: INTEGRATION BRIDGE SETUP
+++// ============================================
+++
+++// JWT Validator (singleton, thread-safe)
+++JwtValidator? jwtValidator = null;
+++var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+++if (!string.IsNullOrEmpty(jwtSecretKey))
+++{
+++    var jwtSettings = new JwtSettings
+++    {
+++        SecretKey = jwtSecretKey,
+++        Issuer = builder.Configuration["Jwt:Issuer"],
+++        Audience = builder.Configuration["Jwt:Audience"],
+++        ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
+++    };
+++    jwtValidator = new JwtValidator(jwtSettings);
+++    builder.Services.AddSingleton(jwtValidator);
+++}
+++
+++// PostgreSQL connection factory (singleton, thread-safe pooling)
+++PostgresConnectionFactory? pgFactory = null;
+++var pgConnectionString = builder.Configuration.GetConnectionString("PostgreSQL");
+++if (!string.IsNullOrEmpty(pgConnectionString))
+++{
+++    pgFactory = new PostgresConnectionFactory(pgConnectionString);
+++    builder.Services.AddSingleton(pgFactory);
+++}
+++
+++// Callback client for async results to Main App
+++var callbackUrl = builder.Configuration["Integration:Callback:DefaultCallbackUrl"];
+++if (!string.IsNullOrEmpty(callbackUrl))
+++{
+++    var callbackSettings = new CallbackSettings
+++    {
+++        DefaultCallbackUrl = callbackUrl,
+++        MaxRetries = builder.Configuration.GetValue<int>("Integration:Callback:MaxRetries", ServiceConstants.CallbackMaxRetries),
+++        BaseDelayMs = builder.Configuration.GetValue<int>("Integration:Callback:BaseDelayMs", ServiceConstants.CallbackBaseDelayMs),
+++        TimeoutMs = builder.Configuration.GetValue<int>("Integration:Callback:TimeoutMs", ServiceConstants.CallbackTimeoutMs)
+++    };
+++    builder.Services.AddSingleton(callbackSettings);
+++    builder.Services.AddHttpClient<MainAppCallbackClient>();
+++}
+++
++ var app = builder.Build();
++ 
++ // Enable traffic logging middleware (logs all HTTP request/response)
++ app.UseTrafficLogging();
++ 
+++// GR-1.9: JWT auth middleware (only for /api/v1/webhook/ paths)
+++if (jwtValidator != null)
+++{
+++    var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
+++    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/");
+++}
+++
++ // Enable static file serving for Dashboard UI (wwwroot/)
++ app.UseStaticFiles();
++ 
++@@ -538,6 +593,135 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
++     }
++ });
++ 
+++// ============================================
+++// GR-1.9: INTEGRATION WEBHOOK ENDPOINTS
+++// ============================================
+++
+++// Webhook event receiver (Main App -> InvektoServis)
+++// JWT auth enforced by middleware for /api/v1/webhook/ prefix
+++app.MapPost("/api/v1/webhook/event", (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
+++{
+++    var sw = System.Diagnostics.Stopwatch.StartNew();
+++    var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+++
+++    // Extract TenantContext (set by JWT middleware)
+++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+++    if (tenantContext == null)
+++    {
+++        sw.Stop();
+++        return Results.Json(
+++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId),
+++            statusCode: 401);
+++    }
+++
+++    // Validate payload
+++    if (webhookEvent == null)
+++    {
+++        sw.Stop();
+++        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), "-");
+++        jsonLogger.RequestError("Webhook: null payload", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationWebhookInvalidPayload);
+++        return Results.Json(
+++            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "Request body is required", requestId),
+++            statusCode: 400);
+++    }
+++
+++    if (!WebhookEventTypes.IsValid(webhookEvent.EventType))
+++    {
+++        sw.Stop();
+++        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), webhookEvent.ChatId.ToString());
+++        jsonLogger.RequestError(
+++            $"Webhook: unknown event_type={webhookEvent.EventType}", reqCtx,
+++            "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationUnknownEventType);
+++        return Results.Json(
+++            ErrorResponse.Create(ErrorCodes.IntegrationUnknownEventType,
+++                $"Unknown event_type: {webhookEvent.EventType}. Valid: new_message, conversation_closed, tag_changed, conversation_started, agent_assigned",
+++                requestId),
+++            statusCode: 400);
+++    }
+++
+++    sw.Stop();
+++    var context = RequestContext.CreateWithPassThrough(
+++        requestId,
+++        tenantContext.TenantId.ToString(),
+++        webhookEvent.ChatId.ToString());
+++
+++    // Log the accepted event
+++    jsonLogger.RequestInfo(
+++        $"Webhook accepted: event={webhookEvent.EventType}, chat_id={webhookEvent.ChatId}, seq={webhookEvent.SequenceId}",
+++        context, "/api/v1/webhook/event", sw.ElapsedMilliseconds);
+++
+++    // Latency monitoring
+++    if (sw.ElapsedMilliseconds > ServiceConstants.IntegrationLatencyThresholdMs)
+++    {
+++        jsonLogger.SystemWarn(
+++            $"Webhook acceptance exceeded {ServiceConstants.IntegrationLatencyThresholdMs}ms threshold: {sw.ElapsedMilliseconds}ms, event={webhookEvent.EventType}");
+++    }
+++
+++    // Add processing time header
+++    ctx.Response.Headers[HeaderNames.ProcessingTimeMs] = sw.ElapsedMilliseconds.ToString();
+++
+++    // Return 202 Accepted -- async processing will happen in future GR-1.1/1.2/1.3 services
+++    return Results.Json(new
+++    {
+++        status = "accepted",
+++        request_id = context.RequestId,
+++        event_type = webhookEvent.EventType,
+++        sequence_id = webhookEvent.SequenceId,
+++        message = "Event queued for processing"
+++    }, statusCode: 202);
+++});
+++
+++// Tenant verify endpoint (quick integration health check)
+++app.MapGet("/api/v1/tenant/verify", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+++{
+++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+++
+++    // This endpoint is under /api/v1/webhook/ prefix? No, it's under /api/v1/
+++    // We need to manually check JWT here since it's not under the protected prefix
+++    if (jwtValidator == null)
+++    {
+++        return Results.Ok(new
+++        {
+++            status = "warning",
+++            message = "JWT validation not configured. Set Jwt:SecretKey in appsettings.",
+++            jwt_configured = false,
+++            postgres_configured = pgFactory != null
+++        });
+++    }
+++
+++    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+++    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+++    {
+++        return Results.Json(
+++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
+++            statusCode: 401);
+++    }
+++
+++    var token = authHeader["Bearer ".Length..].Trim();
+++    var (tc, error) = jwtValidator.ValidateToken(token);
+++    if (tc == null)
+++    {
+++        return Results.Json(
+++            ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, error ?? "Token validation failed", "-"),
+++            statusCode: 401);
+++    }
+++
+++    return Results.Ok(new
+++    {
+++        status = "ok",
+++        tenant_id = tc.TenantId,
+++        user_id = tc.UserId,
+++        role = tc.Role,
+++        jwt_configured = true,
+++        postgres_configured = pgFactory != null,
+++        message = "Integration bridge ready"
+++    });
+++});
+++
+++// ============================================
+++// EXISTING API ENDPOINTS
+++// ============================================
+++
++ // Chat analysis proxy endpoint (V2 - async with callback)
++ app.MapPost("/api/v1/chat/analyze", async (
++     HttpContext ctx,
++@@ -632,6 +816,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
++         {
++             // Public API
++             new() { Method = "POST", Path = "/api/v1/chat/analyze", Description = "Chat analysis (async, callback)", Auth = "none", Category = "API" },
+++            // GR-1.9: Integration endpoints
+++            new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Webhook receiver (Main App -> InvektoServis)", Auth = "Bearer", Category = "API" },
+++            new() { Method = "GET", Path = "/api/v1/tenant/verify", Description = "Tenant integration health check", Auth = "Bearer", Category = "API" },
++ 
++             // Health
++             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
++diff --git a/src/Invekto.Backend/appsettings.Development.json b/src/Invekto.Backend/appsettings.Development.json
++index caaa86b..f7a283a 100644
++--- a/src/Invekto.Backend/appsettings.Development.json
+++++ b/src/Invekto.Backend/appsettings.Development.json
++@@ -6,5 +6,16 @@
++       "System.Net.Http.HttpClient": "Warning"
++     },
++     "FilePath": "logs"
+++  },
+++  "Jwt": {
+++    "SecretKey": "dGVzdC1zZWNyZXQta2V5LWZvci1kZXZlbG9wbWVudC0zMi1ieXRlcyE="
+++  },
+++  "ConnectionStrings": {
+++    "PostgreSQL": "Host=localhost;Port=5432;Database=invekto_dev;Username=invekto;Password=invekto_dev"
+++  },
+++  "Integration": {
+++    "Callback": {
+++      "DefaultCallbackUrl": "http://localhost:8080/api/invektoservis/callback"
+++    }
++   }
++ }
++diff --git a/src/Invekto.Backend/appsettings.json b/src/Invekto.Backend/appsettings.json
++index 7b94b24..d96afaf 100644
++--- a/src/Invekto.Backend/appsettings.json
+++++ b/src/Invekto.Backend/appsettings.json
++@@ -18,5 +18,22 @@
++       "LogPath": "../Invekto.ChatAnalysis/logs"
++     }
++   },
+++  "Jwt": {
+++    "SecretKey": "",
+++    "Issuer": null,
+++    "Audience": null,
+++    "ClockSkewSeconds": 60
+++  },
+++  "ConnectionStrings": {
+++    "PostgreSQL": ""
+++  },
+++  "Integration": {
+++    "Callback": {
+++      "DefaultCallbackUrl": "",
+++      "MaxRetries": 3,
+++      "BaseDelayMs": 500,
+++      "TimeoutMs": 5000
+++    }
+++  },
++   "AllowedHosts": "*"
++ }
++diff --git a/src/Invekto.Shared/Auth/JwtSettings.cs b/src/Invekto.Shared/Auth/JwtSettings.cs
++new file mode 100644
++index 0000000..1cea646
++--- /dev/null
+++++ b/src/Invekto.Shared/Auth/JwtSettings.cs
++@@ -0,0 +1,21 @@
+++namespace Invekto.Shared.Auth;
+++
+++/// <summary>
+++/// JWT validation configuration.
+++/// GR-1.9: Shared JWT key between Main App and InvektoServis.
+++/// Maps to "Jwt" section in appsettings.json.
+++/// </summary>
+++public sealed class JwtSettings
+++{
+++    /// <summary>HMAC-SHA256 shared secret key (base64 encoded, minimum 32 bytes)</summary>
+++    public required string SecretKey { get; init; }
+++
+++    /// <summary>Expected issuer claim. Null = skip issuer validation.</summary>
+++    public string? Issuer { get; init; }
+++
+++    /// <summary>Expected audience claim. Null = skip audience validation.</summary>
+++    public string? Audience { get; init; }
+++
+++    /// <summary>Clock skew tolerance in seconds (default: 60s)</summary>
+++    public int ClockSkewSeconds { get; init; } = 60;
+++}
++diff --git a/src/Invekto.Shared/Auth/JwtValidator.cs b/src/Invekto.Shared/Auth/JwtValidator.cs
++new file mode 100644
++index 0000000..52e382b
++--- /dev/null
+++++ b/src/Invekto.Shared/Auth/JwtValidator.cs
++@@ -0,0 +1,88 @@
+++using System.IdentityModel.Tokens.Jwt;
+++using System.Security.Claims;
+++using System.Text;
+++using Microsoft.IdentityModel.Tokens;
+++
+++namespace Invekto.Shared.Auth;
+++
+++/// <summary>
+++/// Validates JWT tokens from Main App using shared HMAC-SHA256 key.
+++/// GR-1.9: Thread-safe, stateless validator. Register as singleton.
+++/// </summary>
+++public sealed class JwtValidator
+++{
+++    private readonly TokenValidationParameters _validationParameters;
+++
+++    public JwtValidator(JwtSettings settings)
+++    {
+++        var keyBytes = Convert.FromBase64String(settings.SecretKey);
+++        if (keyBytes.Length < 32)
+++            throw new ArgumentException("JWT SecretKey must be at least 32 bytes (256 bits) when decoded from base64.");
+++
+++        var securityKey = new SymmetricSecurityKey(keyBytes);
+++
+++        _validationParameters = new TokenValidationParameters
+++        {
+++            ValidateIssuerSigningKey = true,
+++            IssuerSigningKey = securityKey,
+++            ValidateIssuer = !string.IsNullOrEmpty(settings.Issuer),
+++            ValidIssuer = settings.Issuer,
+++            ValidateAudience = !string.IsNullOrEmpty(settings.Audience),
+++            ValidAudience = settings.Audience,
+++            ValidateLifetime = true,
+++            ClockSkew = TimeSpan.FromSeconds(settings.ClockSkewSeconds)
+++        };
+++    }
+++
+++    /// <summary>
+++    /// Validate a JWT token and extract TenantContext.
+++    /// Returns (TenantContext, null) on success, (null, errorMessage) on failure.
+++    /// </summary>
+++    public (TenantContext? Context, string? Error) ValidateToken(string token)
+++    {
+++        try
+++        {
+++            var handler = new JwtSecurityTokenHandler();
+++            var principal = handler.ValidateToken(token, _validationParameters, out var validatedToken);
+++
+++            if (validatedToken is not JwtSecurityToken jwtToken)
+++                return (null, "Token is not a valid JWT");
+++
+++            // Extract claims
+++            var tenantIdClaim = principal.FindFirst("tenant_id")?.Value;
+++            var userIdClaim = principal.FindFirst("user_id")?.Value
+++                              ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+++                              ?? principal.FindFirst("sub")?.Value;
+++            var roleClaim = principal.FindFirst("role")?.Value
+++                            ?? principal.FindFirst(ClaimTypes.Role)?.Value
+++                            ?? "agent"; // default role
+++
+++            if (string.IsNullOrEmpty(tenantIdClaim) || !int.TryParse(tenantIdClaim, out var tenantId))
+++                return (null, "Missing or invalid 'tenant_id' claim (expected integer)");
+++
+++            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+++                return (null, "Missing or invalid 'user_id' or 'sub' claim (expected integer)");
+++
+++            var context = new TenantContext
+++            {
+++                TenantId = tenantId,
+++                UserId = userId,
+++                Role = roleClaim
+++            };
+++
+++            return (context, null);
+++        }
+++        catch (SecurityTokenExpiredException)
+++        {
+++            return (null, "Token expired");
+++        }
+++        catch (SecurityTokenInvalidSignatureException)
+++        {
+++            return (null, "Invalid token signature");
+++        }
+++        catch (SecurityTokenException ex)
+++        {
+++            return (null, $"Token validation failed: {ex.Message}");
+++        }
+++    }
+++}
++diff --git a/src/Invekto.Shared/Auth/TenantContext.cs b/src/Invekto.Shared/Auth/TenantContext.cs
++new file mode 100644
++index 0000000..707885a
++--- /dev/null
+++++ b/src/Invekto.Shared/Auth/TenantContext.cs
++@@ -0,0 +1,21 @@
+++namespace Invekto.Shared.Auth;
+++
+++/// <summary>
+++/// Extracted tenant/user info from a validated JWT token.
+++/// GR-1.9: Passed through the request pipeline after JWT validation.
+++/// tenant_id is int (matching Main App SQL Server int identity).
+++/// </summary>
+++public sealed class TenantContext
+++{
+++    /// <summary>Tenant ID (int) from JWT claim "tenant_id"</summary>
+++    public required int TenantId { get; init; }
+++
+++    /// <summary>User ID (int) from JWT claim "user_id" or "sub"</summary>
+++    public required int UserId { get; init; }
+++
+++    /// <summary>User role from JWT claim "role" (e.g., admin, agent, system)</summary>
+++    public required string Role { get; init; }
+++
+++    /// <summary>Whether this is a service-level call (no specific user)</summary>
+++    public bool IsServiceCall => Role == "service";
+++}
++diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
++index 1603f30..c3e89dd 100644
++--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
+++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
++@@ -27,6 +27,18 @@ public static class ErrorCodes
++     public const string ChatAnalysisNoMessages = "INV-CA-007";
++ 
++     // Auth errors (INV-AUTH-xxx)
++-    public const string AuthUnauthorized = "INV-AUTH-001";
++-    public const string AuthForbidden = "INV-AUTH-002";
+++    public const string AuthTokenExpired = "INV-AUTH-001";
+++    public const string AuthTokenInvalid = "INV-AUTH-002";
+++    public const string AuthUnauthorized = "INV-AUTH-003";
+++
+++    // Integration errors (INV-INT-xxx) -- GR-1.9
+++    public const string IntegrationWebhookInvalidPayload = "INV-INT-001";
+++    public const string IntegrationCallbackFailed = "INV-INT-002";
+++    public const string IntegrationUnknownEventType = "INV-INT-003";
+++    public const string IntegrationTenantNotFound = "INV-INT-004";
+++
+++    // Database errors (INV-DB-xxx)
+++    public const string DatabaseConnectionFailed = "INV-DB-001";
+++    public const string DatabaseQueryTimeout = "INV-DB-002";
+++    public const string DatabaseDuplicateEntry = "INV-DB-003";
++ }
++diff --git a/src/Invekto.Shared/Constants/HeaderNames.cs b/src/Invekto.Shared/Constants/HeaderNames.cs
++index 2254d4c..38b7435 100644
++--- a/src/Invekto.Shared/Constants/HeaderNames.cs
+++++ b/src/Invekto.Shared/Constants/HeaderNames.cs
++@@ -1,11 +1,15 @@
++ namespace Invekto.Shared.Constants;
++ 
++ /// <summary>
++-/// Standard header names for request correlation
+++/// Standard header names for request correlation and auth
++ /// </summary>
++ public static class HeaderNames
++ {
++     public const string RequestId = "X-Request-Id";
++     public const string TenantId = "X-Tenant-Id";
++     public const string ChatId = "X-Chat-Id";
+++
+++    // GR-1.9: Integration headers
+++    public const string Authorization = "Authorization";
+++    public const string ProcessingTimeMs = "X-Processing-Time-Ms";
++ }
++diff --git a/src/Invekto.Shared/Constants/ServiceConstants.cs b/src/Invekto.Shared/Constants/ServiceConstants.cs
++index ccd967f..d10d6e8 100644
++--- a/src/Invekto.Shared/Constants/ServiceConstants.cs
+++++ b/src/Invekto.Shared/Constants/ServiceConstants.cs
++@@ -1,7 +1,8 @@
++ namespace Invekto.Shared.Constants;
++ 
++ /// <summary>
++-/// Stage-0 service constants as defined in invekto_stage0_kurulum_adimlari.txt
+++/// Service constants for InvektoServis platform.
+++/// Stage-0 + Phase 1 (GR-1.9 integration bridge)
++ /// </summary>
++ public static class ServiceConstants
++ {
++@@ -9,14 +10,31 @@ public static class ServiceConstants
++     public const int BackendToMicroserviceTimeoutMs = 600;
++     public const int RetryCount = 0; // YASAK - Stage-0'da retry yok
++ 
+++    // GR-1.9: Integration callback retry settings
+++    public const int CallbackMaxRetries = 3;
+++    public const int CallbackBaseDelayMs = 500; // Exponential backoff: 500ms, 1s, 2s
+++    public const int CallbackTimeoutMs = 5000;  // 5s per callback attempt
+++
++     // Ports
++     public const int ChatAnalysisPort = 7101;
++     public const int BackendPort = 5000;
+++    // Phase 1 service ports (reserved)
+++    public const int AgentAIPort = 7105;
+++    public const int IntegrationsPort = 7106;
+++    public const int OutboundPort = 7107;
+++    public const int AutomationPort = 7108;
++ 
++     // Service names
++     public const string BackendServiceName = "Invekto.Backend";
++     public const string ChatAnalysisServiceName = "Invekto.ChatAnalysis";
+++    // Phase 1 service names (reserved)
+++    public const string AgentAIServiceName = "Invekto.AgentAI";
+++    public const string OutboundServiceName = "Invekto.Outbound";
+++    public const string AutomationServiceName = "Invekto.Automation";
++ 
++     // Log retention
++     public const int LogRetentionDays = 30;
+++
+++    // GR-1.9: Latency monitoring threshold
+++    public const int IntegrationLatencyThresholdMs = 200;
++ }
++diff --git a/src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs b/src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs
++new file mode 100644
++index 0000000..6a60901
++--- /dev/null
+++++ b/src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs
++@@ -0,0 +1,73 @@
+++using System.Text.Json.Serialization;
+++
+++namespace Invekto.Shared.DTOs.Integration;
+++
+++/// <summary>
+++/// Webhook payload that Main App sends to InvektoServis.
+++/// GR-1.9: Standardized event format for all Main App -> InvektoServis communication.
+++/// tenant_id comes from JWT token, NOT from payload (security: prevent tenant spoofing).
+++/// </summary>
+++public sealed class IncomingWebhookEvent
+++{
+++    /// <summary>Event type (see WebhookEventTypes constants)</summary>
+++    [JsonPropertyName("event_type")]
+++    public required string EventType { get; init; }
+++
+++    /// <summary>Sequence ID for ordering guarantee. Main App increments per tenant.</summary>
+++    [JsonPropertyName("sequence_id")]
+++    public long SequenceId { get; init; }
+++
+++    /// <summary>Conversation/chat ID in Main App</summary>
+++    [JsonPropertyName("chat_id")]
+++    public int ChatId { get; init; }
+++
+++    /// <summary>Channel type (whatsapp, web, instagram, etc.)</summary>
+++    [JsonPropertyName("channel")]
+++    public string? Channel { get; init; }
+++
+++    /// <summary>Event-specific data (structure depends on event_type)</summary>
+++    [JsonPropertyName("data")]
+++    public WebhookEventData? Data { get; init; }
+++
+++    /// <summary>Main App timestamp when event occurred</summary>
+++    [JsonPropertyName("timestamp")]
+++    public DateTime Timestamp { get; init; }
+++
+++    /// <summary>Callback URL where InvektoServis sends async results. If null, uses tenant default.</summary>
+++    [JsonPropertyName("callback_url")]
+++    public string? CallbackUrl { get; init; }
+++}
+++
+++/// <summary>
+++/// Event-specific data. Fields are nullable because different events use different fields.
+++/// </summary>
+++public sealed class WebhookEventData
+++{
+++    /// <summary>Customer phone number (for new_message)</summary>
+++    [JsonPropertyName("phone")]
+++    public string? Phone { get; init; }
+++
+++    /// <summary>Customer name (if known)</summary>
+++    [JsonPropertyName("customer_name")]
+++    public string? CustomerName { get; init; }
+++
+++    /// <summary>Message text (for new_message)</summary>
+++    [JsonPropertyName("message_text")]
+++    public string? MessageText { get; init; }
+++
+++    /// <summary>Message source: CUSTOMER or AGENT</summary>
+++    [JsonPropertyName("message_source")]
+++    public string? MessageSource { get; init; }
+++
+++    /// <summary>Assigned agent ID (for agent_assigned)</summary>
+++    [JsonPropertyName("agent_id")]
+++    public int? AgentId { get; init; }
+++
+++    /// <summary>Tag/label name (for tag_changed)</summary>
+++    [JsonPropertyName("tag_name")]
+++    public string? TagName { get; init; }
+++
+++    /// <summary>Tag action: added or removed (for tag_changed)</summary>
+++    [JsonPropertyName("tag_action")]
+++    public string? TagAction { get; init; }
+++}
++diff --git a/src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs b/src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs
++new file mode 100644
++index 0000000..0e18d9d
++--- /dev/null
+++++ b/src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs
++@@ -0,0 +1,97 @@
+++using System.Text.Json.Serialization;
+++
+++namespace Invekto.Shared.DTOs.Integration;
+++
+++/// <summary>
+++/// Async callback payload that InvektoServis sends back to Main App.
+++/// GR-1.9: After processing a webhook event, results are sent via POST callback.
+++/// </summary>
+++public sealed class OutgoingCallback
+++{
+++    /// <summary>Correlation ID - matches the X-Request-Id from the original webhook</summary>
+++    [JsonPropertyName("request_id")]
+++    public required string RequestId { get; init; }
+++
+++    /// <summary>Action type that Main App should execute</summary>
+++    [JsonPropertyName("action")]
+++    public required string Action { get; init; }
+++
+++    /// <summary>Tenant ID (int) - same as JWT tenant_id</summary>
+++    [JsonPropertyName("tenant_id")]
+++    public int TenantId { get; init; }
+++
+++    /// <summary>Chat/conversation ID this callback relates to</summary>
+++    [JsonPropertyName("chat_id")]
+++    public int ChatId { get; init; }
+++
+++    /// <summary>Sequence ID from the original webhook event (ordering)</summary>
+++    [JsonPropertyName("sequence_id")]
+++    public long SequenceId { get; init; }
+++
+++    /// <summary>Action-specific payload</summary>
+++    [JsonPropertyName("data")]
+++    public CallbackData? Data { get; init; }
+++
+++    /// <summary>Processing duration in milliseconds</summary>
+++    [JsonPropertyName("processing_time_ms")]
+++    public long ProcessingTimeMs { get; init; }
+++
+++    /// <summary>When InvektoServis generated this callback</summary>
+++    [JsonPropertyName("timestamp")]
+++    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+++}
+++
+++/// <summary>
+++/// Action-specific callback data. Fields are nullable, used based on action type.
+++/// </summary>
+++public sealed class CallbackData
+++{
+++    /// <summary>Message text to send (for send_message action)</summary>
+++    [JsonPropertyName("message_text")]
+++    public string? MessageText { get; init; }
+++
+++    /// <summary>Suggested reply for agent (for suggest_reply action)</summary>
+++    [JsonPropertyName("suggested_reply")]
+++    public string? SuggestedReply { get; init; }
+++
+++    /// <summary>Tag/label to apply (for apply_tag action)</summary>
+++    [JsonPropertyName("tag_name")]
+++    public string? TagName { get; init; }
+++
+++    /// <summary>Whether to hand off to human agent</summary>
+++    [JsonPropertyName("handoff_to_human")]
+++    public bool? HandoffToHuman { get; init; }
+++
+++    /// <summary>AI confidence score (0.0 - 1.0)</summary>
+++    [JsonPropertyName("confidence")]
+++    public double? Confidence { get; init; }
+++
+++    /// <summary>AI-generated summary for agent context</summary>
+++    [JsonPropertyName("ai_summary")]
+++    public string? AiSummary { get; init; }
+++
+++    /// <summary>Detected intent (e.g., "price_inquiry", "appointment")</summary>
+++    [JsonPropertyName("intent")]
+++    public string? Intent { get; init; }
+++}
+++
+++/// <summary>
+++/// Callback action types that InvektoServis can request from Main App.
+++/// </summary>
+++public static class CallbackActions
+++{
+++    /// <summary>Send a message to customer (auto-reply)</summary>
+++    public const string SendMessage = "send_message";
+++
+++    /// <summary>Suggest a reply to the agent (agent assist)</summary>
+++    public const string SuggestReply = "suggest_reply";
+++
+++    /// <summary>Apply a tag/label to conversation</summary>
+++    public const string ApplyTag = "apply_tag";
+++
+++    /// <summary>Hand off conversation to human agent</summary>
+++    public const string HandoffToHuman = "handoff_to_human";
+++
+++    /// <summary>No action needed (informational only)</summary>
+++    public const string NoAction = "no_action";
+++}
++diff --git a/src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs b/src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs
++new file mode 100644
++index 0000000..da89ccd
++--- /dev/null
+++++ b/src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs
++@@ -0,0 +1,35 @@
+++namespace Invekto.Shared.DTOs.Integration;
+++
+++/// <summary>
+++/// Webhook event types that Main App sends to InvektoServis.
+++/// GR-1.9: Defines the contract for Main App -> InvektoServis communication.
+++/// </summary>
+++public static class WebhookEventTypes
+++{
+++    /// <summary>New message received from customer</summary>
+++    public const string NewMessage = "new_message";
+++
+++    /// <summary>Conversation closed by agent or system</summary>
+++    public const string ConversationClosed = "conversation_closed";
+++
+++    /// <summary>Tag/label changed on a conversation</summary>
+++    public const string TagChanged = "tag_changed";
+++
+++    /// <summary>New conversation started</summary>
+++    public const string ConversationStarted = "conversation_started";
+++
+++    /// <summary>Agent assigned to conversation</summary>
+++    public const string AgentAssigned = "agent_assigned";
+++
+++    private static readonly HashSet<string> ValidTypes = new(StringComparer.OrdinalIgnoreCase)
+++    {
+++        NewMessage,
+++        ConversationClosed,
+++        TagChanged,
+++        ConversationStarted,
+++        AgentAssigned
+++    };
+++
+++    public static bool IsValid(string? eventType)
+++        => !string.IsNullOrWhiteSpace(eventType) && ValidTypes.Contains(eventType);
+++}
++diff --git a/src/Invekto.Shared/Data/PostgresConnectionFactory.cs b/src/Invekto.Shared/Data/PostgresConnectionFactory.cs
++new file mode 100644
++index 0000000..26144c4
++--- /dev/null
+++++ b/src/Invekto.Shared/Data/PostgresConnectionFactory.cs
++@@ -0,0 +1,57 @@
+++using Npgsql;
+++
+++namespace Invekto.Shared.Data;
+++
+++/// <summary>
+++/// Thread-safe PostgreSQL connection factory with built-in pooling.
+++/// GR-1.9: Foundation for all new services' DB access.
+++/// Npgsql handles connection pooling internally via the connection string.
+++/// Register as singleton in DI.
+++/// </summary>
+++public sealed class PostgresConnectionFactory
+++{
+++    private readonly string _connectionString;
+++    private readonly NpgsqlDataSource _dataSource;
+++
+++    public PostgresConnectionFactory(string connectionString)
+++    {
+++        if (string.IsNullOrWhiteSpace(connectionString))
+++            throw new ArgumentException("PostgreSQL connection string is required.");
+++
+++        _connectionString = connectionString;
+++
+++        // NpgsqlDataSource manages connection pooling, is thread-safe
+++        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+++        _dataSource = dataSourceBuilder.Build();
+++    }
+++
+++    /// <summary>
+++    /// Create a new connection from the pool. Caller must dispose.
+++    /// Usage: await using var conn = await factory.OpenConnectionAsync();
+++    /// </summary>
+++    public async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken ct = default)
+++    {
+++        var connection = _dataSource.CreateConnection();
+++        await connection.OpenAsync(ct);
+++        return connection;
+++    }
+++
+++    /// <summary>
+++    /// Test database connectivity. Returns (success, errorMessage).
+++    /// </summary>
+++    public async Task<(bool Success, string? Error)> TestConnectionAsync(CancellationToken ct = default)
+++    {
+++        try
+++        {
+++            await using var conn = await OpenConnectionAsync(ct);
+++            await using var cmd = conn.CreateCommand();
+++            cmd.CommandText = "SELECT 1";
+++            await cmd.ExecuteScalarAsync(ct);
+++            return (true, null);
+++        }
+++        catch (Exception ex)
+++        {
+++            return (false, ex.Message);
+++        }
+++    }
+++}
++diff --git a/src/Invekto.Shared/Integration/CallbackSettings.cs b/src/Invekto.Shared/Integration/CallbackSettings.cs
++new file mode 100644
++index 0000000..61cfa5b
++--- /dev/null
+++++ b/src/Invekto.Shared/Integration/CallbackSettings.cs
++@@ -0,0 +1,20 @@
+++namespace Invekto.Shared.Integration;
+++
+++/// <summary>
+++/// Configuration for async callback to Main App.
+++/// GR-1.9: Maps to "Integration:Callback" section in appsettings.json.
+++/// </summary>
+++public sealed class CallbackSettings
+++{
+++    /// <summary>Default callback URL for Main App (used when webhook doesn't specify callback_url)</summary>
+++    public required string DefaultCallbackUrl { get; init; }
+++
+++    /// <summary>Max retry attempts (default: 3)</summary>
+++    public int MaxRetries { get; init; } = 3;
+++
+++    /// <summary>Base delay in milliseconds for exponential backoff (default: 500ms)</summary>
+++    public int BaseDelayMs { get; init; } = 500;
+++
+++    /// <summary>HTTP timeout per callback attempt in milliseconds (default: 5000ms)</summary>
+++    public int TimeoutMs { get; init; } = 5000;
+++}
++diff --git a/src/Invekto.Shared/Integration/MainAppCallbackClient.cs b/src/Invekto.Shared/Integration/MainAppCallbackClient.cs
++new file mode 100644
++index 0000000..fc66e49
++--- /dev/null
+++++ b/src/Invekto.Shared/Integration/MainAppCallbackClient.cs
++@@ -0,0 +1,87 @@
+++using System.Net.Http.Json;
+++using System.Text.Json;
+++using Invekto.Shared.Constants;
+++using Invekto.Shared.DTOs.Integration;
+++using Invekto.Shared.Logging;
+++
+++namespace Invekto.Shared.Integration;
+++
+++/// <summary>
+++/// Sends async callback results to Main App after processing webhook events.
+++/// GR-1.9: 3x retry with exponential backoff. Thread-safe, register as singleton.
+++/// </summary>
+++public sealed class MainAppCallbackClient
+++{
+++    private readonly HttpClient _httpClient;
+++    private readonly CallbackSettings _settings;
+++    private readonly JsonLinesLogger _logger;
+++
+++    public MainAppCallbackClient(HttpClient httpClient, CallbackSettings settings, JsonLinesLogger logger)
+++    {
+++        _httpClient = httpClient;
+++        _settings = settings;
+++        _logger = logger;
+++    }
+++
+++    /// <summary>
+++    /// Send callback to Main App with retry logic.
+++    /// Returns true if callback was delivered successfully (any retry).
+++    /// </summary>
+++    public async Task<bool> SendCallbackAsync(
+++        OutgoingCallback callback,
+++        string? callbackUrl = null,
+++        CancellationToken ct = default)
+++    {
+++        var url = callbackUrl ?? _settings.DefaultCallbackUrl;
+++
+++        for (var attempt = 0; attempt <= _settings.MaxRetries; attempt++)
+++        {
+++            try
+++            {
+++                if (attempt > 0)
+++                {
+++                    // Exponential backoff: 500ms, 1000ms, 2000ms
+++                    var delayMs = _settings.BaseDelayMs * (1 << (attempt - 1));
+++                    await Task.Delay(delayMs, ct);
+++                }
+++
+++                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+++                cts.CancelAfter(_settings.TimeoutMs);
+++
+++                var response = await _httpClient.PostAsJsonAsync(url, callback, cts.Token);
+++
+++                if (response.IsSuccessStatusCode)
+++                {
+++                    if (attempt > 0)
+++                    {
+++                        _logger.SystemInfo(
+++                            $"Callback delivered on retry {attempt}: request_id={callback.RequestId}, action={callback.Action}");
+++                    }
+++                    return true;
+++                }
+++
+++                _logger.SystemWarn(
+++                    $"Callback HTTP {(int)response.StatusCode} on attempt {attempt + 1}/{_settings.MaxRetries + 1}: " +
+++                    $"request_id={callback.RequestId}, url={url}");
+++            }
+++            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+++            {
+++                // Application shutting down, don't retry
+++                throw;
+++            }
+++            catch (Exception ex)
+++            {
+++                _logger.SystemWarn(
+++                    $"Callback attempt {attempt + 1}/{_settings.MaxRetries + 1} failed: " +
+++                    $"request_id={callback.RequestId}, url={url}, error={ex.Message}");
+++            }
+++        }
+++
+++        // All retries exhausted
+++        _logger.SystemError(
+++            $"[{ErrorCodes.IntegrationCallbackFailed}] Callback FAILED after {_settings.MaxRetries + 1} attempts: " +
+++            $"request_id={callback.RequestId}, action={callback.Action}, tenant_id={callback.TenantId}, chat_id={callback.ChatId}");
+++
+++        return false;
+++    }
+++}
++diff --git a/src/Invekto.Shared/Invekto.Shared.csproj b/src/Invekto.Shared/Invekto.Shared.csproj
++index fa71b7a..576ba2f 100644
++--- a/src/Invekto.Shared/Invekto.Shared.csproj
+++++ b/src/Invekto.Shared/Invekto.Shared.csproj
++@@ -6,4 +6,12 @@
++     <Nullable>enable</Nullable>
++   </PropertyGroup>
++ 
+++  <ItemGroup>
+++    <!-- JWT token validation (GR-1.9: Main App JWT shared key) -->
+++    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.1" />
+++    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
+++    <!-- PostgreSQL driver (GR-1.9: new services DB foundation) -->
+++    <PackageReference Include="Npgsql" Version="8.0.5" />
+++  </ItemGroup>
+++
++ </Project>
+diff --git a/arch/session-memory.md b/arch/session-memory.md
+index c36b3b2..e87e0ac 100644
+--- a/arch/session-memory.md
++++ b/arch/session-memory.md
+@@ -4,23 +4,29 @@
+ 
+ ## Last Update
+ 
+-- **Date:** 2026-02-03
+-- **Status:** Chat Analysis V2 Complete
+-- **Last Task:** V2 API with async callback, 15-criteria analysis, label selection
++- **Date:** 2026-02-08
++- **Status:** GR-1.9 Integration Bridge -- REVIEW
++- **Last Task:** Phase 1 baslatildi. JWT auth, webhook receiver, async callback, PostgreSQL altyapisi eklendi.
+ 
+ ---
+ 
+ ## Current State
+ 
+ ### Active Features
+-- **Stage-0 Scaffold:** Backend + ChatAnalysis microservice çalışır durumda
++- **Stage-0 Scaffold:** Backend + ChatAnalysis microservice calisir durumda
+ - **Health Endpoints:** `/health`, `/ready` her iki serviste
+-- **Ops Endpoint:** Backend `/ops` - servis durumlarını gösterir
++- **Ops Endpoint:** Backend `/ops` - servis durumlarini gosterir
+ - **JSON Lines Logger:** `Invekto.Shared.Logging.JsonLinesLogger`
+-- **Chat Analysis:** WapCRM'den sohbet çekme + Claude Haiku ile sentiment/kategori analizi
++- **Chat Analysis:** WapCRM'den sohbet cekme + Claude Haiku ile sentiment/kategori analizi
+   - Endpoint: POST `/api/v1/analyze` (phoneNumber, instanceId)
+-  - Sentiment: positive, negative, neutral
+-  - Kategoriler: Destek, Satis, Sikayet, Bilgi
++- **GR-1.9 Integration Bridge (Phase 1):**
++  - JWT auth middleware (shared HMAC-SHA256 key, /api/v1/webhook/ prefix)
++  - Webhook receiver: POST `/api/v1/webhook/event` (202 Accepted, async)
++  - Tenant verify: GET `/api/v1/tenant/verify` (JWT health check)
++  - Async callback client: MainAppCallbackClient (3x retry, exponential backoff)
++  - PostgreSQL connection factory (NpgsqlDataSource, pooling)
++  - DB schema: `arch/db/tenant-registry.sql`
++  - API contracts: `arch/contracts/integration-webhook.json`, `integration-callback.json`
+ 
+ ### Tech Stack
+ | Component | Technology |
+@@ -31,10 +37,14 @@
+ | Logging | JSON Lines (custom) |
+ 
+ ### Ports
+-| Service | Port |
+-|---------|------|
+-| Backend | 5000 |
+-| ChatAnalysis | 7101 |
++| Service | Port | Status |
++|---------|------|--------|
++| Backend | 5000 | Active |
++| ChatAnalysis | 7101 | Active |
++| AgentAI | 7105 | Reserved (Phase 1) |
++| Integrations | 7106 | Reserved (Phase 2+) |
++| Outbound | 7107 | Reserved (Phase 1) |
++| Automation | 7108 | Reserved (Phase 1) |
+ 
+ ### Pending Work
+ - [x] ~~Chat Analysis gerçek iş mantığı~~ (Tamamlandı - WapCRM + Claude)
+@@ -52,9 +62,14 @@
+ 
+ | Date | Decision | Reason |
+ |------|----------|--------|
+-| 2026-02-01 | Mikro servis mimarisi | Bağımsız deploy, ölçeklenebilirlik |
+-| 2026-02-02 | .NET 8 stack | Windows Service native, backend ile aynı ekosistem |
+-| 2026-02-02 | Stage-0 önce | Full system yerine hızlı MVP |
++| 2026-02-01 | Mikro servis mimarisi | Bagimsiz deploy, olceklenebilirlik |
++| 2026-02-02 | .NET 8 stack | Windows Service native, backend ile ayni ekosistem |
++| 2026-02-02 | Stage-0 once | Full system yerine hizli MVP |
++| 2026-02-08 | .NET 8 devam (Node.js degil) | Solo founder, mevcut pattern, minimum surtuhnme |
++| 2026-02-08 | Webhook push + async callback | Main App -> InvektoServis: webhook, InvektoServis -> Main App: async POST callback |
++| 2026-02-08 | Shared JWT key (HMAC-SHA256) | Basit, her iki taraf ayni key ile validate |
++| 2026-02-08 | PostgreSQL yeni servisler icin | Ana app SQL Server, yeni servisler PostgreSQL, tenant_id (int) eslestirme |
++| 2026-02-08 | Basit retry (3x + backoff) | Phase 1 icin yeterli, queue yok |
+ 
+ ---
+ 
+@@ -63,11 +78,17 @@
+ ```
+ src/
+ ├── Invekto.Shared/           # Shared contracts, DTOs, logging
++│   ├── Auth/                 # GR-1.9: JWT validation
+ │   ├── Constants/
++│   ├── Data/                 # GR-1.9: PostgreSQL connection
+ │   ├── DTOs/
++│   │   ├── ChatAnalysis/
++│   │   └── Integration/      # GR-1.9: Webhook/Callback DTOs
++│   ├── Integration/          # GR-1.9: Callback client
+ │   └── Logging/
+ ├── Invekto.ChatAnalysis/     # Microservice (Port 7101)
+ └── Invekto.Backend/          # Backend API (Port 5000)
++    ├── Middleware/            # Traffic logging + JWT auth
+     └── Services/
+ ```
+ 
+@@ -76,9 +97,11 @@ src/
+ ## Context for Next Session
+ 
+ Sonraki session'da:
+-1. Chat Analysis servisine gerçek iş mantığı eklenecek
+-2. Ops sayfası genişletilecek (log okuma)
+-3. Windows Service deploy testi yapılacak
++1. GR-1.9 Codex review tamamla (REVIEW durumunda)
++2. Q: JWT claims'i dogrula (Main App token yapisi)
++3. Q: PostgreSQL kur ve tenant-registry.sql calistir
++4. GR-1.1 (Chatbot/Flow Builder) baslat - Automation servisi :7108
++5. Windows Service deploy testi (hala bekliyor)
+ 
+ ---
+ 
+diff --git a/src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs b/src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs
+new file mode 100644
+index 0000000..788098b
+--- /dev/null
++++ b/src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs
+@@ -0,0 +1,109 @@
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Backend.Middleware;
++
++/// <summary>
++/// JWT authentication middleware for webhook endpoints.
++/// GR-1.9: Validates Bearer token, extracts TenantContext, stores in HttpContext.Items.
++/// Only applies to paths that require auth (configured via path prefixes).
++/// </summary>
++public sealed class JwtAuthMiddleware
++{
++    private readonly RequestDelegate _next;
++    private readonly JwtValidator _jwtValidator;
++    private readonly JsonLinesLogger _logger;
++    private readonly HashSet<string> _authRequiredPrefixes;
++
++    public JwtAuthMiddleware(
++        RequestDelegate next,
++        JwtValidator jwtValidator,
++        JsonLinesLogger logger,
++        IEnumerable<string> authRequiredPrefixes)
++    {
++        _next = next;
++        _jwtValidator = jwtValidator;
++        _logger = logger;
++        _authRequiredPrefixes = new HashSet<string>(authRequiredPrefixes, StringComparer.OrdinalIgnoreCase);
++    }
++
++    public async Task InvokeAsync(HttpContext context)
++    {
++        var path = context.Request.Path.Value ?? "";
++
++        // Only check auth for configured prefixes
++        if (!RequiresAuth(path))
++        {
++            await _next(context);
++            return;
++        }
++
++        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
++        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
++        {
++            _logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] Missing or invalid Authorization header: path={path}");
++            context.Response.StatusCode = 401;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"));
++            return;
++        }
++
++        var token = authHeader["Bearer ".Length..].Trim();
++        var (tenantContext, error) = _jwtValidator.ValidateToken(token);
++
++        if (tenantContext == null)
++        {
++            var errorCode = error?.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
++                ? ErrorCodes.AuthTokenExpired
++                : ErrorCodes.AuthTokenInvalid;
++
++            _logger.SystemWarn($"[{errorCode}] JWT validation failed: path={path}, error={error}");
++            context.Response.StatusCode = 401;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(errorCode, error ?? "Token validation failed", "-"));
++            return;
++        }
++
++        // Store TenantContext for downstream handlers
++        context.Items["TenantContext"] = tenantContext;
++
++        // Also set correlation headers for logging
++        if (string.IsNullOrEmpty(context.Request.Headers[HeaderNames.TenantId].FirstOrDefault()))
++        {
++            context.Request.Headers[HeaderNames.TenantId] = tenantContext.TenantId.ToString();
++        }
++
++        await _next(context);
++    }
++
++    private bool RequiresAuth(string path)
++    {
++        foreach (var prefix in _authRequiredPrefixes)
++        {
++            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
++                return true;
++        }
++        return false;
++    }
++}
++
++/// <summary>
++/// Extension methods for registering JWT auth middleware.
++/// </summary>
++public static class JwtAuthMiddlewareExtensions
++{
++    /// <summary>
++    /// Add JWT auth middleware that protects paths starting with specified prefixes.
++    /// Existing endpoints (health, ops, chat/analyze) are NOT affected.
++    /// </summary>
++    public static IApplicationBuilder UseJwtAuth(
++        this IApplicationBuilder app,
++        JwtValidator jwtValidator,
++        JsonLinesLogger logger,
++        params string[] authRequiredPrefixes)
++    {
++        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes);
++    }
++}
+diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
+index a5c7a5e..ed6243f 100644
+--- a/src/Invekto.Backend/Program.cs
++++ b/src/Invekto.Backend/Program.cs
+@@ -2,9 +2,13 @@ using System.Net.Http.Headers;
+ using System.Text;
+ using Invekto.Backend.Middleware;
+ using Invekto.Backend.Services;
++using Invekto.Shared.Auth;
+ using Invekto.Shared.Constants;
++using Invekto.Shared.Data;
+ using Invekto.Shared.DTOs;
+ using Invekto.Shared.DTOs.ChatAnalysis;
++using Invekto.Shared.DTOs.Integration;
++using Invekto.Shared.Integration;
+ using Invekto.Shared.Logging;
+ using Invekto.Shared.Logging.Reader;
+ 
+@@ -47,11 +51,62 @@ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
+     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+ });
+ 
++// ============================================
++// GR-1.9: INTEGRATION BRIDGE SETUP
++// ============================================
++
++// JWT Validator (singleton, thread-safe)
++JwtValidator? jwtValidator = null;
++var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
++if (!string.IsNullOrEmpty(jwtSecretKey))
++{
++    var jwtSettings = new JwtSettings
++    {
++        SecretKey = jwtSecretKey,
++        Issuer = builder.Configuration["Jwt:Issuer"],
++        Audience = builder.Configuration["Jwt:Audience"],
++        ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
++    };
++    jwtValidator = new JwtValidator(jwtSettings);
++    builder.Services.AddSingleton(jwtValidator);
++}
++
++// PostgreSQL connection factory (singleton, thread-safe pooling)
++PostgresConnectionFactory? pgFactory = null;
++var pgConnectionString = builder.Configuration.GetConnectionString("PostgreSQL");
++if (!string.IsNullOrEmpty(pgConnectionString))
++{
++    pgFactory = new PostgresConnectionFactory(pgConnectionString);
++    builder.Services.AddSingleton(pgFactory);
++}
++
++// Callback client for async results to Main App
++var callbackUrl = builder.Configuration["Integration:Callback:DefaultCallbackUrl"];
++if (!string.IsNullOrEmpty(callbackUrl))
++{
++    var callbackSettings = new CallbackSettings
++    {
++        DefaultCallbackUrl = callbackUrl,
++        MaxRetries = builder.Configuration.GetValue<int>("Integration:Callback:MaxRetries", ServiceConstants.CallbackMaxRetries),
++        BaseDelayMs = builder.Configuration.GetValue<int>("Integration:Callback:BaseDelayMs", ServiceConstants.CallbackBaseDelayMs),
++        TimeoutMs = builder.Configuration.GetValue<int>("Integration:Callback:TimeoutMs", ServiceConstants.CallbackTimeoutMs)
++    };
++    builder.Services.AddSingleton(callbackSettings);
++    builder.Services.AddHttpClient<MainAppCallbackClient>();
++}
++
+ var app = builder.Build();
+ 
+ // Enable traffic logging middleware (logs all HTTP request/response)
+ app.UseTrafficLogging();
+ 
++// GR-1.9: JWT auth middleware (only for /api/v1/webhook/ paths)
++if (jwtValidator != null)
++{
++    var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
++    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/");
++}
++
+ // Enable static file serving for Dashboard UI (wwwroot/)
+ app.UseStaticFiles();
+ 
+@@ -538,6 +593,139 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
+     }
+ });
+ 
++// ============================================
++// GR-1.9: INTEGRATION WEBHOOK ENDPOINTS
++// ============================================
++
++// Webhook event receiver (Main App -> InvektoServis)
++// JWT auth enforced by middleware for /api/v1/webhook/ prefix
++app.MapPost("/api/v1/webhook/event", (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
++{
++    var sw = System.Diagnostics.Stopwatch.StartNew();
++    var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++
++    // Extract TenantContext (set by JWT middleware)
++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++    if (tenantContext == null)
++    {
++        sw.Stop();
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId),
++            statusCode: 401);
++    }
++
++    // Validate payload
++    if (webhookEvent == null)
++    {
++        sw.Stop();
++        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), "-");
++        jsonLogger.RequestError("Webhook: null payload", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationWebhookInvalidPayload);
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "Request body is required", requestId),
++            statusCode: 400);
++    }
++
++    if (!WebhookEventTypes.IsValid(webhookEvent.EventType))
++    {
++        sw.Stop();
++        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), webhookEvent.ChatId.ToString());
++        jsonLogger.RequestError(
++            $"Webhook: unknown event_type={webhookEvent.EventType}", reqCtx,
++            "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationUnknownEventType);
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.IntegrationUnknownEventType,
++                $"Unknown event_type: {webhookEvent.EventType}. Valid: new_message, conversation_closed, tag_changed, conversation_started, agent_assigned",
++                requestId),
++            statusCode: 400);
++    }
++
++    sw.Stop();
++    var context = RequestContext.CreateWithPassThrough(
++        requestId,
++        tenantContext.TenantId.ToString(),
++        webhookEvent.ChatId.ToString());
++
++    // Log the accepted event
++    jsonLogger.RequestInfo(
++        $"Webhook accepted: event={webhookEvent.EventType}, chat_id={webhookEvent.ChatId}, seq={webhookEvent.SequenceId}",
++        context, "/api/v1/webhook/event", sw.ElapsedMilliseconds);
++
++    // Latency monitoring
++    if (sw.ElapsedMilliseconds > ServiceConstants.IntegrationLatencyThresholdMs)
++    {
++        jsonLogger.SystemWarn(
++            $"Webhook acceptance exceeded {ServiceConstants.IntegrationLatencyThresholdMs}ms threshold: {sw.ElapsedMilliseconds}ms, event={webhookEvent.EventType}");
++    }
++
++    // Add processing time header
++    ctx.Response.Headers[HeaderNames.ProcessingTimeMs] = sw.ElapsedMilliseconds.ToString();
++
++    // Return 202 Accepted -- async processing will happen in future GR-1.1/1.2/1.3 services
++    return Results.Json(new
++    {
++        status = "accepted",
++        request_id = context.RequestId,
++        event_type = webhookEvent.EventType,
++        sequence_id = webhookEvent.SequenceId,
++        message = "Event accepted for processing"
++    }, statusCode: 202);
++});
++
++// Tenant verify endpoint (quick integration health check)
++app.MapGet("/api/v1/tenant/verify", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
++{
++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++
++    // This endpoint is under /api/v1/webhook/ prefix? No, it's under /api/v1/
++    // We need to manually check JWT here since it's not under the protected prefix
++    if (jwtValidator == null)
++    {
++        return Results.Ok(new
++        {
++            status = "warning",
++            message = "JWT validation not configured. Set Jwt:SecretKey in appsettings.",
++            jwt_configured = false,
++            postgres_configured = pgFactory != null
++        });
++    }
++
++    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
++    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
++            statusCode: 401);
++    }
++
++    var token = authHeader["Bearer ".Length..].Trim();
++    var (tc, error) = jwtValidator.ValidateToken(token);
++    if (tc == null)
++    {
++        // Use appropriate error code based on error message (matches middleware behavior)
++        var errorCode = error != null && error.Contains("expired")
++            ? ErrorCodes.AuthTokenExpired
++            : ErrorCodes.AuthTokenInvalid;
++        return Results.Json(
++            ErrorResponse.Create(errorCode, error ?? "Token validation failed", "-"),
++            statusCode: 401);
++    }
++
++    return Results.Ok(new
++    {
++        status = "ok",
++        tenant_id = tc.TenantId,
++        user_id = tc.UserId,
++        role = tc.Role,
++        jwt_configured = true,
++        postgres_configured = pgFactory != null,
++        message = "Integration bridge ready"
++    });
++});
++
++// ============================================
++// EXISTING API ENDPOINTS
++// ============================================
++
+ // Chat analysis proxy endpoint (V2 - async with callback)
+ app.MapPost("/api/v1/chat/analyze", async (
+     HttpContext ctx,
+@@ -632,6 +820,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
+         {
+             // Public API
+             new() { Method = "POST", Path = "/api/v1/chat/analyze", Description = "Chat analysis (async, callback)", Auth = "none", Category = "API" },
++            // GR-1.9: Integration endpoints
++            new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Webhook receiver (Main App -> InvektoServis)", Auth = "Bearer", Category = "API" },
++            new() { Method = "GET", Path = "/api/v1/tenant/verify", Description = "Tenant integration health check", Auth = "Bearer", Category = "API" },
+ 
+             // Health
+             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
+diff --git a/src/Invekto.Backend/appsettings.Development.json b/src/Invekto.Backend/appsettings.Development.json
+index caaa86b..f7a283a 100644
+--- a/src/Invekto.Backend/appsettings.Development.json
++++ b/src/Invekto.Backend/appsettings.Development.json
+@@ -6,5 +6,16 @@
+       "System.Net.Http.HttpClient": "Warning"
+     },
+     "FilePath": "logs"
++  },
++  "Jwt": {
++    "SecretKey": "dGVzdC1zZWNyZXQta2V5LWZvci1kZXZlbG9wbWVudC0zMi1ieXRlcyE="
++  },
++  "ConnectionStrings": {
++    "PostgreSQL": "Host=localhost;Port=5432;Database=invekto_dev;Username=invekto;Password=invekto_dev"
++  },
++  "Integration": {
++    "Callback": {
++      "DefaultCallbackUrl": "http://localhost:8080/api/invektoservis/callback"
++    }
+   }
+ }
+diff --git a/src/Invekto.Backend/appsettings.json b/src/Invekto.Backend/appsettings.json
+index 7b94b24..d96afaf 100644
+--- a/src/Invekto.Backend/appsettings.json
++++ b/src/Invekto.Backend/appsettings.json
+@@ -18,5 +18,22 @@
+       "LogPath": "../Invekto.ChatAnalysis/logs"
+     }
+   },
++  "Jwt": {
++    "SecretKey": "",
++    "Issuer": null,
++    "Audience": null,
++    "ClockSkewSeconds": 60
++  },
++  "ConnectionStrings": {
++    "PostgreSQL": ""
++  },
++  "Integration": {
++    "Callback": {
++      "DefaultCallbackUrl": "",
++      "MaxRetries": 3,
++      "BaseDelayMs": 500,
++      "TimeoutMs": 5000
++    }
++  },
+   "AllowedHosts": "*"
+ }
+diff --git a/src/Invekto.Shared/Auth/JwtSettings.cs b/src/Invekto.Shared/Auth/JwtSettings.cs
+new file mode 100644
+index 0000000..1cea646
+--- /dev/null
++++ b/src/Invekto.Shared/Auth/JwtSettings.cs
+@@ -0,0 +1,21 @@
++namespace Invekto.Shared.Auth;
++
++/// <summary>
++/// JWT validation configuration.
++/// GR-1.9: Shared JWT key between Main App and InvektoServis.
++/// Maps to "Jwt" section in appsettings.json.
++/// </summary>
++public sealed class JwtSettings
++{
++    /// <summary>HMAC-SHA256 shared secret key (base64 encoded, minimum 32 bytes)</summary>
++    public required string SecretKey { get; init; }
++
++    /// <summary>Expected issuer claim. Null = skip issuer validation.</summary>
++    public string? Issuer { get; init; }
++
++    /// <summary>Expected audience claim. Null = skip audience validation.</summary>
++    public string? Audience { get; init; }
++
++    /// <summary>Clock skew tolerance in seconds (default: 60s)</summary>
++    public int ClockSkewSeconds { get; init; } = 60;
++}
+diff --git a/src/Invekto.Shared/Auth/JwtValidator.cs b/src/Invekto.Shared/Auth/JwtValidator.cs
+new file mode 100644
+index 0000000..52e382b
+--- /dev/null
++++ b/src/Invekto.Shared/Auth/JwtValidator.cs
+@@ -0,0 +1,88 @@
++using System.IdentityModel.Tokens.Jwt;
++using System.Security.Claims;
++using System.Text;
++using Microsoft.IdentityModel.Tokens;
++
++namespace Invekto.Shared.Auth;
++
++/// <summary>
++/// Validates JWT tokens from Main App using shared HMAC-SHA256 key.
++/// GR-1.9: Thread-safe, stateless validator. Register as singleton.
++/// </summary>
++public sealed class JwtValidator
++{
++    private readonly TokenValidationParameters _validationParameters;
++
++    public JwtValidator(JwtSettings settings)
++    {
++        var keyBytes = Convert.FromBase64String(settings.SecretKey);
++        if (keyBytes.Length < 32)
++            throw new ArgumentException("JWT SecretKey must be at least 32 bytes (256 bits) when decoded from base64.");
++
++        var securityKey = new SymmetricSecurityKey(keyBytes);
++
++        _validationParameters = new TokenValidationParameters
++        {
++            ValidateIssuerSigningKey = true,
++            IssuerSigningKey = securityKey,
++            ValidateIssuer = !string.IsNullOrEmpty(settings.Issuer),
++            ValidIssuer = settings.Issuer,
++            ValidateAudience = !string.IsNullOrEmpty(settings.Audience),
++            ValidAudience = settings.Audience,
++            ValidateLifetime = true,
++            ClockSkew = TimeSpan.FromSeconds(settings.ClockSkewSeconds)
++        };
++    }
++
++    /// <summary>
++    /// Validate a JWT token and extract TenantContext.
++    /// Returns (TenantContext, null) on success, (null, errorMessage) on failure.
++    /// </summary>
++    public (TenantContext? Context, string? Error) ValidateToken(string token)
++    {
++        try
++        {
++            var handler = new JwtSecurityTokenHandler();
++            var principal = handler.ValidateToken(token, _validationParameters, out var validatedToken);
++
++            if (validatedToken is not JwtSecurityToken jwtToken)
++                return (null, "Token is not a valid JWT");
++
++            // Extract claims
++            var tenantIdClaim = principal.FindFirst("tenant_id")?.Value;
++            var userIdClaim = principal.FindFirst("user_id")?.Value
++                              ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
++                              ?? principal.FindFirst("sub")?.Value;
++            var roleClaim = principal.FindFirst("role")?.Value
++                            ?? principal.FindFirst(ClaimTypes.Role)?.Value
++                            ?? "agent"; // default role
++
++            if (string.IsNullOrEmpty(tenantIdClaim) || !int.TryParse(tenantIdClaim, out var tenantId))
++                return (null, "Missing or invalid 'tenant_id' claim (expected integer)");
++
++            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
++                return (null, "Missing or invalid 'user_id' or 'sub' claim (expected integer)");
++
++            var context = new TenantContext
++            {
++                TenantId = tenantId,
++                UserId = userId,
++                Role = roleClaim
++            };
++
++            return (context, null);
++        }
++        catch (SecurityTokenExpiredException)
++        {
++            return (null, "Token expired");
++        }
++        catch (SecurityTokenInvalidSignatureException)
++        {
++            return (null, "Invalid token signature");
++        }
++        catch (SecurityTokenException ex)
++        {
++            return (null, $"Token validation failed: {ex.Message}");
++        }
++    }
++}
+diff --git a/src/Invekto.Shared/Auth/TenantContext.cs b/src/Invekto.Shared/Auth/TenantContext.cs
+new file mode 100644
+index 0000000..707885a
+--- /dev/null
++++ b/src/Invekto.Shared/Auth/TenantContext.cs
+@@ -0,0 +1,21 @@
++namespace Invekto.Shared.Auth;
++
++/// <summary>
++/// Extracted tenant/user info from a validated JWT token.
++/// GR-1.9: Passed through the request pipeline after JWT validation.
++/// tenant_id is int (matching Main App SQL Server int identity).
++/// </summary>
++public sealed class TenantContext
++{
++    /// <summary>Tenant ID (int) from JWT claim "tenant_id"</summary>
++    public required int TenantId { get; init; }
++
++    /// <summary>User ID (int) from JWT claim "user_id" or "sub"</summary>
++    public required int UserId { get; init; }
++
++    /// <summary>User role from JWT claim "role" (e.g., admin, agent, system)</summary>
++    public required string Role { get; init; }
++
++    /// <summary>Whether this is a service-level call (no specific user)</summary>
++    public bool IsServiceCall => Role == "service";
++}
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index 1603f30..65fb95f 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -27,6 +27,21 @@ public static class ErrorCodes
+     public const string ChatAnalysisNoMessages = "INV-CA-007";
+ 
+     // Auth errors (INV-AUTH-xxx)
+-    public const string AuthUnauthorized = "INV-AUTH-001";
+-    public const string AuthForbidden = "INV-AUTH-002";
++    public const string AuthTokenExpired = "INV-AUTH-001";
++    public const string AuthTokenInvalid = "INV-AUTH-002";
++    public const string AuthUnauthorized = "INV-AUTH-003";
++
++    // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
++    public const string AuthForbidden = AuthTokenInvalid;
++
++    // Integration errors (INV-INT-xxx) -- GR-1.9
++    public const string IntegrationWebhookInvalidPayload = "INV-INT-001";
++    public const string IntegrationCallbackFailed = "INV-INT-002";
++    public const string IntegrationUnknownEventType = "INV-INT-003";
++    public const string IntegrationTenantNotFound = "INV-INT-004";
++
++    // Database errors (INV-DB-xxx)
++    public const string DatabaseConnectionFailed = "INV-DB-001";
++    public const string DatabaseQueryTimeout = "INV-DB-002";
++    public const string DatabaseDuplicateEntry = "INV-DB-003";
+ }
+diff --git a/src/Invekto.Shared/Constants/HeaderNames.cs b/src/Invekto.Shared/Constants/HeaderNames.cs
+index 2254d4c..38b7435 100644
+--- a/src/Invekto.Shared/Constants/HeaderNames.cs
++++ b/src/Invekto.Shared/Constants/HeaderNames.cs
+@@ -1,11 +1,15 @@
+ namespace Invekto.Shared.Constants;
+ 
+ /// <summary>
+-/// Standard header names for request correlation
++/// Standard header names for request correlation and auth
+ /// </summary>
+ public static class HeaderNames
+ {
+     public const string RequestId = "X-Request-Id";
+     public const string TenantId = "X-Tenant-Id";
+     public const string ChatId = "X-Chat-Id";
++
++    // GR-1.9: Integration headers
++    public const string Authorization = "Authorization";
++    public const string ProcessingTimeMs = "X-Processing-Time-Ms";
+ }
+diff --git a/src/Invekto.Shared/Constants/ServiceConstants.cs b/src/Invekto.Shared/Constants/ServiceConstants.cs
+index ccd967f..d10d6e8 100644
+--- a/src/Invekto.Shared/Constants/ServiceConstants.cs
++++ b/src/Invekto.Shared/Constants/ServiceConstants.cs
+@@ -1,7 +1,8 @@
+ namespace Invekto.Shared.Constants;
+ 
+ /// <summary>
+-/// Stage-0 service constants as defined in invekto_stage0_kurulum_adimlari.txt
++/// Service constants for InvektoServis platform.
++/// Stage-0 + Phase 1 (GR-1.9 integration bridge)
+ /// </summary>
+ public static class ServiceConstants
+ {
+@@ -9,14 +10,31 @@ public static class ServiceConstants
+     public const int BackendToMicroserviceTimeoutMs = 600;
+     public const int RetryCount = 0; // YASAK - Stage-0'da retry yok
+ 
++    // GR-1.9: Integration callback retry settings
++    public const int CallbackMaxRetries = 3;
++    public const int CallbackBaseDelayMs = 500; // Exponential backoff: 500ms, 1s, 2s
++    public const int CallbackTimeoutMs = 5000;  // 5s per callback attempt
++
+     // Ports
+     public const int ChatAnalysisPort = 7101;
+     public const int BackendPort = 5000;
++    // Phase 1 service ports (reserved)
++    public const int AgentAIPort = 7105;
++    public const int IntegrationsPort = 7106;
++    public const int OutboundPort = 7107;
++    public const int AutomationPort = 7108;
+ 
+     // Service names
+     public const string BackendServiceName = "Invekto.Backend";
+     public const string ChatAnalysisServiceName = "Invekto.ChatAnalysis";
++    // Phase 1 service names (reserved)
++    public const string AgentAIServiceName = "Invekto.AgentAI";
++    public const string OutboundServiceName = "Invekto.Outbound";
++    public const string AutomationServiceName = "Invekto.Automation";
+ 
+     // Log retention
+     public const int LogRetentionDays = 30;
++
++    // GR-1.9: Latency monitoring threshold
++    public const int IntegrationLatencyThresholdMs = 200;
+ }
+diff --git a/src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs b/src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs
+new file mode 100644
+index 0000000..6a60901
+--- /dev/null
++++ b/src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs
+@@ -0,0 +1,73 @@
++using System.Text.Json.Serialization;
++
++namespace Invekto.Shared.DTOs.Integration;
++
++/// <summary>
++/// Webhook payload that Main App sends to InvektoServis.
++/// GR-1.9: Standardized event format for all Main App -> InvektoServis communication.
++/// tenant_id comes from JWT token, NOT from payload (security: prevent tenant spoofing).
++/// </summary>
++public sealed class IncomingWebhookEvent
++{
++    /// <summary>Event type (see WebhookEventTypes constants)</summary>
++    [JsonPropertyName("event_type")]
++    public required string EventType { get; init; }
++
++    /// <summary>Sequence ID for ordering guarantee. Main App increments per tenant.</summary>
++    [JsonPropertyName("sequence_id")]
++    public long SequenceId { get; init; }
++
++    /// <summary>Conversation/chat ID in Main App</summary>
++    [JsonPropertyName("chat_id")]
++    public int ChatId { get; init; }
++
++    /// <summary>Channel type (whatsapp, web, instagram, etc.)</summary>
++    [JsonPropertyName("channel")]
++    public string? Channel { get; init; }
++
++    /// <summary>Event-specific data (structure depends on event_type)</summary>
++    [JsonPropertyName("data")]
++    public WebhookEventData? Data { get; init; }
++
++    /// <summary>Main App timestamp when event occurred</summary>
++    [JsonPropertyName("timestamp")]
++    public DateTime Timestamp { get; init; }
++
++    /// <summary>Callback URL where InvektoServis sends async results. If null, uses tenant default.</summary>
++    [JsonPropertyName("callback_url")]
++    public string? CallbackUrl { get; init; }
++}
++
++/// <summary>
++/// Event-specific data. Fields are nullable because different events use different fields.
++/// </summary>
++public sealed class WebhookEventData
++{
++    /// <summary>Customer phone number (for new_message)</summary>
++    [JsonPropertyName("phone")]
++    public string? Phone { get; init; }
++
++    /// <summary>Customer name (if known)</summary>
++    [JsonPropertyName("customer_name")]
++    public string? CustomerName { get; init; }
++
++    /// <summary>Message text (for new_message)</summary>
++    [JsonPropertyName("message_text")]
++    public string? MessageText { get; init; }
++
++    /// <summary>Message source: CUSTOMER or AGENT</summary>
++    [JsonPropertyName("message_source")]
++    public string? MessageSource { get; init; }
++
++    /// <summary>Assigned agent ID (for agent_assigned)</summary>
++    [JsonPropertyName("agent_id")]
++    public int? AgentId { get; init; }
++
++    /// <summary>Tag/label name (for tag_changed)</summary>
++    [JsonPropertyName("tag_name")]
++    public string? TagName { get; init; }
++
++    /// <summary>Tag action: added or removed (for tag_changed)</summary>
++    [JsonPropertyName("tag_action")]
++    public string? TagAction { get; init; }
++}
+diff --git a/src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs b/src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs
+new file mode 100644
+index 0000000..0e18d9d
+--- /dev/null
++++ b/src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs
+@@ -0,0 +1,97 @@
++using System.Text.Json.Serialization;
++
++namespace Invekto.Shared.DTOs.Integration;
++
++/// <summary>
++/// Async callback payload that InvektoServis sends back to Main App.
++/// GR-1.9: After processing a webhook event, results are sent via POST callback.
++/// </summary>
++public sealed class OutgoingCallback
++{
++    /// <summary>Correlation ID - matches the X-Request-Id from the original webhook</summary>
++    [JsonPropertyName("request_id")]
++    public required string RequestId { get; init; }
++
++    /// <summary>Action type that Main App should execute</summary>
++    [JsonPropertyName("action")]
++    public required string Action { get; init; }
++
++    /// <summary>Tenant ID (int) - same as JWT tenant_id</summary>
++    [JsonPropertyName("tenant_id")]
++    public int TenantId { get; init; }
++
++    /// <summary>Chat/conversation ID this callback relates to</summary>
++    [JsonPropertyName("chat_id")]
++    public int ChatId { get; init; }
++
++    /// <summary>Sequence ID from the original webhook event (ordering)</summary>
++    [JsonPropertyName("sequence_id")]
++    public long SequenceId { get; init; }
++
++    /// <summary>Action-specific payload</summary>
++    [JsonPropertyName("data")]
++    public CallbackData? Data { get; init; }
++
++    /// <summary>Processing duration in milliseconds</summary>
++    [JsonPropertyName("processing_time_ms")]
++    public long ProcessingTimeMs { get; init; }
++
++    /// <summary>When InvektoServis generated this callback</summary>
++    [JsonPropertyName("timestamp")]
++    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
++}
++
++/// <summary>
++/// Action-specific callback data. Fields are nullable, used based on action type.
++/// </summary>
++public sealed class CallbackData
++{
++    /// <summary>Message text to send (for send_message action)</summary>
++    [JsonPropertyName("message_text")]
++    public string? MessageText { get; init; }
++
++    /// <summary>Suggested reply for agent (for suggest_reply action)</summary>
++    [JsonPropertyName("suggested_reply")]
++    public string? SuggestedReply { get; init; }
++
++    /// <summary>Tag/label to apply (for apply_tag action)</summary>
++    [JsonPropertyName("tag_name")]
++    public string? TagName { get; init; }
++
++    /// <summary>Whether to hand off to human agent</summary>
++    [JsonPropertyName("handoff_to_human")]
++    public bool? HandoffToHuman { get; init; }
++
++    /// <summary>AI confidence score (0.0 - 1.0)</summary>
++    [JsonPropertyName("confidence")]
++    public double? Confidence { get; init; }
++
++    /// <summary>AI-generated summary for agent context</summary>
++    [JsonPropertyName("ai_summary")]
++    public string? AiSummary { get; init; }
++
++    /// <summary>Detected intent (e.g., "price_inquiry", "appointment")</summary>
++    [JsonPropertyName("intent")]
++    public string? Intent { get; init; }
++}
++
++/// <summary>
++/// Callback action types that InvektoServis can request from Main App.
++/// </summary>
++public static class CallbackActions
++{
++    /// <summary>Send a message to customer (auto-reply)</summary>
++    public const string SendMessage = "send_message";
++
++    /// <summary>Suggest a reply to the agent (agent assist)</summary>
++    public const string SuggestReply = "suggest_reply";
++
++    /// <summary>Apply a tag/label to conversation</summary>
++    public const string ApplyTag = "apply_tag";
++
++    /// <summary>Hand off conversation to human agent</summary>
++    public const string HandoffToHuman = "handoff_to_human";
++
++    /// <summary>No action needed (informational only)</summary>
++    public const string NoAction = "no_action";
++}
+diff --git a/src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs b/src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs
+new file mode 100644
+index 0000000..da89ccd
+--- /dev/null
++++ b/src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs
+@@ -0,0 +1,35 @@
++namespace Invekto.Shared.DTOs.Integration;
++
++/// <summary>
++/// Webhook event types that Main App sends to InvektoServis.
++/// GR-1.9: Defines the contract for Main App -> InvektoServis communication.
++/// </summary>
++public static class WebhookEventTypes
++{
++    /// <summary>New message received from customer</summary>
++    public const string NewMessage = "new_message";
++
++    /// <summary>Conversation closed by agent or system</summary>
++    public const string ConversationClosed = "conversation_closed";
++
++    /// <summary>Tag/label changed on a conversation</summary>
++    public const string TagChanged = "tag_changed";
++
++    /// <summary>New conversation started</summary>
++    public const string ConversationStarted = "conversation_started";
++
++    /// <summary>Agent assigned to conversation</summary>
++    public const string AgentAssigned = "agent_assigned";
++
++    private static readonly HashSet<string> ValidTypes = new(StringComparer.OrdinalIgnoreCase)
++    {
++        NewMessage,
++        ConversationClosed,
++        TagChanged,
++        ConversationStarted,
++        AgentAssigned
++    };
++
++    public static bool IsValid(string? eventType)
++        => !string.IsNullOrWhiteSpace(eventType) && ValidTypes.Contains(eventType);
++}
+diff --git a/src/Invekto.Shared/Data/PostgresConnectionFactory.cs b/src/Invekto.Shared/Data/PostgresConnectionFactory.cs
+new file mode 100644
+index 0000000..26144c4
+--- /dev/null
++++ b/src/Invekto.Shared/Data/PostgresConnectionFactory.cs
+@@ -0,0 +1,57 @@
++using Npgsql;
++
++namespace Invekto.Shared.Data;
++
++/// <summary>
++/// Thread-safe PostgreSQL connection factory with built-in pooling.
++/// GR-1.9: Foundation for all new services' DB access.
++/// Npgsql handles connection pooling internally via the connection string.
++/// Register as singleton in DI.
++/// </summary>
++public sealed class PostgresConnectionFactory
++{
++    private readonly string _connectionString;
++    private readonly NpgsqlDataSource _dataSource;
++
++    public PostgresConnectionFactory(string connectionString)
++    {
++        if (string.IsNullOrWhiteSpace(connectionString))
++            throw new ArgumentException("PostgreSQL connection string is required.");
++
++        _connectionString = connectionString;
++
++        // NpgsqlDataSource manages connection pooling, is thread-safe
++        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
++        _dataSource = dataSourceBuilder.Build();
++    }
++
++    /// <summary>
++    /// Create a new connection from the pool. Caller must dispose.
++    /// Usage: await using var conn = await factory.OpenConnectionAsync();
++    /// </summary>
++    public async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken ct = default)
++    {
++        var connection = _dataSource.CreateConnection();
++        await connection.OpenAsync(ct);
++        return connection;
++    }
++
++    /// <summary>
++    /// Test database connectivity. Returns (success, errorMessage).
++    /// </summary>
++    public async Task<(bool Success, string? Error)> TestConnectionAsync(CancellationToken ct = default)
++    {
++        try
++        {
++            await using var conn = await OpenConnectionAsync(ct);
++            await using var cmd = conn.CreateCommand();
++            cmd.CommandText = "SELECT 1";
++            await cmd.ExecuteScalarAsync(ct);
++            return (true, null);
++        }
++        catch (Exception ex)
++        {
++            return (false, ex.Message);
++        }
++    }
++}
+diff --git a/src/Invekto.Shared/Integration/CallbackSettings.cs b/src/Invekto.Shared/Integration/CallbackSettings.cs
+new file mode 100644
+index 0000000..61cfa5b
+--- /dev/null
++++ b/src/Invekto.Shared/Integration/CallbackSettings.cs
+@@ -0,0 +1,20 @@
++namespace Invekto.Shared.Integration;
++
++/// <summary>
++/// Configuration for async callback to Main App.
++/// GR-1.9: Maps to "Integration:Callback" section in appsettings.json.
++/// </summary>
++public sealed class CallbackSettings
++{
++    /// <summary>Default callback URL for Main App (used when webhook doesn't specify callback_url)</summary>
++    public required string DefaultCallbackUrl { get; init; }
++
++    /// <summary>Max retry attempts (default: 3)</summary>
++    public int MaxRetries { get; init; } = 3;
++
++    /// <summary>Base delay in milliseconds for exponential backoff (default: 500ms)</summary>
++    public int BaseDelayMs { get; init; } = 500;
++
++    /// <summary>HTTP timeout per callback attempt in milliseconds (default: 5000ms)</summary>
++    public int TimeoutMs { get; init; } = 5000;
++}
+diff --git a/src/Invekto.Shared/Integration/MainAppCallbackClient.cs b/src/Invekto.Shared/Integration/MainAppCallbackClient.cs
+new file mode 100644
+index 0000000..0e3403c
+--- /dev/null
++++ b/src/Invekto.Shared/Integration/MainAppCallbackClient.cs
+@@ -0,0 +1,87 @@
++using System.Net.Http.Json;
++using System.Text.Json;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs.Integration;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Shared.Integration;
++
++/// <summary>
++/// Sends async callback results to Main App after processing webhook events.
++/// GR-1.9: 3x retry with exponential backoff. Thread-safe, register as singleton.
++/// </summary>
++public sealed class MainAppCallbackClient
++{
++    private readonly HttpClient _httpClient;
++    private readonly CallbackSettings _settings;
++    private readonly JsonLinesLogger _logger;
++
++    public MainAppCallbackClient(HttpClient httpClient, CallbackSettings settings, JsonLinesLogger logger)
++    {
++        _httpClient = httpClient;
++        _settings = settings;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Send callback to Main App with retry logic.
++    /// Returns true if callback was delivered successfully (any retry).
++    /// </summary>
++    public async Task<bool> SendCallbackAsync(
++        OutgoingCallback callback,
++        string? callbackUrl = null,
++        CancellationToken ct = default)
++    {
++        var url = callbackUrl ?? _settings.DefaultCallbackUrl;
++
++        for (var attempt = 0; attempt <= _settings.MaxRetries; attempt++)
++        {
++            try
++            {
++                if (attempt > 0)
++                {
++                    // Exponential backoff: 500ms, 1000ms, 2000ms
++                    var delayMs = _settings.BaseDelayMs * (1 << (attempt - 1));
++                    await Task.Delay(delayMs, ct);
++                }
++
++                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
++                cts.CancelAfter(_settings.TimeoutMs);
++
++                using var response = await _httpClient.PostAsJsonAsync(url, callback, cts.Token);
++
++                if (response.IsSuccessStatusCode)
++                {
++                    if (attempt > 0)
++                    {
++                        _logger.SystemInfo(
++                            $"Callback delivered on retry {attempt}: request_id={callback.RequestId}, action={callback.Action}");
++                    }
++                    return true;
++                }
++
++                _logger.SystemWarn(
++                    $"Callback HTTP {(int)response.StatusCode} on attempt {attempt + 1}/{_settings.MaxRetries + 1}: " +
++                    $"request_id={callback.RequestId}, url={url}");
++            }
++            catch (OperationCanceledException) when (ct.IsCancellationRequested)
++            {
++                // Application shutting down, don't retry
++                throw;
++            }
++            catch (Exception ex)
++            {
++                _logger.SystemWarn(
++                    $"Callback attempt {attempt + 1}/{_settings.MaxRetries + 1} failed: " +
++                    $"request_id={callback.RequestId}, url={url}, error={ex.Message}");
++            }
++        }
++
++        // All retries exhausted
++        _logger.SystemError(
++            $"[{ErrorCodes.IntegrationCallbackFailed}] Callback FAILED after {_settings.MaxRetries + 1} attempts: " +
++            $"request_id={callback.RequestId}, action={callback.Action}, tenant_id={callback.TenantId}, chat_id={callback.ChatId}");
++
++        return false;
++    }
++}
+diff --git a/src/Invekto.Shared/Invekto.Shared.csproj b/src/Invekto.Shared/Invekto.Shared.csproj
+index fa71b7a..576ba2f 100644
+--- a/src/Invekto.Shared/Invekto.Shared.csproj
++++ b/src/Invekto.Shared/Invekto.Shared.csproj
+@@ -6,4 +6,12 @@
+     <Nullable>enable</Nullable>
+   </PropertyGroup>
+ 
++  <ItemGroup>
++    <!-- JWT token validation (GR-1.9: Main App JWT shared key) -->
++    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.1" />
++    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
++    <!-- PostgreSQL driver (GR-1.9: new services DB foundation) -->
++    <PackageReference Include="Npgsql" Version="8.0.5" />
++  </ItemGroup>
++
+ </Project>

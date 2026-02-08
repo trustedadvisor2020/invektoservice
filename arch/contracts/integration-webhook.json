@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "integration-webhook-v1.json",
+  "title": "Integration Webhook Event Contract",
+  "description": "GR-1.9: Main App -> InvektoServis webhook event format. Main App sends this payload via POST /api/v1/webhook/event with Bearer JWT token.",
+  "version": "1.0",
+
+  "endpoint": {
+    "method": "POST",
+    "path": "/api/v1/webhook/event",
+    "auth": "Bearer JWT (shared HMAC-SHA256 key)",
+    "response": "202 Accepted (async processing)"
+  },
+
+  "headers": {
+    "required": {
+      "Authorization": "Bearer {jwt_token}",
+      "Content-Type": "application/json"
+    },
+    "optional": {
+      "X-Request-Id": "Correlation ID (auto-generated if missing)"
+    }
+  },
+
+  "jwt_claims": {
+    "required": {
+      "tenant_id": { "type": "integer", "description": "Tenant ID from Main App SQL Server" },
+      "user_id": { "type": "integer", "description": "User ID or system ID" },
+      "exp": { "type": "integer", "description": "Expiration timestamp (Unix)" }
+    },
+    "optional": {
+      "role": { "type": "string", "default": "agent", "enum": ["admin", "agent", "service"] },
+      "iat": { "type": "integer", "description": "Issued at timestamp" }
+    }
+  },
+
+  "type": "object",
+  "required": ["event_type", "chat_id", "timestamp"],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": ["new_message", "conversation_closed", "tag_changed", "conversation_started", "agent_assigned"],
+      "description": "Type of event"
+    },
+    "sequence_id": {
+      "type": "integer",
+      "description": "Monotonically increasing sequence per tenant for ordering guarantee"
+    },
+    "chat_id": {
+      "type": "integer",
+      "description": "Conversation/chat ID in Main App"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["whatsapp", "web", "instagram", "facebook", "telegram", "email", "sms"],
+      "description": "Communication channel"
+    },
+    "data": {
+      "type": "object",
+      "description": "Event-specific payload",
+      "properties": {
+        "phone": { "type": "string", "description": "Customer phone (new_message)" },
+        "customer_name": { "type": "string", "description": "Customer name if known" },
+        "message_text": { "type": "string", "description": "Message content (new_message)" },
+        "message_source": { "type": "string", "enum": ["CUSTOMER", "AGENT"] },
+        "agent_id": { "type": "integer", "description": "Agent ID (agent_assigned)" },
+        "tag_name": { "type": "string", "description": "Tag name (tag_changed)" },
+        "tag_action": { "type": "string", "enum": ["added", "removed"] }
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When event occurred in Main App (ISO 8601)"
+    },
+    "callback_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Override callback URL for this event. If null, uses tenant default."
+    }
+  },
+
+  "examples": {
+    "new_message": {
+      "event_type": "new_message",
+      "sequence_id": 1001,
+      "chat_id": 12345,
+      "channel": "whatsapp",
+      "data": {
+        "phone": "+905551234567",
+        "customer_name": "Ahmet Yilmaz",
+        "message_text": "Merhaba, implant fiyatini ogrenebilir miyim?",
+        "message_source": "CUSTOMER"
+      },
+      "timestamp": "2026-02-08T10:30:00Z",
+      "callback_url": null
+    },
+    "conversation_closed": {
+      "event_type": "conversation_closed",
+      "sequence_id": 1002,
+      "chat_id": 12345,
+      "channel": "whatsapp",
+      "data": {
+        "agent_id": 42
+      },
+      "timestamp": "2026-02-08T10:45:00Z"
+    }
+  },
+
+  "response_202": {
+    "status": "accepted",
+    "request_id": "abc123",
+    "event_type": "new_message",
+    "sequence_id": 1001,
+    "message": "Event accepted for processing"
+  },
+
+  "error_responses": {
+    "400_invalid_payload": {
+      "error_code": "INV-INT-001",
+      "message": "Request body is required"
+    },
+    "400_unknown_event": {
+      "error_code": "INV-INT-003",
+      "message": "Unknown event_type: xyz"
+    },
+    "401_no_token": {
+      "error_code": "INV-AUTH-003",
+      "message": "Bearer token required"
+    },
+    "401_expired": {
+      "error_code": "INV-AUTH-001",
+      "message": "Token expired"
+    }
+  }
+}

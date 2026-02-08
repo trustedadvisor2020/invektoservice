@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- JWT token validation (GR-1.9: Main App JWT shared key) -->
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
+    <!-- PostgreSQL driver (GR-1.9: new services DB foundation) -->
+    <PackageReference Include="Npgsql" Version="8.0.5" />
+  </ItemGroup>
+
 </Project>

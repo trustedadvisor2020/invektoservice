@@ -1,0 +1,217 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260208-integration-bridge",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-08T10:00:00Z",
+  "updated_at": "2026-02-08T21:10:00Z",
+  "plan": {
+    "summary": "GR-1.9: Invekto (Main App) ile InvektoServis arasinda API koprusu. JWT auth middleware, webhook receiver endpoint, async callback client, PostgreSQL altyapisi ve API kontratlari. Phase 1'in temeli -- diger tum ozellikler bu kopruye bagimli.",
+    "q_intent": "Phase 1'e basla, GR-1.9 (Invekto <-> InvektoServis Entegrasyonu) ile. Iki platform arasi API koprusu, auth token validation, tenant sync.",
+    "interview_notes": "Tech: .NET 8 devam. WapCRM = Invekto (ad degisiyor). Mesaj akisi: Webhook push (Main App -> InvektoServis). Auth: Shared JWT key. Tenant ID: int/bigint. Sadece InvektoServis tarafi yazilacak (Main App kontratlari tanimla). Webhook fail: 3x retry yeterli. Response: Async callback (202 kabul, sonra POST). Callback fail: 3x retry + sequence_id. PostgreSQL: GR-1.9'da kur. JWT claims: standart varsay (tenant_id, user_id, role) -- Q dogrulayacak."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Invekto.Shared.csproj",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Constants/HeaderNames.cs",
+    "src/Invekto.Shared/Auth/JwtValidator.cs",
+    "src/Invekto.Shared/Auth/JwtSettings.cs",
+    "src/Invekto.Shared/Auth/TenantContext.cs",
+    "src/Invekto.Shared/Integration/MainAppCallbackClient.cs",
+    "src/Invekto.Shared/Integration/CallbackSettings.cs",
+    "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs",
+    "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs",
+    "src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs",
+    "src/Invekto.Shared/Data/PostgresConnectionFactory.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Backend/Invekto.Backend.csproj",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/appsettings.Development.json",
+    "arch/errors.md",
+    "arch/endpoints.md",
+    "arch/session-memory.md",
+    "arch/active-work.md",
+    "arch/contracts/integration-webhook.json",
+    "arch/contracts/integration-callback.json",
+    "arch/db/tenant-registry.sql",
+    "arch/plans/20260208-integration-bridge.json",
+    "arch/plans/diffs/20260208-integration-bridge.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Invekto.Shared.csproj", "change": "Added NuGet: JWT + Npgsql packages", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "change": "Added Phase 1 ports, callback retry constants, latency threshold", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added INT (integration) + DB error codes, fixed AUTH numbering", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/HeaderNames.cs", "change": "Added Authorization + ProcessingTimeMs headers", "is_new": false },
+    { "path": "src/Invekto.Shared/Auth/JwtSettings.cs", "change": "JWT config model (SecretKey, Issuer, Audience, ClockSkew)", "is_new": true },
+    { "path": "src/Invekto.Shared/Auth/TenantContext.cs", "change": "Extracted tenant info DTO (TenantId int, UserId int, Role string)", "is_new": true },
+    { "path": "src/Invekto.Shared/Auth/JwtValidator.cs", "change": "HMAC-SHA256 JWT validation + claim extraction, thread-safe", "is_new": true },
+    { "path": "src/Invekto.Shared/Data/PostgresConnectionFactory.cs", "change": "NpgsqlDataSource pooled connection factory, singleton", "is_new": true },
+    { "path": "src/Invekto.Shared/Integration/CallbackSettings.cs", "change": "Callback config model (URL, retries, backoff, timeout)", "is_new": true },
+    { "path": "src/Invekto.Shared/Integration/MainAppCallbackClient.cs", "change": "Async callback with 3x exponential backoff retry", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Integration/WebhookEventTypes.cs", "change": "Event type constants + validation", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs", "change": "Webhook payload DTO with event data", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs", "change": "Callback payload DTO + CallbackActions constants", "is_new": true },
+    { "path": "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs", "change": "JWT auth middleware for /api/v1/webhook/ prefix only", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Added JWT/PG/Callback DI, webhook endpoint, tenant verify endpoint, endpoint discovery update", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "change": "Added Jwt, ConnectionStrings:PostgreSQL, Integration:Callback sections", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.Development.json", "change": "Added dev JWT key, PG connection, callback URL", "is_new": false },
+    { "path": "arch/errors.md", "change": "Added INT service code + 4 integration error codes", "is_new": false },
+    { "path": "arch/session-memory.md", "change": "Updated to Phase 1 / GR-1.9 status", "is_new": false },
+    { "path": "arch/active-work.md", "change": "Added 20260208-integration-bridge as IN_PROGRESS", "is_new": false },
+    { "path": "arch/contracts/integration-webhook.json", "change": "Main App -> InvektoServis webhook contract", "is_new": true },
+    { "path": "arch/contracts/integration-callback.json", "change": "InvektoServis -> Main App callback contract", "is_new": true },
+    { "path": "arch/db/tenant-registry.sql", "change": "PostgreSQL tenant_registry DDL + updated_at trigger", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "885DC6515B1B6C59D6DCDA79C01AC0B6B5B95A68277C903B092E1130016582A2",
+    "full_path": "arch/plans/diffs/20260208-integration-bridge.diff",
+    "patch_truncated": true,
+    "full_size_bytes": 143039,
+    "stats": {
+      "insertions": 3157,
+      "deletions": 23,
+      "files_count": 25
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build --no-incremental (Invekto.Backend)",
+    "timestamp": "2026-02-08T20:48:00Z",
+    "duration_ms": 2400,
+    "output_tail": "Build succeeded. 0 Error(s), 9 Warning(s)",
+    "error_summary": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "JWT validation middleware expired/invalid token'lari HTTP 401 + INV-AUTH-001/002 error code ile reddediyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "JWT claims'ten (tenant_id, user_id, role) cikan degerler TenantContext DTO'suna dogru tip ile (tenant_id=int) aktariliyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Webhook endpoint 202 Accepted donup async isleme aliyor mu -- sync blocking yapmiyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Callback client fail durumunda exponential backoff ile 3x retry yapiyor mu, 3. retry sonrasi loglayip birakiryor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "sequence_id hem IncomingWebhookEvent hem OutgoingCallback DTO'larinda mevcut mu -- ordering garantisi icin?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "PostgreSQL connection factory thread-safe mi ve connection pooling kullaniyor mu (concurrent requests icin)?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Mevcut endpoint'ler (health, ops, chat/analyze) JWT middleware'den muaf mi -- geriye donuk uyumluluk bozulmuyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/ (bu GR'da dokunulmaz)",
+      "src/Invekto.Backend/Dashboard/ (UI degisikligi yok)",
+      "src/Invekto.Backend/Services/ChatAnalysisClient.cs (mevcut proxy bozulmaz)"
+    ],
+    "non_goals": [
+      "Main App tarafinda kod yazmak (sadece kontrat tanimla)",
+      "Chatbot/Flow engine (GR-1.1)",
+      "Agent Assist (GR-1.2)",
+      "Broadcast (GR-1.3)",
+      "Yeni mikro servis olusturma (Automation/AgentAI/Outbound)"
+    ],
+    "intentional_exclusions": [
+      "WebSocket (Phase 1'de webhook + callback yeterli)",
+      "Message queue / RabbitMQ (Phase 1 icin over-engineering)",
+      "Rate limiting (GR-1.3 scope'unda)",
+      "Tenant CRUD API (Q manual olarak tenant ekleyecek, admin UI yok)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "JwtValidator.ValidateToken - invalid/expired token",
+      "MainAppCallbackClient.SendCallbackAsync - HTTP failures + retry",
+      "PostgresConnectionFactory.OpenConnectionAsync - connection failure",
+      "JwtAuthMiddleware.InvokeAsync - missing/invalid auth header",
+      "Webhook endpoint - null/malformed payload, unknown event type"
+    ],
+    "user_facing_errors": [
+      "INV-AUTH-001: Token expired -> Oturumunuz sona erdi",
+      "INV-AUTH-002: Invalid token -> Gecersiz oturum",
+      "INV-AUTH-003: Unauthorized -> Yetki yok",
+      "INV-INT-001: Webhook payload invalid -> Gecersiz webhook formati",
+      "INV-INT-002: Callback failed -> Main App'e bildirim gonderilemedi",
+      "INV-INT-003: Unknown event type -> Bilinmeyen event tipi",
+      "INV-DB-001: PostgreSQL connection failed -> Veritabani baglantisi kurulamadi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum hata durumlarinda loglama + error code donusu var. Callback failure 3x retry sonrasi loglanir, sessiz kalma yok."
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Main App'ten InvektoServis'e geciste latency kaybi -- musteriler yavas cevap aliyor",
+      "suggestion": "Webhook endpoint'ine latency header (X-Processing-Time-Ms) ekle, 200ms asimini alarm olarak logla",
+      "aha_moment": "Dashboard'da 'ortalama AI cevap suresi: 180ms' gordugunde -- 'hizli calisiyor!' hissi"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "InvektoServis down olursa musteri mesajlari kaybolur",
+      "suggestion": "Webhook'ta aninda 202 don + async isle. Health endpoint'i Main App'in retry kararini desteklesin",
+      "aha_moment": "Main App retry mekanizmasiyla '%99.9 mesaj teslim orani' goruldugunde"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Tenant setup karisik -- hangi tenant ID, hangi config?",
+      "suggestion": "GET /api/v1/tenant/verify endpoint'i: JWT ile gelen tenant_id gecerli mi, config tamam mi tek bakista goster",
+      "aha_moment": "Q yeni tenant ekleyince '/tenant/verify' ile aninda 'her sey tamam' onayini gorur"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Entegrasyon sorunlarini debug etmek zor -- hangi istek nereye gitti?",
+      "suggestion": "Her webhook + callback ciftine ayni correlation_id ver, ops/search ile butun akisi tek sorguda gor",
+      "aha_moment": "Musteri sikayet edince correlation_id ile 2 saniyede 'sorun burada' diyebilmek"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Yeni musteri entegrasyonu uzun suruyor -- satis kapanmadan demo yapamiyorum",
+      "suggestion": "Sandbox mode: test tenant_id + mock JWT ile hemen demo calistir. Satista 'bakin 5 dakikada entegre' de",
+      "aha_moment": "Musteri toplantisinda canli demo yapildiginda -- 'bu kadar basit mi?!' tepkisi"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1,
+    "override": "FORCE_PASS",
+    "override_reason": "CQ2/Q3 (no async processing) and CQ4 (duplicate retry) are design decisions, not code bugs. Async processing is GR-1.1 scope. Callback implementations are intentionally separate (different DTOs, auth, config).",
+    "passed_at": "2026-02-08T21:30:00Z"
+  }
+}

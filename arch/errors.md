@@ -21,6 +21,7 @@ INV-{SERVICE}-{NUMBER}
 | BE | Backend | Backend API hataları |
 | CA | ChatAnalysis | Chat Analysis microservice hataları |
 | AUTH | Auth | Authentication hataları |
+| INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
 | DB | Database | Veritabanı hataları |
 | VAL | Validation | Validasyon hataları |
 | EXT | External | Dış servis hataları |
@@ -90,6 +91,17 @@ INV-{SERVICE}-{NUMBER}
 | INV-VAL-001 | Invalid format | Geçersiz format: {field} |
 | INV-VAL-002 | Required field | Zorunlu alan: {field} |
 | INV-VAL-003 | Out of range | Değer geçerli aralıkta değil: {field} |
+
+---
+
+## INT - Integration Errors (GR-1.9)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-INT-001 | Webhook payload invalid | Geçersiz webhook formatı. |
+| INV-INT-002 | Callback to Main App failed | Main App'e bildirim gönderilemedi. |
+| INV-INT-003 | Unknown webhook event type | Bilinmeyen event tipi. |
+| INV-INT-004 | Tenant not found in registry | Bu tenant kayıtlı değil. |
 
 ---
 
