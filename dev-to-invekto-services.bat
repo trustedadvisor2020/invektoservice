@@ -12,7 +12,7 @@ for /f "tokens=1-4 delims=:,. " %%a in ("%START_TIME%") do (
 echo.
 echo ============================================
 echo    INVEKTO - DEV to STAGING Deploy
-echo    Target: 213.142.143.202
+echo    Target: services.invekto.com
 echo ============================================
 echo.
 
@@ -20,17 +20,19 @@ REM ============================================
 REM Configuration
 REM ============================================
 set "WINSCP_PATH=C:\Program Files (x86)\WinSCP\WinSCP.com"
-set "FTP_HOST=213.142.143.202"
+set "FTP_HOST=services.invekto.com"
 set "FTP_USER=arkin-2024.i2025"
 set "FTP_PASS=O2SZ0U4so5tSr5FgLqT19TE"
-set "REMOTE_BACKEND=/Backend/current"
-set "REMOTE_CHATANALYSIS=/ChatAnalysis/current"
+set "REMOTE_BACKEND=/e/Invekto/Backend/current"
+set "REMOTE_CHATANALYSIS=/e/Invekto/ChatAnalysis/current"
+set "REMOTE_AUTOMATION=/e/Invekto/Automation/current"
 
 REM Local paths
 set "SRC_DIR=%~dp0"
 set "LOCAL_DEPLOY=%~dp0deploy_output"
 set "LOCAL_BACKEND=%LOCAL_DEPLOY%\Backend"
 set "LOCAL_CHATANALYSIS=%LOCAL_DEPLOY%\ChatAnalysis"
+set "LOCAL_AUTOMATION=%LOCAL_DEPLOY%\Automation"
 
 REM Check WinSCP exists
 if not exist "!WINSCP_PATH!" (
@@ -43,9 +45,10 @@ REM Create local deploy folders
 if not exist "!LOCAL_DEPLOY!" mkdir "!LOCAL_DEPLOY!"
 if not exist "!LOCAL_BACKEND!" mkdir "!LOCAL_BACKEND!"
 if not exist "!LOCAL_CHATANALYSIS!" mkdir "!LOCAL_CHATANALYSIS!"
+if not exist "!LOCAL_AUTOMATION!" mkdir "!LOCAL_AUTOMATION!"
 
 echo ============================================
-echo [1/3] Building Backend...
+echo [1/4] Building Backend...
 echo ============================================
 echo.
 
@@ -59,7 +62,7 @@ echo [OK] Backend built to !LOCAL_BACKEND!
 echo.
 
 echo ============================================
-echo [2/3] Building ChatAnalysis...
+echo [2/4] Building ChatAnalysis...
 echo ============================================
 echo.
 
@@ -71,15 +74,28 @@ if errorlevel 1 (
 echo [OK] ChatAnalysis built to !LOCAL_CHATANALYSIS!
 echo.
 
+echo ============================================
+echo [3/4] Building Automation...
+echo ============================================
+echo.
+
+dotnet publish src/Invekto.Automation/Invekto.Automation.csproj -c Release -o "!LOCAL_AUTOMATION!" --self-contained false
+if errorlevel 1 (
+    echo [ERROR] Automation build failed!
+    goto :error_exit
+)
+echo [OK] Automation built to !LOCAL_AUTOMATION!
+echo.
+
 REM Q: Create build marker
 for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
 for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
 echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
 echo.
 
 echo ============================================
-echo [3/5] Stopping Remote Services...
+echo [4/6] Stopping Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-stop.flag to trigger service shutdown...
@@ -91,8 +107,8 @@ set "WINSCP_STOP=%TEMP%\winscp_stop.txt"
 (
     echo option batch abort
     echo option confirm off
-    echo open ftp://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30
-    echo put "%TEMP%\deploy-stop.flag" "/"
+    echo open ftpes://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30 -certificate=*
+    echo put "%TEMP%\deploy-stop.flag" "/e/Invekto/"
     echo exit
 ) > "!WINSCP_STOP!"
 
@@ -101,18 +117,20 @@ del "!WINSCP_STOP!" 2>nul
 del "%TEMP%\deploy-stop.flag" 2>nul
 
 echo [OK] Stop flag sent
-echo Waiting 10 seconds for services to stop...
-timeout /t 5 /nobreak >nul
+echo Waiting 10 seconds for watcher to stop services...
+timeout /t 10 /nobreak >nul
 
 echo.
 echo ============================================
-echo [4/5] Uploading to STAGING Server...
+echo [5/6] Uploading to STAGING Server...
 echo ============================================
 echo.
 echo Local Backend:      !LOCAL_BACKEND!
 echo Local ChatAnalysis: !LOCAL_CHATANALYSIS!
+echo Local Automation:   !LOCAL_AUTOMATION!
 echo Remote Backend:     %REMOTE_BACKEND%
 echo Remote ChatAnalysis: %REMOTE_CHATANALYSIS%
+echo Remote Automation:  %REMOTE_AUTOMATION%
 echo.
 echo Mode: Synchronize (only changed files)
 
@@ -121,15 +139,17 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo option batch continue
     echo option confirm off
     echo option reconnecttime 5
-    echo open ftp://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30
+    echo open ftpes://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30 -certificate=*
     echo option batch abort
     echo option reconnecttime 5
     echo echo Uploading Backend to STAGING...
-    echo synchronize remote "!LOCAL_BACKEND!" "%REMOTE_BACKEND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on
+    echo synchronize remote "!LOCAL_BACKEND!" "%REMOTE_BACKEND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading ChatAnalysis to STAGING...
-    echo synchronize remote "!LOCAL_CHATANALYSIS!" "%REMOTE_CHATANALYSIS%" -mirror -transfer=binary -criteria=size,time -resumesupport=on
+    echo synchronize remote "!LOCAL_CHATANALYSIS!" "%REMOTE_CHATANALYSIS%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+    echo echo Uploading Automation to STAGING...
+    echo synchronize remote "!LOCAL_AUTOMATION!" "%REMOTE_AUTOMATION%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading build marker...
-    echo put "!LOCAL_DEPLOY!\.build-marker.json" "/"
+    echo put "!LOCAL_DEPLOY!\.build-marker.json" "/e/Invekto/"
     echo exit
 ) > "!WINSCP_SCRIPT!"
 
@@ -147,7 +167,7 @@ echo [OK] FTP upload completed
 
 echo.
 echo ============================================
-echo [5/5] Starting Remote Services...
+echo [6/6] Starting Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-start.flag to trigger service startup...
@@ -159,8 +179,8 @@ set "WINSCP_START=%TEMP%\winscp_start.txt"
 (
     echo option batch abort
     echo option confirm off
-    echo open ftp://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30
-    echo put "%TEMP%\deploy-start.flag" "/"
+    echo open ftpes://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30 -certificate=*
+    echo put "%TEMP%\deploy-start.flag" "/e/Invekto/"
     echo exit
 ) > "!WINSCP_START!"
 
@@ -193,15 +213,16 @@ echo.
 echo Deployed to: %FTP_HOST%
 echo   Backend:      %REMOTE_BACKEND%
 echo   ChatAnalysis: %REMOTE_CHATANALYSIS%
+echo   Automation:   %REMOTE_AUTOMATION%
 echo.
 echo ============================================
 echo NEXT STEPS (on STAGING server):
 echo ============================================
 echo   1. Copy appsettings.Production.json to both current folders
-echo   2. Run: D:\Invekto\scripts\restart-services.bat
-echo   3. Test: http://213.142.143.202:5000/health
+echo   2. Run: E:\Invekto\scripts\restart-services.bat
+echo   3. Test: http://services.invekto.com:5000/health
 echo.
-echo First time? Run: D:\Invekto\scripts\install-services.bat
+echo First time? Run: E:\Invekto\scripts\install-services.bat
 echo.
 endlocal
 exit /b 0

@@ -1,9 +1,30 @@
 # Invekto — Senaryo Portföyü & Outbound Engine
 
 > Ana dosya: [roadmap.md](roadmap.md)
-> Bu dosya: 10 revenue senaryosu (2 niche) + 75 saha senaryosu (3 sektör) + E-ticaret & Sağlık senaryoları detay + Outbound Engine kritik bulgusu ve gereksinimleri
+> Bu dosya: 10 revenue senaryosu (3 niche) + 75 saha senaryosu (3 sektör) + 10 otel senaryosu + 5 mobil senaryo + E-ticaret & Sağlık senaryoları detay + Outbound Engine kritik bulgusu ve gereksinimleri
 > Güncelleme: v2 — 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + capability mapping eklendi
 > Güncelleme: v3 — 3 niche ortak capability analizi eklendi (2026-02-08)
+> **Güncelleme: Mevcut ürün gerçekliği ile yeniden çerçevelendi (2026-02-08)**
+> Referans: [whatisinvekto.md](whatisinvekto.md) — Invekto mevcut ürün envanteri
+
+---
+
+## Mevcut Ürün Gerçekliği
+
+- Invekto **50+ aktif müşteri** ile çalışıyor
+- **7 kanal** (WA Cloud API, WA BSP, IG DM, FB Messenger, Telegram, SMS, VOIP) Unified Inbox **mevcut**
+- **Gelişmiş routing** (4 algoritma, grup bazlı, kanal bazlı) **mevcut**
+- **Şablon mesajlar**, **CRM** (contact, etiket, 10 custom field), **VOIP** **mevcut**
+- **Raporlama** (mesaj, agent performans, kanal dağılımı) **mevcut**
+- Müşteri tabanı ağırlıklı: **sağlık klinikleri + otel/turizm** (e-ticaret = yeni niche)
+
+**Senaryo öncelikleri:**
+1. **Mevcut müşteri senaryoları ÖNCELİKLİ** — sağlık + otel müşterileri zaten var
+2. **Core otomasyon TÜM senaryolara fayda sağlar** — chatbot, AI assist, broadcast
+3. **E-ticaret niche = yeni müşteri kazanım** — Trendyol/HB API Phase 2'de
+4. **Outbound Engine Phase 1'de** — 10 senaryodan 7'si outbound gerektiriyor
+
+> Detaylı mevcut durum: bkz [whatisinvekto.md](whatisinvekto.md)
 
 ---
 
@@ -79,40 +100,55 @@ INVEKTO PLATFORM
 
 ### Phase Bazlı Capability Devreye Alma (3 Niche Paralel)
 
-| Phase | Ortak | E-ticaret Özel | Diş Özel | Estetik Özel |
+> C1 (Inbox), C2 (Routing), C3 (Templates) **ZATEN MEVCUT** Invekto'da.
+> Phase 1'deki asıl iş: **Otomasyon (chatbot/trigger) + AI Assist + Outbound (broadcast)** eklemek.
+> Bu 3 yeteneğin TÜM sektörlere eşzamanlı faydası var.
+
+| Phase | Ortak (InvektoServis) | E-ticaret Özel | Diş Özel | Estetik Özel |
 |-------|-------|----------------|----------|--------------|
-| **1** | C1, C2, C3, C8 (temel) | C11 (Trendyol API) | Randevu motoru (basit) | Lead tracking (basit) |
-| **2** | Outbound v1 | İade çevirme, B2B lead | Randevu v2, no-show engine | Lead scoring, ads attribution (basit), multi-lang v1 |
-| **3** | C7 (Knowledge), AgentAI | Yorum kurtarma, iade v2 | Tedavi knowledge, KVKK | Revenue agent, full ads attribution, multi-lang v2 |
-| **4** | Auth, Audit, PII | Enterprise security | KVKK compliance tam | Medikal turizm |
-| **5** | Revenue Agent tam | Cart recovery, cross-sell | Yorum motoru, referans | Medikal turizm tam, AR dil |
+| **Mevcut** | **C1, C2, C3 zaten Invekto'da** | — | — | — |
+| **1** | **Automation (chatbot/trigger) + C8 (AI Assist) + Outbound (broadcast)** | Intent seti: kargo, iade, sipariş | Fiyat sorusu AI + no-show hatırlatma (basit) | Lead tracking (basit) |
+| **2** | Outbound v2 (follow-up zinciri, schedule) | Trendyol/HB API, iade çevirme, B2B lead, C11 tam | Randevu motoru, tedavi takip | Lead scoring, ads attribution (basit), multi-lang v1 |
+| **3** | C7 (Knowledge/RAG), AgentAI derinleştirme, multi-lang (TR/EN) | Yorum kurtarma, iade v2 | Tedavi knowledge | Multi-lang v2 (TR/EN) |
+| **4** | Auth genişleme (SSO), Audit, PII | Enterprise security | KVKK compliance tam | Enterprise security, KVKK |
+| **5** | Revenue Agent tam | Cart recovery, cross-sell | Tedavi takip tam, yorum motoru, referans | Revenue agent, full ads attribution, medikal turizm tam, AR dil |
 
 ### Niche Bazlı Senaryo Öncelikleri (Phase 1-2 İçin)
 
-**E-ticaret — İlk 5 Senaryo:**
-1. Kargom nerede (E01) — Phase 1 launch
+> **ÖNCELİK SIRASI:**
+> 1. Diş + Estetik senaryoları = **MEVCUT MÜŞTERİ** → upsell + churn azaltma
+> 2. E-ticaret senaryoları = **YENİ MÜŞTERİ** kazanım
+> 3. Core otomasyon (chatbot, AI assist, broadcast) = **HERKESE** fayda
+>
+> **⚠️ "Phase 1 launch" = KISMİ CAPABILITY İLE BAŞLAR:**
+> Aşağıdaki senaryolar Phase 1'de core capability (C1+C2+C3+C8) ile başlatılır.
+> Senaryo capability mapping'indeki ileri yetenekler (C7, C10, C11, C12, C13) sonraki phase'lerde
+> aşamalı eklenir. "Phase 1 launch" ≠ "tüm capability'ler hazır", = "müşteriye değer vermeye başla."
+
+**Diş — İlk 5 Senaryo (⚡ MEVCUT MÜŞTERİ — ÖNCELİKLİ):**
+1. Fiyat sorusu (D26) — Phase 1 launch ← **AI Assist ile hemen fayda**
+2. Randevu alma (D28) — Phase 1 launch ← **Chatbot flow ile otomatik**
+3. No-show önleme (D40) — Phase 1 launch ← **Outbound hatırlatma**
+4. Acil triage (D34) — Phase 2
+5. Tedavi bilgisi (D29) — Phase 2
+
+**Estetik — İlk 5 Senaryo (⚡ MEVCUT MÜŞTERİ — ÖNCELİKLİ):**
+1. Fiyat sorusu Instagram DM (A51) — Phase 1 launch ← **AI Assist ile hemen fayda**
+2. DM→WhatsApp geçiş (A53) — Phase 1 launch
+3. Before/after fotoğraf (A52) — Phase 1 launch
+4. Lead follow-up (A54) — Phase 2 ← **Outbound follow-up**
+5. Yabancı hasta (A55) — Phase 2
+
+**E-ticaret — İlk 5 Senaryo (YENİ MÜŞTERİ KAZANIM):**
+1. Kargom nerede (E01) — Phase 1 launch ← **AI Assist + template**
 2. İade talebi (E02/E03) — Phase 2
 3. B2B/toptan lead (S5) — Phase 2
 4. Fatura talebi — Phase 2
 5. Sipariş iptal — Phase 2
 
-**Diş — İlk 5 Senaryo:**
-1. Fiyat sorusu (D26) — Phase 1 launch
-2. Randevu alma (D28) — Phase 1 launch
-3. No-show önleme (D40) — Phase 1 launch
-4. Acil triage (D34) — Phase 2
-5. Tedavi bilgisi (D29) — Phase 2
-
-**Estetik — İlk 5 Senaryo:**
-1. Fiyat sorusu Instagram DM (A51) — Phase 1 launch
-2. DM→WhatsApp geçiş (A53) — Phase 1 launch
-3. Before/after fotoğraf (A52) — Phase 1 launch
-4. Lead follow-up (A54) — Phase 2
-5. Yabancı hasta (A55) — Phase 2
-
 ---
 
-## Senaryo Portföyü (10 Senaryo — 2 Niche)
+## Senaryo Portföyü (10 Senaryo — 3 Niche)
 
 > Roadmap sadece "kargom nerede" senaryosuna değil, 10 farklı revenue senaryosuna dayanıyor.
 > Her senaryo test edilmiş Hormozi değer denklemine uygun.
@@ -324,22 +360,29 @@ Ayda 3 B2B lead × %50 tespit (daha önce kaçıyordu)
 
 ---
 
-### Sağlık Senaryoları (Niche 2: Klinikler — Phase 3-4+)
+### Sağlık Senaryoları (Niche 2: Klinikler — Mevcut Müşteriler)
 
-| # | Senaryo | Tetikleyici | AI Aksiyonu | Aylık Etki (5 klinik) | Roadmap Phase |
-|---|---------|-------------|-------------|----------------------|---------------|
-| S6 | **Fiyat → Randevu Dönüşümü** | "İmplant ne kadar?" | Fiyat aralığı + ücretsiz muayene teklifi + slot öner | ~60K TL | Phase 3-4 |
-| S7 | **No-Show Önleme** | Randevu T-48h, T-2h | Otomatik hatırlatma + onay iste + iptal slot'u doldur | ~135K TL | Phase 3-4 |
-| S8 | **Tedavi Sonrası Takip** | Tedavi tamamlandı | T+1, T+7, T+30 kontrol soruları → şikayet varsa doktora alert | ~90K TL | Phase 4-5 |
-| S9 | **Medikal Turizm Lead Yönetimi** | İngilizce/Arapça mesaj | Multi-language AI → fiyat + konaklama + transfer teklifi | ~300K+ TL | Phase 4-5 |
-| S10 | **Google Yorum + Referans Motoru** | Tedavi başarılı + hasta memnun | Yorum rica → link gönder → referans kodu → arkadaş getir kampanyası | ~105K TL | Phase 4-5 |
+> Sağlık klinik müşterileri ZATEN VAR. Core otomasyon tüm sektörlere aynı anda fayda sağlar.
+> Niche-özel özellikler (randevu motoru, KVKK) Phase 2'de.
+
+| # | Senaryo | Tetikleyici | AI Aksiyonu | Aylık Etki (5 klinik) | Phase |
+|---|---------|-------------|-------------|----------------------|-------|
+| S6 | **Fiyat → Randevu Dönüşümü** | "İmplant ne kadar?" | Fiyat aralığı + ücretsiz muayene teklifi + slot öner | ~60K TL | Phase 1-2 |
+| S7 | **No-Show Önleme** | Randevu T-48h, T-2h | Otomatik hatırlatma + onay iste + iptal slot'u doldur | ~135K TL | Phase 1-2 |
+| S8 | **Tedavi Sonrası Takip** | Tedavi tamamlandı | T+1, T+7, T+30 kontrol soruları → şikayet varsa doktora alert | ~90K TL | Phase 2 (basit hatırlatma) / Phase 5 (tam otomasyon) |
+| S9 | **Medikal Turizm Lead Yönetimi** | İngilizce/Arapça mesaj | Multi-language AI → fiyat + konaklama + transfer teklifi | ~300K+ TL | Phase 5 |
+| S10 | **Google Yorum + Referans Motoru** | Tedavi başarılı + hasta memnun | Yorum rica → link gönder → referans kodu → arkadaş getir kampanyası | ~105K TL | Phase 5 |
 
 ---
 
 ## Sağlık Niche — Hedef Avatar
 
+> Dr. Ayşe, **Invekto'nun mevcut müşteri profiline** uyuyor.
+> Sağlık klinik müşterileri zaten var. Aşağıdaki avatar, mevcut müşterilerin tipik profilini temsil ediyor.
+> Bu senaryolar mevcut müşteriye **upsell** (AI/otomasyon) fırsatıdır.
+
 ```
-İsim: Dr. Ayşe
+İsim: Dr. Ayşe (Mevcut müşteri profili)
 İş: İstanbul'da 3 koltuklu özel diş kliniği
 Ekip: 1 resepsiyonist, 2 asistan
 WhatsApp durumu:
@@ -595,14 +638,22 @@ Toplam: 105.000 TL/ay. Invekto 10.000 TL → 10.5x ROI
 
 ---
 
-## Kritik Bulgu: OUTBOUND ENGINE Eksik
+## Kritik Bulgu: OUTBOUND ENGINE Eksik — Phase 1'de Çözülecek
+
+> Outbound Engine Phase 1'de yapılacak.
+> Sebebi: Broadcast = müşterilerin **#1 top 3 talebi**. Mevcut Invekto **sadece tek tek mesaj** gönderebiliyor.
+> Toplu mesaj, zamanlı gönderim, follow-up otomasyonu = YOK. Bu senaryoların %70'ini engeller.
+> `Invekto.Outbound` (:7107) servisi Phase 1'de doğacak.
 
 ```
-MEVCUT ROADMAP = %100 INBOUND
-  Müşteri yazar → AI cevap verir
+MEVCUT INVEKTO:
+  ✅ Inbound: Unified Inbox, 7 kanal, routing, templates
+  ❌ Outbound: Sadece tek tek mesaj gönderimi (broadcast YOK)
+  ❌ Otomasyon: Welcome mesajı dışında trigger YOK
+  ❌ AI: Agent Assist / chatbot / auto-resolution YOK
 
-EKSİK OLAN = OUTBOUND
-  AI proaktif olarak müşteriye ulaşır
+EKSİK OLAN = OUTBOUND + OTOMASYON (Phase 1'de çözülecek)
+  AI + Outbound = proaktif olarak müşteriye ulaşır
 
 10 senaryodan 7'si OUTBOUND gerektiriyor:
   S1  Yorum kurtarma        → Outbound (AI müşteriye ulaşır)
@@ -618,15 +669,21 @@ OUTBOUND ENGINE olmazsa:
   → Sadece "soruya cevap veren AI" olursun (commodity)
   → Hormozi'nin "proaktif değer yarat" ilkesi ihlal edilir
 
-OUTBOUND ENGINE = Phase 2-3'te kritik bileşen
+OUTBOUND ENGINE = Phase 1'de Invekto.Outbound (:7107)
+  → Broadcast + zamanlı mesaj + toplu gönderim
+  → WhatsApp template compliance zorunlu
+  → Trigger sistemi Phase 1'de temel, Phase 2'de gelişmiş
 ```
 
 ---
 
 ## Outbound Engine Gereksinimleri
 
+> Outbound Engine `Invekto.Outbound` (:7107) olarak Phase 1'de doğacak.
+> Phase 1 = temel broadcast + trigger. Phase 2 = gelişmiş follow-up + zincir.
+
 ```
-Outbound Engine (Phase 2'de temel, Phase 3'te tam):
+Outbound Engine (Phase 1'de temel, Phase 2'de gelişmiş):
 
 1. Trigger Engine
    ├── Event-based: sipariş teslim edildi, yorum geldi, randevu yaklaşıyor
@@ -661,9 +718,12 @@ Outbound Engine (Phase 2'de temel, Phase 3'te tam):
 ---
 
 # ============================================================
-# 75 SAHA SENARYOSU (invektoV2 — TAM LİSTE, DEĞİŞTİRİLMEDEN)
+# 75 SAHA SENARYOSU (invektoV2 — TAM LİSTE)
 # Kaynak: ideas/invektoV2.md
 # 25 E-ticaret + 25 Diş + 25 Klinik/Estetik
+#
+# Phase referansları v4.0 roadmap'e göredir.
+# Mevcut Invekto yetenekleri: bkz whatisinvekto.md
 # ============================================================
 
 INVEKTO (WapCRM) — 3 SEKTÖR / 75 GERÇEK SENARYO + CAPABILITY MAPPING + PROS/CONS
@@ -782,15 +842,16 @@ A) Bugün ne kadarını yapıyor?
    - C1 inbox + C2 routing + C3 hazır yanıtlarla temsilci hızlanır
    - Sipariş verisi otomatik çekilmediği için temsilci manuel bakar (entegrasyon yoksa)
 B) Phase-1 ile ne olur?
-   - C11 (Trendyol/Shopify) sipariş+takip sidebar → 1 tık takip linki
    - C8 Agent Assist: 'takip + gecikme özrü' hazır metin + doğru sipariş çekimi
-C) Phase-2/3 gerektiren
-   - C9 Auto-Resolution: 'kargo nerede' intentini otonom yanıtla
-   - C12 attribution: kampanya kaynağına göre mesaj tonu/kupon
-   - C6 enterprise güvenlik (kurumsal satıcı için)
+C) Phase-2+ gerektiren
+   - C11 (Trendyol/Shopify) sipariş+takip sidebar → 1 tık takip linki (Phase 2)
+   - C9 Auto-Resolution: 'kargo nerede' intentini otonom yanıtla (Phase 3)
+   - C12 attribution: kampanya kaynağına göre mesaj tonu/kupon (Phase 2 basit / Phase 5 tam)
+   - C6 enterprise güvenlik (kurumsal satıcı için) (Phase 4)
 
 Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C11, C8
+   - Phase 1 başlangıç: C1, C2, C3, C8 (template + AI Assist ile kargo bilgisi)
+   - Tam set: C1, C2, C3, C8, C11 (+ Trendyol/HB API ile otomatik tracking — Phase 2)
 
 Öneri
    - Takip linkini ve kargo SLA bilgisini 'utility' içerikte tut (spam/marketing değil)
@@ -831,11 +892,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -880,10 +941,10 @@ A) Bugün ne kadarını yapıyor?
    - C2 routing ile 'şikayet' etiketiyle uzman agent'e gider
 B) Phase-1 ile ne olur?
    - C8 'de-eskalasyon' cevap önerisi + doğru süreç metni (platforma göre)
-   - C7 policy+SOP kaynaklı cevap; temsilci sallamaz
-C) Phase-2/3 gerektiren
+C) Phase-2+ gerektiren
+   - C11 entegrasyonla iade state ve gerekçe otomatik çekilir (Phase 2)
+   - C7 policy+SOP kaynaklı cevap; temsilci sallamaz (Phase 3)
    - C13 mining: en çok kriz çıkaran kalıplar + QA
-   - C11 entegrasyonla iade state ve gerekçe otomatik çekilir
 
 Gerekli yetenekler (capability mapping)
    - C1, C2, C3, C7, C8, C13, C11
@@ -925,11 +986,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -972,11 +1033,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1019,11 +1080,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1066,11 +1127,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1113,11 +1174,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1160,11 +1221,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1207,11 +1268,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1254,11 +1315,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1301,11 +1362,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1348,11 +1409,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1395,11 +1456,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1442,11 +1503,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1490,11 +1551,11 @@ A) Bugün ne kadarını yapıyor?
    - C3 şablon ile standart yanıt mümkün
    - C4 raporla bu soruların hacmi görülür
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile 'iade politikası' tek kaynak; cevap kaynaklı gider
    - C8 agent assist, müşteri mesajından intent→ doğru politika paragrafını önerir
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution iade sorularını otonom çözer
-   - C11 iade durumu canlı çekilir (platform entegrasyonlarına bağlı)
+C) Phase-2+ gerektiren
+   - C11 iade durumu canlı çekilir (platform entegrasyonlarına bağlı) (Phase 2)
+   - C7 knowledge ile 'iade politikası' tek kaynak; cevap kaynaklı gider (Phase 3)
+   - C9 auto-resolution iade sorularını otonom çözer (Phase 3)
 
 Gerekli yetenekler (capability mapping)
    - C3, C7, C8, C4
@@ -1536,11 +1597,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1583,11 +1644,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1630,11 +1691,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1677,11 +1738,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1724,11 +1785,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1771,11 +1832,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1818,11 +1879,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1865,11 +1926,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1912,11 +1973,11 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart yanıt
 B) Phase-1 ile ne olur?
-   - C7 knowledge ile tutarlılık
-   - C11 entegrasyon varsa veri çekimi
    - C8 cevap önerisi
-C) Phase-2/3 gerektiren
-   - C9 otonom çözüm (uygunsa)
+C) Phase-2+ gerektiren
+   - C11 entegrasyon varsa veri çekimi (Phase 2)
+   - C7 knowledge ile tutarlılık (Phase 3)
+   - C9 otonom çözüm (uygunsa) (Phase 3)
    - C13 kalite/tema analizi
 
 Gerekli yetenekler (capability mapping)
@@ -1959,14 +2020,15 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
-   - C13: kalite skoru + kaçan lead analizi
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
+   - C13: kalite skoru + kaçan lead analizi (Phase 6)
 
 Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C7, C8
+   - Phase 1 başlangıç: C1, C2, C3, C8 (konfigüre fiyat aralıkları + AI Assist)
+   - Tam set: C1, C2, C3, C7, C8 (+ Knowledge base — Phase 3)
 
 Öneri
    - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
@@ -2004,10 +2066,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2049,11 +2111,11 @@ A) Bugün ne kadarını yapıyor?
    - C1 inbox + yönlendirme ile hızlı dönüş
    - Şablonlarla standart soru seti
 B) Phase-1 ile ne olur?
-   - C10 revenue agent: slot önerisi + teyit + kapora linki (hedef)
    - C8: next-best-question (işlem, süre, lokasyon)
-C) Phase-2/3 gerektiren
-   - Takvim/klinik yazılımı entegrasyonu
-   - C9: basit randevu niyetli mesajları otonom yönetme (riskli, kontrollü)
+C) Phase-2+ gerektiren
+   - Takvim/klinik yazılımı entegrasyonu (Phase 2)
+   - C9: basit randevu niyetli mesajları otonom yönetme (riskli, kontrollü) (Phase 3)
+   - C10 revenue agent: slot önerisi + teyit + kapora linki (Phase 5)
 
 Gerekli yetenekler (capability mapping)
    - C1, C2, C3, C8, C10
@@ -2095,10 +2157,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2140,10 +2202,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2185,10 +2247,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2230,10 +2292,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2276,11 +2338,11 @@ A) Bugün ne kadarını yapıyor?
    - C1 inbox + dosya yönetimi var ama enterprise kontrol eksik kalabilir
    - Maskeleme var ama sağlık verisi için süreç/aydınlatma gerektirir
 B) Phase-1 ile ne olur?
-   - C6: audit log + erişim kontrol + retention policy (hedef)
-   - C7: onam/aydınlatma metinlerini knowledge'dan kaynaklı gönderme
    - C8: temsilciye 'hasta verisi isteme/almada uyarı'
-C) Phase-2/3 gerektiren
-   - Hasta verisini CRM/EMR ile entegre güvenli arşivleme
+C) Phase-2+ gerektiren
+   - C7: onam/aydınlatma metinlerini knowledge'dan kaynaklı gönderme (Phase 3)
+   - C6: audit log + erişim kontrol + retention policy (Phase 4)
+   - Hasta verisini CRM/EMR ile entegre güvenli arşivleme (Phase 4)
    - C13: compliance QA kontrolleri
 
 Gerekli yetenekler (capability mapping)
@@ -2323,10 +2385,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2368,10 +2430,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2413,10 +2475,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2458,10 +2520,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2503,10 +2565,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2548,10 +2610,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2593,11 +2655,11 @@ A) Bugün ne kadarını yapıyor?
    - C1 inbox + yönlendirme ile hızlı dönüş
    - Şablonlarla standart soru seti
 B) Phase-1 ile ne olur?
-   - C10 revenue agent: slot önerisi + teyit + kapora linki (hedef)
    - C8: next-best-question (işlem, süre, lokasyon)
-C) Phase-2/3 gerektiren
-   - Takvim/klinik yazılımı entegrasyonu
-   - C9: basit randevu niyetli mesajları otonom yönetme (riskli, kontrollü)
+C) Phase-2+ gerektiren
+   - Takvim/klinik yazılımı entegrasyonu (Phase 2)
+   - C9: basit randevu niyetli mesajları otonom yönetme (riskli, kontrollü) (Phase 3)
+   - C10 revenue agent: slot önerisi + teyit + kapora linki (Phase 5)
 
 Gerekli yetenekler (capability mapping)
    - C1, C2, C3, C8, C10
@@ -2639,10 +2701,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2684,10 +2746,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2729,10 +2791,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2774,10 +2836,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2819,10 +2881,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2864,10 +2926,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2909,10 +2971,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2954,10 +3016,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -2999,10 +3061,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -3044,10 +3106,10 @@ A) Bugün ne kadarını yapıyor?
    - C1+C2 ile ekip paylaşımı
    - C3 ile standart bilgi (genel fiyat aralığı)
 B) Phase-1 ile ne olur?
-   - C7: SSS + prosedür açıklamaları
    - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2/3 gerektiren
-   - C10: ödeme/kapora + follow-up
+C) Phase-2+ gerektiren
+   - C7: SSS + prosedür açıklamaları (Phase 3)
+   - C10: ödeme/kapora + follow-up (Phase 5)
    - C13: kalite skoru + kaçan lead analizi
 
 Gerekli yetenekler (capability mapping)
@@ -3092,14 +3154,15 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
-   - C13 mining: en çok dönüşüm getiren script
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
+   - C13 mining: en çok dönüşüm getiren script (Phase 6)
 
 Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C4, C8, C10, C12
+   - Phase 1 başlangıç: C1, C2, C3, C4, C8 (lead tracking + AI Assist + basit raporlama)
+   - Tam set: C1, C2, C3, C4, C8, C10, C12 (+ Revenue Agent Phase 5, + Ads Attribution Phase 2/5)
 
 Öneri
    - IG DM için 3 adımlı script: 1) ihtiyacı netle 2) güven kanıtı 3) WhatsApp'a geç ve slot öner
@@ -3143,10 +3206,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3194,10 +3257,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3245,10 +3308,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3296,10 +3359,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3347,10 +3410,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3398,10 +3461,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3449,10 +3512,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3500,10 +3563,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3551,10 +3614,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3602,10 +3665,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3651,11 +3714,11 @@ A) Bugün ne kadarını yapıyor?
    - C1 inbox + rol bazlı erişim var ama enterprise seviyede audit/retention eksik olabilir
    - Maskeleme mekanizmaları sınırlı kalabilir
 B) Phase-1 ile ne olur?
-   - C6 güvenlik seti (audit/retention) planlanmalı
-   - C7 knowledge ile aydınlatma metni + rıza akışı
    - C8 uyarı: 'foto istemeden önce onam'
-C) Phase-2/3 gerektiren
-   - Güvenli arşiv + silme talepleri (DSAR) yönetimi
+C) Phase-2+ gerektiren
+   - C7 knowledge ile aydınlatma metni + rıza akışı (Phase 3)
+   - C6 güvenlik seti (audit/retention) (Phase 4)
+   - Güvenli arşiv + silme talepleri (DSAR) yönetimi (Phase 4)
    - C13 compliance QA
 
 Gerekli yetenekler (capability mapping)
@@ -3701,10 +3764,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3750,11 +3813,11 @@ A) Bugün ne kadarını yapıyor?
    - C3 template desteği ile pencere dışı iletişim yönetilebilir (doğru kategori)
    - C4 ile yanıt gecikmesi raporlanır
 B) Phase-1 ile ne olur?
-   - C12 attribution ile geciken lead'leri önceliklendir
    - C8 agent assist follow-up metni + compliance uyarısı
-C) Phase-2/3 gerektiren
-   - C10 revenue agent: otomatik follow-up + randevu teklif
-   - C6 enterprise security + audit (özellikle sağlık verisi)
+C) Phase-2+ gerektiren
+   - C12 attribution ile geciken lead'leri önceliklendir (Phase 2 basit / Phase 5 tam)
+   - C6 enterprise security + audit (özellikle sağlık verisi) (Phase 4)
+   - C10 revenue agent: otomatik follow-up + randevu teklif (Phase 5)
 
 Gerekli yetenekler (capability mapping)
    - C3, C4, C8, C12
@@ -3800,10 +3863,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3851,10 +3914,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3902,10 +3965,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -3953,10 +4016,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4004,10 +4067,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4055,10 +4118,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4106,10 +4169,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4157,10 +4220,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4208,10 +4271,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4259,10 +4322,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4310,10 +4373,10 @@ A) Bugün ne kadarını yapıyor?
    - C4 raporla gecikme görünür
 B) Phase-1 ile ne olur?
    - C8 agent assist: doğru soruları öner + güven metinleri
-   - C10 revenue agent: kapora + randevu
-   - C12 attribution: iyi lead kaynağını gör
-C) Phase-2/3 gerektiren
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla
+C) Phase-2+ gerektiren
+   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
+   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
+   - C10 revenue agent: kapora + randevu (Phase 5)
    - C13 mining: en çok dönüşüm getiren script
 
 Gerekli yetenekler (capability mapping)
@@ -4332,14 +4395,234 @@ Cons
    - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
 
 ============================================================
+D-EK) OTEL/TURİZM SENARYOLARI (10 senaryo — MEVCUT MÜŞTERİ)
+============================================================
+
+> **Neden ek bölüm?** 75 saha senaryosu 3 niche'e (e-ticaret, diş, estetik) ayrılmıştı.
+> Otel/turizm müşterileri ZATEN mevcut tabanın parçası ama ayrı senaryo seti yoktu.
+> Core otomasyon (Phase 1) tüm otellere fayda sağlar. Niche-özel = PMS entegrasyonu (Phase 2, basit).
+> Bu senaryolar mevcut otel müşterilerine upsell ve yeni otel müşterisi kazanım için.
+
+AVATAR: [O1] Ahmet — Otel Genel Müdürü (3-4 yıldız, 50-150 oda)
+- Kanal: WhatsApp ağırlıklı, Booking.com/Google üzerinden lead
+- Ağrı: Resepsiyon yoğunluğu, geç yanıt, misafir şikayetleri, yorum yönetimi
+- Risk: 24h penceresi, dil bariyeri (yabancı misafir), fiyat hassasiyeti
+
+---
+SENARYO O1 — Oda fiyatı ve müsaitlik sorusu
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Müşteri mesajı
+   - Misafir: '15-18 Mart arası boş odanız var mı? Gecelik fiyat ne?'
+
+2) Bugün nasıl yönetiliyor?
+   - Resepsiyon PMS'e bakıyor, WhatsApp'a dönüyor — 5-10dk
+   - Yoğun dönemde mesajlar biriyor, geç cevap → misafir rakibe gidiyor
+
+3) Nerede batıyor?
+   - Fiyat bilgisi güncel olmayabilir (PMS'le senkronize değil)
+   - Yoğun saatlerde yanıt gecikiyor
+
+4) Gerçek maliyet
+   - (Tahmini) Geç cevaplanan her müsaitlik sorusu = kaçan rezervasyon (ortalama 1.500 TL/gece)
+
+Invekto burada:
+A) Bugün: C1 inbox + C3 template ile standart fiyat mesajı
+B) Phase-1: C8 Agent Assist — sezonluk fiyat listesinden anında cevap önerisi
+C) Phase-2+: PMS entegrasyonu ile gerçek zamanlı müsaitlik + fiyat çekme
+
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O2 — Check-in bilgilendirme (saat, adres, ulaşım)
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Misafir: 'Check-in saati kaç? Havaalanından nasıl gelirim?'
+2) Bugün: Resepsiyon her misafire aynı bilgiyi tekrar yazıyor
+3) Nerede batıyor: Tekrarlı iş + gecikme
+4) Maliyet: Günde 20-30 tekrarlı soru = 1-2 saat resepsiyon zamanı
+
+Invekto: Phase 1 chatbot ile %100 otomatik cevap (FAQ). Adres + harita linki + shuttle bilgisi.
+Gerekli yetenekler: C1, C3, C8
+
+---
+SENARYO O3 — Oda yükseltme / ekstra hizmet talebi
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Misafir: 'Deniz manzaralı odaya geçebilir miyim? Spa paketiniz var mı?'
+2) Bugün: Resepsiyon önbüroyla konuşuyor, geç dönüyor
+3) Invekto: C8 Agent Assist ile upsell cevap önerisi + PMS'ten müsait üst kategori check (Phase 2)
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O4 — Misafir şikayeti (oda temizliği, gürültü, arıza)
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: A
+
+1) Misafir: 'Odada sıcak su yok!' / 'Klima çalışmıyor'
+2) Bugün: WhatsApp'tan yazıyor, resepsiyon teknik servisi arıyor — 30dk-1saat
+3) Nerede batıyor: Şikayet büyür → kötü Google yorumu
+4) Maliyet: Her kötü yorum = potansiyel 5-10 kaçan rezervasyon
+
+Invekto: C8 empati mesajı + otomatik departmana yönlendirme (C2 routing tag: 'şikayet'). Çözüm sonrası memnuniyet anketi (Outbound).
+Gerekli yetenekler:
+   - Phase 1 başlangıç: C1, C2, C3, C8 (routing + empati template)
+   - Tam set: C1, C2, C3, C8, C13 (+ QA Mining ile şikayet kalıbı analizi — Phase 6)
+
+---
+SENARYO O5 — Rezervasyon iptal/değişiklik
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Misafir: 'Rezervasyonumu 1 gün ertelemek istiyorum' / 'İptal etmek istiyorum'
+2) Bugün: Resepsiyon Booking.com veya PMS'e giriyor, iptal/değişiklik politikasını yazıyor
+3) Invekto: C8 iptal politikası önerisi + C7 Knowledge (iptal kuralları). PMS entegrasyonu ile otomatik (Phase 2+).
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O6 — Yabancı misafir (İngilizce/Almanca/Rusça)
+Bölge: Türkiye/Global | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: A
+
+1) Misafir: 'Hello, do you have availability for next week? Airport transfer available?'
+2) Bugün: Resepsiyon İngilizce'de zorlanıyor, Google Translate kullanıyor
+3) Nerede batıyor: Yanlış çeviri → yanlış bilgi → kötü deneyim
+4) Maliyet: Yabancı misafir ortalama 2x gelir (yüksek fiyat + ekstra hizmetler)
+
+Invekto: Phase 1 AI dil algılama + Phase 3 multi-language cevap. Medikal turizm altyapısıyla ortak.
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O7 — Check-out sonrası yorum rica
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Misafir check-out yaptı. Otomatik mesaj: 'Konaklama nasıldı? (1-5 puan)'
+2) Bugün: Hiçbir şey yapılmıyor. Kötü deneyim → Google'a kötü yorum, iyi deneyim → sessizlik.
+3) Invekto: Outbound Engine ile T+1 gün memnuniyet anketi → puan 4-5 ise Google yorum linki, 1-3 ise iç eskalasyon.
+   S10 (Google Yorum + Referans) otel için de geçerli.
+Gerekli yetenekler:
+   - Phase 2 başlangıç: C1, C3, C8 (Outbound anket + template)
+   - Tam set: C1, C3, C8, C13 (+ Memnuniyet trend analizi — Phase 6)
+
+---
+SENARYO O8 — Shuttle / transfer rezervasyonu
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Misafir: 'Havaalanından shuttle var mı? Saat kaçta gelmem lazım?'
+2) Bugün: Resepsiyon aracı organize ediyor, WhatsApp'tan bilgi veriyor — tekrarlı
+3) Invekto: Phase 1 chatbot (FAQ + template). Phase 2+ PMS shuttle modülü ile entegre.
+Gerekli yetenekler: C1, C3, C7, C8
+
+---
+SENARYO O9 — Grup/kurumsal rezervasyon talebi
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Müşteri: '40 kişilik bir grup için 3 gece fiyat alabilir miyim?'
+2) Bugün: Bu mesaj diğer mesajlar arasında kaybolur. Grup talebi = yüksek gelir potansiyeli.
+3) Invekto: S5 (B2B Lead Tespiti) ile aynı mantık — VIP flag + sales alert + özel teklif akışı.
+Gerekli yetenekler: C1, C2, C3, C8
+
+---
+SENARYO O10 — Sezonluk kampanya / early bird duyurusu
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+
+1) Otel yaz sezonu için early bird kampanyası başlatmak istiyor.
+2) Bugün: Manuel tek tek mesaj gönderiyor. 500+ eski misafir listesi var ama toplu mesaj atamıyor.
+3) Invekto: Outbound Engine ile segment bazlı kampanya (geçen yaz gelenler → early bird fiyatı). WhatsApp template compliance zorunlu.
+Gerekli yetenekler: C1, C3, C4, C8
+
+---
+
+**Otel Niche Özeti:**
+
+| Senaryo | Phase | Bağımlılık |
+|---------|-------|------------|
+| O1: Oda fiyatı/müsaitlik | Phase 1 (template) / Phase 2 (PMS) | PMS entegrasyonu |
+| O2: Check-in bilgi | Phase 1 (chatbot FAQ) | — |
+| O3: Oda yükseltme/upsell | Phase 2 (PMS) | PMS entegrasyonu |
+| O4: Şikayet yönetimi | Phase 1 (routing + AI) | — |
+| O5: İptal/değişiklik | Phase 1 (template) / Phase 2 (PMS) | PMS entegrasyonu |
+| O6: Yabancı misafir | Phase 3 (multi-language) | Multi-lang AI |
+| O7: Yorum rica | Phase 2 (Outbound) / Phase 5 (yorum motoru) | Outbound Engine |
+| O8: Shuttle/transfer | Phase 1 (chatbot FAQ) | — |
+| O9: Grup rezervasyon | Phase 2 (B2B lead tespiti) | — |
+| O10: Kampanya broadcast | Phase 1 (Outbound broadcast) | Outbound Engine |
+
+> **Sonuç:** Oteller için Phase 1 chatbot + Outbound'dan büyük fayda var (O2, O4, O8, O10).
+> PMS entegrasyonu Phase 2'de otel niche'ini farklılaştırır (O1, O3, O5).
+> Yabancı misafir desteği estetik/medikal turizm altyapısını ortak kullanır (O6).
+
+============================================================
+D-EK-2) MOBİL UYGULAMA SENARYOLARI (5 senaryo — TÜM SEKTÖRLER)
+============================================================
+
+> Phase 7'de planlanan mobil uygulama için kullanıcı senaryoları.
+> Bu senaryolar sektör bağımsız — tüm niche'lerde geçerli.
+
+---
+SENARYO M1 — Sahada/evde mesaj yönetimi
+Tüm sektörler | Kanıt: A (Top 3 müşteri talebi)
+
+1) Durum: E-ticaret satıcısı depo ziyaretinde, diş doktoru öğle yemeğinde, estetik koordinatör sahada.
+   Masabaşında değil ama VIP lead veya acil mesaj geldi.
+2) Bugün: Bilgisayara dönene kadar mesaj cevapsız kalıyor. Mobil tarayıcıda web uygulaması kullanışsız.
+3) Invekto Mobil: Push notification + konuşma listesi + AI cevap önerisi → 1 dokunuşla cevapla.
+Gerekli yetenekler: C1, C2, C3, C8 (mobil arayüzden mevcut API'leri tüketir)
+
+---
+SENARYO M2 — Acil mesaj push notification
+Tüm sektörler | Kanıt: A
+
+1) Durum: SLA breach yaklaşıyor veya VIP müşteri/hasta yazdı.
+2) Bugün: Bilgisayar başında değilsen haberin olmuyor. Müşteri bekliyor.
+3) Invekto Mobil: Push notification (SLA breach, VIP, acil etiket) → hemen müdahale.
+Gerekli yetenekler: C1, C2 (push notification altyapısı + routing kuralları)
+
+---
+SENARYO M3 — Supervisor sahada ekip izleme
+Tüm sektörler | Kanıt: B
+
+1) Durum: Supervisor dışarıda ama ekibin performansını görmek istiyor.
+2) Bugün: "Şu an ne durumda?" diye temsilciyi arayıp soruyor.
+3) Invekto Mobil: Basit dashboard (bekleyen mesaj, ortalama yanıt süresi, aktif agent sayısı).
+Gerekli yetenekler: C4 (raporlama API'leri mobilde gösterim)
+
+---
+SENARYO M4 — Doktor/klinik sahibi mesai dışı acil triage
+Diş + Estetik | Kanıt: A
+
+1) Durum: Hasta gece "şişlik var, normal mi?" yazıyor. Doktor evde.
+2) Bugün: Doktor kişisel telefonundan WhatsApp'tan cevaplıyor (kişisel/iş karışıyor) veya sabaha erteliyor.
+3) Invekto Mobil: AI ön cevap + doktora push notification (sadece "acil" etiketli). Doktor mobil uygulamadan
+   resmi Invekto kanalıyla cevap verir → kayıt altında, KVKK uyumlu.
+Gerekli yetenekler: C1, C2, C8, C5/C6 (acil routing + AI ön cevap + KVKK uyumlu kayıt)
+
+---
+SENARYO M5 — Satıcı hareket halinde sipariş yönetimi
+E-ticaret | Kanıt: B
+
+1) Durum: Satıcı depoda, fuarda veya toplantıda. "Kargom nerede?" mesajları biriyor.
+2) Bugün: Dizüstü bilgisayar açamıyor, cep telefonundan web girişi zor.
+3) Invekto Mobil: Konuşma listesi + AI suggest + 1 dokunuşla cevap. Sipariş kartı (Integrations'tan).
+Gerekli yetenekler: C1, C2, C3, C8, C11 (sipariş kartı için Integrations API gerekli)
+
+---
+
+**Mobil Senaryo Özeti:**
+- M1-M3: TÜM sektörlerde geçerli (Phase 7)
+- M4: Sağlık niche'i için kritik (doktor mesai dışı erişim)
+- M5: E-ticaret niche'i için faydalı (hareket halinde yönetim)
+- **Tüm senaryolar mevcut API'leri tüketir — yeni backend gerekmez.**
+
+============================================================
 E) CAPABILITY GAP ÖZETİ (75 senaryodan çıkarım)
+C1, C2, C3 Invekto'da MEVCUT. C4 kısmen mevcut.
+   Asıl gap: C7 (Knowledge), C8 (Agent Assist), C9 (Auto-Resolution),
+   C10 (Revenue), C11 (E-commerce), C12 (Ads Attribution)
 ============================================================
 
 En çok tekrar eden yetenekler (senaryo sayısı):
-- C8: 75/75
-- C3: 73/75
-- C1: 72/75
-- C2: 71/75
+- C8: 75/75 ← ❌ YOK — Phase 1'de InvektoServis.AgentAI ile
+- C3: 73/75 ← ✅ MEVCUT (temel) — dinamik değişken YOK
+- C1: 72/75 ← ✅ MEVCUT — 7 kanal Unified Inbox
+- C2: 71/75 ← ✅ MEVCUT — 4 algoritma, grup bazlı routing
 - C7: 48/75
 - C4: 25/75
 - C10: 25/75
@@ -4353,29 +4636,35 @@ En çok tekrar eden yetenekler (senaryo sayısı):
 - süre: 2/75
 
 Phase-1 için 'matematiksel' zorunlular (en yüksek frekans + düşük risk):
-- C1 Unified Inbox + C2 Routing + C3 Templates/Snippets (çekirdek) — zaten var.
-- C7 Knowledge (RAG değilse bile 'tek kaynak' SSS/policy motoru) — tutarlılık için kritik.
-- C8 Agent Assist (cevap önerisi + risk uyarısı) — hız + kalite için.
-- C11 Entegrasyonlar: Türkiye e-ticarette Trendyol/HB; D2C’de Shopify/Woo (sipariş/kargo/iade çekimi).
-- C4 Reporting Core: Speed-to-lead, SLA ve deflection ölçümü.
+- C1 Unified Inbox + C2 Routing + C3 Templates/Snippets (çekirdek) — ✅ ZATEN VAR (Invekto).
+- C8 Agent Assist (cevap önerisi + risk uyarısı) — hız + kalite için — ❌ Phase 1'de yapılacak.
+- Automation Engine (chatbot/trigger/flow) — ❌ Phase 1'de yapılacak — #1 satış engeli.
+- Outbound Engine (broadcast/schedule/follow-up) — ❌ Phase 1'de yapılacak — #1 talep.
+- C4 Reporting Core: Speed-to-lead, SLA ve deflection ölçümü — ⚠️ KISMEN VAR, AI metrikleri eklenecek.
+- C11 Entegrasyonlar: Türkiye e-ticarette Trendyol/HB; D2C'de Shopify/Woo — Phase 2'de.
 
-Phase-2/3 için yüksek değer ama daha riskli/karmaşık:
-- C9 Auto-Resolution (otonom çözüm) — yanlış cevap riski; iyi guardrails/hand-off şart.
-- C10 Revenue Agent — ödeme/kapora/teklif; entegrasyon ve süreç tasarımı ister.
-- C6 Enterprise Security full paketi — enterprise satış için şart; sağlıkta erken gelir.
-- C12 Ads attribution — growth için; önce temel akış.
+Phase-2+ için yüksek değer ama daha riskli/karmaşık:
+- C11 E-commerce Integrations (Trendyol/HB API) — Phase 2'de.
+- C12 Ads attribution — Phase 2 (basit) / Phase 5 (tam).
+- C7 Knowledge (RAG, 'tek kaynak' SSS/policy motoru) — Phase 3'te (tutarlılık için kritik).
+- C9 Auto-Resolution (otonom çözüm) — Phase 3'te; yanlış cevap riski; iyi guardrails/hand-off şart.
+- C5/C6 Enterprise Security full paketi — Phase 4'te; enterprise satış için şart; sağlıkta erken gelir.
+- C10 Revenue Agent — Phase 5'te; ödeme/kapora/teklif; entegrasyon ve süreç tasarımı ister.
 - C13 QA & Mining — ölçeklemede kaliteyi tutmak için.
 
 ============================================================
 F) KAYNAK NOTLARI (bu dokümandaki 'A' seviyeli gerçekler için)
 ============================================================
 
-[WA] WhatsApp 24h pencere + template zorunluluğu: Twilio 'customer service window' açıklaması ve Meta WhatsApp template docs. (Turn0search4, Turn0search8)
-[WA] Template kategorilendirme güncellemesi (2025): Meta developer docs template categorization. (Turn0search1)
-[IG] 24h pencere: Messenger/IG policy overview + respond.io IG customer service yazısı. (Turn0search2, Turn0search18)
-[TR] Trendyol iade hakkı 15 gün: Trendyol Satıcı Bilgi Merkezi iade süreçleri. (Turn0search11)
-[TR] İade tamamlanma 2–10 iş günü ve paketleme standartları: Trendyol kolay iade paketleme standartları sayfası. (Turn0search15)
-[TR] İade/kargo şikayet patternleri: Şikayetvar Trendyol iade/kargo şikayetleri örnekleri. (Turn0search7)
-[HEALTH] Özel nitelikli veri rehberi: KVKK rehberi. (Turn1search5)
-[HEALTH] Sağlıkta WhatsApp kullanımı riskleri ve kayıt tutma zorluğu: PMC makalesi. (Turn1search8)
-[HEALTH] KVKK kamu duyurusu (WhatsApp gibi uygulamalarla ilgili): duyuru üzerine analiz. (Turn1search2)
+> **Not:** Aşağıdaki kaynaklar orijinal araştırma oturumundan alınmıştır. Parantez içi kodlar
+> (TurnXsearchY) oturum-içi geçici referanslardır; doğrulanabilir kaynak açıklama metnindedir.
+
+[WA] WhatsApp 24h pencere + template zorunluluğu: Twilio 'customer service window' açıklaması ve Meta WhatsApp template docs.
+[WA] Template kategorilendirme güncellemesi (2025): Meta developer docs template categorization.
+[IG] 24h pencere: Messenger/IG policy overview + respond.io IG customer service yazısı.
+[TR] Trendyol iade hakkı 15 gün: Trendyol Satıcı Bilgi Merkezi iade süreçleri.
+[TR] İade tamamlanma 2–10 iş günü ve paketleme standartları: Trendyol kolay iade paketleme standartları sayfası.
+[TR] İade/kargo şikayet patternleri: Şikayetvar Trendyol iade/kargo şikayetleri örnekleri.
+[HEALTH] Özel nitelikli veri rehberi: KVKK rehberi.
+[HEALTH] Sağlıkta WhatsApp kullanımı riskleri ve kayıt tutma zorluğu: PMC makalesi.
+[HEALTH] KVKK kamu duyurusu (WhatsApp gibi uygulamalarla ilgili): duyuru üzerine analiz.

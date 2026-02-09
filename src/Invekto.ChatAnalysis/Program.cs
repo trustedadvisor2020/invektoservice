@@ -24,8 +24,7 @@ if (string.IsNullOrEmpty(claudeApiKey))
 }
 if (string.IsNullOrEmpty(callbackToken))
 {
-    Console.Error.WriteLine("FATAL: Callback:Token is not configured");
-    Environment.Exit(1);
+    Console.WriteLine("WARN: Callback:Token is empty - callback auth header will be omitted");
 }
 
 // Configure Kestrel to listen on configured port

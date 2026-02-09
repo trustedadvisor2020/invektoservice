@@ -35,6 +35,13 @@ const serviceTestConfigs: Record<string, { name: string; tests: { name: string; 
       { name: 'Ready Check', endpoint: '/api/ops/test/chatanalysis/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
+  'Invekto.Automation': {
+    name: 'Automation',
+    tests: [
+      { name: 'Health Check', endpoint: '/api/ops/test/automation/health', method: 'GET', expectedStatus: 200, useProxy: true },
+      { name: 'Ready Check', endpoint: '/api/ops/test/automation/ready', method: 'GET', expectedStatus: 200, useProxy: true },
+    ],
+  },
 };
 
 export function TestPanel() {

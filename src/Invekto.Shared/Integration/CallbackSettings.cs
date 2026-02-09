@@ -6,8 +6,8 @@ namespace Invekto.Shared.Integration;
 /// </summary>
 public sealed class CallbackSettings
 {
-    /// <summary>Default callback URL for Main App (used when webhook doesn't specify callback_url)</summary>
-    public required string DefaultCallbackUrl { get; init; }
+    /// <summary>Fallback callback URL (used only when webhook doesn't specify callback_url). Can be empty if all requests provide their own callback_url.</summary>
+    public string DefaultCallbackUrl { get; init; } = "";
 
     /// <summary>Max retry attempts (default: 3)</summary>
     public int MaxRetries { get; init; } = 3;

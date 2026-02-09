@@ -1,26 +1,106 @@
-# Invekto — Phase Planı (Revenue-First)
+# Invekto — Phase Planı (Mevcut Müşteriyi Güçlendir + Büyü)
 
 > Ana dosya: [roadmap.md](roadmap.md)
+> Mevcut ürün envanteri: [whatisinvekto.md](whatisinvekto.md)
 > Senaryolar: [roadmap-scenarios.md](roadmap-scenarios.md)
 > Uzman review'ları: [roadmap-reviews.md](roadmap-reviews.md)
+> Son güncelleme: 2026-02-08
 
 ---
 
-### Phase 0 — Müşteri Validasyonu + Grand Slam Offer (Hafta 1-2)
+## Bağlam
+
+**Başlangıç noktası:** Invekto 50+ aktif müşteriye sahip, 50-200K TL MRR üreten çalışan bir üründür.
+Mevcut: 7 kanal Unified Inbox, gelişmiş routing (4 algoritma), multi-tenant auth, CRM, VOIP, kapsamlı raporlama.
+Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn sebebi.**
+
+---
+
+## Phase Özeti
+
+**Phase 0 (Hafta 1-2): Mevcut Müşteri Analizi**
+- 50+ müşteriden en çok istenen otomasyon senaryolarını topla
+- Chatbot/AI MVP scope'u belirle
+- "Otomasyon geliyor" vaadini mevcut müşterilere sun
+- E-ticaret + otel niche'i için yeni müşteri araştırması
+
+**Phase 1 (Hafta 3-8): Core Otomasyon (TÜM sektörler)**
+- Chatbot / Flow Builder (basit menü bazlı + FAQ)
+- AI Agent Assist (cevap önerisi, intent detection)
+- Broadcast / Toplu mesaj gönderimi
+- Trigger sistemi (event bazlı otomasyon)
+- Dinamik şablon değişkenleri ({{isim}}, {{firma}})
+- Çalışma saati yönetimi + mesai dışı otomatik cevap
+- Otomatik etiketleme (AI bazlı)
+→ **Etki:** Mevcut 50+ müşterinin tamamı faydalanır. Yeni müşterilere "chatbot var" denilebilir.
+
+**Phase 2 (Hafta 9-16): Niche Güçlendirme**
+- Sağlık: Randevu motoru + no-show hatırlatma
+- E-ticaret: Trendyol/HB API entegrasyonu
+- Otel: PMS entegrasyonu (basit)
+- Follow-up otomasyonu (T+24h, T+72h)
+- CSAT anketi
+- Internal note
+→ **Etki:** Sektör bazlı differentiator'lar eklenir.
+
+**Phase 3 (Hafta 17-24): AI Derinleştirme**
+- Knowledge Base / RAG (ürün/tedavi/otel bilgisi)
+- AI Auto-Resolution (insan müdahalesi olmadan çözümleme)
+- Outbound Engine v2 (kampanya yönetimi, A/B test, AI kişiselleştirme)
+- Lead scoring + pipeline view
+→ **Etki:** AI doğruluğu artar, agent iş yükü ciddi düşer.
+
+**Phase 4 (Hafta 25-32): Enterprise**
+- SSO / OAuth (mevcut auth'un üstüne)
+- Audit log (işlem geçmişi)
+- SLA tracking + eskalasyon
+- Advanced analytics
+- Role genişletme (admin + supervisor + agent)
+→ **Etki:** Kurumsal müşteriler pipeline'a girer.
+
+**Phase 5 (Hafta 33-40): Revenue & Ölçek**
+- Revenue Agent (ödeme entegrasyonu)
+- Full Ads Attribution (tam entegrasyon, ROAS, otomasyon)
+- Cart recovery, cross-sell
+- Sağlık niche tam (tedavi takip, yorum motoru, medikal turizm)
+→ **Etki:** Gelir artışı + sağlık niche derinleşme.
+
+**Phase 6 (Hafta 41-48): Operasyon & Analytics**
+- SLA tracking + eskalasyon
+- QA Scoring (C13 — temsilci kalite kontrolü)
+- Conversation Mining (trend, şikayet, dönüşüm kalıpları)
+- Knowledge Gap Report + Revenue Attribution Dashboard
+→ **Etki:** Operasyonel mükemmellik, büyürken kalite korunur.
+
+**Phase 7 (Hafta 49+): Genişleme**
+- Mobil uygulama (iOS + Android)
+- Yeni kanal entegrasyonları (talep bazlı)
+- Voice transcription, video call
+- Predictive analytics, global pazar hazırlığı
+→ **Etki:** Erişim genişler, yeni pazarlar açılır.
+
+---
+
+## Detaylı Phase Planı
+
+---
+
+### Phase 0 — Mevcut Müşteri Analizi + Yeni Niche Validasyonu (Hafta 1-2)
 
 > *"The longer you wait to sell, the longer you wait to learn."*
 
-**Müşteri ne kazanıyor:** Henüz ürün yok. Müşteri söz alıyor.
-**Revenue milestone:** 1 ödeme alan müşteri
-**Kod yazılmaz.** Sadece iş geliştirme.
+**Mevcut durum:** 50+ aktif müşteri, 50-200K TL MRR zaten var. Bu phase otomasyon stratejisini belirler.
+**Hedef:** Mevcut müşterilerden otomasyon taleplerini topla + e-ticaret niche'i için yeni müşteri validasyonu.
+**Çıktı:** Net scope, fiyat validasyonu, ilk e-ticaret müşterisi.
 
 #### Adım adım:
 
 ```
-Adım 0.1: Niche seç
-├── Karar: Trendyol/HB satıcıları (50-500 sipariş/gün)
+Adım 0.1: E-ticaret niche validasyonu (yeni müşteri kazanım)
+├── Hedef: Trendyol/HB satıcıları (50-500 sipariş/gün)
 ├── Neden: Hızlı satış döngüsü (1 hafta), net ağrı noktası, ödeme gücü var
-└── Alternatifler ertelendi: Kurumsal (3-6 ay döngüsü), Hizmet sektörü (düşük ARPU)
+├── Not: Sağlık (diş + estetik) ve otel niche'leri ZATEN müşteri — paralel validasyon aşağıda.
+└── Kurumsal (3-6 ay döngüsü) = Phase 4+ hedefi
 
 Adım 0.2: 10 potansiyel müşteriyle görüş
 ├── Nereden bul: Trendyol satıcı forumları, LinkedIn, WhatsApp grupları
@@ -66,10 +146,10 @@ Bu plan toplam minimum 12-14 ay. "90 günde yapılır" yanıltıcıdır.
 Solo founder Phase 0-2'yi 12-16 haftada çıkarabilir ama Phase 3+ için ekip şart.
 
 **Phase 0 çıkışında elimizde:**
-- 1 ödeyen müşteri
-- Doğrulanmış ağrı noktası
-- Net ihtiyaç listesi
-- Fiyat validasyonu
+- Mevcut müşterilerden otomasyon talep listesi (önceliklendirilmiş)
+- E-ticaret niche'i için ilk müşteri adayı (veya müşteri)
+- Doğrulanmış ağrı noktaları (sektör bazlı)
+- Net ihtiyaç listesi + fiyat validasyonu
 
 **Phase 0 sonunda yoksa DURMA sinyali:**
 - 10 görüşmede 0 ilgi → Niche yanlış, pivot et
@@ -80,6 +160,11 @@ Solo founder Phase 0-2'yi 12-16 haftada çıkarabilir ama Phase 3+ için ekip ş
 
 > **Karar:** 3 niche'e aynı anda çıkılacak. Yukarıdaki Adım 0.1-0.4 e-ticaret için geçerli.
 > Aşağıda diş ve estetik niche'leri için paralel validasyon adımları ekleniyor.
+>
+> **Otel/Turizm niche'i:** Mevcut müşteri tabanında zaten otel müşterileri var. Core otomasyon (Phase 1)
+> tüm otellere hemen fayda sağlar. Niche-özel eklenti = **PMS entegrasyonu (Phase 2, basit)**. Otel için
+> ayrı validasyon bölümü oluşturulmamıştır çünkü müşteri zaten mevcut ve niche-özel scope dar (PMS + check-in/out
+> bildirimleri). Detay: bkz [roadmap.md](roadmap.md) Sektör Bazlı Phase Planı tablosu.
 
 **Adım 0.1-DİŞ: Diş Kliniği Niche Validasyonu**
 
@@ -162,90 +247,97 @@ Adım 0.4-A: İlk kliniği kapat
 | İlk ödeme | 1 satıcı | 1 klinik | 1 klinik |
 | DURMA sinyali | 10 görüşme 0 ilgi → pivot | 10 görüşme 0 ilgi → ertele | 10 görüşme 0 ilgi → ertele |
 
-> **Not:** E-ticaret'te DURMA = tamamen pivot. Sağlık niche'lerinde DURMA = erteleme (Phase 3-4'e kaydır).
-> Çünkü ortak altyapı e-ticaret'te de işe yarar, ama e-ticaret tamamen tutmazsa iş modeli sıkıntılı.
+> **Not:** E-ticaret'te DURMA = tamamen pivot. Sağlık niche'lerinde DURMA = erteleme.
+> Çünkü ortak altyapı (chatbot, AI, broadcast) tüm sektörlerde işe yarar, ama e-ticaret yeni müşteri kazanımı
+> için kritik — tamamen tutmazsa büyüme stratejisi sıkıntılı.
 
 ---
 
-### Phase 1 — İlk Müşterinin Problemini Çöz (Hafta 3-6)
+### Phase 1 — Core Otomasyon (Hafta 3-8)
 
 > *"Sell it, then build it."*
 
-**Müşteri ne kazanıyor:** "Kargom nerede" sorularına otomatik cevap
-**Revenue milestone:** 1 aktif ödeyen müşteri, ayda 3.000-5.000 TL
-**Satış dili:** "Kargo sorularınızı otomatik cevaplayacağız"
+**Müşteri ne kazanıyor:** Chatbot, AI cevap önerisi, broadcast, trigger — tüm sektörlere ortak otomasyon altyapısı
+**Revenue milestone:** Mevcut 50+ müşterinin tamamı faydalanır, MRR 200-300K TL hedef
+**Satış dili:** "Otomasyon, AI ve chatbot artık var — mesajlarınız otomatik cevaplanıyor"
 
 #### Adım adım:
 
 ```
-Adım 1.1: Trendyol API entegrasyonu (minimal)
+Adım 1.1: Chatbot / Flow Builder (tüm sektörler)
 ├── Yapılacak:
-│   ├── Trendyol API key setup (müşterinin key'i)
-│   ├── Sipariş çekme (GET orders — sadece son 30 gün)
-│   ├── Kargo tracking bilgisi çekme
-│   └── Orders cache (PostgreSQL'de basit tablo)
+│   ├── Basit menü bazlı chatbot (hoşgeldin → seçenek sunma → yönlendirme)
+│   ├── FAQ otomasyonu (sık sorulan sorulara otomatik cevap)
+│   ├── Mesai dışı otomatik cevap (çalışma saati yönetimi)
+│   ├── Intent detection genişletme (ChatAnalysis üzerine)
+│   └── Human handoff (eşleşmezse → temsilciye devret)
 ├── Yapılmayacak:
-│   ├── Webhook listener (henüz gereksiz — polling yeterli)
-│   ├── Hepsiburada (henüz müşteri yok)
-│   ├── Kargo firması API'leri (Trendyol tracking yeterli)
-│   └── Ödeme gateway
-└── Servis: Invekto.Integrations oluştur (minimal)
+│   ├── RAG / Knowledge base (Phase 3)
+│   ├── Karmaşık flow builder UI (basit konfigürasyon yeterli)
+│   └── Guardrails / PII detection (Phase 4)
+└── Servis: Invekto.Automation (port 7108)
 
-Adım 1.2: WhatsApp → kargo cevap pipeline (minimal)
+Adım 1.2: AI Agent Assist (temsilci hızlandırma)
 ├── Yapılacak:
-│   ├── Mevcut ChatAnalysis'in intent detection kısmını genişlet
-│   ├── Intent: "kargom nerede" / "sipariş durumu" / "ne zaman gelecek"
-│   ├── Intent eşleşince → Trendyol'dan sipariş ara → tracking bilgisi dön
-│   └── Eşleşmezse → temsilciye devret (human handoff)
+│   ├── Suggested reply (AI'ın önerdiği cevabı 1 tıkla gönder)
+│   ├── Intent detection + cevap önerisi
+│   ├── Otomatik etiketleme (AI bazlı konu tespiti)
+│   └── Dinamik şablon değişkenleri ({{isim}}, {{firma}})
 ├── Yapılmayacak:
-│   ├── 20 intent taxonomy (3 intent yeterli başlangıçta)
-│   ├── RAG / Knowledge base
-│   ├── Reply generation / tone presets
-│   └── Guardrails / PII detection
-└── Servis: Backend endpoint + ChatAnalysis genişlemesi
+│   ├── Tone presets (tek ton yeterli başta)
+│   ├── "Neden bu cevap" açıklaması (Phase 3)
+│   └── Next Best Action (Phase 5)
+└── Servis: Invekto.AgentAI (port 7105) veya ChatAnalysis genişlemesi
 
-Adım 1.3: Basit dashboard (müşteriye gösterilecek)
+Adım 1.3: Broadcast / Toplu Mesaj + Trigger
+├── Yapılacak:
+│   ├── Toplu mesaj gönderimi (segment bazlı)
+│   ├── Basit trigger engine (event-based otomasyon)
+│   ├── Template engine (değişkenli mesaj şablonları)
+│   ├── Gönderim kuyruğu + rate limiting (WhatsApp kuralları)
+│   ├── Opt-out yönetimi ("STOP" → unsubscribe)
+│   └── Delivery status tracking (sent/delivered/read/failed)
+├── Yapılmayacak:
+│   ├── AI-generated personalization (Phase 3)
+│   ├── Campaign yönetimi (Phase 3)
+│   ├── A/B testing (Phase 3)
+│   └── Conversion tracking (Phase 3)
+└── Servis: Invekto.Outbound (port 7107)
+
+Adım 1.4: Basit dashboard (müşteriye gösterilecek)
 ├── Yapılacak:
 │   ├── Kaç soru geldi
 │   ├── Kaç tanesi otomatik cevaplandı
 │   ├── Kaç tanesi temsilciye devredildi
 │   └── Günlük/haftalık trend
 ├── Yapılmayacak:
-│   ├── SLA tracker
-│   ├── QA scoring
-│   ├── Conversation mining
-│   └── Revenue attribution
+│   ├── SLA tracker (Phase 4)
+│   ├── QA scoring (Phase 6)
+│   ├── Conversation mining (Phase 6)
+│   └── Revenue attribution (Phase 5)
 └── Servis: Mevcut React dashboard genişler
-
-Adım 1.4: Auth (MINIMAL)
-├── Yapılacak:
-│   ├── Email + şifre login (Backend'e basit endpoint)
-│   ├── JWT token (refresh yok, 24h expiry)
-│   ├── Dashboard'u auth arkasına al
-│   └── Müşteri verisi izolasyonu (tenant_id filtreleme)
-├── Yapılmayacak:
-│   ├── SSO
-│   ├── 2FA
-│   ├── Session management
-│   ├── Brute-force protection
-│   ├── IP allowlist
-│   └── Ayrı Auth microservice (Backend içinde yeterli)
-└── Servis: Backend'e eklenir (ayrı servis DEĞİL)
 ```
+
+> **Not:** Auth zaten Invekto ana uygulamada mevcut (multi-tenant, role-based).
+> InvektoServis, ana uygulamanın auth token'ını validate eder — ayrı auth servisine gerek yok.
 
 **DB Tabloları (Phase 1 — minimal):**
 ```sql
 -- Tek PostgreSQL instance
+-- Not: Auth zaten ana uygulamada (SQL Server). Aşağıdakiler InvektoServis'e özel.
 
--- Users (Backend içinde)
-users (id, tenant_id, email, password_hash, role, created_at)
+-- Automation
+chatbot_flows (id, tenant_id, name, trigger_type, flow_config_json, is_active, created_at, updated_at)
+auto_reply_log (id, tenant_id, intent, question_text, was_resolved, created_at)
 
--- Integrations
-integration_accounts (id, tenant_id, provider, api_key_encrypted, status, created_at)
-orders_cache (id, tenant_id, provider, external_order_id, customer_phone, tracking_code, order_status, order_data_json, synced_at, created_at)
+-- Outbound / Broadcast
+outbound_templates (id, tenant_id, name, trigger_event, message_template, variables_json, is_active, created_at, updated_at)
+outbound_messages (id, tenant_id, template_id, recipient_phone, message_text, status, sent_at, delivered_at, read_at, failed_reason, created_at)
+  -- status: 'queued' | 'sent' | 'delivered' | 'read' | 'failed'
+outbound_optouts (id, tenant_id, phone, reason, created_at)
 
 -- Metrics (basit sayaçlar)
-auto_reply_log (id, tenant_id, intent, question_text, was_resolved, created_at)
+daily_metrics (id, tenant_id, date, total_messages, auto_resolved, human_handled, avg_response_time_sec, created_at)
 ```
 
 **User First-Value Flow (Lenny kuralı — ürün bu olmadan öğrenmez):**
@@ -254,14 +346,14 @@ auto_reply_log (id, tenant_id, intent, question_text, was_resolved, created_at)
 ┌─────────────────────────────────────────────────────────┐
 │  İLK KULLANICI DENEYİMİ (Day 1)                        │
 │                                                         │
-│  1. Connect Trendyol                                    │
-│     └── API key gir → test bağlantısı → ✓ Bağlandı     │
+│  1. Otomasyon modülünü aktifleştir                      │
+│     └── Chatbot ayarla → FAQ'ları gir → ✓ Aktif         │
 │                                                         │
-│  2. Enable "Kargo Soruları Otomasyonu"                  │
-│     └── Tek toggle: ON                                  │
+│  2. "Otomatik Cevaplama" toggle'ını AÇ                  │
+│     └── Sık sorulan sorular otomatik cevaplanacak       │
 │                                                         │
 │  3. İlk otomatik cevap gönderildi                       │
-│     └── WhatsApp'tan gelen "kargom nerede" → AI cevap   │
+│     └── WhatsApp'tan gelen soru → AI cevap önerdi       │
 │     └── ⚡ AHA MOMENT: "Gerçekten otomatik cevapladı!"  │
 │                                                         │
 │  4. Dashboard'da ilk sonuç                              │
@@ -271,7 +363,7 @@ auto_reply_log (id, tenant_id, intent, question_text, was_resolved, created_at)
 │                                                         │
 │  Day 7: Haftalık rapor → "%30 mesaj otomatik çözüldü"   │
 │  Day 30: "Bu ay 450 mesaj otomatik, 1 temsilci tasarruf" │
-│          └── Ödeme yenileme kararı BURADA verilir       │
+│          └── Upsell fırsatı: Phase 2 niche özellikleri  │
 └─────────────────────────────────────────────────────────┘
 
 Bu akış tanımlı değilse:
@@ -284,10 +376,10 @@ Bu akış tanımlı değilse:
 
 ```
 İLK 30 DAKİKA:
-  1. Hesap oluştur (email + şifre)
-  2. WhatsApp Business API bağla (BSP key gir → test mesajı → ✓)
-  3. Trendyol/HB API bağla (seller API key → test siparişi çek → ✓)
-  4. "Kargo Soruları" otomasyonunu AÇ (tek toggle)
+  1. Mevcut Invekto hesabına otomasyon modülü aktifleştir
+  2. Chatbot konfigürasyonu (sık sorulan sorular + cevaplar)
+  3. Broadcast listesi oluştur (mevcut müşteri segmenti)
+  4. "Otomatik Cevaplama" toggle'ını AÇ
 
 İLK 24 SAAT:
   5. İlk otomatik cevap gönderildi → ⚡ AHA MOMENT
@@ -317,9 +409,23 @@ Yanlış cevap olursa:
 
 KURAL: AI hiçbir zaman temsilciyi devre dışı bırakmaz. Temsilci her zaman override edebilir.
 
+#### Phase 1 — Sağlık Niche Minimum KVKK Koruma (Phase 1-2 zorunlu)
+
+> **⚠️ ERKEN KVKK RİSKİ:** Phase 1-2'de sağlık niche'ine girilirken hasta verisi işlenecek.
+> Tam KVKK compliance Phase 4'te ama **minimum koruma Phase 1'den itibaren zorunlu:**
+>
+> 1. **Disclaimer:** AI sağlık tavsiyesi vermez, sadece bilgi + yönlendirme. Her otomasyon mesajında disclaimer.
+> 2. **Açık rıza:** WhatsApp otomasyon başlamadan hasta onayı alınır (opt-in mesajı).
+> 3. **Veri minimizasyonu:** Sadece gerekli veri toplanır (isim, telefon, randevu). Tıbbi kayıt/rapor saklanmaz.
+> 4. **Erişim kontrolü:** Hasta verisine sadece ilgili tenant erişir (mevcut multi-tenant izolasyon yeterli).
+> 5. **Fotoğraf politikası:** Hasta fotoğrafı (before/after, röntgen) cihazda kalır, Invekto'ya yüklenmez (Phase 4'e kadar).
+>
+> **Bu 5 kural Phase 1-2'de code + template seviyesinde uygulanır. Tam PII/Audit = Phase 4.**
+
 #### Phase 1 — Diş Kliniği İlk Müşteri Akışı (3 Niche Paralel — 2026-02-08)
 
-> E-ticaret Adım 1.1-1.4 yukarıda. Aşağıda diş kliniği için paralel çalışma.
+> Core otomasyon (chatbot, AI assist, broadcast, trigger) tüm sektörlere ortak — yukarıda.
+> Aşağıda diş kliniği için niche-özel paralel çalışma.
 
 ```
 Adım 1.1-D: WhatsApp → Fiyat Sorusu Pipeline (minimal)
@@ -501,16 +607,17 @@ Adım 1.3-A: Basit Dashboard (kliniğe gösterilecek)
 | 2. ay ödeme | Evet | Evet | Evet |
 
 **Phase 1 sonunda elimizde:**
-- 1 müşteri aktif kullanıyor
-- Kargo soruları otomatik cevaplanıyor
+- Mevcut 50+ müşterinin tamamı otomasyon modülüne erişebiliyor
+- Chatbot / FAQ otomasyonu çalışıyor (tüm sektörler)
+- AI Agent Assist aktif (cevap önerisi)
+- Broadcast / toplu mesaj gönderilebiliyor
 - Deflection rate ölçülüyor (hedef: %30+)
-- İlk case study verileri birikiyor
-- User first-value flow çalışıyor (connect → enable → aha → dashboard)
+- User first-value flow çalışıyor (aktifleştir → ayarla → aha → dashboard)
 
 **Başarı kriterleri (Phase 2'ye geçiş şartı):**
 - [ ] Deflection rate %30+ (otomatik cevaplanan / toplam)
-- [ ] Müşteri 2. ay ödeme yapıyor (churn etmedi)
-- [ ] Müşteri "X da olsa iyi olurdu" diyor → Phase 2 scope'u netleşiyor
+- [ ] Otomasyon kullanan müşteri sayısı 20+ (mevcut tabanın %40+)
+- [ ] Müşteriler "sektörüme özel özellik olsa" diyor → Phase 2 scope'u netleşiyor
 - [ ] Time to first automated reply < 24h (onboarding'den ilk otomatik cevaba)
 
 **Core SaaS Metrics (Lemkin kuralı — bunlar yoksa MRR kağıt üstünde kalır):**
@@ -544,21 +651,21 @@ Adım 1.3-A: Basit Dashboard (kliniğe gösterilecek)
 └─────────────────────────────────────────────────────────┘
 ```
 
-> **Lemkin uyarısı — Auth zamanlama riski:**
-> Auth Phase 4'te ama kurumsal müşteri SSO/audit olmadan pipeline'a bile girmez.
-> Çözüm: Phase 3 sonunda kurumsal talep yoğunsa Auth'u Phase 3.5'e çek.
+> **Lemkin uyarısı — SSO/2FA zamanlama riski:**
+> Temel auth mevcut, ama SSO/2FA/audit log Phase 4'te. Kurumsal müşteri bunlar olmadan pipeline'a girmez.
+> Çözüm: Phase 3 sonunda kurumsal talep yoğunsa SSO/2FA'yı Phase 3.5'e çek.
 > "Kurumsal gelince yaparız" = "Kurumsal gelmeyecek çünkü bunlar yok."
 > Takip metrikleri: Phase 2-3'te kaç kurumsal "SSO var mı?" diye sordu? ≥3 ise hızlandır.
 
 ---
 
-### Phase 2 — 5-10 Müşteriye Ölçekle (Hafta 7-12)
+### Phase 2 — Niche Güçlendirme (Hafta 9-16)
 
 > *"Make it work for one, then make it work for many."*
 
-**Müşteri ne kazanıyor:** Kargo + iade + sipariş durumu otomatik, temsilci hızlanıyor
-**Revenue milestone:** 5-10 aktif müşteri, MRR 15.000-50.000 TL
-**Satış dili:** "Temsilci sayınızı artırmadan 2x mesaj yönetin"
+**Müşteri ne kazanıyor:** Sektör-özel yetenekler — Trendyol/HB API, randevu motoru, follow-up, intent genişleme
+**Revenue milestone:** Niche bazlı değer farkı yaratılır, MRR 300-500K TL hedef
+**Satış dili:** "Temsilci sayınızı artırmadan 2x mesaj yönetin — sektörünüze özel otomasyon"
 
 #### Adım adım:
 
@@ -596,18 +703,19 @@ Adım 2.1b: B2B / VIP Lead Tespiti (YENİ — Senaryo S5)
 │   └── Otomatik fiyatlama (sales team devralır)
 └── Servis: ChatAnalysis intent + Backend alert
 
-Adım 2.2: Agent Assist v1 (temsilciyi hızlandır)
+Adım 2.2: Agent Assist genişleme (e-ticaret özel)
+├── Not: Temel Agent Assist (suggested reply, intent detection) Phase 1'de kuruldu.
+│   Bu adım e-ticaret'e özel genişletme.
 ├── Yapılacak:
-│   ├── Suggested reply (AI'ın önerdiği cevabı 1 tıkla gönder)
-│   ├── Sipariş kartı (konuşma yanında müşterinin son siparişi)
-│   └── Basit escalation notu (devredince AI özet bırakır)
+│   ├── Sipariş kartı (konuşma yanında müşterinin son siparişi — Trendyol/HB'den)
+│   ├── Basit escalation notu (devredince AI özet bırakır)
+│   └── E-ticaret intent'lerine özel cevap kalitesi artırma
 ├── Yapılmayacak:
-│   ├── Tone presets (tek ton yeterli başta)
-│   ├── "Neden bu cevap" açıklaması
-│   ├── Next Best Action
-│   ├── Guardrails (Phase 4'te)
-│   └── PII prevention (Phase 4'te)
-└── Servis: Backend + ChatAnalysis
+│   ├── Tone presets (Phase 3)
+│   ├── "Neden bu cevap" açıklaması (Phase 3)
+│   ├── Guardrails (Phase 4)
+│   └── PII prevention (Phase 4)
+└── Servis: AgentAI + Integrations
 
 Adım 2.3: Hepsiburada eklenmesi (ikinci marketplace)
 ├── Yapılacak:
@@ -641,21 +749,22 @@ Adım 2.5: Kargo entegrasyonu (opsiyonel — müşteri istiyorsa)
 │   └── Otomatik bildirim (manuel tetikleme yeterli başta)
 └── Servis: Invekto.Integrations genişler
 
-Adım 2.6: Outbound Engine v1 — Temel (YENİ)
+Adım 2.6: Outbound genişleme — E-ticaret Senaryoları
+├── Not: Temel Outbound Engine (broadcast, trigger, template, rate limiting) Phase 1'de kuruldu.
+│   Bu adım e-ticaret'e özel trigger senaryoları ekliyor.
 ├── Yapılacak:
-│   ├── Basit trigger engine (event-based: sipariş teslim edildi, yorum geldi)
-│   ├── Template engine (değişkenli mesaj şablonları)
-│   ├── Gönderim kuyruğu + rate limiting (WhatsApp 24h window)
-│   ├── Opt-out yönetimi ("STOP" → unsubscribe)
-│   ├── Delivery status tracking (sent/delivered/read/failed)
-│   └── Tenant-bazlı ON/OFF
+│   ├── Sipariş teslim edildi → "Memnun musunuz?" trigger'ı
+│   ├── İade talebi sonrası follow-up (T+24h)
+│   ├── B2B lead algılandığında sales alert (email/webhook)
+│   ├── Yorum geldi → otomatik mesaj prep (S1 hazırlık)
+│   └── Tenant-bazlı trigger konfigürasyonu
 ├── Yapılmayacak:
 │   ├── AI-generated personalization (Phase 3)
-│   ├── Multi-language templates (Phase 3-4)
+│   ├── Multi-language templates (Phase 3)
 │   ├── Conversion tracking (Phase 3)
 │   └── Campaign yönetimi (Phase 3)
 ├── Kullanacak senaryolar: S1 prep, S3 follow-up, S5 alert
-└── Servis: Invekto.Outbound (YENİ — port 7107) veya Backend içinde başlar
+└── Servis: Invekto.Outbound genişleme
 
 Adım 2.7: İade Çevirme v1 — Basit (YENİ — Senaryo S3 prep)
 ├── Yapılacak:
@@ -675,18 +784,14 @@ Adım 2.7: İade Çevirme v1 — Basit (YENİ — Senaryo S3 prep)
 **DB Tabloları (Phase 2 eklentileri):**
 ```sql
 -- Phase 1 tablolarına ek
+-- Not: outbound_templates, outbound_messages, outbound_optouts Phase 1'de zaten tanımlı.
+
+-- Integrations (Trendyol/HB)
+integration_accounts (id, tenant_id, provider, api_key_encrypted, status, created_at)
+orders_cache (id, tenant_id, provider, external_order_id, customer_phone, tracking_code, order_status, order_data_json, synced_at, created_at)
 
 -- Agent Assist
 suggested_replies (id, tenant_id, conversation_id, intent, reply_text, was_accepted, created_at)
-
--- Daha zengin metrics
-daily_metrics (id, tenant_id, date, total_messages, auto_resolved, human_handled, avg_response_time_sec, created_at)
-
--- Outbound Engine v1
-outbound_templates (id, tenant_id, name, trigger_event, message_template, variables_json, is_active, created_at, updated_at)
-outbound_messages (id, tenant_id, template_id, recipient_phone, message_text, status, sent_at, delivered_at, read_at, failed_reason, created_at)
-  -- status: 'queued' | 'sent' | 'delivered' | 'read' | 'failed'
-outbound_optouts (id, tenant_id, phone, reason, created_at)
 
 -- B2B / VIP Lead Detection
 vip_flags (id, tenant_id, customer_phone, flag_type, signal_text, sales_notified, created_at)
@@ -699,20 +804,20 @@ return_deflections (id, tenant_id, conversation_id, original_intent, reason_cate
 ```
 
 **Phase 2 sonunda elimizde:**
-- 5-10 aktif müşteri
-- MRR 15.000-50.000 TL
+- Mevcut müşteriler + yeni niche müşterileri aktif
+- MRR 300-500K TL hedef
 - Deflection rate %40+ (hedef)
-- Trendyol + HB entegrasyonu çalışıyor
-- Agent Assist temel seviyede çalışıyor
-- Outbound Engine v1 çalışıyor (basit trigger + template)
+- E-ticaret: Trendyol + HB entegrasyonu çalışıyor
+- Diş: Randevu motoru + no-show önleme aktif
+- Estetik: Lead management + follow-up çalışıyor
 - B2B/VIP lead tespiti aktif
 - İade çevirme akışı temel seviyede çalışıyor
 - İlk case study yayınlanabilir
 - Product-market fit sinyalleri net
 
 **Başarı kriterleri (Phase 3'e geçiş şartı):**
-- [ ] 5+ aktif ödeyen müşteri
-- [ ] Churn rate <%20 (ayda 1'den az kayıp)
+- [ ] Otomasyon kullanan toplam müşteri 30+
+- [ ] Churn rate <%10 (otomasyon eklenince düşmeli)
 - [ ] Müşteriler "ürün sorularına da cevap verse" diyor → Knowledge ihtiyacı doğuyor
 - [ ] "AI yanlış cevap veriyor" şikayeti → RAG ihtiyacı doğuyor
 - [ ] Outbound mesaj gönderiliyor, delivery rate %90+ (teknik çalışıyor)
@@ -867,28 +972,29 @@ service_catalog (id, tenant_id, service_name, category, price_min, price_max,
 
 | Kriter | E-ticaret | Diş | Estetik |
 |--------|-----------|-----|---------|
-| Aktif müşteri | 5-10 satıcı | 3-5 klinik | 3-5 klinik |
-| MRR | 15-50K TL | 22-37K TL | 45-75K TL |
+| Yeni müşteri | 5-10 satıcı | 3-5 klinik | 3-5 klinik |
+| Niche MRR katkısı | 15-50K TL | 22-37K TL | 45-75K TL |
 | Deflection rate | %40+ | N/A | N/A |
 | Dönüşüm | İade çevirme %15+ | Fiyat→randevu %30+ | Lead→randevu %30+ |
 | No-show | N/A | %10 altı | N/A |
 | Outbound | Delivery %90+ | Hatırlatma çalışıyor | Follow-up çalışıyor |
 | Case study | 1 yayınlanabilir | 1 yayınlanabilir | 1 yayınlanabilir |
 
+> **Not:** Toplam MRR = mevcut baz (50-200K) + Phase 1 artışı + Phase 2 niche katkısı = 300-500K TL hedef
+
 ---
 
-### Phase 3 — Knowledge Base + Akıllı Agent (Hafta 13-20)
+### Phase 3 — Knowledge Base + Akıllı Agent (Hafta 17-24)
 
 > *"AI accuracy = retention. Yanlış cevap veren AI, müşteri kaybettirir."*
 
-> **⚡ 3 Niche Paralel Güncelleme (2026-02-08):** Phase 3'te artık sağlık "hazırlık" değil,
-> 3 niche de Phase 0-2'den beri aktif. Phase 3'te Knowledge + AgentAI 3 niche'e birden serve eder:
-> - **E-ticaret:** Ürün bilgisi, iade politikası, kargo kuralları
-> - **Diş:** Tedavi bilgisi, fiyat detayı, sigorta kapsamı
-> - **Estetik:** İşlem detayı, kontrendikasyon, iyileşme süreci, multi-language
+Knowledge + AgentAI 3 niche'e birden serve eder:
+- **E-ticaret:** Ürün bilgisi, iade politikası, kargo kuralları
+- **Diş:** Tedavi bilgisi, fiyat detayı, sigorta kapsamı
+- **Estetik:** İşlem detayı, kontrendikasyon, iyileşme süreci, multi-language
 
 **Müşteri ne kazanıyor:** "AI artık şirket verisinden cevap veriyor, sallama yapmıyor"
-**Revenue milestone:** 15-25 e-ticaret + 7-13 diş + 5-10 estetik müşteri, toplam MRR 175.000-375.000 TL
+**Revenue milestone:** MRR 500-800K TL hedef
 **Satış dili:** "Ürün/tedavi sorularınızı da otomatik cevaplayacağız — kendi verinizle"
 
 #### Adım adım:
@@ -1036,8 +1142,8 @@ review_alerts (id, tenant_id, provider, external_review_id, rating, review_text,
 ```
 
 **Phase 3 sonunda elimizde:**
-- 15-25 müşteri (e-ticaret)
-- MRR 50.000-125.000 TL
+- Toplam 50-80+ aktif müşteri (3 niche dahil)
+- MRR 500-800K TL
 - Deflection rate %50+ (knowledge sayesinde artış)
 - AI kaynaklı cevap veriyor
 - Müşteriler kendi dokümanlarını yükleyebiliyor
@@ -1063,12 +1169,12 @@ review_alerts (id, tenant_id, provider, external_review_id, rating, review_text,
 
 ---
 
-### Phase 4 — Enterprise Altyapı: Auth + Audit + Güvenlik (Hafta 21-28)
+### Phase 4 — Enterprise Altyapı: SSO + Audit + Güvenlik (Hafta 25-32)
 
 > *"Security'yi müşteri isteyince yap — ama isteyince hızlı yap."*
 
 **Müşteri ne kazanıyor:** "Kurumsal güvenlik sertifikası — IT ekibiniz onay verir"
-**Revenue milestone:** 25-40 müşteri + ilk kurumsal kontrat, MRR 125.000-300.000 TL
+**Revenue milestone:** İlk kurumsal kontrat, MRR 800K-1.2M TL hedef
 **Satış dili:** "Bankalar bile onaylıyor: SSO, 2FA, audit log, KVKK uyumlu"
 
 > **Neden şimdi?** Phase 3'te büyük müşteriler kapıyı çalmaya başlıyor.
@@ -1078,21 +1184,20 @@ review_alerts (id, tenant_id, provider, external_review_id, rating, review_text,
 #### Adım adım:
 
 ```
-Adım 4.1: Auth Service (tam kapsamlı)
+Adım 4.1: SSO / 2FA Genişletme (mevcut auth üzerine)
+├── Not: Temel auth (email/şifre, JWT, multi-tenant, role-based) zaten Invekto ana uygulamada mevcut.
+│   Bu adım mevcut auth'u kurumsal seviyeye yükseltiyor — yeni auth servisi DEĞİL.
 ├── Yapılacak:
-│   ├── Invekto.Auth microservice (port 7102)
-│   ├── Backend'deki basit auth → Auth service'e taşı
-│   ├── JWT + Refresh token
-│   ├── Session management (device list, revoke, timeout policy)
-│   ├── Failed login log + brute-force protection (5 deneme → 15dk kilit)
-│   ├── IP allowlist (CIDR destekli)
-│   ├── Google OIDC (SSO)
+│   ├── Google OIDC (SSO) desteği ekle
 │   ├── Microsoft OIDC (SSO) + Azure tenant id
 │   ├── TOTP 2FA (QR + 10 backup code)
 │   ├── 2FA enforcement policy (tenant bazlı)
+│   ├── Session management genişletme (device list, revoke, timeout policy)
+│   ├── Failed login log + brute-force protection (5 deneme → 15dk kilit)
+│   ├── IP allowlist (CIDR destekli)
 │   ├── Country allowlist (GeoIP)
 │   └── Tenant bazlı policy engine
-└── Servis: Invekto.Auth (YENİ)
+└── Servis: Ana uygulamaya eklenir (ayrı mikroservis DEĞİL)
 
 Adım 4.2: Audit Service
 ├── Yapılacak:
@@ -1137,60 +1242,63 @@ Adım 4.5: Admin Panel
 │   └── PII redaction ayarları
 └── Servis: Dashboard genişleme
 
-Adım 4.6: Sağlık Niche Derinleştirme (⚡ 3 Niche Paralel — Phase 0'dan beri aktif)
-├── Not: Artık "giriş" değil, Phase 0-2'den beri aktif. Bu adım derinleştirme.
+Adım 4.6: C13 QA & Mining Hazırlık (Phase 6 prep)
+├── Not: Tam QA Scoring ve Conversation Mining Phase 6'da.
+│   Bu adım veri toplama altyapısını kuruyor.
 ├── Yapılacak:
-│   ├── Sağlık sektörüne özel gelişmiş intent seti (Phase 1-2'deki basit set genişler):
-│   │   ├── "İmplant ne kadar?" → fiyat aralığı + ücretsiz muayene teklifi [S6]
-│   │   ├── Randevu alma/değiştirme/iptal
-│   │   ├── "Ağrım var" → acil triage (doktor alert vs randevu)
-│   │   └── Tedavi bilgi soruları (Knowledge base'den)
-│   ├── Randevu yönetimi modülü (basit slot engine):
-│   │   ├── Müsait slot gösterme
-│   │   ├── Randevu onayı → otomatik WhatsApp teyit
-│   │   ├── Randevu değişikliği/iptali
-│   │   └── Google Calendar / basit takvim sync
-│   ├── No-Show Önleme akışı [S7]:
-│   │   ├── T-48h hatırlatma + onay iste ("Evet geliyorum" / "İptal")
-│   │   ├── T-2h son hatırlatma
-│   │   ├── İptal → slot'u otomatik boşalt → bekleme listesine sor
-│   │   └── No-show tracking + rate dashboard
-│   ├── İlk 2-3 klinik ile pilot program
-│   └── Sağlık Grand Slam Offer ile satış
+│   ├── Conversation metadata log (süre, intent, resolution, sentiment — audit tablosuna ek)
+│   ├── Basit script compliance check (banned phrases tetiklenme raporu)
+│   ├── Agent bazlı ortalama yanıt süresi + çözüm oranı
+│   └── "Top unanswered intents" haftalık rapor (Knowledge gap tespiti)
+├── Yapılmayacak:
+│   ├── Tam QA scoring (Phase 6)
+│   ├── Win/loss phrase analizi (Phase 6)
+│   └── Conversation mining (Phase 6)
+└── Servis: Audit + Dashboard genişleme
+
+Adım 4.7: Sağlık Niche — Enterprise Özellikler
+├── Not: Randevu motoru, no-show önleme, intent seti Phase 2'de zaten kuruldu.
+│   Bu adım enterprise müşteriler için derinleştirme.
+├── Yapılacak:
+│   ├── SLA tracking (klinik bazlı yanıt süresi hedefleri)
+│   ├── Audit log (hasta verileri erişim geçmişi — KVKK uyumu)
+│   ├── Advanced analytics (tedavi bazlı dönüşüm, doktor performansı)
+│   ├── PII koruma (TC kimlik, sağlık verisi maskeleme)
+│   └── Multi-şube yönetimi (merkezi dashboard + şube bazlı izolasyon)
 ├── Yapılmayacak:
 │   ├── Tedavi sonrası takip otomasyonu (Phase 5)
 │   ├── Google yorum motoru (Phase 5)
 │   ├── Medikal turizm multi-language (Phase 5)
 │   └── HBYS entegrasyonu (çok erken)
-└── Servis: AgentAI + Outbound + Backend (yeni endpoint'ler)
+└── Servis: Audit + AgentAI + Dashboard genişleme
 ```
 
-**DB Tabloları (Phase 4 — Auth + Audit + Sağlık):**
+**DB Tabloları (Phase 4 — SSO/2FA + Audit):**
 ```sql
--- Auth DB
-auth_users (id, tenant_id, email, password_hash, sso_provider, sso_subject, totp_secret, backup_codes, status, created_at, updated_at)
+-- SSO/2FA (ana uygulamanın DB'sine eklenir — SQL Server)
+-- Not: Mevcut users tablosuna SSO/2FA kolonları eklenir, ayrı tablo oluşturulmaz.
+-- sso_provider, sso_subject, totp_secret, backup_codes → users tablosuna ALTER
+
+-- Ek tablolar:
 sessions (id, user_id, device_id, ip, country, user_agent, expires_at, created_at)
 login_attempts (id, email, ip, device_info, reason, created_at)
 tenant_policies (id, tenant_id, session_timeout_min, max_failed_attempts, ip_allowlist_json, country_allowlist_json, sso_required, tfa_required, created_at, updated_at)
 
--- Audit DB
+-- Audit DB (InvektoServis PostgreSQL)
 audit_events (id, tenant_id, event_type, actor_id, resource_type, resource_id, ip, user_agent, correlation_id, payload_before_json, payload_after_json, created_at)
 retention_policies (id, tenant_id, resource_type, retain_days, legal_hold, created_at, updated_at)
 
--- Sağlık Niche — Randevu Yönetimi
-appointments (id, tenant_id, patient_phone, patient_name, service_type, slot_start, slot_end, status, reminder_sent_48h, reminder_sent_2h, confirmed, no_show, created_at, updated_at)
-  -- status: 'booked' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
-appointment_slots (id, tenant_id, day_of_week, start_time, end_time, max_capacity, is_active, created_at)
-waitlist (id, tenant_id, patient_phone, preferred_date, preferred_time, status, created_at)
+-- Sağlık Derinleştirme — Phase 2'deki appointments, appointment_slots, waitlist KULLANILIR.
+-- Phase 4'te yeni tablo eklenmez, mevcut tablolar genişletilir (doktor bazlı slot vb.)
 ```
 
 **Phase 4 sonunda elimizde:**
-- 25-40 müşteri e-ticaret + 10-20 diş klinik + 10-17 estetik klinik (⚡ 3 niche paralel)
-- MRR 125.000-300.000 TL (e-ticaret) + 75.000-150.000 TL (diş) + 150.000-250.000 TL (estetik)
+- 80-120+ toplam aktif müşteri (3 niche dahil)
+- MRR 800K-1.2M TL hedef (toplam)
 - SSO/2FA/Audit/PII enterprise-ready
 - İlk kurumsal kontrat imzalanabilir
 - Procurement checklist'in %90'ı karşılanıyor
-- Sağlık niche'i pilot çalışıyor (no-show önleme + fiyat→randevu)
+- 3 niche tam çalışıyor, enterprise özelliklerle güçlendirilmiş
 
 **Başarı kriterleri (Phase 5'e geçiş şartı):**
 - [ ] En az 1 kurumsal müşteri SSO ile bağlandı
@@ -1204,12 +1312,12 @@ waitlist (id, tenant_id, patient_phone, preferred_date, preferred_time, status, 
 
 ---
 
-### Phase 5 — Revenue Agent: Satış Yapan AI (Hafta 29-36)
+### Phase 5 — Revenue Agent: Satış Yapan AI (Hafta 33-40)
 
 > *"Support AI para toplar. Revenue Agent satış yapar."*
 
 **Müşteri ne kazanıyor:** "AI sadece soruları cevaplamıyor, satış da yapıyor"
-**Revenue milestone:** 40-60 müşteri, MRR 300.000-500.000 TL + premium tier
+**Revenue milestone:** MRR 1.2-2M TL hedef + premium tier
 **Satış dili:** "Lead'den ödemeye kadar AI satış yapar — ürün önerir, teklif verir, randevu alır"
 
 #### Adım adım:
@@ -1230,7 +1338,7 @@ Adım 5.1: Revenue Agent — Lead Katmanı
 │       └── Ödeme geldi → otomatik teyit mesajı
 └── Servis: AgentAI genişleme
 
-Adım 5.2: Revenue Agent — Satış Katmanı (fullidea'da EKSİK olan kısım)
+Adım 5.2: Revenue Agent — Satış Katmanı
 ├── Yapılacak:
 │   ├── Product Recommendation Engine
 │   │   ├── Konuşma context'inden ürün/hizmet eşleştirme
@@ -1321,9 +1429,9 @@ Adım 5.7: Sağlık Niche Genişleme (YENİ — Senaryo S8, S9, S10)
 **DB Tabloları (Phase 5 eklentileri):**
 ```sql
 -- Revenue Agent
-leads (id, tenant_id, phone, name, source, score, status, qualification_data_json, created_at, updated_at)
+-- Not: leads tablosu Phase 2 Estetik'te zaten tanımlı. Buradan itibaren genişletilir:
+--   leads tablosuna ek kolonlar: qualification_data_json, revenue_potential
 lead_appointments (id, tenant_id, lead_id, slot_start, slot_end, status, created_at)
-  -- Not: Phase 4'teki appointments tablosu sağlık niche'i için. Bu lead appointments.
 payment_links (id, tenant_id, lead_id, provider, amount, currency, external_link_id, status, created_at)
 
 -- Product Catalog
@@ -1364,8 +1472,8 @@ medical_tourism_leads (id, tenant_id, patient_phone, patient_country, lang, trea
 | Sonuç | **Para toplar** | **Satış yapar** |
 
 **Phase 5 sonunda elimizde:**
-- 40-60 müşteri e-ticaret + 20-30 diş klinik + 17-25 estetik klinik (⚡ 3 niche paralel)
-- MRR 300.000-500.000 TL (e-ticaret) + 150.000-225.000 TL (diş) + 250.000-375.000 TL (estetik)
+- 120-200+ toplam aktif müşteri (3 niche dahil)
+- MRR 1.2-2M TL hedef (toplam)
 - Revenue Agent aktif satış yapıyor
 - Abandoned cart recovery çalışıyor
 - Post-purchase proaktif satış aktif
@@ -1408,65 +1516,228 @@ Her müşterinin Invekto'ya daha fazla ödeme yapma nedenleri:
 
 ---
 
-### Phase 6 — Operasyon + Analytics + Ölçek (Hafta 37-48)
+### Phase 6 — Operasyon & Analytics: C13 QA + Conversation Mining (Hafta 41-48)
 
 > *"You can't improve what you don't measure."*
 
-**Müşteri ne kazanıyor:** "Ekip performansını ölç, büyürken kontrolü kaybet"
-**Revenue milestone:** 60-100 müşteri, MRR 500.000-1.000.000 TL
+**Müşteri ne kazanıyor:** "Ekip performansını ölç, büyürken kontrolü kaybetme, AI'ı sürekli iyileştir"
+**Revenue milestone:** MRR 2M+ TL
 **Satış dili:** "Dashboard'dan her şeyi izle: yanıt süreleri, temsilci kalitesi, gelir etkisi"
+
+> **C13 (QA & Mining) burada tam devreye girer.** Phase 4'te hazırlık yapıldı (metadata log,
+> basit script compliance, top unanswered intents). Şimdi tam kapsamlı kalite kontrol + mining.
+> Desteklenen senaryolar: 03 (iade kriz yönetimi), 33 (KVKK denetim), 49 (hekim notları),
+> 50 (hasta memnuniyet), 62 (KVKK foto/video), 75 (veri saklama).
 
 #### Adım adım:
 
 ```
-Adım 6.1: SLA Tracker
-├── Response time / resolve time ölçümü
-├── Tenant bazlı SLA hedefleri (örn: 2dk ilk yanıt)
-├── Breach alerts (mail/webhook)
-└── SLA dashboard
+Adım 6.1: SLA Tracker (tam)
+├── Yapılacak:
+│   ├── First response time (FRT) + resolution time ölçümü
+│   ├── Tenant bazlı SLA hedefleri (örn: FRT <2dk, resolution <30dk)
+│   ├── Breach alerts (email + webhook + dashboard bildirim)
+│   ├── SLA compliance raporu (günlük/haftalık/aylık)
+│   ├── Eskalasyon kuralları (SLA breach → supervisor alert → manager alert)
+│   └── Niche-özel SLA'lar (sağlık: acil mesaj <5dk, e-ticaret: kargo <15dk)
+├── Yapılmayacak:
+│   ├── Otomatik müşteri tazminatı (manuel karar)
+│   └── SLA'ya dayalı fiyatlandırma (çok erken)
+└── Servis: Backend + Dashboard genişleme
 
-Adım 6.2: QA Scoring
-├── AI destekli temsilci değerlendirme
-├── Script compliance skoru
-├── Sentiment analizi
-├── Resolution quality skoru
-└── Manager review queue
+Adım 6.2: QA Scoring (C13 — tam)
+├── Yapılacak:
+│   ├── AI destekli temsilci değerlendirme (her konuşma sonrası otomatik skor)
+│   ├── Skor kriterleri:
+│   │   ├── Script compliance (doğru akış takip edildi mi?)
+│   │   ├── Sentiment alignment (müşteri tonu iyileşti mi kötüleşti mi?)
+│   │   ├── Resolution quality (sorun çözüldü mü? tekrar mı yazıldı?)
+│   │   ├── Response time compliance (SLA'ya uyuldu mu?)
+│   │   └── Knowledge accuracy (bilgi doğru verildi mi?)
+│   ├── Manager review queue (düşük skorlu konuşmalar → inceleme)
+│   ├── Agent coaching insights ("Temsilci X: empati dili zayıf, kriz yönetimi güçlü")
+│   ├── Niche-özel skor ağırlıkları:
+│   │   ├── Sağlık: KVKK compliance + tıbbi disclaimer ağırlıklı
+│   │   ├── E-ticaret: çözüm hızı + iade çevirme ağırlıklı
+│   │   └── Estetik: lead dönüşüm + takip kalitesi ağırlıklı
+│   └── Agent bazlı trend raporu (haftalık iyileşme/kötüleşme)
+├── Yapılmayacak:
+│   ├── Otomatik performans aksiyonu (sadece rapor, karar manager'da)
+│   └── Müşteriye QA skoru gösterme
+└── Servis: ChatAnalysis genişleme + Dashboard
 
-Adım 6.3: Conversation Mining
-├── Win/loss phrase analizi (hangi cümleler satış getiriyor)
-├── Top complaint drivers (en çok ne şikayet ediliyor)
-├── Top conversion patterns (satışı kapatan kalıplar)
-└── Trend analizi (haftalık/aylık değişim)
+Adım 6.3: Conversation Mining (C13 — tam)
+├── Yapılacak:
+│   ├── Win/loss phrase analizi (hangi cümleler satış/randevu getiriyor?)
+│   ├── Top complaint drivers (en çok ne şikayet ediliyor? — haftalık)
+│   ├── Top conversion patterns (satışı kapatan kalıplar → en iyi template'e dönüştür)
+│   ├── Churn signal detection (müşteri kaybetme riski olan konuşma kalıpları)
+│   ├── Intent trend analizi (yeni ortaya çıkan intent'ler — knowledge gap mı?)
+│   ├── Niche-özel mining:
+│   │   ├── E-ticaret: en çok iade nedeni, en çok şikayet edilen ürün kategorisi
+│   │   ├── Diş: en çok sorulan tedavi, fiyat hassasiyeti kalıpları
+│   │   └── Estetik: lead kaybetme nedeni, en etkili before/after paylaşım stratejisi
+│   └── Haftalık "insight digest" raporu (top 5 bulgu)
+├── Yapılmayacak:
+│   ├── Tam NLP model training (mevcut ChatAnalysis + LLM yeterli)
+│   └── Competitor intelligence (kapsam dışı)
+└── Servis: ChatAnalysis + Knowledge + Dashboard
 
-Adım 6.4: Knowledge Gap Report
-├── Son 7/30 gün top 50 unanswered intents
-├── "Doc ekle" aksiyonu (direkt knowledge'a yönlendir)
-└── AI accuracy trend (zaman içinde iyileşme)
+Adım 6.4: Knowledge Gap Report (tam)
+├── Yapılacak:
+│   ├── Son 7/30 gün top 50 unanswered intents (Phase 4'teki basit versiyon genişler)
+│   ├── "Doc ekle" 1-tık aksiyonu (direkt knowledge editor'e yönlendir)
+│   ├── AI accuracy trend (zaman içinde iyileşme grafiği)
+│   ├── Gap→doc öneri sistemi ("Bu soruya cevap yok — şu bilgiyi ekle" önerisi)
+│   └── Tenant bazlı knowledge health score (eksik/güncel/eski)
+└── Servis: Knowledge + Dashboard
 
-Adım 6.5: Revenue Attribution Dashboard
-├── Kanal bazlı gelir (WhatsApp / Instagram / Web)
-├── Kampanya bazlı ROI
-├── Agent bazlı satış performansı
-├── AI vs Human karşılaştırması
-└── Abandoned cart recovery rate ve değeri
+Adım 6.5: Revenue Attribution Dashboard (tam)
+├── Yapılacak:
+│   ├── Kanal bazlı gelir (WhatsApp / Instagram / Web / referans)
+│   ├── Kampanya bazlı ROI (UTM + Click-to-WA attribution)
+│   ├── Agent bazlı satış performansı (gelir katkısı)
+│   ├── AI vs Human karşılaştırması (AI çözdü mü insan mı?)
+│   ├── Abandoned cart recovery rate ve kurtarılan TL
+│   ├── İade çevirme oranı + kurtarılan TL
+│   └── Niche-özel dashboard:
+│       ├── E-ticaret: marketplace bazlı performans
+│       ├── Diş: tedavi bazlı randevu→gelir funnel
+│       └── Estetik: kampanya→lead→hasta tam attribution
+├── Yapılmayacak:
+│   └── Predictive revenue (veri biriktikçe Phase 7'de)
+└── Servis: Dashboard genişleme
 ```
+
+**DB Tabloları (Phase 6 — QA + Mining):**
+```sql
+-- SLA
+sla_configs (id, tenant_id, channel, priority, frt_target_sec, resolution_target_sec, escalation_rules_json, created_at, updated_at)
+sla_breaches (id, tenant_id, conversation_id, breach_type, target_sec, actual_sec, escalated_to, created_at)
+  -- breach_type: 'frt' | 'resolution'
+
+-- QA Scoring (C13)
+qa_scores (id, tenant_id, conversation_id, agent_id, script_compliance, sentiment_alignment,
+  resolution_quality, response_time_compliance, knowledge_accuracy, overall_score, reviewed_by,
+  review_notes, created_at)
+qa_coaching_insights (id, tenant_id, agent_id, period_start, period_end, strengths_json, weaknesses_json,
+  recommendations, created_at)
+
+-- Conversation Mining (C13)
+mining_insights (id, tenant_id, insight_type, period_start, period_end, data_json, created_at)
+  -- insight_type: 'win_phrases' | 'loss_phrases' | 'complaint_drivers' | 'conversion_patterns' | 'churn_signals' | 'intent_trends'
+mining_digests (id, tenant_id, week_start, top_insights_json, action_items_json, created_at)
+
+-- Knowledge Gap
+knowledge_gaps (id, tenant_id, unanswered_intent, frequency, first_seen, last_seen, status, resolved_doc_id, created_at)
+  -- status: 'open' | 'in_progress' | 'resolved'
+```
+
+**Phase 6 sonunda elimizde:**
+- 170-200+ toplam aktif müşteri
+- MRR 2M+ TL
+- SLA tracking çalışıyor, breach alert'ler aktif
+- QA scoring her konuşmada otomatik, manager review queue aktif
+- Conversation mining haftalık insight digest üretiyor
+- Knowledge gap report bilgi tabanını sürekli iyileştiriyor
+- Revenue attribution tam — her TL'nin kaynağı izlenebiliyor
+
+**Başarı kriterleri (Phase 7'ye geçiş şartı):**
+- [ ] SLA compliance %90+ (tüm tenant ortalaması)
+- [ ] QA skor ortalaması %75+ (tüm agent'lar)
+- [ ] Knowledge gap close rate %60+ (tespit edilen boşluklar kapatılıyor)
+- [ ] Conversation mining'den en az 5 actionable insight/ay çıkıyor
+- [ ] Platform stabil, ölçek sorunları yok (concurrent user limiti test edilmiş)
 
 ---
 
-### Phase 7 — Genişleme: Omnichannel + Global (Hafta 49+)
+### Phase 7 — Genişleme: Yeni Kanallar + Global + Mobil (Hafta 49+)
 
 > *"Dominate one channel, then expand."*
 
-**Müşteri ne kazanıyor:** "Tüm kanalları tek yerden yönet"
-**Revenue milestone:** 100+ müşteri, MRR 1.000.000+ TL
+> **Not:** WhatsApp (Cloud + BSP), Instagram DM, Facebook Messenger, Telegram, SMS, VOIP **zaten Invekto'da mevcut**
+> (7 kanal Unified Inbox — bkz [whatisinvekto.md](whatisinvekto.md)). Bu phase yeni kanallar + global genişleme + mobil app için.
+
+**Müşteri ne kazanıyor:** "Yeni kanallar + global pazar desteği + mobil erişim"
+**Revenue milestone:** MRR 2M++ TL (ölçek büyümesi)
+**Satış dili:** "Her yerden, her kanaldan, her dilde — cebinizden yönetin"
+
+#### Adım adım:
 
 ```
-Genişleme alanları (müşteri talebine göre önceliklendir):
-├── Instagram DM entegrasyonu
-├── Facebook Messenger
-├── SMS fallback (WhatsApp ulaşmadığında)
-├── Shopify / WooCommerce (global müşteri talebi varsa)
-├── Voice message transcription (Whisper API)
-├── Predictive analytics / churn prediction (yeterli veri biriktiyse)
-└── Compliance scanner (KVKK/GDPR otomatik tarama)
+Adım 7.1: Mobil Uygulama
+├── Yapılacak:
+│   ├── React Native veya Flutter ile cross-platform (iOS + Android)
+│   ├── Temel özellikler:
+│   │   ├── Konuşma listesi + mesaj okuma/yazma
+│   │   ├── Push notification (yeni mesaj, SLA breach, VIP lead)
+│   │   ├── Agent Assist (AI cevap önerisi) — mobilde de çalışır
+│   │   ├── Konuşma transferi + etiketleme
+│   │   └── Basit dashboard (günlük metrikler)
+│   ├── İleri özellikler:
+│   │   ├── Offline queue (internet kesilince mesaj kuyruğa alınır)
+│   │   ├── Fotoğraf/dosya gönderme
+│   │   └── Bildirim tercihleri (sessiz saatler, VIP only)
+├── Yapılmayacak:
+│   ├── Tam dashboard (web'de yeterli)
+│   ├── Admin/config işlemleri (web'de)
+│   └── Knowledge base yönetimi (web'de)
+├── Senaryolar: Tüm sektörler faydalanır — özellikle:
+│   ├── Diş: Doktor gece mesai dışı acil mesajları mobilde görebilir
+│   ├── Estetik: Operasyon sorumlusu sahada lead takibi yapabilir
+│   └── E-ticaret: Satıcı hareket halinde siparişleri yönetebilir
+└── Servis: Yeni mobil uygulama (mevcut API'leri tüketir)
+
+Adım 7.2: Yeni Kanal Entegrasyonları
+├── Yapılacak (müşteri talebine göre önceliklendir):
+│   ├── Shopify / WooCommerce entegrasyonu (global müşteri talebi varsa)
+│   ├── Amazon Türkiye / n11 marketplace entegrasyonu
+│   ├── Google Business Messages (sağlık niche'i için Google Maps'ten direkt mesaj)
+│   ├── Apple Business Chat (iOS ağırlıklı pazarlar)
+│   └── Web chat widget (kendi sitesinden mesaj başlatma)
+├── Yapılmayacak:
+│   ├── Her kanalı aynı anda ekleme (talep bazlı)
+│   └── Özel protokol kanalları (Signal, vb.)
+└── Servis: Invekto Ana Uygulama + Integrations
+
+Adım 7.3: Voice & Video
+├── Yapılacak:
+│   ├── Voice message transcription (Whisper API — sesli mesajı yazıya çevir)
+│   ├── Video call entegrasyonu (sağlık konsültasyon — medikal turizm)
+│   └── Voice analytics (ses tonundan sentiment)
+├── Yapılmayacak:
+│   ├── Tam çağrı merkezi (VOIP zaten var)
+│   └── Video kayıt/arşiv (KVKK riski çok yüksek)
+└── Servis: Yeni veya mevcut VOIP genişleme
+
+Adım 7.4: Predictive Analytics
+├── Yapılacak (yeterli veri biriktiyse):
+│   ├── Churn prediction (hangi müşteri ayrılmak üzere?)
+│   ├── Predictive lead scoring (hangi lead kapanacak?)
+│   ├── Best send-time prediction (outbound mesaj ne zaman gönderilsin?)
+│   └── Demand forecasting (sağlık: randevu talebi tahmini, e-ticaret: sezonluk talep)
+├── Yapılmayacak:
+│   └── Veri yetersizse force etme — minimum 6 aylık data gerekli
+└── Servis: AgentAI + Backend
+
+Adım 7.5: Global Pazar Hazırlığı
+├── Yapılacak:
+│   ├── Multi-currency desteği (USD/EUR/GBP — sağlık medikal turizm için)
+│   ├── Timezone-aware scheduling (outbound + randevu)
+│   ├── Yeni dil desteği (Rusça, Almanca — medikal turizm talebi varsa)
+│   ├── Compliance scanner (KVKK/GDPR otomatik tarama)
+│   └── Regional template library (ülke bazlı WhatsApp template onay)
+├── Yapılmayacak:
+│   ├── Her ülkeye ayrı instance (multi-tenant yeterli)
+│   └── Local payment gateway'ler (iyzico/PayTR global desteği yeterli)
+└── Servis: Backend + Outbound genişleme
 ```
+
+**Phase 7 sonunda elimizde:**
+- 200++ aktif müşteri
+- MRR 2M++ TL
+- Mobil uygulama (iOS + Android) yayında
+- Yeni kanal(lar) aktif (talep bazlı)
+- Voice transcription çalışıyor
+- Predictive analytics pilot başlamış
+- Global müşteri altyapısı hazır (multi-currency, timezone, yeni diller)

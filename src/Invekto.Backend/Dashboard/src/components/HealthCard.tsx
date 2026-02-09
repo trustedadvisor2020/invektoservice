@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Power, Globe, Link2, Server, MessageSquare, X, ExternalLink, List, Loader2 } from 'lucide-react';
+import { RefreshCw, Power, Globe, Link2, Server, MessageSquare, Bot, X, ExternalLink, List, Loader2 } from 'lucide-react';
 import type { ServiceHealth, EndpointInfo } from '../lib/api';
 import { api } from '../lib/api';
 import { Card, CardContent } from './ui/Card';
@@ -30,6 +30,12 @@ const serviceConfig: Record<string, {
     host: 'localhost',
     healthEndpoint: '/health',
     icon: MessageSquare,
+  },
+  'Invekto.Automation': {
+    port: 7108,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: Bot,
   },
 };
 

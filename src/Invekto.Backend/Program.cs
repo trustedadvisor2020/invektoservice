@@ -22,6 +22,9 @@ var slowThresholdMs = builder.Configuration.GetValue<int>("Ops:SlowThresholdMs",
 var microserviceUrl = builder.Configuration["Microservice:ChatAnalysis:Url"]
     ?? $"http://localhost:{ServiceConstants.ChatAnalysisPort}";
 var microserviceLogPath = builder.Configuration["Microservice:ChatAnalysis:LogPath"];
+var automationUrl = builder.Configuration["Microservice:Automation:Url"]
+    ?? $"http://localhost:{ServiceConstants.AutomationPort}";
+var automationLogPath = builder.Configuration["Microservice:Automation:LogPath"];
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -31,6 +34,10 @@ var logPaths = new List<string> { logPath };
 if (!string.IsNullOrEmpty(microserviceLogPath))
 {
     logPaths.Add(microserviceLogPath);
+}
+if (!string.IsNullOrEmpty(automationLogPath))
+{
+    logPaths.Add(automationLogPath);
 }
 builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
 
@@ -48,6 +55,13 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
 {
     client.BaseAddress = new Uri(microserviceUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+});
+
+// Configure Automation HTTP client
+builder.Services.AddHttpClient<AutomationClient>(client =>
+{
+    client.BaseAddress = new Uri(automationUrl);
     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
 });
 
@@ -142,7 +156,7 @@ bool ValidateOpsAuth(HttpContext ctx)
 }
 
 // OPS endpoint - Stage-0 troubleshooting dashboard
-app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, LogReader logReader) =>
+app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, LogReader logReader) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -151,6 +165,7 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, LogRea
     }
 
     var chatHealthy = await chatClient.CheckHealthAsync();
+    var autoHealthy = await automationClient.CheckHealthAsync();
 
     var ops = new
     {
@@ -159,7 +174,8 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, LogRea
         services = new
         {
             backend = new { status = "ok" },
-            chatAnalysis = new { status = chatHealthy ? "ok" : "unavailable" }
+            chatAnalysis = new { status = chatHealthy ? "ok" : "unavailable" },
+            automation = new { status = autoHealthy ? "ok" : "unavailable" }
         },
         info = new
         {
@@ -322,7 +338,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -356,6 +372,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null, // Not tracked
         lastCheck = now,
         error = chatHealthy ? null : "Service unreachable"
+    });
+
+    // Automation - check health with timing
+    var swAuto = System.Diagnostics.Stopwatch.StartNew();
+    var autoHealthy = await automationClient.CheckHealthAsync();
+    swAuto.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.AutomationServiceName,
+        status = autoHealthy ? "ok" : "unavailable",
+        responseTimeMs = autoHealthy ? (int?)swAuto.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = autoHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -505,6 +536,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
     {
         "Invekto.Backend" => "Invekto.Backend",
         "Invekto.ChatAnalysis" => "Invekto.Microservice.Chat",
+        "Invekto.Automation" => "InvektoAutomation",
         _ => null
     };
 
@@ -558,7 +590,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -572,9 +604,23 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
 
         if (serviceName == "chatanalysis")
         {
-            // Forward to ChatAnalysis service
             var endpoint = "/" + (path ?? "health");
             var result = await chatClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "automation")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await automationClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -811,7 +857,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -858,17 +904,24 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch ChatAnalysis endpoints (internal call)
     var chatEndpoints = await chatClient.GetEndpointsAsync();
 
+    // Fetch Automation endpoints (internal call)
+    var autoEndpoints = await automationClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
         services.Add(chatEndpoints);
+    }
+    if (autoEndpoints != null)
+    {
+        services.Add(autoEndpoints);
     }
 
     return Results.Ok(new { services });
 });
 
 // Postman collection download - dynamically generated from endpoint discovery
-app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient) =>
+app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -878,6 +931,7 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
 
     // Fetch all service endpoints
     var chatEndpoints = await chatClient.GetEndpointsAsync();
+    var autoEndpoints = await automationClient.GetEndpointsAsync();
 
     var allServices = new List<(string service, int port, List<EndpointInfo> endpoints)>
     {
@@ -904,6 +958,10 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
     if (chatEndpoints != null)
     {
         allServices.Add((chatEndpoints.Service, chatEndpoints.Port, chatEndpoints.Endpoints));
+    }
+    if (autoEndpoints != null)
+    {
+        allServices.Add((autoEndpoints.Service, autoEndpoints.Port, autoEndpoints.Endpoints));
     }
 
     // Sample request bodies for known endpoints

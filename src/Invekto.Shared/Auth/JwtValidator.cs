@@ -15,9 +15,9 @@ public sealed class JwtValidator
 
     public JwtValidator(JwtSettings settings)
     {
-        var keyBytes = Convert.FromBase64String(settings.SecretKey);
+        var keyBytes = Encoding.UTF8.GetBytes(settings.SecretKey);
         if (keyBytes.Length < 32)
-            throw new ArgumentException("JWT SecretKey must be at least 32 bytes (256 bits) when decoded from base64.");
+            throw new ArgumentException("JWT SecretKey must be at least 32 bytes (256 bits). Current key is " + keyBytes.Length + " bytes.");
 
         var securityKey = new SymmetricSecurityKey(keyBytes);
 
