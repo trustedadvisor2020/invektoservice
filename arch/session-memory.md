@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-09
-- **Status:** GR-1.1 IMPLEMENTED (BUILD PASS)
-- **Last Task:** GR-1.1 Invekto.Automation servisi implementasyonu tamamlandi. Chatbot engine, FAQ, intent detection, working hours, handoff. 4 PostgreSQL tablosu.
+- **Status:** Simulator Tool DONE (Codex 3 iter PASS)
+- **Last Task:** Test & Simulation tool (tools/simulator/, Port 4500). Node.js + Express + WebSocket. JWT generate, webhook send, callback catch, real-time traffic, preset scenarios, ops log proxy.
 
 ---
 
@@ -55,16 +55,17 @@
 | Integrations | 7106 | Reserved (Phase 2+) |
 | Outbound | 7107 | Reserved (Phase 1) |
 | Automation | 7108 | Implemented (GR-1.1) |
+| Simulator | 4500 | Dev-only tool (Node.js) |
 
 ### Deploy
 - **Script:** `dev-to-invekto-services.bat`
 - **Protokol:** FTPES (explicit TLS)
 - **FTP Host:** services.invekto.com
-- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`
+- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`, `E:\Invekto\Automation\current\`
 - **Sunucu Domain:** services.invekto.com
 - **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
 - **Service Manager:** NSSM (`E:\nssm.exe`)
-- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoDeployWatcher (auto-start, auto-restart)
+- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoDeployWatcher (auto-start, auto-restart)
 - **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
 - **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
 - **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
@@ -81,6 +82,9 @@
 - [ ] Q: tenant-registry.sql calistir (pgAdmin'de)
 - [ ] Callback URL per-request: MainAppCallbackClient zaten destekliyor
 - [x] ~~GR-1.1 Chatbot/Flow Builder~~ (Tamamlandi - Invekto.Automation servisi)
+- [x] ~~Deploy scripts~~ (Tamamlandi - install-services, restart-services, firewall, deploy-watcher)
+- [x] ~~Automation Dashboard entegrasyonu~~ (Tamamlandi - HealthCard, DependencyMap, TestPanel, AutomationClient)
+- [x] ~~Simulator Tool~~ (Tamamlandi - tools/simulator/, Port 4500, Codex 3 iter PASS)
 
 ### Known Issues
 - (Henüz yok)
@@ -126,8 +130,9 @@ src/
 │   ├── Middleware/           # Traffic logging + JWT auth
 │   └── Services/            # FlowEngine, IntentDetector, FaqMatcher, WorkingHoursChecker, AutomationOrchestrator
 └── Invekto.Backend/          # Backend API (Port 5000)
+    ├── Dashboard/            # React/TS Ops Dashboard
     ├── Middleware/            # Traffic logging + JWT auth
-    └── Services/
+    └── Services/             # ChatAnalysisClient, AutomationClient
 ```
 
 ---
@@ -137,10 +142,11 @@ src/
 Sonraki session'da:
 1. Q: JWT claims dogrula (Main App token yapisi)
 2. Q: tenant-registry.sql + automation.sql calistir (pgAdmin'de)
-3. Q: appsettings.Production.json olustur (Automation icin)
-4. Q: NSSM ile InvektoAutomation servisi kur
-5. GR-1.1 Codex review + deploy
+3. Q: Sunucuda appsettings.Production.json degerlerini doldur (REPLACE_WITH_ACTUAL_KEY)
+4. Q: `dev-to-invekto-services.bat` calistir (deploy)
+5. Q: Sunucuda `install-services.bat` calistir (ilk kez) veya deploy-watcher otomatik restart
 6. Disaridan health test: http://services.invekto.com:7108/health
+7. Dashboard kontrol: http://services.invekto.com:5000 (3 servis gorunmeli)
 
 ---
 

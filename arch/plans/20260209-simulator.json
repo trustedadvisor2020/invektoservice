@@ -1,0 +1,230 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260209-simulator",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-09T12:00:00Z",
+  "updated_at": "2026-02-09T12:30:00Z",
+  "plan": {
+    "summary": "Standalone Node.js test & simulation tool (port 4500) for testing all InvektoServis microservices. Generates JWT tokens, sends webhooks, catches callbacks, shows real-time traffic, runs preset scenarios, proxies ops logs. Dev-only tool, no production deployment. Zero changes to existing services.",
+    "q_intent": "bana yeni bir node uygulamasi yaz. ayni sunucuda ayri porttan calissin. uygulama test ve simulasyon yapacak. istekler invekto main app den geliyormus gibi gelecek ve sanki oraya gonderiyormus gibi olacak. UI lazim. servisi, gelen giden tum verileri ve loglari/hatalari gorebilmeliyim.",
+    "interview_notes": "Scope: Tum servisler (Backend 5000, ChatAnalysis 7101, Automation 7108). Mode: Gercek servislere istek atar. UI: Standalone Node app (port 4500). Features: Senaryo calistir + callback yakala + real-time log/traffic izle + JWT olustur. Log source: Backend API uzerinden. Deploy: Sadece dev PC. Location: tools/simulator/"
+  },
+  "allowed_files": [
+    "tools/simulator/.gitignore",
+    "tools/simulator/package.json",
+    "tools/simulator/package-lock.json",
+    "tools/simulator/config.js",
+    "tools/simulator/server.js",
+    "tools/simulator/src/services/jwt-service.js",
+    "tools/simulator/src/services/traffic-store.js",
+    "tools/simulator/src/services/health-checker.js",
+    "tools/simulator/src/services/webhook-sender.js",
+    "tools/simulator/src/services/ops-proxy.js",
+    "tools/simulator/src/ws/ws-manager.js",
+    "tools/simulator/src/routes/jwt.js",
+    "tools/simulator/src/routes/webhook.js",
+    "tools/simulator/src/routes/callback.js",
+    "tools/simulator/src/routes/health.js",
+    "tools/simulator/src/routes/logs.js",
+    "tools/simulator/src/routes/traffic.js",
+    "tools/simulator/src/routes/scenarios.js",
+    "tools/simulator/src/scenarios/presets.js",
+    "tools/simulator/public/index.html",
+    "tools/simulator/public/css/app.css",
+    "tools/simulator/public/js/app.js",
+    "tools/simulator/public/js/utils/formatter.js",
+    "tools/simulator/public/js/services/api-client.js",
+    "tools/simulator/public/js/services/ws-client.js",
+    "tools/simulator/public/js/components/header.js",
+    "tools/simulator/public/js/components/jwt-panel.js",
+    "tools/simulator/public/js/components/webhook-panel.js",
+    "tools/simulator/public/js/components/callback-panel.js",
+    "tools/simulator/public/js/components/health-panel.js",
+    "tools/simulator/public/js/components/traffic-feed.js",
+    "tools/simulator/public/js/components/logs-panel.js",
+    "tools/simulator/public/js/components/errors-panel.js",
+    "tools/simulator/public/js/components/scenario-panel.js",
+    "arch/active-work.md",
+    "arch/plans/20260209-simulator.json"
+  ],
+  "files_changed": [
+    { "path": "tools/simulator/.gitignore", "is_new": true, "change": "node_modules ignore" },
+    { "path": "tools/simulator/package.json", "is_new": true, "change": "NPM config with 4 dependencies" },
+    { "path": "tools/simulator/package-lock.json", "is_new": true, "change": "Lock file" },
+    { "path": "tools/simulator/config.js", "is_new": true, "change": "Configuration with env overrides" },
+    { "path": "tools/simulator/server.js", "is_new": true, "change": "Express + WebSocket entry point" },
+    { "path": "tools/simulator/src/services/jwt-service.js", "is_new": true, "change": "HMAC-SHA256 JWT generation" },
+    { "path": "tools/simulator/src/services/traffic-store.js", "is_new": true, "change": "In-memory traffic log with callback correlation" },
+    { "path": "tools/simulator/src/services/health-checker.js", "is_new": true, "change": "Periodic health checker for 3 services" },
+    { "path": "tools/simulator/src/services/webhook-sender.js", "is_new": true, "change": "HTTP client for webhooks + generic requests" },
+    { "path": "tools/simulator/src/services/ops-proxy.js", "is_new": true, "change": "Backend ops API proxy with Basic Auth" },
+    { "path": "tools/simulator/src/ws/ws-manager.js", "is_new": true, "change": "WebSocket broadcast manager" },
+    { "path": "tools/simulator/src/routes/jwt.js", "is_new": true, "change": "JWT generate + decode routes" },
+    { "path": "tools/simulator/src/routes/webhook.js", "is_new": true, "change": "Webhook send + request + services routes" },
+    { "path": "tools/simulator/src/routes/callback.js", "is_new": true, "change": "Callback receiver endpoint" },
+    { "path": "tools/simulator/src/routes/health.js", "is_new": true, "change": "Health check + status routes" },
+    { "path": "tools/simulator/src/routes/logs.js", "is_new": true, "change": "Ops log proxy routes" },
+    { "path": "tools/simulator/src/routes/traffic.js", "is_new": true, "change": "Traffic log CRUD routes" },
+    { "path": "tools/simulator/src/routes/scenarios.js", "is_new": true, "change": "Scenario run/stop/list routes" },
+    { "path": "tools/simulator/src/scenarios/presets.js", "is_new": true, "change": "6 preset test scenarios" },
+    { "path": "tools/simulator/public/index.html", "is_new": true, "change": "SPA with Tailwind CDN" },
+    { "path": "tools/simulator/public/css/app.css", "is_new": true, "change": "Dark theme scrollbar + custom styles" },
+    { "path": "tools/simulator/public/js/app.js", "is_new": true, "change": "SPA controller with tab routing" },
+    { "path": "tools/simulator/public/js/utils/formatter.js", "is_new": true, "change": "JSON/timestamp/badge formatters" },
+    { "path": "tools/simulator/public/js/services/api-client.js", "is_new": true, "change": "Fetch wrapper for all API endpoints" },
+    { "path": "tools/simulator/public/js/services/ws-client.js", "is_new": true, "change": "WebSocket client with auto-reconnect" },
+    { "path": "tools/simulator/public/js/components/header.js", "is_new": true, "change": "Header health summary + WS status" },
+    { "path": "tools/simulator/public/js/components/jwt-panel.js", "is_new": true, "change": "JWT generator form" },
+    { "path": "tools/simulator/public/js/components/webhook-panel.js", "is_new": true, "change": "Webhook sender form with quick-fill" },
+    { "path": "tools/simulator/public/js/components/callback-panel.js", "is_new": true, "change": "Callback list with action badges" },
+    { "path": "tools/simulator/public/js/components/health-panel.js", "is_new": true, "change": "3 service health cards" },
+    { "path": "tools/simulator/public/js/components/traffic-feed.js", "is_new": true, "change": "Real-time traffic stream" },
+    { "path": "tools/simulator/public/js/components/logs-panel.js", "is_new": true, "change": "Ops log viewer with filters" },
+    { "path": "tools/simulator/public/js/components/errors-panel.js", "is_new": true, "change": "Error timeline bar chart" },
+    { "path": "tools/simulator/public/js/components/scenario-panel.js", "is_new": true, "change": "Scenario cards + runner progress" },
+    { "path": "arch/active-work.md", "is_new": false, "change": "Added simulator to in-progress" },
+    { "path": "arch/plans/20260209-simulator.json", "is_new": true, "change": "Plan JSON for this task" }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "827b8b51257aeae58b09f3487379a880210da9f7aaa503fee61336d02aaec839",
+    "full_path": "arch/plans/diffs/20260209-simulator.diff",
+    "stats": {
+      "insertions": 4093,
+      "deletions": 1,
+      "files_count": 37
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm install && node test-imports.js",
+    "timestamp": "2026-02-09T12:25:00Z",
+    "duration_ms": 4000,
+    "output_tail": "ALL MODULES OK\nServer started on port 4500, HTTP 200 OK, API endpoints responding",
+    "error_summary": null
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.Automation/",
+      "src/Invekto.Shared/",
+      "deploy/"
+    ],
+    "non_goals": [
+      "Mevcut servislere degisiklik",
+      "Production deployment",
+      "Database erisimi",
+      "Yeni .NET servisi"
+    ],
+    "intentional_exclusions": [
+      "Test framework (jest/mocha) - basit dev tool icin gereksiz",
+      "Bundler/build tool - plain HTML/JS yeterli",
+      "Database persistence - in-memory yeterli"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/services/jwt-service.js:generateToken",
+      "src/services/webhook-sender.js:sendWebhook",
+      "src/services/webhook-sender.js:sendRequest",
+      "src/services/health-checker.js:checkService",
+      "src/services/ops-proxy.js:proxyOpsRequest",
+      "src/routes/scenarios.js:runScenario"
+    ],
+    "user_facing_errors": [
+      "JWT SecretKey must be at least 32 bytes (startup fatal)",
+      "Connection refused: {url} (service down)",
+      "Request timeout (10s)",
+      "Backend service not reachable",
+      "tenant_id and user_id are required",
+      "jwt_token is required"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks either return error objects to UI or broadcast via WebSocket. No empty catches. Callback timeouts broadcast timeout events."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Postman ile test ederken callback yakalayamiyorum, webhook gonderdikten sonra ne oldu bilmiyorum",
+      "suggestion": "Real-time traffic feed ile webhook gonderildiginde aninda sonucu gor, callback geldiginde round-trip sure ile birlikte goster",
+      "aha_moment": "Webhook gonderdim ve 200ms icinde callback'in geldigini canli olarak gordum - tum akis tek ekranda"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her test icin JWT token olusturmak, Postman'da header ayarlamak vakit aliyor",
+      "suggestion": "Tek tikla JWT generate et, otomatik olarak webhook'lara eklenir - sifir manuel header islemleri",
+      "aha_moment": "3 saniyede token olusturdun, webhook gonderdin, cevabi gordun - Postman'da 2 dakika suruyordu"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Automation servisi callback gondermezse farketmiyorum, sessiz failure oluyor",
+      "suggestion": "30s callback timeout ile otomatik uyari, trafik feed'de kirmizi timeout badge, olasi sebepler aciklamasi",
+      "aha_moment": "Timeout uyarisi geldi, serviste hata oldugunu aninda farkettin - yoksa saatlerce beklerdin"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo sirasinda chatbot akisini canli gostermek zor, Postman teknik gorunuyor",
+      "suggestion": "Preset senaryolar ile tek tikla tam chatbot akisini demo et - welcome, menu, FAQ, handoff",
+      "aha_moment": "Musteri toplantisinda 'Run Scenario' tikla, chatbot akisini canli goster - etkileyici demo"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Servis loglarina bakmak icin sunucuya baglanmam gerekiyor",
+      "suggestion": "Logs tab ile Backend API uzerinden tum servislerin loglarini tek yerden gor, filtrele, ara",
+      "aha_moment": "Hata raporlandi, simulator'dan 5 saniyede ilgili log'u buldun - sunucuya baglanmaya gerek kalmadi"
+    }
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "JWT token olusturma JwtValidator.cs ile birebir uyumlu mu? Claims (tenant_id, user_id, role) ve algoritma (HS256) dogru mu?",
+      "category": "Auth",
+      "codex_answer": "JWT claims match JwtValidator.cs (tenant_id, user_id, role, HS256)",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "Webhook payload integration-webhook.json kontratina uyuyor mu? Zorunlu alanlar (event_type, chat_id, timestamp) var mi?",
+      "category": "Data",
+      "codex_answer": "Webhook payload matches integration-webhook.json contract required fields",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "Mevcut servislere (Backend, ChatAnalysis, Automation) hicbir degisiklik yapilmamis mi? Sadece tools/simulator/ ve arch/ dosyalari degismis mi?",
+      "category": "Process/Policy",
+      "codex_answer": "Only tools/simulator/ and arch/ files changed, no existing service modifications",
+      "codex_result": "PASS"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-09T13:00:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-09T13:00:00Z",
+    "raw_text": null,
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "All routes return JSON errors with status codes" },
+      "CQ2": { "result": "PASS", "evidence": "All WS catch blocks log + emit errors (ws-client.js:22,41,50)" },
+      "CQ3": { "result": "PASS", "evidence": "36 files changed, all within allowed_files scope" },
+      "CQ4": { "result": "PASS", "evidence": "No duplicate code found in codebase" },
+      "CQ5": { "result": "PASS", "evidence": "Route/service separation, consistent JSON error pattern" },
+      "CQ6": { "result": "PASS", "evidence": "Bounded memory (500 max), timeout cleanup present" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME markers found" },
+      "CQ8": { "result": "PASS", "evidence": "No changes to existing services" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "JWT claims match JwtValidator.cs (tenant_id, user_id, role, HS256)" },
+      "Q2": { "result": "PASS", "reasoning": "Webhook payload matches integration-webhook.json contract" },
+      "Q3": { "result": "PASS", "reasoning": "Only tools/simulator/ and arch/ files changed" }
+    },
+    "blocking_issues": [],
+    "iteration": 3,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
