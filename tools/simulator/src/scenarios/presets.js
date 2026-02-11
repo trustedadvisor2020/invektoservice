@@ -3,36 +3,48 @@
 /**
  * Predefined test scenarios for InvektoServis microservices.
  *
- * Step types:
- * - (default) webhook: Sends webhook event to Automation service
- * - api_call: Direct HTTP request to any service (AgentAI, ChatAnalysis, health checks)
+ * ARCHITECTURE: All traffic goes through Backend proxy.
+ * Main App -> Backend:5000 -> Automation/AgentAI/ChatAnalysis (localhost-only)
  *
- * api_call step: { type:'api_call', service:'agentAI', endpoint:'/api/v1/suggest', method:'POST', body:{...}, expected:{...} }
+ * Step types:
+ * - api_call: HTTP request through Backend proxy (all scenarios use this)
+ *
+ * Webhook events are sent via Backend proxy: POST /api/v1/automation/webhook
+ * AgentAI requests via Backend proxy: POST /api/v1/agent-assist/suggest|feedback
  */
+
+// Helper: create a webhook step that goes through Backend proxy
+function webhookStep(delayMs, webhookPayload, expected) {
+  return {
+    delay_ms: delayMs,
+    type: 'api_call',
+    service: 'backend',
+    endpoint: '/api/v1/automation/webhook',
+    method: 'POST',
+    body: webhookPayload,
+    expected
+  };
+}
 
 const scenarios = {
   welcome_flow: {
     name: 'Welcome Flow',
     description: 'Yeni musteri ilk mesaj gonderir, karsilama + menu alir',
     steps: [
-      {
-        delay_ms: 0,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90001,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905551234567',
-            customer_name: 'Test Musteri',
-            message_text: 'Merhaba',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Welcome mesaji + menu gonderilmeli'
+      webhookStep(0, {
+        event_type: 'new_message',
+        chat_id: 90001,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905551234567',
+          customer_name: 'Test Musteri',
+          message_text: 'Merhaba',
+          message_source: 'CUSTOMER'
         }
-      }
+      }, {
+        action: 'send_message',
+        description: 'Welcome mesaji + menu gonderilmeli'
+      })
     ]
   },
 
@@ -40,42 +52,34 @@ const scenarios = {
     name: 'Menu Selection',
     description: 'Musteri menu secenegi secer (static reply)',
     steps: [
-      {
-        delay_ms: 0,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90002,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905559876543',
-            customer_name: 'Menu Test',
-            message_text: 'Merhaba',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Welcome + menu'
+      webhookStep(0, {
+        event_type: 'new_message',
+        chat_id: 90002,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905559876543',
+          customer_name: 'Menu Test',
+          message_text: 'Merhaba',
+          message_source: 'CUSTOMER'
         }
-      },
-      {
-        delay_ms: 2000,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90002,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905559876543',
-            customer_name: 'Menu Test',
-            message_text: '1',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Secenek 1 icin static reply'
+      }, {
+        action: 'send_message',
+        description: 'Welcome + menu'
+      }),
+      webhookStep(2000, {
+        event_type: 'new_message',
+        chat_id: 90002,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905559876543',
+          customer_name: 'Menu Test',
+          message_text: '1',
+          message_source: 'CUSTOMER'
         }
-      }
+      }, {
+        action: 'send_message',
+        description: 'Secenek 1 icin static reply'
+      })
     ]
   },
 
@@ -83,60 +87,48 @@ const scenarios = {
     name: 'FAQ Flow',
     description: 'Musteri FAQ secenegini secer ve soru sorar',
     steps: [
-      {
-        delay_ms: 0,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90003,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550001111',
-            customer_name: 'FAQ Test',
-            message_text: 'Merhaba',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Welcome + menu'
+      webhookStep(0, {
+        event_type: 'new_message',
+        chat_id: 90003,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550001111',
+          customer_name: 'FAQ Test',
+          message_text: 'Merhaba',
+          message_source: 'CUSTOMER'
         }
-      },
-      {
-        delay_ms: 2000,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90003,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550001111',
-            customer_name: 'FAQ Test',
-            message_text: '2',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'FAQ arama prompt'
+      }, {
+        action: 'send_message',
+        description: 'Welcome + menu'
+      }),
+      webhookStep(2000, {
+        event_type: 'new_message',
+        chat_id: 90003,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550001111',
+          customer_name: 'FAQ Test',
+          message_text: '2',
+          message_source: 'CUSTOMER'
         }
-      },
-      {
-        delay_ms: 2000,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90003,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550001111',
-            customer_name: 'FAQ Test',
-            message_text: 'Fiyat bilgisi almak istiyorum',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'FAQ cevabi veya intent fallback'
+      }, {
+        action: 'send_message',
+        description: 'FAQ arama prompt'
+      }),
+      webhookStep(2000, {
+        event_type: 'new_message',
+        chat_id: 90003,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550001111',
+          customer_name: 'FAQ Test',
+          message_text: 'Fiyat bilgisi almak istiyorum',
+          message_source: 'CUSTOMER'
         }
-      }
+      }, {
+        action: 'send_message',
+        description: 'FAQ cevabi veya intent fallback'
+      })
     ]
   },
 
@@ -144,60 +136,48 @@ const scenarios = {
     name: 'Intent Detection',
     description: 'AI intent algilama akisi (Claude API kullanir)',
     steps: [
-      {
-        delay_ms: 0,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90004,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550002222',
-            customer_name: 'Intent Test',
-            message_text: 'Merhaba',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Welcome + menu'
+      webhookStep(0, {
+        event_type: 'new_message',
+        chat_id: 90004,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550002222',
+          customer_name: 'Intent Test',
+          message_text: 'Merhaba',
+          message_source: 'CUSTOMER'
         }
-      },
-      {
-        delay_ms: 2000,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90004,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550002222',
-            customer_name: 'Intent Test',
-            message_text: '4',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Intent detection prompt'
+      }, {
+        action: 'send_message',
+        description: 'Welcome + menu'
+      }),
+      webhookStep(2000, {
+        event_type: 'new_message',
+        chat_id: 90004,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550002222',
+          customer_name: 'Intent Test',
+          message_text: '4',
+          message_source: 'CUSTOMER'
         }
-      },
-      {
-        delay_ms: 3000,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90004,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550002222',
-            customer_name: 'Intent Test',
-            message_text: 'Implant fiyatlari hakkinda bilgi almak istiyorum, en uygun tedavi secenegi nedir?',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'AI intent algilandi, cevap veya suggest_reply'
+      }, {
+        action: 'send_message',
+        description: 'Intent detection prompt'
+      }),
+      webhookStep(3000, {
+        event_type: 'new_message',
+        chat_id: 90004,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550002222',
+          customer_name: 'Intent Test',
+          message_text: 'Implant fiyatlari hakkinda bilgi almak istiyorum, en uygun tedavi secenegi nedir?',
+          message_source: 'CUSTOMER'
         }
-      }
+      }, {
+        action: 'send_message',
+        description: 'AI intent algilandi, cevap veya suggest_reply'
+      })
     ]
   },
 
@@ -205,42 +185,34 @@ const scenarios = {
     name: 'Handoff Flow',
     description: 'Musteri insan temsilciye aktarilma ister',
     steps: [
-      {
-        delay_ms: 0,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90005,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550003333',
-            customer_name: 'Handoff Test',
-            message_text: 'Merhaba',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Welcome + menu'
+      webhookStep(0, {
+        event_type: 'new_message',
+        chat_id: 90005,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550003333',
+          customer_name: 'Handoff Test',
+          message_text: 'Merhaba',
+          message_source: 'CUSTOMER'
         }
-      },
-      {
-        delay_ms: 2000,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90005,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550003333',
-            customer_name: 'Handoff Test',
-            message_text: '5',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'handoff_to_human',
-          description: 'Insan temsilciye aktarildi'
+      }, {
+        action: 'send_message',
+        description: 'Welcome + menu'
+      }),
+      webhookStep(2000, {
+        event_type: 'new_message',
+        chat_id: 90005,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550003333',
+          customer_name: 'Handoff Test',
+          message_text: '5',
+          message_source: 'CUSTOMER'
         }
-      }
+      }, {
+        action: 'handoff_to_human',
+        description: 'Insan temsilciye aktarildi'
+      })
     ]
   },
 
@@ -249,40 +221,35 @@ const scenarios = {
     description: 'Mesai disi mesaj gonderilir (tenant calisma saati ayarliysa)',
     note: 'Tenant calisma saatleri DB\'de ayarli olmalidir. Aksi halde normal flow calisir.',
     steps: [
-      {
-        delay_ms: 0,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 90006,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905550004444',
-            customer_name: 'OffHours Test',
-            message_text: 'Merhaba, bilgi almak istiyorum',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Mesai disi oto-cevap mesaji'
+      webhookStep(0, {
+        event_type: 'new_message',
+        chat_id: 90006,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905550004444',
+          customer_name: 'OffHours Test',
+          message_text: 'Merhaba, bilgi almak istiyorum',
+          message_source: 'CUSTOMER'
         }
-      }
+      }, {
+        action: 'send_message',
+        description: 'Mesai disi oto-cevap mesaji'
+      })
     ]
   },
 
-  // ========== AGENTAI SCENARIOS ==========
+  // ========== AGENTAI SCENARIOS (all via Backend proxy) ==========
 
   agentai_suggest: {
     name: 'AgentAI - Suggest Reply',
-    description: 'Musteri mesajina AI cevap onerisi iste (Claude Haiku)',
-    note: 'AgentAI servisi ayakta ve Claude API key ayarli olmali. 15s timeout.',
-    service: 'agentAI',
+    description: 'Musteri mesajina AI cevap onerisi iste (Backend -> AgentAI)',
+    note: 'Backend + AgentAI ayakta olmali. Claude API key ayarli. 15s timeout.',
     steps: [
       {
         delay_ms: 0,
         type: 'api_call',
-        service: 'agentAI',
-        endpoint: '/api/v1/suggest',
+        service: 'backend',
+        endpoint: '/api/v1/agent-assist/suggest',
         method: 'POST',
         body: {
           chat_id: 95001,
@@ -306,15 +273,14 @@ const scenarios = {
 
   agentai_suggest_with_template: {
     name: 'AgentAI - Template Suggest',
-    description: 'Template ile AI cevap onerisi (degisken substitution)',
+    description: 'Template ile AI cevap onerisi (Backend -> AgentAI)',
     note: 'Template {{isim}}, {{tedavi}} gibi degiskenler icerir. AI bunlari kullanarak cevap uretir.',
-    service: 'agentAI',
     steps: [
       {
         delay_ms: 0,
         type: 'api_call',
-        service: 'agentAI',
-        endpoint: '/api/v1/suggest',
+        service: 'backend',
+        endpoint: '/api/v1/agent-assist/suggest',
         method: 'POST',
         body: {
           chat_id: 95002,
@@ -347,15 +313,14 @@ const scenarios = {
 
   agentai_feedback_cycle: {
     name: 'AgentAI - Suggest + Feedback Cycle',
-    description: 'AI oneri al -> Agent kabul/duzenle/reddet',
+    description: 'AI oneri al -> Agent kabul/duzenle/reddet (Backend proxy)',
     note: 'Suggest sonrasi donen suggestion_id feedback\'e gonderilir. Feedback fire-and-forget (202).',
-    service: 'agentAI',
     steps: [
       {
         delay_ms: 0,
         type: 'api_call',
-        service: 'agentAI',
-        endpoint: '/api/v1/suggest',
+        service: 'backend',
+        endpoint: '/api/v1/agent-assist/suggest',
         method: 'POST',
         body: {
           chat_id: 95003,
@@ -375,8 +340,8 @@ const scenarios = {
       {
         delay_ms: 2000,
         type: 'api_call',
-        service: 'agentAI',
-        endpoint: '/api/v1/feedback',
+        service: 'backend',
+        endpoint: '/api/v1/agent-assist/feedback',
         method: 'POST',
         body: {
           suggestion_id: '{{step_1.suggestion_id}}',
@@ -391,43 +356,11 @@ const scenarios = {
     ]
   },
 
-  agentai_via_backend: {
-    name: 'AgentAI - Backend Proxy',
-    description: 'Backend uzerinden AgentAI suggest (Main App akisi)',
-    note: 'Gercek akis: Main App -> Backend:5000/api/v1/agent-assist/suggest -> AgentAI:7105',
-    service: 'backend',
-    steps: [
-      {
-        delay_ms: 0,
-        type: 'api_call',
-        service: 'backend',
-        endpoint: '/api/v1/agent-assist/suggest',
-        method: 'POST',
-        body: {
-          chat_id: 95004,
-          message_text: 'Sigorta kapsaminda mi?',
-          customer_name: 'Ali Veli',
-          channel: 'web',
-          conversation_history: [
-            { source: 'CUSTOMER', text: 'Merhaba' },
-            { source: 'AGENT', text: 'Hosgeldiniz!' },
-            { source: 'CUSTOMER', text: 'Sigorta kapsaminda mi?' }
-          ],
-          language: 'tr'
-        },
-        expected: {
-          action: 'suggest_reply',
-          description: 'Backend proxy uzerinden AI oneri (15s timeout)'
-        }
-      }
-    ]
-  },
-
   // ========== HEALTH CHECK SCENARIOS ==========
 
-  health_all_services: {
-    name: 'Health - All Services',
-    description: 'Tum servislerin health endpointini kontrol et',
+  health_backend: {
+    name: 'Health - Backend',
+    description: 'Backend health check (tek disaridan erisilebilen servis)',
     steps: [
       {
         delay_ms: 0,
@@ -436,30 +369,22 @@ const scenarios = {
         endpoint: '/health',
         method: 'GET',
         expected: { action: 'health_ok', description: 'Backend :5000 saglikli' }
-      },
+      }
+    ]
+  },
+
+  health_all_services: {
+    name: 'Health - All Services (via Backend)',
+    description: 'Backend uzerinden tum servislerin health durumunu kontrol et',
+    note: 'Backend, internal servislerin health\'ini aggregate eder. Tek endpoint ile 4 servis kontrolu.',
+    steps: [
       {
-        delay_ms: 500,
+        delay_ms: 0,
         type: 'api_call',
-        service: 'chatAnalysis',
-        endpoint: '/health',
+        service: 'backend',
+        endpoint: '/api/ops/health',
         method: 'GET',
-        expected: { action: 'health_ok', description: 'ChatAnalysis :7101 saglikli' }
-      },
-      {
-        delay_ms: 500,
-        type: 'api_call',
-        service: 'automation',
-        endpoint: '/health',
-        method: 'GET',
-        expected: { action: 'health_ok', description: 'Automation :7108 saglikli' }
-      },
-      {
-        delay_ms: 500,
-        type: 'api_call',
-        service: 'agentAI',
-        endpoint: '/health',
-        method: 'GET',
-        expected: { action: 'health_ok', description: 'AgentAI :7105 saglikli' }
+        expected: { action: 'health_ok', description: 'Backend + ChatAnalysis + Automation + AgentAI saglikli' }
       }
     ]
   },
@@ -468,8 +393,8 @@ const scenarios = {
 
   e2e_customer_message: {
     name: 'E2E - Musteri Mesaji Akisi',
-    description: 'Tam akis: Musteri mesaj gonderir -> Automation isler -> Agent AI oneri alir -> Feedback gonderir',
-    note: 'Tum servisler (Backend, Automation, AgentAI) ayakta olmali. Gercek uretim akisini simule eder.',
+    description: 'Tam akis: Webhook -> Automation -> AgentAI suggest -> Feedback (hepsi Backend proxy)',
+    note: 'Tum servisler ayakta olmali. Gercek uretim akisini simule eder. Her sey Backend uzerinden gecer.',
     steps: [
       {
         delay_ms: 0,
@@ -479,24 +404,20 @@ const scenarios = {
         method: 'GET',
         expected: { action: 'health_ok', description: 'Step 1: Backend saglikli mi kontrol et' }
       },
-      {
-        delay_ms: 500,
-        webhook: {
-          event_type: 'new_message',
-          chat_id: 99001,
-          channel: 'whatsapp',
-          data: {
-            phone: '+905559999999',
-            customer_name: 'E2E Test Musteri',
-            message_text: 'Merhaba, fiyat bilgisi almak istiyorum',
-            message_source: 'CUSTOMER'
-          }
-        },
-        expected: {
-          action: 'send_message',
-          description: 'Step 2: Automation webhook -> karsilama + menu (callback beklenir)'
+      webhookStep(500, {
+        event_type: 'new_message',
+        chat_id: 99001,
+        channel: 'whatsapp',
+        data: {
+          phone: '+905559999999',
+          customer_name: 'E2E Test Musteri',
+          message_text: 'Merhaba, fiyat bilgisi almak istiyorum',
+          message_source: 'CUSTOMER'
         }
-      },
+      }, {
+        action: 'send_message',
+        description: 'Step 2: Backend -> Automation webhook (karsilama + menu)'
+      }),
       {
         delay_ms: 3000,
         type: 'api_call',
@@ -515,7 +436,7 @@ const scenarios = {
         },
         expected: {
           action: 'suggest_reply',
-          description: 'Step 3: AgentAI cevap onerisi (Backend proxy uzerinden)'
+          description: 'Step 3: Backend -> AgentAI cevap onerisi'
         }
       },
       {
@@ -531,7 +452,7 @@ const scenarios = {
         },
         expected: {
           action: 'feedback_accepted',
-          description: 'Step 4: Agent oneriyi kabul etti (202 Accepted)'
+          description: 'Step 4: Backend -> AgentAI feedback (202 Accepted)'
         }
       }
     ]

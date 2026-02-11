@@ -4,52 +4,123 @@ const config = require('../../config');
 const wsManager = require('../ws/ws-manager');
 
 /**
- * Periodic health checker for all InvektoServis microservices.
- * Calls /health on each service, broadcasts results via WebSocket.
+ * Health checker for InvektoServis microservices.
+ * Architecture: All health checks go through Backend proxy.
+ *   1. Backend /health - direct check (only externally accessible service)
+ *   2. Backend /api/ops/health - aggregated check for all internal services
+ * Internal services (Automation, ChatAnalysis, AgentAI) are localhost-only
+ * on the server, so we cannot ping them directly from the simulator.
  */
 
 let _interval = null;
 let _lastResult = null;
 
-async function checkService(service) {
+async function checkBackendDirect() {
   const start = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.health.timeoutMs);
 
   try {
-    const res = await fetch(`${service.url}/health`, { signal: controller.signal });
+    const res = await fetch(`${config.services.backend.url}/health`, { signal: controller.signal });
     clearTimeout(timeout);
     return {
-      name: service.name,
-      url: service.url,
+      name: 'Invekto.Backend',
+      url: config.services.backend.url,
       status: res.ok ? 'ok' : 'error',
       status_code: res.status,
       response_time_ms: Date.now() - start
     };
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === 'AbortError') {
-      return {
-        name: service.name,
-        url: service.url,
-        status: 'timeout',
-        response_time_ms: Date.now() - start,
-        error: `Timeout after ${config.health.timeoutMs}ms`
-      };
-    }
     return {
-      name: service.name,
-      url: service.url,
-      status: 'down',
+      name: 'Invekto.Backend',
+      url: config.services.backend.url,
+      status: err.name === 'AbortError' ? 'timeout' : 'down',
       response_time_ms: Date.now() - start,
-      error: err.code === 'ECONNREFUSED' ? 'Connection refused' : err.message
+      error: err.name === 'AbortError'
+        ? `Timeout after ${config.health.timeoutMs}ms`
+        : err.code === 'ECONNREFUSED' ? 'Connection refused' : err.message
     };
   }
 }
 
+async function checkViaBackendProxy() {
+  const start = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.health.timeoutMs + 5000);
+  const authHeader = 'Basic ' + Buffer.from(`${config.ops.username}:${config.ops.password}`).toString('base64');
+
+  try {
+    const res = await fetch(`${config.services.backend.url}/api/ops/health`, {
+      signal: controller.signal,
+      headers: { 'Authorization': authHeader }
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    const elapsed = Date.now() - start;
+
+    // Map Backend's response format to simulator's expected format
+    // Backend returns: { services: [{ name, status: "ok"|"unavailable", responseTimeMs, error }] }
+    // Simulator UI expects: { name, url, status: "ok"|"down"|"timeout"|"error", response_time_ms, error }
+    const serviceUrlMap = {};
+    for (const [key, svc] of Object.entries(config.services)) {
+      serviceUrlMap[svc.name] = svc.url;
+    }
+
+    return (data.services || [])
+      .filter(s => s.name !== 'Invekto.Backend')
+      .map(s => ({
+        name: s.name,
+        url: serviceUrlMap[s.name] || 'localhost',
+        status: s.status === 'ok' ? 'ok' : 'down',
+        response_time_ms: s.responseTimeMs || null,
+        error: s.error || null
+      }));
+  } catch (err) {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
 async function checkAllServices() {
-  const services = Object.values(config.services);
-  const results = await Promise.all(services.map(checkService));
+  // Step 1: Check Backend directly (it's the only externally accessible service)
+  const backendResult = checkBackendDirect();
+
+  // Step 2: If we can reach Backend, get aggregated internal service health
+  const proxyResult = checkViaBackendProxy();
+
+  const [backend, internalServices] = await Promise.all([backendResult, proxyResult]);
+
+  const results = [backend];
+
+  if (internalServices) {
+    // Backend proxy returned internal service statuses
+    results.push(...internalServices);
+  } else {
+    // Backend proxy failed or Backend is down - report internal services as unknown
+    const internalServiceNames = [
+      { name: 'Invekto.ChatAnalysis', key: 'chatAnalysis' },
+      { name: 'Invekto.Automation', key: 'automation' },
+      { name: 'Invekto.AgentAI', key: 'agentAI' }
+    ];
+    for (const svc of internalServiceNames) {
+      results.push({
+        name: svc.name,
+        url: config.services[svc.key]?.url || 'localhost',
+        status: backend.status === 'ok' ? 'error' : 'down',
+        response_time_ms: null,
+        error: backend.status === 'ok'
+          ? 'Could not query via Backend proxy'
+          : 'Backend unreachable'
+      });
+    }
+  }
+
   _lastResult = {
     services: results,
     timestamp: new Date().toISOString()

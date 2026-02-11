@@ -1,11 +1,13 @@
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Invekto.Shared.DTOs;
 
 namespace Invekto.Backend.Services;
 
 /// <summary>
 /// HTTP client for Automation microservice.
-/// Health checks, endpoint discovery, and test proxy only.
+/// Health checks, endpoint discovery, test proxy, and webhook event proxy.
 /// </summary>
 public sealed class AutomationClient
 {
@@ -71,6 +73,42 @@ public sealed class AutomationClient
         {
             _logger.LogWarning(ex, "Automation endpoint test failed: {Endpoint}", endpoint);
             return new TestEndpointResult { Success = false, StatusCode = 0, Message = ex.Message };
+        }
+    }
+
+    /// <summary>
+    /// Proxy webhook event to Automation service.
+    /// Main App -> Backend -> Automation (Automation stays localhost-only).
+    /// </summary>
+    public async Task<(int StatusCode, string? Body)> ProxyWebhookEventAsync(
+        string requestBody, string? authHeader, string? requestId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/webhook/event");
+            request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+
+            if (!string.IsNullOrEmpty(authHeader))
+                request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+
+            if (!string.IsNullOrEmpty(requestId))
+                request.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            return ((int)response.StatusCode, body);
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("Automation webhook proxy timeout");
+            return (504, JsonSerializer.Serialize(new { error_code = "INV-BE-002", message = "Automation service timeout" }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Automation webhook proxy failed");
+            return (502, JsonSerializer.Serialize(new { error_code = "INV-BE-001", message = $"Automation service unavailable: {ex.Message}" }));
         }
     }
 }

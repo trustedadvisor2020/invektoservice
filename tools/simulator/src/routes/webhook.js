@@ -6,9 +6,9 @@ const config = require('../../config');
 
 const router = express.Router();
 
-// POST /api/webhook/send - Send webhook to Automation (or any service)
+// POST /api/webhook/send - Send webhook via Backend proxy (or direct to specific service)
 router.post('/send', async (req, res) => {
-  const { payload, jwt_token, target_url } = req.body;
+  const { payload, jwt_token, target_url, target_service } = req.body;
 
   if (!payload) {
     return res.status(400).json({ error: 'payload is required (webhook event body)' });
@@ -18,8 +18,18 @@ router.post('/send', async (req, res) => {
     return res.status(400).json({ error: 'jwt_token is required. Generate one first via /api/jwt/generate' });
   }
 
+  // Resolve target URL: explicit URL > service key > default (Backend proxy)
+  // Production: use 'backend' target (proxies to Automation via Backend:5000)
+  // Debug: direct service targets available for local development
+  let resolvedUrl = target_url;
+  if (!resolvedUrl && target_service && config.services[target_service]) {
+    resolvedUrl = target_service === 'backend'
+      ? `${config.services.backend.url}/api/v1/automation/webhook`
+      : `${config.services[target_service].url}/api/v1/webhook/event`;
+  }
+
   try {
-    const result = await sendWebhook(payload, jwt_token, target_url);
+    const result = await sendWebhook(payload, jwt_token, resolvedUrl);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -8,13 +8,14 @@ const wsManager = require('../ws/ws-manager');
 let _sequenceCounter = 1000;
 
 /**
- * Sends webhook events to InvektoServis services (primarily Automation).
+ * Sends webhook events to InvektoServis via Backend proxy.
+ * All traffic goes through Backend:5000 → Automation (localhost-only).
  * Mirrors IncomingWebhookEvent contract from arch/contracts/integration-webhook.json.
  */
 
 async function sendWebhook(payload, jwtToken, targetUrl) {
   const requestId = uuidv4().replace(/-/g, '');
-  const url = targetUrl || `${config.services.automation.url}/api/v1/webhook/event`;
+  const url = targetUrl || `${config.services.backend.url}/api/v1/automation/webhook`;
 
   // Auto-fill defaults
   const webhookBody = {

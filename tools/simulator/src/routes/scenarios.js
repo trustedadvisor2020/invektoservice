@@ -67,9 +67,15 @@ router.post('/run', async (req, res) => {
         resolveStepRefs(step.body, stepResults);
       }
 
-      const sendingMessage = step.type === 'api_call'
-        ? `${step.method || 'POST'} ${step.endpoint}`
-        : `Webhook: ${step.webhook?.data?.message_text || step.webhook?.event_type || 'event'}`;
+      // Build status message based on step type
+      let sendingMessage;
+      if (step.type === 'api_call') {
+        sendingMessage = `${step.method || 'POST'} ${step.endpoint}`;
+      } else if (step.webhook) {
+        sendingMessage = `Webhook: ${step.webhook.data?.message_text || step.webhook.event_type || 'event'}`;
+      } else {
+        sendingMessage = `Step ${i + 1}`;
+      }
 
       wsManager.broadcast('scenario_step', {
         scenario_name: scenario.name,
@@ -89,7 +95,7 @@ router.post('/run', async (req, res) => {
 
       let result;
       if (step.type === 'api_call') {
-        // Direct API call (for AgentAI suggest/feedback, ChatAnalysis, health checks)
+        // API call through Backend proxy (all traffic routes via Backend:5000)
         const serviceUrl = step.service_url || config.services[step.service]?.url || config.services.backend.url;
         const url = `${serviceUrl}${step.endpoint}`;
         result = await sendRequest({
@@ -99,13 +105,16 @@ router.post('/run', async (req, res) => {
           jwtToken: jwt_token,
           headers: step.headers
         });
-      } else {
-        // Default: webhook send (Automation)
+      } else if (step.webhook) {
+        // Legacy webhook send (requires step.webhook object)
         const webhookPayload = { ...step.webhook };
         if (tenant_id) {
           webhookPayload.tenant_id = tenant_id;
         }
         result = await sendWebhook(webhookPayload, jwt_token);
+      } else {
+        // Unknown step type - skip with error
+        result = { error: `Unknown step type: ${step.type || 'undefined'}`, status_code: 0, duration_ms: 0, request_id: 'N/A' };
       }
 
       // Store step result for chaining (e.g. suggestion_id from suggest → feedback)
@@ -167,22 +176,39 @@ router.post('/stop', (req, res) => {
 
 /**
  * Resolve {{step_N.field}} placeholders in step body from previous step results.
- * Example: "REPLACE_WITH_SUGGESTION_ID" or "{{step_1.suggestion_id}}" in feedback body
- * gets replaced with the actual suggestion_id from step 1's response.
+ * Example: "{{step_1.suggestion_id}}" in feedback body gets replaced with
+ * the actual suggestion_id from step 1's response.
+ * Logs warnings for unresolved placeholders via WebSocket.
  */
 function resolveStepRefs(obj, stepResults) {
+  const unresolved = [];
+  _resolveStepRefsInner(obj, stepResults, unresolved);
+  if (unresolved.length > 0) {
+    wsManager.broadcast('scenario_step', {
+      status: 'warning',
+      message: `Unresolved placeholders: ${unresolved.join(', ')}. Previous step may have failed or returned different fields.`
+    });
+  }
+}
+
+function _resolveStepRefsInner(obj, stepResults, unresolved) {
   for (const key of Object.keys(obj)) {
     if (typeof obj[key] === 'string') {
       obj[key] = obj[key].replace(/\{\{step_(\d+)\.([a-zA-Z0-9_.]+)\}\}/g, (match, idx, field) => {
         const stepIdx = parseInt(idx, 10) - 1; // step_1 → index 0
         if (stepIdx >= 0 && stepIdx < stepResults.length) {
           const val = field.split('.').reduce((o, k) => o?.[k], stepResults[stepIdx]);
-          return val !== undefined && val !== null ? String(val) : match;
+          if (val !== undefined && val !== null) {
+            return String(val);
+          }
+          unresolved.push(match);
+          return match;
         }
+        unresolved.push(match);
         return match;
       });
     } else if (obj[key] && typeof obj[key] === 'object') {
-      resolveStepRefs(obj[key], stepResults);
+      _resolveStepRefsInner(obj[key], stepResults, unresolved);
     }
   }
 }

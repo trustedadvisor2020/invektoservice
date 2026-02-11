@@ -8,19 +8,19 @@ module.exports = {
 
   services: {
     backend: {
-      url: process.env.BACKEND_URL || 'http://localhost:5000',
+      url: process.env.BACKEND_URL || 'http://services.invekto.com:5000',
       name: 'Invekto.Backend'
     },
     chatAnalysis: {
-      url: process.env.CHAT_ANALYSIS_URL || 'http://localhost:7101',
+      url: process.env.CHAT_ANALYSIS_URL || 'http://services.invekto.com:7101',
       name: 'Invekto.ChatAnalysis'
     },
     automation: {
-      url: process.env.AUTOMATION_URL || 'http://localhost:7108',
+      url: process.env.AUTOMATION_URL || 'http://services.invekto.com:7108',
       name: 'Invekto.Automation'
     },
     agentAI: {
-      url: process.env.AGENTAI_URL || 'http://localhost:7105',
+      url: process.env.AGENTAI_URL || 'http://services.invekto.com:7105',
       name: 'Invekto.AgentAI'
     }
   },

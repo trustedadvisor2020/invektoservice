@@ -129,11 +129,11 @@ var app = builder.Build();
 // Enable traffic logging middleware (logs all HTTP request/response)
 app.UseTrafficLogging();
 
-// GR-1.9: JWT auth middleware (only for /api/v1/webhook/ paths)
+// GR-1.9: JWT auth middleware for protected API paths
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -927,6 +927,8 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             // Agent Assist proxy endpoints
             new() { Method = "POST", Path = "/api/v1/agent-assist/suggest", Description = "AI reply suggestion proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
             new() { Method = "POST", Path = "/api/v1/agent-assist/feedback", Description = "Agent feedback proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
+            // Automation proxy endpoint
+            new() { Method = "POST", Path = "/api/v1/automation/webhook", Description = "Webhook event proxy (Backend -> Automation)", Auth = "Bearer", Category = "API" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
@@ -1233,6 +1235,38 @@ app.MapPost("/api/v1/agent-assist/feedback", async (HttpContext ctx, AgentAIClie
     var (statusCode, body) = await agentAIClient.ProxyFeedbackAsync(requestBody, authHeader, requestId);
 
     jsonLogger.StepInfo($"AgentAI feedback proxy: status={statusCode}", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null)
+        await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+});
+
+// Proxy: Webhook event (Main App -> Backend -> Automation, Automation stays localhost-only)
+app.MapPost("/api/v1/automation/webhook", async (HttpContext ctx, AutomationClient automationClient, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+    {
+        requestBody = await reader.ReadToEndAsync();
+    }
+
+    if (string.IsNullOrWhiteSpace(requestBody))
+    {
+        return Results.Json(
+            ErrorResponse.Create("INV-BE-003", "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var (statusCode, body) = await automationClient.ProxyWebhookEventAsync(requestBody, authHeader, requestId);
+    sw.Stop();
+
+    jsonLogger.StepInfo($"Automation webhook proxy: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
 
     ctx.Response.StatusCode = statusCode;
     ctx.Response.ContentType = "application/json";
