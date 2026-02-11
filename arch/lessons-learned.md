@@ -33,6 +33,14 @@
 | TONIVA | SQL | OUTER APPLY N satır = N*2 subquery, yavaş response | 3 aşamalı bulk fetch pattern | **Detaylı bilgi gerektiren listelerde OUTER APPLY yerine bulk query pattern kullan** |
 | 2026-02-02 | Config | .NET servis port'u default'a düştü - Kestrel ConfigureKestrel eksikti | `builder.WebHost.ConfigureKestrel(options.ListenAnyIP(port))` eklendi | **Yeni servis oluştururken Kestrel port binding'i kontrol et - yoksa .NET random port atar** |
 | 2026-02-03 | PowerShell | `Invoke-RestMethod` HTTPS'te TLS hatası veriyor (self-signed cert) | `curl.exe -k` ile bypass | **Windows PowerShell + self-signed cert = curl.exe kullan** |
+| 2026-02-09 | Workflow | arch/ dosyaları (session-memory, active-work) güncellenmeden commit yapıldı | Her adım sonrası güncelle | **Her commit/task sonrası arch/session-memory.md + arch/active-work.md GÜNCELLEMEDEN devam etme** |
+| 2026-02-09 | Git | GitHub Push Protection gerçek API key içeren dosyayı reddetti | Placeholder kullan, soft reset + recommit | **Production config'lerde GERÇEK secret OLMAMALI - REPLACE_WITH_ACTUAL_KEY placeholder kullan** |
+| 2026-02-09 | Dashboard | Yeni mikroservis eklenince dashboard'da görünmedi | 6 dosya manuel güncelleme | **Yeni servis = Backend (config+Program.cs+Client) + Dashboard (HealthCard+DependencyMap+TestPanel) güncelle** |
+| 2026-02-11 | Deploy | Yeni servis eklenince deploy script guncellenmedi | AgentAI eklendi | **Yeni mikroservis = dev-to-invekto-services.bat'a OTOMATIK ekle (REMOTE_, LOCAL_, build step, upload step, marker, output)** |
+| 2026-02-11 | Deploy | Yeni servis eklenince install-services.bat guncellenmedi | AgentAI eklendi | **Yeni mikroservis = arch/deploy/install-services.bat'a OTOMATIK ekle (NSSM blok, log dir, start, status, test URL, manage)** |
+| 2026-02-11 | Deploy | Yeni servis eklenince firewall-rules.bat guncellenmedi | AgentAI eklendi | **Yeni mikroservis = arch/deploy/firewall-rules.bat'a OTOMATIK ekle (port + localhost/external karar ver)** |
+| 2026-02-11 | Config | Yeni servis eklenince Backend appsettings guncellenmedi | AgentAI eklendi | **Yeni mikroservis = Backend appsettings.json + appsettings.Production.json'a Microservice section OTOMATIK ekle (Url, LogPath, ozel timeout)** |
+| 2026-02-11 | Config | Production config placeholder'lar Q'ya birakildi, Q tekrar sordu | Tum config'ler otomatik dolduruldu | **Yeni mikroservis = appsettings.Production.json E:\\ path, port, connection string OTOMATIK doldur. Sadece secret key'ler REPLACE_WITH_ACTUAL_KEY kalir** |
 
 ---
 
@@ -63,6 +71,7 @@
 | Popup header'da entity adı ana başlık | UI Popup/Modal | Genel açıklama alt başlık, entity adı ana başlık - kullanıcı neye baktığını hemen anlar |
 | `ConfigureKestrel + ListenAnyIP/ListenLocalhost` | Mikro servis port binding | Explicit port tanımı, launchSettings.json'a bağımlı değil |
 | `curl.exe -k -H "header"` PowerShell'de | HTTPS API call (self-signed cert) | Invoke-RestMethod TLS sorunları bypass, JSON parse `ConvertFrom-Json` ile çalışır |
+| Yeni Mikroservis Checklist (OTOMATIK) | Her yeni servis eklenmesinde | Q sormadan tamamla: 1) appsettings.Production.json (E:\\ path + placeholder secrets) 2) Backend appsettings.json + Production'a Microservice section 3) dev-to-invekto-services.bat (build+upload) 4) install-services.bat (NSSM blok) 5) firewall-rules.bat (port) 6) session-memory.md (port tablosu, deploy, servisler) |
 
 ---
 

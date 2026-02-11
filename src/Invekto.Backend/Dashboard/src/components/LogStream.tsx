@@ -210,6 +210,8 @@ export function LogStream({ initialFilter }: LogStreamProps) {
               { value: '', label: 'All Services' },
               { value: 'Invekto.Backend', label: 'Backend' },
               { value: 'Invekto.ChatAnalysis', label: 'ChatAnalysis' },
+              { value: 'Invekto.Automation', label: 'Automation' },
+              { value: 'Invekto.AgentAI', label: 'AgentAI' },
             ]}
             className="w-36"
           />

@@ -18,6 +18,10 @@ module.exports = {
     automation: {
       url: process.env.AUTOMATION_URL || 'http://localhost:7108',
       name: 'Invekto.Automation'
+    },
+    agentAI: {
+      url: process.env.AGENTAI_URL || 'http://localhost:7105',
+      name: 'Invekto.AgentAI'
     }
   },
 

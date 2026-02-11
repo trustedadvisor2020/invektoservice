@@ -1,0 +1,147 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260211-testing-tooling",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-11T16:00:00Z",
+  "updated_at": "2026-02-11T17:30:00Z",
+  "plan": {
+    "summary": "Simulator E2E test scenarios for all 4 microservices + Postman collection update + Dashboard LogStream dropdown fix + deploy script updates. Tooling-only changes, no business logic.",
+    "q_intent": "ben bu servislerin hepsini gerçek test yapmak istiyorum. simulator aracına bütün end to end senaryoları ekle. postman'ı güncelle. dashboard'da eksik dropdown'ları düzelt.",
+    "interview_notes": "Target: Production server. Type: Simulator E2E scenarios. Data: Q will paste real data into simulator UI. Also: Postman update for all 4 services, Dashboard LogStream dropdown was missing Automation + AgentAI."
+  },
+  "allowed_files": [
+    "postman/InvektoServis.postman_collection.json",
+    "src/Invekto.Backend/Dashboard/src/components/LogStream.tsx",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/wwwroot/index.html",
+    "src/Invekto.Backend/wwwroot/assets/*",
+    "tools/simulator/config.js",
+    "tools/simulator/public/**",
+    "tools/simulator/src/routes/scenarios.js",
+    "tools/simulator/src/scenarios/presets.js",
+    "arch/deploy/firewall-rules.bat",
+    "arch/deploy/install-services.bat",
+    "arch/active-work.md",
+    "arch/session-memory.md",
+    "arch/lessons-learned.md",
+    "dev-to-invekto-services.bat",
+    "deploy_output/**",
+    ".claude/settings.local.json",
+    "arch/plans/20260211-testing-tooling.json",
+    "arch/plans/diffs/20260211-testing-tooling.diff"
+  ],
+  "files_changed": [
+    { "path": ".claude/settings.local.json", "is_new": false },
+    { "path": "arch/active-work.md", "is_new": false },
+    { "path": "arch/deploy/firewall-rules.bat", "is_new": false },
+    { "path": "arch/deploy/install-services.bat", "is_new": false },
+    { "path": "arch/lessons-learned.md", "is_new": false },
+    { "path": "arch/plans/20260211-testing-tooling.json", "is_new": true },
+    { "path": "arch/plans/diffs/20260211-testing-tooling.diff", "is_new": true },
+    { "path": "arch/session-memory.md", "is_new": false },
+    { "path": "dev-to-invekto-services.bat", "is_new": false },
+    { "path": "postman/InvektoServis.postman_collection.json", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/LogStream.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/assets/index-B599heQ6.js", "is_new": true },
+    { "path": "src/Invekto.Backend/wwwroot/assets/index-BMklDOcV.css", "is_new": true },
+    { "path": "src/Invekto.Backend/wwwroot/index.html", "is_new": false },
+    { "path": "tools/simulator/config.js", "is_new": false },
+    { "path": "tools/simulator/public/js/components/logs-panel.js", "is_new": false },
+    { "path": "tools/simulator/src/routes/scenarios.js", "is_new": false },
+    { "path": "tools/simulator/src/scenarios/presets.js", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "9AA73E9D1E9F664D7B79658EB5179526C4300FB5DC98C2C3504E6D6C66AA3A05",
+    "full_path": "arch/plans/diffs/20260211-testing-tooling.diff",
+    "stats": { "insertions": 856, "deletions": 415, "files_count": 19 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-02-11T15:45:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do the new simulator api_call steps correctly use sendRequest (not sendWebhook) and pass JWT token + service URL from config?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the Postman collection correctly define variables for all 4 service URLs and use them consistently in request URLs?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Are the E2E scenario step sequences logically correct (health → webhook → suggest → feedback) with proper delays between steps?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.AgentAI/ -- already committed, not touched",
+      "src/Invekto.Automation/ -- not touched",
+      "src/Invekto.ChatAnalysis/ -- not touched"
+    ],
+    "non_goals": [
+      "Business logic changes",
+      "DB schema changes",
+      "New microservice code"
+    ],
+    "intentional_exclusions": []
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "tools/simulator/src/routes/scenarios.js: api_call step execution"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Scenario runner already has try-catch per step with error logging. api_call steps use same error handling pattern as webhook steps."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Simulator'da sadece webhook gönderilebiliyor, AgentAI gibi sync API test edilemiyor",
+      "suggestion": "api_call step type ile herhangi bir microservice'e doğrudan HTTP call yapılabilir",
+      "aha_moment": "Q simulator'dan AgentAI suggest çağırır, 2sn'de AI cevap önerisi görür"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her servisi ayrı ayrı test etmek zaman alıyor",
+      "suggestion": "health_all_services ve e2e_customer_message presetleri tek tıkla tüm sistemi test eder",
+      "aha_moment": "Q 'Run' der, 4 servis health + full E2E flow 10sn'de tamamlanır"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Postman'da endpoint'ler eksik, her seferinde URL hatırlamak gerekiyor",
+      "suggestion": "Tüm 4 servis endpoint'leri Postman'da hazır, variable'lar ile URL yönetimi",
+      "aha_moment": "Q Postman'ı açar, tüm endpoint'ler düzenli klasörlerde hazır"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Dashboard log filtresinde AgentAI ve Automation yok",
+      "suggestion": "LogStream dropdown'a 4 servis eklendi",
+      "aha_moment": "Q AgentAI loglarını dashboard'dan görür, sorun tespiti anında"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo'da tüm sistemi göstermek zor",
+      "suggestion": "E2E senaryo ile müşteri mesajı → webhook → AI suggest → feedback akışı tek seferde gösterilebilir",
+      "aha_moment": "Demo'da Q tek butonla tüm akışı gösterir, müşteri 'hepsi entegre çalışıyor' der"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 2,
+    "blocking_issues": [],
+    "notes": "Iter 1 FAIL: 3 issues (null deref, no step chaining, scope bloat). Iter 2 PASS: All CQ PASS, all CoVe PASS. Metadata synced, scope trimmed to 19 files."
+  }
+}

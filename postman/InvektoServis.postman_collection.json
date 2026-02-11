@@ -1,339 +1,194 @@
 {
   "info": {
     "name": "InvektoServis API",
-    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- ChatAnalysis internal: No auth (localhost only)\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `ops_username`: Ops Basic Auth username\n- `ops_password`: Ops Basic Auth password",
+    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice\n- **AgentAI** (port 7105): AI agent assist microservice\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "base_url", "value": "http://localhost:5000" },
     { "key": "chatanalysis_url", "value": "http://localhost:7101" },
+    { "key": "automation_url", "value": "http://localhost:7108" },
+    { "key": "agentai_url", "value": "http://localhost:7105" },
     { "key": "ops_username", "value": "admin" },
-    { "key": "ops_password", "value": "admin123" }
+    { "key": "ops_password", "value": "admin123" },
+    { "key": "jwt_token", "value": "" }
   ],
-  "auth": {
-    "type": "noauth"
-  },
+  "auth": { "type": "noauth" },
   "item": [
     {
       "name": "Backend - Public API",
       "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] },
+            "description": "Simple health check. Returns: `{ Status, Service, Timestamp }`"
+          }
+        },
         {
           "name": "Chat Analyze (async)",
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Request-Id", "value": "test-{{$timestamp}}", "description": "Optional: correlation ID" },
-              { "key": "X-Tenant-Id", "value": "default", "description": "Optional: tenant ID" },
-              { "key": "X-Chat-Id", "value": "default", "description": "Optional: chat ID" }
+              { "key": "X-Request-Id", "value": "test-{{$timestamp}}" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ChatID\": 12345,\n  \"InstanceID\": 1,\n  \"UserID\": 100,\n  \"RequestID\": \"test-req-001\",\n  \"ChatServerURL\": \"https://your-callback-url.com/api/callback\",\n  \"Lang\": \"tr\",\n  \"LabelSearchText\": \"Satis,Destek,Sikayet\",\n  \"MessageListObject\": [\n    {\n      \"Source\": \"CUSTOMER\",\n      \"Message\": \"Merhaba, urun fiyati hakkinda bilgi almak istiyorum\"\n    },\n    {\n      \"Source\": \"AGENT\",\n      \"Message\": \"Merhaba, size yardimci olabilirim. Hangi urun ile ilgileniyorsunuz?\"\n    },\n    {\n      \"Source\": \"CUSTOMER\",\n      \"Message\": \"Premium paket fiyati nedir?\"\n    }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/chat/analyze",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "chat", "analyze"]
-            },
-            "description": "Submit chat for async analysis.\n\n**Flow:** Request accepted immediately -> ChatAnalysis processes with Claude -> Result POSTed to ChatServerURL callback.\n\n**Required fields:** ChatID, InstanceID, UserID, RequestID, ChatServerURL, MessageListObject\n\n**Optional:** Lang (tr/en/de/fr/es/ar), LabelSearchText\n\n**Response:** `{ RequestID, Status: \"Processing\" }` (HTTP 200)"
+            "body": { "mode": "raw", "raw": "{\n  \"ChatID\": 12345,\n  \"InstanceID\": 1,\n  \"UserID\": 100,\n  \"RequestID\": \"test-req-001\",\n  \"ChatServerURL\": \"https://your-callback-url.com/api/callback\",\n  \"Lang\": \"tr\",\n  \"LabelSearchText\": \"Satis,Destek,Sikayet\",\n  \"MessageListObject\": [\n    { \"Source\": \"CUSTOMER\", \"Message\": \"Merhaba, urun fiyati hakkinda bilgi almak istiyorum\" },\n    { \"Source\": \"AGENT\", \"Message\": \"Merhaba, size yardimci olabilirim.\" },\n    { \"Source\": \"CUSTOMER\", \"Message\": \"Premium paket fiyati nedir?\" }\n  ]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/v1/chat/analyze", "host": ["{{base_url}}"], "path": ["api","v1","chat","analyze"] },
+            "description": "Submit chat for async analysis. Result POSTed to ChatServerURL callback."
           }
         },
         {
-          "name": "Health Check",
+          "name": "Agent Assist - Suggest Reply",
           "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/health",
-              "host": ["{{base_url}}"],
-              "path": ["health"]
-            },
-            "description": "Simple health check. No auth required.\n\nReturns: `{ Status, Service, Timestamp }`"
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Tenant-Id", "value": "1" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"chat_id\": 12345,\n  \"message_text\": \"Implant fiyati ne kadar?\",\n  \"customer_name\": \"Ahmet Yilmaz\",\n  \"channel\": \"whatsapp\",\n  \"conversation_history\": [\n    { \"source\": \"CUSTOMER\", \"text\": \"Merhaba\", \"timestamp\": \"2026-02-11T10:00:00Z\" },\n    { \"source\": \"AGENT\", \"text\": \"Merhaba, nasil yardimci olabilirim?\", \"timestamp\": \"2026-02-11T10:00:05Z\" },\n    { \"source\": \"CUSTOMER\", \"text\": \"Implant fiyati ne kadar?\", \"timestamp\": \"2026-02-11T10:00:30Z\" }\n  ],\n  \"templates\": [\n    { \"id\": 1, \"name\": \"Fiyat Bilgisi\", \"text\": \"Merhaba {{isim}}, {{tedavi}} fiyatlarimiz {{fiyat_araligi}} arasindadir.\" }\n  ],\n  \"template_variables\": { \"isim\": \"Ahmet\", \"tedavi\": \"implant\", \"fiyat_araligi\": \"15.000-45.000 TL\" },\n  \"language\": \"tr\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/v1/agent-assist/suggest", "host": ["{{base_url}}"], "path": ["api","v1","agent-assist","suggest"] },
+            "description": "AI reply suggestion proxy (Backend -> AgentAI:7105 -> Claude).\n\nAuth: Bearer JWT | Timeout: 15s\nResponse: `{ suggestion_id, suggested_reply, intent, confidence, processing_time_ms, model }`"
+          }
+        },
+        {
+          "name": "Agent Assist - Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Tenant-Id", "value": "1" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"suggestion_id\": \"SUGGESTION_ID_FROM_SUGGEST_RESPONSE\",\n  \"agent_action\": \"accepted\",\n  \"final_reply_text\": null\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/v1/agent-assist/feedback", "host": ["{{base_url}}"], "path": ["api","v1","agent-assist","feedback"] },
+            "description": "Agent feedback (fire-and-forget). Actions: accepted, edited, rejected.\nResponse: 202 Accepted"
+          }
+        },
+        {
+          "name": "Webhook Event (Automation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-Id", "value": "test-{{$timestamp}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event_type\": \"new_message\",\n  \"sequence_id\": 1001,\n  \"chat_id\": 12345,\n  \"channel\": \"whatsapp\",\n  \"data\": {\n    \"phone\": \"+905551234567\",\n    \"customer_name\": \"Test Musteri\",\n    \"message_text\": \"Merhaba\",\n    \"message_source\": \"CUSTOMER\"\n  },\n  \"timestamp\": \"2026-02-11T10:00:00Z\",\n  \"callback_url\": \"https://your-callback-url.com/api/callback\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/v1/webhook/event", "host": ["{{base_url}}"], "path": ["api","v1","webhook","event"] },
+            "description": "Send webhook event to Automation.\nEvent types: new_message, conversation_started, conversation_closed, tag_changed, agent_assigned\nResponse: 202 Accepted"
           }
         }
       ]
     },
     {
       "name": "Backend - Ops Dashboard",
-      "auth": {
-        "type": "basic",
-        "basic": [
-          { "key": "username", "value": "{{ops_username}}" },
-          { "key": "password", "value": "{{ops_password}}" }
-        ]
-      },
+      "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{ops_username}}" }, { "key": "password", "value": "{{ops_password}}" }] },
       "item": [
-        {
-          "name": "All Services Health",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "health"]
-            },
-            "description": "Health status of all services with response times."
-          }
-        },
-        {
-          "name": "Endpoint Discovery",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/endpoints",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "endpoints"]
-            },
-            "description": "Returns all registered endpoints for all services (aggregated)."
-          }
-        },
-        {
-          "name": "Postman Collection Download",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/postman",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "postman"]
-            },
-            "description": "Download dynamically generated Postman collection (always in sync with actual endpoints)."
-          }
-        },
-        {
-          "name": "Log Stream",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/logs/stream?limit=50",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "logs", "stream"],
-              "query": [
-                { "key": "level", "value": "ERROR", "disabled": true, "description": "Filter: INFO,WARN,ERROR (comma-separated)" },
-                { "key": "service", "value": "Invekto.ChatAnalysis", "disabled": true, "description": "Filter: service name" },
-                { "key": "search", "value": "timeout", "disabled": true, "description": "Free text search" },
-                { "key": "after", "value": "2026-02-06T00:00:00Z", "disabled": true, "description": "Only entries after this timestamp" },
-                { "key": "limit", "value": "50", "description": "Max entries (default: 100)" }
-              ]
-            },
-            "description": "Stream log entries with optional filters."
-          }
-        },
-        {
-          "name": "Log Stream (Grouped)",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/logs/grouped?limit=20",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "logs", "grouped"],
-              "query": [
-                { "key": "level", "value": "ERROR", "disabled": true },
-                { "key": "service", "value": "", "disabled": true },
-                { "key": "search", "value": "", "disabled": true },
-                { "key": "limit", "value": "20" }
-              ]
-            },
-            "description": "Log entries grouped by requestId (operations view)."
-          }
-        },
-        {
-          "name": "Log Context",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/logs/context?file=2026-02-06.jsonl&line=10&range=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "logs", "context"],
-              "query": [
-                { "key": "file", "value": "2026-02-06.jsonl", "description": "Log file name" },
-                { "key": "line", "value": "10", "description": "Target line number" },
-                { "key": "range", "value": "10", "description": "Lines before/after (default: 10)" }
-              ]
-            },
-            "description": "Get context lines around a specific log entry."
-          }
-        },
-        {
-          "name": "Error Statistics",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/stats/errors?hours=24",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "stats", "errors"],
-              "query": [
-                { "key": "hours", "value": "24", "description": "Hours to look back (default: 24)" }
-              ]
-            },
-            "description": "Error count bucketed by hour."
-          }
-        },
-        {
-          "name": "Restart Service",
-          "request": {
-            "method": "POST",
-            "url": {
-              "raw": "{{base_url}}/api/ops/services/Invekto.ChatAnalysis/restart",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "services", "Invekto.ChatAnalysis", "restart"]
-            },
-            "description": "Restart a Windows Service.\n\nValid service names:\n- `Invekto.Backend`\n- `Invekto.ChatAnalysis`"
-          }
-        },
-        {
-          "name": "Test Proxy - ChatAnalysis Health",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/ops/test/chatanalysis/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "ops", "test", "chatanalysis", "health"]
-            },
-            "description": "Test proxy: forward request to ChatAnalysis service and return result with timing."
-          }
-        }
+        { "name": "All Services Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/health", "host": ["{{base_url}}"], "path": ["api","ops","health"] }, "description": "Health of all services (Backend, ChatAnalysis, Automation, AgentAI) with response times." } },
+        { "name": "Endpoint Discovery", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/endpoints", "host": ["{{base_url}}"], "path": ["api","ops","endpoints"] }, "description": "All registered endpoints aggregated from all services." } },
+        { "name": "Postman Collection Download", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/postman", "host": ["{{base_url}}"], "path": ["api","ops","postman"] }, "description": "Dynamic Postman collection (always in sync)." } },
+        { "name": "Log Stream", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/logs/stream?limit=50", "host": ["{{base_url}}"], "path": ["api","ops","logs","stream"], "query": [{ "key": "level", "value": "ERROR", "disabled": true }, { "key": "service", "value": "Invekto.AgentAI", "disabled": true }, { "key": "search", "value": "", "disabled": true }, { "key": "after", "value": "2026-02-06T00:00:00Z", "disabled": true }, { "key": "limit", "value": "50" }] } } },
+        { "name": "Log Stream (Grouped)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/logs/grouped?limit=20", "host": ["{{base_url}}"], "path": ["api","ops","logs","grouped"], "query": [{ "key": "level", "value": "ERROR", "disabled": true }, { "key": "service", "value": "", "disabled": true }, { "key": "limit", "value": "20" }] } } },
+        { "name": "Log Context", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/logs/context?file=2026-02-11.jsonl&line=10&range=10", "host": ["{{base_url}}"], "path": ["api","ops","logs","context"], "query": [{ "key": "file", "value": "2026-02-11.jsonl" }, { "key": "line", "value": "10" }, { "key": "range", "value": "10" }] } } },
+        { "name": "Error Statistics", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/stats/errors?hours=24", "host": ["{{base_url}}"], "path": ["api","ops","stats","errors"], "query": [{ "key": "hours", "value": "24" }] } } },
+        { "name": "Restart Service", "request": { "method": "POST", "url": { "raw": "{{base_url}}/api/ops/services/Invekto.AgentAI/restart", "host": ["{{base_url}}"], "path": ["api","ops","services","Invekto.AgentAI","restart"] }, "description": "Valid names: Invekto.Backend, Invekto.ChatAnalysis, Invekto.Automation, Invekto.AgentAI" } },
+        { "name": "Test Proxy - ChatAnalysis Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/chatanalysis/health", "host": ["{{base_url}}"], "path": ["api","ops","test","chatanalysis","health"] } } },
+        { "name": "Test Proxy - Automation Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/automation/health", "host": ["{{base_url}}"], "path": ["api","ops","test","automation","health"] } } },
+        { "name": "Test Proxy - AgentAI Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/agentai/health", "host": ["{{base_url}}"], "path": ["api","ops","test","agentai","health"] } } }
       ]
     },
     {
       "name": "Backend - Legacy Ops",
-      "auth": {
-        "type": "basic",
-        "basic": [
-          { "key": "username", "value": "{{ops_username}}" },
-          { "key": "password", "value": "{{ops_password}}" }
-        ]
-      },
+      "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{ops_username}}" }, { "key": "password", "value": "{{ops_password}}" }] },
       "item": [
-        {
-          "name": "Ops Status",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/ops",
-              "host": ["{{base_url}}"],
-              "path": ["ops"]
-            },
-            "description": "Legacy ops dashboard (plain JSON)."
-          }
-        },
-        {
-          "name": "Debug - Log Paths",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/ops/debug",
-              "host": ["{{base_url}}"],
-              "path": ["ops", "debug"]
-            }
-          }
-        },
-        {
-          "name": "Debug - LogReader Test",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/ops/debug2",
-              "host": ["{{base_url}}"],
-              "path": ["ops", "debug2"]
-            }
-          }
-        },
-        {
-          "name": "Last 100 Errors",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/ops/errors",
-              "host": ["{{base_url}}"],
-              "path": ["ops", "errors"]
-            }
-          }
-        },
-        {
-          "name": "Last 100 Slow Requests",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/ops/slow",
-              "host": ["{{base_url}}"],
-              "path": ["ops", "slow"]
-            }
-          }
-        },
-        {
-          "name": "Search by RequestId",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/ops/search?requestId=test-req-001",
-              "host": ["{{base_url}}"],
-              "path": ["ops", "search"],
-              "query": [
-                { "key": "requestId", "value": "test-req-001" }
-              ]
-            }
-          }
-        }
+        { "name": "Ops Status", "request": { "method": "GET", "url": { "raw": "{{base_url}}/ops", "host": ["{{base_url}}"], "path": ["ops"] } } },
+        { "name": "Debug - Log Paths", "request": { "method": "GET", "url": { "raw": "{{base_url}}/ops/debug", "host": ["{{base_url}}"], "path": ["ops","debug"] } } },
+        { "name": "Debug - LogReader Test", "request": { "method": "GET", "url": { "raw": "{{base_url}}/ops/debug2", "host": ["{{base_url}}"], "path": ["ops","debug2"] } } },
+        { "name": "Last 100 Errors", "request": { "method": "GET", "url": { "raw": "{{base_url}}/ops/errors", "host": ["{{base_url}}"], "path": ["ops","errors"] } } },
+        { "name": "Last 100 Slow Requests", "request": { "method": "GET", "url": { "raw": "{{base_url}}/ops/slow", "host": ["{{base_url}}"], "path": ["ops","slow"] } } },
+        { "name": "Search by RequestId", "request": { "method": "GET", "url": { "raw": "{{base_url}}/ops/search?requestId=test-req-001", "host": ["{{base_url}}"], "path": ["ops","search"], "query": [{ "key": "requestId", "value": "test-req-001" }] } } }
       ]
     },
     {
       "name": "ChatAnalysis - Direct (Internal)",
-      "description": "Direct access to ChatAnalysis service (port 7101).\nOnly accessible from localhost - use Backend proxy for external access.",
+      "description": "Direct access to ChatAnalysis (port 7101). Localhost only.",
       "item": [
-        {
-          "name": "Health Check",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{chatanalysis_url}}/health",
-              "host": ["{{chatanalysis_url}}"],
-              "path": ["health"]
-            }
-          }
-        },
-        {
-          "name": "Ready Check",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{chatanalysis_url}}/ready",
-              "host": ["{{chatanalysis_url}}"],
-              "path": ["ready"]
-            }
-          }
-        },
+        { "name": "Health Check", "request": { "method": "GET", "url": { "raw": "{{chatanalysis_url}}/health", "host": ["{{chatanalysis_url}}"], "path": ["health"] } } },
+        { "name": "Ready Check", "request": { "method": "GET", "url": { "raw": "{{chatanalysis_url}}/ready", "host": ["{{chatanalysis_url}}"], "path": ["ready"] } } },
         {
           "name": "Analyze (direct)",
           "request": {
             "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"ChatID\": 12345,\n  \"InstanceID\": 1,\n  \"UserID\": 100,\n  \"RequestID\": \"direct-test-001\",\n  \"ChatServerURL\": \"https://your-callback-url.com/api/callback\",\n  \"Lang\": \"tr\",\n  \"MessageListObject\": [\n    { \"Source\": \"CUSTOMER\", \"Message\": \"Merhaba, bilgi almak istiyorum\" },\n    { \"Source\": \"AGENT\", \"Message\": \"Merhaba, nasil yardimci olabilirim?\" }\n  ]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{chatanalysis_url}}/api/v1/analyze", "host": ["{{chatanalysis_url}}"], "path": ["api","v1","analyze"] },
+            "description": "Direct call to ChatAnalysis (bypasses Backend). Localhost only."
+          }
+        },
+        { "name": "Endpoint Discovery", "request": { "method": "GET", "url": { "raw": "{{chatanalysis_url}}/api/ops/endpoints", "host": ["{{chatanalysis_url}}"], "path": ["api","ops","endpoints"] } } }
+      ]
+    },
+    {
+      "name": "Automation - Direct (Internal)",
+      "description": "Direct access to Automation (port 7108). Webhook requires Bearer JWT.",
+      "item": [
+        { "name": "Health Check", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/health", "host": ["{{automation_url}}"], "path": ["health"] } } },
+        { "name": "Ready Check", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/ready", "host": ["{{automation_url}}"], "path": ["ready"] } } },
+        {
+          "name": "Webhook Event (direct)",
+          "request": {
+            "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-Id", "value": "test-{{$timestamp}}" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ChatID\": 12345,\n  \"InstanceID\": 1,\n  \"UserID\": 100,\n  \"RequestID\": \"direct-test-001\",\n  \"ChatServerURL\": \"https://your-callback-url.com/api/callback\",\n  \"Lang\": \"tr\",\n  \"MessageListObject\": [\n    {\n      \"Source\": \"CUSTOMER\",\n      \"Message\": \"Merhaba, bilgi almak istiyorum\"\n    },\n    {\n      \"Source\": \"AGENT\",\n      \"Message\": \"Merhaba, nasil yardimci olabilirim?\"\n    }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{chatanalysis_url}}/api/v1/analyze",
-              "host": ["{{chatanalysis_url}}"],
-              "path": ["api", "v1", "analyze"]
-            },
-            "description": "Direct call to ChatAnalysis (bypasses Backend). Only works from localhost."
+            "body": { "mode": "raw", "raw": "{\n  \"event_type\": \"new_message\",\n  \"sequence_id\": 1001,\n  \"chat_id\": 12345,\n  \"channel\": \"whatsapp\",\n  \"data\": {\n    \"phone\": \"+905551234567\",\n    \"customer_name\": \"Test Musteri\",\n    \"message_text\": \"Merhaba\",\n    \"message_source\": \"CUSTOMER\"\n  },\n  \"timestamp\": \"2026-02-11T10:00:00Z\",\n  \"callback_url\": \"https://your-callback-url.com/api/callback\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{automation_url}}/api/v1/webhook/event", "host": ["{{automation_url}}"], "path": ["api","v1","webhook","event"] },
+            "description": "Direct webhook to Automation. Auth: Bearer JWT. Response: 202 Accepted."
+          }
+        },
+        { "name": "Endpoint Discovery", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/api/ops/endpoints", "host": ["{{automation_url}}"], "path": ["api","ops","endpoints"] } } }
+      ]
+    },
+    {
+      "name": "AgentAI - Direct (Internal)",
+      "description": "Direct access to AgentAI (port 7105). Suggest/feedback require Bearer JWT.",
+      "item": [
+        { "name": "Health Check", "request": { "method": "GET", "url": { "raw": "{{agentai_url}}/health", "host": ["{{agentai_url}}"], "path": ["health"] } } },
+        { "name": "Ready Check", "request": { "method": "GET", "url": { "raw": "{{agentai_url}}/ready", "host": ["{{agentai_url}}"], "path": ["ready"] } } },
+        {
+          "name": "Suggest Reply (direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Tenant-Id", "value": "1" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"chat_id\": 12345,\n  \"message_text\": \"Implant fiyati ne kadar?\",\n  \"customer_name\": \"Ahmet Yilmaz\",\n  \"channel\": \"whatsapp\",\n  \"conversation_history\": [\n    { \"source\": \"CUSTOMER\", \"text\": \"Merhaba\", \"timestamp\": \"2026-02-11T10:00:00Z\" },\n    { \"source\": \"AGENT\", \"text\": \"Merhaba, nasil yardimci olabilirim?\", \"timestamp\": \"2026-02-11T10:00:05Z\" },\n    { \"source\": \"CUSTOMER\", \"text\": \"Implant fiyati ne kadar?\", \"timestamp\": \"2026-02-11T10:00:30Z\" }\n  ],\n  \"language\": \"tr\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{agentai_url}}/api/v1/suggest", "host": ["{{agentai_url}}"], "path": ["api","v1","suggest"] },
+            "description": "Direct suggest reply (bypasses Backend proxy).\nRequired: chat_id, message_text\nResponse: { suggestion_id, suggested_reply, intent, confidence, processing_time_ms, model }\nTimeout: 15s"
           }
         },
         {
-          "name": "Endpoint Discovery",
+          "name": "Feedback (direct)",
           "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{chatanalysis_url}}/api/ops/endpoints",
-              "host": ["{{chatanalysis_url}}"],
-              "path": ["api", "ops", "endpoints"]
-            }
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Tenant-Id", "value": "1" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"suggestion_id\": \"SUGGESTION_ID_FROM_SUGGEST_RESPONSE\",\n  \"agent_action\": \"edited\",\n  \"final_reply_text\": \"Merhaba, implant tedavimiz 15.000 TL'den basliyor.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{agentai_url}}/api/v1/feedback", "host": ["{{agentai_url}}"], "path": ["api","v1","feedback"] },
+            "description": "Direct feedback (bypasses Backend proxy).\nActions: accepted, edited (include final_reply_text), rejected\nResponse: 202 Accepted"
           }
-        }
+        },
+        { "name": "Endpoint Discovery", "request": { "method": "GET", "url": { "raw": "{{agentai_url}}/api/ops/endpoints", "host": ["{{agentai_url}}"], "path": ["api","ops","endpoints"] } } }
       ]
     }
   ]

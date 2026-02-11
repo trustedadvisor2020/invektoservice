@@ -13,7 +13,7 @@ echo ============================================
 echo.
 
 REM Backend Service
-echo [1/3] Installing InvektoBackend...
+echo [1/4] Installing InvektoBackend...
 %NSSM% install InvektoBackend "E:\Invekto\Backend\current\Invekto.Backend.exe"
 %NSSM% set InvektoBackend DisplayName "Invekto Backend"
 %NSSM% set InvektoBackend Description "Invekto Backend API - Port 5000"
@@ -32,7 +32,7 @@ echo [OK] InvektoBackend installed
 echo.
 
 REM ChatAnalysis Service
-echo [2/3] Installing InvektoChatAnalysis...
+echo [2/4] Installing InvektoChatAnalysis...
 %NSSM% install InvektoChatAnalysis "E:\Invekto\ChatAnalysis\current\Invekto.ChatAnalysis.exe"
 %NSSM% set InvektoChatAnalysis DisplayName "Invekto ChatAnalysis"
 %NSSM% set InvektoChatAnalysis Description "Invekto Chat Analysis Microservice - Port 7101"
@@ -51,7 +51,7 @@ echo [OK] InvektoChatAnalysis installed
 echo.
 
 REM Automation Service
-echo [3/3] Installing InvektoAutomation...
+echo [3/4] Installing InvektoAutomation...
 %NSSM% install InvektoAutomation "E:\Invekto\Automation\current\Invekto.Automation.exe"
 %NSSM% set InvektoAutomation DisplayName "Invekto Automation"
 %NSSM% set InvektoAutomation Description "Invekto Automation Chatbot/Flow Builder - Port 7108"
@@ -69,10 +69,30 @@ echo [3/3] Installing InvektoAutomation...
 echo [OK] InvektoAutomation installed
 echo.
 
+REM AgentAI Service
+echo [4/4] Installing InvektoAgentAI...
+%NSSM% install InvektoAgentAI "E:\Invekto\AgentAI\current\Invekto.AgentAI.exe"
+%NSSM% set InvektoAgentAI DisplayName "Invekto AgentAI"
+%NSSM% set InvektoAgentAI Description "Invekto AI Agent Assist Microservice - Port 7105"
+%NSSM% set InvektoAgentAI AppDirectory "E:\Invekto\AgentAI\current"
+%NSSM% set InvektoAgentAI AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production"
+%NSSM% set InvektoAgentAI AppStdout "E:\Invekto\AgentAI\logs\service-stdout.log"
+%NSSM% set InvektoAgentAI AppStderr "E:\Invekto\AgentAI\logs\service-stderr.log"
+%NSSM% set InvektoAgentAI AppStdoutCreationDisposition 4
+%NSSM% set InvektoAgentAI AppStderrCreationDisposition 4
+%NSSM% set InvektoAgentAI AppRotateFiles 1
+%NSSM% set InvektoAgentAI AppRotateBytes 10485760
+%NSSM% set InvektoAgentAI Start SERVICE_AUTO_START
+%NSSM% set InvektoAgentAI AppExit Default Restart
+%NSSM% set InvektoAgentAI AppRestartDelay 5000
+echo [OK] InvektoAgentAI installed
+echo.
+
 REM Create log directories
 if not exist "E:\Invekto\Backend\logs" mkdir "E:\Invekto\Backend\logs"
 if not exist "E:\Invekto\ChatAnalysis\logs" mkdir "E:\Invekto\ChatAnalysis\logs"
 if not exist "E:\Invekto\Automation\logs" mkdir "E:\Invekto\Automation\logs"
+if not exist "E:\Invekto\AgentAI\logs" mkdir "E:\Invekto\AgentAI\logs"
 
 REM Start services
 echo Starting services...
@@ -81,6 +101,8 @@ timeout /t 3 /nobreak >nul
 %NSSM% start InvektoChatAnalysis
 timeout /t 3 /nobreak >nul
 %NSSM% start InvektoAutomation
+timeout /t 3 /nobreak >nul
+%NSSM% start InvektoAgentAI
 timeout /t 3 /nobreak >nul
 
 echo.
@@ -92,15 +114,18 @@ echo Services:
 %NSSM% status InvektoBackend
 %NSSM% status InvektoChatAnalysis
 %NSSM% status InvektoAutomation
+%NSSM% status InvektoAgentAI
 echo.
 echo Test:
 echo   http://localhost:5000/health
 echo   http://localhost:7101/health
+echo   http://localhost:7105/health
 echo   http://localhost:7108/health
 echo.
 echo Manage:
 echo   %NSSM% edit InvektoBackend
 echo   %NSSM% edit InvektoChatAnalysis
 echo   %NSSM% edit InvektoAutomation
+echo   %NSSM% edit InvektoAgentAI
 echo.
 pause

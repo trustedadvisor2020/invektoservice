@@ -2,8 +2,9 @@
 
 const express = require('express');
 const { getScenarioList, getScenario } = require('../scenarios/presets');
-const { sendWebhook } = require('../services/webhook-sender');
+const { sendWebhook, sendRequest } = require('../services/webhook-sender');
 const wsManager = require('../ws/ws-manager');
+const config = require('../../config');
 
 const router = express.Router();
 
@@ -52,20 +53,30 @@ router.post('/run', async (req, res) => {
     steps: scenario.steps.length
   });
 
-  // Execute steps sequentially
+  // Execute steps sequentially; stepResults stores each step's response for chaining
+  const stepResults = [];
   try {
     for (let i = 0; i < scenario.steps.length; i++) {
       if (_abortController.signal.aborted) break;
 
       _runningScenario.currentStep = i + 1;
-      const step = scenario.steps[i];
+      const step = JSON.parse(JSON.stringify(scenario.steps[i]));
+
+      // Resolve {{step_N.field}} placeholders from previous step results
+      if (step.body) {
+        resolveStepRefs(step.body, stepResults);
+      }
+
+      const sendingMessage = step.type === 'api_call'
+        ? `${step.method || 'POST'} ${step.endpoint}`
+        : `Webhook: ${step.webhook?.data?.message_text || step.webhook?.event_type || 'event'}`;
 
       wsManager.broadcast('scenario_step', {
         scenario_name: scenario.name,
         step_index: i + 1,
         step_total: scenario.steps.length,
         status: 'sending',
-        message: `Sending webhook: ${step.webhook.data?.message_text || step.webhook.event_type}`,
+        message: sendingMessage,
         expected: step.expected
       });
 
@@ -76,13 +87,29 @@ router.post('/run', async (req, res) => {
 
       if (_abortController.signal.aborted) break;
 
-      // Override tenant_id in JWT if provided
-      const webhookPayload = { ...step.webhook };
-      if (tenant_id) {
-        webhookPayload.tenant_id = tenant_id;
+      let result;
+      if (step.type === 'api_call') {
+        // Direct API call (for AgentAI suggest/feedback, ChatAnalysis, health checks)
+        const serviceUrl = step.service_url || config.services[step.service]?.url || config.services.backend.url;
+        const url = `${serviceUrl}${step.endpoint}`;
+        result = await sendRequest({
+          method: step.method || 'POST',
+          url,
+          body: step.body,
+          jwtToken: jwt_token,
+          headers: step.headers
+        });
+      } else {
+        // Default: webhook send (Automation)
+        const webhookPayload = { ...step.webhook };
+        if (tenant_id) {
+          webhookPayload.tenant_id = tenant_id;
+        }
+        result = await sendWebhook(webhookPayload, jwt_token);
       }
 
-      const result = await sendWebhook(webhookPayload, jwt_token);
+      // Store step result for chaining (e.g. suggestion_id from suggest → feedback)
+      stepResults.push(result.response_body || {});
 
       const stepStatus = result.error ? 'error' : (result.status_code === 202 || result.status_code === 200) ? 'sent' : 'failed';
 
@@ -137,6 +164,28 @@ router.post('/stop', (req, res) => {
   _abortController.abort();
   res.json({ status: 'stopping', scenario: _runningScenario.name });
 });
+
+/**
+ * Resolve {{step_N.field}} placeholders in step body from previous step results.
+ * Example: "REPLACE_WITH_SUGGESTION_ID" or "{{step_1.suggestion_id}}" in feedback body
+ * gets replaced with the actual suggestion_id from step 1's response.
+ */
+function resolveStepRefs(obj, stepResults) {
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'string') {
+      obj[key] = obj[key].replace(/\{\{step_(\d+)\.([a-zA-Z0-9_.]+)\}\}/g, (match, idx, field) => {
+        const stepIdx = parseInt(idx, 10) - 1; // step_1 → index 0
+        if (stepIdx >= 0 && stepIdx < stepResults.length) {
+          const val = field.split('.').reduce((o, k) => o?.[k], stepResults[stepIdx]);
+          return val !== undefined && val !== null ? String(val) : match;
+        }
+        return match;
+      });
+    } else if (obj[key] && typeof obj[key] === 'object') {
+      resolveStepRefs(obj[key], stepResults);
+    }
+  }
+}
 
 function sleep(ms, signal) {
   return new Promise((resolve, reject) => {

@@ -16,7 +16,10 @@
       "Bash(dotnet build:*)",
       "Bash(Select-String -NotMatch \"warning\")",
       "Bash(git reset:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cmd /c dev-to-invekto-services.bat)",
+      "Read(//c/CRMs/InvektoServis/**)",
+      "Bash(done)"
     ],
     "additionalDirectories": [
       "c:\\CRMs\\InvektoServis"

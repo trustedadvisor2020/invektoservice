@@ -14,6 +14,9 @@ netsh advfirewall firewall add rule name="Invekto Backend (TCP 5000)" dir=in act
 REM ChatAnalysis (port 7101) - Localhost only (Backend calls internally)
 netsh advfirewall firewall add rule name="Invekto ChatAnalysis (TCP 7101)" dir=in action=allow protocol=tcp localport=7101 profile=any remoteip=127.0.0.1
 
+REM AgentAI (port 7105) - Localhost only (Backend proxies, not direct external access)
+netsh advfirewall firewall add rule name="Invekto AgentAI (TCP 7105)" dir=in action=allow protocol=tcp localport=7105 profile=any remoteip=127.0.0.1
+
 REM Automation (port 7108) - External access (Main App webhooks)
 netsh advfirewall firewall add rule name="Invekto Automation (TCP 7108)" dir=in action=allow protocol=tcp localport=7108 profile=any
 
@@ -25,6 +28,7 @@ echo ============================================
 echo  Firewall rules added:
 echo    5000  Backend       (external)
 echo    7101  ChatAnalysis  (localhost only)
+echo    7105  AgentAI       (localhost only)
 echo    7108  Automation    (external)
 echo    5432  PostgreSQL    (localhost only)
 echo ============================================

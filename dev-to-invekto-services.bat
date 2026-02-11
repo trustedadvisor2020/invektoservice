@@ -26,6 +26,7 @@ set "FTP_PASS=O2SZ0U4so5tSr5FgLqT19TE"
 set "REMOTE_BACKEND=/e/Invekto/Backend/current"
 set "REMOTE_CHATANALYSIS=/e/Invekto/ChatAnalysis/current"
 set "REMOTE_AUTOMATION=/e/Invekto/Automation/current"
+set "REMOTE_AGENTAI=/e/Invekto/AgentAI/current"
 
 REM Local paths
 set "SRC_DIR=%~dp0"
@@ -33,6 +34,7 @@ set "LOCAL_DEPLOY=%~dp0deploy_output"
 set "LOCAL_BACKEND=%LOCAL_DEPLOY%\Backend"
 set "LOCAL_CHATANALYSIS=%LOCAL_DEPLOY%\ChatAnalysis"
 set "LOCAL_AUTOMATION=%LOCAL_DEPLOY%\Automation"
+set "LOCAL_AGENTAI=%LOCAL_DEPLOY%\AgentAI"
 
 REM Check WinSCP exists
 if not exist "!WINSCP_PATH!" (
@@ -46,9 +48,10 @@ if not exist "!LOCAL_DEPLOY!" mkdir "!LOCAL_DEPLOY!"
 if not exist "!LOCAL_BACKEND!" mkdir "!LOCAL_BACKEND!"
 if not exist "!LOCAL_CHATANALYSIS!" mkdir "!LOCAL_CHATANALYSIS!"
 if not exist "!LOCAL_AUTOMATION!" mkdir "!LOCAL_AUTOMATION!"
+if not exist "!LOCAL_AGENTAI!" mkdir "!LOCAL_AGENTAI!"
 
 echo ============================================
-echo [1/4] Building Backend...
+echo [1/5] Building Backend...
 echo ============================================
 echo.
 
@@ -62,7 +65,7 @@ echo [OK] Backend built to !LOCAL_BACKEND!
 echo.
 
 echo ============================================
-echo [2/4] Building ChatAnalysis...
+echo [2/5] Building ChatAnalysis...
 echo ============================================
 echo.
 
@@ -75,7 +78,7 @@ echo [OK] ChatAnalysis built to !LOCAL_CHATANALYSIS!
 echo.
 
 echo ============================================
-echo [3/4] Building Automation...
+echo [3/5] Building Automation...
 echo ============================================
 echo.
 
@@ -87,15 +90,28 @@ if errorlevel 1 (
 echo [OK] Automation built to !LOCAL_AUTOMATION!
 echo.
 
+echo ============================================
+echo [4/5] Building AgentAI...
+echo ============================================
+echo.
+
+dotnet publish src/Invekto.AgentAI/Invekto.AgentAI.csproj -c Release -o "!LOCAL_AGENTAI!" --self-contained false
+if errorlevel 1 (
+    echo [ERROR] AgentAI build failed!
+    goto :error_exit
+)
+echo [OK] AgentAI built to !LOCAL_AGENTAI!
+echo.
+
 REM Q: Create build marker
 for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
 for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation','AgentAI') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
 echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
 echo.
 
 echo ============================================
-echo [4/6] Stopping Remote Services...
+echo [5/7] Stopping Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-stop.flag to trigger service shutdown...
@@ -122,15 +138,17 @@ timeout /t 10 /nobreak >nul
 
 echo.
 echo ============================================
-echo [5/6] Uploading to STAGING Server...
+echo [6/7] Uploading to STAGING Server...
 echo ============================================
 echo.
 echo Local Backend:      !LOCAL_BACKEND!
 echo Local ChatAnalysis: !LOCAL_CHATANALYSIS!
 echo Local Automation:   !LOCAL_AUTOMATION!
+echo Local AgentAI:      !LOCAL_AGENTAI!
 echo Remote Backend:     %REMOTE_BACKEND%
 echo Remote ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo Remote Automation:  %REMOTE_AUTOMATION%
+echo Remote AgentAI:     %REMOTE_AGENTAI%
 echo.
 echo Mode: Synchronize (only changed files)
 
@@ -140,14 +158,22 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo option confirm off
     echo option reconnecttime 5
     echo open ftpes://%FTP_HOST% -username="%FTP_USER%" -password="%FTP_PASS%" -passive -timeout=30 -certificate=*
-    echo option batch abort
+    echo option batch continue
     echo option reconnecttime 5
+    echo echo Ensuring remote directories exist...
+    echo mkdir "%REMOTE_BACKEND%"
+    echo mkdir "%REMOTE_CHATANALYSIS%"
+    echo mkdir "%REMOTE_AUTOMATION%"
+    echo mkdir "%REMOTE_AGENTAI%"
+    echo option batch abort
     echo echo Uploading Backend to STAGING...
     echo synchronize remote "!LOCAL_BACKEND!" "%REMOTE_BACKEND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading ChatAnalysis to STAGING...
     echo synchronize remote "!LOCAL_CHATANALYSIS!" "%REMOTE_CHATANALYSIS%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading Automation to STAGING...
     echo synchronize remote "!LOCAL_AUTOMATION!" "%REMOTE_AUTOMATION%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+    echo echo Uploading AgentAI to STAGING...
+    echo synchronize remote "!LOCAL_AGENTAI!" "%REMOTE_AGENTAI%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading build marker...
     echo put "!LOCAL_DEPLOY!\.build-marker.json" "/e/Invekto/"
     echo exit
@@ -167,7 +193,7 @@ echo [OK] FTP upload completed
 
 echo.
 echo ============================================
-echo [6/6] Starting Remote Services...
+echo [7/7] Starting Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-start.flag to trigger service startup...
@@ -214,11 +240,12 @@ echo Deployed to: %FTP_HOST%
 echo   Backend:      %REMOTE_BACKEND%
 echo   ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo   Automation:   %REMOTE_AUTOMATION%
+echo   AgentAI:      %REMOTE_AGENTAI%
 echo.
 echo ============================================
 echo NEXT STEPS (on STAGING server):
 echo ============================================
-echo   1. Copy appsettings.Production.json to both current folders
+echo   1. Copy appsettings.Production.json to each current folder
 echo   2. Run: E:\Invekto\scripts\restart-services.bat
 echo   3. Test: http://services.invekto.com:5000/health
 echo.

@@ -6,7 +6,7 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| 20260211-agentai-service | IN_PROGRESS | 2026-02-11 | Invekto.AgentAI microservice (port 7105) - Sync API agent assist + per-agent feedback learning |
+| (none) | - | - | - |
 
 ---
 
@@ -14,6 +14,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260211-agentai-service | 2026-02-11 | GR-1.11: Invekto.AgentAI AI agent assist (Port 7105) - Codex 2 iter, Q FORCE PASS |
 | 20260209-simulator | 2026-02-09 | Test & Simulation tool (Node.js, Port 4500) - Codex 3 iter PASS |
 | 20260209-automation-service | 2026-02-09 | GR-1.1: Invekto.Automation chatbot/flow builder servisi (Codex 3 iter, Q FORCE PASS) |
 | 20260208-integration-bridge | 2026-02-08 | GR-1.9: Invekto <-> InvektoServis API koprusu (JWT, webhook, callback, PostgreSQL) |
