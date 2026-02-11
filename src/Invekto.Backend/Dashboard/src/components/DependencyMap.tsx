@@ -17,10 +17,12 @@ export function DependencyMap({ services }: DependencyMapProps) {
   const backend = services.find(s => s.name.includes('Backend'));
   const chatAnalysis = services.find(s => s.name.includes('ChatAnalysis'));
   const automation = services.find(s => s.name.includes('Automation'));
+  const agentAI = services.find(s => s.name.includes('AgentAI'));
 
   const backendColor = backend ? getStatusColor(backend.status) : getStatusColor('unavailable');
   const chatColor = chatAnalysis ? getStatusColor(chatAnalysis.status) : getStatusColor('unavailable');
   const autoColor = automation ? getStatusColor(automation.status) : getStatusColor('unavailable');
+  const agentAIColor = agentAI ? getStatusColor(agentAI.status) : getStatusColor('unavailable');
 
   return (
     <Card>
@@ -28,7 +30,7 @@ export function DependencyMap({ services }: DependencyMapProps) {
         <CardTitle>Service Dependencies</CardTitle>
       </CardHeader>
       <CardContent>
-        <svg viewBox="0 0 500 280" className="w-full h-56">
+        <svg viewBox="0 0 500 380" className="w-full h-72">
           {/* Glow filters */}
           <defs>
             <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
@@ -148,8 +150,51 @@ export function DependencyMap({ services }: DependencyMapProps) {
             </text>
           </g>
 
+          {/* Arrow to AgentAI (bottom-far-right) */}
+          <g>
+            <line
+              x1="180"
+              y1="130"
+              x2="310"
+              y2="265"
+              stroke="#d1d5db"
+              strokeWidth="2.5"
+              strokeDasharray="8,5"
+            />
+            <polygon
+              points="310,265 296,258 300,270"
+              fill="#9ca3af"
+            />
+            <rect x="218" y="182" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+            <text x="243" y="199" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
+              HTTP
+            </text>
+          </g>
+
+          {/* AgentAI Node (bottom-far-right) */}
+          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 275px' }}>
+            <rect
+              x="320"
+              y="235"
+              width="160"
+              height="80"
+              rx="12"
+              fill="white"
+              stroke={agentAIColor.stroke}
+              strokeWidth="2.5"
+              style={{ filter: `drop-shadow(0 0 8px ${agentAIColor.glow})` }}
+            />
+            <circle cx="344" cy="267" r="6" fill={agentAIColor.fill} />
+            <text x="360" y="271" fill="#111827" fontSize="16" fontWeight="600">
+              AgentAI
+            </text>
+            <text x="344" y="295" fill="#6b7280" fontSize="13">
+              localhost:7105
+            </text>
+          </g>
+
           {/* Legend */}
-          <g transform="translate(20, 230)">
+          <g transform="translate(20, 340)">
             <circle cx="8" cy="8" r="5" fill="#10b981" />
             <text x="20" y="13" fill="#6b7280" fontSize="13">OK</text>
             <circle cx="70" cy="8" r="5" fill="#f59e0b" />

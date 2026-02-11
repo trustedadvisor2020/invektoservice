@@ -25,6 +25,10 @@ var microserviceLogPath = builder.Configuration["Microservice:ChatAnalysis:LogPa
 var automationUrl = builder.Configuration["Microservice:Automation:Url"]
     ?? $"http://localhost:{ServiceConstants.AutomationPort}";
 var automationLogPath = builder.Configuration["Microservice:Automation:LogPath"];
+var agentAIUrl = builder.Configuration["Microservice:AgentAI:Url"]
+    ?? $"http://localhost:{ServiceConstants.AgentAIPort}";
+var agentAILogPath = builder.Configuration["Microservice:AgentAI:LogPath"];
+var agentAISuggestTimeoutMs = builder.Configuration.GetValue<int>("Microservice:AgentAI:SuggestTimeoutMs", 15000);
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -38,6 +42,10 @@ if (!string.IsNullOrEmpty(microserviceLogPath))
 if (!string.IsNullOrEmpty(automationLogPath))
 {
     logPaths.Add(automationLogPath);
+}
+if (!string.IsNullOrEmpty(agentAILogPath))
+{
+    logPaths.Add(agentAILogPath);
 }
 builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
 
@@ -63,6 +71,13 @@ builder.Services.AddHttpClient<AutomationClient>(client =>
 {
     client.BaseAddress = new Uri(automationUrl);
     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+});
+
+// Configure AgentAI HTTP client (longer timeout for Claude API latency)
+builder.Services.AddHttpClient<AgentAIClient>(client =>
+{
+    client.BaseAddress = new Uri(agentAIUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(agentAISuggestTimeoutMs);
 });
 
 // ============================================
@@ -156,7 +171,7 @@ bool ValidateOpsAuth(HttpContext ctx)
 }
 
 // OPS endpoint - Stage-0 troubleshooting dashboard
-app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, LogReader logReader) =>
+app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, LogReader logReader) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -166,6 +181,7 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
 
     var chatHealthy = await chatClient.CheckHealthAsync();
     var autoHealthy = await automationClient.CheckHealthAsync();
+    var agentAIHealthy = await agentAIClient.CheckHealthAsync();
 
     var ops = new
     {
@@ -175,7 +191,8 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
         {
             backend = new { status = "ok" },
             chatAnalysis = new { status = chatHealthy ? "ok" : "unavailable" },
-            automation = new { status = autoHealthy ? "ok" : "unavailable" }
+            automation = new { status = autoHealthy ? "ok" : "unavailable" },
+            agentAI = new { status = agentAIHealthy ? "ok" : "unavailable" }
         },
         info = new
         {
@@ -338,7 +355,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -387,6 +404,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = autoHealthy ? null : "Service unreachable"
+    });
+
+    // AgentAI - check health with timing
+    var swAgent = System.Diagnostics.Stopwatch.StartNew();
+    var agentAIHealthy = await agentAIClient.CheckHealthAsync();
+    swAgent.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.AgentAIServiceName,
+        status = agentAIHealthy ? "ok" : "unavailable",
+        responseTimeMs = agentAIHealthy ? (int?)swAgent.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = agentAIHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -537,6 +569,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         "Invekto.Backend" => "Invekto.Backend",
         "Invekto.ChatAnalysis" => "Invekto.Microservice.Chat",
         "Invekto.Automation" => "InvektoAutomation",
+        "Invekto.AgentAI" => "InvektoAgentAI",
         _ => null
     };
 
@@ -590,7 +623,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -621,6 +654,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await automationClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "agentai")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await agentAIClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -857,7 +905,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -876,6 +924,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             // GR-1.9: Integration endpoints
             new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Webhook receiver (Main App -> InvektoServis)", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/tenant/verify", Description = "Tenant integration health check", Auth = "Bearer", Category = "API" },
+            // Agent Assist proxy endpoints
+            new() { Method = "POST", Path = "/api/v1/agent-assist/suggest", Description = "AI reply suggestion proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/agent-assist/feedback", Description = "Agent feedback proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
@@ -907,6 +958,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch Automation endpoints (internal call)
     var autoEndpoints = await automationClient.GetEndpointsAsync();
 
+    // Fetch AgentAI endpoints (internal call)
+    var agentAIEndpoints = await agentAIClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -916,12 +970,16 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     {
         services.Add(autoEndpoints);
     }
+    if (agentAIEndpoints != null)
+    {
+        services.Add(agentAIEndpoints);
+    }
 
     return Results.Ok(new { services });
 });
 
 // Postman collection download - dynamically generated from endpoint discovery
-app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
+app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -932,6 +990,7 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
     // Fetch all service endpoints
     var chatEndpoints = await chatClient.GetEndpointsAsync();
     var autoEndpoints = await automationClient.GetEndpointsAsync();
+    var agentAIEndpoints = await agentAIClient.GetEndpointsAsync();
 
     var allServices = new List<(string service, int port, List<EndpointInfo> endpoints)>
     {
@@ -962,6 +1021,10 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
     if (autoEndpoints != null)
     {
         allServices.Add((autoEndpoints.Service, autoEndpoints.Port, autoEndpoints.Endpoints));
+    }
+    if (agentAIEndpoints != null)
+    {
+        allServices.Add((agentAIEndpoints.Service, agentAIEndpoints.Port, agentAIEndpoints.Endpoints));
     }
 
     // Sample request bodies for known endpoints
@@ -994,6 +1057,28 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
     { "Source": "CUSTOMER", "Message": "Merhaba, bilgi almak istiyorum" },
     { "Source": "AGENT", "Message": "Merhaba, nasil yardimci olabilirim?" }
   ]
+}
+""",
+        ["/api/v1/suggest"] = """
+{
+  "chat_id": 12345,
+  "message_text": "Merhaba, siparis durumumu ogrenmek istiyorum",
+  "customer_name": "Ali Yilmaz",
+  "channel": "whatsapp",
+  "language": "tr",
+  "conversation_history": [
+    { "source": "CUSTOMER", "text": "Merhaba", "timestamp": "2026-02-11T10:00:00Z" },
+    { "source": "AGENT", "text": "Merhaba, nasil yardimci olabilirim?", "timestamp": "2026-02-11T10:00:05Z" }
+  ],
+  "templates": [],
+  "template_variables": { "agent_name": "Ayse" }
+}
+""",
+        ["/api/v1/feedback"] = """
+{
+  "suggestion_id": "00000000-0000-0000-0000-000000000000",
+  "agent_action": "accepted",
+  "final_reply_text": null
 }
 """
     };
@@ -1087,6 +1172,73 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
 
     ctx.Response.Headers.ContentDisposition = "attachment; filename=\"InvektoServis.postman_collection.json\"";
     return Results.Json(collection);
+});
+
+// ============================================
+// AGENT ASSIST PROXY ENDPOINTS
+// ============================================
+
+// Proxy: Suggest reply (Main App -> Backend -> AgentAI)
+app.MapPost("/api/v1/agent-assist/suggest", async (HttpContext ctx, AgentAIClient agentAIClient, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    // Read request body
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+    {
+        requestBody = await reader.ReadToEndAsync();
+    }
+
+    if (string.IsNullOrWhiteSpace(requestBody))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AgentAIInvalidPayload, "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var (statusCode, body) = await agentAIClient.ProxySuggestAsync(requestBody, authHeader, requestId);
+    sw.Stop();
+
+    jsonLogger.StepInfo($"AgentAI suggest proxy: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null)
+        await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+});
+
+// Proxy: Feedback (Main App -> Backend -> AgentAI, fire-and-forget)
+app.MapPost("/api/v1/agent-assist/feedback", async (HttpContext ctx, AgentAIClient agentAIClient, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+    {
+        requestBody = await reader.ReadToEndAsync();
+    }
+
+    if (string.IsNullOrWhiteSpace(requestBody))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AgentAIInvalidFeedback, "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    var (statusCode, body) = await agentAIClient.ProxyFeedbackAsync(requestBody, authHeader, requestId);
+
+    jsonLogger.StepInfo($"AgentAI feedback proxy: status={statusCode}", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null)
+        await ctx.Response.WriteAsync(body);
+    return Results.Empty;
 });
 
 // SPA fallback - serve index.html for non-API routes (Dashboard routing)

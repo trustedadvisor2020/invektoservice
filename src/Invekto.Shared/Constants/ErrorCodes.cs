@@ -47,6 +47,14 @@ public static class ErrorCodes
     public const string AutomationIntentDetectionFailed = "INV-AT-004";
     public const string AutomationSessionExpired = "INV-AT-005";
 
+    // AgentAI errors (INV-AA-xxx)
+    public const string AgentAIInvalidPayload = "INV-AA-001";
+    public const string AgentAIReplyGenerationFailed = "INV-AA-002";
+    public const string AgentAIIntentDetectionFailed = "INV-AA-003";
+    public const string AgentAINoConversationContext = "INV-AA-004";
+    public const string AgentAIClaudeTimeout = "INV-AA-005";
+    public const string AgentAIInvalidFeedback = "INV-AA-006";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

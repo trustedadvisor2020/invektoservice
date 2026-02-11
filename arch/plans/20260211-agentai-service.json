@@ -1,0 +1,213 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260211-agentai-service",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-11T10:00:00Z",
+  "updated_at": "2026-02-11T14:30:00Z",
+  "plan": {
+    "summary": "Invekto.AgentAI microservice (port 7105) -- Sync API for AI agent assist: reply suggestion, intent detection, template variable substitution, per-agent feedback learning. Backend proxy pattern. Claude Haiku for reply generation. Agent actions (accept/edit/reject) tracked and fed back into future suggestions.",
+    "q_intent": "agentai ile devam edelim. plani uygulamaya basla. auto calistir. Agent oneriyi kabul/duzenle/reddet edebilir, bu feedback per-agent ogrenme icin kullanilir.",
+    "interview_notes": "Trigger: Sync API (agent requests, waits). Context: Main App sends conversation history in request. Scope: Full Phase 1 (suggest + intent + template substitution + per-agent feedback learning). Auto-tag stays in Automation. Architecture: Separate service. Routing: Main App -> Backend -> AgentAI. Templates: Main App sends, AgentAI substitutes {{var}}. FEEDBACK: Async POST /api/v1/feedback (fire-and-forget). Agent actions: accepted|edited|rejected. Per-agent last 20 interactions included in Claude prompt for personalized suggestions."
+  },
+  "allowed_files": [
+    "src/Invekto.AgentAI/Invekto.AgentAI.csproj",
+    "src/Invekto.AgentAI/Program.cs",
+    "src/Invekto.AgentAI/appsettings.json",
+    "src/Invekto.AgentAI/appsettings.Production.json",
+    "src/Invekto.AgentAI/Services/ReplyGenerator.cs",
+    "src/Invekto.AgentAI/Services/TemplateEngine.cs",
+    "src/Invekto.AgentAI/Data/AgentAIRepository.cs",
+    "src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.AgentAI/Services/AgentProfileBuilder.cs",
+    "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs",
+    "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs",
+    "src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Backend/Services/AgentAIClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx",
+    "arch/contracts/agentai-suggest.json",
+    "arch/db/agentai.sql",
+    "arch/errors.md",
+    "arch/session-memory.md",
+    "arch/active-work.md",
+    "arch/plans/20260211-agentai-service.json",
+    "InvektoServis.sln"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.AgentAI/Program.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Invekto.AgentAI.csproj", "is_new": true },
+    { "path": "src/Invekto.AgentAI/appsettings.json", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Services/ReplyGenerator.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Services/TemplateEngine.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Services/AgentProfileBuilder.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Data/AgentAIRepository.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/AgentAIClient.cs", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx", "is_new": false },
+    { "path": "arch/contracts/agentai-suggest.json", "is_new": true },
+    { "path": "arch/db/agentai.sql", "is_new": true },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "arch/active-work.md", "is_new": false },
+    { "path": "InvektoServis.sln", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "4699209EF9320B80112392BE16F63BF0F2E4B2DB7BBA645AFAF70920A349F6A9",
+    "full_path": "arch/plans/diffs/20260211-agentai-service.diff",
+    "stats": { "insertions": 2109, "deletions": 10, "files_count": 24 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-02-11T14:25:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the SuggestReply endpoint validate all required fields (chat_id, message_text, conversation_history) and return proper INV-AA error codes for invalid input?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the Backend proxy pass the JWT token through to AgentAI, and does AgentAI's JWT middleware validate tenant_id matches the request?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the Backend use a longer timeout (15s) for AgentAI suggest proxy since Claude API calls take 2-5s, instead of the default 600ms microservice timeout?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does the DB schema follow snake_case convention, use tenant_id FK to tenant_registry, and include proper indexes for suggest_reply_log queries?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does the ReplyGenerator gracefully degrade when Claude API fails -- returning an error response instead of crashing, with proper logging and INV-AA error codes?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "Does the TemplateEngine safely handle missing variables ({{unknown}}) without crashing, and does it escape user-provided values to prevent injection?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Are all new files added to the solution, the AgentAI project references Invekto.Shared, and the Backend project references both Shared and AgentAI client?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q8",
+      "question": "Does the feedback endpoint validate suggestion_id exists, update agent_action/final_reply_text in suggest_reply_log, and does AgentProfileBuilder correctly fetch last 20 interactions per agent_id to inject into Claude prompt?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/ -- auto-tagging stays in Automation, do NOT modify",
+      "src/Invekto.ChatAnalysis/ -- separate service, not touched",
+      "arch/db/automation.sql -- Automation schema untouched"
+    ],
+    "non_goals": [
+      "Auto-tagging (stays in Automation service)",
+      "Chatbot/flow engine (Automation only)",
+      "Knowledge base / RAG (Phase 3)",
+      "Tone presets (Phase 3)",
+      "Next Best Action (Phase 5)"
+    ],
+    "intentional_exclusions": [
+      "Deploy scripts for AgentAI (will be added when Q deploys)",
+      "Simulator tool updates (can be added later)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "AgentAI/Program.cs: suggest endpoint",
+      "AgentAI/Services/ReplyGenerator.cs: Claude API call",
+      "AgentAI/Services/TemplateEngine.cs: variable substitution",
+      "AgentAI/Data/AgentAIRepository.cs: DB operations",
+      "AgentAI/Services/AgentProfileBuilder.cs: feedback aggregation",
+      "AgentAI/Program.cs: feedback endpoint",
+      "Backend/Program.cs: proxy endpoints (suggest + feedback)"
+    ],
+    "user_facing_errors": [
+      "INV-AA-001: Invalid request payload",
+      "INV-AA-002: Reply generation failed (Claude error)",
+      "INV-AA-003: Intent detection failed",
+      "INV-AA-004: No conversation context provided",
+      "INV-AA-005: Claude API timeout",
+      "INV-AA-006: Invalid feedback payload",
+      "INV-BE-002: AgentAI service timeout (Backend proxy)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All Claude API failures, DB errors, and validation errors are logged and returned with specific error codes. No empty catch blocks."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Agent her mesaja manuel cevap yaziyor, AI onerileri generic ve kisisel degil",
+      "suggestion": "Agent oneriyi kabul/duzenle/reddet edebilir. Her aksiyon per-agent ogrenme havuzuna kaydedilir. Sonraki onerilerde AI, o agent'in tercihlerini (ton, uzunluk, style) dikkate alir.",
+      "aha_moment": "Agent 2. haftada farkeder: AI artik onun tarziyla yazi onermeye basladi -- duzenleme orani %60'tan %20'ye dustu"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Claude API 2-3sn suruyor, agent bekliyor",
+      "suggestion": "Response'a processing_time_ms ekle, frontend'de loading animasyonu goster, confidence skoru ile guveni belirt",
+      "aha_moment": "Agent 'AI dusuyor...' animasyonunu gorur, 2sn sonra oneriye bakar, %92 guven skoru gorur"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Claude API bazen timeout olur veya hata verir, agent cevapsiz kalir",
+      "suggestion": "Graceful degradation: Claude fail ederse 'AI onerisi kullanilamiyor, manuel devam edin' mesaji don, log'a yaz",
+      "aha_moment": "Claude cokse bile agent is akisini surdurebilir, hic bir zaman bos ekran gormez"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Musteri 'chatbot var mi?' diye soruyor, demo'da gosterecek sey yok",
+      "suggestion": "Demo modunda ornek sohbet gosterip AI suggest'in canli calismasini izlet",
+      "aha_moment": "Potansiyel musteri demo'da 'AI bu cevabi onerdi, agent tek tikla gonderdi' gorur -- 'bunu istiyorum' der"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Yeni agent'lar dogru cevabi bilmiyor, yanlis bilgi veriyor",
+      "suggestion": "AI suggest'e confidence skoru + intent label ekle: agent hem onerilen cevabi hem neden onerildigini gorur",
+      "aha_moment": "Yeni agent 'fiyat sorusu' etiketini gorur, AI'in onerdigini gonderir -- egitim suresi %50 duser"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 2,
+    "blocking_issues": [],
+    "notes": "Iter 1 FAIL: 6 blocking issues. Iter 2: All fixed, CoVe all PASS. CQ3 scope artifact (plan JSON) resolved. Q FORCE PASS."
+  }
+}

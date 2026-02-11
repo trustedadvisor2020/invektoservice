@@ -6,7 +6,7 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| (none) | - | - | - |
+| 20260211-agentai-service | IN_PROGRESS | 2026-02-11 | Invekto.AgentAI microservice (port 7105) - Sync API agent assist + per-agent feedback learning |
 
 ---
 

@@ -87,6 +87,19 @@ INV-{SERVICE}-{NUMBER}
 
 ---
 
+## AA - AgentAI Errors
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-AA-001 | Invalid request payload | Gecersiz istek formati. |
+| INV-AA-002 | Reply generation failed | AI cevap onerisi olusturulamadi. |
+| INV-AA-003 | Intent detection failed | Niyet algilama basarisiz. |
+| INV-AA-004 | No conversation context | Sohbet gecmisi saglanmadi. |
+| INV-AA-005 | Claude API timeout | AI servisi zaman asimina ugradi. |
+| INV-AA-006 | Invalid feedback payload | Gecersiz geri bildirim formati. |
+
+---
+
 ## DB - Database Errors
 
 | Code | Description | User Message |

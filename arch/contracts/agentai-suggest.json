@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentai-suggest-v1.json",
+  "title": "AgentAI Suggest Reply Contract",
+  "description": "Invekto.AgentAI sync API contract. Main App -> Backend -> AgentAI. Agent requests AI reply suggestion, waits for response.",
+  "version": "1.0",
+
+  "endpoints": {
+    "suggest_reply": {
+      "method": "POST",
+      "path": "/api/v1/suggest",
+      "proxy_path": "/api/v1/agent-assist/suggest",
+      "auth": "Bearer JWT (shared HMAC-SHA256 key)",
+      "response": "200 OK (sync -- agent waits for response)",
+      "timeout": "15s (Claude API latency)"
+    },
+    "feedback": {
+      "method": "POST",
+      "path": "/api/v1/feedback",
+      "proxy_path": "/api/v1/agent-assist/feedback",
+      "auth": "Bearer JWT (shared HMAC-SHA256 key)",
+      "response": "202 Accepted (fire-and-forget)"
+    }
+  },
+
+  "suggest_request": {
+    "type": "object",
+    "required": ["chat_id", "message_text"],
+    "properties": {
+      "chat_id": {
+        "type": "integer",
+        "description": "Conversation/chat ID in Main App"
+      },
+      "message_text": {
+        "type": "string",
+        "description": "Current customer message that needs a reply suggestion"
+      },
+      "customer_name": {
+        "type": "string",
+        "description": "Customer name if known (for template variables)"
+      },
+      "channel": {
+        "type": "string",
+        "enum": ["whatsapp", "web", "instagram", "facebook", "telegram", "email", "sms"],
+        "description": "Communication channel"
+      },
+      "conversation_history": {
+        "type": "array",
+        "description": "Last N messages for context (recommended: 10-20)",
+        "items": {
+          "type": "object",
+          "required": ["source", "text"],
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": ["CUSTOMER", "AGENT"],
+              "description": "Who sent the message"
+            },
+            "text": {
+              "type": "string",
+              "description": "Message content"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When message was sent"
+            }
+          }
+        }
+      },
+      "templates": {
+        "type": "array",
+        "description": "Available reply templates from Main App (optional)",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" },
+            "text": { "type": "string", "description": "Template text with {{var}} placeholders" }
+          }
+        }
+      },
+      "template_variables": {
+        "type": "object",
+        "description": "Variable values for template substitution: { \"isim\": \"Ahmet\", \"firma\": \"ABC Ltd\" }",
+        "additionalProperties": { "type": "string" }
+      },
+      "language": {
+        "type": "string",
+        "default": "tr",
+        "description": "Response language (ISO 639-1)"
+      }
+    }
+  },
+
+  "suggest_response": {
+    "type": "object",
+    "properties": {
+      "suggestion_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Unique ID for this suggestion (used in feedback correlation)"
+      },
+      "suggested_reply": {
+        "type": "string",
+        "description": "AI-generated reply suggestion"
+      },
+      "intent": {
+        "type": "string",
+        "description": "Detected customer intent (e.g., price_inquiry, shipping_inquiry, appointment, complaint, general_question, greeting, return_request, product_info)"
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "AI confidence score for the suggestion"
+      },
+      "processing_time_ms": {
+        "type": "integer",
+        "description": "How long AgentAI took to generate the suggestion"
+      },
+      "model": {
+        "type": "string",
+        "description": "Claude model used (e.g., claude-haiku-4-5-20251001)"
+      }
+    }
+  },
+
+  "feedback_request": {
+    "type": "object",
+    "required": ["suggestion_id", "agent_action"],
+    "properties": {
+      "suggestion_id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "The suggestion_id from the suggest response"
+      },
+      "agent_action": {
+        "type": "string",
+        "enum": ["accepted", "edited", "rejected"],
+        "description": "What the agent did with the suggestion"
+      },
+      "final_reply_text": {
+        "type": "string",
+        "description": "The text agent actually sent (required for 'edited', null for 'rejected')"
+      }
+    }
+  },
+
+  "feedback_response": {
+    "type": "object",
+    "properties": {
+      "status": { "type": "string", "const": "accepted" },
+      "suggestion_id": { "type": "string" }
+    }
+  },
+
+  "error_responses": {
+    "400_invalid_payload": {
+      "error_code": "INV-AA-001",
+      "message": "Invalid request: message_text is required"
+    },
+    "400_no_context": {
+      "error_code": "INV-AA-004",
+      "message": "No conversation context provided"
+    },
+    "400_invalid_feedback": {
+      "error_code": "INV-AA-006",
+      "message": "Invalid feedback: suggestion_id and agent_action required"
+    },
+    "500_claude_error": {
+      "error_code": "INV-AA-002",
+      "message": "Reply generation failed"
+    },
+    "504_claude_timeout": {
+      "error_code": "INV-AA-005",
+      "message": "AI service timeout"
+    }
+  },
+
+  "examples": {
+    "suggest_request": {
+      "chat_id": 12345,
+      "message_text": "Implant fiyati ne kadar?",
+      "customer_name": "Ahmet Yilmaz",
+      "channel": "whatsapp",
+      "conversation_history": [
+        { "source": "CUSTOMER", "text": "Merhaba", "timestamp": "2026-02-11T10:00:00Z" },
+        { "source": "AGENT", "text": "Merhaba, nasil yardimci olabilirim?", "timestamp": "2026-02-11T10:00:05Z" },
+        { "source": "CUSTOMER", "text": "Implant fiyati ne kadar?", "timestamp": "2026-02-11T10:00:30Z" }
+      ],
+      "templates": [
+        { "id": 1, "name": "Fiyat Bilgisi", "text": "Merhaba {{isim}}, {{tedavi}} fiyatlarimiz {{fiyat_araligi}} arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?" }
+      ],
+      "template_variables": {
+        "isim": "Ahmet",
+        "tedavi": "implant",
+        "fiyat_araligi": "15.000-45.000 TL"
+      },
+      "language": "tr"
+    },
+    "suggest_response": {
+      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "suggested_reply": "Merhaba Ahmet, implant fiyatlarimiz 15.000-45.000 TL arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?",
+      "intent": "price_inquiry",
+      "confidence": 0.92,
+      "processing_time_ms": 1850,
+      "model": "claude-haiku-4-5-20251001"
+    },
+    "feedback_accepted": {
+      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "agent_action": "accepted",
+      "final_reply_text": null
+    },
+    "feedback_edited": {
+      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "agent_action": "edited",
+      "final_reply_text": "Merhaba Ahmet Bey, implant tedavimiz 15.000 TL'den basliyor. Size ozel inceleme icin randevu olusturayim mi?"
+    },
+    "feedback_rejected": {
+      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "agent_action": "rejected",
+      "final_reply_text": null
+    }
+  }
+}
