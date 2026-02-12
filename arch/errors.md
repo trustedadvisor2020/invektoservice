@@ -85,6 +85,11 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-003 | FAQ not found | SSS kaydi bulunamadi. |
 | INV-AT-004 | Intent detection failed | Niyet algilama servisi hatasi. |
 | INV-AT-005 | Session expired | Sohbet oturumu sona erdi. |
+| INV-AT-006 | Flow validation failed | Chatbot akis dogrulamasi basarisiz. |
+| INV-AT-007 | Flow not found by ID | Belirtilen chatbot akisi bulunamadi. |
+| INV-AT-008 | Flow activation conflict | Bu tenant icin zaten aktif bir akis var. |
+| INV-AT-009 | Invalid flow config version | Desteklenmeyen akis konfigurasyonu versiyonu. |
+| INV-AT-010 | Invalid API key | Gecersiz API anahtari. |
 
 ---
 

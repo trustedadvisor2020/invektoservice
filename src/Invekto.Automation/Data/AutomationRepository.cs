@@ -22,14 +22,18 @@ public sealed class AutomationRepository
     }
 
     // ============================================================
-    // chatbot_flows
+    // chatbot_flows (multi-flow: N flows per tenant, max 1 active)
     // ============================================================
 
+    /// <summary>
+    /// Get the ACTIVE flow config for a tenant (v1 engine backward compat).
+    /// Returns null if no active flow exists.
+    /// </summary>
     public async Task<(JsonDocument? FlowConfig, bool IsActive)> GetFlowAsync(int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT flow_config, is_active FROM chatbot_flows WHERE tenant_id = @tid";
+        cmd.CommandText = "SELECT flow_config, is_active FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true";
         cmd.Parameters.AddWithValue("tid", tenantId);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -41,20 +45,196 @@ public sealed class AutomationRepository
         return (JsonDocument.Parse(json), isActive);
     }
 
-    public async Task UpsertFlowAsync(int tenantId, string flowConfigJson, bool isActive, CancellationToken ct = default)
+    /// <summary>
+    /// List all flows for a tenant with summary info (for FlowListPage).
+    /// </summary>
+    public async Task<List<FlowSummary>> ListFlowsAsync(int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO chatbot_flows (tenant_id, flow_config, is_active)
-            VALUES (@tid, @cfg::jsonb, @active)
-            ON CONFLICT (tenant_id) DO UPDATE SET
-                flow_config = EXCLUDED.flow_config,
-                is_active = EXCLUDED.is_active";
+            SELECT flow_id, flow_name, is_active, is_default,
+                   flow_config->>'version' AS config_version,
+                   COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'nodes' THEN flow_config->'nodes' ELSE NULL END), 0) AS node_count,
+                   COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'edges' THEN flow_config->'edges' ELSE NULL END), 0) AS edge_count,
+                   created_at, updated_at
+            FROM chatbot_flows
+            WHERE tenant_id = @tid
+            ORDER BY is_active DESC, updated_at DESC";
         cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = new List<FlowSummary>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new FlowSummary
+            {
+                FlowId = reader.GetInt32(0),
+                FlowName = reader.GetString(1),
+                IsActive = reader.GetBoolean(2),
+                IsDefault = reader.GetBoolean(3),
+                ConfigVersion = reader.IsDBNull(4) ? null : reader.GetString(4),
+                NodeCount = reader.GetInt32(5),
+                EdgeCount = reader.GetInt32(6),
+                CreatedAt = reader.GetDateTime(7),
+                UpdatedAt = reader.GetDateTime(8)
+            });
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Get a single flow by ID (for flow editor load).
+    /// </summary>
+    public async Task<FlowDetail?> GetFlowByIdAsync(int tenantId, int flowId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT flow_id, flow_name, flow_config, is_active, is_default, created_at, updated_at
+            FROM chatbot_flows
+            WHERE tenant_id = @tid AND flow_id = @fid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return null;
+
+        return new FlowDetail
+        {
+            FlowId = reader.GetInt32(0),
+            TenantId = tenantId,
+            FlowName = reader.GetString(1),
+            FlowConfigJson = reader.GetString(2),
+            IsActive = reader.GetBoolean(3),
+            IsDefault = reader.GetBoolean(4),
+            CreatedAt = reader.GetDateTime(5),
+            UpdatedAt = reader.GetDateTime(6)
+        };
+    }
+
+    /// <summary>
+    /// Create a new flow for a tenant. Returns the new flow_id.
+    /// New flows start as inactive (draft).
+    /// </summary>
+    public async Task<int> CreateFlowAsync(int tenantId, string flowName, string flowConfigJson, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO chatbot_flows (tenant_id, flow_name, flow_config, is_active, is_default)
+            VALUES (@tid, @name, @cfg::jsonb, false, false)
+            RETURNING flow_id";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", flowName);
         cmd.Parameters.AddWithValue("cfg", flowConfigJson);
-        cmd.Parameters.AddWithValue("active", isActive);
-        await cmd.ExecuteNonQueryAsync(ct);
+
+        var id = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(id);
+    }
+
+    /// <summary>
+    /// Update an existing flow's config and name.
+    /// </summary>
+    public async Task<bool> UpdateFlowByIdAsync(int tenantId, int flowId, string? flowName, string flowConfigJson, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = flowName != null
+            ? @"UPDATE chatbot_flows SET flow_config = @cfg::jsonb, flow_name = @name
+                WHERE tenant_id = @tid AND flow_id = @fid"
+            : @"UPDATE chatbot_flows SET flow_config = @cfg::jsonb
+                WHERE tenant_id = @tid AND flow_id = @fid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        cmd.Parameters.AddWithValue("cfg", flowConfigJson);
+        if (flowName != null)
+            cmd.Parameters.AddWithValue("name", flowName);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Delete a flow. Active flows cannot be deleted (caller must deactivate first).
+    /// </summary>
+    public async Task<(bool Deleted, bool WasActive)> DeleteFlowByIdAsync(int tenantId, int flowId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        // Check if flow is active
+        await using var checkCmd = conn.CreateCommand();
+        checkCmd.CommandText = "SELECT is_active FROM chatbot_flows WHERE tenant_id = @tid AND flow_id = @fid";
+        checkCmd.Parameters.AddWithValue("tid", tenantId);
+        checkCmd.Parameters.AddWithValue("fid", flowId);
+        var activeResult = await checkCmd.ExecuteScalarAsync(ct);
+        if (activeResult == null)
+            return (false, false); // not found
+
+        var wasActive = (bool)activeResult;
+        if (wasActive)
+            return (false, true); // cannot delete active flow
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM chatbot_flows WHERE tenant_id = @tid AND flow_id = @fid AND is_active = false";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        return (await cmd.ExecuteNonQueryAsync(ct) > 0, false);
+    }
+
+    /// <summary>
+    /// Activate a flow: set target flow to is_active=true, deactivate all others for this tenant.
+    /// Runs in a single transaction.
+    /// </summary>
+    public async Task<bool> ActivateFlowAsync(int tenantId, int flowId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Deactivate all flows for this tenant
+            await using var deactivateCmd = conn.CreateCommand();
+            deactivateCmd.Transaction = tx;
+            deactivateCmd.CommandText = "UPDATE chatbot_flows SET is_active = false WHERE tenant_id = @tid AND is_active = true";
+            deactivateCmd.Parameters.AddWithValue("tid", tenantId);
+            await deactivateCmd.ExecuteNonQueryAsync(ct);
+
+            // Activate target flow
+            await using var activateCmd = conn.CreateCommand();
+            activateCmd.Transaction = tx;
+            activateCmd.CommandText = "UPDATE chatbot_flows SET is_active = true WHERE tenant_id = @tid AND flow_id = @fid";
+            activateCmd.Parameters.AddWithValue("tid", tenantId);
+            activateCmd.Parameters.AddWithValue("fid", flowId);
+            var affected = await activateCmd.ExecuteNonQueryAsync(ct);
+
+            if (affected == 0)
+            {
+                await tx.RollbackAsync(ct);
+                return false; // flow not found
+            }
+
+            await tx.CommitAsync(ct);
+            return true;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deactivate a flow (set is_active = false).
+    /// </summary>
+    public async Task<bool> DeactivateFlowAsync(int tenantId, int flowId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE chatbot_flows SET is_active = false WHERE tenant_id = @tid AND flow_id = @fid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
     // ============================================================
@@ -294,4 +474,29 @@ public sealed class ChatSession
     public DateTime StartedAt { get; init; }
     public DateTime LastActivityAt { get; init; }
     public DateTime ExpiresAt { get; init; }
+}
+
+public sealed class FlowSummary
+{
+    public int FlowId { get; init; }
+    public required string FlowName { get; init; }
+    public bool IsActive { get; init; }
+    public bool IsDefault { get; init; }
+    public string? ConfigVersion { get; init; }
+    public int NodeCount { get; init; }
+    public int EdgeCount { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; init; }
+}
+
+public sealed class FlowDetail
+{
+    public int FlowId { get; init; }
+    public int TenantId { get; init; }
+    public required string FlowName { get; init; }
+    public required string FlowConfigJson { get; init; }
+    public bool IsActive { get; init; }
+    public bool IsDefault { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; init; }
 }

@@ -95,6 +95,13 @@ builder.Services.AddHttpClient<OutboundClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
 });
 
+// Configure FlowBuilder proxy HTTP client (reuses Automation URL for flow management)
+builder.Services.AddHttpClient<FlowBuilderClient>(client =>
+{
+    client.BaseAddress = new Uri(automationUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+});
+
 // ============================================
 // GR-1.9: INTEGRATION BRIDGE SETUP
 // ============================================
@@ -148,7 +155,7 @@ app.UseTrafficLogging();
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -1452,7 +1459,207 @@ app.MapDelete("/api/v1/outbound/optout/{phone}", async (HttpContext ctx, Outboun
 app.MapGet("/api/v1/outbound/optout/check/{phone}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string phone) =>
     await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/optout/check/{phone}"));
 
-// SPA fallback - serve index.html for non-API routes (Dashboard routing)
+// ============================================
+// FLOW BUILDER PROXY ENDPOINTS
+// ============================================
+
+// Generic flow builder proxy helpers (same pattern as Outbound proxy)
+async Task<IResult> FbProxyGet(HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    var (statusCode, body) = await fbClient.ProxyGetAsync(targetPath, authHeader, requestId);
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> FbProxyPost(HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+    var (statusCode, body) = await fbClient.ProxyPostAsync(targetPath, requestBody, authHeader, requestId);
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> FbProxyPut(HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+    var (statusCode, body) = await fbClient.ProxyPutAsync(targetPath, requestBody, authHeader, requestId);
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> FbProxyDelete(HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    var (statusCode, body) = await fbClient.ProxyDeleteAsync(targetPath, authHeader, requestId);
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+// Flow CRUD proxy: Backend /api/v1/flow-builder/flows/* -> Automation /api/v1/flows/*
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}"));
+
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}"));
+
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}"));
+
+app.MapPut("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyPut(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}"));
+
+app.MapDelete("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyDelete(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}"));
+
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/activate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/activate"));
+
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/deactivate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/deactivate"));
+
+// ============================================
+// FLOW BUILDER AUTH (API Key -> JWT)
+// ============================================
+
+app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var tenantId = root.TryGetProperty("tenant_id", out var tid) ? tid.GetInt32() : 0;
+        var apiKey = root.TryGetProperty("api_key", out var ak) ? ak.GetString() : null;
+
+        if (tenantId <= 0 || string.IsNullOrEmpty(apiKey))
+        {
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralValidation, "tenant_id (int) and api_key (string) are required", requestId),
+                statusCode: 400);
+        }
+
+        // Validate API key from tenant_registry.settings_json
+        if (pgFactory == null)
+        {
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Database not configured", requestId),
+                statusCode: 500);
+        }
+
+        await using var conn = await pgFactory.OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT settings_json FROM tenant_registry WHERE tenant_id = @tid AND is_active = true";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        var settingsResult = await cmd.ExecuteScalarAsync();
+
+        if (settingsResult == null || settingsResult is DBNull)
+        {
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AutomationInvalidApiKey, "Tenant bulunamadi veya aktif degil", requestId),
+                statusCode: 401);
+        }
+
+        var settingsJson = settingsResult.ToString();
+        string? storedApiKey = null;
+        if (!string.IsNullOrEmpty(settingsJson))
+        {
+            using var settingsDoc = System.Text.Json.JsonDocument.Parse(settingsJson);
+            if (settingsDoc.RootElement.TryGetProperty("flow_builder_api_key", out var keyProp))
+                storedApiKey = keyProp.GetString();
+        }
+
+        if (string.IsNullOrEmpty(storedApiKey) || storedApiKey != apiKey)
+        {
+            jsonLogger.StepWarn($"FlowBuilder login failed: invalid API key for tenant {tenantId}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AutomationInvalidApiKey, "Gecersiz API anahtari", requestId),
+                statusCode: 401);
+        }
+
+        // Generate JWT token
+        if (jwtValidator == null || string.IsNullOrEmpty(jwtSecretKey))
+        {
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId),
+                statusCode: 500);
+        }
+
+        var keyBytes = Encoding.UTF8.GetBytes(jwtSecretKey);
+        var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(keyBytes);
+        var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(securityKey, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim("tenant_id", tenantId.ToString()),
+            new System.Security.Claims.Claim("user_id", "0"), // API key login = system user
+            new System.Security.Claims.Claim("role", "flow_builder"),
+            new System.Security.Claims.Claim("source", "flow_builder_api_key")
+        };
+
+        var tokenExpiry = TimeSpan.FromHours(8);
+        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+            issuer: builder.Configuration["Jwt:Issuer"],
+            audience: builder.Configuration["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.Add(tokenExpiry),
+            signingCredentials: credentials
+        );
+
+        var tokenString = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+
+        jsonLogger.StepInfo($"FlowBuilder login success: tenant={tenantId}", requestId);
+        return Results.Ok(new
+        {
+            token = tokenString,
+            tenant_id = tenantId,
+            expires_in = (int)tokenExpiry.TotalSeconds,
+            token_type = "Bearer"
+        });
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
+            statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"FlowBuilder login error: {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Login failed", requestId),
+            statusCode: 500);
+    }
+});
+
+// ============================================
+// SPA FALLBACK ROUTES
+// ============================================
+
+// Flow Builder SPA fallback: /flow-builder/* -> wwwroot/flow-builder/index.html
+app.MapFallbackToFile("/flow-builder/{**slug}", "flow-builder/index.html");
+
+// Dashboard SPA fallback - serve index.html for non-API routes (Dashboard routing)
 app.MapFallbackToFile("index.html");
 
 logger.SystemInfo($"Backend starting on port {ServiceConstants.BackendPort}");

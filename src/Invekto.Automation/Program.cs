@@ -236,6 +236,7 @@ static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
 // Flow management endpoints
 // ============================================================
 
+// GET /api/v1/flows/{tenantId} — List all flows for tenant (multi-flow)
 app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
 {
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -244,22 +245,105 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
 
     try
     {
-        var (flowDoc, isActive) = await repo.GetFlowAsync(tenantId);
-        if (flowDoc == null)
-            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFound, "Bu tenant icin chatbot akisi tanimlanmamis", "-"), statusCode: 404);
-
-        var result = new { tenant_id = tenantId, is_active = isActive, flow_config = JsonSerializer.Deserialize<JsonElement>(flowDoc.RootElement.GetRawText()) };
-        flowDoc.Dispose();
-        return Results.Ok(result);
+        var flows = await repo.ListFlowsAsync(tenantId);
+        return Results.Ok(flows.Select(f => new
+        {
+            flow_id = f.FlowId,
+            flow_name = f.FlowName,
+            is_active = f.IsActive,
+            is_default = f.IsDefault,
+            config_version = f.ConfigVersion,
+            node_count = f.NodeCount,
+            edge_count = f.EdgeCount,
+            created_at = f.CreatedAt,
+            updated_at = f.UpdatedAt
+        }));
     }
     catch (Exception ex)
     {
-        jsonLogger.StepError($"Flow GET failed: {ex.Message}", "-");
+        jsonLogger.StepError($"Flow list failed: {ex.Message}", "-");
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
     }
 });
 
-app.MapPut("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+// GET /api/v1/flows/{tenantId}/{flowId} — Get single flow by ID
+app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    try
+    {
+        var flow = await repo.GetFlowByIdAsync(tenantId, flowId);
+        if (flow == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", "-"), statusCode: 404);
+
+        return Results.Ok(new
+        {
+            flow_id = flow.FlowId,
+            tenant_id = flow.TenantId,
+            flow_name = flow.FlowName,
+            is_active = flow.IsActive,
+            is_default = flow.IsDefault,
+            flow_config = JsonSerializer.Deserialize<JsonElement>(flow.FlowConfigJson),
+            created_at = flow.CreatedAt,
+            updated_at = flow.UpdatedAt
+        });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Flow GET by ID failed: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
+    }
+});
+
+// POST /api/v1/flows/{tenantId} — Create new flow
+app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var flowName = root.TryGetProperty("flow_name", out var fn) ? fn.GetString() : null;
+        if (string.IsNullOrWhiteSpace(flowName))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "flow_name is required", requestId), statusCode: 400);
+
+        var flowConfig = root.TryGetProperty("flow_config", out var fc) ? fc.GetRawText() : "{}";
+
+        // Validate flow_config is valid JSON
+        try { using var _ = JsonDocument.Parse(flowConfig); }
+        catch { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is not valid JSON", requestId), statusCode: 400); }
+
+        var flowId = await repo.CreateFlowAsync(tenantId, flowName, flowConfig);
+        jsonLogger.StepInfo($"Flow created for tenant {tenantId}: flow_id={flowId}, name={flowName}", requestId);
+
+        return Results.Json(new { flow_id = flowId, tenant_id = tenantId, flow_name = flowName, status = "created" }, statusCode: 201);
+    }
+    catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "23505") // unique_violation
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseDuplicateEntry, "Bu isimde bir akis zaten mevcut", requestId), statusCode: 409);
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Flow POST failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// PUT /api/v1/flows/{tenantId}/{flowId} — Update flow config
+app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
 
@@ -273,8 +357,6 @@ app.MapPut("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
         var root = bodyDoc.RootElement;
 
         var flowConfig = root.TryGetProperty("flow_config", out var fc) ? fc.GetRawText() : null;
-        var isActive = root.TryGetProperty("is_active", out var ia) && ia.GetBoolean();
-
         if (string.IsNullOrEmpty(flowConfig))
             return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is required", requestId), statusCode: 400);
 
@@ -282,10 +364,18 @@ app.MapPut("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
         try { using var _ = JsonDocument.Parse(flowConfig); }
         catch { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is not valid JSON", requestId), statusCode: 400); }
 
-        await repo.UpsertFlowAsync(tenantId, flowConfig, isActive);
-        jsonLogger.StepInfo($"Flow config updated for tenant {tenantId}, active={isActive}", requestId);
+        var flowName = root.TryGetProperty("flow_name", out var fn) ? fn.GetString() : null;
 
-        return Results.Ok(new { tenant_id = tenantId, is_active = isActive, status = "updated" });
+        var updated = await repo.UpdateFlowByIdAsync(tenantId, flowId, flowName, flowConfig);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Flow updated for tenant {tenantId}: flow_id={flowId}", requestId);
+        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "updated" });
+    }
+    catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "23505")
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseDuplicateEntry, "Bu isimde bir akis zaten mevcut", requestId), statusCode: 409);
     }
     catch (JsonException)
     {
@@ -294,6 +384,85 @@ app.MapPut("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
     catch (Exception ex)
     {
         jsonLogger.StepError($"Flow PUT failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// DELETE /api/v1/flows/{tenantId}/{flowId} — Delete flow
+app.MapDelete("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var (deleted, wasActive) = await repo.DeleteFlowByIdAsync(tenantId, flowId);
+
+        if (wasActive)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowActivationConflict, "Aktif akis silinemez. Once pasife alin.", requestId), statusCode: 409);
+
+        if (!deleted)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Flow deleted for tenant {tenantId}: flow_id={flowId}", requestId);
+        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "deleted" });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Flow DELETE failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// POST /api/v1/flows/{tenantId}/{flowId}/activate — Activate flow (deactivate others)
+app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/activate", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var activated = await repo.ActivateFlowAsync(tenantId, flowId);
+        if (!activated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Flow activated for tenant {tenantId}: flow_id={flowId}", requestId);
+        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "activated" });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Flow activate failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// POST /api/v1/flows/{tenantId}/{flowId}/deactivate — Deactivate flow
+app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/deactivate", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var deactivated = await repo.DeactivateFlowAsync(tenantId, flowId);
+        if (!deactivated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Flow deactivated for tenant {tenantId}: flow_id={flowId}", requestId);
+        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "deactivated" });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Flow deactivate failed: {ex.Message}", requestId);
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
     }
 });
@@ -435,8 +604,13 @@ app.MapGet("/api/ops/endpoints", () =>
     var endpoints = new List<EndpointInfo>
     {
         new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Process incoming message (async)", Auth = "Bearer JWT", Category = "API" },
-        new() { Method = "GET", Path = "/api/v1/flows/{tenantId}", Description = "Get chatbot flow config", Auth = "Bearer JWT", Category = "API" },
-        new() { Method = "PUT", Path = "/api/v1/flows/{tenantId}", Description = "Update chatbot flow config", Auth = "Bearer JWT", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/flows/{tenantId}", Description = "List all flows for tenant (multi-flow)", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "GET", Path = "/api/v1/flows/{tenantId}/{flowId}", Description = "Get single flow by ID", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "POST", Path = "/api/v1/flows/{tenantId}", Description = "Create new flow", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "PUT", Path = "/api/v1/flows/{tenantId}/{flowId}", Description = "Update flow config", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "DELETE", Path = "/api/v1/flows/{tenantId}/{flowId}", Description = "Delete flow", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/activate", Description = "Activate flow (deactivate others)", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/deactivate", Description = "Deactivate flow", Auth = "Bearer JWT", Category = "Flow" },
         new() { Method = "GET", Path = "/api/v1/faq/{tenantId}", Description = "List FAQ entries", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "POST", Path = "/api/v1/faq/{tenantId}", Description = "Create FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "PUT", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Update FAQ entry", Auth = "Bearer JWT", Category = "API" },

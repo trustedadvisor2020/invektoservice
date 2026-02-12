@@ -4,16 +4,38 @@
 
 -- ============================================================
 -- 1. chatbot_flows: Tenant bazli chatbot flow konfigurasyonu
+--    Multi-flow: Tenant basina birden fazla flow (lisansa bagli)
+--    is_active: Tenant basina max 1 flow aktif olabilir (partial unique index)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS chatbot_flows (
-    tenant_id           INTEGER PRIMARY KEY,                    -- 1:1 with tenant_registry
-    flow_config         JSONB NOT NULL DEFAULT '{}'::jsonb,     -- Flow JSON (menu, messages, thresholds)
-    is_active           BOOLEAN NOT NULL DEFAULT false,         -- Bot aktif mi?
+    flow_id             SERIAL PRIMARY KEY,                     -- Unique flow ID (auto-increment)
+    tenant_id           INTEGER NOT NULL,                       -- Tenant (multi-flow: N flows per tenant)
+    flow_name           VARCHAR(200) NOT NULL DEFAULT 'Ana Flow', -- Flow adi (tenant icinde unique)
+    flow_config         JSONB NOT NULL DEFAULT '{}'::jsonb,     -- Flow JSON (v1 menu OR v2 node/edge graph)
+    is_active           BOOLEAN NOT NULL DEFAULT false,         -- Bu flow mesaj isleme icin aktif mi? (max 1/tenant)
+    is_default          BOOLEAN NOT NULL DEFAULT false,         -- Tenant'in varsayilan flow'u (backward compat)
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_chatbot_flows_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_chatbot_flows_tenant
+    ON chatbot_flows (tenant_id);
+
+-- Tenant basina en fazla 1 aktif flow (partial unique index)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_chatbot_flows_active
+    ON chatbot_flows (tenant_id) WHERE is_active = true;
+
+-- Tenant icinde flow adi unique
+CREATE UNIQUE INDEX IF NOT EXISTS uq_chatbot_flows_name
+    ON chatbot_flows (tenant_id, flow_name);
+
+-- ============================================================
+-- 1b. chatbot_flows MIGRATION (v1 -> multi-flow)
+--     Mevcut DB'de tenant_id PK ise:
+--     → Executable migration: arch/db/migrations/001-chatbot-flows-multi-flow.sql
+-- ============================================================
 
 -- ============================================================
 -- 2. faq_entries: Tenant bazli FAQ kayitlari

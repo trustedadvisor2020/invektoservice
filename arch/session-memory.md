@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-12
-- **Status:** Flow Builder Phase 1 (SPA Scaffold + Canvas) TAMAMLANDI - UI test OK
-- **Last Task:** Chatbot Flow Builder visual editor - Phase 1 complete. React Flow + Zustand + TailwindCSS SPA at `src/Invekto.Backend/FlowBuilder/`. 5 node types, drag-drop canvas, property panel, undo/redo, edge deletion, color-coded handles. Build PASS, Q UI test OK.
+- **Status:** Flow Builder Phase 2 (API + Backend + Multi-flow + Auth) TAMAMLANDI - Build PASS, /rev bekliyor
+- **Last Task:** Flow Builder Phase 2: Multi-flow DB schema (flow_id SERIAL PK), Automation CRUD endpoints (7 routes), Backend proxy (FlowBuilderClient + JWT login), SPA auth (react-router-dom, LoginPage, sessionStorage JWT), FlowListPage (full CRUD + activate/deactivate/copy/delete), FlowEditorPage API integration (load/save via API, back button). .NET build 0 errors, Vite/TS build 0 errors.
 
 ---
 
@@ -36,7 +36,7 @@
   - Chat session state tracking (PostgreSQL, restart-safe)
   - DB schema: `arch/db/automation.sql` (chatbot_flows, faq_entries, chat_sessions, auto_reply_log)
   - Flow contract: `arch/contracts/automation-flow.json`
-  - Error codes: INV-AT-001 ~ INV-AT-005
+  - Error codes: INV-AT-001 ~ INV-AT-010
 - **GR-1.11 AgentAI Service (Port 7105):**
   - Sync API: AI reply suggestion + intent detection
   - Claude Haiku integration (reply generation + JSON parse)
@@ -63,23 +63,22 @@
   - API contract: `arch/contracts/outbound-broadcast.json`
   - Error codes: INV-OB-001 ~ INV-OB-010
 
-- **Flow Builder (Phase 1 - SPA UI):**
+- **Flow Builder (Phase 1+2 - SPA UI + API + Auth):**
   - n8n-style visual drag-drop chatbot flow editor
   - React 18 + TypeScript + Vite + TailwindCSS + React Flow (xyflow) + Zustand
   - Konum: `src/Invekto.Backend/FlowBuilder/` (bagimsiz SPA)
   - Serve: Backend:5000/flow-builder/ (build output -> wwwroot/flow-builder/)
-  - Dev: localhost:3002/flow-builder/
+  - Dev: localhost:3002/flow-builder/ (Vite proxy -> Backend:5000)
   - Contract v2: Node/edge graph model (12 node type destegi)
-  - Phase 1'de 5 node type: trigger_start, message_text, message_menu, action_handoff, utility_note
-  - FlowCanvas: Drag-drop, self-connection prevention, Delete/Backspace node silme
-  - Custom edge: Hover X button ile baglanti silme
-  - Handle renkleri: Input=Blue, Output=Green
-  - NodePalette: Kategorili sol sidebar (surukle-birak)
-  - NodePropertyPanel: Secili node ozellikleri (type-specific editors)
-  - FlowSettingsPanel: Genel flow ayarlari (off-hours, unknown input, timeout, etc.)
-  - Toolbar: Flow adi/aciklama, undo/redo, save, dirty indicator
-  - Zustand store: nodes, edges, selection, undo/redo (max 50 history)
-  - Build: tsc 0 error, vite build OK (JS 368KB gzip 118KB)
+  - Phase 1: 5 node type, drag-drop canvas, property panel, undo/redo, edge deletion
+  - Phase 2 (Multi-flow + API + Auth):
+    - DB: chatbot_flows flow_id SERIAL PK, multi-flow per tenant, partial unique is_active
+    - Automation: 7 CRUD endpoints (list, get, create, update, delete, activate, deactivate)
+    - Backend: FlowBuilderClient proxy, JWT login (API key from tenant_registry.settings_json)
+    - SPA: react-router-dom, LoginPage (tenant_id + api_key), FlowListPage (full CRUD), FlowEditorPage (API load/save)
+    - Auth: sessionStorage JWT, 8h expiry, AuthContext + useAuth hook
+    - Error codes: INV-AT-006 ~ INV-AT-010 (flow validation, not found, activation conflict, invalid version, invalid API key)
+  - Build: .NET 0 errors, tsc 0 errors, vite build OK (JS 423KB gzip 136KB)
 
 ### Tech Stack
 | Component | Technology |
@@ -136,7 +135,7 @@
 - [x] ~~Q: AgentAI deploy + Windows Service kurulumu~~ (Tamamlandi - InvektoAgentAI SERVICE_RUNNING)
 - [x] ~~GR-1.3 Outbound Service~~ (Tamamlandi - Port 7107, Build PASS, /rev bekliyor)
 - [x] ~~Flow Builder Phase 1~~ (Tamamlandi - SPA scaffold, canvas, 5 node, drag-drop, property panel, UI test OK)
-- [ ] Flow Builder Phase 2: API + Backend entegrasyon (SPA fallback route, JWT proxy, Automation endpoints)
+- [x] ~~Flow Builder Phase 2~~ (Tamamlandi - Multi-flow DB, CRUD endpoints, Backend proxy, JWT login, SPA auth/routing, FlowListPage, FlowEditorPage API, Build PASS)
 - [ ] Flow Builder Phase 3: FlowEngine v2 (graph executor, validator, migrator)
 - [ ] Flow Builder Phase 4: Genisletilmis node'lar (logic, AI, api_call, delay, set_variable)
 - [ ] Flow Builder Phase 5: iframe + polish (postMessage, auto-save, tema, keyboard shortcuts)
@@ -177,6 +176,10 @@
 | 2026-02-12 | Contract v2 node/edge graph | v1 backward-compatible, version field ile ayrim, 12 node type |
 | 2026-02-12 | Handle renk ayirimi | Input=Blue, Output=Green (gorsel netlik) |
 | 2026-02-12 | Fan-out execution | Bir output birden fazla input'a baglanabilir, hepsi sirali calisir |
+| 2026-02-12 | Multi-flow per tenant | chatbot_flows flow_id SERIAL PK, tenant basina N flow (lisansa bagli), max 1 aktif (partial unique) |
+| 2026-02-12 | API key login | tenant_registry.settings_json flow_builder_api_key -> JWT (8h expiry), Main App proxy degil |
+| 2026-02-12 | Backend JWT proxy | Backend:5000 /api/v1/flow-builder/* -> Automation:7108 /api/v1/flows/*, localhost-only |
+| 2026-02-12 | react-router-dom SPA routing | /flow-builder/login, /, /editor/:flowId - BrowserRouter basename="/flow-builder" |
 
 ---
 
@@ -211,54 +214,52 @@ src/
 └── Invekto.Backend/          # Backend API (Port 5000)
     ├── Dashboard/            # React/TS Ops Dashboard
     ├── FlowBuilder/          # React Flow SPA (Dev:3002, Serve:/flow-builder/)
-    │   └── src/              # nodes/, components/, panels/, store/, types/, lib/
+    │   └── src/              # nodes/, components/, panels/, store/, types/, lib/, pages/
     ├── Middleware/            # Traffic logging + JWT auth
-    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient
+    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient
 ```
 
 ---
 
 ## Context for Next Session
 
-### Flow Builder Phase 2: API + Backend Entegrasyon
+### Flow Builder Phase 2 TAMAMLANDI
 
-Phase 1 (SPA scaffold + canvas + UI) tamamlandi. Siradaki:
+Phase 2 (API + Backend + Multi-flow + Auth) tamamlandi. /rev bekliyor.
 
-**Plan dosyasi:** `C:\Users\taner\.claude\plans\abstract-moseying-hoare.md` (5-phase detayli plan)
+**Plan JSON:** `arch/plans/20260212-flow-builder-phase2.json`
 
-**Phase 2 icerik (7-12 numarali adimlar):**
+**Yapilan isler:**
+- Multi-flow DB schema: chatbot_flows flow_id SERIAL PK, partial unique is_active, flow_name unique per tenant
+- Automation 7 CRUD endpoints: list, get, create, update, delete, activate, deactivate
+- Backend proxy: FlowBuilderClient.cs, 7 proxy routes, JWT login endpoint (API key auth)
+- SPA: react-router-dom routing, LoginPage, FlowListPage (full CRUD + dialogs), FlowEditorPage (API load/save + back)
+- Auth: sessionStorage JWT, AuthContext provider, RequireAuth guard
 
-1. **Backend:5000 SPA fallback route** (`/flow-builder/`)
-   - `Program.cs` L1279 civari: `/flow-builder/{**slug}` -> `wwwroot/flow-builder/index.html`
-   - `npm run build` output'u `wwwroot/flow-builder/` dizinine gider
+**Dosyalar:**
+- `arch/db/automation.sql` (multi-flow schema + migration)
+- `src/Invekto.Automation/Data/AutomationRepository.cs` (multi-flow methods + DTOs)
+- `src/Invekto.Automation/Program.cs` (7 new endpoints)
+- `src/Invekto.Backend/Services/FlowBuilderClient.cs` (NEW)
+- `src/Invekto.Backend/Program.cs` (proxy + login + SPA fallback)
+- `src/Invekto.Backend/FlowBuilder/src/lib/auth.ts` (NEW)
+- `src/Invekto.Backend/FlowBuilder/src/lib/api.ts` (NEW)
+- `src/Invekto.Backend/FlowBuilder/src/pages/LoginPage.tsx` (NEW)
+- `src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx` (NEW)
+- `src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx` (updated: API integration)
+- `src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx` (updated: back button)
+- `src/Invekto.Backend/FlowBuilder/src/App.tsx` (updated: router + auth)
 
-2. **Backend:5000 JWT prefix**
-   - `Program.cs` L136 civari: `/api/v1/flow-builder/` prefix'i JWT korumasi altina al
-
-3. **Backend:5000 proxy endpoint'leri**
-   - `GET /api/v1/flow-builder/flows/{tenantId}` -> Automation:7108 GET flows
-   - `PUT /api/v1/flow-builder/flows/{tenantId}` -> Automation:7108 PUT flows
-   - `POST /api/v1/flow-builder/flows/{tenantId}/validate` -> Automation validate
-   - `POST /api/v1/flow-builder/flows/{tenantId}/activate` -> Automation activate
-   - `POST /api/v1/flow-builder/flows/{tenantId}/migrate-v1` -> Automation migrate
-   - Yeni: `FlowBuilderClient.cs` (Backend -> Automation proxy)
-
-4. **Automation:7108 yeni endpoint'ler**
-   - `POST /api/v1/flows/{tenantId}/validate` - Flow graph validation (kaydetmeden)
-   - `POST /api/v1/flows/{tenantId}/activate` - is_active toggle
-   - `POST /api/v1/flows/{tenantId}/migrate-v1` - v1 -> v2 preview
-
-5. **SPA API client** (`lib/api.ts`)
-   - FlowBuilderApiClient class (JWT header, load/save flow)
-   - Error handling (INV-AT-006 ~ INV-AT-010)
-
-6. **Auth** (`lib/auth.ts`, `lib/iframe-bridge.ts`)
-   - Standalone: Login sayfasi, sessionStorage token
-   - iframe: postMessage ile JWT alma, origin validation
+### Siradaki: Phase 3 (FlowEngine v2)
+- v2 graph executor (node-by-node traversal)
+- Flow validator (connected graph, no orphans, required fields)
+- v1 -> v2 migration endpoint
 
 ### Bekleyen diger isler
 - GR-1.3 Outbound /rev tamamla (Codex review)
 - Outbound deploy: outbound.sql, appsettings.Production.json, NSSM servis
+- Q: automation.sql migration calistir (chatbot_flows multi-flow PK degisikligi)
+- Q: tenant_registry.settings_json'a flow_builder_api_key ekle
 
 ---
 

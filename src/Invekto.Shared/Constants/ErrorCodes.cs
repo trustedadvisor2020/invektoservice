@@ -46,6 +46,11 @@ public static class ErrorCodes
     public const string AutomationFaqNotFound = "INV-AT-003";
     public const string AutomationIntentDetectionFailed = "INV-AT-004";
     public const string AutomationSessionExpired = "INV-AT-005";
+    public const string AutomationFlowValidationFailed = "INV-AT-006";
+    public const string AutomationFlowNotFoundById = "INV-AT-007";
+    public const string AutomationFlowActivationConflict = "INV-AT-008";
+    public const string AutomationInvalidFlowVersion = "INV-AT-009";
+    public const string AutomationInvalidApiKey = "INV-AT-010";
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

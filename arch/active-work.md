@@ -7,7 +7,7 @@
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
 | (none) | - | - | - |
-| 20260212-flow-builder | PHASE1_DONE | 2026-02-12 | Flow Builder Phase 1 (SPA scaffold + canvas) tamamlandi, Phase 2 (API + Backend) sirada |
+| 20260212-flow-builder | PHASE2_DONE | 2026-02-12 | Flow Builder Phase 2 (API + Backend + Multi-flow + Auth) tamamlandi, /rev bekliyor |
 
 ---
 

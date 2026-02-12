@@ -1,0 +1,413 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260212-flow-builder-phase2",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-12T22:00:00Z",
+  "updated_at": "2026-02-13T02:35:00Z",
+
+  "plan": {
+    "summary": "Flow Builder Phase 2: Multi-flow DB schema (chatbot_flows PK change), Automation yeni endpoint'ler (list/create/delete/activate), Backend:5000 JWT proxy + API key login, SPA react-router-dom routing + FlowListPage CRUD + FlowEditorPage API entegrasyonu + LoginPage.",
+    "q_intent": "Flow Builder Phase 2'ye devam. Phase 1 (SPA UI) tamamlandi. Backend SPA fallback, JWT proxy, Automation endpoint'ler, SPA API client, Flow Yonetim Ekrani, Auth.",
+    "interview_notes": "1) Tam CRUD list page (multi-flow, lisansa bagli). 2) DB schema Phase 2'de degisecek: flow_id SERIAL + composite PK. 3) Auth: API key per tenant (tenant_registry.settings_json). Main App proxy Phase 5. 4) Sadece activate endpoint Phase 2'de, validate/migrate Phase 3. 5) react-router-dom. 6) Sil=flow_config reset, Kopyala=JSON clipboard."
+  },
+
+  "interview_decisions": {
+    "list_page": "Tam CRUD list page. Multi-flow destegi, flow adedi lisansa bagli (Main App yonetiyor).",
+    "db_schema": "Phase 2'de ALTER: flow_id SERIAL PK, flow_name, tenant_id FK (artik PK degil). is_active: tenant basina sadece 1 aktif flow.",
+    "auth": "API key per tenant: tenant_registry.settings_json'a flow_builder_api_key ekle. POST /api/v1/flow-builder/auth/login {tenant_id, api_key} -> JWT doner.",
+    "endpoints_phase2": "Sadece activate (is_active toggle). validate ve migrate-v1 Phase 3'e kalsin.",
+    "routing": "react-router-dom: /flow-builder/login, /flow-builder/flows (list), /flow-builder/editor/:flowId",
+    "crud_buttons": "Hepsi aktif. Sil = flow'u DB'den sil (onay dialogu). Kopyala = JSON clipboard'a kopyala. Duzenle = editor'u ac. Aktif/Pasif = activate endpoint."
+  },
+
+  "architecture": {
+    "db_migration": [
+      "chatbot_flows: DROP PK (tenant_id), ADD flow_id SERIAL PRIMARY KEY",
+      "ADD flow_name VARCHAR(200) NOT NULL DEFAULT 'Ana Flow'",
+      "ADD is_default BOOLEAN NOT NULL DEFAULT false (backward compat icin)",
+      "CREATE INDEX idx_chatbot_flows_tenant ON chatbot_flows(tenant_id)",
+      "CREATE UNIQUE INDEX uq_chatbot_flows_active ON chatbot_flows(tenant_id) WHERE is_active = true",
+      "UPDATE existing rows: is_default = true",
+      "v1 engine: WHERE tenant_id = @tid AND is_active = true (still returns 0 or 1 row)"
+    ],
+    "api_flow": [
+      "SPA (browser) -> Backend:5000 /api/v1/flow-builder/* (JWT protected)",
+      "Backend FlowBuilderClient -> Automation:7108 /api/v1/flows/* (localhost proxy)",
+      "Automation -> PostgreSQL chatbot_flows (multi-flow queries)"
+    ],
+    "auth_flow": [
+      "SPA LoginPage: tenant_id + api_key form",
+      "POST /api/v1/flow-builder/auth/login -> Backend validates api_key from tenant_registry.settings_json",
+      "Backend generates JWT (same shared key) with tenant_id claim",
+      "SPA stores JWT in sessionStorage, sends as Authorization: Bearer header",
+      "All /api/v1/flow-builder/* endpoints require valid JWT"
+    ],
+    "active_flow_logic": [
+      "is_active = true: Bu flow mesaj isleme icin aktif (tenant basina MAX 1)",
+      "Activate endpoint: Hedef flow'u active yap, diger flow'lari deactivate et",
+      "Yeni flow olusturma: is_active = false (draft)",
+      "v1 engine hala calisiyor: WHERE tenant_id AND is_active = true"
+    ]
+  },
+
+  "db_changes": {
+    "chatbot_flows_migration": {
+      "alter_statements": [
+        "ALTER TABLE chatbot_flows DROP CONSTRAINT chatbot_flows_pkey",
+        "ALTER TABLE chatbot_flows ADD COLUMN flow_id SERIAL",
+        "ALTER TABLE chatbot_flows ADD COLUMN flow_name VARCHAR(200) NOT NULL DEFAULT 'Ana Flow'",
+        "ALTER TABLE chatbot_flows ADD COLUMN is_default BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE chatbot_flows ADD PRIMARY KEY (flow_id)",
+        "CREATE INDEX idx_chatbot_flows_tenant ON chatbot_flows(tenant_id)",
+        "CREATE UNIQUE INDEX uq_chatbot_flows_active ON chatbot_flows(tenant_id) WHERE is_active = true",
+        "UPDATE chatbot_flows SET is_default = true"
+      ],
+      "backward_compat": "v1 FlowEngine: GetFlowAsync(tenantId) -> WHERE tenant_id = @tid AND is_active = true. Mevcut tek satir is_active = true ise ayni davranis."
+    },
+    "tenant_registry_update": {
+      "settings_json_field": "flow_builder_api_key (string, per-tenant API key for standalone login)"
+    }
+  },
+
+  "endpoints": {
+    "automation_service": [
+      {"method": "GET", "path": "/api/v1/flows/{tenantId}", "desc": "List all flows for tenant (CHANGED: was single flow)", "response": "200: [{flow_id, flow_name, flow_config, is_active, is_default, created_at, updated_at}]"},
+      {"method": "GET", "path": "/api/v1/flows/{tenantId}/{flowId}", "desc": "Get single flow by ID (NEW)", "response": "200: {flow_id, flow_name, flow_config, is_active, ...}"},
+      {"method": "POST", "path": "/api/v1/flows/{tenantId}", "desc": "Create new flow (NEW)", "response": "201: {flow_id, flow_name}"},
+      {"method": "PUT", "path": "/api/v1/flows/{tenantId}/{flowId}", "desc": "Update flow config (CHANGED: now requires flowId)", "response": "200: {status: updated}"},
+      {"method": "DELETE", "path": "/api/v1/flows/{tenantId}/{flowId}", "desc": "Delete flow (NEW)", "response": "200: {status: deleted}"},
+      {"method": "POST", "path": "/api/v1/flows/{tenantId}/{flowId}/activate", "desc": "Set flow as active, deactivate others (NEW)", "response": "200: {status: activated}"}
+    ],
+    "backend_proxy": [
+      {"method": "GET", "path": "/api/v1/flow-builder/flows/{tenantId}", "proxies_to": "/api/v1/flows/{tenantId}"},
+      {"method": "GET", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}"},
+      {"method": "POST", "path": "/api/v1/flow-builder/flows/{tenantId}", "proxies_to": "/api/v1/flows/{tenantId}"},
+      {"method": "PUT", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}"},
+      {"method": "DELETE", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}"},
+      {"method": "POST", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}/activate", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}/activate"}
+    ],
+    "backend_auth": [
+      {"method": "POST", "path": "/api/v1/flow-builder/auth/login", "desc": "API key login -> JWT", "auth": "none (public)", "response": "200: {token, tenant_id, expires_in}"}
+    ]
+  },
+
+  "error_codes": {
+    "INV-AT-006": {"http": 400, "desc": "Flow validation failed", "msg": "Chatbot akis dogrulamasi basarisiz."},
+    "INV-AT-007": {"http": 404, "desc": "Flow not found", "msg": "Belirtilen chatbot akisi bulunamadi."},
+    "INV-AT-008": {"http": 409, "desc": "Flow activation conflict", "msg": "Bu tenant icin zaten aktif bir akis var."},
+    "INV-AT-009": {"http": 400, "desc": "Invalid flow config version", "msg": "Desteklenmeyen akis konfigurasyonu versiyonu."},
+    "INV-AT-010": {"http": 401, "desc": "Invalid API key", "msg": "Gecersiz API anahtari."}
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "name": "Arch files + Error codes",
+      "files": ["arch/db/automation.sql", "arch/errors.md", "src/Invekto.Shared/Constants/ErrorCodes.cs"],
+      "desc": "DB schema update (multi-flow migration SQL), new error codes INV-AT-006~010"
+    },
+    {
+      "step": 2,
+      "name": "Automation data layer (multi-flow)",
+      "files": ["src/Invekto.Automation/Data/AutomationRepository.cs", "src/Invekto.Automation/Services/FlowEngine.cs", "src/Invekto.Automation/Services/AutomationOrchestrator.cs"],
+      "desc": "Repository: ListFlows, GetFlowById, CreateFlow, DeleteFlow, ActivateFlow. FlowEngine: GetActiveFlowAsync uses is_active filter. Orchestrator: minor update."
+    },
+    {
+      "step": 3,
+      "name": "Automation new endpoints",
+      "files": ["src/Invekto.Automation/Program.cs"],
+      "desc": "6 endpoints: list, get by id, create, update by id, delete, activate. Update existing GET/PUT."
+    },
+    {
+      "step": 4,
+      "name": "Backend proxy + login",
+      "files": ["src/Invekto.Backend/Services/FlowBuilderClient.cs", "src/Invekto.Backend/Program.cs"],
+      "desc": "FlowBuilderClient proxy class, SPA fallback route /flow-builder/**, JWT prefix, 6 proxy endpoints, login endpoint (API key -> JWT)"
+    },
+    {
+      "step": 5,
+      "name": "Frontend setup + auth",
+      "files": ["src/Invekto.Backend/FlowBuilder/package.json", "src/Invekto.Backend/FlowBuilder/src/lib/auth.ts", "src/Invekto.Backend/FlowBuilder/src/lib/api.ts", "src/Invekto.Backend/FlowBuilder/src/pages/LoginPage.tsx", "src/Invekto.Backend/FlowBuilder/src/App.tsx"],
+      "desc": "npm i react-router-dom, auth context (sessionStorage JWT), API client class, login page, router setup"
+    },
+    {
+      "step": 6,
+      "name": "Frontend FlowListPage",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx"],
+      "desc": "Tam CRUD list: flow listesi, aktif/pasif toggle, duzenle, sil (onay dialogu), kopyala (clipboard), v1 badge, yeni flow olustur"
+    },
+    {
+      "step": 7,
+      "name": "Frontend FlowEditorPage API integration",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx", "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts", "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx"],
+      "desc": "Load flow by flowId from URL param, save via PUT API, markClean on success, back to list button"
+    },
+    {
+      "step": 8,
+      "name": "Build + arch update",
+      "files": ["arch/session-memory.md", "arch/active-work.md"],
+      "desc": "dotnet build (Backend + Automation + Shared), npm run build (FlowBuilder SPA), update session memory"
+    }
+  ],
+
+  "allowed_files": [
+    "arch/db/automation.sql",
+    "arch/errors.md",
+    "arch/session-memory.md",
+    "arch/active-work.md",
+    "arch/plans/20260212-flow-builder-phase2.json",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Services/FlowEngine.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Services/FlowBuilderClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/FlowBuilder/package.json",
+    "src/Invekto.Backend/FlowBuilder/package-lock.json",
+    "src/Invekto.Backend/FlowBuilder/src/App.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/lib/auth.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/api.ts",
+    "src/Invekto.Backend/FlowBuilder/src/pages/LoginPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts",
+    "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx",
+    "src/Invekto.Backend/wwwroot/flow-builder/index.html",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/*",
+    "arch/db/migrations/001-chatbot-flows-multi-flow.sql",
+    "arch/plans/diffs/20260212-flow-builder-phase2.diff"
+  ],
+
+  "files_changed": [
+    { "path": "arch/active-work.md", "is_new": false, "change": "Phase 2 status update" },
+    { "path": "arch/db/automation.sql", "is_new": false, "change": "Multi-flow schema: flow_id SERIAL PK, flow_name, is_default, migration SQL" },
+    { "path": "arch/db/migrations/001-chatbot-flows-multi-flow.sql", "is_new": true, "change": "Executable migration: v1 PK -> multi-flow (flow_id SERIAL)" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Added INV-AT-006~010 error codes" },
+    { "path": "arch/plans/20260212-flow-builder-phase2.json", "is_new": true, "change": "Plan JSON" },
+    { "path": "arch/session-memory.md", "is_new": false, "change": "Phase 2 completion + context for next session" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "Multi-flow CRUD: ListFlows, GetFlowById, CreateFlow, UpdateFlowById, DeleteFlowById, ActivateFlow, DeactivateFlow + DTOs" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "7 CRUD endpoints replacing old single GET/PUT + deactivate endpoint" },
+    { "path": "src/Invekto.Backend/FlowBuilder/package.json", "is_new": true, "change": "Added react-router-dom dependency" },
+    { "path": "src/Invekto.Backend/FlowBuilder/package-lock.json", "is_new": true, "change": "npm lockfile" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/App.tsx", "is_new": true, "change": "BrowserRouter + AuthProvider + RequireAuth + routes" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx", "is_new": true, "change": "Added onBack prop + back chevron button" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/api.ts", "is_new": true, "change": "FlowBuilderApiClient: login, CRUD flows, error handling" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/auth.ts", "is_new": true, "change": "AuthContext, sessionStorage JWT management, useAuth hook" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx", "is_new": true, "change": "API load/save via useParams flowId, back button, error states" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx", "is_new": true, "change": "Full CRUD list: create dialog, delete confirm, activate/deactivate, copy JSON" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/LoginPage.tsx", "is_new": true, "change": "tenant_id + api_key login form" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "FlowBuilderClient registration, JWT prefix, 7 proxy routes, login endpoint, SPA fallback" },
+    { "path": "src/Invekto.Backend/Services/FlowBuilderClient.cs", "is_new": true, "change": "HTTP proxy client: ProxyGet/Post/Put/Delete to Automation" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/index.html", "is_new": true, "change": "SPA build output: HTML entry" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-DY9VMYM2.css", "is_new": true, "change": "SPA build output: CSS bundle" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-C8LlGt6m.js", "is_new": true, "change": "SPA build output: JS bundle" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added INV-AT-006~010 constants" },
+    { "path": "arch/plans/diffs/20260212-flow-builder-phase2.diff", "is_new": true, "change": "Full git diff for Codex review" }
+  ],
+
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "e16bd9f80991e33b04c553bfb40a896d6c9868d108cdffb812cc250603f9bfc9",
+    "full_path": "arch/plans/diffs/20260212-flow-builder-phase2.diff",
+    "stats": { "insertions": 5405, "deletions": 84, "files_count": 24 }
+  },
+
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServices.sln + npx tsc --noEmit + npx vite build",
+    "timestamp": "2026-02-13T01:25:00Z",
+    "duration_ms": 8000,
+    "output_tail": ".NET: Build succeeded. 0 Error(s), 10 Warning(s). TS: 0 errors. Vite: 229 modules, JS 423KB gzip 136KB.",
+    "error_summary": null
+  },
+
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/ (dokunulmaz)",
+      "src/Invekto.AgentAI/ (dokunulmaz)",
+      "src/Invekto.Outbound/ (dokunulmaz)",
+      "src/Invekto.Backend/Dashboard/ (dokunulmaz)",
+      "arch/deploy/ (Phase 2'de deploy degisikligi yok)",
+      "dev-to-invekto-services.bat (deploy script'i degismez)"
+    ],
+    "non_goals": [
+      "FlowEngine v2 (Phase 3)",
+      "FlowValidator.cs (Phase 3)",
+      "FlowMigrator.cs (Phase 3)",
+      "validate endpoint (Phase 3)",
+      "migrate-v1 endpoint (Phase 3)",
+      "iframe postMessage auth (Phase 5)",
+      "Auto-save (Phase 5)",
+      "Test mode / flow simulation (Phase 5)",
+      "Dark/light theme (Phase 5)",
+      "Keyboard shortcuts beyond default (Phase 5)"
+    ],
+    "intentional_exclusions": [
+      "Main App proxy auth (Phase 5, simdilik API key)",
+      "Multi-flow license check (Main App sorumlulugu, backend unlimited)",
+      "Flow copy between tenants (sadece JSON clipboard copy)",
+      "chat_sessions.flow_id (Phase 3'te FlowEngine v2 ile gelecek)",
+      "PUT /flows/{tenantId}/{flowId} breaking change: flowId artik zorunlu. Phase 1'de tek-flow idi (PUT /{tenantId}), Phase 2 multi-flow tasariminda her flow'un ID'si gerekli. Mevcut consumer (SPA) Phase 2 ile birlikte guncellendi, eski consumer yok."
+    ]
+  },
+
+  "error_handling": {
+    "try_catch_locations": [
+      "FlowBuilderClient.cs: Her proxy method (timeout/502 handling)",
+      "Backend login endpoint: API key validation (401)",
+      "AutomationRepository: DB query errors (500 + INV-AT-007)",
+      "SPA api.ts: fetch wrapper (network error, 401 redirect, error toast)"
+    ],
+    "user_facing_errors": [
+      "INV-AT-006: Chatbot akis dogrulamasi basarisiz",
+      "INV-AT-007: Belirtilen chatbot akisi bulunamadi",
+      "INV-AT-008: Bu tenant icin zaten aktif bir akis var",
+      "INV-AT-009: Desteklenmeyen akis konfigurasyonu versiyonu",
+      "INV-AT-010: Gecersiz API anahtari"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum error path'leri explicit error code + user message donuyor. Proxy timeout 504, DB error 500, auth failure 401."
+  },
+
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Chatbot akisini degistirmek icin JSON dosyasi duzenlemek gerekiyor, gorsellestirme yok",
+      "suggestion": "Flow listesinde her flow'un node/edge sayisi, durum badge'i ve son guncelleme gosterilir — tek bakista tum akislar gorunur",
+      "aha_moment": "Tenant flow listesini acar, 3 farkli akisini gorur, aktif olani yesil badge ile hemen anlasir — 'vay, tum akislarim burada!'"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni chatbot akisi olusturmak icin teknik bilgi ve JSON yapisi bilmek gerekiyor",
+      "suggestion": "Yeni Flow butonu tiklayinca otomatik trigger_start node'lu bos canvas acilir, surukle-birak ile 2 dakikada akis tamamlanir",
+      "aha_moment": "Kullanici 'Yeni Flow' tiklar, bos canvas gorur, sol panelden node suruklemeye baslar — '2 dakikada chatbot akisi olusturdum!'"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yanlis akisi aktif edince tum musteriler etkileniyor, geri alma zor",
+      "suggestion": "Aktif/Pasif toggle ile tek tikla akis degistirme + sadece 1 akis aktif olabilir kurali ile guvenli gecis",
+      "aha_moment": "Tenant yeni akisi test edip aktif eder, eski akis otomatik pasife doner — 'risk almadan gecis yaptim!'"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Her tenant icin chatbot kurulumu zaman aliyor, olceklenemiyor",
+      "suggestion": "JSON clipboard kopyalama ile basarili bir akis baska tenant'a aninda aktarilabilir",
+      "aha_moment": "Satis ekibi basarili akisi kopyalar, yeni tenant'a yapistirir — 'kurulum 30 dakikadan 30 saniyeye dustu!'"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant 'chatbot calismiyor' dediginde flow config'e bakmak gerekiyor, gorsel yok",
+      "suggestion": "Flow Builder URL'ini tenant'a gonder, kendi akisini gorebilir ve duzenleyebilir (API key ile login)",
+      "aha_moment": "Destek ekibi tenant'a link gonderir, tenant kendi flow'unu gorur — 'kendi chatbotumu yonetebiliyorum!'"
+    }
+  ],
+
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "chatbot_flows tablosunda flow_id SERIAL PK dogru eklenmis mi? Mevcut tenant_id artik PK degil, FK olarak kaliyor mu? is_active UNIQUE partial index (tenant basina max 1 aktif) var mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Automation GET /api/v1/flows/{tenantId} artik liste donuyor mu? Her flow icin flow_id, flow_name, is_active, node/edge sayisi, version, created_at, updated_at alanlari var mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Activate endpoint (POST /{flowId}/activate) hedef flow'u is_active=true yaparken diger flow'lari is_active=false yapiyor mu? Tek transaction icinde mi?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Backend login endpoint tenant_registry.settings_json'dan flow_builder_api_key'i kontrol ediyor mu? Gecersiz key'de INV-AT-010 donuyor mu? Basarili login'de JWT (tenant_id claim) donuyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "v1 FlowEngine hala calisiyor mu? GetActiveFlowAsync(tenantId) WHERE tenant_id AND is_active=true sorgusu ile eski davranis korunuyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "SPA FlowListPage flow silme isleminde onay dialogu gosteriyor mu? Aktif flow silinmeye calisilirsa uyari veriyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "SPA API client 401 response alinca otomatik login sayfasina yonlendiriyor mu? Network error'da kullaniciya anlamli hata mesaji gosteriyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+
+  "verdict": {
+    "status": "FORCE_PASS",
+    "source": "Q_OVERRIDE",
+    "received_at": "2026-02-13T02:35:00Z",
+    "updated_by": "Q",
+    "updated_at": "2026-02-13T02:35:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Backend/Automation hata path'leri explicit, SPA 401 ve network mesaji var" },
+      "CQ2": { "result": "PASS", "evidence": "Catch bloklari swallow etmiyor, log + hata response var" },
+      "CQ3": { "result": "FAIL", "evidence": "files_changed[] asset hash mismatch (index-E6FosGsM.js vs index-C8LlGt6m.js) + diff dosyasi listede yok" },
+      "CQ4": { "result": "PASS", "evidence": "Duplicate implementation yok" },
+      "CQ5": { "result": "PASS", "evidence": "List endpoint ve SPA contract hizali (plain array)" },
+      "CQ6": { "result": "PASS", "evidence": "Liste tek query, activate tek transaction" },
+      "CQ7": { "result": "PASS", "evidence": "Yeni tech-debt marker yok" },
+      "CQ8": { "result": "PASS", "evidence": "PUT breaking change intentional olarak dokumante edilmis, consumer'lar guncellenmis" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "DDL flow_id PK, tenant_id FK, partial unique index, executable migration var" },
+      "Q2": { "result": "PASS", "reasoning": "List endpoint liste donuyor, tum alanlar mapleniyor" },
+      "Q3": { "result": "PASS", "reasoning": "Deactivate+activate tek transaction commit/rollback" },
+      "Q4": { "result": "PASS", "reasoning": "settings_json flow_builder_api_key kontrolu, INV-AT-010, JWT tenant_id claim" },
+      "Q5": { "result": "PASS", "reasoning": "FlowEngine aktif flow repo uzerinden, tenant_id AND is_active=true" },
+      "Q6": { "result": "PASS", "reasoning": "Delete confirm dialog, aktif flow silme kisitlamasi" },
+      "Q7": { "result": "PASS", "reasoning": "401 login redirect, network error TR mesaj" }
+    },
+    "blocking_issues": [
+      "PLAN_OUTDATED: files_changed[] asset hash mismatch (index-E6FosGsM.js vs index-C8LlGt6m.js) + diff dosyasi files_changed'da yok"
+    ],
+    "iteration": 3,
+    "escalation_required": true,
+    "escalation_reason": "Max iteration (3) reached. Kalan issue METADATA-ONLY: files_changed[] asset dosya adi rebuild sonrasi degisti + diff dosyasi files_changed'da eksik. Kod/logic/security sorunu YOK.",
+    "escalation_category": "PLAN_ASSUMPTION_WRONG",
+    "iteration_history": [
+      {
+        "iteration": 1,
+        "verdict": "FAIL",
+        "blocking_count": 4,
+        "fixes": ["API contract (array)", "allowed_files scope", "migration executable", "network error handling"]
+      },
+      {
+        "iteration": 2,
+        "verdict": "FAIL",
+        "blocking_count": 2,
+        "fixes": ["allowed_files += migrations + diffs", "PUT breaking change documented as intentional"]
+      },
+      {
+        "iteration": 3,
+        "verdict": "FAIL",
+        "blocking_count": 1,
+        "pending_fix": "files_changed[] asset hash + diff file entry (metadata-only, no code change)"
+      }
+    ]
+  }
+}
