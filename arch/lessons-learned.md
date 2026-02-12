@@ -52,6 +52,11 @@
 | 2026-02-11 | API | Cok katmanli error handling duplicate callback uretti (orchestrator + Task.Run ayri ayri gonderdi) | Orchestrator catch blogu kendi error callback'ini gonderir, Task.Run sadece orchestrator disindaki hatalari yakalar | **Error callback/notification TEK katmanda gonder - multi-layer error handling'de hangi katmanin notify ettigini ACIKCA belirle** |
 | 2026-02-11 | DB | Yeni DB tablosu olusturuldu ama DB kullanicisina GRANT verilmedi - permission denied | `GRANT ALL ON ALL TABLES/SEQUENCES TO invekto` | **Yeni tablo/sequence olusturulunca DB kullanicisina GRANT vermeyi UNUTMA - schema DDL + GRANT birlikte** |
 | 2026-02-11 | DB | FK constraint olan tabloya INSERT denemesi - parent tablo (tenant_registry) bos | Once tenant_registry'ye INSERT, sonra child tablolara | **FK constraint olan tablolarda INSERT sirasi: ONCE parent (tenant_registry), SONRA child (chatbot_flows, chat_sessions, vb.)** |
+| 2026-02-12 | Deploy | `wwwroot/flow-builder/` SPA build output'u `dotnet publish` sirasinda yoktu - Vite build calistirilmadan publish yapildi, sunucuda JS dosyalari eksik kaldi | `npx vite build` tekrar calistirildi, sonra publish | **SPA (Vite/React) olan .NET projede `dotnet publish` ONCE `vite build` calistir - build output wwwroot'ta fiziksel olarak yoksa publish'e dahil edilmez** |
+| 2026-02-12 | Deploy | Production'da SPA'ya dev port (3002) uzerinden erismeye calisildi - firewall acildi ama calismadi | Port 3002 kapatildi, Backend:5000/flow-builder/ kullanildi | **Vite dev server (3002) sadece local dev icindir. Production'da SPA, Backend:5000 uzerinden serve edilir (wwwroot static files). Dev port'u sunucuda ACMA** |
+| 2026-02-12 | Dashboard | Q "bat dosyasi ve watcher bilmiyor" dedi, 6 deploy script kontrol edildi - hepsi zaten Outbound iceriyordu. Gercek eksik: DependencyMap.tsx | DependencyMap.tsx'e Outbound node + arrow eklendi | **Q'nun tanimladigi problemi varsayma - ONCE tum ilgili dosyalari kontrol et, sonra gercek eksikligi bul. Kullanici farki farkli yorumlayabilir** |
+| 2026-02-12 | API | `MapFallbackToFile("/flow-builder/{**slug}")` static dosyalari (.js, .css) da yakaladi - browser'a index.html dondu | `{*path:nonfile}` constraint kullanildi | **SPA fallback pattern'de `{**slug}` yerine `{*path:nonfile}` kullan - slug dosya uzantili istekleri de yakalar** |
+| 2026-02-12 | API | Root cause yerine workaround denendi (explicit StaticFileOptions, diagnostic endpoint) - 4+ deploy dongusu harcandi | Codex'e soruldu, `:nonfile` constraint dogru fix cikti | **Static file + SPA sorunlarinda once routing pipeline'i incele (fallback pattern, middleware sirasi) - UseStaticFiles wwwroot altindaki tum klasorleri zaten serve eder** |
 
 ---
 
@@ -86,6 +91,9 @@
 | Step result chaining (`{{step_N.field}}`) | Simulator scenario runner | Onceki step'in response'undan otomatik deger cekme - multi-step E2E testlerde manuel placeholder'a gerek kalmaz |
 | Selective git staging (scope discipline) | /rev workflow | `deploy_output/` ve UI refactor dosyalarini unstage edip sadece functional changes'i commit - diff'i focused tutar, Codex review kolaylasir |
 | Error callback in async processing | Automation Task.Run + Orchestrator | Sessiz timeout yerine gercek hata mesaji aninda gorulur - "permission denied for table chatbot_flows" gibi spesifik hata simulator UI'da gorundu, log karistirmaya gerek kalmadi |
+| Roadmap/teknik-detay hiyerarsisi (summary → tracking → detail) | `roadmap-phases.md` → `phase-1.md` → `flow-builder.md` | Paralel dokumanlar kacinamaz sekilde birbirine referans verir, tek kaynak (phase-1.md) durum takibi yapar, teknik detay ayri dosyada kalir |
+| Mevcut proxy pattern'i yeniden kullanma (`FbProxyGet`) | Backend flow list endpoint | Yeni endpoint icin yeni client/helper yazmak yerine mevcut `FlowBuilderClient` + `FbProxyGet` yeniden kullanildi - 3 satir ile tamamlandi |
+| `{*path:nonfile}` SPA fallback constraint | `MapFallbackToFile` | Sadece dosya uzantisi olmayan route'lari yakalar, .js/.css UseStaticFiles'a kalir |
 
 ---
 
@@ -109,6 +117,7 @@
 | Polling catch'inde sadece log | HTTP 404/500 sonrası sonsuz polling | `clearInterval` + state reset + UI feedback |
 | Lessons-learned okumadan kod | Aynı hata tekrar | Session başında lessons-learned OKU |
 | SQL query sonucunu destructure ederken kolon SELECT edilmemiş | Undefined value, sessiz bug | Destructure ettiğin her field için SQL sorgusunda karşılığını kontrol et |
+| `MapFallbackToFile("{**slug}")` SPA subfolder'da | Static dosyalar (.js, .css) da fallback'e duser, browser MIME type hatasi alir | `{*path:nonfile}` constraint kullan |
 
 ---
 

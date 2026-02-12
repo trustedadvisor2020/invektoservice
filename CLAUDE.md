@@ -235,6 +235,7 @@ Skills in `.claude/commands/`:
 - `aha.md` - Detaylı aha moment analizi (`/aha` ile çağrılır)
 - `learn.md` - Session learnings kayıt (`/learn` ile çağrılır)
 - `push.md` - Git push shortcut (`/push` ile çağrılır)
+- `test-ui.md` - Semi-autonomous UI testing (`/test-ui` ile çağrılır, Playwright + Python)
 
 **AHA Moments:**
 - **Plan içinde (zorunlu):** Her plan 5 basit AHA suggestion içerir (UX/SPEED/RELIABILITY/SALES/SUPPORT)

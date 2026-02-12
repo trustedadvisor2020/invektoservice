@@ -18,11 +18,13 @@ export function DependencyMap({ services }: DependencyMapProps) {
   const chatAnalysis = services.find(s => s.name.includes('ChatAnalysis'));
   const automation = services.find(s => s.name.includes('Automation'));
   const agentAI = services.find(s => s.name.includes('AgentAI'));
+  const outbound = services.find(s => s.name.includes('Outbound'));
 
   const backendColor = backend ? getStatusColor(backend.status) : getStatusColor('unavailable');
   const chatColor = chatAnalysis ? getStatusColor(chatAnalysis.status) : getStatusColor('unavailable');
   const autoColor = automation ? getStatusColor(automation.status) : getStatusColor('unavailable');
   const agentAIColor = agentAI ? getStatusColor(agentAI.status) : getStatusColor('unavailable');
+  const outboundColor = outbound ? getStatusColor(outbound.status) : getStatusColor('unavailable');
 
   return (
     <Card>
@@ -30,7 +32,7 @@ export function DependencyMap({ services }: DependencyMapProps) {
         <CardTitle>Service Dependencies</CardTitle>
       </CardHeader>
       <CardContent>
-        <svg viewBox="0 0 500 380" className="w-full h-72">
+        <svg viewBox="0 0 500 490" className="w-full h-80">
           {/* Glow filters */}
           <defs>
             <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
@@ -193,8 +195,51 @@ export function DependencyMap({ services }: DependencyMapProps) {
             </text>
           </g>
 
+          {/* Arrow to Outbound */}
+          <g>
+            <line
+              x1="100"
+              y1="140"
+              x2="100"
+              y2="355"
+              stroke="#d1d5db"
+              strokeWidth="2.5"
+              strokeDasharray="8,5"
+            />
+            <polygon
+              points="100,355 94,341 106,341"
+              fill="#9ca3af"
+            />
+            <rect x="75" y="235" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+            <text x="100" y="252" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
+              HTTP
+            </text>
+          </g>
+
+          {/* Outbound Node */}
+          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '100px 395px' }}>
+            <rect
+              x="20"
+              y="360"
+              width="160"
+              height="80"
+              rx="12"
+              fill="white"
+              stroke={outboundColor.stroke}
+              strokeWidth="2.5"
+              style={{ filter: `drop-shadow(0 0 8px ${outboundColor.glow})` }}
+            />
+            <circle cx="44" cy="392" r="6" fill={outboundColor.fill} />
+            <text x="60" y="396" fill="#111827" fontSize="16" fontWeight="600">
+              Outbound
+            </text>
+            <text x="44" y="420" fill="#6b7280" fontSize="13">
+              localhost:7107
+            </text>
+          </g>
+
           {/* Legend */}
-          <g transform="translate(20, 340)">
+          <g transform="translate(20, 455)">
             <circle cx="8" cy="8" r="5" fill="#10b981" />
             <text x="20" y="13" fill="#6b7280" fontSize="13">OK</text>
             <circle cx="70" cy="8" r="5" fill="#f59e0b" />

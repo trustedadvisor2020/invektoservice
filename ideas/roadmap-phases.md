@@ -25,10 +25,9 @@ Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn seb
 - E-ticaret + otel niche'i için yeni müşteri araştırması
 
 **Phase 1 (Hafta 3-8): Core Otomasyon (TÜM sektörler)**
-- Chatbot / Flow Builder (basit menü bazlı + FAQ)
-- AI Agent Assist (cevap önerisi, intent detection)
-- Broadcast / Toplu mesaj gönderimi
-- Trigger sistemi (event bazlı otomasyon)
+- **GR-1.1** Chatbot / Flow Builder — visual drag-drop + graph-based engine (5 sub-phase: FB-1~FB-5, detay: [flow-builder.md](flow-builder.md))
+- **GR-1.2** AI Agent Assist (cevap önerisi, intent detection)
+- **GR-1.3** Broadcast / Toplu mesaj + Trigger sistemi ✅
 - Dinamik şablon değişkenleri ({{isim}}, {{firma}})
 - Çalışma saati yönetimi + mesai dışı otomatik cevap
 - Otomatik etiketleme (AI bazlı)

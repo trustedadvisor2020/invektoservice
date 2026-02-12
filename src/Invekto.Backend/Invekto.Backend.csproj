@@ -15,11 +15,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <!-- Exclude Dashboard source from publish (only wwwroot build output needed) -->
+  <!-- Exclude Dashboard and FlowBuilder source from publish (only wwwroot build output needed) -->
   <!-- Note: wwwroot is auto-included by Microsoft.NET.Sdk.Web -->
   <ItemGroup>
     <Content Remove="Dashboard\**" />
     <None Include="Dashboard\**" />
+    <Content Remove="FlowBuilder\**" />
+    <None Include="FlowBuilder\**" />
   </ItemGroup>
 
 </Project>

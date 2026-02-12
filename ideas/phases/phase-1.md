@@ -12,9 +12,9 @@
 
 | Alt Gereksinim | Durum | Tamamlanma Tarihi | Notlar |
 |----------------|-------|-------------------|--------|
-| GR-1.1 Chatbot / Flow Builder | ⬜ Başlamadı | — | — |
+| GR-1.1 Chatbot / Flow Builder | 🔄 Devam Ediyor | — | FB-1 ✅, FB-2 ✅, FB-3~5 bekliyor → [flow-builder.md](../flow-builder.md) |
 | GR-1.2 AI Agent Assist | ⬜ Başlamadı | — | — |
-| GR-1.3 Broadcast / Toplu Mesaj + Trigger | ⬜ Başlamadı | — | — |
+| GR-1.3 Broadcast / Toplu Mesaj + Trigger | ✅ Tamamlandı | 2026-02-12 | Invekto.Outbound microservice — broadcast + trigger engine |
 | GR-1.4 Otomasyon Dashboard | ⬜ Başlamadı | — | — |
 | GR-1.5 Diş Kliniği Pipeline | ⬜ Başlamadı | — | — |
 | GR-1.6 Basit Randevu Motoru | ⬜ Başlamadı | — | — |
@@ -50,36 +50,76 @@ Mevcut 50+ müşterinin tamamı faydalanacak. #1 satış engeli ("Chatbot/AI yok
 
 ### GR-1.1: Chatbot / Flow Builder
 
-> **Servis:** `Invekto.Automation` (port 7108)
+> **Servis:** `Invekto.Automation` (port 7108) + `Invekto.Backend` (port 5000, proxy + SPA serve)
 > **Sektör:** Tümü
-> **Tahmini süre:** 3-4 hafta
+> **Detay:** [flow-builder.md](../flow-builder.md)
+> **Durum:** 🔄 Devam Ediyor — FB-1 + FB-2 tamamlandı
 
-**Yapılacak:**
-- [ ] **1.1.1** Automation servis iskeletini oluştur (port 7108, health check, tenant izolasyon)
-- [ ] **1.1.2** Basit menü bazlı chatbot engine yaz
-  - Hoşgeldin mesajı → seçenek sunma → yönlendirme akışı
-  - Flow config JSON formatı tanımla
-- [ ] **1.1.3** FAQ otomasyonu — sık sorulan sorulara otomatik cevap
-  - Tenant bazlı FAQ tanımlama API
-  - Soru eşleştirme (basit keyword + fuzzy match)
-- [ ] **1.1.4** Mesai dışı otomatik cevap (çalışma saati yönetimi)
-  - Tenant bazlı çalışma saatleri tanımla
-  - Mesai dışı gelen mesaja otomatik template gönder
-- [ ] **1.1.5** Intent detection genişletme (mevcut ChatAnalysis üzerine)
-  - Başlangıç intent seti: kargo, fiyat, randevu (3-5 intent)
-- [ ] **1.1.6** Human handoff — eşleşmezse temsilciye devret
-  - Confidence threshold altındaysa → insan
-  - Handoff sırasında AI özet bırakma (basit)
-- [ ] **1.1.7** DB tabloları oluştur:
-  ```sql
-  chatbot_flows (id, tenant_id, name, trigger_type, flow_config_json, is_active, created_at, updated_at)
-  auto_reply_log (id, tenant_id, intent, question_text, was_resolved, created_at)
-  ```
+Visual Flow Builder (n8n benzeri drag-drop) + Graph-based FlowEngine v2.
+Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 
-**Yapılmayacak:**
-- ❌ RAG / Knowledge base (Phase 3)
-- ❌ Karmaşık flow builder UI (basit konfigürasyon yeterli)
-- ❌ Guardrails / PII detection (Phase 4)
+#### Sub-Phases (Flow Builder İç Fazları)
+
+| Sub-Phase | Adı | Durum | Scope |
+|-----------|-----|-------|-------|
+| **FB-1** | SPA Scaffold + Canvas | ✅ Tamamlandı | React Flow + Zustand + 5 node component |
+| **FB-2** | API + Backend Entegrasyon | ✅ Tamamlandı | JWT auth, CRUD, proxy, SPA routing, FlowListPage |
+| **FB-3** | FlowEngine v2 (Backend Execution) | ⬜ Başlamadı | Graph traversal, v1→v2 migration, orchestrator dispatch |
+| **FB-4** | Genişletilmiş Node'lar | ⬜ Başlamadı | 7 yeni node (logic, AI, action, utility) + UI components |
+| **FB-5** | iframe + Polish | ⬜ Başlamadı | postMessage bridge, auto-save, test modu, keyboard shortcuts |
+
+#### FB-1: SPA Scaffold + Canvas ✅ TAMAMLANDI
+
+- [x] **1.1.1** SPA projesi oluştur (React 18 + Vite + TailwindCSS + @xyflow/react)
+- [x] **1.1.2** Contract v2 TypeScript types (12 node type, NodeData union)
+- [x] **1.1.3** Zustand store (nodes, edges, selection, undo/redo max 50)
+- [x] **1.1.4** 5 node component: trigger_start, message_text, message_menu, action_handoff, utility_note
+- [x] **1.1.5** FlowCanvas: drag-drop, self-connection prevention, custom edge (hover X)
+- [x] **1.1.6** NodePalette (kategorili sol sidebar) + NodePropertyPanel (type-specific editors)
+- [x] **1.1.7** Toolbar: flow adı/açıklama, undo/redo, save, dirty indicator
+- [x] **1.1.8** Build PASS (tsc 0 error, vite build OK — JS 368KB gzip 118KB)
+
+#### FB-2: API + Backend Entegrasyon ✅ TAMAMLANDI
+
+- [x] **1.1.9** SPA fallback route → Backend:5000 `/flow-builder/{**slug}` → index.html
+- [x] **1.1.10** JWT prefix → `/api/v1/flow-builder/` JWT koruması
+- [x] **1.1.11** FlowBuilderClient.cs → Backend → Automation proxy class
+- [x] **1.1.12** Proxy endpoint'ler (GET/PUT flows, validate, activate, migrate-v1)
+- [x] **1.1.13** SPA API client (`lib/api.ts` — load/save flow, JWT header)
+- [x] **1.1.14** FlowListPage: flow yönetim ekranı (liste, aktif/pasif toggle, sil)
+- [x] **1.1.15** Auth: standalone login + iframe postMessage desteği
+
+#### FB-3: FlowEngine v2 (Backend Execution)
+
+- [ ] **1.1.16** FlowGraphV2.cs — in-memory adjacency list, node lookup
+- [ ] **1.1.17** FlowEngineV2.cs — node executor + chain traversal (auto-traverse vs wait-point)
+- [ ] **1.1.18** FlowValidator.cs — graph validation rules (orphan, cycle, empty text, missing handle)
+- [ ] **1.1.19** FlowMigrator.cs — v1 → v2 otomatik conversion
+- [ ] **1.1.20** Orchestrator dispatch — version check → v1 veya v2 engine
+- [ ] **1.1.21** Error codes (INV-AT-006 ~ INV-AT-010)
+
+#### FB-4: Genişletilmiş Node'lar
+
+- [ ] **1.1.22** Logic: condition (if/else), switch (multi-branch)
+- [ ] **1.1.23** AI: intent detection, FAQ arama (mevcut IntentDetector/FaqMatcher reuse)
+- [ ] **1.1.24** Action: api_call (webhook/HTTP), delay (bekle N saniye)
+- [ ] **1.1.25** Utility: set_variable (session değişken atama)
+- [ ] **1.1.26** 7 yeni React Flow node component + property panel editors
+
+#### FB-5: iframe + Polish
+
+- [ ] **1.1.27** iframe bridge (postMessage protocol: init, ready, auth_required, flow_saved)
+- [ ] **1.1.28** Auto-detection (`window.self !== window.top` → iframe mode)
+- [ ] **1.1.29** Tema desteği (dark/light theme switching)
+- [ ] **1.1.30** Auto-save (debounced 5s idle) + keyboard shortcuts (Ctrl+S/Z/Y, Delete)
+- [ ] **1.1.31** Flow validation UI (inline hata/uyarı overlay)
+- [ ] **1.1.32** Test modu — canlı flow simülasyonu (chat panel + canvas node highlight)
+
+#### Yapılmayacak (Phase 1 Scope Dışı)
+
+- ❌ RAG / Knowledge base (Roadmap Phase 3)
+- ❌ Guardrails / PII detection (Roadmap Phase 4)
+- ❌ Campaign yönetimi, A/B test (Roadmap Phase 3)
 
 ---
 

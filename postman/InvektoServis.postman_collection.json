@@ -80,6 +80,17 @@
             "url": { "raw": "{{base_url}}/api/v1/webhook/event", "host": ["{{base_url}}"], "path": ["api","v1","webhook","event"] },
             "description": "Send webhook event to Automation.\nEvent types: new_message, conversation_started, conversation_closed, tag_changed, agent_assigned\nResponse: 202 Accepted"
           }
+        },
+        {
+          "name": "Flow List (Main App Routing)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/automation/flows/1", "host": ["{{base_url}}"], "path": ["api","v1","automation","flows","1"] },
+            "description": "List all flows for a tenant. Used by Main App routing config to populate flow dropdown.\nAuth: Bearer JWT\nResponse: Array of { flow_id, flow_name, is_active, is_default, config_version, node_count, edge_count, created_at, updated_at }"
+          }
         }
       ]
     },

@@ -20,12 +20,12 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
   const canRedo = historyIndex < historyLength - 1;
 
   return (
-    <div className="h-12 bg-slate-900/95 border-b border-slate-700/50 flex items-center px-4 gap-3 flex-shrink-0">
+    <div className="h-12 bg-white border-b border-slate-200 flex items-center px-4 gap-3 flex-shrink-0 shadow-sm">
       {/* Back button */}
       {onBack && (
         <button
           onClick={onBack}
-          className="p-1.5 rounded hover:bg-slate-700/50 transition-colors text-slate-300"
+          className="p-1.5 rounded hover:bg-slate-100 transition-colors text-slate-600"
           title="Flow Listesine Don"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
@@ -40,15 +40,15 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
           type="text"
           value={flowMetadata.name}
           onChange={(e) => setMetadata({ name: e.target.value })}
-          className="bg-transparent text-sm font-medium text-slate-200 border-none outline-none w-40 focus:ring-1 focus:ring-blue-500/50 rounded px-2 py-1"
+          className="bg-transparent text-sm font-medium text-slate-900 border-none outline-none w-40 focus:ring-1 focus:ring-blue-500/50 rounded px-2 py-1"
           placeholder="Flow Adi"
         />
-        <span className="text-slate-600">|</span>
+        <span className="text-slate-300">|</span>
         <input
           type="text"
           value={flowMetadata.description ?? ''}
           onChange={(e) => setMetadata({ description: e.target.value })}
-          className="bg-transparent text-xs text-slate-400 border-none outline-none w-56 focus:ring-1 focus:ring-blue-500/50 rounded px-2 py-1"
+          className="bg-transparent text-xs text-slate-500 border-none outline-none w-56 focus:ring-1 focus:ring-blue-500/50 rounded px-2 py-1"
           placeholder="Flow aciklamasi..."
         />
       </div>
@@ -66,8 +66,8 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
           onClick={undo}
           disabled={!canUndo}
           className={cn(
-            'p-1.5 rounded hover:bg-slate-700/50 transition-colors',
-            canUndo ? 'text-slate-300' : 'text-slate-600 cursor-not-allowed'
+            'p-1.5 rounded hover:bg-slate-100 transition-colors',
+            canUndo ? 'text-slate-600' : 'text-slate-300 cursor-not-allowed'
           )}
           title="Geri Al (Ctrl+Z)"
         >
@@ -80,8 +80,8 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
           onClick={redo}
           disabled={!canRedo}
           className={cn(
-            'p-1.5 rounded hover:bg-slate-700/50 transition-colors',
-            canRedo ? 'text-slate-300' : 'text-slate-600 cursor-not-allowed'
+            'p-1.5 rounded hover:bg-slate-100 transition-colors',
+            canRedo ? 'text-slate-600' : 'text-slate-300 cursor-not-allowed'
           )}
           title="Ileri Al (Ctrl+Y)"
         >
@@ -93,7 +93,7 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-slate-700" />
+      <div className="w-px h-6 bg-slate-200" />
 
       {/* Save */}
       <button
@@ -103,7 +103,7 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
           'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
           isDirty && !isSaving
             ? 'bg-blue-600 hover:bg-blue-500 text-white'
-            : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
         )}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">

@@ -42,8 +42,14 @@ export function FlowEditorPage() {
     getFlow(tenantId, flowId)
       .then((detail) => {
         if (cancelled) return;
-        const config = detail.flow_config as FlowConfigV2;
-        if (config.metadata) config.metadata.name = detail.flow_name;
+        const raw = (detail.flow_config ?? {}) as Partial<FlowConfigV2>;
+        const config: FlowConfigV2 = {
+          version: raw.version ?? 2,
+          metadata: { name: detail.flow_name, ...raw.metadata },
+          nodes: raw.nodes ?? [],
+          edges: raw.edges ?? [],
+          settings: raw.settings ?? {} as FlowConfigV2['settings'],
+        };
         loadFlow(config);
         setIsLoading(false);
       })
@@ -116,7 +122,7 @@ export function FlowEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-950 text-gray-400">
+      <div className="h-screen flex items-center justify-center bg-slate-50 text-slate-500">
         Flow yukleniyor...
       </div>
     );
@@ -124,8 +130,8 @@ export function FlowEditorPage() {
 
   if (loadError) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-950 gap-4">
-        <p className="text-red-400">{loadError}</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+        <p className="text-red-600">{loadError}</p>
         <button
           onClick={() => navigate('/')}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg"
@@ -138,15 +144,15 @@ export function FlowEditorPage() {
 
   return (
     <ReactFlowProvider>
-      <div className="h-screen flex flex-col bg-slate-950">
+      <div className="h-screen flex flex-col bg-slate-50">
         {/* Toolbar */}
         <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} />
 
         {/* Save error banner */}
         {saveError && (
-          <div className="bg-red-900/30 border-b border-red-800/40 px-4 py-2 text-xs text-red-300 flex items-center justify-between">
+          <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-xs text-red-600 flex items-center justify-between">
             <span>Kaydetme hatasi: {saveError}</span>
-            <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-white">&times;</button>
+            <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-600">&times;</button>
           </div>
         )}
 
@@ -161,13 +167,13 @@ export function FlowEditorPage() {
           {/* Right: Panel switcher + panel */}
           <div className="flex flex-col">
             {/* Panel tabs */}
-            <div className="flex border-b border-slate-700/50 bg-slate-900/90">
+            <div className="flex border-b border-slate-200 bg-white">
               <button
                 onClick={() => setRightPanel('properties')}
                 className={`px-3 py-2 text-xs font-medium transition-colors ${
                   rightPanel === 'properties'
-                    ? 'text-blue-400 border-b-2 border-blue-400'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-slate-400 hover:text-slate-700'
                 }`}
               >
                 Ozellikler
@@ -176,8 +182,8 @@ export function FlowEditorPage() {
                 onClick={() => setRightPanel('settings')}
                 className={`px-3 py-2 text-xs font-medium transition-colors ${
                   rightPanel === 'settings'
-                    ? 'text-blue-400 border-b-2 border-blue-400'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-slate-400 hover:text-slate-700'
                 }`}
               >
                 Ayarlar

@@ -33,6 +33,7 @@ var outboundUrl = builder.Configuration["Microservice:Outbound:Url"]
     ?? $"http://localhost:{ServiceConstants.OutboundPort}";
 var outboundLogPath = builder.Configuration["Microservice:Outbound:LogPath"];
 var outboundTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Outbound:TimeoutMs", 10000);
+var automationTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Automation:TimeoutMs", 5000);
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -78,7 +79,7 @@ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
 builder.Services.AddHttpClient<AutomationClient>(client =>
 {
     client.BaseAddress = new Uri(automationUrl);
-    client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+    client.Timeout = TimeSpan.FromMilliseconds(automationTimeoutMs);
 });
 
 // Configure AgentAI HTTP client (longer timeout for Claude API latency)
@@ -99,7 +100,7 @@ builder.Services.AddHttpClient<OutboundClient>(client =>
 builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 {
     client.BaseAddress = new Uri(automationUrl);
-    client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+    client.Timeout = TimeSpan.FromMilliseconds(automationTimeoutMs);
 });
 
 // ============================================
@@ -984,6 +985,7 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/agent-assist/feedback", Description = "Agent feedback proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
             // Automation proxy endpoint
             new() { Method = "POST", Path = "/api/v1/automation/webhook", Description = "Webhook event proxy (Backend -> Automation)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/automation/flows/{tenantId}", Description = "Flow list for tenant (Main App routing config)", Auth = "Bearer", Category = "API" },
             // Outbound proxy endpoints (GR-1.3)
             new() { Method = "POST", Path = "/api/v1/outbound/broadcast/send", Description = "Broadcast send proxy (Backend -> Outbound)", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/outbound/broadcast/{broadcastId}/status", Description = "Broadcast status proxy", Auth = "Bearer", Category = "API" },
@@ -1350,6 +1352,10 @@ app.MapPost("/api/v1/automation/webhook", async (HttpContext ctx, AutomationClie
     return Results.Empty;
 });
 
+// Flow list for Main App routing config (same Automation backend, different path for Main App consumers)
+app.MapGet("/api/v1/automation/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLogger, int tenantId) =>
+    await FbProxyGet(ctx, fbClient, jsonLogger, $"/api/v1/flows/{tenantId}"));
+
 // ============================================
 // OUTBOUND PROXY ENDPOINTS (GR-1.3)
 // ============================================
@@ -1657,7 +1663,7 @@ app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLines
 // ============================================
 
 // Flow Builder SPA fallback: /flow-builder/* -> wwwroot/flow-builder/index.html
-app.MapFallbackToFile("/flow-builder/{**slug}", "flow-builder/index.html");
+app.MapFallbackToFile("flow-builder/{*path:nonfile}", "flow-builder/index.html");
 
 // Dashboard SPA fallback - serve index.html for non-API routes (Dashboard routing)
 app.MapFallbackToFile("index.html");
