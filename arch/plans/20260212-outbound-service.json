@@ -1,0 +1,316 @@
+{
+  "slug": "20260212-outbound-service",
+  "title": "GR-1.3: Invekto.Outbound Broadcast & Trigger Engine",
+  "status": "DONE",
+  "risk": "HIGH",
+  "iteration": 0,
+  "created_at": "2026-02-12",
+  "summary": "Yeni Invekto.Outbound mikroservisi (Port 7107): toplu mesaj gönderimi, event-based trigger engine, template engine ({{var}}), tenant-bazlı rate limiting ile kuyruk, opt-out yönetimi (STOP keyword detection), delivery status tracking. Callback pattern ile mesaj gönderimi (Outbound → Main App → WapCRM).",
+
+  "interview_decisions": {
+    "send_flow": "Callback pattern: Outbound kuyruğa alır → Main App'e send_message callback → Main App WapCRM'e gönderir",
+    "trigger_engine": "Webhook triggers + send_at (one-time scheduled). Full cron engine Phase 2",
+    "segment_recipient": "Main App telefon listesini gönderir (max 1,000 per request). Outbound segment mantığı bilmez",
+    "rate_limiting": "Tenant-bazlı rate limit (msg/dakika). Limit aşılınca mesaj kuyrukta bekler, reject yok",
+    "delivery_status": "Main App → Outbound webhook (POST /delivery-status). Outbound DB günceller",
+    "template_variables": "Per-recipient variables: {phone, variables: {isim, firma}}",
+    "optout": "Main App raw mesajı forward eder → Outbound STOP/DUR/İPTAL keyword detect eder ve opt-out kaydı oluşturur",
+    "trigger_events": "Phase 1: new_lead, payment_received, appointment_reminder",
+    "batch_size": "Max 1,000 recipients per broadcast request"
+  },
+
+  "architecture": {
+    "broadcast_flow": [
+      "Main App → Backend /api/v1/outbound/broadcast/send (JWT + recipients)",
+      "Backend → Outbound /api/v1/broadcast/send (proxy)",
+      "Outbound: validate → create broadcast record → insert messages as 'queued'",
+      "Return 202 Accepted with broadcast_id",
+      "Background IHostedService dequeues messages respecting rate limit",
+      "Per message: send_message callback to Main App via MainAppCallbackClient",
+      "Main App sends via WapCRM",
+      "Main App receives delivery status → forwards to Outbound",
+      "Outbound updates message status (sent/delivered/read/failed)"
+    ],
+    "trigger_flow": [
+      "Main App event occurs (new_lead, payment, etc.)",
+      "Main App → Backend → Outbound /api/v1/webhook/trigger",
+      "Outbound checks outbound_templates for matching trigger_event + tenant",
+      "Applies template variables from webhook data",
+      "Inserts single message as 'queued' (same rate-limited queue)",
+      "Background sender processes"
+    ],
+    "optout_flow": [
+      "Customer sends 'STOP' on WhatsApp",
+      "Main App receives → forwards to Backend → Outbound /api/v1/webhook/message",
+      "Outbound checks for stop keywords (STOP, DUR, İPTAL, IPTAL, DURDU, ÇIKIŞ, CIKIS)",
+      "If match: create opt-out record, return {opted_out: true}",
+      "Future broadcasts skip opted-out phones"
+    ]
+  },
+
+  "db_tables": {
+    "outbound_templates": {
+      "columns": "id SERIAL PK, tenant_id INT FK, name VARCHAR(200), trigger_event VARCHAR(50), message_template TEXT, variables_json JSONB, is_active BOOL, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ",
+      "indexes": ["(tenant_id, is_active) WHERE is_active=true", "(tenant_id, trigger_event) WHERE is_active=true"],
+      "notes": "trigger_event: new_lead, payment_received, appointment_reminder, manual (for broadcast-only templates)"
+    },
+    "outbound_broadcasts": {
+      "columns": "id UUID PK, tenant_id INT FK, template_id INT, total_recipients INT, queued INT, sent INT, delivered INT, read INT, failed INT, status VARCHAR(20), scheduled_at TIMESTAMPTZ, started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ",
+      "indexes": ["(tenant_id, created_at DESC)", "(status) WHERE status IN ('queued','processing')"],
+      "notes": "status: queued, processing, completed, failed. Counter columns for fast status queries"
+    },
+    "outbound_messages": {
+      "columns": "id BIGSERIAL PK, tenant_id INT FK, broadcast_id UUID, template_id INT, recipient_phone VARCHAR(20), message_text TEXT, status VARCHAR(20), external_message_id VARCHAR(100), sent_at TIMESTAMPTZ, delivered_at TIMESTAMPTZ, read_at TIMESTAMPTZ, failed_reason VARCHAR(500), created_at TIMESTAMPTZ",
+      "indexes": ["(tenant_id, created_at DESC)", "(broadcast_id, status)", "(status, created_at) WHERE status='queued'", "(external_message_id) WHERE external_message_id IS NOT NULL"],
+      "notes": "status: queued, sending, sent, delivered, read, failed. broadcast_id nullable (null for trigger-based single messages)"
+    },
+    "outbound_optouts": {
+      "columns": "id SERIAL PK, tenant_id INT FK, phone VARCHAR(20), reason VARCHAR(200), created_at TIMESTAMPTZ",
+      "indexes": ["UNIQUE (tenant_id, phone)"],
+      "notes": "Unique constraint: bir phone bir tenant'ta tek opt-out kaydı"
+    }
+  },
+
+  "endpoints": {
+    "outbound_service": [
+      {"method": "POST", "path": "/api/v1/broadcast/send", "auth": "JWT", "response": "202", "desc": "Submit broadcast (async)"},
+      {"method": "GET", "path": "/api/v1/broadcast/{broadcastId}/status", "auth": "JWT", "response": "200", "desc": "Get broadcast delivery status"},
+      {"method": "POST", "path": "/api/v1/webhook/trigger", "auth": "JWT", "response": "202", "desc": "Receive trigger event from Main App"},
+      {"method": "POST", "path": "/api/v1/webhook/delivery-status", "auth": "JWT", "response": "200", "desc": "Receive delivery status update"},
+      {"method": "POST", "path": "/api/v1/webhook/message", "auth": "JWT", "response": "200", "desc": "Receive incoming message for opt-out detection"},
+      {"method": "GET", "path": "/api/v1/templates", "auth": "JWT", "response": "200", "desc": "List active templates"},
+      {"method": "POST", "path": "/api/v1/templates", "auth": "JWT", "response": "201", "desc": "Create template"},
+      {"method": "PUT", "path": "/api/v1/templates/{id}", "auth": "JWT", "response": "200", "desc": "Update template"},
+      {"method": "DELETE", "path": "/api/v1/templates/{id}", "auth": "JWT", "response": "200", "desc": "Deactivate template"},
+      {"method": "POST", "path": "/api/v1/optout", "auth": "JWT", "response": "200", "desc": "Manual opt-out add"},
+      {"method": "DELETE", "path": "/api/v1/optout/{phone}", "auth": "JWT", "response": "200", "desc": "Remove opt-out"},
+      {"method": "GET", "path": "/api/v1/optout/check/{phone}", "auth": "JWT", "response": "200", "desc": "Check if phone opted out"},
+      {"method": "GET", "path": "/health", "auth": "none", "response": "200", "desc": "Health check"},
+      {"method": "GET", "path": "/ready", "auth": "none", "response": "200", "desc": "Readiness probe (DB check)"},
+      {"method": "GET", "path": "/api/ops/endpoints", "auth": "none", "response": "200", "desc": "Endpoint discovery"}
+    ],
+    "backend_proxy": [
+      {"method": "POST", "path": "/api/v1/outbound/broadcast/send", "proxies_to": "/api/v1/broadcast/send"},
+      {"method": "GET", "path": "/api/v1/outbound/broadcast/{broadcastId}/status", "proxies_to": "/api/v1/broadcast/{broadcastId}/status"},
+      {"method": "POST", "path": "/api/v1/outbound/webhook/trigger", "proxies_to": "/api/v1/webhook/trigger"},
+      {"method": "POST", "path": "/api/v1/outbound/webhook/delivery-status", "proxies_to": "/api/v1/webhook/delivery-status"},
+      {"method": "POST", "path": "/api/v1/outbound/webhook/message", "proxies_to": "/api/v1/webhook/message"},
+      {"method": "GET", "path": "/api/v1/outbound/templates", "proxies_to": "/api/v1/templates"},
+      {"method": "POST", "path": "/api/v1/outbound/templates", "proxies_to": "/api/v1/templates"},
+      {"method": "PUT", "path": "/api/v1/outbound/templates/{id}", "proxies_to": "/api/v1/templates/{id}"},
+      {"method": "DELETE", "path": "/api/v1/outbound/templates/{id}", "proxies_to": "/api/v1/templates/{id}"},
+      {"method": "POST", "path": "/api/v1/outbound/optout", "proxies_to": "/api/v1/optout"},
+      {"method": "DELETE", "path": "/api/v1/outbound/optout/{phone}", "proxies_to": "/api/v1/optout/{phone}"},
+      {"method": "GET", "path": "/api/v1/outbound/optout/check/{phone}", "proxies_to": "/api/v1/optout/check/{phone}"}
+    ]
+  },
+
+  "error_codes": {
+    "INV-OB-001": "Invalid broadcast payload",
+    "INV-OB-002": "Template not found",
+    "INV-OB-003": "Rate limit exceeded (queued for later)",
+    "INV-OB-004": "Recipient opted out",
+    "INV-OB-005": "Broadcast not found",
+    "INV-OB-006": "Delivery status update failed",
+    "INV-OB-007": "Invalid template payload",
+    "INV-OB-008": "No matching trigger template",
+    "INV-OB-009": "Message send callback failed",
+    "INV-OB-010": "Too many recipients (max 1000)"
+  },
+
+  "files_to_create": [
+    "src/Invekto.Outbound/Invekto.Outbound.csproj",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/appsettings.json",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Services/TemplateEngine.cs",
+    "src/Invekto.Outbound/Services/OptOutManager.cs",
+    "src/Invekto.Outbound/Services/RateLimiter.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/TemplateDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs",
+    "src/Invekto.Backend/Services/OutboundClient.cs",
+    "arch/db/outbound.sql",
+    "arch/contracts/outbound-broadcast.json",
+    "src/Invekto.Outbound/appsettings.Production.json"
+  ],
+
+  "files_to_modify": [
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs",
+    "arch/errors.md",
+    "src/Invekto.Backend/appsettings.json",
+    "arch/deploy/appsettings.Production.Backend.json",
+    "src/Invekto.Backend/Program.cs",
+    "dev-to-invekto-services.bat",
+    "arch/deploy/install-services.bat",
+    "arch/deploy/firewall-rules.bat",
+    "arch/deploy/restart-services.bat",
+    "arch/deploy/deploy-watcher.ps1",
+    "arch/session-memory.md",
+    "arch/active-work.md"
+  ],
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "name": "Arch files + Error codes",
+      "files": ["arch/db/outbound.sql", "arch/contracts/outbound-broadcast.json", "arch/errors.md", "src/Invekto.Shared/Constants/ErrorCodes.cs"],
+      "desc": "DB schema, API contract, error code definitions"
+    },
+    {
+      "step": 2,
+      "name": "Shared DTOs + CallbackData extension",
+      "files": ["src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "src/Invekto.Shared/DTOs/Outbound/TemplateDtos.cs", "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs", "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs"],
+      "desc": "Request/response DTOs, extend CallbackData with phone/broadcast_id/message_id"
+    },
+    {
+      "step": 3,
+      "name": "Outbound project skeleton + health endpoints",
+      "files": ["src/Invekto.Outbound/Invekto.Outbound.csproj", "src/Invekto.Outbound/Program.cs", "src/Invekto.Outbound/appsettings.json", "src/Invekto.Outbound/appsettings.Production.json"],
+      "desc": "Project file, Kestrel 7107, WindowsService, JWT, PostgreSQL, health/ready"
+    },
+    {
+      "step": 4,
+      "name": "Data layer + Services",
+      "files": ["src/Invekto.Outbound/Data/OutboundRepository.cs", "src/Invekto.Outbound/Services/TemplateEngine.cs", "src/Invekto.Outbound/Services/OptOutManager.cs", "src/Invekto.Outbound/Services/RateLimiter.cs", "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "src/Invekto.Outbound/Services/TriggerProcessor.cs", "src/Invekto.Outbound/Services/MessageSenderService.cs"],
+      "desc": "All business logic: repository, template engine, opt-out, rate limiter, orchestrator, trigger processor, background message sender"
+    },
+    {
+      "step": 5,
+      "name": "Wire all endpoints in Program.cs",
+      "files": ["src/Invekto.Outbound/Program.cs"],
+      "desc": "Complete all API endpoints: broadcast, templates, webhooks, optout"
+    },
+    {
+      "step": 6,
+      "name": "Backend proxy + deploy scripts",
+      "files": ["src/Invekto.Backend/Services/OutboundClient.cs", "src/Invekto.Backend/Program.cs", "src/Invekto.Backend/appsettings.json", "arch/deploy/appsettings.Production.Backend.json", "dev-to-invekto-services.bat", "arch/deploy/install-services.bat", "arch/deploy/firewall-rules.bat", "arch/deploy/restart-services.bat", "arch/deploy/deploy-watcher.ps1"],
+      "desc": "Backend OutboundClient, proxy endpoints, all deploy scripts updated for Outbound"
+    },
+    {
+      "step": 7,
+      "name": "Build + arch update",
+      "files": ["arch/session-memory.md", "arch/active-work.md"],
+      "desc": "Full solution build, update session memory"
+    }
+  ],
+
+  "verification_questions": [
+    {"category": "DB_SYNC", "question": "outbound_templates, outbound_broadcasts, outbound_messages, outbound_optouts tabloları outbound.sql'de doğru tanımlı mı? FK, index, constraint'ler var mı?"},
+    {"category": "RATE_LIMIT", "question": "RateLimiter tenant-bazlı çalışıyor mu? Limit aşılınca mesaj reject DEĞİL kuyrukta bekliyor mu?"},
+    {"category": "OPT_OUT", "question": "Broadcast gönderiminde opt-out check yapılıyor mu? Opted-out telefona mesaj gönderilmiyor mu?"},
+    {"category": "CALLBACK", "question": "send_message callback'inde phone alanı var mı? Main App hangi numaraya göndereceğini biliyor mu?"},
+    {"category": "TEMPLATE", "question": "Template {{var}} substitution düzgün çalışıyor mu? Eksik variable handle ediliyor mu?"},
+    {"category": "TRIGGER", "question": "Trigger webhook'u template eşleştirmesi yapıyor mu? Eşleşen yoksa INV-OB-008 dönüyor mu?"},
+    {"category": "BACKGROUND", "question": "MessageSenderService IHostedService olarak register edilmiş mi? Graceful shutdown yapıyor mu?"},
+    {"category": "AUTH", "question": "Tüm /api/v1/ endpoint'leri JWT korumalı mı? Backend proxy JWT forwarding yapıyor mu?"},
+    {"category": "DEPLOY", "question": "Tüm deploy scriptleri güncellendi mi? (7 dosya: deploy-bat, install, firewall, restart, watcher, Backend appsettings dev+prod)"},
+    {"category": "ERROR_CODES", "question": "INV-OB-001~010 error code'ları hem errors.md hem ErrorCodes.cs'de tanımlı mı?"}
+  ],
+
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Toplu mesaj gönderirken agent tek tek numaralara kopyala-yapıştır yapıyor",
+      "suggestion": "Broadcast send'den sonra gerçek zamanlı progress bar göster (queued → sent → delivered yüzdeleri)",
+      "aha_moment": "Agent 'Gönder' basıyor, 500 mesajın %'si canlı olarak yükseliyor - 'vay, hepsini takip edebiliyorum!'"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni lead geldiğinde karşılama mesajı göndermek için birinin online olması gerekiyor",
+      "suggestion": "Trigger engine: new_lead event'i otomatik karşılama mesajı gönderir (< 5 saniye)",
+      "aha_moment": "Lead formu doldurur, 3 saniyede WhatsApp'tan 'Hoş geldiniz Ali!' mesajı gelir - 'bunlar çok hızlı!'"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "WhatsApp rate limit'e takılıp mesajlar kaybolabilir",
+      "suggestion": "Rate limiter + queue: hiçbir mesaj kaybolmaz, sıraya alınır ve güvenli hızda gönderilir",
+      "aha_moment": "1000 mesajlık kampanya, hepsi teslim edildi, 0 kayıp - 'güvenle gönderebiliyoruz!'"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Müşteri 'STOP' yazınca hala mesaj almaya devam ediyor, şikayet geliyor",
+      "suggestion": "Otomatik opt-out: STOP/DUR/İPTAL algılanır, müşteri listelendir ve bir daha rahatsız edilmez",
+      "aha_moment": "Müşteri 'dur' yazar, anında opt-out kaydı oluşur - 'yasal uyumluluk otomatik!'"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Template mesajlarında müşteri adı yerine {{isim}} gidiyor - utanç verici",
+      "suggestion": "Template engine her mesajı göndermeden önce tüm değişkenleri kontrol eder, eksik varsa bloklar",
+      "aha_moment": "Değişken eksik olan mesaj gönderilmez, agent uyarılır - 'hatalı mesaj müşteriye gitmedi!'"
+    }
+  ],
+
+  "git_diff": {
+    "sha256": "0A5D0C41ADC83ECC296B52AC119C1587A3E26016D438A501FC48440359C74D34",
+    "full_path": "arch/plans/diffs/20260212-outbound-service.diff",
+    "stats": {
+      "insertions": 11574,
+      "deletions": 43,
+      "files_count": 36
+    }
+  },
+
+  "files_changed": [
+    {"path": "InvektoServis.sln", "is_new": false},
+    {"path": "arch/active-work.md", "is_new": false},
+    {"path": "arch/contracts/outbound-broadcast.json", "is_new": true},
+    {"path": "arch/db/outbound.sql", "is_new": true},
+    {"path": "arch/deploy/appsettings.Production.Backend.json", "is_new": false},
+    {"path": "arch/deploy/deploy-watcher.ps1", "is_new": false},
+    {"path": "arch/deploy/firewall-rules.bat", "is_new": false},
+    {"path": "arch/deploy/install-services.bat", "is_new": false},
+    {"path": "arch/deploy/restart-services.bat", "is_new": false},
+    {"path": "arch/errors.md", "is_new": false},
+    {"path": "arch/plans/20260212-outbound-service.json", "is_new": true},
+    {"path": "arch/session-memory.md", "is_new": false},
+    {"path": "dev-to-invekto-services.bat", "is_new": false},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false},
+    {"path": "src/Invekto.Backend/Services/OutboundClient.cs", "is_new": true},
+    {"path": "src/Invekto.Backend/appsettings.json", "is_new": false},
+    {"path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Invekto.Outbound.csproj", "is_new": true},
+    {"path": "src/Invekto.Outbound/Middleware/JwtAuthMiddleware.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Middleware/TrafficLoggingMiddleware.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/OptOutManager.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/RateLimiter.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/TemplateEngine.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/TriggerProcessor.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/appsettings.json", "is_new": true},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/TemplateDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/Services/TemplateSubstitution.cs", "is_new": true},
+    {"path": "arch/plans/diffs/20260212-outbound-service.diff", "is_new": true},
+    {"path": "src/Invekto.AgentAI/Services/TemplateEngine.cs", "is_new": false}
+  ],
+
+  "build": {
+    "timestamp": "2026-02-12T21:10:00Z",
+    "result": "PASS",
+    "errors": 0,
+    "warnings": 10
+  },
+
+  "updated_at": "2026-02-12T21:30:00Z",
+
+  "codex_review": {
+    "iteration": 3,
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "history": [
+      {"iteration": 1, "verdict": "FAIL", "issues": ["CQ2: Silent catch", "CQ4: Duplicate TemplateEngine", "CQ6: N+1 queries", "Q7: Shutdown race"]},
+      {"iteration": 2, "verdict": "FAIL", "issues": ["CQ4: AgentAI still not using shared utility"]},
+      {"iteration": 3, "verdict": "PASS", "issues": []}
+    ]
+  }
+}

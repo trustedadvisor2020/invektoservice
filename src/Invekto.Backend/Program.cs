@@ -29,6 +29,10 @@ var agentAIUrl = builder.Configuration["Microservice:AgentAI:Url"]
     ?? $"http://localhost:{ServiceConstants.AgentAIPort}";
 var agentAILogPath = builder.Configuration["Microservice:AgentAI:LogPath"];
 var agentAISuggestTimeoutMs = builder.Configuration.GetValue<int>("Microservice:AgentAI:SuggestTimeoutMs", 15000);
+var outboundUrl = builder.Configuration["Microservice:Outbound:Url"]
+    ?? $"http://localhost:{ServiceConstants.OutboundPort}";
+var outboundLogPath = builder.Configuration["Microservice:Outbound:LogPath"];
+var outboundTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Outbound:TimeoutMs", 10000);
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -46,6 +50,10 @@ if (!string.IsNullOrEmpty(automationLogPath))
 if (!string.IsNullOrEmpty(agentAILogPath))
 {
     logPaths.Add(agentAILogPath);
+}
+if (!string.IsNullOrEmpty(outboundLogPath))
+{
+    logPaths.Add(outboundLogPath);
 }
 builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
 
@@ -78,6 +86,13 @@ builder.Services.AddHttpClient<AgentAIClient>(client =>
 {
     client.BaseAddress = new Uri(agentAIUrl);
     client.Timeout = TimeSpan.FromMilliseconds(agentAISuggestTimeoutMs);
+});
+
+// Configure Outbound HTTP client (GR-1.3)
+builder.Services.AddHttpClient<OutboundClient>(client =>
+{
+    client.BaseAddress = new Uri(outboundUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
 });
 
 // ============================================
@@ -133,7 +148,7 @@ app.UseTrafficLogging();
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -171,7 +186,7 @@ bool ValidateOpsAuth(HttpContext ctx)
 }
 
 // OPS endpoint - Stage-0 troubleshooting dashboard
-app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, LogReader logReader) =>
+app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, LogReader logReader) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -182,6 +197,7 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
     var chatHealthy = await chatClient.CheckHealthAsync();
     var autoHealthy = await automationClient.CheckHealthAsync();
     var agentAIHealthy = await agentAIClient.CheckHealthAsync();
+    var outboundHealthy = await outboundClient.CheckHealthAsync();
 
     var ops = new
     {
@@ -192,7 +208,8 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
             backend = new { status = "ok" },
             chatAnalysis = new { status = chatHealthy ? "ok" : "unavailable" },
             automation = new { status = autoHealthy ? "ok" : "unavailable" },
-            agentAI = new { status = agentAIHealthy ? "ok" : "unavailable" }
+            agentAI = new { status = agentAIHealthy ? "ok" : "unavailable" },
+            outbound = new { status = outboundHealthy ? "ok" : "unavailable" }
         },
         info = new
         {
@@ -355,7 +372,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -372,7 +389,7 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         name = ServiceConstants.BackendServiceName,
         status = "ok",
         responseTimeMs = 0,
-        uptimeSeconds = (long?)null, // Not tracked
+        uptimeSeconds = (long?)null,
         lastCheck = now
     });
 
@@ -386,7 +403,7 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         name = ServiceConstants.ChatAnalysisServiceName,
         status = chatHealthy ? "ok" : "unavailable",
         responseTimeMs = chatHealthy ? (int?)sw.ElapsedMilliseconds : null,
-        uptimeSeconds = (long?)null, // Not tracked
+        uptimeSeconds = (long?)null,
         lastCheck = now,
         error = chatHealthy ? null : "Service unreachable"
     });
@@ -419,6 +436,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = agentAIHealthy ? null : "Service unreachable"
+    });
+
+    // Outbound - check health with timing (GR-1.3)
+    var swOutbound = System.Diagnostics.Stopwatch.StartNew();
+    var outboundHealthy = await outboundClient.CheckHealthAsync();
+    swOutbound.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.OutboundServiceName,
+        status = outboundHealthy ? "ok" : "unavailable",
+        responseTimeMs = outboundHealthy ? (int?)swOutbound.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = outboundHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -570,6 +602,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         "Invekto.ChatAnalysis" => "Invekto.Microservice.Chat",
         "Invekto.Automation" => "InvektoAutomation",
         "Invekto.AgentAI" => "InvektoAgentAI",
+        "Invekto.Outbound" => "InvektoOutbound",
         _ => null
     };
 
@@ -623,7 +656,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -669,6 +702,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await agentAIClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "outbound")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await outboundClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -905,7 +953,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -929,6 +977,19 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/agent-assist/feedback", Description = "Agent feedback proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
             // Automation proxy endpoint
             new() { Method = "POST", Path = "/api/v1/automation/webhook", Description = "Webhook event proxy (Backend -> Automation)", Auth = "Bearer", Category = "API" },
+            // Outbound proxy endpoints (GR-1.3)
+            new() { Method = "POST", Path = "/api/v1/outbound/broadcast/send", Description = "Broadcast send proxy (Backend -> Outbound)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/outbound/broadcast/{broadcastId}/status", Description = "Broadcast status proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/webhook/trigger", Description = "Trigger event proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/webhook/delivery-status", Description = "Delivery status proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/webhook/message", Description = "Incoming message proxy (opt-out)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/outbound/templates", Description = "List templates proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/templates", Description = "Create template proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/outbound/templates/{id}", Description = "Update template proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "DELETE", Path = "/api/v1/outbound/templates/{id}", Description = "Deactivate template proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/outbound/optout", Description = "Add opt-out proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "DELETE", Path = "/api/v1/outbound/optout/{phone}", Description = "Remove opt-out proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/outbound/optout/check/{phone}", Description = "Check opt-out proxy", Auth = "Bearer", Category = "API" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
@@ -963,6 +1024,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch AgentAI endpoints (internal call)
     var agentAIEndpoints = await agentAIClient.GetEndpointsAsync();
 
+    // Fetch Outbound endpoints (internal call, GR-1.3)
+    var outboundEndpoints = await outboundClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -975,6 +1039,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (agentAIEndpoints != null)
     {
         services.Add(agentAIEndpoints);
+    }
+    if (outboundEndpoints != null)
+    {
+        services.Add(outboundEndpoints);
     }
 
     return Results.Ok(new { services });
@@ -1274,6 +1342,115 @@ app.MapPost("/api/v1/automation/webhook", async (HttpContext ctx, AutomationClie
         await ctx.Response.WriteAsync(body);
     return Results.Empty;
 });
+
+// ============================================
+// OUTBOUND PROXY ENDPOINTS (GR-1.3)
+// ============================================
+
+// Generic outbound proxy helper
+async Task<IResult> OutboundProxyPost(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var (statusCode, body) = await obClient.ProxyPostAsync(targetPath, requestBody, authHeader, requestId);
+    sw.Stop();
+
+    jsonLog.StepInfo($"Outbound proxy POST {targetPath}: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> OutboundProxyGet(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var (statusCode, body) = await obClient.ProxyGetAsync(targetPath, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> OutboundProxyPut(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var (statusCode, body) = await obClient.ProxyPutAsync(targetPath, requestBody, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> OutboundProxyDelete(HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var (statusCode, body) = await obClient.ProxyDeleteAsync(targetPath, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+// Broadcast
+app.MapPost("/api/v1/outbound/broadcast/send", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/broadcast/send"));
+
+app.MapGet("/api/v1/outbound/broadcast/{broadcastId}/status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string broadcastId) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/broadcast/{broadcastId}/status"));
+
+// Webhooks
+app.MapPost("/api/v1/outbound/webhook/trigger", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/webhook/trigger"));
+
+app.MapPost("/api/v1/outbound/webhook/delivery-status", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/webhook/delivery-status"));
+
+app.MapPost("/api/v1/outbound/webhook/message", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/webhook/message"));
+
+// Templates
+app.MapGet("/api/v1/outbound/templates", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, "/api/v1/templates"));
+
+app.MapPost("/api/v1/outbound/templates", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/templates"));
+
+app.MapPut("/api/v1/outbound/templates/{id:int}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, int id) =>
+    await OutboundProxyPut(ctx, obClient, jsonLog, $"/api/v1/templates/{id}"));
+
+app.MapDelete("/api/v1/outbound/templates/{id:int}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, int id) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/templates/{id}"));
+
+// Opt-out
+app.MapPost("/api/v1/outbound/optout", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog) =>
+    await OutboundProxyPost(ctx, obClient, jsonLog, "/api/v1/optout"));
+
+app.MapDelete("/api/v1/outbound/optout/{phone}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string phone) =>
+    await OutboundProxyDelete(ctx, obClient, jsonLog, $"/api/v1/optout/{phone}"));
+
+app.MapGet("/api/v1/outbound/optout/check/{phone}", async (HttpContext ctx, OutboundClient obClient, JsonLinesLogger jsonLog, string phone) =>
+    await OutboundProxyGet(ctx, obClient, jsonLog, $"/api/v1/optout/check/{phone}"));
 
 // SPA fallback - serve index.html for non-API routes (Dashboard routing)
 app.MapFallbackToFile("index.html");

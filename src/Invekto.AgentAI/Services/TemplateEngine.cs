@@ -1,14 +1,16 @@
-using System.Text.RegularExpressions;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 namespace Invekto.AgentAI.Services;
 
-public sealed partial class TemplateEngine
+/// <summary>
+/// AgentAI-specific template engine.
+/// Delegates core {{variable}} substitution to shared TemplateSubstitution.
+/// Adds HTML sanitization for agent-facing content safety.
+/// </summary>
+public sealed class TemplateEngine
 {
     private readonly JsonLinesLogger _logger;
-
-    [GeneratedRegex(@"\{\{(\w+)\}\}", RegexOptions.Compiled)]
-    private static partial Regex VariablePattern();
 
     public TemplateEngine(JsonLinesLogger logger)
     {
@@ -17,23 +19,26 @@ public sealed partial class TemplateEngine
 
     /// <summary>
     /// Replaces {{variable}} placeholders in text with provided values.
-    /// Missing variables are left as-is (not removed, not crashed).
+    /// Values are HTML-sanitized. Missing variables are left as-is.
     /// </summary>
     public string Substitute(string text, Dictionary<string, string>? variables)
     {
         if (string.IsNullOrEmpty(text) || variables == null || variables.Count == 0)
             return text;
 
-        return VariablePattern().Replace(text, match =>
+        // Pre-sanitize values for HTML safety before substitution
+        var sanitized = new Dictionary<string, string>(variables.Count);
+        foreach (var kvp in variables)
         {
-            var varName = match.Groups[1].Value;
-            if (variables.TryGetValue(varName, out var value))
-                return SanitizeValue(value) ?? match.Value;
+            sanitized[kvp.Key] = SanitizeValue(kvp.Value) ?? kvp.Value;
+        }
 
-            // Missing variable -- leave placeholder, log warning
+        var (result, missingVars) = TemplateSubstitution.Substitute(text, sanitized);
+
+        foreach (var varName in missingVars)
             _logger.SystemWarn($"Template variable '{{{{{varName}}}}}' not found in provided variables");
-            return match.Value;
-        });
+
+        return result;
     }
 
     /// <summary>

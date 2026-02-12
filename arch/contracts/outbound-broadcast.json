@@ -1,0 +1,200 @@
+{
+  "$schema": "outbound-broadcast-contract",
+  "version": "1.0",
+  "service": "Invekto.Outbound",
+  "port": 7107,
+  "description": "Outbound broadcast, trigger, template, and opt-out API contracts",
+
+  "endpoints": {
+    "broadcast_send": {
+      "method": "POST",
+      "path": "/api/v1/broadcast/send",
+      "auth": "JWT",
+      "request": {
+        "template_id": { "type": "integer", "required": true, "desc": "Template ID to use" },
+        "recipients": {
+          "type": "array",
+          "required": true,
+          "max_items": 1000,
+          "item": {
+            "phone": { "type": "string", "required": true, "desc": "E.164 format phone" },
+            "variables": { "type": "object", "required": false, "desc": "Template variables per recipient" }
+          }
+        },
+        "scheduled_at": { "type": "string", "format": "ISO8601", "required": false, "desc": "One-time scheduled send" }
+      },
+      "response_202": {
+        "broadcast_id": "uuid",
+        "total_recipients": "integer",
+        "queued": "integer",
+        "skipped_optout": "integer"
+      }
+    },
+
+    "broadcast_status": {
+      "method": "GET",
+      "path": "/api/v1/broadcast/{broadcastId}/status",
+      "auth": "JWT",
+      "response_200": {
+        "broadcast_id": "uuid",
+        "status": "queued|processing|completed|failed",
+        "total_recipients": "integer",
+        "queued": "integer",
+        "sent": "integer",
+        "delivered": "integer",
+        "read": "integer",
+        "failed": "integer",
+        "created_at": "ISO8601",
+        "started_at": "ISO8601|null",
+        "completed_at": "ISO8601|null"
+      }
+    },
+
+    "webhook_trigger": {
+      "method": "POST",
+      "path": "/api/v1/webhook/trigger",
+      "auth": "JWT",
+      "request": {
+        "event": { "type": "string", "required": true, "desc": "new_lead|payment_received|appointment_reminder" },
+        "phone": { "type": "string", "required": true, "desc": "Recipient phone" },
+        "variables": { "type": "object", "required": false, "desc": "Template variables" }
+      },
+      "response_202": {
+        "message_id": "bigint",
+        "template_id": "integer",
+        "template_name": "string"
+      },
+      "response_404": {
+        "error_code": "INV-OB-008",
+        "message": "No matching trigger template"
+      }
+    },
+
+    "webhook_delivery_status": {
+      "method": "POST",
+      "path": "/api/v1/webhook/delivery-status",
+      "auth": "JWT",
+      "request": {
+        "external_message_id": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true, "desc": "sent|delivered|read|failed" },
+        "failed_reason": { "type": "string", "required": false },
+        "timestamp": { "type": "string", "format": "ISO8601", "required": false }
+      },
+      "response_200": {
+        "updated": "boolean"
+      }
+    },
+
+    "webhook_message": {
+      "method": "POST",
+      "path": "/api/v1/webhook/message",
+      "auth": "JWT",
+      "request": {
+        "phone": { "type": "string", "required": true },
+        "message_text": { "type": "string", "required": true }
+      },
+      "response_200": {
+        "opted_out": "boolean",
+        "keyword_matched": "string|null"
+      }
+    },
+
+    "templates_list": {
+      "method": "GET",
+      "path": "/api/v1/templates",
+      "auth": "JWT",
+      "response_200": {
+        "templates": [{
+          "id": "integer",
+          "name": "string",
+          "trigger_event": "string",
+          "message_template": "string",
+          "variables_json": "object|null",
+          "is_active": "boolean",
+          "created_at": "ISO8601",
+          "updated_at": "ISO8601"
+        }]
+      }
+    },
+
+    "template_create": {
+      "method": "POST",
+      "path": "/api/v1/templates",
+      "auth": "JWT",
+      "request": {
+        "name": { "type": "string", "required": true, "max_length": 200 },
+        "trigger_event": { "type": "string", "required": false, "default": "manual" },
+        "message_template": { "type": "string", "required": true },
+        "variables_json": { "type": "object", "required": false }
+      },
+      "response_201": {
+        "id": "integer",
+        "name": "string"
+      }
+    },
+
+    "template_update": {
+      "method": "PUT",
+      "path": "/api/v1/templates/{id}",
+      "auth": "JWT",
+      "request": {
+        "name": { "type": "string", "required": false },
+        "trigger_event": { "type": "string", "required": false },
+        "message_template": { "type": "string", "required": false },
+        "variables_json": { "type": "object", "required": false }
+      },
+      "response_200": {
+        "id": "integer",
+        "updated": true
+      }
+    },
+
+    "template_delete": {
+      "method": "DELETE",
+      "path": "/api/v1/templates/{id}",
+      "auth": "JWT",
+      "desc": "Soft delete: sets is_active=false",
+      "response_200": {
+        "id": "integer",
+        "deactivated": true
+      }
+    },
+
+    "optout_add": {
+      "method": "POST",
+      "path": "/api/v1/optout",
+      "auth": "JWT",
+      "request": {
+        "phone": { "type": "string", "required": true },
+        "reason": { "type": "string", "required": false }
+      },
+      "response_200": {
+        "phone": "string",
+        "opted_out": true
+      }
+    },
+
+    "optout_remove": {
+      "method": "DELETE",
+      "path": "/api/v1/optout/{phone}",
+      "auth": "JWT",
+      "response_200": {
+        "phone": "string",
+        "removed": true
+      }
+    },
+
+    "optout_check": {
+      "method": "GET",
+      "path": "/api/v1/optout/check/{phone}",
+      "auth": "JWT",
+      "response_200": {
+        "phone": "string",
+        "opted_out": "boolean",
+        "opted_out_at": "ISO8601|null"
+      }
+    }
+  },
+
+  "stop_keywords": ["STOP", "DUR", "İPTAL", "IPTAL", "DURDU", "ÇIKIŞ", "CIKIS"]
+}

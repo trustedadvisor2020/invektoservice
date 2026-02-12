@@ -25,6 +25,7 @@ INV-{SERVICE}-{NUMBER}
 | INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
 | DB | Database | Veritabanı hataları |
 | VAL | Validation | Validasyon hataları |
+| OB | Outbound | GR-1.3: Broadcast & trigger engine hataları |
 | EXT | External | Dış servis hataları |
 
 ---
@@ -128,6 +129,23 @@ INV-{SERVICE}-{NUMBER}
 | INV-INT-002 | Callback to Main App failed | Main App'e bildirim gönderilemedi. |
 | INV-INT-003 | Unknown webhook event type | Bilinmeyen event tipi. |
 | INV-INT-004 | Tenant not found in registry | Bu tenant kayıtlı değil. |
+
+---
+
+## OB - Outbound Errors (GR-1.3)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-OB-001 | Invalid broadcast payload | Gecersiz toplu mesaj istegi. |
+| INV-OB-002 | Template not found | Mesaj sablonu bulunamadi. |
+| INV-OB-003 | Rate limit exceeded (queued) | Gonderim limiti asildi, mesajlar kuyrukta bekliyor. |
+| INV-OB-004 | Recipient opted out | Alici mesaj almak istemiyor (opt-out). |
+| INV-OB-005 | Broadcast not found | Toplu mesaj kaydi bulunamadi. |
+| INV-OB-006 | Delivery status update failed | Teslimat durumu guncellenemedi. |
+| INV-OB-007 | Invalid template payload | Gecersiz sablon formati. |
+| INV-OB-008 | No matching trigger template | Bu event icin esle&#351;en sablon bulunamadi. |
+| INV-OB-009 | Message send callback failed | Mesaj gonderim callback'i basarisiz oldu. |
+| INV-OB-010 | Too many recipients (max 1000) | Alici sayisi siniri asildi (max 1000). |
 
 ---
 

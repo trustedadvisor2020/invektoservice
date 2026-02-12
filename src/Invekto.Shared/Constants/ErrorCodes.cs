@@ -55,6 +55,18 @@ public static class ErrorCodes
     public const string AgentAIClaudeTimeout = "INV-AA-005";
     public const string AgentAIInvalidFeedback = "INV-AA-006";
 
+    // Outbound errors (INV-OB-xxx) -- GR-1.3
+    public const string OutboundInvalidBroadcastPayload = "INV-OB-001";
+    public const string OutboundTemplateNotFound = "INV-OB-002";
+    public const string OutboundRateLimitExceeded = "INV-OB-003";
+    public const string OutboundRecipientOptedOut = "INV-OB-004";
+    public const string OutboundBroadcastNotFound = "INV-OB-005";
+    public const string OutboundDeliveryStatusFailed = "INV-OB-006";
+    public const string OutboundInvalidTemplatePayload = "INV-OB-007";
+    public const string OutboundNoMatchingTriggerTemplate = "INV-OB-008";
+    public const string OutboundMessageSendCallbackFailed = "INV-OB-009";
+    public const string OutboundTooManyRecipients = "INV-OB-010";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

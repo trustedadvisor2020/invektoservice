@@ -27,6 +27,7 @@ set "REMOTE_BACKEND=/e/Invekto/Backend/current"
 set "REMOTE_CHATANALYSIS=/e/Invekto/ChatAnalysis/current"
 set "REMOTE_AUTOMATION=/e/Invekto/Automation/current"
 set "REMOTE_AGENTAI=/e/Invekto/AgentAI/current"
+set "REMOTE_OUTBOUND=/e/Invekto/Outbound/current"
 set "REMOTE_SIMULATOR=/e/Invekto/Simulator"
 
 REM Local paths
@@ -36,6 +37,7 @@ set "LOCAL_BACKEND=%LOCAL_DEPLOY%\Backend"
 set "LOCAL_CHATANALYSIS=%LOCAL_DEPLOY%\ChatAnalysis"
 set "LOCAL_AUTOMATION=%LOCAL_DEPLOY%\Automation"
 set "LOCAL_AGENTAI=%LOCAL_DEPLOY%\AgentAI"
+set "LOCAL_OUTBOUND=%LOCAL_DEPLOY%\Outbound"
 set "LOCAL_SIMULATOR=%~dp0tools\simulator"
 
 REM Check WinSCP exists
@@ -51,6 +53,7 @@ if not exist "!LOCAL_BACKEND!" mkdir "!LOCAL_BACKEND!"
 if not exist "!LOCAL_CHATANALYSIS!" mkdir "!LOCAL_CHATANALYSIS!"
 if not exist "!LOCAL_AUTOMATION!" mkdir "!LOCAL_AUTOMATION!"
 if not exist "!LOCAL_AGENTAI!" mkdir "!LOCAL_AGENTAI!"
+if not exist "!LOCAL_OUTBOUND!" mkdir "!LOCAL_OUTBOUND!"
 
 echo ============================================
 echo [1/5] Building Backend...
@@ -105,10 +108,23 @@ if errorlevel 1 (
 echo [OK] AgentAI built to !LOCAL_AGENTAI!
 echo.
 
+echo ============================================
+echo [5/5] Building Outbound...
+echo ============================================
+echo.
+
+dotnet publish src/Invekto.Outbound/Invekto.Outbound.csproj -c Release -o "!LOCAL_OUTBOUND!" --self-contained false
+if errorlevel 1 (
+    echo [ERROR] Outbound build failed!
+    goto :error_exit
+)
+echo [OK] Outbound built to !LOCAL_OUTBOUND!
+echo.
+
 REM Q: Create build marker
 for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
 for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation','AgentAI') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
 echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
 echo.
 
@@ -147,10 +163,12 @@ echo Local Backend:      !LOCAL_BACKEND!
 echo Local ChatAnalysis: !LOCAL_CHATANALYSIS!
 echo Local Automation:   !LOCAL_AUTOMATION!
 echo Local AgentAI:      !LOCAL_AGENTAI!
+echo Local Outbound:     !LOCAL_OUTBOUND!
 echo Remote Backend:     %REMOTE_BACKEND%
 echo Remote ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo Remote Automation:  %REMOTE_AUTOMATION%
 echo Remote AgentAI:     %REMOTE_AGENTAI%
+echo Remote Outbound:    %REMOTE_OUTBOUND%
 echo.
 echo Mode: Synchronize (only changed files)
 
@@ -167,6 +185,7 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo mkdir "%REMOTE_CHATANALYSIS%"
     echo mkdir "%REMOTE_AUTOMATION%"
     echo mkdir "%REMOTE_AGENTAI%"
+    echo mkdir "%REMOTE_OUTBOUND%"
     echo mkdir "%REMOTE_SIMULATOR%"
     echo option batch abort
     echo echo Uploading Backend to STAGING...
@@ -177,6 +196,8 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo synchronize remote "!LOCAL_AUTOMATION!" "%REMOTE_AUTOMATION%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading AgentAI to STAGING...
     echo synchronize remote "!LOCAL_AGENTAI!" "%REMOTE_AGENTAI%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+    echo echo Uploading Outbound to STAGING...
+    echo synchronize remote "!LOCAL_OUTBOUND!" "%REMOTE_OUTBOUND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading Simulator to STAGING...
     echo synchronize remote "!LOCAL_SIMULATOR!" "%REMOTE_SIMULATOR%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|node_modules/;.env"
     echo echo Uploading build marker...
@@ -246,6 +267,7 @@ echo   Backend:      %REMOTE_BACKEND%
 echo   ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo   Automation:   %REMOTE_AUTOMATION%
 echo   AgentAI:      %REMOTE_AGENTAI%
+echo   Outbound:     %REMOTE_OUTBOUND%
 echo   Simulator:    %REMOTE_SIMULATOR%
 echo.
 echo ============================================

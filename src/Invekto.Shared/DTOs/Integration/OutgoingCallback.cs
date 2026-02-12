@@ -77,6 +77,19 @@ public sealed class CallbackData
     /// <summary>Error message when processing fails</summary>
     [JsonPropertyName("error_message")]
     public string? ErrorMessage { get; init; }
+
+    // GR-1.3 Outbound: fields for send_message callback
+    /// <summary>Recipient phone number (E.164 format) for outbound message delivery</summary>
+    [JsonPropertyName("phone")]
+    public string? Phone { get; init; }
+
+    /// <summary>Broadcast ID that this message belongs to (null for trigger-based)</summary>
+    [JsonPropertyName("broadcast_id")]
+    public Guid? BroadcastId { get; init; }
+
+    /// <summary>Outbound message record ID for delivery status correlation</summary>
+    [JsonPropertyName("outbound_message_id")]
+    public long? OutboundMessageId { get; init; }
 }
 
 /// <summary>
