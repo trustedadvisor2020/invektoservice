@@ -22,8 +22,8 @@ export const api = {
   decodeToken: (token) => request('POST', '/api/jwt/decode', { token }),
 
   // Webhook
-  sendWebhook: (payload, jwt_token, target_url) =>
-    request('POST', '/api/webhook/send', { payload, jwt_token, target_url }),
+  sendWebhook: (payload, jwt_token, target_url, target_service) =>
+    request('POST', '/api/webhook/send', { payload, jwt_token, target_url, target_service }),
   sendRequest: (params) => request('POST', '/api/webhook/request', params),
   getServices: () => request('GET', '/api/webhook/services'),
 

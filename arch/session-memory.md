@@ -4,9 +4,9 @@
 
 ## Last Update
 
-- **Date:** 2026-02-11
-- **Status:** AgentAI Service DONE (Codex 2 iter PASS)
-- **Last Task:** Invekto.AgentAI microservice (Port 7105). Sync API for AI reply suggestion, intent detection, template variable substitution, per-agent feedback learning. Claude Haiku integration. Backend proxy pattern (15s timeout).
+- **Date:** 2026-02-12
+- **Status:** Ops tamamlandı - tüm servisler production'da çalışıyor
+- **Last Task:** Production deploy doğrulama. Backend:5000 (external OK), Automation:7108 (external OK), ChatAnalysis:7101 (localhost-only OK), AgentAI:7105 (localhost-only OK). Firewall kuralları tasarıma uygun.
 
 ---
 
@@ -90,17 +90,19 @@
 - [x] ~~Staging deploy testi~~ (Tamamlandi - FTPES + health OK)
 - [x] ~~appsettings.Production.json~~ (Tamamlandi - Backend + ChatAnalysis)
 - [x] ~~Windows Service kurulumu~~ (Tamamlandi - NSSM, auto-start, auto-restart)
-- [ ] Q: JWT claims dogrula (Main App token yapisi)
-- [ ] Q: tenant-registry.sql calistir (pgAdmin'de)
+- [x] ~~Q: JWT claims dogrula (Main App token yapisi)~~ (Tamamlandi)
+- [x] ~~Q: tenant-registry.sql calistir~~ (Tamamlandi)
 - [ ] Callback URL per-request: MainAppCallbackClient zaten destekliyor
 - [x] ~~GR-1.1 Chatbot/Flow Builder~~ (Tamamlandi - Invekto.Automation servisi)
 - [x] ~~Deploy scripts~~ (Tamamlandi - install-services, restart-services, firewall, deploy-watcher)
 - [x] ~~Automation Dashboard entegrasyonu~~ (Tamamlandi - HealthCard, DependencyMap, TestPanel, AutomationClient)
 - [x] ~~Simulator Tool~~ (Tamamlandi - tools/simulator/, Port 4500, Codex 3 iter PASS)
 - [x] ~~GR-1.11 AgentAI Service~~ (Tamamlandi - Port 7105, Codex 2 iter PASS + Q FORCE PASS)
-- [ ] Q: agentai.sql calistir (pgAdmin'de)
-- [ ] Q: AgentAI appsettings.Production.json doldur (REPLACE_WITH_ACTUAL_KEY)
-- [ ] Q: AgentAI deploy + Windows Service kurulumu (InvektoAgentAI)
+- [x] ~~Simulator Backend Proxy Architecture~~ (Tamamlandi - Backend proxy, E2E scenarios, health checker, Codex 5 iter PASS)
+- [x] ~~Q: agentai.sql calistir~~ (Tamamlandi)
+- [x] ~~Q: AgentAI appsettings.Production.json doldur~~ (Tamamlandi)
+- [x] ~~Q: AgentAI deploy + Windows Service kurulumu~~ (Tamamlandi - InvektoAgentAI SERVICE_RUNNING)
+- [ ] **GR-1.3 Outbound Service** (Port 7107) - Broadcast, trigger, template engine, rate limiting
 
 ### Known Issues
 - (Henüz yok)
@@ -128,6 +130,7 @@
 | 2026-02-11 | Sync API (Backend proxy) | Main App -> Backend -> AgentAI, 15s timeout |
 | 2026-02-11 | Per-agent feedback learning | Son 20 interaction Claude prompt'a enjekte, kisisel oneri |
 | 2026-02-11 | Async feedback (fire-and-forget) | Agent accept/edit/reject sonrasi POST, response beklenmez |
+| 2026-02-11 | Backend proxy for simulator | Tum simulator trafigi Backend:5000 uzerinden, internal servisler localhost-only |
 
 ---
 
@@ -165,15 +168,13 @@ src/
 ## Context for Next Session
 
 Sonraki session'da:
-1. Q: JWT claims dogrula (Main App token yapisi)
-2. Q: tenant-registry.sql + automation.sql + agentai.sql calistir (pgAdmin'de)
-3. Q: Sunucuda appsettings.Production.json degerlerini doldur (REPLACE_WITH_ACTUAL_KEY) - Backend, ChatAnalysis, Automation, AgentAI
-4. Q: `dev-to-invekto-services.bat` guncelle (AgentAI eklenmeli) + calistir (deploy)
-5. Q: Sunucuda `install-services.bat` guncelle (InvektoAgentAI eklenmeli) + calistir
-6. Q: Firewall port 7105 ac (AgentAI)
-7. Disaridan health test: http://services.invekto.com:7105/health + http://services.invekto.com:7108/health
-8. Dashboard kontrol: http://services.invekto.com:5000 (4 servis gorunmeli)
-9. Roadmap: Sonraki servis hangisi? (Outbound:7107, Integrations:7106, veya baska)
+1. **GR-1.3 Invekto.Outbound** mikroservisi (Port 7107) implement et
+2. Scope: Broadcast/toplu mesaj, trigger engine, template engine, rate limiting, opt-out, delivery tracking
+3. DB tablolari: outbound_templates, outbound_messages, outbound_optouts (roadmap-phases.md'de tanimli)
+4. Mimari: Backend proxy pattern (Main App -> Backend:5000 -> Outbound:7107, localhost-only)
+5. Mevcut pattern'leri takip et: Automation + AgentAI servisleri referans
+6. Firewall: localhost-only (remoteip=127.0.0.1) - Backend proxy uzerinden erisim
+7. Deploy sonrasi: outbound.sql calistir, appsettings.Production.json doldur, NSSM servis kur
 
 ---
 

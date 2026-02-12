@@ -1,0 +1,2471 @@
+﻿diff --git a/InvektoServis.sln b/InvektoServis.sln
+index 3634120..9c98ea7 100644
+--- a/InvektoServis.sln
++++ b/InvektoServis.sln
+@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.ChatAnalysis.Tests"
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Automation", "src\Invekto.Automation\Invekto.Automation.csproj", "{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}"
+ EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.AgentAI", "src\Invekto.AgentAI\Invekto.AgentAI.csproj", "{B3A1D2E4-5F67-4890-AB12-CD34EF56A789}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -52,6 +54,10 @@ Global
+ 		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+ 		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+ 		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0}.Release|Any CPU.Build.0 = Release|Any CPU
++		{B3A1D2E4-5F67-4890-AB12-CD34EF56A789}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{B3A1D2E4-5F67-4890-AB12-CD34EF56A789}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{B3A1D2E4-5F67-4890-AB12-CD34EF56A789}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{B3A1D2E4-5F67-4890-AB12-CD34EF56A789}.Release|Any CPU.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ 	GlobalSection(NestedProjects) = preSolution
+ 		{15F8FD75-7433-4D26-A091-8B804B50C75C} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+@@ -60,5 +66,6 @@ Global
+ 		{E280C96A-76FA-4D3D-BAA5-27BDBEA71C9D} = {4858822B-FBD3-429F-9855-560EA526C9B1}
+ 		{0EDF88EB-3AA1-4437-A4EF-40AF8F8ABB20} = {4858822B-FBD3-429F-9855-560EA526C9B1}
+ 		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
++		{B3A1D2E4-5F67-4890-AB12-CD34EF56A789} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+ 	EndGlobalSection
+ EndGlobal
+diff --git a/arch/active-work.md b/arch/active-work.md
+index be085a9..0797178 100644
+--- a/arch/active-work.md
++++ b/arch/active-work.md
+@@ -6,7 +6,7 @@
+ 
+ | Slug | Status | Started | Description |
+ |------|--------|---------|-------------|
+-| (none) | - | - | - |
++| 20260211-agentai-service | IN_PROGRESS | 2026-02-11 | Invekto.AgentAI microservice (port 7105) - Sync API agent assist + per-agent feedback learning |
+ 
+ ---
+ 
+diff --git a/arch/contracts/agentai-suggest.json b/arch/contracts/agentai-suggest.json
+new file mode 100644
+index 0000000..8a99d3c
+--- /dev/null
++++ b/arch/contracts/agentai-suggest.json
+@@ -0,0 +1,226 @@
++{
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
++  "$id": "agentai-suggest-v1.json",
++  "title": "AgentAI Suggest Reply Contract",
++  "description": "Invekto.AgentAI sync API contract. Main App -> Backend -> AgentAI. Agent requests AI reply suggestion, waits for response.",
++  "version": "1.0",
++
++  "endpoints": {
++    "suggest_reply": {
++      "method": "POST",
++      "path": "/api/v1/suggest",
++      "proxy_path": "/api/v1/agent-assist/suggest",
++      "auth": "Bearer JWT (shared HMAC-SHA256 key)",
++      "response": "200 OK (sync -- agent waits for response)",
++      "timeout": "15s (Claude API latency)"
++    },
++    "feedback": {
++      "method": "POST",
++      "path": "/api/v1/feedback",
++      "proxy_path": "/api/v1/agent-assist/feedback",
++      "auth": "Bearer JWT (shared HMAC-SHA256 key)",
++      "response": "202 Accepted (fire-and-forget)"
++    }
++  },
++
++  "suggest_request": {
++    "type": "object",
++    "required": ["chat_id", "message_text"],
++    "properties": {
++      "chat_id": {
++        "type": "integer",
++        "description": "Conversation/chat ID in Main App"
++      },
++      "message_text": {
++        "type": "string",
++        "description": "Current customer message that needs a reply suggestion"
++      },
++      "customer_name": {
++        "type": "string",
++        "description": "Customer name if known (for template variables)"
++      },
++      "channel": {
++        "type": "string",
++        "enum": ["whatsapp", "web", "instagram", "facebook", "telegram", "email", "sms"],
++        "description": "Communication channel"
++      },
++      "conversation_history": {
++        "type": "array",
++        "description": "Last N messages for context (recommended: 10-20)",
++        "items": {
++          "type": "object",
++          "required": ["source", "text"],
++          "properties": {
++            "source": {
++              "type": "string",
++              "enum": ["CUSTOMER", "AGENT"],
++              "description": "Who sent the message"
++            },
++            "text": {
++              "type": "string",
++              "description": "Message content"
++            },
++            "timestamp": {
++              "type": "string",
++              "format": "date-time",
++              "description": "When message was sent"
++            }
++          }
++        }
++      },
++      "templates": {
++        "type": "array",
++        "description": "Available reply templates from Main App (optional)",
++        "items": {
++          "type": "object",
++          "properties": {
++            "id": { "type": "integer" },
++            "name": { "type": "string" },
++            "text": { "type": "string", "description": "Template text with {{var}} placeholders" }
++          }
++        }
++      },
++      "template_variables": {
++        "type": "object",
++        "description": "Variable values for template substitution: { \"isim\": \"Ahmet\", \"firma\": \"ABC Ltd\" }",
++        "additionalProperties": { "type": "string" }
++      },
++      "language": {
++        "type": "string",
++        "default": "tr",
++        "description": "Response language (ISO 639-1)"
++      }
++    }
++  },
++
++  "suggest_response": {
++    "type": "object",
++    "properties": {
++      "suggestion_id": {
++        "type": "string",
++        "format": "uuid",
++        "description": "Unique ID for this suggestion (used in feedback correlation)"
++      },
++      "suggested_reply": {
++        "type": "string",
++        "description": "AI-generated reply suggestion"
++      },
++      "intent": {
++        "type": "string",
++        "description": "Detected customer intent (e.g., price_inquiry, shipping_inquiry, appointment, complaint, general_question, greeting, return_request, product_info)"
++      },
++      "confidence": {
++        "type": "number",
++        "minimum": 0,
++        "maximum": 1,
++        "description": "AI confidence score for the suggestion"
++      },
++      "processing_time_ms": {
++        "type": "integer",
++        "description": "How long AgentAI took to generate the suggestion"
++      },
++      "model": {
++        "type": "string",
++        "description": "Claude model used (e.g., claude-haiku-4-5-20251001)"
++      }
++    }
++  },
++
++  "feedback_request": {
++    "type": "object",
++    "required": ["suggestion_id", "agent_action"],
++    "properties": {
++      "suggestion_id": {
++        "type": "string",
++        "format": "uuid",
++        "description": "The suggestion_id from the suggest response"
++      },
++      "agent_action": {
++        "type": "string",
++        "enum": ["accepted", "edited", "rejected"],
++        "description": "What the agent did with the suggestion"
++      },
++      "final_reply_text": {
++        "type": "string",
++        "description": "The text agent actually sent (required for 'edited', null for 'rejected')"
++      }
++    }
++  },
++
++  "feedback_response": {
++    "type": "object",
++    "properties": {
++      "status": { "type": "string", "const": "accepted" },
++      "suggestion_id": { "type": "string" }
++    }
++  },
++
++  "error_responses": {
++    "400_invalid_payload": {
++      "error_code": "INV-AA-001",
++      "message": "Invalid request: message_text is required"
++    },
++    "400_no_context": {
++      "error_code": "INV-AA-004",
++      "message": "No conversation context provided"
++    },
++    "400_invalid_feedback": {
++      "error_code": "INV-AA-006",
++      "message": "Invalid feedback: suggestion_id and agent_action required"
++    },
++    "500_claude_error": {
++      "error_code": "INV-AA-002",
++      "message": "Reply generation failed"
++    },
++    "504_claude_timeout": {
++      "error_code": "INV-AA-005",
++      "message": "AI service timeout"
++    }
++  },
++
++  "examples": {
++    "suggest_request": {
++      "chat_id": 12345,
++      "message_text": "Implant fiyati ne kadar?",
++      "customer_name": "Ahmet Yilmaz",
++      "channel": "whatsapp",
++      "conversation_history": [
++        { "source": "CUSTOMER", "text": "Merhaba", "timestamp": "2026-02-11T10:00:00Z" },
++        { "source": "AGENT", "text": "Merhaba, nasil yardimci olabilirim?", "timestamp": "2026-02-11T10:00:05Z" },
++        { "source": "CUSTOMER", "text": "Implant fiyati ne kadar?", "timestamp": "2026-02-11T10:00:30Z" }
++      ],
++      "templates": [
++        { "id": 1, "name": "Fiyat Bilgisi", "text": "Merhaba {{isim}}, {{tedavi}} fiyatlarimiz {{fiyat_araligi}} arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?" }
++      ],
++      "template_variables": {
++        "isim": "Ahmet",
++        "tedavi": "implant",
++        "fiyat_araligi": "15.000-45.000 TL"
++      },
++      "language": "tr"
++    },
++    "suggest_response": {
++      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++      "suggested_reply": "Merhaba Ahmet, implant fiyatlarimiz 15.000-45.000 TL arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?",
++      "intent": "price_inquiry",
++      "confidence": 0.92,
++      "processing_time_ms": 1850,
++      "model": "claude-haiku-4-5-20251001"
++    },
++    "feedback_accepted": {
++      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++      "agent_action": "accepted",
++      "final_reply_text": null
++    },
++    "feedback_edited": {
++      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++      "agent_action": "edited",
++      "final_reply_text": "Merhaba Ahmet Bey, implant tedavimiz 15.000 TL'den basliyor. Size ozel inceleme icin randevu olusturayim mi?"
++    },
++    "feedback_rejected": {
++      "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++      "agent_action": "rejected",
++      "final_reply_text": null
++    }
++  }
++}
+diff --git a/arch/db/agentai.sql b/arch/db/agentai.sql
+new file mode 100644
+index 0000000..b02dfff
+--- /dev/null
++++ b/arch/db/agentai.sql
+@@ -0,0 +1,72 @@
++-- =============================================================
++-- Invekto.AgentAI Database Schema
++-- Service: Invekto.AgentAI (port 7105)
++-- Database: invekto (PostgreSQL, shared instance)
++-- Convention: snake_case for all identifiers
++-- =============================================================
++
++-- Depends on: tenant-registry.sql (tenant_registry table)
++
++-- =============================================================
++-- suggest_reply_log: Logs every AI suggestion + agent feedback
++-- =============================================================
++
++CREATE TABLE IF NOT EXISTS suggest_reply_log (
++    id                      BIGSERIAL PRIMARY KEY,
++    suggestion_id           UUID NOT NULL UNIQUE,
++    tenant_id               INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
++    agent_id                INTEGER NOT NULL,
++    chat_id                 INTEGER NOT NULL,
++    channel                 VARCHAR(20),
++    language                VARCHAR(5) NOT NULL DEFAULT 'tr',
++
++    -- Request context
++    message_text            TEXT NOT NULL,
++    conversation_length     INTEGER NOT NULL DEFAULT 0,
++
++    -- AI response
++    suggested_reply         TEXT,
++    intent                  VARCHAR(50),
++    confidence              NUMERIC(4,3),
++    model                   VARCHAR(100),
++    processing_time_ms      INTEGER,
++
++    -- Agent feedback (updated via POST /api/v1/feedback)
++    agent_action            VARCHAR(20) DEFAULT 'pending',
++    final_reply_text        TEXT,
++    feedback_received_at    TIMESTAMPTZ,
++
++    -- Timestamps
++    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++
++    -- Constraints
++    CONSTRAINT chk_agent_action CHECK (agent_action IN ('pending', 'accepted', 'edited', 'rejected')),
++    CONSTRAINT chk_confidence CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1))
++);
++
++-- Indexes for common queries
++CREATE INDEX IF NOT EXISTS idx_suggest_log_tenant_agent
++    ON suggest_reply_log (tenant_id, agent_id, created_at DESC);
++
++CREATE INDEX IF NOT EXISTS idx_suggest_log_suggestion_id
++    ON suggest_reply_log (suggestion_id);
++
++CREATE INDEX IF NOT EXISTS idx_suggest_log_chat
++    ON suggest_reply_log (tenant_id, chat_id, created_at DESC);
++
++CREATE INDEX IF NOT EXISTS idx_suggest_log_feedback
++    ON suggest_reply_log (tenant_id, agent_id, agent_action)
++    WHERE agent_action != 'pending';
++
++-- =============================================================
++-- Usage Notes
++-- =============================================================
++--
++-- 1. suggest_reply_log is INSERT on suggest, UPDATE on feedback
++-- 2. AgentProfileBuilder queries last 20 rows per (tenant_id, agent_id)
++--    using idx_suggest_log_tenant_agent
++-- 3. suggestion_id (UUID) is generated by AgentAI, returned in response,
++--    and used by Main App to correlate feedback
++-- 4. agent_action starts as 'pending', updated when feedback arrives
++-- 5. final_reply_text is only populated for 'edited' action
++-- =============================================================
+diff --git a/arch/errors.md b/arch/errors.md
+index c8f9e8e..602fb38 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -87,6 +87,19 @@ INV-{SERVICE}-{NUMBER}
+ 
+ ---
+ 
++## AA - AgentAI Errors
++
++| Code | Description | User Message |
++|------|-------------|--------------|
++| INV-AA-001 | Invalid request payload | Gecersiz istek formati. |
++| INV-AA-002 | Reply generation failed | AI cevap onerisi olusturulamadi. |
++| INV-AA-003 | Intent detection failed | Niyet algilama basarisiz. |
++| INV-AA-004 | No conversation context | Sohbet gecmisi saglanmadi. |
++| INV-AA-005 | Claude API timeout | AI servisi zaman asimina ugradi. |
++| INV-AA-006 | Invalid feedback payload | Gecersiz geri bildirim formati. |
++
++---
++
+ ## DB - Database Errors
+ 
+ | Code | Description | User Message |
+diff --git a/arch/plans/20260211-agentai-service.json b/arch/plans/20260211-agentai-service.json
+new file mode 100644
+index 0000000..e583eda
+--- /dev/null
++++ b/arch/plans/20260211-agentai-service.json
+@@ -0,0 +1,218 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260211-agentai-service",
++  "risk": "HIGH",
++  "status": "REVIEW",
++  "created_at": "2026-02-11T10:00:00Z",
++  "updated_at": "2026-02-11T14:30:00Z",
++  "plan": {
++    "summary": "Invekto.AgentAI microservice (port 7105) -- Sync API for AI agent assist: reply suggestion, intent detection, template variable substitution, per-agent feedback learning. Backend proxy pattern. Claude Haiku for reply generation. Agent actions (accept/edit/reject) tracked and fed back into future suggestions.",
++    "q_intent": "agentai ile devam edelim. plani uygulamaya basla. auto calistir. Agent oneriyi kabul/duzenle/reddet edebilir, bu feedback per-agent ogrenme icin kullanilir.",
++    "interview_notes": "Trigger: Sync API (agent requests, waits). Context: Main App sends conversation history in request. Scope: Full Phase 1 (suggest + intent + template substitution + per-agent feedback learning). Auto-tag stays in Automation. Architecture: Separate service. Routing: Main App -> Backend -> AgentAI. Templates: Main App sends, AgentAI substitutes {{var}}. FEEDBACK: Async POST /api/v1/feedback (fire-and-forget). Agent actions: accepted|edited|rejected. Per-agent last 20 interactions included in Claude prompt for personalized suggestions."
++  },
++  "allowed_files": [
++    "src/Invekto.AgentAI/Invekto.AgentAI.csproj",
++    "src/Invekto.AgentAI/Program.cs",
++    "src/Invekto.AgentAI/appsettings.json",
++    "src/Invekto.AgentAI/appsettings.Production.json",
++    "src/Invekto.AgentAI/Services/ReplyGenerator.cs",
++    "src/Invekto.AgentAI/Services/TemplateEngine.cs",
++    "src/Invekto.AgentAI/Data/AgentAIRepository.cs",
++    "src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs",
++    "src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs",
++    "src/Invekto.AgentAI/Services/AgentProfileBuilder.cs",
++    "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs",
++    "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs",
++    "src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs",
++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
++    "src/Invekto.Shared/Constants/ServiceConstants.cs",
++    "src/Invekto.Backend/Services/AgentAIClient.cs",
++    "src/Invekto.Backend/Program.cs",
++    "src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx",
++    "src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx",
++    "src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx",
++    "arch/contracts/agentai-suggest.json",
++    "arch/db/agentai.sql",
++    "arch/errors.md",
++    "arch/session-memory.md",
++    "arch/active-work.md",
++    "InvektoServis.sln"
++  ],
++  "files_changed": [
++    { "path": "src/Invekto.AgentAI/Program.cs", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Invekto.AgentAI.csproj", "is_new": true },
++    { "path": "src/Invekto.AgentAI/appsettings.json", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Services/ReplyGenerator.cs", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Services/TemplateEngine.cs", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Services/AgentProfileBuilder.cs", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Data/AgentAIRepository.cs", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs", "is_new": true },
++    { "path": "src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs", "is_new": true },
++    { "path": "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs", "is_new": true },
++    { "path": "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs", "is_new": true },
++    { "path": "src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs", "is_new": true },
++    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
++    { "path": "src/Invekto.Backend/Services/AgentAIClient.cs", "is_new": true },
++    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
++    { "path": "src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx", "is_new": false },
++    { "path": "src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx", "is_new": false },
++    { "path": "src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx", "is_new": false },
++    { "path": "arch/contracts/agentai-suggest.json", "is_new": true },
++    { "path": "arch/db/agentai.sql", "is_new": true },
++    { "path": "arch/errors.md", "is_new": false },
++    { "path": "arch/active-work.md", "is_new": false },
++    { "path": "InvektoServis.sln", "is_new": false }
++  ],
++  "git_diff": {
++    "sha256": "D5D189818284B47229F282F4A14982A546E92A383ED439E6552C2394B6510FA4",
++    "full_path": "arch/plans/diffs/20260211-agentai-service.diff",
++    "stats": { "insertions": 2028, "deletions": 10, "files_count": 24 }
++  },
++  "build": {
++    "status": "PASS",
++    "timestamp": "2026-02-11T14:25:00Z"
++  },
++  "verification_questions": [
++    {
++      "id": "Q1",
++      "question": "Does the SuggestReply endpoint validate all required fields (chat_id, message_text, conversation_history) and return proper INV-AA error codes for invalid input?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q2",
++      "question": "Does the Backend proxy pass the JWT token through to AgentAI, and does AgentAI's JWT middleware validate tenant_id matches the request?",
++      "category": "Auth",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q3",
++      "question": "Does the Backend use a longer timeout (15s) for AgentAI suggest proxy since Claude API calls take 2-5s, instead of the default 600ms microservice timeout?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q4",
++      "question": "Does the DB schema follow snake_case convention, use tenant_id FK to tenant_registry, and include proper indexes for suggest_reply_log queries?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q5",
++      "question": "Does the ReplyGenerator gracefully degrade when Claude API fails -- returning an error response instead of crashing, with proper logging and INV-AA error codes?",
++      "category": "Process/Policy",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q6",
++      "question": "Does the TemplateEngine safely handle missing variables ({{unknown}}) without crashing, and does it escape user-provided values to prevent injection?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q7",
++      "question": "Are all new files added to the solution, the AgentAI project references Invekto.Shared, and the Backend project references both Shared and AgentAI client?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q8",
++      "question": "Does the feedback endpoint validate suggestion_id exists, update agent_action/final_reply_text in suggest_reply_log, and does AgentProfileBuilder correctly fetch last 20 interactions per agent_id to inject into Claude prompt?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    }
++  ],
++  "scope_discipline": {
++    "forbidden_areas": [
++      "src/Invekto.Automation/ -- auto-tagging stays in Automation, do NOT modify",
++      "src/Invekto.ChatAnalysis/ -- separate service, not touched",
++      "arch/db/automation.sql -- Automation schema untouched"
++    ],
++    "non_goals": [
++      "Auto-tagging (stays in Automation service)",
++      "Chatbot/flow engine (Automation only)",
++      "Knowledge base / RAG (Phase 3)",
++      "Tone presets (Phase 3)",
++      "Next Best Action (Phase 5)"
++    ],
++    "intentional_exclusions": [
++      "Deploy scripts for AgentAI (will be added when Q deploys)",
++      "Simulator tool updates (can be added later)"
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "AgentAI/Program.cs: suggest endpoint",
++      "AgentAI/Services/ReplyGenerator.cs: Claude API call",
++      "AgentAI/Services/TemplateEngine.cs: variable substitution",
++      "AgentAI/Data/AgentAIRepository.cs: DB operations",
++      "AgentAI/Services/AgentProfileBuilder.cs: feedback aggregation",
++      "AgentAI/Program.cs: feedback endpoint",
++      "Backend/Program.cs: proxy endpoints (suggest + feedback)"
++    ],
++    "user_facing_errors": [
++      "INV-AA-001: Invalid request payload",
++      "INV-AA-002: Reply generation failed (Claude error)",
++      "INV-AA-003: Intent detection failed",
++      "INV-AA-004: No conversation context provided",
++      "INV-AA-005: Claude API timeout",
++      "INV-AA-006: Invalid feedback payload",
++      "INV-BE-002: AgentAI service timeout (Backend proxy)"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "All Claude API failures, DB errors, and validation errors are logged and returned with specific error codes. No empty catch blocks."
++  },
++  "aha_moments": [
++    {
++      "category": "UX",
++      "user_pain": "Agent her mesaja manuel cevap yaziyor, AI onerileri generic ve kisisel degil",
++      "suggestion": "Agent oneriyi kabul/duzenle/reddet edebilir. Her aksiyon per-agent ogrenme havuzuna kaydedilir. Sonraki onerilerde AI, o agent'in tercihlerini (ton, uzunluk, style) dikkate alir.",
++      "aha_moment": "Agent 2. haftada farkeder: AI artik onun tarziyla yazi onermeye basladi -- duzenleme orani %60'tan %20'ye dustu"
++    },
++    {
++      "category": "SPEED",
++      "user_pain": "Claude API 2-3sn suruyor, agent bekliyor",
++      "suggestion": "Response'a processing_time_ms ekle, frontend'de loading animasyonu goster, confidence skoru ile guveni belirt",
++      "aha_moment": "Agent 'AI dusuyor...' animasyonunu gorur, 2sn sonra oneriye bakar, %92 guven skoru gorur"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Claude API bazen timeout olur veya hata verir, agent cevapsiz kalir",
++      "suggestion": "Graceful degradation: Claude fail ederse 'AI onerisi kullanilamiyor, manuel devam edin' mesaji don, log'a yaz",
++      "aha_moment": "Claude cokse bile agent is akisini surdurebilir, hic bir zaman bos ekran gormez"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Musteri 'chatbot var mi?' diye soruyor, demo'da gosterecek sey yok",
++      "suggestion": "Demo modunda ornek sohbet gosterip AI suggest'in canli calismasini izlet",
++      "aha_moment": "Potansiyel musteri demo'da 'AI bu cevabi onerdi, agent tek tikla gonderdi' gorur -- 'bunu istiyorum' der"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Yeni agent'lar dogru cevabi bilmiyor, yanlis bilgi veriyor",
++      "suggestion": "AI suggest'e confidence skoru + intent label ekle: agent hem onerilen cevabi hem neden onerildigini gorur",
++      "aha_moment": "Yeni agent 'fiyat sorusu' etiketini gorur, AI'in onerdigini gonderir -- egitim suresi %50 duser"
++    }
++  ],
++  "verdict": {
++    "status": "FAIL",
++    "iteration": 1,
++    "blocking_issues": [
++      "conversation_history zorunlu validasyon ve INV-AA-004 ak─▒┼ƒ─▒ eksik",
++      "JWT tenant claim ile request tenant e┼ƒle┼ƒme do─ƒrulamas─▒ yok",
++      "DB log failure non-blocking tasar─▒m─▒ndan dolay─▒ suggestion persistence kayb─▒ sessizce ge├ºiliyor",
++      "Contract/DTO ile Backend Postman ├╢rne─ƒi alan adlar─▒ tutars─▒z (source/text vs role/content)",
++      "Claude timeout i├ºin tan─▒ml─▒ INV-AA-005 runtime'da ├╝retilmiyor",
++      "Template variable substitution escape yapm─▒yor"
++    ]
++  }
++}
+diff --git a/src/Invekto.AgentAI/Data/AgentAIRepository.cs b/src/Invekto.AgentAI/Data/AgentAIRepository.cs
+new file mode 100644
+index 0000000..14621d9
+--- /dev/null
++++ b/src/Invekto.AgentAI/Data/AgentAIRepository.cs
+@@ -0,0 +1,128 @@
++using Invekto.Shared.Data;
++using Invekto.Shared.Logging;
++using Npgsql;
++
++namespace Invekto.AgentAI.Data;
++
++public sealed class AgentAIRepository
++{
++    private readonly PostgresConnectionFactory _db;
++    private readonly JsonLinesLogger _logger;
++
++    public AgentAIRepository(PostgresConnectionFactory db, JsonLinesLogger logger)
++    {
++        _db = db;
++        _logger = logger;
++    }
++
++    public async Task<string> LogSuggestionAsync(
++        Guid suggestionId, int tenantId, int agentId, int chatId,
++        string? channel, string language, string messageText,
++        int conversationLength, string? suggestedReply,
++        string? intent, double? confidence, string? model,
++        int processingTimeMs, CancellationToken ct = default)
++    {
++        const string sql = @"
++            INSERT INTO suggest_reply_log
++                (suggestion_id, tenant_id, agent_id, chat_id, channel, language,
++                 message_text, conversation_length, suggested_reply,
++                 intent, confidence, model, processing_time_ms)
++            VALUES
++                (@sid, @tid, @aid, @cid, @ch, @lang,
++                 @msg, @clen, @reply,
++                 @intent, @conf, @model, @ptms)
++            RETURNING id";
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = new NpgsqlCommand(sql, conn);
++        cmd.Parameters.AddWithValue("sid", suggestionId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("aid", agentId);
++        cmd.Parameters.AddWithValue("cid", chatId);
++        cmd.Parameters.AddWithValue("ch", (object?)channel ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("lang", language);
++        cmd.Parameters.AddWithValue("msg", messageText);
++        cmd.Parameters.AddWithValue("clen", conversationLength);
++        cmd.Parameters.AddWithValue("reply", (object?)suggestedReply ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("intent", (object?)intent ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("conf", confidence.HasValue ? (object)confidence.Value : DBNull.Value);
++        cmd.Parameters.AddWithValue("model", (object?)model ?? DBNull.Value);
++        cmd.Parameters.AddWithValue("ptms", processingTimeMs);
++
++        var id = await cmd.ExecuteScalarAsync(ct);
++        return id?.ToString() ?? "";
++    }
++
++    public async Task<bool> UpdateFeedbackAsync(
++        Guid suggestionId, int tenantId,
++        string agentAction, string? finalReplyText,
++        CancellationToken ct = default)
++    {
++        const string sql = @"
++            UPDATE suggest_reply_log
++            SET agent_action = @action,
++                final_reply_text = @final,
++                feedback_received_at = NOW()
++            WHERE suggestion_id = @sid AND tenant_id = @tid";
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = new NpgsqlCommand(sql, conn);
++        cmd.Parameters.AddWithValue("sid", suggestionId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("action", agentAction);
++        cmd.Parameters.AddWithValue("final", (object?)finalReplyText ?? DBNull.Value);
++
++        var rows = await cmd.ExecuteNonQueryAsync(ct);
++        return rows > 0;
++    }
++
++    public async Task<List<FeedbackRecord>> GetRecentFeedbackAsync(
++        int tenantId, int agentId, int limit = 20,
++        CancellationToken ct = default)
++    {
++        const string sql = @"
++            SELECT suggestion_id, intent, confidence, suggested_reply,
++                   agent_action, final_reply_text, message_text, created_at
++            FROM suggest_reply_log
++            WHERE tenant_id = @tid AND agent_id = @aid AND agent_action != 'pending'
++            ORDER BY created_at DESC
++            LIMIT @lim";
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = new NpgsqlCommand(sql, conn);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("aid", agentId);
++        cmd.Parameters.AddWithValue("lim", limit);
++
++        var records = new List<FeedbackRecord>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++        {
++            records.Add(new FeedbackRecord
++            {
++                SuggestionId = reader.GetGuid(0).ToString(),
++                Intent = reader.IsDBNull(1) ? null : reader.GetString(1),
++                Confidence = reader.IsDBNull(2) ? null : (double)reader.GetDecimal(2),
++                SuggestedReply = reader.IsDBNull(3) ? null : reader.GetString(3),
++                AgentAction = reader.GetString(4),
++                FinalReplyText = reader.IsDBNull(5) ? null : reader.GetString(5),
++                MessageText = reader.GetString(6),
++                CreatedAt = reader.GetDateTime(7)
++            });
++        }
++
++        return records;
++    }
++}
++
++public sealed class FeedbackRecord
++{
++    public string SuggestionId { get; set; } = "";
++    public string? Intent { get; set; }
++    public double? Confidence { get; set; }
++    public string? SuggestedReply { get; set; }
++    public string AgentAction { get; set; } = "";
++    public string? FinalReplyText { get; set; }
++    public string MessageText { get; set; } = "";
++    public DateTime CreatedAt { get; set; }
++}
+diff --git a/src/Invekto.AgentAI/Invekto.AgentAI.csproj b/src/Invekto.AgentAI/Invekto.AgentAI.csproj
+new file mode 100644
+index 0000000..521d22e
+--- /dev/null
++++ b/src/Invekto.AgentAI/Invekto.AgentAI.csproj
+@@ -0,0 +1,18 @@
++<Project Sdk="Microsoft.NET.Sdk.Web">
++
++  <PropertyGroup>
++    <TargetFramework>net8.0</TargetFramework>
++    <Nullable>enable</Nullable>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <RootNamespace>Invekto.AgentAI</RootNamespace>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\Invekto.Shared\Invekto.Shared.csproj" />
++  </ItemGroup>
++
++</Project>
+diff --git a/src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs b/src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs
+new file mode 100644
+index 0000000..5d74531
+--- /dev/null
++++ b/src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs
+@@ -0,0 +1,105 @@
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++
++namespace Invekto.AgentAI.Middleware;
++
++public sealed class JwtAuthMiddleware
++{
++    private readonly RequestDelegate _next;
++    private readonly JwtValidator _jwtValidator;
++    private readonly JsonLinesLogger _logger;
++    private readonly HashSet<string> _authRequiredPrefixes;
++
++    public JwtAuthMiddleware(
++        RequestDelegate next,
++        JwtValidator jwtValidator,
++        JsonLinesLogger logger,
++        IEnumerable<string> authRequiredPrefixes)
++    {
++        _next = next;
++        _jwtValidator = jwtValidator;
++        _logger = logger;
++        _authRequiredPrefixes = new HashSet<string>(authRequiredPrefixes, StringComparer.OrdinalIgnoreCase);
++    }
++
++    public async Task InvokeAsync(HttpContext context)
++    {
++        var path = context.Request.Path.Value ?? "";
++
++        if (!RequiresAuth(path))
++        {
++            await _next(context);
++            return;
++        }
++
++        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
++        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
++        {
++            _logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] Missing or invalid Authorization header: path={path}");
++            context.Response.StatusCode = 401;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"));
++            return;
++        }
++
++        var token = authHeader["Bearer ".Length..].Trim();
++        var (tenantContext, error) = _jwtValidator.ValidateToken(token);
++
++        if (tenantContext == null)
++        {
++            var errorCode = error?.Contains("expired", StringComparison.OrdinalIgnoreCase) == true
++                ? ErrorCodes.AuthTokenExpired
++                : ErrorCodes.AuthTokenInvalid;
++
++            _logger.SystemWarn($"[{errorCode}] JWT validation failed: path={path}, error={error}");
++            context.Response.StatusCode = 401;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(errorCode, error ?? "Token validation failed", "-"));
++            return;
++        }
++
++        context.Items["TenantContext"] = tenantContext;
++
++        // Validate tenant_id header matches JWT claim (prevent tenant spoofing)
++        var existingTenantId = context.Request.Headers[HeaderNames.TenantId].FirstOrDefault();
++        if (!string.IsNullOrEmpty(existingTenantId) && existingTenantId != tenantContext.TenantId.ToString())
++        {
++            _logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] Tenant ID mismatch: header={existingTenantId}, jwt={tenantContext.TenantId}, path={path}");
++            context.Response.StatusCode = 403;
++            await context.Response.WriteAsJsonAsync(
++                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant ID mismatch between header and JWT token", "-"));
++            return;
++        }
++
++        if (string.IsNullOrEmpty(existingTenantId))
++        {
++            context.Request.Headers[HeaderNames.TenantId] = tenantContext.TenantId.ToString();
++        }
++
++        await _next(context);
++    }
++
++    private bool RequiresAuth(string path)
++    {
++        foreach (var prefix in _authRequiredPrefixes)
++        {
++            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
++                return true;
++        }
++        return false;
++    }
++}
++
++public static class JwtAuthMiddlewareExtensions
++{
++    public static IApplicationBuilder UseJwtAuth(
++        this IApplicationBuilder app,
++        JwtValidator jwtValidator,
++        JsonLinesLogger logger,
++        params string[] authRequiredPrefixes)
++    {
++        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes);
++    }
++}
+diff --git a/src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs b/src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs
+new file mode 100644
+index 0000000..6102106
+--- /dev/null
++++ b/src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs
+@@ -0,0 +1,95 @@
++using System.Diagnostics;
++using System.Text;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++
++namespace Invekto.AgentAI.Middleware;
++
++public sealed class TrafficLoggingMiddleware
++{
++    private readonly RequestDelegate _next;
++    private readonly JsonLinesLogger _logger;
++
++    private static readonly string[] SkipPaths = { "/health", "/ready" };
++
++    public TrafficLoggingMiddleware(RequestDelegate next, JsonLinesLogger logger)
++    {
++        _next = next;
++        _logger = logger;
++    }
++
++    public async Task InvokeAsync(HttpContext context)
++    {
++        var path = context.Request.Path.Value ?? "";
++
++        if (SkipPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
++        {
++            await _next(context);
++            return;
++        }
++
++        var sw = Stopwatch.StartNew();
++
++        string? requestBody = null;
++        if (context.Request.ContentLength > 0 && context.Request.ContentLength < 50000)
++        {
++            context.Request.EnableBuffering();
++            using var reader = new StreamReader(
++                context.Request.Body, Encoding.UTF8,
++                detectEncodingFromByteOrderMarks: false, leaveOpen: true);
++            requestBody = await reader.ReadToEndAsync();
++            context.Request.Body.Position = 0;
++        }
++
++        var originalBodyStream = context.Response.Body;
++        using var responseBodyStream = new MemoryStream();
++        context.Response.Body = responseBodyStream;
++
++        try
++        {
++            await _next(context);
++        }
++        finally
++        {
++            sw.Stop();
++
++            string? responseBody = null;
++            if (responseBodyStream.Length > 0 && responseBodyStream.Length < 50000)
++            {
++                responseBodyStream.Position = 0;
++                responseBody = await new StreamReader(responseBodyStream).ReadToEndAsync();
++            }
++
++            responseBodyStream.Position = 0;
++            await responseBodyStream.CopyToAsync(originalBodyStream);
++            context.Response.Body = originalBodyStream;
++
++            var requestId = context.Request.Headers["X-Request-Id"].FirstOrDefault()
++                ?? context.TraceIdentifier;
++            var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? "-";
++            var chatId = context.Request.Headers["X-Chat-Id"].FirstOrDefault() ?? "-";
++
++            var logContext = new RequestContext
++            {
++                RequestId = requestId,
++                TenantId = tenantId,
++                ChatId = chatId
++            };
++
++            var level = context.Response.StatusCode >= 400 ? "WARN" : "INFO";
++            var message = $"{context.Request.Method} {path} -> {context.Response.StatusCode}";
++
++            _logger.LogTraffic(level, message, logContext, path,
++                context.Request.Method, sw.ElapsedMilliseconds,
++                context.Response.StatusCode, requestBody, responseBody);
++        }
++    }
++}
++
++public static class TrafficLoggingMiddlewareExtensions
++{
++    public static IApplicationBuilder UseTrafficLogging(this IApplicationBuilder builder)
++    {
++        return builder.UseMiddleware<TrafficLoggingMiddleware>();
++    }
++}
+diff --git a/src/Invekto.AgentAI/Program.cs b/src/Invekto.AgentAI/Program.cs
+new file mode 100644
+index 0000000..aad4b22
+--- /dev/null
++++ b/src/Invekto.AgentAI/Program.cs
+@@ -0,0 +1,345 @@
++using Invekto.AgentAI.Data;
++using Invekto.AgentAI.Middleware;
++using Invekto.AgentAI.Services;
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.Data;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.DTOs.AgentAI;
++using Invekto.Shared.Logging;
++
++var builder = WebApplication.CreateBuilder(args);
++
++// Windows Service support
++builder.Host.UseWindowsService();
++
++// Read configuration
++var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.AgentAIPort);
++var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
++var claudeApiKey = builder.Configuration["Claude:ApiKey"] ?? "";
++var claudeModel = builder.Configuration["Claude:Model"] ?? "claude-haiku-4-5-20251001";
++var claudeTimeoutSec = builder.Configuration.GetValue<int>("Claude:TimeoutSeconds", 10);
++var maxHistoryMessages = builder.Configuration.GetValue<int>("Claude:MaxHistoryMessages", 20);
++var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
++var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
++var maxFeedbackHistory = builder.Configuration.GetValue<int>("AgentProfile:MaxFeedbackHistory", 20);
++
++// Validate required config
++if (string.IsNullOrEmpty(claudeApiKey))
++{
++    Console.Error.WriteLine("FATAL: Claude:ApiKey is not configured");
++    Environment.Exit(1);
++}
++if (string.IsNullOrEmpty(pgConnStr))
++{
++    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
++    Environment.Exit(1);
++}
++if (string.IsNullOrEmpty(jwtSecretKey))
++{
++    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
++    Environment.Exit(1);
++}
++
++// Configure Kestrel
++builder.WebHost.ConfigureKestrel(options =>
++{
++    options.ListenAnyIP(listenPort);
++});
++
++// Register logger
++var logger = new JsonLinesLogger(ServiceConstants.AgentAIServiceName, logPath);
++builder.Services.AddSingleton(logger);
++
++// Register log cleanup
++builder.Services.AddSingleton<LogCleanupService>(sp =>
++    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
++
++// Register JWT validator
++var jwtSettings = new JwtSettings
++{
++    SecretKey = jwtSecretKey,
++    Issuer = builder.Configuration["Jwt:Issuer"],
++    Audience = builder.Configuration["Jwt:Audience"],
++    ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
++};
++var jwtValidator = new JwtValidator(jwtSettings);
++builder.Services.AddSingleton(jwtValidator);
++
++// Register PostgreSQL connection factory
++var pgFactory = new PostgresConnectionFactory(pgConnStr);
++builder.Services.AddSingleton(pgFactory);
++
++// Register repository
++builder.Services.AddSingleton<AgentAIRepository>();
++
++// Register services
++builder.Services.AddSingleton<TemplateEngine>();
++builder.Services.AddSingleton(sp => new AgentProfileBuilder(
++    sp.GetRequiredService<AgentAIRepository>(),
++    sp.GetRequiredService<JsonLinesLogger>(),
++    maxFeedbackHistory));
++
++// Register ReplyGenerator with HttpClient
++var claudeTimeoutMs = claudeTimeoutSec * 1000;
++builder.Services.AddHttpClient<ReplyGenerator>()
++    .AddTypedClient((httpClient, sp) =>
++    {
++        return new ReplyGenerator(
++            httpClient, claudeApiKey, claudeModel, claudeTimeoutMs,
++            sp.GetRequiredService<JsonLinesLogger>());
++    });
++
++var app = builder.Build();
++
++// Enable traffic logging middleware
++app.UseTrafficLogging();
++
++// Enable JWT auth for /api/v1/ prefixed paths
++app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
++
++// Start log cleanup
++_ = app.Services.GetRequiredService<LogCleanupService>();
++
++// ============================================================
++// Health endpoints
++// ============================================================
++
++app.MapGet("/health", () => Results.Ok(HealthResponse.Ok(ServiceConstants.AgentAIServiceName)));
++app.MapGet("/ready", async (PostgresConnectionFactory db) =>
++{
++    var (ok, error) = await db.TestConnectionAsync();
++    if (!ok)
++        return Results.Json(new { status = "unhealthy", error }, statusCode: 503);
++    return Results.Ok(HealthResponse.Ok(ServiceConstants.AgentAIServiceName));
++});
++
++// ============================================================
++// Suggest Reply endpoint (Sync API -- agent waits for response)
++// ============================================================
++
++app.MapPost("/api/v1/suggest", async (
++    HttpContext ctx,
++    ReplyGenerator replyGenerator,
++    TemplateEngine templateEngine,
++    AgentProfileBuilder profileBuilder,
++    AgentAIRepository repository,
++    JsonLinesLogger jsonLogger,
++    SuggestReplyRequest? request) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    ctx.Request.Headers["X-Request-Id"] = requestId;
++
++    // Validate request
++    if (request == null || string.IsNullOrWhiteSpace(request.MessageText))
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIInvalidPayload, "message_text is required", requestId),
++            statusCode: 400);
++    }
++
++    if (request.ChatId <= 0)
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIInvalidPayload, "chat_id is required", requestId),
++            statusCode: 400);
++    }
++
++    if (request.ConversationHistory == null || request.ConversationHistory.Count == 0)
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAINoConversationContext,
++                "conversation_history is required (en az 1 mesaj)", requestId),
++            statusCode: 400);
++    }
++
++    // Extract tenant from JWT
++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++    if (tenantContext == null)
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId),
++            statusCode: 401);
++    }
++
++    jsonLogger.StepInfo($"Suggest request for tenant {tenantContext.TenantId}, chat {request.ChatId}", requestId);
++
++    // Trim conversation history to max allowed
++    if (request.ConversationHistory is { Count: > 0 })
++    {
++        if (request.ConversationHistory.Count > maxHistoryMessages)
++            request.ConversationHistory = request.ConversationHistory
++                .TakeLast(maxHistoryMessages).ToList();
++    }
++
++    // Build agent profile from feedback history
++    var agentProfile = await profileBuilder.BuildProfileAsync(
++        tenantContext.TenantId, tenantContext.UserId, CancellationToken.None);
++
++    // Try template substitution
++    string? templateSuggestion = null;
++    if (request.Templates is { Count: > 0 })
++    {
++        templateSuggestion = templateEngine.FindBestTemplate(
++            request.Templates, null, request.TemplateVariables);
++    }
++
++    // Generate AI reply
++    var result = await replyGenerator.GenerateAsync(
++        request, agentProfile, templateSuggestion, CancellationToken.None);
++
++    if (result == null || !result.IsSuccess)
++    {
++        if (result?.ErrorCode == "timeout")
++        {
++            jsonLogger.StepError($"Claude timeout for tenant {tenantContext.TenantId}, chat {request.ChatId}, time={result.ProcessingTimeMs}ms", requestId);
++            return Results.Json(
++                ErrorResponse.Create(ErrorCodes.AgentAIClaudeTimeout,
++                    "AI servis zaman asimi. Lutfen tekrar deneyin veya manuel devam edin.", requestId),
++                statusCode: 504);
++        }
++
++        jsonLogger.StepError($"Reply generation failed for tenant {tenantContext.TenantId}, chat {request.ChatId}", requestId);
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIReplyGenerationFailed,
++                "AI cevap onerisi olusturulamadi. Lutfen manuel devam edin.", requestId),
++            statusCode: 500);
++    }
++
++    // Apply template variables to AI reply if applicable
++    if (request.TemplateVariables is { Count: > 0 })
++    {
++        result.SuggestedReply = templateEngine.Substitute(result.SuggestedReply, request.TemplateVariables);
++    }
++
++    // Generate suggestion ID and log to DB
++    var suggestionId = Guid.NewGuid();
++    bool dbLogFailed = false;
++    try
++    {
++        await repository.LogSuggestionAsync(
++            suggestionId, tenantContext.TenantId, tenantContext.UserId,
++            request.ChatId, request.Channel, request.Language,
++            request.MessageText, request.ConversationHistory?.Count ?? 0,
++            result.SuggestedReply, result.Intent, result.Confidence,
++            replyGenerator.ModelName, (int)result.ProcessingTimeMs,
++            CancellationToken.None);
++    }
++    catch (Exception ex)
++    {
++        // DB log failure is non-blocking -- suggestion still returned with warning
++        dbLogFailed = true;
++        jsonLogger.StepError($"Failed to log suggestion to DB: {ex.Message}", requestId);
++    }
++
++    jsonLogger.StepInfo(
++        $"Suggest OK: tenant={tenantContext.TenantId}, chat={request.ChatId}, " +
++        $"intent={result.Intent}, conf={result.Confidence:F2}, time={result.ProcessingTimeMs}ms",
++        requestId);
++
++    return Results.Ok(new SuggestReplyResponse
++    {
++        SuggestionId = suggestionId.ToString(),
++        SuggestedReply = result.SuggestedReply,
++        Intent = result.Intent,
++        Confidence = result.Confidence,
++        ProcessingTimeMs = result.ProcessingTimeMs,
++        Model = replyGenerator.ModelName,
++        Warning = dbLogFailed ? "Oneri kaydedilemedi, feedback takibi kullanilamayacak" : null
++    });
++});
++
++// ============================================================
++// Feedback endpoint (Async -- fire-and-forget from Main App)
++// ============================================================
++
++app.MapPost("/api/v1/feedback", async (
++    HttpContext ctx,
++    AgentAIRepository repository,
++    JsonLinesLogger jsonLogger,
++    SuggestionFeedbackRequest? feedback) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++
++    if (feedback == null || !feedback.IsValid())
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIInvalidFeedback,
++                "suggestion_id and agent_action (accepted|edited|rejected) are required", requestId),
++            statusCode: 400);
++    }
++
++    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++    if (tenantContext == null)
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId),
++            statusCode: 401);
++    }
++
++    if (!Guid.TryParse(feedback.SuggestionId, out var suggestionGuid))
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIInvalidFeedback, "Invalid suggestion_id format", requestId),
++            statusCode: 400);
++    }
++
++    // Update feedback in DB (fire-and-forget for the caller)
++    try
++    {
++        var updated = await repository.UpdateFeedbackAsync(
++            suggestionGuid, tenantContext.TenantId,
++            feedback.AgentAction!, feedback.FinalReplyText,
++            CancellationToken.None);
++
++        if (!updated)
++        {
++            jsonLogger.StepWarn($"Feedback for unknown suggestion_id={feedback.SuggestionId}", requestId);
++            return Results.Json(
++                ErrorResponse.Create(ErrorCodes.AgentAIInvalidFeedback,
++                    $"Suggestion not found: {feedback.SuggestionId}", requestId),
++                statusCode: 404);
++        }
++
++        jsonLogger.StepInfo(
++            $"Feedback received: suggestion={feedback.SuggestionId}, action={feedback.AgentAction}", requestId);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"Feedback DB update failed: {ex.Message}", requestId);
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId),
++            statusCode: 500);
++    }
++
++    return Results.Json(new { status = "accepted", suggestion_id = feedback.SuggestionId }, statusCode: 202);
++});
++
++// ============================================================
++// Endpoint discovery
++// ============================================================
++
++app.MapGet("/api/ops/endpoints", () =>
++{
++    var endpoints = new List<EndpointInfo>
++    {
++        new() { Method = "POST", Path = "/api/v1/suggest", Description = "Generate AI reply suggestion (sync)", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "POST", Path = "/api/v1/feedback", Description = "Submit agent feedback on suggestion", Auth = "Bearer JWT", Category = "API" },
++        new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
++        new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
++        new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
++    };
++
++    return Results.Ok(new EndpointDiscoveryResponse
++    {
++        Service = ServiceConstants.AgentAIServiceName,
++        Port = ServiceConstants.AgentAIPort,
++        Endpoints = endpoints
++    });
++});
++
++logger.SystemInfo($"AgentAI service starting on port {listenPort}");
++app.Run();
++
++// Required for integration tests
++public partial class Program { }
+diff --git a/src/Invekto.AgentAI/Services/AgentProfileBuilder.cs b/src/Invekto.AgentAI/Services/AgentProfileBuilder.cs
+new file mode 100644
+index 0000000..73790cc
+--- /dev/null
++++ b/src/Invekto.AgentAI/Services/AgentProfileBuilder.cs
+@@ -0,0 +1,93 @@
++using System.Text;
++using Invekto.AgentAI.Data;
++using Invekto.Shared.Logging;
++
++namespace Invekto.AgentAI.Services;
++
++public sealed class AgentProfileBuilder
++{
++    private readonly AgentAIRepository _repository;
++    private readonly JsonLinesLogger _logger;
++    private readonly int _maxHistory;
++
++    public AgentProfileBuilder(AgentAIRepository repository, JsonLinesLogger logger, int maxHistory = 20)
++    {
++        _repository = repository;
++        _logger = logger;
++        _maxHistory = maxHistory;
++    }
++
++    /// <summary>
++    /// Builds a text profile of this agent's feedback patterns for Claude prompt injection.
++    /// Returns null if no feedback history exists.
++    /// </summary>
++    public async Task<string?> BuildProfileAsync(
++        int tenantId, int agentId, CancellationToken ct = default)
++    {
++        List<FeedbackRecord> records;
++        try
++        {
++            records = await _repository.GetRecentFeedbackAsync(tenantId, agentId, _maxHistory, ct);
++        }
++        catch (Exception ex)
++        {
++            _logger.StepError($"Failed to fetch agent feedback history: {ex.Message}", "-");
++            return null;
++        }
++
++        if (records.Count == 0)
++            return null;
++
++        var accepted = records.Count(r => r.AgentAction == "accepted");
++        var edited = records.Count(r => r.AgentAction == "edited");
++        var rejected = records.Count(r => r.AgentAction == "rejected");
++        var total = records.Count;
++
++        var sb = new StringBuilder();
++        sb.AppendLine($"[Agent Profile -- son {total} etkile┼ƒim]");
++        sb.AppendLine($"- Kabul: %{100 * accepted / total} ({accepted}/{total})");
++        sb.AppendLine($"- D├╝zenleme: %{100 * edited / total} ({edited}/{total})");
++        sb.AppendLine($"- Reddetme: %{100 * rejected / total} ({rejected}/{total})");
++
++        // Extract editing patterns (show last 5 edits as examples)
++        var editExamples = records
++            .Where(r => r.AgentAction == "edited" && r.FinalReplyText != null)
++            .Take(5)
++            .ToList();
++
++        if (editExamples.Count > 0)
++        {
++            sb.AppendLine("- D├╝zenleme ├╢rnekleri:");
++            foreach (var ex in editExamples)
++            {
++                var originalTrunc = Truncate(ex.SuggestedReply, 80);
++                var finalTrunc = Truncate(ex.FinalReplyText, 80);
++                sb.AppendLine($"  AI: \"{originalTrunc}\" -> Agent: \"{finalTrunc}\"");
++            }
++        }
++
++        // Show rejected intents
++        var rejectedIntents = records
++            .Where(r => r.AgentAction == "rejected" && r.Intent != null)
++            .GroupBy(r => r.Intent)
++            .Select(g => new { Intent = g.Key, Count = g.Count() })
++            .OrderByDescending(x => x.Count)
++            .Take(3)
++            .ToList();
++
++        if (rejectedIntents.Count > 0)
++        {
++            var intentList = string.Join(", ", rejectedIntents.Select(x => $"{x.Intent}({x.Count})"));
++            sb.AppendLine($"- S─▒k reddedilen konular: {intentList}");
++        }
++
++        sb.AppendLine("Bu agent'─▒n tarz─▒na uygun ├╢neri ├╝ret.");
++        return sb.ToString();
++    }
++
++    private static string? Truncate(string? text, int maxLen)
++    {
++        if (text == null) return null;
++        return text.Length <= maxLen ? text : text[..maxLen] + "...";
++    }
++}
+diff --git a/src/Invekto.AgentAI/Services/ReplyGenerator.cs b/src/Invekto.AgentAI/Services/ReplyGenerator.cs
+new file mode 100644
+index 0000000..9867b87
+--- /dev/null
++++ b/src/Invekto.AgentAI/Services/ReplyGenerator.cs
+@@ -0,0 +1,229 @@
++using System.Diagnostics;
++using System.Net.Http.Json;
++using System.Text;
++using System.Text.Json;
++using Invekto.Shared.DTOs.AgentAI;
++using Invekto.Shared.Logging;
++
++namespace Invekto.AgentAI.Services;
++
++/// <summary>
++/// Generates AI reply suggestions using Claude API.
++/// Includes agent profile context for personalized suggestions.
++/// Thread-safe, register as singleton via AddHttpClient.
++/// </summary>
++public sealed class ReplyGenerator
++{
++    private readonly HttpClient _httpClient;
++    private readonly string _apiKey;
++    private readonly string _model;
++    private readonly int _timeoutMs;
++    private readonly JsonLinesLogger _logger;
++
++    private const string ClaudeApiUrl = "https://api.anthropic.com/v1/messages";
++    private const int MaxTokens = 512;
++
++    public ReplyGenerator(HttpClient httpClient, string apiKey, string model, int timeoutMs, JsonLinesLogger logger)
++    {
++        _httpClient = httpClient;
++        _apiKey = apiKey;
++        _model = model;
++        _timeoutMs = timeoutMs;
++        _logger = logger;
++    }
++
++    public string ModelName => _model;
++
++    /// <summary>
++    /// Generate a reply suggestion with intent detection.
++    /// Returns null on failure (graceful degradation).
++    /// </summary>
++    public async Task<ReplyResult?> GenerateAsync(
++        SuggestReplyRequest request,
++        string? agentProfile,
++        string? templateSuggestion,
++        CancellationToken ct = default)
++    {
++        var sw = Stopwatch.StartNew();
++
++        try
++        {
++            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
++            cts.CancelAfter(_timeoutMs);
++
++            var systemPrompt = BuildSystemPrompt(request.Language, agentProfile, templateSuggestion);
++            var userPrompt = BuildUserPrompt(request);
++
++            var requestBody = new
++            {
++                model = _model,
++                max_tokens = MaxTokens,
++                system = systemPrompt,
++                messages = new[]
++                {
++                    new { role = "user", content = userPrompt }
++                }
++            };
++
++            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
++            httpRequest.Headers.Add("x-api-key", _apiKey);
++            httpRequest.Headers.Add("anthropic-version", "2023-06-01");
++            httpRequest.Content = JsonContent.Create(requestBody);
++
++            using var response = await _httpClient.SendAsync(httpRequest, cts.Token);
++            sw.Stop();
++
++            if (!response.IsSuccessStatusCode)
++            {
++                var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
++                _logger.SystemWarn($"Claude API HTTP {(int)response.StatusCode}: {errorBody}");
++                return null;
++            }
++
++            var responseJson = await response.Content.ReadFromJsonAsync<JsonDocument>(cts.Token);
++            if (responseJson == null)
++                return null;
++
++            var content = responseJson.RootElement
++                .GetProperty("content")[0]
++                .GetProperty("text")
++                .GetString();
++
++            if (string.IsNullOrEmpty(content))
++                return null;
++
++            var result = ParseResponse(content);
++            if (result != null)
++                result.ProcessingTimeMs = sw.ElapsedMilliseconds;
++
++            return result;
++        }
++        catch (OperationCanceledException) when (ct.IsCancellationRequested)
++        {
++            throw; // App shutting down
++        }
++        catch (OperationCanceledException)
++        {
++            sw.Stop();
++            _logger.SystemWarn($"Claude reply generation timeout after {sw.ElapsedMilliseconds}ms");
++            return new ReplyResult { ErrorCode = "timeout", ProcessingTimeMs = sw.ElapsedMilliseconds };
++        }
++        catch (Exception ex)
++        {
++            sw.Stop();
++            _logger.SystemWarn($"Reply generation failed after {sw.ElapsedMilliseconds}ms: {ex.Message}");
++            return null;
++        }
++    }
++
++    private static string BuildSystemPrompt(string language, string? agentProfile, string? templateSuggestion)
++    {
++        var sb = new StringBuilder();
++
++        sb.AppendLine("Sen bir musteri hizmetleri asistanisin. Agent'a cevap onerisi uretiyorsun.");
++        sb.AppendLine();
++        sb.AppendLine("KURALLAR:");
++        sb.AppendLine("- Kibbar, profesyonel ve yardimci ol");
++        sb.AppendLine("- Kisa ve net cevap ver (1-3 cumle)");
++        sb.AppendLine("- Musteri adini biliyorsan kullan");
++        sb.AppendLine("- Tibbi tavsiye verme, hukuki tavsiye verme");
++        sb.AppendLine($"- Dil: {(language == "tr" ? "Turkce" : language == "en" ? "English" : language)}");
++        sb.AppendLine();
++
++        if (!string.IsNullOrEmpty(agentProfile))
++        {
++            sb.AppendLine(agentProfile);
++            sb.AppendLine();
++        }
++
++        if (!string.IsNullOrEmpty(templateSuggestion))
++        {
++            sb.AppendLine($"Mevcut sablon onerisi: \"{templateSuggestion}\"");
++            sb.AppendLine("Bu sablonu referans al ama gerekiyorsa duzelt veya genislet.");
++            sb.AppendLine();
++        }
++
++        sb.AppendLine("JSON olarak cevap ver (baska metin yazma):");
++        sb.Append("{\"suggested_reply\": \"<oneri>\", \"intent\": \"<intent>\", \"confidence\": <0.0-1.0>}");
++
++        return sb.ToString();
++    }
++
++    private static string BuildUserPrompt(SuggestReplyRequest request)
++    {
++        var sb = new StringBuilder();
++
++        // Conversation history
++        if (request.ConversationHistory is { Count: > 0 })
++        {
++            sb.AppendLine("Sohbet gecmisi:");
++            foreach (var msg in request.ConversationHistory)
++            {
++                var role = msg.Source == "CUSTOMER" ? "Musteri" : "Agent";
++                sb.AppendLine($"  {role}: {msg.Text}");
++            }
++            sb.AppendLine();
++        }
++
++        // Current message
++        sb.AppendLine($"Musteri mesaji: {request.MessageText}");
++
++        if (!string.IsNullOrEmpty(request.CustomerName))
++            sb.AppendLine($"Musteri adi: {request.CustomerName}");
++
++        if (!string.IsNullOrEmpty(request.Channel))
++            sb.AppendLine($"Kanal: {request.Channel}");
++
++        sb.AppendLine();
++        sb.Append("Bu mesaja cevap onerisi uret.");
++
++        return sb.ToString();
++    }
++
++    private ReplyResult? ParseResponse(string responseText)
++    {
++        try
++        {
++            var json = responseText.Trim();
++            if (json.StartsWith("```"))
++            {
++                var startIdx = json.IndexOf('{');
++                var endIdx = json.LastIndexOf('}');
++                if (startIdx >= 0 && endIdx > startIdx)
++                    json = json[startIdx..(endIdx + 1)];
++            }
++
++            using var doc = JsonDocument.Parse(json);
++            var root = doc.RootElement;
++
++            var suggestedReply = root.TryGetProperty("suggested_reply", out var sr) ? sr.GetString() : null;
++            var intent = root.TryGetProperty("intent", out var i) ? i.GetString() : null;
++            var confidence = root.TryGetProperty("confidence", out var c) ? c.GetDouble() : 0.0;
++
++            if (string.IsNullOrEmpty(suggestedReply))
++                return null;
++
++            return new ReplyResult
++            {
++                SuggestedReply = suggestedReply,
++                Intent = intent,
++                Confidence = Math.Clamp(confidence, 0.0, 1.0)
++            };
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"Failed to parse reply response: {ex.Message}, raw={responseText}");
++            return null;
++        }
++    }
++}
++
++public sealed class ReplyResult
++{
++    public string SuggestedReply { get; set; } = "";
++    public string? Intent { get; set; }
++    public double Confidence { get; set; }
++    public long ProcessingTimeMs { get; set; }
++    public string? ErrorCode { get; set; }
++    public bool IsSuccess => ErrorCode == null && !string.IsNullOrEmpty(SuggestedReply);
++}
+diff --git a/src/Invekto.AgentAI/Services/TemplateEngine.cs b/src/Invekto.AgentAI/Services/TemplateEngine.cs
+new file mode 100644
+index 0000000..f06bfab
+--- /dev/null
++++ b/src/Invekto.AgentAI/Services/TemplateEngine.cs
+@@ -0,0 +1,68 @@
++using System.Text.RegularExpressions;
++using Invekto.Shared.Logging;
++
++namespace Invekto.AgentAI.Services;
++
++public sealed partial class TemplateEngine
++{
++    private readonly JsonLinesLogger _logger;
++
++    [GeneratedRegex(@"\{\{(\w+)\}\}", RegexOptions.Compiled)]
++    private static partial Regex VariablePattern();
++
++    public TemplateEngine(JsonLinesLogger logger)
++    {
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Replaces {{variable}} placeholders in text with provided values.
++    /// Missing variables are left as-is (not removed, not crashed).
++    /// </summary>
++    public string Substitute(string text, Dictionary<string, string>? variables)
++    {
++        if (string.IsNullOrEmpty(text) || variables == null || variables.Count == 0)
++            return text;
++
++        return VariablePattern().Replace(text, match =>
++        {
++            var varName = match.Groups[1].Value;
++            if (variables.TryGetValue(varName, out var value))
++                return SanitizeValue(value) ?? match.Value;
++
++            // Missing variable -- leave placeholder, log warning
++            _logger.SystemWarn($"Template variable '{{{{{varName}}}}}' not found in provided variables");
++            return match.Value;
++        });
++    }
++
++    /// <summary>
++    /// Finds the best matching template from available templates based on intent.
++    /// Returns null if no templates provided or no match found.
++    /// </summary>
++    public string? FindBestTemplate(
++        List<Invekto.Shared.DTOs.AgentAI.ReplyTemplate>? templates,
++        string? intent,
++        Dictionary<string, string>? variables)
++    {
++        if (templates == null || templates.Count == 0)
++            return null;
++
++        // Simple: return first template with variable substitution
++        // Phase 2+: intent-based matching, scoring
++        var template = templates.FirstOrDefault();
++        if (template?.Text == null)
++            return null;
++
++        return Substitute(template.Text, variables);
++    }
++
++    /// <summary>
++    /// Sanitize user-provided values to prevent injection (HTML/script tags).
++    /// </summary>
++    private static string? SanitizeValue(string? value)
++    {
++        if (value == null) return null;
++        return value.Replace("<", "&lt;").Replace(">", "&gt;");
++    }
++}
+diff --git a/src/Invekto.AgentAI/appsettings.json b/src/Invekto.AgentAI/appsettings.json
+new file mode 100644
+index 0000000..12d4523
+--- /dev/null
++++ b/src/Invekto.AgentAI/appsettings.json
+@@ -0,0 +1,26 @@
++{
++  "Service": {
++    "ListenPort": 7105
++  },
++  "Logging": {
++    "FilePath": "logs"
++  },
++  "Claude": {
++    "ApiKey": "",
++    "Model": "claude-haiku-4-5-20251001",
++    "TimeoutSeconds": 10,
++    "MaxHistoryMessages": 20
++  },
++  "Jwt": {
++    "SecretKey": "",
++    "Issuer": null,
++    "Audience": null,
++    "ClockSkewSeconds": 60
++  },
++  "ConnectionStrings": {
++    "PostgreSQL": "Host=localhost;Port=5432;Database=invekto;Username=invekto;Password="
++  },
++  "AgentProfile": {
++    "MaxFeedbackHistory": 20
++  }
++}
+diff --git a/src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx b/src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx
+index 4e63996..6f75f7d 100644
+--- a/src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx
++++ b/src/Invekto.Backend/Dashboard/src/components/DependencyMap.tsx
+@@ -17,10 +17,12 @@ export function DependencyMap({ services }: DependencyMapProps) {
+   const backend = services.find(s => s.name.includes('Backend'));
+   const chatAnalysis = services.find(s => s.name.includes('ChatAnalysis'));
+   const automation = services.find(s => s.name.includes('Automation'));
++  const agentAI = services.find(s => s.name.includes('AgentAI'));
+ 
+   const backendColor = backend ? getStatusColor(backend.status) : getStatusColor('unavailable');
+   const chatColor = chatAnalysis ? getStatusColor(chatAnalysis.status) : getStatusColor('unavailable');
+   const autoColor = automation ? getStatusColor(automation.status) : getStatusColor('unavailable');
++  const agentAIColor = agentAI ? getStatusColor(agentAI.status) : getStatusColor('unavailable');
+ 
+   return (
+     <Card>
+@@ -28,7 +30,7 @@ export function DependencyMap({ services }: DependencyMapProps) {
+         <CardTitle>Service Dependencies</CardTitle>
+       </CardHeader>
+       <CardContent>
+-        <svg viewBox="0 0 500 280" className="w-full h-56">
++        <svg viewBox="0 0 500 380" className="w-full h-72">
+           {/* Glow filters */}
+           <defs>
+             <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
+@@ -148,8 +150,51 @@ export function DependencyMap({ services }: DependencyMapProps) {
+             </text>
+           </g>
+ 
++          {/* Arrow to AgentAI (bottom-far-right) */}
++          <g>
++            <line
++              x1="180"
++              y1="130"
++              x2="310"
++              y2="265"
++              stroke="#d1d5db"
++              strokeWidth="2.5"
++              strokeDasharray="8,5"
++            />
++            <polygon
++              points="310,265 296,258 300,270"
++              fill="#9ca3af"
++            />
++            <rect x="218" y="182" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
++            <text x="243" y="199" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
++              HTTP
++            </text>
++          </g>
++
++          {/* AgentAI Node (bottom-far-right) */}
++          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 275px' }}>
++            <rect
++              x="320"
++              y="235"
++              width="160"
++              height="80"
++              rx="12"
++              fill="white"
++              stroke={agentAIColor.stroke}
++              strokeWidth="2.5"
++              style={{ filter: `drop-shadow(0 0 8px ${agentAIColor.glow})` }}
++            />
++            <circle cx="344" cy="267" r="6" fill={agentAIColor.fill} />
++            <text x="360" y="271" fill="#111827" fontSize="16" fontWeight="600">
++              AgentAI
++            </text>
++            <text x="344" y="295" fill="#6b7280" fontSize="13">
++              localhost:7105
++            </text>
++          </g>
++
+           {/* Legend */}
+-          <g transform="translate(20, 230)">
++          <g transform="translate(20, 340)">
+             <circle cx="8" cy="8" r="5" fill="#10b981" />
+             <text x="20" y="13" fill="#6b7280" fontSize="13">OK</text>
+             <circle cx="70" cy="8" r="5" fill="#f59e0b" />
+diff --git a/src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx b/src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx
+index 3e1319b..b86baca 100644
+--- a/src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx
++++ b/src/Invekto.Backend/Dashboard/src/components/HealthCard.tsx
+@@ -1,5 +1,5 @@
+ import { useState, useEffect } from 'react';
+-import { RefreshCw, Power, Globe, Link2, Server, MessageSquare, Bot, X, ExternalLink, List, Loader2 } from 'lucide-react';
++import { RefreshCw, Power, Globe, Link2, Server, MessageSquare, Bot, Sparkles, X, ExternalLink, List, Loader2 } from 'lucide-react';
+ import type { ServiceHealth, EndpointInfo } from '../lib/api';
+ import { api } from '../lib/api';
+ import { Card, CardContent } from './ui/Card';
+@@ -37,6 +37,12 @@ const serviceConfig: Record<string, {
+     healthEndpoint: '/health',
+     icon: Bot,
+   },
++  'Invekto.AgentAI': {
++    port: 7105,
++    host: 'localhost',
++    healthEndpoint: '/health',
++    icon: Sparkles,
++  },
+ };
+ 
+ const defaultConfig = {
+diff --git a/src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx b/src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx
+index e59a02b..c622057 100644
+--- a/src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx
++++ b/src/Invekto.Backend/Dashboard/src/components/TestPanel.tsx
+@@ -42,6 +42,13 @@ const serviceTestConfigs: Record<string, { name: string; tests: { name: string;
+       { name: 'Ready Check', endpoint: '/api/ops/test/automation/ready', method: 'GET', expectedStatus: 200, useProxy: true },
+     ],
+   },
++  'Invekto.AgentAI': {
++    name: 'AgentAI',
++    tests: [
++      { name: 'Health Check', endpoint: '/api/ops/test/agentai/health', method: 'GET', expectedStatus: 200, useProxy: true },
++      { name: 'Ready Check', endpoint: '/api/ops/test/agentai/ready', method: 'GET', expectedStatus: 200, useProxy: true },
++    ],
++  },
+ };
+ 
+ export function TestPanel() {
+diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
+index ab0e817..4b5bed2 100644
+--- a/src/Invekto.Backend/Program.cs
++++ b/src/Invekto.Backend/Program.cs
+@@ -25,6 +25,10 @@ var microserviceLogPath = builder.Configuration["Microservice:ChatAnalysis:LogPa
+ var automationUrl = builder.Configuration["Microservice:Automation:Url"]
+     ?? $"http://localhost:{ServiceConstants.AutomationPort}";
+ var automationLogPath = builder.Configuration["Microservice:Automation:LogPath"];
++var agentAIUrl = builder.Configuration["Microservice:AgentAI:Url"]
++    ?? $"http://localhost:{ServiceConstants.AgentAIPort}";
++var agentAILogPath = builder.Configuration["Microservice:AgentAI:LogPath"];
++var agentAISuggestTimeoutMs = builder.Configuration.GetValue<int>("Microservice:AgentAI:SuggestTimeoutMs", 15000);
+ 
+ // Register JSON Lines logger
+ builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
+@@ -39,6 +43,10 @@ if (!string.IsNullOrEmpty(automationLogPath))
+ {
+     logPaths.Add(automationLogPath);
+ }
++if (!string.IsNullOrEmpty(agentAILogPath))
++{
++    logPaths.Add(agentAILogPath);
++}
+ builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
+ 
+ // Register log cleanup service (30 day retention)
+@@ -65,6 +73,13 @@ builder.Services.AddHttpClient<AutomationClient>(client =>
+     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+ });
+ 
++// Configure AgentAI HTTP client (longer timeout for Claude API latency)
++builder.Services.AddHttpClient<AgentAIClient>(client =>
++{
++    client.BaseAddress = new Uri(agentAIUrl);
++    client.Timeout = TimeSpan.FromMilliseconds(agentAISuggestTimeoutMs);
++});
++
+ // ============================================
+ // GR-1.9: INTEGRATION BRIDGE SETUP
+ // ============================================
+@@ -156,7 +171,7 @@ bool ValidateOpsAuth(HttpContext ctx)
+ }
+ 
+ // OPS endpoint - Stage-0 troubleshooting dashboard
+-app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, LogReader logReader) =>
++app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, LogReader logReader) =>
+ {
+     if (!ValidateOpsAuth(ctx))
+     {
+@@ -166,6 +181,7 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
+ 
+     var chatHealthy = await chatClient.CheckHealthAsync();
+     var autoHealthy = await automationClient.CheckHealthAsync();
++    var agentAIHealthy = await agentAIClient.CheckHealthAsync();
+ 
+     var ops = new
+     {
+@@ -175,7 +191,8 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
+         {
+             backend = new { status = "ok" },
+             chatAnalysis = new { status = chatHealthy ? "ok" : "unavailable" },
+-            automation = new { status = autoHealthy ? "ok" : "unavailable" }
++            automation = new { status = autoHealthy ? "ok" : "unavailable" },
++            agentAI = new { status = agentAIHealthy ? "ok" : "unavailable" }
+         },
+         info = new
+         {
+@@ -338,7 +355,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
+ // ============================================
+ 
+ // Dashboard: Service health with response times
+-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
++app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
+ {
+     if (!ValidateOpsAuth(ctx))
+     {
+@@ -389,6 +406,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
+         error = autoHealthy ? null : "Service unreachable"
+     });
+ 
++    // AgentAI - check health with timing
++    var swAgent = System.Diagnostics.Stopwatch.StartNew();
++    var agentAIHealthy = await agentAIClient.CheckHealthAsync();
++    swAgent.Stop();
++
++    services.Add(new
++    {
++        name = ServiceConstants.AgentAIServiceName,
++        status = agentAIHealthy ? "ok" : "unavailable",
++        responseTimeMs = agentAIHealthy ? (int?)swAgent.ElapsedMilliseconds : null,
++        uptimeSeconds = (long?)null,
++        lastCheck = now,
++        error = agentAIHealthy ? null : "Service unreachable"
++    });
++
+     return Results.Ok(new
+     {
+         timestamp = now,
+@@ -537,6 +569,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
+         "Invekto.Backend" => "Invekto.Backend",
+         "Invekto.ChatAnalysis" => "Invekto.Microservice.Chat",
+         "Invekto.Automation" => "InvektoAutomation",
++        "Invekto.AgentAI" => "InvektoAgentAI",
+         _ => null
+     };
+ 
+@@ -590,7 +623,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
+ });
+ 
+ // Dashboard: Test proxy for external services (avoids CORS issues)
+-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, string serviceName, string? path) =>
++app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, string serviceName, string? path) =>
+ {
+     if (!ValidateOpsAuth(ctx))
+     {
+@@ -632,6 +665,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
+             });
+         }
+ 
++        if (serviceName == "agentai")
++        {
++            var endpoint = "/" + (path ?? "health");
++            var result = await agentAIClient.TestEndpointAsync(endpoint);
++            sw.Stop();
++
++            return Results.Ok(new
++            {
++                success = result.Success,
++                statusCode = result.StatusCode,
++                durationMs = sw.ElapsedMilliseconds,
++                message = result.Message
++            });
++        }
++
+         return Results.BadRequest(new { success = false, message = "Unknown service" });
+     }
+     catch (Exception ex)
+@@ -857,7 +905,7 @@ app.MapPost("/api/v1/chat/analyze", async (
+ });
+ 
+ // Endpoint discovery - returns all services' endpoints (aggregated)
+-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
++app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
+ {
+     if (!ValidateOpsAuth(ctx))
+     {
+@@ -876,6 +924,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
+             // GR-1.9: Integration endpoints
+             new() { Method = "POST", Path = "/api/v1/webhook/event", Description = "Webhook receiver (Main App -> InvektoServis)", Auth = "Bearer", Category = "API" },
+             new() { Method = "GET", Path = "/api/v1/tenant/verify", Description = "Tenant integration health check", Auth = "Bearer", Category = "API" },
++            // Agent Assist proxy endpoints
++            new() { Method = "POST", Path = "/api/v1/agent-assist/suggest", Description = "AI reply suggestion proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
++            new() { Method = "POST", Path = "/api/v1/agent-assist/feedback", Description = "Agent feedback proxy (Backend -> AgentAI)", Auth = "Bearer", Category = "API" },
+ 
+             // Health
+             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
+@@ -907,6 +958,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
+     // Fetch Automation endpoints (internal call)
+     var autoEndpoints = await automationClient.GetEndpointsAsync();
+ 
++    // Fetch AgentAI endpoints (internal call)
++    var agentAIEndpoints = await agentAIClient.GetEndpointsAsync();
++
+     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
+     if (chatEndpoints != null)
+     {
+@@ -916,12 +970,16 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
+     {
+         services.Add(autoEndpoints);
+     }
++    if (agentAIEndpoints != null)
++    {
++        services.Add(agentAIEndpoints);
++    }
+ 
+     return Results.Ok(new { services });
+ });
+ 
+ // Postman collection download - dynamically generated from endpoint discovery
+-app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient) =>
++app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
+ {
+     if (!ValidateOpsAuth(ctx))
+     {
+@@ -932,6 +990,7 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
+     // Fetch all service endpoints
+     var chatEndpoints = await chatClient.GetEndpointsAsync();
+     var autoEndpoints = await automationClient.GetEndpointsAsync();
++    var agentAIEndpoints = await agentAIClient.GetEndpointsAsync();
+ 
+     var allServices = new List<(string service, int port, List<EndpointInfo> endpoints)>
+     {
+@@ -963,6 +1022,10 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
+     {
+         allServices.Add((autoEndpoints.Service, autoEndpoints.Port, autoEndpoints.Endpoints));
+     }
++    if (agentAIEndpoints != null)
++    {
++        allServices.Add((agentAIEndpoints.Service, agentAIEndpoints.Port, agentAIEndpoints.Endpoints));
++    }
+ 
+     // Sample request bodies for known endpoints
+     var sampleBodies = new Dictionary<string, string>
+@@ -995,6 +1058,28 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
+     { "Source": "AGENT", "Message": "Merhaba, nasil yardimci olabilirim?" }
+   ]
+ }
++""",
++        ["/api/v1/suggest"] = """
++{
++  "chat_id": 12345,
++  "message_text": "Merhaba, siparis durumumu ogrenmek istiyorum",
++  "customer_name": "Ali Yilmaz",
++  "channel": "whatsapp",
++  "language": "tr",
++  "conversation_history": [
++    { "source": "CUSTOMER", "text": "Merhaba", "timestamp": "2026-02-11T10:00:00Z" },
++    { "source": "AGENT", "text": "Merhaba, nasil yardimci olabilirim?", "timestamp": "2026-02-11T10:00:05Z" }
++  ],
++  "templates": [],
++  "template_variables": { "agent_name": "Ayse" }
++}
++""",
++        ["/api/v1/feedback"] = """
++{
++  "suggestion_id": "00000000-0000-0000-0000-000000000000",
++  "agent_action": "accepted",
++  "final_reply_text": null
++}
+ """
+     };
+ 
+@@ -1089,6 +1174,73 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
+     return Results.Json(collection);
+ });
+ 
++// ============================================
++// AGENT ASSIST PROXY ENDPOINTS
++// ============================================
++
++// Proxy: Suggest reply (Main App -> Backend -> AgentAI)
++app.MapPost("/api/v1/agent-assist/suggest", async (HttpContext ctx, AgentAIClient agentAIClient, JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
++
++    // Read request body
++    string requestBody;
++    using (var reader = new StreamReader(ctx.Request.Body))
++    {
++        requestBody = await reader.ReadToEndAsync();
++    }
++
++    if (string.IsNullOrWhiteSpace(requestBody))
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIInvalidPayload, "Request body is required", requestId),
++            statusCode: 400);
++    }
++
++    var sw = System.Diagnostics.Stopwatch.StartNew();
++    var (statusCode, body) = await agentAIClient.ProxySuggestAsync(requestBody, authHeader, requestId);
++    sw.Stop();
++
++    jsonLogger.StepInfo($"AgentAI suggest proxy: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
++
++    ctx.Response.StatusCode = statusCode;
++    ctx.Response.ContentType = "application/json";
++    if (body != null)
++        await ctx.Response.WriteAsync(body);
++    return Results.Empty;
++});
++
++// Proxy: Feedback (Main App -> Backend -> AgentAI, fire-and-forget)
++app.MapPost("/api/v1/agent-assist/feedback", async (HttpContext ctx, AgentAIClient agentAIClient, JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
++
++    string requestBody;
++    using (var reader = new StreamReader(ctx.Request.Body))
++    {
++        requestBody = await reader.ReadToEndAsync();
++    }
++
++    if (string.IsNullOrWhiteSpace(requestBody))
++    {
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.AgentAIInvalidFeedback, "Request body is required", requestId),
++            statusCode: 400);
++    }
++
++    var (statusCode, body) = await agentAIClient.ProxyFeedbackAsync(requestBody, authHeader, requestId);
++
++    jsonLogger.StepInfo($"AgentAI feedback proxy: status={statusCode}", requestId);
++
++    ctx.Response.StatusCode = statusCode;
++    ctx.Response.ContentType = "application/json";
++    if (body != null)
++        await ctx.Response.WriteAsync(body);
++    return Results.Empty;
++});
++
+ // SPA fallback - serve index.html for non-API routes (Dashboard routing)
+ app.MapFallbackToFile("index.html");
+ 
+diff --git a/src/Invekto.Backend/Services/AgentAIClient.cs b/src/Invekto.Backend/Services/AgentAIClient.cs
+new file mode 100644
+index 0000000..0deef50
+--- /dev/null
++++ b/src/Invekto.Backend/Services/AgentAIClient.cs
+@@ -0,0 +1,133 @@
++using System.Net.Http.Json;
++using System.Text;
++using System.Text.Json;
++using Invekto.Shared.DTOs;
++
++namespace Invekto.Backend.Services;
++
++/// <summary>
++/// HTTP client for AgentAI microservice.
++/// Health checks, endpoint discovery, and suggest/feedback proxy.
++/// Uses longer timeout (15s) for suggest endpoint due to Claude API latency.
++/// </summary>
++public sealed class AgentAIClient
++{
++    private readonly HttpClient _httpClient;
++    private readonly ILogger<AgentAIClient> _logger;
++
++    public AgentAIClient(HttpClient httpClient, ILogger<AgentAIClient> logger)
++    {
++        _httpClient = httpClient;
++        _logger = logger;
++    }
++
++    public async Task<bool> CheckHealthAsync(CancellationToken ct = default)
++    {
++        try
++        {
++            var response = await _httpClient.GetAsync("/health", ct);
++            return response.IsSuccessStatusCode;
++        }
++        catch (Exception ex)
++        {
++            _logger.LogWarning(ex, "AgentAI health check failed");
++            return false;
++        }
++    }
++
++    public async Task<EndpointDiscoveryResponse?> GetEndpointsAsync(CancellationToken ct = default)
++    {
++        try
++        {
++            var response = await _httpClient.GetAsync("/api/ops/endpoints", ct);
++            if (response.IsSuccessStatusCode)
++            {
++                return await response.Content.ReadFromJsonAsync<EndpointDiscoveryResponse>(ct);
++            }
++            return null;
++        }
++        catch (Exception ex)
++        {
++            _logger.LogWarning(ex, "AgentAI endpoint discovery failed");
++            return null;
++        }
++    }
++
++    public async Task<TestEndpointResult> TestEndpointAsync(string endpoint, CancellationToken ct = default)
++    {
++        try
++        {
++            var response = await _httpClient.GetAsync(endpoint, ct);
++            return new TestEndpointResult
++            {
++                Success = response.IsSuccessStatusCode,
++                StatusCode = (int)response.StatusCode,
++                Message = response.IsSuccessStatusCode ? "OK" : $"HTTP {(int)response.StatusCode}"
++            };
++        }
++        catch (TaskCanceledException ex)
++        {
++            _logger.LogWarning(ex, "AgentAI endpoint test timeout: {Endpoint}", endpoint);
++            return new TestEndpointResult { Success = false, StatusCode = 0, Message = "Timeout" };
++        }
++        catch (HttpRequestException ex)
++        {
++            _logger.LogWarning(ex, "AgentAI endpoint test failed: {Endpoint}", endpoint);
++            return new TestEndpointResult { Success = false, StatusCode = 0, Message = ex.Message };
++        }
++    }
++
++    /// <summary>
++    /// Proxy suggest request to AgentAI (sync, up to 15s timeout).
++    /// Passes JWT token through.
++    /// </summary>
++    public async Task<(int StatusCode, string? Body)> ProxySuggestAsync(
++        string requestBody, string? authHeader, string? requestId,
++        CancellationToken ct = default)
++    {
++        return await ProxyPostAsync("/api/v1/suggest", requestBody, authHeader, requestId, ct);
++    }
++
++    /// <summary>
++    /// Proxy feedback request to AgentAI (fire-and-forget).
++    /// Passes JWT token through.
++    /// </summary>
++    public async Task<(int StatusCode, string? Body)> ProxyFeedbackAsync(
++        string requestBody, string? authHeader, string? requestId,
++        CancellationToken ct = default)
++    {
++        return await ProxyPostAsync("/api/v1/feedback", requestBody, authHeader, requestId, ct);
++    }
++
++    private async Task<(int StatusCode, string? Body)> ProxyPostAsync(
++        string path, string requestBody, string? authHeader, string? requestId,
++        CancellationToken ct)
++    {
++        try
++        {
++            using var request = new HttpRequestMessage(HttpMethod.Post, path);
++            request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
++
++            if (!string.IsNullOrEmpty(authHeader))
++                request.Headers.TryAddWithoutValidation("Authorization", authHeader);
++
++            if (!string.IsNullOrEmpty(requestId))
++                request.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
++
++            using var response = await _httpClient.SendAsync(request, ct);
++            var body = await response.Content.ReadAsStringAsync(ct);
++
++            return ((int)response.StatusCode, body);
++        }
++        catch (TaskCanceledException)
++        {
++            _logger.LogWarning("AgentAI proxy timeout: {Path}", path);
++            return (504, JsonSerializer.Serialize(new { error_code = "INV-BE-002", message = "AgentAI service timeout" }));
++        }
++        catch (Exception ex)
++        {
++            _logger.LogWarning(ex, "AgentAI proxy failed: {Path}", path);
++            return (502, JsonSerializer.Serialize(new { error_code = "INV-BE-001", message = $"AgentAI service unavailable: {ex.Message}" }));
++        }
++    }
++}
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index 5171155..9c5c16f 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -47,6 +47,14 @@ public static class ErrorCodes
+     public const string AutomationIntentDetectionFailed = "INV-AT-004";
+     public const string AutomationSessionExpired = "INV-AT-005";
+ 
++    // AgentAI errors (INV-AA-xxx)
++    public const string AgentAIInvalidPayload = "INV-AA-001";
++    public const string AgentAIReplyGenerationFailed = "INV-AA-002";
++    public const string AgentAIIntentDetectionFailed = "INV-AA-003";
++    public const string AgentAINoConversationContext = "INV-AA-004";
++    public const string AgentAIClaudeTimeout = "INV-AA-005";
++    public const string AgentAIInvalidFeedback = "INV-AA-006";
++
+     // Database errors (INV-DB-xxx)
+     public const string DatabaseConnectionFailed = "INV-DB-001";
+     public const string DatabaseQueryTimeout = "INV-DB-002";
+diff --git a/src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs b/src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs
+new file mode 100644
+index 0000000..9f41e37
+--- /dev/null
++++ b/src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs
+@@ -0,0 +1,54 @@
++using System.Text.Json.Serialization;
++
++namespace Invekto.Shared.DTOs.AgentAI;
++
++public sealed class SuggestReplyRequest
++{
++    [JsonPropertyName("chat_id")]
++    public int ChatId { get; set; }
++
++    [JsonPropertyName("message_text")]
++    public string? MessageText { get; set; }
++
++    [JsonPropertyName("customer_name")]
++    public string? CustomerName { get; set; }
++
++    [JsonPropertyName("channel")]
++    public string? Channel { get; set; }
++
++    [JsonPropertyName("conversation_history")]
++    public List<ConversationMessage>? ConversationHistory { get; set; }
++
++    [JsonPropertyName("templates")]
++    public List<ReplyTemplate>? Templates { get; set; }
++
++    [JsonPropertyName("template_variables")]
++    public Dictionary<string, string>? TemplateVariables { get; set; }
++
++    [JsonPropertyName("language")]
++    public string Language { get; set; } = "tr";
++}
++
++public sealed class ConversationMessage
++{
++    [JsonPropertyName("source")]
++    public string Source { get; set; } = "";
++
++    [JsonPropertyName("text")]
++    public string Text { get; set; } = "";
++
++    [JsonPropertyName("timestamp")]
++    public string? Timestamp { get; set; }
++}
++
++public sealed class ReplyTemplate
++{
++    [JsonPropertyName("id")]
++    public int Id { get; set; }
++
++    [JsonPropertyName("name")]
++    public string? Name { get; set; }
++
++    [JsonPropertyName("text")]
++    public string? Text { get; set; }
++}
+diff --git a/src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs b/src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs
+new file mode 100644
+index 0000000..34cd5fa
+--- /dev/null
++++ b/src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs
+@@ -0,0 +1,28 @@
++using System.Text.Json.Serialization;
++
++namespace Invekto.Shared.DTOs.AgentAI;
++
++public sealed class SuggestReplyResponse
++{
++    [JsonPropertyName("suggestion_id")]
++    public string SuggestionId { get; set; } = "";
++
++    [JsonPropertyName("suggested_reply")]
++    public string SuggestedReply { get; set; } = "";
++
++    [JsonPropertyName("intent")]
++    public string? Intent { get; set; }
++
++    [JsonPropertyName("confidence")]
++    public double Confidence { get; set; }
++
++    [JsonPropertyName("processing_time_ms")]
++    public long ProcessingTimeMs { get; set; }
++
++    [JsonPropertyName("model")]
++    public string? Model { get; set; }
++
++    [JsonPropertyName("warning")]
++    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
++    public string? Warning { get; set; }
++}
+diff --git a/src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs b/src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs
+new file mode 100644
+index 0000000..4fdca16
+--- /dev/null
++++ b/src/Invekto.Shared/DTOs/AgentAI/SuggestionFeedbackRequest.cs
+@@ -0,0 +1,23 @@
++using System.Text.Json.Serialization;
++
++namespace Invekto.Shared.DTOs.AgentAI;
++
++public sealed class SuggestionFeedbackRequest
++{
++    [JsonPropertyName("suggestion_id")]
++    public string? SuggestionId { get; set; }
++
++    [JsonPropertyName("agent_action")]
++    public string? AgentAction { get; set; }
++
++    [JsonPropertyName("final_reply_text")]
++    public string? FinalReplyText { get; set; }
++
++    public bool IsValid()
++    {
++        if (string.IsNullOrWhiteSpace(SuggestionId) || string.IsNullOrWhiteSpace(AgentAction))
++            return false;
++
++        return AgentAction is "accepted" or "edited" or "rejected";
++    }
++}

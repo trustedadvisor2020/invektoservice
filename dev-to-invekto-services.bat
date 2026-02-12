@@ -27,6 +27,7 @@ set "REMOTE_BACKEND=/e/Invekto/Backend/current"
 set "REMOTE_CHATANALYSIS=/e/Invekto/ChatAnalysis/current"
 set "REMOTE_AUTOMATION=/e/Invekto/Automation/current"
 set "REMOTE_AGENTAI=/e/Invekto/AgentAI/current"
+set "REMOTE_SIMULATOR=/e/Invekto/Simulator"
 
 REM Local paths
 set "SRC_DIR=%~dp0"
@@ -35,6 +36,7 @@ set "LOCAL_BACKEND=%LOCAL_DEPLOY%\Backend"
 set "LOCAL_CHATANALYSIS=%LOCAL_DEPLOY%\ChatAnalysis"
 set "LOCAL_AUTOMATION=%LOCAL_DEPLOY%\Automation"
 set "LOCAL_AGENTAI=%LOCAL_DEPLOY%\AgentAI"
+set "LOCAL_SIMULATOR=%~dp0tools\simulator"
 
 REM Check WinSCP exists
 if not exist "!WINSCP_PATH!" (
@@ -165,6 +167,7 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo mkdir "%REMOTE_CHATANALYSIS%"
     echo mkdir "%REMOTE_AUTOMATION%"
     echo mkdir "%REMOTE_AGENTAI%"
+    echo mkdir "%REMOTE_SIMULATOR%"
     echo option batch abort
     echo echo Uploading Backend to STAGING...
     echo synchronize remote "!LOCAL_BACKEND!" "%REMOTE_BACKEND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
@@ -174,6 +177,8 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo synchronize remote "!LOCAL_AUTOMATION!" "%REMOTE_AUTOMATION%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading AgentAI to STAGING...
     echo synchronize remote "!LOCAL_AGENTAI!" "%REMOTE_AGENTAI%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+    echo echo Uploading Simulator to STAGING...
+    echo synchronize remote "!LOCAL_SIMULATOR!" "%REMOTE_SIMULATOR%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|node_modules/;.env"
     echo echo Uploading build marker...
     echo put "!LOCAL_DEPLOY!\.build-marker.json" "/e/Invekto/"
     echo exit
@@ -241,6 +246,7 @@ echo   Backend:      %REMOTE_BACKEND%
 echo   ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo   Automation:   %REMOTE_AUTOMATION%
 echo   AgentAI:      %REMOTE_AGENTAI%
+echo   Simulator:    %REMOTE_SIMULATOR%
 echo.
 echo ============================================
 echo NEXT STEPS (on STAGING server):
@@ -250,6 +256,11 @@ echo   2. Run: E:\Invekto\scripts\restart-services.bat
 echo   3. Test: http://services.invekto.com:5000/health
 echo.
 echo First time? Run: E:\Invekto\scripts\install-services.bat
+echo.
+echo Simulator (first time on server):
+echo   cd E:\Invekto\Simulator ^&^& npm install
+echo   Create .env with SIMULATOR_JWT_SECRET
+echo   node server.js (or install as NSSM service)
 echo.
 endlocal
 exit /b 0

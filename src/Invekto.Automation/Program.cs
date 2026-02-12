@@ -163,6 +163,7 @@ app.MapPost("/api/v1/webhook/event", (
 
     // Process async (return 202 immediately)
     var callbackUrl = webhookEvent.CallbackUrl;
+    var callbackClient = app.Services.GetRequiredService<MainAppCallbackClient>();
     _ = Task.Run(async () =>
     {
         try
@@ -173,7 +174,11 @@ app.MapPost("/api/v1/webhook/event", (
         }
         catch (Exception ex)
         {
+            // Orchestrator's catch block already sends error callback with detailed message.
+            // This catch handles only unexpected exceptions outside orchestrator scope.
             jsonLogger.StepError($"Background processing exception: {ex.Message}", requestId);
+            await SendErrorCallbackAsync(callbackClient, requestId, tenantContext.TenantId, webhookEvent.ChatId, webhookEvent.SequenceId,
+                $"Background processing error: {ex.Message}", callbackUrl, jsonLogger);
         }
     });
 
@@ -186,6 +191,35 @@ app.MapPost("/api/v1/webhook/event", (
         message = "Event accepted for processing"
     }, statusCode: 202);
 });
+
+// ============================================================
+// Error callback helper (for background processing failures)
+// ============================================================
+
+static async Task SendErrorCallbackAsync(
+    MainAppCallbackClient callbackClient,
+    string requestId, int tenantId, int chatId, long sequenceId,
+    string errorMessage, string? callbackUrl, JsonLinesLogger logger)
+{
+    try
+    {
+        var errorCallback = new OutgoingCallback
+        {
+            RequestId = requestId,
+            Action = CallbackActions.Error,
+            TenantId = tenantId,
+            ChatId = chatId,
+            SequenceId = sequenceId,
+            Data = new CallbackData { ErrorMessage = errorMessage },
+            ProcessingTimeMs = 0
+        };
+        await callbackClient.SendCallbackAsync(errorCallback, callbackUrl);
+    }
+    catch (Exception ex)
+    {
+        logger.SystemWarn($"Failed to send error callback: {ex.Message}");
+    }
+}
 
 // ============================================================
 // Tenant validation helper

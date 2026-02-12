@@ -21,8 +21,9 @@ const tabs = {
           ${renderJwtPanel()}
           ${renderWebhookPanel()}
         </div>
-        <div class="lg:col-span-3">
+        <div class="lg:col-span-3 space-y-4">
           ${renderTrafficFeed()}
+          ${renderCallbackPanel()}
         </div>
       </div>`,
     init: () => {
@@ -31,6 +32,7 @@ const tabs = {
       });
       initWebhookPanel();
       initTrafficFeed(wsClient);
+      initCallbackPanel(wsClient);
 
       // Show/hide custom URL field
       document.getElementById('wh-target-service')?.addEventListener('change', (e) => {
@@ -38,11 +40,6 @@ const tabs = {
         if (row) row.classList.toggle('hidden', e.target.value !== 'custom');
       });
     }
-  },
-  callbacks: {
-    label: 'Callbacks',
-    render: () => renderCallbackPanel(),
-    init: () => initCallbackPanel(wsClient)
   },
   scenarios: {
     label: 'Scenarios',
@@ -76,8 +73,8 @@ function switchTab(tabKey) {
   document.querySelectorAll('[data-tab]').forEach(el => {
     const isActive = el.dataset.tab === tabKey;
     el.className = isActive
-      ? 'px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500'
-      : 'px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent';
+      ? 'px-4 py-2.5 text-sm font-medium text-blue-700 border-b-2 border-blue-600'
+      : 'px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent';
   });
 
   // Render tab content
@@ -94,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabNav = document.getElementById('tab-nav');
   if (tabNav) {
     tabNav.innerHTML = Object.entries(tabs).map(([key, tab]) =>
-      `<button data-tab="${key}" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent">${tab.label}</button>`
+      `<button data-tab="${key}" class="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent">${tab.label}</button>`
     ).join('');
 
     tabNav.addEventListener('click', (e) => {

@@ -153,6 +153,27 @@ public sealed class AutomationOrchestrator
         {
             sw.Stop();
             _logger.StepError($"Message processing failed: {ex.Message}", requestId, sw.ElapsedMilliseconds);
+
+            // Send error callback so caller knows what went wrong (instead of silent timeout)
+            try
+            {
+                var errorCallback = new OutgoingCallback
+                {
+                    RequestId = requestId,
+                    Action = CallbackActions.Error,
+                    TenantId = tenantId,
+                    ChatId = chatId,
+                    SequenceId = webhook.SequenceId,
+                    Data = new CallbackData { ErrorMessage = $"Processing error: {ex.Message}" },
+                    ProcessingTimeMs = sw.ElapsedMilliseconds
+                };
+                await _callbackClient.SendCallbackAsync(errorCallback, callbackUrl, ct);
+            }
+            catch (Exception callbackEx)
+            {
+                _logger.SystemWarn($"Failed to send error callback: {callbackEx.Message}");
+            }
+
             return false;
         }
     }

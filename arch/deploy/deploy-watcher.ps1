@@ -6,7 +6,7 @@
 
 $watchPath = "E:\Invekto"
 $nssm = "E:\nssm.exe"
-$services = @("InvektoBackend", "InvektoChatAnalysis", "InvektoAutomation")
+$services = @("InvektoBackend", "InvektoChatAnalysis", "InvektoAutomation", "InvektoAgentAI")
 $logFile = "E:\Invekto\logs\deploy-watcher.log"
 
 # Ensure log directory exists

@@ -73,6 +73,10 @@ public sealed class CallbackData
     /// <summary>Detected intent (e.g., "price_inquiry", "appointment")</summary>
     [JsonPropertyName("intent")]
     public string? Intent { get; init; }
+
+    /// <summary>Error message when processing fails</summary>
+    [JsonPropertyName("error_message")]
+    public string? ErrorMessage { get; init; }
 }
 
 /// <summary>
@@ -94,4 +98,7 @@ public static class CallbackActions
 
     /// <summary>No action needed (informational only)</summary>
     public const string NoAction = "no_action";
+
+    /// <summary>Processing error - background processing failed</summary>
+    public const string Error = "error";
 }

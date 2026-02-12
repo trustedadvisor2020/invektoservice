@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr" class="dark">
+<html lang="tr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,18 +19,18 @@
     }
   </script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
+<body class="bg-slate-50 text-slate-900 min-h-screen text-base">
   <!-- Header -->
-  <header class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+  <header class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
     <div class="flex items-center gap-3">
-      <h1 class="text-lg font-bold text-white">
-        <span class="text-blue-400">Invekto</span>Servis
-        <span class="text-sm font-normal text-slate-400 ml-1">Simulator</span>
+      <h1 class="text-xl font-bold text-slate-900">
+        <span class="text-blue-600">Invekto</span>Servis
+        <span class="text-sm font-normal text-slate-500 ml-1">Simulator</span>
       </h1>
     </div>
     <div class="flex items-center gap-4">
       <div id="health-summary" class="flex items-center gap-3"></div>
-      <div class="flex items-center gap-1.5 text-xs text-slate-400">
+      <div class="flex items-center gap-1.5 text-sm text-slate-500">
         <span id="ws-status-dot" class="w-2 h-2 rounded-full bg-gray-500 inline-block"></span>
         <span id="ws-status-text">Connecting...</span>
       </div>
@@ -38,7 +38,7 @@
   </header>
 
   <!-- Tab Navigation -->
-  <nav class="bg-slate-800/50 border-b border-slate-700 px-4">
+  <nav class="bg-white border-b border-slate-200 px-4">
     <div id="tab-nav" class="flex gap-0"></div>
   </nav>
 

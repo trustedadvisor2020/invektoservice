@@ -25,7 +25,7 @@ async function sendWebhook(payload, jwtToken, targetUrl) {
     channel: payload.channel || 'whatsapp',
     data: payload.data || {},
     timestamp: payload.timestamp || new Date().toISOString(),
-    callback_url: `http://localhost:${config.port}/api/callback`
+    callback_url: `http://${config.callbackHost}:${config.port}/api/callback`
   };
 
   const headers = {
@@ -54,10 +54,11 @@ async function sendWebhook(payload, jwtToken, targetUrl) {
     clearTimeout(timeout);
 
     let responseBody;
+    const rawText = await res.text();
     try {
-      responseBody = await res.json();
+      responseBody = JSON.parse(rawText);
     } catch {
-      responseBody = await res.text();
+      responseBody = rawText;
     }
 
     result = {
@@ -124,11 +125,12 @@ async function sendRequest({ method, url, headers: extraHeaders, body, jwtToken 
     clearTimeout(timeout);
 
     let responseBody;
+    const rawText = await res.text();
     const contentType = res.headers.get('content-type') || '';
     if (contentType.includes('json')) {
-      try { responseBody = await res.json(); } catch { responseBody = await res.text(); }
+      try { responseBody = JSON.parse(rawText); } catch { responseBody = rawText; }
     } else {
-      responseBody = await res.text();
+      responseBody = rawText;
     }
 
     return {

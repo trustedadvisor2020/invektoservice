@@ -29,9 +29,9 @@ function renderHealthSummary() {
   const total = services.length;
 
   container.innerHTML = services.map(s => `
-    <span class="inline-flex items-center gap-1 text-xs">
+    <span class="inline-flex items-center gap-1 text-sm">
       <span class="w-2 h-2 rounded-full ${statusDotClass(s.status)}"></span>
-      <span class="${s.status === 'ok' ? 'text-gray-300' : 'text-red-400'}">${s.name.replace('Invekto.', '')}</span>
+      <span class="${s.status === 'ok' ? 'text-slate-600' : 'text-red-600'}">${s.name.replace('Invekto.', '')}</span>
     </span>
   `).join('');
 }

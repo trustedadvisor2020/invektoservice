@@ -5,6 +5,7 @@
 
 module.exports = {
   port: parseInt(process.env.SIMULATOR_PORT || '4500', 10),
+  callbackHost: process.env.SIMULATOR_CALLBACK_HOST || 'localhost',
 
   services: {
     backend: {

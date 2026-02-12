@@ -41,6 +41,17 @@
 | 2026-02-11 | Deploy | Yeni servis eklenince firewall-rules.bat guncellenmedi | AgentAI eklendi | **Yeni mikroservis = arch/deploy/firewall-rules.bat'a OTOMATIK ekle (port + localhost/external karar ver)** |
 | 2026-02-11 | Config | Yeni servis eklenince Backend appsettings guncellenmedi | AgentAI eklendi | **Yeni mikroservis = Backend appsettings.json + appsettings.Production.json'a Microservice section OTOMATIK ekle (Url, LogPath, ozel timeout)** |
 | 2026-02-11 | Config | Production config placeholder'lar Q'ya birakildi, Q tekrar sordu | Tum config'ler otomatik dolduruldu | **Yeni mikroservis = appsettings.Production.json E:\\ path, port, connection string OTOMATIK doldur. Sadece secret key'ler REPLACE_WITH_ACTUAL_KEY kalir** |
+| 2026-02-11 | Codex | Yeni step type (api_call) eklendi ama mevcut webhook-only broadcast kodu guncellenmedi (`step.webhook` null dereference) | `step.type === 'api_call'` guard + optional chaining | **Yeni variant/type eklerken TUM mevcut erisim noktalarini tara - sadece yeni kodu yazmak yetmez, eski kodun yeni type'i handle ettigini dogrula** |
+| 2026-02-11 | Codex | Multi-step senaryoda inter-step data aktarimi icin hardcoded placeholder kullanildi (`REPLACE_WITH_SUGGESTION_ID`) | `{{step_N.field}}` template + `resolveStepRefs()` chaining mekanizmasi | **Cok adimli akislarda adimlar arasi veri aktarimi OTOMATIK olmali - manuel placeholder yerine runtime resolver yaz** |
+| 2026-02-11 | Codex | Plan JSON `files_changed` listesi, unstage sonrasi gercek staged dosyalarla senkronize edilmedi | `files_changed`'i actual `git diff --cached` ile esitle | **Plan JSON metadata degisikliginden sonra (stage/unstage) `files_changed` ve `files_count`'u MUTLAKA guncelle** |
+| 2026-02-11 | Auth | Yeni proxy endpoint (`/api/v1/automation/webhook`) eklendi ama JWT middleware prefix listesine eklenmedi - endpoint korumasiz kaldi | `UseJwtAuth` prefix listesine `/api/v1/automation/` eklendi | **Yeni endpoint eklerken JWT middleware prefix listesini kontrol et - yeni path mevcut prefix'lerle uyusmuyorsa YENI prefix ekle** |
+| 2026-02-11 | Codex | Yorum "All traffic via Backend" yaziyordu ama kod dogrudan servis erisimini de destekliyordu - yorum/kod celiskisi | Yorum guncellendi: "Production: Backend proxy / Debug: direct" | **Mimari yorumlar (routing, trafik akisi, auth) MUTLAKA kodun gercek davranisiyla eslessin - mutlak ifadeler sadece gercekten mutlaksa kullanilsin** |
+| 2026-02-11 | Node.js | `res.json()` catch'inde `res.text()` cagrildi - body stream zaten tukenmis ("Body already been read") | `res.text()` ile raw oku, sonra `JSON.parse()` dene | **Node.js fetch: body stream TEK SEFER okunur! Once text(), sonra JSON.parse() - asla json() catch'inde text() cagirma** |
+| 2026-02-11 | Deploy | Yeni servis eklenince deploy-watcher.ps1 ve restart-services.bat guncellenmedi - servis durdurulmadi, DLL kilitli kaldi, FTP transfer basarisiz | InvektoAgentAI her iki script'e eklendi | **Yeni mikroservis = deploy-watcher.ps1 ($services array) + restart-services.bat (stop/start/status/test URL) OTOMATIK guncelle** |
+| 2026-02-11 | API | Async Task.Run hata verdiginde caller'a bildirim yapilmadi - 30s sessiz timeout | Error callback mekanizmasi eklendi (orchestrator catch + Task.Run catch) | **Fire-and-forget async islemde MUTLAKA error callback/notification mekanizmasi koy - sessiz timeout YASAK** |
+| 2026-02-11 | API | Cok katmanli error handling duplicate callback uretti (orchestrator + Task.Run ayri ayri gonderdi) | Orchestrator catch blogu kendi error callback'ini gonderir, Task.Run sadece orchestrator disindaki hatalari yakalar | **Error callback/notification TEK katmanda gonder - multi-layer error handling'de hangi katmanin notify ettigini ACIKCA belirle** |
+| 2026-02-11 | DB | Yeni DB tablosu olusturuldu ama DB kullanicisina GRANT verilmedi - permission denied | `GRANT ALL ON ALL TABLES/SEQUENCES TO invekto` | **Yeni tablo/sequence olusturulunca DB kullanicisina GRANT vermeyi UNUTMA - schema DDL + GRANT birlikte** |
+| 2026-02-11 | DB | FK constraint olan tabloya INSERT denemesi - parent tablo (tenant_registry) bos | Once tenant_registry'ye INSERT, sonra child tablolara | **FK constraint olan tablolarda INSERT sirasi: ONCE parent (tenant_registry), SONRA child (chatbot_flows, chat_sessions, vb.)** |
 
 ---
 
@@ -71,7 +82,10 @@
 | Popup header'da entity adı ana başlık | UI Popup/Modal | Genel açıklama alt başlık, entity adı ana başlık - kullanıcı neye baktığını hemen anlar |
 | `ConfigureKestrel + ListenAnyIP/ListenLocalhost` | Mikro servis port binding | Explicit port tanımı, launchSettings.json'a bağımlı değil |
 | `curl.exe -k -H "header"` PowerShell'de | HTTPS API call (self-signed cert) | Invoke-RestMethod TLS sorunları bypass, JSON parse `ConvertFrom-Json` ile çalışır |
-| Yeni Mikroservis Checklist (OTOMATIK) | Her yeni servis eklenmesinde | Q sormadan tamamla: 1) appsettings.Production.json (E:\\ path + placeholder secrets) 2) Backend appsettings.json + Production'a Microservice section 3) dev-to-invekto-services.bat (build+upload) 4) install-services.bat (NSSM blok) 5) firewall-rules.bat (port) 6) session-memory.md (port tablosu, deploy, servisler) |
+| Yeni Mikroservis Checklist (OTOMATIK) | Her yeni servis eklenmesinde | Q sormadan tamamla: 1) appsettings.Production.json (E:\\ path + placeholder secrets) 2) Backend appsettings.json + Production'a Microservice section 3) dev-to-invekto-services.bat (build+upload) 4) install-services.bat (NSSM blok) 5) firewall-rules.bat (port) 6) session-memory.md (port tablosu, deploy, servisler) 7) deploy-watcher.ps1 ($services array) 8) restart-services.bat (stop/start/status/test URL) 9) DB tablolari icin GRANT (SELECT/INSERT/UPDATE/DELETE + sequences) 10) tenant_registry'ye test tenant INSERT (FK constraint icin) |
+| Step result chaining (`{{step_N.field}}`) | Simulator scenario runner | Onceki step'in response'undan otomatik deger cekme - multi-step E2E testlerde manuel placeholder'a gerek kalmaz |
+| Selective git staging (scope discipline) | /rev workflow | `deploy_output/` ve UI refactor dosyalarini unstage edip sadece functional changes'i commit - diff'i focused tutar, Codex review kolaylasir |
+| Error callback in async processing | Automation Task.Run + Orchestrator | Sessiz timeout yerine gercek hata mesaji aninda gorulur - "permission denied for table chatbot_flows" gibi spesifik hata simulator UI'da gorundu, log karistirmaya gerek kalmadi |
 
 ---
 
@@ -104,6 +118,7 @@
 |------|---------|--------------|
 | (template) | Error handling eksik | Tüm catch bloklarına log eklendi |
 | TONIVA | NOLOCK + keyset pagination = dirty reads riski | Export'ta kabul edilebilir trade-off, kritik işlemlerde NOLOCK kullanma |
+| 2026-02-11 | Codex `allowed_files` scope check 3 iter boyunca dosya eksikligi yakaladi (iter3: null deref + chaining, iter4: scope+auth+comment, iter5: PASS) | Her /rev oncesi `git diff --cached --name-only` ile `allowed_files` eslestirmesini manuel kontrol et |
 
 ---
 
