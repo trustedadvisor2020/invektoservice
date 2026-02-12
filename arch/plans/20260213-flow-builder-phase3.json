@@ -1,0 +1,316 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260213-flow-builder-phase3",
+  "risk": "HIGH",
+  "status": "PLANNING",
+  "created_at": "2026-02-13T14:00:00Z",
+  "updated_at": "2026-02-13T14:00:00Z",
+
+  "plan": {
+    "summary": "Flow Builder Phase 3: FlowEngine v2 graph executor + FlowValidator + v1->v2 Migrator + interaktif test simulasyon (SPA WhatsApp chat panel + backend in-memory session + mock FAQ/Intent + aktif node highlight). 3 sub-phase: 3a=engine+validator, 3b=simulation API+UI, 3c=validation UI+polish.",
+    "q_intent": "Roadmap fazlarina flow builder icinde test ozelligi eklemek istiyorum. Validation, simulasyon, mock WhatsApp hepsi kademeli olsun. Phase 3'e entegre, sub-phase'lere bolunmus.",
+    "interview_notes": "1) Test turleri: Hepsi kademeli (Validation->Simulasyon->Mock WA). 2) Scope: Sub-phase (3a/3b/3c). 3) WhatsApp: Mock (sahte chat, gercek engine, mesaj gitmez). 4) Simulasyon UI: Yan panel chat (editor saginda, WhatsApp baloncuklari). 5) Engine: Backend C# (Automation:7108, production-same). 6) Etkilesim: Interaktif (menu tiklama, mesaj yazma)."
+  },
+
+  "interview_decisions": {
+    "test_types": "Hepsi kademeli: Validation -> Simulasyon -> Mock WhatsApp",
+    "scope_strategy": "Sub-phase (3a/3b/3c) - her biri bagimsiz commit/review",
+    "whatsapp_approach": "Mock WhatsApp - sahte chat gorunumu, gercek engine calisir, mesaj gitmez",
+    "simulation_ui": "Yan panel chat - editor saginda, 264px, WhatsApp benzeri baloncuklar",
+    "engine_location": "Backend C# (Automation:7108) - production ile ayni engine",
+    "interaction_model": "Interaktif - menu seceneklerine tikla, mesaj yaz",
+    "mock_services": "MockFaqMatcher (hardcoded keyword), MockIntentDetector (rule-based) - Claude API cagrisi ve DB sorgusu YAPMAZ"
+  },
+
+  "architecture": {
+    "sub_phases": {
+      "3a": {
+        "name": "FlowEngine v2 + Validator + Migrator",
+        "scope": "Backend C# only, UI degisikligi YOK",
+        "new_files": [
+          "src/Invekto.Automation/Services/FlowGraphV2.cs",
+          "src/Invekto.Automation/Services/FlowEngineV2.cs",
+          "src/Invekto.Automation/Services/FlowValidator.cs",
+          "src/Invekto.Automation/Services/FlowMigrator.cs",
+          "src/Invekto.Automation/Services/ExpressionEvaluator.cs"
+        ],
+        "modified_files": [
+          "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+          "src/Invekto.Automation/Program.cs",
+          "arch/errors.md",
+          "src/Invekto.Shared/Constants/ErrorCodes.cs"
+        ]
+      },
+      "3b": {
+        "name": "Test Simulasyon API + SPA Chat Panel",
+        "scope": "Backend simulation engine + SPA interaktif chat",
+        "new_files": [
+          "src/Invekto.Automation/Services/SimulationEngine.cs",
+          "src/Invekto.Automation/Services/MockFaqMatcher.cs",
+          "src/Invekto.Automation/Services/MockIntentDetector.cs",
+          "src/Invekto.Backend/FlowBuilder/src/store/simulation-store.ts",
+          "src/Invekto.Backend/FlowBuilder/src/components/SimulationPanel.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/components/ChatBubble.tsx"
+        ],
+        "modified_files": [
+          "src/Invekto.Automation/Program.cs",
+          "src/Invekto.Backend/Services/FlowBuilderClient.cs",
+          "src/Invekto.Backend/Program.cs",
+          "src/Invekto.Backend/FlowBuilder/src/lib/api.ts",
+          "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx",
+          "arch/errors.md",
+          "src/Invekto.Shared/Constants/ErrorCodes.cs"
+        ]
+      },
+      "3c": {
+        "name": "Validation UI + Polish",
+        "scope": "SPA validation gosterimi + debug araclari",
+        "modified_files": [
+          "src/Invekto.Backend/FlowBuilder/src/panels/FlowSettingsPanel.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/components/SimulationPanel.tsx"
+        ]
+      }
+    },
+    "node_execution_model": {
+      "auto_chain": ["trigger_start", "message_text", "action_delay", "utility_set_variable", "utility_note", "logic_condition", "logic_switch"],
+      "wait_for_input": ["message_menu", "ai_intent", "ai_faq"],
+      "terminal": ["action_handoff"],
+      "external": ["action_api_call"]
+    },
+    "simulation_api": {
+      "start": "POST /api/v1/simulation/start {tenant_id, flow_id} -> {session_id, messages[], current_node_id, variables, status}",
+      "step": "POST /api/v1/simulation/step {session_id, message} -> {new_messages[], current_node_id, variables, execution_path[], status}",
+      "cleanup": "DELETE /api/v1/simulation/{sessionId} -> 204"
+    },
+    "session_state_v2": {
+      "current_node_id": "string (node ID)",
+      "variables": "Record<string, unknown>",
+      "execution_path": "string[] (visited node IDs)",
+      "loop_counters": "Record<string, number> (per-node visit count)",
+      "pending_input": "{ type: menu|text, options?: string[] } | null"
+    },
+    "v1_v2_session_column_strategy": {
+      "decision": "v2 session state session_data JSONB icerisinde saklanir. current_node kolonu v1 backward compat icin kalir.",
+      "current_node_column": "v1 engine kullanir: 'welcome', 'menu', 'faq', etc. (state name). v2 engine KULLANMAZ.",
+      "session_data_jsonb": "v2 engine kullanir: { current_node_id: 'trigger_start_1', variables: {}, execution_path: [], loop_counters: {}, pending_input: null }",
+      "version_detection": "AutomationOrchestrator flow_config.version ile v1/v2 ayirir. v1 -> FlowEngine (current_node kolonu), v2 -> FlowEngineV2 (session_data JSONB)",
+      "migration_note": "chat_sessions tablosuna ALTER TABLE gerekmez. Mevcut session_data JSONB yeterli."
+    }
+  },
+
+  "endpoints": {
+    "automation_service_3a": [
+      {"method": "POST", "path": "/api/v1/flows/validate", "desc": "Flow config graph validation", "response": "200: {is_valid, errors[], warnings[]}"},
+      {"method": "POST", "path": "/api/v1/flows/{tenantId}/{flowId}/migrate-v1", "desc": "Convert v1 menu config to v2 graph", "response": "200: {flow_config_v2}"}
+    ],
+    "automation_service_3b": [
+      {"method": "POST", "path": "/api/v1/simulation/start", "desc": "Start simulation session", "response": "200: {session_id, messages[], current_node_id, variables, status}"},
+      {"method": "POST", "path": "/api/v1/simulation/step", "desc": "Send user message to simulation", "response": "200: {new_messages[], current_node_id, variables, execution_path[], status}"},
+      {"method": "DELETE", "path": "/api/v1/simulation/{sessionId}", "desc": "Cleanup simulation session", "response": "204"}
+    ],
+    "backend_proxy_3b": [
+      {"method": "POST", "path": "/api/v1/flow-builder/simulation/start", "proxies_to": "/api/v1/simulation/start"},
+      {"method": "POST", "path": "/api/v1/flow-builder/simulation/step", "proxies_to": "/api/v1/simulation/step"},
+      {"method": "DELETE", "path": "/api/v1/flow-builder/simulation/{sessionId}", "proxies_to": "/api/v1/simulation/{sessionId}"}
+    ]
+  },
+
+  "error_codes": {
+    "INV-AT-011": {"http": 400, "desc": "Max loop count exceeded", "msg": "Sonsuz dongu limiti asildi, node: {node_id}"},
+    "INV-AT-012": {"http": 400, "desc": "Unknown node type", "msg": "Desteklenmeyen node tipi: {type}"},
+    "INV-AT-013": {"http": 400, "desc": "No pending input expected", "msg": "Beklenmeyen kullanici girdisi"},
+    "INV-AT-014": {"http": 500, "desc": "Unknown input type", "msg": "Bilinmeyen girdi tipi: {type}"},
+    "INV-AT-015": {"http": 400, "desc": "Graph validation failed", "msg": "Akis dogrulamasi basarisiz: {reason}"},
+    "INV-AT-016": {"http": 400, "desc": "Required field missing", "msg": "Zorunlu alan eksik, node '{node_id}': {field}"},
+    "INV-AT-017": {"http": 500, "desc": "Expression evaluation failed", "msg": "Ifade degerlendirme hatasi, node '{node_id}': {reason}"},
+    "INV-AT-018": {"http": 404, "desc": "Simulation session not found", "msg": "Simulasyon oturumu bulunamadi"},
+    "INV-AT-019": {"http": 410, "desc": "Simulation session expired", "msg": "Simulasyon oturumunun suresi doldu"},
+    "INV-AT-020": {"http": 404, "desc": "Flow not found for simulation", "msg": "Simulasyon icin akis bulunamadi"}
+  },
+
+  "allowed_files": [
+    "src/Invekto.Automation/Services/FlowGraphV2.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs",
+    "src/Invekto.Automation/Services/FlowMigrator.cs",
+    "src/Invekto.Automation/Services/ExpressionEvaluator.cs",
+    "src/Invekto.Automation/Services/SimulationEngine.cs",
+    "src/Invekto.Automation/Services/MockFaqMatcher.cs",
+    "src/Invekto.Automation/Services/MockIntentDetector.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Services/FlowBuilderClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/FlowBuilder/src/store/simulation-store.ts",
+    "src/Invekto.Backend/FlowBuilder/src/components/SimulationPanel.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/ChatBubble.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/lib/api.ts",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/panels/FlowSettingsPanel.tsx",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/session-memory.md",
+    "arch/active-work.md",
+    "arch/docs/flow-builder-roadmap.md",
+    "arch/contracts/automation-flow-v2.json"
+  ],
+
+  "files_changed": [],
+
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": null,
+    "full_path": null,
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+
+  "build": {
+    "status": null,
+    "command": "dotnet build InvektoServices.sln + npx tsc --noEmit + npx vite build",
+    "timestamp": null,
+    "duration_ms": null,
+    "output_tail": null,
+    "error_summary": null
+  },
+
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/ (dokunulmaz)",
+      "src/Invekto.AgentAI/ (dokunulmaz)",
+      "src/Invekto.Outbound/ (dokunulmaz)",
+      "src/Invekto.Backend/Dashboard/ (dokunulmaz)",
+      "arch/deploy/ (Phase 3'te deploy degisikligi yok)"
+    ],
+    "non_goals": [
+      "Gercek WhatsApp mesaj gonderimi (mock only)",
+      "iframe postMessage auth (Phase 5)",
+      "Auto-save (Phase 5)",
+      "Dark/light tema (Phase 5)",
+      "Yeni node tipi UI editor'lari (Phase 4)",
+      "Flow export/import dosya olarak (Phase 5)"
+    ],
+    "intentional_exclusions": [
+      "Claude API cagrisi simulation'da yapilmaz (MockIntentDetector kullanilir)",
+      "DB'ye FAQ sorgusu simulation'da yapilmaz (MockFaqMatcher kullanilir)",
+      "Simulation session DB'ye yazilmaz (in-memory only)",
+      "action_api_call simulation'da gercek HTTP call yapmaz (mock response doner)",
+      "action_delay simulation'da beklemez (aninda skip)"
+    ]
+  },
+
+  "error_handling": {
+    "try_catch_locations": [
+      "FlowEngineV2: Her node execution try-catch (node-level error izolasyonu)",
+      "SimulationEngine: Start/Step try-catch (session-level error)",
+      "ExpressionEvaluator: Evaluation try-catch (graceful fallback)",
+      "SPA api.ts: Simulation API calls try-catch (UI error toast)"
+    ],
+    "user_facing_errors": [
+      "INV-AT-011: Sonsuz dongu limiti asildi",
+      "INV-AT-015: Akis dogrulamasi basarisiz",
+      "INV-AT-016: Zorunlu alan eksik",
+      "INV-AT-018: Simulasyon oturumu bulunamadi",
+      "INV-AT-020: Simulasyon icin akis bulunamadi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum error path'leri explicit error code + user message donuyor. Simulation engine in-memory, DB write yok, side-effect yok."
+  },
+
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Flow'u test etmek icin production'da aktive etmek gerekiyor, hata varsa gercek musteriler etkileniyor",
+      "suggestion": "Test Et butonu tikla, aninda SPA icinde interaktif chat baslat - production etkilenmez",
+      "aha_moment": "Kullanici Test Et tiklar, welcome mesaji chat panelinde belirir, menu seceneklerine tiklar -> 'Musterileri etkilemeden deneyebiliyorum!'"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "FAQ ve intent node'larini test etmek icin Claude API beklemek gerekiyor, yavas iterasyon",
+      "suggestion": "Mock servisler aninda deterministik yanit doner, Claude API cagrisi yapilmaz",
+      "aha_moment": "Kullanici 'fiyat' yazar, aninda mock FAQ cevabi gelir -> '2 dakikada 10 farkli senaryo test ettim!'"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bozuk flow aktive edilince musteriler sonsuz dongude veya baglantisiz node'da kaliyor",
+      "suggestion": "Akisi Dogrula butonu ile orphan node, bos alan, sonsuz dongu riski onceden tespit edilir",
+      "aha_moment": "Kullanici Dogrula tiklar, 'Node X erisilemez' hatasi gorur -> 'Bozuk flow'u aktive etmeden yakaladim!'"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Chatbot yeteneklerini potansiyel musteriye gostermek zor, canli demo yok",
+      "suggestion": "Flow Builder + simulasyon canli demo araci olarak kullanilir: flow kur, test et, goster",
+      "aha_moment": "Satis temsilcisi musterinin onunde flow kurar, Test Et tiklar, canli chat gosterir -> 'Su anda size chatbot kurayim, 5 dakika!'"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Musteri 'chatbot beni anlamadi' der, sorunun kaynagini bulmak zor",
+      "suggestion": "Variable inspector ile runtime degiskenler gorulur: intent, confidence, selected_option",
+      "aha_moment": "Destek simulasyonda musterinin kelimeleriyle test eder, Degiskenler tab'inda confidence=0.2 gorur -> 'Threshold 0.5'e cikarayim!'"
+    }
+  ],
+
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "v2 session_data JSONB (loop_counters, pending_input, variables, execution_path) dogru serialize/deserialize ediliyor mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "v1 flow'lar v2 engine'den etkilenmeden calismaya devam ediyor mu? AutomationOrchestrator version dispatch dogru mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Loop protection calisyor mu? max_loop_count asilinca INV-AT-011 donuyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Simulation session DB'ye hicbir sey yazmiyor mu? Callback gondermiyor mu? (tam izolasyon)",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Simulation endpoint'leri JWT korumasinda mi? Baska tenant'in flow'unu test edemiyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "SPA'da menu secimi interaktif calisiyor mu? Chat'teki butona tikla -> step API -> sonraki mesaj gorun?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Canvas'ta aktif node yesil highlight oluyor mu? Node degisince highlight guncelleniyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+
+  "verdict": {
+    "status": null,
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

@@ -136,9 +136,15 @@
 - [x] ~~GR-1.3 Outbound Service~~ (Tamamlandi - Port 7107, Build PASS, /rev bekliyor)
 - [x] ~~Flow Builder Phase 1~~ (Tamamlandi - SPA scaffold, canvas, 5 node, drag-drop, property panel, UI test OK)
 - [x] ~~Flow Builder Phase 2~~ (Tamamlandi - Multi-flow DB, CRUD endpoints, Backend proxy, JWT login, SPA auth/routing, FlowListPage, FlowEditorPage API, Build PASS)
-- [ ] Flow Builder Phase 3: FlowEngine v2 (graph executor, validator, migrator)
+- [ ] Flow Builder Phase 2.5: SPA Quick Wins - AHA #1 Canli Onizleme, #2 Kirmizi Kenar, #6 Kopya Baslat (SPA-only, LOW efor)
+- [ ] Flow Builder Phase 3a: FlowEngine v2 + Validator + Migrator (backend C# only)
+- [ ] Flow Builder Phase 3b: Test Simulasyon API + SPA Chat Panel + AHA #4 Tek Tikla Test
+- [ ] Flow Builder Phase 3c: Validation UI + AHA #3 Ghost Path + #5 Saglik Skoru + Polish
 - [ ] Flow Builder Phase 4: Genisletilmis node'lar (logic, AI, api_call, delay, set_variable)
-- [ ] Flow Builder Phase 5: iframe + polish (postMessage, auto-save, tema, keyboard shortcuts)
+- [ ] Flow Builder Phase 5: iframe + AHA #7 Trafik Heatmap + polish
+
+> **Phase 3 Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
+> **AHA Moments (2026-02-13):** 7 iyilestirme roadmap'e entegre edildi (Phase 2.5, 3b, 3c, 5)
 
 ### Known Issues
 - (Henüz yok)
@@ -180,6 +186,9 @@
 | 2026-02-12 | API key login | tenant_registry.settings_json flow_builder_api_key -> JWT (8h expiry), Main App proxy degil |
 | 2026-02-12 | Backend JWT proxy | Backend:5000 /api/v1/flow-builder/* -> Automation:7108 /api/v1/flows/*, localhost-only |
 | 2026-02-12 | react-router-dom SPA routing | /flow-builder/login, /, /editor/:flowId - BrowserRouter basename="/flow-builder" |
+| 2026-02-13 | AHA #5 list endpoint: Secenek A | List endpoint'e flow_config eklenecek (Phase 3c'de). SPA-side health score hesaplama icin graph yapisi gerekli |
+| 2026-02-13 | v2 contract JSON schema | `arch/contracts/automation-flow-v2.json` olusturuldu. TypeScript tek kaynak degil, JSON schema Phase 3a backend icin referans |
+| 2026-02-13 | v1/v2 session kolon stratejisi | v2 session state session_data JSONB'de, current_node kolonu v1 backward compat icin kalir. ALTER TABLE gerekmez |
 
 ---
 
@@ -250,10 +259,13 @@ Phase 2 (API + Backend + Multi-flow + Auth) tamamlandi. /rev bekliyor.
 - `src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx` (updated: back button)
 - `src/Invekto.Backend/FlowBuilder/src/App.tsx` (updated: router + auth)
 
-### Siradaki: Phase 3 (FlowEngine v2)
-- v2 graph executor (node-by-node traversal)
-- Flow validator (connected graph, no orphans, required fields)
-- v1 -> v2 migration endpoint
+### Siradaki: Phase 3 (FlowEngine v2 + Test Simulasyon)
+
+**Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
+
+**Phase 3a** (Backend): FlowEngine v2 graph executor, FlowValidator, FlowMigrator (v1->v2), ExpressionEvaluator, AutomationOrchestrator version dispatch
+**Phase 3b** (Full Stack): SimulationEngine (in-memory), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), aktif node highlight, interaktif menu
+**Phase 3c** (Polish): Validation UI (Settings panel), Variable Inspector, execution breadcrumb
 
 ### Bekleyen diger isler
 - GR-1.3 Outbound /rev tamamla (Codex review)

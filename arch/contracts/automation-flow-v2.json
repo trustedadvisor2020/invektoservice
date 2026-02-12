@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "automation-flow-v2.json",
+  "title": "Automation Flow Config Contract v2",
+  "description": "Flow Builder v2 node/edge graph model. Stored in chatbot_flows.flow_config (JSONB). TypeScript source: src/Invekto.Backend/FlowBuilder/src/types/flow.ts",
+  "version": "2.0",
+
+  "type": "object",
+  "required": ["version", "metadata", "nodes", "edges", "settings"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Flow config schema version (v2 = node/edge graph)"
+    },
+    "metadata": {
+      "$ref": "#/$defs/FlowMetadata"
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FlowNode" },
+      "description": "Graph nodes (min 1 trigger_start required)"
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FlowEdge" },
+      "description": "Graph edges connecting node outputs to inputs"
+    },
+    "settings": {
+      "$ref": "#/$defs/FlowSettings"
+    }
+  },
+
+  "$defs": {
+    "FlowMetadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Flow display name" },
+        "description": { "type": "string", "description": "Optional flow description" },
+        "canvas_viewport": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "zoom": { "type": "number", "minimum": 0.1, "maximum": 5 }
+          },
+          "description": "SPA canvas position/zoom state (UI-only, engine ignores)"
+        }
+      }
+    },
+
+    "FlowNode": {
+      "type": "object",
+      "required": ["id", "type", "position", "data"],
+      "properties": {
+        "id": { "type": "string", "description": "Unique node ID (e.g. trigger_start_1, msg_text_2)" },
+        "type": { "$ref": "#/$defs/FlowNodeType" },
+        "position": {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" }
+          },
+          "description": "Canvas position (UI-only, engine ignores)"
+        },
+        "data": {
+          "description": "Node-specific configuration (varies by type)",
+          "oneOf": [
+            { "$ref": "#/$defs/TriggerStartData" },
+            { "$ref": "#/$defs/MessageTextData" },
+            { "$ref": "#/$defs/MessageMenuData" },
+            { "$ref": "#/$defs/LogicConditionData" },
+            { "$ref": "#/$defs/LogicSwitchData" },
+            { "$ref": "#/$defs/AiIntentData" },
+            { "$ref": "#/$defs/AiFaqData" },
+            { "$ref": "#/$defs/ActionHandoffData" },
+            { "$ref": "#/$defs/ActionApiCallData" },
+            { "$ref": "#/$defs/ActionDelayData" },
+            { "$ref": "#/$defs/UtilitySetVariableData" },
+            { "$ref": "#/$defs/UtilityNoteData" }
+          ]
+        }
+      }
+    },
+
+    "FlowEdge": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "properties": {
+        "id": { "type": "string", "description": "Unique edge ID" },
+        "source": { "type": "string", "description": "Source node ID" },
+        "target": { "type": "string", "description": "Target node ID" },
+        "sourceHandle": { "type": "string", "description": "Output handle (e.g. opt_1 for menu, true/false for condition)" },
+        "targetHandle": { "type": "string", "description": "Input handle (default: null = main input)" }
+      }
+    },
+
+    "FlowSettings": {
+      "type": "object",
+      "required": ["handoff_confidence_threshold", "session_timeout_minutes", "max_loop_count"],
+      "properties": {
+        "off_hours_message": { "type": "string", "description": "Message sent outside working hours" },
+        "unknown_input_message": { "type": "string", "description": "Message when user input doesn't match" },
+        "handoff_confidence_threshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "session_timeout_minutes": { "type": "integer", "minimum": 1, "maximum": 1440, "default": 30 },
+        "max_loop_count": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10, "description": "Max times a node can be visited before INV-AT-011" }
+      }
+    },
+
+    "FlowNodeType": {
+      "type": "string",
+      "enum": [
+        "trigger_start",
+        "message_text",
+        "message_menu",
+        "logic_condition",
+        "logic_switch",
+        "ai_intent",
+        "ai_faq",
+        "action_handoff",
+        "action_api_call",
+        "action_delay",
+        "utility_set_variable",
+        "utility_note"
+      ]
+    },
+
+    "TriggerStartData": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" }
+      },
+      "description": "Flow entry point. Max 1 per flow. No input handles, 1 output handle."
+    },
+
+    "MessageTextData": {
+      "type": "object",
+      "required": ["label", "text"],
+      "properties": {
+        "label": { "type": "string" },
+        "text": { "type": "string", "minLength": 1, "description": "Message text to send (supports {{variable}} substitution)" }
+      },
+      "description": "Send a text message. Auto-chain: immediately proceeds to next node."
+    },
+
+    "MessageMenuData": {
+      "type": "object",
+      "required": ["label", "text", "options"],
+      "properties": {
+        "label": { "type": "string" },
+        "text": { "type": "string", "description": "Menu header text" },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["key", "label", "handle_id"],
+            "properties": {
+              "key": { "type": "string", "description": "User input key (e.g. '1', '2')" },
+              "label": { "type": "string", "description": "Display text" },
+              "handle_id": { "type": "string", "description": "Output handle ID (e.g. opt_1)" }
+            }
+          }
+        }
+      },
+      "description": "Show menu and wait for user selection. N output handles (one per option)."
+    },
+
+    "LogicConditionData": {
+      "type": "object",
+      "required": ["label", "variable", "operator", "value"],
+      "properties": {
+        "label": { "type": "string" },
+        "variable": { "type": "string", "description": "Session variable name to evaluate" },
+        "operator": {
+          "type": "string",
+          "enum": ["equals", "contains", "starts_with", "greater_than", "less_than", "is_empty", "regex"]
+        },
+        "value": { "type": "string", "description": "Value to compare against" }
+      },
+      "description": "If/else branching. 2 output handles: true, false."
+    },
+
+    "LogicSwitchData": {
+      "type": "object",
+      "required": ["label", "variable", "cases", "default_handle_id"],
+      "properties": {
+        "label": { "type": "string" },
+        "variable": { "type": "string", "description": "Session variable name to switch on" },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["value", "handle_id"],
+            "properties": {
+              "value": { "type": "string" },
+              "handle_id": { "type": "string" }
+            }
+          }
+        },
+        "default_handle_id": { "type": "string", "description": "Handle when no case matches" }
+      },
+      "description": "Multi-way branching. N+1 output handles (N cases + default)."
+    },
+
+    "AiIntentData": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "intents": { "type": "array", "items": { "type": "string" }, "description": "Expected intent labels" },
+        "confidence_threshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 }
+      },
+      "description": "Claude AI intent detection. Wait for user input. 2 handles: high_confidence, low_confidence."
+    },
+
+    "AiFaqData": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "min_confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.3 }
+      },
+      "description": "FAQ database search. Wait for user input. 2 handles: matched, no_match."
+    },
+
+    "ActionHandoffData": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "summary_template": { "type": "string", "description": "Template for handoff summary (supports {{variable}})" }
+      },
+      "description": "Transfer to human agent. Terminal node (no output handles). Ends session."
+    },
+
+    "ActionApiCallData": {
+      "type": "object",
+      "required": ["label", "method", "url"],
+      "properties": {
+        "label": { "type": "string" },
+        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE"] },
+        "url": { "type": "string", "format": "uri", "description": "External API URL (supports {{variable}})" },
+        "headers": { "type": "object", "additionalProperties": { "type": "string" }, "description": "HTTP headers" },
+        "body_template": { "type": "string", "description": "Request body template (supports {{variable}})" },
+        "response_variable": { "type": "string", "description": "Variable name to store response JSON" },
+        "timeout_ms": { "type": "integer", "minimum": 100, "maximum": 30000, "default": 5000 }
+      },
+      "description": "External HTTP call. 2 handles: success, error."
+    },
+
+    "ActionDelayData": {
+      "type": "object",
+      "required": ["label", "seconds"],
+      "properties": {
+        "label": { "type": "string" },
+        "seconds": { "type": "integer", "minimum": 1, "maximum": 300, "description": "Wait duration in seconds" }
+      },
+      "description": "Pause execution. Auto-chain after delay."
+    },
+
+    "UtilitySetVariableData": {
+      "type": "object",
+      "required": ["label", "variable_name", "value_expression"],
+      "properties": {
+        "label": { "type": "string" },
+        "variable_name": { "type": "string", "description": "Session variable name to set" },
+        "value_expression": { "type": "string", "description": "Value expression (supports {{variable}} substitution)" }
+      },
+      "description": "Set session variable. Auto-chain."
+    },
+
+    "UtilityNoteData": {
+      "type": "object",
+      "required": ["label", "text"],
+      "properties": {
+        "label": { "type": "string" },
+        "text": { "type": "string", "description": "Note content (developer-only, not executed)" },
+        "color": { "type": "string", "description": "Note background color (CSS hex)" }
+      },
+      "description": "Visual comment on canvas. Not executed by engine. No output handles."
+    }
+  },
+
+  "examples": {
+    "simple_welcome_menu": {
+      "version": 2,
+      "metadata": {
+        "name": "Basit Karsilama",
+        "canvas_viewport": { "x": 0, "y": 0, "zoom": 1 }
+      },
+      "nodes": [
+        {
+          "id": "trigger_start_1",
+          "type": "trigger_start",
+          "position": { "x": 300, "y": 50 },
+          "data": { "label": "Baslangic" }
+        },
+        {
+          "id": "msg_text_1",
+          "type": "message_text",
+          "position": { "x": 300, "y": 150 },
+          "data": { "label": "Karsilama", "text": "Hos geldiniz! Size nasil yardimci olabilirim?" }
+        },
+        {
+          "id": "msg_menu_1",
+          "type": "message_menu",
+          "position": { "x": 300, "y": 300 },
+          "data": {
+            "label": "Ana Menu",
+            "text": "Lutfen bir secenek belirleyin:",
+            "options": [
+              { "key": "1", "label": "SSS", "handle_id": "opt_1" },
+              { "key": "2", "label": "Temsilci", "handle_id": "opt_2" }
+            ]
+          }
+        },
+        {
+          "id": "ai_faq_1",
+          "type": "ai_faq",
+          "position": { "x": 150, "y": 500 },
+          "data": { "label": "FAQ Arama", "min_confidence": 0.3 }
+        },
+        {
+          "id": "action_handoff_1",
+          "type": "action_handoff",
+          "position": { "x": 450, "y": 500 },
+          "data": { "label": "Temsilciye Aktar" }
+        }
+      ],
+      "edges": [
+        { "id": "e1", "source": "trigger_start_1", "target": "msg_text_1" },
+        { "id": "e2", "source": "msg_text_1", "target": "msg_menu_1" },
+        { "id": "e3", "source": "msg_menu_1", "target": "ai_faq_1", "sourceHandle": "opt_1" },
+        { "id": "e4", "source": "msg_menu_1", "target": "action_handoff_1", "sourceHandle": "opt_2" }
+      ],
+      "settings": {
+        "off_hours_message": "Su anda mesai saatleri disindayiz.",
+        "unknown_input_message": "Anlayamadim. Lutfen gecerli bir secenek girin.",
+        "handoff_confidence_threshold": 0.5,
+        "session_timeout_minutes": 30,
+        "max_loop_count": 10
+      }
+    }
+  }
+}

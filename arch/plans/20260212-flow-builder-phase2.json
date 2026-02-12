@@ -78,7 +78,8 @@
       {"method": "POST", "path": "/api/v1/flows/{tenantId}", "desc": "Create new flow (NEW)", "response": "201: {flow_id, flow_name}"},
       {"method": "PUT", "path": "/api/v1/flows/{tenantId}/{flowId}", "desc": "Update flow config (CHANGED: now requires flowId)", "response": "200: {status: updated}"},
       {"method": "DELETE", "path": "/api/v1/flows/{tenantId}/{flowId}", "desc": "Delete flow (NEW)", "response": "200: {status: deleted}"},
-      {"method": "POST", "path": "/api/v1/flows/{tenantId}/{flowId}/activate", "desc": "Set flow as active, deactivate others (NEW)", "response": "200: {status: activated}"}
+      {"method": "POST", "path": "/api/v1/flows/{tenantId}/{flowId}/activate", "desc": "Set flow as active, deactivate others (NEW)", "response": "200: {status: activated}"},
+      {"method": "POST", "path": "/api/v1/flows/{tenantId}/{flowId}/deactivate", "desc": "Deactivate flow (NEW)", "response": "200: {status: deactivated}"}
     ],
     "backend_proxy": [
       {"method": "GET", "path": "/api/v1/flow-builder/flows/{tenantId}", "proxies_to": "/api/v1/flows/{tenantId}"},
@@ -86,7 +87,8 @@
       {"method": "POST", "path": "/api/v1/flow-builder/flows/{tenantId}", "proxies_to": "/api/v1/flows/{tenantId}"},
       {"method": "PUT", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}"},
       {"method": "DELETE", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}"},
-      {"method": "POST", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}/activate", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}/activate"}
+      {"method": "POST", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}/activate", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}/activate"},
+      {"method": "POST", "path": "/api/v1/flow-builder/flows/{tenantId}/{flowId}/deactivate", "proxies_to": "/api/v1/flows/{tenantId}/{flowId}/deactivate"}
     ],
     "backend_auth": [
       {"method": "POST", "path": "/api/v1/flow-builder/auth/login", "desc": "API key login -> JWT", "auth": "none (public)", "response": "200: {token, tenant_id, expires_in}"}
@@ -241,7 +243,7 @@
       "migrate-v1 endpoint (Phase 3)",
       "iframe postMessage auth (Phase 5)",
       "Auto-save (Phase 5)",
-      "Test mode / flow simulation (Phase 5)",
+      "Test mode / flow simulation (Phase 3b)",
       "Dark/light theme (Phase 5)",
       "Keyboard shortcuts beyond default (Phase 5)"
     ],
