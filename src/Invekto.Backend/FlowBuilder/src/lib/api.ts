@@ -57,7 +57,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     let errBody: ApiError | null = null;
     try {
       errBody = await res.json();
-    } catch { /* empty */ }
+    } catch { /* non-JSON error response body — fall through to default message */ }
     throw new ApiClientError(
       res.status,
       errBody?.error_code ?? 'UNKNOWN',
@@ -97,7 +97,7 @@ export async function login(tenantId: number, apiKey: string): Promise<LoginResp
     let errBody: ApiError | null = null;
     try {
       errBody = await res.json();
-    } catch { /* empty */ }
+    } catch { /* non-JSON error response body — fall through to default message */ }
     throw new ApiClientError(
       res.status,
       errBody?.error_code ?? 'UNKNOWN',
@@ -160,4 +160,48 @@ export function activateFlow(tenantId: number, flowId: number): Promise<void> {
 
 export function deactivateFlow(tenantId: number, flowId: number): Promise<void> {
   return request<void>('POST', `/flows/${tenantId}/${flowId}/deactivate`);
+}
+
+// -- Simulation --
+
+export interface SimulationMessage {
+  role: 'bot' | 'user' | 'system';
+  text: string;
+}
+
+export interface SimulationPendingInput {
+  type: 'menu' | 'text';
+  options?: string[];
+}
+
+export interface SimulationStartResponse {
+  session_id: string;
+  messages: SimulationMessage[];
+  current_node_id: string;
+  variables: Record<string, string>;
+  execution_path: string[];
+  status: string;
+  pending_input: SimulationPendingInput | null;
+}
+
+export interface SimulationStepResponse {
+  messages: SimulationMessage[];
+  current_node_id: string;
+  variables: Record<string, string>;
+  execution_path: string[];
+  status: string;
+  is_terminal: boolean;
+  pending_input: SimulationPendingInput | null;
+}
+
+export function simulationStart(tenantId: number, flowId: number): Promise<SimulationStartResponse> {
+  return request<SimulationStartResponse>('POST', '/simulation/start', { tenant_id: tenantId, flow_id: flowId });
+}
+
+export function simulationStep(sessionId: string, message: string): Promise<SimulationStepResponse> {
+  return request<SimulationStepResponse>('POST', '/simulation/step', { session_id: sessionId, message });
+}
+
+export function simulationCleanup(sessionId: string): Promise<void> {
+  return request<void>('DELETE', `/simulation/${sessionId}`);
 }

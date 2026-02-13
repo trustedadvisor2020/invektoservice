@@ -5,9 +5,11 @@ import { FlowCanvas } from '../components/FlowCanvas';
 import { FlowSummaryBar } from '../components/FlowSummaryBar';
 import { NodePalette } from '../components/NodePalette';
 import { Toolbar } from '../components/Toolbar';
+import { SimulationPanel } from '../components/SimulationPanel';
 import { NodePropertyPanel } from '../panels/NodePropertyPanel';
 import { FlowSettingsPanel } from '../panels/FlowSettingsPanel';
 import { useFlowStore } from '../store/flow-store';
+import { useSimulationStore } from '../store/simulation-store';
 import { useAuth } from '../lib/auth';
 import { getFlow, updateFlow, ApiClientError } from '../lib/api';
 import type { FlowConfigV2 } from '../types/flow';
@@ -98,8 +100,38 @@ export function FlowEditorPage() {
         return;
       }
     }
+    // Close simulation if open
+    useSimulationStore.getState().close();
     navigate('/');
   }, [navigate]);
+
+  // AHA #4: Tek Tikla Test — save first if dirty, then start simulation
+  const handleTest = useCallback(async () => {
+    const store = useFlowStore.getState();
+    const sim = useSimulationStore.getState();
+
+    // If simulation is already open, just toggle it
+    if (sim.isOpen) {
+      sim.close();
+      return;
+    }
+
+    // If dirty, warn user to save first
+    if (store.isDirty) {
+      setSaveError('Once flow\'u kaydedin, sonra test edin.');
+      return;
+    }
+
+    // Start simulation
+    await sim.start(tenantId, flowId);
+  }, [tenantId, flowId]);
+
+  // Cleanup simulation on unmount
+  useEffect(() => {
+    return () => {
+      useSimulationStore.getState().close();
+    };
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -147,7 +179,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-slate-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} />
 
         {/* Save error banner */}
         {saveError && (
@@ -201,6 +233,9 @@ export function FlowEditorPage() {
               <FlowSettingsPanel />
             )}
           </div>
+
+          {/* Simulation panel (flex shrink — canvas narrows when open) */}
+          <SimulationPanel />
         </div>
       </div>
     </ReactFlowProvider>

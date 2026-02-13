@@ -8,12 +8,15 @@
 |-----|--------|-------|------|-----------|-----|
 | Phase 1 | SPA UI & Canvas | DONE | LOW | (yok - Phase 2 oncesi) | - |
 | Phase 2 | Multi-flow + API + Auth | DONE | HIGH | `20260212-flow-builder-phase2.json` | - |
-| Phase 2.5 | SPA Quick Wins (AHA) | PLANNED | LOW | (yok - SPA-only) | #1 #2 #6 |
-| Phase 3a | FlowEngine v2 + Validator + Migrator | PLANNED | HIGH | `20260213-flow-builder-phase3.json` | - |
-| Phase 3b | Test Simulasyon + Tek Tikla Test | PLANNED | HIGH | (3a ile ayni plan) | #4 |
+| Phase 2.5 | SPA Quick Wins (AHA) | **DONE** | LOW | `20260213-flow-builder-phase25.json` | #1 #2 #6 |
+| Phase 3a | FlowEngine v2 + Validator + Migrator | **DONE** | HIGH | `20260213-flow-builder-phase3.json` | - |
+| Phase 3b | Test Simulasyon + Tek Tikla Test | **NEXT** | HIGH | (3a ile ayni plan) | #4 |
 | Phase 3c | Validation UI + Insights + Polish | PLANNED | MEDIUM | (3a ile ayni plan) | #3 #5 |
-| Phase 4 | Genisletilmis Node Tipleri | PLANNED | MEDIUM | (henuz yok) | - |
-| Phase 5 | iframe Embed + Analytics + Polish | PLANNED | MEDIUM | (henuz yok) | #7 |
+| Phase 4a | Logic + Delay + SetVariable Node'lari | PLANNED | LOW | (henuz yok) | - |
+| Phase 4b | AI + API Call Node'lari | PLANNED | MEDIUM | (henuz yok) | - |
+| Phase 5a | iframe Embed (Main App entegrasyon) | PLANNED | HIGH | (henuz yok) | - |
+| Phase 5b | Trafik Heatmap (analytics) | PLANNED | MEDIUM | (henuz yok) | #7 |
+| Phase 5c | UX Polish (auto-save, shortcuts, export) | PLANNED | LOW | (henuz yok) | - |
 
 ---
 
@@ -44,9 +47,9 @@
 
 ---
 
-## Phase 2.5: SPA Quick Wins - AHA Moments (PLANNED)
+## Phase 2.5: SPA Quick Wins - AHA Moments (DONE)
 
-**Oncelik:** Quick Win | **Efor:** LOW | **Risk:** LOW | **Backend degisiklik:** YOK (sadece #6 icin mevcut API kullanilir)
+**Tamamlanma:** 2026-02-13 | **Plan:** `arch/plans/20260213-flow-builder-phase25.json` | **Codex:** 2 iter PASS
 
 > Phase 3a backend calismasi oncesi, SPA-only iyilestirmeler. Sifir backend kodu, mevcut API'ler yeterli.
 
@@ -76,17 +79,18 @@
 
 **Cozum:** Her edge ekleme/silme sonrasi SPA'da anlik graph validation overlay.
 
-**Kurallar:**
-| Durum | Gorsel | Tooltip |
-|-------|--------|---------|
-| Orphan node (input edge yok, trigger_start degil) | Kirmizi ring (`ring-2 ring-red-500`) | "Bu adima ulasilamiyor" |
-| Dead-end node (output edge yok, handoff/note degil) | Turuncu ring (`ring-2 ring-orange-400`) | "Bu adimdan sonra akis duruyor" |
-| Bos zorunlu alan (message_text.text bos) | Sari ring (`ring-2 ring-yellow-400`) | "Mesaj metni bos" |
+**Kurallar (gercek implementasyon):**
+| Durum | Gorsel | Severity | Tooltip |
+|-------|--------|----------|---------|
+| Orphan node (input edge yok, trigger_start degil) | Kirmizi boxShadow (`#ef4444`) | error | "Bu adima ulasilamiyor" |
+| Dead-end node (output edge yok, handoff/note degil) | Turuncu boxShadow (`#f97316`) | warning | "Bu adimdan sonra akis duruyor" |
+| Bos zorunlu alan (message_text.text bos, menu options bos) | Turuncu boxShadow (`#f97316`) | warning | "Mesaj metni bos" / "Menu secenekleri bos" |
 
-**Davranis:**
-- `onEdgesChange` ve `onNodesChange` event'lerinde adjacency check
-- Validation sonuclari Zustand store'da `validationErrors: Map<nodeId, string[]>`
-- BaseNode component'inde conditional ring class
+**Davranis (gercek implementasyon):**
+- `queueMicrotask` ile 9 mutating action sonrasi deferred revalidation
+- Validation sonuclari Zustand store'da `validationErrors: Map<nodeId, ValidationError[]>`
+- BaseNode'da boxShadow (selected=blue ring oncelikli, validation ring sadece unselected)
+- Native browser tooltip (`title` attribute)
 
 **Dosyalar:**
 - `lib/graph-validator.ts` (NEW) - SPA-side graph validation (adjacency list, orphan/dead-end/empty check)
@@ -97,29 +101,24 @@
 
 ---
 
-### AHA #1: Canli Onizleme - Save Sonrasi Flow Ozeti
+### AHA #1: Canli Onizleme - Her Degisiklikte Flow Ozeti
 
 **User Pain:** Admin flow'u kaydediyor ama "bu flow musteriye ne gosterecek?" sorusunun cevabini gormek icin ayri test lazim. Canvas'a bakarak davranisi hayal etmek zor.
 
-**Cozum:** Save basarili olduktan sonra canvas altinda 3 satirlik "Flow Ozeti" bandi.
+**Cozum:** Canvas altinda her zaman gorunur, collapsible "Flow Ozeti" bandi. `useMemo([nodes, edges])` ile her degisiklikte anlik guncellenir.
 
-**Ornek cikti:**
-```
-📱 Musteri mesaj atar → "Hos geldiniz!" → 3 secenekli menu →
-   Sec.1: SSS yaniti | Sec.2: Operatore aktarim | Sec.3: AI yanit
-```
-
-**Davranis:**
-1. Save basarili → `trigger_start` node'undan DFS traversal
-2. Her node'un `data.text` veya `data.label`'ini zincirle
-3. Dallanma varsa (menu options, condition) → indent ile goster
+**Davranis (gercek implementasyon):**
+1. `useMemo` ile her node/edge degisikliginde anlik DFS traversal (save beklenmez)
+2. `trigger_start` node'undan DFS, menu dallanmalari indent ile
+3. Node type ikonlari (play, speech bubble, clipboard, person)
 4. Max 5 satir (daha uzunsa "... ve N adim daha")
-5. Canvas altinda `FlowSummaryBar.tsx` component'i (collapse/expand)
+5. Collapse state localStorage'da persist (`console.warn` on error)
 
 **Dosyalar:**
-- `lib/flow-summarizer.ts` (NEW) - DFS traversal + text chain builder
-- `components/FlowSummaryBar.tsx` (NEW) - Collapsible summary band
-- `pages/FlowEditorPage.tsx` - Save sonrasi summary trigger
+- `lib/flow-summarizer.ts` (NEW) - DFS traversal + text chain builder + truncateSummary
+- `components/FlowSummaryBar.tsx` (NEW) - Always-visible collapsible summary band
+- `pages/FlowEditorPage.tsx` - FlowSummaryBar entegrasyonu (canvas altinda flex-col)
+- `components/FlowCanvas.tsx` - `h-full` → `min-h-0` (flex-col layout fix)
 
 **Metrik:** Save sonrasi admin'in flow'u yeniden acip kontrol etme orani (azalmali)
 
@@ -129,28 +128,56 @@
 
 **Plan:** `arch/plans/20260213-flow-builder-phase3.json`
 
-### Phase 3a: FlowEngine v2 + Validator + Migrator (Backend Only)
+### Phase 3a: FlowEngine v2 + Validator + Migrator (DONE)
 
-**Amac:** v2 graph-based execution engine, validation, v1 migration
+**Tamamlanma:** 2026-02-13 | **Commit:** `74c9ffd` | **Codex:** 3 iter Q FORCE PASS | **Dosya:** 16 dosya +1942 -27
+
+**Mimari Iyilestirmeler (2026-02-13 plan review):**
+
+| # | Iyilestirme | Fayda |
+|---|-------------|-------|
+| IMP-1 | Node Handler Registry (Strategy) | Phase 4'te 7 yeni type eklenirken engine'e dokunulmaz |
+| IMP-2 | Immutable Pre-computed Graph | Parse once, O(1) lookup, session boyunca reuse |
+| IMP-3 | Expression Safety Limits | ReDoS (100ms), max 50 var, max 10KB value, flat only |
+| IMP-4 | ExecutionContext Object | Clean API, loose params yerine tek object |
+| IMP-5 | Error Recovery Strategy | Node hatasi → session=error + handoff (sessiz kalma yok) |
+| IMP-6 | Migrator Auto-Layout | v1 → v2 sonrasi okunabilir canvas (trigger→welcome→menu→options) |
+| IMP-7 | CancellationToken Propagation | Request timeout → engine durdurulur |
+| IMP-8 | Pure Engine (Side-Effect Free) | FlowEngineV2 DB/HTTP yapmaz → Simulation icin kritik |
 
 **Yeni dosyalar:**
-- `FlowGraphV2.cs` - In-memory graph (adjacency list, node/edge lookup)
-- `FlowEngineV2.cs` - Node-by-node graph executor (chain vs wait nodelari)
-- `FlowValidator.cs` - Graph dogrulama (orphan, zorunlu alan, edge tutarliligi)
-- `FlowMigrator.cs` - v1 menu config -> v2 graph donusumu
-- `ExpressionEvaluator.cs` - Degisken substitution + condition evaluation
+- `FlowGraphV2.cs` - Immutable in-memory graph (adjacency list, node/edge lookup, static Build)
+- `FlowEngineV2.cs` - Pure graph executor (handler registry dispatch, NodeResult[] doner)
+- `FlowValidator.cs` - Graph dogrulama (orphan, zorunlu alan, edge tutarliligi, loop detection)
+- `FlowMigrator.cs` - v1 menu config → v2 graph donusumu + auto-layout positions
+- `ExpressionEvaluator.cs` - Degisken substitution + condition evaluation + safety limits
+- `NodeHandlers/INodeHandler.cs` - Handler interface + ExecutionContext + NodeResult
+- `NodeHandlers/TriggerStartHandler.cs` - Entry point, otomatik sonraki node'a gec
+- `NodeHandlers/MessageTextHandler.cs` - {{variable}} substitution + mesaj uret
+- `NodeHandlers/MessageMenuHandler.cs` - Menu goster, kullanici secimi bekle (wait)
+- `NodeHandlers/ActionHandoffHandler.cs` - Terminal, session bitir, ozet uret
+- `NodeHandlers/UtilityNoteHandler.cs` - No-op, sadece skip
 
 **Degistirilen dosyalar:**
-- `AutomationOrchestrator.cs` - Version dispatch (v1 -> FlowEngine, v2 -> FlowEngineV2)
-- `Automation/Program.cs` - Yeni endpoint'ler (validate, migrate-v1)
+- `AutomationOrchestrator.cs` - Version dispatch (v1 → FlowEngine, v2 → FlowEngineV2) + side-effect yonetimi
+- `AutomationRepository.cs` - LogAutoReplyAsync'e node_id parametresi eklenir
+- `Automation/Program.cs` - Yeni endpoint'ler (validate, migrate-v1) + handler DI registration
+
+**DB Migration (Phase 3a zorunlu):**
+- `ALTER TABLE auto_reply_log ADD COLUMN node_id VARCHAR(100)` - v2 flow execution node tracking
+- Phase 5 AHA #7 (trafik heatmap) bu kolona bagimli. Phase 3a'da eklenmezse Phase 5 calisamaz.
 
 **Node execution modeli:**
-| Tip | Davranis |
-|-----|----------|
-| trigger_start, message_text, action_delay, utility_set_variable, utility_note, logic_condition, logic_switch | Auto-chain (hemen isle, sonrakine gec) |
-| message_menu, ai_intent, ai_faq | Wait (kullanici girdisi bekle) |
-| action_handoff | Terminal (session bitir) |
-| action_api_call | External (HTTP call, success/error edge) |
+| Tip | Davranis | Phase 3a Handler |
+|-----|----------|------------------|
+| trigger_start | Auto-chain | TriggerStartHandler |
+| message_text | Auto-chain | MessageTextHandler |
+| message_menu | Wait (input bekle) | MessageMenuHandler |
+| action_handoff | Terminal | ActionHandoffHandler |
+| utility_note | No-op skip | UtilityNoteHandler |
+| action_delay, utility_set_variable, logic_condition, logic_switch | Auto-chain | Phase 4 |
+| ai_intent, ai_faq | Wait | Phase 4 |
+| action_api_call | External | Phase 4 |
 
 **Error codes:** INV-AT-011 ~ INV-AT-017
 
@@ -158,10 +185,12 @@
 
 **Amac:** Flow'lari aktive etmeden SPA icinde interaktif test etme
 
+**Scope siniri:** Phase 3b'de simulation sadece 5 implemented node type ile calisir (trigger_start, message_text, message_menu, action_handoff, utility_note). ai_faq/ai_intent/logic node'lari Phase 4'e kadar SPA'da olusturulamaz - MockFaqMatcher/MockIntentDetector sadece Phase 4 sonrasi kullanilabilir.
+
 **Backend:**
-- `SimulationEngine.cs` - In-memory test session (DB'ye yazmaz, side-effect yok)
-- `MockFaqMatcher.cs` - Hardcoded keyword-based mock FAQ (DB sorgusu yok)
-- `MockIntentDetector.cs` - Rule-based mock intent (Claude API cagrisi yok)
+- `SimulationEngine.cs` - In-memory test session (DB'ye yazmaz, side-effect yok, **TTL: 30dk, ConcurrentDictionary + cleanup timer**)
+- `MockFaqMatcher.cs` - Hardcoded keyword-based mock FAQ (DB sorgusu yok) - Phase 4 sonrasi aktif
+- `MockIntentDetector.cs` - Rule-based mock intent (Claude API cagrisi yok) - Phase 4 sonrasi aktif
 - Endpoint'ler: `POST /simulation/start`, `POST /simulation/step`, `DELETE /simulation/{sid}`
 - Backend proxy: `/api/v1/flow-builder/simulation/*`
 
@@ -232,16 +261,18 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 
 **Onkosul:** List endpoint (`GET /api/v1/flows/{tenantId}`) su anda `flow_config` donmuyor (sadece `node_count`, `edge_count` donuyor). Phase 3c'de list endpoint'e `flow_config` JSONB eklenmeli (Karar: 2026-02-13, Q Secenek A).
 
-**Davranis:**
-1. List endpoint'e `flow_config` alanini ekle (backend degisiklik: `AutomationRepository.ListFlows` + `Program.cs` response)
-2. SPA'da her flow icin `calculateHealthScore(flowConfig)` cagir
-3. Phase 2.5'teki `graph-validator.ts` yeniden kullanil (orphan/dead-end/empty check)
-4. Badge hover'da detay: "2 orphan node, 1 bos mesaj"
+**Performans notu:** Full flow_config JSONB return etmek 20+ flow'lu tenant'ta yavas olabilir. Alternatif: Backend'de `calculateHealthScore()` hesapla, sadece skor dondir. SPA full config indirmez. Bu kararla list response'a `health_score INT` + `health_issues TEXT[]` eklenir, `flow_config` eklenmez.
+
+**Davranis (guncel):**
+1. Backend: `FlowValidator.CalculateHealthScore(flowConfig)` - mevcut validation logic'i yeniden kullan
+2. List endpoint response'a `health_score` (0-100) + `health_issues` (string[]) ekle
+3. SPA'da badge render (green/yellow/red), hover'da issues listesi
+4. Full flow_config indirilmez (performans), backend pre-compute yapar
 
 **Dosyalar:**
-- `AutomationRepository.cs` - ListFlows response'a flow_config ekle
-- `Automation/Program.cs` - List endpoint response'a flow_config ekle
-- `lib/graph-validator.ts` (Phase 2.5'ten mevcut) - `calculateHealthScore()` eklenir
+- `AutomationRepository.cs` - ListFlows SQL'ine health score pre-compute (veya application-level)
+- `Automation/Program.cs` - List response'a health_score + health_issues ekle
+- `FlowValidator.cs` (Phase 3a'dan mevcut) - `CalculateHealthScore()` metodu eklenir
 - `pages/FlowListPage.tsx` - Health badge component + skor gosterimi
 
 **Metrik:** Admin'in sorunlu flow'u tespit etme suresi (0 tikla vs N tikla)
@@ -273,21 +304,34 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 
 ## Phase 4: Genisletilmis Node Tipleri (PLANNED)
 
-**Amac:** Kalan 7 node tipinin UI property editor'larini ve backend execution'larini tamamlama
+**Amac:** Kalan 7 node tipinin UI property editor'larini ve backend execution handler'larini tamamlama
 
-- logic_condition: Condition editor (variable, operator, value), true/false handle'lar
-- logic_switch: Switch editor (variable, cases listesi), N+1 handle
-- ai_intent: Intent listesi editor, confidence threshold, high/low handle'lar
-- ai_faq: Min confidence editor, matched/no_match handle'lar
-- action_api_call: HTTP method/URL/headers/body editor, response variable, success/error handle'lar
-- action_delay: Saniye sayisi editor
-- utility_set_variable: Variable name + expression editor
+**IMP-1 (Strategy Pattern) ile:** Her node tipi = 1 SPA property editor + 1 backend NodeHandler .cs
+
+| Node Type | SPA Editor | Backend Handler | Complexity |
+|-----------|-----------|-----------------|------------|
+| logic_condition | Condition editor (variable, operator, value), true/false handle'lar | `LogicConditionHandler.cs` - ExpressionEvaluator ile condition eval, true/false edge dispatch | LOW |
+| logic_switch | Switch editor (variable, cases listesi), N+1 handle | `LogicSwitchHandler.cs` - Variable match, case edge dispatch + default | LOW |
+| action_delay | Saniye sayisi editor | `ActionDelayHandler.cs` - Production: Task.Delay, Simulation: instant skip | LOW |
+| utility_set_variable | Variable name + expression editor | `SetVariableHandler.cs` - ExpressionEvaluator ile variable assign | LOW |
+| ai_intent | Intent listesi editor, confidence threshold, high/low handle'lar | `AiIntentHandler.cs` - Production: IntentDetector (Claude), Simulation: MockIntentDetector | MEDIUM |
+| ai_faq | Min confidence editor, matched/no_match handle'lar | `AiFaqHandler.cs` - Production: FaqMatcher (DB), Simulation: MockFaqMatcher | MEDIUM |
+| action_api_call | HTTP method/URL/headers/body editor, response variable, success/error handle'lar | `ApiCallHandler.cs` - Production: HttpClient, Simulation: mock response | HIGH |
+
+**Oneri:** Phase 4'u 2 sub-phase'e bol:
+- **4a** (LOW): logic_condition, logic_switch, action_delay, utility_set_variable (pure logic, external dependency yok)
+- **4b** (MEDIUM-HIGH): ai_intent, ai_faq, action_api_call (external service dependency: Claude API, DB, HTTP)
 
 ---
 
 ## Phase 5: iframe Embed + Analytics + Polish (PLANNED)
 
 **Amac:** Main App icine gomme, gercek trafik analizleri ve UX iyilestirmeleri
+
+**Scope notu:** Bu faz cok genis. Sub-phase'lere bolunmesi onerilir:
+- **5a** (HIGH): iframe postMessage auth + Main App proxy (core entegrasyon)
+- **5b** (MEDIUM): AHA #7 trafik heatmap (analytics, onkosul: Phase 3a node_id tracking)
+- **5c** (LOW): UX polish (auto-save, shortcuts, export/import, dark mode)
 
 **Mevcut plan:**
 - iframe postMessage authentication (Main App -> Flow Builder)
@@ -357,15 +401,15 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 
 > 2026-02-13 tarihli AHA analizi sonucu eklenen 7 iyilestirme.
 
-| # | Baslik | Phase | Efor | Etki | Layer | Bagimlilk |
-|---|--------|-------|------|------|-------|-----------|
-| 1 | Canli Onizleme (save ozeti) | 2.5 | Low | High | SPA-only | Yok |
-| 2 | Kirmizi Kenar (graph validation lite) | 2.5 | Low | High | SPA-only | Yok |
-| 3 | Ghost Path (yol overlay) | 3c | Medium | Medium | SPA-only | #2 (graph-validator.ts) |
-| 4 | Tek Tikla Test (save→test) | 3b | Low | High | SPA-only | Phase 3b simulation panel |
-| 5 | Akis Saglik Skoru (liste badge) | 3c | Low-Med | High | SPA + backend (list endpoint) | #2 (graph-validator.ts) + list endpoint flow_config |
-| 6 | Kopya Baslat (flow duplicate) | 2.5 | Low | High | SPA + mevcut API | Yok |
-| 7 | Son Musteri Yolu (trafik heatmap) | 5 | High | High | Full stack | FlowEngineV2 production |
+| # | Baslik | Phase | Durum | Efor | Etki | Layer | Bagimlilk |
+|---|--------|-------|-------|------|------|-------|-----------|
+| 1 | Canli Onizleme (anlik flow ozeti) | 2.5 | **DONE** | Low | High | SPA-only | Yok |
+| 2 | Kirmizi Kenar (graph validation lite) | 2.5 | **DONE** | Low | High | SPA-only | Yok |
+| 3 | Ghost Path (yol overlay) | 3c | PLANNED | Medium | Medium | SPA-only | #2 (graph-validator.ts) |
+| 4 | Tek Tikla Test (save→test) | 3b | PLANNED | Low | High | SPA-only | Phase 3b simulation panel |
+| 5 | Akis Saglik Skoru (liste badge) | 3c | PLANNED | Low-Med | High | SPA + backend (pre-compute) | #2 + FlowValidator.CalculateHealthScore |
+| 6 | Kopya Baslat (flow duplicate) | 2.5 | **DONE** | Low | High | SPA + mevcut API | Yok |
+| 7 | Son Musteri Yolu (trafik heatmap) | 5b | PLANNED | High | High | Full stack | FlowEngineV2 + auto_reply_log.node_id (Phase 3a) |
 
 ### Kill List (YAPMA)
 

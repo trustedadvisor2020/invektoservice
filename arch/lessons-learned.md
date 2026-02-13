@@ -57,6 +57,9 @@
 | 2026-02-12 | Dashboard | Q "bat dosyasi ve watcher bilmiyor" dedi, 6 deploy script kontrol edildi - hepsi zaten Outbound iceriyordu. Gercek eksik: DependencyMap.tsx | DependencyMap.tsx'e Outbound node + arrow eklendi | **Q'nun tanimladigi problemi varsayma - ONCE tum ilgili dosyalari kontrol et, sonra gercek eksikligi bul. Kullanici farki farkli yorumlayabilir** |
 | 2026-02-12 | API | `MapFallbackToFile("/flow-builder/{**slug}")` static dosyalari (.js, .css) da yakaladi - browser'a index.html dondu | `{*path:nonfile}` constraint kullanildi | **SPA fallback pattern'de `{**slug}` yerine `{*path:nonfile}` kullan - slug dosya uzantili istekleri de yakalar** |
 | 2026-02-12 | API | Root cause yerine workaround denendi (explicit StaticFileOptions, diagnostic endpoint) - 4+ deploy dongusu harcandi | Codex'e soruldu, `:nonfile` constraint dogru fix cikti | **Static file + SPA sorunlarinda once routing pipeline'i incele (fallback pattern, middleware sirasi) - UseStaticFiles wwwroot altindaki tum klasorleri zaten serve eder** |
+| 2026-02-13 | Workflow | Interview'da ayni konuyu 2 kez sordum - Q "detay goster" dedi, detay sonrasi tekrar option listesi sundum, Q reddetti | Detay gosterdikten sonra en kapsamli secenekle devam et | **Ayni konuda 2. AskUserQuestion YASAK.** Q "detay goster" dediyse bilgi istiyor, tekrar soru degil. Goster ve devam et. |
+| 2026-02-13 | Codex | FlowSummaryBar localStorage catch blogu bos birakildi - lessons-learned'da "Empty catch YASAK" pattern'i VARDI ama yine uygulanmadi (Codex iter 1 FAIL) | console.warn eklendi | **catch blogu yazdigin AN'da "Empty catch YASAK" kuralini hatirla.** Pattern belgelenmis olmasi yetmiyor, her catch yazilisinda bilinc gerekli. |
+| 2026-02-13 | Codex | Error code semantic reuse: `AutomationUnknownNodeType` node execution exception icin de kullanildi - farkli failure mode ayni code | Yeni `INV-AT-021 AutomationNodeExecutionFailed` eklendi | **Her failure mode icin ayri error code kullan.** "Benzer gorunuyor" ≠ "ayni anlama geliyor". Unknown type ≠ execution error. |
 
 ---
 
@@ -94,6 +97,10 @@
 | Roadmap/teknik-detay hiyerarsisi (summary → tracking → detail) | `roadmap-phases.md` → `phase-1.md` → `flow-builder.md` | Paralel dokumanlar kacinamaz sekilde birbirine referans verir, tek kaynak (phase-1.md) durum takibi yapar, teknik detay ayri dosyada kalir |
 | Mevcut proxy pattern'i yeniden kullanma (`FbProxyGet`) | Backend flow list endpoint | Yeni endpoint icin yeni client/helper yazmak yerine mevcut `FlowBuilderClient` + `FbProxyGet` yeniden kullanildi - 3 satir ile tamamlandi |
 | `{*path:nonfile}` SPA fallback constraint | `MapFallbackToFile` | Sadece dosya uzantisi olmayan route'lari yakalar, .js/.css UseStaticFiles'a kalir |
+| Plan review + iyilestirme adimi (impl oncesi) | Phase 3a plan review | 8 mimari iyilestirme bulundu (Strategy, safety limits, pure engine). Ozellikle IMP-8 sonraki faz icin kritik bagimlilik. Plansiz baslamak bunu kacirirdi. |
+| queueMicrotask deferred revalidation | Phase 2.5 flow-store.ts | React Flow interaction'lari bloklamadan her state degisikliginden sonra validation tetiklenir. UI donmuyor, 9 action'da kullanildi. |
+| Immutable graph pre-compute (HashSet/Dict in constructor) | FlowGraphV2 `NodesWithIncoming` | O(E) linear scan yerine O(1) lookup. Immutable object constructor'da bir kez hesapla, thread-safe reuse. Codex iter 2 yakaladi. |
+| Codex escalation analizi (real vs false-positive) | Phase 3a iter 3 escalation | Iter 3'te blocking issues'i "real fix" vs "by-design false positive" olarak kategorize edip Q'ya sunmak, FORCE PASS kararini kolaylastirdi. Codex stateless - cross-iteration context yok. |
 
 ---
 

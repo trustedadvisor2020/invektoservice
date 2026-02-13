@@ -106,6 +106,12 @@ builder.Services.AddHttpClient<IntentDetector>((sp, client) =>
     return new IntentDetector(httpClient, claudeApiKey, sp.GetRequiredService<JsonLinesLogger>());
 });
 
+// Register simulation engine (Phase 3b) + mock services
+builder.Services.AddSingleton<SimulationEngine>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SimulationEngine>());
+builder.Services.AddSingleton<MockFaqMatcher>();
+builder.Services.AddSingleton<MockIntentDetector>();
+
 // Register orchestrator
 builder.Services.AddSingleton<AutomationOrchestrator>();
 
@@ -115,7 +121,7 @@ var app = builder.Build();
 app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
-app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/");
+app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/");
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -567,6 +573,145 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/migrate-v1", async (int t
 });
 
 // ============================================================
+// Simulation endpoints (Phase 3b — in-memory, no DB writes, no side-effects)
+// ============================================================
+
+// POST /api/v1/simulation/start — Start new simulation session
+app.MapPost("/api/v1/simulation/start", async (HttpContext ctx, SimulationEngine sim, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var tenantId = root.TryGetProperty("tenant_id", out var tid) ? tid.GetInt32() : 0;
+        var flowId = root.TryGetProperty("flow_id", out var fid) ? fid.GetInt32() : 0;
+
+        if (tenantId <= 0 || flowId <= 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "tenant_id and flow_id are required", requestId), statusCode: 400);
+
+        // Verify JWT tenant matches request tenant
+        var tenant = ctx.Items["TenantContext"] as TenantContext;
+        if (tenant == null || tenant.TenantId != tenantId)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match request tenant", requestId), statusCode: 403);
+
+        var result = await sim.StartAsync(tenantId, flowId, ctx.RequestAborted);
+
+        if (!result.Success)
+        {
+            var httpStatus = result.ErrorCode switch
+            {
+                ErrorCodes.AutomationSimulationFlowNotFound => 404,
+                ErrorCodes.AutomationInvalidFlowConfig => 400,
+                ErrorCodes.AutomationGraphValidationFailed => 400,
+                _ => 500
+            };
+            return Results.Json(ErrorResponse.Create(result.ErrorCode!, result.ErrorMessage!, requestId), statusCode: httpStatus);
+        }
+
+        return Results.Ok(new
+        {
+            session_id = result.SessionId,
+            messages = result.Messages.Select(m => new { role = m.Role, text = m.Text }),
+            current_node_id = result.CurrentNodeId,
+            variables = result.Variables,
+            execution_path = result.ExecutionPath,
+            status = result.Status,
+            pending_input = result.PendingInput != null
+                ? new { type = result.PendingInput.Type, options = result.PendingInput.Options }
+                : null
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Simulation start failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// POST /api/v1/simulation/step — Send user message to simulation
+app.MapPost("/api/v1/simulation/step", async (HttpContext ctx, SimulationEngine sim, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var sessionId = root.TryGetProperty("session_id", out var sid) ? sid.GetString() : null;
+        var message = root.TryGetProperty("message", out var msg) ? msg.GetString() : null;
+
+        if (string.IsNullOrEmpty(sessionId))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "session_id is required", requestId), statusCode: 400);
+        if (string.IsNullOrEmpty(message))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "message is required", requestId), statusCode: 400);
+
+        // Verify JWT tenant owns this simulation session (only block if session exists but belongs to different tenant)
+        var tenant = ctx.Items["TenantContext"] as TenantContext;
+        var sessionTenant = sim.GetSessionTenantId(sessionId);
+        if (sessionTenant != null && (tenant == null || tenant.TenantId != sessionTenant))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match session tenant", requestId), statusCode: 403);
+        // If sessionTenant == null, session not found/expired — let StepAsync return proper INV-AT-018/019
+
+        var result = await sim.StepAsync(sessionId, message, ctx.RequestAborted);
+
+        if (!result.Success)
+        {
+            var httpStatus = result.ErrorCode switch
+            {
+                ErrorCodes.AutomationSimulationSessionNotFound => 404,
+                ErrorCodes.AutomationSimulationSessionExpired => 410,
+                ErrorCodes.AutomationNoPendingInput => 400,
+                _ => 500
+            };
+            return Results.Json(ErrorResponse.Create(result.ErrorCode!, result.ErrorMessage!, requestId), statusCode: httpStatus);
+        }
+
+        return Results.Ok(new
+        {
+            messages = result.Messages.Select(m => new { role = m.Role, text = m.Text }),
+            current_node_id = result.CurrentNodeId,
+            variables = result.Variables,
+            execution_path = result.ExecutionPath,
+            status = result.Status,
+            is_terminal = result.IsTerminal,
+            pending_input = result.PendingInput != null
+                ? new { type = result.PendingInput.Type, options = result.PendingInput.Options }
+                : null
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Simulation step failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// DELETE /api/v1/simulation/{sessionId} — Cleanup simulation session
+app.MapDelete("/api/v1/simulation/{sessionId}", (string sessionId, HttpContext ctx, SimulationEngine sim) =>
+{
+    // Verify JWT tenant owns this simulation session (skip if session already expired/removed)
+    var tenant = ctx.Items["TenantContext"] as TenantContext;
+    var sessionTenant = sim.GetSessionTenantId(sessionId);
+    if (sessionTenant != null && (tenant == null || tenant.TenantId != sessionTenant))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match session tenant", "-"), statusCode: 403);
+
+    sim.Remove(sessionId);
+    return Results.StatusCode(204);
+});
+
+// ============================================================
 // FAQ management endpoints
 // ============================================================
 
@@ -712,6 +857,9 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/deactivate", Description = "Deactivate flow", Auth = "Bearer JWT", Category = "Flow" },
         new() { Method = "POST", Path = "/api/v1/flows/validate", Description = "Validate v2 flow config (graph validation)", Auth = "Bearer JWT", Category = "Flow" },
         new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/migrate-v1", Description = "Convert v1 config to v2 graph + save", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "POST", Path = "/api/v1/simulation/start", Description = "Start simulation session (in-memory)", Auth = "Bearer JWT", Category = "Simulation" },
+        new() { Method = "POST", Path = "/api/v1/simulation/step", Description = "Send user message to simulation", Auth = "Bearer JWT", Category = "Simulation" },
+        new() { Method = "DELETE", Path = "/api/v1/simulation/{sessionId}", Description = "Cleanup simulation session", Auth = "Bearer JWT", Category = "Simulation" },
         new() { Method = "GET", Path = "/api/v1/faq/{tenantId}", Description = "List FAQ entries", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "POST", Path = "/api/v1/faq/{tenantId}", Description = "Create FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "PUT", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Update FAQ entry", Auth = "Bearer JWT", Category = "API" },

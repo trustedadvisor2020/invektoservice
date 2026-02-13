@@ -58,6 +58,9 @@ public static class ErrorCodes
     public const string AutomationGraphValidationFailed = "INV-AT-015";
     public const string AutomationRequiredFieldMissing = "INV-AT-016";
     public const string AutomationExpressionFailed = "INV-AT-017";
+    public const string AutomationSimulationSessionNotFound = "INV-AT-018";
+    public const string AutomationSimulationSessionExpired = "INV-AT-019";
+    public const string AutomationSimulationFlowNotFound = "INV-AT-020";
     public const string AutomationNodeExecutionFailed = "INV-AT-021";
 
     // AgentAI errors (INV-AA-xxx)

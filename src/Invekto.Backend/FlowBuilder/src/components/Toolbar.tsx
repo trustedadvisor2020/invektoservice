@@ -1,14 +1,18 @@
 import { useFlowStore } from '../store/flow-store';
+import { useSimulationStore } from '../store/simulation-store';
 import { cn } from '../lib/utils';
 
 interface ToolbarProps {
   onSave?: () => void;
   isSaving?: boolean;
   onBack?: () => void;
+  onTest?: () => void;
 }
 
-export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
+export function Toolbar({ onSave, isSaving, onBack, onTest }: ToolbarProps) {
   const isDirty = useFlowStore((s) => s.isDirty);
+  const simIsOpen = useSimulationStore((s) => s.isOpen);
+  const simIsLoading = useSimulationStore((s) => s.isLoading);
   const flowMetadata = useFlowStore((s) => s.flowMetadata);
   const setMetadata = useFlowStore((s) => s.setMetadata);
   const undo = useFlowStore((s) => s.undo);
@@ -94,6 +98,26 @@ export function Toolbar({ onSave, isSaving, onBack }: ToolbarProps) {
 
       {/* Divider */}
       <div className="w-px h-6 bg-slate-200" />
+
+      {/* Test Et (AHA #4) */}
+      <button
+        onClick={onTest}
+        disabled={simIsLoading || isSaving}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+          simIsOpen
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+            : simIsLoading || isSaving
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+        )}
+        title={isDirty ? 'Once flow\'u kaydedin' : 'Tek Tikla Test'}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+          <polygon points="5 3 19 12 5 21 5 3" />
+        </svg>
+        {simIsLoading ? 'Baslatiliyor...' : 'Test Et'}
+      </button>
 
       {/* Save */}
       <button

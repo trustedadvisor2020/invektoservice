@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-13
-- **Status:** Flow Builder Phase 3a TAMAMLANDI (Codex 3 iter, Q FORCE PASS). Siradaki: Phase 3b (Simulation API + SPA Chat).
-- **Last Task:** Phase 3a FlowEngine v2 + Validator + Migrator. 16 dosya, +1942 -27. Codex iter 1-2 gercek fixler (silent catch, perf, error code), iter 3 by-design konular icin Q FORCE PASS.
+- **Status:** Flow Builder Phase 3b TAMAMLANDI (Codex 3 iter PASS). Siradaki: Phase 3c (Validation UI + Polish).
+- **Last Task:** Phase 3b SimulationEngine + SPA Chat Panel + AHA #4. 25 dosya +1461 -199. Codex iter 1-2 gercek fixler (tenant isolation, silent catches, error contract), iter 3 FULL PASS.
 
 ---
 
@@ -150,7 +150,7 @@
 - [x] ~~Q: tenant_registry flow_builder_api_key~~ (Tamamlandi)
 - [x] ~~Flow Builder Phase 2.5~~ (Tamamlandi - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS)
 - [x] ~~Flow Builder Phase 3a~~ (Tamamlandi - FlowEngine v2, Validator, Migrator, 5 NodeHandler, ExpressionEvaluator. Codex 3 iter Q FORCE PASS)
-- [ ] Flow Builder Phase 3b: Test Simulasyon API + SPA Chat Panel + AHA #4 Tek Tikla Test
+- [x] ~~Flow Builder Phase 3b~~ (Tamamlandi - SimulationEngine, MockFaq/Intent, SPA Chat Panel, AHA #4 Tek Tikla Test. Codex 3 iter PASS)
 - [ ] Flow Builder Phase 3c: Validation UI + AHA #3 Ghost Path + #5 Saglik Skoru + Polish
 - [ ] Flow Builder Phase 4: Genisletilmis node'lar (logic, AI, api_call, delay, set_variable)
 - [ ] Flow Builder Phase 5: iframe + AHA #7 Trafik Heatmap + polish
@@ -252,14 +252,14 @@ src/
 - Q: tenant_registry.settings_json'a flow_builder_api_key eklendi
 - Q: Outbound deploy tamamlandi (outbound.sql, appsettings.Production.json, NSSM servis)
 
-### Siradaki: Phase 3b (Simulation API + SPA Chat Panel)
+### Phase 3b TAMAMLANDI (Codex 3 iter PASS)
 
 **Plan:** `arch/plans/20260213-flow-builder-phase3.json`
 **Roadmap:** `arch/docs/flow-builder-roadmap.md`
 
-**Phase 3a DONE** (eb260fa+ commit): FlowEngine v2, 5 NodeHandlers, FlowValidator, FlowMigrator, ExpressionEvaluator, v1/v2 dispatch
-**Phase 3b** (Full Stack): SimulationEngine (in-memory), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test
-**Phase 3c** (Polish): Validation UI, Variable Inspector, AHA #3 Ghost Path, #5 Saglik Skoru
+**Phase 3a DONE** (74c9ffd commit): FlowEngine v2, 5 NodeHandlers, FlowValidator, FlowMigrator, ExpressionEvaluator, v1/v2 dispatch
+**Phase 3b DONE** (Codex 3 iter PASS): SimulationEngine (ConcurrentDictionary, 30min TTL, IHostedService, tenant isolation), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test, active node highlight
+**Phase 3c** (Next): Validation UI, Variable Inspector, AHA #3 Ghost Path, #5 Saglik Skoru
 
 ---
 

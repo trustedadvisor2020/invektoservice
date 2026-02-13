@@ -1542,6 +1542,16 @@ app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/activate", a
 app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/deactivate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
     await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/deactivate"));
 
+// Simulation proxy: Backend /api/v1/flow-builder/simulation/* -> Automation /api/v1/simulation/*
+app.MapPost("/api/v1/flow-builder/simulation/start", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/simulation/start"));
+
+app.MapPost("/api/v1/flow-builder/simulation/step", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/simulation/step"));
+
+app.MapDelete("/api/v1/flow-builder/simulation/{sessionId}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string sessionId) =>
+    await FbProxyDelete(ctx, fbClient, jsonLog, $"/api/v1/simulation/{sessionId}"));
+
 // ============================================
 // FLOW BUILDER AUTH (API Key -> JWT)
 // ============================================

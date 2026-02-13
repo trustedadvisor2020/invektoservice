@@ -97,6 +97,9 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-015 | Graph validation failed | Akis dogrulamasi basarisiz: {reason} |
 | INV-AT-016 | Required field missing | Zorunlu alan eksik, node '{node_id}': {field} |
 | INV-AT-017 | Expression evaluation failed | Ifade degerlendirme hatasi, node '{node_id}': {reason} |
+| INV-AT-018 | Simulation session not found | Simulasyon oturumu bulunamadi. |
+| INV-AT-019 | Simulation session expired | Simulasyon oturumunun suresi doldu. |
+| INV-AT-020 | Flow not found for simulation | Simulasyon icin akis bulunamadi. |
 | INV-AT-021 | Node execution failed | Node calisma hatasi ({node_id}): {reason} |
 
 ---

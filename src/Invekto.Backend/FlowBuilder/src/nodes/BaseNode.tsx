@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '../lib/utils';
 import { useFlowStore } from '../store/flow-store';
+import { useSimulationStore } from '../store/simulation-store';
 import { getValidationRingColor, getValidationTooltip } from '../lib/graph-validator';
 
 interface BaseNodeProps {
@@ -28,21 +29,32 @@ function BaseNodeComponent({
   const validationErrors = useFlowStore((s) => s.validationErrors.get(id) ?? []);
   const label = (data as { label?: string }).label ?? '';
 
+  // Simulation active node highlight
+  const simCurrentNodeId = useSimulationStore((s) => s.currentNodeId);
+  const simIsOpen = useSimulationStore((s) => s.isOpen);
+  const isSimActive = simIsOpen && simCurrentNodeId === id;
+
   const ringColor = getValidationRingColor(validationErrors);
   const tooltipText = getValidationTooltip(validationErrors);
+
+  // Simulation highlight takes priority over validation ring
+  const resolvedBoxShadow = isSimActive
+    ? '0 0 0 3px #10b98160, 0 0 12px #10b98140'
+    : ringColor && !selected
+      ? `0 0 0 3px ${ringColor}40, 0 0 8px ${ringColor}30`
+      : undefined;
 
   return (
     <div
       className={cn(
         'min-w-[180px] max-w-[260px] rounded-lg border-2 shadow-lg transition-shadow',
-        selected ? 'shadow-xl ring-2 ring-blue-400/50' : 'shadow-md'
+        selected ? 'shadow-xl ring-2 ring-blue-400/50' : 'shadow-md',
+        isSimActive && 'ring-2 ring-emerald-400/60'
       )}
       style={{
-        borderColor: selected ? '#60a5fa' : color,
+        borderColor: isSimActive ? '#10b981' : selected ? '#60a5fa' : color,
         background: '#ffffff',
-        ...(ringColor && !selected
-          ? { boxShadow: `0 0 0 3px ${ringColor}40, 0 0 8px ${ringColor}30` }
-          : {}),
+        ...(resolvedBoxShadow ? { boxShadow: resolvedBoxShadow } : {}),
       }}
       onClick={() => selectNode(id)}
       title={tooltipText || undefined}
