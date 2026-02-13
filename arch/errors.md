@@ -101,6 +101,9 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-019 | Simulation session expired | Simulasyon oturumunun suresi doldu. |
 | INV-AT-020 | Flow not found for simulation | Simulasyon icin akis bulunamadi. |
 | INV-AT-021 | Node execution failed | Node calisma hatasi ({node_id}): {reason} |
+| INV-AT-022 | API call SSRF blocked | API adresi guvenlik kontrolunden gecemedi (dahili adresler engellenmistir). |
+| INV-AT-023 | API call timeout | API cagrisi zaman asimina ugradi ({timeout_ms}ms). |
+| INV-AT-024 | API call HTTP error | API cagrisi HTTP hatasi ({status_code}): {reason} |
 
 ---
 

@@ -285,7 +285,7 @@ public sealed class AutomationOrchestrator
         }
 
         // 4. Execute pure engine
-        var result = await _flowEngineV2.ExecuteAsync(graph, state, ct);
+        var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId);
 
         // 5. Side-effects: send messages
         if (result.Messages.Count > 0)
@@ -431,7 +431,7 @@ public sealed class AutomationOrchestrator
         }
 
         // Run Claude intent detection
-        var intentResult = await _intentDetector.DetectAsync(messageText, ct);
+        var intentResult = await _intentDetector.DetectAsync(messageText, null, ct);
 
         if (intentResult == null)
         {

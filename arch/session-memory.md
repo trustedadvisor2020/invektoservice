@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-14
-- **Status:** Flow Builder Phase 4a DONE. 4 pure logic node (logic_condition, logic_switch, action_delay, utility_set_variable). Codex 3 iter Q FORCE PASS.
-- **Last Task:** Phase 4a tamamlandi. 4 backend handler + 4 SPA component + property editors + graph-validator + flow-summarizer + FlowValidator handle checks. 25 dosya +964 -42.
+- **Status:** Flow Builder Phase 4b IN PROGRESS. AI/API nodes (ai_intent, ai_faq, action_api_call). Build pending.
+- **Last Task:** Phase 4b implementation: 3 backend handlers + IntentDetector dynamic intents refactor + SSRF URL validation + 3 SPA nodes + 3 property editors + graph-validator + flow-summarizer + FlowValidator handle checks + DI registration.
 
 ---
 
@@ -36,9 +36,9 @@
   - Chat session state tracking (PostgreSQL, restart-safe)
   - DB schema: `arch/db/automation.sql` (chatbot_flows, faq_entries, chat_sessions, auto_reply_log)
   - Flow contract: `arch/contracts/automation-flow.json`
-  - Error codes: INV-AT-001 ~ INV-AT-010, INV-AT-011 ~ INV-AT-017, INV-AT-021
+  - Error codes: INV-AT-001 ~ INV-AT-010, INV-AT-011 ~ INV-AT-017, INV-AT-021 ~ INV-AT-024
   - **Phase 3a (FlowEngine v2):**
-    - Node Handler Registry: INodeHandler strategy pattern (9 handlers: trigger_start, message_text, message_menu, logic_condition, logic_switch, action_delay, utility_set_variable, action_handoff, utility_note)
+    - Node Handler Registry: INodeHandler strategy pattern (12 handlers: trigger_start, message_text, message_menu, logic_condition, logic_switch, action_delay, utility_set_variable, action_handoff, utility_note, ai_intent, ai_faq, action_api_call)
     - FlowGraphV2: Immutable pre-computed graph (O(1) node/edge lookup, O(1) incoming check)
     - FlowEngineV2: Pure graph executor (no side-effects), auto-chain + wait-for-input + terminal
     - ExpressionEvaluator: {{variable}} substitution + condition eval (regex 100ms timeout, max 50 vars)

@@ -204,7 +204,49 @@ public sealed class FlowValidator
             }
         }
 
-        // 9. Simple loop detection (DFS cycle check from trigger_start)
+        // 9. ai_intent handle consistency (high_confidence / low_confidence)
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "ai_intent"))
+        {
+            foreach (var handle in new[] { "high_confidence", "low_confidence" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "high_confidence" ? "Yuksek Guven" : "Dusuk Guven";
+                    warnings.Add($"Intent dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 10. ai_faq handle consistency (matched / no_match)
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "ai_faq"))
+        {
+            foreach (var handle in new[] { "matched", "no_match" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "matched" ? "Eslesti" : "Eslesmedi";
+                    warnings.Add($"FAQ dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 11. action_api_call handle consistency (success / error)
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "action_api_call"))
+        {
+            foreach (var handle in new[] { "success", "error" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "success" ? "Basarili" : "Hata";
+                    warnings.Add($"API dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 12. Simple loop detection (DFS cycle check from trigger_start)
         if (graph.TriggerStart != null)
         {
             var cycleNodes = DetectCycles(graph);

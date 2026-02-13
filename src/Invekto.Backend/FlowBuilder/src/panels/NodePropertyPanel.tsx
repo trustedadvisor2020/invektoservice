@@ -5,6 +5,9 @@ import type {
   MessageMenuData,
   LogicConditionData,
   LogicSwitchData,
+  AiIntentData,
+  AiFaqData,
+  ActionApiCallData,
   ActionDelayData,
   ActionHandoffData,
   UtilitySetVariableData,
@@ -80,6 +83,15 @@ export function NodePropertyPanel() {
         )}
         {nodeType === 'logic_switch' && (
           <LogicSwitchProps data={selectedNode.data as LogicSwitchData} onChange={update} />
+        )}
+        {nodeType === 'ai_intent' && (
+          <AiIntentProps data={selectedNode.data as AiIntentData} onChange={update} />
+        )}
+        {nodeType === 'ai_faq' && (
+          <AiFaqProps data={selectedNode.data as AiFaqData} onChange={update} />
+        )}
+        {nodeType === 'action_api_call' && (
+          <ActionApiCallProps data={selectedNode.data as ActionApiCallData} onChange={update} />
         )}
         {nodeType === 'action_delay' && (
           <ActionDelayProps data={selectedNode.data as ActionDelayData} onChange={update} />
@@ -441,6 +453,199 @@ function UtilitySetVariableProps({
         <p className="text-xs text-slate-400 mt-1">
           {"{{degisken}}"} ile mevcut degiskenlere referans verebilirsiniz.
         </p>
+      </FieldGroup>
+    </>
+  );
+}
+
+function AiIntentProps({
+  data,
+  onChange,
+}: {
+  data: AiIntentData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const intents = data.intents ?? [];
+  const threshold = data.confidence_threshold ?? 0.5;
+
+  const addIntent = () => {
+    onChange({ intents: [...intents, ''] });
+  };
+
+  const updateIntent = (idx: number, value: string) => {
+    const newIntents = [...intents];
+    newIntents[idx] = value;
+    onChange({ intents: newIntents });
+  };
+
+  const removeIntent = (idx: number) => {
+    onChange({ intents: intents.filter((_, i) => i !== idx) });
+  };
+
+  return (
+    <>
+      <FieldGroup label={`Intentler (${intents.length})`}>
+        <div className="space-y-1.5">
+          {intents.map((intent, idx) => (
+            <div key={idx} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={intent}
+                onChange={(e) => updateIntent(idx, e.target.value)}
+                className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-700 outline-none focus:border-purple-500 font-mono"
+                placeholder="ornek: satin_alma"
+              />
+              <button
+                onClick={() => removeIntent(idx)}
+                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                title="Kaldir"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={addIntent}
+          className="mt-2 w-full px-2 py-1 rounded border border-dashed border-slate-300 text-sm text-slate-500 hover:border-purple-500 hover:text-purple-600 transition-colors"
+        >
+          + Intent Ekle
+        </button>
+      </FieldGroup>
+
+      <FieldGroup label={`Guven Esigi (${(threshold * 100).toFixed(0)}%)`}>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(threshold * 100)}
+          onChange={(e) => onChange({ confidence_threshold: Number(e.target.value) / 100 })}
+          className="w-full accent-purple-500"
+        />
+        <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
+      </FieldGroup>
+
+      <p className="text-xs text-slate-400">
+        Musteri mesaji Claude AI ile analiz edilir. Guven esiginin uzerindeki intent'ler <strong>YUKSEK</strong> dalina yonlenir.
+      </p>
+    </>
+  );
+}
+
+function AiFaqProps({
+  data,
+  onChange,
+}: {
+  data: AiFaqData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const minConf = data.min_confidence ?? 0.3;
+
+  return (
+    <>
+      <FieldGroup label={`Min Guven (${(minConf * 100).toFixed(0)}%)`}>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(minConf * 100)}
+          onChange={(e) => onChange({ min_confidence: Number(e.target.value) / 100 })}
+          className="w-full accent-purple-500"
+        />
+        <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
+      </FieldGroup>
+
+      <p className="text-xs text-slate-400">
+        Musteri mesaji FAQ veritabaninda aranir. Esik uzerindeki eslesmeler <strong>ESLESTI</strong> dalina yonlenir ve cevap otomatik gonderilir.
+      </p>
+    </>
+  );
+}
+
+function ActionApiCallProps({
+  data,
+  onChange,
+}: {
+  data: ActionApiCallData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const methods = ['GET', 'POST', 'PUT', 'DELETE'];
+  const timeoutMs = data.timeout_ms ?? 5000;
+  const timeoutColor = timeoutMs <= 1000 ? 'text-green-500' : timeoutMs <= 5000 ? 'text-amber-500' : 'text-red-500';
+
+  return (
+    <>
+      <FieldGroup label="HTTP Metot">
+        <select
+          value={data.method ?? 'GET'}
+          onChange={(e) => onChange({ method: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+        >
+          {methods.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </FieldGroup>
+
+      <FieldGroup label="URL">
+        <input
+          type="text"
+          value={data.url ?? ''}
+          onChange={(e) => onChange({ url: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 font-mono"
+          placeholder="https://api.example.com/endpoint"
+        />
+        <p className="text-xs text-slate-400 mt-0.5">
+          {"{{degisken}}"} destekler
+        </p>
+      </FieldGroup>
+
+      <FieldGroup label="Body Template">
+        <textarea
+          value={data.body_template ?? ''}
+          onChange={(e) => onChange({ body_template: e.target.value })}
+          rows={3}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none font-mono"
+          placeholder='{"key": "{{degisken}}"}'
+        />
+      </FieldGroup>
+
+      <FieldGroup label="Response Degiskeni">
+        <input
+          type="text"
+          value={data.response_variable ?? 'api_response'}
+          onChange={(e) => onChange({ response_variable: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500 font-mono"
+          placeholder="api_response"
+        />
+      </FieldGroup>
+
+      <FieldGroup label={`Zaman Asimi (${timeoutMs}ms)`}>
+        <input
+          type="range"
+          min={100}
+          max={30000}
+          step={100}
+          value={timeoutMs}
+          onChange={(e) => onChange({ timeout_ms: Number(e.target.value) })}
+          className="w-full accent-red-500"
+        />
+        <div className="flex justify-between text-xs mt-0.5">
+          <span className="text-slate-400">100ms</span>
+          <span className={timeoutColor}>{(timeoutMs / 1000).toFixed(1)}s</span>
+          <span className="text-slate-400">30s</span>
+        </div>
       </FieldGroup>
     </>
   );

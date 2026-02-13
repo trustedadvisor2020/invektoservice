@@ -9,6 +9,8 @@ import type {
   MessageMenuData,
   LogicConditionData,
   LogicSwitchData,
+  AiIntentData,
+  ActionApiCallData,
   ActionDelayData,
   UtilitySetVariableData,
 } from '../types/flow';
@@ -131,6 +133,23 @@ function checkEmptyField(node: Node): ValidationError | null {
       }
       if (!sv.value_expression || sv.value_expression.trim() === '') {
         return { type: 'empty_field', severity: 'warning', message: 'Deger ifadesi bos' };
+      }
+      break;
+    }
+    case 'ai_intent': {
+      const ai = data as AiIntentData;
+      if (!ai.intents || ai.intents.length === 0) {
+        return { type: 'empty_field', severity: 'warning', message: 'Intent listesi bos' };
+      }
+      break;
+    }
+    case 'action_api_call': {
+      const api = data as ActionApiCallData;
+      if (!api.url || api.url.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'API URL bos' };
+      }
+      if (!api.method) {
+        return { type: 'empty_field', severity: 'warning', message: 'HTTP metodu secilmedi' };
       }
       break;
     }

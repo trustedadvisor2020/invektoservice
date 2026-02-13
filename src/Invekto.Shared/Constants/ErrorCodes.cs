@@ -62,6 +62,9 @@ public static class ErrorCodes
     public const string AutomationSimulationSessionExpired = "INV-AT-019";
     public const string AutomationSimulationFlowNotFound = "INV-AT-020";
     public const string AutomationNodeExecutionFailed = "INV-AT-021";
+    public const string AutomationApiCallSsrfBlocked = "INV-AT-022";
+    public const string AutomationApiCallTimeout = "INV-AT-023";
+    public const string AutomationApiCallHttpError = "INV-AT-024";
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

@@ -26,6 +26,8 @@ public sealed class ExecutionContext
     public required string RequestId { get; init; }
     /// <summary>True when running inside SimulationEngine (e.g. action_delay skips real wait).</summary>
     public bool IsSimulation { get; init; }
+    /// <summary>Tenant ID for tenant-scoped services (e.g. FaqMatcher DB query). 0 = unknown.</summary>
+    public int TenantId { get; init; }
 }
 
 /// <summary>

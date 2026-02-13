@@ -9,6 +9,9 @@ import type {
   MessageMenuData,
   LogicConditionData,
   LogicSwitchData,
+  AiIntentData,
+  AiFaqData,
+  ActionApiCallData,
   ActionDelayData,
   UtilitySetVariableData,
 } from '../types/flow';
@@ -61,6 +64,23 @@ function getNodeLabel(node: Node): string {
         ? sv.value_expression.length > 20 ? sv.value_expression.substring(0, 20) + '...' : sv.value_expression
         : '?';
       return `${sv.variable_name || '?'} = ${expr}`;
+    }
+    case 'ai_intent': {
+      const ai = data as AiIntentData;
+      const cnt = ai.intents?.length ?? 0;
+      return cnt > 0 ? `Intent algilama (${cnt} intent)` : 'Intent algilama';
+    }
+    case 'ai_faq': {
+      const faq = data as AiFaqData;
+      const conf = faq.min_confidence ?? 0.3;
+      return `FAQ eslesme (min ${(conf * 100).toFixed(0)}%)`;
+    }
+    case 'action_api_call': {
+      const api = data as ActionApiCallData;
+      const method = api.method || 'GET';
+      const url = api.url || '?';
+      const short = url.length > 25 ? url.substring(0, 25) + '...' : url;
+      return `${method} ${short}`;
     }
     case 'action_handoff':
       return 'Temsilciye aktar';
@@ -179,6 +199,45 @@ export function summarizeFlow(nodes: Node[], edges: Edge[]): FlowSummaryResult {
       const defaultEdge = children.find((ch) => ch.sourceHandle === defaultHandle);
       if (defaultEdge) {
         dfs(defaultEdge.target, indent + 2);
+      }
+      return;
+    }
+
+    // For ai_intent, show YUKSEK / DUSUK branches
+    if (nodeType === 'ai_intent') {
+      const children = adjacency.get(nodeId) ?? [];
+      for (const [handle, label] of [['high_confidence', 'YUKSEK'], ['low_confidence', 'DUSUK']] as const) {
+        allLines.push({ text: label, indent: indent + 1, nodeType: 'ai_intent' });
+        const matchEdge = children.find((c) => c.sourceHandle === handle);
+        if (matchEdge) {
+          dfs(matchEdge.target, indent + 2);
+        }
+      }
+      return;
+    }
+
+    // For ai_faq, show ESLESTI / ESLESMEDI branches
+    if (nodeType === 'ai_faq') {
+      const children = adjacency.get(nodeId) ?? [];
+      for (const [handle, label] of [['matched', 'ESLESTI'], ['no_match', 'ESLESMEDI']] as const) {
+        allLines.push({ text: label, indent: indent + 1, nodeType: 'ai_faq' });
+        const matchEdge = children.find((c) => c.sourceHandle === handle);
+        if (matchEdge) {
+          dfs(matchEdge.target, indent + 2);
+        }
+      }
+      return;
+    }
+
+    // For action_api_call, show BASARILI / HATA branches
+    if (nodeType === 'action_api_call') {
+      const children = adjacency.get(nodeId) ?? [];
+      for (const [handle, label] of [['success', 'BASARILI'], ['error', 'HATA']] as const) {
+        allLines.push({ text: label, indent: indent + 1, nodeType: 'action_api_call' });
+        const matchEdge = children.find((c) => c.sourceHandle === handle);
+        if (matchEdge) {
+          dfs(matchEdge.target, indent + 2);
+        }
       }
       return;
     }

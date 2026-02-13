@@ -1,0 +1,352 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260214-flow-builder-phase4b",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-14T15:00:00Z",
+  "updated_at": "2026-02-14T19:00:00Z",
+
+  "plan": {
+    "summary": "Flow Builder Phase 4b: 3 AI/API node handler (ai_intent, ai_faq, action_api_call). Backend: 3 INodeHandler + IntentDetector dynamic intents refactor + SSRF validation + FlowValidator handle checks + error codes. SPA: 3 node component + 3 property editor + graph-validator + flow-summarizer. Simulation: MockIntentDetector/MockFaqMatcher mevcut (Phase 3b), action_api_call static mock.",
+    "q_intent": "Phase 4a tamamlandi, Phase 4b AI/API node'lari eklenmesi. ai_intent (Claude Haiku), ai_faq (DB keyword), action_api_call (external HTTP).",
+    "interview_notes": "1) ai_intent: Dinamik intent -- node'un intents[] listesi Claude prompt'una inject edilir. Mevcut IntentDetector refactor edilecek (v1 flow yok, backward compat gerek yok). 2) ai_faq: Otomatik mesaj + variable -- match bulunursa FAQ answer mesaj olarak gonderilir VE {{faq_answer}} variable'a yazilir. 3) action_api_call SSRF: Tam koruma -- localhost, private IP (10.x, 172.16-31.x, 192.168.x), link-local block. HTTP allow + log warning. 4) action_api_call simulation: Static mock -- {status:200, mock:true, message:'Simulated API response'}. 5) IntentDetector refactor: Mevcut method'a nullable customIntents parametresi eklenir (v1 yok, uyum gerek yok)."
+  },
+
+  "interview_decisions": {
+    "intent_mode": "Dynamic -- intents[] Claude prompt'una inject edilir",
+    "intent_refactor": "Mevcut DetectAsync'e string[]? customIntents parametresi (nullable, null=default 5)",
+    "faq_response": "Auto-message + variable -- match varsa FAQ answer mesaj + {{faq_answer}} variable",
+    "ssrf_protection": "Full SSRF -- localhost, 127.x, 10.x, 172.16-31.x, 192.168.x, 169.254.x, ::1 block",
+    "http_policy": "HTTP allowed + warning log (HTTPS zorunlu degil)",
+    "api_mock": "Static mock -- {status:200, mock:true, message:'Simulated API response'}"
+  },
+
+  "architecture": {
+    "pattern": "IMP-1 Strategy Pattern genisletilmesi. 3 yeni handler. Handler katmaninda production side-effects (Claude API, DB, HTTP) cabuk -- engine pure kalir, handler'lar DI ile service inject alir.",
+    "handler_purity_note": "FlowEngineV2 pure kalir (no DB/HTTP). Handler'lar IsSimulation flag'i kontrol eder: true=mock, false=real service. Production side-effects handler katmaninda izole.",
+    "intent_detection": "AiIntentHandler: DI ile IntentDetector + MockIntentDetector inject. IsSimulation kontrolu handler icinde.",
+    "faq_matching": "AiFaqHandler: DI ile FaqMatcher + MockFaqMatcher inject. IsSimulation kontrolu handler icinde. Tenant ID ExecutionContext'e eklenmeli.",
+    "api_call": "ApiCallHandler: DI ile IHttpClientFactory inject. SSRF validation URL parse + IP check. IsSimulation = static mock.",
+    "execution_context_change": "ExecutionContext'e TenantId (int) eklenir -- AiFaqHandler tenant-bazli FAQ sorgusu icin gerekli."
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "title": "Error codes + ExecutionContext extension",
+      "files": ["src/Invekto.Shared/Constants/ErrorCodes.cs", "arch/errors.md", "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs"],
+      "details": "INV-AT-022 (SSRF block), INV-AT-023 (API timeout), INV-AT-024 (API HTTP error). ExecutionContext'e TenantId eklenir."
+    },
+    {
+      "step": 2,
+      "title": "IntentDetector refactor -- dynamic intents",
+      "files": ["src/Invekto.Automation/Services/IntentDetector.cs"],
+      "details": "DetectAsync'e string[]? customIntents parametresi. Null = default 5 intent (SupportedIntents). Non-null = dynamic prompt build. BuildPrompt(intents) private helper."
+    },
+    {
+      "step": 3,
+      "title": "AiIntentHandler (NEW)",
+      "files": ["src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs"],
+      "details": "Wait pattern (MessageMenuHandler gibi). First visit: WaitForInput type=text. Second visit: IsSimulation? MockIntentDetector : IntentDetector. confidence >= threshold -> high_confidence handle, else -> low_confidence. Variables: detected_intent, intent_confidence, intent_summary."
+    },
+    {
+      "step": 4,
+      "title": "AiFaqHandler (NEW)",
+      "files": ["src/Invekto.Automation/Services/NodeHandlers/AiFaqHandler.cs"],
+      "details": "Wait pattern. First visit: WaitForInput type=text. Second visit: IsSimulation? MockFaqMatcher : FaqMatcher. Match varsa: MessageText=faq_answer + OutputHandle=matched + Variables(faq_answer, faq_confidence, faq_question). No match: OutputHandle=no_match."
+    },
+    {
+      "step": 5,
+      "title": "ApiCallHandler (NEW) + SSRF validation",
+      "files": ["src/Invekto.Automation/Services/NodeHandlers/ApiCallHandler.cs"],
+      "details": "Auto-chain. IsSimulation: static mock response + success handle. Production: SSRF URL validation -> HttpClient call -> timeout/error handling. success handle + response_variable, veya error handle + error_message variable. SSRF: URL parse, DNS resolve, IP check (private ranges), HTTP warning log."
+    },
+    {
+      "step": 6,
+      "title": "FlowValidator handle checks",
+      "files": ["src/Invekto.Automation/Services/FlowValidator.cs"],
+      "details": "ai_intent: high_confidence + low_confidence handle edge checks. ai_faq: matched + no_match handle edge checks. action_api_call: success + error handle edge checks."
+    },
+    {
+      "step": 7,
+      "title": "DI registration",
+      "files": ["src/Invekto.Automation/Program.cs"],
+      "details": "3 yeni handler register (AddSingleton<INodeHandler, *>). ApiCallHandler icin HttpClientFactory."
+    },
+    {
+      "step": 8,
+      "title": "SPA node components (3 NEW)",
+      "files": [
+        "src/Invekto.Backend/FlowBuilder/src/nodes/AiIntentNode.tsx",
+        "src/Invekto.Backend/FlowBuilder/src/nodes/AiFaqNode.tsx",
+        "src/Invekto.Backend/FlowBuilder/src/nodes/ActionApiCallNode.tsx",
+        "src/Invekto.Backend/FlowBuilder/src/nodes/index.ts"
+      ],
+      "details": "BaseNode wrapper, typed data, output handles. ai_intent: 2 handles (high_confidence/low_confidence, purple). ai_faq: 2 handles (matched/no_match, purple). action_api_call: 2 handles (success/error, red)."
+    },
+    {
+      "step": 9,
+      "title": "SPA property editors",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx"],
+      "details": "ai_intent: intents list editor (add/remove) + confidence threshold slider. ai_faq: min_confidence slider. action_api_call: method select, URL input, headers key-value editor, body template textarea, response variable input, timeout slider."
+    },
+    {
+      "step": 10,
+      "title": "SPA graph-validator + flow-summarizer",
+      "files": [
+        "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts",
+        "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts"
+      ],
+      "details": "graph-validator: empty field checks (ai_intent.intents, action_api_call.url, action_api_call.method). flow-summarizer: DFS labels + branching for 3 new types."
+    },
+    {
+      "step": 11,
+      "title": "Build + arch docs",
+      "files": ["arch/session-memory.md", "arch/active-work.md"],
+      "details": "dotnet build + tsc + vite build. Session memory ve active work guncelle."
+    }
+  ],
+
+  "new_error_codes": [
+    {"code": "INV-AT-022", "name": "AutomationApiCallSsrfBlocked", "description": "API call URL guvenlik kontrolunden gecemedi (SSRF block)"},
+    {"code": "INV-AT-023", "name": "AutomationApiCallTimeout", "description": "API call zaman asimina ugradi"},
+    {"code": "INV-AT-024", "name": "AutomationApiCallHttpError", "description": "API call HTTP hatasi"}
+  ],
+
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "AiIntentHandler: IsSimulation=true iken MockIntentDetector kullaniliyor mu, IntentDetector (Claude API) cagrilmiyor mu?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "IntentDetector: customIntents parametresi Claude prompt'una dogru inject ediliyor mu? Null oldugunda default 5 intent kullaniliyor mu?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "AiFaqHandler: Match bulundugunda FAQ answer hem MessageText olarak donuyor mu hem de faq_answer variable'a yaziliyor mu?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "ApiCallHandler: Private IP adresleri (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x, ::1) SSRF bloklaniyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q5",
+      "question": "ApiCallHandler: IsSimulation=true iken gercek HTTP call yapilmiyor mu, static mock donuyor mu?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q6",
+      "question": "FlowValidator: ai_intent (high_confidence/low_confidence), ai_faq (matched/no_match), action_api_call (success/error) handle edge checks mevcut mu?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q7",
+      "question": "ExecutionContext.TenantId eklendi mi? AiFaqHandler tenant-bazli FaqMatcher.FindMatchAsync cagrisinda dogru tenantId kullaniliyor mu?",
+      "category": "Data"
+    }
+  ],
+
+  "allowed_files": [
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiFaqHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/ApiCallHandler.cs",
+    "src/Invekto.Automation/Services/IntentDetector.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/SimulationEngine.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/AiIntentNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/AiFaqNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/ActionApiCallNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/index.ts",
+    "src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts",
+    "src/Invekto.Backend/wwwroot/flow-builder/index.html",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/*",
+    "arch/errors.md",
+    "arch/active-work.md",
+    "arch/session-memory.md",
+    "arch/plans/20260214-flow-builder-phase4b.json",
+    "arch/plans/diffs/20260214-flow-builder-phase4b.diff",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs"
+  ],
+
+  "files_changed": [
+    { "path": "arch/active-work.md", "is_new": false },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "arch/plans/20260214-flow-builder-phase4b.json", "is_new": true },
+    { "path": "arch/session-memory.md", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/FlowValidator.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/IntentDetector.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/AiFaqHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/ApiCallHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/SimulationEngine.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/ActionApiCallNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/AiFaqNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/AiIntentNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/index.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-BWLNzhfb.js", "is_new": true },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-CW399O9k.css", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-SkuMeiZd.js", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/index.html", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false }
+  ],
+
+  "scope_violations": [
+    {
+      "file": "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+      "reason": "IntentDetector.DetectAsync signature change (added customIntents param) broke build. Minimal 1-line fix: DetectAsync(msg, ct) -> DetectAsync(msg, null, ct). Required for compilation.",
+      "severity": "WARN"
+    }
+  ],
+
+  "git_diff": {
+    "patch_truncated": "(2.2MB diff - see full_path)",
+    "sha256": "19B27FECFAD26391B84B4F28EE4DDE97F2A91D0FCD0AB398171260F0FBDA3953",
+    "full_path": "arch/plans/diffs/20260214-flow-builder-phase4b.diff",
+    "stats": {
+      "insertions": 1513,
+      "deletions": 104,
+      "files_count": 27
+    }
+  },
+
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-02-14T18:25:00Z",
+    "dotnet": "0 errors, 1 warning (pre-existing CS8600)",
+    "tsc": "0 errors",
+    "vite": "OK (JS 462KB gzip 145KB)"
+  },
+
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Services/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.Automation/Data/",
+      "arch/db/"
+    ],
+    "non_goals": [
+      "AutomationOrchestrator v2 production dispatch degisikligi (Phase 5+ scope)",
+      "DNS rebinding SSRF korumasi (Phase 6+ scope)",
+      "Configurable mock response for action_api_call",
+      "New DB tables/migrations",
+      "Deploy script updates (yeni servis yok)",
+      "Production orchestrator integration (sadece handler + simulation)"
+    ],
+    "intentional_exclusions": [
+      "v1 backward compatibility (v1 flow yok)",
+      "Rate limiting on API calls (Phase 5+)",
+      "API call response caching",
+      "Custom SSL certificate handling"
+    ]
+  },
+
+  "error_handling": {
+    "try_catch_locations": [
+      "AiIntentHandler.cs: Claude API call (production)",
+      "AiFaqHandler.cs: DB FAQ query (production)",
+      "ApiCallHandler.cs: HTTP call + SSRF validation + timeout",
+      "IntentDetector.cs: Mevcut try-catch (refactor sirasinda korunur)"
+    ],
+    "user_facing_errors": [
+      "INV-AT-022: API adresi guvenlik kontrolunden gecemedi (dahili adresler engellenmistir)",
+      "INV-AT-023: API cagrisi zaman asimina ugradi ({timeout_ms}ms)",
+      "INV-AT-024: API cagrisi HTTP hatasi ({status_code}): {reason}"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum handler'lar hata durumunda explicit NodeResult.IsError=true + error code doner. IntentDetector/FaqMatcher failure graceful degradation (null) -- handler low_confidence/no_match handle'a yonlendirir. ApiCallHandler error handle'a yonlendirir. Hicbir durumda sessiz gecis yok."
+  },
+
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Admin ai_intent node'u ekliyor ama intent listesini doldurmadan kaydiyor. Claude prompt bos intent listesi ile calismiyor, simulation'da hic match olmuyor.",
+      "suggestion": "ai_intent node'u intents bos iken SPA'da turuncu uyari goster: 'En az 1 intent tanimlayin'. graph-validator empty check.",
+      "aha_moment": "Admin node'u suruklediginde hemen 'Eksik: intent listesi' uyarisini gorur, debug yapmadan dolduruyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "action_api_call node'u timeout_ms default 5000ms. Admin yavas API'ye baglandiginda simulation'da beklemiyor (mock) ama production'da 5s gecikme oluyor.",
+      "suggestion": "Property panel'de timeout slider + gorsel indicator: <1s yesil, 1-5s turuncu, >5s kirmizi. Admin riskin farkinda.",
+      "aha_moment": "Admin 10s timeout sectiginde slider kirmiziya donuyor, 'Bu musteri bekleme suresi' uyarisi gorur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "action_api_call external API down oldugunda error handle'a duser. Admin error path'i baglamamis, musteri dead-end'de kaliyor.",
+      "suggestion": "FlowValidator: action_api_call.error handle baglantisiz ise warning: 'API hatasi durumunda akis duracak — error cikisini baglayin'.",
+      "aha_moment": "Admin 'Akisi Dogrula' tikladiginda 'API hata cikisi baglantisiz' uyarisi gorur, error path ekliyor."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Admin Claude intent detection ne kadar dogru calistigini bilmiyor. Confidence threshold'u nereye koyacagini tahmin ediyor.",
+      "suggestion": "Simulation'da intent detection sonrasi chat'te confidence badge goster: '🎯 Intent: purchase (0.85)'. Admin threshold'u ayarlarken gercek sonuclari gorur.",
+      "aha_moment": "Admin test mesaji yazar, chat'te '🎯 purchase %85' gorur, threshold'u 0.7'ye ayarlar."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "ai_faq no_match oldugunda musteri 'Anlayamadim' mesaji aliyor. Admin hangi kelimelerin FAQ'da oldugunu bilmiyor.",
+      "suggestion": "Simulation'da no_match durumunda system mesaji: 'FAQ eslesme bulunamadi. En yakin sonuc: [keyword] (%30 confidence)'. Admin FAQ entry ekleyebilir.",
+      "aha_moment": "Admin 'kargo nerede' yazar, 'En yakin: kargo (%30)' gorur, faq_entries'e yeni keyword ekliyor."
+    }
+  ],
+
+  "verdict": {
+    "status": "PASS",
+    "iteration": 4,
+    "escalation_required": false,
+    "escalation_reason": null,
+    "escalation_category": null,
+    "blocking_issues": [],
+    "history": [
+      {
+        "iteration": 1,
+        "status": "FAIL",
+        "issues": [
+          "Tenant isolation regression: tenantId not passed to FlowEngineV2 (FIXED)",
+          "Scope violation: AutomationOrchestrator.cs in forbidden_areas (FIXED - added to allowed_files)",
+          "INV-AT-022/023/024 error codes not used in handler returns (FIXED)",
+          "Unbounded API response buffering (FIXED - 64KB ReadBoundedResponseAsync)"
+        ]
+      },
+      {
+        "iteration": 2,
+        "status": "FAIL",
+        "issues": [
+          "Silent failure: ParseIntents catch(JsonException) without logging (FIXED - added ctx.Logger.SystemWarn)"
+        ]
+      },
+      {
+        "iteration": 3,
+        "status": "FAIL",
+        "issues": [
+          "IntentDetector.cs pre-existing logsuz early-return null (lines 87/96/156 -- FIXED with _logger.SystemWarn)"
+        ]
+      },
+      {
+        "iteration": 4,
+        "status": "PASS",
+        "issues": []
+      }
+    ]
+  }
+}

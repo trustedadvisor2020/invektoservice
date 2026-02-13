@@ -6,7 +6,7 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| (none) | - | - | - |
+| 20260214-flow-builder-phase4b | IN_PROGRESS | 2026-02-14 | Flow Builder Phase 4b: AI/API Nodes (ai_intent, ai_faq, action_api_call). 3 handler + IntentDetector refactor + SSRF validation + 3 SPA node + 3 property editor + graph-validator + flow-summarizer. |
 
 ---
 

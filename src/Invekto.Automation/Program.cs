@@ -94,6 +94,12 @@ builder.Services.AddSingleton<INodeHandler, ActionDelayHandler>();
 builder.Services.AddSingleton<INodeHandler, SetVariableHandler>();
 builder.Services.AddSingleton<INodeHandler, ActionHandoffHandler>();
 builder.Services.AddSingleton<INodeHandler, UtilityNoteHandler>();
+builder.Services.AddSingleton<INodeHandler, AiIntentHandler>();
+builder.Services.AddSingleton<INodeHandler, AiFaqHandler>();
+builder.Services.AddSingleton<INodeHandler, ApiCallHandler>();
+
+// Register HttpClientFactory for ApiCallHandler
+builder.Services.AddHttpClient("ApiCallHandler");
 
 // Register v2 services
 builder.Services.AddSingleton<ExpressionEvaluator>();
