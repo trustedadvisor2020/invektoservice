@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 import { FlowCanvas } from '../components/FlowCanvas';
+import { FlowSummaryBar } from '../components/FlowSummaryBar';
 import { NodePalette } from '../components/NodePalette';
 import { Toolbar } from '../components/Toolbar';
 import { NodePropertyPanel } from '../panels/NodePropertyPanel';
@@ -161,8 +162,11 @@ export function FlowEditorPage() {
           {/* Left: Node palette */}
           <NodePalette />
 
-          {/* Center: Canvas */}
-          <FlowCanvas />
+          {/* Center: Canvas + Summary */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <FlowCanvas />
+            <FlowSummaryBar />
+          </div>
 
           {/* Right: Panel switcher + panel */}
           <div className="flex flex-col">

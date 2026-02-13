@@ -1,0 +1,217 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260213-flow-builder-phase25",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-13T14:00:00Z",
+  "updated_at": "2026-02-13T14:30:00Z",
+
+  "plan": {
+    "summary": "Flow Builder Phase 2.5: SPA Quick Wins - 3 AHA moment. #6 Kopya Baslat (flow duplicate + numara suffix), #2 Kirmizi Kenar (real-time graph validation: orphan/dead-end/empty-field ring overlay), #1 Canli Onizleme (always-visible DFS flow summary bar). Sifir backend degisiklik, sadece SPA.",
+    "q_intent": "Phase 2.5 SPA Quick Wins. Hepsi birden tek commit. Kopya numara suffix, validation her degisiklikte, ozet her zaman gorunur.",
+    "interview_notes": "1) Hepsi birden tek commit. 2) Kopya isim: numara suffix. 3) Validation: her degisiklikte anlik. 4) Ozet: her zaman gorunur (save sonrasi degil)."
+  },
+
+  "interview_decisions": {
+    "scope": "3 AHA tek commit, SPA-only, sifir backend",
+    "duplicate_naming": "'{name} - Kopya' yoksa kullan, varsa '{name} - Kopya (N)' artan numara",
+    "validation_timing": "Her node/edge degisikliginde anlik (queueMicrotask)",
+    "summary_visibility": "Her zaman gorunur, useMemo ile her degisiklikte recompute"
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "name": "AHA #6: Kopya Baslat",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx"],
+      "desc": "handleDuplicate: getFlow -> generate dupName with numbered suffix -> createFlow -> navigate to editor. Button added to flow card actions."
+    },
+    {
+      "step": 2,
+      "name": "AHA #2: Kirmizi Kenar - graph-validator.ts",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts"],
+      "desc": "NEW: Pure function validateGraph(nodes, edges) -> ValidationMap. 3 rules: orphan (RED), dead_end (ORANGE), empty_field (ORANGE). Helper: getValidationRingColor, getValidationTooltip."
+    },
+    {
+      "step": 3,
+      "name": "AHA #2: Store integration",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts"],
+      "desc": "Added validationErrors: Map + revalidate() action. queueMicrotask calls in: onNodesChange, onEdgesChange, onConnect, addNode, deleteNode, updateNodeData, loadFlow, undo, redo."
+    },
+    {
+      "step": 4,
+      "name": "AHA #2: BaseNode validation ring",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx"],
+      "desc": "Read validationErrors from store, render boxShadow ring when not selected. title attribute for tooltip."
+    },
+    {
+      "step": 5,
+      "name": "AHA #1: flow-summarizer.ts",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts"],
+      "desc": "NEW: DFS traversal from trigger_start. Menu branching as indented lines. Skip utility_note. Cycle detection. truncateSummary (max 5 lines)."
+    },
+    {
+      "step": 6,
+      "name": "AHA #1: FlowSummaryBar.tsx",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/components/FlowSummaryBar.tsx"],
+      "desc": "NEW: Always-visible collapsible bar below canvas. useMemo(nodes, edges). localStorage collapse state. Node type icons. Step count in header."
+    },
+    {
+      "step": 7,
+      "name": "AHA #1: EditorPage + Canvas layout",
+      "files": ["src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx", "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx"],
+      "desc": "Wrap canvas + summary in flex-col container. FlowCanvas h-full -> min-h-0 for proper flex behavior."
+    }
+  ],
+
+  "allowed_files": [
+    "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts",
+    "src/Invekto.Backend/FlowBuilder/src/components/FlowSummaryBar.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx",
+    "src/Invekto.Backend/wwwroot/flow-builder/index.html",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/*",
+    "arch/plans/20260213-flow-builder-phase25.json",
+    "arch/plans/diffs/20260213-flow-builder-phase25.diff"
+  ],
+
+  "files_changed": [
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts", "is_new": true, "change": "Graph validation: validateGraph, orphan/dead_end/empty_field rules" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts", "is_new": true, "change": "DFS flow summary: summarizeFlow, truncateSummary" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/FlowSummaryBar.tsx", "is_new": true, "change": "Always-visible collapsible summary bar" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx", "is_new": false, "change": "h-full -> min-h-0 for flex-col layout" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts", "is_new": false, "change": "validationErrors Map + revalidate() + queueMicrotask in 9 actions" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx", "is_new": false, "change": "Validation ring (boxShadow) + tooltip" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx", "is_new": false, "change": "handleDuplicate + Kopyala button + JSON button rename" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx", "is_new": false, "change": "FlowSummaryBar integration + flex-col canvas wrapper" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/index.html", "is_new": false, "change": "Vite build output: updated asset references" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-yRnuWUkN.js", "is_new": true, "change": "Vite build output: JS bundle" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-liY3Ro-I.css", "is_new": true, "change": "Vite build output: CSS bundle" }
+  ],
+
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "54CCFE6B54E1156E67E9D8C0EBA132ACB91A43CD35D99976D5E070ED8992679B",
+    "full_path": "arch/plans/diffs/20260213-flow-builder-phase25.diff",
+    "stats": { "insertions": 572, "deletions": 84, "files_count": 12 }
+  },
+
+  "build": {
+    "status": "PASS",
+    "command": "npx tsc --noEmit + npx vite build",
+    "timestamp": "2026-02-13T14:25:00Z",
+    "duration_ms": 3000,
+    "output_tail": "tsc: 0 errors. Vite: 231 modules, JS 428KB gzip 137KB.",
+    "error_summary": null
+  },
+
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/ (dokunulmaz)",
+      "src/Invekto.AgentAI/ (dokunulmaz)",
+      "src/Invekto.Outbound/ (dokunulmaz)",
+      "src/Invekto.Automation/ (Phase 2.5 backend-free)",
+      "src/Invekto.Backend/Program.cs (dokunulmaz)",
+      "src/Invekto.Backend/Dashboard/ (dokunulmaz)"
+    ],
+    "non_goals": [
+      "Backend API degisikligi (sifir)",
+      "Phase 3 FlowEngine v2",
+      "Phase 3b Simulation",
+      "Ghost Path overlay (Phase 3c)",
+      "Health Score (Phase 3c)"
+    ]
+  },
+
+  "error_handling": {
+    "try_catch_locations": [
+      "FlowListPage handleDuplicate: getFlow/createFlow errors, 409 duplicate name"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "handleDuplicate catch -> setError with user message. Validator pure functions, no side effects."
+  },
+
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Production flow'u duzenlemek riskli",
+      "suggestion": "Kopyasini Olustur butonu ile risk almadan test",
+      "aha_moment": "Admin 'Kopyala' tiklar, yeni pasif kopya olusur, orijinal bozulmadan deney yapar"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Orphan/dead-end node'lar fark edilmiyor",
+      "suggestion": "Her degisiklikte anlik kirmizi/turuncu ring overlay",
+      "aha_moment": "Admin node ekler, baglanti yoksa aninda kirmizi halo gorur -- 'bu adim ulasilamaz!'"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Flow'un ne yapacagini canvas'tan anlamak zor",
+      "suggestion": "Canli onizleme bari her degisiklikte guncellenir",
+      "aha_moment": "Admin node baglar, altta aninda 'Musteri mesaj gonderir -> Hos geldiniz -> Menu' gorur"
+    }
+  ],
+
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "handleDuplicate fonksiyonu mevcut flow isimlerini kontrol edip numara suffix ekliyor mu? (Ana Flow -> Ana Flow - Kopya -> Ana Flow - Kopya (2))",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "validateGraph pure function orphan (input edge yok, trigger_start degil), dead_end (output edge yok, handoff/note degil), empty_field (message_text.text bos, menu options bos) kontrollerini dogru yapiyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "revalidate() tum mutating store action'lardan sonra queueMicrotask ile cagriliyor mu? (onNodesChange, onEdgesChange, onConnect, addNode, deleteNode, updateNodeData, loadFlow, undo, redo)",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "BaseNode validation ring sadece node secili DEGILKEN gosteriyor mu? Secili iken mavi ring oncelikli mi?",
+      "category": "UX",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "FlowSummaryBar useMemo ile nodes/edges dependency kullanarak DFS recompute yapiyor mu? Collapse state localStorage'da persist mi?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+
+  "verdict": {
+    "status": "PASS",
+    "source": "codex",
+    "iteration": 2,
+    "iteration_history": [
+      {
+        "iteration": 1,
+        "verdict": "FAIL",
+        "blocking_count": 1,
+        "fixes": ["FlowSummaryBar localStorage catch bloklarina console.warn eklendi"]
+      },
+      {
+        "iteration": 2,
+        "verdict": "PASS",
+        "blocking_count": 0,
+        "fixes": []
+      }
+    ]
+  }
+}

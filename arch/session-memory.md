@@ -4,9 +4,9 @@
 
 ## Last Update
 
-- **Date:** 2026-02-12
-- **Status:** Flow Builder Phase 2 (API + Backend + Multi-flow + Auth) TAMAMLANDI - Build PASS, /rev bekliyor
-- **Last Task:** Flow Builder Phase 2: Multi-flow DB schema (flow_id SERIAL PK), Automation CRUD endpoints (7 routes), Backend proxy (FlowBuilderClient + JWT login), SPA auth (react-router-dom, LoginPage, sessionStorage JWT), FlowListPage (full CRUD + activate/deactivate/copy/delete), FlowEditorPage API integration (load/save via API, back button). .NET build 0 errors, Vite/TS build 0 errors.
+- **Date:** 2026-02-13
+- **Status:** Flow Builder Phase 2.5 TAMAMLANDI (Codex 2 iter PASS). Siradaki: Phase 3a (Backend FlowEngine v2).
+- **Last Task:** Phase 2.5 SPA Quick Wins: AHA #6 Kopya Baslat, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex iter 1 FAIL (CQ2 silent catch), iter 2 PASS.
 
 ---
 
@@ -133,10 +133,13 @@
 - [x] ~~Q: agentai.sql calistir~~ (Tamamlandi)
 - [x] ~~Q: AgentAI appsettings.Production.json doldur~~ (Tamamlandi)
 - [x] ~~Q: AgentAI deploy + Windows Service kurulumu~~ (Tamamlandi - InvektoAgentAI SERVICE_RUNNING)
-- [x] ~~GR-1.3 Outbound Service~~ (Tamamlandi - Port 7107, Build PASS, /rev bekliyor)
+- [x] ~~GR-1.3 Outbound Service~~ (Tamamlandi - Port 7107, Codex 3 iter PASS, deployed NSSM)
+- [x] ~~Q: Outbound deploy~~ (Tamamlandi - outbound.sql, appsettings.Production.json, NSSM servis)
 - [x] ~~Flow Builder Phase 1~~ (Tamamlandi - SPA scaffold, canvas, 5 node, drag-drop, property panel, UI test OK)
-- [x] ~~Flow Builder Phase 2~~ (Tamamlandi - Multi-flow DB, CRUD endpoints, Backend proxy, JWT login, SPA auth/routing, FlowListPage, FlowEditorPage API, Build PASS)
-- [ ] Flow Builder Phase 2.5: SPA Quick Wins - AHA #1 Canli Onizleme, #2 Kirmizi Kenar, #6 Kopya Baslat (SPA-only, LOW efor)
+- [x] ~~Flow Builder Phase 2~~ (Tamamlandi - Multi-flow DB, CRUD, Backend proxy, JWT login, SPA auth, Codex 3 iter FORCE_PASS, committed)
+- [x] ~~Q: automation.sql migration~~ (Tamamlandi - chatbot_flows multi-flow PK degisikligi)
+- [x] ~~Q: tenant_registry flow_builder_api_key~~ (Tamamlandi)
+- [x] ~~Flow Builder Phase 2.5~~ (Tamamlandi - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS)
 - [ ] Flow Builder Phase 3a: FlowEngine v2 + Validator + Migrator (backend C# only)
 - [ ] Flow Builder Phase 3b: Test Simulasyon API + SPA Chat Panel + AHA #4 Tek Tikla Test
 - [ ] Flow Builder Phase 3c: Validation UI + AHA #3 Ghost Path + #5 Saglik Skoru + Polish
@@ -232,46 +235,21 @@ src/
 
 ## Context for Next Session
 
-### Flow Builder Phase 2 TAMAMLANDI
+### Tum Bekleyen Isler TAMAMLANDI (2026-02-13)
 
-Phase 2 (API + Backend + Multi-flow + Auth) tamamlandi. /rev bekliyor.
+- Flow Builder Phase 2: /rev FORCE_PASS (iter 3), committed (49879b6, 2066e07)
+- GR-1.3 Outbound: /rev Codex 3 iter PASS, deployed (NSSM InvektoOutbound)
+- Q: automation.sql migration calistirildi (chatbot_flows multi-flow PK)
+- Q: tenant_registry.settings_json'a flow_builder_api_key eklendi
+- Q: Outbound deploy tamamlandi (outbound.sql, appsettings.Production.json, NSSM servis)
 
-**Plan JSON:** `arch/plans/20260212-flow-builder-phase2.json`
+### Siradaki: Phase 3a (Backend FlowEngine v2)
 
-**Yapilan isler:**
-- Multi-flow DB schema: chatbot_flows flow_id SERIAL PK, partial unique is_active, flow_name unique per tenant
-- Automation 7 CRUD endpoints: list, get, create, update, delete, activate, deactivate
-- Backend proxy: FlowBuilderClient.cs, 7 proxy routes, JWT login endpoint (API key auth)
-- SPA: react-router-dom routing, LoginPage, FlowListPage (full CRUD + dialogs), FlowEditorPage (API load/save + back)
-- Auth: sessionStorage JWT, AuthContext provider, RequireAuth guard
+**Roadmap:** `arch/docs/flow-builder-roadmap.md`
 
-**Dosyalar:**
-- `arch/db/automation.sql` (multi-flow schema + migration)
-- `src/Invekto.Automation/Data/AutomationRepository.cs` (multi-flow methods + DTOs)
-- `src/Invekto.Automation/Program.cs` (7 new endpoints)
-- `src/Invekto.Backend/Services/FlowBuilderClient.cs` (NEW)
-- `src/Invekto.Backend/Program.cs` (proxy + login + SPA fallback)
-- `src/Invekto.Backend/FlowBuilder/src/lib/auth.ts` (NEW)
-- `src/Invekto.Backend/FlowBuilder/src/lib/api.ts` (NEW)
-- `src/Invekto.Backend/FlowBuilder/src/pages/LoginPage.tsx` (NEW)
-- `src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx` (NEW)
-- `src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx` (updated: API integration)
-- `src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx` (updated: back button)
-- `src/Invekto.Backend/FlowBuilder/src/App.tsx` (updated: router + auth)
-
-### Siradaki: Phase 3 (FlowEngine v2 + Test Simulasyon)
-
-**Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
-
-**Phase 3a** (Backend): FlowEngine v2 graph executor, FlowValidator, FlowMigrator (v1->v2), ExpressionEvaluator, AutomationOrchestrator version dispatch
-**Phase 3b** (Full Stack): SimulationEngine (in-memory), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), aktif node highlight, interaktif menu
-**Phase 3c** (Polish): Validation UI (Settings panel), Variable Inspector, execution breadcrumb
-
-### Bekleyen diger isler
-- GR-1.3 Outbound /rev tamamla (Codex review)
-- Outbound deploy: outbound.sql, appsettings.Production.json, NSSM servis
-- Q: automation.sql migration calistir (chatbot_flows multi-flow PK degisikligi)
-- Q: tenant_registry.settings_json'a flow_builder_api_key ekle
+**Phase 3a** (Backend): FlowEngine v2 graph executor, FlowValidator, FlowMigrator (v1->v2), ExpressionEvaluator
+**Phase 3b** (Full Stack): SimulationEngine, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test
+**Phase 3c** (Polish): Validation UI, Variable Inspector, AHA #3 Ghost Path, #5 Saglik Skoru
 
 ---
 

@@ -11,7 +11,7 @@ import {
   type FlowSummary,
   ApiClientError,
 } from '../lib/api';
-import { createDefaultFlow } from '../types/flow';
+import { createDefaultFlow, type FlowConfigV2 } from '../types/flow';
 
 export function FlowListPage() {
   const { session, logout } = useAuth();
@@ -116,6 +116,48 @@ export function FlowListPage() {
       await fetchFlows();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Deaktivasyon basarisiz');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDuplicate = async (flow: FlowSummary) => {
+    setActionLoading(flow.flow_id);
+    setError(null);
+    try {
+      const detail = await getFlow(tenantId, flow.flow_id);
+      const config = detail.flow_config as FlowConfigV2;
+
+      // Generate duplicate name with numbered suffix
+      const baseName = flow.flow_name;
+      const existingNames = new Set(flows.map((f) => f.flow_name));
+
+      let dupName = `${baseName} - Kopya`;
+      if (existingNames.has(dupName)) {
+        let counter = 2;
+        while (existingNames.has(`${baseName} - Kopya (${counter})`)) {
+          counter++;
+        }
+        dupName = `${baseName} - Kopya (${counter})`;
+      }
+
+      const dupConfig: FlowConfigV2 = {
+        ...config,
+        metadata: { ...config.metadata, name: dupName },
+      };
+
+      const created = await createFlow(tenantId, {
+        flow_name: dupName,
+        flow_config: dupConfig,
+      });
+
+      navigate(`/editor/${created.flow_id}`);
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 409) {
+        setError('Bu isimde bir flow zaten mevcut. Lutfen tekrar deneyin.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Kopyalama basarisiz');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -253,12 +295,21 @@ export function FlowListPage() {
                   )}
 
                   <button
+                    onClick={() => handleDuplicate(flow)}
+                    disabled={actionLoading === flow.flow_id}
+                    className="px-3 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg transition disabled:opacity-50"
+                    title="Flow'un kopyasini olustur"
+                  >
+                    Kopyala
+                  </button>
+
+                  <button
                     onClick={() => handleCopyConfig(flow)}
                     disabled={actionLoading === flow.flow_id}
                     className="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition disabled:opacity-50"
                     title="Flow JSON'u panoya kopyala"
                   >
-                    Kopyala
+                    JSON
                   </button>
 
                   <button

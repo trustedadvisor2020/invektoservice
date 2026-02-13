@@ -82,7 +82,7 @@ export function FlowCanvas() {
   );
 
   return (
-    <div ref={reactFlowWrapper} className="flex-1 h-full" onKeyDown={onKeyDown} tabIndex={0}>
+    <div ref={reactFlowWrapper} className="flex-1 min-h-0" onKeyDown={onKeyDown} tabIndex={0}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

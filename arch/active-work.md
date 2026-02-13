@@ -7,7 +7,6 @@
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
 | (none) | - | - | - |
-| 20260212-flow-builder | PHASE2_DONE | 2026-02-12 | Flow Builder Phase 2 (API + Backend + Multi-flow + Auth) tamamlandi, /rev bekliyor |
 
 ---
 
@@ -15,7 +14,9 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
-| 20260212-outbound-service | 2026-02-12 | GR-1.3: Invekto.Outbound broadcast & trigger engine (Port 7107) - Codex 3 iter PASS |
+| 20260213-flow-builder-phase25 | 2026-02-13 | Flow Builder Phase 2.5 SPA Quick Wins - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS. |
+| 20260212-flow-builder | 2026-02-13 | Flow Builder Phase 2 (API + Backend + Multi-flow + Auth) - Codex 3 iter, Q FORCE PASS. Committed + deployed. |
+| 20260212-outbound-service | 2026-02-12 | GR-1.3: Invekto.Outbound broadcast & trigger engine (Port 7107) - Codex 3 iter PASS. Deployed (NSSM). |
 | 20260211-testing-tooling | 2026-02-11 | Backend proxy architecture for simulator + E2E scenarios - Codex 5 iter PASS |
 | 20260211-agentai-service | 2026-02-11 | GR-1.11: Invekto.AgentAI AI agent assist (Port 7105) - Codex 2 iter, Q FORCE PASS |
 | 20260209-simulator | 2026-02-09 | Test & Simulation tool (Node.js, Port 4500) - Codex 3 iter PASS |

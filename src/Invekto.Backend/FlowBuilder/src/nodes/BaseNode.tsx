@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '../lib/utils';
 import { useFlowStore } from '../store/flow-store';
+import { getValidationRingColor, getValidationTooltip } from '../lib/graph-validator';
 
 interface BaseNodeProps {
   nodeProps: NodeProps;
@@ -24,7 +25,11 @@ function BaseNodeComponent({
 }: BaseNodeProps) {
   const { id, data, selected } = nodeProps;
   const selectNode = useFlowStore((s) => s.selectNode);
+  const validationErrors = useFlowStore((s) => s.validationErrors.get(id) ?? []);
   const label = (data as { label?: string }).label ?? '';
+
+  const ringColor = getValidationRingColor(validationErrors);
+  const tooltipText = getValidationTooltip(validationErrors);
 
   return (
     <div
@@ -35,8 +40,12 @@ function BaseNodeComponent({
       style={{
         borderColor: selected ? '#60a5fa' : color,
         background: '#ffffff',
+        ...(ringColor && !selected
+          ? { boxShadow: `0 0 0 3px ${ringColor}40, 0 0 8px ${ringColor}30` }
+          : {}),
       }}
       onClick={() => selectNode(id)}
+      title={tooltipText || undefined}
     >
       {/* Header */}
       <div

@@ -13,6 +13,7 @@ import {
 import type { FlowConfigV2, FlowSettings, FlowMetadata, FlowNodeType, NodeData } from '../types/flow';
 import { getNodeTypeInfo, createDefaultFlow } from '../types/flow';
 import { generateNodeId, generateEdgeId } from '../lib/utils';
+import { validateGraph, type ValidationError } from '../lib/graph-validator';
 
 export interface FlowState {
   // State
@@ -22,6 +23,9 @@ export interface FlowState {
   isDirty: boolean;
   flowMetadata: FlowMetadata;
   flowSettings: FlowSettings;
+
+  // Validation
+  validationErrors: Map<string, ValidationError[]>;
 
   // History (simple undo/redo)
   history: Array<{ nodes: Node[]; edges: Edge[] }>;
@@ -37,6 +41,7 @@ export interface FlowState {
   deleteNode: (id: string) => void;
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   selectNode: (id: string | null) => void;
+  revalidate: () => void;
 
   // Flow operations
   loadFlow: (config: FlowConfigV2) => void;
@@ -61,14 +66,22 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   isDirty: false,
   flowMetadata: { ...DEFAULT_FLOW.metadata },
   flowSettings: { ...DEFAULT_FLOW.settings },
+  validationErrors: new Map(),
   history: [],
   historyIndex: -1,
+
+  revalidate: () => {
+    const state = get();
+    const errors = validateGraph(state.nodes, state.edges);
+    set({ validationErrors: errors });
+  },
 
   onNodesChange: (changes) => {
     set((state) => ({
       nodes: applyNodeChanges(changes, state.nodes),
       isDirty: true,
     }));
+    queueMicrotask(() => get().revalidate());
   },
 
   onEdgesChange: (changes) => {
@@ -76,6 +89,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       edges: applyEdgeChanges(changes, state.edges),
       isDirty: true,
     }));
+    queueMicrotask(() => get().revalidate());
   },
 
   onConnect: (connection) => {
@@ -91,6 +105,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         isDirty: true,
       };
     });
+    queueMicrotask(() => get().revalidate());
   },
 
   addNode: (type, position) => {
@@ -120,6 +135,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       selectedNodeId: id,
       isDirty: true,
     });
+    queueMicrotask(() => get().revalidate());
   },
 
   deleteNode: (id) => {
@@ -130,6 +146,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
       isDirty: true,
     }));
+    queueMicrotask(() => get().revalidate());
   },
 
   updateNodeData: (id, data) => {
@@ -139,6 +156,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       ),
       isDirty: true,
     }));
+    queueMicrotask(() => get().revalidate());
   },
 
   selectNode: (id) => {
@@ -173,6 +191,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       history: [],
       historyIndex: -1,
     });
+    queueMicrotask(() => get().revalidate());
   },
 
   toFlowConfig: (): FlowConfigV2 => {
@@ -249,6 +268,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       historyIndex: state.historyIndex - 1,
       isDirty: true,
     });
+    queueMicrotask(() => get().revalidate());
   },
 
   redo: () => {
@@ -256,9 +276,6 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     if (state.historyIndex >= state.history.length - 1) return;
 
     const nextIndex = state.historyIndex + 1;
-    // We need the state AFTER the undo - which is the next snapshot
-    // Actually for redo, we need to store "current" too. Let's simplify:
-    // If we undo from idx=2 to idx=1, to redo we go back to idx=2
     if (nextIndex + 1 < state.history.length) {
       const snapshot = state.history[nextIndex + 1];
       set({
@@ -267,6 +284,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         historyIndex: nextIndex,
         isDirty: true,
       });
+      queueMicrotask(() => get().revalidate());
     }
   },
 }));
