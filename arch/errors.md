@@ -90,6 +90,14 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-008 | Flow activation conflict | Bu tenant icin zaten aktif bir akis var. |
 | INV-AT-009 | Invalid flow config version | Desteklenmeyen akis konfigurasyonu versiyonu. |
 | INV-AT-010 | Invalid API key | Gecersiz API anahtari. |
+| INV-AT-011 | Max loop count exceeded | Sonsuz dongu limiti asildi, node: {node_id} |
+| INV-AT-012 | Unknown node type | Desteklenmeyen node tipi: {type} |
+| INV-AT-013 | No pending input expected | Beklenmeyen kullanici girdisi |
+| INV-AT-014 | Unknown input type | Bilinmeyen girdi tipi: {type} |
+| INV-AT-015 | Graph validation failed | Akis dogrulamasi basarisiz: {reason} |
+| INV-AT-016 | Required field missing | Zorunlu alan eksik, node '{node_id}': {field} |
+| INV-AT-017 | Expression evaluation failed | Ifade degerlendirme hatasi, node '{node_id}': {reason} |
+| INV-AT-021 | Node execution failed | Node calisma hatasi ({node_id}): {reason} |
 
 ---
 

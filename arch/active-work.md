@@ -14,6 +14,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260213-flow-builder-phase3a | 2026-02-13 | Flow Builder Phase 3a: FlowEngine v2 + Validator + Migrator + 5 NodeHandlers. 16 dosya +1942 -27. Codex 3 iter Q FORCE PASS. |
 | 20260213-flow-builder-phase25 | 2026-02-13 | Flow Builder Phase 2.5 SPA Quick Wins - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS. |
 | 20260212-flow-builder | 2026-02-13 | Flow Builder Phase 2 (API + Backend + Multi-flow + Auth) - Codex 3 iter, Q FORCE PASS. Committed + deployed. |
 | 20260212-outbound-service | 2026-02-12 | GR-1.3: Invekto.Outbound broadcast & trigger engine (Port 7107) - Codex 3 iter PASS. Deployed (NSSM). |

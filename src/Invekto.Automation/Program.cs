@@ -2,6 +2,7 @@ using System.Text.Json;
 using Invekto.Automation.Data;
 using Invekto.Automation.Middleware;
 using Invekto.Automation.Services;
+using Invekto.Automation.Services.NodeHandlers;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
@@ -78,10 +79,23 @@ var callbackSettings = builder.Configuration.GetSection("Integration:Callback").
 builder.Services.AddSingleton(callbackSettings);
 builder.Services.AddHttpClient<MainAppCallbackClient>();
 
-// Register services
+// Register services (v1)
 builder.Services.AddSingleton<WorkingHoursChecker>();
 builder.Services.AddSingleton<FaqMatcher>();
 builder.Services.AddSingleton<FlowEngine>();
+
+// Register v2 node handlers (IMP-1: Strategy Pattern)
+builder.Services.AddSingleton<INodeHandler, TriggerStartHandler>();
+builder.Services.AddSingleton<INodeHandler, MessageTextHandler>();
+builder.Services.AddSingleton<INodeHandler, MessageMenuHandler>();
+builder.Services.AddSingleton<INodeHandler, ActionHandoffHandler>();
+builder.Services.AddSingleton<INodeHandler, UtilityNoteHandler>();
+
+// Register v2 services
+builder.Services.AddSingleton<ExpressionEvaluator>();
+builder.Services.AddSingleton<FlowEngineV2>();
+builder.Services.AddSingleton<FlowValidator>();
+builder.Services.AddSingleton<FlowMigrator>();
 
 // Register IntentDetector with HttpClient
 builder.Services.AddHttpClient<IntentDetector>((sp, client) =>
@@ -468,6 +482,91 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/deactivate", async (int t
 });
 
 // ============================================================
+// Flow validation endpoint (Phase 3a)
+// ============================================================
+
+// POST /api/v1/flows/validate — Validate a v2 flow config (graph validation)
+app.MapPost("/api/v1/flows/validate", async (HttpContext ctx, FlowValidator validator, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var flowConfig = root.TryGetProperty("flow_config", out var fc) ? fc.GetRawText() : null;
+        if (string.IsNullOrEmpty(flowConfig))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "flow_config is required", requestId), statusCode: 400);
+
+        var result = validator.Validate(flowConfig);
+
+        return Results.Ok(new
+        {
+            is_valid = result.IsValid,
+            errors = result.Errors,
+            warnings = result.Warnings
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Flow validation failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// POST /api/v1/flows/{tenantId}/{flowId}/migrate-v1 — Convert v1 config to v2 graph + save
+app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/migrate-v1", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, FlowMigrator migrator, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        // Get current flow
+        var flow = await repo.GetFlowByIdAsync(tenantId, flowId);
+        if (flow == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        // Log v1 config before overwrite (safety)
+        jsonLogger.StepInfo($"migrate-v1: Backing up v1 config for flow {flowId}, tenant {tenantId}. v1_config={flow.FlowConfigJson}", requestId);
+
+        // Migrate
+        var migrationResult = migrator.MigrateToV2(flow.FlowConfigJson);
+        if (migrationResult == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "v1 → v2 migrasyon basarisiz (zaten v2 veya gecersiz config)", requestId), statusCode: 400);
+
+        // Save to DB
+        var updated = await repo.UpdateFlowByIdAsync(tenantId, flowId, null, migrationResult.V2ConfigJson);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Flow bulunamadi (save sirasinda)", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"migrate-v1: Flow {flowId} migrated to v2 for tenant {tenantId}", requestId);
+
+        return Results.Ok(new
+        {
+            flow_id = flowId,
+            tenant_id = tenantId,
+            status = "migrated",
+            warnings = migrationResult.Warnings,
+            flow_config_v2 = JsonSerializer.Deserialize<JsonElement>(migrationResult.V2ConfigJson)
+        });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"migrate-v1 failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
 // FAQ management endpoints
 // ============================================================
 
@@ -611,6 +710,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "DELETE", Path = "/api/v1/flows/{tenantId}/{flowId}", Description = "Delete flow", Auth = "Bearer JWT", Category = "Flow" },
         new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/activate", Description = "Activate flow (deactivate others)", Auth = "Bearer JWT", Category = "Flow" },
         new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/deactivate", Description = "Deactivate flow", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "POST", Path = "/api/v1/flows/validate", Description = "Validate v2 flow config (graph validation)", Auth = "Bearer JWT", Category = "Flow" },
+        new() { Method = "POST", Path = "/api/v1/flows/{tenantId}/{flowId}/migrate-v1", Description = "Convert v1 config to v2 graph + save", Auth = "Bearer JWT", Category = "Flow" },
         new() { Method = "GET", Path = "/api/v1/faq/{tenantId}", Description = "List FAQ entries", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "POST", Path = "/api/v1/faq/{tenantId}", Description = "Create FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "PUT", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Update FAQ entry", Auth = "Bearer JWT", Category = "API" },

@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-13
-- **Status:** Flow Builder Phase 2.5 TAMAMLANDI (Codex 2 iter PASS). Siradaki: Phase 3a (Backend FlowEngine v2).
-- **Last Task:** Phase 2.5 SPA Quick Wins: AHA #6 Kopya Baslat, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex iter 1 FAIL (CQ2 silent catch), iter 2 PASS.
+- **Status:** Flow Builder Phase 3a TAMAMLANDI (Codex 3 iter, Q FORCE PASS). Siradaki: Phase 3b (Simulation API + SPA Chat).
+- **Last Task:** Phase 3a FlowEngine v2 + Validator + Migrator. 16 dosya, +1942 -27. Codex iter 1-2 gercek fixler (silent catch, perf, error code), iter 3 by-design konular icin Q FORCE PASS.
 
 ---
 
@@ -36,7 +36,16 @@
   - Chat session state tracking (PostgreSQL, restart-safe)
   - DB schema: `arch/db/automation.sql` (chatbot_flows, faq_entries, chat_sessions, auto_reply_log)
   - Flow contract: `arch/contracts/automation-flow.json`
-  - Error codes: INV-AT-001 ~ INV-AT-010
+  - Error codes: INV-AT-001 ~ INV-AT-010, INV-AT-011 ~ INV-AT-017, INV-AT-021
+  - **Phase 3a (FlowEngine v2):**
+    - Node Handler Registry: INodeHandler strategy pattern (5 handlers: trigger_start, message_text, message_menu, action_handoff, utility_note)
+    - FlowGraphV2: Immutable pre-computed graph (O(1) node/edge lookup, O(1) incoming check)
+    - FlowEngineV2: Pure graph executor (no side-effects), auto-chain + wait-for-input + terminal
+    - ExpressionEvaluator: {{variable}} substitution + condition eval (regex 100ms timeout, max 50 vars)
+    - FlowValidator: Orphan/dead-end/required-field/edge-consistency/cycle detection
+    - FlowMigrator: v1 menu → v2 graph + auto-layout + warnings
+    - AutomationOrchestrator: v1/v2 version dispatch, v2 session state in session_data JSONB
+    - Endpoints: POST /api/v1/flows/validate, POST /api/v1/flows/{tenantId}/{flowId}/migrate-v1
 - **GR-1.11 AgentAI Service (Port 7105):**
   - Sync API: AI reply suggestion + intent detection
   - Claude Haiku integration (reply generation + JSON parse)
@@ -140,7 +149,7 @@
 - [x] ~~Q: automation.sql migration~~ (Tamamlandi - chatbot_flows multi-flow PK degisikligi)
 - [x] ~~Q: tenant_registry flow_builder_api_key~~ (Tamamlandi)
 - [x] ~~Flow Builder Phase 2.5~~ (Tamamlandi - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS)
-- [ ] Flow Builder Phase 3a: FlowEngine v2 + Validator + Migrator (backend C# only)
+- [x] ~~Flow Builder Phase 3a~~ (Tamamlandi - FlowEngine v2, Validator, Migrator, 5 NodeHandler, ExpressionEvaluator. Codex 3 iter Q FORCE PASS)
 - [ ] Flow Builder Phase 3b: Test Simulasyon API + SPA Chat Panel + AHA #4 Tek Tikla Test
 - [ ] Flow Builder Phase 3c: Validation UI + AHA #3 Ghost Path + #5 Saglik Skoru + Polish
 - [ ] Flow Builder Phase 4: Genisletilmis node'lar (logic, AI, api_call, delay, set_variable)
@@ -243,12 +252,13 @@ src/
 - Q: tenant_registry.settings_json'a flow_builder_api_key eklendi
 - Q: Outbound deploy tamamlandi (outbound.sql, appsettings.Production.json, NSSM servis)
 
-### Siradaki: Phase 3a (Backend FlowEngine v2)
+### Siradaki: Phase 3b (Simulation API + SPA Chat Panel)
 
+**Plan:** `arch/plans/20260213-flow-builder-phase3.json`
 **Roadmap:** `arch/docs/flow-builder-roadmap.md`
 
-**Phase 3a** (Backend): FlowEngine v2 graph executor, FlowValidator, FlowMigrator (v1->v2), ExpressionEvaluator
-**Phase 3b** (Full Stack): SimulationEngine, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test
+**Phase 3a DONE** (eb260fa+ commit): FlowEngine v2, 5 NodeHandlers, FlowValidator, FlowMigrator, ExpressionEvaluator, v1/v2 dispatch
+**Phase 3b** (Full Stack): SimulationEngine (in-memory), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test
 **Phase 3c** (Polish): Validation UI, Variable Inspector, AHA #3 Ghost Path, #5 Saglik Skoru
 
 ---

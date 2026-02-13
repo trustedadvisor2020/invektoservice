@@ -51,6 +51,14 @@ public static class ErrorCodes
     public const string AutomationFlowActivationConflict = "INV-AT-008";
     public const string AutomationInvalidFlowVersion = "INV-AT-009";
     public const string AutomationInvalidApiKey = "INV-AT-010";
+    public const string AutomationMaxLoopExceeded = "INV-AT-011";
+    public const string AutomationUnknownNodeType = "INV-AT-012";
+    public const string AutomationNoPendingInput = "INV-AT-013";
+    public const string AutomationUnknownInputType = "INV-AT-014";
+    public const string AutomationGraphValidationFailed = "INV-AT-015";
+    public const string AutomationRequiredFieldMissing = "INV-AT-016";
+    public const string AutomationExpressionFailed = "INV-AT-017";
+    public const string AutomationNodeExecutionFailed = "INV-AT-021";
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
