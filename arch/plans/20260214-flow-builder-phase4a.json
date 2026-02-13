@@ -1,0 +1,151 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260214-flow-builder-phase4a",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-14T10:00:00Z",
+  "updated_at": "2026-02-14T12:30:00Z",
+
+  "plan": {
+    "summary": "Flow Builder Phase 4a: 4 pure logic node type eklenmesi. logic_condition (if/else), logic_switch (multi-way), action_delay (bekleme), utility_set_variable (degisken atama). Backend: 4 INodeHandler + DI + FlowValidator handle checks + IsSimulation flag. SPA: 4 node component + 4 property editor + graph-validator + flow-summarizer.",
+    "q_intent": "Phase 3 tamamlandi, roadmap'teki Phase 4'e gecilsin. Pure logic node'lar once (4a), AI/API node'lar sonra (4b).",
+    "interview_notes": "1) Sub-phase: 4a once, 4b sonra. 2) action_delay simulation: instant skip. 3) logic_switch: max 10 case + dinamik add/remove. 4) v1 migration compat kontrolu (degisiklik gerekmez)."
+  },
+
+  "interview_decisions": {
+    "sub_phase_order": "4a (pure logic) once, 4b (AI+API) sonra",
+    "delay_simulation": "Instant skip + 'Simule edildi' mesaji",
+    "switch_max_cases": "Max 10, dinamik add/remove",
+    "v1_migration": "FlowMigrator'da degisiklik gerekmez (v1'de bu type'lar yok)"
+  },
+
+  "architecture": {
+    "pattern": "IMP-1 Strategy Pattern genisletilmesi. Mevcut pattern'e 4 yeni handler ekleniyor.",
+    "new_flag": "ExecutionContext.IsSimulation - ActionDelayHandler simulation/production ayrimi icin",
+    "branching": "logic_condition: true_handle/false_handle, logic_switch: case_1..case_N + default"
+  },
+
+  "verification_questions": [
+    "LogicConditionHandler: is_empty operator secildiginde value olmadan dogru calisir mi?",
+    "LogicSwitchHandler: Gecersiz cases JSON'da warning log'a yazilir mi, default handle'a duser mi?",
+    "ActionDelayHandler: IsSimulation=true iken Task.Delay atlanir mi, bilgi mesaji doner mi?",
+    "SetVariableHandler: Evaluator.Substitute calisir mi, VariableUpdates state'e yansir mi?",
+    "FlowValidator: logic_condition true_handle/false_handle + logic_switch case handle'lari icin edge kontrol var mi?",
+    "SPA graph-validator: 4 yeni node tipi icin bos alan kontrolleri calisiyor mu?",
+    "SPA flow-summarizer: logic_condition (DOGRU/YANLIS) ve logic_switch (case + VARSAYILAN) branching DFS dogru mu?"
+  ],
+
+  "allowed_files": [
+    "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/LogicConditionHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/LogicSwitchHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/ActionDelayHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/SetVariableHandler.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/SimulationEngine.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/LogicConditionNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/LogicSwitchNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/ActionDelayNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/UtilitySetVariableNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/index.ts",
+    "src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts",
+    "src/Invekto.Backend/wwwroot/flow-builder/index.html",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/*",
+    "arch/active-work.md",
+    "arch/session-memory.md",
+    "arch/contracts/automation-flow-v2.json",
+    "arch/plans/20260214-flow-builder-phase4a.json",
+    "arch/plans/diffs/20260214-flow-builder-phase4a.diff"
+  ],
+
+  "build": {
+    "dotnet": "0 errors, 0 warnings",
+    "tsc": "0 errors",
+    "vite": "OK (239 modules, 453KB JS)",
+    "timestamp": "2026-02-14T12:00:00Z"
+  },
+
+  "git_diff": {
+    "patch_truncated": "(see full diff file - 2MB includes minified build artifacts)",
+    "full_path": "arch/plans/diffs/20260214-flow-builder-phase4a.diff",
+    "stats": {
+      "insertions": 964,
+      "deletions": 42,
+      "files_count": 25
+    }
+  },
+
+  "files_changed": [
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/LogicConditionHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/LogicSwitchHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/ActionDelayHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/SetVariableHandler.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/SimulationEngine.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/FlowValidator.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/LogicConditionNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/LogicSwitchNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/ActionDelayNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/UtilitySetVariableNode.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/index.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/flow-summarizer.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/index.html", "is_new": false },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-Bk12qHQ6.css", "is_new": false, "note": "deleted (old vite build)" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-D9tEPHr6.js", "is_new": false, "note": "deleted (old vite build)" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-C1H0AfQj.css", "is_new": true, "note": "new vite build" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-SkuMeiZd.js", "is_new": true, "note": "new vite build" },
+    { "path": "arch/active-work.md", "is_new": false },
+    { "path": "arch/session-memory.md", "is_new": false },
+    { "path": "arch/plans/20260214-flow-builder-phase4a.json", "is_new": true }
+  ],
+
+  "iteration": 3,
+
+  "verdict": {
+    "overall": "FORCE_PASS",
+    "blocking_issues": [],
+    "escalation_required": true,
+    "escalation_reason": "Max iteration (3) reached. Kalan sorunlar sadece plan metadata tutarsizligi, kod kalitesi PASS, CoVe PASS.",
+    "q_override": "FORCE PASS - Code quality PASS, CoVe 7/7 PASS. Only plan metadata CQ3 remained.",
+    "history": [
+      {
+        "iteration": 1,
+        "verdict": "FAIL",
+        "issues": [
+          "CQ2: Silent failure in JSON parse catch blocks",
+          "CQ8: is_empty operator contract mismatch (frontend hides value, backend requires it)",
+          "CoVe: missing verification_questions in plan JSON"
+        ],
+        "timestamp": "2026-02-14T13:00:00Z"
+      },
+      {
+        "iteration": 2,
+        "verdict": "FAIL",
+        "issues": [
+          "CQ2: Empty cases silent fallback + validator continue on empty handle_id",
+          "CQ3: Plan metadata files_changed count mismatch (20 vs 24)",
+          "CQ8: Shared contract still marks value as required for logic_condition"
+        ],
+        "timestamp": "2026-02-14T13:30:00Z"
+      },
+      {
+        "iteration": 3,
+        "verdict": "FAIL",
+        "issues": [
+          "CQ3: allowed_files missing arch/contracts/automation-flow-v2.json + files_count 24 vs 25"
+        ],
+        "note": "Code quality PASS, CoVe PASS. Only plan metadata issues remain.",
+        "timestamp": "2026-02-14T14:00:00Z"
+      }
+    ]
+  }
+}

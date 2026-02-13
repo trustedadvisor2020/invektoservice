@@ -4,9 +4,9 @@
 
 ## Last Update
 
-- **Date:** 2026-02-13
-- **Status:** Flow Builder Phase 3b TAMAMLANDI (Codex 3 iter PASS). Siradaki: Phase 3c (Validation UI + Polish).
-- **Last Task:** Phase 3b SimulationEngine + SPA Chat Panel + AHA #4. 25 dosya +1461 -199. Codex iter 1-2 gercek fixler (tenant isolation, silent catches, error contract), iter 3 FULL PASS.
+- **Date:** 2026-02-14
+- **Status:** Flow Builder Phase 4a DONE. 4 pure logic node (logic_condition, logic_switch, action_delay, utility_set_variable). Codex 3 iter Q FORCE PASS.
+- **Last Task:** Phase 4a tamamlandi. 4 backend handler + 4 SPA component + property editors + graph-validator + flow-summarizer + FlowValidator handle checks. 25 dosya +964 -42.
 
 ---
 
@@ -38,7 +38,7 @@
   - Flow contract: `arch/contracts/automation-flow.json`
   - Error codes: INV-AT-001 ~ INV-AT-010, INV-AT-011 ~ INV-AT-017, INV-AT-021
   - **Phase 3a (FlowEngine v2):**
-    - Node Handler Registry: INodeHandler strategy pattern (5 handlers: trigger_start, message_text, message_menu, action_handoff, utility_note)
+    - Node Handler Registry: INodeHandler strategy pattern (9 handlers: trigger_start, message_text, message_menu, logic_condition, logic_switch, action_delay, utility_set_variable, action_handoff, utility_note)
     - FlowGraphV2: Immutable pre-computed graph (O(1) node/edge lookup, O(1) incoming check)
     - FlowEngineV2: Pure graph executor (no side-effects), auto-chain + wait-for-input + terminal
     - ExpressionEvaluator: {{variable}} substitution + condition eval (regex 100ms timeout, max 50 vars)
@@ -151,8 +151,9 @@
 - [x] ~~Flow Builder Phase 2.5~~ (Tamamlandi - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS)
 - [x] ~~Flow Builder Phase 3a~~ (Tamamlandi - FlowEngine v2, Validator, Migrator, 5 NodeHandler, ExpressionEvaluator. Codex 3 iter Q FORCE PASS)
 - [x] ~~Flow Builder Phase 3b~~ (Tamamlandi - SimulationEngine, MockFaq/Intent, SPA Chat Panel, AHA #4 Tek Tikla Test. Codex 3 iter PASS)
-- [ ] Flow Builder Phase 3c: Validation UI + AHA #3 Ghost Path + #5 Saglik Skoru + Polish
-- [ ] Flow Builder Phase 4: Genisletilmis node'lar (logic, AI, api_call, delay, set_variable)
+- [x] ~~Flow Builder Phase 3c~~ (Tamamlandi - Validation UI, Variable Inspector, AHA #3 Ghost Path, AHA #5 Saglik Skoru. 20 dosya +746 -195. Codex 3 iter PASS)
+- [x] ~~Flow Builder Phase 4a~~ (Tamamlandi - 4 pure logic node: logic_condition, logic_switch, action_delay, utility_set_variable. Codex 3 iter Q FORCE PASS)
+- [ ] Flow Builder Phase 4b: AI/API node'lar (ai_intent, ai_faq, action_api_call)
 - [ ] Flow Builder Phase 5: iframe + AHA #7 Trafik Heatmap + polish
 
 > **Phase 3 Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
@@ -252,14 +253,21 @@ src/
 - Q: tenant_registry.settings_json'a flow_builder_api_key eklendi
 - Q: Outbound deploy tamamlandi (outbound.sql, appsettings.Production.json, NSSM servis)
 
-### Phase 3b TAMAMLANDI (Codex 3 iter PASS)
+### Phase 3 TAMAMLANDI (3a+3b+3c)
 
 **Plan:** `arch/plans/20260213-flow-builder-phase3.json`
 **Roadmap:** `arch/docs/flow-builder-roadmap.md`
 
-**Phase 3a DONE** (74c9ffd commit): FlowEngine v2, 5 NodeHandlers, FlowValidator, FlowMigrator, ExpressionEvaluator, v1/v2 dispatch
-**Phase 3b DONE** (Codex 3 iter PASS): SimulationEngine (ConcurrentDictionary, 30min TTL, IHostedService, tenant isolation), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test, active node highlight
-**Phase 3c** (Next): Validation UI, Variable Inspector, AHA #3 Ghost Path, #5 Saglik Skoru
+**Phase 3a DONE** (74c9ffd): FlowEngine v2, 5 NodeHandlers, FlowValidator, FlowMigrator, ExpressionEvaluator, v1/v2 dispatch
+**Phase 3b DONE** (aff97b3): SimulationEngine (ConcurrentDictionary, 30min TTL, IHostedService, tenant isolation), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test, active node highlight
+**Phase 3c DONE** (f1dc4cf): Validation UI (FlowSettingsPanel "Akisi Dogrula" butonu), Variable Inspector (SimulationPanel Degiskenler tab), AHA #3 Ghost Path (path-enumerator DFS, purple highlight, dimming), AHA #5 Saglik Skoru (FlowValidator.CalculateHealthScore, HealthBadge, SQL conditional). Codex 3 iter: typed catches, SQL conditional, healthScore=0 on error.
+
+### Phase 4a TAMAMLANDI
+
+**Plan:** `arch/plans/20260214-flow-builder-phase4a.json`
+**Phase 4a DONE**: 4 pure logic node handler (LogicConditionHandler, LogicSwitchHandler, ActionDelayHandler, SetVariableHandler) + IsSimulation flag + FlowValidator handle checks + 4 SPA node component + 4 property editor + graph-validator + flow-summarizer. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS.
+
+**Siradaki:** Phase 4b - AI/API node'lar (ai_intent, ai_faq, action_api_call)
 
 ---
 

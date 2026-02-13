@@ -24,6 +24,8 @@ public sealed class ExecutionContext
     public required ExpressionEvaluator Evaluator { get; init; }
     public required JsonLinesLogger Logger { get; init; }
     public required string RequestId { get; init; }
+    /// <summary>True when running inside SimulationEngine (e.g. action_delay skips real wait).</summary>
+    public bool IsSimulation { get; init; }
 }
 
 /// <summary>

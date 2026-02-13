@@ -88,6 +88,10 @@ builder.Services.AddSingleton<FlowEngine>();
 builder.Services.AddSingleton<INodeHandler, TriggerStartHandler>();
 builder.Services.AddSingleton<INodeHandler, MessageTextHandler>();
 builder.Services.AddSingleton<INodeHandler, MessageMenuHandler>();
+builder.Services.AddSingleton<INodeHandler, LogicConditionHandler>();
+builder.Services.AddSingleton<INodeHandler, LogicSwitchHandler>();
+builder.Services.AddSingleton<INodeHandler, ActionDelayHandler>();
+builder.Services.AddSingleton<INodeHandler, SetVariableHandler>();
 builder.Services.AddSingleton<INodeHandler, ActionHandoffHandler>();
 builder.Services.AddSingleton<INodeHandler, UtilityNoteHandler>();
 

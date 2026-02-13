@@ -172,7 +172,7 @@
 
     "LogicConditionData": {
       "type": "object",
-      "required": ["label", "variable", "operator", "value"],
+      "required": ["label", "variable", "operator"],
       "properties": {
         "label": { "type": "string" },
         "variable": { "type": "string", "description": "Session variable name to evaluate" },
@@ -180,9 +180,9 @@
           "type": "string",
           "enum": ["equals", "contains", "starts_with", "greater_than", "less_than", "is_empty", "regex"]
         },
-        "value": { "type": "string", "description": "Value to compare against" }
+        "value": { "type": "string", "description": "Value to compare against. Not required when operator is 'is_empty'." }
       },
-      "description": "If/else branching. 2 output handles: true, false."
+      "description": "If/else branching. 2 output handles: true, false. When operator is 'is_empty', value field is optional."
     },
 
     "LogicSwitchData": {

@@ -31,7 +31,7 @@ public sealed class FlowValidator
         ["message_menu"] = new[] { "label", "text", "options" },
         ["action_handoff"] = new[] { "label" },
         ["utility_note"] = new[] { "label", "text" },
-        ["logic_condition"] = new[] { "label", "variable", "operator", "value" },
+        ["logic_condition"] = new[] { "label", "variable", "operator" },
         ["logic_switch"] = new[] { "label", "variable", "cases", "default_handle_id" },
         ["ai_intent"] = new[] { "label" },
         ["ai_faq"] = new[] { "label" },
@@ -96,6 +96,18 @@ public sealed class FlowValidator
             }
         }
 
+        // 4b. logic_condition: value is required unless operator is "is_empty"
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "logic_condition"))
+        {
+            var op = node.GetData("operator");
+            if (!string.Equals(op, "is_empty", StringComparison.OrdinalIgnoreCase))
+            {
+                var val = node.GetData("value");
+                if (string.IsNullOrWhiteSpace(val))
+                    errors.Add($"Zorunlu alan eksik, node '{node.GetData("label", node.Id)}' ({node.Id}): value");
+            }
+        }
+
         // 5. Edge consistency: source and target nodes must exist
         foreach (var edge in graph.AllEdges)
         {
@@ -117,7 +129,12 @@ public sealed class FlowValidator
                 foreach (var opt in doc.RootElement.EnumerateArray())
                 {
                     var handleId = opt.TryGetProperty("handle_id", out var h) ? h.GetString() : null;
-                    if (string.IsNullOrEmpty(handleId)) continue;
+                    if (string.IsNullOrEmpty(handleId))
+                    {
+                        var optLabel = opt.TryGetProperty("label", out var lbl) ? lbl.GetString() : "?";
+                        warnings.Add($"Menu secenegi '{optLabel}' handle_id eksik — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                        continue;
+                    }
 
                     // Check if there's an edge from this menu with this handle
                     var edges = graph.GetOutgoingEdges(node.Id, handleId);
@@ -128,10 +145,66 @@ public sealed class FlowValidator
                     }
                 }
             }
-            catch (JsonException) { /* Invalid options JSON — already caught by required field check (rule 4) */ }
+            catch (JsonException)
+            {
+                warnings.Add($"Menu secenekleri JSON parse hatasi — node '{node.GetData("label", node.Id)}' ({node.Id})");
+            }
         }
 
-        // 7. Simple loop detection (DFS cycle check from trigger_start)
+        // 7. Logic condition handle consistency (true_handle / false_handle)
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "logic_condition"))
+        {
+            foreach (var handle in new[] { "true_handle", "false_handle" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "true_handle" ? "DOGRU" : "YANLIS";
+                    warnings.Add($"Kosul dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 8. Logic switch case handle consistency
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "logic_switch"))
+        {
+            var casesJson = node.GetData("cases");
+            if (string.IsNullOrEmpty(casesJson)) continue;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(casesJson);
+                foreach (var c in doc.RootElement.EnumerateArray())
+                {
+                    var handleId = c.TryGetProperty("handle_id", out var h) ? h.GetString() : null;
+                    if (string.IsNullOrEmpty(handleId))
+                    {
+                        var caseVal = c.TryGetProperty("value", out var cv2) ? cv2.GetString() : "?";
+                        warnings.Add($"Switch case '{caseVal}' handle_id eksik — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                        continue;
+                    }
+
+                    var edges = graph.GetOutgoingEdges(node.Id, handleId);
+                    if (edges.Count == 0)
+                    {
+                        var caseLabel = c.TryGetProperty("value", out var cv) ? cv.GetString() : handleId;
+                        warnings.Add($"Switch case '{caseLabel}' (handle: {handleId}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                    }
+                }
+
+                // Check default handle
+                var defaultHandle = node.GetData("default_handle_id", "default");
+                var defaultEdges = graph.GetOutgoingEdges(node.Id, defaultHandle);
+                if (defaultEdges.Count == 0)
+                    warnings.Add($"Switch varsayilan dal (handle: {defaultHandle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+            }
+            catch (JsonException)
+            {
+                warnings.Add($"Switch cases JSON parse hatasi — node '{node.GetData("label", node.Id)}' ({node.Id})");
+            }
+        }
+
+        // 9. Simple loop detection (DFS cycle check from trigger_start)
         if (graph.TriggerStart != null)
         {
             var cycleNodes = DetectCycles(graph);

@@ -14,6 +14,8 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260214-flow-builder-phase4a | 2026-02-14 | Flow Builder Phase 4a: Pure Logic Nodes (logic_condition, logic_switch, action_delay, utility_set_variable). 4 handler + 4 SPA node + property editors + validation. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS. |
+| 20260213-flow-builder-phase3c | 2026-02-14 | Flow Builder Phase 3c: Validation UI + Variable Inspector + AHA #3 Ghost Path + AHA #5 Health Score. 20 dosya +746 -195. Codex 3 iter PASS. |
 | 20260213-flow-builder-phase3b | 2026-02-13 | Flow Builder Phase 3b: SimulationEngine + SPA Chat Panel + AHA #4 Tek Tikla Test. 25 dosya +1461 -199. Codex 3 iter PASS. |
 | 20260213-flow-builder-phase3a | 2026-02-13 | Flow Builder Phase 3a: FlowEngine v2 + Validator + Migrator + 5 NodeHandlers. 16 dosya +1942 -27. Codex 3 iter Q FORCE PASS. |
 | 20260213-flow-builder-phase25 | 2026-02-13 | Flow Builder Phase 2.5 SPA Quick Wins - AHA #6 Kopya, #2 Kirmizi Kenar, #1 Canli Onizleme. Codex 2 iter PASS. |

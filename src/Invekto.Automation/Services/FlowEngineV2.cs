@@ -36,7 +36,7 @@ public sealed class FlowEngineV2
     /// Returns accumulated messages and updated state.
     /// </summary>
     public async Task<EngineStepResult> ExecuteAsync(
-        FlowGraphV2 graph, SessionStateV2 state, CancellationToken ct)
+        FlowGraphV2 graph, SessionStateV2 state, CancellationToken ct, bool isSimulation = false)
     {
         var messages = new List<string>();
         var currentNodeId = state.CurrentNodeId;
@@ -121,7 +121,8 @@ public sealed class FlowEngineV2
                     State = state,
                     Evaluator = _evaluator,
                     Logger = _logger,
-                    RequestId = "-"
+                    RequestId = "-",
+                    IsSimulation = isSimulation
                 };
                 result = await handler.ExecuteAsync(node, ctx, ct);
             }

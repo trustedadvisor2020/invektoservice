@@ -3,7 +3,15 @@
  */
 
 import type { Node, Edge } from '@xyflow/react';
-import type { FlowNodeType, MessageTextData, MessageMenuData } from '../types/flow';
+import type {
+  FlowNodeType,
+  MessageTextData,
+  MessageMenuData,
+  LogicConditionData,
+  LogicSwitchData,
+  ActionDelayData,
+  UtilitySetVariableData,
+} from '../types/flow';
 
 // --- Types ---
 
@@ -86,6 +94,43 @@ function checkEmptyField(node: Node): ValidationError | null {
           severity: 'warning',
           message: 'Menu secenegi eklenmedi',
         };
+      }
+      break;
+    }
+    case 'logic_condition': {
+      const cond = data as LogicConditionData;
+      if (!cond.variable || cond.variable.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Kosul degiskeni bos' };
+      }
+      if (cond.operator !== 'is_empty' && (!cond.value || cond.value.trim() === '')) {
+        return { type: 'empty_field', severity: 'warning', message: 'Kosul degeri bos' };
+      }
+      break;
+    }
+    case 'logic_switch': {
+      const sw = data as LogicSwitchData;
+      if (!sw.variable || sw.variable.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Switch degiskeni bos' };
+      }
+      if (!sw.cases || sw.cases.length === 0) {
+        return { type: 'empty_field', severity: 'warning', message: 'Switch durumu eklenmedi' };
+      }
+      break;
+    }
+    case 'action_delay': {
+      const delay = data as ActionDelayData;
+      if (!delay.seconds || delay.seconds <= 0) {
+        return { type: 'empty_field', severity: 'warning', message: 'Bekleme suresi gecersiz' };
+      }
+      break;
+    }
+    case 'utility_set_variable': {
+      const sv = data as UtilitySetVariableData;
+      if (!sv.variable_name || sv.variable_name.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Degisken adi bos' };
+      }
+      if (!sv.value_expression || sv.value_expression.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Deger ifadesi bos' };
       }
       break;
     }

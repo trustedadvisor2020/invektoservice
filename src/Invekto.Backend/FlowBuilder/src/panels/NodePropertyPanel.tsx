@@ -3,7 +3,11 @@ import { getNodeTypeInfo, type FlowNodeType } from '../types/flow';
 import type {
   MessageTextData,
   MessageMenuData,
+  LogicConditionData,
+  LogicSwitchData,
+  ActionDelayData,
   ActionHandoffData,
+  UtilitySetVariableData,
   UtilityNoteData,
 } from '../types/flow';
 
@@ -71,8 +75,20 @@ export function NodePropertyPanel() {
         {nodeType === 'message_menu' && (
           <MessageMenuProps data={selectedNode.data as MessageMenuData} onChange={update} />
         )}
+        {nodeType === 'logic_condition' && (
+          <LogicConditionProps data={selectedNode.data as LogicConditionData} onChange={update} />
+        )}
+        {nodeType === 'logic_switch' && (
+          <LogicSwitchProps data={selectedNode.data as LogicSwitchData} onChange={update} />
+        )}
+        {nodeType === 'action_delay' && (
+          <ActionDelayProps data={selectedNode.data as ActionDelayData} onChange={update} />
+        )}
         {nodeType === 'action_handoff' && (
           <ActionHandoffProps data={selectedNode.data as ActionHandoffData} onChange={update} />
+        )}
+        {nodeType === 'utility_set_variable' && (
+          <UtilitySetVariableProps data={selectedNode.data as UtilitySetVariableData} onChange={update} />
         )}
         {nodeType === 'utility_note' && (
           <UtilityNoteProps data={selectedNode.data as UtilityNoteData} onChange={update} />
@@ -233,6 +249,200 @@ function ActionHandoffProps({
         placeholder="Temsilciye aktarilacak ozet..."
       />
     </FieldGroup>
+  );
+}
+
+function LogicConditionProps({
+  data,
+  onChange,
+}: {
+  data: LogicConditionData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const operators = [
+    { value: 'equals', label: 'Esittir (=)' },
+    { value: 'contains', label: 'Icerir' },
+    { value: 'starts_with', label: 'Baslar' },
+    { value: 'greater_than', label: 'Buyuktur (>)' },
+    { value: 'less_than', label: 'Kucuktur (<)' },
+    { value: 'is_empty', label: 'Bos mu' },
+    { value: 'regex', label: 'Regex' },
+  ];
+
+  return (
+    <>
+      <FieldGroup label="Degisken">
+        <input
+          type="text"
+          value={data.variable ?? ''}
+          onChange={(e) => onChange({ variable: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          placeholder="ornek: __last_input"
+        />
+      </FieldGroup>
+      <FieldGroup label="Operator">
+        <select
+          value={data.operator ?? 'equals'}
+          onChange={(e) => onChange({ operator: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+        >
+          {operators.map((op) => (
+            <option key={op.value} value={op.value}>{op.label}</option>
+          ))}
+        </select>
+      </FieldGroup>
+      {data.operator !== 'is_empty' && (
+        <FieldGroup label="Deger">
+          <input
+            type="text"
+            value={data.value ?? ''}
+            onChange={(e) => onChange({ value: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+            placeholder="Karsilastirilacak deger"
+          />
+        </FieldGroup>
+      )}
+    </>
+  );
+}
+
+function LogicSwitchProps({
+  data,
+  onChange,
+}: {
+  data: LogicSwitchData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const cases = data.cases ?? [];
+  const MAX_CASES = 10;
+
+  const updateCase = (idx: number, value: string) => {
+    const newCases = [...cases];
+    newCases[idx] = { ...newCases[idx], value };
+    onChange({ cases: newCases });
+  };
+
+  const addCase = () => {
+    if (cases.length >= MAX_CASES) return;
+    const nextIdx = cases.length + 1;
+    const newCase = { value: '', handle_id: `case_${nextIdx}` };
+    onChange({ cases: [...cases, newCase] });
+  };
+
+  const removeCase = (idx: number) => {
+    onChange({ cases: cases.filter((_, i) => i !== idx) });
+  };
+
+  return (
+    <>
+      <FieldGroup label="Degisken">
+        <input
+          type="text"
+          value={data.variable ?? ''}
+          onChange={(e) => onChange({ variable: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          placeholder="ornek: musteri_tipi"
+        />
+      </FieldGroup>
+
+      <FieldGroup label={`Durumlar (${cases.length}/${MAX_CASES})`}>
+        <div className="space-y-2">
+          {cases.map((c, idx) => (
+            <div key={c.handle_id} className="flex items-center gap-1">
+              <span className="text-xs text-slate-400 w-4 flex-shrink-0">{idx + 1}</span>
+              <input
+                type="text"
+                value={c.value}
+                onChange={(e) => updateCase(idx, e.target.value)}
+                className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 outline-none focus:border-blue-500"
+                placeholder="Deger..."
+              />
+              <button
+                onClick={() => removeCase(idx)}
+                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                title="Kaldir"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+        {cases.length < MAX_CASES && (
+          <button
+            onClick={addCase}
+            className="mt-2 w-full px-2 py-1 rounded border border-dashed border-slate-300 text-sm text-slate-500 hover:border-amber-500 hover:text-amber-600 transition-colors"
+          >
+            + Durum Ekle
+          </button>
+        )}
+      </FieldGroup>
+
+      <p className="text-xs text-slate-400">
+        Hicbir durum eslesmediyse <strong>VARSAYILAN</strong> dala gider.
+      </p>
+    </>
+  );
+}
+
+function ActionDelayProps({
+  data,
+  onChange,
+}: {
+  data: ActionDelayData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  return (
+    <FieldGroup label="Bekleme Suresi (saniye)">
+      <input
+        type="number"
+        min={1}
+        max={300}
+        value={data.seconds ?? 5}
+        onChange={(e) => {
+          const val = Math.max(1, Math.min(300, Number(e.target.value) || 1));
+          onChange({ seconds: val });
+        }}
+        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+      />
+      <p className="text-xs text-slate-400 mt-1">Min: 1sn, Maks: 300sn (5dk)</p>
+    </FieldGroup>
+  );
+}
+
+function UtilitySetVariableProps({
+  data,
+  onChange,
+}: {
+  data: UtilitySetVariableData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  return (
+    <>
+      <FieldGroup label="Degisken Adi">
+        <input
+          type="text"
+          value={data.variable_name ?? ''}
+          onChange={(e) => onChange({ variable_name: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          placeholder="ornek: musteri_tipi"
+        />
+      </FieldGroup>
+      <FieldGroup label="Deger Ifadesi">
+        <textarea
+          value={data.value_expression ?? ''}
+          onChange={(e) => onChange({ value_expression: e.target.value })}
+          rows={3}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none font-mono"
+          placeholder="ornek: {{__last_input}}"
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          {"{{degisken}}"} ile mevcut degiskenlere referans verebilirsiniz.
+        </p>
+      </FieldGroup>
+    </>
   );
 }
 

@@ -118,7 +118,7 @@ public sealed class SimulationEngine : IHostedService, IDisposable
         }
 
         // Execute from trigger_start (auto-chain until WaitForInput or terminal)
-        var result = await _engine.ExecuteAsync(graph, state, ct);
+        var result = await _engine.ExecuteAsync(graph, state, ct, isSimulation: true);
 
         session.LastActivityAt = DateTime.UtcNow;
         session.ExpiresAt = DateTime.UtcNow.Add(SessionTtl);
@@ -178,7 +178,7 @@ public sealed class SimulationEngine : IHostedService, IDisposable
         session.State.Variables["__last_input"] = userMessage;
 
         // Execute engine step
-        var result = await _engine.ExecuteAsync(session.Graph, session.State, ct);
+        var result = await _engine.ExecuteAsync(session.Graph, session.State, ct, isSimulation: true);
 
         session.LastActivityAt = DateTime.UtcNow;
         session.ExpiresAt = DateTime.UtcNow.Add(SessionTtl);

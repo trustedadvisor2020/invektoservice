@@ -3,7 +3,15 @@
  */
 
 import type { Node, Edge } from '@xyflow/react';
-import type { FlowNodeType, MessageTextData, MessageMenuData } from '../types/flow';
+import type {
+  FlowNodeType,
+  MessageTextData,
+  MessageMenuData,
+  LogicConditionData,
+  LogicSwitchData,
+  ActionDelayData,
+  UtilitySetVariableData,
+} from '../types/flow';
 
 export interface SummaryLine {
   text: string;
@@ -34,6 +42,25 @@ function getNodeLabel(node: Node): string {
     case 'message_menu': {
       const menuData = data as MessageMenuData;
       return `Menu: ${menuData.text || 'Secim yapin'}`;
+    }
+    case 'logic_condition': {
+      const cond = data as LogicConditionData;
+      return `Kosul: ${cond.variable || '?'} ${cond.operator || '?'} ${cond.value || ''}`.trim();
+    }
+    case 'logic_switch': {
+      const sw = data as LogicSwitchData;
+      return `Switch: ${sw.variable || '?'}`;
+    }
+    case 'action_delay': {
+      const delay = data as ActionDelayData;
+      return `Bekle: ${delay.seconds ?? 5}sn`;
+    }
+    case 'utility_set_variable': {
+      const sv = data as UtilitySetVariableData;
+      const expr = sv.value_expression
+        ? sv.value_expression.length > 20 ? sv.value_expression.substring(0, 20) + '...' : sv.value_expression
+        : '?';
+      return `${sv.variable_name || '?'} = ${expr}`;
     }
     case 'action_handoff':
       return 'Temsilciye aktar';
@@ -103,6 +130,55 @@ export function summarizeFlow(nodes: Node[], edges: Edge[]): FlowSummaryResult {
         if (matchEdge) {
           dfs(matchEdge.target, indent + 2);
         }
+      }
+      return;
+    }
+
+    // For logic_condition, show DOGRU / YANLIS branches
+    if (nodeType === 'logic_condition') {
+      const children = adjacency.get(nodeId) ?? [];
+
+      for (const [handle, label] of [['true_handle', 'DOGRU'], ['false_handle', 'YANLIS']] as const) {
+        allLines.push({
+          text: label,
+          indent: indent + 1,
+          nodeType: 'logic_condition',
+        });
+        const matchEdge = children.find((c) => c.sourceHandle === handle);
+        if (matchEdge) {
+          dfs(matchEdge.target, indent + 2);
+        }
+      }
+      return;
+    }
+
+    // For logic_switch, show each case + VARSAYILAN
+    if (nodeType === 'logic_switch') {
+      const swData = node.data as LogicSwitchData;
+      const children = adjacency.get(nodeId) ?? [];
+
+      for (const c of (swData.cases ?? [])) {
+        allLines.push({
+          text: c.value || '?',
+          indent: indent + 1,
+          nodeType: 'logic_switch',
+        });
+        const matchEdge = children.find((ch) => ch.sourceHandle === c.handle_id);
+        if (matchEdge) {
+          dfs(matchEdge.target, indent + 2);
+        }
+      }
+
+      // Default branch
+      const defaultHandle = swData.default_handle_id || 'default';
+      allLines.push({
+        text: 'VARSAYILAN',
+        indent: indent + 1,
+        nodeType: 'logic_switch',
+      });
+      const defaultEdge = children.find((ch) => ch.sourceHandle === defaultHandle);
+      if (defaultEdge) {
+        dfs(defaultEdge.target, indent + 2);
       }
       return;
     }
