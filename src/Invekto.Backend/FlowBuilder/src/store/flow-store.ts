@@ -14,6 +14,7 @@ import type { FlowConfigV2, FlowSettings, FlowMetadata, FlowNodeType, NodeData }
 import { getNodeTypeInfo, createDefaultFlow } from '../types/flow';
 import { generateNodeId, generateEdgeId } from '../lib/utils';
 import { validateGraph, type ValidationError } from '../lib/graph-validator';
+import { enumeratePaths } from '../lib/path-enumerator';
 
 export interface FlowState {
   // State
@@ -26,6 +27,11 @@ export interface FlowState {
 
   // Validation
   validationErrors: Map<string, ValidationError[]>;
+
+  // Ghost path (AHA #3)
+  ghostPathEnabled: boolean;
+  ghostPathNodeIds: Set<string>;
+  ghostPathEdgeIds: Set<string>;
 
   // History (simple undo/redo)
   history: Array<{ nodes: Node[]; edges: Edge[] }>;
@@ -42,6 +48,9 @@ export interface FlowState {
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   selectNode: (id: string | null) => void;
   revalidate: () => void;
+
+  // Ghost path toggle
+  toggleGhostPath: () => void;
 
   // Flow operations
   loadFlow: (config: FlowConfigV2) => void;
@@ -67,13 +76,44 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   flowMetadata: { ...DEFAULT_FLOW.metadata },
   flowSettings: { ...DEFAULT_FLOW.settings },
   validationErrors: new Map(),
+  ghostPathEnabled: false,
+  ghostPathNodeIds: new Set(),
+  ghostPathEdgeIds: new Set(),
   history: [],
   historyIndex: -1,
 
   revalidate: () => {
     const state = get();
     const errors = validateGraph(state.nodes, state.edges);
-    set({ validationErrors: errors });
+    const updates: Partial<FlowState> = { validationErrors: errors };
+
+    // Recompute ghost paths if enabled
+    if (state.ghostPathEnabled) {
+      const result = enumeratePaths(state.nodes, state.edges);
+      updates.ghostPathNodeIds = result.reachableNodeIds;
+      updates.ghostPathEdgeIds = result.reachableEdgeIds;
+    }
+
+    set(updates);
+  },
+
+  toggleGhostPath: () => {
+    const state = get();
+    const newEnabled = !state.ghostPathEnabled;
+    if (newEnabled) {
+      const result = enumeratePaths(state.nodes, state.edges);
+      set({
+        ghostPathEnabled: true,
+        ghostPathNodeIds: result.reachableNodeIds,
+        ghostPathEdgeIds: result.reachableEdgeIds,
+      });
+    } else {
+      set({
+        ghostPathEnabled: false,
+        ghostPathNodeIds: new Set(),
+        ghostPathEdgeIds: new Set(),
+      });
+    }
   },
 
   onNodesChange: (changes) => {

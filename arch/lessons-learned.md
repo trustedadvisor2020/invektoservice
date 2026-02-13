@@ -60,6 +60,8 @@
 | 2026-02-13 | Workflow | Interview'da ayni konuyu 2 kez sordum - Q "detay goster" dedi, detay sonrasi tekrar option listesi sundum, Q reddetti | Detay gosterdikten sonra en kapsamli secenekle devam et | **Ayni konuda 2. AskUserQuestion YASAK.** Q "detay goster" dediyse bilgi istiyor, tekrar soru degil. Goster ve devam et. |
 | 2026-02-13 | Codex | FlowSummaryBar localStorage catch blogu bos birakildi - lessons-learned'da "Empty catch YASAK" pattern'i VARDI ama yine uygulanmadi (Codex iter 1 FAIL) | console.warn eklendi | **catch blogu yazdigin AN'da "Empty catch YASAK" kuralini hatirla.** Pattern belgelenmis olmasi yetmiyor, her catch yazilisinda bilinc gerekli. |
 | 2026-02-13 | Codex | Error code semantic reuse: `AutomationUnknownNodeType` node execution exception icin de kullanildi - farkli failure mode ayni code | Yeni `INV-AT-021 AutomationNodeExecutionFailed` eklendi | **Her failure mode icin ayri error code kullan.** "Benzer gorunuyor" ≠ "ayni anlama geliyor". Unknown type ≠ execution error. |
+| 2026-02-13 | Codex | Tenant isolation check'te `GetSessionTenantId() == null` durumunda 403 dondu - session yok/expired durumunu tenant mismatch gibi handle etti, INV-AT-018/019 error contract kirildi | Guard `sessionTenant != null &&` olarak degistirildi - null = session yok, business logic'e birak | **Auth guard'da lookup null donerse 403 verme - entity bulunamadiginda business logic'in dogru error code'u donmesine izin ver.** `null` her zaman "yetkisiz" demek degil, "yok" da olabilir. |
+| 2026-02-13 | Codex | Fire-and-forget cleanup `.catch(() => {})` bos birakildı - Codex CQ2 "silent failure" yakaladi | `.catch((err) => { console.warn(...) })` eklendi | **Fire-and-forget bile olsa catch blogu bos birakilMAZ.** console.warn yeter - hata gizlenmez, debug kolaylasir. Lessons-learned'da "Empty catch YASAK" pattern'i 3. kez tekrarlandi. |
 
 ---
 
@@ -101,6 +103,7 @@
 | queueMicrotask deferred revalidation | Phase 2.5 flow-store.ts | React Flow interaction'lari bloklamadan her state degisikliginden sonra validation tetiklenir. UI donmuyor, 9 action'da kullanildi. |
 | Immutable graph pre-compute (HashSet/Dict in constructor) | FlowGraphV2 `NodesWithIncoming` | O(E) linear scan yerine O(1) lookup. Immutable object constructor'da bir kez hesapla, thread-safe reuse. Codex iter 2 yakaladi. |
 | Codex escalation analizi (real vs false-positive) | Phase 3a iter 3 escalation | Iter 3'te blocking issues'i "real fix" vs "by-design false positive" olarak kategorize edip Q'ya sunmak, FORCE PASS kararini kolaylastirdi. Codex stateless - cross-iteration context yok. |
+| Auth guard null-safe pattern (`exists && mismatch`) | Phase 3b tenant isolation | Lookup null = entity yok, business logic handle etsin. `sessionTenant != null && tenant.TenantId != sessionTenant` seklinde yazilir — 403 sadece gercek mismatch'te. |
 
 ---
 

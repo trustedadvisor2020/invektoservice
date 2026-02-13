@@ -151,6 +151,33 @@ public sealed class FlowValidator
     }
 
     /// <summary>
+    /// Calculate a 0-100 health score for a flow config.
+    /// Scoring: 100 base, -15/error (max -60), -5/warning (max -30), floor 0.
+    /// Returns null issues list if config is unparseable.
+    /// </summary>
+    public FlowHealthScore CalculateHealthScore(string flowConfigJson)
+    {
+        var result = Validate(flowConfigJson);
+
+        var errorPenalty = Math.Min(result.Errors.Count * 15, 60);
+        var warningPenalty = Math.Min(result.Warnings.Count * 5, 30);
+        var score = Math.Max(100 - errorPenalty - warningPenalty, 0);
+
+        // Combine errors + warnings for issues list (errors first)
+        var issues = new List<string>(result.Errors.Count + result.Warnings.Count);
+        issues.AddRange(result.Errors);
+        issues.AddRange(result.Warnings);
+
+        return new FlowHealthScore
+        {
+            Score = score,
+            Issues = issues,
+            ErrorCount = result.Errors.Count,
+            WarningCount = result.Warnings.Count
+        };
+    }
+
+    /// <summary>
     /// Detect nodes that are part of cycles using DFS.
     /// Returns set of node IDs that participate in cycles.
     /// </summary>
@@ -199,4 +226,12 @@ public sealed class FlowValidationResult
     public bool IsValid { get; init; }
     public required List<string> Errors { get; init; }
     public required List<string> Warnings { get; init; }
+}
+
+public sealed class FlowHealthScore
+{
+    public int Score { get; init; }
+    public required List<string> Issues { get; init; }
+    public int ErrorCount { get; init; }
+    public int WarningCount { get; init; }
 }

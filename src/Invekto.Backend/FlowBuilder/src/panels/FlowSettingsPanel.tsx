@@ -1,8 +1,31 @@
+import { useState } from 'react';
 import { useFlowStore } from '../store/flow-store';
+import { validateFlow, type ValidationResult } from '../lib/api';
+import { cn } from '../lib/utils';
 
 export function FlowSettingsPanel() {
   const settings = useFlowStore((s) => s.flowSettings);
   const setSettings = useFlowStore((s) => s.setSettings);
+  const toFlowConfig = useFlowStore((s) => s.toFlowConfig);
+
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleValidate = async () => {
+    setValidating(true);
+    setValidationResult(null);
+    setValidationError(null);
+    try {
+      const config = toFlowConfig();
+      const result = await validateFlow(config);
+      setValidationResult(result);
+    } catch (err) {
+      setValidationError(err instanceof Error ? err.message : 'Dogrulama basarisiz');
+    } finally {
+      setValidating(false);
+    }
+  };
 
   return (
     <div className="w-64 bg-white border-l border-slate-200 flex-shrink-0 overflow-y-auto">
@@ -11,6 +34,69 @@ export function FlowSettingsPanel() {
       </div>
 
       <div className="p-3 space-y-3">
+        {/* Validate button */}
+        <button
+          onClick={handleValidate}
+          disabled={validating}
+          className={cn(
+            'w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            validating
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-500 text-white'
+          )}
+        >
+          {validating ? 'Dogrulaniyor...' : 'Akisi Dogrula'}
+        </button>
+
+        {/* Validation results */}
+        {validationResult && (
+          <div className={cn(
+            'rounded-lg border p-2.5 text-xs space-y-1',
+            validationResult.is_valid
+              ? 'bg-green-50 border-green-200'
+              : validationResult.errors.length > 0
+                ? 'bg-red-50 border-red-200'
+                : 'bg-amber-50 border-amber-200'
+          )}>
+            {validationResult.is_valid && validationResult.warnings.length === 0 && (
+              <div className="flex items-center gap-1.5 text-green-700 font-medium">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Akis gecerli, sorun yok.
+              </div>
+            )}
+
+            {validationResult.errors.length > 0 && (
+              <div>
+                <span className="text-red-700 font-medium">Hatalar ({validationResult.errors.length})</span>
+                <ul className="mt-1 space-y-0.5">
+                  {validationResult.errors.map((e, i) => (
+                    <li key={i} className="text-red-600 leading-tight">{e}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {validationResult.warnings.length > 0 && (
+              <div>
+                <span className="text-amber-700 font-medium">Uyarilar ({validationResult.warnings.length})</span>
+                <ul className="mt-1 space-y-0.5">
+                  {validationResult.warnings.map((w, i) => (
+                    <li key={i} className="text-amber-600 leading-tight">{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {validationError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">
+            {validationError}
+          </div>
+        )}
+
         <FieldGroup label="Mesai Disi Mesaji">
           <textarea
             value={settings.off_hours_message ?? ''}

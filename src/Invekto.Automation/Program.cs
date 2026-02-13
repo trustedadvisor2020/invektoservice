@@ -257,7 +257,7 @@ static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
 // ============================================================
 
 // GET /api/v1/flows/{tenantId} — List all flows for tenant (multi-flow)
-app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx, AutomationRepository repo, FlowValidator validator, JsonLinesLogger jsonLogger) =>
 {
     var tenant = GetValidatedTenant(ctx, tenantId);
     if (tenant == null)
@@ -266,17 +266,47 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
     try
     {
         var flows = await repo.ListFlowsAsync(tenantId);
-        return Results.Ok(flows.Select(f => new
+        return Results.Ok(flows.Select(f =>
         {
-            flow_id = f.FlowId,
-            flow_name = f.FlowName,
-            is_active = f.IsActive,
-            is_default = f.IsDefault,
-            config_version = f.ConfigVersion,
-            node_count = f.NodeCount,
-            edge_count = f.EdgeCount,
-            created_at = f.CreatedAt,
-            updated_at = f.UpdatedAt
+            // Compute health score if v2 config is available
+            int? healthScore = null;
+            string[]? healthIssues = null;
+            if (!string.IsNullOrEmpty(f.FlowConfigJson) && f.ConfigVersion == "2")
+            {
+                try
+                {
+                    var hs = validator.CalculateHealthScore(f.FlowConfigJson);
+                    healthScore = hs.Score;
+                    healthIssues = hs.Issues.Take(3).ToArray();
+                }
+                catch (System.Text.Json.JsonException jsonEx)
+                {
+                    jsonLogger.StepWarn($"Health score skipped for flow {f.FlowId}: config parse error — {jsonEx.Message}", "-");
+                    healthScore = 0;
+                    healthIssues = new[] { "Config parse hatasi — saglik skoru hesaplanamadi" };
+                }
+                catch (Exception ex)
+                {
+                    jsonLogger.StepWarn($"Health score failed for flow {f.FlowId}: {ex.Message}", "-");
+                    healthScore = 0;
+                    healthIssues = new[] { "Saglik skoru hesaplanamadi" };
+                }
+            }
+
+            return new
+            {
+                flow_id = f.FlowId,
+                flow_name = f.FlowName,
+                is_active = f.IsActive,
+                is_default = f.IsDefault,
+                config_version = f.ConfigVersion,
+                node_count = f.NodeCount,
+                edge_count = f.EdgeCount,
+                created_at = f.CreatedAt,
+                updated_at = f.UpdatedAt,
+                health_score = healthScore,
+                health_issues = healthIssues
+            };
         }));
     }
     catch (Exception ex)

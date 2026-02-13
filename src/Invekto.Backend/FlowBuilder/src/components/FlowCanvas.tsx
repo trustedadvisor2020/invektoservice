@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -7,6 +7,7 @@ import {
   BackgroundVariant,
   type ReactFlowInstance,
   type Connection,
+  type Edge,
 } from '@xyflow/react';
 import { useFlowStore } from '../store/flow-store';
 import { nodeTypes } from '../nodes';
@@ -29,6 +30,23 @@ export function FlowCanvas() {
   const addNode = useFlowStore((s) => s.addNode);
   const selectNode = useFlowStore((s) => s.selectNode);
   const deleteNode = useFlowStore((s) => s.deleteNode);
+  const ghostPathEnabled = useFlowStore((s) => s.ghostPathEnabled);
+  const ghostPathEdgeIds = useFlowStore((s) => s.ghostPathEdgeIds);
+
+  // Apply ghost path edge styling
+  const styledEdges: Edge[] = useMemo(() => {
+    if (!ghostPathEnabled) return edges;
+    return edges.map((edge) => {
+      const isOnPath = ghostPathEdgeIds.has(edge.id);
+      return {
+        ...edge,
+        style: isOnPath
+          ? { stroke: '#a855f7', strokeWidth: 3 }
+          : { stroke: '#94a3b8', strokeWidth: 2, opacity: 0.3 },
+        animated: isOnPath,
+      };
+    });
+  }, [edges, ghostPathEnabled, ghostPathEdgeIds]);
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     reactFlowInstance.current = instance;
@@ -85,7 +103,7 @@ export function FlowCanvas() {
     <div ref={reactFlowWrapper} className="flex-1 min-h-0" onKeyDown={onKeyDown} tabIndex={0}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

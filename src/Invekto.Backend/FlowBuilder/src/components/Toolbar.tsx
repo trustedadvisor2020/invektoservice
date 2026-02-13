@@ -99,6 +99,9 @@ export function Toolbar({ onSave, isSaving, onBack, onTest }: ToolbarProps) {
       {/* Divider */}
       <div className="w-px h-6 bg-slate-200" />
 
+      {/* Ghost Path Toggle (AHA #3) */}
+      <GhostPathButton />
+
       {/* Test Et (AHA #4) */}
       <button
         onClick={onTest}
@@ -138,5 +141,29 @@ export function Toolbar({ onSave, isSaving, onBack, onTest }: ToolbarProps) {
         {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
       </button>
     </div>
+  );
+}
+
+function GhostPathButton() {
+  const ghostPathEnabled = useFlowStore((s) => s.ghostPathEnabled);
+  const toggleGhostPath = useFlowStore((s) => s.toggleGhostPath);
+
+  return (
+    <button
+      onClick={toggleGhostPath}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+        ghostPathEnabled
+          ? 'bg-purple-500 text-white'
+          : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+      )}
+      title="Baslangictan ulasilan yollari goster/gizle"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+      Yollari Goster
+    </button>
   );
 }

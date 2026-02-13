@@ -34,6 +34,11 @@ function BaseNodeComponent({
   const simIsOpen = useSimulationStore((s) => s.isOpen);
   const isSimActive = simIsOpen && simCurrentNodeId === id;
 
+  // Ghost path dimming
+  const ghostPathEnabled = useFlowStore((s) => s.ghostPathEnabled);
+  const isOnGhostPath = useFlowStore((s) => s.ghostPathNodeIds.has(id));
+  const isGhostDimmed = ghostPathEnabled && !isOnGhostPath;
+
   const ringColor = getValidationRingColor(validationErrors);
   const tooltipText = getValidationTooltip(validationErrors);
 
@@ -47,13 +52,14 @@ function BaseNodeComponent({
   return (
     <div
       className={cn(
-        'min-w-[180px] max-w-[260px] rounded-lg border-2 shadow-lg transition-shadow',
+        'min-w-[180px] max-w-[260px] rounded-lg border-2 shadow-lg transition-all',
         selected ? 'shadow-xl ring-2 ring-blue-400/50' : 'shadow-md',
         isSimActive && 'ring-2 ring-emerald-400/60'
       )}
       style={{
         borderColor: isSimActive ? '#10b981' : selected ? '#60a5fa' : color,
         background: '#ffffff',
+        opacity: isGhostDimmed ? 0.3 : 1,
         ...(resolvedBoxShadow ? { boxShadow: resolvedBoxShadow } : {}),
       }}
       onClick={() => selectNode(id)}

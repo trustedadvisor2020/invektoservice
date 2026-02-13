@@ -260,6 +260,9 @@ export function FlowListPage() {
                         Aktif
                       </span>
                     )}
+                    {flow.health_score != null && (
+                      <HealthBadge score={flow.health_score} issues={flow.health_issues} />
+                    )}
                   </div>
                   <div className="flex items-center gap-4 text-xs text-slate-500">
                     <span>v{flow.config_version}</span>
@@ -391,5 +394,40 @@ export function FlowListPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function HealthBadge({ score, issues }: { score: number; issues: string[] | null }) {
+  let bg: string;
+  let text: string;
+  let border: string;
+  let label: string;
+
+  if (score >= 80) {
+    bg = 'bg-green-50';
+    text = 'text-green-700';
+    border = 'border-green-200';
+    label = 'Saglikli';
+  } else if (score >= 50) {
+    bg = 'bg-amber-50';
+    text = 'text-amber-700';
+    border = 'border-amber-200';
+    label = 'Dikkat';
+  } else {
+    bg = 'bg-red-50';
+    text = 'text-red-700';
+    border = 'border-red-200';
+    label = 'Sorunlu';
+  }
+
+  const tooltip = issues && issues.length > 0 ? issues.join(' | ') : `Skor: ${score}`;
+
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs ${bg} ${text} border ${border} rounded-full cursor-default`}
+      title={tooltip}
+    >
+      {score} - {label}
+    </span>
   );
 }

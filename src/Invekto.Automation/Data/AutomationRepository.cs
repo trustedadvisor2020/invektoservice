@@ -57,7 +57,8 @@ public sealed class AutomationRepository
                    flow_config->>'version' AS config_version,
                    COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'nodes' THEN flow_config->'nodes' ELSE NULL END), 0) AS node_count,
                    COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'edges' THEN flow_config->'edges' ELSE NULL END), 0) AS edge_count,
-                   created_at, updated_at
+                   created_at, updated_at,
+                   CASE WHEN flow_config->>'version' = '2' THEN flow_config::text ELSE NULL END AS flow_config_raw
             FROM chatbot_flows
             WHERE tenant_id = @tid
             ORDER BY is_active DESC, updated_at DESC";
@@ -77,7 +78,8 @@ public sealed class AutomationRepository
                 NodeCount = reader.GetInt32(5),
                 EdgeCount = reader.GetInt32(6),
                 CreatedAt = reader.GetDateTime(7),
-                UpdatedAt = reader.GetDateTime(8)
+                UpdatedAt = reader.GetDateTime(8),
+                FlowConfigJson = reader.IsDBNull(9) ? null : reader.GetString(9)
             });
         }
         return result;
@@ -487,6 +489,7 @@ public sealed class FlowSummary
     public int EdgeCount { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+    public string? FlowConfigJson { get; init; }
 }
 
 public sealed class FlowDetail

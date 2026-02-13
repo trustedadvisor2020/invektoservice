@@ -121,6 +121,8 @@ export interface FlowSummary {
   edge_count: number;
   created_at: string;
   updated_at: string;
+  health_score: number | null;
+  health_issues: string[] | null;
 }
 
 export interface FlowDetail {
@@ -160,6 +162,18 @@ export function activateFlow(tenantId: number, flowId: number): Promise<void> {
 
 export function deactivateFlow(tenantId: number, flowId: number): Promise<void> {
   return request<void>('POST', `/flows/${tenantId}/${flowId}/deactivate`);
+}
+
+// -- Validation --
+
+export interface ValidationResult {
+  is_valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export function validateFlow(flowConfig: unknown): Promise<ValidationResult> {
+  return request<ValidationResult>('POST', '/flows/validate', { flow_config: flowConfig });
 }
 
 // -- Simulation --

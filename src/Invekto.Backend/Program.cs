@@ -1542,6 +1542,10 @@ app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/activate", a
 app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/deactivate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
     await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/deactivate"));
 
+// Validation proxy: Backend /api/v1/flow-builder/flows/validate -> Automation /api/v1/flows/validate
+app.MapPost("/api/v1/flow-builder/flows/validate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/flows/validate"));
+
 // Simulation proxy: Backend /api/v1/flow-builder/simulation/* -> Automation /api/v1/simulation/*
 app.MapPost("/api/v1/flow-builder/simulation/start", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
     await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/simulation/start"));

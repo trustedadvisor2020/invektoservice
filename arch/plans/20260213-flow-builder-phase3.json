@@ -5,7 +5,7 @@
   "risk": "HIGH",
   "status": "DONE",
   "created_at": "2026-02-13T14:00:00Z",
-  "updated_at": "2026-02-14T00:15:00Z",
+  "updated_at": "2026-02-14T00:30:00Z",
 
   "plan": {
     "summary": "Flow Builder Phase 3: FlowEngine v2 graph executor + FlowValidator + v1->v2 Migrator + interaktif test simulasyon (SPA WhatsApp chat panel + backend in-memory session + mock FAQ/Intent + aktif node highlight). 3 sub-phase: 3a=engine+validator, 3b=simulation API+UI, 3c=validation UI+polish.",
@@ -145,11 +145,25 @@
         ]
       },
       "3c": {
-        "name": "Validation UI + Polish",
-        "scope": "SPA validation gosterimi + debug araclari",
+        "name": "Validation UI + Simulation Polish + AHA #3 Ghost Path + AHA #5 Health Score",
+        "scope": "Backend health score + validate proxy + SPA validation UI + simulation tabs + ghost path visualization + health badge",
+        "new_files": [
+          "src/Invekto.Backend/FlowBuilder/src/lib/path-enumerator.ts"
+        ],
         "modified_files": [
+          "src/Invekto.Automation/Services/FlowValidator.cs",
+          "src/Invekto.Automation/Data/AutomationRepository.cs",
+          "src/Invekto.Automation/Program.cs",
+          "src/Invekto.Backend/Program.cs",
+          "src/Invekto.Backend/FlowBuilder/src/lib/api.ts",
           "src/Invekto.Backend/FlowBuilder/src/panels/FlowSettingsPanel.tsx",
-          "src/Invekto.Backend/FlowBuilder/src/components/SimulationPanel.tsx"
+          "src/Invekto.Backend/FlowBuilder/src/components/SimulationPanel.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts",
+          "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx",
+          "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx",
+          "arch/lessons-learned.md"
         ]
       }
     },
@@ -249,7 +263,11 @@
     "arch/contracts/automation-flow-v2.json",
     "arch/plans/20260213-flow-builder-phase3.json",
     "arch/plans/diffs/20260213-flow-builder-phase3.diff",
+    "arch/plans/diffs/20260213-flow-builder-phase3c.diff",
     "arch/lessons-learned.md",
+    "src/Invekto.Backend/FlowBuilder/src/lib/path-enumerator.ts",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts",
     "src/Invekto.Backend/wwwroot/flow-builder/index.html",
     "src/Invekto.Backend/wwwroot/flow-builder/assets/*"
   ],
@@ -285,22 +303,37 @@
     { "path": "arch/active-work.md", "is_new": false, "phase": "3b" },
     { "path": "arch/docs/flow-builder-roadmap.md", "is_new": false, "phase": "3b" },
     { "path": "arch/lessons-learned.md", "is_new": false, "phase": "3b" },
-    { "path": "arch/session-memory.md", "is_new": false, "phase": "3b" }
+    { "path": "arch/session-memory.md", "is_new": false, "phase": "3b" },
+    { "path": "src/Invekto.Automation/Services/FlowValidator.cs", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/api.ts", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/path-enumerator.ts", "is_new": true, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/panels/FlowSettingsPanel.tsx", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/SimulationPanel.tsx", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/FlowCanvas.tsx", "is_new": false, "phase": "3c" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx", "is_new": false, "phase": "3c" },
+    { "path": "arch/lessons-learned.md", "is_new": false, "phase": "3c" }
   ],
 
   "git_diff": {
-    "patch_truncated": "[TOO LARGE - 1030311 chars / 2060624 bytes. See full_path for complete diff]",
-    "sha256": "58949AB5CC790585D9A6E5770CD75FEA9212F738142D893DA8E7FC76A1708586",
-    "full_path": "arch/plans/diffs/20260213-flow-builder-phase3.diff",
-    "stats": { "insertions": 1461, "deletions": 199, "files_count": 25 }
+    "phase3c_note": "Phase 3c diff only (3a+3b already committed)",
+    "patch_truncated": "[See full_path for complete diff]",
+    "sha256": "D41591B3B708AE47E36C81D05EC5F106F5D17C7021520B1AAE16E63B95884BC1",
+    "full_path": "arch/plans/diffs/20260213-flow-builder-phase3c.diff",
+    "stats": { "insertions": 593, "deletions": 107, "files_count": 14 }
   },
 
   "build": {
     "status": "PASS",
     "command": "dotnet build (Shared+Automation+Backend) + tsc --noEmit + vite build",
-    "timestamp": "2026-02-13T23:59:00Z",
+    "timestamp": "2026-02-13T23:15:00Z",
     "duration_ms": null,
-    "output_tail": "Shared: 0W 0E | Automation: 1W 0E | Backend: 0W 0E | tsc: 0E | Vite: JS 436KB gzip 139KB",
+    "output_tail": "Shared: 0W 0E | Automation: 1W 0E | Backend: 0W 0E | tsc: 0E | Vite: JS 444KB gzip 141KB",
     "error_summary": null
   },
 
@@ -439,6 +472,7 @@
     "q_override": null,
     "phase3a_verdict_note": "Phase 3a: FORCE PASS after 3 iterations (committed 74c9ffd). Phase 3a history preserved below.",
     "phase3b_verdict_note": "Phase 3b: PASS at iteration 3. Iter 1 fixed: CQ2 silent catches, CQ3 allowed_files scope, CQ5/Q5 tenant isolation. Iter 2 fixed: CQ8 step returns 403 instead of INV-AT-018 for missing session. Iter 3: FULL PASS.",
+    "phase3c_verdict_note": "Phase 3c: PASS at iteration 3. Iter 1 fixed CQ1/CQ2/CQ5/CQ6 (typed catches, SQL conditional). Iter 2 fixed CQ1/CQ2 (healthScore=0 on error for badge visibility). Iter 3: FULL PASS — all 8 CQ + 7 CoVe PASS.",
     "history": [
       {
         "iteration": 1,
@@ -521,6 +555,40 @@
         "status": "PASS",
         "blocking_issues": [],
         "note": "All CQ gates PASS, all CoVe questions PASS. Full clean pass."
+      },
+      {
+        "phase": "3c",
+        "iteration": 1,
+        "status": "FAIL",
+        "blocking_issues": [
+          "CQ1: Health score error path returns null without user-visible feedback",
+          "CQ2: Bare catch swallows health score failure",
+          "CQ5: Bare catch pattern inconsistent with typed catch elsewhere in file",
+          "CQ6: Flow list fetches flow_config::text for all flows (including v1)"
+        ],
+        "fixes": [
+          "Split bare catch into catch(JsonException) + catch(Exception) with specific log messages",
+          "Return healthIssues=['Saglik skoru hesaplanamadi'] on error so UI shows feedback",
+          "SQL CASE WHEN version='2' THEN flow_config::text ELSE NULL — skip config fetch for v1 flows"
+        ]
+      },
+      {
+        "phase": "3c",
+        "iteration": 2,
+        "status": "FAIL",
+        "blocking_issues": [
+          "CQ1/CQ2: healthScore null on error means HealthBadge not rendered — user never sees healthIssues error message"
+        ],
+        "fixes": [
+          "Set healthScore=0 in both catch blocks so badge renders as 'Sorunlu' (red) with error tooltip"
+        ]
+      },
+      {
+        "phase": "3c",
+        "iteration": 3,
+        "status": "PASS",
+        "blocking_issues": [],
+        "note": "All 8 CQ gates PASS, all 7 CoVe questions PASS. Full clean pass."
       }
     ]
   }
