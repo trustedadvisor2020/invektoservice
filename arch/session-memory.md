@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-14
-- **Status:** Flow Builder Phase 4b IN PROGRESS. AI/API nodes (ai_intent, ai_faq, action_api_call). Build pending.
-- **Last Task:** Phase 4b implementation: 3 backend handlers + IntentDetector dynamic intents refactor + SSRF URL validation + 3 SPA nodes + 3 property editors + graph-validator + flow-summarizer + FlowValidator handle checks + DI registration.
+- **Status:** Flow Builder Phase 4b DONE. AI/API nodes (ai_intent, ai_faq, action_api_call). 27 dosya +1516 -104. Codex 4 iter PASS.
+- **Last Task:** Phase 4b committed (443dfca). 3 backend handlers + IntentDetector dynamic intents + SSRF validation + 3 SPA nodes + 3 property editors + graph-validator + flow-summarizer. Lessons learned kaydedildi.
 
 ---
 
@@ -267,7 +267,7 @@ src/
 **Plan:** `arch/plans/20260214-flow-builder-phase4a.json`
 **Phase 4a DONE**: 4 pure logic node handler (LogicConditionHandler, LogicSwitchHandler, ActionDelayHandler, SetVariableHandler) + IsSimulation flag + FlowValidator handle checks + 4 SPA node component + 4 property editor + graph-validator + flow-summarizer. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS.
 
-**Siradaki:** Phase 4b - AI/API node'lar (ai_intent, ai_faq, action_api_call)
+**Siradaki:** Phase 5 - Production integration (AutomationOrchestrator v2 dispatch, deploy, E2E test)
 
 ---
 

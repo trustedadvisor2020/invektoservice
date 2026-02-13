@@ -6,7 +6,7 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| 20260214-flow-builder-phase4b | IN_PROGRESS | 2026-02-14 | Flow Builder Phase 4b: AI/API Nodes (ai_intent, ai_faq, action_api_call). 3 handler + IntentDetector refactor + SSRF validation + 3 SPA node + 3 property editor + graph-validator + flow-summarizer. |
+| (none) | - | - | - |
 
 ---
 
@@ -14,6 +14,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260214-flow-builder-phase4b | 2026-02-14 | Flow Builder Phase 4b: AI/API Nodes (ai_intent, ai_faq, action_api_call). 3 handler + IntentDetector refactor + SSRF validation + 3 SPA node + 3 property editor + graph-validator + flow-summarizer. 27 dosya +1516 -104. Codex 4 iter PASS. |
 | 20260214-flow-builder-phase4a | 2026-02-14 | Flow Builder Phase 4a: Pure Logic Nodes (logic_condition, logic_switch, action_delay, utility_set_variable). 4 handler + 4 SPA node + property editors + validation. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS. |
 | 20260213-flow-builder-phase3c | 2026-02-14 | Flow Builder Phase 3c: Validation UI + Variable Inspector + AHA #3 Ghost Path + AHA #5 Health Score. 20 dosya +746 -195. Codex 3 iter PASS. |
 | 20260213-flow-builder-phase3b | 2026-02-13 | Flow Builder Phase 3b: SimulationEngine + SPA Chat Panel + AHA #4 Tek Tikla Test. 25 dosya +1461 -199. Codex 3 iter PASS. |

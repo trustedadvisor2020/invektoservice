@@ -67,6 +67,7 @@
 | 2026-02-14 | Codex | Silent fallback path: LogicSwitchHandler bos cases + FlowValidator bos handle_id durumunda sessizce default'a dustu - Codex CQ2 yakaladi | Warning log (StepWarn) ve validation warning eklendi | **Sadece catch degil, TUM silent fallback/default path'lerde uyari uret.** `if (empty) return default` yaziyorsan `logger.warn` veya `warnings.Add` ekle. "Sessiz gecis" = debug kabusuna davet. |
 | 2026-02-14 | Codex | Cross-layer contract mismatch: `is_empty` operator value gerektirmez ama backend RequiredFields + shared contract `required` + frontend farkli davraniyordu - 3 katman tutarsiz | Backend contextual check, frontend conditional render, shared contract guncellendi - 3 katman birlikte | **Operator/mode bazli field semantigi degistiginde 3 KATMANI BIRLIKTE guncelle:** 1) Backend validator 2) Frontend UI (conditional render) 3) Shared contract (arch/contracts/). Tek katman fix = gelecekte tutarsizlik. |
 | 2026-02-14 | Codex | Plan JSON `allowed_files` degistirilen dosyayi (arch/contracts/) icermiyordu + `files_count` tutarsizdi - 3 iter CQ3 FAIL | allowed_files'a eklendi, files_count guncellendi | **`/rev` oncesi: `git diff --cached --name-only` ciktisini `allowed_files` + `files_changed` + `files_count` ile BIREBIR karsilastir.** UC'U DE senkron olmali. (2026-02-11 lesson guclendirildi) |
+| 2026-02-14 | Codex | Graceful degradation `return null` path'lerinde log yoktu -- IntentDetector 3 yerde null donuyordu ama NEDEN null oldugu kayboluyordu. Codex pre-existing kodu bile yakaladi | Her `return null` path'ine `_logger.SystemWarn` eklendi (null JSON, empty content, empty intent) | **`return null` graceful degradation yaziyorsan HER path'te NEDEN null dondugunu logla.** Null != hata degil, ama null'un SEBEBI bilinmeli. "Empty catch YASAK" kuralinin graceful-return versiyonu. |
 
 ---
 
@@ -145,6 +146,7 @@
 | (template) | Error handling eksik | Tüm catch bloklarına log eklendi |
 | TONIVA | NOLOCK + keyset pagination = dirty reads riski | Export'ta kabul edilebilir trade-off, kritik işlemlerde NOLOCK kullanma |
 | 2026-02-11 | Codex `allowed_files` scope check 3 iter boyunca dosya eksikligi yakaladi (iter3: null deref + chaining, iter4: scope+auth+comment, iter5: PASS) | Her /rev oncesi `git diff --cached --name-only` ile `allowed_files` eslestirmesini manuel kontrol et |
+| 2026-02-14 | IntentDetector.cs'de 3 `return null` path'inde log yoktu -- pre-existing kod (Phase 3a) ama Codex Phase 4b diff'inde yakaladi (dosya modified oldugu icin tum dosya tarandi) | Her `return null` oncesine `_logger.SystemWarn` eklendi. Codex modified dosyanin TAMAMINI tarar, sadece diff satirlarini degil. |
 
 ---
 
