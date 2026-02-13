@@ -56,7 +56,33 @@ if not exist "!LOCAL_AGENTAI!" mkdir "!LOCAL_AGENTAI!"
 if not exist "!LOCAL_OUTBOUND!" mkdir "!LOCAL_OUTBOUND!"
 
 echo ============================================
-echo [1/5] Building Backend...
+echo [1/6] Building FlowBuilder SPA...
+echo ============================================
+echo.
+
+cd /d "%SRC_DIR%src\Invekto.Backend\FlowBuilder"
+call npm ci
+if errorlevel 1 (
+    echo [ERROR] FlowBuilder npm ci failed!
+    goto :error_exit
+)
+call npm run build
+if errorlevel 1 (
+    echo [ERROR] FlowBuilder SPA build failed!
+    goto :error_exit
+)
+
+REM Verify build output exists
+if not exist "%SRC_DIR%src\Invekto.Backend\wwwroot\flow-builder\index.html" (
+    echo [ERROR] FlowBuilder SPA output not found!
+    echo Expected: src\Invekto.Backend\wwwroot\flow-builder\index.html
+    goto :error_exit
+)
+echo [OK] FlowBuilder SPA built to wwwroot\flow-builder\
+echo.
+
+echo ============================================
+echo [2/6] Building Backend...
 echo ============================================
 echo.
 
@@ -70,7 +96,7 @@ echo [OK] Backend built to !LOCAL_BACKEND!
 echo.
 
 echo ============================================
-echo [2/5] Building ChatAnalysis...
+echo [3/6] Building ChatAnalysis...
 echo ============================================
 echo.
 
@@ -83,7 +109,7 @@ echo [OK] ChatAnalysis built to !LOCAL_CHATANALYSIS!
 echo.
 
 echo ============================================
-echo [3/5] Building Automation...
+echo [4/6] Building Automation...
 echo ============================================
 echo.
 
@@ -96,7 +122,7 @@ echo [OK] Automation built to !LOCAL_AUTOMATION!
 echo.
 
 echo ============================================
-echo [4/5] Building AgentAI...
+echo [5/6] Building AgentAI...
 echo ============================================
 echo.
 
@@ -109,7 +135,7 @@ echo [OK] AgentAI built to !LOCAL_AGENTAI!
 echo.
 
 echo ============================================
-echo [5/5] Building Outbound...
+echo [6/6] Building Outbound...
 echo ============================================
 echo.
 
@@ -124,12 +150,12 @@ echo.
 REM Q: Create build marker
 for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
 for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('FlowBuilder','Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
 echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
 echo.
 
 echo ============================================
-echo [5/7] Stopping Remote Services...
+echo [7/9] Stopping Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-stop.flag to trigger service shutdown...
@@ -156,7 +182,7 @@ timeout /t 10 /nobreak >nul
 
 echo.
 echo ============================================
-echo [6/7] Uploading to STAGING Server...
+echo [8/9] Uploading to STAGING Server...
 echo ============================================
 echo.
 echo Local Backend:      !LOCAL_BACKEND!
@@ -219,7 +245,7 @@ echo [OK] FTP upload completed
 
 echo.
 echo ============================================
-echo [7/7] Starting Remote Services...
+echo [9/9] Starting Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-start.flag to trigger service startup...

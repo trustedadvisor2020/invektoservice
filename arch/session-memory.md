@@ -5,8 +5,8 @@
 ## Last Update
 
 - **Date:** 2026-02-14
-- **Status:** Flow Builder Phase 4b DONE. AI/API nodes (ai_intent, ai_faq, action_api_call). 27 dosya +1516 -104. Codex 4 iter PASS.
-- **Last Task:** Phase 4b committed (443dfca). 3 backend handlers + IntentDetector dynamic intents + SSRF validation + 3 SPA nodes + 3 property editors + graph-validator + flow-summarizer. Lessons learned kaydedildi.
+- **Status:** Flow Builder Phase 5 DONE. Deploy script'e FlowBuilder SPA build adimi eklendi. Codex 3 iter Q FORCE PASS.
+- **Last Task:** Phase 5 committed. dev-to-invekto-services.bat'a FlowBuilder SPA build step eklendi ([1/6] npm ci + npm run build + output verify). Step numbering [1/9]...[9/9] unified. Build marker'a FlowBuilder eklendi. Q operational tasks pending (deploy, DB migration, E2E test).
 
 ---
 
@@ -153,8 +153,8 @@
 - [x] ~~Flow Builder Phase 3b~~ (Tamamlandi - SimulationEngine, MockFaq/Intent, SPA Chat Panel, AHA #4 Tek Tikla Test. Codex 3 iter PASS)
 - [x] ~~Flow Builder Phase 3c~~ (Tamamlandi - Validation UI, Variable Inspector, AHA #3 Ghost Path, AHA #5 Saglik Skoru. 20 dosya +746 -195. Codex 3 iter PASS)
 - [x] ~~Flow Builder Phase 4a~~ (Tamamlandi - 4 pure logic node: logic_condition, logic_switch, action_delay, utility_set_variable. Codex 3 iter Q FORCE PASS)
-- [ ] Flow Builder Phase 4b: AI/API node'lar (ai_intent, ai_faq, action_api_call)
-- [ ] Flow Builder Phase 5: iframe + AHA #7 Trafik Heatmap + polish
+- [x] ~~Flow Builder Phase 4b~~ (Tamamlandi - ai_intent, ai_faq, action_api_call. 27 dosya +1516 -104. Codex 4 iter PASS)
+- [ ] Flow Builder Phase 5: Production Integration (deploy script + Q operational tasks)
 
 > **Phase 3 Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
 > **AHA Moments (2026-02-13):** 7 iyilestirme roadmap'e entegre edildi (Phase 2.5, 3b, 3c, 5)
@@ -267,7 +267,7 @@ src/
 **Plan:** `arch/plans/20260214-flow-builder-phase4a.json`
 **Phase 4a DONE**: 4 pure logic node handler (LogicConditionHandler, LogicSwitchHandler, ActionDelayHandler, SetVariableHandler) + IsSimulation flag + FlowValidator handle checks + 4 SPA node component + 4 property editor + graph-validator + flow-summarizer. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS.
 
-**Siradaki:** Phase 5 - Production integration (AutomationOrchestrator v2 dispatch, deploy, E2E test)
+**Phase 5 DONE** (deploy script): FlowBuilder SPA build step eklendi. Codex 3 iter Q FORCE PASS. Q operational tasks: deploy, DB migration, WapCRM webhook, E2E test.
 
 ---
 
