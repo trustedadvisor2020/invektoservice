@@ -1,0 +1,2775 @@
+diff --git a/arch/db/whatsapp-analytics.sql b/arch/db/whatsapp-analytics.sql
+new file mode 100644
+index 0000000..b29d199
+--- /dev/null
++++ b/arch/db/whatsapp-analytics.sql
+@@ -0,0 +1,203 @@
++-- ============================================================
++-- WhatsApp Analytics Service - Database Schema
++-- WA-5/6: Pipeline + Query Layer
++-- ============================================================
++-- Phase A: wa_analyses, wa_messages, wa_conversations, wa_metadata
++-- Phase B: wa_intents, wa_sentiments, wa_products, wa_prices, wa_faq_pairs, wa_faq_clusters
++-- ============================================================
++
++-- 1. Analysis job tracking
++CREATE TABLE IF NOT EXISTS wa_analyses (
++    id SERIAL PRIMARY KEY,
++    tenant_id INT NOT NULL REFERENCES tenant_registry(id),
++    status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending/recovering/cleaning/threading/stats/intents/faq/sentiment/products/completed/error
++    source_file_name TEXT,
++    config_json JSONB,                               -- {delimiter, encoding, tenant_name, sector}
++    total_messages INT,
++    total_conversations INT,
++    stage_progress JSONB,                            -- {stage, percent, message, stageNumber, totalStages}
++    error_message TEXT,
++    started_at TIMESTAMPTZ,
++    completed_at TIMESTAMPTZ,
++    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_analyses_tenant ON wa_analyses (tenant_id);
++CREATE INDEX IF NOT EXISTS idx_wa_analyses_status ON wa_analyses (status);
++
++-- 2. Cleaned messages (LARGE: 2M+ per tenant)
++CREATE TABLE IF NOT EXISTS wa_messages (
++    id BIGSERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    conversation_id TEXT NOT NULL,
++    business_phone TEXT,
++    timestamp TIMESTAMPTZ NOT NULL,
++    message_text TEXT,
++    sender_type VARCHAR(10),                         -- ME, CUSTOMER
++    agent_name TEXT,
++    message_hash VARCHAR(16)                         -- SHA256[:16] for dedup
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_messages_tenant_analysis ON wa_messages (tenant_id, analysis_id);
++CREATE INDEX IF NOT EXISTS idx_wa_messages_analysis_conv ON wa_messages (analysis_id, conversation_id);
++CREATE INDEX IF NOT EXISTS idx_wa_messages_tenant_ts ON wa_messages (tenant_id, timestamp);
++
++-- 3. Conversations
++CREATE TABLE IF NOT EXISTS wa_conversations (
++    id BIGSERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    conversation_id TEXT NOT NULL,
++    business_phone TEXT,
++    start_time TIMESTAMPTZ,
++    end_time TIMESTAMPTZ,
++    duration_minutes INT,
++    message_count INT,
++    customer_message_count INT,
++    agent_message_count INT,
++    primary_agent TEXT,
++    first_response_minutes REAL,
++    outcome VARCHAR(20),                             -- sale/offered/no_sale/abandoned/no_response/return/complaint
++    product_codes TEXT,                              -- pipe-separated
++    first_customer_msg TEXT,
++    last_agent_msg TEXT
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_conversations_tenant_analysis ON wa_conversations (tenant_id, analysis_id);
++CREATE INDEX IF NOT EXISTS idx_wa_conversations_analysis_outcome ON wa_conversations (analysis_id, outcome);
++CREATE INDEX IF NOT EXISTS idx_wa_conversations_analysis_agent ON wa_conversations (analysis_id, primary_agent);
++
++-- 4. Intent classifications (Phase B)
++CREATE TABLE IF NOT EXISTS wa_intents (
++    id BIGSERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    conversation_id TEXT NOT NULL,
++    message_text TEXT,
++    intent VARCHAR(30),                              -- 12 types: size/price/stock/shipping/return/complaint/order/greeting/thank/product/discount/address
++    confidence REAL,
++    method VARCHAR(20)                               -- keyword/regex/claude/claude_low_conf/skipped/unknown
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_intents_tenant_analysis ON wa_intents (tenant_id, analysis_id);
++CREATE INDEX IF NOT EXISTS idx_wa_intents_analysis_intent ON wa_intents (analysis_id, intent);
++
++-- 5. Sentiments (per conversation, Phase B)
++CREATE TABLE IF NOT EXISTS wa_sentiments (
++    id BIGSERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    conversation_id TEXT NOT NULL,
++    sentiment VARCHAR(10),                           -- positive/neutral/negative
++    score REAL,                                      -- -1.0 to 1.0
++    method VARCHAR(20)                               -- keyword/claude/empty/skipped
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_sentiments_tenant_analysis ON wa_sentiments (tenant_id, analysis_id);
++CREATE INDEX IF NOT EXISTS idx_wa_sentiments_analysis_sentiment ON wa_sentiments (analysis_id, sentiment);
++
++-- 6. Product analysis (per conversation, Phase B)
++CREATE TABLE IF NOT EXISTS wa_products (
++    id BIGSERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    conversation_id TEXT NOT NULL,
++    product_codes TEXT,                              -- pipe-separated
++    product_count INT,
++    prices_mentioned TEXT,                           -- pipe-separated
++    price_count INT,
++    outcome VARCHAR(20),
++    primary_agent TEXT
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_products_tenant_analysis ON wa_products (tenant_id, analysis_id);
++
++-- 7. Price analysis (unique prices per analysis, Phase B)
++CREATE TABLE IF NOT EXISTS wa_prices (
++    id SERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    price DECIMAL(10,2),
++    mention_count INT,
++    likely_tl TEXT
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_prices_analysis ON wa_prices (analysis_id);
++
++-- 8. FAQ pairs (extracted Q&A, Phase B)
++CREATE TABLE IF NOT EXISTS wa_faq_pairs (
++    id BIGSERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    conversation_id TEXT NOT NULL,
++    question TEXT,
++    answer TEXT,
++    question_len INT,
++    answer_len INT,
++    cluster_id INT                                   -- assigned during clustering
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_faq_pairs_tenant_analysis ON wa_faq_pairs (tenant_id, analysis_id);
++
++-- 9. FAQ clusters (Phase B)
++CREATE TABLE IF NOT EXISTS wa_faq_clusters (
++    id SERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    cluster_label INT NOT NULL,
++    representative_question TEXT,
++    question_count INT,
++    sample_questions JSONB,
++    sample_answers JSONB
++    -- embedding vector(3072) added when pgvector enabled
++);
++
++CREATE INDEX IF NOT EXISTS idx_wa_faq_clusters_analysis ON wa_faq_clusters (analysis_id);
++
++-- 10. Pre-aggregated metadata
++CREATE TABLE IF NOT EXISTS wa_metadata (
++    id SERIAL PRIMARY KEY,
++    analysis_id INT NOT NULL REFERENCES wa_analyses(id) ON DELETE CASCADE,
++    tenant_id INT NOT NULL,
++    metadata_json JSONB NOT NULL,
++    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++
++CREATE UNIQUE INDEX IF NOT EXISTS idx_wa_metadata_analysis ON wa_metadata (analysis_id);
++
++-- ============================================================
++-- Trigger: auto-update updated_at on wa_analyses
++-- ============================================================
++
++CREATE OR REPLACE FUNCTION update_wa_analyses_updated_at()
++RETURNS TRIGGER AS $$
++BEGIN
++    NEW.updated_at = NOW();
++    RETURN NEW;
++END;
++$$ LANGUAGE plpgsql;
++
++DROP TRIGGER IF EXISTS trg_wa_analyses_updated_at ON wa_analyses;
++CREATE TRIGGER trg_wa_analyses_updated_at
++    BEFORE UPDATE ON wa_analyses
++    FOR EACH ROW
++    EXECUTE FUNCTION update_wa_analyses_updated_at();
++
++-- ============================================================
++-- Grants (match existing invekto user pattern)
++-- ============================================================
++
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_analyses TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_messages TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_conversations TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_intents TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_sentiments TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_products TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_prices TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_faq_pairs TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_faq_clusters TO invekto;
++GRANT SELECT, INSERT, UPDATE, DELETE ON wa_metadata TO invekto;
++
++GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO invekto;
+diff --git a/arch/plans/20260214-wa-analytics-phaseA.json b/arch/plans/20260214-wa-analytics-phaseA.json
+new file mode 100644
+index 0000000..307c28c
+--- /dev/null
++++ b/arch/plans/20260214-wa-analytics-phaseA.json
+@@ -0,0 +1,132 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260214-wa-analytics-phaseA",
++  "risk": "HIGH",
++  "status": "REVIEW",
++  "created_at": "2026-02-14T21:00:00Z",
++  "updated_at": "2026-02-15T11:30:00Z",
++  "plan": {
++    "summary": "WA-5/6 Phase A: WhatsApp Analytics C# Microservice (Port 7109). Full C# port of Python pipeline stages 1-3 (cleaner, threader, stats). New Invekto.WhatsAppAnalytics project with PostgreSQL schema (10 tables), streaming CSV parser (100K chunks), Turkish text normalization (TransliterateTurkish for regex safety), SHA256 dedup, outcome regex detection (25 ASCII-only patterns with transliteration), streaming conversation grouping (IAsyncEnumerable), background processing (IHostedService + ConcurrentQueue), restart recovery (GUID filename), and REST API (upload, CRUD, metadata query). Iter 1 fixes: recovery path, mojibake regex, silent catches, RAM streaming, MARS fix. 2635 LOC, 19 files.",
++    "q_intent": "WA-5/6 once calistir. Full C# port, PostgreSQL, 5-50M mesaj/tenant. Phase A: Stages 1-3 + infra.",
++    "interview_notes": "Queue reordered: WA-5/6 before WA-4. Full C# port chosen over orchestrator approach. PostgreSQL (mevcut invekto DB). OpenAI embeddings for FAQ clustering (Phase B). Separate plans for WA-5/6 and WA-4."
++  },
++  "allowed_files": [
++    "src/Invekto.WhatsAppAnalytics/**",
++    "src/Invekto.Shared/Constants/ServiceConstants.cs",
++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
++    "arch/db/whatsapp-analytics.sql",
++    "arch/plans/20260214-wa-analytics-phaseA.json"
++  ],
++  "files_changed": [
++    {"path": "src/Invekto.WhatsAppAnalytics/Invekto.WhatsAppAnalytics.csproj", "is_new": true, "change": "Project scaffold: net8.0, WindowsServices, Shared reference"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": true, "change": "Kestrel 7109, JWT, upload/CRUD/metadata endpoints, background service registration"},
++    {"path": "src/Invekto.WhatsAppAnalytics/appsettings.json", "is_new": true, "change": "Config template: PG connection, JWT, storage"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Data/AnalyticsConnectionFactory.cs", "is_new": true, "change": "PostgreSQL NpgsqlDataSource pooling"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Data/AnalyticsRepository.cs", "is_new": true, "change": "All DB ops: wa_analyses CRUD, wa_messages/wa_conversations batch insert, wa_metadata upsert"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Models/CleanedMessage.cs", "is_new": true, "change": "Stage 1 output DTO"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Models/Conversation.cs", "is_new": true, "change": "Stage 2 output DTO with outcome field"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Models/AnalysisJob.cs", "is_new": true, "change": "Job tracking + StageProgress + AnalysisProcessJob DTOs"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/CsvStreamReader.cs", "is_new": true, "change": "IAsyncEnumerable streaming CSV (100K chunks, BOM detect, quoted fields)"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/TextNormalizer.cs", "is_new": true, "change": "Turkish text: Unicode NFC, char map, phone normalize, SHA256 dedup hash"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/CleanerService.cs", "is_new": true, "change": "Stage 1: Stream CSV -> normalize -> dedup (5s window) -> batch insert wa_messages"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs", "is_new": true, "change": "Stage 2: Group by conv_id -> outcome regex (25 patterns) -> wa_conversations"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/StatsService.cs", "is_new": true, "change": "Stage 3: Aggregate stats (agents, temporal, outcomes) -> wa_metadata JSONB"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/PipelineOrchestrator.cs", "is_new": true, "change": "Run stages 1-3 sequentially, update status/progress"},
++    {"path": "src/Invekto.WhatsAppAnalytics/Services/AnalysisProcessingService.cs", "is_new": true, "change": "BackgroundService + ConcurrentQueue + restart recovery"},
++    {"path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "is_new": false, "change": "+WhatsAppAnalyticsPort=7109, +ServiceName"},
++    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+INV-WA-001~015 (15 error codes)"},
++    {"path": "arch/db/whatsapp-analytics.sql", "is_new": true, "change": "Full schema: 10 tables, indexes, trigger, grants"}
++  ],
++  "git_diff": {
++    "patch_truncated": null,
++    "sha256": "a7536b8fb2e53425d7473596826d8105e76ef32a5d86e26eebe3883e0e72358d",
++    "full_path": "arch/plans/diffs/20260214-wa-analytics-phaseA.diff",
++    "stats": {"insertions": 2642, "deletions": 0, "files_count": 19}
++  },
++  "build": {
++    "status": "PASS",
++    "command": "dotnet build src/Invekto.WhatsAppAnalytics && dotnet build src/Invekto.Shared",
++    "timestamp": "2026-02-15T11:30:00Z"
++  },
++  "scope_discipline": {
++    "forbidden_areas": ["src/Invekto.Backend/", "src/Invekto.Knowledge/", "tools/whatsapp-analyzer/"],
++    "non_goals": ["Phase B NLP stages 4-7", "Phase C query endpoints + Backend proxy + deploy infra", "WA-4 Dashboard UI"],
++    "intentional_exclusions": ["Phase B tables (wa_intents, wa_sentiments, wa_products, wa_prices, wa_faq_pairs, wa_faq_clusters) included in schema for forward-compatibility but not used in Phase A code"]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "Program.cs:upload endpoint - CSV validation, file save, header check",
++      "Program.cs:all endpoints - ErrorResponse.Create with INV-WA codes",
++      "AnalysisProcessingService.cs:ExecuteAsync - per-job catch -> FailAnalysisAsync",
++      "AnalysisProcessingService.cs:StartAsync - restart recovery with file existence check",
++      "PipelineOrchestrator.cs:RunAsync - 0-message check -> FailAnalysisAsync",
++      "StatsService.cs:ParseTenantInfo - JsonSerializer.Deserialize catch"
++    ],
++    "user_facing_errors": [
++      "INV-WA-003: Multipart form data required / file is required",
++      "INV-WA-004: File exceeds {maxFileSizeMb}MB limit",
++      "INV-WA-005: Missing required columns: {list}",
++      "INV-WA-001: Analysis {id} not found",
++      "INV-WA-012: Analysis delete failed",
++      "INV-WA-014: File upload failed",
++      "INV-WA-015: Database error"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "All pipeline failures caught in AnalysisProcessingService.ExecuteAsync and persisted via FailAnalysisAsync. Upload failures return typed ErrorResponse. All catch blocks now log warnings (iter 1 fix). No broad catch-and-swallow blocks."
++  },
++  "aha_moments": [
++    {
++      "category": "SPEED",
++      "user_pain": "Pipeline progress invisible - user uploads CSV and waits blindly",
++      "suggestion": "SSE endpoint for real-time stage progress: 'Stage 2/3: Threading... 45% (73K/164K conversations)'",
++      "aha_moment": "User sees live progress bar instead of loading spinner"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Pipeline crash loses all progress - 2M messages re-parsed from scratch",
++      "suggestion": "Stage checkpoint: pipeline crash at Stage 3 -> restart at Stage 3 (skip 1-2)",
++      "aha_moment": "Recovery takes seconds instead of re-processing hours of data"
++    },
++    {
++      "category": "UX",
++      "user_pain": "CSV format errors discovered only after upload starts processing",
++      "suggestion": "Pre-upload validation: check header, delimiter, encoding before queueing pipeline",
++      "aha_moment": "Instant feedback on upload vs finding out 30 minutes later"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Agent sale rates misleading without confirmed vs offered split",
++      "suggestion": "Track offered->confirmed conversion rate per agent (13 sale patterns vs 4 offered)",
++      "aha_moment": "Manager sees Agent X converts 40% of offers vs Agent Y only 15%"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "10.5% conversations abandoned - no response from agent",
++      "suggestion": "Alert when conversation unanswered >15 min during business hours",
++      "aha_moment": "Abandoned rate drops from 10.5% to <3% with proactive alerts"
++    }
++  ],
++  "verification_questions": [
++    {"id": "Q1", "question": "CleanerService SHA256 dedup: same conv + same hash + <=5s window dogru implement edildi mi? Edge case: timestamp siralama, ilk mesaj dedup bypass?", "category": "Data", "codex_answer": null, "codex_result": null},
++    {"id": "Q2", "question": "ThreaderService outcome regex: 25 pattern Turkish char handling (ş/s, ö/o, ü/u, ç/c, ğ/g, ı/i) IgnoreCase flag ile calisiyor mu? Priority order dogru mu?", "category": "Data", "codex_answer": null, "codex_result": null},
++    {"id": "Q3", "question": "AnalysisProcessingService restart recovery: pending analizler file existence check ile validate ediliyor mu? Race condition (ayni analysis iki kez process) riski var mi?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
++    {"id": "Q4", "question": "BatchInsert 50-row VALUES: SQL injection riski var mi? Parameterized query dogru kullaniliyor mu?", "category": "Service/Auth", "codex_answer": null, "codex_result": null},
++    {"id": "Q5", "question": "Program.cs upload endpoint: file cleanup (orphan) failure durumunda dogru mu? MaxRequestBodySize Kestrel ile sinirli mi?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
++    {"id": "Q6", "question": "StatsService SQL queries: N+1 query riski var mi? GetConversationStatsAsync icinde outcome subquery ayri connection mu?", "category": "Data", "codex_answer": null, "codex_result": null}
++  ],
++  "verdict": {
++    "status": "FAIL",
++    "source": "CODEX_TEXT_VIA_Q",
++    "received_at": "2026-02-15T11:30:00Z",
++    "updated_by": "DevAgent",
++    "updated_at": "2026-02-15T11:30:00Z",
++    "iteration": 3,
++    "blocking_issues": [
++      "Crash sonrasi 'recovering' kayitlar yeniden claim edilemiyor - recovery deadlock riski"
++    ],
++    "escalation_required": true,
++    "escalation_reason": "Max iteration (3) reached",
++    "escalation_category": "TOOL_LIMITATION"
++  }
++}
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index 97c4206..178dabb 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -103,6 +103,23 @@ public static class ErrorCodes
+     public const string KnowledgeDocumentNotFound = "INV-KN-014";
+     public const string KnowledgeUploadFailed = "INV-KN-015";
+ 
++    // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
++    public const string WAAnalysisNotFound = "INV-WA-001";
++    public const string WAAnalysisInProgress = "INV-WA-002";
++    public const string WACsvParseError = "INV-WA-003";
++    public const string WACsvTooLarge = "INV-WA-004";
++    public const string WACsvInvalidHeader = "INV-WA-005";
++    public const string WAPipelineStageError = "INV-WA-006";
++    public const string WAClaudeApiError = "INV-WA-007";
++    public const string WAClaudeParseError = "INV-WA-008";
++    public const string WAEmbeddingError = "INV-WA-009";
++    public const string WAInvalidDateRange = "INV-WA-010";
++    public const string WAInvalidFilter = "INV-WA-011";
++    public const string WAAnalysisDeleteFailed = "INV-WA-012";
++    public const string WATenantMismatch = "INV-WA-013";
++    public const string WAStorageError = "INV-WA-014";
++    public const string WADatabaseError = "INV-WA-015";
++
+     // Database errors (INV-DB-xxx)
+     public const string DatabaseConnectionFailed = "INV-DB-001";
+     public const string DatabaseQueryTimeout = "INV-DB-002";
+diff --git a/src/Invekto.Shared/Constants/ServiceConstants.cs b/src/Invekto.Shared/Constants/ServiceConstants.cs
+index 83643bc..9cc49ed 100644
+--- a/src/Invekto.Shared/Constants/ServiceConstants.cs
++++ b/src/Invekto.Shared/Constants/ServiceConstants.cs
+@@ -25,6 +25,7 @@ public static class ServiceConstants
+     public const int AutomationPort = 7108;
+     // Phase 2 service ports
+     public const int KnowledgePort = 7104;
++    public const int WhatsAppAnalyticsPort = 7109;
+ 
+     // Service names
+     public const string BackendServiceName = "Invekto.Backend";
+@@ -35,6 +36,7 @@ public static class ServiceConstants
+     public const string AutomationServiceName = "Invekto.Automation";
+     // Phase 2 service names
+     public const string KnowledgeServiceName = "Invekto.Knowledge";
++    public const string WhatsAppAnalyticsServiceName = "Invekto.WhatsAppAnalytics";
+ 
+     // Log retention
+     public const int LogRetentionDays = 30;
+diff --git a/src/Invekto.WhatsAppAnalytics/Data/AnalyticsConnectionFactory.cs b/src/Invekto.WhatsAppAnalytics/Data/AnalyticsConnectionFactory.cs
+new file mode 100644
+index 0000000..f936f66
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Data/AnalyticsConnectionFactory.cs
+@@ -0,0 +1,25 @@
++using Npgsql;
++
++namespace Invekto.WhatsAppAnalytics.Data;
++
++/// <summary>
++/// PostgreSQL connection factory for WhatsApp Analytics service.
++/// Follows shared pattern from Invekto.Knowledge.
++/// </summary>
++public sealed class AnalyticsConnectionFactory
++{
++    private readonly NpgsqlDataSource _dataSource;
++
++    public AnalyticsConnectionFactory(string connectionString)
++    {
++        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
++        _dataSource = dataSourceBuilder.Build();
++    }
++
++    public async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken ct = default)
++    {
++        var connection = _dataSource.CreateConnection();
++        await connection.OpenAsync(ct);
++        return connection;
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Data/AnalyticsRepository.cs b/src/Invekto.WhatsAppAnalytics/Data/AnalyticsRepository.cs
+new file mode 100644
+index 0000000..5f2a607
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Data/AnalyticsRepository.cs
+@@ -0,0 +1,367 @@
++using System.Text;
++using System.Text.Json;
++using Invekto.Shared.Logging;
++using Invekto.WhatsAppAnalytics.Models;
++using Npgsql;
++using NpgsqlTypes;
++
++namespace Invekto.WhatsAppAnalytics.Data;
++
++/// <summary>
++/// Repository for all WhatsApp Analytics DB operations.
++/// Phase A: wa_analyses, wa_messages, wa_conversations, wa_metadata.
++/// </summary>
++public sealed class AnalyticsRepository
++{
++    private readonly AnalyticsConnectionFactory _db;
++    private readonly JsonLinesLogger _logger;
++    private const int BatchSize = 50;
++
++    public AnalyticsRepository(AnalyticsConnectionFactory db, JsonLinesLogger logger)
++    {
++        _db = db;
++        _logger = logger;
++    }
++
++    // ============================================================
++    // Health
++    // ============================================================
++
++    public async Task<bool> CheckConnectionAsync(CancellationToken ct = default)
++    {
++        try
++        {
++            await using var conn = await _db.OpenConnectionAsync(ct);
++            await using var cmd = conn.CreateCommand();
++            cmd.CommandText = "SELECT 1";
++            await cmd.ExecuteScalarAsync(ct);
++            return true;
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"[AnalyticsRepository] Health check failed: {ex.Message}");
++            return false;
++        }
++    }
++
++    // ============================================================
++    // wa_analyses CRUD
++    // ============================================================
++
++    public async Task<int> CreateAnalysisAsync(int tenantId, string sourceFileName, string? configJson, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO wa_analyses (tenant_id, source_file_name, config_json, status, started_at)
++            VALUES (@tid, @src, @cfg::jsonb, 'pending', NOW())
++            RETURNING id";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("src", sourceFileName);
++        cmd.Parameters.AddWithValue("cfg", (object?)configJson ?? DBNull.Value);
++
++        var result = await cmd.ExecuteScalarAsync(ct);
++        return (int)result!;
++    }
++
++    public async Task<AnalysisJob?> GetAnalysisAsync(int tenantId, int analysisId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, tenant_id, status, source_file_name, config_json::text,
++                   total_messages, total_conversations, stage_progress::text,
++                   error_message, started_at, completed_at, created_at, updated_at
++            FROM wa_analyses
++            WHERE id = @aid AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        if (!await reader.ReadAsync(ct)) return null;
++        return ReadAnalysisJob(reader);
++    }
++
++    public async Task<(List<AnalysisJob> Items, int Total)> ListAnalysesAsync(int tenantId, int page, int limit, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++
++        // Count
++        await using var countCmd = conn.CreateCommand();
++        countCmd.CommandText = "SELECT COUNT(*) FROM wa_analyses WHERE tenant_id = @tid";
++        countCmd.Parameters.AddWithValue("tid", tenantId);
++        var total = (int)(long)(await countCmd.ExecuteScalarAsync(ct))!;
++
++        // List
++        await using var listCmd = conn.CreateCommand();
++        listCmd.CommandText = @"
++            SELECT id, tenant_id, status, source_file_name, config_json::text,
++                   total_messages, total_conversations, stage_progress::text,
++                   error_message, started_at, completed_at, created_at, updated_at
++            FROM wa_analyses
++            WHERE tenant_id = @tid
++            ORDER BY created_at DESC
++            LIMIT @lim OFFSET @off";
++        listCmd.Parameters.AddWithValue("tid", tenantId);
++        listCmd.Parameters.AddWithValue("lim", limit);
++        listCmd.Parameters.AddWithValue("off", (page - 1) * limit);
++
++        var items = new List<AnalysisJob>();
++        await using var reader = await listCmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++            items.Add(ReadAnalysisJob(reader));
++
++        return (items, total);
++    }
++
++    public async Task UpdateAnalysisStatusAsync(int analysisId, string status, string? stageProgressJson = null, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE wa_analyses
++            SET status = @st, stage_progress = @sp::jsonb, updated_at = NOW()
++            WHERE id = @aid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("st", status);
++        cmd.Parameters.AddWithValue("sp", (object?)stageProgressJson ?? DBNull.Value);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task UpdateAnalysisTotalsAsync(int analysisId, int totalMessages, int totalConversations, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE wa_analyses
++            SET total_messages = @tm, total_conversations = @tc, updated_at = NOW()
++            WHERE id = @aid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tm", totalMessages);
++        cmd.Parameters.AddWithValue("tc", totalConversations);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task CompleteAnalysisAsync(int analysisId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE wa_analyses
++            SET status = 'completed', completed_at = NOW(), updated_at = NOW(),
++                stage_progress = NULL
++            WHERE id = @aid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task FailAnalysisAsync(int analysisId, string errorMessage, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE wa_analyses
++            SET status = 'error', error_message = @err, completed_at = NOW(), updated_at = NOW()
++            WHERE id = @aid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("err", errorMessage);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task<bool> DeleteAnalysisAsync(int tenantId, int analysisId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "DELETE FROM wa_analyses WHERE id = @aid AND tenant_id = @tid RETURNING id";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        return await reader.ReadAsync(ct);
++    }
++
++    /// <summary>
++    /// Atomically claim analyses stuck in non-terminal state for restart recovery.
++    /// Uses UPDATE ... RETURNING with FOR UPDATE SKIP LOCKED to prevent double-processing.
++    /// Stale timeout (30 min) ensures actively-processing analyses are not re-claimed.
++    /// </summary>
++    public async Task<List<AnalysisJob>> ClaimPendingAnalysesAsync(CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE wa_analyses
++            SET status = 'recovering', updated_at = NOW()
++            WHERE id IN (
++                SELECT id FROM wa_analyses
++                WHERE status NOT IN ('completed', 'error')
++                AND updated_at < NOW() - INTERVAL '30 minutes'
++                ORDER BY created_at ASC
++                FOR UPDATE SKIP LOCKED
++            )
++            RETURNING id, tenant_id, status, source_file_name, config_json::text,
++                      total_messages, total_conversations, stage_progress::text,
++                      error_message, started_at, completed_at, created_at, updated_at";
++
++        var items = new List<AnalysisJob>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++            items.Add(ReadAnalysisJob(reader));
++
++        return items;
++    }
++
++    // ============================================================
++    // wa_messages batch insert
++    // ============================================================
++
++    public async Task<int> BatchInsertMessagesAsync(int analysisId, int tenantId, List<CleanedMessage> messages, CancellationToken ct = default)
++    {
++        if (messages.Count == 0) return 0;
++
++        var inserted = 0;
++        await using var conn = await _db.OpenConnectionAsync(ct);
++
++        for (var i = 0; i < messages.Count; i += BatchSize)
++        {
++            var count = Math.Min(BatchSize, messages.Count - i);
++            var batch = messages.GetRange(i, count);
++            await using var cmd = conn.CreateCommand();
++
++            var sql = new StringBuilder(
++                "INSERT INTO wa_messages (analysis_id, tenant_id, conversation_id, business_phone, timestamp, message_text, sender_type, agent_name, message_hash) VALUES ");
++
++            var values = new List<string>();
++            for (var j = 0; j < batch.Count; j++)
++            {
++                values.Add($"(@aid, @tid, @cid{j}, @bp{j}, @ts{j}, @mt{j}, @st{j}, @an{j}, @mh{j})");
++                cmd.Parameters.AddWithValue($"cid{j}", batch[j].ConversationId);
++                cmd.Parameters.AddWithValue($"bp{j}", batch[j].BusinessPhone);
++                cmd.Parameters.AddWithValue($"ts{j}", batch[j].Timestamp);
++                cmd.Parameters.AddWithValue($"mt{j}", batch[j].MessageText);
++                cmd.Parameters.AddWithValue($"st{j}", batch[j].SenderType);
++                cmd.Parameters.AddWithValue($"an{j}", batch[j].AgentName);
++                cmd.Parameters.AddWithValue($"mh{j}", batch[j].MessageHash);
++            }
++
++            cmd.Parameters.AddWithValue("aid", analysisId);
++            cmd.Parameters.AddWithValue("tid", tenantId);
++
++            sql.Append(string.Join(", ", values));
++            cmd.CommandText = sql.ToString();
++
++            inserted += await cmd.ExecuteNonQueryAsync(ct);
++        }
++
++        return inserted;
++    }
++
++    // ============================================================
++    // wa_conversations batch insert
++    // ============================================================
++
++    public async Task<int> BatchInsertConversationsAsync(int analysisId, int tenantId, List<Conversation> conversations, CancellationToken ct = default)
++    {
++        if (conversations.Count == 0) return 0;
++
++        var inserted = 0;
++        await using var conn = await _db.OpenConnectionAsync(ct);
++
++        for (var i = 0; i < conversations.Count; i += BatchSize)
++        {
++            var count = Math.Min(BatchSize, conversations.Count - i);
++            var batch = conversations.GetRange(i, count);
++            await using var cmd = conn.CreateCommand();
++
++            var sql = new StringBuilder(@"
++                INSERT INTO wa_conversations (analysis_id, tenant_id, conversation_id, business_phone,
++                    start_time, end_time, duration_minutes, message_count, customer_message_count,
++                    agent_message_count, primary_agent, first_response_minutes, outcome,
++                    product_codes, first_customer_msg, last_agent_msg) VALUES ");
++
++            var values = new List<string>();
++            for (var j = 0; j < batch.Count; j++)
++            {
++                values.Add($"(@aid, @tid, @cid{j}, @bp{j}, @st{j}, @et{j}, @dm{j}, @mc{j}, @cmc{j}, @amc{j}, @pa{j}, @frm{j}, @oc{j}, @pc{j}, @fcm{j}, @lam{j})");
++                cmd.Parameters.AddWithValue($"cid{j}", batch[j].ConversationId);
++                cmd.Parameters.AddWithValue($"bp{j}", batch[j].BusinessPhone);
++                cmd.Parameters.AddWithValue($"st{j}", batch[j].StartTime);
++                cmd.Parameters.AddWithValue($"et{j}", batch[j].EndTime);
++                cmd.Parameters.AddWithValue($"dm{j}", batch[j].DurationMinutes);
++                cmd.Parameters.AddWithValue($"mc{j}", batch[j].MessageCount);
++                cmd.Parameters.AddWithValue($"cmc{j}", batch[j].CustomerMessageCount);
++                cmd.Parameters.AddWithValue($"amc{j}", batch[j].AgentMessageCount);
++                cmd.Parameters.AddWithValue($"pa{j}", batch[j].PrimaryAgent);
++                cmd.Parameters.AddWithValue($"frm{j}", (float)batch[j].FirstResponseMinutes);
++                cmd.Parameters.AddWithValue($"oc{j}", batch[j].Outcome);
++                cmd.Parameters.AddWithValue($"pc{j}", batch[j].ProductCodes);
++                cmd.Parameters.AddWithValue($"fcm{j}", batch[j].FirstCustomerMsg);
++                cmd.Parameters.AddWithValue($"lam{j}", batch[j].LastAgentMsg);
++            }
++
++            cmd.Parameters.AddWithValue("aid", analysisId);
++            cmd.Parameters.AddWithValue("tid", tenantId);
++
++            sql.Append(string.Join(", ", values));
++            cmd.CommandText = sql.ToString();
++
++            inserted += await cmd.ExecuteNonQueryAsync(ct);
++        }
++
++        return inserted;
++    }
++
++    // ============================================================
++    // wa_metadata
++    // ============================================================
++
++    public async Task InsertMetadataAsync(int analysisId, int tenantId, string metadataJson, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO wa_metadata (analysis_id, tenant_id, metadata_json)
++            VALUES (@aid, @tid, @mj::jsonb)
++            ON CONFLICT (analysis_id) DO UPDATE
++            SET metadata_json = @mj::jsonb";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("mj", metadataJson);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task<string?> GetMetadataAsync(int tenantId, int analysisId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT metadata_json::text FROM wa_metadata
++            WHERE analysis_id = @aid AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        var result = await cmd.ExecuteScalarAsync(ct);
++        return result as string;
++    }
++
++    // ============================================================
++    // Helper
++    // ============================================================
++
++    private static AnalysisJob ReadAnalysisJob(NpgsqlDataReader reader) => new()
++    {
++        Id = reader.GetInt32(0),
++        TenantId = reader.GetInt32(1),
++        Status = reader.GetString(2),
++        SourceFileName = reader.IsDBNull(3) ? "" : reader.GetString(3),
++        ConfigJson = reader.IsDBNull(4) ? null : reader.GetString(4),
++        TotalMessages = reader.IsDBNull(5) ? null : reader.GetInt32(5),
++        TotalConversations = reader.IsDBNull(6) ? null : reader.GetInt32(6),
++        StageProgress = reader.IsDBNull(7) ? null : reader.GetString(7),
++        ErrorMessage = reader.IsDBNull(8) ? null : reader.GetString(8),
++        StartedAt = reader.IsDBNull(9) ? null : reader.GetDateTime(9),
++        CompletedAt = reader.IsDBNull(10) ? null : reader.GetDateTime(10),
++        CreatedAt = reader.GetDateTime(11),
++        UpdatedAt = reader.GetDateTime(12)
++    };
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Invekto.WhatsAppAnalytics.csproj b/src/Invekto.WhatsAppAnalytics/Invekto.WhatsAppAnalytics.csproj
+new file mode 100644
+index 0000000..0808aad
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Invekto.WhatsAppAnalytics.csproj
+@@ -0,0 +1,18 @@
++<Project Sdk="Microsoft.NET.Sdk.Web">
++
++  <PropertyGroup>
++    <TargetFramework>net8.0</TargetFramework>
++    <Nullable>enable</Nullable>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <RootNamespace>Invekto.WhatsAppAnalytics</RootNamespace>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\Invekto.Shared\Invekto.Shared.csproj" />
++  </ItemGroup>
++
++</Project>
+diff --git a/src/Invekto.WhatsAppAnalytics/Models/AnalysisJob.cs b/src/Invekto.WhatsAppAnalytics/Models/AnalysisJob.cs
+new file mode 100644
+index 0000000..876ee0a
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Models/AnalysisJob.cs
+@@ -0,0 +1,49 @@
++namespace Invekto.WhatsAppAnalytics.Models;
++
++/// <summary>
++/// Represents an analysis job (wa_analyses row).
++/// Tracks pipeline progress from upload to completion.
++/// </summary>
++public sealed class AnalysisJob
++{
++    public int Id { get; set; }
++    public int TenantId { get; set; }
++    public string Status { get; set; } = "pending"; // pending, cleaning, threading, stats, intents, faq, sentiment, products, completed, error
++    public string SourceFileName { get; set; } = "";
++    public string? ConfigJson { get; set; } // {delimiter, encoding, tenant_name, sector}
++    public int? TotalMessages { get; set; }
++    public int? TotalConversations { get; set; }
++    public string? StageProgress { get; set; } // JSON: {stage, percent, message}
++    public string? ErrorMessage { get; set; }
++    public DateTime? StartedAt { get; set; }
++    public DateTime? CompletedAt { get; set; }
++    public DateTime CreatedAt { get; set; }
++    public DateTime UpdatedAt { get; set; }
++}
++
++/// <summary>
++/// Progress info for the current pipeline stage.
++/// </summary>
++public sealed class StageProgress
++{
++    public string Stage { get; set; } = "";
++    public int Percent { get; set; }
++    public string Message { get; set; } = "";
++    public int StageNumber { get; set; }
++    public int TotalStages { get; set; } = 3; // Phase A: 3 stages
++
++    public string ToJson() =>
++        System.Text.Json.JsonSerializer.Serialize(this);
++}
++
++/// <summary>
++/// Queued job for background processing.
++/// </summary>
++public sealed class AnalysisProcessJob
++{
++    public int AnalysisId { get; set; }
++    public int TenantId { get; set; }
++    public string FilePath { get; set; } = "";
++    public string SourceFileName { get; set; } = "";
++    public char Delimiter { get; set; } = ';';
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Models/CleanedMessage.cs b/src/Invekto.WhatsAppAnalytics/Models/CleanedMessage.cs
+new file mode 100644
+index 0000000..6a9f048
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Models/CleanedMessage.cs
+@@ -0,0 +1,16 @@
++namespace Invekto.WhatsAppAnalytics.Models;
++
++/// <summary>
++/// A single cleaned WhatsApp message ready for DB insert.
++/// Output of Stage 1 (Cleaner).
++/// </summary>
++public sealed class CleanedMessage
++{
++    public string ConversationId { get; set; } = "";
++    public string BusinessPhone { get; set; } = "";
++    public DateTime Timestamp { get; set; }
++    public string MessageText { get; set; } = "";
++    public string SenderType { get; set; } = ""; // ME or CUSTOMER
++    public string AgentName { get; set; } = "";
++    public string MessageHash { get; set; } = ""; // SHA256[:16] for dedup
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Models/Conversation.cs b/src/Invekto.WhatsAppAnalytics/Models/Conversation.cs
+new file mode 100644
+index 0000000..ec84317
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Models/Conversation.cs
+@@ -0,0 +1,23 @@
++namespace Invekto.WhatsAppAnalytics.Models;
++
++/// <summary>
++/// A threaded conversation with outcome detection.
++/// Output of Stage 2 (Threader).
++/// </summary>
++public sealed class Conversation
++{
++    public string ConversationId { get; set; } = "";
++    public string BusinessPhone { get; set; } = "";
++    public DateTime StartTime { get; set; }
++    public DateTime EndTime { get; set; }
++    public int DurationMinutes { get; set; }
++    public int MessageCount { get; set; }
++    public int CustomerMessageCount { get; set; }
++    public int AgentMessageCount { get; set; }
++    public string PrimaryAgent { get; set; } = "";
++    public double FirstResponseMinutes { get; set; }
++    public string Outcome { get; set; } = "no_sale"; // sale, offered, no_sale, abandoned, no_response, return, complaint
++    public string ProductCodes { get; set; } = ""; // pipe-separated
++    public string FirstCustomerMsg { get; set; } = "";
++    public string LastAgentMsg { get; set; } = "";
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Program.cs b/src/Invekto.WhatsAppAnalytics/Program.cs
+new file mode 100644
+index 0000000..0399e85
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Program.cs
+@@ -0,0 +1,392 @@
++using System.Text.Json;
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++using Invekto.Shared.Middleware;
++using Invekto.WhatsAppAnalytics.Data;
++using Invekto.WhatsAppAnalytics.Models;
++using Invekto.WhatsAppAnalytics.Services;
++using Invekto.WhatsAppAnalytics.Services.Pipeline;
++
++var builder = WebApplication.CreateBuilder(args);
++
++// Windows Service support
++builder.Host.UseWindowsService();
++
++// Read configuration
++var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.WhatsAppAnalyticsPort);
++var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
++var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
++var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
++var uploadPath = builder.Configuration["Storage:UploadPath"] ?? "uploads";
++var maxFileSizeMb = builder.Configuration.GetValue<int>("Storage:MaxFileSizeMb", 500);
++
++// Validate required config
++if (string.IsNullOrEmpty(pgConnStr))
++{
++    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
++    Environment.Exit(1);
++}
++if (string.IsNullOrEmpty(jwtSecretKey))
++{
++    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
++    Environment.Exit(1);
++}
++
++// Configure Kestrel
++builder.WebHost.ConfigureKestrel(options =>
++{
++    options.ListenAnyIP(listenPort);
++    options.Limits.MaxRequestBodySize = maxFileSizeMb * 1024L * 1024L;
++});
++
++// Register logger
++var logger = new JsonLinesLogger(ServiceConstants.WhatsAppAnalyticsServiceName, logPath);
++builder.Services.AddSingleton(logger);
++
++// Register log cleanup
++builder.Services.AddSingleton<LogCleanupService>(sp =>
++    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
++
++// Register JWT validator
++var jwtSettings = new JwtSettings
++{
++    SecretKey = jwtSecretKey,
++    Issuer = builder.Configuration["Jwt:Issuer"],
++    Audience = builder.Configuration["Jwt:Audience"],
++    ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
++};
++var jwtValidator = new JwtValidator(jwtSettings);
++builder.Services.AddSingleton(jwtValidator);
++
++// Register PostgreSQL connection factory
++var pgFactory = new AnalyticsConnectionFactory(pgConnStr);
++builder.Services.AddSingleton(pgFactory);
++
++// Register repository
++builder.Services.AddSingleton<AnalyticsRepository>();
++
++// Register pipeline services
++builder.Services.AddSingleton<CsvStreamReader>();
++builder.Services.AddSingleton<TextNormalizer>();
++builder.Services.AddSingleton<CleanerService>();
++builder.Services.AddSingleton<ThreaderService>(sp =>
++    new ThreaderService(
++        sp.GetRequiredService<AnalyticsRepository>(),
++        sp.GetRequiredService<AnalyticsConnectionFactory>(),
++        sp.GetRequiredService<TextNormalizer>(),
++        sp.GetRequiredService<JsonLinesLogger>()));
++builder.Services.AddSingleton<StatsService>();
++builder.Services.AddSingleton<PipelineOrchestrator>();
++
++// Register background processing service
++builder.Services.AddSingleton<AnalysisProcessingService>(sp =>
++    new AnalysisProcessingService(
++        sp.GetRequiredService<AnalyticsRepository>(),
++        sp.GetRequiredService<PipelineOrchestrator>(),
++        sp.GetRequiredService<JsonLinesLogger>(),
++        uploadPath));
++builder.Services.AddHostedService(sp => sp.GetRequiredService<AnalysisProcessingService>());
++
++var app = builder.Build();
++
++// Ensure upload directory exists
++Directory.CreateDirectory(uploadPath);
++
++// Enable traffic logging middleware
++app.UseTrafficLogging();
++
++// Enable JWT auth for /api/v1/ prefixed paths
++app.UseJwtAuth(jwtValidator, logger, "/api/v1/wa/");
++
++// Start log cleanup
++_ = app.Services.GetRequiredService<LogCleanupService>();
++
++// ============================================================
++// Helper: Get validated tenant from JWT context
++// ============================================================
++
++static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
++{
++    var tenant = ctx.Items["TenantContext"] as TenantContext;
++    if (tenant == null || tenant.TenantId != routeTenantId) return null;
++    return tenant;
++}
++
++// ============================================================
++// Health endpoints
++// ============================================================
++
++app.MapGet("/health", () => Results.Ok(HealthResponse.Ok(ServiceConstants.WhatsAppAnalyticsServiceName)));
++
++app.MapGet("/ready", async (AnalyticsRepository repo) =>
++{
++    try
++    {
++        var ok = await repo.CheckConnectionAsync();
++        if (!ok)
++            return Results.Json(new { status = "unhealthy", error = "Database connection failed" }, statusCode: 503);
++        return Results.Ok(HealthResponse.Ok(ServiceConstants.WhatsAppAnalyticsServiceName));
++    }
++    catch (Exception ex)
++    {
++        return Results.Json(new { status = "unhealthy", error = ex.Message }, statusCode: 503);
++    }
++});
++
++// ============================================================
++// Upload endpoint: POST /api/v1/wa/{tenantId}/upload
++// ============================================================
++
++app.MapPost("/api/v1/wa/{tenantId:int}/upload", async (
++    int tenantId,
++    HttpContext ctx,
++    AnalyticsRepository repo,
++    CsvStreamReader csvReader,
++    AnalysisProcessingService processingService,
++    JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    if (!ctx.Request.HasFormContentType)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, "Multipart form data required", requestId), statusCode: 400);
++
++    var form = await ctx.Request.ReadFormAsync();
++    var file = form.Files.GetFile("file");
++    if (file == null || file.Length == 0)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, "file is required", requestId), statusCode: 400);
++
++    // Validate file size
++    var maxBytes = maxFileSizeMb * 1024L * 1024L;
++    if (file.Length > maxBytes)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvTooLarge, $"File exceeds {maxFileSizeMb}MB limit", requestId), statusCode: 400);
++
++    // Parse optional delimiter from form
++    var delimiterStr = form["delimiter"].FirstOrDefault();
++    var delimiter = !string.IsNullOrEmpty(delimiterStr) && delimiterStr.Length == 1 ? delimiterStr[0] : ';';
++
++    // Parse optional config JSON
++    var configJsonStr = form["config"].FirstOrDefault();
++
++    string? savedPath = null;
++    try
++    {
++        // Save file to disk
++        var safeFileName = $"{Guid.NewGuid():N}.csv";
++        var tenantDir = Path.Combine(uploadPath, tenantId.ToString());
++        Directory.CreateDirectory(tenantDir);
++        savedPath = Path.Combine(tenantDir, safeFileName);
++
++        await using (var fs = new FileStream(savedPath, FileMode.Create))
++            await file.CopyToAsync(fs);
++
++        // Validate CSV header
++        try
++        {
++            csvReader.ValidateHeader(savedPath, delimiter);
++        }
++        catch (InvalidOperationException ex)
++        {
++            // Clean up file
++            if (File.Exists(savedPath)) File.Delete(savedPath);
++            return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvInvalidHeader, ex.Message, requestId), statusCode: 400);
++        }
++
++        // Build config JSON
++        var config = new Dictionary<string, object?>
++        {
++            ["delimiter"] = delimiter.ToString(),
++            ["original_filename"] = file.FileName,
++            ["file_size_bytes"] = file.Length
++        };
++        if (!string.IsNullOrEmpty(configJsonStr))
++        {
++            try
++            {
++                var userConfig = JsonSerializer.Deserialize<Dictionary<string, object>>(configJsonStr);
++                if (userConfig != null)
++                    foreach (var kv in userConfig)
++                        config[kv.Key] = kv.Value;
++            }
++            catch (JsonException ex) { jsonLogger.SystemWarn($"[Upload] Invalid user config JSON, ignoring: {ex.Message}"); }
++        }
++        var configJson = JsonSerializer.Serialize(config);
++
++        // Create analysis record (store safe filename for restart recovery path reconstruction)
++        var analysisId = await repo.CreateAnalysisAsync(tenantId, safeFileName, configJson);
++
++        // Enqueue for background processing
++        processingService.EnqueueAnalysis(new AnalysisProcessJob
++        {
++            AnalysisId = analysisId,
++            TenantId = tenantId,
++            FilePath = savedPath,
++            SourceFileName = safeFileName,
++            Delimiter = delimiter
++        });
++
++        jsonLogger.StepInfo($"Analysis uploaded: id={analysisId}, tenant={tenantId}, file={file.FileName}, size={file.Length}", requestId);
++        return Results.Json(new { analysisId, status = "pending", fileName = file.FileName }, statusCode: 202);
++    }
++    catch (Exception ex)
++    {
++        // Cleanup orphaned file on failure
++        if (savedPath != null && File.Exists(savedPath))
++        {
++            try { File.Delete(savedPath); }
++            catch (Exception cleanupEx) { jsonLogger.SystemWarn($"[Upload] Failed to cleanup orphaned file {savedPath}: {cleanupEx.Message}"); }
++        }
++        jsonLogger.StepError($"[{ErrorCodes.WAStorageError}] Upload failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WAStorageError, "File upload failed", requestId), statusCode: 500);
++    }
++}).DisableAntiforgery();
++
++// ============================================================
++// Analysis CRUD endpoints
++// ============================================================
++
++// List analyses
++app.MapGet("/api/v1/wa/{tenantId:int}/analyses", async (
++    int tenantId,
++    HttpContext ctx,
++    AnalyticsRepository repo,
++    int? page,
++    int? limit) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    var p = Math.Max(page ?? 1, 1);
++    var l = Math.Clamp(limit ?? 20, 1, 100);
++
++    try
++    {
++        var (items, total) = await repo.ListAnalysesAsync(tenantId, p, l);
++        return Results.Ok(new { analyses = items, total, page = p, limit = l });
++    }
++    catch (Exception ex)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"List failed: {ex.Message}", requestId), statusCode: 500);
++    }
++});
++
++// Get analysis status
++app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
++    int tenantId, int analysisId,
++    HttpContext ctx,
++    AnalyticsRepository repo) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        var analysis = await repo.GetAnalysisAsync(tenantId, analysisId);
++        if (analysis == null)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.WAAnalysisNotFound, $"Analysis {analysisId} not found", requestId), statusCode: 404);
++
++        return Results.Ok(analysis);
++    }
++    catch (Exception ex)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Get failed: {ex.Message}", requestId), statusCode: 500);
++    }
++});
++
++// Delete analysis
++app.MapDelete("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
++    int tenantId, int analysisId,
++    HttpContext ctx,
++    AnalyticsRepository repo,
++    JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        var deleted = await repo.DeleteAnalysisAsync(tenantId, analysisId);
++        if (!deleted)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.WAAnalysisNotFound, $"Analysis {analysisId} not found", requestId), statusCode: 404);
++
++        jsonLogger.StepInfo($"Analysis deleted: id={analysisId}, tenant={tenantId}", requestId);
++        return Results.Ok(new { message = "Analysis deleted", analysisId });
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.WAAnalysisDeleteFailed}] Delete failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WAAnalysisDeleteFailed, "Analysis delete failed", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// Metadata endpoint
++// ============================================================
++
++app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/metadata", async (
++    int tenantId, int analysisId,
++    HttpContext ctx,
++    AnalyticsRepository repo) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        var metadataJson = await repo.GetMetadataAsync(tenantId, analysisId);
++        if (metadataJson == null)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.WAAnalysisNotFound, $"Metadata for analysis {analysisId} not found", requestId), statusCode: 404);
++
++        // Return raw JSON
++        return Results.Text(metadataJson, "application/json");
++    }
++    catch (Exception ex)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Metadata query failed: {ex.Message}", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// Endpoint discovery
++// ============================================================
++
++app.MapGet("/api/ops/endpoints", () =>
++{
++    var endpoints = new List<EndpointInfo>
++    {
++        new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
++        new() { Method = "GET", Path = "/ready", Description = "Ready check (DB connection)", Auth = "none", Category = "Health" },
++        new() { Method = "POST", Path = "/api/v1/wa/{tenantId}/upload", Description = "Upload CSV and start analysis", Auth = "Bearer JWT", Category = "Pipeline" },
++        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses", Description = "List analyses (paginated)", Auth = "Bearer JWT", Category = "Pipeline" },
++        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}", Description = "Get analysis status", Auth = "Bearer JWT", Category = "Pipeline" },
++        new() { Method = "DELETE", Path = "/api/v1/wa/{tenantId}/analyses/{id}", Description = "Delete analysis + cascade data", Auth = "Bearer JWT", Category = "Pipeline" },
++        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/metadata", Description = "Get full metadata JSON", Auth = "Bearer JWT", Category = "Query" },
++        new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
++    };
++
++    return Results.Ok(new EndpointDiscoveryResponse
++    {
++        Service = ServiceConstants.WhatsAppAnalyticsServiceName,
++        Port = ServiceConstants.WhatsAppAnalyticsPort,
++        Endpoints = endpoints
++    });
++});
++
++// ============================================================
++// Start
++// ============================================================
++
++logger.SystemInfo($"WhatsApp Analytics Service starting on port {listenPort}");
++app.Run();
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/AnalysisProcessingService.cs b/src/Invekto.WhatsAppAnalytics/Services/AnalysisProcessingService.cs
+new file mode 100644
+index 0000000..9fbb842
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/AnalysisProcessingService.cs
+@@ -0,0 +1,146 @@
++using System.Collections.Concurrent;
++using Invekto.Shared.Logging;
++using Invekto.WhatsAppAnalytics.Data;
++using Invekto.WhatsAppAnalytics.Models;
++
++namespace Invekto.WhatsAppAnalytics.Services;
++
++/// <summary>
++/// Background worker that processes analysis jobs from a ConcurrentQueue.
++/// On startup, re-enqueues analyses stuck in non-terminal state (restart recovery).
++/// One analysis at a time to avoid DB contention on large datasets.
++/// </summary>
++public sealed class AnalysisProcessingService : BackgroundService
++{
++    private readonly ConcurrentQueue<AnalysisProcessJob> _queue = new();
++    private readonly SemaphoreSlim _signal = new(0);
++    private readonly AnalyticsRepository _repository;
++    private readonly PipelineOrchestrator _orchestrator;
++    private readonly JsonLinesLogger _logger;
++    private readonly string _uploadPath;
++
++    public AnalysisProcessingService(
++        AnalyticsRepository repository,
++        PipelineOrchestrator orchestrator,
++        JsonLinesLogger logger,
++        string uploadPath)
++    {
++        _repository = repository;
++        _orchestrator = orchestrator;
++        _logger = logger;
++        _uploadPath = uploadPath;
++    }
++
++    /// <summary>
++    /// Enqueue a new analysis job for background processing.
++    /// </summary>
++    public void EnqueueAnalysis(AnalysisProcessJob job)
++    {
++        _queue.Enqueue(job);
++        _signal.Release();
++        _logger.SystemInfo($"[AnalysisProcessingService] Analysis enqueued: id={job.AnalysisId}, tenant={job.TenantId}, file={job.SourceFileName}");
++    }
++
++    public override async Task StartAsync(CancellationToken cancellationToken)
++    {
++        // Restart recovery: re-enqueue analyses stuck in non-terminal state
++        try
++        {
++            var pending = await _repository.ClaimPendingAnalysesAsync(cancellationToken);
++            foreach (var analysis in pending)
++            {
++                // Reconstruct file path from stored info
++                var filePath = Path.Combine(_uploadPath, analysis.TenantId.ToString(), analysis.SourceFileName);
++
++                if (!File.Exists(filePath))
++                {
++                    _logger.SystemWarn($"[AnalysisProcessingService] Skipping stuck analysis {analysis.Id}: file not found at {filePath}");
++                    await _repository.FailAnalysisAsync(analysis.Id, $"Recovery failed: source file not found at {filePath}");
++                    continue;
++                }
++
++                // Parse delimiter from config
++                var delimiter = ';';
++                if (!string.IsNullOrEmpty(analysis.ConfigJson))
++                {
++                    try
++                    {
++                        var config = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(analysis.ConfigJson);
++                        if (config != null && config.TryGetValue("delimiter", out var delimVal))
++                        {
++                            var delimStr = delimVal?.ToString();
++                            if (!string.IsNullOrEmpty(delimStr) && delimStr.Length == 1)
++                                delimiter = delimStr[0];
++                        }
++                    }
++                    catch (Exception delimEx)
++                    {
++                        _logger.SystemWarn($"[AnalysisProcessingService] Failed to parse delimiter from config for analysis {analysis.Id}, using default ';': {delimEx.Message}");
++                    }
++                }
++
++                _queue.Enqueue(new AnalysisProcessJob
++                {
++                    AnalysisId = analysis.Id,
++                    TenantId = analysis.TenantId,
++                    FilePath = filePath,
++                    SourceFileName = analysis.SourceFileName,
++                    Delimiter = delimiter
++                });
++                _signal.Release();
++
++                _logger.SystemWarn($"[AnalysisProcessingService] Re-enqueued stuck analysis: id={analysis.Id}, status={analysis.Status}");
++            }
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemWarn($"[AnalysisProcessingService] Failed to recover stuck analyses on startup: {ex.Message}");
++        }
++
++        await base.StartAsync(cancellationToken);
++    }
++
++    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
++    {
++        _logger.SystemInfo("[AnalysisProcessingService] Background analysis processor started");
++
++        while (!stoppingToken.IsCancellationRequested)
++        {
++            try
++            {
++                await _signal.WaitAsync(stoppingToken);
++            }
++            catch (OperationCanceledException)
++            {
++                break;
++            }
++
++            if (_queue.TryDequeue(out var job))
++            {
++                try
++                {
++                    await _orchestrator.RunAsync(job, stoppingToken);
++                }
++                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
++                {
++                    _logger.SystemWarn($"[AnalysisProcessingService] Analysis {job.AnalysisId} cancelled due to shutdown");
++                    break;
++                }
++                catch (Exception ex)
++                {
++                    _logger.SystemError($"[AnalysisProcessingService] Fatal error processing analysis {job.AnalysisId}: {ex.Message}");
++                    try
++                    {
++                        await _repository.FailAnalysisAsync(job.AnalysisId, $"Pipeline failed: {ex.Message}");
++                    }
++                    catch (Exception dbEx)
++                    {
++                        _logger.SystemError($"[AnalysisProcessingService] Failed to set error status for analysis {job.AnalysisId}: {dbEx.Message}");
++                    }
++                }
++            }
++        }
++
++        _logger.SystemInfo("[AnalysisProcessingService] Background analysis processor stopped");
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/CsvStreamReader.cs b/src/Invekto.WhatsAppAnalytics/Services/CsvStreamReader.cs
+new file mode 100644
+index 0000000..403832c
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/CsvStreamReader.cs
+@@ -0,0 +1,166 @@
++using System.Text;
++
++namespace Invekto.WhatsAppAnalytics.Services;
++
++/// <summary>
++/// Streaming CSV parser that reads files in configurable chunks.
++/// C# port of Python csv_parser.py stream_csv().
++/// Handles UTF-8 BOM, configurable delimiter, and large files (300MB+).
++/// </summary>
++public sealed class CsvStreamReader
++{
++    /// <summary>
++    /// Expected CSV column order (WA export format).
++    /// </summary>
++    public static readonly string[] ExpectedColumns = new[]
++    {
++        "business_phone", "date", "time", "conversation_id",
++        "message_text", "sender_type", "agent_name"
++    };
++
++    /// <summary>
++    /// Stream CSV file in chunks. Yields List of string[] rows (without header).
++    /// </summary>
++    public async IAsyncEnumerable<List<string[]>> StreamChunksAsync(
++        string filePath,
++        char delimiter = ';',
++        int chunkSize = 100_000)
++    {
++        // Auto-detect BOM encoding
++        var encoding = DetectEncoding(filePath);
++
++        using var reader = new StreamReader(filePath, encoding);
++
++        // Read and validate header
++        var headerLine = await reader.ReadLineAsync();
++        if (string.IsNullOrEmpty(headerLine))
++            throw new InvalidOperationException("CSV file is empty");
++
++        var chunk = new List<string[]>(chunkSize);
++
++        while (!reader.EndOfStream)
++        {
++            var line = await reader.ReadLineAsync();
++            if (string.IsNullOrWhiteSpace(line)) continue;
++
++            var fields = ParseCsvLine(line, delimiter);
++            if (fields.Length >= ExpectedColumns.Length)
++            {
++                chunk.Add(fields);
++            }
++
++            if (chunk.Count >= chunkSize)
++            {
++                yield return chunk;
++                chunk = new List<string[]>(chunkSize);
++            }
++        }
++
++        if (chunk.Count > 0)
++            yield return chunk;
++    }
++
++    /// <summary>
++    /// Count total lines in file (for progress tracking).
++    /// Fast binary scan, memory-efficient.
++    /// </summary>
++    public long CountLines(string filePath)
++    {
++        long count = 0;
++        var buffer = new byte[64 * 1024]; // 64KB buffer
++
++        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, buffer.Length);
++        int bytesRead;
++        while ((bytesRead = fs.Read(buffer, 0, buffer.Length)) > 0)
++        {
++            for (var i = 0; i < bytesRead; i++)
++            {
++                if (buffer[i] == (byte)'\n') count++;
++            }
++        }
++
++        return count; // includes header, subtract 1 for data count
++    }
++
++    /// <summary>
++    /// Validate CSV header matches expected columns.
++    /// </summary>
++    public string[] ValidateHeader(string filePath, char delimiter = ';')
++    {
++        var encoding = DetectEncoding(filePath);
++        using var reader = new StreamReader(filePath, encoding);
++        var headerLine = reader.ReadLine();
++
++        if (string.IsNullOrEmpty(headerLine))
++            throw new InvalidOperationException("CSV file is empty");
++
++        var headers = ParseCsvLine(headerLine, delimiter)
++            .Select(h => h.Trim().ToLowerInvariant().Replace(" ", "_"))
++            .ToArray();
++
++        // Check minimum required columns
++        var missing = ExpectedColumns.Where(ec => !headers.Contains(ec)).ToList();
++        if (missing.Count > 0)
++            throw new InvalidOperationException($"Missing required columns: {string.Join(", ", missing)}. Found: {string.Join(", ", headers)}");
++
++        return headers;
++    }
++
++    /// <summary>
++    /// Detect file encoding (UTF-8 BOM vs plain UTF-8).
++    /// </summary>
++    private static Encoding DetectEncoding(string filePath)
++    {
++        var bom = new byte[3];
++        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
++        var read = fs.Read(bom, 0, 3);
++
++        // UTF-8 BOM: EF BB BF
++        if (read >= 3 && bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF)
++            return new UTF8Encoding(true); // UTF-8 with BOM
++
++        return new UTF8Encoding(false); // UTF-8 without BOM
++    }
++
++    /// <summary>
++    /// Parse a CSV line respecting quoted fields.
++    /// Handles fields like: value;"quoted;value";another
++    /// </summary>
++    private static string[] ParseCsvLine(string line, char delimiter)
++    {
++        var fields = new List<string>();
++        var current = new StringBuilder();
++        var inQuotes = false;
++
++        for (var i = 0; i < line.Length; i++)
++        {
++            var ch = line[i];
++
++            if (ch == '"')
++            {
++                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
++                {
++                    // Escaped quote ""
++                    current.Append('"');
++                    i++; // skip next quote
++                }
++                else
++                {
++                    inQuotes = !inQuotes;
++                }
++            }
++            else if (ch == delimiter && !inQuotes)
++            {
++                fields.Add(current.ToString());
++                current.Clear();
++            }
++            else
++            {
++                current.Append(ch);
++            }
++        }
++
++        fields.Add(current.ToString());
++        return fields.ToArray();
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/Pipeline/CleanerService.cs b/src/Invekto.WhatsAppAnalytics/Services/Pipeline/CleanerService.cs
+new file mode 100644
+index 0000000..8621857
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/Pipeline/CleanerService.cs
+@@ -0,0 +1,137 @@
++using Invekto.Shared.Logging;
++using Invekto.WhatsAppAnalytics.Data;
++using Invekto.WhatsAppAnalytics.Models;
++
++namespace Invekto.WhatsAppAnalytics.Services.Pipeline;
++
++/// <summary>
++/// Stage 1: Clean raw CSV -> normalize text -> deduplicate -> insert to wa_messages.
++/// C# port of Python 01_cleaner.py.
++/// </summary>
++public sealed class CleanerService
++{
++    private readonly AnalyticsRepository _repo;
++    private readonly CsvStreamReader _csvReader;
++    private readonly TextNormalizer _normalizer;
++    private readonly JsonLinesLogger _logger;
++
++    public CleanerService(AnalyticsRepository repo, CsvStreamReader csvReader, TextNormalizer normalizer, JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _csvReader = csvReader;
++        _normalizer = normalizer;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Run Stage 1: clean + dedup + insert.
++    /// Returns total inserted message count.
++    /// </summary>
++    public async Task<int> RunAsync(int analysisId, int tenantId, string filePath, char delimiter,
++        Func<StageProgress, Task> onProgress, CancellationToken ct)
++    {
++        _logger.SystemInfo($"[CleanerService] Starting Stage 1 for analysis {analysisId}");
++
++        var totalLines = _csvReader.CountLines(filePath) - 1; // subtract header
++        var processedRows = 0;
++        var insertedTotal = 0;
++        var duplicateCount = 0;
++        var invalidCount = 0;
++
++        // Track previous message per conversation for dedup
++        var prevByConversation = new Dictionary<string, (string hash, DateTime timestamp)>();
++
++        await foreach (var chunk in _csvReader.StreamChunksAsync(filePath, delimiter))
++        {
++            ct.ThrowIfCancellationRequested();
++
++            var cleanedBatch = new List<CleanedMessage>();
++
++            foreach (var row in chunk)
++            {
++                processedRows++;
++
++                // Parse fields: business_phone;date;time;conversation_id;message_text;sender_type;agent_name
++                var businessPhone = _normalizer.NormalizePhone(row[0]);
++                var dateStr = row.Length > 1 ? row[1] : "";
++                var timeStr = row.Length > 2 ? row[2] : "";
++                var conversationId = row.Length > 3 ? row[3]?.Trim() ?? "" : "";
++                var messageText = row.Length > 4 ? _normalizer.NormalizeText(row[4]) : "";
++                var senderType = row.Length > 5 ? _normalizer.NormalizeSenderType(row[5]) : "";
++                var agentName = row.Length > 6 ? _normalizer.NormalizeAgentName(row[6]) : "";
++
++                // Validate: skip if critical fields missing
++                var timestamp = _normalizer.TryParseTimestamp(dateStr, timeStr);
++                if (timestamp == null)
++                {
++                    invalidCount++;
++                    continue;
++                }
++
++                if (string.IsNullOrEmpty(conversationId) || string.IsNullOrEmpty(senderType))
++                {
++                    invalidCount++;
++                    continue;
++                }
++
++                if (string.IsNullOrEmpty(messageText))
++                {
++                    invalidCount++;
++                    continue;
++                }
++
++                // For CUSTOMER messages, clear agent_name
++                if (senderType == "CUSTOMER")
++                    agentName = "";
++
++                // Dedup: SHA256(conversation_id + clean_text)[:16], same conv + same hash + <=5s
++                var cleanedForComparison = _normalizer.CleanForComparison(messageText);
++                var messageHash = _normalizer.ComputeMessageHash(conversationId, cleanedForComparison);
++
++                if (prevByConversation.TryGetValue(conversationId, out var prev))
++                {
++                    if (prev.hash == messageHash &&
++                        Math.Abs((timestamp.Value - prev.timestamp).TotalSeconds) <= 5)
++                    {
++                        duplicateCount++;
++                        continue; // Skip duplicate
++                    }
++                }
++
++                prevByConversation[conversationId] = (messageHash, timestamp.Value);
++
++                cleanedBatch.Add(new CleanedMessage
++                {
++                    ConversationId = conversationId,
++                    BusinessPhone = businessPhone,
++                    Timestamp = timestamp.Value,
++                    MessageText = messageText,
++                    SenderType = senderType,
++                    AgentName = agentName,
++                    MessageHash = messageHash
++                });
++            }
++
++            // Batch insert
++            if (cleanedBatch.Count > 0)
++            {
++                var inserted = await _repo.BatchInsertMessagesAsync(analysisId, tenantId, cleanedBatch, ct);
++                insertedTotal += inserted;
++            }
++
++            // Report progress
++            var percent = totalLines > 0 ? (int)((processedRows * 100.0) / totalLines) : 0;
++            await onProgress(new StageProgress
++            {
++                Stage = "cleaning",
++                StageNumber = 1,
++                TotalStages = 3,
++                Percent = Math.Min(percent, 100),
++                Message = $"Processed {processedRows:N0}/{totalLines:N0} rows, {insertedTotal:N0} inserted, {duplicateCount:N0} duplicates"
++            });
++        }
++
++        _logger.SystemInfo($"[CleanerService] Stage 1 complete: {insertedTotal:N0} inserted, {duplicateCount:N0} duplicates, {invalidCount:N0} invalid");
++        return insertedTotal;
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/Pipeline/StatsService.cs b/src/Invekto.WhatsAppAnalytics/Services/Pipeline/StatsService.cs
+new file mode 100644
+index 0000000..4d3833d
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/Pipeline/StatsService.cs
+@@ -0,0 +1,325 @@
++using System.Text.Json;
++using Invekto.Shared.Logging;
++using Invekto.WhatsAppAnalytics.Data;
++using Invekto.WhatsAppAnalytics.Models;
++using Npgsql;
++
++namespace Invekto.WhatsAppAnalytics.Services.Pipeline;
++
++/// <summary>
++/// Stage 3: Generate aggregated metadata from wa_messages + wa_conversations -> insert wa_metadata.
++/// C# port of Python 03_stats.py.
++/// </summary>
++public sealed class StatsService
++{
++    private readonly AnalyticsRepository _repo;
++    private readonly AnalyticsConnectionFactory _db;
++    private readonly JsonLinesLogger _logger;
++
++    public StatsService(AnalyticsRepository repo, AnalyticsConnectionFactory db, JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _db = db;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Run Stage 3: aggregate stats and insert metadata.
++    /// </summary>
++    public async Task RunAsync(int analysisId, int tenantId, string? configJson,
++        Func<StageProgress, Task> onProgress, CancellationToken ct)
++    {
++        _logger.SystemInfo($"[StatsService] Starting Stage 3 for analysis {analysisId}");
++
++        await onProgress(new StageProgress
++        {
++            Stage = "stats", StageNumber = 3, TotalStages = 3,
++            Percent = 10, Message = "Computing message statistics..."
++        });
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++
++        // 1. Message-level stats
++        var messageStats = await GetMessageStatsAsync(conn, analysisId, tenantId, ct);
++
++        await onProgress(new StageProgress
++        {
++            Stage = "stats", StageNumber = 3, TotalStages = 3,
++            Percent = 30, Message = "Computing conversation statistics..."
++        });
++
++        // 2. Conversation-level stats
++        var conversationStats = await GetConversationStatsAsync(conn, analysisId, tenantId, ct);
++
++        await onProgress(new StageProgress
++        {
++            Stage = "stats", StageNumber = 3, TotalStages = 3,
++            Percent = 50, Message = "Computing agent performance..."
++        });
++
++        // 3. Agent performance
++        var agentStats = await GetAgentStatsAsync(conn, analysisId, tenantId, ct);
++
++        await onProgress(new StageProgress
++        {
++            Stage = "stats", StageNumber = 3, TotalStages = 3,
++            Percent = 70, Message = "Computing temporal patterns..."
++        });
++
++        // 4. Temporal patterns
++        var temporalStats = await GetTemporalStatsAsync(conn, analysisId, tenantId, ct);
++
++        await onProgress(new StageProgress
++        {
++            Stage = "stats", StageNumber = 3, TotalStages = 3,
++            Percent = 90, Message = "Building metadata JSON..."
++        });
++
++        // 5. Build metadata JSON
++        var tenantInfo = ParseTenantInfo(configJson);
++        var metadata = new Dictionary<string, object?>
++        {
++            ["tenant"] = tenantInfo,
++            ["generated_at"] = DateTime.UtcNow.ToString("o"),
++            ["messages"] = messageStats,
++            ["conversations"] = conversationStats,
++            ["date_range"] = await GetDateRangeAsync(conn, analysisId, tenantId, ct),
++            ["agents"] = agentStats,
++            ["temporal"] = temporalStats
++        };
++
++        var metadataJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = false });
++        await _repo.InsertMetadataAsync(analysisId, tenantId, metadataJson, ct);
++
++        _logger.SystemInfo($"[StatsService] Stage 3 complete for analysis {analysisId}");
++    }
++
++    private async Task<Dictionary<string, object>> GetMessageStatsAsync(NpgsqlConnection conn, int analysisId, int tenantId, CancellationToken ct)
++    {
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT
++                COUNT(*) as total,
++                COUNT(*) FILTER (WHERE sender_type = 'ME') as agent_messages,
++                COUNT(*) FILTER (WHERE sender_type = 'CUSTOMER') as customer_messages,
++                COALESCE(AVG(LENGTH(message_text)) FILTER (WHERE sender_type = 'ME'), 0) as avg_agent_len,
++                COALESCE(AVG(LENGTH(message_text)) FILTER (WHERE sender_type = 'CUSTOMER'), 0) as avg_customer_len
++            FROM wa_messages
++            WHERE analysis_id = @aid AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        await reader.ReadAsync(ct);
++
++        var total = reader.GetInt64(0);
++        var agentMsgs = reader.GetInt64(1);
++        var customerMsgs = reader.GetInt64(2);
++
++        return new Dictionary<string, object>
++        {
++            ["total"] = total,
++            ["agent_messages"] = agentMsgs,
++            ["customer_messages"] = customerMsgs,
++            ["agent_customer_ratio"] = customerMsgs > 0 ? Math.Round((double)agentMsgs / customerMsgs, 2) : 0,
++            ["avg_message_length_agent"] = Math.Round(reader.GetDouble(3), 1),
++            ["avg_message_length_customer"] = Math.Round(reader.GetDouble(4), 1)
++        };
++    }
++
++    private async Task<Dictionary<string, object>> GetConversationStatsAsync(NpgsqlConnection conn, int analysisId, int tenantId, CancellationToken ct)
++    {
++        // Read basic stats first and close reader before opening second query
++        long total; double avgMessages, avgDuration, avgFirstResponse;
++        {
++            await using var cmd = conn.CreateCommand();
++            cmd.CommandText = @"
++                SELECT
++                    COUNT(*) as total,
++                    COALESCE(AVG(message_count), 0) as avg_messages,
++                    COALESCE(AVG(duration_minutes), 0) as avg_duration,
++                    COALESCE(AVG(first_response_minutes), 0) as avg_first_response
++                FROM wa_conversations
++                WHERE analysis_id = @aid AND tenant_id = @tid";
++            cmd.Parameters.AddWithValue("aid", analysisId);
++            cmd.Parameters.AddWithValue("tid", tenantId);
++
++            await using var reader = await cmd.ExecuteReaderAsync(ct);
++            await reader.ReadAsync(ct);
++            total = reader.GetInt64(0);
++            avgMessages = reader.GetDouble(1);
++            avgDuration = reader.GetDouble(2);
++            avgFirstResponse = reader.GetDouble(3);
++        } // reader disposed here
++
++        // Outcome distribution (safe: previous reader is closed)
++        var outcomes = new Dictionary<string, long>();
++        {
++            await using var outcomeCmd = conn.CreateCommand();
++            outcomeCmd.CommandText = @"
++                SELECT outcome, COUNT(*) as count
++                FROM wa_conversations
++                WHERE analysis_id = @aid AND tenant_id = @tid
++                GROUP BY outcome ORDER BY count DESC";
++            outcomeCmd.Parameters.AddWithValue("aid", analysisId);
++            outcomeCmd.Parameters.AddWithValue("tid", tenantId);
++
++            await using var outcomeReader = await outcomeCmd.ExecuteReaderAsync(ct);
++            while (await outcomeReader.ReadAsync(ct))
++            {
++                outcomes[outcomeReader.GetString(0)] = outcomeReader.GetInt64(1);
++            }
++        }
++
++        return new Dictionary<string, object>
++        {
++            ["total"] = total,
++            ["avg_messages_per_conversation"] = Math.Round(avgMessages, 1),
++            ["avg_duration_minutes"] = Math.Round(avgDuration, 1),
++            ["avg_first_response_minutes"] = Math.Round(avgFirstResponse, 1),
++            ["outcome_distribution"] = outcomes
++        };
++    }
++
++    private async Task<List<Dictionary<string, object>>> GetAgentStatsAsync(NpgsqlConnection conn, int analysisId, int tenantId, CancellationToken ct)
++    {
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT
++                primary_agent,
++                COUNT(*) as conversation_count,
++                SUM(agent_message_count) as message_count,
++                COALESCE(AVG(first_response_minutes), 0) as avg_response_time,
++                SUM(CASE WHEN outcome = 'sale' THEN 1 ELSE 0 END) as sales
++            FROM wa_conversations
++            WHERE analysis_id = @aid AND tenant_id = @tid AND primary_agent != ''
++            GROUP BY primary_agent
++            ORDER BY conversation_count DESC";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        var agents = new List<Dictionary<string, object>>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++        {
++            var convCount = reader.GetInt64(1);
++            var sales = reader.GetInt64(4);
++            agents.Add(new Dictionary<string, object>
++            {
++                ["name"] = reader.GetString(0),
++                ["conversation_count"] = convCount,
++                ["message_count"] = reader.GetInt64(2),
++                ["avg_response_time_minutes"] = Math.Round(reader.GetDouble(3), 1),
++                ["sales"] = sales,
++                ["sale_rate"] = convCount > 0 ? Math.Round((double)sales / convCount * 100, 1) : 0
++            });
++        }
++
++        return agents;
++    }
++
++    private async Task<Dictionary<string, object>> GetTemporalStatsAsync(NpgsqlConnection conn, int analysisId, int tenantId, CancellationToken ct)
++    {
++        // Hourly distribution
++        var hourlyCmd = conn.CreateCommand();
++        hourlyCmd.CommandText = @"
++            SELECT EXTRACT(HOUR FROM timestamp)::int as hour, COUNT(*) as count
++            FROM wa_messages
++            WHERE analysis_id = @aid AND tenant_id = @tid
++            GROUP BY hour ORDER BY hour";
++        hourlyCmd.Parameters.AddWithValue("aid", analysisId);
++        hourlyCmd.Parameters.AddWithValue("tid", tenantId);
++
++        var hourly = new List<Dictionary<string, object>>();
++        await using (var reader = await hourlyCmd.ExecuteReaderAsync(ct))
++        {
++            while (await reader.ReadAsync(ct))
++                hourly.Add(new Dictionary<string, object>
++                {
++                    ["hour"] = reader.GetInt32(0),
++                    ["message_count"] = reader.GetInt64(1)
++                });
++        }
++
++        // Daily distribution (day of week)
++        var dailyCmd = conn.CreateCommand();
++        dailyCmd.CommandText = @"
++            SELECT TO_CHAR(timestamp, 'Day') as day_name, COUNT(*) as count
++            FROM wa_messages
++            WHERE analysis_id = @aid AND tenant_id = @tid
++            GROUP BY day_name, EXTRACT(DOW FROM timestamp)
++            ORDER BY EXTRACT(DOW FROM timestamp)";
++        dailyCmd.Parameters.AddWithValue("aid", analysisId);
++        dailyCmd.Parameters.AddWithValue("tid", tenantId);
++
++        var daily = new Dictionary<string, long>();
++        await using (var reader = await dailyCmd.ExecuteReaderAsync(ct))
++        {
++            while (await reader.ReadAsync(ct))
++                daily[reader.GetString(0).Trim()] = reader.GetInt64(1);
++        }
++
++        // Monthly distribution
++        var monthlyCmd = conn.CreateCommand();
++        monthlyCmd.CommandText = @"
++            SELECT TO_CHAR(timestamp, 'YYYY-MM') as month, COUNT(*) as count
++            FROM wa_messages
++            WHERE analysis_id = @aid AND tenant_id = @tid
++            GROUP BY month ORDER BY month";
++        monthlyCmd.Parameters.AddWithValue("aid", analysisId);
++        monthlyCmd.Parameters.AddWithValue("tid", tenantId);
++
++        var monthly = new Dictionary<string, long>();
++        await using (var reader = await monthlyCmd.ExecuteReaderAsync(ct))
++        {
++            while (await reader.ReadAsync(ct))
++                monthly[reader.GetString(0)] = reader.GetInt64(1);
++        }
++
++        return new Dictionary<string, object>
++        {
++            ["peak_hours"] = hourly.OrderByDescending(h => (long)h["message_count"]).Take(5).ToList(),
++            ["daily_distribution"] = daily,
++            ["monthly_volume"] = monthly
++        };
++    }
++
++    private async Task<Dictionary<string, object>> GetDateRangeAsync(NpgsqlConnection conn, int analysisId, int tenantId, CancellationToken ct)
++    {
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT MIN(timestamp), MAX(timestamp)
++            FROM wa_messages
++            WHERE analysis_id = @aid AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        await reader.ReadAsync(ct);
++
++        var start = reader.IsDBNull(0) ? DateTime.MinValue : reader.GetDateTime(0);
++        var end = reader.IsDBNull(1) ? DateTime.MinValue : reader.GetDateTime(1);
++
++        return new Dictionary<string, object>
++        {
++            ["start"] = start.ToString("yyyy-MM-dd"),
++            ["end"] = end.ToString("yyyy-MM-dd"),
++            ["total_days"] = (int)(end - start).TotalDays
++        };
++    }
++
++    private Dictionary<string, object> ParseTenantInfo(string? configJson)
++    {
++        if (string.IsNullOrEmpty(configJson)) return new Dictionary<string, object> { ["id"] = 0, ["name"] = "unknown" };
++        try
++        {
++            var config = JsonSerializer.Deserialize<Dictionary<string, object>>(configJson);
++            return config ?? new Dictionary<string, object> { ["id"] = 0, ["name"] = "unknown" };
++        }
++        catch (JsonException ex)
++        {
++            _logger.SystemWarn($"[StatsService] Failed to parse config JSON for tenant info: {ex.Message}");
++            return new Dictionary<string, object> { ["id"] = 0, ["name"] = "unknown" };
++        }
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs b/src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs
+new file mode 100644
+index 0000000..4c1cb01
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs
+@@ -0,0 +1,311 @@
++using System.Text.RegularExpressions;
++using Invekto.Shared.Logging;
++using Invekto.WhatsAppAnalytics.Data;
++using Invekto.WhatsAppAnalytics.Models;
++using Npgsql;
++
++namespace Invekto.WhatsAppAnalytics.Services.Pipeline;
++
++/// <summary>
++/// Stage 2: Group messages by conversation_id -> detect outcomes -> insert wa_conversations.
++/// C# port of Python 02_threader.py.
++/// Streams messages from DB to avoid loading entire dataset into RAM.
++/// </summary>
++public sealed class ThreaderService
++{
++    private readonly AnalyticsRepository _repo;
++    private readonly AnalyticsConnectionFactory _db;
++    private readonly TextNormalizer _normalizer;
++    private readonly JsonLinesLogger _logger;
++
++    // Product code pattern: 4-digit numbers
++    private static readonly Regex ProductCodeRegex = new(@"\b(\d{4})\b", RegexOptions.Compiled);
++
++    // ============================================================
++    // Outcome detection regex patterns (priority order)
++    // All patterns use ASCII-only chars; input is transliterated via TextNormalizer.TransliterateTurkish()
++    // ============================================================
++
++    // CONFIRMED_SALE: agent messages only
++    private static readonly Regex[] SalePatterns = new[]
++    {
++        new Regex(@"siparisiniz.*olusturulmustur", RegexOptions.Compiled),
++        new Regex(@"siparisiniz.*onaylandi", RegexOptions.Compiled),
++        new Regex(@"siparisiniz.*hazirlaniyor", RegexOptions.Compiled),
++        new Regex(@"guzel gunlerde giymenizi", RegexOptions.Compiled),
++        new Regex(@"mutlu gunlerde giymenizi", RegexOptions.Compiled),
++        new Regex(@"kargo.*takip\s*(no|numar)", RegexOptions.Compiled),
++        new Regex(@"aras.*kargo.*takip", RegexOptions.Compiled),
++        new Regex(@"yurtici.*kargo.*takip", RegexOptions.Compiled),
++        new Regex(@"mng.*kargo.*takip", RegexOptions.Compiled),
++        new Regex(@"havale.*yapildi", RegexOptions.Compiled),
++        new Regex(@"eft.*yapildi", RegexOptions.Compiled),
++        new Regex(@"odeme.*alindi", RegexOptions.Compiled),
++        new Regex(@"odemeniz.*onaylandi", RegexOptions.Compiled),
++    };
++
++    // OFFERED: agent messages
++    private static readonly Regex[] OfferedPatterns = new[]
++    {
++        new Regex(@"siparisinizi.*olusturalim", RegexOptions.Compiled),
++        new Regex(@"siparis.*olusturayim", RegexOptions.Compiled),
++        new Regex(@"siparis.*verelim", RegexOptions.Compiled),
++        new Regex(@"\bkargo\b", RegexOptions.Compiled),
++    };
++
++    // RETURN: any message
++    private static readonly Regex[] ReturnPatterns = new[]
++    {
++        new Regex(@"iade.*taleb", RegexOptions.Compiled),
++        new Regex(@"degisim.*taleb", RegexOptions.Compiled),
++        new Regex(@"geri.*gonder", RegexOptions.Compiled),
++        new Regex(@"kargo.*iade", RegexOptions.Compiled),
++    };
++
++    // COMPLAINT: any message
++    private static readonly Regex[] ComplaintPatterns = new[]
++    {
++        new Regex(@"memnun\s*degil", RegexOptions.Compiled),
++        new Regex(@"yanlis.*geldi", RegexOptions.Compiled),
++        new Regex(@"bozuk.*geldi", RegexOptions.Compiled),
++        new Regex(@"berbat|rezalet", RegexOptions.Compiled),
++    };
++
++    public ThreaderService(AnalyticsRepository repo, AnalyticsConnectionFactory db, TextNormalizer normalizer, JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _db = db;
++        _normalizer = normalizer;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Run Stage 2: stream messages from DB, group by conversation, detect outcomes, insert conversations.
++    /// Streams to avoid loading all messages into RAM at once.
++    /// Returns total conversation count.
++    /// </summary>
++    public async Task<int> RunAsync(int analysisId, int tenantId,
++        Func<StageProgress, Task> onProgress, CancellationToken ct)
++    {
++        _logger.SystemInfo($"[ThreaderService] Starting Stage 2 for analysis {analysisId}");
++
++        var batchSize = 500;
++        var batch = new List<Conversation>(batchSize);
++        var totalConversations = 0;
++        var totalMessages = 0;
++
++        await foreach (var conv in StreamConversationsAsync(analysisId, tenantId, ct))
++        {
++            ct.ThrowIfCancellationRequested();
++            batch.Add(conv);
++            totalMessages += conv.MessageCount;
++
++            if (batch.Count >= batchSize)
++            {
++                await _repo.BatchInsertConversationsAsync(analysisId, tenantId, batch, ct);
++                totalConversations += batch.Count;
++                batch.Clear();
++
++                await onProgress(new StageProgress
++                {
++                    Stage = "threading",
++                    StageNumber = 2,
++                    TotalStages = 3,
++                    Percent = 50, // Cannot know total upfront in streaming mode
++                    Message = $"Threaded {totalConversations:N0} conversations so far..."
++                });
++            }
++        }
++
++        // Flush remaining batch
++        if (batch.Count > 0)
++        {
++            await _repo.BatchInsertConversationsAsync(analysisId, tenantId, batch, ct);
++            totalConversations += batch.Count;
++        }
++
++        // Update totals on the analysis record
++        await _repo.UpdateAnalysisTotalsAsync(analysisId, totalMessages, totalConversations, ct);
++
++        await onProgress(new StageProgress
++        {
++            Stage = "threading",
++            StageNumber = 2,
++            TotalStages = 3,
++            Percent = 100,
++            Message = $"Threaded {totalConversations:N0} conversations, {totalMessages:N0} messages"
++        });
++
++        _logger.SystemInfo($"[ThreaderService] Stage 2 complete: {totalConversations:N0} conversations, {totalMessages:N0} messages");
++        return totalConversations;
++    }
++
++    /// <summary>
++    /// Stream messages from DB ordered by (conversation_id, timestamp) and yield one Conversation
++    /// at a time as conversation boundaries are detected. Only one conversation's messages in RAM.
++    /// </summary>
++    private async IAsyncEnumerable<Conversation> StreamConversationsAsync(
++        int analysisId, int tenantId,
++        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT conversation_id, message_text, sender_type, agent_name, timestamp
++            FROM wa_messages
++            WHERE analysis_id = @aid AND tenant_id = @tid
++            ORDER BY conversation_id, timestamp";
++        cmd.Parameters.AddWithValue("aid", analysisId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++
++        string? currentConvId = null;
++        var messages = new List<(string text, string senderType, string agentName, DateTime timestamp)>();
++
++        while (await reader.ReadAsync(ct))
++        {
++            var convId = reader.GetString(0);
++            var text = reader.IsDBNull(1) ? "" : reader.GetString(1);
++            var senderType = reader.GetString(2);
++            var agentName = reader.IsDBNull(3) ? "" : reader.GetString(3);
++            var timestamp = reader.GetDateTime(4);
++
++            if (currentConvId != null && convId != currentConvId)
++            {
++                // Conversation boundary: emit previous conversation
++                yield return BuildConversation(currentConvId, messages);
++                messages.Clear();
++            }
++
++            currentConvId = convId;
++            messages.Add((text, senderType, agentName, timestamp));
++        }
++
++        // Emit last conversation
++        if (currentConvId != null && messages.Count > 0)
++            yield return BuildConversation(currentConvId, messages);
++    }
++
++    /// <summary>
++    /// Build a Conversation from sorted messages with outcome detection.
++    /// </summary>
++    private Conversation BuildConversation(string convId, List<(string text, string senderType, string agentName, DateTime timestamp)> messages)
++    {
++        var customerMessages = messages.Where(m => m.senderType == "CUSTOMER").ToList();
++        var agentMessages = messages.Where(m => m.senderType == "ME").ToList();
++
++        // Primary agent: agent with most messages
++        var primaryAgent = agentMessages
++            .Where(m => !string.IsNullOrEmpty(m.agentName))
++            .GroupBy(m => m.agentName)
++            .OrderByDescending(g => g.Count())
++            .Select(g => g.Key)
++            .FirstOrDefault() ?? "";
++
++        // First response time: first customer msg -> first agent response
++        double firstResponseMinutes = 0;
++        if (customerMessages.Count > 0 && agentMessages.Count > 0)
++        {
++            var firstCustomerTime = customerMessages[0].timestamp;
++            var firstAgentAfter = agentMessages.FirstOrDefault(a => a.timestamp > firstCustomerTime);
++            if (firstAgentAfter.timestamp > DateTime.MinValue)
++            {
++                firstResponseMinutes = (firstAgentAfter.timestamp - firstCustomerTime).TotalMinutes;
++            }
++        }
++
++        // Product codes: extract from all messages
++        var allText = string.Join(" ", messages.Select(m => m.text));
++        var productCodes = ProductCodeRegex.Matches(allText)
++            .Select(m => m.Groups[1].Value)
++            .Distinct()
++            .ToList();
++
++        // Outcome detection (priority order)
++        var outcome = DetectOutcome(messages);
++
++        // Business phone: from first message (if available, stored elsewhere)
++        var startTime = messages[0].timestamp;
++        var endTime = messages[^1].timestamp;
++
++        return new Conversation
++        {
++            ConversationId = convId,
++            BusinessPhone = "", // Set from context if needed
++            StartTime = startTime,
++            EndTime = endTime,
++            DurationMinutes = (int)(endTime - startTime).TotalMinutes,
++            MessageCount = messages.Count,
++            CustomerMessageCount = customerMessages.Count,
++            AgentMessageCount = agentMessages.Count,
++            PrimaryAgent = primaryAgent,
++            FirstResponseMinutes = firstResponseMinutes,
++            Outcome = outcome,
++            ProductCodes = string.Join("|", productCodes),
++            FirstCustomerMsg = customerMessages.Count > 0 ? Truncate(customerMessages[0].text, 500) : "",
++            LastAgentMsg = agentMessages.Count > 0 ? Truncate(agentMessages[^1].text, 500) : ""
++        };
++    }
++
++    /// <summary>
++    /// Detect conversation outcome based on regex patterns (priority order).
++    /// Text is transliterated to ASCII via TextNormalizer to avoid encoding issues.
++    /// </summary>
++    private string DetectOutcome(List<(string text, string senderType, string agentName, DateTime timestamp)> messages)
++    {
++        // Transliterate all texts once for robust matching (Turkish -> ASCII)
++        var agentTransliterated = messages
++            .Where(m => m.senderType == "ME")
++            .Select(m => _normalizer.TransliterateTurkish(m.text))
++            .ToList();
++        var allTransliterated = messages
++            .Select(m => _normalizer.TransliterateTurkish(m.text))
++            .ToList();
++
++        // Priority 1: CONFIRMED_SALE (agent messages only)
++        foreach (var text in agentTransliterated)
++        {
++            if (SalePatterns.Any(p => p.IsMatch(text)))
++                return "sale";
++        }
++
++        // Priority 2: OFFERED (agent messages)
++        foreach (var text in agentTransliterated)
++        {
++            if (OfferedPatterns.Any(p => p.IsMatch(text)))
++                return "offered";
++        }
++
++        // Priority 3: RETURN (any message)
++        foreach (var text in allTransliterated)
++        {
++            if (ReturnPatterns.Any(p => p.IsMatch(text)))
++                return "return";
++        }
++
++        // Priority 4: COMPLAINT (any message)
++        foreach (var text in allTransliterated)
++        {
++            if (ComplaintPatterns.Any(p => p.IsMatch(text)))
++                return "complaint";
++        }
++
++        // Priority 5: ABANDONED (<=2 messages)
++        if (messages.Count <= 2)
++            return "abandoned";
++
++        // Priority 6: NO_RESPONSE (last message is from customer)
++        if (messages[^1].senderType == "CUSTOMER")
++            return "no_response";
++
++        // Default: NO_SALE
++        return "no_sale";
++    }
++
++    private static string Truncate(string text, int maxLength)
++    {
++        if (string.IsNullOrEmpty(text)) return "";
++        return text.Length <= maxLength ? text : text[..maxLength];
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/PipelineOrchestrator.cs b/src/Invekto.WhatsAppAnalytics/Services/PipelineOrchestrator.cs
+new file mode 100644
+index 0000000..87ffe59
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/PipelineOrchestrator.cs
+@@ -0,0 +1,101 @@
++using System.Diagnostics;
++using System.Text.Json;
++using Invekto.Shared.Logging;
++using Invekto.WhatsAppAnalytics.Data;
++using Invekto.WhatsAppAnalytics.Models;
++using Invekto.WhatsAppAnalytics.Services.Pipeline;
++
++namespace Invekto.WhatsAppAnalytics.Services;
++
++/// <summary>
++/// Orchestrates pipeline stages 1-3 (Phase A) sequentially.
++/// Updates wa_analyses status and stage_progress after each stage.
++/// </summary>
++public sealed class PipelineOrchestrator
++{
++    private readonly AnalyticsRepository _repo;
++    private readonly CleanerService _cleaner;
++    private readonly ThreaderService _threader;
++    private readonly StatsService _stats;
++    private readonly JsonLinesLogger _logger;
++
++    public PipelineOrchestrator(
++        AnalyticsRepository repo,
++        CleanerService cleaner,
++        ThreaderService threader,
++        StatsService stats,
++        JsonLinesLogger logger)
++    {
++        _repo = repo;
++        _cleaner = cleaner;
++        _threader = threader;
++        _stats = stats;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Run the full pipeline for an analysis job.
++    /// Updates status to cleaning -> threading -> stats -> completed (or error).
++    /// </summary>
++    public async Task RunAsync(AnalysisProcessJob job, CancellationToken ct)
++    {
++        var sw = Stopwatch.StartNew();
++        var analysisId = job.AnalysisId;
++        var tenantId = job.TenantId;
++
++        _logger.SystemInfo($"[PipelineOrchestrator] Starting pipeline for analysis {analysisId}, tenant {tenantId}");
++
++        // Progress callback: update wa_analyses.stage_progress
++        async Task OnProgress(StageProgress progress)
++        {
++            await _repo.UpdateAnalysisStatusAsync(analysisId, progress.Stage, progress.ToJson(), ct);
++        }
++
++        // ============================================================
++        // Stage 1: Cleaning
++        // ============================================================
++        await _repo.UpdateAnalysisStatusAsync(analysisId, "cleaning", null, ct);
++
++        var messageCount = await _cleaner.RunAsync(
++            analysisId, tenantId, job.FilePath, job.Delimiter,
++            OnProgress, ct);
++
++        _logger.SystemInfo($"[PipelineOrchestrator] Stage 1 complete: {messageCount:N0} messages inserted");
++
++        if (messageCount == 0)
++        {
++            await _repo.FailAnalysisAsync(analysisId, "No valid messages found in CSV file");
++            return;
++        }
++
++        // ============================================================
++        // Stage 2: Threading
++        // ============================================================
++        await _repo.UpdateAnalysisStatusAsync(analysisId, "threading", null, ct);
++
++        var conversationCount = await _threader.RunAsync(
++            analysisId, tenantId, OnProgress, ct);
++
++        _logger.SystemInfo($"[PipelineOrchestrator] Stage 2 complete: {conversationCount:N0} conversations");
++
++        // ============================================================
++        // Stage 3: Stats
++        // ============================================================
++        await _repo.UpdateAnalysisStatusAsync(analysisId, "stats", null, ct);
++
++        var analysis = await _repo.GetAnalysisAsync(tenantId, analysisId, ct);
++        var configJson = analysis?.ConfigJson;
++
++        await _stats.RunAsync(analysisId, tenantId, configJson, OnProgress, ct);
++
++        // ============================================================
++        // Complete
++        // ============================================================
++        await _repo.CompleteAnalysisAsync(analysisId, ct);
++
++        sw.Stop();
++        _logger.SystemInfo(
++            $"[PipelineOrchestrator] Pipeline complete for analysis {analysisId}: " +
++            $"{messageCount:N0} messages, {conversationCount:N0} conversations in {sw.ElapsedMilliseconds}ms");
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/Services/TextNormalizer.cs b/src/Invekto.WhatsAppAnalytics/Services/TextNormalizer.cs
+new file mode 100644
+index 0000000..37321ce
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/Services/TextNormalizer.cs
+@@ -0,0 +1,193 @@
++using System.Globalization;
++using System.Security.Cryptography;
++using System.Text;
++using System.Text.RegularExpressions;
++
++namespace Invekto.WhatsAppAnalytics.Services;
++
++/// <summary>
++/// Turkish text normalization utilities.
++/// C# port of Python normalizer.py + deduplicator.py.
++/// </summary>
++public sealed class TextNormalizer
++{
++    // Zero-width characters to remove
++    private static readonly Regex ZeroWidthRegex = new(@"[\u200b\u200c\u200d\ufeff]", RegexOptions.Compiled);
++
++    // Collapse multiple whitespace
++    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
++
++    // Strip surrounding quotes
++    private static readonly Regex SurroundingQuotesRegex = new(@"^[""']+|[""']+$", RegexOptions.Compiled);
++
++    // Extract digits only (for phone normalization)
++    private static readonly Regex NonDigitRegex = new(@"[^\d]", RegexOptions.Compiled);
++
++    // Remove punctuation (for comparison)
++    private static readonly Regex PunctuationRegex = new(@"[^\w\s]", RegexOptions.Compiled);
++
++    // Turkish character mapping for comparison (uppercase -> lowercase ASCII)
++    private static readonly Dictionary<char, char> TurkishCharMap = new()
++    {
++        { '\u0130', 'i' }, // İ -> i
++        { '\u015E', 's' }, // Ş -> s
++        { '\u011E', 'g' }, // Ğ -> g
++        { '\u00DC', 'u' }, // Ü -> u
++        { '\u00D6', 'o' }, // Ö -> o
++        { '\u00C7', 'c' }, // Ç -> c
++        { '\u0131', 'i' }, // ı -> i
++        { '\u015F', 's' }, // ş -> s
++        { '\u011F', 'g' }, // ğ -> g
++        { '\u00FC', 'u' }, // ü -> u
++        { '\u00F6', 'o' }, // ö -> o
++        { '\u00E7', 'c' }, // ç -> c
++    };
++
++    /// <summary>
++    /// Normalize text: Unicode NFC + strip quotes + remove zero-width + collapse spaces.
++    /// Port of Python normalize_text().
++    /// </summary>
++    public string NormalizeText(string? text)
++    {
++        if (string.IsNullOrEmpty(text)) return "";
++
++        // Unicode NFC normalization
++        var normalized = text.Normalize(NormalizationForm.FormC);
++
++        // Strip surrounding quotes
++        normalized = SurroundingQuotesRegex.Replace(normalized, "");
++
++        // Remove zero-width characters
++        normalized = ZeroWidthRegex.Replace(normalized, "");
++
++        // Collapse multiple spaces
++        normalized = MultiSpaceRegex.Replace(normalized, " ");
++
++        return normalized.Trim();
++    }
++
++    /// <summary>
++    /// Normalize agent name: strip + collapse spaces.
++    /// </summary>
++    public string NormalizeAgentName(string? name)
++    {
++        if (string.IsNullOrEmpty(name)) return "";
++        return MultiSpaceRegex.Replace(name.Trim(), " ");
++    }
++
++    /// <summary>
++    /// Normalize Turkish phone number: extract digits, add 90 prefix if needed.
++    /// Port of Python normalize_phone().
++    /// </summary>
++    public string NormalizePhone(string? phone)
++    {
++        if (string.IsNullOrEmpty(phone)) return "";
++
++        var digits = NonDigitRegex.Replace(phone, "");
++
++        // 10 digits starting with 5 -> add "90" prefix
++        if (digits.Length == 10 && digits.StartsWith('5'))
++            return "90" + digits;
++
++        // 11 digits starting with "05" -> add "9" prefix
++        if (digits.Length == 11 && digits.StartsWith("05"))
++            return "9" + digits;
++
++        return digits;
++    }
++
++    /// <summary>
++    /// Transliterate Turkish special chars to ASCII equivalents (lowercase).
++    /// Preserves punctuation and spaces. Used for regex matching robustness.
++    /// </summary>
++    public string TransliterateTurkish(string? text)
++    {
++        if (string.IsNullOrEmpty(text)) return "";
++
++        var lower = text.ToLowerInvariant();
++        var sb = new StringBuilder(lower.Length);
++        foreach (var ch in lower)
++        {
++            sb.Append(TurkishCharMap.TryGetValue(ch, out var mapped) ? mapped : ch);
++        }
++        return sb.ToString();
++    }
++
++    /// <summary>
++    /// Clean text for hash comparison: lowercase + Turkish char map + remove punctuation.
++    /// Port of Python clean_for_comparison().
++    /// </summary>
++    public string CleanForComparison(string? text)
++    {
++        if (string.IsNullOrEmpty(text)) return "";
++
++        var lower = text.ToLowerInvariant();
++
++        // Apply Turkish character mapping
++        var sb = new StringBuilder(lower.Length);
++        foreach (var ch in lower)
++        {
++            sb.Append(TurkishCharMap.TryGetValue(ch, out var mapped) ? mapped : ch);
++        }
++
++        // Remove punctuation
++        var cleaned = PunctuationRegex.Replace(sb.ToString(), "");
++
++        // Collapse spaces
++        return MultiSpaceRegex.Replace(cleaned, " ").Trim();
++    }
++
++    /// <summary>
++    /// Compute message hash for dedup: SHA256(conversation_id + cleaned_text)[:16].
++    /// Port of Python compute_message_hash().
++    /// </summary>
++    public string ComputeMessageHash(string conversationId, string cleanedText)
++    {
++        var input = conversationId + cleanedText;
++        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
++        return Convert.ToHexString(hashBytes)[..16].ToLowerInvariant();
++    }
++
++    /// <summary>
++    /// Try parse a timestamp from separate date + time strings.
++    /// Expected formats: date="YYYY-MM-DD" or "DD.MM.YYYY", time="HH:MM:SS" or "HH:MM".
++    /// </summary>
++    public DateTime? TryParseTimestamp(string? date, string? time)
++    {
++        if (string.IsNullOrWhiteSpace(date)) return null;
++
++        var dateStr = date.Trim();
++        var timeStr = (time ?? "00:00:00").Trim();
++
++        // Try combined
++        var combined = $"{dateStr} {timeStr}";
++        var formats = new[]
++        {
++            "yyyy-MM-dd HH:mm:ss",
++            "yyyy-MM-dd HH:mm",
++            "dd.MM.yyyy HH:mm:ss",
++            "dd.MM.yyyy HH:mm",
++            "M/d/yyyy HH:mm:ss",
++            "M/d/yyyy HH:mm"
++        };
++
++        if (DateTime.TryParseExact(combined, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
++            return result;
++
++        // Last resort: general parse
++        if (DateTime.TryParse(combined, CultureInfo.InvariantCulture, DateTimeStyles.None, out result))
++            return result;
++
++        return null;
++    }
++
++    /// <summary>
++    /// Normalize sender_type to uppercase: ME or CUSTOMER.
++    /// </summary>
++    public string NormalizeSenderType(string? senderType)
++    {
++        if (string.IsNullOrWhiteSpace(senderType)) return "";
++        var upper = senderType.Trim().ToUpperInvariant();
++        return upper == "ME" || upper == "CUSTOMER" ? upper : "";
++    }
++}
+diff --git a/src/Invekto.WhatsAppAnalytics/appsettings.json b/src/Invekto.WhatsAppAnalytics/appsettings.json
+new file mode 100644
+index 0000000..b09f7c3
+--- /dev/null
++++ b/src/Invekto.WhatsAppAnalytics/appsettings.json
+@@ -0,0 +1,21 @@
++{
++  "Service": {
++    "ListenPort": 7109
++  },
++  "ConnectionStrings": {
++    "PostgreSQL": "Host=localhost;Database=invekto;Username=invekto;Password=REPLACE_ME"
++  },
++  "Jwt": {
++    "SecretKey": "REPLACE_WITH_JWT_SECRET",
++    "Issuer": "invekto",
++    "Audience": "invekto",
++    "ClockSkewSeconds": 60
++  },
++  "Storage": {
++    "UploadPath": "uploads",
++    "MaxFileSizeMb": 500
++  },
++  "Logging": {
++    "FilePath": "logs"
++  }
++}

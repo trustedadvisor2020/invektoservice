@@ -86,6 +86,40 @@ public static class ErrorCodes
     public const string OutboundMessageSendCallbackFailed = "INV-OB-009";
     public const string OutboundTooManyRecipients = "INV-OB-010";
 
+    // Knowledge errors (INV-KN-xxx) -- GR-2.1
+    public const string KnowledgeImportPathNotFound = "INV-KN-001";
+    public const string KnowledgeImportParseError = "INV-KN-002";
+    public const string KnowledgeImportDbError = "INV-KN-003";
+    public const string KnowledgeSearchFailed = "INV-KN-004";
+    public const string KnowledgeOpenAITimeout = "INV-KN-005";
+    public const string KnowledgeOpenAIRateLimit = "INV-KN-006";
+    public const string KnowledgeOpenAIError = "INV-KN-007";
+    public const string KnowledgeFaqNotFound = "INV-KN-008";
+    public const string KnowledgeInvalidRequest = "INV-KN-009";
+    public const string KnowledgePgvectorMissing = "INV-KN-010";
+    public const string KnowledgeFileTooLarge = "INV-KN-011";
+    public const string KnowledgeInvalidFileType = "INV-KN-012";
+    public const string KnowledgePdfExtractionFailed = "INV-KN-013";
+    public const string KnowledgeDocumentNotFound = "INV-KN-014";
+    public const string KnowledgeUploadFailed = "INV-KN-015";
+
+    // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
+    public const string WAAnalysisNotFound = "INV-WA-001";
+    public const string WAAnalysisInProgress = "INV-WA-002";
+    public const string WACsvParseError = "INV-WA-003";
+    public const string WACsvTooLarge = "INV-WA-004";
+    public const string WACsvInvalidHeader = "INV-WA-005";
+    public const string WAPipelineStageError = "INV-WA-006";
+    public const string WAClaudeApiError = "INV-WA-007";
+    public const string WAClaudeParseError = "INV-WA-008";
+    public const string WAEmbeddingError = "INV-WA-009";
+    public const string WAInvalidDateRange = "INV-WA-010";
+    public const string WAInvalidFilter = "INV-WA-011";
+    public const string WAAnalysisDeleteFailed = "INV-WA-012";
+    public const string WATenantMismatch = "INV-WA-013";
+    public const string WAStorageError = "INV-WA-014";
+    public const string WADatabaseError = "INV-WA-015";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

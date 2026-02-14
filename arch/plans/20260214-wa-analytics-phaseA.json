@@ -1,0 +1,130 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260214-wa-analytics-phaseA",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-14T21:00:00Z",
+  "updated_at": "2026-02-15T12:30:00Z",
+  "plan": {
+    "summary": "WA-5/6 Phase A: WhatsApp Analytics C# Microservice (Port 7109). Full C# port of Python pipeline stages 1-3 (cleaner, threader, stats). New Invekto.WhatsAppAnalytics project with PostgreSQL schema (10 tables), streaming CSV parser (100K chunks), Turkish text normalization (TransliterateTurkish for regex safety), SHA256 dedup, outcome regex detection (25 ASCII-only patterns with transliteration), streaming conversation grouping (IAsyncEnumerable), background processing (IHostedService + ConcurrentQueue), restart recovery (GUID filename + 30min stale timeout + FOR UPDATE SKIP LOCKED), and REST API (upload, CRUD, metadata query). Iter 1: recovery path, mojibake regex, silent catches, RAM streaming, MARS fix. Iter 2: GetRange O(1), atomic claim. Iter 3: recovering status re-claim. Iter 4: stale timeout to prevent active analysis re-claim. 2644 LOC, 19 files.",
+    "q_intent": "WA-5/6 once calistir. Full C# port, PostgreSQL, 5-50M mesaj/tenant. Phase A: Stages 1-3 + infra.",
+    "interview_notes": "Queue reordered: WA-5/6 before WA-4. Full C# port chosen over orchestrator approach. PostgreSQL (mevcut invekto DB). OpenAI embeddings for FAQ clustering (Phase B). Separate plans for WA-5/6 and WA-4."
+  },
+  "allowed_files": [
+    "src/Invekto.WhatsAppAnalytics/**",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/db/whatsapp-analytics.sql",
+    "arch/plans/20260214-wa-analytics-phaseA.json"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.WhatsAppAnalytics/Invekto.WhatsAppAnalytics.csproj", "is_new": true, "change": "Project scaffold: net8.0, WindowsServices, Shared reference"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": true, "change": "Kestrel 7109, JWT, upload/CRUD/metadata endpoints, background service registration"},
+    {"path": "src/Invekto.WhatsAppAnalytics/appsettings.json", "is_new": true, "change": "Config template: PG connection, JWT, storage"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Data/AnalyticsConnectionFactory.cs", "is_new": true, "change": "PostgreSQL NpgsqlDataSource pooling"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Data/AnalyticsRepository.cs", "is_new": true, "change": "All DB ops: wa_analyses CRUD, wa_messages/wa_conversations batch insert, wa_metadata upsert, atomic claim with stale timeout"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Models/CleanedMessage.cs", "is_new": true, "change": "Stage 1 output DTO"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Models/Conversation.cs", "is_new": true, "change": "Stage 2 output DTO with outcome field"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Models/AnalysisJob.cs", "is_new": true, "change": "Job tracking + StageProgress + AnalysisProcessJob DTOs"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/CsvStreamReader.cs", "is_new": true, "change": "IAsyncEnumerable streaming CSV (100K chunks, BOM detect, quoted fields)"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/TextNormalizer.cs", "is_new": true, "change": "Turkish text: Unicode NFC, char map, phone normalize, SHA256 dedup hash, TransliterateTurkish"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/CleanerService.cs", "is_new": true, "change": "Stage 1: Stream CSV -> normalize -> dedup (5s window) -> batch insert wa_messages"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs", "is_new": true, "change": "Stage 2: IAsyncEnumerable streaming -> outcome regex (25 ASCII patterns + transliterate) -> wa_conversations"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/StatsService.cs", "is_new": true, "change": "Stage 3: Aggregate stats (agents, temporal, outcomes) -> wa_metadata JSONB, sequential readers"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/PipelineOrchestrator.cs", "is_new": true, "change": "Run stages 1-3 sequentially, update status/progress"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Services/AnalysisProcessingService.cs", "is_new": true, "change": "BackgroundService + ConcurrentQueue + restart recovery with atomic claim"},
+    {"path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "is_new": false, "change": "+WhatsAppAnalyticsPort=7109, +ServiceName"},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+INV-WA-001~015 (15 error codes)"},
+    {"path": "arch/db/whatsapp-analytics.sql", "is_new": true, "change": "Full schema: 10 tables, indexes, trigger, grants"}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "0f5ac5313255b9d41bc31331737e6ece08c3694db097642e7d5cc17795049880",
+    "full_path": "arch/plans/diffs/20260214-wa-analytics-phaseA.diff",
+    "stats": {"insertions": 2644, "deletions": 0, "files_count": 19}
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build src/Invekto.WhatsAppAnalytics",
+    "timestamp": "2026-02-15T12:15:00Z"
+  },
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/", "src/Invekto.Knowledge/", "tools/whatsapp-analyzer/"],
+    "non_goals": ["Phase B NLP stages 4-7", "Phase C query endpoints + Backend proxy + deploy infra", "WA-4 Dashboard UI"],
+    "intentional_exclusions": ["Phase B tables (wa_intents, wa_sentiments, wa_products, wa_prices, wa_faq_pairs, wa_faq_clusters) included in schema for forward-compatibility but not used in Phase A code"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs:upload endpoint - CSV validation, file save, header check",
+      "Program.cs:all endpoints - ErrorResponse.Create with INV-WA codes",
+      "AnalysisProcessingService.cs:ExecuteAsync - per-job catch -> FailAnalysisAsync",
+      "AnalysisProcessingService.cs:StartAsync - restart recovery with file existence check",
+      "PipelineOrchestrator.cs:RunAsync - 0-message check -> FailAnalysisAsync",
+      "StatsService.cs:ParseTenantInfo - JsonSerializer.Deserialize catch"
+    ],
+    "user_facing_errors": [
+      "INV-WA-003: Multipart form data required / file is required",
+      "INV-WA-004: File exceeds {maxFileSizeMb}MB limit",
+      "INV-WA-005: Missing required columns: {list}",
+      "INV-WA-001: Analysis {id} not found",
+      "INV-WA-012: Analysis delete failed",
+      "INV-WA-014: File upload failed",
+      "INV-WA-015: Database error"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All pipeline failures caught in AnalysisProcessingService.ExecuteAsync and persisted via FailAnalysisAsync. Upload failures return typed ErrorResponse. All catch blocks now log warnings (iter 1 fix). No broad catch-and-swallow blocks."
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Pipeline progress invisible - user uploads CSV and waits blindly",
+      "suggestion": "SSE endpoint for real-time stage progress: 'Stage 2/3: Threading... 45% (73K/164K conversations)'",
+      "aha_moment": "User sees live progress bar instead of loading spinner"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Pipeline crash loses all progress - 2M messages re-parsed from scratch",
+      "suggestion": "Stage checkpoint: pipeline crash at Stage 3 -> restart at Stage 3 (skip 1-2)",
+      "aha_moment": "Recovery takes seconds instead of re-processing hours of data"
+    },
+    {
+      "category": "UX",
+      "user_pain": "CSV format errors discovered only after upload starts processing",
+      "suggestion": "Pre-upload validation: check header, delimiter, encoding before queueing pipeline",
+      "aha_moment": "Instant feedback on upload vs finding out 30 minutes later"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Agent sale rates misleading without confirmed vs offered split",
+      "suggestion": "Track offered->confirmed conversion rate per agent (13 sale patterns vs 4 offered)",
+      "aha_moment": "Manager sees Agent X converts 40% of offers vs Agent Y only 15%"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "10.5% conversations abandoned - no response from agent",
+      "suggestion": "Alert when conversation unanswered >15 min during business hours",
+      "aha_moment": "Abandoned rate drops from 10.5% to <3% with proactive alerts"
+    }
+  ],
+  "verification_questions": [
+    {"id": "Q1", "question": "CleanerService SHA256 dedup: same conv + same hash + <=5s window dogru implement edildi mi? Edge case: timestamp siralama, ilk mesaj dedup bypass?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q2", "question": "ThreaderService outcome regex: 25 pattern Turkish char handling (ş/s, ö/o, ü/u, ç/c, ğ/g, ı/i) IgnoreCase flag ile calisiyor mu? Priority order dogru mu?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q3", "question": "AnalysisProcessingService restart recovery: pending analizler file existence check ile validate ediliyor mu? Race condition (ayni analysis iki kez process) riski var mi? Stale timeout (30 min) aktif analysis'leri koruyor mu?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
+    {"id": "Q4", "question": "BatchInsert 50-row VALUES: SQL injection riski var mi? Parameterized query dogru kullaniliyor mu?", "category": "Service/Auth", "codex_answer": null, "codex_result": null},
+    {"id": "Q5", "question": "Program.cs upload endpoint: file cleanup (orphan) failure durumunda dogru mu? MaxRequestBodySize Kestrel ile sinirli mi?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
+    {"id": "Q6", "question": "StatsService SQL queries: N+1 query riski var mi? GetConversationStatsAsync icinde outcome subquery ayri connection mu?", "category": "Data", "codex_answer": null, "codex_result": null}
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-15T12:30:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-15T12:30:00Z",
+    "iteration": 4,
+    "blocking_issues": [],
+    "escalation_required": false,
+    "escalation_reason": null,
+    "escalation_category": null
+  }
+}
