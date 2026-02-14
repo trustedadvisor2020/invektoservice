@@ -1,0 +1,66 @@
+# WhatsApp Analyzer Configuration
+# Per-tenant/company config
+
+tenant:
+  id: 1
+  name: "ebrumoda"
+  sector: "fashion_ecommerce"
+
+csv:
+  delimiter: ";"
+  encoding: "utf-8-sig"  # UTF-8 with BOM
+  columns:
+    - business_phone
+    - date
+    - time
+    - conversation_id
+    - message_text
+    - sender_type
+    - agent_name
+
+processing:
+  chunk_size: 100000
+  dedup_window_seconds: 5  # Messages within 5s with same text = duplicate
+  min_conversation_messages: 2  # Ignore single-message conversations
+
+paths:
+  raw_csv: "data/raw/ebrumoda.csv"
+  cleaned_csv: "data/processed/cleaned_messages.csv"
+  conversations_csv: "data/processed/conversations.csv"
+  metadata_json: "data/processed/metadata.json"
+  exports_dir: "data/exports"
+  nlp_dir: "data/nlp"
+  bi_dir: "data/bi"
+  training_dir: "data/training"
+
+nlp:
+  claude_model: "claude-haiku-4-5-20251001"
+  batch_size: 50  # Messages per API call
+  keyword_confidence: 1.0
+  claude_min_confidence: 0.7
+
+intents:
+  size_inquiry:
+    keywords: ["beden", "numara", "kaç beden", "boy kilo", "manken", "S M L XL"]
+  price_inquiry:
+    keywords: ["fiyat", "kaç tl", "ne kadar", "ücret", "para", "₺"]
+  stock_inquiry:
+    keywords: ["stok", "var mı", "kaldı mı", "tükendi", "bitti mi"]
+  shipping_inquiry:
+    keywords: ["kargo", "teslimat", "ne zaman gelir", "gönderim", "aras", "yurtiçi", "mng"]
+  return_request:
+    keywords: ["iade", "geri gönder", "değişim", "uymadı", "büyük geldi", "küçük geldi", "dar geldi", "geniş geldi"]
+  complaint:
+    keywords: ["kötü", "bozuk", "yanlış geldi", "memnun değilim", "berbat", "rezalet", "saygısızlık"]
+  order_confirmation:
+    keywords: ["sipariş", "alıyorum", "gönder", "onaylıyorum", "siparişimi oluştur"]
+  greeting:
+    keywords: ["merhaba", "selam", "iyi günler", "merhabalar", "günaydın"]
+  thank_you:
+    keywords: ["teşekkür", "sağol", "sağolun", "çok iyi", "harika", "süper", "mükemmel"]
+  product_inquiry:
+    pattern: "\\b\\d{4}\\b"  # 4-digit product codes
+  discount_inquiry:
+    keywords: ["indirim", "kampanya", "taksit", "promosyon", "kupon"]
+  address_info:
+    keywords: ["adres", "mahalle", "sokak", "cadde", "il ", "ilçe", "posta kodu"]

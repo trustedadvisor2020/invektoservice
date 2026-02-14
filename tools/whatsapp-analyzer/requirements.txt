@@ -1,0 +1,20 @@
+# WhatsApp Conversation Analytics Pipeline
+# Python 3.12+
+
+# Core data processing
+pandas==2.2.3
+numpy==1.26.4
+pyyaml==6.0.2
+
+# Progress & logging
+tqdm==4.67.1
+
+# Environment
+python-dotenv==1.0.1
+
+# NLP (Phase 2)
+anthropic==0.43.0
+scikit-learn==1.6.1
+
+# SQL Server connector (Phase 6)
+# pyodbc==5.2.0

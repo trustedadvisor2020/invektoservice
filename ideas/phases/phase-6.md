@@ -34,8 +34,11 @@
 
 > **Servis:** Backend + Dashboard genişleme
 > **Sektör:** Tümü
+>
+> **v4.2 Not:** Basit FRT ölçümü Phase 2'de başlatıldı (GR-2.5.9, `daily_metrics` + `conversation_metadata`).
+> Bu GR tam SLA tracker'ı kurar: hedefler, breach alerts, eskalasyon, niche-özel SLA'lar.
 
-- [ ] **6.1.1** First response time (FRT) + resolution time ölçümü
+- [ ] **6.1.1** FRT + resolution time ölçümünü **genişlet** (Phase 2 basit FRT → tam SLA engine)
 - [ ] **6.1.2** Tenant bazlı SLA hedefleri tanımlama
   - Örnek: FRT <2dk, resolution <30dk
 - [ ] **6.1.3** Breach alerts (email + webhook + dashboard bildirim)

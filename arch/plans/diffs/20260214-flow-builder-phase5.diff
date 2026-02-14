@@ -1,0 +1,363 @@
+diff --git a/arch/active-work.md b/arch/active-work.md
+index 968cdfa..e35b3c3 100644
+--- a/arch/active-work.md
++++ b/arch/active-work.md
+@@ -6,7 +6,7 @@
+ 
+ | Slug | Status | Started | Description |
+ |------|--------|---------|-------------|
+-| (none) | - | - | - |
++| 20260214-flow-builder-phase5 | IN_PROGRESS | 2026-02-14 | Flow Builder Phase 5: Production Integration. Deploy script'e FlowBuilder SPA build adimi eklendi. |
+ 
+ ---
+ 
+diff --git a/arch/plans/20260214-flow-builder-phase5.json b/arch/plans/20260214-flow-builder-phase5.json
+new file mode 100644
+index 0000000..92c8ab0
+--- /dev/null
++++ b/arch/plans/20260214-flow-builder-phase5.json
+@@ -0,0 +1,210 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260214-flow-builder-phase5",
++  "risk": "MEDIUM",
++  "status": "REVIEW",
++  "created_at": "2026-02-14T20:00:00Z",
++  "updated_at": "2026-02-14T22:00:00Z",
++
++  "plan": {
++    "summary": "Flow Builder Phase 5: Production Integration. Deploy script'e Vite SPA build adimi eklenir (lessons-learned: build unutuldu hatasi onlenir). Build marker'a FlowBuilder SPA bilgisi eklenir. Operational: Q production deploy yapar, DB migration'lari dogrular, WapCRM E2E test yapar.",
++    "q_intent": "Phase 5: AutomationOrchestrator v2 production dispatch aktif etme, production deploy (dotnet publish + vite build + NSSM restart), E2E test (WapCRM uzerinden), Flow Builder SPA production erisim kontrolu.",
++    "interview_notes": "1) Scope: Sadece Production Integration (iframe/heatmap/polish sonra). 2) V2 rollout: Feature flag gereksiz -- v1 flow hic yok, production DB bos. Flow version:2 dispatch zaten kodda var. 3) Prod config: Claude API key, FAQ data, SSRF config hepsi hazir. 4) Webhook: WapCRM -> Backend:5000 proxy -> Automation:7108 (mevcut mimari). 5) Deploy: Otomatize -- Vite build bat'a ekle (lessons-learned: unutulabilir). 6) Erisim: Login bypass engelli -- mevcut JWT guard (SPA RequireAuth) + API 401 yeterli. Static dosyalar public ama data JWT olmadan erisilemez. 7) E2E: WapCRM Main App API uzerinden WhatsApp mesaji gonderilecek. 8) Production DB: Bos -- ilk flow bu phase'de olusturulacak."
++  },
++
++  "interview_decisions": {
++    "scope": "Production Integration only -- iframe/heatmap/polish EXCLUDED (future phases)",
++    "v2_rollout": "No feature flag needed -- v1 flows dont exist, flow_config.version=2 dispatch already coded",
++    "deploy_automation": "Vite build step added to bat script before dotnet publish Backend",
++    "auth_model": "Existing SPA RequireAuth + API JWT 401 sufficient -- no additional server-side auth for static files",
++    "webhook_routing": "WapCRM -> Backend:5000/api/v1/webhook/event -> Automation:7108 (existing GR-1.9 bridge)",
++    "e2e_test": "WapCRM Main App API -- real WhatsApp/Instagram messages through existing integration"
++  },
++
++  "implementation_steps": [
++    {
++      "step": 1,
++      "title": "Deploy script -- add FlowBuilder SPA build step",
++      "files": ["dev-to-invekto-services.bat"],
++      "details": "Before Backend dotnet publish: cd FlowBuilder, npm ci, npx vite build. Error handling: if npm/vite fails, abort. Step numbering update [1/6] through [6/6]. Build marker services array'e FlowBuilder eklenir."
++    },
++    {
++      "step": 2,
++      "title": "Verify wwwroot/flow-builder output exists after Vite build",
++      "files": [],
++      "details": "Bat script icinde: Vite build sonrasi wwwroot/flow-builder/index.html varligini kontrol et. Yoksa hata ver ve dur."
++    }
++  ],
++
++  "q_operational_tasks": [
++    {
++      "task": "DB migration check",
++      "details": "Production PostgreSQL'de Phase 3a migration uygulanmis mi kontrol et: ALTER TABLE auto_reply_log ADD COLUMN node_id VARCHAR(100). Yoksa calistir.",
++      "priority": "HIGH",
++      "when": "Deploy oncesi"
++    },
++    {
++      "task": "Deploy",
++      "details": "Guncellenmis dev-to-invekto-services.bat calistir. Vite build + dotnet publish + FTPES upload + NSSM restart.",
++      "priority": "HIGH",
++      "when": "Kod degisikligi sonrasi"
++    },
++    {
++      "task": "Health check",
++      "details": "Deploy sonrasi: curl Backend:5000/health, Automation:7108/health. FlowBuilder SPA: https://services.invekto.com:5000/flow-builder/ erisimi.",
++      "priority": "HIGH",
++      "when": "Deploy sonrasi"
++    },
++    {
++      "task": "Flow Builder ilk flow",
++      "details": "SPA'da login (tenant_id + api_key) -> yeni v2 flow olustur -> basit flow (trigger_start -> message_text -> action_handoff) -> aktive et.",
++      "priority": "MEDIUM",
++      "when": "Health check sonrasi"
++    },
++    {
++      "task": "WapCRM webhook config",
++      "details": "WapCRM Main App'te otomasyon webhook URL'ini Backend:5000/api/v1/webhook/event olarak ayarla. Test tenant icin aktive et.",
++      "priority": "HIGH",
++      "when": "Flow aktive edildikten sonra"
++    },
++    {
++      "task": "E2E WhatsApp test",
++      "details": "Test telefondan WhatsApp mesaji gonder -> WapCRM webhook -> Automation v2 flow -> callback -> WapCRM -> WhatsApp cevap. Beklenen: Flow'daki mesaj metninin WhatsApp'ta gorunmesi.",
++      "priority": "HIGH",
++      "when": "Webhook config sonrasi"
++    }
++  ],
++
++  "allowed_files": [
++    "dev-to-invekto-services.bat",
++    "arch/session-memory.md",
++    "arch/active-work.md",
++    "arch/docs/flow-builder-roadmap.md",
++    "arch/plans/20260214-flow-builder-phase5.json"
++  ],
++
++  "files_changed": [
++    { "path": "dev-to-invekto-services.bat", "is_new": false },
++    { "path": "arch/active-work.md", "is_new": false },
++    { "path": "arch/session-memory.md", "is_new": false },
++    { "path": "arch/plans/20260214-flow-builder-phase5.json", "is_new": true }
++  ],
++
++  "git_diff": {
++    "sha256": "E48274B00FEA29E5AB1E600A0259ECBC9AD585E7976070A076EA6DCED82C2452",
++    "full_path": "arch/plans/diffs/20260214-flow-builder-phase5.diff",
++    "stats": {
++      "insertions": 251,
++      "deletions": 14,
++      "files_count": 4
++    }
++  },
++
++  "build": {
++    "status": "N/A (bat script only - no compile step)"
++  },
++
++  "verification_questions": [
++    {
++      "id": "Q1",
++      "question": "Deploy script'te Vite build adimi Backend dotnet publish'ten ONCE calistiriliyormu? npm ci/vite build hata verirse script duruyormu?",
++      "category": "Process/Policy",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q2",
++      "question": "Vite build sonrasi wwwroot/flow-builder/index.html varlik kontrolu yapiliyormu? Yoksa script hataliyla duruyormu?",
++      "category": "Data",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q3",
++      "question": "Mevcut deploy script davranisi (5 servis build + FTPES upload + flag-based restart) bozulmuyor mu? Geriye donuk uyumluluk korunuyormu?",
++      "category": "Lifecycle",
++      "codex_answer": null,
++      "codex_result": null
++    },
++    {
++      "id": "Q4",
++      "question": "FlowBuilder SPA build adimi mevcut auth/guvenlik yapisini etkiliyor mu? SPA static dosyalari public, API verisi JWT-protected -- bu model korunuyor mu?",
++      "category": "Auth",
++      "codex_answer": null,
++      "codex_result": null
++    }
++  ],
++
++  "scope_discipline": {
++    "forbidden_areas": [
++      "src/Invekto.Automation/Services/ -- handler kodu degismez",
++      "src/Invekto.Backend/FlowBuilder/src/ -- SPA kodu degismez",
++      "src/Invekto.Shared/ -- shared contracts degismez",
++      "arch/contracts/ -- kontratlar degismez"
++    ],
++    "non_goals": [
++      "iframe embed (Phase 5a roadmap)",
++      "AHA #7 Trafik Heatmap (Phase 5b roadmap)",
++      "UX polish / auto-save / shortcuts (Phase 5c roadmap)",
++      "Feature flag / gradual rollout (v1 yok, gereksiz)",
++      "Server-side static file auth (JS public, data JWT-protected)"
++    ],
++    "intentional_exclusions": [
++      "WapCRM webhook config -- Q operational task, kod degisikligi degil",
++      "DB migration -- Q operational task, production DB'de calistirilacak",
++      "E2E test -- Q operational task, manual WhatsApp test"
++    ]
++  },
++
++  "error_handling": {
++    "try_catch_locations": [],
++    "user_facing_errors": [
++      "Deploy script: [ERROR] FlowBuilder SPA build failed!",
++      "Deploy script: [ERROR] FlowBuilder SPA output not found!"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "Deploy script changes are visible in console output. Vite build failure stops the entire deploy process. No silent paths."
++  },
++
++  "aha_moments": [
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Deploy script Vite build adimi icermiyor -- Q her deploy oncesi elle vite build calistirmak zorunda, unutursa production'da eski SPA kalir.",
++      "suggestion": "Deploy script'e otomatik npm ci + vite build ekle. Build output yoksa deploy'u durdur.",
++      "aha_moment": "Q deploy butonuna bastiginda hem backend hem SPA otomatik build edilir. Bir daha 'JS eksik' hatasi yasamaz."
++    },
++    {
++      "category": "UX",
++      "user_pain": "Production'da Flow Builder SPA'ya ilk kez erisecek admin nereden baslamali bilmiyor. Login sonrasi bos flow listesi goruyor.",
++      "suggestion": "Bos flow listesinde 'Ilk Flow'unu Olustur' CTA butonu ve 3 adimli mini tutorial ekle (Phase 5c scope'unda).",
++      "aha_moment": "Admin login yapar, 'Ilk Flow'unu Olustur' butonuna tiklar ve 60 saniyede calisan bir chatbot flow'u olusturur."
++    },
++    {
++      "category": "SPEED",
++      "user_pain": "Deploy script tum servisleri her seferinde build ediyor -- sadece Backend degisse bile Automation/ChatAnalysis build edilir.",
++      "suggestion": "Selective build: degisen servisleri git diff ile tespit et, sadece onlari build et. (Gelecek iyilestirme)",
++      "aha_moment": "Deploy suresi 5 servis yerine 1 servis build'i kadar kisa olur -- 2dk yerine 30sn."
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Production'da v2 flow hata verdiginde Q debug icin sunucuya baglanip log dosyalarini karistirmak zorunda.",
++      "suggestion": "FlowEngineV2 execution log'larini /ops endpoint'ine ekle: son 50 v2 execution path + error. (Phase 5c scope'unda)",
++      "aha_moment": "Q browser'dan /ops acip son 10 dakikadaki tum flow execution'lari ve hatalari gorebilir."
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Yeni musteri adayi icin chatbot demo gostermek zor -- production tenant lazim, gercek WhatsApp numarasi lazim.",
++      "suggestion": "Demo mode: Simulator'u web-based yap, QR kodsuz canli demo. (Gelecek faz)",
++      "aha_moment": "Sales gorusmesinde 'Chatbot'unuzu gorun' linki paylasir, musteri adayi telefonundan canli chatbot dener."
++    }
++  ],
++
++  "verdict": {
++    "status": "FAIL",
++    "iteration": 2,
++    "blocking_issues": [
++      "CQ5: Auth/Service category enum gecersiz -- Auth olmali"
++    ]
++  }
++}
+diff --git a/arch/session-memory.md b/arch/session-memory.md
+index 5c8cc75..61b1768 100644
+--- a/arch/session-memory.md
++++ b/arch/session-memory.md
+@@ -5,8 +5,8 @@
+ ## Last Update
+ 
+ - **Date:** 2026-02-14
+-- **Status:** Flow Builder Phase 4b DONE. AI/API nodes (ai_intent, ai_faq, action_api_call). 27 dosya +1516 -104. Codex 4 iter PASS.
+-- **Last Task:** Phase 4b committed (443dfca). 3 backend handlers + IntentDetector dynamic intents + SSRF validation + 3 SPA nodes + 3 property editors + graph-validator + flow-summarizer. Lessons learned kaydedildi.
++- **Status:** Flow Builder Phase 5 IN_PROGRESS. Deploy script'e FlowBuilder SPA build adimi eklendi.
++- **Last Task:** Phase 5 implementation: dev-to-invekto-services.bat'a FlowBuilder SPA build step eklendi ([1/6] npm ci + npm run build + output verify). Step numbering [1/9]...[9/9] olarak unify edildi. Build marker'a FlowBuilder eklendi.
+ 
+ ---
+ 
+@@ -153,8 +153,8 @@
+ - [x] ~~Flow Builder Phase 3b~~ (Tamamlandi - SimulationEngine, MockFaq/Intent, SPA Chat Panel, AHA #4 Tek Tikla Test. Codex 3 iter PASS)
+ - [x] ~~Flow Builder Phase 3c~~ (Tamamlandi - Validation UI, Variable Inspector, AHA #3 Ghost Path, AHA #5 Saglik Skoru. 20 dosya +746 -195. Codex 3 iter PASS)
+ - [x] ~~Flow Builder Phase 4a~~ (Tamamlandi - 4 pure logic node: logic_condition, logic_switch, action_delay, utility_set_variable. Codex 3 iter Q FORCE PASS)
+-- [ ] Flow Builder Phase 4b: AI/API node'lar (ai_intent, ai_faq, action_api_call)
+-- [ ] Flow Builder Phase 5: iframe + AHA #7 Trafik Heatmap + polish
++- [x] ~~Flow Builder Phase 4b~~ (Tamamlandi - ai_intent, ai_faq, action_api_call. 27 dosya +1516 -104. Codex 4 iter PASS)
++- [ ] Flow Builder Phase 5: Production Integration (deploy script + Q operational tasks)
+ 
+ > **Phase 3 Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
+ > **AHA Moments (2026-02-13):** 7 iyilestirme roadmap'e entegre edildi (Phase 2.5, 3b, 3c, 5)
+diff --git a/dev-to-invekto-services.bat b/dev-to-invekto-services.bat
+index 54fb911..8aec436 100644
+--- a/dev-to-invekto-services.bat
++++ b/dev-to-invekto-services.bat
+@@ -56,7 +56,33 @@ if not exist "!LOCAL_AGENTAI!" mkdir "!LOCAL_AGENTAI!"
+ if not exist "!LOCAL_OUTBOUND!" mkdir "!LOCAL_OUTBOUND!"
+ 
+ echo ============================================
+-echo [1/5] Building Backend...
++echo [1/6] Building FlowBuilder SPA...
++echo ============================================
++echo.
++
++cd /d "%SRC_DIR%src\Invekto.Backend\FlowBuilder"
++call npm ci
++if errorlevel 1 (
++    echo [ERROR] FlowBuilder npm ci failed!
++    goto :error_exit
++)
++call npm run build
++if errorlevel 1 (
++    echo [ERROR] FlowBuilder SPA build failed!
++    goto :error_exit
++)
++
++REM Verify build output exists
++if not exist "%SRC_DIR%src\Invekto.Backend\wwwroot\flow-builder\index.html" (
++    echo [ERROR] FlowBuilder SPA output not found!
++    echo Expected: src\Invekto.Backend\wwwroot\flow-builder\index.html
++    goto :error_exit
++)
++echo [OK] FlowBuilder SPA built to wwwroot\flow-builder\
++echo.
++
++echo ============================================
++echo [2/6] Building Backend...
+ echo ============================================
+ echo.
+ 
+@@ -70,7 +96,7 @@ echo [OK] Backend built to !LOCAL_BACKEND!
+ echo.
+ 
+ echo ============================================
+-echo [2/5] Building ChatAnalysis...
++echo [3/6] Building ChatAnalysis...
+ echo ============================================
+ echo.
+ 
+@@ -83,7 +109,7 @@ echo [OK] ChatAnalysis built to !LOCAL_CHATANALYSIS!
+ echo.
+ 
+ echo ============================================
+-echo [3/5] Building Automation...
++echo [4/6] Building Automation...
+ echo ============================================
+ echo.
+ 
+@@ -96,7 +122,7 @@ echo [OK] Automation built to !LOCAL_AUTOMATION!
+ echo.
+ 
+ echo ============================================
+-echo [4/5] Building AgentAI...
++echo [5/6] Building AgentAI...
+ echo ============================================
+ echo.
+ 
+@@ -109,7 +135,7 @@ echo [OK] AgentAI built to !LOCAL_AGENTAI!
+ echo.
+ 
+ echo ============================================
+-echo [5/5] Building Outbound...
++echo [6/6] Building Outbound...
+ echo ============================================
+ echo.
+ 
+@@ -124,12 +150,12 @@ echo.
+ REM Q: Create build marker
+ for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
+ for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
+-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
++powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('FlowBuilder','Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+ echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
+ echo.
+ 
+ echo ============================================
+-echo [5/7] Stopping Remote Services...
++echo [7/9] Stopping Remote Services...
+ echo ============================================
+ echo.
+ echo Creating deploy-stop.flag to trigger service shutdown...
+@@ -156,7 +182,7 @@ timeout /t 10 /nobreak >nul
+ 
+ echo.
+ echo ============================================
+-echo [6/7] Uploading to STAGING Server...
++echo [8/9] Uploading to STAGING Server...
+ echo ============================================
+ echo.
+ echo Local Backend:      !LOCAL_BACKEND!
+@@ -219,7 +245,7 @@ echo [OK] FTP upload completed
+ 
+ echo.
+ echo ============================================
+-echo [7/7] Starting Remote Services...
++echo [9/9] Starting Remote Services...
+ echo ============================================
+ echo.
+ echo Creating deploy-start.flag to trigger service startup...

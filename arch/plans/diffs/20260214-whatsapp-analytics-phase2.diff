@@ -1,0 +1,1916 @@
+diff --git a/arch/plans/20260214-whatsapp-analytics.json b/arch/plans/20260214-whatsapp-analytics.json
+new file mode 100644
+index 0000000..1c82b64
+--- /dev/null
++++ b/arch/plans/20260214-whatsapp-analytics.json
+@@ -0,0 +1,175 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.1",
++  "slug": "20260214-whatsapp-analytics",
++  "risk": "MEDIUM",
++  "status": "IN_PROGRESS",
++  "created_at": "2026-02-14T14:00:00Z",
++  "updated_at": "2026-02-14T18:00:00Z",
++  "plan": {
++    "summary": "WhatsApp Conversation Analytics Pipeline. Python analiz (tools/whatsapp-analyzer/) + C# microservice (Invekto.WhatsAppAnalytics, port 7102). 300MB CSV (2.1M mesaj, 170K konusma, 10 agent, ebrumoda.com giyim e-ticaret). Hedef: AI chatbot egitim verisi, musteri analizi, satis optimizasyonu, operasyonel iyilestirme, is senaryolari.",
++    "q_intent": "Elimde 2.1M satir WhatsApp yazismasi var. Full analiz pipeline, AI chatbot egitimi, musteri analizi, satis optimizasyonu. Python analiz + C# servis.",
++    "interview_notes": "Phase 2 interview: Sale rate fix (ikisinde birden - threader + classifier), keyword-first hybrid (maliyet optimize), per-conversation 3-level sentiment, urun kodu 4XXX+kmr format + fiyat context exclude."
++  },
++  "phases": [
++    {
++      "id": 1,
++      "name": "Python Data Cleaning & Threading",
++      "status": "DONE",
++      "files": [
++        "tools/whatsapp-analyzer/requirements.txt",
++        "tools/whatsapp-analyzer/config.yaml",
++        "tools/whatsapp-analyzer/.env.example",
++        "tools/whatsapp-analyzer/src/utils/csv_parser.py",
++        "tools/whatsapp-analyzer/src/utils/deduplicator.py",
++        "tools/whatsapp-analyzer/src/utils/normalizer.py",
++        "tools/whatsapp-analyzer/src/01_cleaner.py",
++        "tools/whatsapp-analyzer/src/02_threader.py",
++        "tools/whatsapp-analyzer/src/03_stats.py"
++      ],
++      "results": {
++        "input_rows": 2143682,
++        "clean_rows": 2131477,
++        "conversations": 164741,
++        "agents": 10,
++        "date_range": "2024-01-10 -> 2026-02-14",
++        "duplicates_removed": 12169,
++        "outcome_distribution": {
++          "offered": "42.3%",
++          "no_sale": "24.7%",
++          "sale": "17.4%",
++          "abandoned": "10.5%",
++          "no_response": "3.8%",
++          "return": "1.3%",
++          "complaint": "0.0%"
++        },
++        "unique_products": 5423,
++        "note": "Sale rate refined from 84.7% to 17.4% (confirmed only). 42.3% reclassified as 'offered'."
++      }
++    },
++    {
++      "id": 2,
++      "name": "NLP & Intent Classification",
++      "status": "DONE",
++      "files": [
++        "tools/whatsapp-analyzer/src/02_threader.py",
++        "tools/whatsapp-analyzer/src/04_intent_classifier.py",
++        "tools/whatsapp-analyzer/src/05_faq_extractor.py",
++        "tools/whatsapp-analyzer/src/06_sentiment_analyzer.py",
++        "tools/whatsapp-analyzer/src/07_product_analyzer.py"
++      ],
++      "results": {
++        "intent_classifier": {
++          "total_classified": 1037412,
++          "keyword_match_rate": "51.0%",
++          "top_intents": ["size_inquiry 13.4%", "price_inquiry 9.6%", "order_confirmation 5.5%", "thank_you 4.9%", "greeting 4.5%"],
++          "unknown_rate": "49.0% (Claude API key not configured, keyword-only mode)"
++        },
++        "faq_extractor": {
++          "qa_pairs": 128601,
++          "clusters": 4939,
++          "avg_question_length": 44,
++          "avg_answer_length": 119,
++          "top_faqs": ["Merhaba bilgi alabilir miyim?", "Fiyat ne kadar?", "Kac bedene kadar var?", "Ne zaman gelir?"]
++        },
++        "sentiment": {
++          "positive": "11.4%",
++          "neutral": "83.3%",
++          "negative": "5.2%",
++          "avg_score": 0.038
++        },
++        "product_analyzer": {
++          "unique_products": 5141,
++          "unique_prices": 1231,
++          "false_positives_removed": 282,
++          "top_products": ["5536", "9936", "4519", "4856", "0006"],
++          "top_prices": ["1599 TL", "1299 TL", "2000 TL", "1099 TL"]
++        }
++      },
++      "changes": [
++        "02_threader.py: SALE_PATTERNS split into CONFIRMED_SALE_PATTERNS + OFFER_PATTERNS. 'offered' outcome added.",
++        "04_intent_classifier.py: Keyword-first + Claude Haiku fallback. 12 intents. Batch 50 msgs/call.",
++        "05_faq_extractor.py: Customer question -> agent answer pair mining. TF-IDF clustering.",
++        "06_sentiment_analyzer.py: Per-conversation 3-level (positive/neutral/negative). Keyword + Claude fallback.",
++        "07_product_analyzer.py: Price vs product code separation. xx99/xx00 heuristic + suffix/context patterns. kmr-prefix support."
++      ]
++    },
++    {
++      "id": 3,
++      "name": "Business Intelligence",
++      "status": "PENDING",
++      "files": [
++        "tools/whatsapp-analyzer/src/08_agent_performance.py",
++        "tools/whatsapp-analyzer/src/09_sales_funnel.py",
++        "tools/whatsapp-analyzer/src/10_staffing_optimizer.py",
++        "tools/whatsapp-analyzer/src/11_product_demand.py",
++        "tools/whatsapp-analyzer/src/12_customer_journey.py"
++      ]
++    },
++    {
++      "id": 4,
++      "name": "Training Data + Senaryo Cikarma",
++      "status": "PENDING",
++      "files": [
++        "tools/whatsapp-analyzer/src/13_qa_dataset.py",
++        "tools/whatsapp-analyzer/src/14_intent_dataset.py",
++        "tools/whatsapp-analyzer/src/15_fine_tune_export.py",
++        "tools/whatsapp-analyzer/src/16_rag_knowledge_base.py",
++        "tools/whatsapp-analyzer/src/17_scenario_extractor.py"
++      ]
++    },
++    {
++      "id": 5,
++      "name": "C# Microservice (Invekto.WhatsAppAnalytics)",
++      "status": "PENDING",
++      "port": 7102,
++      "files": [
++        "arch/db/whatsapp_analytics.sql",
++        "src/Invekto.WhatsAppAnalytics/Program.cs",
++        "src/Invekto.WhatsAppAnalytics/WhatsAppAnalytics.csproj",
++        "src/Invekto.WhatsAppAnalytics/Services/ConversationImporter.cs",
++        "src/Invekto.WhatsAppAnalytics/Services/AnalyticsCalculator.cs",
++        "src/Invekto.WhatsAppAnalytics/Services/TrainingDataExporter.cs",
++        "src/Invekto.WhatsAppAnalytics/Data/WhatsAppAnalyticsRepository.cs"
++      ]
++    },
++    {
++      "id": 6,
++      "name": "Entegrasyon + SQL Server Connector",
++      "status": "PENDING",
++      "files": [
++        "tools/whatsapp-analyzer/src/00_sql_connector.py",
++        "src/Invekto.AgentAI/Services/KnowledgeBaseService.cs",
++        "src/Invekto.Automation/Services/FaqImporter.cs"
++      ]
++    }
++  ],
++  "port": 7102,
++  "dependencies": {
++    "python": ["pandas", "numpy", "pyyaml", "tqdm", "python-dotenv", "anthropic", "scikit-learn"],
++    "nuget": ["Npgsql", "Microsoft.Extensions.Hosting.WindowsServices"]
++  },
++  "verification_questions": [
++    "Q1: 02_threader.py CONFIRMED_SALE_PATTERNS vs OFFER_PATTERNS ayrimi dogru mu? 'offered' outcome eklendi mi?",
++    "Q2: 04_intent_classifier.py keyword-first + Claude fallback calisiyor mu? API key yoksa graceful skip mi?",
++    "Q3: 05_faq_extractor.py customer question -> agent answer pairing dogru mu? TF-IDF clustering calisiyor mu?",
++    "Q4: 07_product_analyzer.py price (xx99/xx00 + TL suffix) vs product code ayrimi dogru mu? 4868 gibi false positive fix edildi mi?",
++    "Q5: Tum output dosyalari data/nlp/ altinda uretiliyor mu?"
++  ],
++  "notes": [
++    "Port 7109 VisualSearch (Phase 3C) ile cakisma -> 7102 kullaniliyor",
++    "Sale rate %84.7 -> %17.4 refined (Phase 2 fix). %42.3 offered olarak reclassified.",
++    "Urun kodu regex fiyatlari ayrildi: 5141 product, 1231 price, 282 false positive removed.",
++    "Intent classifier %49 unknown - Claude API key set edilince bu oran dusecek.",
++    "Sentiment %60 skipped (Claude API) - keyword-only mode'da %83.3 neutral."
++  ],
++  "files_changed": [
++    "tools/whatsapp-analyzer/src/02_threader.py",
++    "tools/whatsapp-analyzer/src/03_stats.py",
++    "tools/whatsapp-analyzer/src/04_intent_classifier.py",
++    "tools/whatsapp-analyzer/src/05_faq_extractor.py",
++    "tools/whatsapp-analyzer/src/06_sentiment_analyzer.py",
++    "tools/whatsapp-analyzer/src/07_product_analyzer.py"
++  ],
++  "files_count": 6
++}
+diff --git a/tools/whatsapp-analyzer/src/02_threader.py b/tools/whatsapp-analyzer/src/02_threader.py
+new file mode 100644
+index 0000000..77739c6
+--- /dev/null
++++ b/tools/whatsapp-analyzer/src/02_threader.py
+@@ -0,0 +1,281 @@
++"""
++Phase 1, Step 2: Conversation Threader
++- Groups messages by conversation_id
++- Calculates per-conversation metadata
++- Detects conversation outcome (sale, no_sale, abandoned)
++- Output: conversations.csv
++
++Usage:
++    python src/02_threader.py [--config config.yaml]
++"""
++
++import sys
++import os
++import argparse
++import time
++import re
++from pathlib import Path
++
++import pandas as pd
++import numpy as np
++import yaml
++from tqdm import tqdm
++
++sys.path.insert(0, str(Path(__file__).parent.parent))
++
++
++# Outcome detection patterns (Turkish, fashion e-commerce)
++# CONFIRMED: actual sale evidence (tracking code, payment confirmed, order confirmed)
++CONFIRMED_SALE_PATTERNS = [
++    r'siparişiniz.*oluşturulmuştur',
++    r'siparişiniz.*onaylandı',
++    r'siparişiniz.*hazırlanıyor',
++    r'güzel günlerde giymenizi',
++    r'mutlu günlerde giymenizi',
++    r'kargo.*takip\s*(no|numar)',
++    r'aras.*kargo.*takip',
++    r'yurtiçi.*kargo.*takip',
++    r'mng.*kargo.*takip',
++    r'havale.*yapıldı',
++    r'eft.*yapıldı',
++    r'ödeme.*alındı',
++    r'ödemeniz.*onaylandı',
++]
++
++# OFFERED: agent proposing to create order (not yet confirmed)
++OFFER_PATTERNS = [
++    r'siparişinizi.*oluşturalım',
++    r'sipariş.*oluşturayım',
++    r'sipariş.*verelim',
++    r'sipariş.*vermek\s*ister',
++    r'sipariş.*oluşturmamı',
++    r'kapıda.*ödeme.*ister',
++    r'kargo.*gönderelim',
++    r'aras.*kargo\b',
++    r'yurtiçi.*kargo\b',
++    r'mng.*kargo\b',
++]
++
++RETURN_PATTERNS = [
++    r'iade.*taleb',
++    r'değişim.*taleb',
++    r'geri.*gönder',
++    r'iade.*başlat',
++    r'değişim.*başlat',
++    r'kargo.*iade',
++]
++
++COMPLAINT_PATTERNS = [
++    r'memnun\s*değil',
++    r'yanlış.*geldi',
++    r'bozuk.*geldi',
++    r'kötü.*kalite',
++    r'berbat',
++    r'rezalet',
++]
++
++
++def load_config(config_path: str = 'config.yaml') -> dict:
++    with open(config_path, 'r', encoding='utf-8') as f:
++        return yaml.safe_load(f)
++
++
++def detect_outcome(messages: pd.DataFrame) -> str:
++    """
++    Detect conversation outcome based on message content.
++    Priority: confirmed_sale > offered > return > complaint > abandoned > no_response > no_sale
++
++    Key distinction:
++    - confirmed_sale: Payment/shipment evidence (tracking code, payment confirmed)
++    - offered: Agent proposed order creation but no confirmation evidence
++    """
++    # Only look at agent (ME) messages for sale/offer detection
++    agent_msgs = messages[messages['sender_type'] == 'ME']['message_text']
++    agent_text = ' '.join(agent_msgs.str.lower().tolist())
++
++    # Check for confirmed sale signals (strongest evidence)
++    for pattern in CONFIRMED_SALE_PATTERNS:
++        if re.search(pattern, agent_text):
++            return 'sale'
++
++    # Check for offer signals (agent proposed, no confirmation)
++    for pattern in OFFER_PATTERNS:
++        if re.search(pattern, agent_text):
++            return 'offered'
++
++    # Check for return/exchange
++    all_msgs_text = ' '.join(messages['message_text'].str.lower().tolist())
++    for pattern in RETURN_PATTERNS:
++        if re.search(pattern, all_msgs_text):
++            return 'return'
++
++    # Check for complaint
++    customer_text = ' '.join(
++        messages[messages['sender_type'] == 'CUSTOMER']['message_text'].str.lower().tolist()
++    )
++    for pattern in COMPLAINT_PATTERNS:
++        if re.search(pattern, customer_text):
++            return 'complaint'
++
++    # Abandoned: very few messages, customer initiated but no response
++    if len(messages) <= 2:
++        return 'abandoned'
++
++    # Check if conversation ended with customer (no agent follow-up)
++    last_sender = messages.iloc[-1]['sender_type']
++    if last_sender == 'CUSTOMER' and len(messages) >= 3:
++        return 'no_response'
++
++    return 'no_sale'
++
++
++def extract_product_codes(text: str) -> list[str]:
++    """Extract 4-digit product codes from text."""
++    if not text or not isinstance(text, str):
++        return []
++    return re.findall(r'\b(\d{4})\b', text)
++
++
++def thread_conversation(conv_id: str, messages: pd.DataFrame) -> dict:
++    """Calculate metadata for a single conversation."""
++    messages = messages.sort_values('timestamp')
++
++    customer_msgs = messages[messages['sender_type'] == 'CUSTOMER']
++    agent_msgs = messages[messages['sender_type'] == 'ME']
++
++    # Primary agent (most messages)
++    primary_agent = ''
++    if len(agent_msgs) > 0:
++        agent_counts = agent_msgs['agent_name'].value_counts()
++        primary_agent = agent_counts.index[0] if len(agent_counts) > 0 else ''
++
++    # Duration
++    start_time = messages['timestamp'].min()
++    end_time = messages['timestamp'].max()
++    duration_minutes = 0
++    if pd.notna(start_time) and pd.notna(end_time):
++        duration_minutes = int((end_time - start_time).total_seconds() / 60)
++
++    # Response time: first customer message → first agent response
++    first_response_minutes = None
++    if len(customer_msgs) > 0 and len(agent_msgs) > 0:
++        first_customer_ts = customer_msgs['timestamp'].min()
++        first_agent_after = agent_msgs[agent_msgs['timestamp'] > first_customer_ts]
++        if len(first_agent_after) > 0:
++            first_agent_ts = first_agent_after['timestamp'].min()
++            first_response_minutes = round(
++                (first_agent_ts - first_customer_ts).total_seconds() / 60, 1
++            )
++
++    # Product codes mentioned
++    all_text = ' '.join(messages['message_text'].tolist())
++    product_codes = list(set(extract_product_codes(all_text)))
++
++    # First customer message and last agent message
++    first_customer_msg = customer_msgs.iloc[0]['message_text'] if len(customer_msgs) > 0 else ''
++    last_agent_msg = agent_msgs.iloc[-1]['message_text'] if len(agent_msgs) > 0 else ''
++
++    # Outcome
++    outcome = detect_outcome(messages)
++
++    return {
++        'conversation_id': conv_id,
++        'business_phone': messages.iloc[0]['business_phone'],
++        'start_time': start_time,
++        'end_time': end_time,
++        'duration_minutes': duration_minutes,
++        'message_count': len(messages),
++        'customer_message_count': len(customer_msgs),
++        'agent_message_count': len(agent_msgs),
++        'primary_agent': primary_agent,
++        'first_response_minutes': first_response_minutes,
++        'outcome': outcome,
++        'product_codes': '|'.join(product_codes) if product_codes else '',
++        'first_customer_msg': first_customer_msg[:500],  # Truncate
++        'last_agent_msg': last_agent_msg[:500],
++    }
++
++
++def run_threader(config: dict):
++    """Main threader pipeline."""
++    input_path = config['paths']['cleaned_csv']
++    output_path = config['paths']['conversations_csv']
++    min_messages = config['processing']['min_conversation_messages']
++
++    print(f"{'='*60}")
++    print(f"WhatsApp Threader - {config['tenant']['name']}")
++    print(f"{'='*60}")
++
++    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
++
++    # Load cleaned data
++    print(f"\n[1/3] Loading cleaned data from {input_path}...")
++    start = time.time()
++    df = pd.read_csv(input_path, sep=';', encoding='utf-8', dtype=str)
++    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
++    print(f"  Loaded: {len(df):,} rows ({time.time()-start:.1f}s)")
++
++    # Group by conversation
++    print(f"\n[2/3] Threading conversations (min_messages={min_messages})...")
++    start = time.time()
++
++    conversations = []
++    grouped = df.groupby('conversation_id')
++    total_groups = len(grouped)
++
++    for conv_id, messages in tqdm(grouped, total=total_groups, desc="  Threading"):
++        if len(messages) < min_messages:
++            continue
++        conv_meta = thread_conversation(conv_id, messages)
++        conversations.append(conv_meta)
++
++    conv_df = pd.DataFrame(conversations)
++    print(f"  Conversations: {len(conv_df):,} (from {total_groups:,} groups)")
++    print(f"  Skipped (< {min_messages} messages): {total_groups - len(conv_df):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Save
++    print(f"\n[3/3] Saving to {output_path}...")
++    conv_df.to_csv(output_path, sep=';', index=False, encoding='utf-8')
++
++    file_size_mb = Path(output_path).stat().st_size / (1024 * 1024)
++    print(f"  Saved: {file_size_mb:.1f} MB")
++
++    # Summary
++    print(f"\n{'='*60}")
++    print(f"SUMMARY")
++    print(f"{'='*60}")
++    print(f"  Total conversations: {len(conv_df):,}")
++
++    if len(conv_df) > 0:
++        print(f"\n  Outcome distribution:")
++        for outcome, count in conv_df['outcome'].value_counts().items():
++            pct = count / len(conv_df) * 100
++            print(f"    {outcome}: {count:,} ({pct:.1f}%)")
++
++        print(f"\n  Agent distribution:")
++        for agent, count in conv_df['primary_agent'].value_counts().head(10).items():
++            pct = count / len(conv_df) * 100
++            try:
++                print(f"    {agent}: {count:,} ({pct:.1f}%)")
++            except UnicodeEncodeError:
++                print(f"    {agent.encode('ascii', 'replace').decode()}: {count:,} ({pct:.1f}%)")
++
++        print(f"\n  Avg messages/conversation: {conv_df['message_count'].mean():.1f}")
++        print(f"  Avg duration (minutes): {conv_df['duration_minutes'].mean():.1f}")
++        if conv_df['first_response_minutes'].notna().any():
++            print(f"  Avg first response (minutes): {conv_df['first_response_minutes'].mean():.1f}")
++
++    print(f"{'='*60}")
++
++    return conv_df
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='WhatsApp Conversation Threader')
++    parser.add_argument('--config', default='config.yaml', help='Config file path')
++    args = parser.parse_args()
++
++    os.chdir(Path(__file__).parent.parent)
++    config = load_config(args.config)
++    run_threader(config)
+diff --git a/tools/whatsapp-analyzer/src/03_stats.py b/tools/whatsapp-analyzer/src/03_stats.py
+new file mode 100644
+index 0000000..68c07d1
+--- /dev/null
++++ b/tools/whatsapp-analyzer/src/03_stats.py
+@@ -0,0 +1,209 @@
++"""
++Phase 1, Step 3: Basic Statistics
++- Generate metadata.json with key statistics
++- Agent summary, timeline, volume metrics
++- Output: metadata.json
++
++Usage:
++    python src/03_stats.py [--config config.yaml]
++"""
++
++import sys
++import os
++import argparse
++import json
++import time
++from pathlib import Path
++from collections import Counter
++
++import pandas as pd
++import numpy as np
++import yaml
++
++sys.path.insert(0, str(Path(__file__).parent.parent))
++
++
++def load_config(config_path: str = 'config.yaml') -> dict:
++    with open(config_path, 'r', encoding='utf-8') as f:
++        return yaml.safe_load(f)
++
++
++def run_stats(config: dict):
++    """Generate comprehensive statistics."""
++    cleaned_path = config['paths']['cleaned_csv']
++    conv_path = config['paths']['conversations_csv']
++    output_path = config['paths']['metadata_json']
++
++    print(f"{'='*60}")
++    print(f"WhatsApp Stats - {config['tenant']['name']}")
++    print(f"{'='*60}")
++
++    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
++
++    # Load data
++    print(f"\n[1/3] Loading data...")
++    start = time.time()
++    messages_df = pd.read_csv(cleaned_path, sep=';', encoding='utf-8', dtype=str)
++    messages_df['timestamp'] = pd.to_datetime(messages_df['timestamp'], errors='coerce')
++
++    conv_df = pd.read_csv(conv_path, sep=';', encoding='utf-8', dtype=str)
++    conv_df['start_time'] = pd.to_datetime(conv_df['start_time'], errors='coerce')
++    conv_df['end_time'] = pd.to_datetime(conv_df['end_time'], errors='coerce')
++
++    # Convert numeric columns
++    for col in ['duration_minutes', 'message_count', 'customer_message_count', 'agent_message_count']:
++        conv_df[col] = pd.to_numeric(conv_df[col], errors='coerce').fillna(0).astype(int)
++    conv_df['first_response_minutes'] = pd.to_numeric(conv_df['first_response_minutes'], errors='coerce')
++
++    print(f"  Messages: {len(messages_df):,}")
++    print(f"  Conversations: {len(conv_df):,}")
++    print(f"  Load time: {time.time()-start:.1f}s")
++
++    # Calculate stats
++    print(f"\n[2/3] Calculating statistics...")
++
++    # --- Message-level stats ---
++    me_msgs = messages_df[messages_df['sender_type'] == 'ME']
++    cust_msgs = messages_df[messages_df['sender_type'] == 'CUSTOMER']
++
++    # Date range
++    valid_ts = messages_df['timestamp'].dropna()
++    date_range = {
++        'start': str(valid_ts.min().date()) if len(valid_ts) > 0 else None,
++        'end': str(valid_ts.max().date()) if len(valid_ts) > 0 else None,
++        'total_days': (valid_ts.max() - valid_ts.min()).days if len(valid_ts) > 0 else 0,
++    }
++
++    # Unique counts
++    unique_phones = messages_df['business_phone'].nunique()
++    unique_conversations = messages_df['conversation_id'].nunique()
++    unique_agents = me_msgs['agent_name'].nunique()
++
++    # Message lengths
++    messages_df['_msg_len'] = messages_df['message_text'].str.len()
++    avg_msg_len_me = me_msgs['message_text'].str.len().mean()
++    avg_msg_len_customer = cust_msgs['message_text'].str.len().mean()
++
++    # Hourly distribution
++    messages_df['_hour'] = messages_df['timestamp'].dt.hour
++    hourly = messages_df.groupby('_hour').size().to_dict()
++    peak_hours = sorted(hourly.items(), key=lambda x: x[1], reverse=True)[:5]
++
++    # Daily distribution
++    messages_df['_weekday'] = messages_df['timestamp'].dt.day_name()
++    daily = messages_df.groupby('_weekday').size().to_dict()
++
++    # Monthly volume
++    messages_df['_month'] = messages_df['timestamp'].dt.to_period('M').astype(str)
++    monthly = messages_df.groupby('_month').size().to_dict()
++
++    # --- Agent stats ---
++    agent_stats = []
++    for agent_name, agent_msgs in me_msgs.groupby('agent_name'):
++        if not agent_name or agent_name == '':
++            continue
++        agent_convs = conv_df[conv_df['primary_agent'] == agent_name]
++        agent_stats.append({
++            'name': agent_name,
++            'message_count': int(len(agent_msgs)),
++            'conversation_count': int(len(agent_convs)),
++            'avg_message_length': round(agent_msgs['message_text'].str.len().mean(), 1),
++        })
++    agent_stats.sort(key=lambda x: x['message_count'], reverse=True)
++
++    # --- Conversation stats ---
++    outcome_dist = conv_df['outcome'].value_counts().to_dict()
++    outcome_dist = {k: int(v) for k, v in outcome_dist.items()}
++
++    avg_conv_duration = round(conv_df['duration_minutes'].mean(), 1)
++    avg_messages_per_conv = round(conv_df['message_count'].mean(), 1)
++    avg_first_response = round(conv_df['first_response_minutes'].mean(), 1) if conv_df['first_response_minutes'].notna().any() else None
++
++    # Product codes
++    all_product_codes = []
++    for codes in conv_df['product_codes'].dropna():
++        if codes:
++            all_product_codes.extend(codes.split('|'))
++    product_code_counts = Counter(all_product_codes).most_common(20)
++
++    # Build metadata
++    metadata = {
++        'tenant': config['tenant'],
++        'generated_at': pd.Timestamp.now().isoformat(),
++        'messages': {
++            'total': int(len(messages_df)),
++            'agent_messages': int(len(me_msgs)),
++            'customer_messages': int(len(cust_msgs)),
++            'agent_customer_ratio': round(len(me_msgs) / max(len(cust_msgs), 1), 2),
++            'avg_message_length_agent': round(avg_msg_len_me, 1),
++            'avg_message_length_customer': round(avg_msg_len_customer, 1),
++        },
++        'conversations': {
++            'total': int(len(conv_df)),
++            'avg_messages_per_conversation': avg_messages_per_conv,
++            'avg_duration_minutes': avg_conv_duration,
++            'avg_first_response_minutes': avg_first_response,
++            'outcome_distribution': outcome_dist,
++        },
++        'date_range': date_range,
++        'unique_counts': {
++            'business_phones': int(unique_phones),
++            'conversations': int(unique_conversations),
++            'agents': int(unique_agents),
++        },
++        'agents': agent_stats,
++        'temporal': {
++            'peak_hours': [{'hour': int(h), 'message_count': int(c)} for h, c in peak_hours],
++            'daily_distribution': {k: int(v) for k, v in daily.items()},
++            'monthly_volume': {k: int(v) for k, v in sorted(monthly.items())},
++        },
++        'products': {
++            'top_product_codes': [
++                {'code': code, 'mentions': int(count)}
++                for code, count in product_code_counts
++            ],
++            'total_unique_products': len(set(all_product_codes)),
++        }
++    }
++
++    # Save
++    print(f"\n[3/3] Saving metadata to {output_path}...")
++    with open(output_path, 'w', encoding='utf-8') as f:
++        json.dump(metadata, f, ensure_ascii=False, indent=2)
++
++    # Print summary
++    print(f"\n{'='*60}")
++    print(f"STATISTICS SUMMARY")
++    print(f"{'='*60}")
++    print(f"  Date range: {date_range['start']} -> {date_range['end']} ({date_range['total_days']} days)")
++    print(f"  Messages: {len(messages_df):,} (ME: {len(me_msgs):,}, CUSTOMER: {len(cust_msgs):,})")
++    print(f"  Conversations: {len(conv_df):,}")
++    print(f"  Agents: {unique_agents}")
++    print(f"  Business phones: {unique_phones}")
++    print(f"\n  Avg message length: Agent={avg_msg_len_me:.0f} chars, Customer={avg_msg_len_customer:.0f} chars")
++    print(f"  Avg conversation: {avg_messages_per_conv} messages, {avg_conv_duration} minutes")
++    if avg_first_response:
++        print(f"  Avg first response: {avg_first_response} minutes")
++    print(f"\n  Outcomes:")
++    for outcome, count in sorted(outcome_dist.items(), key=lambda x: x[1], reverse=True):
++        pct = count / len(conv_df) * 100
++        print(f"    {outcome}: {count:,} ({pct:.1f}%)")
++    print(f"\n  Peak hours: {', '.join(f'{h}:00 ({c:,})' for h, c in peak_hours)}")
++    print(f"  Unique products: {len(set(all_product_codes)):,}")
++    print(f"\n  Top 10 products: {', '.join(code for code, _ in product_code_counts[:10])}")
++    print(f"\n  Agents:")
++    for a in agent_stats:
++        print(f"    {a['name']}: {a['message_count']:,} msgs, {a['conversation_count']:,} convs")
++    print(f"{'='*60}")
++
++    return metadata
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='WhatsApp Basic Statistics')
++    parser.add_argument('--config', default='config.yaml', help='Config file path')
++    args = parser.parse_args()
++
++    os.chdir(Path(__file__).parent.parent)
++    config = load_config(args.config)
++    run_stats(config)
+diff --git a/tools/whatsapp-analyzer/src/04_intent_classifier.py b/tools/whatsapp-analyzer/src/04_intent_classifier.py
+new file mode 100644
+index 0000000..20d943e
+--- /dev/null
++++ b/tools/whatsapp-analyzer/src/04_intent_classifier.py
+@@ -0,0 +1,317 @@
++"""
++Phase 2, Step 4: Intent Classifier
++- Keyword-first + Claude Haiku fallback (hybrid)
++- 12 intents from config.yaml
++- Keyword match = confidence 1.0 (no API call needed)
++- No match = batch to Claude Haiku (50 msgs/call)
++- Output: data/nlp/intent_classifications.csv
++
++Usage:
++    python src/04_intent_classifier.py [--config config.yaml] [--limit N]
++"""
++
++import sys
++import os
++import argparse
++import json
++import re
++import time
++from pathlib import Path
++
++import pandas as pd
++import yaml
++from tqdm import tqdm
++from dotenv import load_dotenv
++
++sys.path.insert(0, str(Path(__file__).parent.parent))
++
++
++def load_config(config_path: str = 'config.yaml') -> dict:
++    with open(config_path, 'r', encoding='utf-8') as f:
++        return yaml.safe_load(f)
++
++
++def build_keyword_matchers(config: dict) -> list[dict]:
++    """Build compiled regex matchers from config intent keywords."""
++    matchers = []
++    for intent_name, intent_config in config.get('intents', {}).items():
++        if 'keywords' in intent_config:
++            # Escape special chars and join with OR
++            keywords = intent_config['keywords']
++            escaped = [re.escape(kw) for kw in keywords]
++            pattern = re.compile('|'.join(escaped), re.IGNORECASE)
++            matchers.append({
++                'intent': intent_name,
++                'pattern': pattern,
++                'type': 'keyword',
++            })
++        elif 'pattern' in intent_config:
++            pattern = re.compile(intent_config['pattern'])
++            matchers.append({
++                'intent': intent_name,
++                'pattern': pattern,
++                'type': 'regex',
++            })
++    return matchers
++
++
++def classify_keyword(text: str, matchers: list[dict]) -> tuple[str, float] | None:
++    """Try to classify text using keyword/regex matchers. Returns (intent, confidence) or None."""
++    if not text or not isinstance(text, str):
++        return None
++
++    text_lower = text.lower()
++    for matcher in matchers:
++        if matcher['pattern'].search(text_lower if matcher['type'] == 'keyword' else text):
++            return (matcher['intent'], 1.0)
++
++    return None
++
++
++def classify_batch_claude(messages: list[dict], config: dict, client) -> list[dict]:
++    """
++    Classify a batch of messages using Claude Haiku.
++    Returns list of {index, intent, confidence}.
++    """
++    intent_names = list(config.get('intents', {}).keys())
++    intent_list = ', '.join(intent_names)
++
++    # Build batch prompt
++    msg_lines = []
++    for i, msg in enumerate(messages):
++        # Truncate long messages
++        text = msg['text'][:300] if msg['text'] else ''
++        msg_lines.append(f"{i}|{text}")
++
++    batch_text = '\n'.join(msg_lines)
++
++    system_prompt = f"""Sen bir WhatsApp mesaj intent sınıflandırıcısın. Türkçe giyim e-ticaret (moda) sektörü.
++
++Mevcut intent'ler: {intent_list}
++
++Her mesaj için EN UYGUN intent'i belirle. Emin değilsen "unknown" yaz.
++
++Kurallar:
++- Sadece MÜŞTERİ mesajlarını sınıflandır (agent mesajları değil)
++- Kısa selamlaşma (merhaba, selam) = greeting
++- Teşekkür/memnuniyet = thank_you
++- Ürün kodu sorma = product_inquiry
++- Fiyat sorma = price_inquiry
++- Beden/numara sorma = size_inquiry
++- Stok sorma = stock_inquiry
++- Kargo/teslimat sorma = shipping_inquiry
++- İade/değişim = return_request
++- Şikayet/memnuniyetsizlik = complaint
++- Sipariş onayı/alıyorum = order_confirmation
++- İndirim/kampanya = discount_inquiry
++- Adres bilgisi = address_info
++
++JSON formatında cevap ver:
++[{{"i": 0, "intent": "greeting", "conf": 0.95}}, ...]
++
++Sadece JSON array döndür, başka metin yazma."""
++
++    try:
++        response = client.messages.create(
++            model=config['nlp']['claude_model'],
++            max_tokens=4096,
++            system=system_prompt,
++            messages=[{"role": "user", "content": batch_text}],
++        )
++
++        result_text = response.content[0].text.strip()
++        # Try to extract JSON from response
++        if result_text.startswith('['):
++            results = json.loads(result_text)
++        else:
++            # Try to find JSON array in response
++            json_match = re.search(r'\[.*\]', result_text, re.DOTALL)
++            if json_match:
++                results = json.loads(json_match.group())
++            else:
++                print(f"  [WARN] Claude returned non-JSON: {result_text[:100]}")
++                return []
++
++        return [
++            {
++                'index': r.get('i', -1),
++                'intent': r.get('intent', 'unknown'),
++                'confidence': r.get('conf', 0.0),
++            }
++            for r in results
++            if isinstance(r, dict) and r.get('i', -1) >= 0
++        ]
++    except json.JSONDecodeError as e:
++        print(f"  [WARN] Claude JSON parse error: {e}")
++        return []
++    except Exception as e:
++        print(f"  [WARN] Claude API error: {e}")
++        return []
++
++
++def run_intent_classifier(config: dict, limit: int | None = None):
++    """Main intent classification pipeline."""
++    input_path = config['paths']['cleaned_csv']
++    output_dir = config['paths']['nlp_dir']
++    output_path = os.path.join(output_dir, 'intent_classifications.csv')
++    batch_size = config['nlp']['batch_size']
++    min_confidence = config['nlp']['claude_min_confidence']
++
++    print(f"{'='*60}")
++    print(f"Intent Classifier - {config['tenant']['name']}")
++    print(f"{'='*60}")
++
++    Path(output_dir).mkdir(parents=True, exist_ok=True)
++
++    # Load data
++    print(f"\n[1/4] Loading cleaned messages...")
++    start = time.time()
++    df = pd.read_csv(input_path, sep=';', encoding='utf-8', dtype=str)
++    if limit:
++        df = df.head(limit)
++    print(f"  Loaded: {len(df):,} messages ({time.time()-start:.1f}s)")
++
++    # Only classify CUSTOMER messages (agent messages are responses)
++    customer_mask = df['sender_type'] == 'CUSTOMER'
++    customer_df = df[customer_mask].copy()
++    print(f"  Customer messages: {len(customer_df):,}")
++
++    # Build keyword matchers
++    print(f"\n[2/4] Keyword classification...")
++    start = time.time()
++    matchers = build_keyword_matchers(config)
++    print(f"  Matchers loaded: {len(matchers)} intents")
++
++    # Phase A: Keyword classification
++    results = []
++    unmatched = []
++
++    for idx, row in tqdm(customer_df.iterrows(), total=len(customer_df), desc="  Keywords"):
++        text = row['message_text']
++        match = classify_keyword(text, matchers)
++        if match:
++            results.append({
++                'row_index': idx,
++                'conversation_id': row['conversation_id'],
++                'message_text': text[:200],
++                'sender_type': 'CUSTOMER',
++                'intent': match[0],
++                'confidence': match[1],
++                'method': 'keyword',
++            })
++        else:
++            unmatched.append({
++                'row_index': idx,
++                'conversation_id': row['conversation_id'],
++                'text': text,
++            })
++
++    keyword_count = len(results)
++    keyword_pct = (keyword_count / max(len(customer_df), 1)) * 100
++    print(f"  Keyword matched: {keyword_count:,} ({keyword_pct:.1f}%)")
++    print(f"  Unmatched (Claude queue): {len(unmatched):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Phase B: Claude Haiku fallback for unmatched
++    if unmatched:
++        print(f"\n[3/4] Claude Haiku classification ({len(unmatched):,} messages)...")
++        load_dotenv()
++        api_key = os.getenv('ANTHROPIC_API_KEY')
++        if not api_key or api_key.startswith('sk-ant-xxxx'):
++            print("  [WARN] ANTHROPIC_API_KEY not set or placeholder. Skipping Claude classification.")
++            for item in unmatched:
++                results.append({
++                    'row_index': item['row_index'],
++                    'conversation_id': item['conversation_id'],
++                    'message_text': item['text'][:200],
++                    'sender_type': 'CUSTOMER',
++                    'intent': 'unknown',
++                    'confidence': 0.0,
++                    'method': 'skipped',
++                })
++        else:
++            import anthropic
++            client = anthropic.Anthropic(api_key=api_key)
++
++            batches = [unmatched[i:i+batch_size] for i in range(0, len(unmatched), batch_size)]
++            claude_matched = 0
++            claude_unknown = 0
++
++            for batch in tqdm(batches, desc="  Claude batches"):
++                batch_results = classify_batch_claude(batch, config, client)
++
++                # Map results back to original indices
++                result_map = {r['index']: r for r in batch_results}
++
++                for j, item in enumerate(batch):
++                    if j in result_map and result_map[j]['confidence'] >= min_confidence:
++                        results.append({
++                            'row_index': item['row_index'],
++                            'conversation_id': item['conversation_id'],
++                            'message_text': item['text'][:200],
++                            'sender_type': 'CUSTOMER',
++                            'intent': result_map[j]['intent'],
++                            'confidence': result_map[j]['confidence'],
++                            'method': 'claude',
++                        })
++                        claude_matched += 1
++                    else:
++                        results.append({
++                            'row_index': item['row_index'],
++                            'conversation_id': item['conversation_id'],
++                            'message_text': item['text'][:200],
++                            'sender_type': 'CUSTOMER',
++                            'intent': 'unknown',
++                            'confidence': 0.0,
++                            'method': 'claude_low_conf',
++                        })
++                        claude_unknown += 1
++
++                # Rate limiting: small delay between batches
++                time.sleep(0.2)
++
++            print(f"  Claude matched: {claude_matched:,}")
++            print(f"  Claude unknown/low-conf: {claude_unknown:,}")
++    else:
++        print(f"\n[3/4] All messages matched by keywords. Skipping Claude.")
++
++    # Save results
++    print(f"\n[4/4] Saving to {output_path}...")
++    results_df = pd.DataFrame(results)
++    results_df.to_csv(output_path, sep=';', index=False, encoding='utf-8')
++    file_size_mb = Path(output_path).stat().st_size / (1024 * 1024)
++    print(f"  Saved: {file_size_mb:.1f} MB")
++
++    # Summary
++    print(f"\n{'='*60}")
++    print(f"INTENT CLASSIFICATION SUMMARY")
++    print(f"{'='*60}")
++    print(f"  Total classified: {len(results):,}")
++
++    if results:
++        intent_dist = results_df['intent'].value_counts()
++        print(f"\n  Intent distribution:")
++        for intent, count in intent_dist.items():
++            pct = count / len(results) * 100
++            print(f"    {intent}: {count:,} ({pct:.1f}%)")
++
++        method_dist = results_df['method'].value_counts()
++        print(f"\n  Method distribution:")
++        for method, count in method_dist.items():
++            pct = count / len(results) * 100
++            print(f"    {method}: {count:,} ({pct:.1f}%)")
++
++    print(f"{'='*60}")
++
++    return results_df
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='WhatsApp Intent Classifier')
++    parser.add_argument('--config', default='config.yaml', help='Config file path')
++    parser.add_argument('--limit', type=int, default=None, help='Limit number of messages to process')
++    args = parser.parse_args()
++
++    os.chdir(Path(__file__).parent.parent)
++    config = load_config(args.config)
++    run_intent_classifier(config, limit=args.limit)
+diff --git a/tools/whatsapp-analyzer/src/05_faq_extractor.py b/tools/whatsapp-analyzer/src/05_faq_extractor.py
+new file mode 100644
+index 0000000..cd2dbe4
+--- /dev/null
++++ b/tools/whatsapp-analyzer/src/05_faq_extractor.py
+@@ -0,0 +1,277 @@
++"""
++Phase 2, Step 5: FAQ Extractor
++- Mines Q&A pairs from customer-agent conversations
++- Customer question -> agent answer pairing
++- TF-IDF clustering of similar questions
++- Output: data/nlp/faq_pairs.csv, data/nlp/faq_clusters.json
++
++Usage:
++    python src/05_faq_extractor.py [--config config.yaml] [--limit N]
++"""
++
++import sys
++import os
++import argparse
++import json
++import re
++import time
++from pathlib import Path
++from collections import defaultdict
++
++import pandas as pd
++import numpy as np
++import yaml
++from tqdm import tqdm
++from sklearn.feature_extraction.text import TfidfVectorizer
++from sklearn.metrics.pairwise import cosine_similarity
++
++sys.path.insert(0, str(Path(__file__).parent.parent))
++
++
++def load_config(config_path: str = 'config.yaml') -> dict:
++    with open(config_path, 'r', encoding='utf-8') as f:
++        return yaml.safe_load(f)
++
++
++# Turkish question indicators
++QUESTION_PATTERNS = [
++    r'\?',                          # Explicit question mark
++    r'\b(kaç|kaçtır|ne kadar)\b',   # How much
++    r'\b(var mı|varmı)\b',          # Is there / available?
++    r'\b(nasıl|nası)\b',            # How
++    r'\b(ne zaman|nezaman)\b',      # When
++    r'\b(nerede|nere)\b',           # Where
++    r'\b(hangisi|hangi)\b',         # Which
++    r'\b(olur mu|olurmu)\b',        # Can it be / is it ok?
++    r'\b(mümkün mü|mümkünmü)\b',   # Is it possible?
++    r'\b(gönderir misiniz)\b',      # Would you send?
++    r'\b(ister misiniz)\b',         # Would you like?
++    r'\b(beden|numara)\b.*\b(kaç|ne)\b',  # Size question
++]
++
++QUESTION_REGEX = re.compile('|'.join(QUESTION_PATTERNS), re.IGNORECASE)
++
++# Turkish stopwords for TF-IDF
++TR_STOPWORDS = [
++    'bir', 'bu', 'da', 'de', 've', 'ile', 'için', 'gibi', 'çok',
++    'var', 'ben', 'sen', 'biz', 'siz', 'ne', 'ama', 'ya', 'ki',
++    'mi', 'mı', 'mu', 'mü', 'daha', 'en', 'olan', 'olarak',
++    'iyi', 'güzel', 'evet', 'hayır', 'tamam', 'olur', 'abi',
++    'hocam', 'merhaba', 'selam', 'teşekkür', 'ederim', 'kolay',
++    'gelsin', 'günler', 'merhabalar',
++]
++
++
++def is_question(text: str) -> bool:
++    """Check if text is likely a question."""
++    if not text or not isinstance(text, str):
++        return False
++    return bool(QUESTION_REGEX.search(text))
++
++
++def extract_qa_pairs(messages_df: pd.DataFrame) -> list[dict]:
++    """
++    Extract question-answer pairs from conversations.
++    Logic: CUSTOMER message (question) -> next ME message (answer).
++    """
++    pairs = []
++
++    for conv_id, conv_msgs in tqdm(
++        messages_df.groupby('conversation_id'),
++        desc="  Extracting Q&A"
++    ):
++        conv_msgs = conv_msgs.sort_values('timestamp')
++        rows = conv_msgs.to_dict('records')
++
++        for i, msg in enumerate(rows):
++            # Only look at CUSTOMER messages that look like questions
++            if msg['sender_type'] != 'CUSTOMER':
++                continue
++            if not is_question(msg['message_text']):
++                continue
++
++            question_text = msg['message_text'].strip()
++            # Skip very short questions (single word like "?")
++            if len(question_text) < 5:
++                continue
++
++            # Find next agent response
++            answer_text = None
++            for j in range(i + 1, min(i + 5, len(rows))):  # Look ahead max 5 messages
++                if rows[j]['sender_type'] == 'ME':
++                    candidate = rows[j]['message_text'].strip()
++                    # Skip very short agent responses
++                    if len(candidate) >= 10:
++                        answer_text = candidate
++                    break
++
++            if answer_text:
++                pairs.append({
++                    'conversation_id': conv_id,
++                    'question': question_text[:500],
++                    'answer': answer_text[:500],
++                    'question_len': len(question_text),
++                    'answer_len': len(answer_text),
++                })
++
++    return pairs
++
++
++def cluster_questions(pairs: list[dict], min_cluster_size: int = 3,
++                      similarity_threshold: float = 0.5) -> dict:
++    """
++    Cluster similar questions using TF-IDF + cosine similarity.
++    Returns cluster_id -> list of questions mapping.
++    """
++    if not pairs:
++        return {}
++
++    questions = [p['question'] for p in pairs]
++
++    # TF-IDF vectorization
++    vectorizer = TfidfVectorizer(
++        max_features=5000,
++        stop_words=TR_STOPWORDS,
++        min_df=2,
++        max_df=0.8,
++        ngram_range=(1, 2),
++    )
++
++    try:
++        tfidf_matrix = vectorizer.fit_transform(questions)
++    except ValueError as e:
++        print(f"  [WARN] TF-IDF failed (possibly too few unique terms): {e}")
++        return {}
++
++    # Simple greedy clustering: assign each question to most similar cluster
++    n = len(questions)
++    assigned = [False] * n
++    clusters = {}
++    cluster_id = 0
++
++    # Compute similarities in batches to avoid OOM
++    batch_size = 1000
++    for start_idx in range(0, n, batch_size):
++        end_idx = min(start_idx + batch_size, n)
++        batch_matrix = tfidf_matrix[start_idx:end_idx]
++        sims = cosine_similarity(batch_matrix, tfidf_matrix)
++
++        for local_i in range(sims.shape[0]):
++            global_i = start_idx + local_i
++            if assigned[global_i]:
++                continue
++
++            # Find similar questions
++            similar_indices = np.where(sims[local_i] >= similarity_threshold)[0]
++            unassigned_similar = [j for j in similar_indices if not assigned[j]]
++
++            if len(unassigned_similar) >= min_cluster_size:
++                cluster_questions_list = []
++                cluster_answers_list = []
++                for j in unassigned_similar:
++                    assigned[j] = True
++                    cluster_questions_list.append(pairs[j]['question'])
++                    cluster_answers_list.append(pairs[j]['answer'])
++
++                clusters[cluster_id] = {
++                    'representative_question': pairs[global_i]['question'],
++                    'question_count': len(cluster_questions_list),
++                    'sample_questions': cluster_questions_list[:5],
++                    'sample_answers': cluster_answers_list[:3],
++                }
++                cluster_id += 1
++
++    return clusters
++
++
++def run_faq_extractor(config: dict, limit: int | None = None):
++    """Main FAQ extraction pipeline."""
++    input_path = config['paths']['cleaned_csv']
++    output_dir = config['paths']['nlp_dir']
++    pairs_path = os.path.join(output_dir, 'faq_pairs.csv')
++    clusters_path = os.path.join(output_dir, 'faq_clusters.json')
++
++    print(f"{'='*60}")
++    print(f"FAQ Extractor - {config['tenant']['name']}")
++    print(f"{'='*60}")
++
++    Path(output_dir).mkdir(parents=True, exist_ok=True)
++
++    # Load data
++    print(f"\n[1/4] Loading cleaned messages...")
++    start = time.time()
++    df = pd.read_csv(input_path, sep=';', encoding='utf-8', dtype=str)
++    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
++    if limit:
++        # Limit by conversation count, not message count
++        conv_ids = df['conversation_id'].unique()[:limit]
++        df = df[df['conversation_id'].isin(conv_ids)]
++    print(f"  Loaded: {len(df):,} messages ({time.time()-start:.1f}s)")
++
++    # Extract Q&A pairs
++    print(f"\n[2/4] Extracting Q&A pairs...")
++    start = time.time()
++    pairs = extract_qa_pairs(df)
++    print(f"  Q&A pairs found: {len(pairs):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Save pairs
++    print(f"\n[3/4] Saving pairs to {pairs_path}...")
++    pairs_df = pd.DataFrame(pairs)
++    pairs_df.to_csv(pairs_path, sep=';', index=False, encoding='utf-8')
++    file_size_mb = Path(pairs_path).stat().st_size / (1024 * 1024)
++    print(f"  Saved: {file_size_mb:.1f} MB ({len(pairs):,} pairs)")
++
++    # Cluster similar questions
++    print(f"\n[4/4] Clustering similar questions (TF-IDF)...")
++    start = time.time()
++    clusters = cluster_questions(pairs)
++    print(f"  Clusters found: {len(clusters)}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Save clusters
++    with open(clusters_path, 'w', encoding='utf-8') as f:
++        json.dump(clusters, f, ensure_ascii=False, indent=2)
++    print(f"  Clusters saved to {clusters_path}")
++
++    # Summary
++    print(f"\n{'='*60}")
++    print(f"FAQ EXTRACTION SUMMARY")
++    print(f"{'='*60}")
++    print(f"  Q&A pairs: {len(pairs):,}")
++    print(f"  Question clusters: {len(clusters)}")
++
++    if pairs:
++        avg_q_len = sum(p['question_len'] for p in pairs) / len(pairs)
++        avg_a_len = sum(p['answer_len'] for p in pairs) / len(pairs)
++        print(f"  Avg question length: {avg_q_len:.0f} chars")
++        print(f"  Avg answer length: {avg_a_len:.0f} chars")
++
++    if clusters:
++        print(f"\n  Top 10 FAQ clusters:")
++        sorted_clusters = sorted(
++            clusters.items(),
++            key=lambda x: x[1]['question_count'],
++            reverse=True
++        )
++        for cid, cluster in sorted_clusters[:10]:
++            q = cluster['representative_question'][:80]
++            try:
++                print(f"    [{cluster['question_count']:,}x] {q}")
++            except UnicodeEncodeError:
++                print(f"    [{cluster['question_count']:,}x] (encoding error)")
++
++    print(f"{'='*60}")
++
++    return pairs_df, clusters
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='WhatsApp FAQ Extractor')
++    parser.add_argument('--config', default='config.yaml', help='Config file path')
++    parser.add_argument('--limit', type=int, default=None, help='Limit conversations to process')
++    args = parser.parse_args()
++
++    os.chdir(Path(__file__).parent.parent)
++    config = load_config(args.config)
++    run_faq_extractor(config, limit=args.limit)
+diff --git a/tools/whatsapp-analyzer/src/06_sentiment_analyzer.py b/tools/whatsapp-analyzer/src/06_sentiment_analyzer.py
+new file mode 100644
+index 0000000..3c2d472
+--- /dev/null
++++ b/tools/whatsapp-analyzer/src/06_sentiment_analyzer.py
+@@ -0,0 +1,311 @@
++"""
++Phase 2, Step 6: Sentiment Analyzer
++- Per-conversation sentiment (3-level: positive/neutral/negative)
++- Keyword-first + Claude Haiku fallback
++- Analyzes CUSTOMER messages only
++- Output: data/nlp/sentiment.csv
++
++Usage:
++    python src/06_sentiment_analyzer.py [--config config.yaml] [--limit N]
++"""
++
++import sys
++import os
++import argparse
++import json
++import re
++import time
++from pathlib import Path
++
++import pandas as pd
++import yaml
++from tqdm import tqdm
++from dotenv import load_dotenv
++
++sys.path.insert(0, str(Path(__file__).parent.parent))
++
++
++def load_config(config_path: str = 'config.yaml') -> dict:
++    with open(config_path, 'r', encoding='utf-8') as f:
++        return yaml.safe_load(f)
++
++
++# Turkish sentiment keywords (fashion e-commerce context)
++POSITIVE_PATTERNS = [
++    r'\b(teşekkür|sağol|sağolun)\b',
++    r'\b(harika|süper|mükemmel|muhteşem)\b',
++    r'\b(çok (güzel|iyi|beğendim|teşekkür))\b',
++    r'\b(bayıldım|aşık oldum)\b',
++    r'\b(tam istediğim|tam aradığım)\b',
++    r'\b(çok memnun|memnun kaldım)\b',
++    r'\b(eline sağlık|ellerinize sağlık)\b',
++    r'\b(kaliteli|şık|zarif)\b',
++    r'❤|😍|🥰|👍|💕|🌸',
++]
++
++NEGATIVE_PATTERNS = [
++    r'\b(memnun değil|memnun kalmadım)\b',
++    r'\b(kötü|berbat|rezalet|felaket)\b',
++    r'\b(bozuk|defolu|yırtık|lekeli)\b',
++    r'\b(yanlış geldi|eksik geldi)\b',
++    r'\b(hayal kırıklığı)\b',
++    r'\b(uymadı|dar geldi|büyük geldi|küçük geldi|geniş geldi)\b',
++    r'\b(geç geldi|geç kaldı|gecikme)\b',
++    r'\b(saygısızlık|ilgisiz|umursamaz)\b',
++    r'\b(iade|geri gönder|değişim|iptal)\b',
++    r'😡|😤|👎|😞|😠',
++]
++
++POSITIVE_REGEX = re.compile('|'.join(POSITIVE_PATTERNS), re.IGNORECASE)
++NEGATIVE_REGEX = re.compile('|'.join(NEGATIVE_PATTERNS), re.IGNORECASE)
++
++
++def classify_sentiment_keyword(customer_text: str) -> tuple[str, float] | None:
++    """
++    Keyword-based sentiment classification.
++    Returns (sentiment, score) or None if ambiguous.
++    Score: -1.0 to 1.0 (negative to positive).
++    """
++    if not customer_text:
++        return None
++
++    text_lower = customer_text.lower()
++    pos_matches = len(POSITIVE_REGEX.findall(text_lower))
++    neg_matches = len(NEGATIVE_REGEX.findall(text_lower))
++
++    if pos_matches > 0 and neg_matches == 0:
++        return ('positive', min(0.5 + pos_matches * 0.1, 1.0))
++    elif neg_matches > 0 and pos_matches == 0:
++        return ('negative', max(-0.5 - neg_matches * 0.1, -1.0))
++    elif pos_matches > 0 and neg_matches > 0:
++        # Mixed signals - needs Claude
++        return None
++
++    return None
++
++
++def classify_sentiment_claude(conversations: list[dict], config: dict, client) -> list[dict]:
++    """
++    Classify conversation sentiment using Claude Haiku.
++    Takes list of {conv_id, text} dicts.
++    """
++    conv_lines = []
++    for i, conv in enumerate(conversations):
++        # Truncate to fit batch
++        text = conv['text'][:500]
++        conv_lines.append(f"{i}|{text}")
++
++    batch_text = '\n'.join(conv_lines)
++
++    system_prompt = """Sen bir müşteri sentiment analiz uzmanısın. Türkçe giyim e-ticaret WhatsApp konuşmaları.
++
++Her konuşmadaki MÜŞTERİ mesajlarının genel duygusal tonunu belirle.
++
++Kurallar:
++- positive: Memnuniyet, teşekkür, beğeni, mutluluk
++- neutral: Bilgi sorma, standart iletişim, duygusal ton yok
++- negative: Şikayet, memnuniyetsizlik, hayal kırıklığı, öfke
++
++JSON formatında cevap ver:
++[{"i": 0, "s": "positive", "score": 0.8}, ...]
++
++s: sentiment (positive/neutral/negative)
++score: -1.0 (çok olumsuz) ile 1.0 (çok olumlu) arası
++
++Sadece JSON array döndür."""
++
++    try:
++        response = client.messages.create(
++            model=config['nlp']['claude_model'],
++            max_tokens=2048,
++            system=system_prompt,
++            messages=[{"role": "user", "content": batch_text}],
++        )
++
++        result_text = response.content[0].text.strip()
++        if result_text.startswith('['):
++            results = json.loads(result_text)
++        else:
++            json_match = re.search(r'\[.*\]', result_text, re.DOTALL)
++            if json_match:
++                results = json.loads(json_match.group())
++            else:
++                print(f"  [WARN] Claude returned non-JSON: {result_text[:100]}")
++                return []
++
++        return [
++            {
++                'index': r.get('i', -1),
++                'sentiment': r.get('s', 'neutral'),
++                'score': r.get('score', 0.0),
++            }
++            for r in results
++            if isinstance(r, dict) and r.get('i', -1) >= 0
++        ]
++    except json.JSONDecodeError as e:
++        print(f"  [WARN] Claude JSON parse error: {e}")
++        return []
++    except Exception as e:
++        print(f"  [WARN] Claude API error: {e}")
++        return []
++
++
++def run_sentiment_analyzer(config: dict, limit: int | None = None):
++    """Main sentiment analysis pipeline."""
++    input_path = config['paths']['cleaned_csv']
++    conv_path = config['paths']['conversations_csv']
++    output_dir = config['paths']['nlp_dir']
++    output_path = os.path.join(output_dir, 'sentiment.csv')
++    batch_size = config['nlp']['batch_size']
++
++    print(f"{'='*60}")
++    print(f"Sentiment Analyzer - {config['tenant']['name']}")
++    print(f"{'='*60}")
++
++    Path(output_dir).mkdir(parents=True, exist_ok=True)
++
++    # Load messages
++    print(f"\n[1/4] Loading data...")
++    start = time.time()
++    messages_df = pd.read_csv(input_path, sep=';', encoding='utf-8', dtype=str)
++    conv_df = pd.read_csv(conv_path, sep=';', encoding='utf-8', dtype=str)
++
++    if limit:
++        conv_ids = conv_df['conversation_id'].unique()[:limit]
++        messages_df = messages_df[messages_df['conversation_id'].isin(conv_ids)]
++        conv_df = conv_df[conv_df['conversation_id'].isin(conv_ids)]
++
++    print(f"  Messages: {len(messages_df):,}, Conversations: {len(conv_df):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Aggregate customer text per conversation
++    print(f"\n[2/4] Aggregating customer text per conversation...")
++    start = time.time()
++    customer_msgs = messages_df[messages_df['sender_type'] == 'CUSTOMER']
++    conv_texts = customer_msgs.groupby('conversation_id')['message_text'].apply(
++        lambda x: ' '.join(x.dropna().tolist())
++    ).to_dict()
++    print(f"  Conversations with customer text: {len(conv_texts):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Phase A: Keyword sentiment
++    print(f"\n[3/4] Sentiment classification...")
++    start = time.time()
++    results = []
++    unmatched = []
++
++    for conv_id in tqdm(conv_df['conversation_id'], desc="  Keywords"):
++        customer_text = conv_texts.get(conv_id, '')
++        if not customer_text:
++            results.append({
++                'conversation_id': conv_id,
++                'sentiment': 'neutral',
++                'score': 0.0,
++                'method': 'empty',
++            })
++            continue
++
++        match = classify_sentiment_keyword(customer_text)
++        if match:
++            results.append({
++                'conversation_id': conv_id,
++                'sentiment': match[0],
++                'score': match[1],
++                'method': 'keyword',
++            })
++        else:
++            unmatched.append({
++                'conv_id': conv_id,
++                'text': customer_text,
++            })
++
++    keyword_count = len(results)
++    print(f"  Keyword classified: {keyword_count:,}")
++    print(f"  Unmatched (Claude queue): {len(unmatched):,}")
++
++    # Phase B: Claude fallback
++    if unmatched:
++        load_dotenv()
++        api_key = os.getenv('ANTHROPIC_API_KEY')
++        if not api_key or api_key.startswith('sk-ant-xxxx'):
++            print("  [WARN] ANTHROPIC_API_KEY not set. Marking unmatched as neutral.")
++            for item in unmatched:
++                results.append({
++                    'conversation_id': item['conv_id'],
++                    'sentiment': 'neutral',
++                    'score': 0.0,
++                    'method': 'skipped',
++                })
++        else:
++            import anthropic
++            client = anthropic.Anthropic(api_key=api_key)
++
++            batches = [unmatched[i:i+batch_size] for i in range(0, len(unmatched), batch_size)]
++            for batch in tqdm(batches, desc="  Claude batches"):
++                batch_results = classify_sentiment_claude(batch, config, client)
++                result_map = {r['index']: r for r in batch_results}
++
++                for j, item in enumerate(batch):
++                    if j in result_map:
++                        results.append({
++                            'conversation_id': item['conv_id'],
++                            'sentiment': result_map[j]['sentiment'],
++                            'score': result_map[j]['score'],
++                            'method': 'claude',
++                        })
++                    else:
++                        results.append({
++                            'conversation_id': item['conv_id'],
++                            'sentiment': 'neutral',
++                            'score': 0.0,
++                            'method': 'claude_miss',
++                        })
++
++                time.sleep(0.2)
++
++    print(f"  Total classified: {len(results):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Save
++    print(f"\n[4/4] Saving to {output_path}...")
++    results_df = pd.DataFrame(results)
++    results_df.to_csv(output_path, sep=';', index=False, encoding='utf-8')
++    file_size_mb = Path(output_path).stat().st_size / (1024 * 1024)
++    print(f"  Saved: {file_size_mb:.1f} MB")
++
++    # Summary
++    print(f"\n{'='*60}")
++    print(f"SENTIMENT ANALYSIS SUMMARY")
++    print(f"{'='*60}")
++    print(f"  Total conversations: {len(results):,}")
++
++    if results:
++        sentiment_dist = results_df['sentiment'].value_counts()
++        print(f"\n  Sentiment distribution:")
++        for sentiment, count in sentiment_dist.items():
++            pct = count / len(results) * 100
++            print(f"    {sentiment}: {count:,} ({pct:.1f}%)")
++
++        avg_score = results_df['score'].astype(float).mean()
++        print(f"\n  Average score: {avg_score:.3f}")
++
++        method_dist = results_df['method'].value_counts()
++        print(f"\n  Method distribution:")
++        for method, count in method_dist.items():
++            pct = count / len(results) * 100
++            print(f"    {method}: {count:,} ({pct:.1f}%)")
++
++    print(f"{'='*60}")
++
++    return results_df
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='WhatsApp Sentiment Analyzer')
++    parser.add_argument('--config', default='config.yaml', help='Config file path')
++    parser.add_argument('--limit', type=int, default=None, help='Limit conversations to process')
++    args = parser.parse_args()
++
++    os.chdir(Path(__file__).parent.parent)
++    config = load_config(args.config)
++    run_sentiment_analyzer(config, limit=args.limit)
+diff --git a/tools/whatsapp-analyzer/src/07_product_analyzer.py b/tools/whatsapp-analyzer/src/07_product_analyzer.py
+new file mode 100644
+index 0000000..833c702
+--- /dev/null
++++ b/tools/whatsapp-analyzer/src/07_product_analyzer.py
+@@ -0,0 +1,304 @@
++"""
++Phase 2, Step 7: Product Analyzer
++- Refined product code extraction (price vs product code fix)
++- Price detection: xx99/xx00 endings + TL/lira context
++- Product code: 4-digit non-price + kmr-prefixed codes
++- Product demand analysis, price point analysis
++- Output: data/nlp/product_analysis.csv, data/nlp/price_analysis.csv
++
++Usage:
++    python src/07_product_analyzer.py [--config config.yaml] [--limit N]
++"""
++
++import sys
++import os
++import argparse
++import json
++import re
++import time
++from pathlib import Path
++from collections import Counter, defaultdict
++
++import pandas as pd
++import numpy as np
++import yaml
++from tqdm import tqdm
++
++sys.path.insert(0, str(Path(__file__).parent.parent))
++
++
++def load_config(config_path: str = 'config.yaml') -> dict:
++    with open(config_path, 'r', encoding='utf-8') as f:
++        return yaml.safe_load(f)
++
++
++# Price context patterns (Turkish)
++PRICE_SUFFIX_PATTERN = re.compile(
++    r'(\d{3,5})\s*(?:tl|₺|lira|türk lirası)',
++    re.IGNORECASE
++)
++
++# Price answer pattern: "fiyatı/fiyat: 1599" (the number IS the price)
++# NOT "4868 fiyatı ne?" (the number is the product being asked about)
++PRICE_ANSWER_PATTERN = re.compile(
++    r'(?:fiyat[ıi]?|ücret[i]?|tutar[ı]?)\s*[:=]?\s*(\d{3,5})',
++    re.IGNORECASE
++)
++
++# KMR-prefixed product codes
++KMR_PATTERN = re.compile(r'\b(kmr[\w-]*)\b', re.IGNORECASE)
++
++# Generic 4-digit number pattern
++FOUR_DIGIT_PATTERN = re.compile(r'\b(\d{4})\b')
++
++
++def is_likely_price(number_str: str) -> bool:
++    """
++    Heuristic: is this 4-digit number likely a price?
++    Turkish fashion prices typically: 999, 1099, 1199, 1299, 1399, 1499, 1599, 1799, 1999, 2000, 3899
++    """
++    num = int(number_str)
++
++    # Numbers ending in 99 are almost always prices (1099, 1199, 1299, etc.)
++    if number_str.endswith('99'):
++        return True
++
++    # Round thousands (1000, 2000, 3000, 4000, 5000)
++    if num % 1000 == 0:
++        return True
++
++    # Numbers ending in 00 (1500, 2500, etc.)
++    if number_str.endswith('00'):
++        return True
++
++    # Numbers ending in 50 (1250, 1350, etc.) are also common prices
++    if number_str.endswith('50'):
++        return True
++
++    return False
++
++
++def extract_products_and_prices(text: str) -> tuple[list[str], list[str]]:
++    """
++    Extract product codes and prices from text.
++    Returns (product_codes, prices).
++    """
++    if not text or not isinstance(text, str):
++        return [], []
++
++    product_codes = []
++    prices = []
++
++    # Extract KMR codes first (always product codes)
++    kmr_matches = KMR_PATTERN.findall(text)
++    product_codes.extend(kmr_matches)
++
++    # Extract numbers with explicit price suffixes
++    price_suffix_matches = PRICE_SUFFIX_PATTERN.findall(text)
++    explicit_prices = set(price_suffix_matches)
++    prices.extend(price_suffix_matches)
++
++    # Extract numbers from price answers (e.g., "fiyatı: 1599")
++    price_answer_matches = PRICE_ANSWER_PATTERN.findall(text)
++    for g in price_answer_matches:
++        if g:
++            explicit_prices.add(g)
++            if g not in prices:
++                prices.append(g)
++
++    # Extract all 4-digit numbers
++    all_four_digit = FOUR_DIGIT_PATTERN.findall(text)
++
++    for num_str in all_four_digit:
++        # Already identified as price by context
++        if num_str in explicit_prices:
++            continue
++
++        # Apply heuristic
++        if is_likely_price(num_str):
++            prices.append(num_str)
++        else:
++            product_codes.append(num_str)
++
++    return product_codes, prices
++
++
++def run_product_analyzer(config: dict, limit: int | None = None):
++    """Main product analysis pipeline."""
++    input_path = config['paths']['cleaned_csv']
++    conv_path = config['paths']['conversations_csv']
++    output_dir = config['paths']['nlp_dir']
++    product_path = os.path.join(output_dir, 'product_analysis.csv')
++    price_path = os.path.join(output_dir, 'price_analysis.csv')
++    summary_path = os.path.join(output_dir, 'product_summary.json')
++
++    print(f"{'='*60}")
++    print(f"Product Analyzer - {config['tenant']['name']}")
++    print(f"{'='*60}")
++
++    Path(output_dir).mkdir(parents=True, exist_ok=True)
++
++    # Load data
++    print(f"\n[1/4] Loading data...")
++    start = time.time()
++    messages_df = pd.read_csv(input_path, sep=';', encoding='utf-8', dtype=str)
++    conv_df = pd.read_csv(conv_path, sep=';', encoding='utf-8', dtype=str)
++
++    if limit:
++        conv_ids = conv_df['conversation_id'].unique()[:limit]
++        messages_df = messages_df[messages_df['conversation_id'].isin(conv_ids)]
++        conv_df = conv_df[conv_df['conversation_id'].isin(conv_ids)]
++
++    print(f"  Messages: {len(messages_df):,}, Conversations: {len(conv_df):,}")
++    print(f"  Time: {time.time()-start:.1f}s")
++
++    # Pre-group messages by conversation for O(1) lookup
++    print(f"\n[2/4] Extracting products & prices per conversation...")
++    start = time.time()
++
++    # Pre-aggregate text per conversation (avoids O(N*M) lookup)
++    conv_text_map = messages_df.groupby('conversation_id')['message_text'].apply(
++        lambda x: ' '.join(x.dropna().tolist())
++    ).to_dict()
++
++    conv_products = []
++    all_product_counter = Counter()
++    all_price_counter = Counter()
++    product_by_agent = defaultdict(Counter)
++    product_by_outcome = defaultdict(Counter)
++
++    for _, conv_row in tqdm(conv_df.iterrows(), total=len(conv_df), desc="  Analyzing"):
++        conv_id = conv_row['conversation_id']
++        all_text = conv_text_map.get(conv_id, '')
++        products, prices = extract_products_and_prices(all_text)
++
++        unique_products = list(set(products))
++        unique_prices = list(set(prices))
++
++        conv_products.append({
++            'conversation_id': conv_id,
++            'product_codes': '|'.join(unique_products) if unique_products else '',
++            'product_count': len(unique_products),
++            'prices_mentioned': '|'.join(unique_prices) if unique_prices else '',
++            'price_count': len(unique_prices),
++            'outcome': conv_row.get('outcome', ''),
++            'primary_agent': conv_row.get('primary_agent', ''),
++        })
++
++        for p in unique_products:
++            all_product_counter[p] += 1
++        for p in unique_prices:
++            all_price_counter[p] += 1
++
++        # Track by agent and outcome
++        agent = conv_row.get('primary_agent', 'unknown')
++        outcome = conv_row.get('outcome', 'unknown')
++        for p in unique_products:
++            product_by_agent[agent][p] += 1
++            product_by_outcome[outcome][p] += 1
++
++    print(f"  Time: {time.time()-start:.1f}s")
++    print(f"  Unique products: {len(all_product_counter):,}")
++    print(f"  Unique prices: {len(all_price_counter):,}")
++
++    # Save product analysis
++    print(f"\n[3/4] Saving analysis...")
++    conv_prod_df = pd.DataFrame(conv_products)
++    conv_prod_df.to_csv(product_path, sep=';', index=False, encoding='utf-8')
++    print(f"  Product analysis: {product_path}")
++
++    # Save price analysis
++    price_data = []
++    for price, count in all_price_counter.most_common():
++        price_data.append({
++            'price': price,
++            'mention_count': count,
++            'likely_tl': f"{int(price):,} TL" if price.isdigit() else price,
++        })
++    price_df = pd.DataFrame(price_data)
++    price_df.to_csv(price_path, sep=';', index=False, encoding='utf-8')
++    print(f"  Price analysis: {price_path}")
++
++    # Build summary JSON
++    top_products = [
++        {'code': code, 'mentions': count}
++        for code, count in all_product_counter.most_common(50)
++    ]
++
++    top_prices = [
++        {'price': price, 'mentions': count}
++        for price, count in all_price_counter.most_common(20)
++    ]
++
++    # Products by outcome (top 10 per outcome)
++    products_by_outcome_summary = {}
++    for outcome, counter in product_by_outcome.items():
++        products_by_outcome_summary[outcome] = [
++            {'code': code, 'mentions': count}
++            for code, count in counter.most_common(10)
++        ]
++
++    summary = {
++        'total_unique_products': len(all_product_counter),
++        'total_unique_prices': len(all_price_counter),
++        'total_product_mentions': sum(all_product_counter.values()),
++        'total_price_mentions': sum(all_price_counter.values()),
++        'top_products': top_products,
++        'top_prices': top_prices,
++        'products_by_outcome': products_by_outcome_summary,
++    }
++
++    print(f"\n[4/4] Saving summary...")
++    with open(summary_path, 'w', encoding='utf-8') as f:
++        json.dump(summary, f, ensure_ascii=False, indent=2)
++    print(f"  Summary: {summary_path}")
++
++    # Print summary
++    print(f"\n{'='*60}")
++    print(f"PRODUCT ANALYSIS SUMMARY")
++    print(f"{'='*60}")
++    print(f"  Unique products: {len(all_product_counter):,}")
++    print(f"  Unique prices: {len(all_price_counter):,}")
++    print(f"  Total product mentions: {sum(all_product_counter.values()):,}")
++    print(f"  Total price mentions: {sum(all_price_counter.values()):,}")
++
++    print(f"\n  Top 15 products:")
++    for code, count in all_product_counter.most_common(15):
++        try:
++            print(f"    {code}: {count:,}")
++        except UnicodeEncodeError:
++            print(f"    (code): {count:,}")
++
++    print(f"\n  Top 10 prices:")
++    for price, count in all_price_counter.most_common(10):
++        print(f"    {price} TL: {count:,}")
++
++    # Compare with old analysis
++    old_product_codes_path = config['paths']['conversations_csv']
++    old_conv_df = pd.read_csv(old_product_codes_path, sep=';', encoding='utf-8', dtype=str)
++    old_codes = []
++    for codes in old_conv_df['product_codes'].dropna():
++        if codes:
++            old_codes.extend(codes.split('|'))
++    old_unique = len(set(old_codes))
++
++    print(f"\n  Comparison with Phase 1:")
++    print(f"    Phase 1 unique 'products' (includes prices): {old_unique:,}")
++    print(f"    Phase 2 unique products (prices excluded): {len(all_product_counter):,}")
++    print(f"    Phase 2 unique prices (separated): {len(all_price_counter):,}")
++    print(f"    Reduction: {old_unique - len(all_product_counter):,} false positives removed")
++
++    print(f"{'='*60}")
++
++    return conv_prod_df
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='WhatsApp Product Analyzer')
++    parser.add_argument('--config', default='config.yaml', help='Config file path')
++    parser.add_argument('--limit', type=int, default=None, help='Limit conversations to process')
++    args = parser.parse_args()
++
++    os.chdir(Path(__file__).parent.parent)
++    config = load_config(args.config)
++    run_product_analyzer(config, limit=args.limit)

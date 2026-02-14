@@ -65,25 +65,30 @@ Her phase'in 3 soruya cevabı olmalı:
 | MRR | **50-200K TL** |
 | Fiyatlandırma | $25/agent + $40/kanal |
 
-### InvektoServis Eklenti Servisler (Bu Repo — Node.js)
+### InvektoServis Eklenti Servisler (Bu Repo — .NET 8 / C#)
 
 | Bileşen | Durum |
 |---------|-------|
-| `Invekto.Backend` | Gateway, Ops Dashboard, port 5000 |
+| `Invekto.Backend` | Gateway, Ops Dashboard, Flow Builder SPA serve, port 5000 |
 | `Invekto.ChatAnalysis` | Claude Haiku ile 15 kriterli chat analizi, port 7101 |
-| `Invekto.Shared` | DTOs, logging, error codes |
+| `Invekto.Automation` | ✅ Chatbot flow engine (v1+v2), 12 node handler, port 7108 |
+| `Invekto.AgentAI` | ✅ AI reply suggestion + intent detection + feedback learning, port 7105 |
+| `Invekto.Outbound` | ✅ Broadcast + trigger engine + rate limiting + opt-out, port 7107 |
+| `Invekto.Shared` | DTOs, logging, error codes, JWT auth, PostgreSQL factory |
 | Dashboard | React + Vite — health monitoring, log viewer |
+| Flow Builder | React + Vite + React Flow — visual chatbot flow editor |
 
 ### Kritik Eksikler (Satış engeli + churn sebebi)
 
-| Eksik | Etki | Hedef Phase |
-|-------|------|-------------|
-| Chatbot / Flow Builder / Otomasyon | 🔴 #1 satış itirazı + #1 churn sebebi | Phase 1 |
-| AI Agent Assist (cevap önerisi) | 🔴 Agent zaman kaybı | Phase 1 |
-| Broadcast / toplu mesaj | 🔴 Top 3 müşteri talebi | Phase 1 |
-| Mobil uygulama | 🔴 Top 3 müşteri talebi | Phase 7 |
-| Randevu motoru | 🟠 Mevcut klinik müşterileri bekliyor | Phase 2 |
-| Trendyol/HB API | 🟡 E-ticaret niche genişlemesi | Phase 2 |
+| Eksik | Etki | Hedef Phase | Güncel Durum (2026-02-15) |
+|-------|------|-------------|---------------------------|
+| ~~Chatbot / Flow Builder / Otomasyon~~ | ~~🔴 #1 satış itirazı~~ | Phase 1 | ✅ **YAPILDI** — FlowEngine v2 + 12 node + Visual Builder. Kalan: iframe embed, auto-save, tema (FB-5) |
+| ~~AI Agent Assist (cevap önerisi)~~ | ~~🔴 Agent zaman kaybı~~ | Phase 1 | ✅ **YAPILDI** — AgentAI servis + feedback learning. Kalan: otomatik etiketleme → Phase 2 |
+| ~~Broadcast / toplu mesaj~~ | ~~🔴 Top 3 müşteri talebi~~ | Phase 1 | ✅ **YAPILDI** — Outbound servis + trigger engine |
+| Otomasyon Dashboard | 🟠 Metrik ölçümü yok | Phase 2 | ⬜ Başlamadı (Phase 1'den taşındı) |
+| Mobil uygulama | 🔴 Top 3 müşteri talebi | Phase 7 | ⬜ Başlamadı |
+| Randevu motoru | 🟠 Mevcut klinik müşterileri bekliyor | Phase 2 (Hibrit v4.1) | ⬜ Başlamadı |
+| Trendyol/HB API | 🟡 E-ticaret niche genişlemesi | Phase 3 (Hibrit v4.1) | ⬜ Başlamadı |
 
 > Tam liste: bkz [whatisinvekto.md](whatisinvekto.md) — "Mevcut Olmayan Özellikler" bölümü
 
@@ -342,12 +347,15 @@ Değer Denklemi:
 
 | Phase | Hafta | Odak | MRR Hedefi | Müşteri Hedefi |
 |-------|-------|------|------------|----------------|
-| **0** | 1-2 | Mevcut müşteri analizi + otomasyon stratejisi | 50-200K (mevcut) | 50+ (mevcut) |
-| **1** | 3-8 * | **Core Otomasyon** — chatbot, AI assist, broadcast, trigger sistemi | 200-300K | 60+ (mevcut + yeni) |
-| **2** | 9-16 | **Niche Güçlendirme** — randevu motoru, Trendyol/HB API, follow-up | 300-500K | 75+ |
-| **3** | 17-24 | **AI Derinleştirme** — Knowledge/RAG, auto-resolution, outbound v2 | 500-800K | 100+ |
-| **4** | 25-32 | **Enterprise** — SSO, audit, SLA, advanced analytics | 800K-1.2M | 130+ |
-| **5** | 33-40 | **Revenue & Ölçek** — ödeme, full ads attribution (ROAS/otomasyon), sağlık niche tam | 1.2-2M | 170+ |
+| **0** | 1-2 | ✅ Mevcut müşteri analizi + otomasyon stratejisi | 50-200K (mevcut) | 50+ (mevcut) |
+| **1** | 3-8 * | 🔄 **Core Otomasyon** — chatbot, AI assist, broadcast, trigger sistemi | 200-300K | 60+ (mevcut + yeni) |
+| **2** | 9-16 | **AI Derinleştirme + Kritik Niche (Hibrit v4.1)** — Knowledge/RAG, Agent Assist v2, multi-lang, randevu, dashboard, KVKK | 300-500K | 75+ |
+| **3A** | 17-20 | **Platform Enablers (v4.3)** — Integrations servisi, Outbound v2, Randevu Advanced, Dashboard genişletme, Ads Attribution | 500-650K | 85+ |
+| **3B** | 21-24 | **Niche Derinleştirme (v4.5)** — e-ticaret intent/B2B/iade, diş/estetik pipeline, outbound senaryolar, sağlık genişleme + **Voice AI + Review Rescue + Multilingual** | 650-800K | 100+ |
+| **3C** | 25-28 | **Visual Product Search + Size/Fit AI (v4.5)** — görsel ürün arama + beden önerisi, CLIP + vector search, bağımsız SaaS | 800K-1M | 110+ |
+| **3D** | 29-32 | **Face Analysis AI (v4.5)** — selfie → tedavi önerisi, MediaPipe + Claude Vision, estetik klinikler, bağımsız SaaS | 1M-1.2M | 120+ |
+| **4** | 33-40 | **Enterprise** — SSO, audit, SLA, advanced analytics | 1.2-1.5M | 140+ |
+| **5** | 33-40 | **Revenue & Ölçek** — ödeme, revenue agent, cart recovery, AR dil desteği | 1.2-2M | 170+ |
 | **6** | 41-48 | **Operasyon & Analytics** — SLA, QA scoring (C13), conversation mining | 2M+ | 200+ |
 | **7** | 49+ | **Genişleme** — mobil app, yeni kanallar/entegrasyonlar, global pazar | 2M++ | 200++ |
 
@@ -375,10 +383,11 @@ Her phase'in detaylı adımları, DB tabloları, başarı kriterleri ve geçiş 
 |-------|-------|----------------------|-------------------------|--------------------------|----------------------|
 | **0** | 1-2 | Mevcut müşteri ihtiyaç analizi | Klinik müşterileri dinle | E-ticaret pazar araştırması | Otel müşterileri dinle |
 | **1** | 3-8 | Chatbot, AI Assist, Broadcast, Trigger | Tüm klinikler hemen faydalanır | Tüm potansiyel müşteriler faydalanır | Tüm oteller hemen faydalanır |
-| **2** | 9-16 | Follow-up, CSAT, çalışma saati | Randevu motoru + no-show | Trendyol/HB API | PMS entegrasyonu (basit) |
-| **3** | 17-24 | Knowledge/RAG, Auto-resolution | Tedavi bilgisi, KVKK | Ürün bilgisi, iade v2 | Oda/paket bilgisi |
+| **2** | 9-16 | Knowledge/RAG, Dashboard, Multi-lang | Randevu motoru + no-show + KVKK | RAG ile ürün bilgisi | RAG ile otel bilgisi |
+| **3A** | 17-20 | Integrations, Outbound v2, Dashboard, Ads | Randevu Advanced | HB API + kargo | PMS entegrasyonu |
+| **3B** | 21-24 | Niche intent, sağlık genişleme | Tedavi takip + yorum + medikal turizm | İade v1/v2, B2B, full attribution | Niche template |
 | **4** | 25-32 | SSO, Audit, SLA, Analytics | Tam KVKK compliance | Enterprise security | Enterprise |
-| **5** | 33-40 | Revenue Agent, Full Ads Attribution | Yorum motoru, medikal turizm, tedavi takip | Cart recovery, cross-sell | Booking engine |
+| **5** | 33-40 | Revenue Agent, Cart recovery | AR dil desteği | Cart recovery, cross-sell | Booking engine |
 | **6** | 41-48 | SLA, QA Scoring (C13), Mining | Operasyonel mükemmellik | Operasyonel mükemmellik | Operasyonel mükemmellik |
 | **7** | 49+ | Mobil app, yeni kanallar, global | Tüm niche'lere mobil erişim | Tüm niche'lere mobil erişim | Tüm niche'lere mobil erişim |
 
@@ -416,8 +425,10 @@ Toplam:  50+          60+           75+          100+         130+        170+  
 | 1 | `Invekto.Automation` | **Phase 1** | 7108 | **#1 öncelik: chatbot, trigger, flow engine** |
 | 1 | `Invekto.AgentAI` | **Phase 1** | 7105 | **Agent Assist — cevap önerisi, intent detection** |
 | 1 | `Invekto.Outbound` | **Phase 1** | 7107 | **Broadcast + toplu mesaj + zamanlama** |
-| 2 | `Invekto.Integrations` | Phase 2 | 7106 | Niche entegrasyonlar (Trendyol, PMS, randevu) |
-| 3 | `Invekto.Knowledge` | Phase 3 | 7104 | RAG + bilgi tabanı (AI doğruluğu artır) |
+| 2 | `Invekto.Knowledge` | **Phase 2** | 7104 | RAG + bilgi tabanı (AI doğruluğu artır) |
+| 3 | `Invekto.Integrations` | **Phase 3A** | 7106 | Niche entegrasyonlar (Trendyol, PMS, randevu) |
+| 3C | `Invekto.VisualSearch` | **Phase 3C** | 7109 | Görsel ürün arama + Size/Fit AI (CLIP + vector search, bağımsız SaaS) |
+| 3D | `Invekto.FaceAnalysis` | **Phase 3D** | 7110 | Yüz analizi AI (MediaPipe + Claude Vision, estetik konsültasyon) |
 | 4 | `Invekto.Audit` | Phase 4 | 7103 | Kurumsal müşteri talebi |
 
 > **Not:** `Invekto.Auth` ayrı servis olarak yoktur — ana uygulama zaten auth'a sahip. SSO/2FA genişletmesi Phase 4'te.
@@ -437,8 +448,8 @@ Toplam:  50+          60+           75+          100+         130+        170+  
 | Automation | PostgreSQL | Phase 1 | Chatbot flows, triggers, otomasyon kuralları |
 | AgentAI | PostgreSQL | Phase 1 | Intent model, suggested replies log |
 | Outbound | PostgreSQL | Phase 1 | Broadcast kampanyalar, gönderim kuyruğu |
-| Integrations | PostgreSQL | Phase 2 | Trendyol/HB sipariş cache, randevu slotları |
-| Knowledge | PostgreSQL + pgvector | Phase 3 | RAG embeddings, bilgi tabanı |
+| Knowledge | PostgreSQL + pgvector | **Phase 2** | RAG embeddings, bilgi tabanı |
+| Integrations | PostgreSQL | **Phase 3** | Trendyol/HB sipariş cache, randevu slotları |
 | Audit | PostgreSQL | Phase 4 | İşlem logları |
 
 > Phase 1'de tek bir PostgreSQL instance yeterli. Servis başına ayrı DB, Phase 4'ten sonra.
@@ -475,9 +486,15 @@ Phase 1 servisleri (CORE — tüm sektörlere fayda):
   → Outbound (:7107) = broadcast, zamanlı mesaj, toplu gönderim
   → ChatAnalysis (:7101) = mevcut analiz servisi (korunuyor)
 
-Phase 2-3 eklentileri (NİCHE + DERİNLEŞTİRME):
-  → Integrations (:7106) = Trendyol/HB, randevu motoru, PMS
+Phase 2 eklentisi (AI DERİNLEŞTİRME + KRİTİK NİCHE — Hibrit v4.1):
   → Knowledge (:7104) = RAG, bilgi tabanı, AI doğruluğu
+
+Phase 3 eklentisi (NİCHE GENİŞLEME + OUTBOUND v2 — Hibrit v4.1):
+  → Integrations (:7106) = Trendyol/HB, randevu motoru, PMS
+
+Phase 3C-3D eklentisi (GÖRSEL AI — v4.5):
+  → VisualSearch (:7109) = görsel ürün arama + beden önerisi (CLIP + Size AI)
+  → FaceAnalysis (:7110) = yüz analizi + tedavi eşleştirme (MediaPipe + Claude Vision)
 ```
 
 ---
@@ -587,10 +604,10 @@ TOPLAM: 50-200K   200-300K     300-500K     500-800K    800K-1.2M     1.2-2M    
           │            │             │             │            │            │           │          │
 Müşteri: 50+         60+           75+           100+        130+         170+       200+       200++
           │            │             │             │            │            │           │          │
-Odak:   ANALİZ     OTOMASYON     NİCHE         AI           ENTERPRISE   REVENUE   OPERASYON  GENİŞ.
-                   +AI ASSIST    +RANDEVU      DERİNLEŞ.    +SSO+AUDIT   +ÖDEME    +SLA/QA    +MOBİL
-                   +BROADCAST    +E-TİCARET    +KNOWLEDGE   +SLA         +SAĞLIK   +ANALYTICS +GLOBAL
-                   +TRIGGER      +FOLLOW-UP    +AUTO-RES.   +ANALYTICS   +ADS      +MINING    +YENİ CH.
+Odak:   ANALİZ     OTOMASYON     AI+KRİTİK     NİCHE+SAĞLIK  ENTERPRISE   REVENUE   OPERASYON  GENİŞ.
+                   +AI ASSIST    NİCHE(v4.1)   GENİŞLEME    +SSO+AUDIT   +ÖDEME    +SLA/QA    +MOBİL
+                   +BROADCAST    +KNOWLEDGE    +OUTBOUND v2  +SLA         +CART     +ANALYTICS +GLOBAL
+                   +TRIGGER      +RANDEVU+RAG  +TEDAVİ+ADS  +ANALYTICS   +AR DİL   +MINING    +YENİ CH.
 ```
 
 ---

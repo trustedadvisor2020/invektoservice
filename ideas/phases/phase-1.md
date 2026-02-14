@@ -12,16 +12,16 @@
 
 | Alt Gereksinim | Durum | Tamamlanma Tarihi | Notlar |
 |----------------|-------|-------------------|--------|
-| GR-1.1 Chatbot / Flow Builder | 🔄 Devam Ediyor | — | FB-1 ✅, FB-2 ✅, FB-3~5 bekliyor → [flow-builder.md](../flow-builder.md) |
-| GR-1.2 AI Agent Assist | ⬜ Başlamadı | — | — |
+| GR-1.1 Chatbot / Flow Builder | ✅ Tamamlandı | 2026-02-15 | FB-1~FB-4 ✅, FB-5 core ✅ (test, validation, ghost path, shortcuts). Kalan polish (iframe, auto-save, tema) ertelendi → backlog. [flow-builder.md](../flow-builder.md) |
+| GR-1.2 AI Agent Assist | ✅ Tamamlandı | 2026-02-11 | Core tamamlandi: suggest reply + intent + feedback learning + template. Otomatik etiketleme → Phase 2'ye tasindi. |
 | GR-1.3 Broadcast / Toplu Mesaj + Trigger | ✅ Tamamlandı | 2026-02-12 | Invekto.Outbound microservice — broadcast + trigger engine |
-| GR-1.4 Otomasyon Dashboard | ⬜ Başlamadı | — | — |
-| GR-1.5 Diş Kliniği Pipeline | ⬜ Başlamadı | — | — |
-| GR-1.6 Basit Randevu Motoru | ⬜ Başlamadı | — | — |
-| GR-1.7 Estetik Lead Pipeline | ⬜ Başlamadı | — | — |
-| GR-1.8 KVKK Minimum Koruma | ⬜ Başlamadı | — | — |
+| ~~GR-1.4 Otomasyon Dashboard~~ | ➡️ Phase 2 | — | Phase 2'ye tasindi (GR-2.17) — niche metrikleri ile birlestirildi |
+| ~~GR-1.5 Diş Kliniği Pipeline~~ | ➡️ Phase 2 | — | Phase 2'ye tasindi — GR-2.9 ile birlesti |
+| ~~GR-1.6 Basit Randevu Motoru~~ | ➡️ Phase 2 | — | Phase 2'ye tasindi — GR-2.10 ile birlesti |
+| ~~GR-1.7 Estetik Lead Pipeline~~ | ➡️ Phase 2 | — | Phase 2'ye tasindi — GR-2.13/2.14 ile birlesti |
+| ~~GR-1.8 KVKK Minimum Koruma~~ | ➡️ Phase 2 | — | Phase 2'ye tasindi (GR-2.18) |
 | GR-1.9 Invekto ↔ InvektoServis Entegrasyonu | ✅ Tamamlandı | 2026-02-08 | JWT auth, webhook receiver, async callback, PostgreSQL, API contracts |
-| GR-1.10 Ops Dashboard Log İyileştirmesi | ⬜ Başlamadı | — | Business View + Akıllı Özet Kartları |
+| GR-1.10 Ops Dashboard Log İyileştirmesi | ✅ Tamamlandı | 2026-02-14 | category ✅, filtre ✅, Business/All toggle ✅. Kalan (Özet Kartları + summary field) → Phase 2'ye tasindi. |
 
 > **Güncelleme:** Bir gereksinim tamamlandığında durumu `✅ Tamamlandı` olarak güncelle ve tarihi yaz.
 > Devam ediyorsa `🔄 Devam Ediyor`, bloke ise `🚫 Bloke` yaz.
@@ -64,9 +64,9 @@ Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 |-----------|-----|-------|-------|
 | **FB-1** | SPA Scaffold + Canvas | ✅ Tamamlandı | React Flow + Zustand + 5 node component |
 | **FB-2** | API + Backend Entegrasyon | ✅ Tamamlandı | JWT auth, CRUD, proxy, SPA routing, FlowListPage |
-| **FB-3** | FlowEngine v2 (Backend Execution) | ⬜ Başlamadı | Graph traversal, v1→v2 migration, orchestrator dispatch |
-| **FB-4** | Genişletilmiş Node'lar | ⬜ Başlamadı | 7 yeni node (logic, AI, action, utility) + UI components |
-| **FB-5** | iframe + Polish | ⬜ Başlamadı | postMessage bridge, auto-save, test modu, keyboard shortcuts |
+| **FB-3** | FlowEngine v2 (Backend Execution) | ✅ Tamamlandı | FlowGraphV2 + FlowEngineV2 + FlowValidator + FlowMigrator + Orchestrator v1/v2 dispatch |
+| **FB-4** | Genişletilmiş Node'lar | ✅ Tamamlandı | 7 yeni node handler + 7 SPA component (logic, AI, action, utility) + SSRF koruması |
+| **FB-5** | iframe + Polish | ✅ Core Tamamlandı | ✅ test modu, keyboard shortcuts, validation UI, ghost path, flow summary. Ertelendi: iframe bridge, auto-save, tema (backlog) |
 
 #### FB-1: SPA Scaffold + Canvas ✅ TAMAMLANDI
 
@@ -87,33 +87,40 @@ Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 - [x] **1.1.12** Proxy endpoint'ler (GET/PUT flows, validate, activate, migrate-v1)
 - [x] **1.1.13** SPA API client (`lib/api.ts` — load/save flow, JWT header)
 - [x] **1.1.14** FlowListPage: flow yönetim ekranı (liste, aktif/pasif toggle, sil)
-- [x] **1.1.15** Auth: standalone login + iframe postMessage desteği
+- [x] **1.1.15** Auth: standalone login (API key → JWT). NOT: iframe postMessage desteği henüz uygulanmadı — bkz FB-5.
 
-#### FB-3: FlowEngine v2 (Backend Execution)
+#### FB-3: FlowEngine v2 (Backend Execution) ✅ TAMAMLANDI
 
-- [ ] **1.1.16** FlowGraphV2.cs — in-memory adjacency list, node lookup
-- [ ] **1.1.17** FlowEngineV2.cs — node executor + chain traversal (auto-traverse vs wait-point)
-- [ ] **1.1.18** FlowValidator.cs — graph validation rules (orphan, cycle, empty text, missing handle)
-- [ ] **1.1.19** FlowMigrator.cs — v1 → v2 otomatik conversion
-- [ ] **1.1.20** Orchestrator dispatch — version check → v1 veya v2 engine
-- [ ] **1.1.21** Error codes (INV-AT-006 ~ INV-AT-010)
+- [x] **1.1.16** FlowGraphV2.cs — immutable adjacency list, O(1) node/edge lookup (298 satır)
+- [x] **1.1.17** FlowEngineV2.cs — pure graph executor, auto-chain + wait-for-input + terminal (291 satır)
+- [x] **1.1.18** FlowValidator.cs — 12 validation rule (orphan, dead-end, required fields, edge consistency, cycle detection) (353 satır)
+- [x] **1.1.19** FlowMigrator.cs — v1 → v2 otomatik conversion + auto-layout + warnings (258 satır)
+- [x] **1.1.20** Orchestrator dispatch — version check → v1 veya v2 engine (AutomationOrchestrator.cs)
+- [x] **1.1.21** Error codes (INV-AT-001 ~ INV-AT-021, doküman hedefinin ötesinde genişledi)
 
-#### FB-4: Genişletilmiş Node'lar
+#### FB-4: Genişletilmiş Node'lar ✅ TAMAMLANDI
 
-- [ ] **1.1.22** Logic: condition (if/else), switch (multi-branch)
-- [ ] **1.1.23** AI: intent detection, FAQ arama (mevcut IntentDetector/FaqMatcher reuse)
-- [ ] **1.1.24** Action: api_call (webhook/HTTP), delay (bekle N saniye)
-- [ ] **1.1.25** Utility: set_variable (session değişken atama)
-- [ ] **1.1.26** 7 yeni React Flow node component + property panel editors
+- [x] **1.1.22** Logic: LogicConditionHandler (7 operator, if/else) + LogicSwitchHandler (multi-branch, N+1 handle)
+- [x] **1.1.23** AI: AiIntentHandler (Claude Haiku, high/low confidence) + AiFaqHandler (keyword match + DB query)
+- [x] **1.1.24** Action: ApiCallHandler (webhook/HTTP + SSRF koruması) + ActionDelayHandler (N saniye bekleme)
+- [x] **1.1.25** Utility: SetVariableHandler (session değişken atama, ExpressionEvaluator)
+- [x] **1.1.26** 7 yeni React Flow node component + property panel editors + SPA'da 12 node tipi tam
 
-#### FB-5: iframe + Polish
+#### FB-5: iframe + Polish ✅ CORE TAMAMLANDI (polish ertelendi)
 
-- [ ] **1.1.27** iframe bridge (postMessage protocol: init, ready, auth_required, flow_saved)
-- [ ] **1.1.28** Auto-detection (`window.self !== window.top` → iframe mode)
-- [ ] **1.1.29** Tema desteği (dark/light theme switching)
-- [ ] **1.1.30** Auto-save (debounced 5s idle) + keyboard shortcuts (Ctrl+S/Z/Y, Delete)
-- [ ] **1.1.31** Flow validation UI (inline hata/uyarı overlay)
-- [ ] **1.1.32** Test modu — canlı flow simülasyonu (chat panel + canvas node highlight)
+- [ ] ~~**1.1.27** iframe bridge (postMessage protocol)~~ — ➡️ **Ertelendi** (backlog — standalone login yeterli)
+- [ ] ~~**1.1.28** Auto-detection (iframe mode)~~ — ➡️ **Ertelendi** (backlog)
+- [ ] ~~**1.1.29** Tema desteği (dark/light)~~ — ➡️ **Ertelendi** (backlog — kozmetik)
+- [ ] ~~**1.1.30** Auto-save~~ — ➡️ **Ertelendi** (backlog — Ctrl+S yeterli)
+- [x] **1.1.30b** Keyboard shortcuts (Ctrl+S/Z/Y, Delete) ✅
+- [x] **1.1.31** Flow validation UI — inline hata/uyarı overlay (red/orange rings + tooltip) ✅
+- [x] **1.1.32** Test modu — SimulationPanel + SimulationEngine + chat UI + node highlight + variable inspector ✅
+
+**Dokümanda olmayan ama yapılan ek özellikler:**
+- [x] Ghost Path Visualization — erişilemeyen node'ları soluklaştırma (path-enumerator.ts)
+- [x] FlowSummaryBar — canlı DFS flow preview (flow-summarizer.ts, 274 satır)
+- [x] Simulation Store — Zustand session lifecycle, mock FAQ/intent (simulation-store.ts)
+- [x] Deploy script SPA build — dev-to-invekto-services.bat'a FlowBuilder npm ci + build step eklendi
 
 #### Yapılmayacak (Phase 1 Scope Dışı)
 
@@ -130,16 +137,21 @@ Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 > **Tahmini süre:** 2-3 hafta
 
 **Yapılacak:**
-- [ ] **1.2.1** AgentAI servis iskeletini oluştur (port 7105, health check, tenant izolasyon)
-- [ ] **1.2.2** Suggested reply — AI'ın önerdiği cevabı 1 tıkla gönder
+- [x] **1.2.1** AgentAI servis iskeleti (port 7105, health check, JWT auth, tenant izolasyon) ✅
+- [x] **1.2.2** Suggested reply — Claude Haiku entegrasyonu, ReplyGenerator.cs ✅
   - Mesaj gelince → intent algıla → cevap öner → agent onaylar/düzenler/reddeder
-- [ ] **1.2.3** Intent detection + cevap önerisi pipeline
-  - Message → Intent → Response generation → Output
-- [ ] **1.2.4** Otomatik etiketleme (AI bazlı konu tespiti)
-  - Gelen mesajın konusunu algıla → etiket ata
-- [ ] **1.2.5** Dinamik şablon değişkenleri
+  - **Ek:** AgentProfileBuilder — feedback geçmişinden kişiselleştirilmiş profil oluşturma
+- [x] **1.2.3** Intent detection + cevap önerisi pipeline ✅
+  - Message → Intent → Response generation → Output (Claude API JSON çıktısı)
+- [ ] ~~**1.2.4** Otomatik etiketleme (AI bazlı konu tespiti)~~ — ➡️ **Phase 2'ye taşındı**
+- [x] **1.2.5** Dinamik şablon değişkenleri ✅
   - `{{isim}}`, `{{firma}}`, `{{siparis_no}}` desteği
-  - Template engine
+  - TemplateEngine.cs — `{{variable}}` substitution + HTML sanitization
+
+**Dokümanda olmayan ama yapılan ek özellikler:**
+- [x] Feedback learning: agent accepted/edited/rejected tracking → suggest_reply_log DB tablosu
+- [x] Per-agent profiling: son 20 feedback'ten otomatik profil → Claude prompt'a enjekte
+- [x] Backend proxy: Main App → Backend:5000 → AgentAI:7105 (15s timeout, graceful degradation)
 
 **Yapılmayacak:**
 - ❌ Tone presets (Phase 3)
@@ -155,28 +167,29 @@ Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 > **Tahmini süre:** 2-3 hafta
 
 **Yapılacak:**
-- [ ] **1.3.1** Outbound servis iskeletini oluştur (port 7107, health check, tenant izolasyon)
-- [ ] **1.3.2** Toplu mesaj gönderimi (segment bazlı)
+- [x] **1.3.1** Outbound servis iskeleti (port 7107, health check, JWT auth, tenant izolasyon) ✅
+- [x] **1.3.2** Toplu mesaj gönderimi — BroadcastOrchestrator (max 1000 recipient, async queue) ✅
   - Hedef kitle seçimi (etiket, kanal, tarih filtresi)
   - Gönderim başlatma + kuyruğa alma
-- [ ] **1.3.3** Basit trigger engine (event-based otomasyon)
-  - Desteklenen event'ler: yeni sohbet, etiket değişimi, sohbet kapatma
-  - Event → template eşleştirme
-- [ ] **1.3.4** Template engine (değişkenli mesaj şablonları)
+- [x] **1.3.3** Basit trigger engine — TriggerProcessor ✅
+  - Desteklenen event'ler: manual, new_lead, payment_received, appointment_reminder
+  - Event → template eşleştirme + opt-out kontrolü
+- [x] **1.3.4** Template engine — TemplateEngine.cs (`{{variable}}` substitution + missing var detection) ✅
   - WhatsApp template approval uyumlu
-- [ ] **1.3.5** Gönderim kuyruğu + rate limiting
-  - WhatsApp Business API kurallarına %100 uyum
+- [x] **1.3.5** Gönderim kuyruğu + rate limiting — RateLimiter (sliding window, 30 msg/min/tenant) ✅
+  - Background IHostedService message sender (batch dequeue, FOR UPDATE SKIP LOCKED)
   - Rate limit: tenant bazlı, dakika bazlı
-- [ ] **1.3.6** Opt-out yönetimi
-  - "STOP" → otomatik unsubscribe
+- [x] **1.3.6** Opt-out yönetimi — OptOutManager (STOP/DUR/İPTAL/IPTAL/DURDU/ÇIKIŞ/CIKIS) ✅
+  - Otomatik keyword detection + batch opt-out checking
   - Opt-out listesi tenant bazlı
-- [ ] **1.3.7** Delivery status tracking
-  - Status: queued → sent → delivered → read → failed
-  - Failed reason kayıt
-- [ ] **1.3.8** DB tabloları oluştur:
+- [x] **1.3.7** Delivery status tracking ✅
+  - Status: queued → sending → sent → delivered → read → failed
+  - Failed reason kayıt + external_message_id tracking
+- [x] **1.3.8** DB tabloları ✅ (4 tablo — dokümandaki 3 + outbound_broadcasts eklendi):
   ```sql
   outbound_templates (id, tenant_id, name, trigger_event, message_template, variables_json, is_active, created_at, updated_at)
-  outbound_messages (id, tenant_id, template_id, recipient_phone, message_text, status, sent_at, delivered_at, read_at, failed_reason, created_at)
+  outbound_broadcasts (id UUID, tenant_id, template_id, status, total_recipients, queued, sent, delivered, read, failed, scheduled_at, created_at, started_at, completed_at)
+  outbound_messages (id, tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, external_message_id, sent_at, delivered_at, read_at, failed_reason, created_at)
   outbound_optouts (id, tenant_id, phone, reason, created_at)
   ```
 
@@ -188,108 +201,18 @@ Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 
 ---
 
-### GR-1.4: Otomasyon Dashboard
+### ~~GR-1.4 ~ GR-1.8: Phase 2'ye Taşındı~~
 
-> **Servis:** Mevcut React Dashboard genişler
-> **Sektör:** Tümü
+> **Tarih:** 2026-02-15
+> **Sebep:** Core otomasyon (chatbot + AI + broadcast) tamamlandı. Niche-özel işler (dashboard, diş pipeline, randevu motoru, estetik lead, KVKK) doğal olarak Phase 2 scope'una ait — niche güçlendirme ile birleştirildi.
 
-**Yapılacak:**
-- [ ] **1.4.1** Kaç soru geldi (toplam / günlük)
-- [ ] **1.4.2** Kaç tanesi otomatik cevaplandı (deflection rate)
-- [ ] **1.4.3** Kaç tanesi temsilciye devredildi
-- [ ] **1.4.4** Günlük/haftalık trend grafikleri
-- [ ] **1.4.5** DB tablosu:
-  ```sql
-  daily_metrics (id, tenant_id, date, total_messages, auto_resolved, human_handled, avg_response_time_sec, created_at)
-  ```
-
-**Yapılmayacak:**
-- ❌ SLA tracker (Phase 4)
-- ❌ QA scoring (Phase 6)
-- ❌ Revenue attribution (Phase 5)
-
----
-
-### GR-1.5: Diş Kliniği — Fiyat Sorusu Pipeline
-
-> **Servis:** `ChatAnalysis` :7101 genişleme + Backend :5000
-> **Sektör:** Diş
-
-**Yapılacak:**
-- [ ] **1.5.1** Intent tanımla: "implant ne kadar" / "fiyat ne" / "tedavi ücreti"
-- [ ] **1.5.2** Intent eşleşince → fiyat aralığı + ücretsiz muayene teklifi gönder
-- [ ] **1.5.3** Randevu alma intent'i: "randevu almak istiyorum" → slot öner
-- [ ] **1.5.4** Eşleşmezse → sekretere devret (human handoff)
-
-**Yapılmayacak:**
-- ❌ HBYS entegrasyonu (çok erken)
-- ❌ Tedavi planı detayı (doktor verir)
-- ❌ Ödeme/depozit sistemi (Phase 3+)
-
----
-
-### GR-1.6: Diş Kliniği — Basit Randevu Motoru
-
-> **Servis:** Backend :5000 + basit cron hatırlatma
-> **Sektör:** Diş
-
-**Yapılacak:**
-- [ ] **1.6.1** Haftalık slot tanımı (gün + saat aralıkları)
-- [ ] **1.6.2** Randevu al → WhatsApp teyit mesajı gönder
-- [ ] **1.6.3** T-48h hatırlatma (cron job veya Outbound Engine ile)
-- [ ] **1.6.4** T-2h son hatırlatma
-- [ ] **1.6.5** İptal → slot boşalt
-- [ ] **1.6.6** Basit diş dashboard'u:
-  - Kaç fiyat sorusu geldi
-  - Kaç tanesi randevuya döndü (dönüşüm oranı)
-  - No-show sayısı + oranı
-  - Haftalık trend
-
-**Yapılmayacak:**
-- ❌ Google Calendar sync (Phase 2)
-- ❌ Bekleme listesi (Phase 2)
-- ❌ Doktor bazlı slot (Phase 2)
-- ❌ Online ödeme (Phase 3+)
-
----
-
-### GR-1.7: Estetik Klinik — Lead Pipeline
-
-> **Servis:** `ChatAnalysis` genişleme + Backend + Dashboard
-> **Sektör:** Estetik
-
-**Yapılacak:**
-- [ ] **1.7.1** Intent tanımla: "fiyat ne kadar" / "botox" / "dolgu" / "randevu"
-- [ ] **1.7.2** Fiyat sorusuna → kişiselleştirilmiş aralık + konsültasyon teklifi
-- [ ] **1.7.3** Before/after fotoğraf talebi → hazır galeri linki
-- [ ] **1.7.4** Eşleşmezse → operasyon sorumlusuna devret
-- [ ] **1.7.5** Basit lead tracking:
-  - Lead kaydı (isim, telefon, ilgi alanı, kaynak)
-  - Lead durumu (yeni → iletişim → randevu → hasta)
-  - Basit follow-up hatırlatma (T+24h cevap yoksa tekrar mesaj)
-- [ ] **1.7.6** Estetik dashboard'u:
-  - Kaç lead geldi (kaynak bazlı)
-  - Lead → randevu dönüşüm oranı
-  - Yanıt süresi
-  - Haftalık trend
-
-**Yapılmayacak:**
-- ❌ Instagram API entegrasyonu (manuel DM→WA yeterli)
-- ❌ Otomatik lead scoring (Phase 2)
-- ❌ Ödeme/depozit (Phase 3+)
-
----
-
-### GR-1.8: KVKK Minimum Koruma (Sağlık Niche)
-
-> **Servis:** Tüm servisler
-> **Sektör:** Sağlık (Diş + Estetik)
-
-- [ ] **1.8.1** Disclaimer: AI sağlık tavsiyesi vermez, her otomasyon mesajında disclaimer ekle
-- [ ] **1.8.2** Açık rıza: WhatsApp otomasyon başlamadan hasta onayı (opt-in mesajı)
-- [ ] **1.8.3** Veri minimizasyonu: Sadece isim, telefon, randevu — tıbbi kayıt/rapor saklanmaz
-- [ ] **1.8.4** Erişim kontrolü: Hasta verisine sadece ilgili tenant erişir (mevcut multi-tenant yeterli)
-- [ ] **1.8.5** Fotoğraf politikası: Hasta fotoğrafı Invekto'ya yüklenmez (Phase 4'e kadar)
+| Eski GR | Yeni Yer | Açıklama |
+|---------|----------|----------|
+| GR-1.4 Otomasyon Dashboard | **GR-2.17** (yeni) | Deflection rate, trend grafikleri, daily_metrics |
+| GR-1.5 Diş Pipeline | **GR-2.9** ile birleşti | Fiyat→randevu intent, diş dashboard |
+| GR-1.6 Randevu Motoru | **GR-2.10** ile birleşti | Basit slot + hatırlatma → v2'nin parçası |
+| GR-1.7 Estetik Lead | **GR-2.13/2.14** ile birleşti | Lead tracking, estetik dashboard |
+| GR-1.8 KVKK | **GR-2.18** (yeni) | Disclaimer, opt-in, veri minimizasyonu |
 
 ---
 
@@ -312,23 +235,18 @@ Mevcut v1 (menü bazlı) korunur, v2 (graph-based) üstüne biner.
 > **Tahmini süre:** 1 hafta
 
 **Yapılacak:**
-- [ ] **1.10.1** LogEntry'ye `category` alanı ekle: `api` | `system` | `health` | `step`
+- [x] **1.10.1** LogEntry'ye `category` alanı eklendi ✅ (LogEntry.cs:62)
   - LogRequest → `api`, LogSystem → `system`, LogStep → `step`
-  - Health/ready/ops istekleri → loglama skip veya `health` kategorisi
-- [ ] **1.10.2** LogReader'a category filtresi ekle
+  - JsonLinesLogger.cs: category bazlı loglama (satır 53, 111)
+- [x] **1.10.2** LogReader'a category filtresi eklendi ✅ (LogReader.cs:137, 169)
   - Grouped query default: sadece `api` + `step` (gürültü gizli)
   - `?category=all` ile tüm loglar görülebilir
-- [ ] **1.10.3** Dashboard Business View (default)
+- [x] **1.10.3** Dashboard Business View ✅ (LogStream.tsx:12, 121, 156)
   - Sadece iş mantığı eventleri göster (API çağrıları + sonuçlar)
   - Toggle: "Business" / "All"
   - Health check, ops, system logları gizli
-- [ ] **1.10.4** Akıllı Özet Kartları
-  - Her operasyon tek satır: `ChatAnalysis → analyze → 9 mesaj → OK (269ms)`
-  - Hata operasyonları: kırmızı badge + hata mesajı
-  - Tıklayınca mevcut timeline detayı açılır
-- [ ] **1.10.5** Log entry'lere iş özeti alanı ekle (`summary` field)
-  - API endpoint handler'lar özet bilgiyi loga yazar
-  - Örnek: "9 mesaj analiz edildi", "Webhook event alındı (tenant: 42)"
+- [ ] ~~**1.10.4** Akıllı Özet Kartları~~ — ➡️ **Phase 2'ye taşındı** (GR-2.17 Dashboard ile birleştirildi)
+- [ ] ~~**1.10.5** Log entry'lere iş özeti alanı ekle (`summary` field)~~ — ➡️ **Phase 2'ye taşındı**
 
 **Yapılmayacak:**
 - ❌ Log aggregation / external service (ELK, Grafana vb.)
@@ -403,18 +321,14 @@ Day 30: "Bu ay 450 mesaj otomatik, 1 temsilci tasarruf"
 
 ## Çıkış Kriterleri (Phase 2'ye Geçiş Şartı)
 
-- [ ] Deflection rate %30+ (otomatik cevaplanan / toplam)
-- [ ] Otomasyon kullanan müşteri sayısı 20+ (mevcut tabanın %40+)
-- [ ] Time to first automated reply < 24h
-- [ ] Müşteriler "sektörüme özel özellik olsa" diyor → Phase 2 scope'u netleşiyor
+> **Güncelleme (2026-02-15):** Niche-özel kriterler Phase 2'ye taşındı. Phase 1 çıkış kriterleri core otomasyon altyapısına odaklanır.
 
-### Niche Bazlı Başarı Kriterleri
+- [x] Core otomasyon servisleri çalışıyor (Automation:7108, AgentAI:7105, Outbound:7107) ✅
+- [x] Flow Builder v2 functional (12 node, visual editor, test modu, validation) ✅
+- [x] Integration bridge çalışıyor (JWT, webhook, callback) ✅
+- [x] Deploy pipeline çalışıyor (FTPES, NSSM services) ✅
+- [x] FB-5 core tamamlandı (test, validation, ghost path, shortcuts) ✅ — polish (iframe, auto-save, tema) ertelendi
+- [ ] En az 1 tenant production'da v2 chatbot kullanıyor (Q operational task)
 
-| Kriter | E-ticaret | Diş | Estetik |
-|--------|-----------|-----|---------|
-| Aktif müşteri | 1 satıcı | 1 klinik | 1 klinik |
-| AHA moment | Kargo sorusu oto-cevap | Fiyat→randevu dönüşümü | Lead'e hızlı cevap |
-| Deflection rate | %30+ | N/A | N/A |
-| Dönüşüm oranı | N/A | Fiyat→randevu %20+ | Lead→randevu %25+ |
-| No-show önleme | N/A | %25→%10 altı | N/A |
-| 2. ay ödeme | Evet | Evet | Evet |
+> **Not:** FB-5 polish items (iframe bridge, auto-save, tema) ertelendi (2026-02-15).
+> Standalone login çalışıyor, Ctrl+S mevcut. Bu items ihtiyaç olduğunda backlog'dan çekilir.

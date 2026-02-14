@@ -50,3 +50,12 @@ Desktop.ini
 
 # Node
 node_modules/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# WhatsApp Analyzer data (large CSV files)
+tools/whatsapp-analyzer/data/

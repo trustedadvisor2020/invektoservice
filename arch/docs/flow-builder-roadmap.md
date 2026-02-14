@@ -1,26 +1,30 @@
 # Flow Builder Roadmap
 
 > Tum Flow Builder fazlarinin ozeti. Her fazin detayli plan JSON'u `arch/plans/` altinda.
+>
+> **DIKKAT:** Bu dosyadaki "FB-X" numaralari Flow Builder'in **ic fazlaridir**.
+> Ana roadmap fazlari (Phase 0-7) icin bkz: `ideas/phases/`. Tum FB fazlari **Roadmap Phase 1** (GR-1.1) kapsamindadir.
 
 ## Genel Bakis
 
 | Faz | Baslik | Durum | Risk | Plan JSON | AHA |
 |-----|--------|-------|------|-----------|-----|
-| Phase 1 | SPA UI & Canvas | DONE | LOW | (yok - Phase 2 oncesi) | - |
-| Phase 2 | Multi-flow + API + Auth | DONE | HIGH | `20260212-flow-builder-phase2.json` | - |
-| Phase 2.5 | SPA Quick Wins (AHA) | **DONE** | LOW | `20260213-flow-builder-phase25.json` | #1 #2 #6 |
-| Phase 3a | FlowEngine v2 + Validator + Migrator | **DONE** | HIGH | `20260213-flow-builder-phase3.json` | - |
-| Phase 3b | Test Simulasyon + Tek Tikla Test | **NEXT** | HIGH | (3a ile ayni plan) | #4 |
-| Phase 3c | Validation UI + Insights + Polish | PLANNED | MEDIUM | (3a ile ayni plan) | #3 #5 |
-| Phase 4a | Logic + Delay + SetVariable Node'lari | PLANNED | LOW | (henuz yok) | - |
-| Phase 4b | AI + API Call Node'lari | PLANNED | MEDIUM | (henuz yok) | - |
-| Phase 5a | iframe Embed (Main App entegrasyon) | PLANNED | HIGH | (henuz yok) | - |
-| Phase 5b | Trafik Heatmap (analytics) | PLANNED | MEDIUM | (henuz yok) | #7 |
-| Phase 5c | UX Polish (auto-save, shortcuts, export) | PLANNED | LOW | (henuz yok) | - |
+| FB-1 | SPA UI & Canvas | DONE | LOW | (yok - FB-2 oncesi) | - |
+| FB-2 | Multi-flow + API + Auth | DONE | HIGH | `20260212-flow-builder-phase2.json` | - |
+| FB-2.5 | SPA Quick Wins (AHA) | **DONE** | LOW | `20260213-flow-builder-phase25.json` | #1 #2 #6 |
+| FB-3a | FlowEngine v2 + Validator + Migrator | **DONE** | HIGH | `20260213-flow-builder-phase3.json` | - |
+| FB-3b | Test Simulasyon + Tek Tikla Test | **DONE** | HIGH | (3a ile ayni plan) | #4 |
+| FB-3c | Validation UI + Insights + Polish | **DONE** | MEDIUM | (3a ile ayni plan) | #3 #5 |
+| FB-4a | Logic + Delay + SetVariable Node'lari | **DONE** | LOW | `20260214-flow-builder-phase4a.json` | - |
+| FB-4b | AI + API Call Node'lari | **DONE** | MEDIUM | `20260214-flow-builder-phase4b.json` | - |
+| FB-5a | iframe Embed (Main App entegrasyon) | **NEXT** | HIGH | (henuz yok) | - |
+| FB-5b | Trafik Heatmap (analytics) | PLANNED | MEDIUM | (henuz yok) | #7 |
+| FB-5c | UX Polish (auto-save, dark mode, export) | PLANNED | LOW | (henuz yok) | - |
+| FB-5d | Deploy script SPA build step | **DONE** | LOW | — | - |
 
 ---
 
-## Phase 1: SPA UI & Canvas (DONE)
+## FB-1: SPA UI & Canvas (DONE)
 
 **Tamamlanma:** 2026-02-12
 
@@ -34,7 +38,7 @@
 
 ---
 
-## Phase 2: Multi-flow + API + Auth (DONE)
+## FB-2: Multi-flow + API + Auth (DONE)
 
 **Tamamlanma:** 2026-02-12 | **Plan:** `arch/plans/20260212-flow-builder-phase2.json`
 
@@ -47,11 +51,11 @@
 
 ---
 
-## Phase 2.5: SPA Quick Wins - AHA Moments (DONE)
+## FB-2.5: SPA Quick Wins - AHA Moments (DONE)
 
 **Tamamlanma:** 2026-02-13 | **Plan:** `arch/plans/20260213-flow-builder-phase25.json` | **Codex:** 2 iter PASS
 
-> Phase 3a backend calismasi oncesi, SPA-only iyilestirmeler. Sifir backend kodu, mevcut API'ler yeterli.
+> FB-3a backend calismasi oncesi, SPA-only iyilestirmeler. Sifir backend kodu, mevcut API'ler yeterli.
 
 ### AHA #6: Kopya Baslat (Flow Duplicate)
 
@@ -124,11 +128,11 @@
 
 ---
 
-## Phase 3: FlowEngine v2 + Test/Simulasyon (PLANNED)
+## FB-3: FlowEngine v2 + Test/Simulasyon (DONE)
 
 **Plan:** `arch/plans/20260213-flow-builder-phase3.json`
 
-### Phase 3a: FlowEngine v2 + Validator + Migrator (DONE)
+### FB-3a: FlowEngine v2 + Validator + Migrator (DONE)
 
 **Tamamlanma:** 2026-02-13 | **Commit:** `74c9ffd` | **Codex:** 3 iter Q FORCE PASS | **Dosya:** 16 dosya +1942 -27
 
@@ -136,7 +140,7 @@
 
 | # | Iyilestirme | Fayda |
 |---|-------------|-------|
-| IMP-1 | Node Handler Registry (Strategy) | Phase 4'te 7 yeni type eklenirken engine'e dokunulmaz |
+| IMP-1 | Node Handler Registry (Strategy) | FB-4'te 7 yeni type eklenirken engine'e dokunulmaz |
 | IMP-2 | Immutable Pre-computed Graph | Parse once, O(1) lookup, session boyunca reuse |
 | IMP-3 | Expression Safety Limits | ReDoS (100ms), max 50 var, max 10KB value, flat only |
 | IMP-4 | ExecutionContext Object | Clean API, loose params yerine tek object |
@@ -163,34 +167,34 @@
 - `AutomationRepository.cs` - LogAutoReplyAsync'e node_id parametresi eklenir
 - `Automation/Program.cs` - Yeni endpoint'ler (validate, migrate-v1) + handler DI registration
 
-**DB Migration (Phase 3a zorunlu):**
+**DB Migration (FB-3a zorunlu):**
 - `ALTER TABLE auto_reply_log ADD COLUMN node_id VARCHAR(100)` - v2 flow execution node tracking
-- Phase 5 AHA #7 (trafik heatmap) bu kolona bagimli. Phase 3a'da eklenmezse Phase 5 calisamaz.
+- FB-5b AHA #7 (trafik heatmap) bu kolona bagimli. FB-3a'da eklenmezse FB-5b calisamaz.
 
 **Node execution modeli:**
-| Tip | Davranis | Phase 3a Handler |
+| Tip | Davranis | FB-3a Handler |
 |-----|----------|------------------|
 | trigger_start | Auto-chain | TriggerStartHandler |
 | message_text | Auto-chain | MessageTextHandler |
 | message_menu | Wait (input bekle) | MessageMenuHandler |
 | action_handoff | Terminal | ActionHandoffHandler |
 | utility_note | No-op skip | UtilityNoteHandler |
-| action_delay, utility_set_variable, logic_condition, logic_switch | Auto-chain | Phase 4 |
-| ai_intent, ai_faq | Wait | Phase 4 |
-| action_api_call | External | Phase 4 |
+| action_delay, utility_set_variable, logic_condition, logic_switch | Auto-chain | FB-4 |
+| ai_intent, ai_faq | Wait | FB-4 |
+| action_api_call | External | FB-4 |
 
 **Error codes:** INV-AT-011 ~ INV-AT-017
 
-### Phase 3b: Test Simulasyon API + SPA Chat Panel (Ana Ozellik)
+### FB-3b: Test Simulasyon API + SPA Chat Panel (Ana Ozellik)
 
 **Amac:** Flow'lari aktive etmeden SPA icinde interaktif test etme
 
-**Scope siniri:** Phase 3b'de simulation sadece 5 implemented node type ile calisir (trigger_start, message_text, message_menu, action_handoff, utility_note). ai_faq/ai_intent/logic node'lari Phase 4'e kadar SPA'da olusturulamaz - MockFaqMatcher/MockIntentDetector sadece Phase 4 sonrasi kullanilabilir.
+**Scope siniri:** FB-3b'de simulation sadece 5 implemented node type ile calisir (trigger_start, message_text, message_menu, action_handoff, utility_note). ai_faq/ai_intent/logic node'lari FB-4'e kadar SPA'da olusturulamaz - MockFaqMatcher/MockIntentDetector sadece FB-4 sonrasi kullanilabilir.
 
 **Backend:**
 - `SimulationEngine.cs` - In-memory test session (DB'ye yazmaz, side-effect yok, **TTL: 30dk, ConcurrentDictionary + cleanup timer**)
-- `MockFaqMatcher.cs` - Hardcoded keyword-based mock FAQ (DB sorgusu yok) - Phase 4 sonrasi aktif
-- `MockIntentDetector.cs` - Rule-based mock intent (Claude API cagrisi yok) - Phase 4 sonrasi aktif
+- `MockFaqMatcher.cs` - Hardcoded keyword-based mock FAQ (DB sorgusu yok) - FB-4 sonrasi aktif
+- `MockIntentDetector.cs` - Rule-based mock intent (Claude API cagrisi yok) - FB-4 sonrasi aktif
 - Endpoint'ler: `POST /simulation/start`, `POST /simulation/step`, `DELETE /simulation/{sid}`
 - Backend proxy: `/api/v1/flow-builder/simulation/*`
 
@@ -230,7 +234,7 @@
 
 ---
 
-### Phase 3c: Validation UI + Insights + Polish
+### FB-3c: Validation UI + Insights + Polish
 
 **Amac:** Validation sonuclarini SPA'da gosterme, debug araclari, flow kalite gorunurlugu
 
@@ -259,7 +263,7 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 | 60-89 | 🟡 Eksik var | yellow-500 |
 | 0-59 | 🔴 Sorunlu | red-500 |
 
-**Onkosul:** List endpoint (`GET /api/v1/flows/{tenantId}`) su anda `flow_config` donmuyor (sadece `node_count`, `edge_count` donuyor). Phase 3c'de list endpoint'e `flow_config` JSONB eklenmeli (Karar: 2026-02-13, Q Secenek A).
+**Onkosul:** List endpoint (`GET /api/v1/flows/{tenantId}`) su anda `flow_config` donmuyor (sadece `node_count`, `edge_count` donuyor). FB-3c'de list endpoint'e `flow_config` JSONB eklenmeli (Karar: 2026-02-13, Q Secenek A).
 
 **Performans notu:** Full flow_config JSONB return etmek 20+ flow'lu tenant'ta yavas olabilir. Alternatif: Backend'de `calculateHealthScore()` hesapla, sadece skor dondir. SPA full config indirmez. Bu kararla list response'a `health_score INT` + `health_issues TEXT[]` eklenir, `flow_config` eklenmez.
 
@@ -272,7 +276,7 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 **Dosyalar:**
 - `AutomationRepository.cs` - ListFlows SQL'ine health score pre-compute (veya application-level)
 - `Automation/Program.cs` - List response'a health_score + health_issues ekle
-- `FlowValidator.cs` (Phase 3a'dan mevcut) - `CalculateHealthScore()` metodu eklenir
+- `FlowValidator.cs` (FB-3a'dan mevcut) - `CalculateHealthScore()` metodu eklenir
 - `pages/FlowListPage.tsx` - Health badge component + skor gosterimi
 
 **Metrik:** Admin'in sorunlu flow'u tespit etme suresi (0 tikla vs N tikla)
@@ -302,7 +306,7 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 
 ---
 
-## Phase 4: Genisletilmis Node Tipleri (PLANNED)
+## FB-4: Genisletilmis Node Tipleri (DONE)
 
 **Amac:** Kalan 7 node tipinin UI property editor'larini ve backend execution handler'larini tamamlama
 
@@ -318,20 +322,21 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 | ai_faq | Min confidence editor, matched/no_match handle'lar | `AiFaqHandler.cs` - Production: FaqMatcher (DB), Simulation: MockFaqMatcher | MEDIUM |
 | action_api_call | HTTP method/URL/headers/body editor, response variable, success/error handle'lar | `ApiCallHandler.cs` - Production: HttpClient, Simulation: mock response | HIGH |
 
-**Oneri:** Phase 4'u 2 sub-phase'e bol:
-- **4a** (LOW): logic_condition, logic_switch, action_delay, utility_set_variable (pure logic, external dependency yok)
-- **4b** (MEDIUM-HIGH): ai_intent, ai_faq, action_api_call (external service dependency: Claude API, DB, HTTP)
+**Oneri:** FB-4'u 2 sub-phase'e bol:
+- **FB-4a** (LOW): logic_condition, logic_switch, action_delay, utility_set_variable (pure logic, external dependency yok)
+- **FB-4b** (MEDIUM-HIGH): ai_intent, ai_faq, action_api_call (external service dependency: Claude API, DB, HTTP)
 
 ---
 
-## Phase 5: iframe Embed + Analytics + Polish (PLANNED)
+## FB-5: iframe Embed + Analytics + Polish (PLANNED)
 
 **Amac:** Main App icine gomme, gercek trafik analizleri ve UX iyilestirmeleri
 
 **Scope notu:** Bu faz cok genis. Sub-phase'lere bolunmesi onerilir:
-- **5a** (HIGH): iframe postMessage auth + Main App proxy (core entegrasyon)
-- **5b** (MEDIUM): AHA #7 trafik heatmap (analytics, onkosul: Phase 3a node_id tracking)
-- **5c** (LOW): UX polish (auto-save, shortcuts, export/import, dark mode)
+- **FB-5a** (HIGH): iframe postMessage auth + Main App proxy (core entegrasyon)
+- **FB-5b** (MEDIUM): AHA #7 trafik heatmap (analytics, onkosul: FB-3a node_id tracking)
+- **FB-5c** (LOW): UX polish (auto-save, shortcuts, export/import, dark mode)
+- **FB-5d** (DONE): Deploy script'e FlowBuilder SPA build step eklendi
 
 **Mevcut plan:**
 - iframe postMessage authentication (Main App -> Flow Builder)
@@ -346,7 +351,7 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 
 **User Pain:** Flow canli ama admin "musteriler gercekte hangi yoldan gidiyor?" bilmiyor. `auto_reply_log` tablosunda veri var ama SQL bilmeden erisilemez.
 
-**Onkosul:** FlowEngineV2 production'da calisiyor + v2 flow'lar aktif + auto_reply_log'da node-level tracking var
+**Onkosul:** FlowEngineV2 production'da calisiyor + v2 flow'lar aktif + auto_reply_log'da node-level tracking var (FB-3a)
 
 **Cozum:** Aktif flow'un editor sayfasinda "Gercek Trafik" butonu. Tiklayinca canvas edge'leri trafik yogunluguna gore kalinlasir.
 
@@ -403,13 +408,13 @@ skor = (bagli_node_orani × 40) + (dolu_alan_orani × 30) + (handoff_var_mi × 1
 
 | # | Baslik | Phase | Durum | Efor | Etki | Layer | Bagimlilk |
 |---|--------|-------|-------|------|------|-------|-----------|
-| 1 | Canli Onizleme (anlik flow ozeti) | 2.5 | **DONE** | Low | High | SPA-only | Yok |
-| 2 | Kirmizi Kenar (graph validation lite) | 2.5 | **DONE** | Low | High | SPA-only | Yok |
-| 3 | Ghost Path (yol overlay) | 3c | PLANNED | Medium | Medium | SPA-only | #2 (graph-validator.ts) |
-| 4 | Tek Tikla Test (save→test) | 3b | PLANNED | Low | High | SPA-only | Phase 3b simulation panel |
-| 5 | Akis Saglik Skoru (liste badge) | 3c | PLANNED | Low-Med | High | SPA + backend (pre-compute) | #2 + FlowValidator.CalculateHealthScore |
-| 6 | Kopya Baslat (flow duplicate) | 2.5 | **DONE** | Low | High | SPA + mevcut API | Yok |
-| 7 | Son Musteri Yolu (trafik heatmap) | 5b | PLANNED | High | High | Full stack | FlowEngineV2 + auto_reply_log.node_id (Phase 3a) |
+| 1 | Canli Onizleme (anlik flow ozeti) | FB-2.5 | **DONE** | Low | High | SPA-only | Yok |
+| 2 | Kirmizi Kenar (graph validation lite) | FB-2.5 | **DONE** | Low | High | SPA-only | Yok |
+| 3 | Ghost Path (yol overlay) | FB-3c | **DONE** | Medium | Medium | SPA-only | #2 (graph-validator.ts) |
+| 4 | Tek Tikla Test (save→test) | FB-3b | **DONE** | Low | High | SPA-only | FB-3b simulation panel |
+| 5 | Akis Saglik Skoru (liste badge) | FB-3c | **DONE** | Low-Med | High | SPA + backend (pre-compute) | #2 + FlowValidator.CalculateHealthScore |
+| 6 | Kopya Baslat (flow duplicate) | FB-2.5 | **DONE** | Low | High | SPA + mevcut API | Yok |
+| 7 | Son Musteri Yolu (trafik heatmap) | FB-5b | PLANNED | High | High | Full stack | FlowEngineV2 + auto_reply_log.node_id (FB-3a) |
 
 ### Kill List (YAPMA)
 

@@ -5,6 +5,10 @@
 > **Müşteri Hedefi:** 170+
 > **Bağımlılık:** Phase 4 tamamlanmış olmalı
 > **Durum:** ⬜ Başlamadı
+>
+> **v4.2 Optimizasyon (2026-02-15):** 3 GR Phase 3'e taşındı (tedavi takip → GR-3.20,
+> yorum/referans → GR-3.21, attribution → GR-3.14). Medikal turizm bölündü (TR/EN → Phase 3
+> GR-3.22, AR → burada GR-5.6). Phase 5 artık 6 GR (9'dan düştü).
 
 ---
 
@@ -17,10 +21,10 @@
 | GR-5.3 Ürün Kataloğu | ⬜ Başlamadı | — | — |
 | GR-5.4 Abandoned Cart Recovery | ⬜ Başlamadı | — | — |
 | GR-5.5 Sipariş Sonrası Proaktif Satış (S4) | ⬜ Başlamadı | — | — |
-| GR-5.6 Click-to-WhatsApp Attribution | ⬜ Başlamadı | — | — |
-| GR-5.7 Tedavi Sonrası Takip (S8) | ⬜ Başlamadı | — | — |
-| GR-5.8 Google Yorum + Referans Motoru (S10) | ⬜ Başlamadı | — | — |
-| GR-5.9 Medikal Turizm Lead Yönetimi (S9) | ⬜ Başlamadı | — | — |
+| ~~GR-5.6 Click-to-WhatsApp Attribution~~ | ➡️ Phase 3 | — | Phase 3 GR-3.14'e birleştirildi (v4.2) |
+| ~~GR-5.7 Tedavi Sonrası Takip (S8)~~ | ➡️ Phase 3 | — | Phase 3 GR-3.20'ye taşındı (v4.2) |
+| ~~GR-5.8 Google Yorum + Referans Motoru (S10)~~ | ➡️ Phase 3 | — | Phase 3 GR-3.21'e taşındı (v4.2) |
+| GR-5.6 Arapça Dil + Medikal Turizm AR Genişleme | ⬜ Başlamadı | — | ← eski GR-5.9 (v4.2, TR/EN kısmı Phase 3 GR-3.22'ye taşındı) |
 
 ---
 
@@ -142,66 +146,34 @@
 
 ---
 
-### GR-5.6: Click-to-WhatsApp Attribution
+### ~~GR-5.6: Click-to-WhatsApp Attribution~~ → Phase 3 GR-3.14 (v4.2)
 
-> **Servis:** Backend + Dashboard
-> **Sektör:** Estetik ağırlıklı
-
-- [ ] **5.6.1** Meta click id capture (lead source = campaign/adset/ad)
-- [ ] **5.6.2** Pipeline auto-tagging (label + segment + UTM mapping)
-- [ ] **5.6.3** Attribution dashboard (hangi kampanya ne kadar lead getirdi)
+> **Taşındı:** Phase 3 GR-3.14'e birleştirildi. UTM + Meta click id tek GR'da çözülür.
 
 ---
 
-### GR-5.7: Tedavi Sonrası Takip Otomasyonu (Senaryo S8)
+### ~~GR-5.7: Tedavi Sonrası Takip (S8)~~ → Phase 3 GR-3.20 (v4.2)
 
-> **Servis:** `AgentAI` + `Outbound`
-> **Sektör:** Sağlık (Diş + Estetik)
-
-- [ ] **5.7.1** Tedavi tamamlandı → T+1 gün "Nasıl hissediyorsunuz?"
-- [ ] **5.7.2** T+7 gün kontrol soruları (ağrı, şişlik, vs.)
-- [ ] **5.7.3** T+30 gün "Kontrol randevusu alalım mı?"
-- [ ] **5.7.4** Şikayet varsa → doktora alert (acil/normal sınıflandırma)
-- [ ] **5.7.5** Takip compliance tracking (hasta cevapladı mı?)
-- [ ] **5.7.6** DB:
-  ```sql
-  treatment_followups (id, tenant_id, patient_phone, treatment_type, followup_day, message_sent, patient_responded, complaint_detected, doctor_alerted, created_at)
-  ```
+> **Taşındı:** Teknik bağımlılık sadece Outbound (Phase 1 ✅). Enterprise beklemeye gerek yoktu.
 
 ---
 
-### GR-5.8: Google Yorum + Referans Motoru (Senaryo S10)
+### ~~GR-5.8: Google Yorum + Referans (S10)~~ → Phase 3 GR-3.21 (v4.2)
 
-> **Servis:** `Outbound` + `Integrations`
-> **Sektör:** Sağlık (Diş + Estetik)
-
-- [ ] **5.8.1** Tedavi başarılı + hasta memnun → yorum rica mesajı
-- [ ] **5.8.2** Google Maps review link gönder
-- [ ] **5.8.3** Referans kodu üret → "Arkadaşınıza %10 indirim"
-- [ ] **5.8.4** Referral tracking (kim kimi getirdi)
-- [ ] **5.8.5** Yorum oranı dashboard'da göster (%3 → %15+ hedef)
-- [ ] **5.8.6** DB:
-  ```sql
-  referrals (id, tenant_id, referrer_phone, referee_phone, referral_code, discount_pct, status, created_at)
-  review_requests (id, tenant_id, patient_phone, treatment_type, satisfaction_score, review_link_sent, review_posted, platform, created_at)
-  ```
+> **Taşındı:** Teknik bağımlılık sadece Outbound (Phase 1 ✅). Sağlık niche'e erken değer sağlar.
 
 ---
 
-### GR-5.9: Medikal Turizm Lead Yönetimi (Senaryo S9)
+### GR-5.6: Arapça Dil + Medikal Turizm AR Genişleme
 
 > **Servis:** `AgentAI` + `Outbound`
 > **Sektör:** Estetik
+> **Kaynak:** eski GR-5.9'un AR-özel kısmı (v4.2 — TR/EN kısmı Phase 3 GR-3.22'ye taşındı)
 
-- [ ] **5.9.1** Arapça template desteği (TR/EN/AR)
-- [ ] **5.9.2** Yabancı hasta akışı: fiyat + konaklama + transfer paketi
-- [ ] **5.9.3** Döviz bazlı fiyatlandırma (EUR/USD/GBP)
-- [ ] **5.9.4** Consultation booking (online muayene slot)
-- [ ] **5.9.5** Multi-language follow-up otomasyonu
-- [ ] **5.9.6** DB:
-  ```sql
-  medical_tourism_leads (id, tenant_id, patient_phone, patient_country, lang, treatment_interest, accommodation_needed, transfer_needed, budget_currency, status, created_at, updated_at)
-  ```
+- [ ] **5.6.1** Arapça template desteği (TR/EN/AR — 3. dil ekleme)
+- [ ] **5.6.2** Arapça medikal turizm mesaj şablonları
+- [ ] **5.6.3** RTL (sağdan sola) display desteği (UI)
+- [ ] **5.6.4** AR follow-up otomasyonu (Arapça konuşan hastalar için)
 
 ---
 
@@ -241,8 +213,10 @@
 
 - [ ] Revenue Agent aktif satış yapıyor (en az 5 tenant)
 - [ ] Abandoned cart recovery çalışıyor, recovery rate ölçülüyor
-- [ ] Attribution tracking çalışıyor
-- [ ] Sağlık niche'i tam: tedavi takibi + yorum + referans + medikal turizm
-- [ ] 3 dil destekleniyor (TR/EN/AR)
+- [ ] Sağlık niche'i tam: tedavi takibi + yorum + referans (Phase 3 ✅) + medikal turizm AR
+- [ ] 3 dil destekleniyor (TR/EN Phase 2 ✅, AR bu phase'te eklenir)
 - [ ] Premium tier en az 3 müşteriye satılmış
 - [ ] MRR 1.2M+ TL
+
+> **v4.2 Not:** Attribution tracking Phase 3'e taşındı (GR-3.14). Tedavi takip ve yorum/referans
+> da Phase 3'e taşındı (GR-3.20, GR-3.21). Bu phase'te kalan sağlık işi: Arapça dil desteği.

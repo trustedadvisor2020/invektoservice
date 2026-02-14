@@ -4,7 +4,11 @@
 > Mevcut ürün envanteri: [whatisinvekto.md](whatisinvekto.md)
 > Senaryolar: [roadmap-scenarios.md](roadmap-scenarios.md)
 > Uzman review'ları: [roadmap-reviews.md](roadmap-reviews.md)
-> Son güncelleme: 2026-02-08
+> Son güncelleme: 2026-02-14 (v4.3 — Phase 3 → 3A/3B bölünmesi + cross-phase optimizasyon)
+>
+> **⚠️ NOT:** Bu dosya ilk taslaktır. **Güncel durum takibi** artık ayrı phase dosyalarında yapılmaktadır:
+> `ideas/phases/phase-0.md` ~ `phase-7.md` — bkz: [phases/README.md](phases/README.md)
+> Bu dosya stratejik referans olarak korunur ama detaylı GR takibi için phase dosyalarına bakın.
 
 ---
 
@@ -33,21 +37,30 @@ Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn seb
 - Otomatik etiketleme (AI bazlı)
 → **Etki:** Mevcut 50+ müşterinin tamamı faydalanır. Yeni müşterilere "chatbot var" denilebilir.
 
-**Phase 2 (Hafta 9-16): Niche Güçlendirme**
-- Sağlık: Randevu motoru + no-show hatırlatma
-- E-ticaret: Trendyol/HB API entegrasyonu
-- Otel: PMS entegrasyonu (basit)
-- Follow-up otomasyonu (T+24h, T+72h)
-- CSAT anketi
-- Internal note
-→ **Etki:** Sektör bazlı differentiator'lar eklenir.
+**Phase 2 (Hafta 9-16): AI Derinleştirme + Kritik Niche (Hibrit v4.1)**
+- Knowledge Service (RAG) — pgvector, PDF chunking, FAQ editor
+- Agent Assist v2 (RAG beslemeli cevap üretimi)
+- Multi-Language AI (TR/EN)
+- Randevu Motoru Core (sağlık niche — advanced items Phase 3'e, v4.2)
+- Otomasyon Dashboard + Log iyileştirme + metadata logging + basit FRT (v4.2)
+- KVKK Minimum Koruma (sağlık niche zorunlu)
+- **Yeni servis:** `Invekto.Knowledge` (port 7104)
+→ **Etki:** AI doğruluğu artar (RAG), tüm sektörlere fayda. Mevcut klinik müşterileri memnun.
 
-**Phase 3 (Hafta 17-24): AI Derinleştirme**
-- Knowledge Base / RAG (ürün/tedavi/otel bilgisi)
-- AI Auto-Resolution (insan müdahalesi olmadan çözümleme)
-- Outbound Engine v2 (kampanya yönetimi, A/B test, AI kişiselleştirme)
-- Lead scoring + pipeline view
-→ **Etki:** AI doğruluğu artar, agent iş yükü ciddi düşer.
+**Phase 3A (Hafta 17-20): Platform Enablers (v4.3)**
+- Integrations servisi (:7106) — HB API + kargo entegrasyonu
+- Outbound Engine v2 — kampanya + A/B test + conversion tracking
+- Randevu Motoru v2 (Advanced) — Google Calendar, bekleme listesi, no-show prediction
+- Dashboard genişletme + Ads Attribution (basit + full birleşik)
+- **Yeni servis:** `Invekto.Integrations` (port 7106)
+→ **Etki:** 3B'deki niche GR'ların temelini kurar. 6 GR.
+
+**Phase 3B (Hafta 21-24): Niche Derinleştirme (v4.3)**
+- E-ticaret: intent genişleme, B2B/VIP tespiti, iade çevirme v1/v2, outbound senaryolar
+- Diş: intent pipeline, onboarding, klinik outbound
+- Estetik: lead pipeline, lead mgmt v2
+- **Sağlık genişleme (v4.2):** Tedavi takip, yorum/referans, medikal turizm (AR hariç)
+→ **Etki:** Niche-özel differentiator'lar, sağlık niche'e erken değer. 16 GR.
 
 **Phase 4 (Hafta 25-32): Enterprise**
 - SSO / OAuth (mevcut auth'un üstüne)
@@ -55,14 +68,14 @@ Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn seb
 - SLA tracking + eskalasyon
 - Advanced analytics
 - Role genişletme (admin + supervisor + agent)
+- QA & Mining derinleştirme (Phase 2'de başlayan metadata logging'in genişlemesi)
 → **Etki:** Kurumsal müşteriler pipeline'a girer.
 
-**Phase 5 (Hafta 33-40): Revenue & Ölçek**
+**Phase 5 (Hafta 33-40): Revenue & Ölçek (v4.2 hafifletildi: 9→6 GR)**
 - Revenue Agent (ödeme entegrasyonu)
-- Full Ads Attribution (tam entegrasyon, ROAS, otomasyon)
 - Cart recovery, cross-sell
-- Sağlık niche tam (tedavi takip, yorum motoru, medikal turizm)
-→ **Etki:** Gelir artışı + sağlık niche derinleşme.
+- Arapça dil desteği (medikal turizm AR genişleme)
+→ **Etki:** Gelir artışı. (Sağlık tedavi/yorum/referans ve attribution Phase 3'e taşındı)
 
 **Phase 6 (Hafta 41-48): Operasyon & Analytics**
 - SLA tracking + eskalasyon
@@ -658,13 +671,18 @@ Adım 1.3-A: Basit Dashboard (kliniğe gösterilecek)
 
 ---
 
-### Phase 2 — Niche Güçlendirme (Hafta 9-16)
+### Phase 2 — AI Derinleştirme + Kritik Niche (Hibrit v4.1) (Hafta 9-16)
 
-> *"Make it work for one, then make it work for many."*
+> *"AI artık şirket verisinden cevap veriyor, sallama yapmıyor."*
+>
+> **v4.1 Hibrit Yapılanma (2026-02-15):** Eski Phase 2 (Niche) ve Phase 3 (AI) karıştırılarak
+> yeniden yapılandırıldı. RAG/Knowledge tüm sektörlere erken fayda sağlar, randevu motoru
+> mevcut klinik müşterilerini memnun eder. Detay: [phases/phase-2.md](phases/phase-2.md)
 
-**Müşteri ne kazanıyor:** Sektör-özel yetenekler — Trendyol/HB API, randevu motoru, follow-up, intent genişleme
-**Revenue milestone:** Niche bazlı değer farkı yaratılır, MRR 300-500K TL hedef
-**Satış dili:** "Temsilci sayınızı artırmadan 2x mesaj yönetin — sektörünüze özel otomasyon"
+**Müşteri ne kazanıyor:** RAG ile AI doğruluğu artar, randevu motoru + dashboard + KVKK
+**Revenue milestone:** Knowledge base tüm sektörlere fayda, MRR 300-500K TL hedef
+**Satış dili:** "Kendi verinizle cevap veriyor — ürün/tedavi/fiyat sorularını otomatik çözüyor"
+**Yeni servis:** `Invekto.Knowledge` (port 7104)
 
 #### Adım adım:
 
@@ -983,14 +1001,24 @@ service_catalog (id, tenant_id, service_name, category, price_min, price_max,
 
 ---
 
-### Phase 3 — Knowledge Base + Akıllı Agent (Hafta 17-24)
+### Phase 3 — Niche Genişleme + Outbound v2 (v4.3: 3A/3B bölünmüş) (Hafta 17-24)
 
-> *"AI accuracy = retention. Yanlış cevap veren AI, müşteri kaybettirir."*
+> *"Make it work for one, then make it work for many."*
+>
+> **v4.3 Bölünme (2026-02-14):** 22 GR'ye ulaşan Phase 3, iki alt-phase'e bölündü.
+> Detay: [phases/phase-3.md](phases/phase-3.md) (index), [phases/phase-3a.md](phases/phase-3a.md), [phases/phase-3b.md](phases/phase-3b.md)
 
-Knowledge + AgentAI 3 niche'e birden serve eder:
-- **E-ticaret:** Ürün bilgisi, iade politikası, kargo kuralları
-- **Diş:** Tedavi bilgisi, fiyat detayı, sigorta kapsamı
-- **Estetik:** İşlem detayı, kontrendikasyon, iyileşme süreci, multi-language
+**Phase 3A — Platform Enablers (6 GR, Hafta 17-20):**
+- Integrations servisi (:7106) — HB API + kargo
+- Outbound v2 — kampanya + A/B + conversion
+- Randevu Advanced, Dashboard genişletme, Ads Attribution
+**Yeni servis:** `Invekto.Integrations` (port 7106)
+
+**Phase 3B — Niche Derinleştirme (16 GR, Hafta 21-24):**
+- **E-ticaret:** Intent genişleme, B2B/VIP, iade v1/v2, outbound senaryolar
+- **Diş:** Intent pipeline, onboarding, klinik outbound
+- **Estetik:** Lead pipeline, lead mgmt v2
+- **Sağlık genişleme:** Tedavi takip, yorum/referans, medikal turizm (AR hariç)
 
 **Müşteri ne kazanıyor:** "AI artık şirket verisinden cevap veriyor, sallama yapmıyor"
 **Revenue milestone:** MRR 500-800K TL hedef

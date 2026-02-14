@@ -128,14 +128,18 @@ Kurumsal müşteriler kapıyı çalıyor. "Demo güzel ama SSO yok, audit yok �
 
 ---
 
-### GR-4.6: QA & Mining Hazırlık (Phase 6 prep)
+### GR-4.6: QA & Mining Derinleştirme (Phase 6 prep)
 
 > **Servis:** `Audit` + Dashboard
-> **Not:** Tam QA Scoring ve Conversation Mining Phase 6'da. Bu adım veri toplama altyapısını kuruyor.
+> **Not:** Tam QA Scoring ve Conversation Mining Phase 6'da. Temel metadata logging Phase 2'de başlatıldı (GR-2.5).
+> Bu adım daha derin veri toplama ve script compliance ekliyor.
+>
+> **v4.2 (2026-02-15):** Basit metadata log ve FRT Phase 2 Dashboard'una taşındı (GR-2.5.9/10).
+> Phase 4'te kalan: script compliance, agent performans derinleştirme, haftalık rapor.
 
-- [ ] **4.6.1** Conversation metadata log (süre, intent, resolution, sentiment)
+- [ ] **4.6.1** Conversation metadata log **genişletme** (Phase 2'deki basit log'a ek: escalation chain, multi-turn count, knowledge hits)
 - [ ] **4.6.2** Basit script compliance check (banned phrases tetiklenme raporu)
-- [ ] **4.6.3** Agent bazlı ortalama yanıt süresi + çözüm oranı
+- [ ] **4.6.3** Agent bazlı ortalama yanıt süresi + çözüm oranı (Phase 2 FRT'nin üstüne detay)
 - [ ] **4.6.4** "Top unanswered intents" haftalık rapor (Knowledge gap tespiti)
 
 ---
