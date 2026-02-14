@@ -1,0 +1,114 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260214-whatsapp-analytics",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-14T14:00:00Z",
+  "updated_at": "2026-02-14T20:30:00Z",
+  "plan": {
+    "summary": "WhatsApp Conversation Analytics Pipeline Phase 2 - NLP & Intent Classification. Python analiz (tools/whatsapp-analyzer/). 02_threader sale rate fix (84.7% -> 17.4% confirmed, 42.3% offered). 04-07 yeni NLP scriptleri: intent classifier (keyword+Claude hybrid), FAQ extractor (Q&A mining + MiniBatchKMeans clustering), sentiment analyzer (3-level), product analyzer (price/code separation). Shared Claude client utility (utils/claude_client.py). 300MB CSV (2.1M mesaj, 170K konusma, 10 agent, ebrumoda.com giyim e-ticaret).",
+    "q_intent": "Elimde 2.1M satir WhatsApp yazismasi var. Full analiz pipeline, AI chatbot egitimi, musteri analizi, satis optimizasyonu. Python analiz + C# servis.",
+    "interview_notes": "Phase 2 interview: Sale rate fix (ikisinde birden - threader + classifier), keyword-first hybrid (maliyet optimize ~$30-50 vs $300), per-conversation 3-level sentiment, urun kodu 4XXX+kmr format + fiyat context exclude."
+  },
+  "allowed_files": [
+    "tools/whatsapp-analyzer/src/02_threader.py",
+    "tools/whatsapp-analyzer/src/03_stats.py",
+    "tools/whatsapp-analyzer/src/04_intent_classifier.py",
+    "tools/whatsapp-analyzer/src/05_faq_extractor.py",
+    "tools/whatsapp-analyzer/src/06_sentiment_analyzer.py",
+    "tools/whatsapp-analyzer/src/07_product_analyzer.py",
+    "tools/whatsapp-analyzer/src/utils/claude_client.py",
+    "arch/plans/20260214-whatsapp-analytics.json"
+  ],
+  "files_changed": [
+    {"path": "tools/whatsapp-analyzer/src/02_threader.py", "is_new": false, "change": "Split SALE_PATTERNS into CONFIRMED_SALE + OFFER. Added 'offered' outcome."},
+    {"path": "tools/whatsapp-analyzer/src/03_stats.py", "is_new": false, "change": "Unicode fix: arrow char for Windows console compatibility."},
+    {"path": "tools/whatsapp-analyzer/src/04_intent_classifier.py", "is_new": true, "change": "Keyword-first + Claude Haiku fallback intent classifier. 12 intents. Uses shared claude_client.py."},
+    {"path": "tools/whatsapp-analyzer/src/05_faq_extractor.py", "is_new": true, "change": "Q&A pair mining + MiniBatchKMeans clustering. O(N*sqrt(N)) complexity."},
+    {"path": "tools/whatsapp-analyzer/src/06_sentiment_analyzer.py", "is_new": true, "change": "Per-conversation 3-level sentiment (keyword + Claude). Uses shared claude_client.py."},
+    {"path": "tools/whatsapp-analyzer/src/07_product_analyzer.py", "is_new": true, "change": "Price vs product code separation. Heuristic + context patterns."},
+    {"path": "tools/whatsapp-analyzer/src/utils/claude_client.py", "is_new": true, "change": "Shared Claude API client: typed exceptions, JSON parsing, API key validation."},
+    {"path": "arch/plans/20260214-whatsapp-analytics.json", "is_new": false, "change": "Restructured to conform to plan-schema.json v3.0."}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "375f82c3b3d6909fa90063accb623cef9d75e0b0d2b53b97b6a69a3266fbf07e",
+    "full_path": "arch/plans/diffs/20260214-whatsapp-analytics.diff",
+    "stats": {"insertions": 1922, "deletions": 0, "files_count": 8}
+  },
+  "build": {
+    "status": "PASS",
+    "command": "py_compile all 7 Python files",
+    "timestamp": "2026-02-14T20:30:00Z"
+  },
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.*", "arch/db/", "tools/whatsapp-analyzer/src/01_cleaner.py"],
+    "non_goals": ["C# microservice (Phase 5)", "SQL Server integration (Phase 6)", "Phase 3+ Business Intelligence"],
+    "intentional_exclusions": ["Claude API key not configured - keyword-only mode active. 49% intent unknown rate and 60% sentiment skipped rate expected without API key."]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "utils/claude_client.py:call_claude_batch - typed anthropic exceptions -> ClaudeAPIError",
+      "utils/claude_client.py:parse_json_array - JSONDecodeError -> ClaudeParseError",
+      "04_intent_classifier.py:run_intent_classifier - ClaudeAPIError/ClaudeParseError per batch",
+      "06_sentiment_analyzer.py:run_sentiment_analyzer - ClaudeAPIError/ClaudeParseError per batch",
+      "05_faq_extractor.py:cluster_questions - ValueError from TF-IDF"
+    ],
+    "user_facing_errors": [
+      "WARN: Claude client unavailable. Marking unmatched as 'unknown' (method=skipped).",
+      "WARN: TF-IDF failed (possibly too few unique terms)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All Claude API failures raise typed ClaudeAPIError/ClaudeParseError, caught per-batch with logger.warning(). API key absence reported via get_claude_client() with explicit warning. Error counts tracked and printed in summary. No broad except Exception blocks."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Sale rate %84.7 misleading - agents offer but customers don't always confirm",
+      "suggestion": "Track offered->confirmed conversion rate per agent to identify who closes best",
+      "aha_moment": "Seeing that Agent X converts 40% of offers while Agent Y only 15%"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "FAQ clustering reveals top 50 questions but agents answer each one manually",
+      "suggestion": "Auto-suggest answers from FAQ clusters when customer types a common question",
+      "aha_moment": "Agent sees suggested answer pop up and responds in 5 seconds instead of typing 30 seconds"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Customers ask about size/beden repeatedly (13.4% of all intents)",
+      "suggestion": "Add size chart widget to WhatsApp quick replies with product-specific sizing",
+      "aha_moment": "Customer gets instant size recommendation without waiting for agent"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "9.6% of messages are price inquiries that agents answer manually",
+      "suggestion": "Auto-price lookup from product catalog when customer mentions product code",
+      "aha_moment": "Price response time drops from minutes to instant"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "10.5% conversations abandoned - customer never gets response",
+      "suggestion": "Alert system when conversation goes unanswered for >15 minutes during business hours",
+      "aha_moment": "Abandoned rate drops from 10.5% to <3% with proactive alerts"
+    }
+  ],
+  "verification_questions": [
+    {"id": "Q1", "question": "02_threader.py CONFIRMED_SALE_PATTERNS vs OFFER_PATTERNS ayrimi dogru mu? 'offered' outcome eklendi mi?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q2", "question": "04_intent_classifier.py keyword-first + Claude fallback calisiyor mu? API key yoksa graceful skip mi?", "category": "Process/Policy", "codex_answer": null, "codex_result": null},
+    {"id": "Q3", "question": "05_faq_extractor.py customer question -> agent answer pairing dogru mu? MiniBatchKMeans clustering O(N*sqrt(N)) mi?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q4", "question": "07_product_analyzer.py price (xx99/xx00 + TL suffix) vs product code ayrimi dogru mu? False positive fix edildi mi?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q5", "question": "Shared claude_client.py typed exceptions (ClaudeAPIError/ClaudeParseError) 04 ve 06 tarafindan kullaniliyor mu? Broad except kaldirildi mi?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
+    {"id": "Q6", "question": "claude_client.py API key validation dogru mu? Placeholder key tespiti ve client=None donusu guvenli mi? Service boundary'de auth kontrolu var mi?", "category": "Service/Auth", "codex_answer": null, "codex_result": null}
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-14T20:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-14T20:45:00Z",
+    "iteration": 3,
+    "blocking_issues": []
+  }
+}
