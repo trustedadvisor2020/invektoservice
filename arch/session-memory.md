@@ -5,8 +5,68 @@
 ## Last Update
 
 - **Date:** 2026-02-14
-- **Status:** Flow Builder Phase 5 DONE. Deploy script'e FlowBuilder SPA build adimi eklendi. Codex 3 iter Q FORCE PASS.
-- **Last Task:** Phase 5 committed. dev-to-invekto-services.bat'a FlowBuilder SPA build step eklendi ([1/6] npm ci + npm run build + output verify). Step numbering [1/9]...[9/9] unified. Build marker'a FlowBuilder eklendi. Q operational tasks pending (deploy, DB migration, E2E test).
+- **Status:** WA-1 + WA-2 DONE. Execution Queue onayli. Sirada: WA-3 + RP-2 GR-2.1 (beraber)
+- **Last Task:** WA-2 NLP Pipeline tamamlandi (8 dosya +1919, Codex 3 iter PASS)
+
+### ✅ TAMAMLANDI: WhatsApp Analytics WA-1 + WA-2 (2026-02-14)
+
+**Plan:** `arch/plans/20260214-whatsapp-analytics.json` (status: DONE)
+**Kaynak:** ebrumoda.com 2.1M satir WhatsApp konusmalari (giyim e-ticaret)
+
+**WA-1 DONE** - Temizlik + Threading:
+- 01_cleaner.py: 2,143,682 → 2,131,477 satir
+- 02_threader.py: 164,741 konusma (sale rate fix: confirmed 17.4% + offered 42.3%)
+- 03_stats.py: metadata.json (10 agent, 5141 urun, peak hours 11-15)
+
+**WA-2 DONE** - NLP Pipeline:
+- 04_intent_classifier.py: 12 intent, keyword-first + Claude Haiku hybrid (87MB, 1M satir)
+- 05_faq_extractor.py: 128K Q&A cifti, 4939 kume (MiniBatchKMeans, 24MB+4MB)
+- 06_sentiment_analyzer.py: 3-level sentiment per-conversation (5.3MB, 164K satir)
+- 07_product_analyzer.py: 5141 urun, 1231 fiyat, price/code separation (8MB)
+- utils/claude_client.py: Shared typed exceptions (ClaudeAPIError/ClaudeParseError)
+- Keyword-only mode (API key yok): ~49% intent unknown, ~60% sentiment skipped
+
+### Execution Queue (Onayli Sira - 2026-02-14)
+
+> **WA** = WhatsApp Analytics, **RP** = Roadmap Phase. KARISMAZ!
+
+| Sira | Kod | Is | Bagimllik |
+|------|-----|----|-----------|
+| 1 | **WA-3 + RP-2 GR-2.1** | Training Data Export + Knowledge Service (RAG) | WA-2 ✅ |
+| 2 | **WA-4** | BI Dashboard (agent performans, conversion, trend) | WA-2 ✅ |
+| 3 | **RP-2 GR-2.2** | Agent Assist v2 (Knowledge/RAG beslemeli) | RP-2 GR-2.1 |
+| 4 | **RP-2 GR-2.3~2.6** | Multi-lang, Randevu, Dashboard, KVKK | RP-2 GR-2.1 |
+| 5 | **WA-5 + WA-6** | C# Microservice + SQL Server | RP-2 done |
+
+**Neden WA-3 + RP-2 GR-2.1 beraber?** FAQ clusters direkt Knowledge DB faqs tablosuna akar. Ayri yapmak 2x is.
+
+### ✅ TAMAMLANDI: Idea Phase Entegrasyonu (2026-02-14)
+
+**5 idea dokümanı roadmap phase'lerine entegre edildi (v4.5):**
+
+| # | Dosya | Fikir | Phase | GR |
+|---|-------|-------|-------|-----|
+| 1 | `ideas/voice-message-ai.md` | Sesli Mesaj AI | **Phase 3B** | GR-3.23 |
+| 2 | `ideas/face-analysis-ai.md` | Yüz Analizi AI | **Phase 3D** (yeni) | GR-3D.1-3D.5 |
+| 3 | `ideas/size-fit-ai.md` | Beden/Ölçü AI | **Phase 3C** | GR-3C.8 |
+| 4 | `ideas/review-rescue-ai.md` | Olumsuz Yorum Önleme | **Phase 3B** | GR-3.24 |
+| 5 | `ideas/multilingual-medical-tourism.md` | Çok Dilli Medikal Turizm | **Phase 3B** | GR-3.25 |
+
+**Yapılan güncellemeler:**
+- `ideas/phases/phase-3b.md` → 3 yeni GR eklendi (3.23, 3.24, 3.25) ✅
+- `ideas/phases/phase-3c.md` → GR-3C.8 Size/Fit AI eklendi ✅
+- `ideas/phases/phase-3d.md` → Yeni phase oluşturuldu (5 GR, port 7110) ✅
+- `ideas/phases/README.md` → Genel Durum + Mikro Servis Doğuş Haritası güncellendi ✅
+- `ideas/roadmap.md` → Phase Planı + Mikro Servis Haritası güncellendi ✅
+- 5 idea dosyasına Roadmap Referansı eklendi ✅
+
+**Sinerji haritası:**
+```
+Voice AI (tüm sektörler) ← temel altyapı
+  ├── Face Analysis (estetik, 3D) + Multilingual (medikal turizm, 3B) → birlikte çalışır
+  └── VPS (e-ticaret, 3C) + Size AI (e-ticaret, 3C) → birlikte çalışır
+Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
+```
 
 ---
 
@@ -46,7 +106,7 @@
     - FlowMigrator: v1 menu → v2 graph + auto-layout + warnings
     - AutomationOrchestrator: v1/v2 version dispatch, v2 session state in session_data JSONB
     - Endpoints: POST /api/v1/flows/validate, POST /api/v1/flows/{tenantId}/{flowId}/migrate-v1
-- **GR-1.11 AgentAI Service (Port 7105):**
+- **GR-1.2 AgentAI Service (Port 7105):**
   - Sync API: AI reply suggestion + intent detection
   - Claude Haiku integration (reply generation + JSON parse)
   - Template engine: `{{variable}}` substitution + HTML sanitization
@@ -102,7 +162,7 @@
 |---------|------|--------|
 | Backend | 5000 | Active |
 | ChatAnalysis | 7101 | Active |
-| AgentAI | 7105 | Implemented (GR-1.11) |
+| AgentAI | 7105 | Implemented (GR-1.2) |
 | Integrations | 7106 | Reserved (Phase 2+) |
 | Outbound | 7107 | Implemented (GR-1.3) |
 | Automation | 7108 | Implemented (GR-1.1) |
@@ -137,7 +197,7 @@
 - [x] ~~Deploy scripts~~ (Tamamlandi - install-services, restart-services, firewall, deploy-watcher)
 - [x] ~~Automation Dashboard entegrasyonu~~ (Tamamlandi - HealthCard, DependencyMap, TestPanel, AutomationClient)
 - [x] ~~Simulator Tool~~ (Tamamlandi - tools/simulator/, Port 4500, Codex 3 iter PASS)
-- [x] ~~GR-1.11 AgentAI Service~~ (Tamamlandi - Port 7105, Codex 2 iter PASS + Q FORCE PASS)
+- [x] ~~GR-1.2 AgentAI Service~~ (Tamamlandi - Port 7105, Codex 2 iter PASS + Q FORCE PASS)
 - [x] ~~Simulator Backend Proxy Architecture~~ (Tamamlandi - Backend proxy, E2E scenarios, health checker, Codex 5 iter PASS)
 - [x] ~~Q: agentai.sql calistir~~ (Tamamlandi)
 - [x] ~~Q: AgentAI appsettings.Production.json doldur~~ (Tamamlandi)
@@ -214,14 +274,14 @@ src/
 │   ├── Constants/
 │   ├── Data/                 # GR-1.9: PostgreSQL connection
 │   ├── DTOs/
-│   │   ├── AgentAI/          # GR-1.11: Suggest/Feedback DTOs
+│   │   ├── AgentAI/          # GR-1.2: Suggest/Feedback DTOs
 │   │   ├── ChatAnalysis/
 │   │   ├── Outbound/          # GR-1.3: Broadcast/Template/Webhook DTOs
 │   │   └── Integration/      # GR-1.9: Webhook/Callback DTOs
 │   ├── Integration/          # GR-1.9: Callback client
 │   └── Logging/
 ├── Invekto.ChatAnalysis/     # Microservice (Port 7101)
-├── Invekto.AgentAI/          # GR-1.11: AI Agent Assist (Port 7105)
+├── Invekto.AgentAI/          # GR-1.2: AI Agent Assist (Port 7105)
 │   ├── Data/                # AgentAIRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
 │   └── Services/            # ReplyGenerator, TemplateEngine, AgentProfileBuilder

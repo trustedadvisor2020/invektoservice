@@ -10,10 +10,37 @@
 
 ---
 
+## Execution Queue (Onaylı Sıra)
+
+> **Kural:** WA = WhatsApp Analytics, RP = Roadmap Phase. Karışmasın!
+
+| Sıra | Kod | İş | Bağımlılık | Notlar |
+|------|-----|----|------------|--------|
+| 1 | **WA-3 + RP-2 GR-2.1** | Training Data Export + Knowledge Service (RAG) | WA-2 ✅ | FAQ clusters → Knowledge DB. BERABER yapılacak, ayrı yapmak 2x iş |
+| 2 | **WA-4** | BI Dashboard (agent performans, conversion, trend) | WA-2 ✅ | Bağımsız, arada yapılabilir |
+| 3 | **RP-2 GR-2.2** | Agent Assist v2 (Knowledge/RAG beslemeli) | RP-2 GR-2.1 | Knowledge Service SONRASI |
+| 4 | **RP-2 GR-2.3~2.6** | Multi-lang, Randevu, Dashboard, KVKK | RP-2 GR-2.1 | Sırayla veya paralel |
+| 5 | **WA-5 + WA-6** | C# Microservice + SQL Server Entegrasyon | RP-2 GR-2.1 | Aynı infra pattern, en son |
+
+### WA (WhatsApp Analytics) Fazları
+
+| Faz | İsim | Durum | Açıklama |
+|-----|------|-------|----------|
+| WA-1 | Temizlik + Threading | ✅ 2026-02-14 | 01_cleaner, 02_threader, 03_stats |
+| WA-2 | NLP Pipeline | ✅ 2026-02-14 | 04_intent, 05_faq, 06_sentiment, 07_product + shared claude_client |
+| WA-3 | Training Data Export | ⬜ Sırada | FAQ clusters + intent patterns → Knowledge Service'e aktar |
+| WA-4 | BI Dashboard | ⬜ Sırada | Agent performans, conversion, trend raporları |
+| WA-5 | C# Microservice | ⬜ Bekliyor | Pipeline'ı InvektoServices mikro servis olarak sarmala |
+| WA-6 | SQL Server Entegrasyon | ⬜ Bekliyor | CSV'lerden DB'ye bulk insert, live query |
+
+---
+
 ## Recently Completed
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260214-whatsapp-analytics | 2026-02-14 | WA-2: NLP Pipeline (intent classifier, FAQ extractor, sentiment analyzer, product analyzer + shared claude_client). 8 dosya +1919. Codex 3 iter PASS. Plan: `arch/plans/20260214-whatsapp-analytics.json` |
+| 20260214-idea-phase-integration | 2026-02-14 | 5 idea dokümanı roadmap phase'lerine entegre edildi (v4.5): Voice AI→3B GR-3.23, Face Analysis→3D GR-3D.1-5, Size/Fit→3C GR-3C.8, Review Rescue→3B GR-3.24, Multilingual→3B GR-3.25. Yeni phase-3d.md oluşturuldu. |
 | 20260214-flow-builder-phase5 | 2026-02-14 | Flow Builder Phase 5: Production Integration. Deploy script'e FlowBuilder SPA build adimi eklendi. 1 dosya +26 -5. Codex 3 iter Q FORCE PASS. |
 | 20260214-flow-builder-phase4b | 2026-02-14 | Flow Builder Phase 4b: AI/API Nodes (ai_intent, ai_faq, action_api_call). 3 handler + IntentDetector refactor + SSRF validation + 3 SPA node + 3 property editor + graph-validator + flow-summarizer. 27 dosya +1516 -104. Codex 4 iter PASS. |
 | 20260214-flow-builder-phase4a | 2026-02-14 | Flow Builder Phase 4a: Pure Logic Nodes (logic_condition, logic_switch, action_delay, utility_set_variable). 4 handler + 4 SPA node + property editors + validation. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS. |
