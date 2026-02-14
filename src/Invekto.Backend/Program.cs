@@ -34,6 +34,9 @@ var outboundUrl = builder.Configuration["Microservice:Outbound:Url"]
 var outboundLogPath = builder.Configuration["Microservice:Outbound:LogPath"];
 var outboundTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Outbound:TimeoutMs", 10000);
 var automationTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Automation:TimeoutMs", 5000);
+var knowledgeUrl = builder.Configuration["Microservice:Knowledge:Url"]
+    ?? $"http://localhost:{ServiceConstants.KnowledgePort}";
+var knowledgeLogPath = builder.Configuration["Microservice:Knowledge:LogPath"];
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -55,6 +58,10 @@ if (!string.IsNullOrEmpty(agentAILogPath))
 if (!string.IsNullOrEmpty(outboundLogPath))
 {
     logPaths.Add(outboundLogPath);
+}
+if (!string.IsNullOrEmpty(knowledgeLogPath))
+{
+    logPaths.Add(knowledgeLogPath);
 }
 builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
 
@@ -96,6 +103,13 @@ builder.Services.AddHttpClient<OutboundClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
 });
 
+// Configure Knowledge HTTP client (30s timeout for PDF uploads)
+builder.Services.AddHttpClient<KnowledgeClient>(client =>
+{
+    client.BaseAddress = new Uri(knowledgeUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // Configure FlowBuilder proxy HTTP client (reuses Automation URL for flow management)
 builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 {
@@ -107,8 +121,9 @@ builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 // GR-1.9: INTEGRATION BRIDGE SETUP
 // ============================================
 
-// JWT Validator (singleton, thread-safe)
+// JWT Validator + Generator (singleton, thread-safe)
 JwtValidator? jwtValidator = null;
+JwtGenerator? jwtGenerator = null;
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
 if (!string.IsNullOrEmpty(jwtSecretKey))
 {
@@ -120,7 +135,9 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
         ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
     };
     jwtValidator = new JwtValidator(jwtSettings);
+    jwtGenerator = new JwtGenerator(jwtSettings);
     builder.Services.AddSingleton(jwtValidator);
+    builder.Services.AddSingleton(jwtGenerator);
 }
 
 // PostgreSQL connection factory (singleton, thread-safe pooling)
@@ -380,7 +397,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -459,6 +476,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = outboundHealthy ? null : "Service unreachable"
+    });
+
+    // Knowledge - check health with timing
+    var swKnowledge = System.Diagnostics.Stopwatch.StartNew();
+    var knowledgeHealthy = await knowledgeClient.CheckHealthAsync();
+    swKnowledge.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.KnowledgeServiceName,
+        status = knowledgeHealthy ? "ok" : "unavailable",
+        responseTimeMs = knowledgeHealthy ? (int?)swKnowledge.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = knowledgeHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -577,6 +609,28 @@ app.MapGet("/api/ops/logs/context", async (
     });
 });
 
+// Dashboard: Clear log files
+app.MapDelete("/api/ops/logs/clear", (HttpContext ctx, LogReader logReader, string? service) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    int deleted;
+    if (!string.IsNullOrEmpty(service))
+    {
+        deleted = logReader.ClearServiceLogs(service);
+    }
+    else
+    {
+        deleted = logReader.ClearAllLogs();
+    }
+
+    return Results.Ok(new { deleted, service = service ?? "all" });
+});
+
 // Dashboard: Error stats by hour
 app.MapGet("/api/ops/stats/errors", async (HttpContext ctx, LogReader logReader, int? hours) =>
 {
@@ -611,6 +665,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         "Invekto.Automation" => "InvektoAutomation",
         "Invekto.AgentAI" => "InvektoAgentAI",
         "Invekto.Outbound" => "InvektoOutbound",
+        "Invekto.Knowledge" => "InvektoKnowledge",
         _ => null
     };
 
@@ -664,7 +719,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -725,6 +780,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await outboundClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "knowledge")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await knowledgeClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -961,7 +1031,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1009,6 +1079,7 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "GET", Path = "/api/ops/logs/grouped", Description = "Grouped log stream (operations view)", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/logs/context", Description = "Log context (\u00b110 lines)", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/stats/errors", Description = "Error statistics (24h)", Auth = "Basic", Category = "Ops" },
+            new() { Method = "DELETE", Path = "/api/ops/logs/clear", Description = "Clear log files (all or by service)", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/postman", Description = "Postman collection download", Auth = "Basic", Category = "Ops" },
             new() { Method = "POST", Path = "/api/ops/services/{name}/restart", Description = "Restart Windows Service", Auth = "Basic", Category = "Ops" },
@@ -1036,6 +1107,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch Outbound endpoints (internal call, GR-1.3)
     var outboundEndpoints = await outboundClient.GetEndpointsAsync();
 
+    // Fetch Knowledge endpoints (internal call)
+    var knowledgeEndpoints = await knowledgeClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -1052,6 +1126,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (outboundEndpoints != null)
     {
         services.Add(outboundEndpoints);
+    }
+    if (knowledgeEndpoints != null)
+    {
+        services.Add(knowledgeEndpoints);
     }
 
     return Results.Ok(new { services });
@@ -1084,6 +1162,7 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
             new() { Method = "GET", Path = "/api/ops/logs/grouped", Description = "Grouped log stream", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/logs/context", Description = "Log context (\u00b110 lines)", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/stats/errors", Description = "Error statistics (24h)", Auth = "Basic", Category = "Ops" },
+            new() { Method = "DELETE", Path = "/api/ops/logs/clear", Description = "Clear log files", Auth = "Basic", Category = "Ops" },
             new() { Method = "POST", Path = "/api/ops/services/{name}/restart", Description = "Restart Windows Service", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/test/{service}/{path}", Description = "Test proxy for microservices", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/ops", Description = "Operations dashboard (legacy)", Auth = "Basic", Category = "Legacy" },
@@ -1617,36 +1696,16 @@ app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLines
                 statusCode: 401);
         }
 
-        // Generate JWT token
-        if (jwtValidator == null || string.IsNullOrEmpty(jwtSecretKey))
+        // Generate JWT token via shared JwtGenerator
+        if (jwtGenerator == null)
         {
             return Results.Json(
                 ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId),
                 statusCode: 500);
         }
 
-        var keyBytes = Encoding.UTF8.GetBytes(jwtSecretKey);
-        var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(keyBytes);
-        var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(securityKey, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
-        {
-            new System.Security.Claims.Claim("tenant_id", tenantId.ToString()),
-            new System.Security.Claims.Claim("user_id", "0"), // API key login = system user
-            new System.Security.Claims.Claim("role", "flow_builder"),
-            new System.Security.Claims.Claim("source", "flow_builder_api_key")
-        };
-
         var tokenExpiry = TimeSpan.FromHours(8);
-        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-            issuer: builder.Configuration["Jwt:Issuer"],
-            audience: builder.Configuration["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.Add(tokenExpiry),
-            signingCredentials: credentials
-        );
-
-        var tokenString = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+        var tokenString = jwtGenerator.GenerateToken(tenantId, "flow_builder", "flow_builder_api_key", tokenExpiry);
 
         jsonLogger.StepInfo($"FlowBuilder login success: tenant={tenantId}", requestId);
         return Results.Ok(new
@@ -1671,6 +1730,165 @@ app.MapPost("/api/v1/flow-builder/auth/login", async (HttpContext ctx, JsonLines
             statusCode: 500);
     }
 });
+
+// ============================================
+// KNOWLEDGE PROXY ENDPOINTS (Phase B)
+// ============================================
+
+// Knowledge proxy helpers (Basic Auth -> JWT bridge)
+async Task<IResult> KnProxyGet(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+    var queryString = ctx.Request.QueryString.Value ?? "";
+    var (statusCode, body) = await knClient.ProxyGetAsync(targetPath + queryString, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> KnProxyPost(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+    var (statusCode, body) = await knClient.ProxyPostAsync(targetPath, requestBody, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> KnProxyPut(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+    var (statusCode, body) = await knClient.ProxyPutAsync(targetPath, requestBody, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> KnProxyDelete(HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, string targetPath)
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+    var (statusCode, body) = await knClient.ProxyDeleteAsync(targetPath, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+// Upload proxy (multipart form-data)
+app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/upload", async (
+    HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    if (!ctx.Request.HasFormContentType)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidFileType, "Multipart form data required", requestId), statusCode: 400);
+
+    var form = await ctx.Request.ReadFormAsync();
+    var file = form.Files.GetFile("file");
+    if (file == null || file.Length == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "file is required", requestId), statusCode: 400);
+
+    var title = form["title"].FirstOrDefault();
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+
+    var stream = file.OpenReadStream();
+    var (statusCode, body) = await knClient.ProxyUploadAsync(
+        $"/api/v1/knowledge/{tenantId}/documents/upload",
+        stream, file.FileName, title, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}).DisableAntiforgery();
+
+// Document CRUD
+app.MapGet("/api/ops/knowledge/{tenantId:int}/documents", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents"));
+
+app.MapDelete("/api/ops/knowledge/{tenantId:int}/documents/{docId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int docId) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents/{docId}"));
+
+// FAQ CRUD
+app.MapGet("/api/ops/knowledge/{tenantId:int}/faqs", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs"));
+
+app.MapPost("/api/ops/knowledge/{tenantId:int}/faqs", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs"));
+
+app.MapPut("/api/ops/knowledge/{tenantId:int}/faqs/{faqId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int faqId) =>
+    await KnProxyPut(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs/{faqId}"));
+
+app.MapDelete("/api/ops/knowledge/{tenantId:int}/faqs/{faqId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int faqId) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/faqs/{faqId}"));
+
+// Search + Embeddings
+app.MapPost("/api/ops/knowledge/{tenantId:int}/search", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/search"));
+
+app.MapPost("/api/ops/knowledge/{tenantId:int}/generate-embeddings", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/generate-embeddings"));
 
 // ============================================
 // SPA FALLBACK ROUTES

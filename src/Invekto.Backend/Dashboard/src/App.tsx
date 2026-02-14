@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LogsPage } from './pages/LogsPage';
+import { KnowledgePage } from './pages/KnowledgePage';
 import { Layout } from './components/Layout';
 
 function ProtectedRoute() {
@@ -26,6 +27,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/logs" element={<LogsPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

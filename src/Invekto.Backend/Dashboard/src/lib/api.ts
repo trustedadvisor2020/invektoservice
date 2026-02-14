@@ -98,6 +98,34 @@ export interface EndpointDiscoveryResponse {
   endpoints: EndpointInfo[];
 }
 
+// Knowledge types
+export interface DocumentDto {
+  id: number;
+  tenantId: number;
+  title: string;
+  sourceType: string;
+  status: string;
+  filePath: string | null;
+  chunkCount: number;
+  metadataJson: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FaqDto {
+  id: number;
+  tenantId: number;
+  question: string;
+  answer: string;
+  category: string | null;
+  lang: string;
+  source: string;
+  keywords: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
@@ -215,6 +243,12 @@ class OpsApiClient {
     return this.request<LogContextResponse>(`/api/ops/logs/context?${searchParams}`);
   }
 
+  // Log management
+  async clearLogs(service?: string): Promise<{ deleted: number; service: string }> {
+    const params = service ? `?service=${encodeURIComponent(service)}` : '';
+    return this.request(`/api/ops/logs/clear${params}`, { method: 'DELETE' });
+  }
+
   // Stats endpoints
   async getErrorStats(hours: number = 24): Promise<ErrorStatsResponse> {
     return this.request<ErrorStatsResponse>(`/api/ops/stats/errors?hours=${hours}`);
@@ -247,6 +281,74 @@ class OpsApiClient {
 
   async searchByRequestId(requestId: string): Promise<{ requestId: string; count: number; entries: LogEntry[] }> {
     return this.request(`/ops/search?requestId=${encodeURIComponent(requestId)}`);
+  }
+
+  // Knowledge endpoints
+  async getDocuments(tenantId: number, params?: { status?: string; page?: number; limit?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set('status', params.status);
+    if (params?.page) sp.set('page', params.page.toString());
+    if (params?.limit) sp.set('limit', params.limit.toString());
+    return this.request<{ documents: DocumentDto[]; total: number; page: number; limit: number }>(
+      `/api/ops/knowledge/${tenantId}/documents?${sp}`);
+  }
+
+  async uploadDocument(tenantId: number, file: File, title?: string) {
+    return this.requestUpload<{ documentId: number; status: string; title: string }>(
+      `/api/ops/knowledge/${tenantId}/documents/upload`, file, title);
+  }
+
+  async deleteDocument(tenantId: number, docId: number) {
+    return this.request<{ message: string; documentId: number }>(
+      `/api/ops/knowledge/${tenantId}/documents/${docId}`, { method: 'DELETE' });
+  }
+
+  async getFaqs(tenantId: number, params?: { lang?: string; category?: string; page?: number; limit?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.lang) sp.set('lang', params.lang);
+    if (params?.category) sp.set('category', params.category);
+    if (params?.page) sp.set('page', params.page.toString());
+    if (params?.limit) sp.set('limit', params.limit.toString());
+    return this.request<{ faqs: FaqDto[]; total: number; page: number; limit: number }>(
+      `/api/ops/knowledge/${tenantId}/faqs?${sp}`);
+  }
+
+  async createFaq(tenantId: number, data: { question: string; answer: string; category?: string; lang?: string; keywords?: string[] }) {
+    return this.request<FaqDto>(`/api/ops/knowledge/${tenantId}/faqs`, {
+      method: 'POST', body: JSON.stringify(data),
+    });
+  }
+
+  async updateFaq(tenantId: number, faqId: number, data: { question?: string; answer?: string; category?: string; lang?: string; keywords?: string[] }) {
+    return this.request<FaqDto>(`/api/ops/knowledge/${tenantId}/faqs/${faqId}`, {
+      method: 'PUT', body: JSON.stringify(data),
+    });
+  }
+
+  async deleteFaq(tenantId: number, faqId: number) {
+    return this.request<{ message: string; faqId: number }>(
+      `/api/ops/knowledge/${tenantId}/faqs/${faqId}`, { method: 'DELETE' });
+  }
+
+  async generateEmbeddings(tenantId: number) {
+    return this.request<{ message: string; generated: number; failed?: number; total?: number }>(
+      `/api/ops/knowledge/${tenantId}/generate-embeddings`, { method: 'POST' });
+  }
+
+  private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (title) formData.append('title', title);
+
+    const headers: Record<string, string> = {};
+    if (this.credentials) {
+      headers['Authorization'] = `Basic ${this.credentials}`;
+    }
+
+    const response = await fetch(endpoint, { method: 'POST', headers, body: formData });
+    if (response.status === 401) { this.clearCredentials(); throw new Error('Unauthorized'); }
+    if (!response.ok) { const error = await response.text(); throw new Error(error || `HTTP ${response.status}`); }
+    return response.json();
   }
 }
 

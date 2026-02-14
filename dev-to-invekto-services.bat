@@ -28,6 +28,7 @@ set "REMOTE_CHATANALYSIS=/e/Invekto/ChatAnalysis/current"
 set "REMOTE_AUTOMATION=/e/Invekto/Automation/current"
 set "REMOTE_AGENTAI=/e/Invekto/AgentAI/current"
 set "REMOTE_OUTBOUND=/e/Invekto/Outbound/current"
+set "REMOTE_KNOWLEDGE=/e/Invekto/Knowledge/current"
 set "REMOTE_SIMULATOR=/e/Invekto/Simulator"
 
 REM Local paths
@@ -38,6 +39,7 @@ set "LOCAL_CHATANALYSIS=%LOCAL_DEPLOY%\ChatAnalysis"
 set "LOCAL_AUTOMATION=%LOCAL_DEPLOY%\Automation"
 set "LOCAL_AGENTAI=%LOCAL_DEPLOY%\AgentAI"
 set "LOCAL_OUTBOUND=%LOCAL_DEPLOY%\Outbound"
+set "LOCAL_KNOWLEDGE=%LOCAL_DEPLOY%\Knowledge"
 set "LOCAL_SIMULATOR=%~dp0tools\simulator"
 
 REM Check WinSCP exists
@@ -54,9 +56,10 @@ if not exist "!LOCAL_CHATANALYSIS!" mkdir "!LOCAL_CHATANALYSIS!"
 if not exist "!LOCAL_AUTOMATION!" mkdir "!LOCAL_AUTOMATION!"
 if not exist "!LOCAL_AGENTAI!" mkdir "!LOCAL_AGENTAI!"
 if not exist "!LOCAL_OUTBOUND!" mkdir "!LOCAL_OUTBOUND!"
+if not exist "!LOCAL_KNOWLEDGE!" mkdir "!LOCAL_KNOWLEDGE!"
 
 echo ============================================
-echo [1/6] Building FlowBuilder SPA...
+echo [1/8] Building FlowBuilder SPA...
 echo ============================================
 echo.
 
@@ -82,7 +85,33 @@ echo [OK] FlowBuilder SPA built to wwwroot\flow-builder\
 echo.
 
 echo ============================================
-echo [2/6] Building Backend...
+echo [2/8] Building Dashboard SPA...
+echo ============================================
+echo.
+
+cd /d "%SRC_DIR%src\Invekto.Backend\Dashboard"
+call npm ci
+if errorlevel 1 (
+    echo [ERROR] Dashboard npm ci failed!
+    goto :error_exit
+)
+call npm run build
+if errorlevel 1 (
+    echo [ERROR] Dashboard SPA build failed!
+    goto :error_exit
+)
+
+REM Verify build output exists
+if not exist "%SRC_DIR%src\Invekto.Backend\wwwroot\index.html" (
+    echo [ERROR] Dashboard SPA output not found!
+    echo Expected: src\Invekto.Backend\wwwroot\index.html
+    goto :error_exit
+)
+echo [OK] Dashboard SPA built to wwwroot\
+echo.
+
+echo ============================================
+echo [3/8] Building Backend...
 echo ============================================
 echo.
 
@@ -96,7 +125,7 @@ echo [OK] Backend built to !LOCAL_BACKEND!
 echo.
 
 echo ============================================
-echo [3/6] Building ChatAnalysis...
+echo [4/8] Building ChatAnalysis...
 echo ============================================
 echo.
 
@@ -109,7 +138,7 @@ echo [OK] ChatAnalysis built to !LOCAL_CHATANALYSIS!
 echo.
 
 echo ============================================
-echo [4/6] Building Automation...
+echo [5/8] Building Automation...
 echo ============================================
 echo.
 
@@ -122,7 +151,7 @@ echo [OK] Automation built to !LOCAL_AUTOMATION!
 echo.
 
 echo ============================================
-echo [5/6] Building AgentAI...
+echo [6/8] Building AgentAI...
 echo ============================================
 echo.
 
@@ -135,7 +164,7 @@ echo [OK] AgentAI built to !LOCAL_AGENTAI!
 echo.
 
 echo ============================================
-echo [6/6] Building Outbound...
+echo [7/8] Building Outbound...
 echo ============================================
 echo.
 
@@ -147,15 +176,28 @@ if errorlevel 1 (
 echo [OK] Outbound built to !LOCAL_OUTBOUND!
 echo.
 
+echo ============================================
+echo [8/8] Building Knowledge...
+echo ============================================
+echo.
+
+dotnet publish src/Invekto.Knowledge/Invekto.Knowledge.csproj -c Release -o "!LOCAL_KNOWLEDGE!" --self-contained false
+if errorlevel 1 (
+    echo [ERROR] Knowledge build failed!
+    goto :error_exit
+)
+echo [OK] Knowledge built to !LOCAL_KNOWLEDGE!
+echo.
+
 REM Q: Create build marker
 for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
 for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('FlowBuilder','Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('FlowBuilder','Dashboard','Backend','ChatAnalysis','Automation','AgentAI','Outbound','Knowledge') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
 echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
 echo.
 
 echo ============================================
-echo [7/9] Stopping Remote Services...
+echo [9/11] Stopping Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-stop.flag to trigger service shutdown...
@@ -182,7 +224,7 @@ timeout /t 10 /nobreak >nul
 
 echo.
 echo ============================================
-echo [8/9] Uploading to STAGING Server...
+echo [10/11] Uploading to STAGING Server...
 echo ============================================
 echo.
 echo Local Backend:      !LOCAL_BACKEND!
@@ -190,11 +232,13 @@ echo Local ChatAnalysis: !LOCAL_CHATANALYSIS!
 echo Local Automation:   !LOCAL_AUTOMATION!
 echo Local AgentAI:      !LOCAL_AGENTAI!
 echo Local Outbound:     !LOCAL_OUTBOUND!
+echo Local Knowledge:    !LOCAL_KNOWLEDGE!
 echo Remote Backend:     %REMOTE_BACKEND%
 echo Remote ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo Remote Automation:  %REMOTE_AUTOMATION%
 echo Remote AgentAI:     %REMOTE_AGENTAI%
 echo Remote Outbound:    %REMOTE_OUTBOUND%
+echo Remote Knowledge:   %REMOTE_KNOWLEDGE%
 echo.
 echo Mode: Synchronize (only changed files)
 
@@ -212,6 +256,7 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo mkdir "%REMOTE_AUTOMATION%"
     echo mkdir "%REMOTE_AGENTAI%"
     echo mkdir "%REMOTE_OUTBOUND%"
+    echo mkdir "%REMOTE_KNOWLEDGE%"
     echo mkdir "%REMOTE_SIMULATOR%"
     echo option batch abort
     echo echo Uploading Backend to STAGING...
@@ -224,6 +269,8 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
     echo synchronize remote "!LOCAL_AGENTAI!" "%REMOTE_AGENTAI%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading Outbound to STAGING...
     echo synchronize remote "!LOCAL_OUTBOUND!" "%REMOTE_OUTBOUND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+    echo echo Uploading Knowledge to STAGING...
+    echo synchronize remote "!LOCAL_KNOWLEDGE!" "%REMOTE_KNOWLEDGE%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
     echo echo Uploading Simulator to STAGING...
     echo synchronize remote "!LOCAL_SIMULATOR!" "%REMOTE_SIMULATOR%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|node_modules/;.env"
     echo echo Uploading build marker...
@@ -245,7 +292,7 @@ echo [OK] FTP upload completed
 
 echo.
 echo ============================================
-echo [9/9] Starting Remote Services...
+echo [11/11] Starting Remote Services...
 echo ============================================
 echo.
 echo Creating deploy-start.flag to trigger service startup...
@@ -294,6 +341,7 @@ echo   ChatAnalysis: %REMOTE_CHATANALYSIS%
 echo   Automation:   %REMOTE_AUTOMATION%
 echo   AgentAI:      %REMOTE_AGENTAI%
 echo   Outbound:     %REMOTE_OUTBOUND%
+echo   Knowledge:    %REMOTE_KNOWLEDGE%
 echo   Simulator:    %REMOTE_SIMULATOR%
 echo.
 echo ============================================
