@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ASP.NET Core types for shared middleware (TrafficLogging, JwtAuth) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <!-- JWT token validation (GR-1.9: Main App JWT shared key) -->
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />

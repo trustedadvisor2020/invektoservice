@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Invekto.Automation.Data;
-using Invekto.Automation.Middleware;
 using Invekto.Automation.Services;
+using Invekto.Shared.Middleware;
 using Invekto.Automation.Services.NodeHandlers;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;

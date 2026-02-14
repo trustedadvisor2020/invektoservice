@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Knowledge Search API Contract",
+  "description": "Combined FAQ + document chunk search. Semantic search (pgvector) with keyword fallback.",
+  "version": "2.0",
+
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/knowledge/{tenantId}/search",
+    "body": {
+      "type": "object",
+      "required": ["query"],
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Search query text"
+        },
+        "topK": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of results to return"
+        },
+        "lang": {
+          "type": "string",
+          "description": "Filter by language (tr, en). Null = all languages."
+        },
+        "category": {
+          "type": "string",
+          "description": "Filter by category (payment, shipping, etc.). Null = all categories."
+        }
+      }
+    }
+  },
+
+  "response_200": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["sourceType", "score", "method"],
+          "properties": {
+            "sourceType": { "type": "string", "enum": ["faq", "chunk"], "description": "Result source type" },
+            "faqId": { "type": ["integer", "null"], "description": "FAQ ID (only for faq results)" },
+            "question": { "type": ["string", "null"], "description": "FAQ question (only for faq results)" },
+            "answer": { "type": ["string", "null"], "description": "FAQ answer (only for faq results)" },
+            "category": { "type": ["string", "null"] },
+            "lang": { "type": ["string", "null"] },
+            "chunkId": { "type": ["integer", "null"], "description": "Chunk ID (only for chunk results)" },
+            "content": { "type": ["string", "null"], "description": "Chunk text content (only for chunk results)" },
+            "documentId": { "type": ["integer", "null"], "description": "Source document ID (only for chunk results)" },
+            "documentTitle": { "type": ["string", "null"], "description": "Source document title (only for chunk results)" },
+            "pageNumber": { "type": ["integer", "null"], "description": "Source page number (only for chunk results)" },
+            "score": { "type": "number", "description": "Relevance score 0-1" },
+            "method": { "type": "string", "enum": ["semantic", "keyword"] }
+          }
+        }
+      },
+      "method": { "type": "string", "enum": ["semantic", "keyword"] },
+      "reason": { "type": "string", "description": "If keyword fallback, reason why (e.g. 'OpenAI key not configured')" },
+      "durationMs": { "type": "integer" }
+    }
+  },
+
+  "error_codes": [
+    "INV-KN-004: Search failed (DB error)",
+    "INV-KN-005: OpenAI timeout (graceful fallback to keyword)",
+    "INV-KN-006: OpenAI rate limit (graceful fallback to keyword)",
+    "INV-KN-007: OpenAI API error"
+  ]
+}

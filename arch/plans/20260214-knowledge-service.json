@@ -1,0 +1,168 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260214-knowledge-service",
+  "risk": "HIGH",
+  "status": "DONE",
+  "phase": "B",
+  "created_at": "2026-02-14T21:00:00Z",
+  "updated_at": "2026-02-15T03:00:00Z",
+  "plan": {
+    "summary": "Knowledge Service Phase B: PDF upload + chunking pipeline (PdfPig 512-token/50-overlap), BackgroundService document processing, combined FAQ+chunk semantic/keyword search with source references, Backend proxy endpoints with JWT bridge (BasicAuth->JWT), Dashboard Knowledge UI (DocumentUpload, DocumentList, FaqManager, FaqEditModal). 10 steps, 24 files changed, +2497/-316 lines.",
+    "q_intent": "Phase B = PDF upload + chunking + combined search + Dashboard UI. Phase A core (RAG, FAQ CRUD, import, pgvector search) already committed (385d3e0).",
+    "interview_notes": "Phase B interview: PdfPig (MIT), 512 token / 50 overlap, 10MB limit, doc name + page no refs, Dashboard integrated (not separate SPA), Core UI only (FAQ CRUD + Doc Upload + Doc List), Tags UI deferred."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Auth/JwtGenerator.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Knowledge/Invekto.Knowledge.csproj",
+    "src/Invekto.Knowledge/appsettings.json",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
+    "src/Invekto.Knowledge/Services/RetrievalService.cs",
+    "src/Invekto.Knowledge/Services/PdfChunkingService.cs",
+    "src/Invekto.Knowledge/Services/DocumentProcessingService.cs",
+    "src/Invekto.Backend/Services/KnowledgeClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/KnowledgePage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/knowledge/DocumentUpload.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/knowledge/DocumentList.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/knowledge/FaqManager.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/knowledge/FaqEditModal.tsx",
+    "src/Invekto.Backend/wwwroot/index.html",
+    "src/Invekto.Backend/wwwroot/assets/*",
+    "arch/plans/20260214-knowledge-service.json",
+    "arch/plans/diffs/20260214-knowledge-service-phaseB.diff",
+    "arch/contracts/knowledge-search.json"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Shared/Auth/JwtGenerator.cs", "is_new": true, "change": "Service-to-service JWT token generator (57 lines). GenerateServiceToken(tenantId, expiry) for Backend->Knowledge auth bridge."},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+5 lines: INV-KN-011 to INV-KN-015 (FileTooLarge, InvalidFileType, PdfExtractionFailed, DocumentNotFound, UploadFailed)"},
+    {"path": "src/Invekto.Knowledge/Invekto.Knowledge.csproj", "is_new": false, "change": "+UglyToad.PdfPig NuGet for PDF text extraction"},
+    {"path": "src/Invekto.Knowledge/appsettings.json", "is_new": false, "change": "+Storage.UploadPath, Processing.ChunkSize/ChunkOverlap/MaxFileSizeMb config sections"},
+    {"path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "+193 lines: PdfChunkingService/DocumentProcessingService DI, 4 document endpoints (upload/list/get/delete), multipart file handling"},
+    {"path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false, "change": "+361 lines: Document CRUD (List/Get/Delete/GetStuck), Chunk operations (BatchInsert/UpdateEmbedding/GetWithoutEmbedding), Chunk search (Semantic/Keyword), DTOs (DocumentDto/ChunkSearchResultDto/ChunkInsertRow), SearchResultDto extended with SourceType/ChunkId/Content/DocumentId/DocumentTitle/PageNumber"},
+    {"path": "src/Invekto.Knowledge/Services/RetrievalService.cs", "is_new": false, "change": "+74 lines: Combined FAQ+chunk search, MergeResults helper, parallel search paths"},
+    {"path": "src/Invekto.Knowledge/Services/PdfChunkingService.cs", "is_new": true, "change": "127 lines: PdfPig PDF text extraction, 512-token/50-overlap chunking, page boundary tracking, empty page handling"},
+    {"path": "src/Invekto.Knowledge/Services/DocumentProcessingService.cs", "is_new": true, "change": "200 lines: BackgroundService with ConcurrentQueue, PDF->chunks->embeddings pipeline, restart recovery (re-enqueue stuck docs)"},
+    {"path": "src/Invekto.Backend/Services/KnowledgeClient.cs", "is_new": true, "change": "188 lines: Full proxy client (ProxyGet/Post/Put/Delete/Upload/Request), MultipartFormDataContent for uploads, 504/502 error mapping"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "+222 lines: KnowledgeClient 30s timeout, JwtGenerator DI, 9 Knowledge proxy endpoints (/api/ops/knowledge/*), BasicAuth->JWT bridge helpers"},
+    {"path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "+2 lines: KnowledgePage import + /knowledge route"},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false, "change": "+3 lines: BookOpen icon + Knowledge nav item"},
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "+96 lines: DocumentDto/FaqDto types, Knowledge API methods (CRUD+search+embeddings), requestUpload method (FormData)"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/KnowledgePage.tsx", "is_new": true, "change": "96 lines: Tabbed page (Documents/FAQs), tenant selector, embeddings generation button"},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/knowledge/DocumentUpload.tsx", "is_new": true, "change": "117 lines: Drag-drop PDF upload, client-side validation (PDF only, 10MB), title input"},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/knowledge/DocumentList.tsx", "is_new": true, "change": "135 lines: Document list with status badges (pending/processing/ready/error), 5s polling, pagination"},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/knowledge/FaqManager.tsx", "is_new": true, "change": "174 lines: FAQ table with CRUD, category filter, pagination, edit/delete actions"},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/knowledge/FaqEditModal.tsx", "is_new": true, "change": "153 lines: Create/edit FAQ modal (question, answer, category, language, keywords)"},
+    {"path": "src/Invekto.Backend/wwwroot/index.html", "is_new": false, "change": "Updated asset references for new Vite build"},
+    {"path": "src/Invekto.Backend/wwwroot/assets/*", "is_new": false, "change": "New Vite build output (index-BKNHgXgM.css, index-DB7FcruS.js), old assets deleted"}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "04191f2ce09298db82f2906fd1d8461ea3f8ec7067843eaaad3a5f0a94a64395",
+    "full_path": "arch/plans/diffs/20260214-knowledge-service-phaseB.diff",
+    "stats": {"insertions": 9684, "deletions": 452, "files_count": 27}
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln && cd Dashboard && npm run build",
+    "timestamp": "2026-02-15T04:00:00Z"
+  },
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.AgentAI/", "src/Invekto.Outbound/", "src/Invekto.ChatAnalysis/", "src/Invekto.Automation/", "tools/whatsapp-analyzer/"],
+    "non_goals": ["Tags/labels UI (deferred)", "SSE import progress streaming", "Embedding cache (LRU)", "Bulk FAQ import via CSV"],
+    "intentional_exclusions": ["Phase B scope: PDF upload/chunking, combined search, Backend proxy, Dashboard UI. Tags UI deferred per Q interview."],
+    "design_decisions": [
+      "JWT-BRIDGE: Dashboard BasicAuth -> Backend JwtGenerator.GenerateServiceToken(tenantId) -> Knowledge JWT Bearer. 5min expiry, role=service, user_id=0.",
+      "PROXY-PATTERN: Backend KnowledgeClient mirrors OutboundClient ProxyRequestAsync pattern. 30s timeout (up from 600ms) for PDF uploads.",
+      "CHUNKING: PdfPig 512-token/50-overlap with page boundary tracking. Token estimation via text.Split(' ').Length (no tokenizer needed).",
+      "BACKGROUND-PROCESSING: ConcurrentQueue + SemaphoreSlim signal pattern. Restart recovery re-enqueues pending/processing docs.",
+      "SEARCH-MERGE: RetrievalService searches both FAQs and chunks in parallel, merges by score descending. SearchResultDto extended with nullable chunk fields for backwards compat.",
+      "METADATA-PARSE: ExtractPageNumber uses typed catch (JsonException) without logging. Metadata JSON is written by our own BatchInsertChunks with a fixed template, so malformed JSON indicates a code bug, not runtime error. Null return safely degrades (search result omits page number)."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "PdfChunkingService.cs:ProcessPdf - InvalidOperationException for empty/image PDFs",
+      "DocumentProcessingService.cs:ProcessDocumentAsync - Exception -> status=error, message in logs",
+      "Knowledge/Program.cs:upload endpoint - PDF validation, size check, file save errors with INV-KN-011/012/015",
+      "Knowledge/Program.cs:delete endpoint - File.Delete best-effort with logged warning",
+      "KnowledgeClient.cs:ProxyRequestAsync - TaskCanceledException -> 504, Exception -> 502",
+      "Backend/Program.cs:proxy endpoints - KnowledgeClient error passthrough with status codes",
+      "Dashboard: FaqEditModal/DocumentUpload - catch with user-visible error messages"
+    ],
+    "user_facing_errors": [
+      "INV-KN-011: File exceeds 10MB limit (400)",
+      "INV-KN-012: Only PDF files supported (400)",
+      "INV-KN-013: PDF text extraction failed (500)",
+      "INV-KN-014: Document not found (404)",
+      "INV-KN-015: File save/upload failed (500)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "DocumentProcessingService logs each pipeline step and sets status=error on failure. PdfChunkingService warns on empty pages (continues to next). KnowledgeClient maps all errors to HTTP status codes. Dashboard shows error messages from API responses. Embedding failures logged, chunks stored without embeddings (keyword search fallback)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "PDF yuklendiginde ne oldugu belirsiz",
+      "suggestion": "5s polling ile processing status canli guncelleniyor (pending -> processing -> ready)",
+      "aha_moment": "Upload sonrasi DocumentList otomatik status badge gunceller"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "FAQ arama sadece text-match ile yavas",
+      "suggestion": "Combined FAQ + chunk semantic search tek endpoint'te",
+      "aha_moment": "Hem FAQ hem PDF iceriklerinde tek sorguda arama"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Servis restart'inda processing docs kayboluyor",
+      "suggestion": "GetStuckDocumentsAsync ile restart recovery - pending/processing docs yeniden kuyruga alinir",
+      "aha_moment": "Restart sonrasi processing kaldigi yerden devam"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "PDF iceriginde kaynak (dosya adi + sayfa no) gorunmuyor",
+      "suggestion": "ChunkSearchResultDto: documentTitle + pageNumber ile source reference",
+      "aha_moment": "Arama sonucunda 'Iade Politikasi.pdf, sayfa 3' referansi"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "FAQ yonetimi kod gerektiriyor",
+      "suggestion": "Dashboard'da FAQ CRUD UI - create/edit/delete/filter/paginate",
+      "aha_moment": "Tek tikla FAQ ekle/duzenle/sil, kategori filtrele"
+    }
+  ],
+  "verification_questions": [
+    {"id": "Q1", "question": "Phase B repository methods (ListDocuments, DeleteDocument, BatchInsertChunks, SearchChunks) hepsinde tenant_id WHERE clause var mi?", "category": "Service/Auth", "codex_answer": null, "codex_result": null},
+    {"id": "Q2", "question": "JWT bridge dogru calisiyor mu? Backend BasicAuth -> JwtGenerator -> KnowledgeClient Bearer token?", "category": "Service/Auth", "codex_answer": null, "codex_result": null},
+    {"id": "Q3", "question": "DocumentProcessingService restart recovery calisiyor mu? GetStuckDocumentsAsync pending/processing docs buluyor mu?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
+    {"id": "Q4", "question": "PdfChunkingService 512-token/50-overlap dogru implement edilmis mi? Page boundary tracking calisiyor mu?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q5", "question": "Upload endpoint: PDF validation (extension + content-type), 10MB limit, file save atomicity?", "category": "Data", "codex_answer": null, "codex_result": null},
+    {"id": "Q6", "question": "KnowledgeClient timeout 30s mi? ProxyUploadAsync MultipartFormDataContent dogru mu?", "category": "Process/Policy", "codex_answer": null, "codex_result": null}
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-15T04:30:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-15T04:30:00Z",
+    "iteration": 3,
+    "escalation_required": false,
+    "blocking_issues": [],
+    "history": [
+      {"iteration": 1, "status": "FAIL", "issues": ["CQ1/CQ2: UI silent failure catches in DocumentList/FaqManager (4 empty catch blocks)", "CQ5: Hardcoded OpenAI API key in appsettings.json", "CQ6: Chunk insert N+1 DB write (per-row INSERT in loop)", "CQ4: JWT generation duplicated (JwtGenerator vs Backend manual)", "CQ8: Search API contract drift (FAQ-only schema vs mixed FAQ+chunk response)", "Q1: BatchInsertChunks missing document tenant ownership verification", "Q5: Upload endpoint missing content-type check, PDF magic bytes validation, and file cleanup on failure"]},
+      {"iteration": 2, "status": "FAIL", "issues": ["CQ3: Scope violation - allowed_files missing arch/contracts/ and arch/plans/diffs/", "CQ5: BatchInsertChunks ownership query uses non-existent deleted_at column", "CQ1/Q5: Upload magic bytes check outside try-catch (unhandled exception risk)", "CQ2: Silent catch in file cleanup (no logging)"]},
+      {"iteration": 3, "status": "PASS", "issues": []}
+    ]
+  },
+  "phase_a_verdict": {
+    "status": "PASS",
+    "iteration": 5,
+    "commit": "385d3e0"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Knowledge FAQ CRUD API Contract",
+  "description": "FAQ create/read/update/delete operations",
+  "version": "1.0",
+
+  "list": {
+    "method": "GET",
+    "path": "/api/v1/knowledge/{tenantId}/faqs",
+    "query": {
+      "lang": { "type": "string", "description": "Filter by language" },
+      "category": { "type": "string", "description": "Filter by category" },
+      "page": { "type": "integer", "default": 1 },
+      "limit": { "type": "integer", "default": 50, "maximum": 200 }
+    },
+    "response_200": {
+      "type": "object",
+      "properties": {
+        "faqs": {
+          "type": "array",
+          "items": { "$ref": "#/faqDto" }
+        },
+        "total": { "type": "integer" },
+        "page": { "type": "integer" },
+        "limit": { "type": "integer" }
+      }
+    }
+  },
+
+  "create": {
+    "method": "POST",
+    "path": "/api/v1/knowledge/{tenantId}/faqs",
+    "body": {
+      "type": "object",
+      "required": ["question", "answer"],
+      "properties": {
+        "question": { "type": "string", "maxLength": 1000 },
+        "answer": { "type": "string" },
+        "category": { "type": "string", "maxLength": 100 },
+        "lang": { "type": "string", "default": "tr" },
+        "keywords": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "response_201": { "$ref": "#/faqDto" }
+  },
+
+  "update": {
+    "method": "PUT",
+    "path": "/api/v1/knowledge/{tenantId}/faqs/{id}",
+    "body": {
+      "type": "object",
+      "properties": {
+        "question": { "type": "string", "maxLength": 1000 },
+        "answer": { "type": "string" },
+        "category": { "type": "string", "maxLength": 100 },
+        "lang": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "response_200": { "$ref": "#/faqDto" }
+  },
+
+  "delete": {
+    "method": "DELETE",
+    "path": "/api/v1/knowledge/{tenantId}/faqs/{id}",
+    "description": "Soft delete (is_active = false)",
+    "response_200": { "message": "FAQ deactivated" }
+  },
+
+  "faqDto": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer" },
+      "tenantId": { "type": "integer" },
+      "question": { "type": "string" },
+      "answer": { "type": "string" },
+      "category": { "type": "string" },
+      "lang": { "type": "string" },
+      "source": { "type": "string" },
+      "keywords": { "type": "array", "items": { "type": "string" } },
+      "isActive": { "type": "boolean" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "updatedAt": { "type": "string", "format": "date-time" }
+    }
+  },
+
+  "error_codes": [
+    "INV-KN-008: FAQ not found",
+    "INV-KN-009: Invalid request"
+  ]
+}

@@ -26,6 +26,7 @@ INV-{SERVICE}-{NUMBER}
 | DB | Database | Veritabanı hataları |
 | VAL | Validation | Validasyon hataları |
 | OB | Outbound | GR-1.3: Broadcast & trigger engine hataları |
+| KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
 | EXT | External | Dış servis hataları |
 
 ---
@@ -165,6 +166,23 @@ INV-{SERVICE}-{NUMBER}
 | INV-OB-008 | No matching trigger template | Bu event icin esle&#351;en sablon bulunamadi. |
 | INV-OB-009 | Message send callback failed | Mesaj gonderim callback'i basarisiz oldu. |
 | INV-OB-010 | Too many recipients (max 1000) | Alici sayisi siniri asildi (max 1000). |
+
+---
+
+## KN - Knowledge Errors (GR-2.1)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-KN-001 | Import path not found | Belirtilen NLP dosya yolu bulunamadi. |
+| INV-KN-002 | Import parse error | Dosya parse hatasi (JSON/CSV). |
+| INV-KN-003 | Import DB error | Veritabani kayit hatasi. |
+| INV-KN-004 | Search failed | Arama sirasinda hata olustu. |
+| INV-KN-005 | OpenAI timeout | Embedding servisi zaman asimi (anahtar kelime aramasina gecildi). |
+| INV-KN-006 | OpenAI rate limit | Embedding rate limiti asildi (anahtar kelime aramasina gecildi). |
+| INV-KN-007 | OpenAI API error | Embedding servisi hatasi. |
+| INV-KN-008 | FAQ not found | Belirtilen FAQ bulunamadi. |
+| INV-KN-009 | Invalid request | Gecersiz istek formati. |
+| INV-KN-010 | pgvector missing | pgvector eklentisi yuklu degil (sunucu hatasi). |
 
 ---
 

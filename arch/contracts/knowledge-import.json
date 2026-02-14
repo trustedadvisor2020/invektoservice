@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Knowledge Import API Contract",
+  "description": "WA-3 NLP data import into Knowledge Service DB",
+  "version": "1.0",
+
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/knowledge/{tenantId}/import",
+    "body": {
+      "type": "object",
+      "required": ["nlpOutputPath"],
+      "properties": {
+        "nlpOutputPath": {
+          "type": "string",
+          "description": "Absolute path to NLP output directory (tools/whatsapp-analyzer/data/nlp/)"
+        },
+        "faqFilter": {
+          "type": "object",
+          "properties": {
+            "minQuestions": {
+              "type": "integer",
+              "default": 5,
+              "description": "Minimum question count per cluster to import"
+            },
+            "minAnswerLength": {
+              "type": "integer",
+              "default": 20,
+              "description": "Minimum answer character length to import"
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "response_200": {
+    "type": "object",
+    "properties": {
+      "success": { "type": "boolean" },
+      "summary": {
+        "type": "object",
+        "properties": {
+          "faqsImported": { "type": "integer" },
+          "faqsSkipped": { "type": "integer" },
+          "intentsImported": { "type": "integer" },
+          "productsImported": { "type": "integer" },
+          "sentimentsImported": { "type": "integer" },
+          "documentId": { "type": "integer", "description": "Import batch document record ID" }
+        }
+      },
+      "durationMs": { "type": "integer" }
+    }
+  },
+
+  "error_codes": [
+    "INV-KN-001: NLP output path not found",
+    "INV-KN-002: JSON/CSV parse error",
+    "INV-KN-003: DB batch insert error"
+  ]
+}
