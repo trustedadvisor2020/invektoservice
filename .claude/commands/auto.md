@@ -3,7 +3,7 @@ name: automating-workflow
 description: Manages the full automated dev workflow including interview, planning, implementation, build, Codex review, and commit. Activates on any code change request without needing to type /auto.
 ---
 
-# Auto Workflow v3.1
+# Auto Workflow v5.0 (Paket Bazli Yurutme)
 
 ## Overview
 
@@ -11,6 +11,14 @@ description: Manages the full automated dev workflow including interview, planni
 
 **This workflow applies automatically to EVERY code change.**
 No need to type `/auto` - just tell Q what you need, and the workflow starts.
+
+### v5.0 Farki
+
+- **Paket bazli yurutme:** Birden fazla GR tek pakette islenebilir
+- **Tek interview:** Paket scope'unda (tum GR'ler icin), max 4 soru/batch
+- **Tek plan:** Paket bazli (`packet_id` + `gr_list` JSON alanlari)
+- **Tek Codex review:** Tum GR'lerin diff'i tek review'da
+- **Paket ici:** GR'ler arasi interview/review YOK, sadece build check
 
 ### After Compact (Session Reset)
 
@@ -25,7 +33,7 @@ After compact, auto workflow **DOES NOT STOP**:
 
 | Step | What Q Does |
 |------|-------------|
-| 1 | Describe the task |
+| 1 | Describe the task (or next packet) |
 | 2 | Answer interview questions |
 | 3 | Approve the plan |
 | 4 | COPY-PASTE bridge (DevAgent <-> Codex) |
@@ -35,15 +43,10 @@ Codex trigger: Q's manual copy-paste.
 
 ---
 
-## Session Bootstrap (Every Session Start)
+## Session Bootstrap
 
-1. **Read critical files:**
-   - `arch/session-memory.md` -> Current state
-   - `arch/active-work.md` -> In-progress work
-   - `arch/lessons-learned.md` -> Recurring mistakes
-   - `INVEKTO_BASE.prompt.md` -> Global rules
-2. Q makes a request -> Start interview (Step 0)
-3. Normal auto workflow continues
+> **Canonical source:** `INVEKTO_BASE.prompt.md` SESSION BOOTSTRAP section.
+> Read critical files, start interview, apply PP-006. Details are NOT duplicated here.
 
 ---
 
@@ -51,27 +54,9 @@ Codex trigger: Q's manual copy-paste.
 
 **Code MUST NOT be written before completing this step.**
 
-### Core Rule
-
 No matter how clear the task seems, interview continues until ALL grey areas are resolved.
-- "Seems clear" != "No need to ask"
-- Every assumption = potential wrong direction
 
-### Devil's Advocate (PP-006 - Mandatory)
-
-**DO:**
-- Offer alternative approaches
-- Ask about edge cases ("What if X happens?")
-- Point out potential risks
-- Discuss trade-offs
-- Question Q's assumptions
-
-**DON'T:**
-- Accept Q's first answer and move on
-- Say "understood" and dive into code
-- Hesitate to ask tough questions
-
-Goal: Make Q think better, NOT be a yes-man.
+**Devil's Advocate (PP-006):** See `INVEKTO_BASE.prompt.md` SEYTANIN AVUKATLIGI section.
 
 ### Interview Flow
 
@@ -96,6 +81,15 @@ For detailed phase instructions, see the reference files:
 - **Phase 4 - Fix-Run:** See [references/phases.md](auto/references/phases.md#phase-4-fix-run)
 - **Phase 5 - Done:** See [references/phases.md](auto/references/phases.md#phase-5-done)
 
+### Paket Bazli Dev (Phase 2 Farki)
+
+Paket icinde birden fazla GR varsa:
+1. GR'leri plan sirasina gore implement et
+2. Her GR sonrasi `dotnet build` calistir (build check)
+3. Build FAIL -> hemen fix et
+4. Tum GR'ler tamamlaninca -> Phase 3 (/rev)
+5. GR'ler arasi interview/review YOK
+
 ### Risk Classification
 
 See [references/risk-classification.md](auto/references/risk-classification.md) for the full risk table.
@@ -114,17 +108,19 @@ Quick reference:
 ## Summary Flow
 
 ```
-Q requests something
+Q requests packet (or single task)
     |
-Interview via AskUserQuestion
+Interview via AskUserQuestion (paket scope, max 4 soru/batch)
     |
-Plan JSON created -> Q approves
+Plan JSON created (packet_id + gr_list) -> Q approves
     |
-Code written -> Build PASS
+GR'ler sirali implement -> build check between GR's
+    |
+All GR's done -> Final Build PASS
     |
 /rev -> Q copy-paste to Codex
     |
-Codex produces 2 blocks
+Codex produces 2 blocks (entire packet diff)
     |
 Q reports verdict
     |

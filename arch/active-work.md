@@ -6,16 +6,17 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| PKT-1-ai-upgrade | NEXT | 2026-02-15 | Paket 1: AI Upgrade (GR-2.2 + GR-2.3). Interview ile başla. |
+| (none) | — | — | — |
 
 ---
 
-## Execution Queue — 8 Paket Stratejisi (v5.0)
+## Execution Queue — 10 Paket Stratejisi (v5.1)
 
-> **Karar (2026-02-15):** Tekli GR döngüsü yerine 8 paket halinde yürütme.
+> **Karar (2026-02-15):** Tekli GR döngüsü yerine paket halinde yürütme.
 > Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
-> **Neden:** Overhead %60 azalır (24 döngü → 8 döngü), saf kod süresi aynı kalır.
+> **Neden:** Overhead %60 azalır, saf kod süresi aynı kalır.
 > **Kural:** WA = WhatsApp Analytics, RP = Roadmap Phase, PKT = Execution Packet.
+> **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) 3 alt pakete bölündü → PKT-6A/6B/6C. Toplam: 8 → 10 paket.
 
 ### Tamamlanan (Paket Öncesi — Tekli Döngü)
 
@@ -29,17 +30,20 @@
 
 | # | Paket | Kod | İçerik | GR Sayısı | Durum |
 |---|-------|-----|--------|-----------|-------|
-| 1 | **AI Upgrade** | PKT-1 | GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang | 2 GR, 13 alt madde | ⬜ Sırada |
-| 2 | **Sağlık Core** | PKT-2 | GR-2.4 Randevu Motoru + GR-2.6 KVKK | 2 GR, 11 alt madde | ⬜ Bekliyor |
+| 1 | **AI Upgrade** | PKT-1 | GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang | 2 GR, 13 alt madde | ✅ PASS (iter 3, FORCE PASS) |
+| 2 | **Sağlık Core** | PKT-2 | GR-2.4 Randevu Motoru + GR-2.6 KVKK | 2 GR, 11 alt madde | ✅ PASS (iter 1, FORCE PASS) |
 | 3 | **Ops Dashboard** | PKT-3 | GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard | 2 GR, 12 alt madde | ⬜ Bekliyor |
 | 4 | **WA Analytics** | PKT-4 | WA-6 NLP Stages 4-7 + Backend proxy | 1 WA faz, ~8 alt madde | ⬜ Bekliyor |
 | 5 | **Platform** | PKT-5 | Phase 3A: Integrations (:7106) + Outbound v2 + Randevu Advanced + Dashboard + Ads | 6 GR, 30 alt madde | ⬜ Bekliyor |
-| 6 | **Niche** | PKT-6 | Phase 3B: E-ticaret/Diş/Estetik intent + pipeline + outbound + sağlık genişleme + Voice AI + Review Rescue + Multilingual | 19 GR, ~80 alt madde | ⬜ Bekliyor |
+| 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ⬜ Bekliyor |
+| 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ⬜ Bekliyor |
+| 6C | **Niche Health Expansion** | PKT-6C | Phase 3B: Saglik genisleme + Review Rescue + Multilingual (PKT-6B'ye bagli) | 5 GR, ~22 alt madde | ⬜ Bekliyor |
 | 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
 | 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
 
 > **PKT-1~4 = Phase 2 tamamlama** (kesin ihtiyaç, hemen deploy edilecek)
 > **PKT-5~8 = Phase 3 tamamlama** (müşteri feedback'ine göre revize edilebilir)
+> **Bağımlılık zinciri:** PKT-5 → PKT-6A (bağımsız) | PKT-5 → PKT-6B (Integrations) | PKT-6B → PKT-6C (3.24 için 3.8+3.16)
 
 ### Paket Detayları
 
@@ -61,12 +65,33 @@
 **PKT-5: Platform** — Yeni servis (Integrations :7106) + genişletmeler
 - GR-3.4 HB API, GR-3.6 Kargo, GR-3.14 Ads Attribution, GR-3.15 Outbound v2, GR-3.18 Dashboard, GR-3.19 Randevu Advanced
 
-**PKT-6: Niche** — En büyük paket (19 GR, tüm sektör intent + pipeline)
-- E-ticaret: GR-3.1, 3.2, 3.3, 3.5, 3.7, 3.8, 3.16, 3.17, 3.24
-- Diş: GR-3.9, 3.10, 3.11
-- Estetik: GR-3.12, 3.13
-- Sağlık genişleme: GR-3.20, 3.21, 3.22, 3.25
-- Evrensel: GR-3.23 Voice AI
+**PKT-6A: Niche Foundation** — Intent + Onboarding + Voice AI (7 GR, ~28 item)
+- GR-3.1 Intent Genişletme + Oto. Etiketleme (e-ticaret)
+- GR-3.2 B2B / VIP Lead Tespiti (e-ticaret)
+- GR-3.5 Onboarding Otomasyonu (e-ticaret)
+- GR-3.9 Diş Intent + Fiyat Pipeline (diş)
+- GR-3.10 Diş Onboarding Otomasyonu (diş)
+- GR-3.12 Estetik Intent + Lead Pipeline (estetik)
+- GR-3.23 Voice Message AI (evrensel)
+- **Bağımlılık:** Yok (PKT-5 sonrası hemen başlanabilir)
+
+**PKT-6B: Niche Business Logic** — Outbound + İade + Lead + Yorum Kurtarma (7 GR, ~30 item)
+- GR-3.7 Outbound E-ticaret Senaryoları
+- GR-3.8 İade Çevirme v1
+- GR-3.11 Klinik Outbound v1
+- GR-3.13 Lead Management v2
+- GR-3.3 Agent Assist Genişleme E-ticaret (← PKT-5 Integrations)
+- GR-3.16 Negatif Yorum Kurtarma (← PKT-5 Integrations)
+- GR-3.17 İade Çevirme v2 (← GR-3.8 aynı paket)
+- **Bağımlılık:** PKT-5 Integrations (GR-3.3, 3.16, 3.17)
+
+**PKT-6C: Niche Health Expansion** — Sağlık genişleme + Review Rescue + Multilingual (5 GR, ~22 item)
+- GR-3.20 Tedavi Sonrası Takip
+- GR-3.21 Google Yorum + Referans Motoru
+- GR-3.22 Medikal Turizm Lead (AR hariç)
+- GR-3.24 Proactive Review Rescue (← GR-3.8 PKT-6B + GR-3.16 PKT-6B)
+- GR-3.25 Multilingual Medical Tourism (← GR-3.22 aynı paket)
+- **Bağımlılık:** PKT-6B (GR-3.24 için GR-3.8+3.16 gerekli)
 
 **PKT-7: Visual AI** — Yeni servis (VisualSearch :7111)
 - GR-3C.1~3C.8: CLIP engine, katalog, web widget, tenant mgmt, WA/IG entegrasyon, analytics, Size/Fit AI
@@ -91,6 +116,8 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| PKT-2-saglik-core | 2026-02-16 | Paket 2: Saglik Core (GR-2.4 Randevu Motoru + GR-2.6 KVKK Minimum). Yeni Invekto.Appointments servis (port 7102), slot CRUD, booking, IHostedService reminder (T-48h/T-2h), KVKK 5 servis (disclaimer, photo block, medical tag, AgentAI warning). 31 dosya +9006/-15. Codex iter 1 FORCE PASS. Commit: e994e29. Plan: `arch/plans/20260215-pkt2-saglik-core.json` |
+| PKT-1-ai-upgrade | 2026-02-15 | Paket 1: AI Upgrade (GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang). Codex iter 3 FORCE PASS. Commit: 97d9888. Plan: `arch/plans/20260215-pkt1-ai-upgrade.json` |
 | 20260214-wa-analytics-phaseA | 2026-02-15 | WA-5/6 Phase A: Invekto.WhatsAppAnalytics (Port 7109). Full C# port of pipeline stages 1-3. Streaming CSV, Turkish text normalization, SHA256 dedup, 25 outcome patterns, IAsyncEnumerable streaming, restart recovery (stale timeout + SKIP LOCKED). 10-table PostgreSQL schema, 15 error codes. 20 dosya +5417. Codex 4 iter PASS. Commit: 18f387f. Plan: `arch/plans/20260214-wa-analytics-phaseA.json` |
 | 20260214-knowledge-service-phaseB | 2026-02-15 | GR-2.1 Phase B: PDF upload + PdfPig chunking, combined FAQ+chunk search, Backend proxy (JWT bridge), Dashboard Knowledge UI. 27 dosya +13413/-449. Codex 3 iter PASS. Commit: 89bbe72. Plan: `arch/plans/20260214-knowledge-service.json` |
 | 20260214-knowledge-service-phaseA | 2026-02-14 | GR-2.1 Phase A: Knowledge Service core (RAG, pgvector, WA-3 import, FAQ CRUD, embeddings). 22 dosya +2615. Codex 5 iter PASS. Plan: `arch/plans/20260214-knowledge-service.json` |

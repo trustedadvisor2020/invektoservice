@@ -9,7 +9,7 @@
 -- 1. Analysis job tracking
 CREATE TABLE IF NOT EXISTS wa_analyses (
     id SERIAL PRIMARY KEY,
-    tenant_id INT NOT NULL REFERENCES tenant_registry(id),
+    tenant_id INT NOT NULL REFERENCES tenant_registry(tenant_id),
     status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending/recovering/cleaning/threading/stats/intents/faq/sentiment/products/completed/error
     source_file_name TEXT,
     config_json JSONB,                               -- {delimiter, encoding, tenant_name, sector}

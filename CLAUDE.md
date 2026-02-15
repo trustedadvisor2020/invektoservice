@@ -1,22 +1,22 @@
-<!-- VERSION: 1.0 | UPDATED: 2026-02-01 | Persist After Compact | Auto Workflow Active -->
-<!-- COMPACT SONRASI: Auto workflow aktif kalır. Interview → Plan → Dev → Build → /rev → Codex → Commit -->
+<!-- VERSION: 5.0 | UPDATED: 2026-02-15 | Persist After Compact | Auto Workflow Active -->
+<!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> Codex -> Commit -->
 # InvektoServis
 
-Başka sistemler tarafından kullanılacak, kendi içinde bağımsız mikro servisler barındıran platform.
+Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 
-## 🚀 SESSION INIT (CRITICAL - HER SESSION BAŞINDA)
+## SESSION INIT (CRITICAL - HER SESSION BASINDA)
 
-**Her session başladığında (plan modunda bile) şu adımlar OTOMATİK uygulanır:**
+**Her session basladiginda (plan modunda bile) su adimlar OTOMATIK uygulanir:**
 
-1. **Auto Workflow Aktif:** Ne istenirse istensin, auto.md kuralları geçerli
-2. **Kritik Dosyaları Oku:**
-   - `arch/session-memory.md` → Son durumu anla
-   - `arch/active-work.md` → Devam eden işler
-   - `arch/lessons-learned.md` → Tekrarlanan hatalar
-   - `.claude/agents/INVEKTO_BASE.prompt.md` → Global kurallar
-3. **Interview ile Başla:** Q ne isterse, önce AskUserQuestion ile gri noktaları çöz
+1. **Auto Workflow Aktif:** Ne istenirse istensin, auto.md kurallari gecerli
+2. **Kritik Dosyalari Oku:**
+   - `arch/session-memory.md` -> Son durumu anla
+   - `arch/active-work.md` -> Devam eden isler
+   - `arch/lessons-learned.md` -> Tekrarlanan hatalar
+   - `.claude/agents/INVEKTO_BASE.prompt.md` -> Global kurallar
+3. **Interview ile Basla:** Q ne isterse, once AskUserQuestion ile gri noktalari coz
 
-**BU ADIMLAR ATLANAMAZ!** Plan mode veya başka mode farketmez.
+**BU ADIMLAR ATLANAMAZ!** Plan mode veya baska mode farketmez.
 
 ## Naming & Roles
 
@@ -28,43 +28,48 @@ Başka sistemler tarafından kullanılacak, kendi içinde bağımsız mikro serv
 
 | Component | Stack |
 |-----------|-------|
-| Backend | (Servis bazlı - her mikro servis kendi stack'ini tanımlar) |
-| Frontend | (İhtiyaca göre) |
-| Database | (Servis bazlı - SQL Server, PostgreSQL, MongoDB, etc.) |
-| API Gateway | (İhtiyaca göre) |
-| Message Queue | (İhtiyaca göre - RabbitMQ, Kafka, etc.) |
+| Runtime | .NET 8 (C#) |
+| Database | PostgreSQL 16 + pgvector |
+| Frontend | React 18 + TypeScript + Vite |
+| Solution | `InvektoServis.sln` (root) |
+| Shared | `Invekto.Shared` (DTOs, constants, utilities) |
 
-## Mikro Servis Mimarisi
+## Proje Yapisi
 
 ```
-InvektoServis/
-├── services/                    # Bağımsız mikro servisler
-│   ├── service-a/              # Her servis kendi dizininde
-│   │   ├── src/
-│   │   ├── package.json
-│   │   └── README.md
-│   ├── service-b/
-│   └── ...
-├── shared/                      # Paylaşılan kod
-│   ├── contracts/              # API kontratları
-│   ├── utils/                  # Ortak utility'ler
-│   └── types/                  # Paylaşılan type'lar
-├── gateway/                     # API Gateway (opsiyonel)
-└── deploy/                      # Deploy scriptleri
+InvektoServices/                     # Root (C:\CRMs\InvektoServices)
+├── InvektoServis.sln                # Solution file
+├── src/
+│   ├── Invekto.Backend/             # API Gateway + Dashboard
+│   ├── Invekto.Automation/          # Chatbot flows, FAQ, auto-reply
+│   ├── Invekto.AgentAI/             # AI reply suggestion (OpenAI)
+│   ├── Invekto.Knowledge/           # RAG, document chunks, pgvector
+│   ├── Invekto.Outbound/            # Broadcast, templates, triggers
+│   ├── Invekto.WhatsAppAnalytics/   # WA message analysis pipeline
+│   └── Invekto.Shared/              # Shared DTOs, error codes, utils
+├── arch/                            # Architecture docs (source of truth)
+│   ├── contracts/                   # JSON schemas, plan schema
+│   ├── db/                          # SQL migrations per service
+│   ├── plans/                       # Plan JSONs + diffs
+│   ├── deploy/                      # Deploy scripts, bat/ps1
+│   ├── session-memory.md            # Session context
+│   ├── active-work.md               # In-progress task tracker
+│   ├── lessons-learned.md           # Common mistakes and patterns
+│   ├── errors.md                    # Error codes (INV-*)
+│   ├── endpoints.md                 # Endpoint registration rules
+│   ├── logging.md                   # Log format
+│   └── docs/                        # Technical documents
+└── .claude/
+    ├── agents/                      # Agent prompts (BASE, PLAN, DEV, AUDIT)
+    └── commands/                    # Skills (auto, rev, learn, push, aha, test-ui)
 ```
 
-### Mikro Servis Kuralları
+### Mikro Servis Kurallari
 
-1. **Bağımsızlık:** Her servis kendi başına deploy edilebilir
-2. **İzolasyon:** Servisler arası iletişim sadece API/Event üzerinden
-3. **Kendi DB'si:** Her servis kendi database'ine sahip olabilir
-4. **Versiyon:** Her servis bağımsız versiyonlanır
-
-## Infrastructure
-
-- **Domain Yapısı:**
-  - Production: `api.invekto.com` (veya tanımlanacak)
-  - Staging: `dev.invekto.com`
+1. **Bagimsizlik:** Her servis kendi basina deploy edilebilir
+2. **Izolasyon:** Servisler arasi iletisim sadece API/Event uzerinden
+3. **Kendi DB'si:** Her servis kendi tablolarina sahip (ayni PostgreSQL instance)
+4. **Shared:** Ortak kod `Invekto.Shared` uzerinden paylasilir
 
 ## Environment Separation
 
@@ -73,43 +78,46 @@ InvektoServis/
 | Aspect | Dev PC | Production Server |
 |--------|--------|-------------------|
 | Machine | Developer's local PC | Remote Server |
-| OS | Windows | Windows/Linux |
-| Services | Manuel `npm run dev` | Docker/PM2/K8s |
-| Path | `C:\CRMs\InvektoServis\` | `/app/invekto/` veya benzeri |
+| OS | Windows 11 | Windows Server |
+| Services | `dotnet run` | NSSM Windows Services |
+| Path | `C:\CRMs\InvektoServices\` | `E:\InvektoServices\` |
 
 **Windows PowerShell Rules (CRITICAL):**
 - **ALWAYS use PowerShell wrapper for Bash tool:** `powershell -NoProfile -Command "..."`
 - NEVER use raw bash/Linux syntax on Windows
 - `&&` chaining does NOT work - use `;` to chain commands
-- Example: `powershell -NoProfile -Command "cd c:\path; npm run build"`
+- Example: `powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\InvektoServis.sln --no-restore -v q"`
 
-## Commands
+## Build Commands
 
 | Task | Command |
 |------|---------|
-| Service dev | `cd services/{name} && npm run dev` |
-| Service build | `cd services/{name} && npm run build` |
-| Service test | `cd services/{name} && npm test` |
-| All services | `npm run dev:all` (root'tan) |
+| Full solution build | `powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\InvektoServis.sln --no-restore -v q"` |
+| Single service build | `powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\src\Invekto.{Name}\Invekto.{Name}.csproj --no-restore -v q"` |
+| Run a service | `powershell -NoProfile -Command "dotnet run --project C:\CRMs\InvektoServices\src\Invekto.{Name}\Invekto.{Name}.csproj"` |
 
-> 💡 Auto workflow otomatik uygulanır - `/auto` yazmaya gerek yok.
+- Shared degistiyse -> Full solution build
+- Build fails -> fix immediately before continuing
+
+> Auto workflow otomatik uygulanir - `/auto` yazmaya gerek yok.
 >
-> **COMPACT SONRASI:** Auto workflow aktif kalır. Session sıfırlansa bile tüm kod değişiklikleri auto.md kurallarını takip eder: Interview → Plan → Dev → Build → /rev → Codex → Commit
+> **COMPACT SONRASI:** Auto workflow aktif kalir. Session sifirlanra bile tum kod degisiklikleri auto.md kurallarini takip eder: Interview -> Plan -> Dev -> Build -> /rev -> Codex -> Commit
 
-## 🎯 #1 GOAL: Codex PASS at First Try
+## #1 KURAL: CODEX UTANSIN
 
-**Tüm kodun BİRİNCİL hedefi: Codex review'da ilk seferde PASS almak.**
+> **"Kod o kadar ince, dikkatli ve kusursuz yazilacak ki, Codex review'a baktiginda utansin.
+> Ilk adimda hersey PASS olacak. Bu bir dilek degil, KURAL."** -- Q
 
-Bu bir dilek değil, tasarım kararıdır. Her satır yazılırken CQ1-CQ8 + AQ1-AQ6 kontrolleri **zihinde aktif** olmalı. "Sonra düzeltirim" yaklaşımı YASAK - kod yazılırken doğru yazılır.
+> **Canonical source:** `INVEKTO_BASE.prompt.md` CODEX UTANSIN DOKTRINI section.
 
-**Pratik anlamı:**
-- Kod yazarken "Codex bunu görse ne der?" sorusu sürekli arka planda çalışır
-- Hata yutma, boş catch, broad try-catch → yazarken engelle, sonra değil
-- Scope dışı tek satır bile ekleme
-- Duplicate yazmadan önce codebase'de ara
-- Performance sorusu aklına geliyorsa → zaten sorunlu, düzelt
+Her satir yazilmadan ONCE 5 soru cevaplanir: (1) hata durumu, (2) null/unexpected, (3) 10K concurrent, (4) pattern uyumu, (5) Codex soru sorar mi? Cevap yoksa o satir YAZILMAZ.
 
-**Başarı metriği:** `/rev` sonrası Codex verdict = PASS, iteration = 0
+**Sifir tolerans:**
+- Bos catch, broad `catch(Exception)`, null-forgiving `!.`, N+1 query, scope disi degisiklik = **aninda FAIL**
+- "Sonra duzeltirim" = YASAK. Kod yazilirken dogru yazilir.
+- Codex review'i gereksiz hissettirmek = gercek basari metrigi
+
+**Basari metrigi:** `/rev` -> Codex verdict = PASS, iteration = 0
 
 ---
 
@@ -130,18 +138,18 @@ Bu bir dilek değil, tasarım kararıdır. Her satır yazılırken CQ1-CQ8 + AQ1
    - Contract schemas exactly as defined
 
 4. **Ask Q When Unclear:**
-   - Logic seems wrong or inconsistent → ASK Q
-   - Missing information to implement correctly → ASK Q
-   - Multiple valid approaches exist → ASK Q
-   - Something "smells wrong" → ASK Q
+   - Logic seems wrong or inconsistent -> ASK Q
+   - Missing information to implement correctly -> ASK Q
+   - Multiple valid approaches exist -> ASK Q
+   - Something "smells wrong" -> ASK Q
 
-5. **🎯 Q Interview (MANDATORY):**
-   - Her kod değişikliği öncesi interview yap
-   - **Konu ne kadar açık görünürse görünsün, TÜM gri noktalar çözülene kadar sor**
-   - "Açık görünüyor" ≠ "Soru sormaya gerek yok"
-   - Her varsayım = potansiyel yanlış yön
-   - Q "skip interview" demeden koda geçme
-   - **🔴 ŞEYTANIN AVUKATLIĞI (PP-006):** Q'yu challenge et, alternatifler sun, edge case'leri sor, trade-off'ları belirt - Q "uyandırılmak" istiyor, pasif kalmak DEĞİL!
+5. **Q Interview (MANDATORY):**
+   - Her kod degisikligi oncesi interview yap
+   - **Konu ne kadar acik gorunurse gorunsun, TUM gri noktalar cozulene kadar sor**
+   - "Acik gorunuyor" =/= "Soru sormaya gerek yok"
+   - Her varsayim = potansiyel yanlis yon
+   - Q "skip interview" demeden koda gecme
+   - **SEYTANIN AVUKATLIGI (PP-006):** Q'yu challenge et, alternatifler sun, edge case'leri sor, trade-off'lari belirt - Q "uyandirilmak" istiyor, pasif kalmak DEGIL!
 
 6. **Heavy Load Ready:** System will serve **thousands of concurrent users** under stress. Code must:
    - Handle concurrent access safely
@@ -155,178 +163,116 @@ Bu bir dilek değil, tasarım kararıdır. Her satır yazılırken CQ1-CQ8 + AQ1
    - **Localized context:** Include relevant IDs, names, values
    - Use error codes from `arch/errors.md`
 
-## 🔍 Self-Review Protocol (Kod Yazarken Otomatik)
+## Self-Review Protocol (Kod Yazarken Otomatik)
 
-**Her kod bloğu/fonksiyon yazıldıktan SONRA, /rev'den ÖNCE agent kendini review eder.**
+> **Canonical source:** `INVEKTO_BASE.prompt.md` SELF-REVIEW PROTOCOL section.
+> Tam CQ1-CQ8 + AQ1-AQ6 tablosu INVEKTO_BASE'de tanimlanir.
 
-> Bu checklist Codex'in CQ1-CQ8 kontrollerini + Audit Agent kurallarını kapsar.
-> Amaç: Codex'e gitmeden ÖNCE bariz sorunları yakala.
-
-### Code Quality Gate (Codex CQ1-CQ8 Mirror)
-
-| # | Kontrol | Soru | FAIL Sinyali |
-|---|---------|------|--------------|
-| CQ1 | Error Handling | Hata yakalama ve kullanıcı geri bildirimi nerede? | try-catch yok, hata yutulmuş |
-| CQ2 | Silent Failure | Bu kod sessiz hata üretebilir mi? | Boş catch, broad try-catch, early return hata vermeden |
-| CQ3 | Minimal Diff | Diff minimum mu? Scope dışı refactor var mı? | Plan dışı dosya/satır değişikliği |
-| CQ4 | Duplicate Code | Bu kod codebase'de zaten var mı? | Aynı pattern başka yerde mevcut |
-| CQ5 | Pattern Compliance | Codebase pattern'larına uyuyor mu? | Naming, error handling, dosya yapısı farklı |
-| CQ6 | Performance | Performans sorunu var mı? | O(n²), N+1 query, memory leak, unclosed resource |
-| CQ7 | Tech Debt | Yeni TODO/HACK/FIXME eklendi mi? | Yeni teknik borç marker'ı |
-| CQ8 | Breaking Change | API contract, export, shared type kırıldı mı? | Silinen export, değişen interface |
-
-### Audit Agent Kontrolleri
-
-| # | Kontrol | Soru |
-|---|---------|------|
-| AQ1 | Scale Ready | Bu kod binlerce eşzamanlı kullanıcıyı kaldırır mı? |
-| AQ2 | Error Quality | Hata mesajı spesifik ve aksiyonlanabilir mi? (INV-xxx kodu var mı?) |
-| AQ3 | System Integrity | Bu değişiklik mevcut bir şeyi bozar mı? |
-| AQ4 | Service Isolation | Mikro servis sınırlarına saygılı mı? Başka servisi etkiliyor mu? |
-| AQ5 | DB-Code Sync | Kullanılan tablo/kolon DB'de gerçekten var mı? snake_case mi? |
-| AQ6 | Arch Compliance | `arch/` dokümanlarına uyuyor mu? Contract şeması doğru mu? |
-
-### Nasıl Çalışır
-
-```
-Kod yaz → Self-Review (CQ1-8 + AQ1-6) → Sorun varsa DÜZELT → Build → /rev → Codex
-                                           ↑
-                                    Codex'e gitmeden
-                                    kendini düzelt
-```
-
-**Kurallar:**
-- Her dosya edit sonrası CQ1-CQ8 + AQ1-AQ6 kontrol et
-- FAIL olan varsa → Codex'e göndermeden ÖNCE düzelt
-- Self-review sonucunu Q'ya kısa göster: `Self-Review: 14/14 PASS` veya `Self-Review: CQ2 FAIL - fixing...`
-- Bu, Codex review'ı ORTADAN KALDIRMAZ - sadece ilk filtreleme katmanı
+**Her dosya edit sonrasi CQ1-CQ8 + AQ1-AQ6 kontrol et.**
+FAIL olan varsa -> Codex'e gondermeden ONCE duzelt.
+Self-review sonucunu Q'ya kisa goster: `Self-Review: 14/14 PASS` veya `Self-Review: CQ2 FAIL - fixing...`
+Bu, Codex review'i ORTADAN KALDIRMAZ - sadece ilk filtreleme katmani.
 
 ## Critical Rules
 
 ### Ignored Folders
 
-- **`temp/`** - Geçici dosyalar. Git'e ekleme, kod yazarken dikkate alma.
+- **`temp/`** - Gecici dosyalar. Git'e ekleme, kod yazarken dikkate alma.
+- **`deploy_output/`** - Build output. Secret leak vektoru - git add -A oncesi dikkat.
 
-### 🔴 SINGLE SOURCE OF TRUTH: DB Schema (MOST CRITICAL)
+### SINGLE SOURCE OF TRUTH: DB Schema (MOST CRITICAL)
 
-**Her servis için DB şeması için tek gerçek kaynak tanımla!**
+**Her servis icin DB semasi icin tek gercek kaynak: `arch/db/*.sql`**
 
-| DB Değişikliği | Şema dosyasına YANSIT |
+| DB Degisikligi | Sema dosyasina YANSIT |
 |----------------|------------------------|
-| Yeni tablo | ✅ CREATE TABLE ekle |
-| Yeni kolon | ✅ CREATE TABLE + ALTER migration |
-| Kolon silme | ✅ CREATE TABLE'dan çıkar |
-| Yeni index | ✅ CREATE INDEX ekle |
-| Yeni FK/constraint | ✅ ADD CONSTRAINT ekle |
+| Yeni tablo | CREATE TABLE ekle |
+| Yeni kolon | CREATE TABLE + ALTER migration |
+| Kolon silme | CREATE TABLE'dan cikar |
+| Yeni index | CREATE INDEX ekle |
+| Yeni FK/constraint | ADD CONSTRAINT ekle |
 
-**KURAL:** Kod yazarken yeni tablo/kolon kullanacaksan → **ÖNCE şemaya ekle, SONRA kodu yaz!**
+**KURAL:** Kod yazarken yeni tablo/kolon kullanacaksan -> **ONCE semaya ekle, SONRA kodu yaz!**
 
-### ⚠️ DB-CODE SYNC CHECK
+### DB-CODE SYNC CHECK
 
-**Kod ve DB senkronize olmayabilir!** Her yeni özellik yazarken:
+**Kod ve DB senkronize olmayabilir!** Her yeni ozellik yazarken:
 
-1. **Tablo var mı?** - Kodda kullanılan tablo DB'de gerçekten var mı kontrol et
-2. **Kolon var mı?** - Kullanılan her kolon DB'de mevcut mu kontrol et
-3. **Veri tipi doğru mu?** - Kolon tipleri kod beklentisiyle uyuşuyor mu
-4. **Migration gerekli mi?** - Yeni tablo/kolon lazımsa önce migration yaz
+1. **Tablo var mi?** - Kodda kullanilan tablo DB'de gercekten var mi kontrol et
+2. **Kolon var mi?** - Kullanilan her kolon DB'de mevcut mu kontrol et
+3. **Veri tipi dogru mu?** - Kolon tipleri kod beklentisiyle uyusuyor mu
+4. **Migration gerekli mi?** - Yeni tablo/kolon lazimsa once migration yaz
 
 **ASLA varsayma - her zaman kontrol et!**
 
-### 🐍 SNAKE_CASE CONVENTION (DB & CODE)
+### SNAKE_CASE CONVENTION (DB & CODE)
 
-**Tüm DB kolon adları `snake_case` olmalı!** PascalCase veya camelCase YASAK.
+**Tum DB kolon adlari `snake_case` olmali!** PascalCase veya camelCase YASAK.
 
-| ❌ Yanlış | ✅ Doğru |
-|-----------|----------|
-| `UserId` | `user_id` |
-| `CreatedAt` | `created_at` |
-| `ServiceName` | `service_name` |
+### Mikro Servis Izolasyonu
 
-### Mikro Servis İzolasyonu
-
-**Bir serviste yapılan değişiklik diğer servisleri ETKİLEMEZ!**
+**Bir serviste yapilan degisiklik diger servisleri ETKILEMEZ!**
 
 | Soru | Cevap |
 |------|-------|
-| Bu değişiklik hangi servis(ler)i etkiliyor? | Belirle |
-| Etkilemediğim servisler için regression riski var mı? | Kontrol et |
-| Shared kod değişiyorsa | TÜM etkilenen servisleri test et |
+| Bu degisiklik hangi servis(ler)i etkiliyor? | Belirle |
+| Etkilemedigim servisler icin regression riski var mi? | Kontrol et |
+| Shared kod degisiyorsa | TUM etkilenen servisleri test et |
 
 ---
 
-1. **DB:** Servis bazlı - her mikro servis kendi DB yapısını tanımlar
-2. **Auth:** Servisler arası SERVICE_TOKEN veya OAuth2
+1. **DB:** PostgreSQL 16 + pgvector. Schema: `arch/db/*.sql`
+2. **Auth:** JWT (Invekto.Shared/Auth/JwtGenerator.cs) + Backend proxy
 3. **Errors:** Use `arch/errors.md` codes (INV-xxx)
 4. **Contracts:** Never invent schema. Use `arch/contracts/*.json`
 
 ## Architecture Reference
 
-**🚨 KURAL: Kod yazmadan ÖNCE ilgili `arch/` dokümanını oku!**
+**KURAL: Kod yazmadan ONCE ilgili `arch/` dokumanini oku!**
 
-| Yazacağın Kod | Önce Oku |
+| Yazacagin Kod | Once Oku |
 |---------------|----------|
-| DB değişikliği | `arch/db/` + servis şeması |
+| DB degisikligi | `arch/db/` + servis semasi |
 | Error handling | `arch/errors.md` |
 | API contract | `arch/contracts/` |
 | Yeni endpoint | `arch/endpoints.md` |
 | Yeni servis | `arch/docs/microservice-guide.md` |
 
-All rules in `arch/`:
-- `arch/env.md` - Environment variables
-- `arch/errors.md` - Error codes (INV-*)
-- `arch/contracts/` - Data contracts
-- `arch/db/` - Schema definitions
-- `arch/endpoints.md` - Endpoint registration rules
-- `arch/logging.md` - Log format
-- `arch/plans/` - Feature implementation plans
-- `arch/session-memory.md` - Session context
-- `arch/active-work.md` - In-progress task tracker
-- `arch/lessons-learned.md` - Common mistakes and patterns
-- `arch/docs/` - Teknik dokümanlar
-
 ## Agent Prompts
 
 All agents in `.claude/agents/`:
-- `INVEKTO_BASE.prompt.md` - Global rules (inherited by all)
-- `INVEKTO_PLAN_AGENT.prompt.md` - Planning (for /auto)
-- `INVEKTO_DEV_AGENT.prompt.md` - Implementation (for /auto)
+- `INVEKTO_BASE.prompt.md` - Global rules v5.0 (canonical source for Bootstrap + PP-006 + Self-Review)
+- `INVEKTO_PLAN_AGENT.prompt.md` - Planning v5.0 (interview + JSON plan)
+- `INVEKTO_DEV_AGENT.prompt.md` - Implementation v5.0 (self-review + paket dev)
 - `INVEKTO_AUDIT_AGENT.prompt.md` - Codebase audit (Q triggers manually)
 
 Skills in `.claude/commands/`:
-- `auto.md` - Default workflow (otomatik uygulanır, /auto yazmaya gerek yok)
-- `rev.md` - Review protocol (v3.0 - /rev komutu)
-- `aha.md` - Detaylı aha moment analizi (`/aha` ile çağrılır)
-- `learn.md` - Session learnings kayıt (`/learn` ile çağrılır)
-- `push.md` - Git push shortcut (`/push` ile çağrılır)
-- `test-ui.md` - Semi-autonomous UI testing (`/test-ui` ile çağrılır, Playwright + Python)
+- `auto.md` - Default workflow v5.0 (otomatik uygulanir, /auto yazmaya gerek yok)
+- `rev.md` - Review protocol v5.0 (/rev komutu)
+- `aha.md` - Detayli aha moment analizi (`/aha` ile cagrilir)
+- `learn.md` - Session learnings kayit v2.0 (`/learn` ile cagrilir, auto mode destekli)
+- `push.md` - Git push shortcut (`/push` ile cagrilir, secret scan BLOCKING)
+- `test-ui.md` - Semi-autonomous UI testing (`/test-ui` ile cagrilir, Playwright + Python)
 
-**AHA Moments:**
-- **Plan içinde (zorunlu):** Her plan 5 basit AHA suggestion içerir (UX/SPEED/RELIABILITY/SALES/SUPPORT)
-- **Detaylı analiz (opsiyonel):** `/aha` komutu ile derin analiz yapılabilir
+## Sub-Agents (Otomatik Tetikleme)
 
-## 🤖 Sub-Agents (Otomatik Tetikleme)
-
-**Q'nun agent adı hatırlamasına GEREK YOK!** Aşağıdaki durumlarda ilgili agent OTOMATİK çağrılmalı:
-
-### Otomatik Tetikleme Kuralları
+**Q'nun agent adi hatirlamasina GEREK YOK!** Asagidaki durumlarda ilgili agent OTOMATIK cagrilmali:
 
 | Durum | Agent | Tetikleme |
 |-------|-------|-----------|
-| Build gerekli | `build-runner` | Kod değişikliği sonrası |
-| DB sorgusu gerekli | `db-query` | Veri sorulduğunda |
+| Build gerekli | `build-runner` | Kod degisikligi sonrasi |
+| DB sorgusu gerekli | `db-query` | Veri soruldugunda |
 
-### Agent Detayları
-
-| Agent | Model | Güvenlik |
+| Agent | Model | Guvenlik |
 |-------|-------|----------|
-| `build-runner` | haiku | Sadece build komutları |
+| `build-runner` | haiku | Sadece dotnet build komutlari |
 | `db-query` | haiku | **SADECE SELECT** - write YASAK |
 
 ---
 
 ## Workflow (v5.0 - 8 Paket Stratejisi)
 
-> **🔄 PERSIST AFTER COMPACT:** Bu bölüm session sıfırlansa bile geçerlidir.
+> **PERSIST AFTER COMPACT:** Bu bolum session sifirlanra bile gecerlidir.
 
 **AUTO WORKFLOW = DEFAULT DAVRANIS**
 
@@ -335,11 +281,10 @@ Skills in `.claude/commands/`:
 
 **v5.0 Farki (2026-02-15):**
 - **Paket bazli yurutme:** Tekli GR dongusu yerine 2-3 GR/paket
-- Interview: Paket scope'unda AskUserQuestion ile (tek interview tum GR'ler icin)
-- Plan JSON: Paket bazli (birden fazla GR tek plan'da)
+- Interview: Paket scope'unda AskUserQuestion ile (tek interview tum GR'ler icin, max 4 soru/batch)
+- Plan JSON: Paket bazli (birden fazla GR tek plan'da, `packet_id` + `gr_list`)
 - Codex review: Paket bazli (tum GR'lerin diff'i tek Codex review'da)
 - Paket ici GR'ler arasi interview/review YOK, sadece build check
-- Copy-paste yontemine DONDU
 
 **Paket Akisi:**
 1. Q paket ister (veya siradaki paket baslar)
@@ -349,15 +294,15 @@ Skills in `.claude/commands/`:
 5. Implement (GR'ler sirali, her GR sonrasi build check)
 6. /rev -> Q copy-paste -> Codex -> PASS/FAIL
 
-**8 Paket Referansi:** `arch/active-work.md` → Execution Queue
+**8 Paket Referansi:** `arch/active-work.md` -> Execution Queue
 
-**Review Akisi (v3.1 - Copy-Paste):**
+**Review Akisi (v5.0 - Copy-Paste):**
 ```
-DevAgent kod yazar -> Build PASS
+DevAgent kod yazar -> Self-Review -> Build PASS
     |
 DevAgent /rev calistirir (TUM risk seviyeleri)
     |
-🚨 ZORUNLU: Q'ya Codex prompt gosterilir
+ZORUNLU: Q'ya Codex prompt gosterilir
     |
 Q AYRI Codex penceresine yapistirir
     |
@@ -371,7 +316,7 @@ PASS -> commit -> DONE
 FAIL -> fix -> /rev (max 3 iter)
 ```
 
-**🚨 HARD RULE:** /rev sonrasi Codex prompt'u Q'ya gosterilmeden ASLA commit yapilamaz!
+**HARD RULE:** /rev sonrasi Codex prompt'u Q'ya gosterilmeden ASLA commit yapilamaz!
 
 **Escalation Kategorileri (3 iter sonrasi):**
 | Kategori | Aciklama |
@@ -415,8 +360,8 @@ FAIL -> fix -> /rev (max 3 iter)
 - Adding new microservice
 
 **Proceed directly (auto workflow implicit):**
-- Clear instruction = direkt başla, auto workflow otomatik uygulanır
-- Q override komutları: `STOP`, `SKIP CODEX`, `FORCE PASS` (sadece Q'nun açık izni ile)
+- Clear instruction = direkt basla, auto workflow otomatik uygulanir
+- Q override komutlari: `STOP`, `SKIP CODEX`, `FORCE PASS` (sadece Q'nun acik izni ile)
 
 ## Architecture Compliance
 
@@ -426,14 +371,15 @@ FAIL -> fix -> /rev (max 3 iter)
 3. Verify contract fields exist in arch/contracts/
 4. Use error codes from arch/errors.md
 5. Never invent new schemas - ask if needed
+6. **Read `arch/contracts/plan-schema.json` BEFORE creating plan JSON**
 
 **Code review checklist:**
 - [ ] Uses existing patterns, not new inventions
 - [ ] Error codes match arch/errors.md
 - [ ] No hardcoded endpoints/ports
 - [ ] Mikro servis izolasyonu korunuyor
-- [ ] Shared kod değişikliği varsa tüm servisler kontrol edildi
+- [ ] Shared kod degisikligi varsa tum servisler kontrol edildi
 
 ---
 
-**Full Q-Mode reasoning protocol and failure handling rules are defined in `INVEKTO_BASE.prompt.md`.**
+**Full rules defined in `INVEKTO_BASE.prompt.md` (canonical source for Bootstrap, PP-006, Self-Review, Build Commands).**

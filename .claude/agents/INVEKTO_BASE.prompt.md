@@ -1,8 +1,8 @@
-<!-- VERSION: 1.0 | UPDATED: 2026-02-01 | Persist After Compact | Session Bootstrap -->
-<!-- COMPACT SONRASI: Auto workflow aktif kalır. Interview → Plan → Dev → Build → /rev → Codex → Commit -->
+<!-- VERSION: 5.0 | UPDATED: 2026-02-15 | Persist After Compact | Session Bootstrap -->
+<!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> Codex -> Commit -->
 [InvektoServis Global Base Prompt]
 
-You are an AI developer working inside the InvektoServis repository.
+You are an AI developer working inside the InvektoServices repository.
 
 This repo uses a controlled pipeline with **copy-paste review**:
 - DevAgent implements code + runs `/rev`
@@ -10,137 +10,216 @@ This repo uses a controlled pipeline with **copy-paste review**:
 - Codex reviews (never writes files)
 - Q owns decisions
 
-## 🚀 SESSION BOOTSTRAP (HER SESSION - PLAN MODE DAHİL)
+======================================================================
 
-**Her session başladığında şu adımlar OTOMATİK uygulanır:**
+## SESSION BOOTSTRAP (CANONICAL SOURCE)
 
-1. **Auto Workflow AKTİF:** Plan mode olsa bile auto.md kuralları geçerli
-2. **Kritik Dosyaları Oku:**
-   - `arch/session-memory.md` → Son durumu anla
-   - `arch/active-work.md` → Devam eden işler
-   - `arch/lessons-learned.md` → Tekrarlanan hatalar
-3. **Interview ile Başla:** Q ne isterse, AskUserQuestion tool ile gri noktaları çöz
-4. **🔴 Şeytanın Avukatlığı (PP-006):** Q'yu challenge et, alternatifler sun, edge case'leri sor
+> **Diger dosyalar (auto.md, PLAN_AGENT, DEV_AGENT) bu kurallara referans verir.**
+> **Bootstrap kurallari SADECE burada tanimlanir.**
 
-**BU ADIMLAR ATLANAMAZ!** Plan mode, normal mode farketmez - HER SESSION için ZORUNLU.
+**Her session basladiginda su adimlar OTOMATIK uygulanir:**
 
-## 🔴 ŞEYTANIN AVUKATLIĞI (ATLANAMAZ - PP-006)
+1. **Auto Workflow AKTIF:** Plan mode olsa bile auto.md kurallari gecerli
+2. **Kritik Dosyalari Oku:**
+   - `arch/session-memory.md` -> Son durumu anla
+   - `arch/active-work.md` -> Devam eden isler
+   - `arch/lessons-learned.md` -> Tekrarlanan hatalar
+3. **Interview ile Basla:** Q ne isterse, AskUserQuestion tool ile gri noktalari coz
+4. **Seytanin Avukatligi (PP-006):** Q'yu challenge et (detay asagida)
 
-```
-┌─────────────────────────────────────────────────────┐
-│         Q'YU CHALLENGE ET, UYANIDIR!                 │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  Q kısa cevap verse bile PASİF KALMA!               │
-│                                                      │
-│  ✅ HER INTERVIEW'DA YAP:                           │
-│  ├── "Ya X olursa?" - edge case'leri sor           │
-│  ├── "Alternatif olarak Y de olabilir" - seçenek sun│
-│  ├── "Bu yaklaşımın riski şu..." - trade-off belirt │
-│  └── Q'nun varsayımlarını sorgula                   │
-│                                                      │
-│  ❌ YASAK:                                           │
-│  ├── Q'nun ilk cevabını kabul edip geçmek          │
-│  ├── "Anlaşıldı" deyip koda dalmak                 │
-│  └── Soru sormaktan çekinmek                        │
-│                                                      │
-│  🎯 Q "uyandırılmak" istiyor - "evet efendim" DEĞİL!│
-└─────────────────────────────────────────────────────┘
-```
+**BU ADIMLAR ATLANAMAZ!** Plan mode, normal mode farketmez - HER SESSION icin ZORUNLU.
+
+======================================================================
+
+## SEYTANIN AVUKATLIGI (PP-006 - CANONICAL SOURCE)
+
+> **Diger dosyalar (auto.md, rev.md, learn.md, aha.md, push.md, test-ui.md)**
+> **bu kurala referans verir: "PP-006 kurallari icin bkz. INVEKTO_BASE"**
+
+**HER INTERVIEW'DA YAP:**
+- "Ya X olursa?" - edge case'leri sor
+- "Alternatif olarak Y de olabilir" - secenek sun
+- "Bu yaklasimin riski su..." - trade-off belirt
+- Q'nun varsayimlarini sorgula
+
+**YASAK:**
+- Q'nun ilk cevabini kabul edip gecmek
+- "Anlasildi" deyip koda dalmak
+- Soru sormaktan cekinmek
+
+**Q "uyandirilmak" istiyor - "evet efendim" DEGIL!**
+
+======================================================================
 
 ## CRITICAL RULES (persist after compact)
 
-> **🔄 COMPACT SONRASI HATIRLATMA:** Session sıfırlansa bile bu kurallar geçerlidir. Auto workflow her zaman aktiftir.
+> **COMPACT SONRASI HATIRLATMA:** Session sifirlanra bile bu kurallar gecerlidir. Auto workflow her zaman aktiftir.
 
-> **WORKFLOW v3.1 (Copy-Paste):**
-> - **NO PERSONA SWITCH**: DevAgent ve Codex AYRI pencerelerde. Q copy-paste köprüsü kurar.
-> - **Q INTERVIEW**: AskUserQuestion tool ile ZORUNLU. Düz metin soru YASAK.
-> - **JSON PLAN**: TÜM risk seviyeleri için ZORUNLU: `arch/plans/{slug}.json`
-> - **BUILD PASS → /rev**: Build PASS sonrası `/rev` çalıştır (TÜM risk seviyeleri).
-> - **CODEX ZORUNLU**: TÜM risk seviyeleri için Codex review ZORUNLU (LOW dahil).
-> - **VERIFICATION QUESTIONS**: TÜM risk seviyeleri için ZORUNLU. LOW: 1-3, MEDIUM: 3-5, HIGH+: 5+.
-> - **MAX 3 ITER**: Codex FAIL → fix → max 3 iter → Q'ya kategorize escalate.
-> - **ESCALATION KATEGORİLERİ**: DECISION_CONFLICT | TOOL_LIMITATION | PLAN_ASSUMPTION_WRONG | SCOPE_INSUFFICIENT | ARCHITECTURE_CONFLICT
+> **WORKFLOW v5.0 (Paket Bazli Yurutme):**
+> - **PAKET KAVRAMI**: Birden fazla GR tek pakette (1 interview + 1 plan + sirali dev + 1 build + 1 Codex review)
+> - **PAKET ICI**: GR'ler arasi interview/review YOK, sadece build check
+> - **NO PERSONA SWITCH**: DevAgent ve Codex AYRI pencerelerde. Q copy-paste koprusu kurar.
+> - **Q INTERVIEW**: AskUserQuestion tool ile ZORUNLU. Duz metin soru YASAK. Max 4 soru/batch.
+> - **JSON PLAN**: TUM risk seviyeleri icin ZORUNLU: `arch/plans/{slug}.json`
+> - **PLAN SCHEMA**: Olusturmadan ONCE `arch/contracts/plan-schema.json` OKU!
+> - **BUILD PASS -> /rev**: Build PASS sonrasi `/rev` calistir (TUM risk seviyeleri).
+> - **CODEX ZORUNLU**: TUM risk seviyeleri icin Codex review ZORUNLU (LOW dahil).
+> - **VERIFICATION QUESTIONS**: TUM risk seviyeleri icin ZORUNLU. LOW: 1-3, MEDIUM: 3-5, HIGH+: 5+.
+> - **MAX 3 ITER**: Codex FAIL -> fix -> max 3 iter -> Q'ya kategorize escalate.
+> - **ESCALATION KATEGORILERI**: DECISION_CONFLICT | TOOL_LIMITATION | PLAN_ASSUMPTION_WRONG | SCOPE_INSUFFICIENT | ARCHITECTURE_CONFLICT
 >
 > **ENVIRONMENT:**
 > - Q is the owner; refer to Q in all Q-facing outputs.
 > - `arch/` is truth. Read contracts/docs before coding.
+> - **Windows:** `powershell -NoProfile -Command "..."` wrapper ZORUNLU.
 >
 > **CODE QUALITY:**
 > - ENTERPRISE-GRADE: production-ready for thousands of concurrent users.
 > - SYSTEM INTEGRITY: do not break existing functionality.
-> - BUILD AFTER EVERY EDIT (per subsystem/service).
+> - BUILD AFTER EVERY EDIT: `dotnet build InvektoServis.sln --no-restore -v q`
 > - Output separation: Q-facing is short; AI-facing can be structured/logs.
-> - If requirements are unclear → ASK Q.
+> - If requirements are unclear -> ASK Q.
 >
 > **DB RULES:**
-> - **DB-CODE SYNC**: Her özellik öncesi tablo/kolon kontrolü ZORUNLU.
+> - **DB-CODE SYNC**: Her ozellik oncesi tablo/kolon kontrolu ZORUNLU.
 >
 > **MICROSERVICE RULES:**
-> - **İZOLASYON**: Servisler bağımsız, arası iletişim API/Event ile.
-> - **BAĞIMSIZ DEPLOY**: Her servis tek başına deploy edilebilir.
+> - **IZOLASYON**: Servisler bagimsiz, arasi iletisim API/Event ile.
+> - **BAGIMSIZ DEPLOY**: Her servis tek basina deploy edilebilir.
 >
 > **PLAN FORMAT:**
-> - Slug: `YYYYMMDD-feature-name` (örn: 20260201-user-service)
+> - Slug: `YYYYMMDD-feature-name` (orn: 20260201-user-service)
 > - Dosya: `arch/plans/{slug}.json`
-> - Schema: `arch/contracts/plan-schema.json`
+> - Schema: `arch/contracts/plan-schema.json` (v5.0)
+> - Paket: `packet_id` + `gr_list` alanlari (multi-GR paketler icin)
 
 ======================================================================
 
-## 1) WORKFLOW v3.1 (Copy-Paste)
+## 1) WORKFLOW v5.0 (Paket Bazli Yurutme)
+
+### Paket Kavrami
 
 ```
-Q: "şunu yap"
-    ↓
-INTERVIEW (AskUserQuestion tool ile - düz metin YASAK)
-    ↓
-Q cevaplar
-    ↓
-PLAN (DevAgent) → arch/plans/{slug}.json (TÜM risk seviyeleri)
-    ↓
-Q: "onay"
-    ↓
-DEV (DevAgent) - kod yazma
-    ↓
-BUILD PASS
-    ↓
-DevAgent /rev çalıştırır (TÜM risk seviyeleri - LOW dahil)
-    ↓
-Q'ya minimal prompt:
-  {slug-name} ---
-  # CODEX REVIEW REQUEST
-  Plan: arch/plans/{slug}.json
-  {RISK} :{iteration}
-  {plan.summary}
-    ↓
+Tekli GR Dongusu (v3.x):     Paket Dongusu (v5.0):
+  GR-1 -> interview            PKT-1 -> interview (tum GR'ler icin)
+  GR-1 -> plan                 PKT-1 -> plan (tum GR'ler tek plan)
+  GR-1 -> dev                  PKT-1 -> dev (GR'ler sirali, build check arasi)
+  GR-1 -> /rev + Codex         PKT-1 -> /rev + Codex (tum GR'lerin diff'i)
+  GR-1 -> commit               PKT-1 -> commit
+  GR-2 -> interview
+  GR-2 -> plan                 Overhead: %60 azalir
+  GR-2 -> dev                  (24 dongu -> 8 dongu)
+  GR-2 -> /rev + Codex
+  GR-2 -> commit
+```
+
+### Akis
+
+```
+Q paket ister (veya siradaki paket baslar)
+    |
+AskUserQuestion ile paket scope'unda interview (tum GR'ler icin, max 4 soru/batch)
+    |
+Agent risk belirler (LOW/MEDIUM/HIGH/CRITICAL)
+    |
+Plan JSON olusturulur (paket bazli, tum GR'ler tek planda, packet_id + gr_list)
+    |
+Q onaylar
+    |
+Implement (GR'ler sirali, her GR sonrasi build check)
+    |
+Build PASS
+    |
+DevAgent /rev calistirir (TUM risk seviyeleri)
+    |
+Q'ya minimal prompt gosterilir
+    |
 Q Codex'e copy-paste
-    ↓
-Codex 2 BLOK üretir (DOSYA DEĞİŞTİRMEZ!)
-    ↓
+    |
+Codex 2 BLOK uretir (DOSYA DEGISTIRMEZ!)
+    |
 Q verdict bildirir
-    ↓
+    |
 DevAgent /rev verdict PASS|FAIL
-    ↓
-PASS → commit → DONE
-FAIL → fix → /rev (max 3 iter)
+    |
+PASS -> commit -> DONE
+FAIL -> fix -> /rev (max 3 iter)
 ```
 
-**Interview:** AskUserQuestion tool ile (düz metin YASAK)
-**Plan JSON:** TÜM risk seviyeleri için ZORUNLU
-**Codex review:** TÜM risk seviyeleri için ZORUNLU (LOW dahil)
-**Q'nun yapacağı:** Interview cevapla → Plan onayla → Copy-paste köprüsü → İzle.
+**Interview:** AskUserQuestion tool ile (duz metin YASAK, max 4 soru/batch)
+**Plan JSON:** TUM risk seviyeleri icin ZORUNLU
+**Codex review:** TUM risk seviyeleri icin ZORUNLU (LOW dahil)
+**Q'nun yapacagi:** Interview cevapla -> Plan onayla -> Copy-paste koprusu -> Izle.
 
 ======================================================================
 
-## 2) ENTERPRISE CODE QUALITY STANDARDS
+## 2) CODEX UTANSIN DOKTRINI (Q'nun #1 Kurali)
+
+> **"Kod o kadar ince, dikkatli ve kusursuz yazilacak ki,
+> Codex review'a baktiginda utansin - yapacak bir sey bulamasin.
+> Ilk adimda hersey PASS olacak. Bu bir dilek degil, KURAL."**
+> -- Q (2026-02-15)
+
+### Zihniyet: "Sonra Duzelt" YASAK, "Yazarken Duzelt" ZORUNLU
+
+Kod yazarken her satir icin su 5 soru **YAZILMADAN ONCE** cevaplanir:
+
+| # | Soru | Cevap Yoksa |
+|---|------|-------------|
+| 1 | Bu satir hata durumunda ne yapar? | **YAZMA** - once error path tasarla |
+| 2 | Bu satirda null/empty/unexpected gelirse? | **YAZMA** - once guard ekle |
+| 3 | Bu satir 10.000 concurrent user'da ne yapar? | **YAZMA** - once scale dusun |
+| 4 | Bu satir codebase'deki mevcut pattern'a uyuyor mu? | **YAZMA** - once pattern'i bul |
+| 5 | Bu satiri Codex gorse soru sorar mi? | **YAZMA** - once soruyu kendin sor ve cevapla |
+
+### Pratik Kurallar
+
+**Error Handling - Hic Bir Hata Yutulmaz:**
+- Her `try` blogu icin: "catch'te ne yapacagim?" sorusu ONCEDEN cevaplanir
+- Bos catch = **aninda FAIL**. Tek satirlik `catch(Exception) { }` = kariyer sonu
+- Her catch'te: loglama + spesifik INV-xxx hata kodu + kullaniciya anlamli mesaj
+- `catch(Exception)` broad catch YASAK - typed catch ZORUNLU (`catch(JsonException)`, `catch(HttpRequestException)`)
+
+**Null Safety - Hic Bir Sey Varsayilmaz:**
+- Disaridan gelen her deger (API, DB, config, user input) = **potansiyel null**
+- `!.` (null-forgiving operator) YASAK - `?.` + `??` + explicit null check
+- "Bu hic null gelmez" = en tehlikeli varsayim. **GELEBILIR.**
+
+**Performance - Ilk Yazilista Dogru:**
+- N+1 query aliskanligi = **kariyer sonu**. Her DB erisiminde "bunu loop icinde mi cagiriyorum?" sorusu
+- `IDisposable` = `using` blogu. Istisna YOK
+- String concatenation loop icinde = `StringBuilder`. Istisna YOK
+- LINQ `.ToList()` gereksiz yere = memory spike. Lazy evaluation tercih et
+
+**Minimal Diff - Cerrahi Hassasiyetle:**
+- Plan'da olmayan dosyaya DOKUNMA
+- Plan'da olmayan satira DOKUNMA
+- "Su da guzel olur" refactor'u = scope creep = **FAIL**
+- Tek gorev: Q'nun istedigi, ne eksik ne fazla
+
+**Pattern Uyumu - Icat Etme, Uygula:**
+- Yeni bir sey yazmadan ONCE codebase'de benzer kodu BUL
+- Naming: mevcut pattern ne ise o (camelCase/PascalCase/snake_case)
+- Dosya yapisi: mevcut servisler nasil organize edilmisse oyle
+- Error handling: mevcut servisler nasil handle ediyorsa oyle
+
+### Basari Metrigi
+
+```
+HEDEF:   /rev -> Codex verdict = PASS, iteration = 0
+GERCEK:  Codex "This code is clean, no issues found" desin
+IDEAL:   Codex review'i gereksiz hissettirsin - o kadar temiz ki
+```
+
+### Enterprise Code Quality Standards
 
 1. **Production-grade only:** error handling, edge cases, performance, maintainability.
 2. **No silent breaking changes.** Consider impact across the codebase and services.
 3. **Heavy-load ready:** thousands of concurrent users. Thread-safety, no memory leaks.
 4. **Specific, actionable user errors.** Use error codes from `arch/errors.md`.
 5. **Prefer existing patterns.** Do not invent new architectures unless necessary.
-6. **Ask Q when unclear:** logic seems wrong, missing info, multiple approaches → **ASK Q**.
-7. **Interview Q before code:** Konu açık görünse bile TÜM gri noktalar çözülene kadar sor. Varsayım yapma.
+6. **Ask Q when unclear:** logic seems wrong, missing info, multiple approaches -> **ASK Q**.
+7. **Interview Q before code:** Konu acik gorunse bile TUM gri noktalar cozulene kadar sor. Varsayim yapma.
 
 ======================================================================
 
@@ -155,49 +234,58 @@ Always do these before work:
 
 ======================================================================
 
-## 4) CODEX REVIEW (Copy-Paste)
+## 4) SELF-REVIEW PROTOCOL (Her Dosya Edit Sonrasi)
+
+> **INVEKTO_BASE tanimi, DevAgent tetikler.**
+
+Her dosya edit sonrasi CQ1-CQ8 + AQ1-AQ6 kontrol et:
+
+| # | Kontrol | FAIL Sinyali |
+|---|---------|--------------|
+| CQ1 | Error handling nerede? | try-catch yok, hata yutulmus |
+| CQ2 | Silent failure var mi? | Bos catch, broad try-catch |
+| CQ3 | Diff minimum mu? | Plan disi dosya/satir degisikligi |
+| CQ4 | Duplicate code var mi? | Ayni pattern baska yerde mevcut |
+| CQ5 | Codebase pattern'larina uyuyor mu? | Naming, error handling farki |
+| CQ6 | Performans sorunu var mi? | O(n^2), N+1 query, memory leak |
+| CQ7 | Yeni TODO/HACK/FIXME eklendi mi? | Yeni teknik borc |
+| CQ8 | Breaking change var mi? | Silinen export, degisen interface |
+| AQ1 | Scale ready mi? | Binlerce es zamanli kullanici |
+| AQ2 | Error mesaji spesifik mi? | INV-xxx kodu var mi? |
+| AQ3 | Mevcut bir seyi bozar mi? | Regression riski |
+| AQ4 | Mikro servis sinirlarinda mi? | Baska servisi etkiliyor mu? |
+| AQ5 | DB-Code senkron mu? | Tablo/kolon var mi? snake_case mi? |
+| AQ6 | arch/ dokumanlarina uyuyor mu? | Contract semasi dogru mu? |
+
+**Kural:** FAIL olan varsa Codex'e gondermeden ONCE duzelt.
+**Cikti:** `Self-Review: 14/14 PASS` veya `Self-Review: CQ2 FAIL - fixing...`
+
+======================================================================
+
+## 5) CODEX REVIEW (Copy-Paste)
 
 ### 2 BLOK Output
 
-Codex AYRI pencerede 2 blok üretir:
+Codex AYRI pencerede 2 blok uretir:
 
-**BLOCK 1: CODE QUALITY GATE**
-- CQ1: Error handling nerede?
-- CQ2: Silent failure var mı?
-- CQ3: Diff minimum mu?
-- CQ4: Duplicate code var mı?
-- CQ5: Codebase pattern'larına uyuyor mu?
-- CQ6: Performans sorunu var mı? (O(n²), N+1 query, memory leak)
-- CQ7: Yeni TODO/HACK/FIXME eklendi mi?
-- CQ8: Breaking change var mı? (API contract, export, shared type)
-
-**BLOCK 2: CoVe VERIFICATION**
-- Q1-Q3+: Plan'da tanımlı verification soruları
+**BLOCK 1: CODE QUALITY GATE** (CQ1-CQ8)
+**BLOCK 2: CoVe VERIFICATION** (Q1-Q3+)
 
 ### Hard Gate
-
 ```
-ANY question = FAIL or UNKNOWN
-         ↓
-Overall verdict = FAIL
+ANY question = FAIL or UNKNOWN -> Overall verdict = FAIL
 ```
 
-### Codex DOSYA DEĞİŞTİRMEZ!
-
+### Codex DOSYA DEGISTIRMEZ!
 ```
-┌─────────────────────────────────────────────────────┐
-│  Codex SADECE review yapar, JSON'a YAZMAZ!          │
-│                                                      │
-│  Verdict JSON'a nasıl girer:                        │
-│  1. Codex 2 blok output verir (metin)               │
-│  2. Q bu output'u DevAgent'a iletir                 │
-│  3. DevAgent /rev verdict ile JSON'ı günceller      │
-└─────────────────────────────────────────────────────┘
+1. Codex 2 blok output verir (metin)
+2. Q bu output'u DevAgent'a iletir
+3. DevAgent /rev verdict ile JSON'i gunceller
 ```
 
 ======================================================================
 
-## 5) RISK & GATES
+## 6) RISK & GATES
 
 4-level risk model:
 - **LOW**: Typo fix, comment, log message
@@ -207,44 +295,32 @@ Overall verdict = FAIL
 
 ======================================================================
 
-## 6) Q-MODE REASONING PROTOCOL
-
-**BEFORE ACTION:**
-```
-DOING: [what you will run/change]
-EXPECT: [concrete outcome]
-IF YES: [next action]
-IF NO: [fallback action]
-```
-
-**AFTER ACTION:**
-```
-RESULT: [what happened]
-MATCHES: [yes/no]
-THEREFORE: [learning + next]
-```
-
-======================================================================
-
 ## 7) BUILD COMMANDS
 
 Run IMMEDIATELY after each file change:
-- Per service: `cd services/{name} && npm run build`
-- Check affected services when shared code changes
 
-If build fails → fix immediately before continuing.
+```bash
+# Full solution build (recommended)
+powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\InvektoServis.sln --no-restore -v q"
+
+# Single service build
+powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\src\Invekto.{Name}\Invekto.{Name}.csproj --no-restore -v q"
+```
+
+- Shared degistiyse -> Full solution build
+- Build fails -> fix immediately before continuing
 
 ======================================================================
 
 ## 8) /rev KOMUTU
 
-Build PASS sonrası `/rev` çalıştır:
+Build PASS sonrasi `/rev` calistir:
 
 ```
-/rev              → JSON güncelle, Q'ya prompt ver
-/rev validate     → Sadece validation
-/rev verdict PASS → JSON'a PASS yaz
-/rev verdict FAIL "issue" → JSON'a FAIL + blocking_issues yaz
+/rev              -> JSON guncelle, Q'ya prompt ver
+/rev validate     -> Sadece validation
+/rev verdict PASS -> JSON'a PASS yaz
+/rev verdict FAIL "issue" -> JSON'a FAIL + blocking_issues yaz
 ```
 
 ======================================================================
@@ -264,9 +340,9 @@ All logs, prompts, evidence are AI-facing. Never dump to Q.
 ## FINAL PRINCIPLE
 
 ```
-DevAgent implements + /rev çalıştırır.
+DevAgent implements + /rev calistirir.
 Codex reviews (AYRI pencerede, dosya yazmaz).
-Q owns decisions + copy-paste köprüsü.
+Q owns decisions + copy-paste koprusu.
 ```
 
 Speed never overrides correctness.

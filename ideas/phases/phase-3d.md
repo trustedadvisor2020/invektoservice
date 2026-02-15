@@ -12,6 +12,58 @@
 
 ---
 
+## ⚠️ Ön Araştırma: MediaPipe .NET Stratejisi (2026-02-15)
+
+> **Durum:** Araştırma tamamlandı, faz başında gözden geçirilecek.
+> **Kritik bulgu:** MediaPipe'ın resmi .NET binding'i YOK. Community port (Mediapipe.Net) prod-ready değil.
+
+### Değerlendirilen Yaklaşımlar
+
+| Yaklaşım | Landmark | Latency/img | Maliyet | CPU-only | Prod Ready |
+|-----------|----------|-------------|---------|----------|------------|
+| A) MediaPipe ONNX (.NET) | **468** | 15-40ms | $0 | Evet | Orta-Yüksek |
+| B) Python Sidecar (mediapipe) | **468** | 50-120ms | $0 | Evet | **Yüksek** |
+| C) OpenCvSharp4 DNN | 5 | 10-30ms | $0 | Evet | ❌ Yetersiz |
+| D1) FaceAiSharp | 5 | 10-25ms | $0 | Evet | ❌ Yetersiz |
+| D2) FaceONNX | **68** | 15-35ms | $0 | Evet | Orta-Yüksek |
+| E) Azure Face API | 27 | 200-500ms | $1/1K | N/A | ❌ Yetersiz |
+| F) Claude Vision | 0 sayısal | 2-5sn | ~$0.001 | N/A | ❌ Ölçüm yapamaz |
+| G2) FaceONNX + Claude | 68+kalitatif | 30ms+2sn | ~$0.001 | Evet | Orta-Yüksek |
+
+### Elenenler
+
+- OpenCvSharp4, FaceAiSharp: 5 landmark — bölge segmentasyonu imkansız
+- Azure Face API: 27 landmark + cloud latency + maliyet
+- Claude Vision: Sayısal koordinat üretemez, sadece kalitatif yorum
+
+### Önerilen Strateji: 2 Aşamalı
+
+**Aşama 1 (Hızlı başlangıç): Python Sidecar**
+```
+Selfie → Invekto.FaceAnalysis (.NET:7110)
+    → HTTP → Python FastAPI (mediapipe official)
+    → 468 landmarks + quality metrics (JSON)
+    → .NET: business logic, tenant routing, DB
+    → Claude Vision: sadece kalitatif estetik yorum + tedavi önerisi
+```
+- Resmi SDK güvencesi, hızlı geliştirme
+- Claude Vision: ölçüm değil, doğal dil rapor üretimi
+
+**Aşama 2 (Optimizasyon, opsiyonel): ONNX .NET'e migrasyon**
+- Python sidecar → ONNX Runtime (aynı modeller, tek proses)
+- Latency: 60-120ms → 25-50ms
+- Sadece scale gerektirdiğinde
+
+### Önemli Notlar
+
+- `Mediapipe.Net` (cosyneco): Community port, GPU sadece Linux, Windows experimental
+- FaceONNX (NuGet v4.1.1, Aralık 2025): 68 landmark + yaş/cinsiyet/duygu/güzellik skoru
+- Qualcomm HuggingFace: MediaPipeFaceLandmarkDetector.onnx (2.45 MB) hazır ONNX model
+- PINTO Model Zoo: FaceMesh ONNX FP32/FP16/INT8 formatlarında mevcut
+- Bölge segmentasyonu + simetri analizi: 468 landmark gerektiriyor, 68 ile kısmi mümkün
+
+---
+
 ## Durum Takibi
 
 | Alt Gereksinim | Durum | Tamamlanma Tarihi | Notlar |

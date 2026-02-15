@@ -12,38 +12,44 @@
 >
 > **v4.5 (2026-02-14):** 3 yeni GR eklendi: GR-3.23 Voice Message AI (evrensel),
 > GR-3.24 Proactive Review Rescue (e-ticaret), GR-3.25 Multilingual Medical Tourism (sağlık).
+>
+> **v5.1 Bölünme (2026-02-15):** 19 GR, 3 alt pakete bölündü (Codex PASS olasılığı artırmak için):
+> - **PKT-6A Foundation** (7 GR): GR-3.1, 3.2, 3.5, 3.9, 3.10, 3.12, 3.23
+> - **PKT-6B Business Logic** (7 GR): GR-3.7, 3.8, 3.11, 3.13, 3.3, 3.16, 3.17
+> - **PKT-6C Health Expansion** (5 GR): GR-3.20, 3.21, 3.22, 3.24, 3.25
+> Bağımlılık: PKT-5 → 6A (bağımsız) | PKT-5 → 6B (Integrations) | 6B → 6C
 
 ---
 
 ## Durum Takibi
 
-| Alt Gereksinim | Durum | Tamamlanma Tarihi | Notlar |
-|----------------|-------|-------------------|--------|
-| **E-TİCARET** | | | |
-| GR-3.1 Intent Genişletme + Oto. Etiketleme | ⬜ Başlamadı | — | ← eski GR-2.1 |
-| GR-3.2 B2B / VIP Lead Tespiti | ⬜ Başlamadı | — | ← eski GR-2.2 |
-| GR-3.3 Agent Assist Genişleme (E-ticaret) | ⬜ Başlamadı | — | Integrations (3A) gerekli |
-| GR-3.5 Onboarding Otomasyonu | ⬜ Başlamadı | — | ← eski GR-2.5 |
-| GR-3.7 Outbound E-ticaret Senaryoları | ⬜ Başlamadı | — | ← eski GR-2.7 |
-| GR-3.8 İade Çevirme v1 | ⬜ Başlamadı | — | ← eski GR-2.8 |
-| **DİŞ KLİNİĞİ** | | | |
-| GR-3.9 Diş Intent + Fiyat Pipeline | ⬜ Başlamadı | — | ← eski GR-2.9 |
-| GR-3.10 Diş Onboarding Otomasyonu | ⬜ Başlamadı | — | ← eski GR-2.11 |
-| GR-3.11 Klinik Outbound v1 | ⬜ Başlamadı | — | ← eski GR-2.12 |
-| **ESTETİK KLİNİK** | | | |
-| GR-3.12 Estetik Intent + Lead Pipeline | ⬜ Başlamadı | — | ← eski GR-2.13 |
-| GR-3.13 Lead Management v2 | ⬜ Başlamadı | — | ← eski GR-2.14 |
-| **PLATFORM (BAĞIMLI)** | | | |
-| GR-3.16 Negatif Yorum Kurtarma | ⬜ Başlamadı | — | Bağımlılık: GR-3.4 (3A) |
-| GR-3.17 İade Çevirme v2 | ⬜ Başlamadı | — | Bağımlılık: GR-3.8 (3B iç) |
-| GR-3.24 Proactive Review Rescue | ⬜ Başlamadı | — | GR-3.8/3.16 genişletme, proaktif kurtarma |
-| **SAĞLIK GENİŞLEME** | | | |
-| GR-3.20 Tedavi Sonrası Takip | ⬜ Başlamadı | — | ← eski GR-5.7 (v4.2) |
-| GR-3.21 Google Yorum + Referans Motoru | ⬜ Başlamadı | — | ← eski GR-5.8 (v4.2) |
-| GR-3.22 Medikal Turizm Lead (AR hariç) | ⬜ Başlamadı | — | ← eski GR-5.9 (v4.2, AR → Phase 5) |
-| GR-3.25 Multilingual Medical Tourism | ⬜ Başlamadı | — | GR-3.22 genişletme, 7/24 çok dilli asistan |
-| **EVRENSEL AI** | | | |
-| GR-3.23 Voice Message AI | ⬜ Başlamadı | — | Whisper transkript + mevcut AgentAI pipeline |
+| Alt Gereksinim | Paket | Durum | Tamamlanma Tarihi | Notlar |
+|----------------|-------|-------|-------------------|--------|
+| **E-TİCARET** | | | | |
+| GR-3.1 Intent Genişletme + Oto. Etiketleme | **PKT-6A** | ⬜ Başlamadı | — | ← eski GR-2.1 |
+| GR-3.2 B2B / VIP Lead Tespiti | **PKT-6A** | ⬜ Başlamadı | — | ← eski GR-2.2 |
+| GR-3.3 Agent Assist Genişleme (E-ticaret) | **PKT-6B** | ⬜ Başlamadı | — | ← PKT-5 Integrations gerekli |
+| GR-3.5 Onboarding Otomasyonu | **PKT-6A** | ⬜ Başlamadı | — | ← eski GR-2.5 |
+| GR-3.7 Outbound E-ticaret Senaryoları | **PKT-6B** | ⬜ Başlamadı | — | ← eski GR-2.7 |
+| GR-3.8 İade Çevirme v1 | **PKT-6B** | ⬜ Başlamadı | — | ← eski GR-2.8 |
+| **DİŞ KLİNİĞİ** | | | | |
+| GR-3.9 Diş Intent + Fiyat Pipeline | **PKT-6A** | ⬜ Başlamadı | — | ← eski GR-2.9 |
+| GR-3.10 Diş Onboarding Otomasyonu | **PKT-6A** | ⬜ Başlamadı | — | ← eski GR-2.11 |
+| GR-3.11 Klinik Outbound v1 | **PKT-6B** | ⬜ Başlamadı | — | ← eski GR-2.12 |
+| **ESTETİK KLİNİK** | | | | |
+| GR-3.12 Estetik Intent + Lead Pipeline | **PKT-6A** | ⬜ Başlamadı | — | ← eski GR-2.13 |
+| GR-3.13 Lead Management v2 | **PKT-6B** | ⬜ Başlamadı | — | ← eski GR-2.14 |
+| **PLATFORM (BAĞIMLI)** | | | | |
+| GR-3.16 Negatif Yorum Kurtarma | **PKT-6B** | ⬜ Başlamadı | — | ← PKT-5 Integrations gerekli |
+| GR-3.17 İade Çevirme v2 | **PKT-6B** | ⬜ Başlamadı | — | ← GR-3.8 (aynı paket) |
+| GR-3.24 Proactive Review Rescue | **PKT-6C** | ⬜ Başlamadı | — | ← GR-3.8+3.16 (PKT-6B) gerekli |
+| **SAĞLIK GENİŞLEME** | | | | |
+| GR-3.20 Tedavi Sonrası Takip | **PKT-6C** | ⬜ Başlamadı | — | ← eski GR-5.7 (v4.2) |
+| GR-3.21 Google Yorum + Referans Motoru | **PKT-6C** | ⬜ Başlamadı | — | ← eski GR-5.8 (v4.2) |
+| GR-3.22 Medikal Turizm Lead (AR hariç) | **PKT-6C** | ⬜ Başlamadı | — | ← eski GR-5.9 (v4.2, AR → Phase 5) |
+| GR-3.25 Multilingual Medical Tourism | **PKT-6C** | ⬜ Başlamadı | — | ← GR-3.22 (aynı paket) |
+| **EVRENSEL AI** | | | | |
+| GR-3.23 Voice Message AI | **PKT-6A** | ⬜ Başlamadı | — | Whisper transkript + mevcut AgentAI pipeline |
 
 ---
 

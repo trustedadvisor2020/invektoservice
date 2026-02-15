@@ -12,6 +12,52 @@
 
 ---
 
+## ⚠️ Ön Araştırma: CLIP .NET Stratejisi (2026-02-15)
+
+> **Durum:** Araştırma tamamlandı, faz başında gözden geçirilecek.
+> **Kritik bulgu:** .NET'te production-ready CLIP NuGet paketi YOK.
+
+### Değerlendirilen Yaklaşımlar
+
+| Yaklaşım | Latency/img | Maliyet | CPU-only | Prod Ready |
+|-----------|-------------|---------|----------|------------|
+| A) ONNX Runtime (.NET) | 200-400ms CPU | $0 | Yavaş ama çalışır | Orta |
+| B) Python Sidecar (FastAPI + open_clip) | 250-500ms CPU | $0 | Evet | **Yüksek** |
+| C) HuggingFace Inference API | 50ms-30sn | $432+/ay | N/A | Orta |
+| D) Cloud API (Voyage/Jina/Google) | 50-200ms | $0.0001/img | N/A | Yüksek |
+| E) GPU Server (Triton) | 5-30ms | $252+/ay | GPU şart | Çok Yüksek |
+| F1) MobileCLIP ONNX (.NET) | 30-200ms CPU | $0 | **En iyi CPU** | Orta |
+| F3) Hybrid (Text ONNX + BG index) | Text: 10-30ms | $0-50 | Evet | **Yüksek** |
+
+### Önerilen Mimari: F3 Hybrid
+
+```
+[Ürün yüklendiğinde - arka plan]        [Arama sorgusu - gerçek zamanlı]
+Product Upload                           User Search Query
+    │                                        │
+    ▼                                        ▼
+Python Sidecar (FastAPI + open_clip)     ONNX Runtime (.NET)
+    │  image embedding ~300ms                │  text embedding ~15ms
+    ▼                                        ▼
+pgvector (HNSW index) ◄─────────────────► pgvector similarity search
+```
+
+- Gerçek zamanlı yol (text search) CPU'da 10-30ms
+- Ağır iş (image embedding) arka planda, latency önemsiz
+- GPU gerektirmez, CPU-only VPS'te çalışır
+- Scale'de Python sidecar → Triton GPU'ya geçiş kolay
+- Basit başlangıç alternatifi: Google Vertex API ($0.0001/img)
+
+### Önemli Notlar
+
+- `clip-sharp` (NuGet): Experimental, son güncelleme 2023, prod'a uygun değil
+- MobileCLIP-S0 (Apple, CVPR 2024): CPU'da 30-80ms, ViT-B/32'nin %90 doğruluğu
+- OpenAI Embeddings API: Görsel embedding DESTEKLEMİYOR (sadece text)
+- Jina CLIP v2: 89 dil desteği, multimodal, token bazlı fiyat
+- pgvector HNSW: ViT-B/32 = 512 dim, MobileCLIP = 256 dim
+
+---
+
 ## Durum Takibi
 
 | Alt Gereksinim | Durum | Tamamlanma Tarihi | Notlar |

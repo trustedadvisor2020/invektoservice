@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "plan-v3.json",
-  "title": "Plan Schema v3.0",
-  "description": "JSON Plan Schema for Codex Review Protocol v3.0",
+  "$id": "plan-v5.json",
+  "title": "Plan Schema v5.0",
+  "description": "JSON Plan Schema for Codex Review Protocol v5.0 (Packet-based execution)",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -26,13 +26,43 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "3.0",
-      "description": "Schema version - must be 3.0"
+      "const": "5.0",
+      "description": "Schema version - must be 5.0"
     },
     "review_protocol_version": {
       "type": "string",
-      "const": "3.0",
-      "description": "Review protocol version - must be 3.0"
+      "const": "5.0",
+      "description": "Review protocol version - must be 5.0"
+    },
+    "packet_id": {
+      "type": ["string", "null"],
+      "pattern": "^PKT-[0-9]+$",
+      "description": "Execution packet ID (e.g. PKT-1). Null for standalone tasks.",
+      "examples": ["PKT-1", "PKT-2"]
+    },
+    "gr_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "GR identifier (e.g. GR-2.2, WA-6)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of this GR's scope"
+          },
+          "services_affected": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Services this GR touches"
+          }
+        }
+      },
+      "description": "List of GRs included in this packet (empty for single-GR tasks)"
     },
     "slug": {
       "type": "string",
@@ -189,6 +219,11 @@
         "error_summary": {
           "type": ["string", "null"],
           "description": "Summary of build errors if any"
+        },
+        "services": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of services that were built (e.g. Invekto.Shared, Invekto.AgentAI)"
         }
       }
     },

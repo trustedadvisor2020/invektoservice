@@ -3,7 +3,7 @@ name: recording-lessons
 description: Analyzes session corrections and records lessons to arch/lessons-learned.md. Use after mistakes, failed reviews, Q corrections, or at session end to capture reusable patterns.
 ---
 
-# /learn - Session Learning (v1.0)
+# /learn - Session Learning (v2.0)
 
 > **Persist After Compact:** Works even after session reset.
 
@@ -11,19 +11,37 @@ Analyzes Q's corrections during the session and saves them to `arch/lessons-lear
 
 ---
 
+## Auto vs Manual Mode
+
+| Mode | Trigger | Q Approval |
+|------|---------|------------|
+| **Auto** | Session sonu, DONE sonrasi | Onay GEREKMEZ - dogrudan ekle |
+| **Manual** | Q `/learn` yazdiginda | Preview goster, Q onaylar |
+
+**Auto mode:** Session sonunda ogrenilecek seyleri dogrudan `arch/lessons-learned.md`'ye ekle (Q onay beklemeden).
+**Manual mode:** Q `/learn` yazarsa preview goster, Q onay verirse kaydet.
+
+---
+
 ## Usage
 
-### 1. `/learn` - Session Analysis
+### 1. `/learn` - Session Analysis (Manual)
 
-Analyze the entire session, list learnable items, save with Q's approval.
+Analyze the entire session, list learnable items, show preview, save with Q's approval.
 
-### 2. `/learn "topic"` - Specific Topic
+### 2. `/learn "topic"` - Specific Topic (Manual)
 
-Add the specified topic to lessons-learned.md.
+Add the specified topic to lessons-learned.md with Q's approval.
+
+### 3. Auto Mode (Session End)
+
+Agent automatically records lessons at session end without waiting for Q approval.
 
 ---
 
 ## Devil's Advocate (PP-006)
+
+> **Canonical source:** `INVEKTO_BASE.prompt.md` SEYTANIN AVUKATLIGI section.
 
 Challenge what's worth recording:
 - "Is this really a project-specific lesson, or just general knowledge?"
@@ -72,7 +90,7 @@ For each signal, check:
 
 ---
 
-## Step 4: Preview
+## Step 4: Preview (Manual Mode Only)
 
 Show Q:
 
@@ -95,11 +113,13 @@ Show Q:
 **Approve?** (yes / no / edit)
 ```
 
+**Auto mode:** Skip preview, directly save.
+
 ---
 
 ## Step 5: Save
 
-After Q approval:
+After approval (manual) or directly (auto):
 
 1. Read `arch/lessons-learned.md`
 2. Add new row to relevant table
@@ -115,7 +135,7 @@ After Q approval:
 | {YYYY-MM-DD} | {Category} | {Brief mistake description} | {Solution} | {Future prevention} |
 ```
 
-**Category options:** DB, SQL, API, UI, Auth, Config, Codex, Risk
+**Category options:** DB, SQL, API, UI, Auth, Config, Codex, Risk, Workflow, Deploy, PowerShell, Git, Logging
 
 ### Patterns That Work Row
 ```
@@ -133,20 +153,12 @@ After Q approval:
 
 **With Auto Workflow:**
 - `/learn` does NOT interrupt auto workflow
-- After every DONE: Agent reminds if there's something to learn
+- After every DONE: Agent auto-records lessons (no Q approval needed)
 - After every FAIL: Agent asks if this mistake should be recorded
 
 **With /rev:**
 - `/learn` can be suggested after `/rev verdict FAIL`
-- Same mistake in 3 iterations -> automatic suggestion
-
----
-
-## Constraints
-
-- No automatic additions (always requires Q approval)
-- No general best practices
-- No framework/tool documentation
+- Same mistake in 3 iterations -> automatic recording
 
 ---
 

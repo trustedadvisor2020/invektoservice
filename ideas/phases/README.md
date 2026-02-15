@@ -1,17 +1,18 @@
 # Invekto Phase Dosyaları
 
-> Son güncelleme: 2026-02-15 (v5.0 — 8 Paket Execution Stratejisi)
+> Son güncelleme: 2026-02-15 (v5.1 — 10 Paket Execution Stratejisi)
 > Ana kaynak: [../roadmap.md](../roadmap.md)
 > Execution detay: `arch/active-work.md`
 
 ---
 
-## Yürütme Stratejisi (v5.0 — 2026-02-15)
+## Yürütme Stratejisi (v5.1 — 2026-02-15)
 
-> **Karar:** Tekli GR döngüsü yerine **8 paket** halinde yürütme.
+> **Karar:** Tekli GR döngüsü yerine **10 paket** halinde yürütme.
 > Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
-> Overhead %60 azalır (24 döngü → 8 döngü), toplam süre ~%50 kısalır.
-> Detay: `arch/active-work.md` → "Execution Queue — 8 Paket Stratejisi"
+> Overhead %60 azalır, toplam süre ~%50 kısalır.
+> Detay: `arch/active-work.md` → "Execution Queue — 10 Paket Stratejisi"
+> **v5.1:** PKT-6 (19 GR) → PKT-6A/6B/6C olarak bölündü (Codex PASS olasılığı artırmak için)
 
 | PKT | Paket | Phase | İçerik |
 |-----|-------|-------|--------|
@@ -20,7 +21,9 @@
 | 3 | Ops Dashboard | 2 | GR-2.5 + WA-4 |
 | 4 | WA Analytics | 2 | WA-6 |
 | 5 | Platform | 3A | GR-3.4, 3.6, 3.14, 3.15, 3.18, 3.19 |
-| 6 | Niche | 3B | 19 GR (e-ticaret/diş/estetik/sağlık/voice) |
+| 6A | Niche Foundation | 3B | 7 GR (Intent + Onboarding + Voice AI) |
+| 6B | Niche Business Logic | 3B | 7 GR (Outbound + İade + Lead + Yorum) |
+| 6C | Niche Health Expansion | 3B | 5 GR (Sağlık + Review Rescue + Multilingual) |
 | 7 | Visual AI | 3C | GR-3C.1~3C.8 |
 | 8 | Face AI | 3D | GR-3D.1~3D.5 |
 
@@ -35,7 +38,7 @@
 | **2** | [phase-2.md](phase-2.md) | 9-16 | 300-500K | 75+ | 🔄 Kısmen Tamamlandı — GR-2.1 ✅, kalan: PKT-1~4 |
 | **3** | [phase-3.md](phase-3.md) | 17-24 | 500-800K | 100+ | ⬜ Başlamadı — PKT-5~8 ile tamamlanacak |
 | ↳ 3A | [phase-3a.md](phase-3a.md) | 17-20 | 500-650K | 85+ | ⬜ Başlamadı — **PKT-5** Platform Enablers (6 GR) |
-| ↳ 3B | [phase-3b.md](phase-3b.md) | 21-24 | 650-800K | 100+ | ⬜ Başlamadı — **PKT-6** Niche Derinleştirme (19 GR) |
+| ↳ 3B | [phase-3b.md](phase-3b.md) | 21-24 | 650-800K | 100+ | ⬜ Başlamadı — **PKT-6A/6B/6C** Niche Derinleştirme (19 GR, 3 alt paket) |
 | ↳ 3C | [phase-3c.md](phase-3c.md) | 25-28 | 800K-1M | 110+ | ⬜ Başlamadı — **PKT-7** Visual AI (8 GR, port 7111) |
 | ↳ 3D | [phase-3d.md](phase-3d.md) | 29-32 | 1M-1.2M | 120+ | ⬜ Başlamadı — **PKT-8** Face AI (5 GR, port 7110) |
 | **4** | [phase-4.md](phase-4.md) | 33-40 | 1.2-1.5M | 140+ | ⬜ Başlamadı |

@@ -1,181 +1,270 @@
 # Lessons Learned
 
-> Q düzeltmelerinden öğrenilen dersler. `/learn` komutuyla güncellenir.
+> Q duzeltmelerinden ogrenilenler. `/learn` komutuyla guncellenir.
+>
+> **Arsiv Kurali:** 50+ giris olunca son 3 ay aktif kalir, eski girdiler `arch/lessons-learned-archive.md`'ye tasinir.
+> TONIVA girdileri kalici olarak arsiv dosyasinda.
+
+---
 
 ## Common Mistakes
 
-| Date | Category | Mistake | Solution | Prevention |
-|------|----------|---------|----------|------------|
-| (template) | DB | Varsayılan değer unuttum | ALTER TABLE ile eklendi | CREATE TABLE'da her zaman DEFAULT belirt |
-| TONIVA | SQL | Deploy Manager GO hatası | GO kaldırıldı | mssql driver GO desteklemiyor |
-| TONIVA | SQL | Aynı batch'te kolon ekle+kullan | EXEC() dynamic SQL | Compile-time vs runtime ayrımı |
-| TONIVA | Codex | Em dash encoding sorunu | Double dash (--) kullan | **Em dash (—) YASAK! Her yerde double dash (--) kullan** |
-| TONIVA | Codex | Empty catch block `return false` - hatayı gizliyor | `logger.warn` eklendi | **Empty catch YASAK - her zaman log at veya rethrow yap** |
-| TONIVA | DB | Aynı işi yapan 2 fonksiyon - biri lock'sız kaldı | Her ikisine de lock eklendi | **Aynı resource'a erişen TÜM fonksiyonları kontrol et** |
-| TONIVA | Git | Önceki session'lardan kalan staged dosyalar commit scope'unu bozdu | `git reset HEAD` + selective staging | **Session başında `git status` ile temiz slate kontrolü - staged dosyalar önceki işten olabilir** |
-| TONIVA | Retry | Backoff/limit olmadan retry queue | Backoff + max retry zorunlu | Retry mekanizmalarında HER ZAMAN: max_retry_count + exponential_backoff |
-| TONIVA | Queue | Completion check sonsuz queue bekler | Drain mekanizması ekle | Queue'lar için: max_queue_size + timeout + drain_on_stop |
-| TONIVA | Memory | Lambda event handler leak - her call için handler birikti | `EventHandlers` class ile sakla | **Event'e += ile lambda eklersen, -= için AYNI referans lazım - dictionary'de sakla** |
-| TONIVA | EF | Singleton DbContext concurrent kullanım - "A second operation started" | IDbContextFactory + scoped context | **DbContext thread-safe DEĞİL! Concurrent erişim için IDbContextFactory kullan** |
-| TONIVA | EF | AddDbContext IDbContextFactory register ETMİYOR | AddPooledDbContextFactory kullan | **IDbContextFactory için AddPooledDbContextFactory GEREKLİ** |
-| TONIVA | EF | Entity property eklendi, DB migration yapıldı, ama EF kolon mapping unutuldu | DbContext'e `HasColumnName` eklendi | **Entity property = DB migration + EF mapping (snake_case eşleştir)** |
-| TONIVA | API | Backend API response değişti ama type tanımları güncellenmedi | API typings güncellendi | **Backend API değişikliğinde type tanımlarını da GÜNCELLE - TypeScript type safety** |
-| TONIVA | Race | SHARED mode + retry/stats query = race condition | Mutex lock + transaction isolation | **SHARED dosya + queue/retry logic = RACE CONDITION RİSKİ! Mutex zorunlu** |
-| TONIVA | Workflow | lessons-learned'da pattern VAR ama kod yazarken uygulanmadı | Kod yazmadan ÖNCE lessons-learned oku | **Her session başında lessons-learned.md OKU - pattern'lar belgelenmiş ama uygulanmıyor!** |
-| TONIVA | PowerShell | `@" "@` heredoc syntax Git commit mesajında hata verdi | Commit mesajını temp dosyaya yazıp `git commit -F` | **PowerShell heredoc Windows'ta güvenilmez - uzun/multiline commit mesajları için temp dosya kullan** |
-| TONIVA | SQL | GUID array'i mssql driver INT'e çevirmeye çalıştı | STRING_SPLIT + TRY_CAST kullan | **GUID array parametresi için placeholder array değil, string birleştir + STRING_SPLIT kullan** |
-| TONIVA | SQL | Kolon adını yanlış varsaydım | Schema dosyasından doğru kolon adını kontrol et | **Yeni sorgu yazarken kolon adını VARSAYMA - schema tek kaynak** |
-| TONIVA | SQL | `MERGE WITH (HOLDLOCK)` aggressive locking - concurrent deadlock | HOLDLOCK kaldırıldı + retry mekanizması | **MERGE sorgularında HOLDLOCK genellikle gereksiz - concurrent erişimde deadlock riski, retry pattern zorunlu** |
-| TONIVA | Config | Env variable sadece yoksa ekleniyordu - kaynak dosyada yanlış değer kopyalandı | Her zaman override et | **Env variable kopyalama scriptlerinde kritik değerler HER ZAMAN override edilmeli** |
-| TONIVA | UI | HTTP error'da polling durmuyor - sonsuz döngü | `clearInterval` + state reset eklendi | **HTTP error catch'inde polling/interval durdurmayı kontrol et - sadece log yetmez** |
-| TONIVA | API | Token ve response null check eksik - undefined crash | Her fonksiyona `if (!token) return` + optional chaining eklendi | **API çağrısı yapan her fonksiyonda: 1) Token kontrolü 2) Response optional chaining 3) Fallback değer** |
-| TONIVA | Logging | Production'da `logger.info` görünmedi | `logger.warn` + `console.log` birlikte kullanıldı | **Production debug için `logger.warn` veya `console.log` kullan - info seviyesi production'da kapalı olabilir** |
-| TONIVA | SQL | OUTER APPLY N satır = N*2 subquery, yavaş response | 3 aşamalı bulk fetch pattern | **Detaylı bilgi gerektiren listelerde OUTER APPLY yerine bulk query pattern kullan** |
-| 2026-02-02 | Config | .NET servis port'u default'a düştü - Kestrel ConfigureKestrel eksikti | `builder.WebHost.ConfigureKestrel(options.ListenAnyIP(port))` eklendi | **Yeni servis oluştururken Kestrel port binding'i kontrol et - yoksa .NET random port atar** |
-| 2026-02-03 | PowerShell | `Invoke-RestMethod` HTTPS'te TLS hatası veriyor (self-signed cert) | `curl.exe -k` ile bypass | **Windows PowerShell + self-signed cert = curl.exe kullan** |
-| 2026-02-09 | Workflow | arch/ dosyaları (session-memory, active-work) güncellenmeden commit yapıldı | Her adım sonrası güncelle | **Her commit/task sonrası arch/session-memory.md + arch/active-work.md GÜNCELLEMEDEN devam etme** |
-| 2026-02-09 | Git | GitHub Push Protection gerçek API key içeren dosyayı reddetti | Placeholder kullan, soft reset + recommit | **Production config'lerde GERÇEK secret OLMAMALI - REPLACE_WITH_ACTUAL_KEY placeholder kullan** |
-| 2026-02-09 | Dashboard | Yeni mikroservis eklenince dashboard'da görünmedi | 6 dosya manuel güncelleme | **Yeni servis = Backend (config+Program.cs+Client) + Dashboard (HealthCard+DependencyMap+TestPanel) güncelle** |
-| 2026-02-11 | Deploy | Yeni servis eklenince deploy script guncellenmedi | AgentAI eklendi | **Yeni mikroservis = dev-to-invekto-services.bat'a OTOMATIK ekle (REMOTE_, LOCAL_, build step, upload step, marker, output)** |
-| 2026-02-11 | Deploy | Yeni servis eklenince install-services.bat guncellenmedi | AgentAI eklendi | **Yeni mikroservis = arch/deploy/install-services.bat'a OTOMATIK ekle (NSSM blok, log dir, start, status, test URL, manage)** |
-| 2026-02-11 | Deploy | Yeni servis eklenince firewall-rules.bat guncellenmedi | AgentAI eklendi | **Yeni mikroservis = arch/deploy/firewall-rules.bat'a OTOMATIK ekle (port + localhost/external karar ver)** |
-| 2026-02-11 | Config | Yeni servis eklenince Backend appsettings guncellenmedi | AgentAI eklendi | **Yeni mikroservis = Backend appsettings.json + appsettings.Production.json'a Microservice section OTOMATIK ekle (Url, LogPath, ozel timeout)** |
-| 2026-02-11 | Config | Production config placeholder'lar Q'ya birakildi, Q tekrar sordu | Tum config'ler otomatik dolduruldu | **Yeni mikroservis = appsettings.Production.json E:\\ path, port, connection string OTOMATIK doldur. Sadece secret key'ler REPLACE_WITH_ACTUAL_KEY kalir** |
-| 2026-02-11 | Codex | Yeni step type (api_call) eklendi ama mevcut webhook-only broadcast kodu guncellenmedi (`step.webhook` null dereference) | `step.type === 'api_call'` guard + optional chaining | **Yeni variant/type eklerken TUM mevcut erisim noktalarini tara - sadece yeni kodu yazmak yetmez, eski kodun yeni type'i handle ettigini dogrula** |
-| 2026-02-11 | Codex | Multi-step senaryoda inter-step data aktarimi icin hardcoded placeholder kullanildi (`REPLACE_WITH_SUGGESTION_ID`) | `{{step_N.field}}` template + `resolveStepRefs()` chaining mekanizmasi | **Cok adimli akislarda adimlar arasi veri aktarimi OTOMATIK olmali - manuel placeholder yerine runtime resolver yaz** |
-| 2026-02-11 | Codex | Plan JSON `files_changed` listesi, unstage sonrasi gercek staged dosyalarla senkronize edilmedi | `files_changed`'i actual `git diff --cached` ile esitle | **Plan JSON metadata degisikliginden sonra (stage/unstage) `files_changed` ve `files_count`'u MUTLAKA guncelle** |
-| 2026-02-11 | Auth | Yeni proxy endpoint (`/api/v1/automation/webhook`) eklendi ama JWT middleware prefix listesine eklenmedi - endpoint korumasiz kaldi | `UseJwtAuth` prefix listesine `/api/v1/automation/` eklendi | **Yeni endpoint eklerken JWT middleware prefix listesini kontrol et - yeni path mevcut prefix'lerle uyusmuyorsa YENI prefix ekle** |
-| 2026-02-11 | Codex | Yorum "All traffic via Backend" yaziyordu ama kod dogrudan servis erisimini de destekliyordu - yorum/kod celiskisi | Yorum guncellendi: "Production: Backend proxy / Debug: direct" | **Mimari yorumlar (routing, trafik akisi, auth) MUTLAKA kodun gercek davranisiyla eslessin - mutlak ifadeler sadece gercekten mutlaksa kullanilsin** |
-| 2026-02-11 | Node.js | `res.json()` catch'inde `res.text()` cagrildi - body stream zaten tukenmis ("Body already been read") | `res.text()` ile raw oku, sonra `JSON.parse()` dene | **Node.js fetch: body stream TEK SEFER okunur! Once text(), sonra JSON.parse() - asla json() catch'inde text() cagirma** |
-| 2026-02-11 | Deploy | Yeni servis eklenince deploy-watcher.ps1 ve restart-services.bat guncellenmedi - servis durdurulmadi, DLL kilitli kaldi, FTP transfer basarisiz | InvektoAgentAI her iki script'e eklendi | **Yeni mikroservis = deploy-watcher.ps1 ($services array) + restart-services.bat (stop/start/status/test URL) OTOMATIK guncelle** |
-| 2026-02-11 | API | Async Task.Run hata verdiginde caller'a bildirim yapilmadi - 30s sessiz timeout | Error callback mekanizmasi eklendi (orchestrator catch + Task.Run catch) | **Fire-and-forget async islemde MUTLAKA error callback/notification mekanizmasi koy - sessiz timeout YASAK** |
-| 2026-02-11 | API | Cok katmanli error handling duplicate callback uretti (orchestrator + Task.Run ayri ayri gonderdi) | Orchestrator catch blogu kendi error callback'ini gonderir, Task.Run sadece orchestrator disindaki hatalari yakalar | **Error callback/notification TEK katmanda gonder - multi-layer error handling'de hangi katmanin notify ettigini ACIKCA belirle** |
-| 2026-02-11 | DB | Yeni DB tablosu olusturuldu ama DB kullanicisina GRANT verilmedi - permission denied | `GRANT ALL ON ALL TABLES/SEQUENCES TO invekto` | **Yeni tablo/sequence olusturulunca DB kullanicisina GRANT vermeyi UNUTMA - schema DDL + GRANT birlikte** |
-| 2026-02-11 | DB | FK constraint olan tabloya INSERT denemesi - parent tablo (tenant_registry) bos | Once tenant_registry'ye INSERT, sonra child tablolara | **FK constraint olan tablolarda INSERT sirasi: ONCE parent (tenant_registry), SONRA child (chatbot_flows, chat_sessions, vb.)** |
-| 2026-02-12 | Deploy | `wwwroot/flow-builder/` SPA build output'u `dotnet publish` sirasinda yoktu - Vite build calistirilmadan publish yapildi, sunucuda JS dosyalari eksik kaldi | `npx vite build` tekrar calistirildi, sonra publish | **SPA (Vite/React) olan .NET projede `dotnet publish` ONCE `vite build` calistir - build output wwwroot'ta fiziksel olarak yoksa publish'e dahil edilmez** |
-| 2026-02-12 | Deploy | Production'da SPA'ya dev port (3002) uzerinden erismeye calisildi - firewall acildi ama calismadi | Port 3002 kapatildi, Backend:5000/flow-builder/ kullanildi | **Vite dev server (3002) sadece local dev icindir. Production'da SPA, Backend:5000 uzerinden serve edilir (wwwroot static files). Dev port'u sunucuda ACMA** |
-| 2026-02-12 | Dashboard | Q "bat dosyasi ve watcher bilmiyor" dedi, 6 deploy script kontrol edildi - hepsi zaten Outbound iceriyordu. Gercek eksik: DependencyMap.tsx | DependencyMap.tsx'e Outbound node + arrow eklendi | **Q'nun tanimladigi problemi varsayma - ONCE tum ilgili dosyalari kontrol et, sonra gercek eksikligi bul. Kullanici farki farkli yorumlayabilir** |
-| 2026-02-12 | API | `MapFallbackToFile("/flow-builder/{**slug}")` static dosyalari (.js, .css) da yakaladi - browser'a index.html dondu | `{*path:nonfile}` constraint kullanildi | **SPA fallback pattern'de `{**slug}` yerine `{*path:nonfile}` kullan - slug dosya uzantili istekleri de yakalar** |
-| 2026-02-12 | API | Root cause yerine workaround denendi (explicit StaticFileOptions, diagnostic endpoint) - 4+ deploy dongusu harcandi | Codex'e soruldu, `:nonfile` constraint dogru fix cikti | **Static file + SPA sorunlarinda once routing pipeline'i incele (fallback pattern, middleware sirasi) - UseStaticFiles wwwroot altindaki tum klasorleri zaten serve eder** |
-| 2026-02-13 | Workflow | Interview'da ayni konuyu 2 kez sordum - Q "detay goster" dedi, detay sonrasi tekrar option listesi sundum, Q reddetti | Detay gosterdikten sonra en kapsamli secenekle devam et | **Ayni konuda 2. AskUserQuestion YASAK.** Q "detay goster" dediyse bilgi istiyor, tekrar soru degil. Goster ve devam et. |
-| 2026-02-13 | Codex | FlowSummaryBar localStorage catch blogu bos birakildi - lessons-learned'da "Empty catch YASAK" pattern'i VARDI ama yine uygulanmadi (Codex iter 1 FAIL) | console.warn eklendi | **catch blogu yazdigin AN'da "Empty catch YASAK" kuralini hatirla.** Pattern belgelenmis olmasi yetmiyor, her catch yazilisinda bilinc gerekli. |
-| 2026-02-13 | Codex | Error code semantic reuse: `AutomationUnknownNodeType` node execution exception icin de kullanildi - farkli failure mode ayni code | Yeni `INV-AT-021 AutomationNodeExecutionFailed` eklendi | **Her failure mode icin ayri error code kullan.** "Benzer gorunuyor" ≠ "ayni anlama geliyor". Unknown type ≠ execution error. |
-| 2026-02-13 | Codex | Tenant isolation check'te `GetSessionTenantId() == null` durumunda 403 dondu - session yok/expired durumunu tenant mismatch gibi handle etti, INV-AT-018/019 error contract kirildi | Guard `sessionTenant != null &&` olarak degistirildi - null = session yok, business logic'e birak | **Auth guard'da lookup null donerse 403 verme - entity bulunamadiginda business logic'in dogru error code'u donmesine izin ver.** `null` her zaman "yetkisiz" demek degil, "yok" da olabilir. |
-| 2026-02-13 | Codex | Fire-and-forget cleanup `.catch(() => {})` bos birakildı - Codex CQ2 "silent failure" yakaladi | `.catch((err) => { console.warn(...) })` eklendi | **Fire-and-forget bile olsa catch blogu bos birakilMAZ.** console.warn yeter - hata gizlenmez, debug kolaylasir. Lessons-learned'da "Empty catch YASAK" pattern'i 3. kez tekrarlandi. |
-| 2026-02-14 | Codex | Bare `catch` (tip belirtmeden) kullanildi - tum exception'lar ayni handle edildi, JSON parse hatasi ile genel hata ayirt edilemiyor | `catch(JsonException)` + `catch(Exception ex)` typed catches, her biri farkli log mesaji | **`catch` blogu yazarken tip BELIRT.** `catch { }` veya `catch(Exception) { }` yerine beklenen exception type'ini ayri yakala. "Empty catch YASAK" + "Typed catch ZORUNLU" |
-| 2026-02-14 | Codex | Error durumunda `healthScore = null` birakildi - UI component `score != null` kontrolu yapiyordu, null = badge gizli = kullanici hatayi GOREMEZ | `healthScore = 0` set edildi - badge "Sorunlu" (kirmizi) olarak render edildi, tooltip'te hata mesaji | **Error fallback degeri null BIRAKMA** - UI'da "varsa goster" pattern'i varsa null = gizle demek. Degraded/default deger set et ki UI feedback chain kirilmasin. |
-| 2026-02-14 | Codex | Silent fallback path: LogicSwitchHandler bos cases + FlowValidator bos handle_id durumunda sessizce default'a dustu - Codex CQ2 yakaladi | Warning log (StepWarn) ve validation warning eklendi | **Sadece catch degil, TUM silent fallback/default path'lerde uyari uret.** `if (empty) return default` yaziyorsan `logger.warn` veya `warnings.Add` ekle. "Sessiz gecis" = debug kabusuna davet. |
-| 2026-02-14 | Codex | Cross-layer contract mismatch: `is_empty` operator value gerektirmez ama backend RequiredFields + shared contract `required` + frontend farkli davraniyordu - 3 katman tutarsiz | Backend contextual check, frontend conditional render, shared contract guncellendi - 3 katman birlikte | **Operator/mode bazli field semantigi degistiginde 3 KATMANI BIRLIKTE guncelle:** 1) Backend validator 2) Frontend UI (conditional render) 3) Shared contract (arch/contracts/). Tek katman fix = gelecekte tutarsizlik. |
-| 2026-02-14 | Python | Raw string (`r'...'`) icinde `\uXXXX` escape islenmez - literal `\u015f` kalir | Turkce karakterleri DOGRUDAN raw string'e yaz: `r'\b(teşekkür)\b'` | **Python raw string + Unicode: `r'\u015f'` CALISMAZ! Gercek karakteri kullan `r'ş'` veya non-raw string `'\\b(\u015f)\\b'` yaz** |
-| 2026-02-14 | Python | MiniBatchKMeans `n_clusters > n_samples` olunca `ValueError` crash | `n_clusters = min(n_clusters, n)` guard eklendi | **sklearn KMeans: cluster sayisi sample sayisini ASAMAZ. Dinamik cluster hesabinda `min(clusters, n)` guard ZORUNLU** |
-| 2026-02-14 | Codex | Codex yanlis plan icin review yapti (pbx-scheduler vs whatsapp-analytics) - Q copy-paste sirasinda yanlis plan yapistirdi | Q'ya uyari verildi, dogru plan tekrar yapildi | **Codex review prompt'unda PLAN ADI + SLUG acikca belirt. Q birden fazla acik plan varsa karistirabilir** |
-| 2026-02-14 | Workflow | WA Analytics fazlari (WA-1~6) ve Roadmap Phase (RP-2) isimleri karisiyordu | Ayri isimlendirme: WA-* = WhatsApp Analytics, RP-* = Roadmap Phase | **Farkli workstream'ler ayni "Phase" kelimesini kullanirsa KARISIR. Her workstream'e unique prefix ver (WA-, RP-, FB-)** |
-| 2026-02-14 | Codex | Plan JSON `allowed_files` degistirilen dosyayi (arch/contracts/) icermiyordu + `files_count` tutarsizdi - 3 iter CQ3 FAIL | allowed_files'a eklendi, files_count guncellendi | **`/rev` oncesi: `git diff --cached --name-only` ciktisini `allowed_files` + `files_changed` + `files_count` ile BIREBIR karsilastir.** UC'U DE senkron olmali. (2026-02-11 lesson guclendirildi) |
-| 2026-02-14 | Codex | Graceful degradation `return null` path'lerinde log yoktu -- IntentDetector 3 yerde null donuyordu ama NEDEN null oldugu kayboluyordu. Codex pre-existing kodu bile yakaladi | Her `return null` path'ine `_logger.SystemWarn` eklendi (null JSON, empty content, empty intent) | **`return null` graceful degradation yaziyorsan HER path'te NEDEN null dondugunu logla.** Null != hata degil, ama null'un SEBEBI bilinmeli. "Empty catch YASAK" kuralinin graceful-return versiyonu. |
-| 2026-02-14 | DB | Pgvector `NpgsqlDbType.Unknown` kullanildi - `UseVector()` type mapping'i override edildi, `Writing values of 'Pgvector.Vector' is not supported` hatasi | `cmd.Parameters.AddWithValue("emb", queryEmbedding)` kullanildi - UseVector() mapping'i otomatik resolve eder | **Pgvector parametresi icin `new NpgsqlParameter("x", NpgsqlDbType.Unknown)` KULLANMA.** `AddWithValue()` ile type mapping'in kendisi cozumlesin. `UseVector()` register ettiysen explicit NpgsqlDbType verme. |
-| 2026-02-14 | PowerShell | `[DateTime]::new(1970,1,1,0,0,0,'Utc')` - 'Utc' string Int32'ye cevirilemiyor hatasi | `New-Object DateTime 1970,1,1,0,0,0,([DateTimeKind]::Utc)` kullanildi | **PowerShell DateTime constructor'da timezone stringi DEGIL, enum kullan:** `[DateTimeKind]::Utc` |
-| 2026-02-14 | Deploy | .bat dosyasinda embedded PowerShell pipe `\|` karakteri CMD tarafindan yorumlandi - "was unexpected at this time" | Tum logic ayri .ps1 dosyasina tasinip .bat sadece wrapper oldu | **PowerShell logic'i .bat'a GOMME.** CMD pipe/redirect/special karakterleri PowerShell'den once yorumlar. Ayri .ps1 + .bat wrapper pattern'i kullan. |
-| 2026-02-14 | Deploy | WinSCP ile DLL transfer edilemedi - calisir servis dosyayi kilitliyor | Q manuel olarak servisi durdurdu, deploy yapti, tekrar baslatti | **Deploy oncesi hedef servisi DURDUR.** .NET servis calisirken DLL locked - uzerine yazma basarisiz olur. restart-services.bat stop → deploy → start sirasi zorunlu. |
-| 2026-02-14 | Deploy | `appsettings.json` sunucuda duzenlendi ama deploy `-mirror` ile dev versiyonunu uzerine yazdi - production secrets silindi | Production ayarlari `appsettings.Production.json`'a tasindi (deploy exclude ediyor) | **Sunucuda `appsettings.json` DUZENLEME** - deploy her seferinde ezer. Production-only ayarlar (secret, password, absolute path) `appsettings.Production.json`'a yazilmali |
-| 2026-02-14 | Deploy | Test script `appsettings.json`'dan JWT key okudu - deploy sonrasi bos geldi, test basarisiz | ConfigPath default'u `appsettings.Production.json` yapildi | **Sunucu test scriptleri `appsettings.Production.json`'dan okusun** - `appsettings.json` dev template'idir, secret icermez |
-| 2026-02-14 | DB | Soft-delete (`is_active=false`) + unique constraint = ghost duplicate. LIST bos doner ama INSERT "duplicate key" verir | `ON CONFLICT DO UPDATE WHERE is_active = false` ile reactivate | **Soft-delete olan tablolarda unique constraint'e dikkat** - silinmis kayit DB'de duruyor. INSERT'te `ON CONFLICT` ile soft-deleted reactivation pattern kullan |
-| 2026-02-14 | Config | `UglyToad.PdfPig` NuGet paketi stable version yok - build failed | Paket adi `PdfPig` (v0.1.13) olarak degistirildi | **NuGet paket eklerken nuget.org'da stable version VAR MI kontrol et** - fork/wrapper paketler stable olmayabilir |
-| 2026-02-14 | Logging | `SystemInfo/Warn/Error` 1 parametre aliyor, yeni kod 3 ile cagirdi - 18 build error | `_logger.SystemInfo("[ClassName] message")` formatina duzeltildi | **Yeni dosyada logger kullanirken MEVCUT kullanimlari kontrol et** - `JsonLinesLogger` method imzasi: `SystemInfo(string message)`, sinif adi mesajin icine `[ClassName]` olarak yazilir |
-| 2026-02-15 | DB | `deleted_at IS NULL` kullanildi ama `documents` tablosunda `deleted_at` kolonu yok - runtime SQL error | `deleted_at` check kaldirildi | **SQL WHERE clause'da kolon kullanmadan ONCE schema dosyasini (arch/db/*.sql) kontrol et** - varsayilan kolon olmayabilir |
-| 2026-02-15 | Codex | `allowed_files` listesi diff'teki tum dosyalari icermiyordu (arch/contracts/, arch/plans/diffs/) - CQ3 scope violation | Eksik dosyalar allowed_files'a eklendi | **`/rev` oncesi: `git diff --cached --name-only` ciktisini `allowed_files` ile BIREBIR karsilastir** (tekrar - 3. kez) |
-| 2026-02-15 | Codex | Restart recovery claim query `WHERE status NOT IN ('completed', 'error')` aktif pipeline (cleaning/threading/stats) kayitlarini da yakaladi - ikinci instance double-process riski | `AND updated_at < NOW() - INTERVAL '30 minutes'` stale timeout eklendi | **Atomic claim query'lerinde sadece terminal state exclusion yetmez.** Aktif islem yapan kayitlari ayirt etmek icin stale timeout (updated_at check) ekle. Pipeline her stage'de updated_at'i yenilemeli ki aktif kayitlar claim edilmesin |
-| 2026-02-15 | Codex | `FOR UPDATE SKIP LOCKED` sadece transaction suresi boyunca lock tutar - transaction commit sonrasi satir serbest | Stale timeout + pipeline progress update pattern'i ile birlestirildi | **PostgreSQL `FOR UPDATE SKIP LOCKED` transaction-scoped lock'tur.** Uzun sureli islemlerde (pipeline) row lock tutmak icin kullanilAMAZ. Advisory lock veya stale timeout pattern kullan |
-| 2026-02-15 | Codex | 4 iterasyon boyunca ayni Q3 (recovery race condition) farkli acilardan FAIL aldi - her fix yeni edge case ortaya cikartti | Nihai cozum: terminal state exclusion + stale timeout + pipeline progress update uc'u birlikte | **Multi-instance recovery mekanizmasi 3 AYAK gerektirir:** 1) Terminal state exclusion 2) Stale timeout (aktif vs stuck ayirimi) 3) Pipeline progress heartbeat (updated_at yenileme). Tek basina hicbiri yetmez |
-| 2026-02-15 | API | PDF magic bytes check try-catch disinda kaldi - ReadExactlyAsync exception'i structured error yerine generic 500 dondu | Magic bytes check try-catch ICINE tasindiUpload validation akisi tamamen structured) | **File I/O (stream okuma, header check) islemleri HER ZAMAN try-catch icinde olmali** - stream hatalari beklenmedik zamanda olabilir |
-| 2026-02-15 | Workflow | WA-4 prompt'unda "ebrumoda verisi uzerinde" yazildi - Q "uygulama yalniz ebrumoda icin olmayacak" diye duzeltti. Tek musteri verisini genel urun gibi tanimladi | Prompt duzeltildi: "ebrumoda sadece ilk ornek/test verisi - dashboard multi-tenant ve sektor bagimsiz olacak" | **Feature/dashboard tanimlarken tek musteri verisini urun tanimi gibi YAZMA.** Test verisi = ornek, urun = multi-tenant. "X verisi uzerinde calisacak" yerine "herhangi bir tenant verisi uzerinde calisabilmeli, X ilk test verisi" yaz |
-| 2026-02-15 | Git | `git diff --cached` ile olusturulan diff dosyasi (`arch/plans/diffs/`) gercek OpenAI API key iceriyordu - GitHub Push Protection reddetti | Soft reset + placeholder (`REPLACE_WITH_ACTUAL_OPENAI_API_KEY`) + recommit | **Diff dosyasi olusturduktan sonra `grep -i 'sk-\|apikey\|password\|secret' diff_file` ile secret taramasi yap.** appsettings.json staged ise diff'te gercek key gorulur |
-| 2026-02-15 | Workflow | Phase tamamlanip commit sonrasi arch dosyalarini (session-memory, active-work, q-ops-checklist) guncellemedim - Q hatirlatti | 3 dosya guncellendi | **Her faz DONE olunca OTOMATIK 3 dosya guncelle:** 1) session-memory.md (last update + ports + features + context) 2) active-work.md (queue + recently completed) 3) q-ops-checklist.md (Q'nun sunucu islemleri). Q hatirlatmasini BEKLEME |
-| 2026-02-15 | Codex | Plan JSON `arch/contracts/plan-schema.json` okunmadan olusturuldu - `verdict` string/object, `verification_questions` id/category, `scope_discipline`, `error_handling`, `aha_moments` 6+ alan hatasi. 3 iter'in 2'si sadece schema fix | Schema okunup tum alanlar dogru formatta yeniden yazildi | **Plan JSON olusturmadan ONCE `arch/contracts/plan-schema.json`'i OKU.** Her alan icin: type, required, enum, additionalProperties kontrol et. Schema = contract, tahmin YASAK |
-| 2026-02-15 | Codex | "Batch" olarak yazilan kod aslinda hala N+1'di - transaction icinde per-row UPDATE (N query 1 tx icinde). Codex CQ6 dogru yakaladi | Multi-row `UPDATE c SET embedding = v.emb FROM (VALUES ...) AS v(id, emb)` - batch basina 1 SQL | **"Batch" = tek SQL birden fazla satir demek, dongu icinde tek satir UPDATE demek DEGIL.** Transaction icinde N ayri UPDATE hala N+1'dir. True batch = multi-row VALUES clause |
-| 2026-02-15 | Codex | Diff dosyasi kendini iceriyor (`arch/plans/diffs/` staged) - `git diff --cached --stat` toplam 26 dosya gosteriyor ama source file 25 | `-- ':!arch/plans/diffs/*'` exclude ile source-only stats hesaplandi | **Diff stats hesaplarken self-referencing diff dosyasini EXCLUDE et:** `git diff --cached --stat -- ':!arch/plans/diffs/*'` Yoksa files_count tutarsiz olur |
-| 2026-02-15 | Workflow | Cross-file status stale: GR-2.1 "Phase B Devam" ama tamamlanmisti, WA-3/WA-5 "Sirada/Bekliyor" ama yapilmisti - ayni durumu takip eden birden fazla dosya senkronize degildi | Tum referans dosyalar (phase-2.md, README.md, active-work.md) birlikte guncellendi | **Faz/GR tamamlandiginda durum guncellemesini TUM referans dosyalarda yap:** phase-X.md + phases/README.md + active-work.md + session-memory.md. Tek dosya guncellemek YETMIYOR |
+### Codex Review
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-11 | Yeni step type (api_call) eklendi ama mevcut webhook-only kodu guncellenmedi | `step.type === 'api_call'` guard + optional chaining | **Yeni variant/type eklerken TUM mevcut erisim noktalarini tara** |
+| 2026-02-11 | Multi-step senaryoda hardcoded placeholder kullanildi | `{{step_N.field}}` template + `resolveStepRefs()` | **Adimlar arasi veri aktarimi OTOMATIK olmali** |
+| 2026-02-11 | Plan JSON `files_changed` unstage sonrasi senkronize edilmedi | `git diff --cached` ile esitle | **Stage/unstage sonrasi files_changed + files_count GUNCELLE** |
+| 2026-02-11 | Yorum "All traffic via Backend" ama kod direct erisimi de destekliyordu | Yorum guncellendi | **Mimari yorumlar kodun gercek davranisiyla eslessin** |
+| 2026-02-13 | FlowSummaryBar localStorage catch bos birakildi | console.warn eklendi | **catch yazdigi AN "Empty catch YASAK" kuralini hatirla** |
+| 2026-02-13 | Error code semantic reuse: farkli failure mode ayni code | Yeni INV-AT-021 eklendi | **Her failure mode icin AYRI error code** |
+| 2026-02-13 | Tenant isolation null = 403 dondu, session yok durumunu mismatch gibi handle etti | Guard `sessionTenant != null &&` | **Auth guard null = 403 verme, null = "yok" olabilir** |
+| 2026-02-13 | Fire-and-forget `.catch(() => {})` bos birakildi | `.catch((err) => { console.warn(...) })` | **Fire-and-forget bile olsa catch bos birakilMAZ** |
+| 2026-02-14 | Bare `catch` tip belirtmeden - tum exception'lar ayni handle | `catch(JsonException)` + `catch(Exception ex)` | **catch tip BELIRT - "Empty catch YASAK" + "Typed catch ZORUNLU"** |
+| 2026-02-14 | Error fallback `healthScore = null` - UI badge gizlendi | `healthScore = 0` + tooltip | **Error fallback null BIRAKMA - degraded/default deger set et** |
+| 2026-02-14 | Silent fallback path: bos cases sessizce default'a dustu | Warning log + validation warning eklendi | **TUM silent fallback/default path'lerde uyari uret** |
+| 2026-02-14 | Cross-layer contract mismatch: 3 katman tutarsiz | Backend + frontend + shared contract birlikte guncellendi | **Field semantigi degistiginde 3 KATMANI BIRLIKTE guncelle** |
+| 2026-02-14 | Graceful degradation return null path'lerinde log yoktu | Her path'e SystemWarn eklendi | **return null yaziyorsan NEDEN null dondugunu logla** |
+| 2026-02-14 | Codex yanlis plan icin review yapti | Q'ya uyari verildi | **Review prompt'unda PLAN ADI + SLUG acikca belirt** |
+| 2026-02-14 | allowed_files + files_count tutarsiz - 3 iter CQ3 FAIL | allowed_files'a eklendi | **`/rev` oncesi: git diff ciktisini allowed_files + files_changed + files_count ile BIREBIR karsilastir** |
+| 2026-02-15 | allowed_files diff'teki tum dosyalari icermiyordu - CQ3 scope violation | Eksik dosyalar eklendi | **`/rev` oncesi: allowed_files BIREBIR karsilastir** (3. tekrar) |
+| 2026-02-15 | Recovery claim query aktif pipeline kayitlarini da yakaladi | Stale timeout eklendi | **Claim query'lerinde stale timeout (updated_at check) ekle** |
+| 2026-02-15 | FOR UPDATE SKIP LOCKED transaction-scoped - uzun islemlerde yetersiz | Stale timeout + progress update | **FOR UPDATE SKIP LOCKED uzun islemlerde kullanilAMAZ** |
+| 2026-02-15 | 4 iter ayni Q3 farkli acilardan FAIL | Terminal state + stale timeout + heartbeat uc'u birlikte | **Multi-instance recovery 3 AYAK gerektirir** |
+| 2026-02-15 | Plan JSON schema okunmadan olusturuldu - 6+ alan hatasi | Schema okunup yeniden yazildi | **Plan JSON ONCE plan-schema.json'i OKU - tahmin YASAK** |
+| 2026-02-15 | "Batch" aslinda N+1'di - per-row UPDATE transaction icinde | Multi-row UPDATE FROM VALUES | **"Batch" = tek SQL birden fazla satir, dongu icinde tek UPDATE DEGIL** |
+| 2026-02-15 | Diff dosyasi kendini iceriyor - files_count tutarsiz | `':!arch/plans/diffs/*'` exclude | **Diff stats'ta self-referencing dosyayi EXCLUDE et** |
+| 2026-02-16 | CountConfirmedForSlotAsync + MarkReminderSentAsync tenant_id WHERE clause eksik | tenant_id parametre + WHERE clause eklendi | **Her repository query'sinde tenant_id WHERE clause ZORUNLU - mevcut pattern'den kopyalarken bile kontrol et** |
+| 2026-02-16 | TaskCanceledException catch'te sadece `break` vardi, log yoktu | SystemWarn + appointment ID + progress count eklendi | **catch icinde break/continue/return yaziyorsan NEDEN'i logla** |
+| 2026-02-16 | Codex CQ3 false positive: diff context satirlarini yeni ekleme zannetti | Q FORCE PASS (2 iter sonra) | **Codex diff context satiri (boslukla baslar) ile ekleme (+) satiri karistirabilir - false positive olarak belgele** |
+| 2026-02-16 | Codex CQ4 duplicate: her repo'daki GetTenantHealthInfoAsync'i DRY violation zannetti | Q FORCE PASS - mimari karar (mikro-servis izolasyonu) | **Mikro-servis izolasyonu = bilinçli duplikasyon. Codex'e architectural decision olarak belgele, 2. iter'de Q escalation** |
+| 2026-02-16 | ErrorCodes constant adi yanlis kullanildi (KnowledgePhotoBlockedHealth vs KnowledgePhotoBlockedHealthTenant) | ErrorCodes.cs'ten dogrusu kontrol edildi | **ErrorCodes constant kullanirken ONCE ErrorCodes.cs'teki tam adi kontrol et** |
+
+### Deploy & Config
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-02 | .NET servis port'u default'a dustu - Kestrel eksikti | `ConfigureKestrel(ListenAnyIP(port))` | **Yeni serviste Kestrel port binding kontrol et** |
+| 2026-02-11 | Deploy script guncellenmedi (4 script) | AgentAI eklendi | **Yeni mikroservis = deploy scripts OTOMATIK guncelle** |
+| 2026-02-11 | Backend appsettings guncellenmedi | Microservice section eklendi | **Yeni servis = appsettings.json + Production.json'a section ekle** |
+| 2026-02-11 | Production config placeholder'lar Q'ya birakildi | Tum config'ler otomatik dolduruldu | **Production.json E:\\ path, port, conn string OTOMATIK doldur** |
+| 2026-02-11 | deploy-watcher.ps1 ve restart-services.bat guncellenmedi | InvektoAgentAI eklendi | **Yeni servis = deploy-watcher + restart-services guncelle** |
+| 2026-02-12 | SPA build output dotnet publish'te yoktu | `npx vite build` sonra publish | **SPA projesinde publish ONCE vite build calistir** |
+| 2026-02-12 | Production'da dev port (3002) uzerinden erisildi | Backend:5000 uzerinden serve | **Vite dev server production'da ACMA** |
+| 2026-02-14 | .bat'ta embedded PowerShell pipe CMD yorumladi | Ayri .ps1 + .bat wrapper | **PowerShell logic'i .bat'a GOMME** |
+| 2026-02-14 | DLL transfer basarisiz - servis dosyayi kilitliyor | Servis durdur -> deploy -> baslat | **Deploy oncesi hedef servisi DURDUR** |
+| 2026-02-14 | deploy -mirror production secrets'i sildi | Production.json'a tasindi | **Sunucuda appsettings.json DUZENLEME - deploy ezer** |
+| 2026-02-14 | Test script bos JWT key okudu | ConfigPath = Production.json | **Sunucu test scriptleri Production.json'dan okusun** |
+| 2026-02-14 | NuGet stable version yok - build failed | PdfPig (v0.1.13) | **NuGet eklerken stable version VAR MI kontrol et** |
+| 2026-02-15 | FK `tenant_registry(id)` ama PK aslinda `tenant_id` | `tenant_registry(tenant_id)` duzeltildi | **FK yazarken hedef tablonun PK/kolon adini schema'dan DOGRULA** |
+
+### DB & Schema
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-11 | Yeni tablo olusturuldu ama GRANT verilmedi | GRANT ALL | **Yeni tablo = DDL + GRANT birlikte** |
+| 2026-02-11 | FK constraint - parent tablo bos | Once parent INSERT | **FK tablolarda INSERT sirasi: parent -> child** |
+| 2026-02-14 | Soft-delete + unique constraint = ghost duplicate | ON CONFLICT reactivate | **Soft-delete + unique constraint dikkat** |
+| 2026-02-14 | Pgvector NpgsqlDbType.Unknown kullanildi | AddWithValue() kullan | **UseVector() register ettiysen explicit type verme** |
+| 2026-02-15 | deleted_at IS NULL ama kolon yok | deleted_at check kaldirildi | **SQL'de kolon kullanmadan ONCE schema kontrol et** |
+
+### API & Auth
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-11 | Yeni endpoint JWT middleware listesine eklenmedi | Prefix listesine eklendi | **Yeni endpoint = JWT prefix listesini kontrol et** |
+| 2026-02-11 | Node.js res.json() catch'inde res.text() - body stream tukenmis | text() sonra JSON.parse() | **fetch body stream TEK SEFER okunur** |
+| 2026-02-11 | Async hata 30s sessiz timeout | Error callback eklendi | **Fire-and-forget'te MUTLAKA error callback koy** |
+| 2026-02-11 | Cok katmanli error handling duplicate callback | Tek katmanda gonder | **Error notification TEK katmanda** |
+| 2026-02-12 | MapFallbackToFile slug static dosyalari yakaladi | `{*path:nonfile}` constraint | **SPA fallback icin `{*path:nonfile}` kullan** |
+| 2026-02-12 | Root cause yerine workaround - 4+ deploy dongusu | routing pipeline incelendi | **SPA sorunlarinda once routing pipeline incele** |
+| 2026-02-15 | PDF magic bytes check try-catch disinda | try-catch icine tasindi | **File I/O HER ZAMAN try-catch icinde** |
+
+### Git & Secrets
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-09 | GitHub Push Protection gercek API key reddetti | Placeholder + soft reset | **Production config'de GERCEK secret OLMAMALI** |
+| 2026-02-15 | Diff dosyasi gercek OpenAI key iceriyordu | Soft reset + placeholder | **Diff olusturduktan sonra secret taramasi yap** |
+| 2026-02-15 | deploy_output/ gercek key iceriyordu - git add -A staged | Soft reset + placeholder | **git add -A oncesi deploy_output/ secret tarasi** |
+
+### Codex Multi-Iteration (PKT-1 + PKT-2)
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-15 | Contract-DTO field name mismatch (sources.title vs Question/DocumentTitle) | Unified Title property | **Contract field adini DTO'da BIREBIR kullan** |
+| 2026-02-15 | DTO comment "auto-detect" ama kod auto-detect yapmiyor | Comment duzeltildi | **DTO comment = kodun GERCEK davranisini anlat** |
+| 2026-02-15 | Lang fallback sonrasi message insert orijinal lang'i kullaniyordu | `template.Lang ?? lang` ile effectiveLang | **Fallback sonrasi "effective" degeri kullan, orijinal degeri degil** |
+| 2026-02-15 | Cross-service boundary dogrulama (Q7 tone) 3 iter boyunca UNKNOWN | EXPECTED_UNKNOWN + Q FORCE PASS | **Cross-service dogrulama = EXPECTED_UNKNOWN olarak belgele, 1. iter'de Q escalation** |
+| 2026-02-16 | PKT-2 iter 0: 3 gercek kod hatasi (tenant_id x2, silent failure). iter 1: 2 false positive kaldirildi | iter 1'de Q FORCE PASS | **Gercek kod hatalari 1 iteration'da fixlenir, false positive/mimari karar icin Q FORCE PASS** |
+
+### Workflow & Process
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-09 | arch/ dosyalari guncellenmeden commit yapildi | Her adim sonrasi guncelle | **Commit sonrasi arch/ GUNCELLEMEDEN devam etme** |
+| 2026-02-09 | Yeni servis dashboard'da gorunmedi | 6 dosya guncelleme | **Yeni servis = Backend + Dashboard guncelle** |
+| 2026-02-12 | Q'nun tanimladigi problemi varsaydim | Once tum dosyalari kontrol et | **Q'nun problemini VARSAYMA - once kontrol et** |
+| 2026-02-13 | Interview'da ayni konuyu 2 kez sordum | Detay goster ve devam et | **Ayni konuda 2. AskUserQuestion YASAK** |
+| 2026-02-14 | WA Analytics/Roadmap Phase isimleri karisti | Unique prefix ver | **Her workstream'e unique prefix (WA-, RP-, FB-)** |
+| 2026-02-15 | Phase tamam ama arch dosyalari guncellenmedi | 3 dosya guncellendi | **DONE olunca OTOMATIK 3 dosya guncelle** |
+| 2026-02-15 | Cross-file status stale - birden fazla dosya tutarsiz | Tum referans dosyalar birlikte | **Durum guncellemesini TUM referans dosyalarda yap** |
+| 2026-02-15 | Tek musteri verisini genel urun gibi tanimladi | multi-tenant olarak duzeltildi | **Test verisi = ornek, urun = multi-tenant** |
+
+### PowerShell & Python
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-03 | Invoke-RestMethod HTTPS TLS hatasi | curl.exe -k | **self-signed cert = curl.exe kullan** |
+| 2026-02-14 | PowerShell DateTime 'Utc' string hatasi | `[DateTimeKind]::Utc` enum | **DateTime'da timezone enum kullan** |
+| 2026-02-14 | Python raw string icinde \uXXXX islenmez | Gercek karakteri yaz | **Python raw string + Unicode: gercek karakteri kullan** |
+| 2026-02-14 | MiniBatchKMeans n_clusters > n_samples crash | `min(clusters, n)` guard | **KMeans: cluster <= sample guard ZORUNLU** |
+
+### Logging
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-14 | SystemInfo/Warn/Error 1 parametre aliyor, 3 ile cagrildi | Tek string formatina duzeltildi | **Logger kullanirken MEVCUT imzayi kontrol et** |
 
 ---
 
 ## Patterns That Work
 
+### Architecture & Design
+
 | Pattern | Where Used | Why It Works |
 |---------|------------|--------------|
-| Service isolation | Mikro servisler | Bağımsız deploy, kolay test |
-| Shared contracts | Servisler arası | Type safety, API uyumu |
+| Service isolation | Mikro servisler | Bagimsiz deploy, kolay test |
+| Shared contracts | Servisler arasi | Type safety, API uyumu |
 | IDisposable pattern | Resource management | Memory leak prevention |
-| Denormalized counters | Aggregate tables | O(1) reads, atomic increment on write |
-| `sp_getapplock` distributed lock | Migrations, shared resources | Cluster-safe, session-scoped, timeout destekli, SQL Server native |
-| Generic key-value settings API | Ayarlar | Yeni ayar eklerken backend değişikliği gerektirmez |
-| Off-peak scheduler (gece saatleri) | Heavy işlemler | Yoğun işlemler gece çalışır, gündüz timeout/yavaşlık olmaz |
-| Per-operation timeout + continue-on-error | Batch işlemler | Bir kayıt fail olursa diğerlerine devam eder, hata izole kalır |
-| IDbContextFactory + await using | Concurrent requests | Thread-safe DbContext kullanımı |
-| AddPooledDbContextFactory + scoped registration | DI setup | Factory + legacy scoped injection birlikte çalışır |
-| ConcurrentDictionary.TryAdd deduplication | Race condition prevention | İlk gelen kazanır, diğerleri ignore/wait |
-| Idempotent DB operation (catch duplicate → fetch) | Concurrent writes | Race condition'da duplicate key yerine mevcut kaydı döndür |
-| Timer-based orphan cleanup | Resource management | Connection kopma sonrası session sızmasını önler |
-| IHostedService for cleanup timers | Background services | Framework timer lifecycle'ı yönetir - clean shutdown |
-| Shared utility + centralized import | DRY principle | Duplicate kod eliminate edilir, tek değişiklik noktası |
-| `git checkout HEAD -- file` selective revert | Git workflow | Sadece hatalı dosyayı geri alır - tüm work kaybolmaz |
-| Token + response null check pattern | API calls | Auth yoksa sessizce çık, API undefined dönerse crash olmaz |
-| `SET DEADLOCK_PRIORITY LOW` + exponential backoff + jitter | Non-critical jobs | Deadlock'ta victim olur, jitter ile retry çakışması önlenir |
-| Deadlock retry with error code check | SQL retry | `err.number === 1205` ile sadece deadlock'a retry, diğer hatalar fırlatılır |
-| Interview'da şeytanın avukatlığı | Auto workflow interview | Q'yu challenge et, alternatifler sun, edge case'leri sor - Q "uyandırılmak" istiyor, pasif kalmak değer katmaz |
-| Popup header'da entity adı ana başlık | UI Popup/Modal | Genel açıklama alt başlık, entity adı ana başlık - kullanıcı neye baktığını hemen anlar |
-| `ConfigureKestrel + ListenAnyIP/ListenLocalhost` | Mikro servis port binding | Explicit port tanımı, launchSettings.json'a bağımlı değil |
-| `curl.exe -k -H "header"` PowerShell'de | HTTPS API call (self-signed cert) | Invoke-RestMethod TLS sorunları bypass, JSON parse `ConvertFrom-Json` ile çalışır |
-| Yeni Mikroservis Checklist (OTOMATIK) | Her yeni servis eklenmesinde | Q sormadan tamamla: 1) appsettings.Production.json (E:\\ path + placeholder secrets) 2) Backend appsettings.json + Production'a Microservice section 3) dev-to-invekto-services.bat (build+upload) 4) install-services.bat (NSSM blok) 5) firewall-rules.bat (port) 6) session-memory.md (port tablosu, deploy, servisler) 7) deploy-watcher.ps1 ($services array) 8) restart-services.bat (stop/start/status/test URL) 9) DB tablolari icin GRANT (SELECT/INSERT/UPDATE/DELETE + sequences) 10) tenant_registry'ye test tenant INSERT (FK constraint icin) 11) arch/deploy/appsettings.Production.{Name}.json (production template) 12) arch/deploy/appsettings.Production.Backend.json (Microservice section) 13) Backend Services/{Name}Client.cs (health + endpoints + test) 14) Backend Program.cs (DI + health check + test proxy + endpoint discovery + restart mapping) 15) Dashboard DependencyMap.tsx (node + arrow) 16) Dashboard TestPanel.tsx (service test config) 17) Dashboard LogStream.tsx (service filter dropdown) |
-| Step result chaining (`{{step_N.field}}`) | Simulator scenario runner | Onceki step'in response'undan otomatik deger cekme - multi-step E2E testlerde manuel placeholder'a gerek kalmaz |
-| Selective git staging (scope discipline) | /rev workflow | `deploy_output/` ve UI refactor dosyalarini unstage edip sadece functional changes'i commit - diff'i focused tutar, Codex review kolaylasir |
-| Error callback in async processing | Automation Task.Run + Orchestrator | Sessiz timeout yerine gercek hata mesaji aninda gorulur - "permission denied for table chatbot_flows" gibi spesifik hata simulator UI'da gorundu, log karistirmaya gerek kalmadi |
-| Roadmap/teknik-detay hiyerarsisi (summary → tracking → detail) | `roadmap-phases.md` → `phase-1.md` → `flow-builder.md` | Paralel dokumanlar kacinamaz sekilde birbirine referans verir, tek kaynak (phase-1.md) durum takibi yapar, teknik detay ayri dosyada kalir |
-| Mevcut proxy pattern'i yeniden kullanma (`FbProxyGet`) | Backend flow list endpoint | Yeni endpoint icin yeni client/helper yazmak yerine mevcut `FlowBuilderClient` + `FbProxyGet` yeniden kullanildi - 3 satir ile tamamlandi |
-| `{*path:nonfile}` SPA fallback constraint | `MapFallbackToFile` | Sadece dosya uzantisi olmayan route'lari yakalar, .js/.css UseStaticFiles'a kalir |
-| Plan review + iyilestirme adimi (impl oncesi) | Phase 3a plan review | 8 mimari iyilestirme bulundu (Strategy, safety limits, pure engine). Ozellikle IMP-8 sonraki faz icin kritik bagimlilik. Plansiz baslamak bunu kacirirdi. |
-| SQL CASE WHEN conditional fetch | `AutomationRepository` flow list endpoint | List endpoint'te v1 flow'lar icin gereksiz buyuk JSON cekilmez (`CASE WHEN version='2' THEN flow_config::text ELSE NULL END`). N satir * config_size kadar bandwidth tasarrufu. Codex CQ6 yakaladi. |
-| queueMicrotask deferred revalidation | Phase 2.5 flow-store.ts | React Flow interaction'lari bloklamadan her state degisikliginden sonra validation tetiklenir. UI donmuyor, 9 action'da kullanildi. |
-| Immutable graph pre-compute (HashSet/Dict in constructor) | FlowGraphV2 `NodesWithIncoming` | O(E) linear scan yerine O(1) lookup. Immutable object constructor'da bir kez hesapla, thread-safe reuse. Codex iter 2 yakaladi. |
-| Codex escalation analizi (real vs false-positive) | Phase 3a iter 3 escalation | Iter 3'te blocking issues'i "real fix" vs "by-design false positive" olarak kategorize edip Q'ya sunmak, FORCE PASS kararini kolaylastirdi. Codex stateless - cross-iteration context yok. |
-| Auth guard null-safe pattern (`exists && mismatch`) | Phase 3b tenant isolation | Lookup null = entity yok, business logic handle etsin. `sessionTenant != null && tenant.TenantId != sessionTenant` seklinde yazilir — 403 sadece gercek mismatch'te. |
-| Contextual required field validation (operator-aware) | FlowValidator logic_condition rule 4b | `is_empty` gibi unary operator'lerde value gereksiz. Static RequiredFields yerine runtime context check - false positive uyari onler, UX iyilestir. |
-| Semantic search + keyword fallback (try-catch wrap) | RetrievalService.SearchAsync | Semantic search exception'i try-catch ile sarmalayip keyword fallback'e dusmesi saglanir. Embedding service fail ettiginde kullanici hala sonuc alir - graceful degradation. |
-| Ayri .ps1 + .bat wrapper pattern | arch/deploy/test-knowledge.ps1 + .bat | .bat sadece `powershell -File script.ps1` calistirir. Tum logic .ps1'de kalir - pipe, escape, special char sorunlari ortadan kalkar. |
-| `ON CONFLICT DO UPDATE WHERE is_active = false` reactivation | `InsertFaqAsync` FAQ CRUD | Soft-deleted kayit varsa reactivate eder, aktif duplicate varsa null doner -> 409 Conflict. Unique constraint + soft-delete birlikte calisir |
-| `appsettings.Production.json` deploy-safe config | WinSCP `-filemask="\|appsettings.Production.json"` | Deploy script Production.json'i sync'ten exclude eder -> sunucudaki secrets korunur. Base appsettings.json dev template olarak guvenle overwrite edilebilir |
-| Multi-value batch INSERT (50 per batch) | KnowledgeRepository.BatchInsertChunksAsync | N adet tek INSERT yerine 50'lik gruplarla VALUES (...),(...) - ayni transaction icinde ~50x daha az round-trip. Tek commit noktasi, rollback kolay |
-| Document tenant ownership before chunk insert | KnowledgeRepository.BatchInsertChunksAsync | Chunk insert oncesi `SELECT id FROM documents WHERE id=@did AND tenant_id=@tid` ile owner dogrulamasi - multi-tenant izolasyon garantisi |
-| JwtGenerator shared token factory | Invekto.Shared/Auth/JwtGenerator.cs | GenerateToken(tenantId, role, source, expiry) generic method + GenerateServiceToken() convenience wrapper. FlowBuilder login + Backend proxy ayni factory'yi kullaniyor - JWT signing logic tek yerde |
-| File cleanup on upload failure | Knowledge/Program.cs upload endpoint | `savedPath` try disinda tanimla, catch'te `File.Exists + File.Delete` + SystemWarn log. Orphan dosya birakma |
-| Centralized Q ops checklist (`arch/q-ops-checklist.md`) | Her faz sonrasi Q'nun yapacagi infra/DB/deploy isleri | Ops task'lar session-memory'de daginik kaliyordu, Q hangisini yapti belli degildi. Tek dosyada topla + her faz bitince otomatik guncelle + Q'ya bekleyenleri gosterip hangilerini tamamladigini sor |
-| 3-dosya arch update pattern (session-memory + active-work + q-ops-checklist) | Her faz bitisi | Session context korunur, Q ops task'larini gorebilir, sonraki session dogru yerden devam eder. Commit sonrasi OTOMATİK yapilmali |
-| 8 Paket Execution Stratejisi (v5.0) | Phase 2-3 yurutme | Tekli GR dongusu (24 iş × interview+plan+review = 36 saat overhead) yerine 8 paket (12 saat overhead). Optimum: 6-8 paket. Daha az = Codex zorlasir + hata yayilir. Daha fazla = overhead artar. Saf kod suresi degismez, fark overhead'de. |
-| Port haritasi cross-check | Yeni servis planlama | VisualSearch 7109 planlandi ama WhatsAppAnalytics zaten 7109'da - 7111'e tasindi. Yeni port atarken session-memory.md port tablosunu + phase docs'u BIRLIKTE kontrol et |
-| Multi-row `UPDATE FROM (VALUES ...)` batch pattern | KnowledgeRepository.BatchUpdateChunkEmbeddingsAsync | 50 satiri tek SQL ile gunceller, N round-trip yerine N/50. Transaction + batch = atomik + performansli |
+| Denormalized counters | Aggregate tables | O(1) reads, atomic increment |
+| Generic key-value settings API | Ayarlar | Yeni ayar = backend degisikligi gerekmez |
+| Immutable graph pre-compute (HashSet/Dict) | FlowGraphV2 | O(1) lookup, thread-safe reuse |
+| Contextual required field validation | FlowValidator | Runtime context check, false positive onler |
+| Roadmap/teknik-detay hiyerarsisi | Docs | Summary -> tracking -> detail, tek kaynak |
+| Plan review + iyilestirme adimi | Phase 3a | 8 mimari iyilestirme bulundu, plansiz baslamak kacirirdi |
+| 10 Paket Execution Stratejisi (v5.1) | Phase 2-3 | 24 dongu -> 8 paket -> buyuk PKT split ile 10 paket, yonetilebilir boyut |
+| Pre-phase tech research + faz dosyasina embed | Phase 3C/3D CLIP/MediaPipe | Faz basladiginda karar alinmis, zaman kaybi yok |
+| PKT split: isimli strateji + Q secimi | PKT-6 -> 6A/6B/6C (Strategy C) | Coklu secenek -> Q bilincli karar verir, tek oneri dayatma yok |
+| Karsilastirma tablosu (latency/cost/CPU/prod-ready) | CLIP + MediaPipe arastirmasi | Q hizli karar verir, duz metin yerine tablo net |
+
+### DB & Data
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| IDbContextFactory + await using | Concurrent requests | Thread-safe DbContext |
+| AddPooledDbContextFactory + scoped | DI setup | Factory + legacy scoped birlikte calisir |
+| ConcurrentDictionary.TryAdd | Race prevention | Ilk gelen kazanir |
+| Idempotent DB op (catch dup -> fetch) | Concurrent writes | Duplicate key yerine mevcut kaydi dondur |
+| ON CONFLICT reactivation | FAQ CRUD | Soft-delete + unique birlikte calisir |
+| Multi-value batch INSERT (50/batch) | KnowledgeRepository | N/50 round-trip, atomik |
+| Multi-row UPDATE FROM VALUES | BatchUpdateChunkEmbeddings | Tek SQL, N/50 round-trip |
+| Document tenant ownership check | Chunk insert | Multi-tenant izolasyon garantisi |
+| SQL CASE WHEN conditional fetch | AutomationRepository | Gereksiz buyuk JSON cekilmez |
+| Soft-delete + ON CONFLICT pattern | Soft-delete tablolar | Unique constraint + reactivation |
+| Semantic search + keyword fallback | RetrievalService | Embedding fail -> keyword'e dus, graceful |
+| `template.Lang ?? lang` effective value after fallback | TriggerProcessor lang fallback | Orijinal deger yerine "secilen" degeri kullan - data tutarliligi |
+| 3-step fallback chain (specific → default → any) | Outbound lang template | Graceful degradation: her adimda daha genel, ama warning ile |
+| Warning field in API response for fallback | TriggerWebhookResponse.Warning | Caller fallback oldugunu bilir, loglama yetmez |
+
+### Deploy & Config
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| ConfigureKestrel + ListenAnyIP | Port binding | Explicit port, launchSettings bagimsiz |
+| curl.exe -k PowerShell'de | HTTPS API call | TLS sorunlari bypass |
+| Ayri .ps1 + .bat wrapper | Deploy scripts | Pipe/escape sorunlari ortadan kalkar |
+| appsettings.Production.json | Deploy-safe config | Sunucu secrets korunur |
+| Yeni Mikroservis Checklist | Her yeni servis | 17 maddelik otomatik checklist |
+| Yeni Servis Deploy Yardimi | Her yeni servis deploy'u | SQL fix + appsettings + NSSM + firewall + restart + watcher OTOMATIK sunulur |
+| Selective git staging | /rev workflow | Focused diff, Codex review kolaylasir |
+| Port haritasi cross-check | Yeni servis planlama | Port cakismasi onlenir |
+
+### Auth & Security
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| JwtGenerator shared token factory | Invekto.Shared | JWT signing tek yerde |
+| Auth guard null-safe (exists && mismatch) | Tenant isolation | null = yok, 403 sadece gercek mismatch |
+| File cleanup on upload failure | Knowledge upload | Orphan dosya birakma |
+
+### Workflow & Review
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| Interview'da seytanin avukatligi | Auto workflow | Q challenge edilir, pasif kalmak degil |
+| Codex escalation analizi | Iter 3 escalation | real vs false-positive kategorize et |
+| 3-dosya arch update pattern | Her faz bitisi | session-memory + active-work + q-ops-checklist |
+| OPS-N numarali ops checklist | q-ops-checklist.md | Kisa referans, cross-session takip |
+| queueMicrotask deferred revalidation | flow-store.ts | UI donmuyor, validation otomatik |
+| Step result chaining | Simulator | Onceki step'ten otomatik deger cekme |
+| Error callback in async processing | Orchestrator | Sessiz timeout yerine gercek hata mesaji |
+| Pre-write 5 soru gating (Codex Utansin) | Her kod satiri oncesi | Hata yazildiktan sonra degil, yazilmadan ONCE engellenir - iteration=0 |
+| DRY canonical source + referans pattern | INVEKTO_BASE -> tum dosyalar | Kural tek yerde tanimlanir, tutarsizlik imkansiz |
+| 4 nokta kural yayilimi | Doktrin yazimi | Yeni kural -> INVEKTO_BASE + CLAUDE.md + DEV_AGENT + MEMORY.md = hicbir session kacirmaz |
+
+### UI & Frontend
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| Popup header'da entity adi | UI Modal | Kullanici neye baktigini hemen anlar |
+| {*path:nonfile} SPA fallback | MapFallbackToFile | Static dosyalar fallback'e dusmez |
+| Mevcut proxy pattern yeniden kullanma | FbProxyGet | Yeni endpoint 3 satir ile tamamlandi |
+| Token + response null check | API calls | Auth yoksa sessiz cik, crash olmaz |
+
+### Concurrency & Performance
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| Off-peak scheduler | Heavy islemler | Gunduz timeout olmaz |
+| Per-operation timeout + continue-on-error | Batch islemler | Bir kayit fail = digerlerine devam |
+| Timer-based orphan cleanup | Resource management | Session sizmasini onler |
+| IHostedService for cleanup timers | Background services | Clean shutdown |
+| SET DEADLOCK_PRIORITY LOW + backoff + jitter | Non-critical jobs | Deadlock'ta victim olur |
+| Deadlock retry with error code check | SQL retry | Sadece deadlock'a retry |
 
 ---
 
 ## Anti-Patterns to Avoid
 
+### Architecture
+
 | Anti-Pattern | Problem | Better Approach |
 |--------------|---------|-----------------|
-| Direct DB access between services | Tight coupling | API üzerinden iletişim |
+| Direct DB access between services | Tight coupling | API uzerinden iletisim |
 | Shared mutable state | Race conditions | Event-driven communication |
-| Hardcoded ports | Çakışma riski | Config/environment'tan oku |
+| Hardcoded ports | Cakisma riski | Config/environment'tan oku |
+| Lessons-learned okumadan kod | Ayni hata tekrar | Session basinda OKU |
+
+### Code Quality
+
+| Anti-Pattern | Problem | Better Approach |
+|--------------|---------|-----------------|
 | Raw SQL concat | Injection riski | Parameterized queries |
 | Generic error messages | User frustration | Specific + actionable errors |
-| Retry without backoff | CPU spike, resource overload | Exponential backoff (1s, 2s, 4s...) |
-| Retry without limit | Sonsuz döngü | max_retry_count (örn: 3) |
+| Empty catch block | Sessiz failure | Her zaman log veya rethrow |
+| Singleton DbContext inject | "second operation" hatasi | IDbContextFactory + await using |
+| AddDbContext for concurrent | Factory register edilmiyor | AddPooledDbContextFactory |
+| SQL destructure kolon SELECT edilmemis | Undefined, sessiz bug | Destructure = SQL karsiligi kontrol |
+| MapFallbackToFile {**slug} | Static dosyalar yakalanir | {*path:nonfile} constraint |
+
+### Operations
+
+| Anti-Pattern | Problem | Better Approach |
+|--------------|---------|-----------------|
+| Retry without backoff | CPU spike | Exponential backoff |
+| Retry without limit | Sonsuz dongu | max_retry_count |
 | Queue without drain | Stalled process | timeout + drain_on_stop |
-| Empty catch block | Sessiz failure, debug zorluğu | Her zaman log at veya rethrow yap |
-| SHARED + retry/queue pattern | Race condition, data corruption | Mutex lock + isolation level |
-| Singleton DbContext inject | Concurrent request'lerde "second operation" hatası | IDbContextFactory + await using per-query |
-| AddDbContext for concurrent access | IDbContextFactory register edilmiyor | AddPooledDbContextFactory kullan |
-| Startup'ta heavy DB işlemi | Timeout, startup 10+ dk sürer | Scheduler kullan (gece 02:00-05:00) |
-| Polling catch'inde sadece log | HTTP 404/500 sonrası sonsuz polling | `clearInterval` + state reset + UI feedback |
-| Lessons-learned okumadan kod | Aynı hata tekrar | Session başında lessons-learned OKU |
-| SQL query sonucunu destructure ederken kolon SELECT edilmemiş | Undefined value, sessiz bug | Destructure ettiğin her field için SQL sorgusunda karşılığını kontrol et |
-| `MapFallbackToFile("{**slug}")` SPA subfolder'da | Static dosyalar (.js, .css) da fallback'e duser, browser MIME type hatasi alir | `{*path:nonfile}` constraint kullan |
-| AskUserQuestion ile strateji tartismasi | Q analiz/beyin firtinasi istiyor, multi-choice degil. "devam" deyip reddetti | Stratejik kararlar (mimari, planlama, yol haritasi) icin analiz/tablo/karsilastirma sun. AskUserQuestion sadece teknik uygulama kararlari (library secimi, approach vb.) icin kullan |
+| Startup'ta heavy DB islemi | 10+ dk startup | Scheduler (gece 02:00-05:00) |
+| Polling catch'inde sadece log | Sonsuz polling | clearInterval + state reset |
+
+### Process
+
+| Anti-Pattern | Problem | Better Approach |
+|--------------|---------|-----------------|
+| AskUserQuestion ile strateji tartismasi | Q analiz istiyor, multi-choice degil | Analiz/tablo/karsilastirma sun |
+| Kural birden fazla yerde tam tanimlamak (DRY ihlali) | 15+ dosyada tutarsizlik, guncelleme kaosu | Tek canonical source + diger dosyalar referans verir |
 
 ---
 
@@ -183,18 +272,19 @@
 
 | Date | Finding | Action Taken |
 |------|---------|--------------|
-| (template) | Error handling eksik | Tüm catch bloklarına log eklendi |
-| TONIVA | NOLOCK + keyset pagination = dirty reads riski | Export'ta kabul edilebilir trade-off, kritik işlemlerde NOLOCK kullanma |
-| 2026-02-11 | Codex `allowed_files` scope check 3 iter boyunca dosya eksikligi yakaladi (iter3: null deref + chaining, iter4: scope+auth+comment, iter5: PASS) | Her /rev oncesi `git diff --cached --name-only` ile `allowed_files` eslestirmesini manuel kontrol et |
-| 2026-02-14 | IntentDetector.cs'de 3 `return null` path'inde log yoktu -- pre-existing kod (Phase 3a) ama Codex Phase 4b diff'inde yakaladi (dosya modified oldugu icin tum dosya tarandi) | Her `return null` oncesine `_logger.SystemWarn` eklendi. Codex modified dosyanin TAMAMINI tarar, sadece diff satirlarini degil. |
-| 2026-02-15 | 3 Codex iteration'in 2'si plan JSON metadata fix'iydi (CQ5 schema, CQ3 files_count) - kod CQ1-8 iter0'da PASS aldi, overhead sadece metadata | Plan JSON icin schema-first yaklasim benimsendi (`arch/contracts/plan-schema.json` ONCE oku). Kod kalitesi hedeflenen seviyede, metadata compliance ayri disiplin gerektiriyor |
+| 2026-02-11 | Codex allowed_files 3 iter boyunca eksiklik yakaladi | Her /rev oncesi git diff ile allowed_files eslestir |
+| 2026-02-14 | IntentDetector return null log yoktu - Codex pre-existing kodu bile yakaladi | Her return null'a SystemWarn ekle. Codex tum dosyayi tarar |
+| 2026-02-15 | 3 iter'in 2'si plan JSON metadata fix'iydi | Schema-first yaklasim: plan-schema.json ONCE oku |
+| 2026-02-15 | Codex comment-code mismatch yakaladi ("auto-detect" in DTO comment but no auto-detect in code) | Comment = kod, Codex comment'leri de review eder |
+| 2026-02-15 | Cross-service dogrulama 3 iter boyunca UNKNOWN - erken escalation gerekiyordu | Architecturally unresolvable = iter 1'de Q escalation |
+| 2026-02-15 | Phase 3C/3D'de .NET-native CLIP/MediaPipe paketi yok - hybrid mimari zorunlu | Arastirma notlarini faz dosyasina embed et, faz basinda plan yap |
 
 ---
 
-## How to Add
+## Maintenance Rules
 
-1. `/learn` komutunu çalıştır
-2. Önerilen eklemeleri incele
-3. "onay" de
-
-**KURAL:** Sadece proje-spesifik öğrenimler eklenir. Genel best practice eklenmez.
+1. `/learn` komutu veya auto mode ile guncellenir
+2. **3 Ay Kurali:** 50+ giris olunca 3 aydan eski girdiler `arch/lessons-learned-archive.md`'ye tasinir
+3. Sadece proje-spesifik ogrenimler eklenir - genel best practice eklenmez
+4. TONIVA girdileri kalici olarak arsiv dosyasinda
+5. Yeni giris eklerken ilgili kategori basliginin altina ekle

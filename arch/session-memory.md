@@ -4,11 +4,12 @@
 
 ## Last Update
 
-- **Date:** 2026-02-15
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5 ✅. **8 Paket Stratejisi** aktif (v5.0).
-- **Last Task:** Execution strategy değişikliği: tekli GR döngüsü → 8 paket halinde yürütme
-- **Next Task:** PKT-1 AI Upgrade (GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang). Interview ile başla.
-- **Strateji:** Overhead %60 azaltma. 24 döngü → 8 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
+- **Date:** 2026-02-16
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5 ✅ + PKT-1 ✅ + PKT-2 ✅. **10 Paket Stratejisi** aktif (v5.1).
+- **Last Task:** PKT-2 Sağlık Core PASS (iter 1, Q FORCE PASS). Yeni Invekto.Appointments servisi (port 7102) + KVKK 5 servise.
+- **Next Task:** PKT-3 Ops Dashboard (GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard). Interview ile başla.
+- **Strateji:** Overhead %60 azaltma. 10 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
+- **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 
 ### ✅ TAMAMLANDI: WhatsApp Analytics WA-1 + WA-2 (2026-02-14)
 
@@ -28,23 +29,27 @@
 - utils/claude_client.py: Shared typed exceptions (ClaudeAPIError/ClaudeParseError)
 - Keyword-only mode (API key yok): ~49% intent unknown, ~60% sentiment skipped
 
-### Execution Queue — 8 Paket Stratejisi (v5.0, 2026-02-15)
+### Execution Queue — 10 Paket Stratejisi (v5.1, 2026-02-15)
 
-> **Karar:** Tekli GR döngüsü → 8 paket. Overhead %60 azalır.
+> **Karar:** Tekli GR döngüsü → 10 paket. Overhead %60 azalır.
 > **Detay:** `arch/active-work.md` — paket detayları ve GR-paket eşleşmesi
+> **v5.1:** PKT-6 → PKT-6A/6B/6C (Codex PASS olasılığı artırmak için)
 
 | # | Paket | İçerik | Durum |
 |---|-------|--------|-------|
-| 1 | **PKT-1 AI Upgrade** | GR-2.2 + GR-2.3 (Agent Assist v2 + Multi-lang) | ⬜ Sırada |
-| 2 | **PKT-2 Sağlık Core** | GR-2.4 + GR-2.6 (Randevu + KVKK) | ⬜ Bekliyor |
+| 1 | **PKT-1 AI Upgrade** | GR-2.2 + GR-2.3 (Agent Assist v2 + Multi-lang) | ✅ PASS (iter 3, FORCE PASS) |
+| 2 | **PKT-2 Sağlık Core** | GR-2.4 + GR-2.6 (Randevu + KVKK) | ✅ PASS (iter 1, FORCE PASS) |
 | 3 | **PKT-3 Ops Dashboard** | GR-2.5 + WA-4 (Dashboard + BI) | ⬜ Bekliyor |
 | 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ⬜ Bekliyor |
 | 5 | **PKT-5 Platform** | Phase 3A (Integrations, Outbound v2, Randevu Adv.) | ⬜ Bekliyor |
-| 6 | **PKT-6 Niche** | Phase 3B (19 GR — intent + pipeline + sağlık) | ⬜ Bekliyor |
+| 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ⬜ Bekliyor |
+| 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ⬜ Bekliyor |
+| 6C | **PKT-6C Niche Health Expansion** | Phase 3B: Sağlık + Review Rescue + Multilingual (5 GR) | ⬜ Bekliyor |
 | 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
 | 8 | **PKT-8 Face AI** | Phase 3D (Face Analysis, :7110) | ⬜ Bekliyor |
 
 > PKT-1~4 = Phase 2 tamamlama. PKT-5~8 = Phase 3 tamamlama (feedback'e göre revize edilebilir).
+> **Bağımlılık:** PKT-5 → PKT-6A (bağımsız) | PKT-5 → PKT-6B (Integrations) | PKT-6B → PKT-6C
 
 ### ✅ TAMAMLANDI: Idea Phase Entegrasyonu (2026-02-14)
 
@@ -157,6 +162,18 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
   - Backend entegrasyonu: KnowledgeClient (full proxy), DependencyMap, TestPanel, health check
   - Deploy: firewall, restart-services, install-services, deploy-watcher, appsettings.Production
   - Test suite: `arch/deploy/test-knowledge.bat` (JWT auto-gen, 6 phase, CRUD + search + error senaryolari)
+- **GR-2.4 + GR-2.6 Appointments + KVKK (Port 7102, PKT-2):**
+  - Invekto.Appointments: Haftalik slot CRUD, randevu booking/cancel/list, available-slots
+  - IHostedService ReminderSchedulerService: T-48h + T-2h reminders via Outbound triggers
+  - Booking logic: slot validation, past date check, day_of_week match, max_bookings, confirmation via Outbound
+  - KVKK Minimum 5 servise: Automation disclaimer (SendMessage only), AgentAI Warning field, Outbound disclaimer (broadcast + trigger), Knowledge medical doc tag, Backend photo block (health tenant + image/*)
+  - KvkkHelper (Shared): IsHealthTenant(), AppendDisclaimerIfHealth()
+  - Opt-in: Health tenant ilk mesajda riza mesaji (chat_sessions.session_data JSONB)
+  - DB schema: `arch/db/appointments.sql` (appointment_slots, appointments)
+  - Error codes: INV-AP-001~010, INV-KN-016
+  - Backend proxy: AppointmentsClient + 9 proxy endpoints
+  - Deploy: install-services, restart-services, firewall (7102 localhost-only), deploy-watcher
+
 - **WA-5/6 WhatsApp Analytics Phase A (Port 7109):**
   - Full C# port of Python pipeline stages 1-3 (cleaner, threader, stats)
   - Streaming CSV parser (100K chunks, BOM detect, quoted fields)
@@ -204,6 +221,7 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 | Integrations | 7106 | Reserved (Phase 2+) |
 | Outbound | 7107 | Implemented (GR-1.3) |
 | Knowledge | 7104 | Implemented (GR-2.1 Phase A+B) |
+| Appointments | 7102 | Implemented (GR-2.4 PKT-2) |
 | Automation | 7108 | Implemented (GR-1.1) |
 | WhatsAppAnalytics | 7109 | Implemented (WA-5/6 Phase A) |
 | VisualSearch | 7111 | Planned (Phase 3C, PKT-7) — ~~7109~~ çakışma fix |
@@ -215,11 +233,11 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 - **Script:** `dev-to-invekto-services.bat`
 - **Protokol:** FTPES (explicit TLS)
 - **FTP Host:** services.invekto.com
-- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`, `E:\Invekto\Automation\current\`, `E:\Invekto\AgentAI\current\`, `E:\Invekto\Outbound\current\`, `E:\Invekto\Knowledge\current\`, `E:\Invekto\WhatsAppAnalytics\current\`
+- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`, `E:\Invekto\Automation\current\`, `E:\Invekto\AgentAI\current\`, `E:\Invekto\Outbound\current\`, `E:\Invekto\Knowledge\current\`, `E:\Invekto\Appointments\current\`, `E:\Invekto\WhatsAppAnalytics\current\`
 - **Sunucu Domain:** services.invekto.com
 - **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
 - **Service Manager:** NSSM (`E:\nssm.exe`)
-- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoWhatsAppAnalytics, InvektoDeployWatcher (auto-start, auto-restart)
+- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoAppointments, InvektoWhatsAppAnalytics, InvektoDeployWatcher (auto-start, auto-restart)
 - **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
 - **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
 - **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
@@ -327,6 +345,7 @@ src/
 │   ├── Data/                 # GR-1.9: PostgreSQL connection
 │   ├── DTOs/
 │   │   ├── AgentAI/          # GR-1.2: Suggest/Feedback DTOs
+│   │   ├── Appointments/     # GR-2.4: Slot/Appointment/Reminder DTOs
 │   │   ├── ChatAnalysis/
 │   │   ├── Outbound/          # GR-1.3: Broadcast/Template/Webhook DTOs
 │   │   └── Integration/      # GR-1.9: Webhook/Callback DTOs
@@ -340,6 +359,9 @@ src/
 ├── Invekto.Knowledge/        # GR-2.1: Knowledge Service RAG (Port 7104)
 │   ├── Data/                # KnowledgeConnectionFactory, KnowledgeRepository
 │   └── Services/            # ImportService, EmbeddingService, RetrievalService, PdfChunkingService, DocumentProcessingService
+├── Invekto.Appointments/     # GR-2.4: Appointment Engine (Port 7102)
+│   ├── Data/                # AppointmentsRepository
+│   └── Services/            # ReminderSchedulerService (IHostedService)
 ├── Invekto.Automation/       # GR-1.1: Chatbot/Flow Builder (Port 7108)
 │   ├── Data/                # AutomationRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
@@ -358,12 +380,48 @@ src/
     ├── FlowBuilder/          # React Flow SPA (Dev:3002, Serve:/flow-builder/)
     │   └── src/              # nodes/, components/, panels/, store/, types/, lib/, pages/
     ├── Middleware/            # Traffic logging + JWT auth
-    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient, KnowledgeClient
+    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient, KnowledgeClient, AppointmentsClient
 ```
 
 ---
 
 ## Context for Next Session
+
+### PKT-2 Sağlık Core TAMAMLANDI (2026-02-16)
+
+**Plan:** `arch/plans/20260215-pkt2-saglik-core.json` (status: DONE)
+**Commit:** `e994e29` — feat(pkt2): Saglik Core - GR-2.4 Randevu Motoru + GR-2.6 KVKK Minimum
+
+**GR-2.4 Randevu Motoru:**
+- Yeni Invekto.Appointments mikro servisi (port 7102) - 10 yeni dosya
+- Haftalık slot CRUD (day_of_week, start/end time, max_bookings, doctor_id nullable)
+- Booking: availability check, past date check, day_of_week match, max_bookings, confirmation via Outbound trigger
+- Cancellation: status update, Outbound notification
+- Available slots query: date range, active slots, remaining capacity
+- ReminderSchedulerService (IHostedService, 5dk timer, Interlocked overlap prevention):
+  - T-48h: appointment_date = CURRENT_DATE + 2
+  - T-2h: appointment_date = CURRENT_DATE AND start_time <= LOCALTIME + 2h
+  - Outbound trigger event: appointment_reminder / appointment_confirmation
+- Backend proxy: AppointmentsClient + 9 proxy endpoints
+- DB: appointment_slots + appointments (partial indexes for reminders)
+
+**GR-2.6 KVKK Minimum (5 servis):**
+- KvkkHelper (Shared): IsHealthTenant(), AppendDisclaimerIfHealth(), HealthDisclaimer, AgentAIWarning
+- Automation: SendCallbackAsync disclaimer (SendMessage only, not HandoffToHuman)
+- Automation: Opt-in (health tenant ilk mesaj → rıza, session_data JSONB)
+- AgentAI: SuggestReplyResponse.Warning field (JsonIgnore WhenWritingNull)
+- Outbound: BroadcastOrchestrator + TriggerProcessor disclaimer
+- Knowledge: Medical document kvkk_medical_content tag (metadata_json)
+- Backend: Photo block (health tenant + image/* MIME → 403 INV-KN-016)
+
+**Stats:** 31 dosya +9006/-15. Codex iter 1, Q FORCE PASS (CQ3 false positive, CQ4 architectural decision). 8/8 CoVe PASS.
+
+### Q Operational Tasks (Appointments)
+
+- [ ] appointments.sql çalıştır (PostgreSQL)
+- [ ] Appointments appsettings.Production.json oluştur (JWT, PG password, Outbound URL)
+- [ ] Appointments deploy + NSSM servis kurulumu (InvektoAppointments, port 7102)
+- [ ] Outbound validEvents'e appointment_confirmation + appointment_reminder ekle (varsa kontrol et)
 
 ### WA-5/6 Phase A TAMAMLANDI (2026-02-15)
 
