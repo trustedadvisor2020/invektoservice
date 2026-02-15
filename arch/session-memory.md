@@ -4,9 +4,11 @@
 
 ## Last Update
 
-- **Date:** 2026-02-14
-- **Status:** WA-1 + WA-2 DONE. Execution Queue onayli. Sirada: WA-3 + RP-2 GR-2.1 (beraber)
-- **Last Task:** WA-2 NLP Pipeline tamamlandi (8 dosya +1919, Codex 3 iter PASS)
+- **Date:** 2026-02-15
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5 ✅. **8 Paket Stratejisi** aktif (v5.0).
+- **Last Task:** Execution strategy değişikliği: tekli GR döngüsü → 8 paket halinde yürütme
+- **Next Task:** PKT-1 AI Upgrade (GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang). Interview ile başla.
+- **Strateji:** Overhead %60 azaltma. 24 döngü → 8 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 
 ### ✅ TAMAMLANDI: WhatsApp Analytics WA-1 + WA-2 (2026-02-14)
 
@@ -26,19 +28,23 @@
 - utils/claude_client.py: Shared typed exceptions (ClaudeAPIError/ClaudeParseError)
 - Keyword-only mode (API key yok): ~49% intent unknown, ~60% sentiment skipped
 
-### Execution Queue (Onayli Sira - 2026-02-14)
+### Execution Queue — 8 Paket Stratejisi (v5.0, 2026-02-15)
 
-> **WA** = WhatsApp Analytics, **RP** = Roadmap Phase. KARISMAZ!
+> **Karar:** Tekli GR döngüsü → 8 paket. Overhead %60 azalır.
+> **Detay:** `arch/active-work.md` — paket detayları ve GR-paket eşleşmesi
 
-| Sira | Kod | Is | Bagimllik |
-|------|-----|----|-----------|
-| 1 | **WA-3 + RP-2 GR-2.1** | Training Data Export + Knowledge Service (RAG) | WA-2 ✅ |
-| 2 | **WA-4** | BI Dashboard (agent performans, conversion, trend) | WA-2 ✅ |
-| 3 | **RP-2 GR-2.2** | Agent Assist v2 (Knowledge/RAG beslemeli) | RP-2 GR-2.1 |
-| 4 | **RP-2 GR-2.3~2.6** | Multi-lang, Randevu, Dashboard, KVKK | RP-2 GR-2.1 |
-| 5 | **WA-5 + WA-6** | C# Microservice + SQL Server | RP-2 done |
+| # | Paket | İçerik | Durum |
+|---|-------|--------|-------|
+| 1 | **PKT-1 AI Upgrade** | GR-2.2 + GR-2.3 (Agent Assist v2 + Multi-lang) | ⬜ Sırada |
+| 2 | **PKT-2 Sağlık Core** | GR-2.4 + GR-2.6 (Randevu + KVKK) | ⬜ Bekliyor |
+| 3 | **PKT-3 Ops Dashboard** | GR-2.5 + WA-4 (Dashboard + BI) | ⬜ Bekliyor |
+| 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ⬜ Bekliyor |
+| 5 | **PKT-5 Platform** | Phase 3A (Integrations, Outbound v2, Randevu Adv.) | ⬜ Bekliyor |
+| 6 | **PKT-6 Niche** | Phase 3B (19 GR — intent + pipeline + sağlık) | ⬜ Bekliyor |
+| 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
+| 8 | **PKT-8 Face AI** | Phase 3D (Face Analysis, :7110) | ⬜ Bekliyor |
 
-**Neden WA-3 + RP-2 GR-2.1 beraber?** FAQ clusters direkt Knowledge DB faqs tablosuna akar. Ayri yapmak 2x is.
+> PKT-1~4 = Phase 2 tamamlama. PKT-5~8 = Phase 3 tamamlama (feedback'e göre revize edilebilir).
 
 ### ✅ TAMAMLANDI: Idea Phase Entegrasyonu (2026-02-14)
 
@@ -132,6 +138,38 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
   - API contract: `arch/contracts/outbound-broadcast.json`
   - Error codes: INV-OB-001 ~ INV-OB-010
 
+- **GR-2.1 Knowledge Service Phase A+B (Port 7104):**
+  - RAG altyapisi (pgvector semantic search + PostgreSQL FTS keyword fallback)
+  - OpenAI text-embedding-3-large (3072 dim) embeddings
+  - WA-3 NLP data import (FAQ clusters, intent patterns, product catalog, sentiment)
+  - FAQ CRUD (create, read, update, delete, list with category/lang filter)
+  - Retrieval API (combined FAQ+chunk search, source references, keyword fallback)
+  - Embedding generation endpoint (batch processing)
+  - **Phase B:** PDF upload + PdfPig chunking (512-token/50-overlap, page boundary tracking)
+  - **Phase B:** DocumentProcessingService (BackgroundService, ConcurrentQueue, restart recovery)
+  - **Phase B:** Backend proxy (9 endpoints, JWT bridge: BasicAuth->JwtGenerator->Bearer)
+  - **Phase B:** Dashboard Knowledge UI (DocumentUpload, DocumentList, FaqManager, FaqEditModal)
+  - 8 DB tablosu: documents, chunks, faqs, tags, document_tags, intent_patterns, product_catalog, conversation_sentiments
+  - DB schema: `arch/db/knowledge.sql`
+  - API contracts: `arch/contracts/knowledge-import.json`, `knowledge-search.json` (v2.0), `knowledge-faq.json`
+  - Error codes: INV-KN-001 ~ INV-KN-015
+  - Shared: JwtGenerator (service-to-service token), TrafficLogging + JwtAuth middleware
+  - Backend entegrasyonu: KnowledgeClient (full proxy), DependencyMap, TestPanel, health check
+  - Deploy: firewall, restart-services, install-services, deploy-watcher, appsettings.Production
+  - Test suite: `arch/deploy/test-knowledge.bat` (JWT auto-gen, 6 phase, CRUD + search + error senaryolari)
+- **WA-5/6 WhatsApp Analytics Phase A (Port 7109):**
+  - Full C# port of Python pipeline stages 1-3 (cleaner, threader, stats)
+  - Streaming CSV parser (100K chunks, BOM detect, quoted fields)
+  - Turkish text normalization (TransliterateTurkish for ASCII-safe regex)
+  - SHA256 dedup (5s window), 25 outcome regex patterns (priority order)
+  - IAsyncEnumerable conversation grouping (streaming, no RAM blowup)
+  - Background processing (IHostedService + ConcurrentQueue, one-at-a-time)
+  - Restart recovery (GUID filename + 30min stale timeout + FOR UPDATE SKIP LOCKED)
+  - REST API: POST /upload, GET/DELETE /analyses, GET /metadata
+  - DB schema: `arch/db/whatsapp-analytics.sql` (10 tables)
+  - Error codes: INV-WA-001 ~ INV-WA-015
+  - Plan: `arch/plans/20260214-wa-analytics-phaseA.json`
+
 - **Flow Builder (Phase 1+2 - SPA UI + API + Auth):**
   - n8n-style visual drag-drop chatbot flow editor
   - React 18 + TypeScript + Vite + TailwindCSS + React Flow (xyflow) + Zustand
@@ -165,7 +203,11 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 | AgentAI | 7105 | Implemented (GR-1.2) |
 | Integrations | 7106 | Reserved (Phase 2+) |
 | Outbound | 7107 | Implemented (GR-1.3) |
+| Knowledge | 7104 | Implemented (GR-2.1 Phase A+B) |
 | Automation | 7108 | Implemented (GR-1.1) |
+| WhatsAppAnalytics | 7109 | Implemented (WA-5/6 Phase A) |
+| VisualSearch | 7111 | Planned (Phase 3C, PKT-7) — ~~7109~~ çakışma fix |
+| FaceAnalysis | 7110 | Planned (Phase 3D, PKT-8) |
 | Simulator | 4500 | Dev-only tool (Node.js) |
 | FlowBuilder | 3002 | Dev-only SPA (Vite, serve via Backend:5000) |
 
@@ -173,11 +215,11 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 - **Script:** `dev-to-invekto-services.bat`
 - **Protokol:** FTPES (explicit TLS)
 - **FTP Host:** services.invekto.com
-- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`, `E:\Invekto\Automation\current\`, `E:\Invekto\AgentAI\current\`, `E:\Invekto\Outbound\current\`
+- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`, `E:\Invekto\Automation\current\`, `E:\Invekto\AgentAI\current\`, `E:\Invekto\Outbound\current\`, `E:\Invekto\Knowledge\current\`, `E:\Invekto\WhatsAppAnalytics\current\`
 - **Sunucu Domain:** services.invekto.com
 - **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
 - **Service Manager:** NSSM (`E:\nssm.exe`)
-- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoDeployWatcher (auto-start, auto-restart)
+- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoWhatsAppAnalytics, InvektoDeployWatcher (auto-start, auto-restart)
 - **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
 - **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
 - **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
@@ -214,7 +256,17 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 - [x] ~~Flow Builder Phase 3c~~ (Tamamlandi - Validation UI, Variable Inspector, AHA #3 Ghost Path, AHA #5 Saglik Skoru. 20 dosya +746 -195. Codex 3 iter PASS)
 - [x] ~~Flow Builder Phase 4a~~ (Tamamlandi - 4 pure logic node: logic_condition, logic_switch, action_delay, utility_set_variable. Codex 3 iter Q FORCE PASS)
 - [x] ~~Flow Builder Phase 4b~~ (Tamamlandi - ai_intent, ai_faq, action_api_call. 27 dosya +1516 -104. Codex 4 iter PASS)
-- [ ] Flow Builder Phase 5: Production Integration (deploy script + Q operational tasks)
+- [x] ~~Flow Builder Phase 5~~ (Tamamlandi - deploy script SPA build step, Codex 3 iter Q FORCE PASS)
+- [x] ~~WA-3 + GR-2.1 Phase A~~ (Tamamlandi - Knowledge Service core, 22 dosya +2615, Codex 5 iter PASS)
+- [x] ~~GR-2.1 Phase B~~ (Tamamlandi - PDF upload, chunking, combined search, Dashboard UI. 27 dosya +13413. Codex 3 iter PASS)
+- [ ] Q: knowledge.sql calistir (PostgreSQL)
+- [ ] Q: pgvector extension kur (CREATE EXTENSION vector)
+- [ ] Q: Knowledge appsettings.Production.json secret'lari doldur (JWT, PG password, OpenAI key)
+- [ ] Q: Knowledge deploy + NSSM servis kurulumu
+- [x] ~~WA-5/6 Phase A~~ (Tamamlandi - Invekto.WhatsAppAnalytics Port 7109, 20 dosya +5417, Codex 4 iter PASS)
+- [ ] Q: whatsapp-analytics.sql calistir (PostgreSQL)
+- [ ] Q: WhatsAppAnalytics appsettings.Production.json secret'lari doldur
+- [ ] Q: WhatsAppAnalytics deploy + NSSM servis kurulumu
 
 > **Phase 3 Plan:** `arch/plans/20260213-flow-builder-phase3.json` | **Roadmap:** `arch/docs/flow-builder-roadmap.md`
 > **AHA Moments (2026-02-13):** 7 iyilestirme roadmap'e entegre edildi (Phase 2.5, 3b, 3c, 5)
@@ -285,6 +337,9 @@ src/
 │   ├── Data/                # AgentAIRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
 │   └── Services/            # ReplyGenerator, TemplateEngine, AgentProfileBuilder
+├── Invekto.Knowledge/        # GR-2.1: Knowledge Service RAG (Port 7104)
+│   ├── Data/                # KnowledgeConnectionFactory, KnowledgeRepository
+│   └── Services/            # ImportService, EmbeddingService, RetrievalService, PdfChunkingService, DocumentProcessingService
 ├── Invekto.Automation/       # GR-1.1: Chatbot/Flow Builder (Port 7108)
 │   ├── Data/                # AutomationRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
@@ -293,41 +348,83 @@ src/
 │   ├── Data/                # OutboundRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
 │   └── Services/            # BroadcastOrchestrator, TriggerProcessor, MessageSenderService, TemplateEngine, OptOutManager, RateLimiter
+├── Invekto.WhatsAppAnalytics/ # WA-5/6: WhatsApp Analytics Pipeline (Port 7109)
+│   ├── Data/                # AnalyticsConnectionFactory, AnalyticsRepository
+│   ├── Models/              # AnalysisJob, CleanedMessage, Conversation
+│   └── Services/            # CsvStreamReader, TextNormalizer, PipelineOrchestrator, AnalysisProcessingService
+│       └── Pipeline/        # CleanerService (Stage 1), ThreaderService (Stage 2), StatsService (Stage 3)
 └── Invekto.Backend/          # Backend API (Port 5000)
     ├── Dashboard/            # React/TS Ops Dashboard
     ├── FlowBuilder/          # React Flow SPA (Dev:3002, Serve:/flow-builder/)
     │   └── src/              # nodes/, components/, panels/, store/, types/, lib/, pages/
     ├── Middleware/            # Traffic logging + JWT auth
-    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient
+    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient, KnowledgeClient
 ```
 
 ---
 
 ## Context for Next Session
 
-### Tum Bekleyen Isler TAMAMLANDI (2026-02-13)
+### WA-5/6 Phase A TAMAMLANDI (2026-02-15)
 
-- Flow Builder Phase 2: /rev FORCE_PASS (iter 3), committed (49879b6, 2066e07)
-- GR-1.3 Outbound: /rev Codex 3 iter PASS, deployed (NSSM InvektoOutbound)
-- Q: automation.sql migration calistirildi (chatbot_flows multi-flow PK)
-- Q: tenant_registry.settings_json'a flow_builder_api_key eklendi
-- Q: Outbound deploy tamamlandi (outbound.sql, appsettings.Production.json, NSSM servis)
+**Plan:** `arch/plans/20260214-wa-analytics-phaseA.json` (status: DONE)
+**Commit:** `18f387f` — feat(wa-analytics): Phase A - Core pipeline stages 1-3, CSV upload, PostgreSQL schema
 
-### Phase 3 TAMAMLANDI (3a+3b+3c)
+**Scope:**
+- Invekto.WhatsAppAnalytics mikro servisi (port 7109) - 19 dosya +2644 LOC
+- Full C# port of Python pipeline stages 1-3 (cleaner, threader, stats)
+- Streaming CSV parser (100K chunks), Turkish text normalization (TransliterateTurkish)
+- SHA256 dedup, 25 ASCII-only outcome regex patterns
+- IAsyncEnumerable conversation grouping (no RAM blowup)
+- Background processing (IHostedService + ConcurrentQueue)
+- Restart recovery (GUID filename + 30min stale timeout + FOR UPDATE SKIP LOCKED)
+- REST API (upload, CRUD, metadata query)
+- 10-table PostgreSQL schema, 15 error codes (INV-WA-001~015)
+- Codex 4 iter PASS (recovery mechanism refined through 4 iterations)
 
-**Plan:** `arch/plans/20260213-flow-builder-phase3.json`
-**Roadmap:** `arch/docs/flow-builder-roadmap.md`
+**Deferred (Phase B+):**
+- NLP Stages 4-7 (intent, FAQ, sentiment, product)
+- Query layer + Backend proxy + deploy infra
+- WA-4 Dashboard UI
 
-**Phase 3a DONE** (74c9ffd): FlowEngine v2, 5 NodeHandlers, FlowValidator, FlowMigrator, ExpressionEvaluator, v1/v2 dispatch
-**Phase 3b DONE** (aff97b3): SimulationEngine (ConcurrentDictionary, 30min TTL, IHostedService, tenant isolation), MockFaqMatcher, MockIntentDetector, SPA SimulationPanel (WhatsApp chat), AHA #4 Tek Tikla Test, active node highlight
-**Phase 3c DONE** (f1dc4cf): Validation UI (FlowSettingsPanel "Akisi Dogrula" butonu), Variable Inspector (SimulationPanel Degiskenler tab), AHA #3 Ghost Path (path-enumerator DFS, purple highlight, dimming), AHA #5 Saglik Skoru (FlowValidator.CalculateHealthScore, HealthBadge, SQL conditional). Codex 3 iter: typed catches, SQL conditional, healthScore=0 on error.
+### Knowledge Service Phase A+B TAMAMLANDI (2026-02-15)
 
-### Phase 4a TAMAMLANDI
+**Plan:** `arch/plans/20260214-knowledge-service.json` (status: DONE)
+**Phase A Commit:** `385d3e0` — feat(knowledge): Phase A Knowledge Service - RAG, pgvector search, WA-3 NLP import
+**Phase B Commit:** `89bbe72` — feat(knowledge): Phase B - PDF upload, chunking, combined search, Dashboard UI
 
-**Plan:** `arch/plans/20260214-flow-builder-phase4a.json`
-**Phase 4a DONE**: 4 pure logic node handler (LogicConditionHandler, LogicSwitchHandler, ActionDelayHandler, SetVariableHandler) + IsSimulation flag + FlowValidator handle checks + 4 SPA node component + 4 property editor + graph-validator + flow-summarizer. 25 dosya +964 -42. Codex 3 iter Q FORCE PASS.
+**Phase A scope (DONE):**
+- Invekto.Knowledge mikro servisi (port 7104) - 22 dosya +2615
+- WA-3 NLP data import (FAQ clusters, intent, product, sentiment)
+- RAG retrieval (pgvector semantic + FTS keyword fallback)
+- FAQ CRUD + embedding generation
+- Shared middleware refactor (TrafficLogging + JwtAuth → Invekto.Shared)
+- Codex 5 iter PASS
 
-**Phase 5 DONE** (deploy script): FlowBuilder SPA build step eklendi. Codex 3 iter Q FORCE PASS. Q operational tasks: deploy, DB migration, WapCRM webhook, E2E test.
+**Phase B scope (DONE):**
+- PDF upload + PdfPig chunking (512-token/50-overlap, page boundary tracking)
+- DocumentProcessingService (BackgroundService, ConcurrentQueue, restart recovery)
+- Combined FAQ+chunk semantic/keyword search with source references
+- Backend proxy (9 endpoints, JWT bridge: BasicAuth->JwtGenerator->Bearer, 30s timeout)
+- Dashboard Knowledge UI (DocumentUpload, DocumentList polling, FaqManager CRUD, FaqEditModal)
+- JwtGenerator flexible overload (FlowBuilder login dedup)
+- Search contract v2.0 (sourceType discriminator for mixed results)
+- Error codes INV-KN-011~015
+- 27 dosya +13413/-449, Codex 3 iter PASS
+
+**Deferred (Phase B scope disi):**
+- Tags UI CRUD
+- SSE import progress
+- Embedding cache (LRU)
+- Bulk FAQ import via CSV
+
+### Q Operational Tasks (Knowledge)
+
+- [ ] knowledge.sql calistir (PostgreSQL)
+- [ ] pgvector extension kur
+- [ ] appsettings.Production.json secret'lari doldur
+- [ ] Knowledge deploy + NSSM servis kurulumu
+- [ ] test-knowledge.bat ile E2E test
 
 ---
 

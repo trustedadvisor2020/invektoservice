@@ -356,6 +356,57 @@ public sealed class LogReader
     }
 
     /// <summary>
+    /// Clear all log files in all monitored directories. Returns deleted file count.
+    /// </summary>
+    public int ClearAllLogs()
+    {
+        int deleted = 0;
+        foreach (var dir in _logDirectories)
+        {
+            if (!Directory.Exists(dir)) continue;
+            foreach (var file in Directory.GetFiles(dir, "*.jsonl"))
+            {
+                try
+                {
+                    File.Delete(file);
+                    deleted++;
+                }
+                catch
+                {
+                    // File may be locked by active logger - skip
+                }
+            }
+        }
+        return deleted;
+    }
+
+    /// <summary>
+    /// Clear log files for a specific service directory. Returns deleted file count.
+    /// </summary>
+    public int ClearServiceLogs(string serviceName)
+    {
+        int deleted = 0;
+        foreach (var dir in _logDirectories)
+        {
+            if (!Directory.Exists(dir)) continue;
+            if (!dir.Contains(serviceName, StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var file in Directory.GetFiles(dir, "*.jsonl"))
+            {
+                try
+                {
+                    File.Delete(file);
+                    deleted++;
+                }
+                catch
+                {
+                    // File may be locked
+                }
+            }
+        }
+        return deleted;
+    }
+
+    /// <summary>
     /// Infer category for old log entries that don't have explicit category field
     /// </summary>
     private static string InferCategory(LogEntryDto entry)

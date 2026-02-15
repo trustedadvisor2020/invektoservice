@@ -1,0 +1,3053 @@
+diff --git a/InvektoServis.sln b/InvektoServis.sln
+index 10d1026..200b078 100644
+--- a/InvektoServis.sln
++++ b/InvektoServis.sln
+@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.AgentAI", "src\Inve
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Outbound", "src\Invekto.Outbound\Invekto.Outbound.csproj", "{20F24E9A-831F-46B9-A006-B606A5404E41}"
+ EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Knowledge", "src\Invekto.Knowledge\Invekto.Knowledge.csproj", "{961A69D3-4D28-4D8A-B499-379624786D77}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -64,6 +66,10 @@ Global
+ 		{20F24E9A-831F-46B9-A006-B606A5404E41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+ 		{20F24E9A-831F-46B9-A006-B606A5404E41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+ 		{20F24E9A-831F-46B9-A006-B606A5404E41}.Release|Any CPU.Build.0 = Release|Any CPU
++		{961A69D3-4D28-4D8A-B499-379624786D77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{961A69D3-4D28-4D8A-B499-379624786D77}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{961A69D3-4D28-4D8A-B499-379624786D77}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{961A69D3-4D28-4D8A-B499-379624786D77}.Release|Any CPU.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ 	GlobalSection(NestedProjects) = preSolution
+ 		{15F8FD75-7433-4D26-A091-8B804B50C75C} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+@@ -74,5 +80,6 @@ Global
+ 		{940E6C4F-877B-4CA4-A4F4-2BE9F6FBA5B0} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+ 		{B3A1D2E4-5F67-4890-AB12-CD34EF56A789} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+ 		{20F24E9A-831F-46B9-A006-B606A5404E41} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
++		{961A69D3-4D28-4D8A-B499-379624786D77} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+ 	EndGlobalSection
+ EndGlobal
+diff --git a/arch/contracts/knowledge-faq.json b/arch/contracts/knowledge-faq.json
+new file mode 100644
+index 0000000..c5e52db
+--- /dev/null
++++ b/arch/contracts/knowledge-faq.json
+@@ -0,0 +1,91 @@
++{
++  "$schema": "http://json-schema.org/draft-07/schema#",
++  "title": "Knowledge FAQ CRUD API Contract",
++  "description": "FAQ create/read/update/delete operations",
++  "version": "1.0",
++
++  "list": {
++    "method": "GET",
++    "path": "/api/v1/knowledge/{tenantId}/faqs",
++    "query": {
++      "lang": { "type": "string", "description": "Filter by language" },
++      "category": { "type": "string", "description": "Filter by category" },
++      "page": { "type": "integer", "default": 1 },
++      "limit": { "type": "integer", "default": 50, "maximum": 200 }
++    },
++    "response_200": {
++      "type": "object",
++      "properties": {
++        "faqs": {
++          "type": "array",
++          "items": { "$ref": "#/faqDto" }
++        },
++        "total": { "type": "integer" },
++        "page": { "type": "integer" },
++        "limit": { "type": "integer" }
++      }
++    }
++  },
++
++  "create": {
++    "method": "POST",
++    "path": "/api/v1/knowledge/{tenantId}/faqs",
++    "body": {
++      "type": "object",
++      "required": ["question", "answer"],
++      "properties": {
++        "question": { "type": "string", "maxLength": 1000 },
++        "answer": { "type": "string" },
++        "category": { "type": "string", "maxLength": 100 },
++        "lang": { "type": "string", "default": "tr" },
++        "keywords": { "type": "array", "items": { "type": "string" } }
++      }
++    },
++    "response_201": { "$ref": "#/faqDto" }
++  },
++
++  "update": {
++    "method": "PUT",
++    "path": "/api/v1/knowledge/{tenantId}/faqs/{id}",
++    "body": {
++      "type": "object",
++      "properties": {
++        "question": { "type": "string", "maxLength": 1000 },
++        "answer": { "type": "string" },
++        "category": { "type": "string", "maxLength": 100 },
++        "lang": { "type": "string" },
++        "keywords": { "type": "array", "items": { "type": "string" } }
++      }
++    },
++    "response_200": { "$ref": "#/faqDto" }
++  },
++
++  "delete": {
++    "method": "DELETE",
++    "path": "/api/v1/knowledge/{tenantId}/faqs/{id}",
++    "description": "Soft delete (is_active = false)",
++    "response_200": { "message": "FAQ deactivated" }
++  },
++
++  "faqDto": {
++    "type": "object",
++    "properties": {
++      "id": { "type": "integer" },
++      "tenantId": { "type": "integer" },
++      "question": { "type": "string" },
++      "answer": { "type": "string" },
++      "category": { "type": "string" },
++      "lang": { "type": "string" },
++      "source": { "type": "string" },
++      "keywords": { "type": "array", "items": { "type": "string" } },
++      "isActive": { "type": "boolean" },
++      "createdAt": { "type": "string", "format": "date-time" },
++      "updatedAt": { "type": "string", "format": "date-time" }
++    }
++  },
++
++  "error_codes": [
++    "INV-KN-008: FAQ not found",
++    "INV-KN-009: Invalid request"
++  ]
++}
+diff --git a/arch/contracts/knowledge-import.json b/arch/contracts/knowledge-import.json
+new file mode 100644
+index 0000000..6be2512
+--- /dev/null
++++ b/arch/contracts/knowledge-import.json
+@@ -0,0 +1,61 @@
++{
++  "$schema": "http://json-schema.org/draft-07/schema#",
++  "title": "Knowledge Import API Contract",
++  "description": "WA-3 NLP data import into Knowledge Service DB",
++  "version": "1.0",
++
++  "request": {
++    "method": "POST",
++    "path": "/api/v1/knowledge/{tenantId}/import",
++    "body": {
++      "type": "object",
++      "required": ["nlpOutputPath"],
++      "properties": {
++        "nlpOutputPath": {
++          "type": "string",
++          "description": "Absolute path to NLP output directory (tools/whatsapp-analyzer/data/nlp/)"
++        },
++        "faqFilter": {
++          "type": "object",
++          "properties": {
++            "minQuestions": {
++              "type": "integer",
++              "default": 5,
++              "description": "Minimum question count per cluster to import"
++            },
++            "minAnswerLength": {
++              "type": "integer",
++              "default": 20,
++              "description": "Minimum answer character length to import"
++            }
++          }
++        }
++      }
++    }
++  },
++
++  "response_200": {
++    "type": "object",
++    "properties": {
++      "success": { "type": "boolean" },
++      "summary": {
++        "type": "object",
++        "properties": {
++          "faqsImported": { "type": "integer" },
++          "faqsSkipped": { "type": "integer" },
++          "intentsImported": { "type": "integer" },
++          "productsImported": { "type": "integer" },
++          "sentimentsImported": { "type": "integer" },
++          "documentId": { "type": "integer", "description": "Import batch document record ID" }
++        }
++      },
++      "durationMs": { "type": "integer" }
++    }
++  },
++
++  "error_codes": [
++    "INV-KN-001: NLP output path not found",
++    "INV-KN-002: JSON/CSV parse error",
++    "INV-KN-003: DB batch insert error"
++  ]
++}
+diff --git a/arch/contracts/knowledge-search.json b/arch/contracts/knowledge-search.json
+new file mode 100644
+index 0000000..c1c6b5f
+--- /dev/null
++++ b/arch/contracts/knowledge-search.json
+@@ -0,0 +1,68 @@
++{
++  "$schema": "http://json-schema.org/draft-07/schema#",
++  "title": "Knowledge Search API Contract",
++  "description": "Semantic search (pgvector) with keyword fallback",
++  "version": "1.0",
++
++  "request": {
++    "method": "POST",
++    "path": "/api/v1/knowledge/{tenantId}/search",
++    "body": {
++      "type": "object",
++      "required": ["query"],
++      "properties": {
++        "query": {
++          "type": "string",
++          "maxLength": 500,
++          "description": "Search query text"
++        },
++        "topK": {
++          "type": "integer",
++          "default": 5,
++          "minimum": 1,
++          "maximum": 50,
++          "description": "Number of results to return"
++        },
++        "lang": {
++          "type": "string",
++          "description": "Filter by language (tr, en). Null = all languages."
++        },
++        "category": {
++          "type": "string",
++          "description": "Filter by category (payment, shipping, etc.). Null = all categories."
++        }
++      }
++    }
++  },
++
++  "response_200": {
++    "type": "object",
++    "properties": {
++      "results": {
++        "type": "array",
++        "items": {
++          "type": "object",
++          "properties": {
++            "faqId": { "type": "integer" },
++            "question": { "type": "string" },
++            "answer": { "type": "string" },
++            "category": { "type": "string" },
++            "lang": { "type": "string" },
++            "score": { "type": "number", "description": "Relevance score 0-1" },
++            "method": { "type": "string", "enum": ["semantic", "keyword"] }
++          }
++        }
++      },
++      "method": { "type": "string", "enum": ["semantic", "keyword"] },
++      "reason": { "type": "string", "description": "If keyword fallback, reason why (e.g. 'OpenAI key not configured')" },
++      "durationMs": { "type": "integer" }
++    }
++  },
++
++  "error_codes": [
++    "INV-KN-004: Search failed (DB error)",
++    "INV-KN-005: OpenAI timeout (graceful fallback to keyword)",
++    "INV-KN-006: OpenAI rate limit (graceful fallback to keyword)",
++    "INV-KN-007: OpenAI API error"
++  ]
++}
+diff --git a/arch/db/knowledge.sql b/arch/db/knowledge.sql
+new file mode 100644
+index 0000000..70fb3e4
+--- /dev/null
++++ b/arch/db/knowledge.sql
+@@ -0,0 +1,243 @@
++-- GR-2.1: Invekto.Knowledge Service DDL for PostgreSQL
++-- Service: Invekto.Knowledge (port 7104)
++-- Database: invekto (same as tenant_registry)
++-- Tables: documents, chunks, faqs, tags, document_tags, intent_patterns, product_catalog, conversation_sentiments
++-- pgvector: Required for semantic search (embedding vector(3072))
++
++-- ============================================================
++-- PREREQUISITE: pgvector extension (Q must have superuser access)
++-- ============================================================
++CREATE EXTENSION IF NOT EXISTS vector;
++
++-- ============================================================
++-- Auto-update trigger function (idempotent, may already exist from automation.sql)
++-- ============================================================
++CREATE OR REPLACE FUNCTION update_updated_at_column()
++RETURNS TRIGGER AS $$
++BEGIN
++    NEW.updated_at = NOW();
++    RETURN NEW;
++END;
++$$ language 'plpgsql';
++
++-- ============================================================
++-- 1. documents: Uploaded documents (PDF, CSV, JSON)
++--    Phase A: WA-3 import records. Phase B: PDF upload + chunking.
++-- ============================================================
++CREATE TABLE IF NOT EXISTS documents (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    title               VARCHAR(500) NOT NULL,
++    source_type         VARCHAR(50) NOT NULL,           -- pdf, csv, json, manual, wa_import
++    status              VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, processing, ready, error
++    file_path           VARCHAR(1000),
++    chunk_count         INTEGER NOT NULL DEFAULT 0,
++    metadata_json       JSONB NOT NULL DEFAULT '{}'::jsonb,
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_documents_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
++    CONSTRAINT chk_documents_source_type
++        CHECK (source_type IN ('pdf', 'csv', 'json', 'manual', 'wa_import')),
++    CONSTRAINT chk_documents_status
++        CHECK (status IN ('pending', 'processing', 'ready', 'error'))
++);
++
++CREATE INDEX IF NOT EXISTS idx_documents_tenant_status
++    ON documents (tenant_id, status);
++
++CREATE TRIGGER trigger_documents_updated_at
++    BEFORE UPDATE ON documents
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
++
++-- ============================================================
++-- 2. chunks: Document content chunks with embeddings
++--    Phase A: Empty (no PDF chunking). Phase B: PDF -> chunks.
++-- ============================================================
++CREATE TABLE IF NOT EXISTS chunks (
++    id                  BIGSERIAL PRIMARY KEY,
++    document_id         INTEGER NOT NULL,
++    tenant_id           INTEGER NOT NULL,
++    content             TEXT NOT NULL,
++    chunk_index         INTEGER NOT NULL DEFAULT 0,
++    metadata_json       JSONB NOT NULL DEFAULT '{}'::jsonb,
++    embedding           vector(3072),                   -- OpenAI text-embedding-3-large
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_chunks_document
++        FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
++    CONSTRAINT fk_chunks_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
++);
++
++CREATE INDEX IF NOT EXISTS idx_chunks_document
++    ON chunks (document_id, chunk_index);
++
++CREATE INDEX IF NOT EXISTS idx_chunks_tenant
++    ON chunks (tenant_id);
++
++-- ============================================================
++-- 3. faqs: FAQ entries from WA-3 cluster import + manual CRUD
++--    Core table for Knowledge Service retrieval API.
++-- ============================================================
++CREATE TABLE IF NOT EXISTS faqs (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    question            VARCHAR(1000) NOT NULL,
++    answer              TEXT NOT NULL,
++    category            VARCHAR(100),                   -- payment, shipping, returns, size, stock, order, general
++    lang                VARCHAR(10) NOT NULL DEFAULT 'tr',
++    source              VARCHAR(50) NOT NULL DEFAULT 'manual', -- manual, wa_import
++    source_metadata     JSONB,                          -- {cluster_id, question_count, ...}
++    keywords            TEXT[] NOT NULL DEFAULT '{}',
++    embedding           vector(3072),                   -- OpenAI text-embedding-3-large (nullable until generated)
++    is_active           BOOLEAN NOT NULL DEFAULT true,
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_faqs_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
++    CONSTRAINT chk_faqs_source
++        CHECK (source IN ('manual', 'wa_import')),
++    CONSTRAINT uq_faqs_tenant_question
++        UNIQUE (tenant_id, question)
++);
++
++CREATE INDEX IF NOT EXISTS idx_faqs_tenant_active
++    ON faqs (tenant_id, is_active)
++    WHERE is_active = true;
++
++CREATE INDEX IF NOT EXISTS idx_faqs_category
++    ON faqs (tenant_id, category)
++    WHERE is_active = true;
++
++CREATE INDEX IF NOT EXISTS idx_faqs_lang
++    ON faqs (tenant_id, lang)
++    WHERE is_active = true;
++
++-- Full-text search index (keyword fallback when no embedding)
++CREATE INDEX IF NOT EXISTS idx_faqs_fts
++    ON faqs USING gin(to_tsvector('simple', question || ' ' || answer));
++
++-- Keywords array GIN index
++CREATE INDEX IF NOT EXISTS idx_faqs_keywords
++    ON faqs USING gin(keywords);
++
++CREATE TRIGGER trigger_faqs_updated_at
++    BEFORE UPDATE ON faqs
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
++
++-- ============================================================
++-- 4. tags: Tag management for documents/FAQs (Phase B: UI CRUD)
++-- ============================================================
++CREATE TABLE IF NOT EXISTS tags (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    name                VARCHAR(100) NOT NULL,
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_tags_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
++    CONSTRAINT uq_tags_tenant_name
++        UNIQUE (tenant_id, name)
++);
++
++CREATE INDEX IF NOT EXISTS idx_tags_tenant
++    ON tags (tenant_id);
++
++-- ============================================================
++-- 5. document_tags: Many-to-many document <-> tag (Phase B)
++-- ============================================================
++CREATE TABLE IF NOT EXISTS document_tags (
++    document_id         INTEGER NOT NULL,
++    tag_id              INTEGER NOT NULL,
++    PRIMARY KEY (document_id, tag_id),
++    CONSTRAINT fk_document_tags_document
++        FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
++    CONSTRAINT fk_document_tags_tag
++        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
++);
++
++-- ============================================================
++-- WA-3 IMPORT TABLES
++-- ============================================================
++
++-- 6. intent_patterns: Aggregated intent classifications from WA-2
++--    12 intent types, each with keyword list + sample messages.
++CREATE TABLE IF NOT EXISTS intent_patterns (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    intent_name         VARCHAR(100) NOT NULL,          -- order_confirmation, price_inquiry, etc.
++    keywords            TEXT[] NOT NULL DEFAULT '{}',
++    confidence_avg      NUMERIC(4,3),                   -- 0.000 - 1.000
++    sample_count        INTEGER NOT NULL DEFAULT 0,
++    sample_messages     JSONB,                          -- ["msg1", "msg2", ...] (max 10)
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_intent_patterns_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
++    CONSTRAINT uq_intent_patterns_tenant_name
++        UNIQUE (tenant_id, intent_name),
++    CONSTRAINT chk_intent_confidence
++        CHECK (confidence_avg IS NULL OR (confidence_avg >= 0 AND confidence_avg <= 1))
++);
++
++CREATE INDEX IF NOT EXISTS idx_intent_patterns_tenant
++    ON intent_patterns (tenant_id);
++
++-- 7. product_catalog: Product mention analysis from WA-2
++--    5141 unique products with mention/sale/offered counts.
++CREATE TABLE IF NOT EXISTS product_catalog (
++    id                  SERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    product_code        VARCHAR(50) NOT NULL,
++    mention_count       INTEGER NOT NULL DEFAULT 0,
++    sale_count          INTEGER NOT NULL DEFAULT 0,
++    offered_count       INTEGER NOT NULL DEFAULT 0,
++    avg_price           NUMERIC(10,2),
++    outcomes_json       JSONB,                          -- {sale: N, offered: M, no_sale: K, ...}
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_product_catalog_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
++    CONSTRAINT uq_product_catalog_tenant_code
++        UNIQUE (tenant_id, product_code)
++);
++
++CREATE INDEX IF NOT EXISTS idx_product_catalog_tenant_mentions
++    ON product_catalog (tenant_id, mention_count DESC);
++
++CREATE TRIGGER trigger_product_catalog_updated_at
++    BEFORE UPDATE ON product_catalog
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
++
++-- 8. conversation_sentiments: Per-conversation sentiment from WA-2
++--    164K conversations with sentiment score.
++CREATE TABLE IF NOT EXISTS conversation_sentiments (
++    id                  BIGSERIAL PRIMARY KEY,
++    tenant_id           INTEGER NOT NULL,
++    conversation_id     VARCHAR(50) NOT NULL,
++    sentiment           VARCHAR(20) NOT NULL,           -- positive, neutral, negative
++    score               NUMERIC(4,2),                   -- -1.00 to 1.00
++    method              VARCHAR(20) NOT NULL,           -- keyword, ai, empty
++    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    CONSTRAINT fk_conversation_sentiments_tenant
++        FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
++    CONSTRAINT chk_sentiment_value
++        CHECK (sentiment IN ('positive', 'neutral', 'negative')),
++    CONSTRAINT chk_sentiment_score
++        CHECK (score IS NULL OR (score >= -1.00 AND score <= 1.00)),
++    CONSTRAINT uq_sentiments_tenant_conversation
++        UNIQUE (tenant_id, conversation_id)
++);
++
++CREATE INDEX IF NOT EXISTS idx_conversation_sentiments_tenant
++    ON conversation_sentiments (tenant_id);
++
++CREATE INDEX IF NOT EXISTS idx_conversation_sentiments_conversation
++    ON conversation_sentiments (tenant_id, conversation_id);
++
++-- ============================================================
++-- Grant permissions to invekto user
++-- ============================================================
++GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO invekto;
++GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO invekto;
+diff --git a/arch/deploy/deploy-watcher.ps1 b/arch/deploy/deploy-watcher.ps1
+index 736b90d..9a66f56 100644
+--- a/arch/deploy/deploy-watcher.ps1
++++ b/arch/deploy/deploy-watcher.ps1
+@@ -6,7 +6,7 @@
+ 
+ $watchPath = "E:\Invekto"
+ $nssm = "E:\nssm.exe"
+-$services = @("InvektoBackend", "InvektoChatAnalysis", "InvektoAutomation", "InvektoAgentAI", "InvektoOutbound")
++$services = @("InvektoBackend", "InvektoChatAnalysis", "InvektoAutomation", "InvektoAgentAI", "InvektoOutbound", "InvektoKnowledge")
+ $logFile = "E:\Invekto\logs\deploy-watcher.log"
+ 
+ # Ensure log directory exists
+diff --git a/arch/deploy/install-services.bat b/arch/deploy/install-services.bat
+index c0e9716..ec976b7 100644
+--- a/arch/deploy/install-services.bat
++++ b/arch/deploy/install-services.bat
+@@ -13,7 +13,7 @@ echo ============================================
+ echo.
+ 
+ REM Backend Service
+-echo [1/5] Installing InvektoBackend...
++echo [1/6] Installing InvektoBackend...
+ %NSSM% install InvektoBackend "E:\Invekto\Backend\current\Invekto.Backend.exe"
+ %NSSM% set InvektoBackend DisplayName "Invekto Backend"
+ %NSSM% set InvektoBackend Description "Invekto Backend API - Port 5000"
+@@ -32,7 +32,7 @@ echo [OK] InvektoBackend installed
+ echo.
+ 
+ REM ChatAnalysis Service
+-echo [2/5] Installing InvektoChatAnalysis...
++echo [2/6] Installing InvektoChatAnalysis...
+ %NSSM% install InvektoChatAnalysis "E:\Invekto\ChatAnalysis\current\Invekto.ChatAnalysis.exe"
+ %NSSM% set InvektoChatAnalysis DisplayName "Invekto ChatAnalysis"
+ %NSSM% set InvektoChatAnalysis Description "Invekto Chat Analysis Microservice - Port 7101"
+@@ -51,7 +51,7 @@ echo [OK] InvektoChatAnalysis installed
+ echo.
+ 
+ REM Automation Service
+-echo [3/5] Installing InvektoAutomation...
++echo [3/6] Installing InvektoAutomation...
+ %NSSM% install InvektoAutomation "E:\Invekto\Automation\current\Invekto.Automation.exe"
+ %NSSM% set InvektoAutomation DisplayName "Invekto Automation"
+ %NSSM% set InvektoAutomation Description "Invekto Automation Chatbot/Flow Builder - Port 7108"
+@@ -70,7 +70,7 @@ echo [OK] InvektoAutomation installed
+ echo.
+ 
+ REM AgentAI Service
+-echo [4/5] Installing InvektoAgentAI...
++echo [4/6] Installing InvektoAgentAI...
+ %NSSM% install InvektoAgentAI "E:\Invekto\AgentAI\current\Invekto.AgentAI.exe"
+ %NSSM% set InvektoAgentAI DisplayName "Invekto AgentAI"
+ %NSSM% set InvektoAgentAI Description "Invekto AI Agent Assist Microservice - Port 7105"
+@@ -89,7 +89,7 @@ echo [OK] InvektoAgentAI installed
+ echo.
+ 
+ REM Outbound Service
+-echo [5/5] Installing InvektoOutbound...
++echo [5/6] Installing InvektoOutbound...
+ %NSSM% install InvektoOutbound "E:\Invekto\Outbound\current\Invekto.Outbound.exe"
+ %NSSM% set InvektoOutbound DisplayName "Invekto Outbound"
+ %NSSM% set InvektoOutbound Description "Invekto Outbound Broadcast Messaging - Port 7107"
+@@ -107,12 +107,32 @@ echo [5/5] Installing InvektoOutbound...
+ echo [OK] InvektoOutbound installed
+ echo.
+ 
++REM Knowledge Service
++echo [6/6] Installing InvektoKnowledge...
++%NSSM% install InvektoKnowledge "E:\Invekto\Knowledge\current\Invekto.Knowledge.exe"
++%NSSM% set InvektoKnowledge DisplayName "Invekto Knowledge"
++%NSSM% set InvektoKnowledge Description "Invekto Knowledge RAG Service - Port 7104"
++%NSSM% set InvektoKnowledge AppDirectory "E:\Invekto\Knowledge\current"
++%NSSM% set InvektoKnowledge AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production"
++%NSSM% set InvektoKnowledge AppStdout "E:\Invekto\Knowledge\logs\service-stdout.log"
++%NSSM% set InvektoKnowledge AppStderr "E:\Invekto\Knowledge\logs\service-stderr.log"
++%NSSM% set InvektoKnowledge AppStdoutCreationDisposition 4
++%NSSM% set InvektoKnowledge AppStderrCreationDisposition 4
++%NSSM% set InvektoKnowledge AppRotateFiles 1
++%NSSM% set InvektoKnowledge AppRotateBytes 10485760
++%NSSM% set InvektoKnowledge Start SERVICE_AUTO_START
++%NSSM% set InvektoKnowledge AppExit Default Restart
++%NSSM% set InvektoKnowledge AppRestartDelay 5000
++echo [OK] InvektoKnowledge installed
++echo.
++
+ REM Create log directories
+ if not exist "E:\Invekto\Backend\logs" mkdir "E:\Invekto\Backend\logs"
+ if not exist "E:\Invekto\ChatAnalysis\logs" mkdir "E:\Invekto\ChatAnalysis\logs"
+ if not exist "E:\Invekto\Automation\logs" mkdir "E:\Invekto\Automation\logs"
+ if not exist "E:\Invekto\AgentAI\logs" mkdir "E:\Invekto\AgentAI\logs"
+ if not exist "E:\Invekto\Outbound\logs" mkdir "E:\Invekto\Outbound\logs"
++if not exist "E:\Invekto\Knowledge\logs" mkdir "E:\Invekto\Knowledge\logs"
+ 
+ REM Start services
+ echo Starting services...
+@@ -126,6 +146,8 @@ timeout /t 3 /nobreak >nul
+ timeout /t 3 /nobreak >nul
+ %NSSM% start InvektoOutbound
+ timeout /t 3 /nobreak >nul
++%NSSM% start InvektoKnowledge
++timeout /t 3 /nobreak >nul
+ 
+ echo.
+ echo ============================================
+@@ -138,10 +160,12 @@ echo Services:
+ %NSSM% status InvektoAutomation
+ %NSSM% status InvektoAgentAI
+ %NSSM% status InvektoOutbound
++%NSSM% status InvektoKnowledge
+ echo.
+ echo Test:
+ echo   http://localhost:5000/health
+ echo   http://localhost:7101/health
++echo   http://localhost:7104/health
+ echo   http://localhost:7105/health
+ echo   http://localhost:7107/health
+ echo   http://localhost:7108/health
+@@ -152,5 +176,6 @@ echo   %NSSM% edit InvektoChatAnalysis
+ echo   %NSSM% edit InvektoAutomation
+ echo   %NSSM% edit InvektoAgentAI
+ echo   %NSSM% edit InvektoOutbound
++echo   %NSSM% edit InvektoKnowledge
+ echo.
+ pause
+diff --git a/arch/errors.md b/arch/errors.md
+index ef3514d..38794da 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -26,6 +26,7 @@ INV-{SERVICE}-{NUMBER}
+ | DB | Database | Veritabanı hataları |
+ | VAL | Validation | Validasyon hataları |
+ | OB | Outbound | GR-1.3: Broadcast & trigger engine hataları |
++| KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
+ | EXT | External | Dış servis hataları |
+ 
+ ---
+@@ -168,6 +169,23 @@ INV-{SERVICE}-{NUMBER}
+ 
+ ---
+ 
++## KN - Knowledge Errors (GR-2.1)
++
++| Code | Description | User Message |
++|------|-------------|--------------|
++| INV-KN-001 | Import path not found | Belirtilen NLP dosya yolu bulunamadi. |
++| INV-KN-002 | Import parse error | Dosya parse hatasi (JSON/CSV). |
++| INV-KN-003 | Import DB error | Veritabani kayit hatasi. |
++| INV-KN-004 | Search failed | Arama sirasinda hata olustu. |
++| INV-KN-005 | OpenAI timeout | Embedding servisi zaman asimi (anahtar kelime aramasina gecildi). |
++| INV-KN-006 | OpenAI rate limit | Embedding rate limiti asildi (anahtar kelime aramasina gecildi). |
++| INV-KN-007 | OpenAI API error | Embedding servisi hatasi. |
++| INV-KN-008 | FAQ not found | Belirtilen FAQ bulunamadi. |
++| INV-KN-009 | Invalid request | Gecersiz istek formati. |
++| INV-KN-010 | pgvector missing | pgvector eklentisi yuklu degil (sunucu hatasi). |
++
++---
++
+ ## EXT - External Service Errors
+ 
+ | Code | Description | User Message |
+diff --git a/arch/plans/20260214-knowledge-service.json b/arch/plans/20260214-knowledge-service.json
+new file mode 100644
+index 0000000..d850106
+--- /dev/null
++++ b/arch/plans/20260214-knowledge-service.json
+@@ -0,0 +1,169 @@
++{
++  "schema_version": "3.0",
++  "review_protocol_version": "3.0",
++  "slug": "20260214-knowledge-service",
++  "risk": "HIGH",
++  "status": "REVIEW",
++  "created_at": "2026-02-14T21:00:00Z",
++  "updated_at": "2026-02-14T23:45:00Z",
++  "plan": {
++    "summary": "WA-3 + RP-2 GR-2.1 Phase A: Knowledge Service Core. Yeni Invekto.Knowledge mikro servisi (port 7104) - RAG altyapisi, pgvector semantic search, OpenAI text-embedding-3-large (3072 dim), keyword fallback (PostgreSQL FTS), WA-3 NLP data import (FAQ clusters + intent + product + sentiment), FAQ CRUD, embedding generation endpoint. 8 DB tablosu, 10 API endpoint, 22 dosya.",
++    "q_intent": "WA-2 NLP pipeline ciktilari (faq_clusters.json, intent_classifications.csv, product_analysis.csv, sentiment.csv) Knowledge Service DB'ye aktarilacak. RAG + FAQ editor + semantic search. Phase A = core, Phase B = PDF upload + UI.",
++    "interview_notes": "3 round interview: Veri=hepsi, embedding=text-embedding-3-large 3072d, FAQ filtre=min 5 soru + min 20 char cevap, OpenAI key=placeholder (sonra eklendi), pgvector=kurulu degil (schema'da check), tenant=ID:1. 2 sub-phase (A:core, B:PDF+UI). CSV parsing=manual StreamReader (CsvHelper yok). Category inference=keyword heuristic."
++  },
++  "allowed_files": [
++    "arch/db/knowledge.sql",
++    "arch/contracts/knowledge-import.json",
++    "arch/contracts/knowledge-search.json",
++    "arch/contracts/knowledge-faq.json",
++    "arch/errors.md",
++    "src/Invekto.Knowledge/Invekto.Knowledge.csproj",
++    "src/Invekto.Knowledge/appsettings.json",
++    "src/Invekto.Knowledge/appsettings.Production.json",
++    "src/Invekto.Knowledge/Data/KnowledgeConnectionFactory.cs",
++    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
++    "src/Invekto.Knowledge/Services/ImportService.cs",
++    "src/Invekto.Knowledge/Services/EmbeddingService.cs",
++    "src/Invekto.Knowledge/Services/RetrievalService.cs",
++    "src/Invekto.Knowledge/Program.cs",
++    "src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs",
++    "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs",
++    "src/Invekto.Shared/Invekto.Shared.csproj",
++    "src/Invekto.Automation/Program.cs",
++    "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs",
++    "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs",
++    "src/Invekto.Shared/Constants/ErrorCodes.cs",
++    "src/Invekto.Shared/Constants/ServiceConstants.cs",
++    "InvektoServis.sln",
++    "dev-to-invekto-services.bat",
++    "arch/deploy/install-services.bat",
++    "arch/deploy/deploy-watcher.ps1",
++    "arch/plans/20260214-knowledge-service.json"
++  ],
++  "files_changed": [
++    {"path": "arch/db/knowledge.sql", "is_new": true, "change": "8 tables + indexes + triggers + GRANT for Knowledge Service DB schema"},
++    {"path": "arch/contracts/knowledge-import.json", "is_new": true, "change": "Import request/response JSON Schema"},
++    {"path": "arch/contracts/knowledge-search.json", "is_new": true, "change": "Search request/response JSON Schema"},
++    {"path": "arch/contracts/knowledge-faq.json", "is_new": true, "change": "FAQ CRUD JSON Schema"},
++    {"path": "arch/errors.md", "is_new": false, "change": "+KN error codes (INV-KN-001 to INV-KN-010)"},
++    {"path": "src/Invekto.Knowledge/Invekto.Knowledge.csproj", "is_new": true, "change": ".NET 8 Web SDK + Pgvector 0.3.0 NuGet"},
++    {"path": "src/Invekto.Knowledge/appsettings.json", "is_new": true, "change": "Dev config: port 7104, PG conn, OpenAI settings, JWT"},
++    {"path": "src/Invekto.Knowledge/Data/KnowledgeConnectionFactory.cs", "is_new": true, "change": "pgvector-aware NpgsqlDataSourceBuilder.UseVector()"},
++    {"path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": true, "change": "~600 lines: FAQ CRUD, semantic search (pgvector), keyword search (FTS), batch inserts, DTOs"},
++    {"path": "src/Invekto.Knowledge/Services/ImportService.cs", "is_new": true, "change": "~450 lines: WA-3 parser (JSON+CSV), FAQ filter, category inference, batch orchestration"},
++    {"path": "src/Invekto.Knowledge/Services/EmbeddingService.cs", "is_new": true, "change": "~150 lines: OpenAI API client, retry, graceful degradation"},
++    {"path": "src/Invekto.Knowledge/Services/RetrievalService.cs", "is_new": true, "change": "~80 lines: Search orchestrator (semantic vs keyword)"},
++    {"path": "src/Invekto.Knowledge/Program.cs", "is_new": true, "change": "~480 lines: Bootstrap, DI, JWT, 10 endpoints (health/ready/import/search/CRUD/embeddings/ops)"},
++    {"path": "src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs", "is_new": true, "change": "Shared middleware: moved from per-service copy to Invekto.Shared (CQ4 dedup fix)"},
++    {"path": "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs", "is_new": true, "change": "Shared middleware: moved from per-service copy to Invekto.Shared (CQ4 dedup fix)"},
++    {"path": "src/Invekto.Shared/Invekto.Shared.csproj", "is_new": false, "change": "+FrameworkReference Microsoft.AspNetCore.App for shared middleware"},
++    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+12 lines: INV-KN-001 to INV-KN-010"},
++    {"path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "is_new": false, "change": "+4 lines: KnowledgePort=7104, KnowledgeServiceName"},
++    {"path": "InvektoServis.sln", "is_new": false, "change": "+Invekto.Knowledge project reference"},
++    {"path": "dev-to-invekto-services.bat", "is_new": false, "change": "+Knowledge build step + FTP upload"},
++    {"path": "arch/deploy/install-services.bat", "is_new": false, "change": "+NSSM InvektoKnowledge block"},
++    {"path": "arch/deploy/deploy-watcher.ps1", "is_new": false, "change": "+InvektoKnowledge to $services array"},
++    {"path": "arch/plans/20260214-knowledge-service.json", "is_new": true, "change": "Plan JSON for this review"}
++  ],
++  "git_diff": {
++    "patch_truncated": null,
++    "sha256": "0041bd0cb13e878ff534a774c2278e68c241daef13ef426db8ea1e1377b61826",
++    "full_path": "arch/plans/diffs/20260214-knowledge-service.diff",
++    "stats": {"insertions": 2615, "deletions": 22, "files_count": 24}
++  },
++  "build": {
++    "status": "PASS",
++    "command": "dotnet build InvektoServis.sln",
++    "timestamp": "2026-02-14T22:00:00Z"
++  },
++  "scope_discipline": {
++    "forbidden_areas": ["src/Invekto.Backend/", "src/Invekto.AgentAI/", "src/Invekto.Outbound/", "src/Invekto.ChatAnalysis/", "tools/whatsapp-analyzer/"],
++    "non_goals": ["Phase B: PDF upload + UI + document chunking", "Backend proxy endpoints", "Dashboard Knowledge widget", "KnowledgeClient in Backend"],
++    "intentional_exclusions": ["Phase A only: core service + DB + import + retrieval. Phase B (PDF, UI, source references) deferred."],
++    "design_decisions": [
++      "CQ4-DUPLICATE-MIDDLEWARE-FIXED: Middleware moved to Invekto.Shared/Middleware/ (iteration 5 fix). Knowledge + Automation now use Shared. Automation copies deleted. FrameworkReference added to Shared.csproj. AgentAI/Backend/ChatAnalysis/Outbound still have own copies (separate follow-up).",
++      "Q4-IDEMPOTENT-FIXED: All imports now truly idempotent via schema constraints (iteration 5 fix). FAQ: UNIQUE(tenant_id, question) + ON CONFLICT DO NOTHING. Intent: UNIQUE(tenant_id, intent_name) + ON CONFLICT DO UPDATE. Product: UNIQUE(tenant_id, product_code) + ON CONFLICT DO UPDATE. Sentiment: UNIQUE(tenant_id, conversation_id) + ON CONFLICT DO UPDATE. No data loss on partial failure."
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "EmbeddingService.cs:GetEmbeddingAsync - HttpRequestException, TaskCanceledException, JsonException per retry",
++      "ImportService.cs:ImportNlpDataAsync - Exception -> UpdateDocumentStatus('error') + rethrow",
++      "ImportService.cs:ImportFaqClustersAsync - JsonSerializer.Deserialize null check -> InvalidOperationException",
++      "Program.cs:import endpoint - InvalidOperationException (parse), NpgsqlException (DB)",
++      "Program.cs:search endpoint - Exception catch-all with error code",
++      "Program.cs:FAQ CRUD endpoints - Exception with error codes",
++      "KnowledgeRepository.cs:batch inserts - NpgsqlTransaction per batch, typed catch (NpgsqlException)"
++    ],
++    "user_facing_errors": [
++      "INV-KN-001: NLP dosya yolu bulunamadi (400)",
++      "INV-KN-002: JSON/CSV parse hatasi (400)",
++      "INV-KN-003: DB batch insert hatasi (500)",
++      "INV-KN-004: Arama hatasi (500)",
++      "INV-KN-008: FAQ bulunamadi (404)",
++      "INV-KN-009: Gecersiz istek (400)"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "EmbeddingService returns null on failure (logged via SystemWarn). RetrievalService falls back to keyword search with reason field. ImportService logs each step and sets document status to 'error' on failure. All catch blocks log with specific error codes. Repository batch methods use typed catch (NpgsqlException) with rollback+rethrow."
++  },
++  "aha_moments": [
++    {
++      "category": "UX",
++      "user_pain": "Import progress unknown during long WA-3 data import",
++      "suggestion": "Phase B: SSE stream ile import ilerlemesi canli gosterim",
++      "aha_moment": "Kullanici import'un hangi asamada oldugunu canli goruyor"
++    },
++    {
++      "category": "SPEED",
++      "user_pain": "Ayni soru tekrar geldiginde embedding yeniden uretiliyor",
++      "suggestion": "Embedding cache (LRU 500 entry) ile tekrar eden sorgularda aninda sonuc",
++      "aha_moment": "Ayni soru 2. kez geldiginde 0ms response"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Import hata verirse tum veri kaybolabilir",
++      "suggestion": "Transaction per-step + checkpoint ile partial import recovery",
++      "aha_moment": "5000 FAQ'dan 3000'i import edildi, hata oldu, 3001'den devam"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Dusuk skor sorulari (cevapsiz konular) gorulmuyor",
++      "suggestion": "Phase 6: Score < 0.3 sorulari logla, haftalik 'cevapsiz sorular' raporu",
++      "aha_moment": "Haftalik 'Top 10 cevapsiz soru' raporu ile eksik FAQ'lar tespit"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Semantic search calisip calismadigini bilmek zor",
++      "suggestion": "Phase B: Dashboard'da embedding health widget",
++      "aha_moment": "Dashboard'da 'Semantic: ACTIVE, 2847/2847 embedded' goruyor"
++    }
++  ],
++  "verification_questions": [
++    {"id": "Q1", "question": "KnowledgeRepository her WHERE clause'da tenant_id var mi? Multi-tenant izolasyon saglanmis mi?", "category": "Service/Auth", "codex_answer": null, "codex_result": null},
++    {"id": "Q2", "question": "EmbeddingService OpenAI key yoksa null donuyor mu (throw etmiyor)? Graceful degradation calisiyor mu?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
++    {"id": "Q3", "question": "ImportService CSV parsing stream-based mi? 91MB dosya tumu RAM'e yuklenmiyor mu?", "category": "Data", "codex_answer": null, "codex_result": null},
++    {"id": "Q4", "question": "Batch insert'ler transaction ile sarilmis mi? Partial failure durumunda ne oluyor?", "category": "Data", "codex_answer": null, "codex_result": null},
++    {"id": "Q5", "question": "Her exception path loglanmis mi? Empty catch blogu yok mu? Typed catches (JsonException, NpgsqlException)?", "category": "Lifecycle", "codex_answer": null, "codex_result": null},
++    {"id": "Q6", "question": "pgvector extension kontrolu /ready endpoint'inde mi? Startup'ta fatal hata veriyor mu?", "category": "Process/Policy", "codex_answer": null, "codex_result": null}
++  ],
++  "verdict": {
++    "status": "FAIL",
++    "source": "CODEX_TEXT_VIA_Q",
++    "received_at": "2026-02-15T00:00:00Z",
++    "updated_by": "DevAgent",
++    "updated_at": "2026-02-15T00:00:00Z",
++    "iteration": 3,
++    "escalation_required": true,
++    "escalation_reason": "Max iteration (3) reached. 2 recurring issues require Q decision.",
++    "escalation_category": "DECISION_CONFLICT",
++    "blocking_issues": [
++      "CQ4: Duplicate middleware (Codex insists FAIL despite documented intentional design per CLAUDE.md microservice isolation)",
++      "Q4: Sentiment import idempotent re-import claim not backed by code - no ON CONFLICT, no unique constraint on conversation_sentiments"
++    ],
++    "history": [
++      {"iteration": 1, "status": "FAIL", "issues": ["Multi-tenant isolation: UpdateDocumentStatusAsync/UpdateFaqEmbeddingAsync missing tenant_id in WHERE", "Memory: Sentiment import 164K rows all in RAM", "Missing try-catch: DELETE FAQ + generate-embeddings endpoints"]},
++      {"iteration": 2, "status": "FAIL", "issues": ["CQ4: Duplicate middleware (intentional design - documented)", "Q4: Per-batch commit partial failure (by-design - documented)", "Q5: Untyped catch blocks in repository (fixed to NpgsqlException)"]},
++      {"iteration": 3, "status": "FAIL", "issues": ["CQ4: Duplicate middleware (recurring - documented design decision)", "Q4: Sentiment no ON CONFLICT / no unique constraint - idempotent claim not code-guaranteed"]}
++    ]
++  }
++}
+diff --git a/dev-to-invekto-services.bat b/dev-to-invekto-services.bat
+index 8aec436..bfb6619 100644
+--- a/dev-to-invekto-services.bat
++++ b/dev-to-invekto-services.bat
+@@ -28,6 +28,7 @@ set "REMOTE_CHATANALYSIS=/e/Invekto/ChatAnalysis/current"
+ set "REMOTE_AUTOMATION=/e/Invekto/Automation/current"
+ set "REMOTE_AGENTAI=/e/Invekto/AgentAI/current"
+ set "REMOTE_OUTBOUND=/e/Invekto/Outbound/current"
++set "REMOTE_KNOWLEDGE=/e/Invekto/Knowledge/current"
+ set "REMOTE_SIMULATOR=/e/Invekto/Simulator"
+ 
+ REM Local paths
+@@ -38,6 +39,7 @@ set "LOCAL_CHATANALYSIS=%LOCAL_DEPLOY%\ChatAnalysis"
+ set "LOCAL_AUTOMATION=%LOCAL_DEPLOY%\Automation"
+ set "LOCAL_AGENTAI=%LOCAL_DEPLOY%\AgentAI"
+ set "LOCAL_OUTBOUND=%LOCAL_DEPLOY%\Outbound"
++set "LOCAL_KNOWLEDGE=%LOCAL_DEPLOY%\Knowledge"
+ set "LOCAL_SIMULATOR=%~dp0tools\simulator"
+ 
+ REM Check WinSCP exists
+@@ -54,9 +56,10 @@ if not exist "!LOCAL_CHATANALYSIS!" mkdir "!LOCAL_CHATANALYSIS!"
+ if not exist "!LOCAL_AUTOMATION!" mkdir "!LOCAL_AUTOMATION!"
+ if not exist "!LOCAL_AGENTAI!" mkdir "!LOCAL_AGENTAI!"
+ if not exist "!LOCAL_OUTBOUND!" mkdir "!LOCAL_OUTBOUND!"
++if not exist "!LOCAL_KNOWLEDGE!" mkdir "!LOCAL_KNOWLEDGE!"
+ 
+ echo ============================================
+-echo [1/6] Building FlowBuilder SPA...
++echo [1/7] Building FlowBuilder SPA...
+ echo ============================================
+ echo.
+ 
+@@ -82,7 +85,7 @@ echo [OK] FlowBuilder SPA built to wwwroot\flow-builder\
+ echo.
+ 
+ echo ============================================
+-echo [2/6] Building Backend...
++echo [2/7] Building Backend...
+ echo ============================================
+ echo.
+ 
+@@ -96,7 +99,7 @@ echo [OK] Backend built to !LOCAL_BACKEND!
+ echo.
+ 
+ echo ============================================
+-echo [3/6] Building ChatAnalysis...
++echo [3/7] Building ChatAnalysis...
+ echo ============================================
+ echo.
+ 
+@@ -109,7 +112,7 @@ echo [OK] ChatAnalysis built to !LOCAL_CHATANALYSIS!
+ echo.
+ 
+ echo ============================================
+-echo [4/6] Building Automation...
++echo [4/7] Building Automation...
+ echo ============================================
+ echo.
+ 
+@@ -122,7 +125,7 @@ echo [OK] Automation built to !LOCAL_AUTOMATION!
+ echo.
+ 
+ echo ============================================
+-echo [5/6] Building AgentAI...
++echo [5/7] Building AgentAI...
+ echo ============================================
+ echo.
+ 
+@@ -135,7 +138,7 @@ echo [OK] AgentAI built to !LOCAL_AGENTAI!
+ echo.
+ 
+ echo ============================================
+-echo [6/6] Building Outbound...
++echo [6/7] Building Outbound...
+ echo ============================================
+ echo.
+ 
+@@ -147,15 +150,28 @@ if errorlevel 1 (
+ echo [OK] Outbound built to !LOCAL_OUTBOUND!
+ echo.
+ 
++echo ============================================
++echo [7/7] Building Knowledge...
++echo ============================================
++echo.
++
++dotnet publish src/Invekto.Knowledge/Invekto.Knowledge.csproj -c Release -o "!LOCAL_KNOWLEDGE!" --self-contained false
++if errorlevel 1 (
++    echo [ERROR] Knowledge build failed!
++    goto :error_exit
++)
++echo [OK] Knowledge built to !LOCAL_KNOWLEDGE!
++echo.
++
+ REM Q: Create build marker
+ for /f "tokens=*" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_HASH=%%i"
+ for /f "tokens=*" %%i in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH=%%i"
+-powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('FlowBuilder','Backend','ChatAnalysis','Automation','AgentAI','Outbound') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
++powershell -NoProfile -Command "$marker = @{ timestamp = (Get-Date).ToString('o'); gitHash = '%GIT_HASH%'; gitBranch = '%GIT_BRANCH%'; services = @('FlowBuilder','Backend','ChatAnalysis','Automation','AgentAI','Outbound','Knowledge') }; [System.IO.File]::WriteAllText('!LOCAL_DEPLOY!\.build-marker.json', ($marker | ConvertTo-Json))"
+ echo [OK] Build marker created (%GIT_BRANCH%@%GIT_HASH%)
+ echo.
+ 
+ echo ============================================
+-echo [7/9] Stopping Remote Services...
++echo [8/10] Stopping Remote Services...
+ echo ============================================
+ echo.
+ echo Creating deploy-stop.flag to trigger service shutdown...
+@@ -182,7 +198,7 @@ timeout /t 10 /nobreak >nul
+ 
+ echo.
+ echo ============================================
+-echo [8/9] Uploading to STAGING Server...
++echo [9/10] Uploading to STAGING Server...
+ echo ============================================
+ echo.
+ echo Local Backend:      !LOCAL_BACKEND!
+@@ -190,11 +206,13 @@ echo Local ChatAnalysis: !LOCAL_CHATANALYSIS!
+ echo Local Automation:   !LOCAL_AUTOMATION!
+ echo Local AgentAI:      !LOCAL_AGENTAI!
+ echo Local Outbound:     !LOCAL_OUTBOUND!
++echo Local Knowledge:    !LOCAL_KNOWLEDGE!
+ echo Remote Backend:     %REMOTE_BACKEND%
+ echo Remote ChatAnalysis: %REMOTE_CHATANALYSIS%
+ echo Remote Automation:  %REMOTE_AUTOMATION%
+ echo Remote AgentAI:     %REMOTE_AGENTAI%
+ echo Remote Outbound:    %REMOTE_OUTBOUND%
++echo Remote Knowledge:   %REMOTE_KNOWLEDGE%
+ echo.
+ echo Mode: Synchronize (only changed files)
+ 
+@@ -212,6 +230,7 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
+     echo mkdir "%REMOTE_AUTOMATION%"
+     echo mkdir "%REMOTE_AGENTAI%"
+     echo mkdir "%REMOTE_OUTBOUND%"
++    echo mkdir "%REMOTE_KNOWLEDGE%"
+     echo mkdir "%REMOTE_SIMULATOR%"
+     echo option batch abort
+     echo echo Uploading Backend to STAGING...
+@@ -224,6 +243,8 @@ set "WINSCP_SCRIPT=%TEMP%\winscp_invekto_deploy.txt"
+     echo synchronize remote "!LOCAL_AGENTAI!" "%REMOTE_AGENTAI%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+     echo echo Uploading Outbound to STAGING...
+     echo synchronize remote "!LOCAL_OUTBOUND!" "%REMOTE_OUTBOUND%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
++    echo echo Uploading Knowledge to STAGING...
++    echo synchronize remote "!LOCAL_KNOWLEDGE!" "%REMOTE_KNOWLEDGE%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|appsettings.Production.json"
+     echo echo Uploading Simulator to STAGING...
+     echo synchronize remote "!LOCAL_SIMULATOR!" "%REMOTE_SIMULATOR%" -mirror -transfer=binary -criteria=size,time -resumesupport=on -filemask="|node_modules/;.env"
+     echo echo Uploading build marker...
+@@ -245,7 +266,7 @@ echo [OK] FTP upload completed
+ 
+ echo.
+ echo ============================================
+-echo [9/9] Starting Remote Services...
++echo [10/10] Starting Remote Services...
+ echo ============================================
+ echo.
+ echo Creating deploy-start.flag to trigger service startup...
+@@ -294,6 +315,7 @@ echo   ChatAnalysis: %REMOTE_CHATANALYSIS%
+ echo   Automation:   %REMOTE_AUTOMATION%
+ echo   AgentAI:      %REMOTE_AGENTAI%
+ echo   Outbound:     %REMOTE_OUTBOUND%
++echo   Knowledge:    %REMOTE_KNOWLEDGE%
+ echo   Simulator:    %REMOTE_SIMULATOR%
+ echo.
+ echo ============================================
+diff --git a/src/Invekto.Automation/Program.cs b/src/Invekto.Automation/Program.cs
+index 693bafa..861b774 100644
+--- a/src/Invekto.Automation/Program.cs
++++ b/src/Invekto.Automation/Program.cs
+@@ -1,7 +1,7 @@
+ using System.Text.Json;
+ using Invekto.Automation.Data;
+-using Invekto.Automation.Middleware;
+ using Invekto.Automation.Services;
++using Invekto.Shared.Middleware;
+ using Invekto.Automation.Services.NodeHandlers;
+ using Invekto.Shared.Auth;
+ using Invekto.Shared.Constants;
+diff --git a/src/Invekto.Knowledge/Data/KnowledgeConnectionFactory.cs b/src/Invekto.Knowledge/Data/KnowledgeConnectionFactory.cs
+new file mode 100644
+index 0000000..3aecf6f
+--- /dev/null
++++ b/src/Invekto.Knowledge/Data/KnowledgeConnectionFactory.cs
+@@ -0,0 +1,27 @@
++using Npgsql;
++using Pgvector.Npgsql;
++
++namespace Invekto.Knowledge.Data;
++
++/// <summary>
++/// PostgreSQL connection factory with pgvector support.
++/// Extends shared pattern with UseVector() for embedding operations.
++/// </summary>
++public sealed class KnowledgeConnectionFactory
++{
++    private readonly NpgsqlDataSource _dataSource;
++
++    public KnowledgeConnectionFactory(string connectionString)
++    {
++        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
++        dataSourceBuilder.UseVector();
++        _dataSource = dataSourceBuilder.Build();
++    }
++
++    public async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken ct = default)
++    {
++        var connection = _dataSource.CreateConnection();
++        await connection.OpenAsync(ct);
++        return connection;
++    }
++}
+diff --git a/src/Invekto.Knowledge/Data/KnowledgeRepository.cs b/src/Invekto.Knowledge/Data/KnowledgeRepository.cs
+new file mode 100644
+index 0000000..9571b3b
+--- /dev/null
++++ b/src/Invekto.Knowledge/Data/KnowledgeRepository.cs
+@@ -0,0 +1,608 @@
++using System.Text.Json;
++using Npgsql;
++using NpgsqlTypes;
++using Pgvector;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Knowledge.Data;
++
++/// <summary>
++/// PostgreSQL data access for Knowledge Service.
++/// FAQ CRUD, batch import, semantic search (pgvector), keyword search (FTS).
++/// </summary>
++public sealed class KnowledgeRepository
++{
++    private readonly KnowledgeConnectionFactory _db;
++    private readonly JsonLinesLogger _logger;
++
++    public KnowledgeRepository(KnowledgeConnectionFactory db, JsonLinesLogger logger)
++    {
++        _db = db;
++        _logger = logger;
++    }
++
++    // ============================================================
++    // Health check
++    // ============================================================
++
++    public async Task<bool> CheckPgvectorAsync(CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "SELECT 1 FROM pg_extension WHERE extname = 'vector'";
++        var result = await cmd.ExecuteScalarAsync(ct);
++        return result != null;
++    }
++
++    // ============================================================
++    // FAQ CRUD
++    // ============================================================
++
++    public async Task<FaqDto?> GetFaqAsync(int tenantId, int faqId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, tenant_id, question, answer, category, lang, source,
++                   keywords, is_active, created_at, updated_at
++            FROM faqs
++            WHERE tenant_id = @tid AND id = @fid";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("fid", faqId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        if (!await reader.ReadAsync(ct))
++            return null;
++
++        return ReadFaqDto(reader);
++    }
++
++    public async Task<(List<FaqDto> Faqs, int Total)> ListFaqsAsync(
++        int tenantId, string? lang, string? category, int page, int limit, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++
++        // Count
++        await using var countCmd = conn.CreateCommand();
++        countCmd.CommandText = @"
++            SELECT COUNT(*) FROM faqs
++            WHERE tenant_id = @tid AND is_active = true
++              AND (@lang IS NULL OR lang = @lang)
++              AND (@category IS NULL OR category = @category)";
++        countCmd.Parameters.AddWithValue("tid", tenantId);
++        countCmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Varchar) { Value = lang ?? (object)DBNull.Value });
++        countCmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Varchar) { Value = category ?? (object)DBNull.Value });
++
++        var total = Convert.ToInt32(await countCmd.ExecuteScalarAsync(ct));
++
++        // List
++        await using var listCmd = conn.CreateCommand();
++        listCmd.CommandText = @"
++            SELECT id, tenant_id, question, answer, category, lang, source,
++                   keywords, is_active, created_at, updated_at
++            FROM faqs
++            WHERE tenant_id = @tid AND is_active = true
++              AND (@lang IS NULL OR lang = @lang)
++              AND (@category IS NULL OR category = @category)
++            ORDER BY id DESC
++            LIMIT @lim OFFSET @off";
++        listCmd.Parameters.AddWithValue("tid", tenantId);
++        listCmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Varchar) { Value = lang ?? (object)DBNull.Value });
++        listCmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Varchar) { Value = category ?? (object)DBNull.Value });
++        listCmd.Parameters.AddWithValue("lim", limit);
++        listCmd.Parameters.AddWithValue("off", (page - 1) * limit);
++
++        var faqs = new List<FaqDto>();
++        await using var reader = await listCmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++            faqs.Add(ReadFaqDto(reader));
++
++        return (faqs, total);
++    }
++
++    public async Task<FaqDto> InsertFaqAsync(int tenantId, string question, string answer,
++        string? category, string lang, string[] keywords, string source, string? sourceMetadata,
++        CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO faqs (tenant_id, question, answer, category, lang, keywords, source, source_metadata)
++            VALUES (@tid, @q, @a, @cat, @lang, @kw, @src, @meta::jsonb)
++            RETURNING id, created_at, updated_at";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("q", question);
++        cmd.Parameters.AddWithValue("a", answer);
++        cmd.Parameters.Add(new NpgsqlParameter("cat", NpgsqlDbType.Varchar) { Value = category ?? (object)DBNull.Value });
++        cmd.Parameters.AddWithValue("lang", lang);
++        cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = keywords });
++        cmd.Parameters.AddWithValue("src", source);
++        cmd.Parameters.Add(new NpgsqlParameter("meta", NpgsqlDbType.Text) { Value = sourceMetadata ?? (object)DBNull.Value });
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        await reader.ReadAsync(ct);
++
++        return new FaqDto
++        {
++            Id = reader.GetInt32(0),
++            TenantId = tenantId,
++            Question = question,
++            Answer = answer,
++            Category = category,
++            Lang = lang,
++            Source = source,
++            Keywords = keywords,
++            IsActive = true,
++            CreatedAt = reader.GetDateTime(1),
++            UpdatedAt = reader.GetDateTime(2)
++        };
++    }
++
++    public async Task<FaqDto?> UpdateFaqAsync(int tenantId, int faqId, string? question, string? answer,
++        string? category, string? lang, string[]? keywords, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++
++        var setClauses = new List<string>();
++        if (question != null) { setClauses.Add("question = @q"); cmd.Parameters.AddWithValue("q", question); }
++        if (answer != null) { setClauses.Add("answer = @a"); cmd.Parameters.AddWithValue("a", answer); }
++        if (category != null) { setClauses.Add("category = @cat"); cmd.Parameters.AddWithValue("cat", category); }
++        if (lang != null) { setClauses.Add("lang = @lang"); cmd.Parameters.AddWithValue("lang", lang); }
++        if (keywords != null) { setClauses.Add("keywords = @kw"); cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = keywords }); }
++
++        if (setClauses.Count == 0)
++            return await GetFaqAsync(tenantId, faqId, ct);
++
++        // Clear embedding when question/answer changes (needs re-generation)
++        if (question != null || answer != null)
++            setClauses.Add("embedding = NULL");
++
++        cmd.CommandText = $@"
++            UPDATE faqs SET {string.Join(", ", setClauses)}
++            WHERE tenant_id = @tid AND id = @fid AND is_active = true
++            RETURNING id, tenant_id, question, answer, category, lang, source,
++                      keywords, is_active, created_at, updated_at";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("fid", faqId);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        if (!await reader.ReadAsync(ct))
++            return null;
++
++        return ReadFaqDto(reader);
++    }
++
++    public async Task<bool> DeleteFaqAsync(int tenantId, int faqId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE faqs SET is_active = false
++            WHERE tenant_id = @tid AND id = @fid AND is_active = true";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("fid", faqId);
++
++        var affected = await cmd.ExecuteNonQueryAsync(ct);
++        return affected > 0;
++    }
++
++    // ============================================================
++    // Search
++    // ============================================================
++
++    public async Task<List<SearchResultDto>> SemanticSearchAsync(
++        int tenantId, Vector queryEmbedding, int topK, string? lang, string? category,
++        CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, question, answer, category, lang,
++                   1 - (embedding <=> @emb) AS score
++            FROM faqs
++            WHERE tenant_id = @tid AND is_active = true
++              AND embedding IS NOT NULL
++              AND (@lang IS NULL OR lang = @lang)
++              AND (@category IS NULL OR category = @category)
++            ORDER BY embedding <=> @emb
++            LIMIT @topk";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.Add(new NpgsqlParameter("emb", NpgsqlDbType.Unknown) { Value = queryEmbedding });
++        cmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Varchar) { Value = lang ?? (object)DBNull.Value });
++        cmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Varchar) { Value = category ?? (object)DBNull.Value });
++        cmd.Parameters.AddWithValue("topk", topK);
++
++        var results = new List<SearchResultDto>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++        {
++            results.Add(new SearchResultDto
++            {
++                FaqId = reader.GetInt32(0),
++                Question = reader.GetString(1),
++                Answer = reader.GetString(2),
++                Category = reader.IsDBNull(3) ? null : reader.GetString(3),
++                Lang = reader.GetString(4),
++                Score = reader.GetDouble(5),
++                Method = "semantic"
++            });
++        }
++
++        return results;
++    }
++
++    public async Task<List<SearchResultDto>> KeywordSearchAsync(
++        int tenantId, string query, int topK, string? lang, string? category,
++        CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, question, answer, category, lang,
++                   ts_rank(
++                       to_tsvector('simple', question || ' ' || answer),
++                       plainto_tsquery('simple', @query)
++                   ) AS score
++            FROM faqs
++            WHERE tenant_id = @tid AND is_active = true
++              AND to_tsvector('simple', question || ' ' || answer) @@ plainto_tsquery('simple', @query)
++              AND (@lang IS NULL OR lang = @lang)
++              AND (@category IS NULL OR category = @category)
++            ORDER BY score DESC
++            LIMIT @topk";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("query", query);
++        cmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Varchar) { Value = lang ?? (object)DBNull.Value });
++        cmd.Parameters.Add(new NpgsqlParameter("category", NpgsqlDbType.Varchar) { Value = category ?? (object)DBNull.Value });
++        cmd.Parameters.AddWithValue("topk", topK);
++
++        var results = new List<SearchResultDto>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++        {
++            results.Add(new SearchResultDto
++            {
++                FaqId = reader.GetInt32(0),
++                Question = reader.GetString(1),
++                Answer = reader.GetString(2),
++                Category = reader.IsDBNull(3) ? null : reader.GetString(3),
++                Lang = reader.GetString(4),
++                Score = reader.GetDouble(5),
++                Method = "keyword"
++            });
++        }
++
++        return results;
++    }
++
++    // ============================================================
++    // Batch import (WA-3)
++    // ============================================================
++
++    public async Task<int> BatchInsertFaqsAsync(int tenantId, List<FaqImportRow> rows, CancellationToken ct = default)
++    {
++        if (rows.Count == 0) return 0;
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var tx = await conn.BeginTransactionAsync(ct);
++
++        try
++        {
++            var inserted = 0;
++            foreach (var row in rows)
++            {
++                await using var cmd = conn.CreateCommand();
++                cmd.Transaction = tx;
++                cmd.CommandText = @"
++                    INSERT INTO faqs (tenant_id, question, answer, category, lang, source, source_metadata, keywords)
++                    VALUES (@tid, @q, @a, @cat, @lang, 'wa_import', @meta::jsonb, @kw)
++                    ON CONFLICT (tenant_id, question) DO NOTHING";
++                cmd.Parameters.AddWithValue("tid", tenantId);
++                cmd.Parameters.AddWithValue("q", row.Question);
++                cmd.Parameters.AddWithValue("a", row.Answer);
++                cmd.Parameters.Add(new NpgsqlParameter("cat", NpgsqlDbType.Varchar) { Value = row.Category ?? (object)DBNull.Value });
++                cmd.Parameters.AddWithValue("lang", "tr");
++                cmd.Parameters.AddWithValue("meta", row.SourceMetadata ?? "{}");
++                cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = row.Keywords ?? Array.Empty<string>() });
++
++                inserted += await cmd.ExecuteNonQueryAsync(ct);
++            }
++
++            await tx.CommitAsync(ct);
++            return inserted;
++        }
++        catch (NpgsqlException)
++        {
++            await tx.RollbackAsync(ct);
++            throw;
++        }
++    }
++
++    public async Task<int> BatchInsertIntentPatternsAsync(int tenantId, List<IntentPatternRow> rows, CancellationToken ct = default)
++    {
++        if (rows.Count == 0) return 0;
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var tx = await conn.BeginTransactionAsync(ct);
++
++        try
++        {
++            var inserted = 0;
++            foreach (var row in rows)
++            {
++                await using var cmd = conn.CreateCommand();
++                cmd.Transaction = tx;
++                cmd.CommandText = @"
++                    INSERT INTO intent_patterns (tenant_id, intent_name, keywords, confidence_avg, sample_count, sample_messages)
++                    VALUES (@tid, @name, @kw, @conf, @cnt, @msgs::jsonb)
++                    ON CONFLICT (tenant_id, intent_name) DO UPDATE SET
++                        keywords = EXCLUDED.keywords,
++                        confidence_avg = EXCLUDED.confidence_avg,
++                        sample_count = EXCLUDED.sample_count,
++                        sample_messages = EXCLUDED.sample_messages";
++                cmd.Parameters.AddWithValue("tid", tenantId);
++                cmd.Parameters.AddWithValue("name", row.IntentName);
++                cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = row.Keywords ?? Array.Empty<string>() });
++                cmd.Parameters.Add(new NpgsqlParameter("conf", NpgsqlDbType.Numeric) { Value = row.ConfidenceAvg ?? (object)DBNull.Value });
++                cmd.Parameters.AddWithValue("cnt", row.SampleCount);
++                cmd.Parameters.AddWithValue("msgs", row.SampleMessagesJson ?? "[]");
++
++                inserted += await cmd.ExecuteNonQueryAsync(ct);
++            }
++
++            await tx.CommitAsync(ct);
++            return inserted;
++        }
++        catch (NpgsqlException)
++        {
++            await tx.RollbackAsync(ct);
++            throw;
++        }
++    }
++
++    public async Task<int> BatchInsertProductCatalogAsync(int tenantId, List<ProductCatalogRow> rows, CancellationToken ct = default)
++    {
++        if (rows.Count == 0) return 0;
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var tx = await conn.BeginTransactionAsync(ct);
++
++        try
++        {
++            var inserted = 0;
++            foreach (var row in rows)
++            {
++                await using var cmd = conn.CreateCommand();
++                cmd.Transaction = tx;
++                cmd.CommandText = @"
++                    INSERT INTO product_catalog (tenant_id, product_code, mention_count, sale_count, offered_count, avg_price, outcomes_json)
++                    VALUES (@tid, @code, @mentions, @sales, @offered, @price, @outcomes::jsonb)
++                    ON CONFLICT (tenant_id, product_code) DO UPDATE SET
++                        mention_count = EXCLUDED.mention_count,
++                        sale_count = EXCLUDED.sale_count,
++                        offered_count = EXCLUDED.offered_count,
++                        avg_price = EXCLUDED.avg_price,
++                        outcomes_json = EXCLUDED.outcomes_json";
++                cmd.Parameters.AddWithValue("tid", tenantId);
++                cmd.Parameters.AddWithValue("code", row.ProductCode);
++                cmd.Parameters.AddWithValue("mentions", row.MentionCount);
++                cmd.Parameters.AddWithValue("sales", row.SaleCount);
++                cmd.Parameters.AddWithValue("offered", row.OfferedCount);
++                cmd.Parameters.Add(new NpgsqlParameter("price", NpgsqlDbType.Numeric) { Value = row.AvgPrice ?? (object)DBNull.Value });
++                cmd.Parameters.AddWithValue("outcomes", row.OutcomesJson ?? "{}");
++
++                inserted += await cmd.ExecuteNonQueryAsync(ct);
++            }
++
++            await tx.CommitAsync(ct);
++            return inserted;
++        }
++        catch (NpgsqlException)
++        {
++            await tx.RollbackAsync(ct);
++            throw;
++        }
++    }
++
++    public async Task<int> BatchInsertSentimentsAsync(int tenantId, List<SentimentRow> rows, int batchSize = 500, CancellationToken ct = default)
++    {
++        if (rows.Count == 0) return 0;
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        var totalInserted = 0;
++
++        // Process in batches to avoid huge transactions
++        for (var i = 0; i < rows.Count; i += batchSize)
++        {
++            var batch = rows.Skip(i).Take(batchSize).ToList();
++            await using var tx = await conn.BeginTransactionAsync(ct);
++
++            try
++            {
++                foreach (var row in batch)
++                {
++                    await using var cmd = conn.CreateCommand();
++                    cmd.Transaction = tx;
++                    cmd.CommandText = @"
++                        INSERT INTO conversation_sentiments (tenant_id, conversation_id, sentiment, score, method)
++                        VALUES (@tid, @cid, @sent, @score, @method)
++                        ON CONFLICT (tenant_id, conversation_id) DO UPDATE SET
++                            sentiment = EXCLUDED.sentiment,
++                            score = EXCLUDED.score,
++                            method = EXCLUDED.method";
++                    cmd.Parameters.AddWithValue("tid", tenantId);
++                    cmd.Parameters.AddWithValue("cid", row.ConversationId);
++                    cmd.Parameters.AddWithValue("sent", row.Sentiment);
++                    cmd.Parameters.Add(new NpgsqlParameter("score", NpgsqlDbType.Numeric) { Value = row.Score ?? (object)DBNull.Value });
++                    cmd.Parameters.AddWithValue("method", row.Method);
++
++                    totalInserted += await cmd.ExecuteNonQueryAsync(ct);
++                }
++
++                await tx.CommitAsync(ct);
++            }
++            catch (NpgsqlException)
++            {
++                await tx.RollbackAsync(ct);
++                throw;
++            }
++        }
++
++        return totalInserted;
++    }
++
++    public async Task<int> InsertDocumentAsync(int tenantId, string title, string sourceType,
++        string? filePath, string? metadataJson, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            INSERT INTO documents (tenant_id, title, source_type, file_path, metadata_json, status)
++            VALUES (@tid, @title, @type, @path, @meta::jsonb, 'processing')
++            RETURNING id";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("title", title);
++        cmd.Parameters.AddWithValue("type", sourceType);
++        cmd.Parameters.Add(new NpgsqlParameter("path", NpgsqlDbType.Varchar) { Value = filePath ?? (object)DBNull.Value });
++        cmd.Parameters.AddWithValue("meta", metadataJson ?? "{}");
++
++        var id = await cmd.ExecuteScalarAsync(ct);
++        return Convert.ToInt32(id);
++    }
++
++    public async Task UpdateDocumentStatusAsync(int tenantId, int documentId, string status, int chunkCount = 0, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            UPDATE documents SET status = @status, chunk_count = @cnt
++            WHERE id = @id AND tenant_id = @tid";
++        cmd.Parameters.AddWithValue("id", documentId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("status", status);
++        cmd.Parameters.AddWithValue("cnt", chunkCount);
++        await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    // ============================================================
++    // Embedding update
++    // ============================================================
++
++    public async Task<int> UpdateFaqEmbeddingAsync(int tenantId, int faqId, Vector embedding, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "UPDATE faqs SET embedding = @emb WHERE id = @id AND tenant_id = @tid";
++        cmd.Parameters.Add(new NpgsqlParameter("emb", NpgsqlDbType.Unknown) { Value = embedding });
++        cmd.Parameters.AddWithValue("id", faqId);
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        return await cmd.ExecuteNonQueryAsync(ct);
++    }
++
++    public async Task<List<(int Id, string Text)>> GetFaqsWithoutEmbeddingAsync(int tenantId, int limit = 100, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = @"
++            SELECT id, question || ' ' || answer AS text
++            FROM faqs
++            WHERE tenant_id = @tid AND is_active = true AND embedding IS NULL
++            ORDER BY id
++            LIMIT @lim";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++        cmd.Parameters.AddWithValue("lim", limit);
++
++        var results = new List<(int, string)>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++            results.Add((reader.GetInt32(0), reader.GetString(1)));
++
++        return results;
++    }
++
++    // ============================================================
++    // Private helpers
++    // ============================================================
++
++    private static FaqDto ReadFaqDto(NpgsqlDataReader reader) => new()
++    {
++        Id = reader.GetInt32(0),
++        TenantId = reader.GetInt32(1),
++        Question = reader.GetString(2),
++        Answer = reader.GetString(3),
++        Category = reader.IsDBNull(4) ? null : reader.GetString(4),
++        Lang = reader.GetString(5),
++        Source = reader.GetString(6),
++        Keywords = reader.IsDBNull(7) ? Array.Empty<string>() : (string[])reader.GetValue(7),
++        IsActive = reader.GetBoolean(8),
++        CreatedAt = reader.GetDateTime(9),
++        UpdatedAt = reader.GetDateTime(10)
++    };
++}
++
++// ============================================================
++// DTOs
++// ============================================================
++
++public sealed class FaqDto
++{
++    public int Id { get; init; }
++    public int TenantId { get; init; }
++    public required string Question { get; init; }
++    public required string Answer { get; init; }
++    public string? Category { get; init; }
++    public required string Lang { get; init; }
++    public required string Source { get; init; }
++    public string[] Keywords { get; init; } = Array.Empty<string>();
++    public bool IsActive { get; init; }
++    public DateTime CreatedAt { get; init; }
++    public DateTime UpdatedAt { get; init; }
++}
++
++public sealed class SearchResultDto
++{
++    public int FaqId { get; init; }
++    public required string Question { get; init; }
++    public required string Answer { get; init; }
++    public string? Category { get; init; }
++    public required string Lang { get; init; }
++    public double Score { get; init; }
++    public required string Method { get; init; }
++}
++
++public sealed class FaqImportRow
++{
++    public required string Question { get; init; }
++    public required string Answer { get; init; }
++    public string? Category { get; init; }
++    public string? SourceMetadata { get; init; }
++    public string[]? Keywords { get; init; }
++}
++
++public sealed class IntentPatternRow
++{
++    public required string IntentName { get; init; }
++    public string[]? Keywords { get; init; }
++    public decimal? ConfidenceAvg { get; init; }
++    public int SampleCount { get; init; }
++    public string? SampleMessagesJson { get; init; }
++}
++
++public sealed class ProductCatalogRow
++{
++    public required string ProductCode { get; init; }
++    public int MentionCount { get; init; }
++    public int SaleCount { get; init; }
++    public int OfferedCount { get; init; }
++    public decimal? AvgPrice { get; init; }
++    public string? OutcomesJson { get; init; }
++}
++
++public sealed class SentimentRow
++{
++    public required string ConversationId { get; init; }
++    public required string Sentiment { get; init; }
++    public decimal? Score { get; init; }
++    public required string Method { get; init; }
++}
+diff --git a/src/Invekto.Knowledge/Invekto.Knowledge.csproj b/src/Invekto.Knowledge/Invekto.Knowledge.csproj
+new file mode 100644
+index 0000000..50f65ff
+--- /dev/null
++++ b/src/Invekto.Knowledge/Invekto.Knowledge.csproj
+@@ -0,0 +1,19 @@
++<Project Sdk="Microsoft.NET.Sdk.Web">
++
++  <PropertyGroup>
++    <TargetFramework>net8.0</TargetFramework>
++    <Nullable>enable</Nullable>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <RootNamespace>Invekto.Knowledge</RootNamespace>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
++    <PackageReference Include="Pgvector" Version="0.3.0" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\Invekto.Shared\Invekto.Shared.csproj" />
++  </ItemGroup>
++
++</Project>
+diff --git a/src/Invekto.Knowledge/Program.cs b/src/Invekto.Knowledge/Program.cs
+new file mode 100644
+index 0000000..307fe18
+--- /dev/null
++++ b/src/Invekto.Knowledge/Program.cs
+@@ -0,0 +1,500 @@
++using System.Text.Json;
++using Invekto.Knowledge.Data;
++using Invekto.Knowledge.Services;
++using Invekto.Shared.Middleware;
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++
++var builder = WebApplication.CreateBuilder(args);
++
++// Windows Service support
++builder.Host.UseWindowsService();
++
++// Read configuration
++var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.KnowledgePort);
++var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
++var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
++
++// OpenAI settings
++var openAiKey = builder.Configuration["OpenAI:ApiKey"] ?? "";
++var openAiModel = builder.Configuration["OpenAI:EmbeddingModel"] ?? "text-embedding-3-large";
++var openAiDimensions = builder.Configuration.GetValue<int>("OpenAI:EmbeddingDimensions", 3072);
++var openAiTimeoutMs = builder.Configuration.GetValue<int>("OpenAI:TimeoutMs", 10000);
++var openAiMaxRetries = builder.Configuration.GetValue<int>("OpenAI:MaxRetries", 1);
++
++// JWT settings
++var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
++
++// Validate required config
++if (string.IsNullOrEmpty(pgConnStr))
++{
++    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
++    Environment.Exit(1);
++}
++if (string.IsNullOrEmpty(jwtSecretKey))
++{
++    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
++    Environment.Exit(1);
++}
++
++// Warn (not fatal) if OpenAI key is missing -- keyword search still works
++if (string.IsNullOrEmpty(openAiKey) || openAiKey.StartsWith("REPLACE_"))
++{
++    Console.WriteLine("WARN: OpenAI:ApiKey not configured -- semantic search disabled, keyword fallback active");
++}
++
++// Configure Kestrel
++builder.WebHost.ConfigureKestrel(options =>
++{
++    options.ListenAnyIP(listenPort);
++});
++
++// Register logger
++var logger = new JsonLinesLogger(ServiceConstants.KnowledgeServiceName, logPath);
++builder.Services.AddSingleton(logger);
++
++// Register log cleanup
++builder.Services.AddSingleton<LogCleanupService>(sp =>
++    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
++
++// Register JWT validator
++var jwtSettings = new JwtSettings
++{
++    SecretKey = jwtSecretKey,
++    Issuer = builder.Configuration["Jwt:Issuer"],
++    Audience = builder.Configuration["Jwt:Audience"],
++    ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
++};
++var jwtValidator = new JwtValidator(jwtSettings);
++builder.Services.AddSingleton(jwtValidator);
++
++// Register PostgreSQL connection factory (pgvector-aware)
++var pgFactory = new KnowledgeConnectionFactory(pgConnStr);
++builder.Services.AddSingleton(pgFactory);
++
++// Register repository
++builder.Services.AddSingleton<KnowledgeRepository>();
++
++// Register import service
++builder.Services.AddSingleton<ImportService>();
++
++// Register embedding service with HttpClient
++builder.Services.AddSingleton<EmbeddingService>(sp =>
++{
++    var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(openAiTimeoutMs) };
++    return new EmbeddingService(httpClient, logger, openAiKey, openAiModel, openAiDimensions, openAiMaxRetries);
++});
++
++// Register retrieval service
++builder.Services.AddSingleton<RetrievalService>();
++
++var app = builder.Build();
++
++// Enable traffic logging middleware
++app.UseTrafficLogging();
++
++// Enable JWT auth for /api/v1/ prefixed paths
++app.UseJwtAuth(jwtValidator, logger, "/api/v1/knowledge/");
++
++// Start log cleanup
++_ = app.Services.GetRequiredService<LogCleanupService>();
++
++// ============================================================
++// Helper: Get validated tenant from JWT context
++// ============================================================
++
++static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
++{
++    var tenant = ctx.Items["TenantContext"] as TenantContext;
++    if (tenant == null || tenant.TenantId != routeTenantId) return null;
++    return tenant;
++}
++
++// ============================================================
++// Health endpoints
++// ============================================================
++
++app.MapGet("/health", () => Results.Ok(HealthResponse.Ok(ServiceConstants.KnowledgeServiceName)));
++app.MapGet("/ready", async (KnowledgeRepository repo) =>
++{
++    try
++    {
++        var hasPgvector = await repo.CheckPgvectorAsync();
++        if (!hasPgvector)
++            return Results.Json(new { status = "unhealthy", error = "pgvector extension not installed" }, statusCode: 503);
++        return Results.Ok(HealthResponse.Ok(ServiceConstants.KnowledgeServiceName));
++    }
++    catch (Exception ex)
++    {
++        return Results.Json(new { status = "unhealthy", error = ex.Message }, statusCode: 503);
++    }
++});
++
++// ============================================================
++// Import endpoint (WA-3)
++// ============================================================
++
++app.MapPost("/api/v1/knowledge/{tenantId:int}/import", async (
++    int tenantId,
++    HttpContext ctx,
++    ImportService importService,
++    JsonLinesLogger jsonLogger,
++    HttpRequest request) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    ImportRequest? body;
++    try
++    {
++        body = await request.ReadFromJsonAsync<ImportRequest>();
++    }
++    catch (JsonException ex)
++    {
++        jsonLogger.SystemWarn($"[{ErrorCodes.KnowledgeInvalidRequest}] Invalid import request JSON: {ex.Message}");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON request body", requestId), statusCode: 400);
++    }
++
++    if (body == null || string.IsNullOrWhiteSpace(body.NlpOutputPath))
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "nlpOutputPath is required", requestId), statusCode: 400);
++
++    if (!Directory.Exists(body.NlpOutputPath))
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportPathNotFound, $"Path not found: {body.NlpOutputPath}", requestId), statusCode: 400);
++
++    var minQuestions = body.FaqFilter?.MinQuestions ?? 5;
++    var minAnswerLength = body.FaqFilter?.MinAnswerLength ?? 20;
++
++    try
++    {
++        var summary = await importService.ImportNlpDataAsync(tenantId, body.NlpOutputPath, minQuestions, minAnswerLength);
++        return Results.Ok(summary);
++    }
++    catch (InvalidOperationException ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportParseError}] Import parse error: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportParseError, ex.Message, requestId), statusCode: 400);
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] Import DB error: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "Database import failed", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// Search endpoint (Retrieval API)
++// ============================================================
++
++app.MapPost("/api/v1/knowledge/{tenantId:int}/search", async (
++    int tenantId,
++    HttpContext ctx,
++    RetrievalService retrievalService,
++    JsonLinesLogger jsonLogger,
++    HttpRequest request) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    SearchRequest? body;
++    try
++    {
++        body = await request.ReadFromJsonAsync<SearchRequest>();
++    }
++    catch (JsonException ex)
++    {
++        jsonLogger.SystemWarn($"[{ErrorCodes.KnowledgeInvalidRequest}] Invalid search request JSON: {ex.Message}");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON request body", requestId), statusCode: 400);
++    }
++
++    if (body == null || string.IsNullOrWhiteSpace(body.Query))
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "query is required", requestId), statusCode: 400);
++
++    var topK = Math.Clamp(body.TopK ?? 5, 1, 50);
++
++    try
++    {
++        var response = await retrievalService.SearchAsync(tenantId, body.Query, topK, body.Lang, body.Category);
++        return Results.Ok(response);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeSearchFailed}] Search failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, "Search failed", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// FAQ CRUD endpoints
++// ============================================================
++
++// List FAQs
++app.MapGet("/api/v1/knowledge/{tenantId:int}/faqs", async (
++    int tenantId,
++    HttpContext ctx,
++    KnowledgeRepository repo,
++    string? lang,
++    string? category,
++    int? page,
++    int? limit) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    var p = Math.Max(page ?? 1, 1);
++    var l = Math.Clamp(limit ?? 50, 1, 200);
++
++    try
++    {
++        var (faqs, total) = await repo.ListFaqsAsync(tenantId, lang, category, p, l);
++        return Results.Ok(new { faqs, total, page = p, limit = l });
++    }
++    catch (Exception ex)
++    {
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeSearchFailed, $"List failed: {ex.Message}", requestId), statusCode: 500);
++    }
++});
++
++// Create FAQ
++app.MapPost("/api/v1/knowledge/{tenantId:int}/faqs", async (
++    int tenantId,
++    HttpContext ctx,
++    KnowledgeRepository repo,
++    JsonLinesLogger jsonLogger,
++    HttpRequest request) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    FaqCreateRequest? body;
++    try
++    {
++        body = await request.ReadFromJsonAsync<FaqCreateRequest>();
++    }
++    catch (JsonException ex)
++    {
++        jsonLogger.SystemWarn($"[{ErrorCodes.KnowledgeInvalidRequest}] Invalid FAQ create JSON: {ex.Message}");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400);
++    }
++
++    if (body == null || string.IsNullOrWhiteSpace(body.Question) || string.IsNullOrWhiteSpace(body.Answer))
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "question and answer are required", requestId), statusCode: 400);
++
++    try
++    {
++        var faq = await repo.InsertFaqAsync(tenantId, body.Question, body.Answer,
++            body.Category, body.Lang ?? "tr", body.Keywords ?? Array.Empty<string>(), "manual", null);
++        return Results.Json(faq, statusCode: 201);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ create failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "FAQ create failed", requestId), statusCode: 500);
++    }
++});
++
++// Update FAQ
++app.MapPut("/api/v1/knowledge/{tenantId:int}/faqs/{faqId:int}", async (
++    int tenantId, int faqId,
++    HttpContext ctx,
++    KnowledgeRepository repo,
++    JsonLinesLogger jsonLogger,
++    HttpRequest request) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    FaqUpdateRequest? body;
++    try
++    {
++        body = await request.ReadFromJsonAsync<FaqUpdateRequest>();
++    }
++    catch (JsonException ex)
++    {
++        jsonLogger.SystemWarn($"[{ErrorCodes.KnowledgeInvalidRequest}] Invalid FAQ update JSON: {ex.Message}");
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400);
++    }
++
++    if (body == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Request body is required", requestId), statusCode: 400);
++
++    try
++    {
++        var updated = await repo.UpdateFaqAsync(tenantId, faqId, body.Question, body.Answer, body.Category, body.Lang, body.Keywords);
++        if (updated == null)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeFaqNotFound, $"FAQ {faqId} not found", requestId), statusCode: 404);
++        return Results.Ok(updated);
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ update failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "FAQ update failed", requestId), statusCode: 500);
++    }
++});
++
++// Delete FAQ (soft delete)
++app.MapDelete("/api/v1/knowledge/{tenantId:int}/faqs/{faqId:int}", async (
++    int tenantId, int faqId,
++    HttpContext ctx,
++    KnowledgeRepository repo,
++    JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    try
++    {
++        var deleted = await repo.DeleteFaqAsync(tenantId, faqId);
++        if (!deleted)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeFaqNotFound, $"FAQ {faqId} not found or already deleted", requestId), statusCode: 404);
++
++        return Results.Ok(new { message = "FAQ deactivated", faqId });
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeImportDbError}] FAQ delete failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, "FAQ delete failed", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// Generate embeddings endpoint (background trigger)
++// ============================================================
++
++app.MapPost("/api/v1/knowledge/{tenantId:int}/generate-embeddings", async (
++    int tenantId,
++    HttpContext ctx,
++    KnowledgeRepository repo,
++    EmbeddingService embeddingService,
++    JsonLinesLogger jsonLogger) =>
++{
++    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
++    var tenant = GetValidatedTenant(ctx, tenantId);
++    if (tenant == null)
++        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
++
++    if (!embeddingService.IsAvailable)
++        return Results.Json(new { message = "OpenAI API key not configured. Cannot generate embeddings.", generated = 0 }, statusCode: 200);
++
++    try
++    {
++        var pending = await repo.GetFaqsWithoutEmbeddingAsync(tenantId, limit: 100);
++        if (pending.Count == 0)
++            return Results.Ok(new { message = "All FAQs already have embeddings", generated = 0 });
++
++        var generated = 0;
++        var failed = 0;
++        foreach (var (faqId, text) in pending)
++        {
++            var embedding = await embeddingService.GetEmbeddingAsync(text);
++            if (embedding != null)
++            {
++                await repo.UpdateFaqEmbeddingAsync(tenantId, faqId, embedding);
++                generated++;
++            }
++            else
++            {
++                failed++;
++                jsonLogger.SystemWarn($"Embedding generation failed for FAQ {faqId}");
++            }
++        }
++
++        jsonLogger.StepInfo($"Embedding generation: {generated} generated, {failed} failed out of {pending.Count}", requestId);
++        return Results.Ok(new { message = $"Generated {generated} embeddings", generated, failed, total = pending.Count });
++    }
++    catch (Exception ex)
++    {
++        jsonLogger.StepError($"[{ErrorCodes.KnowledgeOpenAIError}] Embedding generation failed: {ex.Message}", requestId);
++        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeOpenAIError, "Embedding generation failed", requestId), statusCode: 500);
++    }
++});
++
++// ============================================================
++// Endpoint discovery
++// ============================================================
++
++app.MapGet("/api/ops/endpoints", () =>
++{
++    var endpoints = new List<EndpointInfo>
++    {
++        new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
++        new() { Method = "GET", Path = "/ready", Description = "Ready check (DB + pgvector)", Auth = "none", Category = "Health" },
++        new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/import", Description = "Import WA-3 NLP data", Auth = "Bearer JWT", Category = "Import" },
++        new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/search", Description = "Search FAQs (semantic + keyword)", Auth = "Bearer JWT", Category = "Search" },
++        new() { Method = "GET", Path = "/api/v1/knowledge/{tenantId}/faqs", Description = "List FAQs", Auth = "Bearer JWT", Category = "FAQ" },
++        new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/faqs", Description = "Create FAQ", Auth = "Bearer JWT", Category = "FAQ" },
++        new() { Method = "PUT", Path = "/api/v1/knowledge/{tenantId}/faqs/{id}", Description = "Update FAQ", Auth = "Bearer JWT", Category = "FAQ" },
++        new() { Method = "DELETE", Path = "/api/v1/knowledge/{tenantId}/faqs/{id}", Description = "Delete FAQ (soft)", Auth = "Bearer JWT", Category = "FAQ" },
++        new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/generate-embeddings", Description = "Generate embeddings for FAQs without one", Auth = "Bearer JWT", Category = "Embedding" },
++        new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
++    };
++
++    return Results.Ok(new EndpointDiscoveryResponse
++    {
++        Service = ServiceConstants.KnowledgeServiceName,
++        Port = ServiceConstants.KnowledgePort,
++        Endpoints = endpoints
++    });
++});
++
++// ============================================================
++// Start
++// ============================================================
++
++logger.SystemInfo($"Knowledge Service starting on port {listenPort}");
++app.Run();
++
++// ============================================================
++// Request DTOs (Program.cs local, not shared)
++// ============================================================
++
++internal sealed class ImportRequest
++{
++    public string? NlpOutputPath { get; set; }
++    public FaqFilterOptions? FaqFilter { get; set; }
++}
++
++internal sealed class FaqFilterOptions
++{
++    public int MinQuestions { get; set; } = 5;
++    public int MinAnswerLength { get; set; } = 20;
++}
++
++internal sealed class SearchRequest
++{
++    public string? Query { get; set; }
++    public int? TopK { get; set; }
++    public string? Lang { get; set; }
++    public string? Category { get; set; }
++}
++
++internal sealed class FaqCreateRequest
++{
++    public string? Question { get; set; }
++    public string? Answer { get; set; }
++    public string? Category { get; set; }
++    public string? Lang { get; set; }
++    public string[]? Keywords { get; set; }
++}
++
++internal sealed class FaqUpdateRequest
++{
++    public string? Question { get; set; }
++    public string? Answer { get; set; }
++    public string? Category { get; set; }
++    public string? Lang { get; set; }
++    public string[]? Keywords { get; set; }
++}
+diff --git a/src/Invekto.Knowledge/Services/EmbeddingService.cs b/src/Invekto.Knowledge/Services/EmbeddingService.cs
+new file mode 100644
+index 0000000..d24a3a8
+--- /dev/null
++++ b/src/Invekto.Knowledge/Services/EmbeddingService.cs
+@@ -0,0 +1,149 @@
++using System.Net.Http.Json;
++using System.Text.Json;
++using Pgvector;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Knowledge.Services;
++
++/// <summary>
++/// OpenAI embedding generation with graceful degradation.
++/// Returns null when API key is missing/invalid, allowing fallback to keyword search.
++/// </summary>
++public sealed class EmbeddingService
++{
++    private readonly HttpClient _httpClient;
++    private readonly JsonLinesLogger _logger;
++    private readonly string _apiKey;
++    private readonly string _model;
++    private readonly int _dimensions;
++    private readonly int _maxRetries;
++
++    private const string OpenAIEmbeddingsUrl = "https://api.openai.com/v1/embeddings";
++
++    public EmbeddingService(
++        HttpClient httpClient,
++        JsonLinesLogger logger,
++        string apiKey,
++        string model,
++        int dimensions,
++        int maxRetries)
++    {
++        _httpClient = httpClient;
++        _logger = logger;
++        _apiKey = apiKey;
++        _model = model;
++        _dimensions = dimensions;
++        _maxRetries = maxRetries;
++    }
++
++    /// <summary>
++    /// Returns true if OpenAI API key is configured and usable.
++    /// </summary>
++    public bool IsAvailable =>
++        !string.IsNullOrEmpty(_apiKey) &&
++        _apiKey != "REPLACE_WITH_OPENAI_KEY" &&
++        !_apiKey.StartsWith("REPLACE_");
++
++    /// <summary>
++    /// Generate embedding for text. Returns null on failure (graceful degradation).
++    /// </summary>
++    public async Task<Vector?> GetEmbeddingAsync(string text, CancellationToken ct = default)
++    {
++        if (!IsAvailable)
++        {
++            _logger.SystemWarn("EmbeddingService: OpenAI API key not configured -- semantic search disabled");
++            return null;
++        }
++
++        if (string.IsNullOrWhiteSpace(text))
++        {
++            _logger.SystemWarn("EmbeddingService: Empty text provided for embedding");
++            return null;
++        }
++
++        // Truncate very long texts (OpenAI limit is 8191 tokens, ~32K chars safe estimate)
++        if (text.Length > 30000)
++            text = text[..30000];
++
++        for (var attempt = 0; attempt <= _maxRetries; attempt++)
++        {
++            try
++            {
++                using var request = new HttpRequestMessage(HttpMethod.Post, OpenAIEmbeddingsUrl);
++                request.Headers.Add("Authorization", $"Bearer {_apiKey}");
++                request.Content = JsonContent.Create(new
++                {
++                    model = _model,
++                    input = text,
++                    dimensions = _dimensions
++                });
++
++                using var response = await _httpClient.SendAsync(request, ct);
++
++                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
++                {
++                    _logger.SystemWarn($"EmbeddingService: OpenAI rate limit (attempt {attempt + 1}/{_maxRetries + 1})");
++                    if (attempt < _maxRetries)
++                    {
++                        await Task.Delay(1000 * (attempt + 1), ct);
++                        continue;
++                    }
++                    return null;
++                }
++
++                if (!response.IsSuccessStatusCode)
++                {
++                    var errorBody = await response.Content.ReadAsStringAsync(ct);
++                    _logger.SystemWarn($"EmbeddingService: OpenAI error {response.StatusCode}: {errorBody}");
++                    return null;
++                }
++
++                var json = await response.Content.ReadAsStringAsync(ct);
++                var doc = JsonDocument.Parse(json);
++
++                var embeddingArray = doc.RootElement
++                    .GetProperty("data")[0]
++                    .GetProperty("embedding");
++
++                var values = new float[_dimensions];
++                var i = 0;
++                foreach (var val in embeddingArray.EnumerateArray())
++                {
++                    if (i >= _dimensions) break;
++                    values[i++] = val.GetSingle();
++                }
++
++                return new Vector(values);
++            }
++            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
++            {
++                _logger.SystemWarn($"EmbeddingService: OpenAI timeout (attempt {attempt + 1}/{_maxRetries + 1})");
++                if (attempt < _maxRetries)
++                    continue;
++                return null;
++            }
++            catch (TaskCanceledException)
++            {
++                // Cancellation requested by caller -- propagate
++                throw;
++            }
++            catch (JsonException ex)
++            {
++                _logger.SystemWarn($"EmbeddingService: Failed to parse OpenAI response: {ex.Message}");
++                return null;
++            }
++            catch (HttpRequestException ex)
++            {
++                _logger.SystemWarn($"EmbeddingService: HTTP error: {ex.Message}");
++                if (attempt < _maxRetries)
++                {
++                    await Task.Delay(1000 * (attempt + 1), ct);
++                    continue;
++                }
++                return null;
++            }
++        }
++
++        return null;
++    }
++}
+diff --git a/src/Invekto.Knowledge/Services/ImportService.cs b/src/Invekto.Knowledge/Services/ImportService.cs
+new file mode 100644
+index 0000000..a191a95
+--- /dev/null
++++ b/src/Invekto.Knowledge/Services/ImportService.cs
+@@ -0,0 +1,461 @@
++using System.Diagnostics;
++using System.Text.Json;
++using Invekto.Knowledge.Data;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Knowledge.Services;
++
++/// <summary>
++/// WA-3 NLP data import orchestrator.
++/// Parses FAQ clusters JSON, intent CSV, product CSV, sentiment CSV.
++/// Applies quality filters and batch inserts into Knowledge DB.
++/// </summary>
++public sealed class ImportService
++{
++    private readonly KnowledgeRepository _repository;
++    private readonly JsonLinesLogger _logger;
++
++    public ImportService(KnowledgeRepository repository, JsonLinesLogger logger)
++    {
++        _repository = repository;
++        _logger = logger;
++    }
++
++    public async Task<ImportSummary> ImportNlpDataAsync(
++        int tenantId, string nlpOutputPath, int minQuestions, int minAnswerLength,
++        CancellationToken ct = default)
++    {
++        var sw = Stopwatch.StartNew();
++        var summary = new ImportSummary();
++
++        // Create document record for this import batch
++        var docId = await _repository.InsertDocumentAsync(
++            tenantId, $"WA-3 Import {DateTime.UtcNow:yyyy-MM-dd}", "wa_import",
++            nlpOutputPath, JsonSerializer.Serialize(new { minQuestions, minAnswerLength }), ct);
++        summary.DocumentId = docId;
++
++        try
++        {
++            // 1. FAQ clusters
++            var faqPath = Path.Combine(nlpOutputPath, "faq_clusters.json");
++            if (File.Exists(faqPath))
++            {
++                var (imported, skipped) = await ImportFaqClustersAsync(tenantId, faqPath, minQuestions, minAnswerLength, ct);
++                summary.FaqsImported = imported;
++                summary.FaqsSkipped = skipped;
++                _logger.SystemInfo($"FAQ import: {imported} imported, {skipped} skipped");
++            }
++            else
++            {
++                _logger.SystemWarn($"FAQ clusters file not found: {faqPath}");
++            }
++
++            // 2. Intent patterns
++            var intentPath = Path.Combine(nlpOutputPath, "intent_classifications.csv");
++            if (File.Exists(intentPath))
++            {
++                summary.IntentsImported = await ImportIntentPatternsAsync(tenantId, intentPath, ct);
++                _logger.SystemInfo($"Intent import: {summary.IntentsImported} patterns");
++            }
++            else
++            {
++                _logger.SystemWarn($"Intent classifications file not found: {intentPath}");
++            }
++
++            // 3. Product catalog
++            var productPath = Path.Combine(nlpOutputPath, "product_analysis.csv");
++            if (File.Exists(productPath))
++            {
++                summary.ProductsImported = await ImportProductCatalogAsync(tenantId, productPath, ct);
++                _logger.SystemInfo($"Product import: {summary.ProductsImported} products");
++            }
++            else
++            {
++                _logger.SystemWarn($"Product analysis file not found: {productPath}");
++            }
++
++            // 4. Sentiment
++            var sentimentPath = Path.Combine(nlpOutputPath, "sentiment.csv");
++            if (File.Exists(sentimentPath))
++            {
++                summary.SentimentsImported = await ImportSentimentsAsync(tenantId, sentimentPath, ct);
++                _logger.SystemInfo($"Sentiment import: {summary.SentimentsImported} conversations");
++            }
++            else
++            {
++                _logger.SystemWarn($"Sentiment file not found: {sentimentPath}");
++            }
++
++            await _repository.UpdateDocumentStatusAsync(tenantId, docId, "ready", summary.FaqsImported, ct);
++        }
++        catch (Exception ex)
++        {
++            _logger.SystemError($"Import failed at document {docId}: {ex.Message}");
++            await _repository.UpdateDocumentStatusAsync(tenantId, docId, "error", 0, ct);
++            throw;
++        }
++
++        sw.Stop();
++        summary.DurationMs = (int)sw.ElapsedMilliseconds;
++        _logger.SystemInfo($"Import complete in {summary.DurationMs}ms: {summary.FaqsImported} FAQs, {summary.IntentsImported} intents, {summary.ProductsImported} products, {summary.SentimentsImported} sentiments");
++
++        return summary;
++    }
++
++    // ============================================================
++    // FAQ Clusters (faq_clusters.json)
++    // ============================================================
++
++    private async Task<(int imported, int skipped)> ImportFaqClustersAsync(
++        int tenantId, string filePath, int minQuestions, int minAnswerLength, CancellationToken ct)
++    {
++        var json = await File.ReadAllTextAsync(filePath, ct);
++        var clusters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
++            ?? throw new InvalidOperationException("Failed to parse faq_clusters.json");
++
++        var rows = new List<FaqImportRow>();
++        var skipped = 0;
++
++        foreach (var (clusterId, cluster) in clusters)
++        {
++            var questionCount = cluster.GetProperty("question_count").GetInt32();
++            if (questionCount < minQuestions)
++            {
++                skipped++;
++                continue;
++            }
++
++            var representativeQuestion = cluster.GetProperty("representative_question").GetString() ?? "";
++            var sampleAnswers = cluster.GetProperty("sample_answers");
++
++            // Find best answer (longest answer that meets minimum length)
++            string? bestAnswer = null;
++            foreach (var ans in sampleAnswers.EnumerateArray())
++            {
++                var ansText = ans.GetString() ?? "";
++                if (ansText.Length >= minAnswerLength && (bestAnswer == null || ansText.Length > bestAnswer.Length))
++                    bestAnswer = ansText;
++            }
++
++            if (bestAnswer == null)
++            {
++                skipped++;
++                continue;
++            }
++
++            var category = InferCategory(representativeQuestion);
++            var metadata = JsonSerializer.Serialize(new
++            {
++                cluster_id = clusterId,
++                question_count = questionCount
++            });
++
++            rows.Add(new FaqImportRow
++            {
++                Question = representativeQuestion.Length > 1000 ? representativeQuestion[..1000] : representativeQuestion,
++                Answer = bestAnswer,
++                Category = category,
++                SourceMetadata = metadata,
++                Keywords = ExtractKeywords(representativeQuestion)
++            });
++        }
++
++        var imported = await _repository.BatchInsertFaqsAsync(tenantId, rows, ct);
++        return (imported, skipped);
++    }
++
++    // ============================================================
++    // Intent Patterns (intent_classifications.csv)
++    // Stream processing: aggregate 1M rows -> 12 intent patterns
++    // ============================================================
++
++    private async Task<int> ImportIntentPatternsAsync(int tenantId, string filePath, CancellationToken ct)
++    {
++        var aggregated = new Dictionary<string, IntentAggregator>(StringComparer.OrdinalIgnoreCase);
++
++        using var reader = new StreamReader(filePath);
++        var headerLine = await reader.ReadLineAsync(ct);
++        if (headerLine == null) return 0;
++
++        string? line;
++        while ((line = await reader.ReadLineAsync(ct)) != null)
++        {
++            if (ct.IsCancellationRequested) break;
++
++            var parts = line.Split(';');
++            if (parts.Length < 7) continue;
++
++            var intent = parts[4].Trim();
++            if (string.IsNullOrEmpty(intent) || intent == "unknown") continue;
++
++            if (!aggregated.TryGetValue(intent, out var agg))
++            {
++                agg = new IntentAggregator();
++                aggregated[intent] = agg;
++            }
++
++            if (decimal.TryParse(parts[5].Trim(), System.Globalization.NumberStyles.Any,
++                System.Globalization.CultureInfo.InvariantCulture, out var confidence))
++            {
++                agg.TotalConfidence += confidence;
++            }
++
++            agg.Count++;
++
++            // Collect up to 10 sample messages
++            if (agg.Samples.Count < 10)
++            {
++                var messageText = parts[2].Trim();
++                if (messageText.Length > 5 && messageText.Length < 200)
++                    agg.Samples.Add(messageText);
++            }
++        }
++
++        var rows = aggregated.Select(kvp => new IntentPatternRow
++        {
++            IntentName = kvp.Key,
++            Keywords = ExtractIntentKeywords(kvp.Key),
++            ConfidenceAvg = kvp.Value.Count > 0 ? kvp.Value.TotalConfidence / kvp.Value.Count : null,
++            SampleCount = kvp.Value.Count,
++            SampleMessagesJson = JsonSerializer.Serialize(kvp.Value.Samples)
++        }).ToList();
++
++        return await _repository.BatchInsertIntentPatternsAsync(tenantId, rows, ct);
++    }
++
++    // ============================================================
++    // Product Catalog (product_analysis.csv)
++    // ============================================================
++
++    private async Task<int> ImportProductCatalogAsync(int tenantId, string filePath, CancellationToken ct)
++    {
++        var products = new Dictionary<string, ProductAggregator>(StringComparer.OrdinalIgnoreCase);
++
++        using var reader = new StreamReader(filePath);
++        var headerLine = await reader.ReadLineAsync(ct);
++        if (headerLine == null) return 0;
++
++        string? line;
++        while ((line = await reader.ReadLineAsync(ct)) != null)
++        {
++            if (ct.IsCancellationRequested) break;
++
++            var parts = line.Split(';');
++            if (parts.Length < 7) continue;
++
++            var codes = parts[1].Trim();
++            var outcome = parts[5].Trim();
++            var pricesPart = parts[3].Trim();
++
++            foreach (var code in codes.Split('|', StringSplitOptions.RemoveEmptyEntries))
++            {
++                var trimmedCode = code.Trim();
++                if (string.IsNullOrEmpty(trimmedCode)) continue;
++
++                if (!products.TryGetValue(trimmedCode, out var agg))
++                {
++                    agg = new ProductAggregator();
++                    products[trimmedCode] = agg;
++                }
++
++                agg.MentionCount++;
++
++                switch (outcome.ToLowerInvariant())
++                {
++                    case "sale": agg.SaleCount++; break;
++                    case "offered": agg.OfferedCount++; break;
++                }
++
++                if (!agg.Outcomes.ContainsKey(outcome))
++                    agg.Outcomes[outcome] = 0;
++                agg.Outcomes[outcome]++;
++
++                // Try to extract price for this product
++                foreach (var priceStr in pricesPart.Split('|', StringSplitOptions.RemoveEmptyEntries))
++                {
++                    if (decimal.TryParse(priceStr.Trim(), System.Globalization.NumberStyles.Any,
++                        System.Globalization.CultureInfo.InvariantCulture, out var price) && price > 0)
++                    {
++                        agg.TotalPrice += price;
++                        agg.PriceCount++;
++                    }
++                }
++            }
++        }
++
++        var rows = products.Select(kvp => new ProductCatalogRow
++        {
++            ProductCode = kvp.Key.Length > 50 ? kvp.Key[..50] : kvp.Key,
++            MentionCount = kvp.Value.MentionCount,
++            SaleCount = kvp.Value.SaleCount,
++            OfferedCount = kvp.Value.OfferedCount,
++            AvgPrice = kvp.Value.PriceCount > 0 ? kvp.Value.TotalPrice / kvp.Value.PriceCount : null,
++            OutcomesJson = JsonSerializer.Serialize(kvp.Value.Outcomes)
++        }).ToList();
++
++        return await _repository.BatchInsertProductCatalogAsync(tenantId, rows, ct);
++    }
++
++    // ============================================================
++    // Sentiments (sentiment.csv)
++    // ============================================================
++
++    private async Task<int> ImportSentimentsAsync(int tenantId, string filePath, CancellationToken ct)
++    {
++        const int batchSize = 500;
++        var batch = new List<SentimentRow>(batchSize);
++        var totalInserted = 0;
++
++        using var reader = new StreamReader(filePath);
++        var headerLine = await reader.ReadLineAsync(ct);
++        if (headerLine == null) return 0;
++
++        string? line;
++        while ((line = await reader.ReadLineAsync(ct)) != null)
++        {
++            if (ct.IsCancellationRequested) break;
++
++            var parts = line.Split(';');
++            if (parts.Length < 4) continue;
++
++            var conversationId = parts[0].Trim();
++            var sentiment = parts[1].Trim();
++            var method = parts[3].Trim();
++
++            if (string.IsNullOrEmpty(conversationId) || string.IsNullOrEmpty(sentiment))
++                continue;
++
++            // Normalize sentiment value
++            sentiment = sentiment.ToLowerInvariant() switch
++            {
++                "positive" => "positive",
++                "negative" => "negative",
++                _ => "neutral"
++            };
++
++            decimal? score = null;
++            if (decimal.TryParse(parts[2].Trim(), System.Globalization.NumberStyles.Any,
++                System.Globalization.CultureInfo.InvariantCulture, out var parsedScore))
++            {
++                score = parsedScore;
++            }
++
++            batch.Add(new SentimentRow
++            {
++                ConversationId = conversationId,
++                Sentiment = sentiment,
++                Score = score,
++                Method = string.IsNullOrEmpty(method) ? "keyword" : method
++            });
++
++            // Flush batch when full (keeps max ~500 rows in memory)
++            if (batch.Count >= batchSize)
++            {
++                totalInserted += await _repository.BatchInsertSentimentsAsync(tenantId, batch, batchSize, ct);
++                batch.Clear();
++            }
++        }
++
++        // Flush remaining rows
++        if (batch.Count > 0)
++            totalInserted += await _repository.BatchInsertSentimentsAsync(tenantId, batch, batchSize, ct);
++
++        return totalInserted;
++    }
++
++    // ============================================================
++    // Category inference (heuristic)
++    // ============================================================
++
++    private static string InferCategory(string question)
++    {
++        var lower = question.ToLowerInvariant();
++
++        if (lower.Contains("fiyat") || lower.Contains("kaç tl") || lower.Contains("ücret") || lower.Contains("tutar"))
++            return "price";
++        if (lower.Contains("kargo") || lower.Contains("teslimat") || lower.Contains("gönderim") || lower.Contains("teslim"))
++            return "shipping";
++        if (lower.Contains("iade") || lower.Contains("değişim") || lower.Contains("iptal"))
++            return "returns";
++        if (lower.Contains("beden") || lower.Contains("ölçü") || lower.Contains("numara") || lower.Contains("boy"))
++            return "size";
++        if (lower.Contains("stok") || lower.Contains("mevcut") || lower.Contains("var mı"))
++            return "stock";
++        if (lower.Contains("sipariş") || lower.Contains("satın") || lower.Contains("almak"))
++            return "order";
++        if (lower.Contains("ödeme") || lower.Contains("kapıda") || lower.Contains("havale") || lower.Contains("kredi"))
++            return "payment";
++
++        return "general";
++    }
++
++    private static string[] ExtractKeywords(string text)
++    {
++        var words = text.ToLowerInvariant()
++            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
++            .Where(w => w.Length > 3)
++            .Where(w => !StopWords.Contains(w))
++            .Distinct()
++            .Take(10)
++            .ToArray();
++        return words;
++    }
++
++    private static string[] ExtractIntentKeywords(string intentName)
++    {
++        return intentName switch
++        {
++            "order_confirmation" => new[] { "sipariş", "onay", "teyit" },
++            "stock_inquiry" => new[] { "stok", "mevcut", "var mı" },
++            "price_inquiry" => new[] { "fiyat", "kaç", "ücret", "tl" },
++            "size_inquiry" => new[] { "beden", "numara", "ölçü", "boy" },
++            "shipping_inquiry" => new[] { "kargo", "teslimat", "gönderim", "ne zaman" },
++            "return_request" => new[] { "iade", "değişim", "iptal", "geri" },
++            "address_info" => new[] { "adres", "konum", "nerede" },
++            "greeting" => new[] { "merhaba", "selam", "günaydın" },
++            "thank_you" => new[] { "teşekkür", "sağol", "eyvallah" },
++            "product_inquiry" => new[] { "ürün", "model", "çeşit" },
++            _ => new[] { intentName }
++        };
++    }
++
++    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
++    {
++        "bir", "bu", "da", "de", "ve", "ile", "için", "gibi", "çok", "var",
++        "ben", "sen", "biz", "siz", "olan", "olarak", "daha", "merhaba",
++        "teşekkür", "eder", "ederim", "lütfen", "rica"
++    };
++}
++
++// ============================================================
++// Import DTOs
++// ============================================================
++
++public sealed class ImportSummary
++{
++    public bool Success => FaqsImported > 0 || IntentsImported > 0 || ProductsImported > 0 || SentimentsImported > 0;
++    public int FaqsImported { get; set; }
++    public int FaqsSkipped { get; set; }
++    public int IntentsImported { get; set; }
++    public int ProductsImported { get; set; }
++    public int SentimentsImported { get; set; }
++    public int DocumentId { get; set; }
++    public int DurationMs { get; set; }
++}
++
++internal sealed class IntentAggregator
++{
++    public int Count { get; set; }
++    public decimal TotalConfidence { get; set; }
++    public List<string> Samples { get; } = new();
++}
++
++internal sealed class ProductAggregator
++{
++    public int MentionCount { get; set; }
++    public int SaleCount { get; set; }
++    public int OfferedCount { get; set; }
++    public decimal TotalPrice { get; set; }
++    public int PriceCount { get; set; }
++    public Dictionary<string, int> Outcomes { get; } = new(StringComparer.OrdinalIgnoreCase);
++}
+diff --git a/src/Invekto.Knowledge/Services/RetrievalService.cs b/src/Invekto.Knowledge/Services/RetrievalService.cs
+new file mode 100644
+index 0000000..6e4281b
+--- /dev/null
++++ b/src/Invekto.Knowledge/Services/RetrievalService.cs
+@@ -0,0 +1,79 @@
++using System.Diagnostics;
++using Invekto.Knowledge.Data;
++using Invekto.Shared.Logging;
++
++namespace Invekto.Knowledge.Services;
++
++/// <summary>
++/// Search orchestrator: semantic search (pgvector) with keyword fallback.
++/// Chooses method based on EmbeddingService availability.
++/// </summary>
++public sealed class RetrievalService
++{
++    private readonly KnowledgeRepository _repository;
++    private readonly EmbeddingService _embeddingService;
++    private readonly JsonLinesLogger _logger;
++
++    public RetrievalService(
++        KnowledgeRepository repository,
++        EmbeddingService embeddingService,
++        JsonLinesLogger logger)
++    {
++        _repository = repository;
++        _embeddingService = embeddingService;
++        _logger = logger;
++    }
++
++    public async Task<SearchResponse> SearchAsync(
++        int tenantId, string query, int topK, string? lang, string? category,
++        CancellationToken ct = default)
++    {
++        var sw = Stopwatch.StartNew();
++
++        // Try semantic search first
++        if (_embeddingService.IsAvailable)
++        {
++            var embedding = await _embeddingService.GetEmbeddingAsync(query, ct);
++            if (embedding != null)
++            {
++                var results = await _repository.SemanticSearchAsync(tenantId, embedding, topK, lang, category, ct);
++                sw.Stop();
++
++                return new SearchResponse
++                {
++                    Results = results,
++                    Method = "semantic",
++                    Reason = null,
++                    DurationMs = (int)sw.ElapsedMilliseconds
++                };
++            }
++
++            // Embedding failed (timeout, rate limit, etc.) -- fallback with reason
++            _logger.SystemWarn("RetrievalService: Embedding generation failed, falling back to keyword search");
++        }
++
++        // Keyword fallback
++        var reason = _embeddingService.IsAvailable
++            ? "Embedding generation failed"
++            : "OpenAI API key not configured";
++
++        var keywordResults = await _repository.KeywordSearchAsync(tenantId, query, topK, lang, category, ct);
++        sw.Stop();
++
++        return new SearchResponse
++        {
++            Results = keywordResults,
++            Method = "keyword",
++            Reason = reason,
++            DurationMs = (int)sw.ElapsedMilliseconds
++        };
++    }
++}
++
++public sealed class SearchResponse
++{
++    public List<SearchResultDto> Results { get; init; } = new();
++    public required string Method { get; init; }
++    public string? Reason { get; init; }
++    public int DurationMs { get; init; }
++}
+diff --git a/src/Invekto.Knowledge/appsettings.json b/src/Invekto.Knowledge/appsettings.json
+new file mode 100644
+index 0000000..bb52e16
+--- /dev/null
++++ b/src/Invekto.Knowledge/appsettings.json
+@@ -0,0 +1,24 @@
++{
++  "Service": {
++    "ListenPort": 7104
++  },
++  "Logging": {
++    "FilePath": "logs"
++  },
++  "OpenAI": {
++    "ApiKey": "REPLACE_WITH_OPENAI_KEY",
++    "EmbeddingModel": "text-embedding-3-large",
++    "EmbeddingDimensions": 3072,
++    "TimeoutMs": 10000,
++    "MaxRetries": 1
++  },
++  "Jwt": {
++    "SecretKey": "",
++    "Issuer": null,
++    "Audience": null,
++    "ClockSkewSeconds": 60
++  },
++  "ConnectionStrings": {
++    "PostgreSQL": "Host=localhost;Port=5432;Database=invekto;Username=invekto;Password="
++  }
++}
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index b729d0b..d2ec1a4 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -86,6 +86,18 @@ public static class ErrorCodes
+     public const string OutboundMessageSendCallbackFailed = "INV-OB-009";
+     public const string OutboundTooManyRecipients = "INV-OB-010";
+ 
++    // Knowledge errors (INV-KN-xxx) -- GR-2.1
++    public const string KnowledgeImportPathNotFound = "INV-KN-001";
++    public const string KnowledgeImportParseError = "INV-KN-002";
++    public const string KnowledgeImportDbError = "INV-KN-003";
++    public const string KnowledgeSearchFailed = "INV-KN-004";
++    public const string KnowledgeOpenAITimeout = "INV-KN-005";
++    public const string KnowledgeOpenAIRateLimit = "INV-KN-006";
++    public const string KnowledgeOpenAIError = "INV-KN-007";
++    public const string KnowledgeFaqNotFound = "INV-KN-008";
++    public const string KnowledgeInvalidRequest = "INV-KN-009";
++    public const string KnowledgePgvectorMissing = "INV-KN-010";
++
+     // Database errors (INV-DB-xxx)
+     public const string DatabaseConnectionFailed = "INV-DB-001";
+     public const string DatabaseQueryTimeout = "INV-DB-002";
+diff --git a/src/Invekto.Shared/Constants/ServiceConstants.cs b/src/Invekto.Shared/Constants/ServiceConstants.cs
+index d10d6e8..83643bc 100644
+--- a/src/Invekto.Shared/Constants/ServiceConstants.cs
++++ b/src/Invekto.Shared/Constants/ServiceConstants.cs
+@@ -23,6 +23,8 @@ public static class ServiceConstants
+     public const int IntegrationsPort = 7106;
+     public const int OutboundPort = 7107;
+     public const int AutomationPort = 7108;
++    // Phase 2 service ports
++    public const int KnowledgePort = 7104;
+ 
+     // Service names
+     public const string BackendServiceName = "Invekto.Backend";
+@@ -31,6 +33,8 @@ public static class ServiceConstants
+     public const string AgentAIServiceName = "Invekto.AgentAI";
+     public const string OutboundServiceName = "Invekto.Outbound";
+     public const string AutomationServiceName = "Invekto.Automation";
++    // Phase 2 service names
++    public const string KnowledgeServiceName = "Invekto.Knowledge";
+ 
+     // Log retention
+     public const int LogRetentionDays = 30;
+diff --git a/src/Invekto.Shared/Invekto.Shared.csproj b/src/Invekto.Shared/Invekto.Shared.csproj
+index 576ba2f..4e60af4 100644
+--- a/src/Invekto.Shared/Invekto.Shared.csproj
++++ b/src/Invekto.Shared/Invekto.Shared.csproj
+@@ -7,6 +7,8 @@
+   </PropertyGroup>
+ 
+   <ItemGroup>
++    <!-- ASP.NET Core types for shared middleware (TrafficLogging, JwtAuth) -->
++    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+     <!-- JWT token validation (GR-1.9: Main App JWT shared key) -->
+     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.1" />
+     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
+diff --git a/src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs b/src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs
+similarity index 93%
+rename from src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs
+rename to src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs
+index 72aa1d2..cf756ed 100644
+--- a/src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs
++++ b/src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs
+@@ -2,12 +2,14 @@ using Invekto.Shared.Auth;
+ using Invekto.Shared.Constants;
+ using Invekto.Shared.DTOs;
+ using Invekto.Shared.Logging;
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Http;
+ 
+-namespace Invekto.Automation.Middleware;
++namespace Invekto.Shared.Middleware;
+ 
+ /// <summary>
+-/// JWT authentication middleware for Automation webhook/API endpoints.
+-/// Same pattern as Backend JwtAuthMiddleware (microservice isolation - each service has its own).
++/// JWT authentication middleware for Invekto API endpoints.
++/// Shared across all Invekto microservices.
+ /// </summary>
+ public sealed class JwtAuthMiddleware
+ {
+diff --git a/src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs b/src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs
+similarity index 95%
+rename from src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs
+rename to src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs
+index ac513cd..69c70fe 100644
+--- a/src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs
++++ b/src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs
+@@ -2,12 +2,14 @@ using System.Diagnostics;
+ using System.Text;
+ using Invekto.Shared.DTOs;
+ using Invekto.Shared.Logging;
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Http;
+ 
+-namespace Invekto.Automation.Middleware;
++namespace Invekto.Shared.Middleware;
+ 
+ /// <summary>
+ /// Middleware to log all HTTP request/response traffic.
+-/// Same pattern as ChatAnalysis.
++/// Shared across all Invekto microservices.
+ /// </summary>
+ public sealed class TrafficLoggingMiddleware
+ {

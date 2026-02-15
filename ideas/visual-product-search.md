@@ -4,7 +4,7 @@
 > **Kaynak:** Q interview (brainstorm)
 > **Durum:** FİKİR AŞAMASI — Phase 3C olarak roadmap'e eklendi
 > **Roadmap:** [phases/phase-3c.md](phases/phase-3c.md) (Hafta 25-28)
-> **Servis:** `Invekto.VisualSearch` (port 7109)
+> **Servis:** `Invekto.VisualSearch` (port 7111)
 > **Bağlı Servisler:** Bağımsız mikro servis, Invekto Main App veya herhangi bir e-ticaret ile entegre olabilir
 
 ---

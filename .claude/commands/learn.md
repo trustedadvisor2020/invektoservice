@@ -1,169 +1,160 @@
 ---
-description: Oturum duzeltmelerini lessons-learned.md'ye kaydet. Hatalardan ogrenmek icin kullan.
+name: recording-lessons
+description: Analyzes session corrections and records lessons to arch/lessons-learned.md. Use after mistakes, failed reviews, Q corrections, or at session end to capture reusable patterns.
 ---
 
 # /learn - Session Learning (v1.0)
 
-> **Persist After Compact:** Oturum sifirlaninca bile calisir.
+> **Persist After Compact:** Works even after session reset.
 
-Oturumdaki Q duzeltmelerini analiz edip `arch/lessons-learned.md`'ye kaydeder.
+Analyzes Q's corrections during the session and saves them to `arch/lessons-learned.md`.
 
-======================================================================
+---
 
-## KULLANIM
+## Usage
 
-### 1. `/learn` - Oturum Analizi
+### 1. `/learn` - Session Analysis
 
-Tum oturumu analiz et, ogrenilecek seyleri listele, Q onayiyla kaydet.
+Analyze the entire session, list learnable items, save with Q's approval.
 
-### 2. `/learn "konu"` - Spesifik Konu
+### 2. `/learn "topic"` - Specific Topic
 
-Belirtilen konuyu lessons-learned.md'ye ekle.
+Add the specified topic to lessons-learned.md.
 
-======================================================================
+---
 
-## STEP 1: SINYAL TESPITI
+## Devil's Advocate (PP-006)
 
-Oturumda sunlari tara:
+Challenge what's worth recording:
+- "Is this really a project-specific lesson, or just general knowledge?"
+- "Did Q's correction reveal a deeper architectural issue?"
+- "Are we treating the symptom or the root cause?"
+- Don't record surface-level fixes - dig for the underlying pattern
+- Push back if Q wants to skip learning from a painful failure
 
-### Q Duzeltmeleri
-- "hayir", "yanlis", "aslinda", "degil", "oyle degil"
-- Q'nun kod degistirme talepleri
-- Rejected approach'lar
+---
 
-### Tekrarlayan Pattern'ler
-- 2+ kez ayni hata/duzeltme
-- Ayni dosyada birden fazla fix
-- Benzer soru tekrari
+## Step 1: Signal Detection
 
-### Onaylanan Yaklasimlar
-- "evet", "dogru", "aynen", "tamam", "guzel"
-- Build PASS sonrasi Q memnuniyeti
-- Codex PASS alan pattern'ler
+Scan the session for:
 
-### Hata -> Cozum Zincirleri
-- Build FAIL -> fix -> PASS
-- Codex FAIL -> fix -> PASS
-- Q duzeltme -> uygulama -> onay
+**Q Corrections:** "no", "wrong", "actually", "not like that", Q's code change requests, rejected approaches
 
-======================================================================
+**Recurring Patterns:** Same mistake/correction 2+ times, multiple fixes in same file, repeated similar questions
 
-## STEP 2: FILTRELEME
+**Approved Approaches:** "yes", "correct", "exactly", "good", Q satisfaction after Build PASS, patterns that got Codex PASS
 
-Her sinyal icin su sorulari sor:
+**Error -> Solution Chains:** Build FAIL -> fix -> PASS, Codex FAIL -> fix -> PASS, Q correction -> apply -> approval
 
-```
-+--------------------------------------------------------+
-|  [?] Proje-spesifik mi? (Bu projeye ozgu)              |
-|  [?] Tekrarlanabilir mi? (Gelecekte karsilasilir)      |
-|  [?] Yeni bilgi mi? (lessons-learned.md'de yok)        |
-|  [?] Actionable mi? (Somut onlem alinabilir)           |
-+--------------------------------------------------------+
-```
+---
 
-**4'unden 3'u EVET ise -> KABUL**
-**Aksi halde -> REDDET**
+## Step 2: Filtering
 
-======================================================================
+For each signal, check:
 
-## STEP 3: KATEGORIZASYON
+- Is it project-specific? (Unique to this project)
+- Is it repeatable? (Will occur again in the future)
+- Is it new? (Not already in lessons-learned.md)
+- Is it actionable? (Concrete prevention possible)
 
-| Sinyal Tipi | Hedef Tablo |
+**3 out of 4 YES -> ACCEPT, otherwise -> REJECT**
+
+---
+
+## Step 3: Categorization
+
+| Signal Type | Target Table |
 |-------------|-------------|
-| Hata yaptim, Q duzeltti | Common Mistakes |
-| Bu yaklasim ise yaradi | Patterns That Work |
-| Bunu yapma | Anti-Patterns to Avoid |
-| Review'da fark edildi | Code Review Insights |
+| I made a mistake, Q corrected | Common Mistakes |
+| This approach worked well | Patterns That Work |
+| Don't do this | Anti-Patterns to Avoid |
+| Caught during review | Code Review Insights |
 
-======================================================================
+---
 
-## STEP 4: ONIZLEME
+## Step 4: Preview
 
-Q'ya goster:
+Show Q:
 
 ```md
-## /learn Bulgulari
+## /learn Findings
 
-### Eklenecek: Common Mistakes
+### To Add: Common Mistakes
 | Date | Category | Mistake | Solution | Prevention |
 |------|----------|---------|----------|------------|
-| {tarih} | {kategori} | {hata} | {cozum} | {onlem} |
+| {date} | {category} | {mistake} | {solution} | {prevention} |
 
-### Eklenecek: Patterns That Work
+### To Add: Patterns That Work
 | Pattern | Where Used | Why It Works |
 |---------|------------|--------------|
-| {pattern} | {nerede} | {neden} |
+| {pattern} | {where} | {why} |
 
-### Reddedilen (gerekceli):
-- "{sinyal}" -> Genel best practice, proje-spesifik degil
+### Rejected (with reasons):
+- "{signal}" -> General best practice, not project-specific
 
-**Onayliyor musun?** (evet / hayir / duzenle)
+**Approve?** (yes / no / edit)
 ```
 
-======================================================================
+---
 
-## STEP 5: KAYIT
+## Step 5: Save
 
-Q onayi alindiktan sonra:
+After Q approval:
 
-1. `arch/lessons-learned.md` dosyasini oku
-2. Ilgili tabloya yeni satir ekle
-3. Tarih formati: `YYYY-MM-DD`
-4. Duplicate check: Ayni mistake zaten varsa ekleme
+1. Read `arch/lessons-learned.md`
+2. Add new row to relevant table
+3. Date format: `YYYY-MM-DD`
+4. Duplicate check: Don't add if same mistake already exists
 
-======================================================================
+---
 
-## FORMAT KURALLARI
+## Format Rules
 
-### Common Mistakes Satiri
+### Common Mistakes Row
 ```
-| {YYYY-MM-DD} | {Category} | {Kisa hata aciklamasi} | {Cozum} | {Gelecekte onlem} |
-```
-
-**Category secenekleri:** DB, SQL, API, UI, Auth, Config, Codex, Risk
-
-### Patterns That Work Satiri
-```
-| {Pattern adi} | {Kullanilan yer} | {Neden ise yariyor} |
+| {YYYY-MM-DD} | {Category} | {Brief mistake description} | {Solution} | {Future prevention} |
 ```
 
-### Anti-Patterns Satiri
+**Category options:** DB, SQL, API, UI, Auth, Config, Codex, Risk
+
+### Patterns That Work Row
 ```
-| {Anti-pattern adi} | {Problem} | {Daha iyi yaklasim} |
-```
-
-======================================================================
-
-## ENTEGRASYON
-
-### Auto Workflow ile
-- `/learn` auto workflow'u KESMEZ
-- **Her DONE sonrasi:** Agent oturumda ogrenilecek sey varsa hatirlatir
-- **Her FAIL sonrasi:** Agent bu hatayi kaydetmek isteyip istemedigini sorar
-
-### /rev ile
-- `/rev verdict FAIL` sonrasi `/learn` onerilebilir
-- 3 iteration'da ayni hata -> otomatik oneri
-
-======================================================================
-
-## KISITLAMALAR
-
-```
-+--------------------------------------------------------+
-|  X Otomatik ekleme yapmaz (her zaman Q onayi)          |
-|  X Genel best practice eklemez                         |
-|  X Framework/tool dokumantasyonu eklemez               |
-+--------------------------------------------------------+
+| {Pattern name} | {Where used} | {Why it works} |
 ```
 
-======================================================================
+### Anti-Patterns Row
+```
+| {Anti-pattern name} | {Problem} | {Better approach} |
+```
 
-## Q OVERRIDE
+---
 
-| Q Komutu | Etki |
-|----------|------|
-| `STOP` | Islemi durdur |
-| `duzenle: {degisiklik}` | Oneriyi degistir |
-| `sadece mistakes` | Sadece Common Mistakes ekle |
-| `skip` | Bu oturumda /learn atla |
+## Integration
+
+**With Auto Workflow:**
+- `/learn` does NOT interrupt auto workflow
+- After every DONE: Agent reminds if there's something to learn
+- After every FAIL: Agent asks if this mistake should be recorded
+
+**With /rev:**
+- `/learn` can be suggested after `/rev verdict FAIL`
+- Same mistake in 3 iterations -> automatic suggestion
+
+---
+
+## Constraints
+
+- No automatic additions (always requires Q approval)
+- No general best practices
+- No framework/tool documentation
+
+---
+
+## Q Override
+
+| Command | Effect |
+|---------|--------|
+| `STOP` | Halt operation |
+| `edit: {change}` | Modify the suggestion |
+| `only mistakes` | Only add Common Mistakes |
+| `skip` | Skip /learn for this session |

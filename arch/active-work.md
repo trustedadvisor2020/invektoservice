@@ -6,32 +6,84 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| (none) | - | - | - |
+| PKT-1-ai-upgrade | NEXT | 2026-02-15 | Paket 1: AI Upgrade (GR-2.2 + GR-2.3). Interview ile başla. |
 
 ---
 
-## Execution Queue (Onaylı Sıra)
+## Execution Queue — 8 Paket Stratejisi (v5.0)
 
-> **Kural:** WA = WhatsApp Analytics, RP = Roadmap Phase. Karışmasın!
+> **Karar (2026-02-15):** Tekli GR döngüsü yerine 8 paket halinde yürütme.
+> Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
+> **Neden:** Overhead %60 azalır (24 döngü → 8 döngü), saf kod süresi aynı kalır.
+> **Kural:** WA = WhatsApp Analytics, RP = Roadmap Phase, PKT = Execution Packet.
 
-| Sıra | Kod | İş | Bağımlılık | Notlar |
-|------|-----|----|------------|--------|
-| 1 | **WA-3 + RP-2 GR-2.1** | Training Data Export + Knowledge Service (RAG) | WA-2 ✅ | FAQ clusters → Knowledge DB. BERABER yapılacak, ayrı yapmak 2x iş |
-| 2 | **WA-4** | BI Dashboard (agent performans, conversion, trend) | WA-2 ✅ | Bağımsız, arada yapılabilir |
-| 3 | **RP-2 GR-2.2** | Agent Assist v2 (Knowledge/RAG beslemeli) | RP-2 GR-2.1 | Knowledge Service SONRASI |
-| 4 | **RP-2 GR-2.3~2.6** | Multi-lang, Randevu, Dashboard, KVKK | RP-2 GR-2.1 | Sırayla veya paralel |
-| 5 | **WA-5 + WA-6** | C# Microservice + SQL Server Entegrasyon | RP-2 GR-2.1 | Aynı infra pattern, en son |
+### Tamamlanan (Paket Öncesi — Tekli Döngü)
+
+| Kod | İş | Durum | Notlar |
+|-----|----|-------|--------|
+| WA-3 + GR-2.1 Phase A | Knowledge Service Core (RAG + import) | ✅ DONE | Commit: 385d3e0 |
+| GR-2.1 Phase B | Knowledge: PDF upload + chunking + UI | ✅ DONE | Commit: 89bbe72 |
+| WA-5/6 Phase A | C# Microservice (Stages 1-3, Port 7109) | ✅ DONE | Commit: 18f387f |
+
+### Aktif Paket Sırası
+
+| # | Paket | Kod | İçerik | GR Sayısı | Durum |
+|---|-------|-----|--------|-----------|-------|
+| 1 | **AI Upgrade** | PKT-1 | GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang | 2 GR, 13 alt madde | ⬜ Sırada |
+| 2 | **Sağlık Core** | PKT-2 | GR-2.4 Randevu Motoru + GR-2.6 KVKK | 2 GR, 11 alt madde | ⬜ Bekliyor |
+| 3 | **Ops Dashboard** | PKT-3 | GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard | 2 GR, 12 alt madde | ⬜ Bekliyor |
+| 4 | **WA Analytics** | PKT-4 | WA-6 NLP Stages 4-7 + Backend proxy | 1 WA faz, ~8 alt madde | ⬜ Bekliyor |
+| 5 | **Platform** | PKT-5 | Phase 3A: Integrations (:7106) + Outbound v2 + Randevu Advanced + Dashboard + Ads | 6 GR, 30 alt madde | ⬜ Bekliyor |
+| 6 | **Niche** | PKT-6 | Phase 3B: E-ticaret/Diş/Estetik intent + pipeline + outbound + sağlık genişleme + Voice AI + Review Rescue + Multilingual | 19 GR, ~80 alt madde | ⬜ Bekliyor |
+| 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
+| 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
+
+> **PKT-1~4 = Phase 2 tamamlama** (kesin ihtiyaç, hemen deploy edilecek)
+> **PKT-5~8 = Phase 3 tamamlama** (müşteri feedback'ine göre revize edilebilir)
+
+### Paket Detayları
+
+**PKT-1: AI Upgrade** — AgentAI + ChatAnalysis + Knowledge genişletme
+- GR-2.2: Reply generation Knowledge'dan beslenecek, kaynak referansı, tone presets, multi-turn
+- GR-2.3: Language detection, multi-lang response, Knowledge multi-lang, Outbound dil seçimi
+
+**PKT-2: Sağlık Core** — Backend + Outbound genişletme
+- GR-2.4: Haftalık slot, randevu al/iptal, hatırlatma (T-48h/T-2h), Dashboard slot yönetimi
+- GR-2.6: AI disclaimer, açık rıza, veri minimizasyonu, fotoğraf politikası
+
+**PKT-3: Ops Dashboard** — Dashboard React + Backend genişletme
+- GR-2.5: Deflection/handoff rate, trend grafikleri, intent performance, FRT, conversation metadata
+- WA-4: Agent performans, conversion, trend raporları (Python NLP çıktıları üzerinden)
+
+**PKT-4: WA Analytics** — WhatsAppAnalytics servis genişletme
+- WA-6: NLP stages 4-7 (intent, FAQ, sentiment, product) C# portu + query layer + Backend proxy
+
+**PKT-5: Platform** — Yeni servis (Integrations :7106) + genişletmeler
+- GR-3.4 HB API, GR-3.6 Kargo, GR-3.14 Ads Attribution, GR-3.15 Outbound v2, GR-3.18 Dashboard, GR-3.19 Randevu Advanced
+
+**PKT-6: Niche** — En büyük paket (19 GR, tüm sektör intent + pipeline)
+- E-ticaret: GR-3.1, 3.2, 3.3, 3.5, 3.7, 3.8, 3.16, 3.17, 3.24
+- Diş: GR-3.9, 3.10, 3.11
+- Estetik: GR-3.12, 3.13
+- Sağlık genişleme: GR-3.20, 3.21, 3.22, 3.25
+- Evrensel: GR-3.23 Voice AI
+
+**PKT-7: Visual AI** — Yeni servis (VisualSearch :7111)
+- GR-3C.1~3C.8: CLIP engine, katalog, web widget, tenant mgmt, WA/IG entegrasyon, analytics, Size/Fit AI
+
+**PKT-8: Face AI** — Yeni servis (FaceAnalysis :7110)
+- GR-3D.1~3D.5: MediaPipe + Claude Vision, tedavi eşleştirme, multi-lang, WA/IG, analytics + ethics
 
 ### WA (WhatsApp Analytics) Fazları
 
-| Faz | İsim | Durum | Açıklama |
-|-----|------|-------|----------|
-| WA-1 | Temizlik + Threading | ✅ 2026-02-14 | 01_cleaner, 02_threader, 03_stats |
-| WA-2 | NLP Pipeline | ✅ 2026-02-14 | 04_intent, 05_faq, 06_sentiment, 07_product + shared claude_client |
-| WA-3 | Training Data Export | ⬜ Sırada | FAQ clusters + intent patterns → Knowledge Service'e aktar |
-| WA-4 | BI Dashboard | ⬜ Sırada | Agent performans, conversion, trend raporları |
-| WA-5 | C# Microservice | ⬜ Bekliyor | Pipeline'ı InvektoServices mikro servis olarak sarmala |
-| WA-6 | SQL Server Entegrasyon | ⬜ Bekliyor | CSV'lerden DB'ye bulk insert, live query |
+| Faz | İsim | Durum | Paket | Açıklama |
+|-----|------|-------|-------|----------|
+| WA-1 | Temizlik + Threading | ✅ 2026-02-14 | — | 01_cleaner, 02_threader, 03_stats |
+| WA-2 | NLP Pipeline | ✅ 2026-02-14 | — | 04_intent, 05_faq, 06_sentiment, 07_product + shared claude_client |
+| WA-3 | Training Data Export | ✅ 2026-02-14 | — | FAQ clusters + intent patterns → Knowledge DB (Phase A ile beraber) |
+| WA-4 | BI Dashboard | ⬜ Sırada | **PKT-3** | Agent performans, conversion, trend raporları |
+| WA-5 | C# Microservice Phase A | ✅ 2026-02-15 | — | Pipeline stages 1-3 (cleaner, threader, stats). Port 7109. Commit: 18f387f |
+| WA-6 | NLP Stages 4-7 + Proxy | ⬜ Bekliyor | **PKT-4** | NLP stages 4-7 C# portu, query layer, Backend proxy, deploy infra |
 
 ---
 
@@ -39,6 +91,9 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260214-wa-analytics-phaseA | 2026-02-15 | WA-5/6 Phase A: Invekto.WhatsAppAnalytics (Port 7109). Full C# port of pipeline stages 1-3. Streaming CSV, Turkish text normalization, SHA256 dedup, 25 outcome patterns, IAsyncEnumerable streaming, restart recovery (stale timeout + SKIP LOCKED). 10-table PostgreSQL schema, 15 error codes. 20 dosya +5417. Codex 4 iter PASS. Commit: 18f387f. Plan: `arch/plans/20260214-wa-analytics-phaseA.json` |
+| 20260214-knowledge-service-phaseB | 2026-02-15 | GR-2.1 Phase B: PDF upload + PdfPig chunking, combined FAQ+chunk search, Backend proxy (JWT bridge), Dashboard Knowledge UI. 27 dosya +13413/-449. Codex 3 iter PASS. Commit: 89bbe72. Plan: `arch/plans/20260214-knowledge-service.json` |
+| 20260214-knowledge-service-phaseA | 2026-02-14 | GR-2.1 Phase A: Knowledge Service core (RAG, pgvector, WA-3 import, FAQ CRUD, embeddings). 22 dosya +2615. Codex 5 iter PASS. Plan: `arch/plans/20260214-knowledge-service.json` |
 | 20260214-whatsapp-analytics | 2026-02-14 | WA-2: NLP Pipeline (intent classifier, FAQ extractor, sentiment analyzer, product analyzer + shared claude_client). 8 dosya +1919. Codex 3 iter PASS. Plan: `arch/plans/20260214-whatsapp-analytics.json` |
 | 20260214-idea-phase-integration | 2026-02-14 | 5 idea dokümanı roadmap phase'lerine entegre edildi (v4.5): Voice AI→3B GR-3.23, Face Analysis→3D GR-3D.1-5, Size/Fit→3C GR-3C.8, Review Rescue→3B GR-3.24, Multilingual→3B GR-3.25. Yeni phase-3d.md oluşturuldu. |
 | 20260214-flow-builder-phase5 | 2026-02-14 | Flow Builder Phase 5: Production Integration. Deploy script'e FlowBuilder SPA build adimi eklendi. 1 dosya +26 -5. Codex 3 iter Q FORCE PASS. |

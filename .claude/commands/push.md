@@ -1,5 +1,6 @@
 ---
-description: Git add, commit and push all changes to GitHub
+name: pushing-changes
+description: Stages all changes, generates a conventional commit message, and pushes to the current branch on GitHub. Use when ready to push completed work.
 ---
 
 # /push [message]
@@ -13,31 +14,57 @@ description: Git add, commit and push all changes to GitHub
 /push "fix: bug fix"     # Use custom commit message
 ```
 
+## Devil's Advocate (PP-006)
+
+Challenge before pushing:
+- "Are there uncommitted changes that should be in this push?"
+- "Is the commit message accurate about what actually changed?"
+- "Should this go to a feature branch instead of master?"
+- Don't push just because Q said so - flag concerns first
+
+---
+
 ## Workflow
 
 ### Step 1: Check Status
-Run these commands in parallel:
+
+Run in parallel:
 - `git status` - See all changed files
 - `git diff --stat` - See change statistics
 - `git log -3 --oneline` - See recent commits for style reference
 
 ### Step 2: Analyze Changes
-Look at the changes and determine:
-- What type of change (feat, fix, refactor, docs)
+
+Determine:
+- Change type (feat, fix, refactor, docs, chore)
 - Which components/services affected
 - Brief summary of what was done
 
-### Step 3: Stage All Changes
-```
+### Step 3: Safety Check
+
+Before staging, verify no sensitive files are included:
+- `.env`, `.env.*` files
+- `*credentials*`, `*secret*`, `*token*` files
+- `appsettings.Production.*.json` with real secrets
+- Private keys (`*.pem`, `*.key`)
+
+If sensitive files detected -> warn Q and exclude them from staging.
+
+### Step 4: Stage Changes
+
+```bash
 git add -A
 ```
 
-### Step 4: Create Commit
+If sensitive files were detected in Step 3, stage specific files instead of `-A`.
+
+### Step 5: Create Commit
+
 If `[message]` argument provided, use it. Otherwise auto-generate from changes.
 
 Commit message format:
 ```
-{type}: {brief description}
+{type}({scope}): {brief description}
 
 - {detail 1}
 - {detail 2}
@@ -45,35 +72,35 @@ Commit message format:
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-Types:
-- `feat` - New feature
-- `fix` - Bug fix
-- `refactor` - Code refactoring
-- `docs` - Documentation
-- `chore` - Maintenance tasks
+Types: `feat`, `fix`, `refactor`, `docs`, `chore`
 
-### Step 5: Push to Remote
-```
+### Step 6: Push to Remote
+
+```bash
 git push origin {current_branch}
 ```
 
-### Step 6: Confirm
+### Step 7: Confirm
+
 Show:
 - Commit hash
-- Branch
+- Branch name
 - Files changed count
 - Push status
 
-## Example Output
+## Error Handling
 
-```
-✓ Commit: abc1234
-✓ Branch: master
-✓ Files: 12 changed
-✓ Pushed to origin/master
-```
+| Error | Action |
+|-------|--------|
+| No changes detected | Report "Nothing to commit", STOP |
+| Push rejected (non-fast-forward) | Warn Q: "Remote has new commits. Run `git pull` first." Do NOT force push |
+| No remote configured | Warn Q: "No remote 'origin' found." STOP |
+| Auth failure | Warn Q: "Authentication failed. Check credentials." STOP |
+| Pre-commit hook failure | Show hook output, suggest fix, do NOT use --no-verify |
 
 ## Notes
+
 - Always pushes to current branch
-- Never force push
-- Skip if no changes detected
+- Never force pushes
+- Skips if no changes detected
+- Checks for sensitive files before staging

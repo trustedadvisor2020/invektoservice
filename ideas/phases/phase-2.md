@@ -23,12 +23,12 @@
 
 | Alt Gereksinim | Durum | Tamamlanma Tarihi | Notlar |
 |----------------|-------|-------------------|--------|
-| GR-2.1 Knowledge Service (RAG) | ⬜ Başlamadı | — | ← eski GR-3.1 |
-| GR-2.2 Agent Assist v2 (RAG beslemeli) | ⬜ Başlamadı | — | ← eski GR-3.3 |
-| GR-2.3 Multi-Language AI (TR/EN) | ⬜ Başlamadı | — | ← eski GR-3.7 + GR-2.16 birleşti |
-| GR-2.4 Randevu Motoru (basit→v2) | ⬜ Başlamadı | — | ← eski GR-2.10 (mevcut müşteri talebi) |
-| GR-2.5 Otomasyon Dashboard + Log | ⬜ Başlamadı | — | ← eski GR-2.17 + GR-1.10.4/5 |
-| GR-2.6 KVKK Minimum Koruma | ⬜ Başlamadı | — | ← eski GR-2.18 (sağlık niche zorunlu) |
+| GR-2.1 Knowledge Service (RAG) | ✅ Tamamlandı (A+B) | 2026-02-15 | Phase A: core + import + retrieval. Phase B: PDF + chunking + UI. Commit: 385d3e0, 89bbe72 |
+| GR-2.2 Agent Assist v2 (RAG beslemeli) | ⬜ Başlamadı | — | ← eski GR-3.3. **PKT-1** |
+| GR-2.3 Multi-Language AI (TR/EN) | ⬜ Başlamadı | — | ← eski GR-3.7 + GR-2.16. **PKT-1** |
+| GR-2.4 Randevu Motoru (basit→v2) | ⬜ Başlamadı | — | ← eski GR-2.10. **PKT-2** |
+| GR-2.5 Otomasyon Dashboard + Log | ⬜ Başlamadı | — | ← eski GR-2.17 + GR-1.10.4/5. **PKT-3** |
+| GR-2.6 KVKK Minimum Koruma | ⬜ Başlamadı | — | ← eski GR-2.18. **PKT-2** |
 
 > **Güncelleme:** Bir gereksinim tamamlandığında durumu `✅ Tamamlandı` olarak güncelle ve tarihi yaz.
 > Devam ediyorsa `🔄 Devam Ediyor`, bloke ise `🚫 Bloke` yaz.
@@ -68,19 +68,19 @@
 > **Sektör:** Tümü
 > **Kaynak:** eski GR-3.1
 
-- [ ] **2.1.1** Knowledge servis iskeletini oluştur (port 7104, health check, tenant izolasyon)
-- [ ] **2.1.2** PDF upload + chunking
+- [x] **2.1.1** Knowledge servis iskeletini oluştur (port 7104, health check, tenant izolasyon) ✅ Phase A
+- [x] **2.1.2** PDF upload + chunking — ✅ Phase B (PdfPig, 512-token/50-overlap)
   - Ürün kataloğu, SSS dokümanları, politika belgeleri
   - Chunk boyutu + overlap stratejisi
-- [ ] **2.1.3** FAQ editor (hızlı soru-cevap girişi — UI)
-- [ ] **2.1.4** Embeddings pipeline (pgvector)
-  - Embedding model seçimi
+- [x] **2.1.3** FAQ editor (hızlı soru-cevap girişi — UI) — ✅ Phase B (Dashboard FaqManager)
+- [x] **2.1.4** Embeddings pipeline (pgvector) ✅ Phase A
+  - Embedding model: text-embedding-3-large (3072 dim)
   - Tenant bazlı izolasyon (aynı pgvector instance, farklı tenant_id)
-- [ ] **2.1.5** Retrieval API (topK + tenant izolasyonu)
-  - Soru → en yakın chunk'lar → context oluştur
-- [ ] **2.1.6** Kaynak referanslı cevap ("pricing.pdf sayfa 3'e göre...")
-- [ ] **2.1.7** Knowledge management UI (Dashboard'da doc yükle, FAQ ekle)
-- [ ] **2.1.8** DB:
+- [x] **2.1.5** Retrieval API (topK + tenant izolasyonu) ✅ Phase A
+  - Soru → semantic search (pgvector) → keyword fallback (FTS) → context oluştur
+- [x] **2.1.6** Kaynak referanslı cevap ("pricing.pdf sayfa 3'e göre...") — ✅ Phase B (sourceType discriminator)
+- [x] **2.1.7** Knowledge management UI (Dashboard'da doc yükle, FAQ ekle) — ✅ Phase B (DocumentUpload, FaqManager)
+- [x] **2.1.8** DB: ✅ Phase A (8 tablo)
   ```sql
   documents (id, tenant_id, title, source_type, status, created_at, updated_at)
   chunks (id, document_id, tenant_id, content, chunk_index, metadata_json, embedding vector, created_at)

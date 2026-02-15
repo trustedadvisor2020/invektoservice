@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, RefreshCw, ChevronDown, ChevronUp, Clock, Layers, Activity, List } from 'lucide-react';
+import { Search, Filter, RefreshCw, ChevronDown, ChevronUp, Clock, Layers, Activity, List, Trash2 } from 'lucide-react';
 import type { LogGroup, LogEntry } from '../lib/api';
 import { api } from '../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
@@ -132,6 +132,24 @@ export function LogStream({ initialFilter }: LogStreamProps) {
     fetchLogs();
   }, [fetchLogs]);
 
+  const [isClearing, setIsClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleClearLogs = async () => {
+    setIsClearing(true);
+    try {
+      const svc = service ? service.replace('Invekto.', '') : undefined;
+      await api.clearLogs(svc);
+      setShowClearConfirm(false);
+      setGroups([]);
+      await fetchLogs();
+    } catch (error) {
+      console.error('Failed to clear logs:', error);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const toggleLevel = (level: string) => {
     setLevels(prev =>
       prev.includes(level)
@@ -183,8 +201,41 @@ export function LogStream({ initialFilter }: LogStreamProps) {
             <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoading}>
               <RefreshCw className={cn("w-4 h-4 flex-shrink-0", isLoading && "animate-spin")} />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowClearConfirm(true)}
+              disabled={isClearing || groups.length === 0}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4 flex-shrink-0" />
+            </Button>
           </div>
         </div>
+
+        {/* Clear confirm */}
+        {showClearConfirm && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm">
+            <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
+            <span className="text-red-700">
+              {service ? `${service.replace('Invekto.', '')} loglarını` : 'Tüm logları'} silmek istediğinize emin misiniz?
+            </span>
+            <div className="flex gap-1 ml-auto">
+              <Button size="sm" variant="secondary" onClick={() => setShowClearConfirm(false)}>
+                İptal
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleClearLogs}
+                disabled={isClearing}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isClearing ? 'Siliniyor...' : 'Evet, Sil'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
@@ -212,6 +263,8 @@ export function LogStream({ initialFilter }: LogStreamProps) {
               { value: 'Invekto.ChatAnalysis', label: 'ChatAnalysis' },
               { value: 'Invekto.Automation', label: 'Automation' },
               { value: 'Invekto.AgentAI', label: 'AgentAI' },
+              { value: 'Invekto.Outbound', label: 'Outbound' },
+              { value: 'Invekto.Knowledge', label: 'Knowledge' },
             ]}
             className="w-36"
           />

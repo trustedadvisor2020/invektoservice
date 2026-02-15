@@ -1,12 +1,15 @@
 {
-    "gitHash":  "2066e07",
-    "timestamp":  "2026-02-13T00:44:06.6241749+03:00",
+    "gitHash":  "385d3e0",
+    "timestamp":  "2026-02-14T22:21:49.9056669+03:00",
     "gitBranch":  "master",
     "services":  [
+                     "FlowBuilder",
+                     "Dashboard",
                      "Backend",
                      "ChatAnalysis",
                      "Automation",
                      "AgentAI",
-                     "Outbound"
+                     "Outbound",
+                     "Knowledge"
                  ]
 }

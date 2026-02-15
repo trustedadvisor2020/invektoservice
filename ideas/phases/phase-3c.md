@@ -46,7 +46,7 @@ Müşteri görsel gönderir → AI analiz eder → katalogdan eşleşen/benzer �
 
 | Servis | Port | Sorumluluk |
 |--------|------|------------|
-| `Invekto.VisualSearch` | 7109 | Görsel ürün arama, CLIP embedding, vector search, katalog yönetimi |
+| `Invekto.VisualSearch` | 7111 | Görsel ürün arama, CLIP embedding, vector search, katalog yönetimi |
 
 ---
 
@@ -82,10 +82,10 @@ Görsel Girdi → Preprocessing → CLIP Embedding → Vector Search → Result 
 
 ### GR-3C.1: VPS Core Engine
 
-> **Servis:** `Invekto.VisualSearch` (port 7109) — YENİ
+> **Servis:** `Invekto.VisualSearch` (port 7111) — YENİ
 > **Bağımlılık:** Phase 2 GR-2.1 (pgvector altyapısı)
 
-- [ ] **3C.1.1** VisualSearch servis iskeletini oluştur (port 7109, health check, tenant izolasyon)
+- [ ] **3C.1.1** VisualSearch servis iskeletini oluştur (port 7111, health check, tenant izolasyon)
 - [ ] **3C.1.2** Image Processor modülü:
   - Resize (max 512x512 for CLIP)
   - Normalize (RGB, aspect ratio)

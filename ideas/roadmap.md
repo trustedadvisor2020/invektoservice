@@ -427,7 +427,7 @@ Toplam:  50+          60+           75+          100+         130+        170+  
 | 1 | `Invekto.Outbound` | **Phase 1** | 7107 | **Broadcast + toplu mesaj + zamanlama** |
 | 2 | `Invekto.Knowledge` | **Phase 2** | 7104 | RAG + bilgi tabanı (AI doğruluğu artır) |
 | 3 | `Invekto.Integrations` | **Phase 3A** | 7106 | Niche entegrasyonlar (Trendyol, PMS, randevu) |
-| 3C | `Invekto.VisualSearch` | **Phase 3C** | 7109 | Görsel ürün arama + Size/Fit AI (CLIP + vector search, bağımsız SaaS) |
+| 3C | `Invekto.VisualSearch` | **Phase 3C** | 7111 | Görsel ürün arama + Size/Fit AI (CLIP + vector search, bağımsız SaaS) |
 | 3D | `Invekto.FaceAnalysis` | **Phase 3D** | 7110 | Yüz analizi AI (MediaPipe + Claude Vision, estetik konsültasyon) |
 | 4 | `Invekto.Audit` | Phase 4 | 7103 | Kurumsal müşteri talebi |
 
@@ -493,7 +493,7 @@ Phase 3 eklentisi (NİCHE GENİŞLEME + OUTBOUND v2 — Hibrit v4.1):
   → Integrations (:7106) = Trendyol/HB, randevu motoru, PMS
 
 Phase 3C-3D eklentisi (GÖRSEL AI — v4.5):
-  → VisualSearch (:7109) = görsel ürün arama + beden önerisi (CLIP + Size AI)
+  → VisualSearch (:7111) = görsel ürün arama + beden önerisi (CLIP + Size AI)
   → FaceAnalysis (:7110) = yüz analizi + tedavi eşleştirme (MediaPipe + Claude Vision)
 ```
 

@@ -13,6 +13,7 @@ echo Stopping services...
 %NSSM% stop InvektoAutomation
 %NSSM% stop InvektoAgentAI
 %NSSM% stop InvektoOutbound
+%NSSM% stop InvektoKnowledge
 timeout /t 3 /nobreak >nul
 
 echo.
@@ -27,6 +28,8 @@ timeout /t 2 /nobreak >nul
 timeout /t 2 /nobreak >nul
 %NSSM% start InvektoOutbound
 timeout /t 2 /nobreak >nul
+%NSSM% start InvektoKnowledge
+timeout /t 2 /nobreak >nul
 
 echo.
 echo Status:
@@ -35,9 +38,11 @@ echo Status:
 %NSSM% status InvektoAutomation
 %NSSM% status InvektoAgentAI
 %NSSM% status InvektoOutbound
+%NSSM% status InvektoKnowledge
 echo.
 echo Test: http://localhost:5000/health
 echo Test: http://localhost:7101/health
+echo Test: http://localhost:7104/health
 echo Test: http://localhost:7105/health
 echo Test: http://localhost:7107/health
 echo Test: http://localhost:7108/health

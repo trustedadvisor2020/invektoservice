@@ -1,5 +1,6 @@
 ---
-description: Semi-autonomous UI testing - scan localhost UIs with Playwright, generate test specs for Q approval, execute approved tests, report findings
+name: testing-ui
+description: Semi-autonomous UI testing with Playwright. Scans localhost UIs, generates test specs for Q approval, executes approved tests, and reports findings. Manual trigger only, not part of auto workflow.
 ---
 
 # /test-ui [target]
@@ -8,6 +9,7 @@ description: Semi-autonomous UI testing - scan localhost UIs with Playwright, ge
 > **Manual trigger only** - NOT part of auto workflow. Does not require /rev or Codex review.
 
 ## Usage Examples
+
 ```
 /test-ui flow-builder
 /test-ui dashboard
@@ -16,6 +18,7 @@ description: Semi-autonomous UI testing - scan localhost UIs with Playwright, ge
 ```
 
 ## Known Targets
+
 | Shorthand | URL |
 |-----------|-----|
 | `flow-builder` | `http://localhost:3002/flow-builder/` |
@@ -25,11 +28,21 @@ description: Semi-autonomous UI testing - scan localhost UIs with Playwright, ge
 
 ---
 
-## EXECUTION PROTOCOL
+## Devil's Advocate (PP-006)
+
+Challenge the test scope:
+- "Are we testing the right things, or just the easy things?"
+- "What user flows are NOT covered by these tests?"
+- "Could this pass all tests and still be broken for real users?"
+- Don't report "all green" without questioning coverage gaps
+
+---
+
+## Execution Protocol
 
 When Q runs `/test-ui`, follow these phases **exactly in order**:
 
-### PHASE 0: PREREQUISITES CHECK
+### Phase 0: Prerequisites Check
 
 1. Check if Playwright is installed:
 ```
@@ -37,7 +50,7 @@ powershell -NoProfile -Command "python -c 'import playwright; print(\"OK\")'"
 ```
 If NOT installed, tell Q:
 ```
-Playwright kurulu degil. Kurmak icin:
+Playwright is not installed. To install:
   pip install playwright requests
   playwright install chromium
 ```
@@ -50,21 +63,21 @@ Playwright kurulu degil. Kurmak icin:
 
 3. Generate run directory:
 ```
-powershell -NoProfile -Command "cd c:\CRMs\InvektoServices\tools\ui-tester; python -c \"from config import generate_run_dir; print(generate_run_dir('TARGET_NAME'))\""
+powershell -NoProfile -Command "cd c:/CRMs/InvektoServices/tools/ui-tester; python -c \"from config import generate_run_dir; print(generate_run_dir('TARGET_NAME'))\""
 ```
 Use the returned path as `RUN_DIR` for all subsequent steps.
 
-### PHASE 1: SERVICE CHECK + SCAN
+### Phase 1: Service Check + Scan
 
 1. **Check service health and auto-start if needed:**
 ```
-powershell -NoProfile -Command "cd c:\CRMs\InvektoServices\tools\ui-tester; python service_manager.py check TARGET_URL"
+powershell -NoProfile -Command "cd c:/CRMs/InvektoServices/tools/ui-tester; python service_manager.py check TARGET_URL"
 ```
 If FAIL: service_manager will attempt auto-start. If still FAIL, tell Q which service needs manual start and **STOP**.
 
 2. **Run scanner:**
 ```
-powershell -NoProfile -Command "cd c:\CRMs\InvektoServices\tools\ui-tester; python scanner.py TARGET_URL RUN_DIR [--auth TENANT:KEY]"
+powershell -NoProfile -Command "cd c:/CRMs/InvektoServices/tools/ui-tester; python scanner.py TARGET_URL RUN_DIR [--auth TENANT:KEY]"
 ```
 Pass `--auth` only if Q provided auth credentials.
 
@@ -72,79 +85,79 @@ Pass `--auth` only if Q provided auth credentials.
    - Read `RUN_DIR/test-spec.json`
    - Note: Do NOT load screenshots into context. They stay on disk.
 
-### PHASE 2: Q APPROVAL
+### Phase 2: Q Approval
 
 1. **Present scan summary** to Q using AskUserQuestion:
 
-Format your question like this:
+Format:
 ```
-Scan tamamlandi:
-- X element kesfedildi (Y button, Z link, W input)
-- Console errors: N adet
-- Network failures: M adet
-- Sayfalar tarandi: P
+Scan complete:
+- X elements discovered (Y buttons, Z links, W inputs)
+- Console errors: N
+- Network failures: M
+- Pages scanned: P
 
-Ornek test case'ler:
-1. tc-btn-save: "Save Flow" butonu -> click -> no errors expected
+Example test cases:
+1. tc-btn-save: "Save Flow" button -> click -> no errors expected
 2. tc-input-name: "Flow Name" input -> fill + blur -> no errors expected
 3. ...
 
-Nasil devam edelim?
+How to proceed?
 ```
 
 Options:
-- **Hepsini onayla** - Tum test case'leri calistir
-- **Sadece hatalilari test et** - Console error/network failure olan elementleri test et
-- **Manuel sec** - Q hangi testleri istedigini belirtir
-- **Iptal** - Test yapma
+- **Approve all** - Run all test cases
+- **Errors only** - Test elements with console errors/network failures
+- **Manual select** - Q specifies which tests to run
+- **Cancel** - Don't test
 
 2. **Update test-spec.json** based on Q's choice:
    - Read the file, set `approved: true` on selected test cases
    - Write updated file back using Write tool
 
-### PHASE 3: TEST EXECUTION
+### Phase 3: Test Execution
 
 1. **Run approved tests:**
 ```
-powershell -NoProfile -Command "cd c:\CRMs\InvektoServices\tools\ui-tester; python runner.py RUN_DIR\test-spec.json"
+powershell -NoProfile -Command "cd c:/CRMs/InvektoServices/tools/ui-tester; python runner.py RUN_DIR/test-spec.json"
 ```
 
 2. **Generate HTML report:**
 ```
-powershell -NoProfile -Command "cd c:\CRMs\InvektoServices\tools\ui-tester; python reporter.py RUN_DIR\report.json"
+powershell -NoProfile -Command "cd c:/CRMs/InvektoServices/tools/ui-tester; python reporter.py RUN_DIR/report.json"
 ```
 
 3. **Read report** using Read tool:
    - Read `RUN_DIR/report.json`
    - Focus on `summary` and `findings` sections only
 
-### PHASE 4: REPORT TO Q
+### Phase 4: Report to Q
 
-Present findings to Q in this format:
+Present findings:
 
 ```
-## UI Test Raporu
+## UI Test Report
 
 **Target:** {url}
-**Sonuc:** {passed}/{total} PASS ({pass_rate})
+**Result:** {passed}/{total} PASS ({pass_rate})
 
-### Basarisiz Testler
-| Test | Element | Hata |
-|------|---------|------|
+### Failed Tests
+| Test | Element | Error |
+|------|---------|-------|
 | tc-btn-X | "Save" button | Console error: ... |
 | tc-input-Y | "Name" input | Network failure: 404 |
 
 ### Screenshots
-Detayli rapor: RUN_DIR/report.html (browser'da ac)
+Detailed report: RUN_DIR/report.html (open in browser)
 Screenshots: RUN_DIR/screenshots/
 
-### Ne yapmak istersin?
+### What would you like to do?
 ```
 
 Use AskUserQuestion with options:
-- **Fix issues** - Hatalari duzelt (normal auto workflow baslat)
-- **Tekrar test et** - Ayni testleri tekrar calistir
-- **Bitti** - Kapat
+- **Fix issues** - Fix the errors (starts normal auto workflow)
+- **Retest** - Run the same tests again
+- **Done** - Close
 
 If Q chooses "Fix issues":
 - List the specific issues
@@ -154,17 +167,17 @@ If Q chooses "Fix issues":
 
 ---
 
-## IMPORTANT RULES
+## Important Rules
 
 1. **Context window protection:** NEVER load screenshots into context. Read only JSON summaries.
 2. **File-based communication:** All Playwright output goes to files. Read only structured JSON.
 3. **Q owns decisions:** Never auto-fix issues. Always present findings and let Q decide.
-4. **No auto workflow integration:** This skill is standalone. No /rev, no Codex review for the testing itself.
+4. **No auto workflow integration:** This skill is standalone. No /rev, no Codex review for testing itself.
 5. **Windows PowerShell:** All Bash commands must use `powershell -NoProfile -Command "..."` wrapper.
 6. **Max 10 pages:** Scanner limits crawling to 10 pages max to prevent infinite loops.
 7. **Truncation:** Console errors and network failures truncated to 20 entries max.
 
-## ERROR HANDLING
+## Error Handling
 
 | Error | Action |
 |-------|--------|

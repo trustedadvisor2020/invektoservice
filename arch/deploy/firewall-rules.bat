@@ -20,6 +20,9 @@ netsh advfirewall firewall add rule name="Invekto AgentAI (TCP 7105)" dir=in act
 REM Outbound (port 7107) - Localhost only (Backend proxies, not direct external access)
 netsh advfirewall firewall add rule name="Invekto Outbound (TCP 7107)" dir=in action=allow protocol=tcp localport=7107 profile=any remoteip=127.0.0.1
 
+REM Knowledge (port 7104) - Localhost only (Backend proxies, not direct external access)
+netsh advfirewall firewall add rule name="Invekto Knowledge (TCP 7104)" dir=in action=allow protocol=tcp localport=7104 profile=any remoteip=127.0.0.1
+
 REM Automation (port 7108) - External access (Main App webhooks)
 netsh advfirewall firewall add rule name="Invekto Automation (TCP 7108)" dir=in action=allow protocol=tcp localport=7108 profile=any
 
@@ -35,6 +38,7 @@ echo  Firewall rules added:
 echo    4500  Simulator     (external)
 echo    5000  Backend       (external)
 echo    7101  ChatAnalysis  (localhost only)
+echo    7104  Knowledge     (localhost only)
 echo    7105  AgentAI       (localhost only)
 echo    7107  Outbound      (localhost only)
 echo    7108  Automation    (external)

@@ -324,7 +324,7 @@ Skills in `.claude/commands/`:
 
 ---
 
-## Workflow (v3.1 - Copy-Paste)
+## Workflow (v5.0 - 8 Paket Stratejisi)
 
 > **🔄 PERSIST AFTER COMPACT:** Bu bölüm session sıfırlansa bile geçerlidir.
 
@@ -333,18 +333,23 @@ Skills in `.claude/commands/`:
 **Her kod degisikligi otomatik olarak auto.md kurallarini takip eder.**
 `/auto` yazmaya GEREK YOK - sadece ne istedigini soyle.
 
-**v3.1 Farki:**
-- Interview: AskUserQuestion tool ile (duz metin YASAK)
-- Plan JSON: TUM risk seviyeleri icin ZORUNLU
-- Codex review: TUM risk seviyeleri icin ZORUNLU (LOW dahil)
+**v5.0 Farki (2026-02-15):**
+- **Paket bazli yurutme:** Tekli GR dongusu yerine 2-3 GR/paket
+- Interview: Paket scope'unda AskUserQuestion ile (tek interview tum GR'ler icin)
+- Plan JSON: Paket bazli (birden fazla GR tek plan'da)
+- Codex review: Paket bazli (tum GR'lerin diff'i tek Codex review'da)
+- Paket ici GR'ler arasi interview/review YOK, sadece build check
 - Copy-paste yontemine DONDU
 
-**Otomatik Akis:**
-1. Q bir sey ister -> AskUserQuestion ile interview
-2. Agent risk'i belirler (LOW/MEDIUM/HIGH/CRITICAL)
-3. Plan JSON olusturulur (TUM risk seviyeleri)
-4. Implement -> Build
-5. /rev -> Q copy-paste -> Codex -> PASS/FAIL (TUM risk seviyeleri)
+**Paket Akisi:**
+1. Q paket ister (veya siradaki paket baslar)
+2. AskUserQuestion ile paket scope'unda interview (tum GR'ler icin)
+3. Agent risk'i belirler (LOW/MEDIUM/HIGH/CRITICAL)
+4. Plan JSON olusturulur (paket bazli, tum GR'ler tek plan'da)
+5. Implement (GR'ler sirali, her GR sonrasi build check)
+6. /rev -> Q copy-paste -> Codex -> PASS/FAIL
+
+**8 Paket Referansi:** `arch/active-work.md` → Execution Queue
 
 **Review Akisi (v3.1 - Copy-Paste):**
 ```

@@ -19,12 +19,14 @@ export function DependencyMap({ services }: DependencyMapProps) {
   const automation = services.find(s => s.name.includes('Automation'));
   const agentAI = services.find(s => s.name.includes('AgentAI'));
   const outbound = services.find(s => s.name.includes('Outbound'));
+  const knowledge = services.find(s => s.name.includes('Knowledge'));
 
   const backendColor = backend ? getStatusColor(backend.status) : getStatusColor('unavailable');
   const chatColor = chatAnalysis ? getStatusColor(chatAnalysis.status) : getStatusColor('unavailable');
   const autoColor = automation ? getStatusColor(automation.status) : getStatusColor('unavailable');
   const agentAIColor = agentAI ? getStatusColor(agentAI.status) : getStatusColor('unavailable');
   const outboundColor = outbound ? getStatusColor(outbound.status) : getStatusColor('unavailable');
+  const knowledgeColor = knowledge ? getStatusColor(knowledge.status) : getStatusColor('unavailable');
 
   return (
     <Card>
@@ -32,7 +34,7 @@ export function DependencyMap({ services }: DependencyMapProps) {
         <CardTitle>Service Dependencies</CardTitle>
       </CardHeader>
       <CardContent>
-        <svg viewBox="0 0 500 490" className="w-full h-80">
+        <svg viewBox="0 0 500 560" className="w-full h-96">
           {/* Glow filters */}
           <defs>
             <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
@@ -109,32 +111,32 @@ export function DependencyMap({ services }: DependencyMapProps) {
             </text>
           </g>
 
-          {/* Arrow to Automation (bottom-right) */}
+          {/* Arrow to Automation (mid-right) */}
           <g>
             <line
               x1="180"
-              y1="115"
+              y1="105"
               x2="310"
-              y2="155"
+              y2="145"
               stroke="#d1d5db"
               strokeWidth="2.5"
               strokeDasharray="8,5"
             />
             <polygon
-              points="310,155 296,148 300,160"
+              points="310,145 296,138 300,150"
               fill="#9ca3af"
             />
-            <rect x="218" y="120" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="243" y="137" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
+            <rect x="218" y="110" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+            <text x="243" y="127" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
               HTTP
             </text>
           </g>
 
-          {/* Automation Node (bottom-right) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 165px' }}>
+          {/* Automation Node (mid-right) */}
+          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 155px' }}>
             <rect
               x="320"
-              y="125"
+              y="115"
               width="160"
               height="80"
               rx="12"
@@ -143,41 +145,41 @@ export function DependencyMap({ services }: DependencyMapProps) {
               strokeWidth="2.5"
               style={{ filter: `drop-shadow(0 0 8px ${autoColor.glow})` }}
             />
-            <circle cx="344" cy="157" r="6" fill={autoColor.fill} />
-            <text x="360" y="161" fill="#111827" fontSize="16" fontWeight="600">
+            <circle cx="344" cy="147" r="6" fill={autoColor.fill} />
+            <text x="360" y="151" fill="#111827" fontSize="16" fontWeight="600">
               Automation
             </text>
-            <text x="344" y="185" fill="#6b7280" fontSize="13">
+            <text x="344" y="175" fill="#6b7280" fontSize="13">
               localhost:7108
             </text>
           </g>
 
-          {/* Arrow to AgentAI (bottom-far-right) */}
+          {/* Arrow to AgentAI (bottom-right) */}
           <g>
             <line
               x1="180"
-              y1="130"
+              y1="125"
               x2="310"
-              y2="265"
+              y2="245"
               stroke="#d1d5db"
               strokeWidth="2.5"
               strokeDasharray="8,5"
             />
             <polygon
-              points="310,265 296,258 300,270"
+              points="310,245 296,238 300,250"
               fill="#9ca3af"
             />
-            <rect x="218" y="182" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="243" y="199" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
+            <rect x="218" y="170" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+            <text x="243" y="187" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
               HTTP
             </text>
           </g>
 
-          {/* AgentAI Node (bottom-far-right) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 275px' }}>
+          {/* AgentAI Node (bottom-right) */}
+          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 255px' }}>
             <rect
               x="320"
-              y="235"
+              y="215"
               width="160"
               height="80"
               rx="12"
@@ -186,41 +188,41 @@ export function DependencyMap({ services }: DependencyMapProps) {
               strokeWidth="2.5"
               style={{ filter: `drop-shadow(0 0 8px ${agentAIColor.glow})` }}
             />
-            <circle cx="344" cy="267" r="6" fill={agentAIColor.fill} />
-            <text x="360" y="271" fill="#111827" fontSize="16" fontWeight="600">
+            <circle cx="344" cy="247" r="6" fill={agentAIColor.fill} />
+            <text x="360" y="251" fill="#111827" fontSize="16" fontWeight="600">
               AgentAI
             </text>
-            <text x="344" y="295" fill="#6b7280" fontSize="13">
+            <text x="344" y="275" fill="#6b7280" fontSize="13">
               localhost:7105
             </text>
           </g>
 
-          {/* Arrow to Outbound */}
+          {/* Arrow to Outbound (bottom-left) */}
           <g>
             <line
-              x1="100"
+              x1="60"
               y1="140"
-              x2="100"
-              y2="355"
+              x2="60"
+              y2="335"
               stroke="#d1d5db"
               strokeWidth="2.5"
               strokeDasharray="8,5"
             />
             <polygon
-              points="100,355 94,341 106,341"
+              points="60,335 54,321 66,321"
               fill="#9ca3af"
             />
-            <rect x="75" y="235" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="100" y="252" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
+            <rect x="35" y="225" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+            <text x="60" y="242" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
               HTTP
             </text>
           </g>
 
-          {/* Outbound Node */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '100px 395px' }}>
+          {/* Outbound Node (bottom-left) */}
+          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '80px 375px' }}>
             <rect
-              x="20"
-              y="360"
+              x="0"
+              y="340"
               width="160"
               height="80"
               rx="12"
@@ -229,17 +231,60 @@ export function DependencyMap({ services }: DependencyMapProps) {
               strokeWidth="2.5"
               style={{ filter: `drop-shadow(0 0 8px ${outboundColor.glow})` }}
             />
-            <circle cx="44" cy="392" r="6" fill={outboundColor.fill} />
-            <text x="60" y="396" fill="#111827" fontSize="16" fontWeight="600">
+            <circle cx="24" cy="372" r="6" fill={outboundColor.fill} />
+            <text x="40" y="376" fill="#111827" fontSize="16" fontWeight="600">
               Outbound
             </text>
-            <text x="44" y="420" fill="#6b7280" fontSize="13">
+            <text x="24" y="400" fill="#6b7280" fontSize="13">
               localhost:7107
             </text>
           </g>
 
+          {/* Arrow to Knowledge (bottom-right-far) */}
+          <g>
+            <line
+              x1="140"
+              y1="140"
+              x2="310"
+              y2="355"
+              stroke="#d1d5db"
+              strokeWidth="2.5"
+              strokeDasharray="8,5"
+            />
+            <polygon
+              points="310,355 296,348 300,360"
+              fill="#9ca3af"
+            />
+            <rect x="200" y="238" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+            <text x="225" y="255" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
+              HTTP
+            </text>
+          </g>
+
+          {/* Knowledge Node (bottom-right) */}
+          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 375px' }}>
+            <rect
+              x="320"
+              y="340"
+              width="160"
+              height="80"
+              rx="12"
+              fill="white"
+              stroke={knowledgeColor.stroke}
+              strokeWidth="2.5"
+              style={{ filter: `drop-shadow(0 0 8px ${knowledgeColor.glow})` }}
+            />
+            <circle cx="344" cy="372" r="6" fill={knowledgeColor.fill} />
+            <text x="360" y="376" fill="#111827" fontSize="16" fontWeight="600">
+              Knowledge
+            </text>
+            <text x="344" y="400" fill="#6b7280" fontSize="13">
+              localhost:7104
+            </text>
+          </g>
+
           {/* Legend */}
-          <g transform="translate(20, 455)">
+          <g transform="translate(20, 525)">
             <circle cx="8" cy="8" r="5" fill="#10b981" />
             <text x="20" y="13" fill="#6b7280" fontSize="13">OK</text>
             <circle cx="70" cy="8" r="5" fill="#f59e0b" />
