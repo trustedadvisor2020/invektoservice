@@ -54,7 +54,7 @@ public sealed class MessageSenderService : IHostedService, IDisposable
         var waitCount = 0;
         while (Interlocked.CompareExchange(ref _isProcessing, 0, 0) == 1 && waitCount < 100)
         {
-            Thread.Sleep(100);
+            await Task.Delay(100, cancellationToken);
             waitCount++;
         }
 

@@ -10,25 +10,41 @@ namespace Invekto.Shared.Middleware;
 /// <summary>
 /// Middleware to log all HTTP request/response traffic.
 /// Shared across all Invekto microservices.
+/// Configurable skip paths and extensions per service.
 /// </summary>
 public sealed class TrafficLoggingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly JsonLinesLogger _logger;
+    private readonly string[] _skipPaths;
+    private readonly string[] _skipExtensions;
 
-    private static readonly string[] SkipPaths = { "/health", "/ready" };
+    private static readonly string[] DefaultSkipPaths = { "/health", "/ready" };
+    private static readonly string[] DefaultSkipExtensions = Array.Empty<string>();
 
     public TrafficLoggingMiddleware(RequestDelegate next, JsonLinesLogger logger)
+        : this(next, logger, DefaultSkipPaths, DefaultSkipExtensions)
+    {
+    }
+
+    public TrafficLoggingMiddleware(
+        RequestDelegate next,
+        JsonLinesLogger logger,
+        string[] skipPaths,
+        string[] skipExtensions)
     {
         _next = next;
         _logger = logger;
+        _skipPaths = skipPaths;
+        _skipExtensions = skipExtensions;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path.Value ?? "";
 
-        if (SkipPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+        if (_skipPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)) ||
+            _skipExtensions.Any(ext => path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
         {
             await _next(context);
             return;
@@ -54,6 +70,19 @@ public sealed class TrafficLoggingMiddleware
         try
         {
             await _next(context);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            context.Response.StatusCode = 500;
+
+            _logger.SystemError($"Unhandled exception in pipeline: {context.Request.Method} {path} -> {ex.GetType().Name}: {ex.Message}");
+
+            responseBodyStream.Position = 0;
+            await responseBodyStream.CopyToAsync(originalBodyStream);
+            context.Response.Body = originalBodyStream;
+
+            throw;
         }
         finally
         {
@@ -97,5 +126,13 @@ public static class TrafficLoggingMiddlewareExtensions
     public static IApplicationBuilder UseTrafficLogging(this IApplicationBuilder builder)
     {
         return builder.UseMiddleware<TrafficLoggingMiddleware>();
+    }
+
+    public static IApplicationBuilder UseTrafficLogging(
+        this IApplicationBuilder builder,
+        string[] skipPaths,
+        string[] skipExtensions)
+    {
+        return builder.UseMiddleware<TrafficLoggingMiddleware>(skipPaths, skipExtensions);
     }
 }

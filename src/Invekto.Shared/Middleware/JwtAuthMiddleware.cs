@@ -68,7 +68,18 @@ public sealed class JwtAuthMiddleware
 
         context.Items["TenantContext"] = tenantContext;
 
-        if (string.IsNullOrEmpty(context.Request.Headers[HeaderNames.TenantId].FirstOrDefault()))
+        // Validate tenant_id header matches JWT claim (prevent tenant spoofing)
+        var existingTenantId = context.Request.Headers[HeaderNames.TenantId].FirstOrDefault();
+        if (!string.IsNullOrEmpty(existingTenantId) && existingTenantId != tenantContext.TenantId.ToString())
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AuthUnauthorized}] Tenant ID mismatch: header={existingTenantId}, jwt={tenantContext.TenantId}, path={path}");
+            context.Response.StatusCode = 403;
+            await context.Response.WriteAsJsonAsync(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant ID mismatch between header and JWT token", "-"));
+            return;
+        }
+
+        if (string.IsNullOrEmpty(existingTenantId))
         {
             context.Request.Headers[HeaderNames.TenantId] = tenantContext.TenantId.ToString();
         }

@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
-using Invekto.Backend.Middleware;
+using Invekto.Shared.Middleware;
 using Invekto.Backend.Services;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
@@ -167,7 +167,9 @@ if (!string.IsNullOrEmpty(callbackUrl))
 var app = builder.Build();
 
 // Enable traffic logging middleware (logs all HTTP request/response)
-app.UseTrafficLogging();
+app.UseTrafficLogging(
+    new[] { "/health", "/api/ops/", "/ops", "/assets/", "/favicon", "/logs", "/login" },
+    new[] { ".js", ".css", ".svg", ".png", ".ico", ".woff", ".woff2", ".map" });
 
 // GR-1.9: JWT auth middleware for protected API paths
 if (jwtValidator != null)
@@ -1414,7 +1416,7 @@ app.MapPost("/api/v1/automation/webhook", async (HttpContext ctx, AutomationClie
     if (string.IsNullOrWhiteSpace(requestBody))
     {
         return Results.Json(
-            ErrorResponse.Create("INV-BE-003", "Request body is required", requestId),
+            ErrorResponse.Create(ErrorCodes.BackendMicroserviceError, "Request body is required", requestId),
             statusCode: 400);
     }
 

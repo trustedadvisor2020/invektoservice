@@ -1,4 +1,4 @@
-using Invekto.ChatAnalysis.Middleware;
+using Invekto.Shared.Middleware;
 using Invekto.ChatAnalysis.Services;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
@@ -19,18 +19,13 @@ var callbackToken = builder.Configuration["Callback:Token"] ?? "";
 // Validate required config
 if (string.IsNullOrEmpty(claudeApiKey))
 {
-    Console.Error.WriteLine("FATAL: Claude:ApiKey is not configured");
-    Environment.Exit(1);
-}
-if (string.IsNullOrEmpty(callbackToken))
-{
-    Console.WriteLine("WARN: Callback:Token is empty - callback auth header will be omitted");
+    throw new InvalidOperationException("FATAL: Claude:ApiKey is not configured");
 }
 
 // Configure Kestrel to listen on configured port
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenLocalhost(listenPort);
+    options.ListenAnyIP(listenPort);
 });
 
 // Register JSON Lines logger

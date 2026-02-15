@@ -27,20 +27,11 @@ var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
 
 // Validate required config
 if (string.IsNullOrEmpty(claudeApiKey))
-{
-    Console.Error.WriteLine("FATAL: Claude:ApiKey is not configured");
-    Environment.Exit(1);
-}
+    throw new InvalidOperationException("FATAL: Claude:ApiKey is not configured");
 if (string.IsNullOrEmpty(pgConnStr))
-{
-    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
-    Environment.Exit(1);
-}
+    throw new InvalidOperationException("FATAL: ConnectionStrings:PostgreSQL is not configured");
 if (string.IsNullOrEmpty(jwtSecretKey))
-{
-    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
-    Environment.Exit(1);
-}
+    throw new InvalidOperationException("FATAL: Jwt:SecretKey is not configured");
 
 // Configure Kestrel
 builder.WebHost.ConfigureKestrel(options =>
@@ -380,7 +371,7 @@ app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx
 
         // Validate flow_config is valid JSON
         try { using var _ = JsonDocument.Parse(flowConfig); }
-        catch { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is not valid JSON", requestId), statusCode: 400); }
+        catch (JsonException ex) { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, $"flow_config is not valid JSON: {ex.Message}", requestId), statusCode: 400); }
 
         var flowId = await repo.CreateFlowAsync(tenantId, flowName, flowConfig);
         jsonLogger.StepInfo($"Flow created for tenant {tenantId}: flow_id={flowId}, name={flowName}", requestId);
@@ -422,7 +413,7 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
 
         // Validate flow_config is valid JSON
         try { using var _ = JsonDocument.Parse(flowConfig); }
-        catch { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "flow_config is not valid JSON", requestId), statusCode: 400); }
+        catch (JsonException ex) { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, $"flow_config is not valid JSON: {ex.Message}", requestId), statusCode: 400); }
 
         var flowName = root.TryGetProperty("flow_name", out var fn) ? fn.GetString() : null;
 

@@ -145,9 +145,9 @@ public sealed class ClaudeAnalyzer : IDisposable
 
             await Task.WhenAll(task1, task2, task3);
 
-            var r1 = task1.Result;
-            var r2 = task2.Result;
-            var r3 = task3.Result;
+            var r1 = await task1;
+            var r2 = await task2;
+            var r3 = await task3;
 
             if (r1.Error != null)
                 return ClaudeAnalysisResult.Fail(ErrorCodes.ChatAnalysisClaudeError, $"Parallel call 1 (labels+core): {r1.Error}");

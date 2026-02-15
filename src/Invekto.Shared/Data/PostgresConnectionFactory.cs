@@ -32,7 +32,16 @@ public sealed class PostgresConnectionFactory
     public async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken ct = default)
     {
         var connection = _dataSource.CreateConnection();
-        await connection.OpenAsync(ct);
+        try
+        {
+            await connection.OpenAsync(ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            await connection.DisposeAsync();
+            throw new InvalidOperationException(
+                $"Database connection failed: {ex.Message}", ex);
+        }
         return connection;
     }
 

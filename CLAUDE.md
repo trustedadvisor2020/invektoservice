@@ -96,6 +96,23 @@ InvektoServis/
 >
 > **COMPACT SONRASI:** Auto workflow aktif kalır. Session sıfırlansa bile tüm kod değişiklikleri auto.md kurallarını takip eder: Interview → Plan → Dev → Build → /rev → Codex → Commit
 
+## 🎯 #1 GOAL: Codex PASS at First Try
+
+**Tüm kodun BİRİNCİL hedefi: Codex review'da ilk seferde PASS almak.**
+
+Bu bir dilek değil, tasarım kararıdır. Her satır yazılırken CQ1-CQ8 + AQ1-AQ6 kontrolleri **zihinde aktif** olmalı. "Sonra düzeltirim" yaklaşımı YASAK - kod yazılırken doğru yazılır.
+
+**Pratik anlamı:**
+- Kod yazarken "Codex bunu görse ne der?" sorusu sürekli arka planda çalışır
+- Hata yutma, boş catch, broad try-catch → yazarken engelle, sonra değil
+- Scope dışı tek satır bile ekleme
+- Duplicate yazmadan önce codebase'de ara
+- Performance sorusu aklına geliyorsa → zaten sorunlu, düzelt
+
+**Başarı metriği:** `/rev` sonrası Codex verdict = PASS, iteration = 0
+
+---
+
 ## Enterprise Code Quality Standards
 
 **MANDATORY for ALL code written in this codebase:**
@@ -137,6 +154,52 @@ InvektoServis/
    - **Actionable:** Tell user what they can do to fix it
    - **Localized context:** Include relevant IDs, names, values
    - Use error codes from `arch/errors.md`
+
+## 🔍 Self-Review Protocol (Kod Yazarken Otomatik)
+
+**Her kod bloğu/fonksiyon yazıldıktan SONRA, /rev'den ÖNCE agent kendini review eder.**
+
+> Bu checklist Codex'in CQ1-CQ8 kontrollerini + Audit Agent kurallarını kapsar.
+> Amaç: Codex'e gitmeden ÖNCE bariz sorunları yakala.
+
+### Code Quality Gate (Codex CQ1-CQ8 Mirror)
+
+| # | Kontrol | Soru | FAIL Sinyali |
+|---|---------|------|--------------|
+| CQ1 | Error Handling | Hata yakalama ve kullanıcı geri bildirimi nerede? | try-catch yok, hata yutulmuş |
+| CQ2 | Silent Failure | Bu kod sessiz hata üretebilir mi? | Boş catch, broad try-catch, early return hata vermeden |
+| CQ3 | Minimal Diff | Diff minimum mu? Scope dışı refactor var mı? | Plan dışı dosya/satır değişikliği |
+| CQ4 | Duplicate Code | Bu kod codebase'de zaten var mı? | Aynı pattern başka yerde mevcut |
+| CQ5 | Pattern Compliance | Codebase pattern'larına uyuyor mu? | Naming, error handling, dosya yapısı farklı |
+| CQ6 | Performance | Performans sorunu var mı? | O(n²), N+1 query, memory leak, unclosed resource |
+| CQ7 | Tech Debt | Yeni TODO/HACK/FIXME eklendi mi? | Yeni teknik borç marker'ı |
+| CQ8 | Breaking Change | API contract, export, shared type kırıldı mı? | Silinen export, değişen interface |
+
+### Audit Agent Kontrolleri
+
+| # | Kontrol | Soru |
+|---|---------|------|
+| AQ1 | Scale Ready | Bu kod binlerce eşzamanlı kullanıcıyı kaldırır mı? |
+| AQ2 | Error Quality | Hata mesajı spesifik ve aksiyonlanabilir mi? (INV-xxx kodu var mı?) |
+| AQ3 | System Integrity | Bu değişiklik mevcut bir şeyi bozar mı? |
+| AQ4 | Service Isolation | Mikro servis sınırlarına saygılı mı? Başka servisi etkiliyor mu? |
+| AQ5 | DB-Code Sync | Kullanılan tablo/kolon DB'de gerçekten var mı? snake_case mi? |
+| AQ6 | Arch Compliance | `arch/` dokümanlarına uyuyor mu? Contract şeması doğru mu? |
+
+### Nasıl Çalışır
+
+```
+Kod yaz → Self-Review (CQ1-8 + AQ1-6) → Sorun varsa DÜZELT → Build → /rev → Codex
+                                           ↑
+                                    Codex'e gitmeden
+                                    kendini düzelt
+```
+
+**Kurallar:**
+- Her dosya edit sonrası CQ1-CQ8 + AQ1-AQ6 kontrol et
+- FAIL olan varsa → Codex'e göndermeden ÖNCE düzelt
+- Self-review sonucunu Q'ya kısa göster: `Self-Review: 14/14 PASS` veya `Self-Review: CQ2 FAIL - fixing...`
+- Bu, Codex review'ı ORTADAN KALDIRMAZ - sadece ilk filtreleme katmanı
 
 ## Critical Rules
 

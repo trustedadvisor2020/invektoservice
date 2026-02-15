@@ -24,15 +24,9 @@ var maxFileSizeMb = builder.Configuration.GetValue<int>("Storage:MaxFileSizeMb",
 
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
-{
-    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
-    Environment.Exit(1);
-}
+    throw new InvalidOperationException("FATAL: ConnectionStrings:PostgreSQL is not configured");
 if (string.IsNullOrEmpty(jwtSecretKey))
-{
-    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
-    Environment.Exit(1);
-}
+    throw new InvalidOperationException("FATAL: Jwt:SecretKey is not configured");
 
 // Configure Kestrel
 builder.WebHost.ConfigureKestrel(options =>

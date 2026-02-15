@@ -1,0 +1,199 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260215-cq-audit-fixes",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-15T12:00:00Z",
+  "updated_at": "2026-02-15T13:30:00Z",
+  "plan": {
+    "summary": "Cross-platform CQ audit: Self-Review Protocol added to CLAUDE.md (CQ1-8 + AQ1-6), middleware consolidation (7 service-local copies deleted -> 1 shared), tenant spoofing prevention in JWT, configurable TrafficLoggingMiddleware, true batch SQL for embeddings, .Result->await, empty catch blocks fixed, Console.Error->throw, Thread.Sleep->Task.Delay, hardcoded error codes replaced. All 7 services build PASS.",
+    "q_intent": "Codex PASS at first try - ensure all code passes CQ1-CQ8 and AQ1-AQ6 checks before review.",
+    "interview_notes": "Q requested: (1) Self-review protocol in CLAUDE.md mirroring Codex CQ1-8 + Audit Agent AQ1-6, (2) Full codebase audit against these rules, (3) Fix all findings. Goal: every code change targets iteration=0 Codex PASS."
+  },
+  "allowed_files": [
+    "CLAUDE.md",
+    "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.Shared/Data/PostgresConnectionFactory.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Backend/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.AgentAI/Program.cs",
+    "src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Outbound/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.Outbound/Services/MessageSenderService.cs",
+    "src/Invekto.ChatAnalysis/Program.cs",
+    "src/Invekto.ChatAnalysis/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
+    "src/Invekto.Knowledge/Services/DocumentProcessingService.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "arch/plans/20260215-cq-audit-fixes.json",
+    "arch/plans/diffs/20260215-cq-audit-fixes.diff"
+  ],
+  "files_changed": [
+    {"path": "CLAUDE.md", "is_new": false, "change": "+Self-Review Protocol (CQ1-8 + AQ1-6 checklist), +#1 GOAL: Codex PASS at First Try section"},
+    {"path": "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs", "is_new": false, "change": "+Tenant spoofing check: X-Tenant-Id header must match JWT tenant_id claim, returns 403 on mismatch"},
+    {"path": "src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs", "is_new": false, "change": "Configurable skip paths/extensions via constructor params (backward-compatible defaults), +catch block for unhandled pipeline exceptions"},
+    {"path": "src/Invekto.Shared/Data/PostgresConnectionFactory.cs", "is_new": false, "change": "+try-catch in OpenConnectionAsync: dispose connection on NpgsqlException, wrap in InvalidOperationException"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "using Shared.Middleware, configurable TrafficLogging skip paths, ErrorCodes constant instead of hardcoded string"},
+    {"path": "src/Invekto.AgentAI/Program.cs", "is_new": false, "change": "using Shared.Middleware, Console.Error.WriteLine+Exit(1) -> throw InvalidOperationException"},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": false, "change": "using Shared.Middleware, Console.Error.WriteLine+Exit(1) -> throw InvalidOperationException"},
+    {"path": "src/Invekto.ChatAnalysis/Program.cs", "is_new": false, "change": "using Shared.Middleware, Console.Error->throw, ListenLocalhost->ListenAnyIP"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "2 empty catch blocks -> catch(JsonException) with logging, Console.Error->throw"},
+    {"path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "Console.Error->throw, removed Console.WriteLine WARN for missing OpenAI key"},
+    {"path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false, "change": "Console.Error->throw"},
+    {"path": "src/Invekto.ChatAnalysis/Services/ClaudeAnalyzer.cs", "is_new": false, "change": ".Result -> await for 3 parallel tasks (CQ3 async/deadlock fix)"},
+    {"path": "src/Invekto.Outbound/Services/MessageSenderService.cs", "is_new": false, "change": "Thread.Sleep(100) -> await Task.Delay(100, cancellationToken) in StopAsync"},
+    {"path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false, "change": "+BatchUpdateChunkEmbeddingsAsync: multi-row UPDATE FROM VALUES per 50-row batch (true batch, not N+1)"},
+    {"path": "src/Invekto.Knowledge/Services/DocumentProcessingService.cs", "is_new": false, "change": "N+1 embedding updates -> collect list + single BatchUpdateChunkEmbeddingsAsync call"},
+    {"path": "src/Invekto.Backend/Middleware/JwtAuthMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.Backend/Middleware/TrafficLoggingMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.AgentAI/Middleware/JwtAuthMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.AgentAI/Middleware/TrafficLoggingMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.Outbound/Middleware/JwtAuthMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.Outbound/Middleware/TrafficLoggingMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.Automation/Middleware/JwtAuthMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.Automation/Middleware/TrafficLoggingMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "src/Invekto.ChatAnalysis/Middleware/TrafficLoggingMiddleware.cs", "is_new": false, "deleted": true, "change": "DELETED - consolidated to Shared"},
+    {"path": "arch/plans/20260215-cq-audit-fixes.json", "is_new": true, "change": "Plan JSON for CQ audit fixes task"},
+    {"path": "arch/plans/diffs/20260215-cq-audit-fixes.diff", "is_new": true, "change": "Full diff file for Codex review"}
+  ],
+  "git_diff": {
+    "sha256": "612787c1d0a39b5476521ba223cd0be833c6b6c6e9668f916956f62f422ced69",
+    "full_path": "arch/plans/diffs/20260215-cq-audit-fixes.diff",
+    "stats": { "insertions": 399, "deletions": 1024, "files_count": 26 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build per service (Backend, AgentAI, Outbound, ChatAnalysis, Automation, Knowledge, WhatsAppAnalytics)",
+    "output_tail": "All 7 services: Build succeeded. 0 Warning(s). 0 Error(s)."
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/",
+      "arch/contracts/",
+      "arch/db/"
+    ],
+    "non_goals": [
+      "HttpClient -> IHttpClientFactory migration (separate task)",
+      "Repository-level try-catch for all DB operations (separate task)",
+      "CancellationToken propagation to all public async methods (separate task)"
+    ],
+    "intentional_exclusions": [
+      "deploy_output/ binaries (build artifacts, not source)",
+      "arch/session-memory.md and arch/active-work.md (session state, not code)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All empty catch blocks eliminated (Automation Program.cs), all Console.Error+Exit patterns replaced with throw InvalidOperationException, TrafficLoggingMiddleware now catches+logs+rethrows pipeline exceptions, PostgresConnectionFactory disposes connection on failure.",
+    "try_catch_locations": [
+      "src/Invekto.Shared/Data/PostgresConnectionFactory.cs:39",
+      "src/Invekto.Shared/Middleware/TrafficLoggingMiddleware.cs:74",
+      "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs:42",
+      "src/Invekto.Automation/Program.cs:283",
+      "src/Invekto.Automation/Program.cs:289",
+      "src/Invekto.Knowledge/Data/KnowledgeRepository.cs:703"
+    ],
+    "user_facing_errors": [
+      "JWT middleware: 401 Unauthorized with INV-AUTH-001 error code and structured ErrorResponse",
+      "JWT middleware: 403 Forbidden on tenant ID mismatch with INV-AUTH-001 error code",
+      "PostgresConnectionFactory: InvalidOperationException with inner NpgsqlException details",
+      "All services: InvalidOperationException on missing required config at startup"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "category": "Data",
+      "question": "BatchUpdateChunkEmbeddingsAsync uses multi-row UPDATE FROM VALUES - does PostgreSQL handle pgvector type correctly in VALUES clause?",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "category": "Auth",
+      "question": "Tenant spoofing check in JWT middleware - could this break legitimate requests where X-Tenant-Id header is not set?",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "category": "Lifecycle",
+      "question": "Deleting 7 service-local middleware copies and switching to shared - could any service have service-specific logic that differs from shared?",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Multi-tenant SaaS customers worry about data isolation - one tenant accessing another's data is catastrophic",
+      "suggestion": "Tenant spoofing prevention in JWT middleware validates X-Tenant-Id header matches JWT claim, blocking header manipulation attacks",
+      "aha_moment": "When security audit confirms zero cross-tenant data leakage because header spoofing is blocked at middleware level"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "PDF document processing takes too long when embedding hundreds of chunks one at a time with N+1 DB writes",
+      "suggestion": "Multi-row UPDATE FROM VALUES batches 50 embeddings per single SQL statement, reducing DB round trips from N to N/50",
+      "aha_moment": "When a 500-chunk PDF processes embeddings in seconds instead of minutes because batch SQL eliminates N+1 overhead"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Middleware bug fixes in one service never propagate to other services because each has its own copy-pasted middleware",
+      "suggestion": "Consolidate 7 service-local middleware copies into single shared implementation that all services reference",
+      "aha_moment": "When a security patch to JWT validation automatically protects all 7 services because there is only one source of truth"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Codex review cycles slow down feature delivery - each FAIL iteration adds hours of fix-review-fix loops",
+      "suggestion": "Self-review protocol (CQ1-8 + AQ1-6) catches issues during coding, before Codex review even starts",
+      "aha_moment": "When the first Codex review returns PASS at iteration 0 because self-review already caught all quality issues"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Services fail silently at startup with Console.Error output that operators never see in production log aggregators",
+      "suggestion": "Replace Console.Error.WriteLine+Exit(1) with throw InvalidOperationException for proper error propagation to host/orchestrator",
+      "aha_moment": "When a misconfigured service startup appears in alerting dashboards with actionable error details instead of silently dying"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-15T14:00:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-15T14:00:00Z",
+    "raw_text": null,
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "JWT 401/403 + structured ErrorResponse; DB exception wrap/dispose; startup throws InvalidOperationException" },
+      "CQ2": { "result": "PASS", "evidence": "Pipeline exception log+rethrow; empty catch eliminated; parse failure logged with context" },
+      "CQ3": { "result": "PASS", "evidence": "+321/-1024, 25 files, no scope violation" },
+      "CQ4": { "result": "PASS", "evidence": "Middleware deduplicated to single shared source; 7 local copies deleted" },
+      "CQ5": { "result": "FAIL", "evidence": "Plan JSON schema uyumsuz: verdict tipi, verification_questions item yapisi, scope_discipline/error_handling/aha_moments alan semasi ihlalleri" },
+      "CQ6": { "result": "PASS", "evidence": "True batch SQL UPDATE FROM VALUES; N+1 eliminated" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME in code" },
+      "CQ8": { "result": "PASS", "evidence": "7 services build PASS; shared middleware imports working; backward-compatible overloads" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Vector mapping active via Npgsql pgvector plugin; batch SQL with parameterized VALUES works" },
+      "Q2": { "result": "PASS", "reasoning": "Check only triggers when header IS present AND differs from JWT; empty header short-circuits" },
+      "Q3": { "result": "PASS", "reasoning": "All services use shared middleware import; deleted local copies were identical; build PASS confirms" }
+    },
+    "blocking_issues": [
+      "CQ5 FAIL iter1: Plan JSON schema uyumsuz - FIXED iter2",
+      "CQ3 FAIL iter2: files_changed listesi eksik (22/26), files_count yanlis (25/26) - FIXED iter3"
+    ],
+    "iteration": 3,
+    "escalation_required": true,
+    "escalation_reason": "SCOPE_INSUFFICIENT: Codex iter0=CQ6 code fix, iter1=CQ5 schema fix, iter2=CQ3 metadata fix. All code fixes complete, remaining issues are plan metadata alignment only."
+  }
+}

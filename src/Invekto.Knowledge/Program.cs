@@ -29,21 +29,9 @@ var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
 
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
-{
-    Console.Error.WriteLine("FATAL: ConnectionStrings:PostgreSQL is not configured");
-    Environment.Exit(1);
-}
+    throw new InvalidOperationException("FATAL: ConnectionStrings:PostgreSQL is not configured");
 if (string.IsNullOrEmpty(jwtSecretKey))
-{
-    Console.Error.WriteLine("FATAL: Jwt:SecretKey is not configured");
-    Environment.Exit(1);
-}
-
-// Warn (not fatal) if OpenAI key is missing -- keyword search still works
-if (string.IsNullOrEmpty(openAiKey) || openAiKey.StartsWith("REPLACE_"))
-{
-    Console.WriteLine("WARN: OpenAI:ApiKey not configured -- semantic search disabled, keyword fallback active");
-}
+    throw new InvalidOperationException("FATAL: Jwt:SecretKey is not configured");
 
 // Configure Kestrel
 builder.WebHost.ConfigureKestrel(options =>

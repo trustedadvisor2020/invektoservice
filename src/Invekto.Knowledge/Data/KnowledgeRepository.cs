@@ -671,6 +671,53 @@ public sealed class KnowledgeRepository
         return await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    public async Task<int> BatchUpdateChunkEmbeddingsAsync(int tenantId, List<(long ChunkId, Vector Embedding)> updates, CancellationToken ct = default)
+    {
+        if (updates.Count == 0) return 0;
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        var updated = 0;
+
+        try
+        {
+            // True batch: single UPDATE ... FROM VALUES per batch (1 query per 50 rows, not N)
+            const int batchSize = 50;
+            for (var i = 0; i < updates.Count; i += batchSize)
+            {
+                var batch = updates.Skip(i).Take(batchSize).ToList();
+                await using var cmd = conn.CreateCommand();
+                cmd.Transaction = tx;
+
+                // Build multi-row VALUES clause: UPDATE chunks SET embedding = v.emb FROM (VALUES ...) AS v(id, emb) WHERE ...
+                var valuesClauses = new List<string>();
+                for (var j = 0; j < batch.Count; j++)
+                {
+                    valuesClauses.Add($"(@id{j}, @emb{j})");
+                    cmd.Parameters.AddWithValue($"id{j}", batch[j].ChunkId);
+                    cmd.Parameters.AddWithValue($"emb{j}", batch[j].Embedding);
+                }
+
+                cmd.CommandText = $@"
+                    UPDATE chunks c
+                    SET embedding = v.emb
+                    FROM (VALUES {string.Join(", ", valuesClauses)}) AS v(id, emb)
+                    WHERE c.id = v.id AND c.tenant_id = @tid";
+                cmd.Parameters.AddWithValue("tid", tenantId);
+
+                updated += await cmd.ExecuteNonQueryAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+            return updated;
+        }
+        catch (NpgsqlException)
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
     public async Task<List<(long Id, string Text)>> GetChunksWithoutEmbeddingAsync(int tenantId, int limit = 100, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);

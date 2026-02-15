@@ -153,11 +153,12 @@ public sealed class DocumentProcessingService : BackgroundService
         int inserted = await _repository.BatchInsertChunksAsync(job.TenantId, job.DocumentId, chunkRows, ct);
 
         // 4. Generate embeddings for each chunk (graceful - failures don't block)
+        //    Collect embeddings first, then batch update to avoid N+1 DB calls
         if (_embeddingService.IsAvailable)
         {
-            int embedded = 0;
             int failed = 0;
             var chunksToEmbed = await _repository.GetChunksWithoutEmbeddingAsync(job.TenantId, 500, ct);
+            var embeddingUpdates = new List<(long ChunkId, Pgvector.Vector Embedding)>();
 
             foreach (var (chunkId, text) in chunksToEmbed)
             {
@@ -166,8 +167,7 @@ public sealed class DocumentProcessingService : BackgroundService
                 var embedding = await _embeddingService.GetEmbeddingAsync(text, ct);
                 if (embedding != null)
                 {
-                    await _repository.UpdateChunkEmbeddingAsync(job.TenantId, chunkId, embedding, ct);
-                    embedded++;
+                    embeddingUpdates.Add((chunkId, embedding));
                 }
                 else
                 {
@@ -175,6 +175,9 @@ public sealed class DocumentProcessingService : BackgroundService
                     _logger.SystemWarn($"[DocumentProcessingService] Embedding failed for chunk {chunkId} of document {job.DocumentId}");
                 }
             }
+
+            // Batch update all embeddings in a single transaction
+            var embedded = await _repository.BatchUpdateChunkEmbeddingsAsync(job.TenantId, embeddingUpdates, ct);
 
             _logger.SystemInfo($"[DocumentProcessingService] Document {job.DocumentId}: {embedded} embeddings generated, {failed} failed");
         }
