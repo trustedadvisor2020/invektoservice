@@ -27,6 +27,13 @@ public sealed class SuggestReplyRequest
 
     [JsonPropertyName("language")]
     public string Language { get; set; } = "tr";
+
+    /// <summary>
+    /// GR-2.2: Tone preset override. If null, uses tenant default from settings_json.
+    /// Values: formal, casual, concise
+    /// </summary>
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
 }
 
 public sealed class ConversationMessage

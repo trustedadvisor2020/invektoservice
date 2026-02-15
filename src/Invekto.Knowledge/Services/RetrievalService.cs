@@ -39,7 +39,7 @@ public sealed class RetrievalService
                 if (embedding != null)
                 {
                     var faqResults = await _repository.SemanticSearchAsync(tenantId, embedding, topK, lang, category, ct);
-                    var chunkResults = await _repository.SemanticSearchChunksAsync(tenantId, embedding, topK, ct);
+                    var chunkResults = await _repository.SemanticSearchChunksAsync(tenantId, embedding, topK, lang, ct);
 
                     var merged = MergeResults(faqResults, chunkResults, topK);
                     sw.Stop();
@@ -67,7 +67,7 @@ public sealed class RetrievalService
             : "OpenAI API key not configured";
 
         var kwFaqResults = await _repository.KeywordSearchAsync(tenantId, query, topK, lang, category, ct);
-        var kwChunkResults = await _repository.KeywordSearchChunksAsync(tenantId, query, topK, ct);
+        var kwChunkResults = await _repository.KeywordSearchChunksAsync(tenantId, query, topK, lang, ct);
 
         var kwMerged = MergeResults(kwFaqResults, kwChunkResults, topK);
         sw.Stop();

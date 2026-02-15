@@ -16,6 +16,14 @@ public sealed class BroadcastSendRequest
 
     [JsonPropertyName("scheduled_at")]
     public DateTime? ScheduledAt { get; set; }
+
+    /// <summary>
+    /// GR-2.3: Target language for broadcast (ISO 639-1).
+    /// If set, template must match this language.
+    /// Stored on broadcast and individual messages for tracking.
+    /// </summary>
+    [JsonPropertyName("lang")]
+    public string? Lang { get; set; }
 }
 
 public sealed class BroadcastRecipient

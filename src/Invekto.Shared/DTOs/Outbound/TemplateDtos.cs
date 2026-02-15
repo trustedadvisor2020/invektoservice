@@ -18,6 +18,12 @@ public sealed class TemplateCreateRequest
 
     [JsonPropertyName("variables_json")]
     public Dictionary<string, string>? VariablesJson { get; set; }
+
+    /// <summary>
+    /// GR-2.3: Template language (ISO 639-1). Defaults to "tr".
+    /// </summary>
+    [JsonPropertyName("lang")]
+    public string Lang { get; set; } = "tr";
 }
 
 /// <summary>
@@ -36,6 +42,12 @@ public sealed class TemplateUpdateRequest
 
     [JsonPropertyName("variables_json")]
     public Dictionary<string, string>? VariablesJson { get; set; }
+
+    /// <summary>
+    /// GR-2.3: Update template language (ISO 639-1). Null = no change.
+    /// </summary>
+    [JsonPropertyName("lang")]
+    public string? Lang { get; set; }
 }
 
 /// <summary>
@@ -66,4 +78,10 @@ public sealed class TemplateDto
 
     [JsonPropertyName("updated_at")]
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// GR-2.3: Template language (ISO 639-1).
+    /// </summary>
+    [JsonPropertyName("lang")]
+    public string Lang { get; set; } = "tr";
 }

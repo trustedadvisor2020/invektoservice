@@ -49,6 +49,9 @@ public sealed class BroadcastOrchestrator
         if (template == null)
             return (null, ErrorCodes.OutboundTemplateNotFound, $"Template {request.TemplateId} not found or inactive");
 
+        // GR-2.3: Resolve broadcast language (request override > template lang)
+        var lang = request.Lang ?? template.Lang;
+
         // Collect valid phones for batch opt-out check
         var validRecipients = request.Recipients
             .Where(r => !string.IsNullOrWhiteSpace(r.Phone))
@@ -90,14 +93,14 @@ public sealed class BroadcastOrchestrator
                 "No valid recipients after opt-out filtering and variable validation");
         }
 
-        // Create broadcast record
+        // Create broadcast record (GR-2.3: with language)
         var broadcastId = await _repository.CreateBroadcastAsync(
             tenantId, request.TemplateId, request.Recipients.Count,
-            messagesToInsert.Count, request.ScheduledAt, ct);
+            messagesToInsert.Count, request.ScheduledAt, lang, ct);
 
-        // Batch insert all messages (single multi-row INSERT)
+        // Batch insert all messages (single multi-row INSERT, GR-2.3: with language)
         await _repository.BatchInsertMessagesAsync(
-            tenantId, broadcastId, request.TemplateId, messagesToInsert, ct);
+            tenantId, broadcastId, request.TemplateId, messagesToInsert, lang, ct);
         var queuedCount = messagesToInsert.Count;
 
         _logger.SystemInfo(

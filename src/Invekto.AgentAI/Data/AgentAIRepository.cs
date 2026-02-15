@@ -1,6 +1,7 @@
 using Invekto.Shared.Data;
 using Invekto.Shared.Logging;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace Invekto.AgentAI.Data;
 
@@ -15,22 +16,33 @@ public sealed class AgentAIRepository
         _logger = logger;
     }
 
+    /// <summary>
+    /// GR-2.2: Extended logging with Knowledge context, tone, follow-up, summary, detected language.
+    /// </summary>
     public async Task<string> LogSuggestionAsync(
         Guid suggestionId, int tenantId, int agentId, int chatId,
         string? channel, string language, string messageText,
         int conversationLength, string? suggestedReply,
         string? intent, double? confidence, string? model,
-        int processingTimeMs, CancellationToken ct = default)
+        int processingTimeMs,
+        string? tone, bool knowledgeUsed, string? knowledgeSourcesJson,
+        string? knowledgeQuery, string? suggestedFollowup,
+        string? conversationSummary, string? detectedLanguage,
+        CancellationToken ct = default)
     {
         const string sql = @"
             INSERT INTO suggest_reply_log
                 (suggestion_id, tenant_id, agent_id, chat_id, channel, language,
                  message_text, conversation_length, suggested_reply,
-                 intent, confidence, model, processing_time_ms)
+                 intent, confidence, model, processing_time_ms,
+                 tone, knowledge_used, knowledge_sources, knowledge_query,
+                 suggested_followup, conversation_summary, detected_language)
             VALUES
                 (@sid, @tid, @aid, @cid, @ch, @lang,
                  @msg, @clen, @reply,
-                 @intent, @conf, @model, @ptms)
+                 @intent, @conf, @model, @ptms,
+                 @tone, @kused, @ksources, @kquery,
+                 @followup, @summary, @dlang)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -48,6 +60,16 @@ public sealed class AgentAIRepository
         cmd.Parameters.AddWithValue("conf", confidence.HasValue ? (object)confidence.Value : DBNull.Value);
         cmd.Parameters.AddWithValue("model", (object?)model ?? DBNull.Value);
         cmd.Parameters.AddWithValue("ptms", processingTimeMs);
+        cmd.Parameters.AddWithValue("tone", (object?)tone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("kused", knowledgeUsed);
+        cmd.Parameters.Add(new NpgsqlParameter("ksources", NpgsqlDbType.Jsonb)
+        {
+            Value = (object?)knowledgeSourcesJson ?? DBNull.Value
+        });
+        cmd.Parameters.AddWithValue("kquery", (object?)knowledgeQuery ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("followup", (object?)suggestedFollowup ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("summary", (object?)conversationSummary ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("dlang", (object?)detectedLanguage ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return id?.ToString() ?? "";

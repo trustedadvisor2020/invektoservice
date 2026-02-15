@@ -744,7 +744,7 @@ public sealed class KnowledgeRepository
     // ============================================================
 
     public async Task<List<ChunkSearchResultDto>> SemanticSearchChunksAsync(
-        int tenantId, Vector queryEmbedding, int topK, CancellationToken ct = default)
+        int tenantId, Vector queryEmbedding, int topK, string? lang = null, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -756,10 +756,12 @@ public sealed class KnowledgeRepository
             WHERE c.tenant_id = @tid
               AND c.embedding IS NOT NULL
               AND d.status = 'ready'
+              AND (@lang IS NULL OR c.lang = @lang)
             ORDER BY c.embedding <=> @emb
             LIMIT @topk";
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("emb", queryEmbedding);
+        cmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Varchar) { Value = lang ?? (object)DBNull.Value });
         cmd.Parameters.AddWithValue("topk", topK);
 
         var results = new List<ChunkSearchResultDto>();
@@ -784,7 +786,7 @@ public sealed class KnowledgeRepository
     }
 
     public async Task<List<ChunkSearchResultDto>> KeywordSearchChunksAsync(
-        int tenantId, string query, int topK, CancellationToken ct = default)
+        int tenantId, string query, int topK, string? lang = null, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -800,10 +802,12 @@ public sealed class KnowledgeRepository
             WHERE c.tenant_id = @tid
               AND d.status = 'ready'
               AND to_tsvector('simple', c.content) @@ plainto_tsquery('simple', @query)
+              AND (@lang IS NULL OR c.lang = @lang)
             ORDER BY score DESC
             LIMIT @topk";
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("query", query);
+        cmd.Parameters.Add(new NpgsqlParameter("lang", NpgsqlDbType.Varchar) { Value = lang ?? (object)DBNull.Value });
         cmd.Parameters.AddWithValue("topk", topK);
 
         var results = new List<ChunkSearchResultDto>();

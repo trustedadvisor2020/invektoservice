@@ -89,6 +89,12 @@
         "type": "string",
         "default": "tr",
         "description": "Response language (ISO 639-1)"
+      },
+      "tone": {
+        "type": "string",
+        "enum": ["formal", "casual", "concise"],
+        "required": false,
+        "description": "GR-2.2: Tone preset from tenant settings_json.default_tone (sent by Backend)"
       }
     }
   },
@@ -122,6 +128,40 @@
       "model": {
         "type": "string",
         "description": "Claude model used (e.g., claude-haiku-4-5-20251001)"
+      },
+      "sources": {
+        "type": "array",
+        "required": false,
+        "description": "GR-2.2: Knowledge source references (agent-facing only, not in customer reply)",
+        "items": {
+          "type": "object",
+          "properties": {
+            "source_type": { "type": "string", "description": "faq|chunk" },
+            "title": { "type": "string", "description": "Unified title: FAQ question or document title" },
+            "faq_id": { "type": "integer", "required": false, "description": "FAQ ID (when source_type=faq)" },
+            "document_id": { "type": "integer", "required": false, "description": "Document ID (when source_type=chunk)" },
+            "page_number": { "type": "integer", "required": false, "description": "Page number (when source_type=chunk)" },
+            "score": { "type": "number", "description": "Relevance score 0.0-1.0" }
+          }
+        }
+      },
+      "suggested_followup": {
+        "type": "string",
+        "required": false,
+        "description": "GR-2.2: AI-generated follow-up question suggestion"
+      },
+      "knowledge_available": {
+        "type": "boolean",
+        "description": "GR-2.2: Whether Knowledge service was available for this request"
+      },
+      "conversation_summary": {
+        "type": "string",
+        "required": false,
+        "description": "GR-2.2: Compressed summary of older conversation messages (when history > threshold)"
+      },
+      "detected_language": {
+        "type": "string",
+        "description": "GR-2.3: Detected customer language (ISO 639-1, default 'tr')"
       }
     }
   },
@@ -175,6 +215,18 @@
     "504_claude_timeout": {
       "error_code": "INV-AA-005",
       "message": "AI service timeout"
+    },
+    "warning_knowledge_unavailable": {
+      "error_code": "INV-AA-007",
+      "message": "Knowledge service unavailable (graceful: reply still generated, knowledge_available=false)"
+    },
+    "warning_language_detection_failed": {
+      "error_code": "INV-AA-008",
+      "message": "Language detection failed (graceful: defaults to 'tr')"
+    },
+    "warning_summary_failed": {
+      "error_code": "INV-AA-009",
+      "message": "Conversation summary failed (graceful: uses raw truncated history)"
     }
   },
 
@@ -199,13 +251,33 @@
       },
       "language": "tr"
     },
+    "suggest_request_v2": {
+      "chat_id": 12345,
+      "message_text": "Implant fiyati ne kadar?",
+      "customer_name": "Ahmet Yilmaz",
+      "channel": "whatsapp",
+      "language": "tr",
+      "tone": "formal",
+      "conversation_history": [
+        { "source": "CUSTOMER", "text": "Merhaba", "timestamp": "2026-02-11T10:00:00Z" },
+        { "source": "AGENT", "text": "Merhaba, nasil yardimci olabilirim?", "timestamp": "2026-02-11T10:00:05Z" },
+        { "source": "CUSTOMER", "text": "Implant fiyati ne kadar?", "timestamp": "2026-02-11T10:00:30Z" }
+      ]
+    },
     "suggest_response": {
       "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "suggested_reply": "Merhaba Ahmet, implant fiyatlarimiz 15.000-45.000 TL arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?",
+      "suggested_reply": "Merhaba Ahmet Bey, implant fiyatlarimiz 15.000-45.000 TL arasindadir. Ucretsiz muayene icin randevu almak ister misiniz?",
       "intent": "price_inquiry",
       "confidence": 0.92,
       "processing_time_ms": 1850,
-      "model": "claude-haiku-4-5-20251001"
+      "model": "claude-haiku-4-5-20251001",
+      "sources": [
+        { "source_type": "pdf", "title": "Fiyat Listesi 2026", "page_number": 3 }
+      ],
+      "suggested_followup": "Beden veya renk tercihiniz var mi?",
+      "knowledge_available": true,
+      "conversation_summary": null,
+      "detected_language": "tr"
     },
     "feedback_accepted": {
       "suggestion_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",

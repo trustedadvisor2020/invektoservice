@@ -21,7 +21,8 @@
             "variables": { "type": "object", "required": false, "desc": "Template variables per recipient" }
           }
         },
-        "scheduled_at": { "type": "string", "format": "ISO8601", "required": false, "desc": "One-time scheduled send" }
+        "scheduled_at": { "type": "string", "format": "ISO8601", "required": false, "desc": "One-time scheduled send" },
+        "lang": { "type": "string", "required": false, "desc": "GR-2.3: Override broadcast language (ISO 639-1). Falls back to template lang." }
       },
       "response_202": {
         "broadcast_id": "uuid",
@@ -57,12 +58,14 @@
       "request": {
         "event": { "type": "string", "required": true, "desc": "new_lead|payment_received|appointment_reminder" },
         "phone": { "type": "string", "required": true, "desc": "Recipient phone" },
-        "variables": { "type": "object", "required": false, "desc": "Template variables" }
+        "variables": { "type": "object", "required": false, "desc": "Template variables" },
+        "lang": { "type": "string", "required": false, "desc": "GR-2.3: Preferred language (ISO 639-1). Fallback chain: requested lang -> 'tr' (default) -> any available." }
       },
       "response_202": {
         "message_id": "bigint",
         "template_id": "integer",
-        "template_name": "string"
+        "template_name": "string",
+        "warning": "string|null (GR-2.3: set when lang fallback occurred)"
       },
       "response_404": {
         "error_code": "INV-OB-008",
@@ -111,6 +114,7 @@
           "message_template": "string",
           "variables_json": "object|null",
           "is_active": "boolean",
+          "lang": "string (GR-2.3: ISO 639-1, default 'tr')",
           "created_at": "ISO8601",
           "updated_at": "ISO8601"
         }]
@@ -125,7 +129,8 @@
         "name": { "type": "string", "required": true, "max_length": 200 },
         "trigger_event": { "type": "string", "required": false, "default": "manual" },
         "message_template": { "type": "string", "required": true },
-        "variables_json": { "type": "object", "required": false }
+        "variables_json": { "type": "object", "required": false },
+        "lang": { "type": "string", "required": false, "default": "tr", "desc": "GR-2.3: Template language (ISO 639-1)" }
       },
       "response_201": {
         "id": "integer",
@@ -141,7 +146,8 @@
         "name": { "type": "string", "required": false },
         "trigger_event": { "type": "string", "required": false },
         "message_template": { "type": "string", "required": false },
-        "variables_json": { "type": "object", "required": false }
+        "variables_json": { "type": "object", "required": false },
+        "lang": { "type": "string", "required": false, "desc": "GR-2.3: Update template language (ISO 639-1)" }
       },
       "response_200": {
         "id": "integer",
@@ -194,6 +200,11 @@
         "opted_out_at": "ISO8601|null"
       }
     }
+  },
+
+  "error_codes_v2": {
+    "INV-OB-011": "GR-2.3: Template language not available, fell back to default language (warning, non-blocking)",
+    "INV-OB-012": "GR-2.3: No template found for requested language (error, no valid template)"
   },
 
   "stop_keywords": ["STOP", "DUR", "İPTAL", "IPTAL", "DURDU", "ÇIKIŞ", "CIKIS"]

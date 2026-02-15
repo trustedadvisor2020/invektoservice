@@ -15,6 +15,13 @@ public sealed class TriggerWebhookRequest
 
     [JsonPropertyName("variables")]
     public Dictionary<string, string>? Variables { get; set; }
+
+    /// <summary>
+    /// GR-2.3: Target language (ISO 639-1). If null, defaults to "tr".
+    /// Fallback chain: requested lang -> "tr" (tenant default) -> any available template.
+    /// </summary>
+    [JsonPropertyName("lang")]
+    public string? Lang { get; set; }
 }
 
 /// <summary>
@@ -30,6 +37,13 @@ public sealed class TriggerWebhookResponse
 
     [JsonPropertyName("template_name")]
     public string TemplateName { get; set; } = "";
+
+    /// <summary>
+    /// GR-2.3: Warning when language fallback occurred (e.g., requested lang not available).
+    /// </summary>
+    [JsonPropertyName("warning")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Warning { get; set; }
 }
 
 /// <summary>

@@ -2,6 +2,7 @@ using Invekto.Outbound.Data;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 namespace Invekto.Outbound.Services;
 
@@ -50,8 +51,37 @@ public sealed class TriggerProcessor
                 $"Recipient {request.Phone} has opted out of messages", 409);
         }
 
-        // Find matching trigger template
-        var template = await _repository.GetTriggerTemplateAsync(tenantId, request.Event, ct);
+        // GR-2.3: Resolve language (request > normalize > default "tr", no auto-detect)
+        var lang = LanguageDetector.Normalize(request.Lang) ?? "tr";
+
+        // GR-2.3: Find matching trigger template with lang fallback chain:
+        // 1) Try requested lang  2) Try tenant default "tr"  3) Try any lang
+        string? langFallbackWarning = null;
+        var template = await _repository.GetTriggerTemplateAsync(tenantId, request.Event, lang, ct);
+        if (template == null && lang != "tr")
+        {
+            // Fallback step 1: try tenant default language "tr"
+            template = await _repository.GetTriggerTemplateAsync(tenantId, request.Event, "tr", ct);
+            if (template != null)
+            {
+                langFallbackWarning = $"No '{lang}' template for event '{request.Event}', " +
+                    $"fell back to default 'tr' template '{template.Name}'";
+                _logger.SystemWarn(
+                    $"Trigger template lang fallback: {langFallbackWarning} in tenant {tenantId}");
+            }
+        }
+        if (template == null)
+        {
+            // Fallback step 2: try any available language
+            template = await _repository.GetTriggerTemplateAsync(tenantId, request.Event, null, ct);
+            if (template != null && langFallbackWarning == null)
+            {
+                langFallbackWarning = $"No '{lang}' template for event '{request.Event}', " +
+                    $"using template '{template.Name}' (lang={template.Lang ?? "any"})";
+                _logger.SystemWarn(
+                    $"Trigger template lang fallback: {langFallbackWarning} in tenant {tenantId}");
+            }
+        }
         if (template == null)
         {
             return (null, ErrorCodes.OutboundNoMatchingTriggerTemplate,
@@ -70,9 +100,12 @@ public sealed class TriggerProcessor
                 $"Template requires variables: {string.Join(", ", missingVars)}", 400);
         }
 
-        // Insert single message (no broadcast_id)
+        // GR-2.3: Use template's actual language after fallback (not the originally requested lang)
+        var effectiveLang = template.Lang ?? lang;
+
+        // Insert single message (no broadcast_id, GR-2.3: with effective language)
         var messageId = await _repository.InsertMessageAsync(
-            tenantId, null, template.Id, request.Phone, messageText, ct);
+            tenantId, null, template.Id, request.Phone, messageText, effectiveLang, ct);
 
         _logger.SystemInfo(
             $"Trigger message queued: id={messageId}, tenant={tenantId}, " +
@@ -82,7 +115,8 @@ public sealed class TriggerProcessor
         {
             MessageId = messageId,
             TemplateId = template.Id,
-            TemplateName = template.Name
+            TemplateName = template.Name,
+            Warning = langFallbackWarning
         }, null, null, 202);
     }
 }

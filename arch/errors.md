@@ -118,6 +118,9 @@ INV-{SERVICE}-{NUMBER}
 | INV-AA-004 | No conversation context | Sohbet gecmisi saglanmadi. |
 | INV-AA-005 | Claude API timeout | AI servisi zaman asimina ugradi. |
 | INV-AA-006 | Invalid feedback payload | Gecersiz geri bildirim formati. |
+| INV-AA-007 | Knowledge service unavailable | Bilgi bankasi servisi gecici olarak kullanilamiyor (oneri uretildi, kaynak referansi yok). |
+| INV-AA-008 | Language detection failed | Dil algilama basarisiz, varsayilan dil kullanildi. |
+| INV-AA-009 | Conversation summary failed | Konusma ozeti olusturulamadi, ham gecmis kullanildi. |
 
 ---
 
@@ -166,6 +169,8 @@ INV-{SERVICE}-{NUMBER}
 | INV-OB-008 | No matching trigger template | Bu event icin esle&#351;en sablon bulunamadi. |
 | INV-OB-009 | Message send callback failed | Mesaj gonderim callback'i basarisiz oldu. |
 | INV-OB-010 | Too many recipients (max 1000) | Alici sayisi siniri asildi (max 1000). |
+| INV-OB-011 | Template language not available | Istenen dilde sablon bulunamadi, varsayilan dil kullanildi. |
+| INV-OB-012 | No template for language | Bu dilde sablon tanimlanmamis. |
 
 ---
 

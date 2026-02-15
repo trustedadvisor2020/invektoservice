@@ -1,0 +1,232 @@
+{
+  "schema_version": "3.0",
+  "review_protocol_version": "3.0",
+  "slug": "20260215-pkt1-ai-upgrade",
+  "risk": "HIGH",
+  "status": "REVIEW",
+  "created_at": "2026-02-15T14:00:00Z",
+  "updated_at": "2026-02-15T20:10:00Z",
+
+  "plan": {
+    "summary": "PKT-1 AI Upgrade: GR-2.2 Agent Assist v2 (Knowledge-powered reply generation, source references, tone presets, follow-up questions, conversation summary) + GR-2.3 Multi-lang (Claude inline language detection, multi-lang prompts, Knowledge chunk lang filter, Outbound full multi-lang with template/recipient/auto-detect). 4 services affected: AgentAI (7105), Knowledge (7104), Outbound (7107), Backend (5000).",
+    "q_intent": "PKT-1: AI Upgrade (GR-2.2 + GR-2.3) basla. Scope: GR-2.2 Agent Assist v2: Reply generation Knowledge'dan beslenecek, kaynak referansi, tone presets, multi-turn context. GR-2.3 Multi-lang: Language detection, multi-lang response, Knowledge multi-lang, Outbound dil secimi. Etkilenen servisler: AgentAI (7105), Knowledge (7104), Outbound (7107), Backend (5000).",
+    "interview_notes": "1) Service pattern: AgentAI -> Knowledge DIRECT service-to-service call (localhost:7104, no Backend proxy hop). 2) Source references: Agent-facing only (sources[] in response, not in customer reply text). 3) Tone presets: Per-tenant in tenant_registry.settings_json (default_tone field), feedback learning operates ON TOP of tone. 4) Language detection: Claude inline (detect + reply in same language, zero extra cost). Outbound uses lightweight regex (Turkish char detection). 5) Multi-turn context: BOTH follow-up question generation AND conversation summary for long histories. 6) Knowledge fallback: Graceful degradation (Knowledge down = old behavior, knowledge_available:false flag). 7) Outbound lang: Full implementation (template lang column + recipient lang preference + auto-detect from conversation)."
+  },
+
+  "allowed_files": [
+    "arch/contracts/agentai-suggest.json",
+    "arch/contracts/outbound-broadcast.json",
+    "arch/db/agentai-v2-migration.sql",
+    "arch/db/knowledge-v2-migration.sql",
+    "arch/db/outbound-v2-migration.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs",
+    "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs",
+    "src/Invekto.Shared/Services/LanguageDetector.cs",
+    "src/Invekto.AgentAI/Services/ReplyGenerator.cs",
+    "src/Invekto.AgentAI/Services/KnowledgeHttpClient.cs",
+    "src/Invekto.AgentAI/Services/ConversationSummarizer.cs",
+    "src/Invekto.AgentAI/Data/AgentAIRepository.cs",
+    "src/Invekto.AgentAI/Program.cs",
+    "src/Invekto.AgentAI/appsettings.json",
+    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
+    "src/Invekto.Knowledge/Services/RetrievalService.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Shared/DTOs/Outbound/TemplateDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs",
+    "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Backend/Services/OutboundClient.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "arch/deploy/appsettings.Production.AgentAI.json",
+    "arch/deploy/appsettings.Production.Outbound.json",
+    "arch/plans/20260215-pkt1-ai-upgrade.json",
+    "arch/plans/diffs/20260215-pkt1-ai-upgrade.diff"
+  ],
+
+  "files_changed": [
+    {"path": "arch/contracts/agentai-suggest.json", "is_new": false},
+    {"path": "arch/contracts/outbound-broadcast.json", "is_new": false},
+    {"path": "arch/db/agentai-v2-migration.sql", "is_new": true},
+    {"path": "arch/db/knowledge-v2-migration.sql", "is_new": true},
+    {"path": "arch/db/outbound-v2-migration.sql", "is_new": true},
+    {"path": "arch/errors.md", "is_new": false},
+    {"path": "arch/plans/20260215-pkt1-ai-upgrade.json", "is_new": true},
+    {"path": "src/Invekto.AgentAI/Data/AgentAIRepository.cs", "is_new": false},
+    {"path": "src/Invekto.AgentAI/Program.cs", "is_new": false},
+    {"path": "src/Invekto.AgentAI/Services/ConversationSummarizer.cs", "is_new": true},
+    {"path": "src/Invekto.AgentAI/Services/KnowledgeHttpClient.cs", "is_new": true},
+    {"path": "src/Invekto.AgentAI/Services/ReplyGenerator.cs", "is_new": false},
+    {"path": "src/Invekto.AgentAI/appsettings.json", "is_new": false},
+    {"path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false},
+    {"path": "src/Invekto.Knowledge/Services/RetrievalService.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Services/TriggerProcessor.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyRequest.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/AgentAI/SuggestReplyResponse.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/TemplateDtos.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/WebhookDtos.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/Services/LanguageDetector.cs", "is_new": true}
+  ],
+
+  "git_diff": {
+    "patch_truncated": "See arch/plans/diffs/20260215-pkt1-ai-upgrade.diff (383700 bytes)",
+    "sha256": "579c35006badb40374a791c483b93084fed5e96947ea052370df3bfa6bbe216f",
+    "full_path": "arch/plans/diffs/20260215-pkt1-ai-upgrade.diff",
+    "stats": {
+      "insertions": 7253,
+      "deletions": 82,
+      "files_count": 27
+    }
+  },
+
+  "build": {
+    "status": "PASS",
+    "services": ["Invekto.Outbound"],
+    "timestamp": "2026-02-15T20:05:00Z"
+  },
+
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does AgentAI gracefully degrade when Knowledge service is unavailable (timeout/connection refused), returning a valid suggestion without Knowledge context and setting knowledge_available=false?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Are Knowledge search results correctly injected into Claude's system prompt with source metadata, and does the response include a sources[] array with sourceType, title, pageNumber for each result?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the conversation summary kick in only when history exceeds a configurable threshold (e.g. 15+ messages), and does it correctly compress older messages while preserving recent ones verbatim?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Is Claude instructed to detect the customer's language AND respond in that language, with detected_language reliably extracted from the structured JSON response?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does the Outbound service correctly select templates by language, and when no template matches the requested language, does it fall back to the tenant's default language template with a warning?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "Are all new DB columns added via migration SQL files (not altering existing schema files), and do the migrations include proper indexes, defaults, and GRANT statements?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Does the tone preset from tenant_registry.settings_json correctly influence the Claude system prompt, and does per-agent feedback learning operate as an additive layer on top of the tone (not replaced by it)?",
+      "category": "Process/Policy",
+      "codex_answer": "BY DESIGN: Tone originates from Main App (reads tenant_registry.settings_json.default_tone) -> sent in request body as 'tone' field -> Backend proxies raw JSON (passthrough, no transformation) -> AgentAI reads request.Tone. This is correct per interview note #3: tone is per-tenant, set in settings_json. AgentAI cannot directly query tenant_registry (service isolation). Feedback learning (agentProfile) is appended AFTER tone in system prompt (ReplyGenerator.cs:164+187), confirming additive behavior.",
+      "codex_result": "EXPECTED_UNKNOWN: tenant_registry.settings_json source is in Main App (separate system, outside InvektoServices repo). Within this repo: (1) tone field accepted via DTO (SuggestReplyRequest.Tone), (2) tone injected into Claude system prompt (ReplyGenerator.cs:164-174), (3) agentProfile appended AFTER tone (ReplyGenerator.cs:187-192) confirming additive. The Main App -> Backend -> AgentAI chain is verified by Backend raw JSON passthrough (AgentAIClient.ProxySuggestAsync). Full end-to-end verification requires Main App integration test."
+    }
+  ],
+
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/ (no changes to ChatAnalysis service)",
+      "src/Invekto.Automation/ (no changes to Automation service)",
+      "src/Invekto.WhatsAppAnalytics/ (no changes to WA Analytics)",
+      "src/Invekto.Backend/FlowBuilder/ (no changes to FlowBuilder SPA)",
+      "src/Invekto.Backend/Dashboard/ (no changes to Dashboard UI)",
+      "deploy_output/ (no build artifacts)",
+      "tools/ (no simulator changes)"
+    ],
+    "non_goals": [
+      "Dashboard UI for tone/language settings (Main App handles tenant settings)",
+      "ChatAnalysis language detection endpoint (Claude inline is sufficient)",
+      "Knowledge embedding cache (LRU) or SSE progress",
+      "Tags UI CRUD for Knowledge",
+      "Multi-lang prompt templates beyond TR/EN (future: AR, DE, RU)",
+      "Outbound WhatsApp API integration (already exists via Main App callback)"
+    ],
+    "intentional_exclusions": [
+      "Source references in customer-facing reply text (agent-only per Q decision)",
+      "Per-agent tone override (per-tenant only, per Q decision)",
+      "Separate language detection endpoint (Claude inline per Q decision)",
+      "Backend proxy for AgentAI->Knowledge (direct call per Q decision)"
+    ]
+  },
+
+  "error_handling": {
+    "try_catch_locations": [
+      "AgentAI/Services/KnowledgeHttpClient.cs - Knowledge API call (timeout/connection)",
+      "AgentAI/Services/ReplyGenerator.cs - Knowledge context injection (graceful fallback)",
+      "AgentAI/Services/ConversationSummarizer.cs - Claude summarization call (fallback to truncation)",
+      "Outbound/Services/BroadcastOrchestrator.cs - Language template selection (fallback to default)",
+      "Outbound/Services/TriggerProcessor.cs - Language detection (fallback to 'tr')"
+    ],
+    "user_facing_errors": [
+      "INV-AA-007: Knowledge service unavailable (graceful: reply still generated)",
+      "INV-AA-008: Language detection failed (graceful: defaults to 'tr')",
+      "INV-AA-009: Conversation summary failed (graceful: uses raw truncated history)",
+      "INV-OB-011: Template language not available (graceful: falls back to default language)",
+      "INV-OB-012: No template found for language (error: no valid template)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All fallback paths log warnings via SystemWarn. Knowledge unavailable = knowledge_available:false flag in response. Language detection failure = defaults to 'tr' with warning. No silent return null paths."
+  },
+
+  "aha_moments": [
+    {
+      "category": "SUPPORT",
+      "user_pain": "Agent surekli ayni sorulara yanit ariyor, Knowledge base'den el ile kopyaliyor",
+      "suggestion": "AI reply'a otomatik Knowledge context enjekte et - agent 'Bilgi Bankasi'ndan onerilen yanit' gorur, tek tikla gonder",
+      "aha_moment": "Agent ilk kez Knowledge-powered reply gorur: 'Bu cevabi FAQ'dan buldu! Dogrudan gonderebilirim' diye dusunur"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Yabanci dilde mesaj gelince agent ne yazmasi gerektigini bilmiyor, Google Translate kullanarak vakit kaybediyor",
+      "suggestion": "Musteri dilini otomatik algilayip o dilde yanit oner - agent sadece icerik dogrulugunu kontrol eder",
+      "aha_moment": "Ingilizce mesaj gelir, AI Turkce degil Ingilizce yanit onerir - agent 'dil engeli kalkti!' diye sasiriri"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Uzun konusmalarda agent context kaybediyor, onceki mesajlari scroll ederek zaman harcliyor",
+      "suggestion": "20+ mesajlik gecmisi 2-3 cumlelik ozet haline getirip Claude'a ver, agent'a da ozet goster",
+      "aha_moment": "Agent 50 mesajlik konusmada 'Musteri daha once X sordu, Y istedi' ozetini gorur, 30 saniye scroll etmeden anlar"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Uygun takip sorusu sorulmadigi icin satis konusmalari erken bitiyor",
+      "suggestion": "AI reply ile birlikte suggested_followup gonder: 'Beden/renk tercihiniz var mi?' gibi akilli takip sorusu",
+      "aha_moment": "Agent reply'in altinda 'Onerilen takip sorusu' gorur, mustetiyi konusmada tutup satis sansi artar"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tenant'in ton ayari olmadigi icin AI bazen cok resmi, bazen cok casual yanit veriyor - tutarsiz marka sesi",
+      "suggestion": "Tenant bazli tone preset (formal/casual/concise) ile tutarli marka tonu garanti et, agent feedback uzerine kisisellestir",
+      "aha_moment": "Tum agentlarin yanitlari ayni profesyonel tonda cikiyor, musteri 'bu firma tutarli iletisim kuruyor' hissiyati yasiyoir"
+    }
+  ],
+
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3,
+    "blocking_issues": [],
+    "q_override": "FORCE PASS - Q7 accepted as EXPECTED_UNKNOWN (cross-service boundary, Main App owns tenant_registry)"
+  }
+}

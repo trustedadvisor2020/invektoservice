@@ -73,6 +73,9 @@ public static class ErrorCodes
     public const string AgentAINoConversationContext = "INV-AA-004";
     public const string AgentAIClaudeTimeout = "INV-AA-005";
     public const string AgentAIInvalidFeedback = "INV-AA-006";
+    public const string AgentAIKnowledgeUnavailable = "INV-AA-007";
+    public const string AgentAILanguageDetectionFailed = "INV-AA-008";
+    public const string AgentAIConversationSummaryFailed = "INV-AA-009";
 
     // Outbound errors (INV-OB-xxx) -- GR-1.3
     public const string OutboundInvalidBroadcastPayload = "INV-OB-001";
@@ -85,6 +88,8 @@ public static class ErrorCodes
     public const string OutboundNoMatchingTriggerTemplate = "INV-OB-008";
     public const string OutboundMessageSendCallbackFailed = "INV-OB-009";
     public const string OutboundTooManyRecipients = "INV-OB-010";
+    public const string OutboundTemplateLangNotAvailable = "INV-OB-011";
+    public const string OutboundNoTemplateForLanguage = "INV-OB-012";
 
     // Knowledge errors (INV-KN-xxx) -- GR-2.1
     public const string KnowledgeImportPathNotFound = "INV-KN-001";

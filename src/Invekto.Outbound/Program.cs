@@ -346,13 +346,15 @@ app.MapPost("/api/v1/webhook/message", async (
 
 app.MapGet("/api/v1/templates", async (
     HttpContext ctx,
-    OutboundRepository repository) =>
+    OutboundRepository repository,
+    string? lang) =>
 {
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
 
-    var templates = await repository.GetActiveTemplatesAsync(tenantContext.TenantId);
+    // GR-2.3: Optional lang filter via query parameter (e.g., /api/v1/templates?lang=en)
+    var templates = await repository.GetActiveTemplatesAsync(tenantContext.TenantId, lang);
     return Results.Ok(new { templates });
 });
 
@@ -392,13 +394,14 @@ app.MapPost("/api/v1/templates", async (
     if (tenantContext == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
 
+    // GR-2.3: Pass language to template creation
     var id = await repository.CreateTemplateAsync(
         tenantContext.TenantId, request.Name, request.TriggerEvent,
-        request.MessageTemplate, request.VariablesJson);
+        request.MessageTemplate, request.VariablesJson, request.Lang);
 
-    jsonLogger.StepInfo($"Template created: id={id}, name={request.Name}, event={request.TriggerEvent}", requestId);
+    jsonLogger.StepInfo($"Template created: id={id}, name={request.Name}, event={request.TriggerEvent}, lang={request.Lang}", requestId);
 
-    return Results.Json(new { id, name = request.Name }, statusCode: 201);
+    return Results.Json(new { id, name = request.Name, lang = request.Lang }, statusCode: 201);
 });
 
 app.MapPut("/api/v1/templates/{id:int}", async (

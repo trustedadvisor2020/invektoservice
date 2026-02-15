@@ -23,6 +23,11 @@ var maxHistoryMessages = builder.Configuration.GetValue<int>("Claude:MaxHistoryM
 var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
 var maxFeedbackHistory = builder.Configuration.GetValue<int>("AgentProfile:MaxFeedbackHistory", 20);
+var knowledgeBaseUrl = builder.Configuration["Knowledge:BaseUrl"] ?? "http://localhost:7104";
+var knowledgeTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:TimeoutMs", 5000);
+var knowledgeTopK = builder.Configuration.GetValue<int>("Knowledge:TopK", 5);
+var summaryThreshold = builder.Configuration.GetValue<int>("Summarizer:SummaryThreshold", 15);
+var recentMessageCount = builder.Configuration.GetValue<int>("Summarizer:RecentMessageCount", 5);
 
 // Validate required config
 if (string.IsNullOrEmpty(claudeApiKey))
@@ -81,6 +86,25 @@ builder.Services.AddHttpClient<ReplyGenerator>()
             sp.GetRequiredService<JsonLinesLogger>());
     });
 
+// GR-2.2: Register KnowledgeHttpClient (direct service-to-service)
+builder.Services.AddHttpClient<KnowledgeHttpClient>()
+    .AddTypedClient((httpClient, sp) =>
+    {
+        return new KnowledgeHttpClient(
+            httpClient, knowledgeBaseUrl, knowledgeTimeoutMs,
+            sp.GetRequiredService<JsonLinesLogger>());
+    });
+
+// GR-2.2: Register ConversationSummarizer
+builder.Services.AddHttpClient<ConversationSummarizer>()
+    .AddTypedClient((httpClient, sp) =>
+    {
+        return new ConversationSummarizer(
+            httpClient, claudeApiKey, claudeModel,
+            summaryThreshold, recentMessageCount,
+            sp.GetRequiredService<JsonLinesLogger>());
+    });
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -114,6 +138,8 @@ app.MapPost("/api/v1/suggest", async (
     ReplyGenerator replyGenerator,
     TemplateEngine templateEngine,
     AgentProfileBuilder profileBuilder,
+    KnowledgeHttpClient knowledgeClient,
+    ConversationSummarizer conversationSummarizer,
     AgentAIRepository repository,
     JsonLinesLogger jsonLogger,
     SuggestReplyRequest? request) =>
@@ -175,9 +201,44 @@ app.MapPost("/api/v1/suggest", async (
             request.Templates, null, request.TemplateVariables);
     }
 
-    // Generate AI reply
+    // GR-2.2: Tone from request (Main App reads tenant_registry.settings_json.default_tone,
+    // sends via Backend proxy). AgentAI does not query tenant_registry directly (service isolation).
+    var tone = request.Tone;
+
+    // GR-2.2: Fetch Knowledge context (graceful degradation)
+    var jwtToken = ctx.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", "");
+    var knowledgeResult = await knowledgeClient.SearchAsync(
+        tenantContext.TenantId, request.MessageText!, request.Language,
+        knowledgeTopK, jwtToken, CancellationToken.None);
+
+    if (!knowledgeResult.Available)
+    {
+        jsonLogger.StepInfo($"Knowledge unavailable for tenant {tenantContext.TenantId}: {knowledgeResult.UnavailableReason}", requestId);
+    }
+
+    // GR-2.2: Summarize conversation if history is long
+    string? conversationSummary = null;
+    var recentHistory = request.ConversationHistory!;
+    try
+    {
+        var (summary, recent) = await conversationSummarizer.SummarizeIfNeededAsync(
+            request.ConversationHistory!, CancellationToken.None);
+        conversationSummary = summary;
+        recentHistory = recent;
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepWarn($"Conversation summarization failed: {ex.Message}", requestId);
+    }
+
+    // Update request with trimmed history for ReplyGenerator
+    request.ConversationHistory = recentHistory;
+
+    // Generate AI reply with Knowledge context, tone, and summary
     var result = await replyGenerator.GenerateAsync(
-        request, agentProfile, templateSuggestion, CancellationToken.None);
+        request, agentProfile, templateSuggestion,
+        knowledgeResult.ContextText, tone, conversationSummary,
+        CancellationToken.None);
 
     if (result == null || !result.IsSuccess)
     {
@@ -203,6 +264,13 @@ app.MapPost("/api/v1/suggest", async (
         result.SuggestedReply = templateEngine.Substitute(result.SuggestedReply, request.TemplateVariables);
     }
 
+    // GR-2.2: Serialize Knowledge sources for DB logging
+    string? knowledgeSourcesJson = null;
+    if (knowledgeResult.Available && knowledgeResult.Sources.Count > 0)
+    {
+        knowledgeSourcesJson = System.Text.Json.JsonSerializer.Serialize(knowledgeResult.Sources);
+    }
+
     // Generate suggestion ID and log to DB
     var suggestionId = Guid.NewGuid();
     bool dbLogFailed = false;
@@ -211,9 +279,13 @@ app.MapPost("/api/v1/suggest", async (
         await repository.LogSuggestionAsync(
             suggestionId, tenantContext.TenantId, tenantContext.UserId,
             request.ChatId, request.Channel, request.Language,
-            request.MessageText, request.ConversationHistory?.Count ?? 0,
+            request.MessageText!, request.ConversationHistory?.Count ?? 0,
             result.SuggestedReply, result.Intent, result.Confidence,
             replyGenerator.ModelName, (int)result.ProcessingTimeMs,
+            tone, knowledgeResult.Available, knowledgeSourcesJson,
+            knowledgeResult.Available ? request.MessageText : null,
+            result.SuggestedFollowup, conversationSummary,
+            result.DetectedLanguage,
             CancellationToken.None);
     }
     catch (Exception ex)
@@ -225,7 +297,8 @@ app.MapPost("/api/v1/suggest", async (
 
     jsonLogger.StepInfo(
         $"Suggest OK: tenant={tenantContext.TenantId}, chat={request.ChatId}, " +
-        $"intent={result.Intent}, conf={result.Confidence:F2}, time={result.ProcessingTimeMs}ms",
+        $"intent={result.Intent}, conf={result.Confidence:F2}, time={result.ProcessingTimeMs}ms, " +
+        $"knowledge={knowledgeResult.Available}, lang={result.DetectedLanguage}",
         requestId);
 
     return Results.Ok(new SuggestReplyResponse
@@ -236,7 +309,13 @@ app.MapPost("/api/v1/suggest", async (
         Confidence = result.Confidence,
         ProcessingTimeMs = result.ProcessingTimeMs,
         Model = replyGenerator.ModelName,
-        Warning = dbLogFailed ? "Oneri kaydedilemedi, feedback takibi kullanilamayacak" : null
+        Warning = dbLogFailed ? "Oneri kaydedilemedi, feedback takibi kullanilamayacak" : null,
+        Sources = knowledgeResult.Available && knowledgeResult.Sources.Count > 0
+            ? knowledgeResult.Sources : null,
+        SuggestedFollowup = result.SuggestedFollowup,
+        KnowledgeAvailable = knowledgeResult.Available,
+        ConversationSummary = conversationSummary,
+        DetectedLanguage = result.DetectedLanguage
     });
 });
 

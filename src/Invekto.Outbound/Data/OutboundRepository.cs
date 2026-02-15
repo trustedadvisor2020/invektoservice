@@ -21,19 +21,25 @@ public sealed class OutboundRepository
     // Templates
     // ================================================================
 
+    /// <summary>
+    /// GR-2.3: Get active templates, optionally filtered by language.
+    /// </summary>
     public async Task<List<TemplateDto>> GetActiveTemplatesAsync(
-        int tenantId, CancellationToken ct = default)
+        int tenantId, string? lang = null, CancellationToken ct = default)
     {
-        const string sql = @"
+        var sql = @"
             SELECT id, name, trigger_event, message_template, variables_json,
-                   is_active, created_at, updated_at
+                   is_active, created_at, updated_at, lang
             FROM outbound_templates
-            WHERE tenant_id = @tid AND is_active = TRUE
-            ORDER BY created_at DESC";
+            WHERE tenant_id = @tid AND is_active = TRUE"
+            + (lang != null ? " AND lang = @lang" : "")
+            + " ORDER BY created_at DESC";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);
+        if (lang != null)
+            cmd.Parameters.AddWithValue("lang", lang);
 
         var templates = new List<TemplateDto>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -49,7 +55,7 @@ public sealed class OutboundRepository
     {
         const string sql = @"
             SELECT id, name, trigger_event, message_template, variables_json,
-                   is_active, created_at, updated_at
+                   is_active, created_at, updated_at, lang
             FROM outbound_templates
             WHERE tenant_id = @tid AND id = @id AND is_active = TRUE";
 
@@ -64,21 +70,28 @@ public sealed class OutboundRepository
         return null;
     }
 
+    /// <summary>
+    /// GR-2.3: Get trigger template, optionally filtered by language.
+    /// Falls back to any language if no match found for specified lang.
+    /// </summary>
     public async Task<TemplateDto?> GetTriggerTemplateAsync(
-        int tenantId, string triggerEvent, CancellationToken ct = default)
+        int tenantId, string triggerEvent, string? lang = null, CancellationToken ct = default)
     {
-        const string sql = @"
+        var sql = @"
             SELECT id, name, trigger_event, message_template, variables_json,
-                   is_active, created_at, updated_at
+                   is_active, created_at, updated_at, lang
             FROM outbound_templates
-            WHERE tenant_id = @tid AND trigger_event = @evt AND is_active = TRUE
-            ORDER BY updated_at DESC
+            WHERE tenant_id = @tid AND trigger_event = @evt AND is_active = TRUE"
+            + (lang != null ? " AND lang = @lang" : "")
+            + @" ORDER BY updated_at DESC
             LIMIT 1";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("evt", triggerEvent);
+        if (lang != null)
+            cmd.Parameters.AddWithValue("lang", lang);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (await reader.ReadAsync(ct))
@@ -86,15 +99,18 @@ public sealed class OutboundRepository
         return null;
     }
 
+    /// <summary>
+    /// GR-2.3: Create template with language tag.
+    /// </summary>
     public async Task<int> CreateTemplateAsync(
         int tenantId, string name, string triggerEvent,
         string messageTemplate, Dictionary<string, string>? variablesJson,
-        CancellationToken ct = default)
+        string lang = "tr", CancellationToken ct = default)
     {
         const string sql = @"
             INSERT INTO outbound_templates
-                (tenant_id, name, trigger_event, message_template, variables_json)
-            VALUES (@tid, @name, @evt, @tpl, @vars::jsonb)
+                (tenant_id, name, trigger_event, message_template, variables_json, lang)
+            VALUES (@tid, @name, @evt, @tpl, @vars::jsonb, @lang)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -105,6 +121,7 @@ public sealed class OutboundRepository
         cmd.Parameters.AddWithValue("tpl", messageTemplate);
         cmd.Parameters.AddWithValue("vars",
             variablesJson != null ? (object)JsonSerializer.Serialize(variablesJson) : DBNull.Value);
+        cmd.Parameters.AddWithValue("lang", lang);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return Convert.ToInt32(id);
@@ -141,6 +158,11 @@ public sealed class OutboundRepository
             setClauses.Add("variables_json = @vars::jsonb");
             parameters.Add(new NpgsqlParameter("vars", JsonSerializer.Serialize(req.VariablesJson)));
         }
+        if (req.Lang != null)
+        {
+            setClauses.Add("lang = @lang");
+            parameters.Add(new NpgsqlParameter("lang", req.Lang));
+        }
 
         if (setClauses.Count == 0) return false;
         setClauses.Add("updated_at = NOW()");
@@ -176,14 +198,17 @@ public sealed class OutboundRepository
     // Broadcasts
     // ================================================================
 
+    /// <summary>
+    /// GR-2.3: Create broadcast with optional language tag.
+    /// </summary>
     public async Task<Guid> CreateBroadcastAsync(
         int tenantId, int templateId, int totalRecipients, int queued,
-        DateTime? scheduledAt, CancellationToken ct = default)
+        DateTime? scheduledAt, string? lang = null, CancellationToken ct = default)
     {
         const string sql = @"
             INSERT INTO outbound_broadcasts
-                (tenant_id, template_id, total_recipients, queued, status, scheduled_at)
-            VALUES (@tid, @tmpl, @total, @queued, 'queued', @sched)
+                (tenant_id, template_id, total_recipients, queued, status, scheduled_at, lang)
+            VALUES (@tid, @tmpl, @total, @queued, 'queued', @sched, @lang)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -193,6 +218,7 @@ public sealed class OutboundRepository
         cmd.Parameters.AddWithValue("total", totalRecipients);
         cmd.Parameters.AddWithValue("queued", queued);
         cmd.Parameters.AddWithValue("sched", scheduledAt.HasValue ? (object)scheduledAt.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return (Guid)id!;
@@ -291,15 +317,18 @@ public sealed class OutboundRepository
     // Messages
     // ================================================================
 
+    /// <summary>
+    /// GR-2.3: Insert message with optional language tag.
+    /// </summary>
     public async Task<long> InsertMessageAsync(
         int tenantId, Guid? broadcastId, int? templateId,
         string recipientPhone, string messageText,
-        CancellationToken ct = default)
+        string? lang = null, CancellationToken ct = default)
     {
         const string sql = @"
             INSERT INTO outbound_messages
-                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status)
-            VALUES (@tid, @bid, @tmpl, @phone, @msg, 'queued')
+                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang)
+            VALUES (@tid, @bid, @tmpl, @phone, @msg, 'queued', @lang)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -309,6 +338,7 @@ public sealed class OutboundRepository
         cmd.Parameters.AddWithValue("tmpl", templateId.HasValue ? (object)templateId.Value : DBNull.Value);
         cmd.Parameters.AddWithValue("phone", recipientPhone);
         cmd.Parameters.AddWithValue("msg", messageText);
+        cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return Convert.ToInt64(id);
@@ -505,11 +535,13 @@ public sealed class OutboundRepository
         return optedOut;
     }
 
-    /// <summary>Batch insert messages in a single multi-row INSERT.</summary>
+    /// <summary>
+    /// GR-2.3: Batch insert messages with optional language tag.
+    /// </summary>
     public async Task BatchInsertMessagesAsync(
         int tenantId, Guid broadcastId, int templateId,
         List<(string phone, string text)> messages,
-        CancellationToken ct = default)
+        string? lang = null, CancellationToken ct = default)
     {
         if (messages.Count == 0) return;
 
@@ -522,7 +554,7 @@ public sealed class OutboundRepository
 
         for (var i = 0; i < messages.Count; i++)
         {
-            valueClauses.Add($"(@tid, @bid, @tmpl, @phone{i}, @msg{i}, 'queued')");
+            valueClauses.Add($"(@tid, @bid, @tmpl, @phone{i}, @msg{i}, 'queued', @lang)");
             cmd.Parameters.AddWithValue($"phone{i}", messages[i].phone);
             cmd.Parameters.AddWithValue($"msg{i}", messages[i].text);
         }
@@ -530,10 +562,11 @@ public sealed class OutboundRepository
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("bid", broadcastId);
         cmd.Parameters.AddWithValue("tmpl", templateId);
+        cmd.Parameters.AddWithValue("lang", (object?)lang ?? DBNull.Value);
 
         cmd.CommandText = $@"
             INSERT INTO outbound_messages
-                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status)
+                (tenant_id, broadcast_id, template_id, recipient_phone, message_text, status, lang)
             VALUES {string.Join(",\n                   ", valueClauses)}";
 
         await cmd.ExecuteNonQueryAsync(ct);
@@ -574,7 +607,8 @@ public sealed class OutboundRepository
             VariablesJson = variables,
             IsActive = reader.GetBoolean(5),
             CreatedAt = reader.GetDateTime(6),
-            UpdatedAt = reader.GetDateTime(7)
+            UpdatedAt = reader.GetDateTime(7),
+            Lang = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : "tr"
         };
     }
 }
