@@ -584,6 +584,32 @@ public sealed class OutboundRepository
             _logger.SystemWarn($"Reset {rows} stale 'sending' messages back to 'queued' on shutdown");
     }
 
+    // ============================================================
+    // KVKK health tenant check (GR-2.6)
+    // ============================================================
+
+    public async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT settings_json::text, sector
+            FROM tenant_registry
+            WHERE tenant_id = @tid AND is_active = TRUE";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (await reader.ReadAsync(ct))
+        {
+            var settingsJson = reader.IsDBNull(0) ? null : reader.GetString(0);
+            var sector = reader.IsDBNull(1) ? null : reader.GetString(1);
+            return (settingsJson, sector);
+        }
+        return (null, null);
+    }
+
     private TemplateDto ReadTemplateDto(NpgsqlDataReader reader)
     {
         var variablesStr = reader.IsDBNull(4) ? null : reader.GetString(4);

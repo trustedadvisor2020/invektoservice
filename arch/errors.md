@@ -26,6 +26,7 @@ INV-{SERVICE}-{NUMBER}
 | DB | Database | Veritabanı hataları |
 | VAL | Validation | Validasyon hataları |
 | OB | Outbound | GR-1.3: Broadcast & trigger engine hataları |
+| AP | Appointments | GR-2.4: Randevu Motoru hatalari |
 | KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
 | EXT | External | Dış servis hataları |
 
@@ -174,6 +175,23 @@ INV-{SERVICE}-{NUMBER}
 
 ---
 
+## AP - Appointments Errors (GR-2.4)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-AP-001 | Invalid slot payload | Gecersiz slot tanimlama istegi. |
+| INV-AP-002 | Slot not found | Randevu slotu bulunamadi. |
+| INV-AP-003 | Invalid booking payload | Gecersiz randevu istegi. |
+| INV-AP-004 | Slot fully booked | Bu slot dolu, baska bir zaman secin. |
+| INV-AP-005 | Appointment not found | Randevu bulunamadi. |
+| INV-AP-006 | Already cancelled | Randevu zaten iptal edilmis. |
+| INV-AP-007 | Invalid date/time | Gecersiz tarih veya saat. |
+| INV-AP-008 | Booking in the past | Gecmis tarihli randevu alinamaz. |
+| INV-AP-009 | Reminder send failed | Hatirlatma mesaji gonderilemedi. |
+| INV-AP-010 | Outbound service unavailable | Mesaj gonderim servisi gecici olarak kullanilamiyor. |
+
+---
+
 ## KN - Knowledge Errors (GR-2.1)
 
 | Code | Description | User Message |
@@ -188,6 +206,12 @@ INV-{SERVICE}-{NUMBER}
 | INV-KN-008 | FAQ not found | Belirtilen FAQ bulunamadi. |
 | INV-KN-009 | Invalid request | Gecersiz istek formati. |
 | INV-KN-010 | pgvector missing | pgvector eklentisi yuklu degil (sunucu hatasi). |
+| INV-KN-011 | File too large | Dosya boyutu siniri asildi. |
+| INV-KN-012 | Invalid file type | Desteklenmeyen dosya formati. |
+| INV-KN-013 | PDF extraction failed | PDF icerik cikarma hatasi. |
+| INV-KN-014 | Document not found | Dokuman bulunamadi. |
+| INV-KN-015 | Upload failed | Dosya yukleme hatasi. |
+| INV-KN-016 | Photo blocked (health tenant) | Saglik tenant'lari icin hasta fotografi yuklemesi engellendi (KVKK). |
 
 ---
 

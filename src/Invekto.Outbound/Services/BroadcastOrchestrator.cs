@@ -2,6 +2,7 @@ using Invekto.Outbound.Data;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 namespace Invekto.Outbound.Services;
 
@@ -61,6 +62,10 @@ public sealed class BroadcastOrchestrator
         var phones = validRecipients.Select(r => r.Phone).ToList();
         var optedOutPhones = await _repository.BatchCheckOptOutsAsync(tenantId, phones, ct);
 
+        // GR-2.6: Check if health tenant (once per broadcast, not per message)
+        var (healthSettingsJson, healthSector) = await _repository.GetTenantHealthInfoAsync(tenantId, ct);
+        var isHealthTenant = KvkkHelper.IsHealthTenant(healthSettingsJson, healthSector);
+
         // Filter and prepare messages
         var skippedOptout = 0;
         var messagesToInsert = new List<(string phone, string text)>();
@@ -84,7 +89,9 @@ public sealed class BroadcastOrchestrator
                 continue;
             }
 
-            messagesToInsert.Add((recipient.Phone, messageText));
+            // GR-2.6.1: Append KVKK health disclaimer if applicable
+            var finalText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealthTenant);
+            messagesToInsert.Add((recipient.Phone, finalText));
         }
 
         if (messagesToInsert.Count == 0)

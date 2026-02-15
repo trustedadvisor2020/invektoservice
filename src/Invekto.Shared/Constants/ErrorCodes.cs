@@ -91,6 +91,18 @@ public static class ErrorCodes
     public const string OutboundTemplateLangNotAvailable = "INV-OB-011";
     public const string OutboundNoTemplateForLanguage = "INV-OB-012";
 
+    // Appointments errors (INV-AP-xxx) -- GR-2.4
+    public const string AppointmentInvalidSlotPayload = "INV-AP-001";
+    public const string AppointmentSlotNotFound = "INV-AP-002";
+    public const string AppointmentInvalidBookingPayload = "INV-AP-003";
+    public const string AppointmentSlotFullyBooked = "INV-AP-004";
+    public const string AppointmentNotFound = "INV-AP-005";
+    public const string AppointmentAlreadyCancelled = "INV-AP-006";
+    public const string AppointmentInvalidDateTime = "INV-AP-007";
+    public const string AppointmentBookingInPast = "INV-AP-008";
+    public const string AppointmentReminderSendFailed = "INV-AP-009";
+    public const string AppointmentOutboundUnavailable = "INV-AP-010";
+
     // Knowledge errors (INV-KN-xxx) -- GR-2.1
     public const string KnowledgeImportPathNotFound = "INV-KN-001";
     public const string KnowledgeImportParseError = "INV-KN-002";
@@ -107,6 +119,7 @@ public static class ErrorCodes
     public const string KnowledgePdfExtractionFailed = "INV-KN-013";
     public const string KnowledgeDocumentNotFound = "INV-KN-014";
     public const string KnowledgeUploadFailed = "INV-KN-015";
+    public const string KnowledgePhotoBlockedHealthTenant = "INV-KN-016";
 
     // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
     public const string WAAnalysisNotFound = "INV-WA-001";

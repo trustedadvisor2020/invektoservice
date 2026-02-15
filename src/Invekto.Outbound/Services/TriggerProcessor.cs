@@ -100,12 +100,17 @@ public sealed class TriggerProcessor
                 $"Template requires variables: {string.Join(", ", missingVars)}", 400);
         }
 
+        // GR-2.6.1: Append KVKK health disclaimer if applicable
+        var (healthSettingsJson, healthSector) = await _repository.GetTenantHealthInfoAsync(tenantId, ct);
+        var isHealthTenant = KvkkHelper.IsHealthTenant(healthSettingsJson, healthSector);
+        var finalText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealthTenant);
+
         // GR-2.3: Use template's actual language after fallback (not the originally requested lang)
         var effectiveLang = template.Lang ?? lang;
 
         // Insert single message (no broadcast_id, GR-2.3: with effective language)
         var messageId = await _repository.InsertMessageAsync(
-            tenantId, null, template.Id, request.Phone, messageText, effectiveLang, ct);
+            tenantId, null, template.Id, request.Phone, finalText, effectiveLang, ct);
 
         _logger.SystemInfo(
             $"Trigger message queued: id={messageId}, tenant={tenantId}, " +

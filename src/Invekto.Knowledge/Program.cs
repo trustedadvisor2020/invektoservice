@@ -6,6 +6,7 @@ using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -439,8 +440,17 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/documents/upload", async (
         await using (var fs = new FileStream(savedPath, FileMode.Create))
             await file.CopyToAsync(fs);
 
+        // GR-2.6.5: Tag medical content for health tenants
+        string? metadataJson = null;
+        var (healthSettingsJson, healthSector) = await repo.GetTenantHealthInfoAsync(tenantId);
+        if (KvkkHelper.IsHealthTenant(healthSettingsJson, healthSector))
+        {
+            metadataJson = "{\"kvkk_medical_content\": true}";
+            jsonLogger.StepInfo($"[KVKK] Health tenant {tenantId}: document tagged as medical content", requestId);
+        }
+
         // Insert document record
-        var docId = await repo.InsertDocumentAsync(tenantId, title, "pdf", savedPath, null);
+        var docId = await repo.InsertDocumentAsync(tenantId, title, "pdf", savedPath, metadataJson);
 
         // Enqueue for background processing
         processingService.EnqueueDocument(new DocumentProcessJob

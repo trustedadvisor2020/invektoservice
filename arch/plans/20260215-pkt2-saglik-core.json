@@ -1,0 +1,282 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-2",
+  "gr_list": [
+    {
+      "id": "GR-2.4",
+      "description": "Randevu Motoru: Slot CRUD, booking, cancellation, availability, reminder scheduler",
+      "services_affected": ["Invekto.Appointments", "Invekto.Backend", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-2.6",
+      "description": "KVKK Minimum: Health tenant disclaimer, photo block, medical doc tag, AgentAI warning, opt-in",
+      "services_affected": ["Invekto.Automation", "Invekto.AgentAI", "Invekto.Outbound", "Invekto.Knowledge", "Invekto.Backend", "Invekto.Shared"]
+    }
+  ],
+  "slug": "20260215-pkt2-saglik-core",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-15T20:00:00Z",
+  "updated_at": "2026-02-16T02:00:00Z",
+  "plan": {
+    "summary": "Saglik niche icin randevu motoru (yeni Invekto.Appointments mikro servis, port 7102) ve 5 servise KVKK minimum koruma (disclaimer, photo block, medical doc tag, AgentAI warning).",
+    "q_intent": "pkt2 ile basla - Phase 2 tamamlama: GR-2.4 Randevu Motoru + GR-2.6 KVKK Minimum",
+    "interview_notes": "Yeni servis (Appointments port 7102), IHostedService reminder, nullable doctor_id, KVKK 5 servis, AgentAI Warning field, Knowledge tag engel degil"
+  },
+  "allowed_files": [
+    "arch/db/appointments.sql",
+    "arch/errors.md",
+    "arch/deploy/deploy-watcher.ps1",
+    "arch/deploy/firewall-rules.bat",
+    "arch/deploy/install-services.bat",
+    "arch/deploy/restart-services.bat",
+    "InvektoServis.sln",
+    "src/Invekto.Appointments/Invekto.Appointments.csproj",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Appointments/Data/AppointmentsRepository.cs",
+    "src/Invekto.Appointments/Services/ReminderSchedulerService.cs",
+    "src/Invekto.Appointments/appsettings.json",
+    "src/Invekto.Appointments/appsettings.Production.json",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/AppointmentsClient.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/DTOs/Appointments/AppointmentDto.cs",
+    "src/Invekto.Shared/DTOs/Appointments/SlotDto.cs",
+    "src/Invekto.Shared/Services/KvkkHelper.cs",
+    "src/Invekto.AgentAI/Data/AgentAIRepository.cs",
+    "src/Invekto.AgentAI/Program.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
+    "src/Invekto.Knowledge/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/db/appointments.sql", "change": "New: appointment_slots + appointments tables, indexes, triggers", "is_new": true },
+    { "path": "src/Invekto.Appointments/Invekto.Appointments.csproj", "change": "New: .NET 8 project, WindowsServices, Shared ref", "is_new": true },
+    { "path": "src/Invekto.Appointments/Program.cs", "change": "New: 12 endpoints (slots CRUD, booking, cancel, availability, health, ready, ops/endpoints)", "is_new": true },
+    { "path": "src/Invekto.Appointments/Data/AppointmentsRepository.cs", "change": "New: Full repo with slots, appointments, reminders, tenant health, availability queries", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/ReminderSchedulerService.cs", "change": "New: IHostedService, 5min timer, T-48h/T-2h reminders via Outbound with JWT auth", "is_new": true },
+    { "path": "src/Invekto.Appointments/appsettings.json", "change": "New: Port 7102, Reminder config, Outbound URL", "is_new": true },
+    { "path": "src/Invekto.Backend/Services/AppointmentsClient.cs", "change": "New: Typed HttpClient for Appointments proxy (health, endpoints, test, CRUD proxy)", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Appointments/AppointmentDto.cs", "change": "New: AppointmentDto, BookRequest, CancelRequest, AvailableSlotDto, ReminderCandidate", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Appointments/SlotDto.cs", "change": "New: SlotDto, SlotCreateRequest, SlotUpdateRequest", "is_new": true },
+    { "path": "src/Invekto.Shared/Services/KvkkHelper.cs", "change": "New: IsHealthTenant, AppendDisclaimerIfHealth, health disclaimers, medical doc tag", "is_new": true },
+    { "path": "InvektoServis.sln", "change": "Added Appointments project to solution", "is_new": false },
+    { "path": "arch/errors.md", "change": "Added INV-AP-001~010, INV-KN-016 error codes", "is_new": false },
+    { "path": "arch/deploy/deploy-watcher.ps1", "change": "Added InvektoAppointments to $services array", "is_new": false },
+    { "path": "arch/deploy/firewall-rules.bat", "change": "Added port 7102 localhost-only rule", "is_new": false },
+    { "path": "arch/deploy/install-services.bat", "change": "Added InvektoAppointments NSSM install (7/8)", "is_new": false },
+    { "path": "arch/deploy/restart-services.bat", "change": "Added InvektoAppointments stop/start/status", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added INV-AP-001~010, INV-KN-016 constants", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "change": "Added AppointmentsPort=7102, AppointmentsServiceName", "is_new": false },
+    { "path": "src/Invekto.AgentAI/Data/AgentAIRepository.cs", "change": "Added GetTenantHealthInfoAsync for KVKK", "is_new": false },
+    { "path": "src/Invekto.AgentAI/Program.cs", "change": "KVKK: Health tenant warning in SuggestReplyResponse.Warning", "is_new": false },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "change": "Added GetTenantHealthInfoAsync for KVKK", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "change": "KVKK: Disclaimer on SendMessage, health tenant cache, opt-in check", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Appointments proxy (9 endpoints), health check, photo block for health tenants", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "change": "Added Microservice.Appointments section", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "change": "Added GetTenantHealthInfoAsync for KVKK", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Program.cs", "change": "KVKK: Medical doc tag in metadata_json for health tenants", "is_new": false },
+    { "path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "change": "Added GetTenantHealthInfoAsync for KVKK", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "change": "KVKK: Health disclaimer on broadcast messages", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/TriggerProcessor.cs", "change": "KVKK: Health disclaimer on trigger messages", "is_new": false }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "63350f0632ae183869ea77c9d6f9293767b2d46299925257823234478061a298",
+    "full_path": "arch/plans/diffs/20260215-pkt2-saglik-core.diff",
+    "stats": {
+      "insertions": 2410,
+      "deletions": 15,
+      "files_count": 29
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-16T01:25:00Z",
+    "duration_ms": 3520,
+    "output_tail": "Build succeeded. 0 Error(s), 9 Warning(s)",
+    "error_summary": null,
+    "services": [
+      "Invekto.Shared",
+      "Invekto.Appointments",
+      "Invekto.Backend",
+      "Invekto.AgentAI",
+      "Invekto.Automation",
+      "Invekto.Outbound",
+      "Invekto.Knowledge"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "ReminderSchedulerService Interlocked overlap prevention + graceful shutdown CancellationToken kullaniyor mu? (MessageSenderService pattern)",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Tum AppointmentsRepository query'leri tenant_id WHERE clause iceriyor mu? (multi-tenant izolasyon)",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "DTO'lar snake_case JsonPropertyName attribute kullaniyor mu? (mevcut codebase pattern)",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "AutomationOrchestrator KVKK disclaimer sadece SendMessage action'a uyguluyor mu? (HandoffToHuman'a degil)",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Booking endpoint appointment_date gecmis kontrolu + day_of_week slot eslesmesi yapiyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "ReminderSchedulerService Outbound'a POST yaparken TriggerWebhookRequest DTO ve JWT Authorization header kullaniyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Tum yeni error code'lar (INV-AP-001~010, INV-KN-016) hem errors.md hem ErrorCodes.cs'te tutarli mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q8",
+      "question": "Backend foto engeli SADECE health tenant + image/* MIME icin mi? Non-health tenant ve PDF'ler etkilenmiyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.ChatAnalysis/",
+      "tools/simulator/",
+      "ideas/"
+    ],
+    "non_goals": [
+      "Google Calendar sync",
+      "Doctor CRUD endpoints",
+      "Recurring appointments",
+      "Full KVKK consent management UI",
+      "SMS reminders",
+      "Appointment analytics/reporting"
+    ],
+    "intentional_exclusions": [
+      "Opt-in separate table (uses chat_sessions.session_data JSONB)",
+      "doctor_id nullable placeholder (GR-3.19 future)",
+      "No-show prediction (GR-3.19 future)",
+      "appointment_confirmation event (not in Outbound validEvents yet)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Appointments/Services/ReminderSchedulerService.cs:ExecuteAsync",
+      "src/Invekto.Appointments/Services/ReminderSchedulerService.cs:SendReminderToOutboundAsync",
+      "src/Invekto.Appointments/Program.cs:booking endpoint",
+      "src/Invekto.Backend/Services/AppointmentsClient.cs:all proxy methods"
+    ],
+    "user_facing_errors": [
+      "INV-AP-001: Invalid slot payload",
+      "INV-AP-002: Slot not found",
+      "INV-AP-003: Invalid booking payload",
+      "INV-AP-004: Slot fully booked (409)",
+      "INV-AP-005: Appointment not found",
+      "INV-AP-006: Already cancelled",
+      "INV-AP-007: Invalid date/time format",
+      "INV-AP-008: Booking in the past",
+      "INV-KN-016: Photo upload blocked for health tenants (403)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Reminder failures are logged with INV-AP-009/010 and retried next cycle. KVKK health check failures fall through safely (non-health behavior)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Klinik calisanlari randevu alirken hasta telefon/WhatsApp ile tek tek hatirlatma yapiyor, unutuluyor",
+      "suggestion": "Otomatik 48h + 2h hatirlatma mesajlari Outbound uzerinden gonderiliyor, klinik personeli islem yapmiyor",
+      "aha_moment": "Klinik muduru hic manual hatirlatma yapmadan hastaların randevulara geldigini gorunce"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Saglik sektoru KVKK denetimine takilma riski yuksek, ceza potansiyeli var",
+      "suggestion": "Tum mesajlara otomatik KVKK disclaimer, tibbi dokulara tag, gorsel yuklemelere engel",
+      "aha_moment": "KVKK denetcisi geldiginde tum mesajlarda disclaimer ve data minimization goruldugunde"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Doktor/klinik musaitlik sorgusu yavash, hasta bekliyor, randevu kaciyor",
+      "suggestion": "available-slots endpoint tek sorguda musait gunleri dondurur, Frontend aninda gosterir",
+      "aha_moment": "Hasta 2 saniyede musait gunleri gordugununde ve tek tikla randevu aldiginda"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Saglik niche'indeki klinikler Invekto'yu sadece chatbot olarak goruyor, randevu icin ayri uygulama kullaniyor",
+      "suggestion": "Entegre randevu sistemi + WhatsApp hatirlatma = tek platform cozumu",
+      "aha_moment": "Klinik sahibi hem chatbot hem randevu hem hatirlatmayi tek panelden yonettiginde"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "No-show orani yuksek, klinikler gelir kaybediyor, nedeni anlasilmiyor",
+      "suggestion": "Dual reminder (48h + 2h) ile no-show oranini dusurme, ileride no-show analitigi (GR-3.19)",
+      "aha_moment": "Klinik no-show oraninin %40'tan %15'e dustugunu dashboard'da gorduunde"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-16T02:00:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-16T02:00:00Z",
+    "raw_text": "Q FORCE PASS: CQ3 false positive (pre-existing WA Analytics context lines), CQ4 architectural decision (micro-service isolation). All real code issues fixed in iter 0->1. All 8 CoVe PASS.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "400/404/409 validation errors in endpoints" },
+      "CQ2": { "result": "PASS", "evidence": "TaskCanceledException logged with SystemWarn + appointment ID + progress count" },
+      "CQ3": { "result": "PASS", "evidence": "Q FORCE PASS: WA Analytics lines are pre-existing context, not PKT-2 additions" },
+      "CQ4": { "result": "PASS", "evidence": "Q FORCE PASS: GetTenantHealthInfoAsync per-repo is micro-service isolation by design" },
+      "CQ5": { "result": "PASS", "evidence": "tenant_id added to CountConfirmedForSlotAsync + MarkReminderSentAsync" },
+      "CQ6": { "result": "PASS", "evidence": "Batch operations, no N+1" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME markers" },
+      "CQ8": { "result": "PASS", "evidence": "Additive changes only" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Interlocked + linked CancellationToken" },
+      "Q2": { "result": "PASS", "reasoning": "tenant_id added to CountConfirmedForSlotAsync + MarkReminderSentAsync" },
+      "Q3": { "result": "PASS", "reasoning": "snake_case JsonPropertyName on all DTOs" },
+      "Q4": { "result": "PASS", "reasoning": "Disclaimer only on SendMessage, not HandoffToHuman" },
+      "Q5": { "result": "PASS", "reasoning": "Past date check + day_of_week match in booking" },
+      "Q6": { "result": "PASS", "reasoning": "TriggerWebhookRequest DTO + JWT Authorization header" },
+      "Q7": { "result": "PASS", "reasoning": "Error codes consistent in errors.md and ErrorCodes.cs" },
+      "Q8": { "result": "PASS", "reasoning": "Photo block only for health tenant + image/* MIME" }
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

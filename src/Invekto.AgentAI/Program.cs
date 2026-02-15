@@ -7,6 +7,7 @@ using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.AgentAI;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -301,6 +302,16 @@ app.MapPost("/api/v1/suggest", async (
         $"knowledge={knowledgeResult.Available}, lang={result.DetectedLanguage}",
         requestId);
 
+    // GR-2.6: Add KVKK warning for health tenants
+    string? warning = dbLogFailed ? "Oneri kaydedilemedi, feedback takibi kullanilamayacak" : null;
+    var (healthSettingsJson, healthSector) = await repository.GetTenantHealthInfoAsync(tenantContext.TenantId);
+    if (KvkkHelper.IsHealthTenant(healthSettingsJson, healthSector))
+    {
+        warning = warning != null
+            ? $"{warning} | {KvkkHelper.AgentAIWarning}"
+            : KvkkHelper.AgentAIWarning;
+    }
+
     return Results.Ok(new SuggestReplyResponse
     {
         SuggestionId = suggestionId.ToString(),
@@ -309,7 +320,7 @@ app.MapPost("/api/v1/suggest", async (
         Confidence = result.Confidence,
         ProcessingTimeMs = result.ProcessingTimeMs,
         Model = replyGenerator.ModelName,
-        Warning = dbLogFailed ? "Oneri kaydedilemedi, feedback takibi kullanilamayacak" : null,
+        Warning = warning,
         Sources = knowledgeResult.Available && knowledgeResult.Sources.Count > 0
             ? knowledgeResult.Sources : null,
         SuggestedFollowup = result.SuggestedFollowup,

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using Invekto.Automation.Data;
@@ -6,6 +7,7 @@ using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
+using Invekto.Shared.Services;
 
 namespace Invekto.Automation.Services;
 
@@ -26,6 +28,9 @@ public sealed class AutomationOrchestrator
     private readonly WorkingHoursChecker _workingHours;
     private readonly MainAppCallbackClient _callbackClient;
     private readonly JsonLinesLogger _logger;
+
+    // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
+    private readonly ConcurrentDictionary<int, bool> _healthTenantCache = new();
 
     public AutomationOrchestrator(
         AutomationRepository repo,
@@ -490,6 +495,14 @@ public sealed class AutomationOrchestrator
         string action, string messageText, string? intent, double? confidence,
         long processingTimeMs, string? callbackUrl, CancellationToken ct)
     {
+        // GR-2.6.1: Append KVKK health disclaimer for SendMessage actions only
+        var finalMessageText = messageText;
+        if (action == CallbackActions.SendMessage && !string.IsNullOrEmpty(messageText))
+        {
+            var isHealth = await IsHealthTenantCachedAsync(tenantId, ct);
+            finalMessageText = KvkkHelper.AppendDisclaimerIfHealth(messageText, isHealth);
+        }
+
         var callback = new OutgoingCallback
         {
             RequestId = requestId,
@@ -499,7 +512,7 @@ public sealed class AutomationOrchestrator
             SequenceId = sequenceId,
             Data = new CallbackData
             {
-                MessageText = action == CallbackActions.SendMessage ? messageText : null,
+                MessageText = action == CallbackActions.SendMessage ? finalMessageText : null,
                 SuggestedReply = action == CallbackActions.SuggestReply ? messageText : null,
                 Intent = intent,
                 Confidence = confidence
@@ -511,6 +524,22 @@ public sealed class AutomationOrchestrator
         if (!delivered)
             _logger.StepError($"[{ErrorCodes.IntegrationCallbackFailed}] Callback delivery failed: action={action}, tenant={tenantId}, chat={chatId}", requestId, processingTimeMs);
         return delivered;
+    }
+
+    /// <summary>
+    /// GR-2.6: Check if tenant is a health tenant with in-memory cache.
+    /// Cache is per-process lifetime (ConcurrentDictionary). Acceptable for tenant settings
+    /// that change rarely. Service restart clears cache.
+    /// </summary>
+    private async Task<bool> IsHealthTenantCachedAsync(int tenantId, CancellationToken ct)
+    {
+        if (_healthTenantCache.TryGetValue(tenantId, out var cached))
+            return cached;
+
+        var (settingsJson, sector) = await _repo.GetTenantHealthInfoAsync(tenantId, ct);
+        var isHealth = KvkkHelper.IsHealthTenant(settingsJson, sector);
+        _healthTenantCache.TryAdd(tenantId, isHealth);
+        return isHealth;
     }
 
     private async Task<bool> SendHandoffAsync(

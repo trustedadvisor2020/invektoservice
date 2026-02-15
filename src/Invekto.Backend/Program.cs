@@ -11,6 +11,7 @@ using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
+using Invekto.Shared.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,10 @@ var automationTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Auto
 var knowledgeUrl = builder.Configuration["Microservice:Knowledge:Url"]
     ?? $"http://localhost:{ServiceConstants.KnowledgePort}";
 var knowledgeLogPath = builder.Configuration["Microservice:Knowledge:LogPath"];
+var appointmentsUrl = builder.Configuration["Microservice:Appointments:Url"]
+    ?? $"http://localhost:{ServiceConstants.AppointmentsPort}";
+var appointmentsLogPath = builder.Configuration["Microservice:Appointments:LogPath"];
+var appointmentsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Appointments:TimeoutMs", 10000);
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -62,6 +67,10 @@ if (!string.IsNullOrEmpty(outboundLogPath))
 if (!string.IsNullOrEmpty(knowledgeLogPath))
 {
     logPaths.Add(knowledgeLogPath);
+}
+if (!string.IsNullOrEmpty(appointmentsLogPath))
+{
+    logPaths.Add(appointmentsLogPath);
 }
 builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs));
 
@@ -108,6 +117,13 @@ builder.Services.AddHttpClient<KnowledgeClient>(client =>
 {
     client.BaseAddress = new Uri(knowledgeUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Configure Appointments HTTP client (GR-2.4)
+builder.Services.AddHttpClient<AppointmentsClient>(client =>
+{
+    client.BaseAddress = new Uri(appointmentsUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(appointmentsTimeoutMs);
 });
 
 // Configure FlowBuilder proxy HTTP client (reuses Automation URL for flow management)
@@ -399,7 +415,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -493,6 +509,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = knowledgeHealthy ? null : "Service unreachable"
+    });
+
+    // Appointments - check health with timing (GR-2.4)
+    var swAppointments = System.Diagnostics.Stopwatch.StartNew();
+    var appointmentsHealthy = await appointmentsClient.CheckHealthAsync();
+    swAppointments.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.AppointmentsServiceName,
+        status = appointmentsHealthy ? "ok" : "unavailable",
+        responseTimeMs = appointmentsHealthy ? (int?)swAppointments.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = appointmentsHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -668,6 +699,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         "Invekto.AgentAI" => "InvektoAgentAI",
         "Invekto.Outbound" => "InvektoOutbound",
         "Invekto.Knowledge" => "InvektoKnowledge",
+        "Invekto.Appointments" => "InvektoAppointments",
         _ => null
     };
 
@@ -721,7 +753,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -797,6 +829,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await knowledgeClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "appointments")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await appointmentsClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -1033,7 +1080,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1071,6 +1118,17 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/outbound/optout", Description = "Add opt-out proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "DELETE", Path = "/api/v1/outbound/optout/{phone}", Description = "Remove opt-out proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/outbound/optout/check/{phone}", Description = "Check opt-out proxy", Auth = "Bearer", Category = "API" },
+
+            // Appointments proxy endpoints (GR-2.4)
+            new() { Method = "GET", Path = "/api/v1/appointments/slots", Description = "List slots proxy (Backend -> Appointments)", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/slots", Description = "Create slot proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/appointments/slots/{id}", Description = "Update slot proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "DELETE", Path = "/api/v1/appointments/slots/{id}", Description = "Deactivate slot proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/book", Description = "Book appointment proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/list", Description = "List appointments proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/{id}", Description = "Get appointment proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/{id}/cancel", Description = "Cancel appointment proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/available-slots", Description = "Available slots proxy", Auth = "Bearer", Category = "API" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
@@ -1112,6 +1170,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch Knowledge endpoints (internal call)
     var knowledgeEndpoints = await knowledgeClient.GetEndpointsAsync();
 
+    // Fetch Appointments endpoints (internal call, GR-2.4)
+    var appointmentsEndpoints = await appointmentsClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -1132,6 +1193,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (knowledgeEndpoints != null)
     {
         services.Add(knowledgeEndpoints);
+    }
+    if (appointmentsEndpoints != null)
+    {
+        services.Add(appointmentsEndpoints);
     }
 
     return Results.Ok(new { services });
@@ -1850,6 +1915,32 @@ app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/upload", async (
     if (file == null || file.Length == 0)
         return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "file is required", requestId), statusCode: 400);
 
+    // GR-2.6.5: Block image uploads for health tenants (KVKK photo policy)
+    if (file.ContentType != null && file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+    {
+        if (pgFactory != null)
+        {
+            await using var hConn = await pgFactory.OpenConnectionAsync();
+            await using var hCmd = hConn.CreateCommand();
+            hCmd.CommandText = "SELECT settings_json::text, sector FROM tenant_registry WHERE tenant_id = @tid AND is_active = true";
+            hCmd.Parameters.AddWithValue("tid", tenantId);
+            await using var hReader = await hCmd.ExecuteReaderAsync();
+            if (await hReader.ReadAsync())
+            {
+                var hSettings = hReader.IsDBNull(0) ? null : hReader.GetString(0);
+                var hSector = hReader.IsDBNull(1) ? null : hReader.GetString(1);
+                if (KvkkHelper.IsHealthTenant(hSettings, hSector))
+                {
+                    jsonLog.StepWarn($"[KVKK] Health tenant {tenantId}: image upload blocked (INV-KN-016)", requestId);
+                    return Results.Json(ErrorResponse.Create(
+                        ErrorCodes.KnowledgePhotoBlockedHealthTenant,
+                        "Saglik sektorundeki isletmeler icin gorsel yukleme KVKK kapsaminda engellenmistir",
+                        requestId), statusCode: 403);
+                }
+            }
+        }
+    }
+
     var title = form["title"].FirstOrDefault();
     var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
     var authHeader = $"Bearer {serviceToken}";
@@ -1891,6 +1982,108 @@ app.MapPost("/api/ops/knowledge/{tenantId:int}/search", async (HttpContext ctx, 
 
 app.MapPost("/api/ops/knowledge/{tenantId:int}/generate-embeddings", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
     await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/generate-embeddings"));
+
+// ============================================
+// APPOINTMENTS PROXY ENDPOINTS (GR-2.4)
+// ============================================
+
+// Appointments proxy helpers
+async Task<IResult> AppointmentsProxyPost(HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var (statusCode, body) = await apClient.ProxyPostAsync(targetPath, requestBody, authHeader, requestId);
+    sw.Stop();
+
+    jsonLog.StepInfo($"Appointments proxy POST {targetPath}: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> AppointmentsProxyGet(HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    // Forward query string to downstream service
+    var queryString = ctx.Request.QueryString.Value ?? "";
+
+    var (statusCode, body) = await apClient.ProxyGetAsync(targetPath + queryString, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> AppointmentsProxyPut(HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var (statusCode, body) = await apClient.ProxyPutAsync(targetPath, requestBody, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> AppointmentsProxyDelete(HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var (statusCode, body) = await apClient.ProxyDeleteAsync(targetPath, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+// Slots
+app.MapGet("/api/v1/appointments/slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/slots"));
+
+app.MapPost("/api/v1/appointments/slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/slots"));
+
+app.MapPut("/api/v1/appointments/slots/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPut(ctx, apClient, jsonLog, $"/api/v1/slots/{id}"));
+
+app.MapDelete("/api/v1/appointments/slots/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyDelete(ctx, apClient, jsonLog, $"/api/v1/slots/{id}"));
+
+// Appointments
+app.MapPost("/api/v1/appointments/book", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/appointments/book"));
+
+app.MapGet("/api/v1/appointments/list", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments"));
+
+app.MapGet("/api/v1/appointments/{id:long}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, long id) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, $"/api/v1/appointments/{id}"));
+
+app.MapPost("/api/v1/appointments/{id:long}/cancel", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, long id) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/appointments/{id}/cancel"));
+
+// Available slots
+app.MapGet("/api/v1/appointments/available-slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments/available-slots"));
 
 // ============================================
 // SPA FALLBACK ROUTES
