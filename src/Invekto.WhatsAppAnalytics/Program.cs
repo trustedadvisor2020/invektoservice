@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Text.Json;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
@@ -21,6 +22,12 @@ var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
 var uploadPath = builder.Configuration["Storage:UploadPath"] ?? "uploads";
 var maxFileSizeMb = builder.Configuration.GetValue<int>("Storage:MaxFileSizeMb", 500);
+
+// Claude API configuration (NLP stages 4 & 6)
+var claudeApiKey = builder.Configuration["Claude:ApiKey"];
+var claudeModel = builder.Configuration["Claude:Model"] ?? "claude-3-5-haiku-20241022";
+var claudeMaxTokens = builder.Configuration.GetValue<int>("Claude:MaxTokens", 4096);
+var claudeTimeoutSeconds = builder.Configuration.GetValue<int>("Claude:TimeoutSeconds", 30);
 
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
@@ -61,7 +68,7 @@ builder.Services.AddSingleton(pgFactory);
 // Register repository
 builder.Services.AddSingleton<AnalyticsRepository>();
 
-// Register pipeline services
+// Register pipeline services (Phase A: stages 1-3)
 builder.Services.AddSingleton<CsvStreamReader>();
 builder.Services.AddSingleton<TextNormalizer>();
 builder.Services.AddSingleton<CleanerService>();
@@ -72,6 +79,19 @@ builder.Services.AddSingleton<ThreaderService>(sp =>
         sp.GetRequiredService<TextNormalizer>(),
         sp.GetRequiredService<JsonLinesLogger>()));
 builder.Services.AddSingleton<StatsService>();
+
+// Register Claude API client (NLP stages 4 & 6)
+builder.Services.AddSingleton<ClaudeClient>(sp =>
+    new ClaudeClient(claudeApiKey, claudeModel, claudeMaxTokens, claudeTimeoutSeconds,
+        sp.GetRequiredService<JsonLinesLogger>()));
+
+// Register NLP pipeline services (Phase B: stages 4-7)
+builder.Services.AddSingleton<IntentClassifierService>();
+builder.Services.AddSingleton<FaqExtractorService>();
+builder.Services.AddSingleton<SentimentAnalyzerService>();
+builder.Services.AddSingleton<ProductAnalyzerService>();
+
+// Register orchestrator (stages 1-7)
 builder.Services.AddSingleton<PipelineOrchestrator>();
 
 // Register background processing service
@@ -353,6 +373,148 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/metadata", async
 });
 
 // ============================================================
+// NLP Query endpoints (Phase B: PKT-4)
+// ============================================================
+
+// Intent distribution
+app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/intents", async (
+    int tenantId, int analysisId,
+    HttpContext ctx,
+    AnalyticsRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var json = await repo.GetIntentDistributionAsync(tenantId, analysisId);
+        return Results.Text(json, "application/json");
+    }
+    catch (DbException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Intent query failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// Sentiment summary
+app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/sentiments", async (
+    int tenantId, int analysisId,
+    HttpContext ctx,
+    AnalyticsRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var json = await repo.GetSentimentSummaryAsync(tenantId, analysisId);
+        return Results.Text(json, "application/json");
+    }
+    catch (DbException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Sentiment query failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// Top products
+app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/products", async (
+    int tenantId, int analysisId,
+    HttpContext ctx,
+    AnalyticsRepository repo,
+    int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var lim = Math.Clamp(limit ?? 50, 1, 200);
+        var json = await repo.GetTopProductsAsync(tenantId, analysisId, lim);
+        return Results.Text(json, "application/json");
+    }
+    catch (DbException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Products query failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// Top prices
+app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/prices", async (
+    int tenantId, int analysisId,
+    HttpContext ctx,
+    AnalyticsRepository repo,
+    int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var lim = Math.Clamp(limit ?? 30, 1, 100);
+        var json = await repo.GetTopPricesAsync(tenantId, analysisId, lim);
+        return Results.Text(json, "application/json");
+    }
+    catch (DbException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"Prices query failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// FAQ clusters
+app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/faq-clusters", async (
+    int tenantId, int analysisId,
+    HttpContext ctx,
+    AnalyticsRepository repo,
+    int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var lim = Math.Clamp(limit ?? 50, 1, 200);
+        var json = await repo.GetFaqClustersAsync(tenantId, analysisId, lim);
+        return Results.Text(json, "application/json");
+    }
+    catch (DbException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"FAQ clusters query failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// NLP summary (aggregate counts)
+app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/nlp-summary", async (
+    int tenantId, int analysisId,
+    HttpContext ctx,
+    AnalyticsRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var json = await repo.GetNlpSummaryAsync(tenantId, analysisId);
+        return Results.Text(json, "application/json");
+    }
+    catch (DbException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WADatabaseError, $"NLP summary query failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -367,6 +529,12 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}", Description = "Get analysis status", Auth = "Bearer JWT", Category = "Pipeline" },
         new() { Method = "DELETE", Path = "/api/v1/wa/{tenantId}/analyses/{id}", Description = "Delete analysis + cascade data", Auth = "Bearer JWT", Category = "Pipeline" },
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/metadata", Description = "Get full metadata JSON", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/intents", Description = "Intent distribution (NLP)", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/sentiments", Description = "Sentiment summary (NLP)", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/products", Description = "Top product codes", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/prices", Description = "Top price mentions", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/faq-clusters", Description = "FAQ question clusters", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/nlp-summary", Description = "NLP aggregate summary", Auth = "Bearer JWT", Category = "Query" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

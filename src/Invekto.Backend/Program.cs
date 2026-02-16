@@ -43,6 +43,9 @@ var appointmentsUrl = builder.Configuration["Microservice:Appointments:Url"]
     ?? $"http://localhost:{ServiceConstants.AppointmentsPort}";
 var appointmentsLogPath = builder.Configuration["Microservice:Appointments:LogPath"];
 var appointmentsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Appointments:TimeoutMs", 10000);
+var waAnalyticsUrl = builder.Configuration["Microservice:WhatsAppAnalytics:Url"]
+    ?? $"http://localhost:{ServiceConstants.WhatsAppAnalyticsPort}";
+var waAnalyticsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:WhatsAppAnalytics:TimeoutMs", 30000);
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -135,6 +138,13 @@ builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 {
     client.BaseAddress = new Uri(automationUrl);
     client.Timeout = TimeSpan.FromMilliseconds(automationTimeoutMs);
+});
+
+// Configure WhatsApp Analytics HTTP client (PKT-4: NLP query + upload proxy)
+builder.Services.AddHttpClient<WhatsAppAnalyticsClient>(client =>
+{
+    client.BaseAddress = new Uri(waAnalyticsUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(waAnalyticsTimeoutMs);
 });
 
 // ============================================
@@ -424,7 +434,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -533,6 +543,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = appointmentsHealthy ? null : "Service unreachable"
+    });
+
+    // WhatsApp Analytics - check health with timing (PKT-4)
+    var swWaAnalytics = System.Diagnostics.Stopwatch.StartNew();
+    var waAnalyticsHealthy = await waAnalyticsClient.CheckHealthAsync();
+    swWaAnalytics.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.WhatsAppAnalyticsServiceName,
+        status = waAnalyticsHealthy ? "ok" : "unavailable",
+        responseTimeMs = waAnalyticsHealthy ? (int?)swWaAnalytics.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = waAnalyticsHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -762,7 +787,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -864,9 +889,24 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
             });
         }
 
+        if (serviceName == "wa-analytics")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await waAnalyticsClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
         return Results.BadRequest(new { success = false, message = "Unknown service" });
     }
-    catch (Exception ex)
+    catch (HttpRequestException ex)
     {
         return Results.Ok(new
         {
@@ -874,6 +914,16 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
             statusCode = 0,
             durationMs = 0,
             message = ex.Message
+        });
+    }
+    catch (TaskCanceledException ex)
+    {
+        return Results.Ok(new
+        {
+            success = false,
+            statusCode = 0,
+            durationMs = 0,
+            message = $"Timeout: {ex.Message}"
         });
     }
 });
@@ -1089,7 +1139,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1182,6 +1232,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch Appointments endpoints (internal call, GR-2.4)
     var appointmentsEndpoints = await appointmentsClient.GetEndpointsAsync();
 
+    // Fetch WhatsApp Analytics endpoints (internal call, PKT-4)
+    var waAnalyticsEndpoints = await waAnalyticsClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -1206,6 +1259,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (appointmentsEndpoints != null)
     {
         services.Add(appointmentsEndpoints);
+    }
+    if (waAnalyticsEndpoints != null)
+    {
+        services.Add(waAnalyticsEndpoints);
     }
 
     return Results.Ok(new { services });
@@ -2323,6 +2380,127 @@ app.MapGet("/api/ops/analytics/wa/trends", async (HttpContext ctx, AnalyticsRepo
         logger.SystemWarn($"Analytics WA trends failed for tenant {tenant_id}, analysis {analysis_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
         return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
     }
+});
+
+// ============================================
+// WA Analytics NLP Proxy (PKT-4: Dashboard -> Backend -> WA Analytics)
+// ============================================
+
+// WA NLP: Intent distribution
+app.MapGet("/api/ops/analytics/wa/intents-nlp", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+
+    var (statusCode, body) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenant_id}/analyses/{analysis_id}/intents",
+        ctx.Request.Headers.Authorization.FirstOrDefault(),
+        ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// WA NLP: Sentiment summary
+app.MapGet("/api/ops/analytics/wa/sentiments", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+
+    var (statusCode, body) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenant_id}/analyses/{analysis_id}/sentiments",
+        ctx.Request.Headers.Authorization.FirstOrDefault(),
+        ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// WA NLP: Top products
+app.MapGet("/api/ops/analytics/wa/products", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id, int? limit) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+
+    var lim = Math.Clamp(limit ?? 50, 1, 200);
+    var (statusCode, body) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenant_id}/analyses/{analysis_id}/products?limit={lim}",
+        ctx.Request.Headers.Authorization.FirstOrDefault(),
+        ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// WA NLP: Top prices
+app.MapGet("/api/ops/analytics/wa/prices", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id, int? limit) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+
+    var lim = Math.Clamp(limit ?? 30, 1, 100);
+    var (statusCode, body) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenant_id}/analyses/{analysis_id}/prices?limit={lim}",
+        ctx.Request.Headers.Authorization.FirstOrDefault(),
+        ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// WA NLP: FAQ clusters
+app.MapGet("/api/ops/analytics/wa/faq-clusters", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id, int? limit) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+
+    var lim = Math.Clamp(limit ?? 50, 1, 200);
+    var (statusCode, body) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenant_id}/analyses/{analysis_id}/faq-clusters?limit={lim}",
+        ctx.Request.Headers.Authorization.FirstOrDefault(),
+        ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// WA NLP: Aggregate NLP summary
+app.MapGet("/api/ops/analytics/wa/nlp-summary", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int? tenant_id, int? analysis_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+
+    var (statusCode, body) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenant_id}/analyses/{analysis_id}/nlp-summary",
+        ctx.Request.Headers.Authorization.FirstOrDefault(),
+        ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
 });
 
 // ============================================

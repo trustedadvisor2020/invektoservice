@@ -1,5 +1,7 @@
+using System.Data.Common;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Invekto.Shared.Logging;
 using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
@@ -8,8 +10,11 @@ using Invekto.WhatsAppAnalytics.Services.Pipeline;
 namespace Invekto.WhatsAppAnalytics.Services;
 
 /// <summary>
-/// Orchestrates pipeline stages 1-3 (Phase A) sequentially.
+/// Orchestrates pipeline stages 1-7 sequentially.
+/// Phase A: stages 1-3 (cleaning → threading → stats).
+/// Phase B (PKT-4): stages 4-7 (intents → FAQ → sentiment → products).
 /// Updates wa_analyses status and stage_progress after each stage.
+/// Stage failures in 4-7 log a warning and continue to next stage (partial NLP results preserved).
 /// </summary>
 public sealed class PipelineOrchestrator
 {
@@ -17,6 +22,10 @@ public sealed class PipelineOrchestrator
     private readonly CleanerService _cleaner;
     private readonly ThreaderService _threader;
     private readonly StatsService _stats;
+    private readonly IntentClassifierService _intentClassifier;
+    private readonly FaqExtractorService _faqExtractor;
+    private readonly SentimentAnalyzerService _sentimentAnalyzer;
+    private readonly ProductAnalyzerService _productAnalyzer;
     private readonly JsonLinesLogger _logger;
 
     public PipelineOrchestrator(
@@ -24,18 +33,26 @@ public sealed class PipelineOrchestrator
         CleanerService cleaner,
         ThreaderService threader,
         StatsService stats,
+        IntentClassifierService intentClassifier,
+        FaqExtractorService faqExtractor,
+        SentimentAnalyzerService sentimentAnalyzer,
+        ProductAnalyzerService productAnalyzer,
         JsonLinesLogger logger)
     {
         _repo = repo;
         _cleaner = cleaner;
         _threader = threader;
         _stats = stats;
+        _intentClassifier = intentClassifier;
+        _faqExtractor = faqExtractor;
+        _sentimentAnalyzer = sentimentAnalyzer;
+        _productAnalyzer = productAnalyzer;
         _logger = logger;
     }
 
     /// <summary>
     /// Run the full pipeline for an analysis job.
-    /// Updates status to cleaning -> threading -> stats -> completed (or error).
+    /// Updates status: cleaning → threading → stats → intents → faq → sentiment → products → completed (or error).
     /// </summary>
     public async Task RunAsync(AnalysisProcessJob job, CancellationToken ct)
     {
@@ -89,6 +106,46 @@ public sealed class PipelineOrchestrator
         await _stats.RunAsync(analysisId, tenantId, configJson, OnProgress, ct);
 
         // ============================================================
+        // Stage 4: Intent Classification (NLP)
+        // ============================================================
+        await RunNlpStageAsync("intents", analysisId, async () =>
+        {
+            await _repo.UpdateAnalysisStatusAsync(analysisId, "intents", null, ct);
+            var intentCount = await _intentClassifier.RunAsync(analysisId, tenantId, OnProgress, ct);
+            _logger.SystemInfo($"[PipelineOrchestrator] Stage 4 complete: {intentCount:N0} intents classified");
+        }, ct);
+
+        // ============================================================
+        // Stage 5: FAQ Extraction
+        // ============================================================
+        await RunNlpStageAsync("faq", analysisId, async () =>
+        {
+            await _repo.UpdateAnalysisStatusAsync(analysisId, "faq", null, ct);
+            var (pairCount, clusterCount) = await _faqExtractor.RunAsync(analysisId, tenantId, OnProgress, ct);
+            _logger.SystemInfo($"[PipelineOrchestrator] Stage 5 complete: {pairCount:N0} FAQ pairs, {clusterCount:N0} clusters");
+        }, ct);
+
+        // ============================================================
+        // Stage 6: Sentiment Analysis
+        // ============================================================
+        await RunNlpStageAsync("sentiment", analysisId, async () =>
+        {
+            await _repo.UpdateAnalysisStatusAsync(analysisId, "sentiment", null, ct);
+            var sentimentCount = await _sentimentAnalyzer.RunAsync(analysisId, tenantId, OnProgress, ct);
+            _logger.SystemInfo($"[PipelineOrchestrator] Stage 6 complete: {sentimentCount:N0} sentiments");
+        }, ct);
+
+        // ============================================================
+        // Stage 7: Product Analysis
+        // ============================================================
+        await RunNlpStageAsync("products", analysisId, async () =>
+        {
+            await _repo.UpdateAnalysisStatusAsync(analysisId, "products", null, ct);
+            var productCount = await _productAnalyzer.RunAsync(analysisId, tenantId, OnProgress, ct);
+            _logger.SystemInfo($"[PipelineOrchestrator] Stage 7 complete: {productCount:N0} conversations analyzed");
+        }, ct);
+
+        // ============================================================
         // Complete
         // ============================================================
         await _repo.CompleteAnalysisAsync(analysisId, ct);
@@ -97,5 +154,49 @@ public sealed class PipelineOrchestrator
         _logger.SystemInfo(
             $"[PipelineOrchestrator] Pipeline complete for analysis {analysisId}: " +
             $"{messageCount:N0} messages, {conversationCount:N0} conversations in {sw.ElapsedMilliseconds}ms");
+    }
+
+    /// <summary>
+    /// Run an NLP stage with error isolation.
+    /// Stage failures are logged but don't stop the pipeline — prior stage data is preserved.
+    /// OperationCanceledException propagates naturally (not caught).
+    /// Typed catches for known NLP stage failure modes: DB, HTTP, regex, JSON, config.
+    /// </summary>
+    private async Task RunNlpStageAsync(string stageName, int analysisId, Func<Task> stageAction, CancellationToken ct)
+    {
+        try
+        {
+            await stageAction();
+        }
+        catch (DbException ex)
+        {
+            _logger.SystemWarn(
+                $"[PipelineOrchestrator] NLP stage '{stageName}' DB error for analysis {analysisId}: {ex.Message}. " +
+                "Continuing to next stage — partial NLP results preserved.");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[PipelineOrchestrator] NLP stage '{stageName}' API error for analysis {analysisId}: {ex.Message}. " +
+                "Continuing to next stage — partial NLP results preserved.");
+        }
+        catch (RegexMatchTimeoutException ex)
+        {
+            _logger.SystemWarn(
+                $"[PipelineOrchestrator] NLP stage '{stageName}' regex timeout for analysis {analysisId}: {ex.Message}. " +
+                "Continuing to next stage — partial NLP results preserved.");
+        }
+        catch (JsonException ex)
+        {
+            _logger.SystemWarn(
+                $"[PipelineOrchestrator] NLP stage '{stageName}' JSON error for analysis {analysisId}: {ex.Message}. " +
+                "Continuing to next stage — partial NLP results preserved.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.SystemWarn(
+                $"[PipelineOrchestrator] NLP stage '{stageName}' config error for analysis {analysisId}: {ex.Message}. " +
+                "Continuing to next stage — partial NLP results preserved.");
+        }
     }
 }

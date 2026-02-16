@@ -6,17 +6,18 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| (none) | — | — | — |
+| 20260216-pkt3-ops-dashboard | ✅ DONE | 2026-02-16 | PKT-3: Ops Dashboard (GR-2.5 + WA-4). Commit: 63543d4. Codex CQ 8/8 PASS, Q FORCE PASS. |
 
 ---
 
-## Execution Queue — 10 Paket Stratejisi (v5.1)
+## Execution Queue — 12 Paket Stratejisi (v5.2)
 
 > **Karar (2026-02-15):** Tekli GR döngüsü yerine paket halinde yürütme.
 > Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 > **Neden:** Overhead %60 azalır, saf kod süresi aynı kalır.
 > **Kural:** WA = WhatsApp Analytics, RP = Roadmap Phase, PKT = Execution Packet.
 > **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) 3 alt pakete bölündü → PKT-6A/6B/6C. Toplam: 8 → 10 paket.
+> **v5.2 (2026-02-16):** PKT-9 (Phase 3E Güzellik) + PKT-10 (Phase 3F Eğitim) eklendi → Toplam: 12 paket.
 
 ### Tamamlanan (Paket Öncesi — Tekli Döngü)
 
@@ -32,18 +33,21 @@
 |---|-------|-----|--------|-----------|-------|
 | 1 | **AI Upgrade** | PKT-1 | GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang | 2 GR, 13 alt madde | ✅ PASS (iter 3, FORCE PASS) |
 | 2 | **Sağlık Core** | PKT-2 | GR-2.4 Randevu Motoru + GR-2.6 KVKK | 2 GR, 11 alt madde | ✅ PASS (iter 1, FORCE PASS) |
-| 3 | **Ops Dashboard** | PKT-3 | GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard | 2 GR, 12 alt madde | ⬜ Bekliyor |
-| 4 | **WA Analytics** | PKT-4 | WA-6 NLP Stages 4-7 + Backend proxy | 1 WA faz, ~8 alt madde | ⬜ Bekliyor |
+| 3 | **Ops Dashboard** | PKT-3 | GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard | 2 GR, 12 alt madde | ✅ PASS (iter 1, FORCE PASS) |
+| 4 | **WA Analytics** | PKT-4 | WA-6 NLP Stages 4-7 + Backend proxy | 1 WA faz, ~8 alt madde | ✅ PASS (iter 7) |
 | 5 | **Platform** | PKT-5 | Phase 3A: Integrations (:7106) + Outbound v2 + Randevu Advanced + Dashboard + Ads | 6 GR, 30 alt madde | ⬜ Bekliyor |
 | 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ⬜ Bekliyor |
 | 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ⬜ Bekliyor |
 | 6C | **Niche Health Expansion** | PKT-6C | Phase 3B: Saglik genisleme + Review Rescue + Multilingual (PKT-6B'ye bagli) | 5 GR, ~22 alt madde | ⬜ Bekliyor |
 | 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
 | 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
+| 9 | **Güzellik Salonu** | PKT-9 | Phase 3E: Güzellik Niche (config+content katmanı) | 8 GR, ~32 alt madde | ⬜ Bekliyor |
+| 10 | **Eğitim** | PKT-10 | Phase 3F: Eğitim Niche (config+content katmanı) | 8 GR, ~32 alt madde | ⬜ Bekliyor |
 
 > **PKT-1~4 = Phase 2 tamamlama** (kesin ihtiyaç, hemen deploy edilecek)
-> **PKT-5~8 = Phase 3 tamamlama** (müşteri feedback'ine göre revize edilebilir)
-> **Bağımlılık zinciri:** PKT-5 → PKT-6A (bağımsız) | PKT-5 → PKT-6B (Integrations) | PKT-6B → PKT-6C (3.24 için 3.8+3.16)
+> **PKT-5~8 = Phase 3A-D tamamlama** (müşteri feedback'ine göre revize edilebilir)
+> **PKT-9~10 = Phase 3E-F niche genişleme** (PKT-6 altyapısını tüketir, yeni servis yok)
+> **Bağımlılık zinciri:** PKT-5 → PKT-6A (bağımsız) | PKT-5 → PKT-6B (Integrations) | PKT-6B → PKT-6C (3.24 için 3.8+3.16) | PKT-6 → PKT-9 (3E) | PKT-6 → PKT-10 (3F)
 
 ### Paket Detayları
 
@@ -99,6 +103,28 @@
 **PKT-8: Face AI** — Yeni servis (FaceAnalysis :7110)
 - GR-3D.1~3D.5: MediaPipe + Claude Vision, tedavi eşleştirme, multi-lang, WA/IG, analytics + ethics
 
+**PKT-9: Güzellik Salonu** — Config + content katmanı (yeni servis yok, PKT-6 altyapısını tüketir)
+- GR-3E.1 Güzellik Intent Tanıma (saç boyama, keratin, manikür, cilt bakımı)
+- GR-3E.2 Randevu Optimizasyonu (kuaför slot, işlem süresi tahmini)
+- GR-3E.3 Ürün Satış Entegrasyonu (saç bakım, kozmetik cross-sell)
+- GR-3E.4 Sadakat Programı (puan, kampanya, doğum günü)
+- GR-3E.5 Müşteri Portföy Yönetimi (tercihler, alerji, geçmiş)
+- GR-3E.6 Personel Performans (kuaför bazlı metrikler)
+- GR-3E.7 Sosyal Medya Entegrasyonu (before/after, referans)
+- GR-3E.8 Kampanya Motoru (sezonluk, paket, hediye çeki)
+- **Bağımlılık:** PKT-5 (Outbound v2) + PKT-6A (Intent) + PKT-6B (Lead Mgmt)
+
+**PKT-10: Eğitim** — Config + content katmanı (yeni servis yok, PKT-6 altyapısını tüketir)
+- GR-3F.1 Eğitim Intent Tanıma (kayıt, ders programı, sınav, veli)
+- GR-3F.2 Kayıt & Ödeme Otomasyonu (taksit, erken kayıt, burs)
+- GR-3F.3 Veli İletişim Motoru (devamsızlık, not, etkinlik)
+- GR-3F.4 Ders Programı Entegrasyonu (telafi, değişiklik bildirimi)
+- GR-3F.5 Öğrenci Takip Sistemi (ilerleme, risk tespiti)
+- GR-3F.6 Kampanya & Dönem Yönetimi (erken kayıt, yaz okulu)
+- GR-3F.7 Mezun İlişki Yönetimi (kariyer, networking, referans)
+- GR-3F.8 Anket & Geri Bildirim (NPS, ders değerlendirme)
+- **Bağımlılık:** PKT-5 (Outbound v2) + PKT-6A (Intent) + PKT-6B (Lead Mgmt)
+
 ### WA (WhatsApp Analytics) Fazları
 
 | Faz | İsim | Durum | Paket | Açıklama |
@@ -108,7 +134,7 @@
 | WA-3 | Training Data Export | ✅ 2026-02-14 | — | FAQ clusters + intent patterns → Knowledge DB (Phase A ile beraber) |
 | WA-4 | BI Dashboard | ⬜ Sırada | **PKT-3** | Agent performans, conversion, trend raporları |
 | WA-5 | C# Microservice Phase A | ✅ 2026-02-15 | — | Pipeline stages 1-3 (cleaner, threader, stats). Port 7109. Commit: 18f387f |
-| WA-6 | NLP Stages 4-7 + Proxy | ⬜ Bekliyor | **PKT-4** | NLP stages 4-7 C# portu, query layer, Backend proxy, deploy infra |
+| WA-6 | NLP Stages 4-7 + Proxy | ✅ 2026-02-17 | **PKT-4** | NLP stages 4-7 C# portu, query layer, Backend proxy. Codex iter 7 PASS. |
 
 ---
 

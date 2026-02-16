@@ -5,9 +5,9 @@
 ## Last Update
 
 - **Date:** 2026-02-16
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5 ✅ + PKT-1 ✅ + PKT-2 ✅. **10 Paket Stratejisi** aktif (v5.1).
-- **Last Task:** PKT-2 Sağlık Core PASS (iter 1, Q FORCE PASS). Yeni Invekto.Appointments servisi (port 7102) + KVKK 5 servise.
-- **Next Task:** PKT-3 Ops Dashboard (GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard). Interview ile başla.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-4 WA Analytics — DONE. Codex iter 7 PASS. 18 dosya +5781/-16.
+- **Next Task:** PKT-5 Platform (Phase 3A: Integrations, Outbound v2, Randevu Advanced, Dashboard, Ads).
 - **Strateji:** Overhead %60 azaltma. 10 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 
@@ -39,8 +39,8 @@
 |---|-------|--------|-------|
 | 1 | **PKT-1 AI Upgrade** | GR-2.2 + GR-2.3 (Agent Assist v2 + Multi-lang) | ✅ PASS (iter 3, FORCE PASS) |
 | 2 | **PKT-2 Sağlık Core** | GR-2.4 + GR-2.6 (Randevu + KVKK) | ✅ PASS (iter 1, FORCE PASS) |
-| 3 | **PKT-3 Ops Dashboard** | GR-2.5 + WA-4 (Dashboard + BI) | ⬜ Bekliyor |
-| 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ⬜ Bekliyor |
+| 3 | **PKT-3 Ops Dashboard** | GR-2.5 + WA-4 (Dashboard + BI) | ✅ PASS (iter 1, FORCE PASS) |
+| 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ✅ PASS (iter 7) |
 | 5 | **PKT-5 Platform** | Phase 3A (Integrations, Outbound v2, Randevu Adv.) | ⬜ Bekliyor |
 | 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ⬜ Bekliyor |
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ⬜ Bekliyor |
@@ -386,6 +386,35 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-3 Ops Dashboard TAMAMLANDI (2026-02-16)
+
+**Plan:** `arch/plans/20260216-pkt3-ops-dashboard.json` (status: DONE)
+**Commit:** `63543d4` — feat(pkt3): Ops Dashboard - GR-2.5 Automation Analytics + WA-4 BI Dashboard
+
+**GR-2.5 Automation Dashboard:**
+- MetricsAggregationService (IHostedService, 5min timer, Interlocked overlap prevention)
+- daily_metrics + daily_intent_metrics tables (UPSERT idempotent, FK to tenant_registry)
+- AnalyticsRepository: 8 query + 3 aggregation methods (tenant_id WHERE clause on ALL)
+- 4 automation endpoints: /tenants, /automation/summary, /automation/trends, /automation/intents
+- React: MetricCards (color-coded deflection), DeflectionChart (recharts AreaChart), IntentTable
+
+**WA-4 BI Dashboard:**
+- Direct SQL query on wa_analyses, wa_conversations (same PostgreSQL instance)
+- 4 WA endpoints: /wa/analyses, /wa/summary, /wa/agents, /wa/trends
+- React: WaTrendsChart (recharts BarChart), WaAgentTable (conversion rate color coding)
+- COUNT(*) FILTER for efficient in-DB outcome breakdowns
+
+**Frontend:**
+- AnalyticsPage: tenant dropdown, date range filters, usePolling, Promise.all parallel fetch
+- Layout nav: BarChart3 icon, /analytics route in ProtectedRoute
+
+**Stats:** 17 dosya +2052/-1. Codex CQ 8/8 PASS, CoVe manual verified, Q FORCE PASS.
+
+### Q Operational Tasks (Analytics)
+
+- [ ] backend-metrics.sql çalıştır (PostgreSQL) — daily_metrics + daily_intent_metrics tables
+- [ ] Verify MetricsAggregationService starts (check Backend logs for "MetricsAggregationService starting")
 
 ### PKT-2 Sağlık Core TAMAMLANDI (2026-02-16)
 

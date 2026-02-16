@@ -110,7 +110,7 @@ public sealed class ThreaderService
                 {
                     Stage = "threading",
                     StageNumber = 2,
-                    TotalStages = 3,
+                    TotalStages = 7,
                     Percent = 50, // Cannot know total upfront in streaming mode
                     Message = $"Threaded {totalConversations:N0} conversations so far..."
                 });
@@ -131,7 +131,7 @@ public sealed class ThreaderService
         {
             Stage = "threading",
             StageNumber = 2,
-            TotalStages = 3,
+            TotalStages = 7,
             Percent = 100,
             Message = $"Threaded {totalConversations:N0} conversations, {totalMessages:N0} messages"
         });

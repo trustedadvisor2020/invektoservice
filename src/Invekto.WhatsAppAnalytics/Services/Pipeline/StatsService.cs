@@ -33,7 +33,7 @@ public sealed class StatsService
 
         await onProgress(new StageProgress
         {
-            Stage = "stats", StageNumber = 3, TotalStages = 3,
+            Stage = "stats", StageNumber = 3, TotalStages = 7,
             Percent = 10, Message = "Computing message statistics..."
         });
 
@@ -44,7 +44,7 @@ public sealed class StatsService
 
         await onProgress(new StageProgress
         {
-            Stage = "stats", StageNumber = 3, TotalStages = 3,
+            Stage = "stats", StageNumber = 3, TotalStages = 7,
             Percent = 30, Message = "Computing conversation statistics..."
         });
 
@@ -53,7 +53,7 @@ public sealed class StatsService
 
         await onProgress(new StageProgress
         {
-            Stage = "stats", StageNumber = 3, TotalStages = 3,
+            Stage = "stats", StageNumber = 3, TotalStages = 7,
             Percent = 50, Message = "Computing agent performance..."
         });
 
@@ -62,7 +62,7 @@ public sealed class StatsService
 
         await onProgress(new StageProgress
         {
-            Stage = "stats", StageNumber = 3, TotalStages = 3,
+            Stage = "stats", StageNumber = 3, TotalStages = 7,
             Percent = 70, Message = "Computing temporal patterns..."
         });
 
@@ -71,7 +71,7 @@ public sealed class StatsService
 
         await onProgress(new StageProgress
         {
-            Stage = "stats", StageNumber = 3, TotalStages = 3,
+            Stage = "stats", StageNumber = 3, TotalStages = 7,
             Percent = 90, Message = "Building metadata JSON..."
         });
 

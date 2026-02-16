@@ -125,7 +125,7 @@ public sealed class CleanerService
             {
                 Stage = "cleaning",
                 StageNumber = 1,
-                TotalStages = 3,
+                TotalStages = 7,
                 Percent = Math.Min(percent, 100),
                 Message = $"Processed {processedRows:N0}/{totalLines:N0} rows, {insertedTotal:N0} inserted, {duplicateCount:N0} duplicates"
             });

@@ -30,7 +30,18 @@ public sealed class StageProgress
     public int Percent { get; set; }
     public string Message { get; set; } = "";
     public int StageNumber { get; set; }
-    public int TotalStages { get; set; } = 3; // Phase A: 3 stages
+    public int TotalStages { get; set; } = 7; // Phase A: 3 + Phase B: 4
+
+    public StageProgress() { }
+
+    public StageProgress(string stage, int percent, string message, int stageNumber, int totalStages)
+    {
+        Stage = stage;
+        Percent = percent;
+        Message = message;
+        StageNumber = stageNumber;
+        TotalStages = totalStages;
+    }
 
     public string ToJson() =>
         System.Text.Json.JsonSerializer.Serialize(this);
