@@ -28,6 +28,7 @@ INV-{SERVICE}-{NUMBER}
 | OB | Outbound | GR-1.3: Broadcast & trigger engine hataları |
 | AP | Appointments | GR-2.4: Randevu Motoru hatalari |
 | KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
+| MT | Metrics | PKT-3: Analitik/metrik hatalari |
 | EXT | External | Dış servis hataları |
 
 ---
@@ -212,6 +213,16 @@ INV-{SERVICE}-{NUMBER}
 | INV-KN-014 | Document not found | Dokuman bulunamadi. |
 | INV-KN-015 | Upload failed | Dosya yukleme hatasi. |
 | INV-KN-016 | Photo blocked (health tenant) | Saglik tenant'lari icin hasta fotografi yuklemesi engellendi (KVKK). |
+
+---
+
+## MT - Metrics/Analytics Errors (PKT-3)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-MT-001 | Metrics aggregation failed | Metrik toplama hatasi. Bir sonraki periyotta tekrar denenecek. |
+| INV-MT-002 | Analytics query failed | Analitik sorgusu basarisiz oldu. |
+| INV-MT-003 | Invalid date range | Gecersiz tarih araligi (baslangic > bitis veya negatif). |
 
 ---
 

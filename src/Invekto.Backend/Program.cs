@@ -9,6 +9,7 @@ using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.ChatAnalysis;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
+using Invekto.Shared.DTOs.Analytics;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
@@ -77,6 +78,9 @@ builder.Services.AddSingleton(new LogReader(logPaths.ToArray(), slowThresholdMs)
 // Register log cleanup service (30 day retention)
 builder.Services.AddSingleton<LogCleanupService>(sp =>
     new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
+
+// PKT-3: Register AnalyticsRepository + MetricsAggregationService (requires PostgreSQL)
+// Deferred registration: actual singleton created after pgFactory is available (see below)
 
 // Configure Kestrel to listen on configured port
 builder.WebHost.ConfigureKestrel(options =>
@@ -163,6 +167,11 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 {
     pgFactory = new PostgresConnectionFactory(pgConnectionString);
     builder.Services.AddSingleton(pgFactory);
+
+    // PKT-3: AnalyticsRepository (singleton, thread-safe via connection pooling)
+    builder.Services.AddSingleton<AnalyticsRepository>();
+    // PKT-3: MetricsAggregationService (IHostedService, 5min aggregation timer)
+    builder.Services.AddHostedService<MetricsAggregationService>();
 }
 
 // Callback client for async results to Main App
@@ -2084,6 +2093,237 @@ app.MapPost("/api/v1/appointments/{id:long}/cancel", async (HttpContext ctx, App
 // Available slots
 app.MapGet("/api/v1/appointments/available-slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
     await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments/available-slots"));
+
+// ============================================
+// PKT-3: ANALYTICS DASHBOARD ENDPOINTS (/api/ops/analytics/*)
+// ============================================
+
+// Analytics: List tenants with metrics availability
+app.MapGet("/api/ops/analytics/tenants", async (HttpContext ctx, AnalyticsRepository analyticsRepo) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var tenants = await analyticsRepo.GetTenantsWithMetricsAsync();
+        return Results.Ok(new { tenants });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics tenants query failed ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: Automation summary for tenant in date range
+app.MapGet("/api/ops/analytics/automation/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, string? from, string? to) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+    }
+
+    var toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+    var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+
+    if (fromDate > toDate)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.MetricsInvalidDateRange, message = "Gecersiz tarih araligi (baslangic > bitis)." });
+    }
+
+    try
+    {
+        var summary = await analyticsRepo.GetAutomationSummaryAsync(tenant_id.Value, fromDate, toDate);
+        return Results.Ok(summary);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics automation summary failed for tenant {tenant_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: Automation daily trends for charting
+app.MapGet("/api/ops/analytics/automation/trends", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, string? from, string? to) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+    }
+
+    var toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+    var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+
+    if (fromDate > toDate)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.MetricsInvalidDateRange, message = "Gecersiz tarih araligi (baslangic > bitis)." });
+    }
+
+    try
+    {
+        var trends = await analyticsRepo.GetAutomationTrendsAsync(tenant_id.Value, fromDate, toDate);
+        return Results.Ok(new { tenant_id = tenant_id.Value, trends });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics automation trends failed for tenant {tenant_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: Intent performance breakdown
+app.MapGet("/api/ops/analytics/automation/intents", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, string? from, string? to) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+    }
+
+    var toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+    var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+
+    if (fromDate > toDate)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.MetricsInvalidDateRange, message = "Gecersiz tarih araligi (baslangic > bitis)." });
+    }
+
+    try
+    {
+        var intents = await analyticsRepo.GetIntentMetricsAsync(tenant_id.Value, fromDate, toDate);
+        return Results.Ok(new { tenant_id = tenant_id.Value, intents });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics intents failed for tenant {tenant_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: List WA analyses for tenant
+app.MapGet("/api/ops/analytics/wa/analyses", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+    }
+
+    try
+    {
+        var analyses = await analyticsRepo.GetWaAnalysesAsync(tenant_id.Value);
+        return Results.Ok(new { analyses });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics WA analyses failed for tenant {tenant_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: WA analysis summary
+app.MapGet("/api/ops/analytics/wa/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, int? analysis_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+    }
+
+    try
+    {
+        var summary = await analyticsRepo.GetWaSummaryAsync(tenant_id.Value, analysis_id.Value);
+        return Results.Ok(summary);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics WA summary failed for tenant {tenant_id}, analysis {analysis_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: WA agent performance comparison
+app.MapGet("/api/ops/analytics/wa/agents", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, int? analysis_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+    }
+
+    try
+    {
+        var agents = await analyticsRepo.GetWaAgentMetricsAsync(tenant_id.Value, analysis_id.Value);
+        return Results.Ok(new { agents });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics WA agents failed for tenant {tenant_id}, analysis {analysis_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
+// Analytics: WA daily conversation trends
+app.MapGet("/api/ops/analytics/wa/trends", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id, int? analysis_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+
+    if (!tenant_id.HasValue || !analysis_id.HasValue)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
+    }
+
+    try
+    {
+        var trends = await analyticsRepo.GetWaTrendsAsync(tenant_id.Value, analysis_id.Value);
+        return Results.Ok(new { trends });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Analytics WA trends failed for tenant {tenant_id}, analysis {analysis_id} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
 
 // ============================================
 // SPA FALLBACK ROUTES

@@ -126,6 +126,84 @@ export interface FaqDto {
   updatedAt: string;
 }
 
+// Analytics types (PKT-3)
+export interface TenantMetricsInfo {
+  tenant_id: number;
+  tenant_name: string;
+  has_automation_data: boolean;
+  has_wa_data: boolean;
+  latest_metric_date: string | null;
+}
+
+export interface AutomationSummary {
+  tenant_id: number;
+  from: string;
+  to: string;
+  total_replies: number;
+  deflected_count: number;
+  handoff_count: number;
+  deflection_rate: number;
+  handoff_rate: number;
+  avg_processing_time_ms: number;
+  avg_confidence: number;
+  reply_type_breakdown: Record<string, number>;
+  session_status_breakdown: Record<string, number>;
+}
+
+export interface DailyMetric {
+  date: string;
+  total_replies: number;
+  deflected_count: number;
+  handoff_count: number;
+  deflection_rate: number;
+  avg_processing_time_ms: number;
+}
+
+export interface IntentMetric {
+  intent: string;
+  total_count: number;
+  handoff_count: number;
+  handoff_rate: number;
+  avg_confidence: number;
+  avg_processing_time_ms: number;
+}
+
+export interface WaAnalysisInfo {
+  analysis_id: number;
+  source_file_name: string | null;
+  status: string;
+  total_messages: number;
+  total_conversations: number;
+  completed_at: string | null;
+}
+
+export interface WaSummary {
+  analysis_id: number;
+  total_messages: number;
+  total_conversations: number;
+  outcome_breakdown: Record<string, number>;
+  avg_first_response_minutes: number;
+  avg_duration_minutes: number;
+}
+
+export interface WaAgentMetric {
+  agent_name: string;
+  total_conversations: number;
+  sale_count: number;
+  offered_count: number;
+  no_sale_count: number;
+  conversion_rate: number;
+  avg_first_response_minutes: number;
+}
+
+export interface WaTrend {
+  date: string;
+  message_count: number;
+  conversation_count: number;
+  sale_count: number;
+  offered_count: number;
+}
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
@@ -333,6 +411,51 @@ class OpsApiClient {
   async generateEmbeddings(tenantId: number) {
     return this.request<{ message: string; generated: number; failed?: number; total?: number }>(
       `/api/ops/knowledge/${tenantId}/generate-embeddings`, { method: 'POST' });
+  }
+
+  // Analytics endpoints (PKT-3)
+  async getAnalyticsTenants(): Promise<{ tenants: TenantMetricsInfo[] }> {
+    return this.request<{ tenants: TenantMetricsInfo[] }>('/api/ops/analytics/tenants');
+  }
+
+  async getAutomationSummary(tenantId: number, from?: string, to?: string): Promise<AutomationSummary> {
+    const sp = new URLSearchParams();
+    sp.set('tenant_id', tenantId.toString());
+    if (from) sp.set('from', from);
+    if (to) sp.set('to', to);
+    return this.request<AutomationSummary>(`/api/ops/analytics/automation/summary?${sp}`);
+  }
+
+  async getAutomationTrends(tenantId: number, from?: string, to?: string): Promise<{ tenant_id: number; trends: DailyMetric[] }> {
+    const sp = new URLSearchParams();
+    sp.set('tenant_id', tenantId.toString());
+    if (from) sp.set('from', from);
+    if (to) sp.set('to', to);
+    return this.request<{ tenant_id: number; trends: DailyMetric[] }>(`/api/ops/analytics/automation/trends?${sp}`);
+  }
+
+  async getAutomationIntents(tenantId: number, from?: string, to?: string): Promise<{ tenant_id: number; intents: IntentMetric[] }> {
+    const sp = new URLSearchParams();
+    sp.set('tenant_id', tenantId.toString());
+    if (from) sp.set('from', from);
+    if (to) sp.set('to', to);
+    return this.request<{ tenant_id: number; intents: IntentMetric[] }>(`/api/ops/analytics/automation/intents?${sp}`);
+  }
+
+  async getWaAnalyses(tenantId: number): Promise<{ analyses: WaAnalysisInfo[] }> {
+    return this.request<{ analyses: WaAnalysisInfo[] }>(`/api/ops/analytics/wa/analyses?tenant_id=${tenantId}`);
+  }
+
+  async getWaSummary(tenantId: number, analysisId: number): Promise<WaSummary> {
+    return this.request<WaSummary>(`/api/ops/analytics/wa/summary?tenant_id=${tenantId}&analysis_id=${analysisId}`);
+  }
+
+  async getWaAgents(tenantId: number, analysisId: number): Promise<{ agents: WaAgentMetric[] }> {
+    return this.request<{ agents: WaAgentMetric[] }>(`/api/ops/analytics/wa/agents?tenant_id=${tenantId}&analysis_id=${analysisId}`);
+  }
+
+  async getWaTrends(tenantId: number, analysisId: number): Promise<{ trends: WaTrend[] }> {
+    return this.request<{ trends: WaTrend[] }>(`/api/ops/analytics/wa/trends?tenant_id=${tenantId}&analysis_id=${analysisId}`);
   }
 
   private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Analytics Metrics API Contract",
+  "description": "PKT-3: GR-2.5 Automation Dashboard + WA-4 BI Dashboard endpoints",
+  "version": "1.0",
+  "endpoints": {
+    "GET /api/ops/analytics/tenants": {
+      "description": "List tenants with metrics availability",
+      "auth": "Basic (OpsAuth)",
+      "response": {
+        "tenants": [
+          {
+            "tenant_id": 1,
+            "tenant_name": "example",
+            "has_automation_data": true,
+            "has_wa_data": false,
+            "latest_metric_date": "2026-02-16"
+          }
+        ]
+      }
+    },
+    "GET /api/ops/analytics/automation/summary": {
+      "description": "Automation summary for tenant in date range",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)",
+        "from": "date (optional, default 7 days ago)",
+        "to": "date (optional, default today)"
+      },
+      "response": {
+        "tenant_id": 1,
+        "from": "2026-02-09",
+        "to": "2026-02-16",
+        "total_replies": 1200,
+        "deflected_count": 900,
+        "handoff_count": 300,
+        "deflection_rate": 75.0,
+        "handoff_rate": 25.0,
+        "avg_processing_time_ms": 120.5,
+        "avg_confidence": 0.85,
+        "reply_type_breakdown": {
+          "faq": 400,
+          "intent": 250,
+          "menu": 100,
+          "off_hours": 50,
+          "welcome": 100,
+          "handoff": 300
+        },
+        "session_status_breakdown": {
+          "active": 5,
+          "completed": 800,
+          "handed_off": 300,
+          "expired": 50
+        }
+      }
+    },
+    "GET /api/ops/analytics/automation/trends": {
+      "description": "Daily automation trends for charting",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)",
+        "from": "date (optional, default 7 days ago)",
+        "to": "date (optional, default today)"
+      },
+      "response": {
+        "tenant_id": 1,
+        "trends": [
+          {
+            "date": "2026-02-09",
+            "total_replies": 150,
+            "deflected_count": 120,
+            "handoff_count": 30,
+            "deflection_rate": 80.0,
+            "avg_processing_time_ms": 110.0
+          }
+        ]
+      }
+    },
+    "GET /api/ops/analytics/automation/intents": {
+      "description": "Intent performance breakdown",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)",
+        "from": "date (optional, default 7 days ago)",
+        "to": "date (optional, default today)"
+      },
+      "response": {
+        "tenant_id": 1,
+        "intents": [
+          {
+            "intent": "price_inquiry",
+            "total_count": 200,
+            "handoff_count": 50,
+            "handoff_rate": 25.0,
+            "avg_confidence": 0.82,
+            "avg_processing_time_ms": 150.0
+          }
+        ]
+      }
+    },
+    "GET /api/ops/analytics/wa/analyses": {
+      "description": "List completed WA analyses for tenant",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)"
+      },
+      "response": {
+        "analyses": [
+          {
+            "analysis_id": 1,
+            "source_file_name": "ebrumoda_2024.csv",
+            "status": "completed",
+            "total_messages": 2131477,
+            "total_conversations": 164741,
+            "completed_at": "2026-02-15T12:00:00Z"
+          }
+        ]
+      }
+    },
+    "GET /api/ops/analytics/wa/summary": {
+      "description": "WA analysis summary",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)",
+        "analysis_id": "int (required)"
+      },
+      "response": {
+        "analysis_id": 1,
+        "total_messages": 2131477,
+        "total_conversations": 164741,
+        "outcome_breakdown": {
+          "sale": 28700,
+          "offered": 69700,
+          "no_sale": 40000,
+          "abandoned": 15000,
+          "no_response": 8000,
+          "return": 2000,
+          "complaint": 1300
+        },
+        "avg_first_response_minutes": 3.2,
+        "avg_duration_minutes": 45.0
+      }
+    },
+    "GET /api/ops/analytics/wa/agents": {
+      "description": "WA agent performance comparison",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)",
+        "analysis_id": "int (required)"
+      },
+      "response": {
+        "agents": [
+          {
+            "agent_name": "Ayse",
+            "total_conversations": 12000,
+            "sale_count": 2100,
+            "offered_count": 5200,
+            "no_sale_count": 3000,
+            "conversion_rate": 20.4,
+            "avg_first_response_minutes": 2.5
+          }
+        ]
+      }
+    },
+    "GET /api/ops/analytics/wa/trends": {
+      "description": "WA daily conversation trends",
+      "auth": "Basic (OpsAuth)",
+      "query_params": {
+        "tenant_id": "int (required)",
+        "analysis_id": "int (required)"
+      },
+      "response": {
+        "trends": [
+          {
+            "date": "2024-01-15",
+            "message_count": 5000,
+            "conversation_count": 400,
+            "sale_count": 70,
+            "offered_count": 170
+          }
+        ]
+      }
+    }
+  },
+  "error_codes": {
+    "INV-MT-001": "Metrik toplama hatası (aggregation service failure)",
+    "INV-MT-002": "Analitik sorgu hatası (query failure)",
+    "INV-MT-003": "Geçersiz tarih aralığı (from > to veya negatif)"
+  }
+}

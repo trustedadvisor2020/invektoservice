@@ -138,6 +138,11 @@ public static class ErrorCodes
     public const string WAStorageError = "INV-WA-014";
     public const string WADatabaseError = "INV-WA-015";
 
+    // Metrics/Analytics errors (INV-MT-xxx) -- PKT-3
+    public const string MetricsAggregationFailed = "INV-MT-001";
+    public const string MetricsQueryFailed = "INV-MT-002";
+    public const string MetricsInvalidDateRange = "INV-MT-003";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Server, FileText, LogOut, LayoutDashboard, BookOpen } from 'lucide-react';
+import { Server, FileText, LogOut, LayoutDashboard, BookOpen, BarChart3 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface LayoutProps {
@@ -15,6 +15,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/logs', label: 'Logs', icon: FileText },
     { path: '/knowledge', label: 'Knowledge', icon: BookOpen },
+    { path: '/analytics', label: 'Analytics', icon: BarChart3 },
   ];
 
   return (
