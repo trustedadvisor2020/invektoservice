@@ -9,6 +9,9 @@
 > **v4.2 Optimizasyon (2026-02-15):** 3 GR Phase 3'e taşındı (tedavi takip → GR-3.20,
 > yorum/referans → GR-3.21, attribution → GR-3.14). Medikal turizm bölündü (TR/EN → Phase 3
 > GR-3.22, AR → burada GR-5.6). Phase 5 artık 6 GR (9'dan düştü).
+>
+> **v6 (2026-02-16):** 2 yeni GR eklendi: GR-5.7 Abonelik/Üyelik (S11),
+> GR-5.8 Churn Prevention/Win-back (S12). Toplam: 8 GR.
 
 ---
 
@@ -25,6 +28,8 @@
 | ~~GR-5.7 Tedavi Sonrası Takip (S8)~~ | ➡️ Phase 3 | — | Phase 3 GR-3.20'ye taşındı (v4.2) |
 | ~~GR-5.8 Google Yorum + Referans Motoru (S10)~~ | ➡️ Phase 3 | — | Phase 3 GR-3.21'e taşındı (v4.2) |
 | GR-5.6 Arapça Dil + Medikal Turizm AR Genişleme | ⬜ Başlamadı | — | ← eski GR-5.9 (v4.2, TR/EN kısmı Phase 3 GR-3.22'ye taşındı) |
+| GR-5.7 Abonelik / Üyelik Modeli | ⬜ Başlamadı | — | v6: S11, 6 sektör genelinde abonelik/üyelik |
+| GR-5.8 Churn Prevention / Win-back | ⬜ Başlamadı | — | v6: S12, kayıp riski→otomatik kurtarma |
 
 ---
 
@@ -174,6 +179,60 @@
 - [ ] **5.6.2** Arapça medikal turizm mesaj şablonları
 - [ ] **5.6.3** RTL (sağdan sola) display desteği (UI)
 - [ ] **5.6.4** AR follow-up otomasyonu (Arapça konuşan hastalar için)
+
+---
+
+### GR-5.7: Abonelik / Üyelik Modeli
+
+> **Servis:** `Invekto.Outbound` + Backend + Dashboard
+> **Kaynak:** S11 (Revenue Senaryosu — Abonelik/Üyelik)
+> **Sektör:** Tümü (6 sektör genelinde)
+> **Etki:** YÜKSEK — ~75K TL/ay ek gelir potansiyeli
+>
+> **v6 (2026-02-16):** Tekrarlayan müşteri tespiti → abonelik/üyelik teklifi.
+
+- [ ] **5.7.1** Frekans analizi: müşterinin tekrarlayan satın alma/randevu pattern'i tespiti
+- [ ] **5.7.2** Abonelik teklif motoru: sektöre özel paketler
+  - E-ticaret: aylık kutu, otomatik yeniden sipariş
+  - Diş/Estetik: yıllık bakım paketi
+  - Güzellik: aylık bakım üyeliği
+  - Otel: sadakat programı
+  - Eğitim: dönem paketi, yıllık kayıt
+- [ ] **5.7.3** Outbound trigger: frekans eşiği aşıldığında üyelik teklifi mesajı
+- [ ] **5.7.4** Yenileme hatırlatma: üyelik bitiminden önce otomatik mesaj
+- [ ] **5.7.5** Dashboard: aktif üyeler, yenileme oranı, LTV artışı
+- [ ] **5.7.6** DB:
+  ```sql
+  subscriptions (id, tenant_id, customer_phone, plan_type, start_date, end_date, renewal_status, amount, created_at, updated_at)
+  subscription_plans (id, tenant_id, name, sector, frequency, price, features_json, is_active, created_at)
+  ```
+
+---
+
+### GR-5.8: Churn Prevention / Win-back
+
+> **Servis:** `Invekto.AgentAI` + `Invekto.Outbound` + Dashboard
+> **Kaynak:** S12 (Revenue Senaryosu — Churn Prevention)
+> **Sektör:** Tümü (6 sektör genelinde)
+> **Etki:** YÜKSEK — ~120K TL/ay kurtarma potansiyeli
+>
+> **v6 (2026-02-16):** Kayıp riski tespiti → proaktif kurtarma kampanyası.
+
+- [ ] **5.8.1** Churn sinyal tespiti (GR-3.32 temel sinyal üzerine gelişmiş model):
+  - Sektöre özel sinyaller (e-ticaret: sipariş frekansı düşüşü, sağlık: randevu iptali artışı)
+  - Risk skoru: LOW / MEDIUM / HIGH / CRITICAL
+- [ ] **5.8.2** Win-back kampanya motoru:
+  - T+30 gün: "Sizi özledik" + kişisel teklif
+  - T+60 gün: daha agresif teklif (daha yüksek indirim)
+  - T+90 gün: son deneme + anket
+- [ ] **5.8.3** Kurtarma stratejileri (tenant yapılandırılabilir):
+  - İndirim kodu, ücretsiz deneme, VIP upgrade, kişisel ilgi
+- [ ] **5.8.4** Dashboard: churn risk pipeline, kurtarma başarı oranı, korunan gelir
+- [ ] **5.8.5** DB:
+  ```sql
+  churn_risks (id, tenant_id, customer_phone, risk_score, risk_level, signals_json, sector, winback_status, created_at, updated_at)
+  winback_campaigns (id, tenant_id, churn_risk_id, campaign_stage, offer_type, offer_value, sent_at, response, recovered, created_at)
+  ```
 
 ---
 

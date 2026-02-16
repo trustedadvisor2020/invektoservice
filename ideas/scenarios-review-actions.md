@@ -3,22 +3,26 @@
 > **Tarih:** 2026-02-16
 > **Kaynak:** 5 bagimsiz AI review raporu konsolide edildi + 1 dogrulama review'i
 > **Hedef Dosya:** `ideas/roadmap-scenarios.md` (4600+ satir, 100 senaryo)
-> **Durum:** ONAY BEKLIYOR — henuz degisiklik yapilmadi
-> **Revizyon:** v2 — dogrulama review'i sonrasi 5 hata duzeltildi (asagida ERRATA bolumu)
+> **Durum:** A+B+C+D TAMAMLANDI (2026-02-16) — Tüm aksiyonlar ve stratejik kararlar uygulandı
+> **Revizyon:** v5 — D1-D4 stratejik kararlar Q tarafından verildi. 2 yeni sektör (Güzellik Salonu + Eğitim, 50 senaryo) + S11/S12 revenue senaryoları + internal-sales-crm.md placeholder ekleniyor
 
 ---
 
 ## Mevcut Envanter
 
-| Bolum | Senaryo Sayisi | Konum (satir) |
-|-------|---------------|----------------|
-| Revenue Senaryolari (S1-S10) | 10 | 151-675 |
-| E-ticaret Saha (01-25) | 25 | 817-1995 |
-| Dis Klinigi Saha (26-50) | 25 | 1997-3126 |
-| Estetik Klinik Saha (51-75) | 25 | 3128-4396 |
-| Otel Senaryolari (O1-O10) | 10 | 4398-4551 |
-| Mobil Senaryolari (M1-M5) | 5 | 4553-4613 |
-| **TOPLAM** | **100** | |
+> **v6 (2026-02-16):** S11/S12 eklendi, 2 yeni sektör (GU/EG) eklendi. Toplam 100→152.
+
+| Bolum | Senaryo Sayisi | Notlar |
+|-------|---------------|--------|
+| Revenue Senaryolari (S1-S12) | 12 | v6: +S11 Abonelik, +S12 Churn |
+| E-ticaret Saha (01-25) | 25 | 11 tekrar silindi (A1), referans bırakıldı |
+| Dis Klinigi Saha (26-50) | 25 | |
+| Estetik Klinik Saha (51-75) | 25 | |
+| Otel Senaryolari (O1-O10) | 10 | |
+| Mobil Senaryolari (M1-M5) | 5 | |
+| Guzellik Salonu (GU-01~25) | 25 | v6: D1 karari ile eklendi |
+| Egitim (EG-01~25) | 25 | v6: D1 karari ile eklendi |
+| **TOPLAM** | **152** | **Silme sonrasi efektif: ~141** |
 
 ---
 
@@ -452,46 +456,48 @@ S7 No-Show ← 29 (silindi), 40, 55 (silindi)
 
 ---
 
-## D. STRATEJiK KARARLAR (Q Onayi Gerekli)
+## D. STRATEJiK KARARLAR ✅ KARARA BAGLANDI (2026-02-16)
 
-Bu maddeler net cevap gerektiriyor. Implementasyon oncesi Q ile konusulacak.
+> **Durum:** Tum D kararlari Q tarafindan 2026-02-16 tarihinde verildi.
 
-### D1. Yeni sektor eklenmeli mi?
-
-Raporlarin bir kismi finans, egitim, guzellik salonu, perakende oneriyor.
+### D1. Yeni sektor eklenmeli mi? → ✅ KARAR: B — 2 sektor ekle (Guzellik Salonu + Egitim)
 
 | Secenek | Avantaj | Dezavantaj |
 |---------|---------|------------|
-| **A: Ekleme, 4 sektore odaklan** | Focus, hizli delivery, mevcut musterilere deger | Pazar sinirli kalabilir |
-| **B: 1-2 sektor ekle (guzellik salonu, egitim)** | Pazar genisler | Kaynak dagitir, senaryolar daha da buyur |
+| A: Ekleme, 4 sektore odaklan | Focus, hizli delivery, mevcut musterilere deger | Pazar sinirli kalabilir |
+| **→ B: 2 sektor ekle (Guzellik Salonu + Egitim)** | **Pazar genisler, 6 sektore cikar** | **Kaynak dagitir, 50 yeni senaryo** |
 
-> **Not:** Mevcut 4 sektor (e-ticaret, dis, estetik, otel) zaten 50+ aktif musteri tabanini kapsiyor. Yeni sektor eklemek Phase 3+ isi olabilir.
+**Q Karari:** Guzellik Salonu (kuafor, berber, cilt bakim, nail art) + Egitim (kurs, dershane, online egitim) ekleniyor. Her biri 25 senaryo ile. Phase 3+ isi ama senaryo tanimlari simdi yapiliyor.
 
-### D2. B serisini kaca indirelim?
+### D2. B serisini kaca indirelim? → ✅ KARAR: A — Tekrarlar silindi, yeter
 
 | Secenek | Sonuc |
 |---------|-------|
-| **A: Sadece tekrarlari sil (~63)** | Minimal mudahale, bilgi kaybi yok |
-| **B: Benzerleri de birlestir (~45-50)** | Daha temiz ama bilgi kaybi riski |
-| **C: 8-10 core use case + internal playbook** | Dis sunum temiz, internal zengin kalir |
+| **→ A: Sadece tekrarlari sil (~63)** | **Minimal mudahale, bilgi kaybi yok** |
+| B: Benzerleri de birlestir (~45-50) | Daha temiz ama bilgi kaybi riski |
+| C: 8-10 core use case + internal playbook | Dis sunum temiz, internal zengin kalir |
 
-### D3. Revenue senaryolari kac tane olmali?
+**Q Karari:** 11 tekrar zaten silindi (A1). Geri kalanlar grup etiketleriyle (A2) duzenlendi. Ek birlestirme yapilmiyor. Internal playbook olarak tam liste korunuyor.
+
+### D3. Revenue senaryolari kac tane olmali? → ✅ KARAR: C — 12'ye cikar (+Abonelik, +Churn)
 
 | Secenek | Icerik |
 |---------|--------|
-| **A: 10 koru (mevcut)** | Genis yelpaze, her sektore bir seyler |
-| **B: 5'e indir (Rapor 3 onerisi)** | S1, S3, S6, S7, S9 tut. Digerleri internal. |
-| **C: 12'ye cikar (+S11 Abonelik, +S12 Churn)** | Yeni revenue kanallari ekle |
+| A: 10 koru (mevcut) | Genis yelpaze, her sektore bir seyler |
+| B: 5'e indir (Rapor 3 onerisi) | S1, S3, S6, S7, S9 tut. Digerleri internal. |
+| **→ C: 12'ye cikar (+S11 Abonelik, +S12 Churn)** | **Yeni revenue kanallari ekle** |
 
-### D4. Internal Sales CRM senaryosu eklenmeli mi?
+**Q Karari:** S11 (Abonelik/Uyelik Modeli) ve S12 (Churn Prevention/Win-back) ekleniyor. Musteri senaryosu olarak: e-ticaret abonelik kutusu, klinik uyelik, otel sadakat + churn sinyali tespiti.
 
-Rapor 3 ilginc bir tespit yapti: "Invekto'nun kendi satis sureci icin senaryo yok."
+### D4. Internal Sales CRM senaryosu eklenmeli mi? → ✅ KARAR: A — Ayri dokuman
 
 | Secenek | Anlam |
 |---------|-------|
-| **A: Ayri dokuman** | `ideas/internal-sales-crm.md` olarak ayir |
-| **B: roadmap-scenarios'a ekle** | Yeni bolum: "E) Invekto Internal Sales" |
-| **C: Simdilik atlat** | Phase 3+ isi |
+| **→ A: Ayri dokuman** | **`ideas/internal-sales-crm.md` olarak ayir** |
+| B: roadmap-scenarios'a ekle | Yeni bolum: "E) Invekto Internal Sales" |
+| C: Simdilik atlat | Phase 3+ isi |
+
+**Q Karari:** roadmap-scenarios.md = musteri senaryolari icin. Invekto'nun kendi satis sureci ayri dokumanda (`ideas/internal-sales-crm.md`). Placeholder olusturulacak.
 
 ---
 
@@ -503,14 +509,14 @@ Rapor 3 ilginc bir tespit yapti: "Invekto'nun kendi satis sureci icin senaryo yo
 
 | Sira | Is | Tahmini Etki | Zorluk | Bagimlilik |
 |------|---|---|---|---|
-| **0** | **ENGELLEYICI KARARLAR** (D2, D3) | Yonlendirme | Q karari gerekli | Hicbir sey — ilk adim |
+| **0** | ~~ENGELLEYICI KARARLAR~~ ✅ D2=A (tekrarlar silindi), D3=C (12'ye cikar) | Tamamlandi | — | — |
 | **1** | Kaynak veri duzeltmeleri (50, 73 baslik/icerik uyumsuzlugu) | Veri butunlugu | Kolay — kaynak dosyada baslik guncelle | Adim 0 |
 | **2** | Tekrarlari temizle (A bolumu) | Dokuman kalitesi | Kolay — sil + referans ekle | Adim 0 (D2: B serisi boyutu) + Adim 1 |
 | **3** | Cross-sektor kritikleri ekle (B1.1-B1.4) | Sistem guvenilirligi | Orta — yeni senaryo yaz | — |
 | **4** | Otel boslugunu kapat (B4) | Sektor kapsami | Kolay — yeni senaryo yaz | — |
 | **5** | Yapisal duzeltmeler (C1-C5) | Dokuman kullanilabilirligi | Orta — tablo ve mapping | Adim 0 (D3: phase netlik) + Adim 2 |
 | **6** | E-ticaret + saglik eksikleri (B2, B3) | Senaryo derinligi | Kolay — yeni senaryo yaz | — |
-| **7** | ERTELENMIS KARARLAR (D1 sektor, D4 internal CRM) | Yonlendirme | Q karari gerekli | Phase 3+ gundemine birak |
+| **7** | ~~ERTELENMIS KARARLAR~~ ✅ D1-D4 KARARA BAGLANDI | Tamamlandi | — | — |
 | **8** | Mobil eksikleri (B5) | Phase 7 isi | Dusuk oncelik | — |
 | **9** | Dis sunum formati (C6) | Satis etkisi | Q karari gerekli | Adim 2 tamamlandiktan sonra |
 

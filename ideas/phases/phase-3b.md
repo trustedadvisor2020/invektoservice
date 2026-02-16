@@ -18,6 +18,12 @@
 > - **PKT-6B Business Logic** (7 GR): GR-3.7, 3.8, 3.11, 3.13, 3.3, 3.16, 3.17
 > - **PKT-6C Health Expansion** (5 GR): GR-3.20, 3.21, 3.22, 3.24, 3.25
 > Bağımlılık: PKT-5 → 6A (bağımsız) | PKT-5 → 6B (Integrations) | 6B → 6C
+>
+> **v6 (2026-02-16):** 15 yeni GR eklendi (CS/EB/SB boşlukları):
+> - **Cross-Sektör:** GR-3.30 Handoff, 3.31 Guardrail, 3.32 Churn, 3.33 Timeline, 3.34 Attribution
+> - **E-ticaret Boşluk:** GR-3.35~3.40 (Stok, Influencer, Cross-Platform, Şikayetvar, Garanti, Fraud)
+> - **Sağlık Boşluk:** GR-3.41~3.44 (Tedavi Onay, Çoklu Şube, Pre-op, Reçete)
+> PKT-6A'ya +4, PKT-6B'ye +7, PKT-6C'ye +4. Toplam: 34 GR.
 
 ---
 
@@ -50,6 +56,24 @@
 | GR-3.25 Multilingual Medical Tourism | **PKT-6C** | ⬜ Başlamadı | — | ← GR-3.22 (aynı paket) |
 | **EVRENSEL AI** | | | | |
 | GR-3.23 Voice Message AI | **PKT-6A** | ⬜ Başlamadı | — | Whisper transkript + mevcut AgentAI pipeline |
+| **CROSS-SEKTÖR (v6)** | | | | |
+| GR-3.30 AI→İnsan Handoff | **PKT-6A** | ⬜ Başlamadı | — | v6: CS-02, eskalasyon kuralları |
+| GR-3.31 AI Hallucination Guardrail | **PKT-6A** | ⬜ Başlamadı | — | v6: CS-03, konu bazlı guardrail |
+| GR-3.32 Churn Sinyali Tespiti | **PKT-6B** | ⬜ Başlamadı | — | v6: CS-05, sentiment bazlı kayıp riski |
+| GR-3.33 Unified Customer Timeline | **PKT-6B** | ⬜ Başlamadı | — | v6: CS-06, çok kanallı müşteri geçmişi |
+| GR-3.34 Revenue Attribution | **PKT-6B** | ⬜ Başlamadı | — | v6: CS-07, kanal→satış takibi |
+| **E-TİCARET BOŞLUK (v6)** | | | | |
+| GR-3.35 Stok Bildirim (Back-in-Stock) | **PKT-6B** | ⬜ Başlamadı | — | v6: EB-01, stok girişi→WA mesaj |
+| GR-3.36 Influencer/Affiliate Attribution | **PKT-6B** | ⬜ Başlamadı | — | v6: EB-02, kampanya bazlı etiketleme |
+| GR-3.37 Cross-Platform Sipariş Eşleştirme | **PKT-6B** | ⬜ Başlamadı | — | v6: EB-04, telefon→sipariş birleştirme |
+| GR-3.38 Şikayetvar Eskalasyon | **PKT-6B** | ⬜ Başlamadı | — | v6: EB-05, proaktif şikayet çözümü |
+| GR-3.39 Garanti ve Teknik Servis | **PKT-6A** | ⬜ Başlamadı | — | v6: EB-06, Knowledge bazlı garanti akışı |
+| GR-3.40 Fraud / Dolandırıcılık Şüphesi | **PKT-6A** | ⬜ Başlamadı | — | v6: EB-07, acil güvenlik eskalasyonu |
+| **SAĞLIK BOŞLUK (v6)** | | | | |
+| GR-3.41 Tedavi Planı Onay Akışı | **PKT-6C** | ⬜ Başlamadı | — | v6: SB-01, plan→onay follow-up zinciri |
+| GR-3.42 Çoklu Klinik/Şube Yönetimi | **PKT-6C** | ⬜ Başlamadı | — | v6: SB-03, konum bazlı routing |
+| GR-3.43 Tedavi Öncesi Hazırlık Talimatları | **PKT-6C** | ⬜ Başlamadı | — | v6: SB-04, pre-op mesaj zinciri |
+| GR-3.44 Reçete/İlaç Sorguları | **PKT-6C** | ⬜ Başlamadı | — | v6: SB-05, Knowledge + guardrail |
 
 ---
 
@@ -467,6 +491,269 @@ Sektör-özel yetenekler ekleniyor. Phase 3A'daki platform altyapısı (Integrat
 
 ---
 
+## Gereksinimler — Cross-Sektör Boşluk (v6)
+
+> **v6 (2026-02-16):** 5 AI review raporunun tespit ettiği cross-sektör eksiklikler.
+> Bu GR'lar tüm sektörleri etkiler. Detay: `ideas/scenarios-review-actions.md` → B1 bölümü.
+
+### GR-3.30: AI→İnsan Handoff (Eskalasyon Kuralları)
+
+> **Servis:** `AgentAI` + Backend
+> **Kaynak:** CS-02 (B1.2)
+> **Paket:** PKT-6A
+> **Etki:** BLOCKER — bu olmadan AI güvenilir değildir
+
+- [ ] **3.30.1** Handoff tetikleyicileri:
+  - AI confidence < threshold (örnek: %60)
+  - Belirli intent'ler (tıbbi tavsiye, hukuki, fiyat kesinleştirme)
+  - Müşteri açıkça "insanla konuşmak istiyorum" dediğinde
+  - Sentiment skoru kritik eşiği aştığında
+  - Aynı konuda 3+ mesaj döngüsü (AI çözemiyor)
+- [ ] **3.30.2** Context aktarımı: AI'nin topladığı bilgi (intent, sentiment, profil, özet) insana transfer
+- [ ] **3.30.3** Handoff UX: müşteriye "sizi uzman arkadaşımıza yönlendiriyorum" mesajı
+- [ ] **3.30.4** Geri dönüş kaydı: insan çözdükten sonra AI özete kayıt (knowledge loop)
+
+---
+
+### GR-3.31: AI Hallucination Guardrail
+
+> **Servis:** `AgentAI` genişleme
+> **Kaynak:** CS-03 (B1.3)
+> **Paket:** PKT-6A
+> **Etki:** YÜKSEK — yasal risk azaltma
+
+- [ ] **3.31.1** "Bilmiyorum" yeteneği: emin olmadığı konuda → "Bu konuda kesin bilgi veremiyorum, uzmanımıza yönlendiriyorum"
+- [ ] **3.31.2** Konu bazlı guardrail listesi (tenant yapılandırılabilir):
+  - Tıbbi tavsiye → ASLA kesin diagnosis
+  - Fiyat → "aralık" ver, "kesin fiyat görüşmede belirlenir"
+  - İlaç/dozaj → ASLA öneri, doktora yönlendir
+  - Hukuki (iade hakkı, garanti) → Knowledge'dan kaynak göster
+- [ ] **3.31.3** Confidence-based routing: düşük confidence → human handoff (GR-3.30 ile entegre)
+- [ ] **3.31.4** Audit log: AI'nin verdiği her cevabın kaydı + confidence skoru
+
+---
+
+### GR-3.32: Churn Sinyali Tespiti
+
+> **Servis:** `ChatAnalysis` + `AgentAI`
+> **Kaynak:** CS-05 (B1.5)
+> **Paket:** PKT-6B
+> **Etki:** ORTA-YÜKSEK — retention artışı
+
+- [ ] **3.32.1** Churn sinyal pattern'leri:
+  - Pasif agresif: "neyse", "boş ver", "bir daha uğraşmam"
+  - Karşılaştırma: "rakip X daha ucuz", "başka yere bakıyorum"
+  - Soğuma: 3+ gün cevap yok (aktif konuşmada)
+  - Frekans düşüşü: düzenli müşteri → uzun süre sipariş/randevu yok
+- [ ] **3.32.2** Risk skoru: LOW / MEDIUM / HIGH / CRITICAL
+- [ ] **3.32.3** Otomatik aksiyon:
+  - MEDIUM → agent'e "dikkat: kayıp riski" badge
+  - HIGH → supervisor'a alert + önerilen kurtarma
+  - CRITICAL → Outbound kurtarma mesajı (özel teklif)
+- [ ] **3.32.4** Dashboard: churn risk pipeline
+- [ ] **3.32.5** DB:
+  ```sql
+  churn_signals (id, tenant_id, customer_phone, signal_type, signal_text, risk_score, risk_level, action_taken, created_at)
+  ```
+
+---
+
+### GR-3.33: Unified Customer Timeline
+
+> **Servis:** Backend + Dashboard
+> **Kaynak:** CS-06 (B1.6)
+> **Paket:** PKT-6B
+> **Etki:** YÜKSEK — tüm AI ve routing kalitesini artırır
+
+- [ ] **3.33.1** Müşteri profili birleştirme: telefon + email + IG handle + WA numara eşleştirme
+- [ ] **3.33.2** Timeline görünümü: kronolojik, kanal ikonu ile (WA/IG/telefon/email/sipariş/randevu)
+- [ ] **3.33.3** Her entry: kanal, tarih, konu/intent, çözüm durumu, agent
+- [ ] **3.33.4** AI context window: son 10 etkileşim özeti → cevap önerisi için
+- [ ] **3.33.5** CRM entegrasyonu: sipariş geçmişi, randevu geçmişi, yorum geçmişi
+- [ ] **3.33.6** DB:
+  ```sql
+  customer_profiles (id, tenant_id, phone, email, ig_handle, name, merged_from_ids, created_at, updated_at)
+  customer_timeline (id, tenant_id, profile_id, channel, event_type, event_data_json, intent, agent_id, created_at)
+  ```
+
+---
+
+### GR-3.34: Revenue Attribution
+
+> **Servis:** Backend + Dashboard
+> **Kaynak:** CS-07 (B1.7)
+> **Paket:** PKT-6B
+> **İlişki:** GR-3.14 (Ads Attribution) üzerine genişleme
+> **Etki:** YÜKSEK — enterprise satış için şart
+
+- [ ] **3.34.1** Conversion source tracking: ilk temas kanalı (WA organic, IG ad, Google, referral)
+- [ ] **3.34.2** AI vs Human flag: cevabı AI mi önerdi, insan mı yazdı, ikisi birlikte mi
+- [ ] **3.34.3** Deal value: randevu → tedavi tutarı, sipariş → sepet tutarı
+- [ ] **3.34.4** Funnel: lead → first response → qualified → appointment/purchase → closed
+- [ ] **3.34.5** Dashboard: kanal bazlı ROI, agent bazlı kapanış oranı, AI assist oranı
+
+---
+
+## Gereksinimler — E-ticaret Boşluk (v6)
+
+> **v6 (2026-02-16):** E-ticaret sektöründe tespit edilen eksik senaryolar.
+> Detay: `ideas/scenarios-review-actions.md` → B2 bölümü.
+
+### GR-3.35: Stok Bildirim (Back-in-Stock)
+
+> **Servis:** `Invekto.Outbound` + `Invekto.Integrations`
+> **Kaynak:** EB-01 (B2.1)
+> **Paket:** PKT-6B
+> **Etki:** ORTA — müşteri memnuniyeti + dönüşüm
+
+- [ ] **3.35.1** "Gelince haber ver" intent algılama
+- [ ] **3.35.2** Stok izleme: Integrations'tan stok girişi tespiti
+- [ ] **3.35.3** Otomatik WA bildirim: stok girdi → opt-in müşteriye mesaj
+- [ ] **3.35.4** Template kategorisi: utility (opt-in gerekli → GR-3.26)
+
+---
+
+### GR-3.36: Influencer/Affiliate Attribution
+
+> **Servis:** Backend + Dashboard
+> **Kaynak:** EB-02 (B2.2)
+> **Paket:** PKT-6B
+> **İlişki:** GR-3.14 (Ads Attribution) genişleme
+> **Etki:** ORTA — pazarlama ROI
+
+- [ ] **3.36.1** Influencer kodu tanımlama (tenant bazlı)
+- [ ] **3.36.2** UTM + kupon kodu ile kampanya etiketleme
+- [ ] **3.36.3** Attribution dashboard: hangi influencer ne kadar satış getirdi
+- [ ] **3.36.4** "Kod neydi?" intent → son kullanılan kodu göster
+
+---
+
+### GR-3.37: Cross-Platform Sipariş Eşleştirme
+
+> **Servis:** `Invekto.Integrations` + Backend
+> **Kaynak:** EB-04 (B2.4)
+> **Paket:** PKT-6B
+> **Bağımlılık:** GR-3.4 (Integrations — Phase 3A)
+> **Etki:** ORTA — operasyonel verimlilik
+
+- [ ] **3.37.1** Telefon numarası ile cross-platform eşleştirme (Trendyol + HB)
+- [ ] **3.37.2** Müşteri hangi siparişi soruyorsa otomatik tespit
+- [ ] **3.37.3** Agent Assist'te birden fazla platform siparişi gösterme
+
+---
+
+### GR-3.38: Şikayetvar Eskalasyon
+
+> **Servis:** `Invekto.Outbound` + Backend
+> **Kaynak:** EB-05 (B2.5)
+> **Paket:** PKT-6B
+> **Etki:** ORTA — itibar koruma
+
+- [ ] **3.38.1** Şikayetvar entegrasyonu (web scraping veya API — araştır)
+- [ ] **3.38.2** Yeni şikayet tespiti → tenant'a alert
+- [ ] **3.38.3** Proaktif WA mesajı: "Şikayetinizi gördük, hemen çözmek istiyoruz"
+- [ ] **3.38.4** Çözüm tracking: şikayet kapatıldı mı, müşteri memnun mu
+
+---
+
+### GR-3.39: Garanti ve Teknik Servis
+
+> **Servis:** `Invekto.Knowledge` + `Invekto.Automation`
+> **Kaynak:** EB-06 (B2.6)
+> **Paket:** PKT-6A
+> **Etki:** DÜŞÜK-ORTA
+
+- [ ] **3.39.1** Garanti sorusu intent: "Bozuldu", "Garanti kapsamında mı?"
+- [ ] **3.39.2** Garanti süresi kontrolü (sipariş tarihi + garanti süresi → Knowledge)
+- [ ] **3.39.3** Teknik servis yönlendirme: adres, telefon, süreç bilgisi (Knowledge)
+- [ ] **3.39.4** Automation flow: garanti intent → bilgi toplama → yönlendirme
+
+---
+
+### GR-3.40: Fraud / Dolandırıcılık Şüphesi
+
+> **Servis:** Backend + `AgentAI`
+> **Kaynak:** EB-07 (B2.7)
+> **Paket:** PKT-6A
+> **Etki:** YÜKSEK — güvenlik
+
+- [ ] **3.40.1** Fraud intent algılama: "Bu siparişi ben vermedim", "Hesabım çalındı"
+- [ ] **3.40.2** PRIORITY routing: normal kuyruk bypass → acil agent/supervisor
+- [ ] **3.40.3** Otomatik hesap dondurma önerisi (agent onayı ile)
+- [ ] **3.40.4** Fraud log: tenant + müşteri + olay detayı kaydı
+
+---
+
+## Gereksinimler — Sağlık Boşluk (v6)
+
+> **v6 (2026-02-16):** Sağlık sektöründe tespit edilen eksik senaryolar.
+> Detay: `ideas/scenarios-review-actions.md` → B3 bölümü.
+
+### GR-3.41: Tedavi Planı Onay Akışı
+
+> **Servis:** `Invekto.Outbound` + `Invekto.AgentAI`
+> **Kaynak:** SB-01 (B3.1)
+> **Paket:** PKT-6C
+> **Sektör:** Sağlık (Diş + Estetik)
+> **Etki:** YÜKSEK — kaybedilen 15-50K TL/tedavi
+
+- [ ] **3.41.1** Tedavi planı gönderildi event → follow-up zinciri başlat
+- [ ] **3.41.2** T+1 gün: "Tedavi planınızı incelediniz mi?"
+- [ ] **3.41.3** T+3 gün: "Sorularınız varsa yardımcı olabiliriz"
+- [ ] **3.41.4** T+7 gün: son hatırlatma + özel teklif opsiyonu
+- [ ] **3.41.5** Onay gelmezse → supervisor'a alert (kayıp riski)
+
+---
+
+### GR-3.42: Çoklu Klinik/Şube Yönetimi
+
+> **Servis:** Backend + Dashboard
+> **Kaynak:** SB-03 (B3.3)
+> **Paket:** PKT-6C
+> **Sektör:** Sağlık (zincir klinikler)
+> **Etki:** ORTA — zincir klinikler için şart
+
+- [ ] **3.42.1** Konum bazlı yönlendirme: "Kadıköy şubemizde Dr. Mehmet Pzt-Çar, Beşiktaş'ta Per-Cum"
+- [ ] **3.42.2** Şube bazlı slot yönetimi (GR-3.19 genişleme)
+- [ ] **3.42.3** Merkezi dashboard: tüm şubelerin performansı tek ekranda
+- [ ] **3.42.4** Hasta→şube eşleştirme (konum/tercih bazlı)
+
+---
+
+### GR-3.43: Tedavi Öncesi Hazırlık Talimatları
+
+> **Servis:** `Invekto.Outbound` + `Invekto.Knowledge`
+> **Kaynak:** SB-04 (B3.4)
+> **Paket:** PKT-6C
+> **Sektör:** Sağlık (Diş + Estetik)
+> **İlişki:** S8'in tersi — S8 post-op, bu pre-op
+> **Etki:** YÜKSEK — hazırlık eksikse ameliyat iptal → koltuk boş
+
+- [ ] **3.43.1** Tedavi tipine göre hazırlık talimatı template (Knowledge):
+  - Ameliyat: 8 saat açlık, X ilacı kesin, refakatçi
+  - İmplant: antibiyotik başlat, oral hijyen
+  - Estetik: güneşten korunma, kan sulandırıcı kesin
+- [ ] **3.43.2** Outbound trigger: randevu T-3gün, T-1gün, T-sabah mesaj zinciri
+- [ ] **3.43.3** Hazırlık onay: hasta "okudum" dedi mi tracking
+
+---
+
+### GR-3.44: Reçete/İlaç Sorguları
+
+> **Servis:** `Invekto.Knowledge` + `Invekto.AgentAI`
+> **Kaynak:** SB-05 (B3.5)
+> **Paket:** PKT-6C
+> **Sektör:** Sağlık
+> **Etki:** DÜŞÜK-ORTA
+> **DİKKAT:** Dozaj önerisi YAPMA, sadece doktorun verdiği bilgiyi tekrarla (GR-3.31 guardrail)
+
+- [ ] **3.44.1** Reçete sorusu intent: "Reçetemi yazdınız mı?", "İlacı nereden alacağım?"
+- [ ] **3.44.2** Knowledge'dan otomatik cevaplama: eczane bilgisi, genel kullanım talimatı
+- [ ] **3.44.3** Dozaj sorusu → guardrail: "Bu bilgiyi doktorunuzla doğrulayın" uyarısı
+- [ ] **3.44.4** Reçete hatırlatma: T+X gün "İlacınız bitiyor olabilir, kontrol randevusu alalım mı?"
+
+---
+
 ## Çıkış Kriterleri (Phase 4'e Geçiş Şartı)
 
 - [ ] E-ticaret: 15+ aktif ödeyen müşteri
@@ -501,7 +788,7 @@ Sektör-özel yetenekler ekleniyor. Phase 3A'daki platform altyapısı (Integrat
 
 ## Notlar
 
-- v4.3'te Phase 3'ten bölündü (16/22 GR — niche derinleştirme)
+- v4.3'te Phase 3'ten bölündü (16/22 GR — niche derinleştirme), v6'da 34 GR'a çıktı (+15 CS/EB/SB)
 - Phase 2'deki RAG/Knowledge altyapısı sayesinde tüm intent'ler doğru bilgiyle çalışır
 - Phase 3A'daki Integrations, Outbound v2, Dashboard buradaki GR'ların temelini oluşturur
 - Multi-language desteği Phase 2'de kurulmuş, burada niche-özel template'ler eklenir

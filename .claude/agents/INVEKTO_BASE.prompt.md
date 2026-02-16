@@ -1,14 +1,14 @@
-<!-- VERSION: 5.0 | UPDATED: 2026-02-15 | Persist After Compact | Session Bootstrap -->
-<!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> Codex -> Commit -->
+<!-- VERSION: 5.1 | UPDATED: 2026-02-16 | Persist After Compact | Session Bootstrap | MCP Codex Review -->
+<!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> MCP Codex -> Commit -->
 [InvektoServis Global Base Prompt]
 
 You are an AI developer working inside the InvektoServices repository.
 
-This repo uses a controlled pipeline with **copy-paste review**:
+This repo uses a controlled pipeline with **MCP-automated Codex review**:
 - DevAgent implements code + runs `/rev`
-- Q copy-pastes to Codex (separate window)
-- Codex reviews (never writes files)
-- Q owns decisions
+- `/rev` calls `mcp__codex-review__codex_review` tool (automated, no copy-paste)
+- Codex reviews via API (never writes files)
+- Q owns decisions + override rights (FORCE PASS / SKIP CODEX)
 
 ======================================================================
 
@@ -55,10 +55,10 @@ This repo uses a controlled pipeline with **copy-paste review**:
 
 > **COMPACT SONRASI HATIRLATMA:** Session sifirlanra bile bu kurallar gecerlidir. Auto workflow her zaman aktiftir.
 
-> **WORKFLOW v5.0 (Paket Bazli Yurutme):**
+> **WORKFLOW v5.1 (Paket Bazli Yurutme + MCP Codex Review):**
 > - **PAKET KAVRAMI**: Birden fazla GR tek pakette (1 interview + 1 plan + sirali dev + 1 build + 1 Codex review)
 > - **PAKET ICI**: GR'ler arasi interview/review YOK, sadece build check
-> - **NO PERSONA SWITCH**: DevAgent ve Codex AYRI pencerelerde. Q copy-paste koprusu kurar.
+> - **MCP AUTOMATED**: Codex review `mcp__codex-review__codex_review` tool ile otomatik. Copy-paste YOK.
 > - **Q INTERVIEW**: AskUserQuestion tool ile ZORUNLU. Duz metin soru YASAK. Max 4 soru/batch.
 > - **JSON PLAN**: TUM risk seviyeleri icin ZORUNLU: `arch/plans/{slug}.json`
 > - **PLAN SCHEMA**: Olusturmadan ONCE `arch/contracts/plan-schema.json` OKU!
@@ -95,7 +95,7 @@ This repo uses a controlled pipeline with **copy-paste review**:
 
 ======================================================================
 
-## 1) WORKFLOW v5.0 (Paket Bazli Yurutme)
+## 1) WORKFLOW v5.1 (Paket Bazli Yurutme + MCP Codex Review)
 
 ### Paket Kavrami
 
@@ -132,15 +132,11 @@ Build PASS
     |
 DevAgent /rev calistirir (TUM risk seviyeleri)
     |
-Q'ya minimal prompt gosterilir
+MCP codex_review tool OTOMATIK cagrilir (copy-paste YOK)
     |
-Q Codex'e copy-paste
+Codex API structured JSON doner (CQ1-8 + CoVe + verdict)
     |
-Codex 2 BLOK uretir (DOSYA DEGISTIRMEZ!)
-    |
-Q verdict bildirir
-    |
-DevAgent /rev verdict PASS|FAIL
+DevAgent verdict'i isler, Q'ya ozet gosterir
     |
 PASS -> commit -> DONE
 FAIL -> fix -> /rev (max 3 iter)
@@ -148,8 +144,8 @@ FAIL -> fix -> /rev (max 3 iter)
 
 **Interview:** AskUserQuestion tool ile (duz metin YASAK, max 4 soru/batch)
 **Plan JSON:** TUM risk seviyeleri icin ZORUNLU
-**Codex review:** TUM risk seviyeleri icin ZORUNLU (LOW dahil)
-**Q'nun yapacagi:** Interview cevapla -> Plan onayla -> Copy-paste koprusu -> Izle.
+**Codex review:** TUM risk seviyeleri icin ZORUNLU (LOW dahil) - MCP ile otomatik
+**Q'nun yapacagi:** Interview cevapla -> Plan onayla -> Codex sonucunu izle -> Override gerekirse FORCE PASS/SKIP CODEX.
 
 ======================================================================
 
@@ -262,11 +258,11 @@ Her dosya edit sonrasi CQ1-CQ8 + AQ1-AQ6 kontrol et:
 
 ======================================================================
 
-## 5) CODEX REVIEW (Copy-Paste)
+## 5) CODEX REVIEW (MCP Automated)
 
 ### 2 BLOK Output
 
-Codex AYRI pencerede 2 blok uretir:
+Codex MCP tool uzerinden 2 blok uretir:
 
 **BLOCK 1: CODE QUALITY GATE** (CQ1-CQ8)
 **BLOCK 2: CoVe VERIFICATION** (Q1-Q3+)
@@ -278,9 +274,9 @@ ANY question = FAIL or UNKNOWN -> Overall verdict = FAIL
 
 ### Codex DOSYA DEGISTIRMEZ!
 ```
-1. Codex 2 blok output verir (metin)
-2. Q bu output'u DevAgent'a iletir
-3. DevAgent /rev verdict ile JSON'i gunceller
+1. DevAgent /rev calistirir -> MCP codex_review tool cagirilir (OTOMATIK)
+2. Codex API structured JSON doner (verdict + blocking_issues + summary)
+3. DevAgent verdict'i isler, Q'ya ozet gosterir
 ```
 
 ======================================================================
@@ -317,10 +313,10 @@ powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\src\Invekto
 Build PASS sonrasi `/rev` calistir:
 
 ```
-/rev              -> JSON guncelle, Q'ya prompt ver
+/rev              -> JSON guncelle, MCP codex_review cagir (OTOMATIK)
 /rev validate     -> Sadece validation
-/rev verdict PASS -> JSON'a PASS yaz
-/rev verdict FAIL "issue" -> JSON'a FAIL + blocking_issues yaz
+/rev verdict PASS -> JSON'a PASS yaz (manual override)
+/rev verdict FAIL "issue" -> JSON'a FAIL + blocking_issues yaz (manual override)
 ```
 
 ======================================================================
@@ -341,8 +337,8 @@ All logs, prompts, evidence are AI-facing. Never dump to Q.
 
 ```
 DevAgent implements + /rev calistirir.
-Codex reviews (AYRI pencerede, dosya yazmaz).
-Q owns decisions + copy-paste koprusu.
+Codex reviews (MCP API uzerinden otomatik, dosya yazmaz).
+Q owns decisions + override hakki (FORCE PASS / SKIP CODEX).
 ```
 
 Speed never overrides correctness.

@@ -1,11 +1,15 @@
 # Invekto — Senaryo Portföyü & Outbound Engine
 
 > Ana dosya: [roadmap.md](roadmap.md)
-> Bu dosya: 10 revenue senaryosu (3 niche) + 75 saha senaryosu (3 sektör) + 10 otel senaryosu + 5 mobil senaryo + E-ticaret & Sağlık senaryoları detay + Outbound Engine kritik bulgusu ve gereksinimleri
+> Bu dosya: 12 revenue senaryosu (3 niche + 2 evrensel) + 64 aktif saha senaryosu (3 sektör, 11 silindi) + 17 otel senaryosu (O1-O17) + 7 mobil senaryo (M1-M7) + 8 cross-sector kritik (CS-01~CS-08) + 7 e-ticaret ek (EB-01~EB-07) + 5 sağlık ek (SB-01~SB-05) + 25 güzellik salonu (GU-01~GU-25) + 25 eğitim (EG-01~EG-25) + Outbound Engine kritik bulgusu ve gereksinimleri
 > Güncelleme: v2 — 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + capability mapping eklendi
 > Güncelleme: v3 — 3 niche ortak capability analizi eklendi (2026-02-08)
 > **Güncelleme: Mevcut ürün gerçekliği ile yeniden çerçevelendi (2026-02-08)**
+> **Güncelleme: v4 — Tekrar temizliği (11 senaryo silindi) + sektör ayırıcıları + grup etiketleri + yapısal tablolar (2026-02-16)**
+> **Güncelleme: v5 — 29 yeni senaryo eklendi (B bölümü): 8 cross-sector + 7 e-ticaret + 5 sağlık + 7 otel + 2 mobil (2026-02-16)**
+> **Güncelleme: v6 — +S11/S12 revenue + 25 güzellik salonu (GU) + 25 eğitim (EG) senaryosu eklendi. D1-D4 stratejik kararlar verildi (2026-02-16)**
 > Referans: [whatisinvekto.md](whatisinvekto.md) — Invekto mevcut ürün envanteri
+> Referans: [scenarios-review-actions.md](scenarios-review-actions.md) — Review aksiyon planı (kaynak)
 
 ---
 
@@ -148,10 +152,11 @@ INVEKTO PLATFORM
 
 ---
 
-## Senaryo Portföyü (10 Senaryo — 3 Niche)
+## Senaryo Portföyü (12 Senaryo — 3 Niche + 2 Evrensel)
 
-> Roadmap sadece "kargom nerede" senaryosuna değil, 10 farklı revenue senaryosuna dayanıyor.
+> Roadmap sadece "kargom nerede" senaryosuna değil, 12 farklı revenue senaryosuna dayanıyor.
 > Her senaryo test edilmiş Hormozi değer denklemine uygun.
+> **v6 (2026-02-16):** +S11 (Abonelik/Üyelik) + S12 (Churn Prevention) eklendi. Müşteri senaryosu olarak tüm sektörleri kapsar.
 
 ### E-ticaret Senaryoları (Niche 1: Trendyol/HB Satıcıları)
 
@@ -373,6 +378,15 @@ Ayda 3 B2B lead × %50 tespit (daha önce kaçıyordu)
 | S9 | **Medikal Turizm Lead Yönetimi** | İngilizce/Arapça mesaj | Multi-language AI → fiyat + konaklama + transfer teklifi | ~300K+ TL | Phase 5 |
 | S10 | **Google Yorum + Referans Motoru** | Tedavi başarılı + hasta memnun | Yorum rica → link gönder → referans kodu → arkadaş getir kampanyası | ~105K TL | Phase 5 |
 
+### Evrensel Senaryolar (Tüm Sektörler)
+
+> Tüm sektörlerde (e-ticaret, sağlık, estetik, otel, güzellik, eğitim) geçerli gelir modelleri.
+
+| # | Senaryo | Tetikleyici | AI Aksiyonu | Aylık Etki (10 müşteri) | Roadmap Phase |
+|---|---------|-------------|-------------|-------------------------|---------------|
+| S11 | **Abonelik / Üyelik Modeli** | Tekrarlayan satın alma, düzenli ziyaret | Abonelik teklifi → otomatik yenileme hatırlatma → upsell tier | ~75K TL | Phase 3-5 |
+| S12 | **Churn Prevention / Win-back** | Frekans düşüşü, olumsuz sinyal | Churn tespiti → kurtarma mesajı → özel teklif → win-back kampanyası | ~120K TL | Phase 3-5 |
+
 ---
 
 ## Sağlık Niche — Hedef Avatar
@@ -493,6 +507,14 @@ Günde 1.5 ek dolu koltuk × 3.000 TL = 4.500 TL/gün
 
 > **Hormozi:** *"No-show = her gün kasanın önüne para koyup yakmak. 3 mesajla %50 azaltabilirsin. Bu dünyanın en kolay ROI'si. Her klinik sahibi bunu duyunca 'dün neden yoktun?' der."*
 
+**Sektör Varyasyonları (eski Senaryo 29, 55 buraya taşındı):**
+
+| Sektör | No-Show Maliyeti | Hatırlatma Özel Notları |
+|--------|-----------------|------------------------|
+| **Diş Kliniği** | Koltuk maliyeti ~3.000 TL/randevu, %25 no-show | Tedavi türü belirt (implant vs kontrol), refakatçi hatırlatması, açlık kuralı (cerrahi ise) |
+| **Estetik Klinik** | Lead değeri 15-50K TL, kapora sistemi aktif | Kapora ödeme durumu hatırlat, before/after fotoğraf getir, pre-op hazırlık talimatı ekle |
+| **Otel** | Oda geliri 1.500-5.000 TL/gece | Check-in saati, ulaşım bilgisi, özel talep hatırlatma (O2 ile ortak) |
+
 ---
 
 ### S8: Tedavi Sonrası Takip (Post-Treatment Care)
@@ -539,6 +561,18 @@ Doktor zamanı: günde 1 saat mesaj yazma → 15dk'ya düşer = 45dk kazanç
 ```
 
 > **Hormozi:** *"Doktor mesaj yazarak para kazanmıyor. Doktor tedavi yaparak para kazanıyor. Her dakika mesajlaşmada = koltuktaki para kaybı. AI doktoru mesajdan kurtar, koltuğa oturt."*
+
+**Tedavi Tipine Göre Talimat Şablonları (eski Senaryo 32, 45, 72 buraya taşındı):**
+
+| Tedavi Tipi | T+0 (Aynı gün) | T+1 gün | T+7 gün | T+30 gün |
+|-------------|----------------|---------|---------|----------|
+| **Diş Çekim** | Kompres, kanama kontrolü, yumuşak gıda | "Şişlik normal mi?" kontrol | Kontrol randevu hatırlatma | İyileşme kontrolü |
+| **İmplant** | Ağrı yönetimi, ilaç dozu, sert gıda yasak | Şişlik durumu, ağız bakımı | Dikiş kontrolü randevusu | Osseointegrasyon takip |
+| **Botox** | 24h yüz ovma yasak, baş yukarıda yat | Sonuç kontrolü | Tam etki değerlendirme | Tekrar seans hatırlatma |
+| **Dolgu** | 48h şişlik normal, masaj yasak | Simetri kontrolü | İyileşme fotoğrafı | Touch-up önerisi |
+| **Lazer** | Güneş koruma SPF50+, nemlendirici | Kızarıklık kontrolü | Seans aralığı hatırlatma | Sonraki seans planlama |
+| **Rinoplasti** | Tampon bakımı, baş elevasyonu | Ağrı/şişlik takip | Tampon çıkarma randevusu | 1. ay kontrol |
+| **Konsültasyon** | — | Karar desteği mesajı | Tedavi planı hatırlatma | "Sorularınız var mı?" follow-up |
 
 ---
 
@@ -590,6 +624,16 @@ Aylık çalışma günü 25 → 3.200.000 TL/ay ek gelir potansiyeli
 
 > **Hormozi:** *"Medical tourism en yüksek değerli niche. Bir saç ekimi hastası 5.000 USD bırakıyor. İlk cevap veren kliniğe gidiyor. Gece 3'te Suudi'den mesaj geldiğinde 30sn'de AI cevap veriyorsan, sen kazanırsın. 8 saat bekletirsen, rakip kazanır."*
 
+**Sektör Bazlı Paket Örnekleri (eski Senaryo 34, 61 buraya taşındı):**
+
+| Sektör | Paket Örnekleri | Fiyat Aralığı (USD) | Ortak İçerik |
+|--------|----------------|---------------------|-------------|
+| **Diş** | Veneer paketi (20 diş), İmplant paketi (all-on-4/6), Zirkonyum kaplama | 3.000-15.000 | Konaklama (3-7 gece) + havaalanı transfer + şehir içi ulaşım + kontrol randevusu |
+| **Estetik** | Rhinoplasty paketi, Saç ekimi (FUE/DHI), BBL, Meme estetiği | 2.000-10.000 | Konaklama (5-10 gece) + transfer + post-op kontrol + hemşire eşliği |
+| **Saç Ekimi** | FUE 3000-5000 greft, DHI, PRP ek tedavi | 1.500-5.000 | Otel (3 gece) + transfer + şapka/ilaç kiti + 6-12 ay online takip |
+
+> **Ortak altyapı:** Multi-language AI (EN/AR/RU/DE), 7/24 ilk cevap, fotoğraf bazlı ön değerlendirme, lead scoring, follow-up zinciri.
+
 ---
 
 ### S10: Google Yorum Toplama + Referans Motoru (Review Engine)
@@ -635,6 +679,119 @@ Toplam: 105.000 TL/ay. Invekto 10.000 TL → 10.5x ROI
 ```
 
 > **Hormozi:** *"Her işletmenin en ucuz müşteri edinme kanalı referans. Ama kimse sistematik olarak istemiyor. 'Bizi değerlendirir misiniz' demek vs. '3 gün sonra WhatsApp'tan memnuniyet anketi → yorum linki → referans teklifi' çok farklı şeyler. Biri umut, diğeri sistem."*
+
+---
+
+## Evrensel Senaryolar — Detay
+
+### S11: Abonelik / Üyelik Modeli (Subscription Revenue)
+
+**Sahne:**
+
+Müşteri düzenli olarak hizmet/ürün alıyor ama her seferinde yeniden satın alma süreci yaşıyor. Bu sürtünme → frekans düşüşü → kayıp.
+
+**Sektör bazlı gerçeklik:**
+- **E-ticaret:** Abonelik kutusu (kozmetik, gıda, evcil hayvan). "Her ay aynı kremi alıyorum" → otomatik gönderim teklifi
+- **Diş kliniği:** Yıllık kontrol üyeliği. "6 ayda bir diş taşı temizliği" → paket fiyat + hatırlatma
+- **Estetik:** Bakım paketi. "3 seans lazer + 6 aylık kontrol" → taksitli plan + otomatik randevu
+- **Otel:** Sadakat programı. "Yılda 5+ konaklama = %20 indirim" → tier sistemi + puan
+- **Güzellik salonu:** Aylık üyelik. "4 saç bakımı/ay = %30 indirim" → otomatik randevu
+- **Eğitim:** Dönemlik kayıt. "2 dönem kayıt = %15 indirim" → erken kayıt kampanyası
+
+**Bugün ne oluyor:**
+```
+→ Müşteri her seferinde yeniden karar veriyor (satın alma sürtünmesi)
+→ Düzenli müşteri ile tek seferlik müşteri aynı muameleyi görüyor
+→ Abonelik teklifi yapılmıyor çünkü araç yok
+→ "Sadık müşteri" tanımı yok → VIP fiyatlama yapılamıyor
+→ Tekrarlayan satın almalar takip edilmiyor → frekans düşüşü fark edilmiyor
+```
+
+**Invekto ile:**
+```
+→ AI tekrarlayan satın alma/ziyaret pattern'ini tespit eder:
+  - 3+ kez aynı ürünü alan müşteri → "Aylık otomatik gönderim ister misiniz? %10 indirimli"
+  - Düzenli randevu alan hasta → "Yıllık bakım paketi: 6 seans + kontrol = paket fiyat"
+→ Outbound Engine ile otomatik hatırlatma:
+  - Abonelik yenileme T-7 gün: "Paketiniz sona eriyor, yenilemek ister misiniz?"
+  - Tier upgrade teklifi: "5. satın almanız kutlu olsun! Gold üyeye yükseldiniz, %15 indirim"
+→ Dashboard: aktif abonelik sayısı, yenileme oranı, tier dağılımı, churn
+```
+
+**Para etkisi:**
+```
+Düzenli müşterilerin %20'si aboneliğe geçerse:
+E-ticaret: 100 düzenli müşteri × %20 × 500 TL ortalama = 10.000 TL/ay
+Klinik: 50 düzenli hasta × %20 × 2.000 TL paket = 20.000 TL/ay
+Toplam 10 müşteri: ~75.000 TL/ay ek düzenli gelir (tek seferlik yerine recurring)
+LTV artışı: %40-60 (abonelik müşterisi 2-3x daha değerli)
+```
+
+> **Hormozi:** *"Recurring revenue tek seferlik gelirin 3-5x değerinde. Çünkü tahmin edilebilir. Ama çoğu işletme abonelik teklifi bile yapmıyor. Neden? Araçları yok. Aracı ver, geliri tahmin edilebilir yap."*
+
+---
+
+### S12: Churn Prevention / Win-back (Müşteri Kaybı Önleme)
+
+**Sahne:**
+
+Düzenli müşteri sessizleşiyor. Her ay saç boyatan müşteri 3 aydır gelmedi. Her hafta sipariş veren müşteri 1 aydır almadı. Her 6 ayda kontrol yaptıran hasta 1 yıldır gelmedi. **Bu en pahalı kayıp türü — sessiz churn.**
+
+**Sektör bazlı churn sinyalleri:**
+- **E-ticaret:** 3+ sipariş geçmişi olan müşteri → 45 gün sipariş yok → churn riski
+- **Diş kliniği:** 6 aylık kontrol randevusu → randevu almadı → churn riski
+- **Estetik:** Lead pipeline'da sıcak lead → 2 hafta cevap yok → soğuma
+- **Otel:** Yılda 3+ konaklama → bu yıl 0 → churn riski
+- **Güzellik salonu:** Her 4 haftada gelen müşteri → 8 hafta gelmedi → churn riski
+- **Eğitim:** Devamsızlık artışı → 3+ ders kaçırma → kayıp riski
+
+**Bugün ne oluyor:**
+```
+→ Sessiz churn fark edilmiyor — müşteri şikayet etmeden gidiyor
+→ "Bir daha almayacağım" → rakibe gitmiş, biz hâlâ bilmiyoruz
+→ Win-back kampanyası yok — müşteri gittikten 6 ay sonra "nerdesiniz" mesajı = çok geç
+→ Churn sinyalleri yakalanmıyor:
+  * "Neyse", "boş ver", "bir daha uğraşmam" → pasif agresif
+  * "Rakip X daha ucuz" → karşılaştırma
+  * "Eskiden daha iyiydi" → memnuniyet düşüşü
+  * 3+ gün cevap yok (aktif konuşmada) → soğuma
+```
+
+**Invekto ile:**
+```
+→ AI churn risk skorlaması (otomatik):
+  - Frekans analizi: satın alma/randevu sıklığı düşüşü tespit
+  - Mesaj sentiment: negatif trend, pasif agresif kalıplar
+  - Cevapsızlık: aktif konuşmada 3+ gün sessizlik
+  - Risk skoru: LOW / MEDIUM / HIGH / CRITICAL
+
+→ Otomatik aksiyon (risk seviyesine göre):
+  - MEDIUM: Agent'e "⚠️ dikkat: kayıp riski" badge + müşteri geçmişi özeti
+  - HIGH: Supervisor alert + önerilen kurtarma aksiyonu
+  - CRITICAL: Outbound kurtarma mesajı:
+    "Merhaba [Ad], sizi özledik! Size özel %20 indirim kodunuz: HOSGELDIN20"
+    veya "Kontrol randevunuz için sizi bekliyoruz, randevu oluşturmamı ister misiniz?"
+
+→ Win-back kampanyası (Outbound Engine):
+  - T+30 gün (ilk hatırlatma): "Sizi özledik" + değer hatırlatma
+  - T+60 gün (özel teklif): Kişiselleştirilmiş indirim/hediye
+  - T+90 gün (son deneme): "Geri dönüşünüzde ilk [hizmet] ücretsiz"
+  - Cevap gelmezse: Pasife al (spam olma)
+
+→ Dashboard: churn risk pipeline, aktif alarm sayısı, kurtarılan vs kaybedilen,
+  win-back kampanya dönüşüm oranı, ortalama kurtarma maliyeti
+```
+
+**Para etkisi:**
+```
+Sessiz churn oranı %15'ten %8'e düşürülürse:
+E-ticaret: 500 aktif müşteri × %7 kurtarma × 300 TL/ay = 10.500 TL/ay
+Klinik: 200 aktif hasta × %7 × 3.000 TL/tedavi = 42.000 TL/ay (yıllık tedavi değeri)
+Toplam 10 müşteri: ~120.000 TL/ay korunan gelir
++ Win-back: Geri kazanılan müşterilerin %25'i aktif müşteriye dönüyor
+```
+
+> **Hormozi:** *"Yeni müşteri bulmak mevcut müşteriyi tutmaktan 5-7x daha pahalı. Ama çoğu işletme giden müşteriyi fark bile etmiyor. Churn detection yapmak = bedava para toplamak. Çünkü zaten ilişkin var, sadece harekete geçmek lazım."*
 
 ---
 
@@ -809,13 +966,37 @@ HEDEF: Knowledge RAG + Agent Assist + Auto-Resolution + Revenue + yerel e-ticare
 D) 75 SENARYO (25 e-ticaret + 25 diş + 25 klinik/estetik) — DERİN MOD
 ============================================================
 
+> **v3 Güncelleme (2026-02-16):** 11 tekrar senaryo silindi (bkz scenarios-review-actions.md A1).
+> Kalan aktif senaryo sayısı: 64 (11 silindi + 60 "aktif" değil ama referans kalıyor).
+>
+> **Tematik Gruplar (A2):** Aşağıdaki senaryolar sektör bölümleri içinde yer almaya devam eder
+> ancak ortak mantık gruplarına da aittir:
+>
+> | Grup | Senaryolar | Ortak Mantık |
+> |------|-----------|-------------|
+> | **Kargo/Lojistik** | 01, 02, 06, 07, 18, 19, 24 | Kargo takip, hasar, kayıp, gel-al noktası varyasyonları |
+> | **Ödeme/Fatura** | 08, 13, 21, 22 | Platform bazlı ödeme sorunları (Trendyol, Shopify, WooCommerce, genel) |
+> | **Kriz De-eskalasyon** | 03, 15, 35, 57 | Kızgın müşteri + empati + çözüm. Ortak template referansı |
+> | **KVKK/Veri Güvenliği** | 33, 44, 62, 75 | Hasta verisi, foto/rapor, saklama/silme |
+> | **Lead Dönüşüm + Sosyal Kanıt** | 60 | IG DM lead yönetimi, speed-to-lead, C10+C12 capability |
+
 Legend:
 - Kanıt seviyesi: A=Kaynaklı/yaygın doğrulanmış, B=Yaygın saha pratiği (tekil kanıt zayıf), C=Doğrulanamadı (kullanmamaya çalıştım)
 - WA/IG kuralları: 24 saat penceresi + template/opt-in kısıtları senaryolarda dikkate alındı. [WA][IG]
 
 ---
+
+============================================================
+D-1) E-TİCARET SENARYOLARI (01-25)
+============================================================
+
+> E-ticaret = YENİ MÜŞTERİ kazanım niche'i. Trendyol/HB satıcıları + D2C markalar.
+> Core otomasyon (Phase 1) ile kargo/iade sorularında hemen fayda.
+> Niche-özel: marketplace API entegrasyonu (Phase 2), iade çevirme, B2B lead tespiti.
+
+---
 SENARYO 01 — Kargom nerede? takip linki istiyor
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Kargom nerede? Takip linki atar mısın?'
@@ -867,7 +1048,7 @@ Cons
 
 ---
 SENARYO 02 — İade kodu aldım, hangi kargoya vereceğim?
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'İade kodu aldım, hangi kargoya vereceğim? ile ilgili yardım lazım.'
@@ -914,7 +1095,7 @@ Cons
 
 ---
 SENARYO 03 — İadem reddedildi / açılmadı deniyor
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A | Grup: Kriz De-eskalasyon
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'İadem reddedildi, ürünü hiç açmadım!'
@@ -1055,7 +1236,7 @@ Cons
 
 ---
 SENARYO 06 — Teslim edildi görünüyor ama gelmedi
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Teslim edildi görünüyor ama gelmedi ile ilgili yardım lazım.'
@@ -1102,7 +1283,7 @@ Cons
 
 ---
 SENARYO 07 — Kargo paketi hasarlı, tutanak istiyor
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Kargo paketi hasarlı, tutanak istiyor ile ilgili yardım lazım.'
@@ -1149,7 +1330,7 @@ Cons
 
 ---
 SENARYO 08 — Fatura/kurumsal fatura talebi
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B | Grup: Ödeme/Fatura
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Fatura/kurumsal fatura talebi ile ilgili yardım lazım.'
@@ -1384,7 +1565,7 @@ Cons
 
 ---
 SENARYO 13 — Kapıda ödeme var mı? Havale/IBAN at
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E2 | Kanıt: B
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E2 | Kanıt: B | Grup: Ödeme/Fatura
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Kapıda ödeme var mı? Havale/IBAN at ile ilgili yardım lazım.'
@@ -1478,7 +1659,7 @@ Cons
 
 ---
 SENARYO 15 — Ürün açıklamasıyla gelen farklı (görsel uyumsuz)
-Bölge: Türkiye | Dikey: E-ticaret | Avatar: E2 | Kanıt: A
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E2 | Kanıt: A | Grup: Kriz De-eskalasyon
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Ürün açıklamasıyla gelen farklı (görsel uyumsuz) ile ilgili yardım lazım.'
@@ -1619,7 +1800,7 @@ Cons
 
 ---
 SENARYO 18 — Gel Al noktası kapalı / iade teslim edemiyorum
-Bölge: Avrupa | Dikey: E-ticaret | Avatar: E1 | Kanıt: A
+Bölge: Avrupa | Dikey: E-ticaret | Avatar: E1 | Kanıt: A | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Gel Al noktası kapalı / iade teslim edemiyorum ile ilgili yardım lazım.'
@@ -1666,7 +1847,7 @@ Cons
 
 ---
 SENARYO 19 — Hepsiburada siparişinde kargo gecikti
-Bölge: Avrupa | Dikey: E-ticaret | Avatar: E1 | Kanıt: B
+Bölge: Avrupa | Dikey: E-ticaret | Avatar: E1 | Kanıt: B | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Hepsiburada siparişinde kargo gecikti ile ilgili yardım lazım.'
@@ -1760,7 +1941,7 @@ Cons
 
 ---
 SENARYO 21 — Shopify: ödeme başarısız, link tekrar
-Bölge: Global | Dikey: E-ticaret | Avatar: E2 | Kanıt: B
+Bölge: Global | Dikey: E-ticaret | Avatar: E2 | Kanıt: B | Grup: Ödeme/Fatura
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'Shopify: ödeme başarısız, link tekrar ile ilgili yardım lazım.'
@@ -1807,7 +1988,7 @@ Cons
 
 ---
 SENARYO 22 — WooCommerce: kargo ücretini iade eder misiniz?
-Bölge: Global | Dikey: E-ticaret | Avatar: E2 | Kanıt: B
+Bölge: Global | Dikey: E-ticaret | Avatar: E2 | Kanıt: B | Grup: Ödeme/Fatura
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'WooCommerce: kargo ücretini iade eder misiniz? ile ilgili yardım lazım.'
@@ -1901,7 +2082,7 @@ Cons
 
 ---
 SENARYO 24 — İade paketi kayboldu / kargo kodu okunmadı
-Bölge: Global | Dikey: E-ticaret | Avatar: E1 | Kanıt: B
+Bölge: Global | Dikey: E-ticaret | Avatar: E1 | Kanıt: B | Grup: Kargo/Lojistik
 
 1) Müşteri mesajı (örnek konuşma)
    - Müşteri: 'İade paketi kayboldu / kargo kodu okunmadı ile ilgili yardım lazım.'
@@ -1994,50 +2175,20 @@ Cons
    - Yanlış otomasyon müşteri deneyimini bozar; fallback şart
 
 ---
-SENARYO 26 — Fiyat sorusu: implant kaç TL? 'tek çene' vs
-Bölge: Türkiye | Dikey: Diş | Avatar: D1 | Kanıt: B
 
-1) Müşteri mesajı (örnek konuşma)
-   - Hasta: 'Fiyat sorusu: implant kaç TL? 'tek çene' vs'
-   - Hasta: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
+============================================================
+D-2) DİŞ KLİNİĞİ SENARYOLARI (26-50)
+============================================================
 
-2) Bugün işletme bunu nasıl yönetiyor?
-   - Ön büro cevaplar, doktor araya girer
-   - Fiyatlar kişiden kişiye değiştiği için uzar
-   - Takip unutulur
+> Diş klinikleri = MEVCUT MÜŞTERİ tabanı. Core otomasyon (Phase 1) ile hemen fayda.
+> Niche-özel: randevu motoru, KVKK sağlık verisi, tedavi planı takibi.
+> **11 senaryo silindi** (26→S6, 29→S7, 32→S8, 34→S9, 45→S8, 50→S6/S10). Bkz referanslar.
 
-3) Nerede batıyor?
-   - Tutarsız fiyat/vaat riski
-   - Lead kaybı (gecikme)
-   - Hasta verisi/mahremiyet riski (foto/rapor)
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı; no-show; ekip zamanı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1+C2 ile ekip paylaşımı
-   - C3 ile standart bilgi (genel fiyat aralığı)
-B) Phase-1 ile ne olur?
-   - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2+ gerektiren
-   - C7: SSS + prosedür açıklamaları (Phase 3)
-   - C10: ödeme/kapora + follow-up (Phase 5)
-   - C13: kalite skoru + kaçan lead analizi (Phase 6)
-
-Gerekli yetenekler (capability mapping)
-   - Phase 1 başlangıç: C1, C2, C3, C8 (konfigüre fiyat aralıkları + AI Assist)
-   - Tam set: C1, C2, C3, C7, C8 (+ Knowledge base — Phase 3)
-
-Öneri
-   - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
-   - Sağlık verisi gelirse onam metni ve veri minimizasyonu uygula. [HEALTH]
-
-Pros
-   - Lead hızlanır, tutarlılık artar
-Cons
-   - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
+---
+SENARYO 26 — [SİLİNDİ] Fiyat sorusu: implant kaç TL?
+> **Bkz S6 (Fiyat → Randevu Dönüşümü).** Bu senaryo S6'nın diş-spesifik varyasyonuydu.
+> Diş varyasyon detayları S6'daki "Sektör Varyasyonları" bölümüne taşındı.
+> Diş-spesifik: tedavi türleri (implant, zirkonyum, veneer, kanal tedavisi), fiyat aralıkları kişiden kişiye değişir.
 
 ---
 SENARYO 27 — Instagram DM: 'foto atsam fiyat verir misiniz?'
@@ -2131,49 +2282,10 @@ Cons
    - Tam otomasyon yanlış slot verirse kriz; insan onayı iyi
 
 ---
-SENARYO 29 — No-show: hasta gelmedi, hatırlatma yok
-Bölge: Türkiye | Dikey: Diş | Avatar: D2 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Hasta: 'No-show: hasta gelmedi, hatırlatma yok'
-   - Hasta: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - Ön büro cevaplar, doktor araya girer
-   - Fiyatlar kişiden kişiye değiştiği için uzar
-   - Takip unutulur
-
-3) Nerede batıyor?
-   - Tutarsız fiyat/vaat riski
-   - Lead kaybı (gecikme)
-   - Hasta verisi/mahremiyet riski (foto/rapor)
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı; no-show; ekip zamanı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1+C2 ile ekip paylaşımı
-   - C3 ile standart bilgi (genel fiyat aralığı)
-B) Phase-1 ile ne olur?
-   - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2+ gerektiren
-   - C7: SSS + prosedür açıklamaları (Phase 3)
-   - C10: ödeme/kapora + follow-up (Phase 5)
-   - C13: kalite skoru + kaçan lead analizi
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C7, C8
-
-Öneri
-   - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
-   - Sağlık verisi gelirse onam metni ve veri minimizasyonu uygula. [HEALTH]
-
-Pros
-   - Lead hızlanır, tutarlılık artar
-Cons
-   - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
+SENARYO 29 — [SİLİNDİ] No-show: hasta gelmedi, hatırlatma yok
+> **Bkz S7 (No-Show Önleme).** Bu senaryo S7'nin diş-spesifik varyasyonuydu.
+> Diş varyasyon detayları S7'deki "Sektör Varyasyonları" bölümüne taşındı.
+> Diş-spesifik: koltuk maliyeti ~3.000 TL/randevu, %25 no-show oranı.
 
 ---
 SENARYO 30 — Acil ağrı: gece mesajı, triage gerekiyor
@@ -2266,53 +2378,14 @@ Cons
    - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
 
 ---
-SENARYO 32 — Öncesi/sonrası bakım talimatı (çekim sonrası)
-Bölge: Türkiye | Dikey: Diş | Avatar: D1 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Hasta: 'Öncesi/sonrası bakım talimatı (çekim sonrası)'
-   - Hasta: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - Ön büro cevaplar, doktor araya girer
-   - Fiyatlar kişiden kişiye değiştiği için uzar
-   - Takip unutulur
-
-3) Nerede batıyor?
-   - Tutarsız fiyat/vaat riski
-   - Lead kaybı (gecikme)
-   - Hasta verisi/mahremiyet riski (foto/rapor)
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı; no-show; ekip zamanı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1+C2 ile ekip paylaşımı
-   - C3 ile standart bilgi (genel fiyat aralığı)
-B) Phase-1 ile ne olur?
-   - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2+ gerektiren
-   - C7: SSS + prosedür açıklamaları (Phase 3)
-   - C10: ödeme/kapora + follow-up (Phase 5)
-   - C13: kalite skoru + kaçan lead analizi
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C7, C8
-
-Öneri
-   - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
-   - Sağlık verisi gelirse onam metni ve veri minimizasyonu uygula. [HEALTH]
-
-Pros
-   - Lead hızlanır, tutarlılık artar
-Cons
-   - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
+SENARYO 32 — [SİLİNDİ] Öncesi/sonrası bakım talimatı (çekim sonrası)
+> **Bkz S8 (Tedavi Sonrası Takip).** Bu senaryo S8'in diş çekim-spesifik varyasyonuydu.
+> Tedavi tipine göre talimat detayları S8'deki "Tedavi Tipine Göre Talimat Şablonları" tablosuna taşındı.
+> Diş çekim: kompres, kanama kontrolü, yumuşak gıda, ağrı yönetimi.
 
 ---
 SENARYO 33 — Hasta kimlik/rapor gönderdi: KVKK riski
-Bölge: Türkiye | Dikey: Diş | Avatar: D2 | Kanıt: A
+Bölge: Türkiye | Dikey: Diş | Avatar: D2 | Kanıt: A | Grup: KVKK/Veri Güvenliği
 
 1) Müşteri mesajı (örnek konuşma)
    - Hasta: 'Kimliğimi ve röntgenimi atıyorum.'
@@ -2359,53 +2432,14 @@ Cons
    - Aşırı sıkı politika kullanıcı deneyimini yavaşlatır; kritik: doğru denge
 
 ---
-SENARYO 34 — Yabancı hasta (EU): fiyat + otel/transfer sorusu
-Bölge: Türkiye | Dikey: Diş | Avatar: D1 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Hasta: 'Yabancı hasta (EU): fiyat + otel/transfer sorusu'
-   - Hasta: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - Ön büro cevaplar, doktor araya girer
-   - Fiyatlar kişiden kişiye değiştiği için uzar
-   - Takip unutulur
-
-3) Nerede batıyor?
-   - Tutarsız fiyat/vaat riski
-   - Lead kaybı (gecikme)
-   - Hasta verisi/mahremiyet riski (foto/rapor)
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı; no-show; ekip zamanı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1+C2 ile ekip paylaşımı
-   - C3 ile standart bilgi (genel fiyat aralığı)
-B) Phase-1 ile ne olur?
-   - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2+ gerektiren
-   - C7: SSS + prosedür açıklamaları (Phase 3)
-   - C10: ödeme/kapora + follow-up (Phase 5)
-   - C13: kalite skoru + kaçan lead analizi
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C7, C8
-
-Öneri
-   - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
-   - Sağlık verisi gelirse onam metni ve veri minimizasyonu uygula. [HEALTH]
-
-Pros
-   - Lead hızlanır, tutarlılık artar
-Cons
-   - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
+SENARYO 34 — [SİLİNDİ] Yabancı hasta (EU): fiyat + otel/transfer sorusu
+> **Bkz S9 (Medikal Turizm Lead Yönetimi).** Bu senaryo S9'un diş-spesifik varyasyonuydu.
+> Sektör bazlı paket detayları S9'daki "Sektör Bazlı Paket Örnekleri" bölümüne taşındı.
+> Diş-spesifik: veneer paketi (20 diş), implant paketi (all-on-4/6), zirkonyum kaplama + konaklama + transfer.
 
 ---
 SENARYO 35 — Şikayet: 'dolgu düştü' tekrar randevu
-Bölge: Türkiye | Dikey: Diş | Avatar: D2 | Kanıt: B
+Bölge: Türkiye | Dikey: Diş | Avatar: D2 | Kanıt: B | Grup: Kriz De-eskalasyon
 
 1) Müşteri mesajı (örnek konuşma)
    - Hasta: 'Şikayet: 'dolgu düştü' tekrar randevu'
@@ -2811,7 +2845,7 @@ Cons
 
 ---
 SENARYO 44 — Hasta fotoğrafları cihazda kalıyor (data loss)
-Bölge: Avrupa | Dikey: Diş | Avatar: D1 | Kanıt: A
+Bölge: Avrupa | Dikey: Diş | Avatar: D1 | Kanıt: A | Grup: KVKK/Veri Güvenliği
 
 1) Müşteri mesajı (örnek konuşma)
    - Hasta: 'Hasta fotoğrafları cihazda kalıyor (data loss)'
@@ -2855,49 +2889,10 @@ Cons
    - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
 
 ---
-SENARYO 45 — Konsültasyon sonrası takip: 'nasılsınız' mesajı (template/opt-in)
-Bölge: Avrupa | Dikey: Diş | Avatar: D2 | Kanıt: A
-
-1) Müşteri mesajı (örnek konuşma)
-   - Hasta: 'Konsültasyon sonrası takip: 'nasılsınız' mesajı (template/opt-in)'
-   - Hasta: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - Ön büro cevaplar, doktor araya girer
-   - Fiyatlar kişiden kişiye değiştiği için uzar
-   - Takip unutulur
-
-3) Nerede batıyor?
-   - Tutarsız fiyat/vaat riski
-   - Lead kaybı (gecikme)
-   - Hasta verisi/mahremiyet riski (foto/rapor)
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı; no-show; ekip zamanı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1+C2 ile ekip paylaşımı
-   - C3 ile standart bilgi (genel fiyat aralığı)
-B) Phase-1 ile ne olur?
-   - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2+ gerektiren
-   - C7: SSS + prosedür açıklamaları (Phase 3)
-   - C10: ödeme/kapora + follow-up (Phase 5)
-   - C13: kalite skoru + kaçan lead analizi
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C7, C8
-
-Öneri
-   - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
-   - Sağlık verisi gelirse onam metni ve veri minimizasyonu uygula. [HEALTH]
-
-Pros
-   - Lead hızlanır, tutarlılık artar
-Cons
-   - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
+SENARYO 45 — [SİLİNDİ] Konsültasyon sonrası takip: 'nasılsınız' mesajı
+> **Bkz S8 (Tedavi Sonrası Takip).** Bu senaryo S8'in konsültasyon-spesifik varyasyonuydu.
+> S8 tüm post-treatment takip zincirlerini kapsar (T+0, T+1, T+7, T+30).
+> Konsültasyon-spesifik: karar desteği, tedavi planı hatırlatma, ikna follow-up'ı.
 
 ---
 SENARYO 46 — Gece/hafta sonu otomatik cevap (IG/WA 24h)
@@ -3080,49 +3075,21 @@ Cons
    - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
 
 ---
-SENARYO 50 — Hasta memnuniyet anketi (opt-in)
-Bölge: Global | Dikey: Diş | Avatar: D1 | Kanıt: A
+SENARYO 50 — [SİLİNDİ] Hasta memnuniyet anketi (opt-in)
+> **BAŞLIK/İÇERİK UYUMSUZLUĞU DÜZELTİLDİ:** Başlık "memnuniyet anketi" diyordu ama
+> içerik fiyat sorusu/lead yönetimi hakkındaydı (S6 ile aynı mantık).
+> Gerçek içerik S6 (Fiyat → Randevu Dönüşümü) kapsamında.
+> Memnuniyet anketi işlevi → S10 (Google Yorum + Referans Motoru) kapsamında.
 
-1) Müşteri mesajı (örnek konuşma)
-   - Hasta: 'Hasta memnuniyet anketi (opt-in)'
-   - Hasta: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
+---
 
-2) Bugün işletme bunu nasıl yönetiyor?
-   - Ön büro cevaplar, doktor araya girer
-   - Fiyatlar kişiden kişiye değiştiği için uzar
-   - Takip unutulur
+============================================================
+D-3) ESTETİK KLİNİK SENARYOLARI (51-75)
+============================================================
 
-3) Nerede batıyor?
-   - Tutarsız fiyat/vaat riski
-   - Lead kaybı (gecikme)
-   - Hasta verisi/mahremiyet riski (foto/rapor)
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı; no-show; ekip zamanı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1+C2 ile ekip paylaşımı
-   - C3 ile standart bilgi (genel fiyat aralığı)
-B) Phase-1 ile ne olur?
-   - C8: doğru soruları öner (yaş, şikayet, randevu niyeti)
-C) Phase-2+ gerektiren
-   - C7: SSS + prosedür açıklamaları (Phase 3)
-   - C10: ödeme/kapora + follow-up (Phase 5)
-   - C13: kalite skoru + kaçan lead analizi
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C7, C8
-
-Öneri
-   - Fiyat sorularını 'aralık + muayene şart' çerçevesine oturt; yanlış vaatten kaçın
-   - Sağlık verisi gelirse onam metni ve veri minimizasyonu uygula. [HEALTH]
-
-Pros
-   - Lead hızlanır, tutarlılık artar
-Cons
-   - Aşırı otomatik cevap 'robot' hissi yaratır; estetik/dişte güven önemli
+> Estetik klinikler = MEVCUT MÜŞTERİ tabanı + yüksek değer lead'ler (15-50K TL/hasta).
+> Niche-özel: IG DM lead pipeline, kapora/ödeme, before/after kanıt, multi-language.
+> **5 senaryo silindi** (55→S7, 61→S9, 67→48, 72→S8, 73→60/S10). Bkz referanslar.
 
 ---
 SENARYO 51 — Instagram DM: 'fiyat nedir?' botox/dolgu
@@ -3330,55 +3297,10 @@ Cons
    - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
 
 ---
-SENARYO 55 — No-show: hatırlatma ve yeniden kazanım
-Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Lead: 'No-show: hatırlatma ve yeniden kazanım'
-   - Lead: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - IG DM'de hızlı cevap baskısı
-   - Cevap gecikirse lead kayar
-   - WhatsApp'a geçişte numara kaybolur
-
-3) Nerede batıyor?
-   - Speed-to-lead kritik
-   - Güven sorusu (before/after, yorum)
-   - No-show + kapora yönetimi
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı + boş slot maliyeti
-   - (Tahmini) no-show oranı artışı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1 inbox + çoklu ajan yönetimi
-   - C3 şablonlar ile hızlı cevap
-   - C4 raporla gecikme görünür
-B) Phase-1 ile ne olur?
-   - C8 agent assist: doğru soruları öner + güven metinleri
-C) Phase-2+ gerektiren
-   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
-   - C10 revenue agent: kapora + randevu (Phase 5)
-   - C13 mining: en çok dönüşüm getiren script
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C4, C8, C10, C12
-
-Öneri
-   - IG DM için 3 adımlı script: 1) ihtiyacı netle 2) güven kanıtı 3) WhatsApp'a geç ve slot öner
-   - No-show için otomatik hatırlatma (opt-in uyumlu) ve kapora politikası
-
-Pros
-   - Lead kaçışı azalır
-   - Operasyon standardize olur
-   - Gelir akışı netleşir
-Cons
-   - Aşırı otomasyon 'spam' hissi yaratır
-   - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
+SENARYO 55 — [SİLİNDİ] No-show: hatırlatma ve yeniden kazanım
+> **Bkz S7 (No-Show Önleme).** Bu senaryo S7'nin estetik-spesifik varyasyonuydu.
+> Estetik varyasyon detayları S7'deki "Sektör Varyasyonları" bölümüne taşındı.
+> Estetik-spesifik: lead değeri 15-50K TL, kapora sistemi, IG DM → WA geçiş sonrası no-show riski.
 
 ---
 SENARYO 56 — Uygunluk/kontrendikasyon soruları
@@ -3433,7 +3355,7 @@ Cons
 
 ---
 SENARYO 57 — İşlem sonrası şikayet: şişlik/morarma panik
-Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: B
+Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: B | Grup: Kriz De-eskalasyon
 
 1) Müşteri mesajı (örnek konuşma)
    - Lead: 'İşlem sonrası şikayet: şişlik/morarma panik'
@@ -3586,7 +3508,7 @@ Cons
 
 ---
 SENARYO 60 — Yorum/şikayet yönetimi (sosyal kanıt)
-Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A2 | Kanıt: B
+Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A2 | Kanıt: B | Grup: Lead Dönüşüm + Sosyal Kanıt
 
 1) Müşteri mesajı (örnek konuşma)
    - Lead: 'Yorum/şikayet yönetimi (sosyal kanıt)'
@@ -3636,59 +3558,14 @@ Cons
    - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
 
 ---
-SENARYO 61 — Yabancı hasta (EU): transfer/otel + fiyat
-Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Lead: 'Yabancı hasta (EU): transfer/otel + fiyat'
-   - Lead: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - IG DM'de hızlı cevap baskısı
-   - Cevap gecikirse lead kayar
-   - WhatsApp'a geçişte numara kaybolur
-
-3) Nerede batıyor?
-   - Speed-to-lead kritik
-   - Güven sorusu (before/after, yorum)
-   - No-show + kapora yönetimi
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı + boş slot maliyeti
-   - (Tahmini) no-show oranı artışı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1 inbox + çoklu ajan yönetimi
-   - C3 şablonlar ile hızlı cevap
-   - C4 raporla gecikme görünür
-B) Phase-1 ile ne olur?
-   - C8 agent assist: doğru soruları öner + güven metinleri
-C) Phase-2+ gerektiren
-   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
-   - C10 revenue agent: kapora + randevu (Phase 5)
-   - C13 mining: en çok dönüşüm getiren script
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C4, C8, C10, C12
-
-Öneri
-   - IG DM için 3 adımlı script: 1) ihtiyacı netle 2) güven kanıtı 3) WhatsApp'a geç ve slot öner
-   - No-show için otomatik hatırlatma (opt-in uyumlu) ve kapora politikası
-
-Pros
-   - Lead kaçışı azalır
-   - Operasyon standardize olur
-   - Gelir akışı netleşir
-Cons
-   - Aşırı otomasyon 'spam' hissi yaratır
-   - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
+SENARYO 61 — [SİLİNDİ] Yabancı hasta (EU): transfer/otel + fiyat
+> **Bkz S9 (Medikal Turizm Lead Yönetimi).** Bu senaryo S9'un estetik-spesifik varyasyonuydu.
+> Sektör bazlı paket detayları S9'daki "Sektör Bazlı Paket Örnekleri" bölümüne taşındı.
+> Estetik-spesifik: rhinoplasty paketi, saç ekimi paketi, botox/filler paketi + konaklama + transfer.
 
 ---
 SENARYO 62 — KVKK: foto/video sağlık verisi
-Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A2 | Kanıt: A
+Bölge: Türkiye | Dikey: Klinik+Estetik | Avatar: A2 | Kanıt: A | Grup: KVKK/Veri Güvenliği
 
 1) Müşteri mesajı (örnek konuşma)
    - Lead: 'Fotoğraf atıyorum, hangi işlem olur?'
@@ -3936,55 +3813,10 @@ Cons
    - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
 
 ---
-SENARYO 67 — İade/iptal: kapora geri ister
-Bölge: Avrupa | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Lead: 'İade/iptal: kapora geri ister'
-   - Lead: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - IG DM'de hızlı cevap baskısı
-   - Cevap gecikirse lead kayar
-   - WhatsApp'a geçişte numara kaybolur
-
-3) Nerede batıyor?
-   - Speed-to-lead kritik
-   - Güven sorusu (before/after, yorum)
-   - No-show + kapora yönetimi
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı + boş slot maliyeti
-   - (Tahmini) no-show oranı artışı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1 inbox + çoklu ajan yönetimi
-   - C3 şablonlar ile hızlı cevap
-   - C4 raporla gecikme görünür
-B) Phase-1 ile ne olur?
-   - C8 agent assist: doğru soruları öner + güven metinleri
-C) Phase-2+ gerektiren
-   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
-   - C10 revenue agent: kapora + randevu (Phase 5)
-   - C13 mining: en çok dönüşüm getiren script
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C4, C8, C10, C12
-
-Öneri
-   - IG DM için 3 adımlı script: 1) ihtiyacı netle 2) güven kanıtı 3) WhatsApp'a geç ve slot öner
-   - No-show için otomatik hatırlatma (opt-in uyumlu) ve kapora politikası
-
-Pros
-   - Lead kaçışı azalır
-   - Operasyon standardize olur
-   - Gelir akışı netleşir
-Cons
-   - Aşırı otomasyon 'spam' hissi yaratır
-   - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
+SENARYO 67 — [SİLİNDİ] İade/iptal: kapora geri ister
+> **Bkz Senaryo 48 (İade/iptal: kapora geri ister — Diş).** Bu senaryo 48'in estetik varyasyonuydu.
+> Aynı kapora iade mekanizması: politika açıklama, kısmi iade veya tarih değişikliği önerisi.
+> Estetik-spesifik: daha yüksek kapora tutarları (5-15K TL), uluslararası hasta iade komplikasyonları.
 
 ---
 SENARYO 68 — Ödeme linki + taksit sorusu
@@ -4191,106 +4023,17 @@ Cons
    - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
 
 ---
-SENARYO 72 — Post-op bakım talimatı standardizasyonu
-Bölge: Global | Dikey: Klinik+Estetik | Avatar: A2 | Kanıt: B
-
-1) Müşteri mesajı (örnek konuşma)
-   - Lead: 'Post-op bakım talimatı standardizasyonu'
-   - Lead: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - IG DM'de hızlı cevap baskısı
-   - Cevap gecikirse lead kayar
-   - WhatsApp'a geçişte numara kaybolur
-
-3) Nerede batıyor?
-   - Speed-to-lead kritik
-   - Güven sorusu (before/after, yorum)
-   - No-show + kapora yönetimi
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı + boş slot maliyeti
-   - (Tahmini) no-show oranı artışı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1 inbox + çoklu ajan yönetimi
-   - C3 şablonlar ile hızlı cevap
-   - C4 raporla gecikme görünür
-B) Phase-1 ile ne olur?
-   - C8 agent assist: doğru soruları öner + güven metinleri
-C) Phase-2+ gerektiren
-   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
-   - C10 revenue agent: kapora + randevu (Phase 5)
-   - C13 mining: en çok dönüşüm getiren script
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C4, C8, C10, C12
-
-Öneri
-   - IG DM için 3 adımlı script: 1) ihtiyacı netle 2) güven kanıtı 3) WhatsApp'a geç ve slot öner
-   - No-show için otomatik hatırlatma (opt-in uyumlu) ve kapora politikası
-
-Pros
-   - Lead kaçışı azalır
-   - Operasyon standardize olur
-   - Gelir akışı netleşir
-Cons
-   - Aşırı otomasyon 'spam' hissi yaratır
-   - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
+SENARYO 72 — [SİLİNDİ] Post-op bakım talimatı standardizasyonu
+> **Bkz S8 (Tedavi Sonrası Takip).** Bu senaryo S8'in estetik post-op varyasyonuydu.
+> Tedavi tipine göre talimat detayları S8'deki "Tedavi Tipine Göre Talimat Şablonları" tablosuna taşındı.
+> Estetik-spesifik: botox (24h yüz ovma yasak), dolgu (48h şişlik normal), lazer (güneş koruma), rinoplasti (7 gün tampon).
 
 ---
-SENARYO 73 — Memnuniyet anketi + referral isteme (opt-in)
-Bölge: Global | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: A
-
-1) Müşteri mesajı (örnek konuşma)
-   - Lead: 'Memnuniyet anketi + referral isteme (opt-in)'
-   - Lead: 'Fiyat alabilir miyim?'
-   - Klinik: (gecikiyor)
-
-2) Bugün işletme bunu nasıl yönetiyor?
-   - IG DM'de hızlı cevap baskısı
-   - Cevap gecikirse lead kayar
-   - WhatsApp'a geçişte numara kaybolur
-
-3) Nerede batıyor?
-   - Speed-to-lead kritik
-   - Güven sorusu (before/after, yorum)
-   - No-show + kapora yönetimi
-
-4) Gerçek maliyet (tahmini ise belirtildi)
-   - (Tahmini) dönüşüm kaybı + boş slot maliyeti
-   - (Tahmini) no-show oranı artışı
-
-Invekto burada:
-A) Bugün ne kadarını yapıyor?
-   - C1 inbox + çoklu ajan yönetimi
-   - C3 şablonlar ile hızlı cevap
-   - C4 raporla gecikme görünür
-B) Phase-1 ile ne olur?
-   - C8 agent assist: doğru soruları öner + güven metinleri
-C) Phase-2+ gerektiren
-   - C12 attribution: iyi lead kaynağını gör (Phase 2 basit / Phase 5 tam)
-   - C9 auto-resolution: basit FAQ'ları otonom yanıtla (Phase 3)
-   - C10 revenue agent: kapora + randevu (Phase 5)
-   - C13 mining: en çok dönüşüm getiren script
-
-Gerekli yetenekler (capability mapping)
-   - C1, C2, C3, C4, C8, C10, C12
-
-Öneri
-   - IG DM için 3 adımlı script: 1) ihtiyacı netle 2) güven kanıtı 3) WhatsApp'a geç ve slot öner
-   - No-show için otomatik hatırlatma (opt-in uyumlu) ve kapora politikası
-
-Pros
-   - Lead kaçışı azalır
-   - Operasyon standardize olur
-   - Gelir akışı netleşir
-Cons
-   - Aşırı otomasyon 'spam' hissi yaratır
-   - Yanlış vaat/yanlış uygunluk: sağlık riski → human review şart
+SENARYO 73 — [SİLİNDİ] Memnuniyet anketi + referral isteme (opt-in)
+> **BAŞLIK/İÇERİK UYUMSUZLUĞU DÜZELTİLDİ:** Başlık "memnuniyet anketi + referral" diyordu
+> ama içerik IG DM lead yönetimi/speed-to-lead hakkındaydı (Senaryo 60 ile aynı mantık).
+> Gerçek içerik Senaryo 60 (IG DM lead capture + sosyal kanıt) kapsamında.
+> Memnuniyet anketi + referral işlevi → S10 (Google Yorum + Referans Motoru) kapsamında.
 
 ---
 SENARYO 74 — Spam/yanlış tetik: IG otomasyon limitleri
@@ -4345,7 +4088,7 @@ Cons
 
 ---
 SENARYO 75 — Hasta verisini saklama: kayıt, erişim, silme
-Bölge: Global | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: A
+Bölge: Global | Dikey: Klinik+Estetik | Avatar: A1 | Kanıt: A | Grup: KVKK/Veri Güvenliği
 
 1) Müşteri mesajı (örnek konuşma)
    - Lead: 'Hasta verisini saklama: kayıt, erişim, silme'
@@ -4529,6 +4272,113 @@ Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
 Gerekli yetenekler: C1, C3, C4, C8
 
 ---
+SENARYO O11 — Oda servisi siparişi (in-stay)
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B4.1
+
+1) Misafir: 'Odaya kahvaltı gönderin' / 'Gece oda servisi menünüz var mı?'
+2) Bugün: Resepsiyon notu alıyor, mutfağa söylüyor, karışıklık ve gecikme oluyor. Gece shift'inde atlanabiliyor.
+3) Nerede batıyor: Sipariş kaybolması, tahmini süre verilmemesi, otel içi hizmet gelir fırsatı kaçırılması.
+4) Maliyet: (Tahmini) Her kaçırılan oda servisi = 100-300 TL gelir kaybı
+
+Invekto burada:
+A) Phase 1 (template): Menü gönderme + sipariş onay template'i + tahmini süre bilgisi
+B) Phase 2 (POS entegrasyon): POS/mutfak sistemiyle entegre — otomatik iş emri + durum takibi
+Gerekli yetenekler: C1, C3, C8
+
+---
+SENARYO O12 — Housekeeping talebi (in-stay)
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: A
+Kaynak: scenarios-review-actions.md B4.2
+
+1) Misafir: 'Odaya havlu lazım' / 'Temizlik yapılmamış' / 'Yastık değişimi istiyorum'
+2) Bugün: Resepsiyon notu alıp housekeeping'e söylüyor — gecikme + unutma riski yüksek.
+3) Nerede batıyor: En sık in-stay talebi. Unutulursa → şikayet → kötü yorum.
+4) Maliyet: Housekeeping gecikmesi = şikayet eskalasyonu, Google'da 1 yıldız farkı = %5-9 doluluk farkı
+
+Invekto burada:
+A) Phase 1: AI mesaj algılama → housekeeping departmanına otomatik routing (C2 tag: 'housekeeping')
+B) Çözüm sonrası: 'Talebiniz karşılandı mı?' otomatik follow-up (Outbound, T+1saat)
+Gerekli yetenekler: C1, C2, C3, C8
+
+---
+SENARYO O13 — Spa/restoran rezervasyonu (in-stay)
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B4.3
+
+1) Misafir: 'Akşam 8'de 2 kişilik masa ayırtabilir miyim?' / 'Yarın 15:00'te masaj randevusu'
+2) Bugün: Resepsiyon ilgili departmanı arıyor, müsaitlik soruyor, misafire dönüyor — 10-30dk gecikme.
+3) Nerede batıyor: Slot çakışması, resepsiyonun departmanı aramaması, misafirin vazgeçmesi.
+4) Maliyet: (Tahmini) Kaçırılan spa/restoran rezervasyonu = 300-1000 TL/misafir upsell fırsatı
+
+Invekto burada:
+A) Phase 2: Slot yönetimi (diş/estetik randevu motoruyla ortak altyapı) + otomatik onay mesajı
+B) Phase 1 (geçici): Template ile bilgi toplama + manuel konfirmasyon
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O14 — Late check-out / early check-in talebi
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: A
+Kaynak: scenarios-review-actions.md B4.4
+
+1) Misafir: 'Uçuşumuz akşam, geç çıkış yapabilir miyiz?' / 'Saat 10'da geliyoruz, oda hazır mı?'
+2) Bugün: Resepsiyon PMS'e bakıyor, müdüre soruyor, geç dönüyor. Otomatik bir süreç yok.
+3) Nerede batıyor: En sık talep. Misafir cevap beklerken vazgeçiyor. Ücretli seçenek sunulmuyor.
+4) Maliyet: (Tahmini) Late check-out = saf kâr (oda zaten boş ise 500-1500 TL ek gelir). Upsell fırsatı.
+
+Invekto burada:
+A) Phase 1 (template): Müsaitlik bilgisi + ücretli/ücretsiz seçenek sunma template'i
+B) Phase 2 (PMS): Gerçek zamanlı oda müsaitlik kontrolü + otomatik onay/ret
+Gerekli yetenekler: C1, C3, C7, C8
+
+---
+SENARYO O15 — Fatura/ödeme sorunları
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B4.5
+
+1) Misafir: 'Faturada hata var' / 'Ekstra ücret ne için?' / 'Kurumsal fatura keser misiniz?'
+2) Bugün: Muhasebe ile iletişim, e-posta zincirleri, geç dönüş — misafir check-out'ta bekliyor.
+3) Nerede batıyor: Para konusu = hassas. Geç cevap → hukuki risk + kötü yorum.
+4) Maliyet: Fatura anlaşmazlığı = chargeback riski + itibar kaybı
+
+Invekto burada:
+A) Phase 1: AI bilgilendirme (genel fatura politikası + kurumsal fatura süreci) + muhasebe eskalasyonu
+B) Phase 2 (ödeme gateway): iyzico/Param entegrasyonu ile ödeme linki gönderme
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O16 — OTA mesaj entegrasyonu (Booking.com / Expedia)
+Bölge: Türkiye/Global | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B4.6
+
+1) Durum: Oteller sadece WhatsApp'tan değil, Booking.com ve Expedia mesaj kanallarından da mesaj alıyor.
+   Bu kanal Invekto'da TANIMLI DEĞİL — tamamen kör nokta.
+2) Bugün: Otel personeli Booking extranet'e ayrı giriyor, ayrı cevaplıyor. Unified Inbox dışında.
+3) Nerede batıyor: Mesaj gecikme → Booking ceza puanı, düşük reply rate → listing sıralaması düşer.
+4) Maliyet: Booking reply rate <%90 = listing cezası, düşük sıralama = daha az rezervasyon
+
+Invekto burada:
+A) Phase 2: Booking.com Connectivity API ile mesaj kanalını Unified Inbox'a entegre
+B) Phase 3: Expedia Partner Central API desteği
+C) Aynı AI + routing kuralları OTA mesajlarına da uygulanır
+Gerekli yetenekler: C1, C2, C3, C7, C8
+
+---
+SENARYO O17 — Özel gün/kutlama organizasyonu
+Bölge: Türkiye | Dikey: Otel/Turizm | Avatar: O1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B4.7
+
+1) Misafir: 'Eşimin doğum günü, surprise yapar mısınız?' / 'Balayı organizasyonu istiyoruz'
+2) Bugün: Resepsiyon el yordamıyla organize ediyor. Standart süreç yok, kaçırılma riski var.
+3) Nerede batıyor: Yüksek değer, düşük hacim. Kaçırılırsa = premium misafir memnuniyetsizliği.
+4) Maliyet: Başarılı organizasyon = tekrar gelen misafir + referans. Upsell: pasta, çiçek, oda dekorasyonu (500-3000 TL ek gelir).
+
+Invekto burada:
+A) Phase 3: VIP etiket + özel gün tespit (AI intent: kutlama/organizasyon) → koordinatöre routing
+B) Upsell template: pasta/çiçek/dekorasyon seçenekleri + fiyat bilgisi
+Gerekli yetenekler: C1, C2, C3, C8
+
+---
 
 **Otel Niche Özeti:**
 
@@ -4544,9 +4394,18 @@ Gerekli yetenekler: C1, C3, C4, C8
 | O8: Shuttle/transfer | Phase 1 (chatbot FAQ) | — |
 | O9: Grup rezervasyon | Phase 2 (B2B lead tespiti) | — |
 | O10: Kampanya broadcast | Phase 1 (Outbound broadcast) | Outbound Engine |
+| O11: Oda servisi siparişi | Phase 1 (template) / Phase 2 (POS) | POS entegrasyonu |
+| O12: Housekeeping talebi | Phase 1 (routing) | — |
+| O13: Spa/restoran rezervasyonu | Phase 2 (slot yönetimi) | Randevu motoru altyapısı |
+| O14: Late check-out / early check-in | Phase 1 (template) / Phase 2 (PMS) | PMS entegrasyonu |
+| O15: Fatura/ödeme sorunları | Phase 1 (eskalasyon) | — |
+| O16: OTA mesaj entegrasyonu | Phase 2-3 (Booking.com API) | Booking Connectivity API |
+| O17: Özel gün/kutlama | Phase 3 (VIP routing) | — |
 
-> **Sonuç:** Oteller için Phase 1 chatbot + Outbound'dan büyük fayda var (O2, O4, O8, O10).
-> PMS entegrasyonu Phase 2'de otel niche'ini farklılaştırır (O1, O3, O5).
+> **Sonuç:** Oteller için Phase 1 chatbot + Outbound'dan büyük fayda var (O2, O4, O8, O10, O11, O12, O14, O15).
+> PMS entegrasyonu Phase 2'de otel niche'ini farklılaştırır (O1, O3, O5, O14).
+> In-stay senaryoları (O11, O12, O13) misafir otel içindeyken fayda sağlar.
+> OTA entegrasyonu (O16) otel sektörünün en büyük kör noktasını kapatır.
 > Yabancı misafir desteği estetik/medikal turizm altyapısını ortak kullanır (O6).
 
 ============================================================
@@ -4604,12 +4463,547 @@ E-ticaret | Kanıt: B
 Gerekli yetenekler: C1, C2, C3, C8, C11 (sipariş kartı için Integrations API gerekli)
 
 ---
+SENARYO M6 — QR kod ile hızlı WhatsApp erişimi
+Tüm sektörler | Kanıt: B
+Kaynak: scenarios-review-actions.md B5.1
+
+1) Durum: Otel odasında, restoran masasında, klinik bekleme salonunda, mağazada
+   QR kod taranıyor → direkt WhatsApp konuşması başlıyor.
+2) Bugün: Müşteri/misafir WhatsApp numarasını araştırmak zorunda veya telefon numarasını soruyor.
+3) Invekto Mobil: Fiziksel → dijital köprü. QR kod tenant bazlı unique link içerir.
+   Ek fayda: QR tarama anında opt-in toplama fırsatı (ilk mesajda rıza akışı tetiklenir).
+4) Kullanım alanları:
+   - Otel: oda kapısı QR → housekeeping/oda servisi
+   - Klinik: bekleme salonu QR → randevu bilgi/form
+   - E-ticaret: ürün kutusu QR → destek/iade başlatma
+Gerekli yetenekler: C1, C3 (QR link generator + tenant bazlı deep link)
+
+---
+SENARYO M7 — Çevrimdışı mod (offline message drafting)
+Tüm sektörler | Kanıt: B
+Kaynak: scenarios-review-actions.md B5.2
+
+1) Durum: Saha çalışanı (depo, fuar), doktor ameliyatta, satıcı uçuşta — internet yok.
+2) Bugün: Mesajlar birikir, internet gelince hepsine birden bakmak gerekir. Kaçan mesajlar SLA breach'e yol açar.
+3) Invekto Mobil: Önceki mesajları offline okuma + taslak kaydetme + sync olunca otomatik gönderme.
+   Offline dönemde AI öneri çalışmaz (internet gerekli) ama taslak editlenebilir.
+Gerekli yetenekler: C1, C3 (local storage + sync queue)
+
+---
 
 **Mobil Senaryo Özeti:**
 - M1-M3: TÜM sektörlerde geçerli (Phase 7)
 - M4: Sağlık niche'i için kritik (doktor mesai dışı erişim)
 - M5: E-ticaret niche'i için faydalı (hareket halinde yönetim)
-- **Tüm senaryolar mevcut API'leri tüketir — yeni backend gerekmez.**
+- M6: Fiziksel→dijital köprü, tüm sektörlerde opt-in toplama fırsatı (Phase 7)
+- M7: Çevrimdışı erişim, saha çalışanları için kritik (Phase 7)
+- **Tüm senaryolar mevcut API'leri tüketir — yeni backend gerekmez (M6 QR generator hariç).**
+
+============================================================
+D-EK-3) CROSS-SECTOR KRİTİK SENARYOLAR (B1 — 8 senaryo — TÜM SEKTÖRLER)
+============================================================
+
+> **Kaynak:** scenarios-review-actions.md B1 bölümü
+> **Neden ayrı bölüm?** Bu senaryolar tek bir sektöre ait değil — TÜM sektörlerde zorunlu altyapı.
+> 5 bağımsız AI review raporunun 4'ü bu eksiklikleri tespit etti.
+> Bu senaryolar olmadan outbound, AI routing ve compliance senaryolarının çoğu ÇALIŞMAZ.
+
+---
+SENARYO CS-01 — Opt-in toplama ve onam yönetimi
+Tüm sektörler | Kanıt: A (BLOCKER) | Phase: 1 (Outbound prerequisite)
+Kaynak: scenarios-review-actions.md B1.1 | Tespit: Rapor 4 (ana), Rapor 1, 5
+
+1) Sorun: WhatsApp Business Policy gereği, 24 saat penceresi dışında template mesaj göndermek için
+   müşteriden AÇIK ONAM (opt-in) alınması gerekiyor. Bu onamın nasıl toplandığı, nerede saklandığı,
+   nasıl yönetildiği bağımsız bir senaryo/workflow olarak tanımlanmamış.
+
+   > Mevcut referanslar: Opt-in kavramı kaynak dokümanda parçalı olarak mevcut —
+   > senaryo başlıklarında (50, 73 "(opt-in)"), Outbound Engine gereksinimlerinde
+   > "KVKK/GDPR uyumlu consent tracking", ve opt-out yönetimi. Eksik olan:
+   > opt-in'in nasıl TOPLANDIĞI, nerede SAKLANDI, nasıl YÖNETİLDİĞİ konusunda dedicated workflow.
+
+2) Bu olmadan ÇALIŞMAYAN senaryolar:
+   - S4 (Sipariş sonrası proaktif satış) — outbound
+   - S7 (No-show hatırlatma) — outbound
+   - S10 (Yorum rica) — outbound
+   - O7 (Check-out sonrası yorum) — outbound
+   - O10 (Sezonluk kampanya) — outbound
+   - Tüm follow-up zincirleri
+
+3) Workflow:
+   - Opt-in toplama kanalları: ilk WA mesajında, web formunda, sipariş onayında, randevu formunda, QR (M6)
+   - DB saklama: müşteri profilinde `wa_opt_in: true/false, date, source, category`
+   - Opt-out yönetimi: "STOP" mesajı → otomatik unsubscribe (Outbound mevcut: STOP/DUR/İPTAL)
+   - Kategori bazlı onam: utility vs marketing template ayrımı (Meta policy)
+   - Compliance log: kim, ne zaman, hangi kanaldan opt-in verdi (audit trail)
+
+4) Etki: BLOCKER — bu olmadan outbound senaryolarının hiçbiri yasal olarak çalışmaz
+Gerekli yetenekler: C1, C3, C5/C6 (consent management + audit log)
+
+---
+SENARYO CS-02 — AI → İnsan handoff (eskalasyon kuralları)
+Tüm sektörler | Kanıt: A (BLOCKER) | Phase: 1 (AI Assist prerequisite)
+Kaynak: scenarios-review-actions.md B1.2 | Tespit: Rapor 1, 2, 3, 4, 5 (TÜM raporlar)
+
+1) Sorun: AI'nın çözemediği, emin olmadığı veya hassas konularda insana devretme mekanizması.
+   Parçalı referanslar var (Automation handoff mevcut) ama tutarlı bir cross-sector framework yok.
+
+2) Bu olmadan riskler:
+   - AI yanlış tıbbi bilgi verirse → malpractice
+   - AI yanlış fiyat verirse → yasal risk
+   - AI krizde yanlış yaklaşırsa → müşteri kaybı
+   - AI kapasitesini aşarsa → sessizlik → churn
+
+3) Handoff tetikleyicileri:
+   - AI confidence < threshold (örnek: %60)
+   - Belirli intent'ler: tıbbi tavsiye, hukuki, fiyat kesinleştirme
+   - Müşteri açıkça "insanla konuşmak istiyorum" dediğinde
+   - Sentiment skoru kritik eşiği aştığında
+   - Aynı konuda 3+ mesaj döngüsü (AI çözemiyor)
+
+4) Context aktarımı: AI'nın topladığı bilgi (intent, sentiment, müşteri profili, konuşma özeti) insana transfer
+5) Handoff UX: "Sizi uzman arkadaşımıza yönlendiriyorum" mesajı
+6) Geri dönüş: İnsan çözdükten sonra AI özete kayıt yazar (knowledge loop)
+7) SLA: Handoff sonrası insan max X dakikada cevap vermeli
+
+Etki: BLOCKER — bu olmadan AI güvenilir değildir
+Gerekli yetenekler: C1, C2, C8 (confidence routing + context handoff + SLA tracking)
+
+---
+SENARYO CS-03 — AI hallucination guardrail
+Tüm sektörler | Kanıt: A | Phase: 1 (AI Assist ile birlikte)
+Kaynak: scenarios-review-actions.md B1.3 | Tespit: Rapor 2 (ana), Rapor 3, 5
+
+1) Sorun: AI'nın tıbbi, finansal veya hukuki konularda yanlışlıkla kesin/yanıltıcı bilgi üretmesi.
+
+2) Risk örnekleri (sektör bazlı):
+   - Diş: "İmplant 25.000 TL" dedi AI ama doktor 45.000 TL yazıyor → güven kaybı
+   - Estetik: "Hamileyken botox yapılabilir" derse → sağlık riski → dava
+   - E-ticaret: "İadeniz onaylandı" dedi ama iade koşullarını karşılamıyor → operasyonel kaos
+   - Otel: "Oda müsait" dedi ama dolu → misafir geldi, oda yok → crisis
+
+3) Guardrail mekanizmaları:
+   - "Bilmiyorum" kapasitesi: AI emin olmadığı konuda "Bu konuda kesin bilgi veremiyorum,
+     sizi uzmanımıza yönlendiriyorum" demeli
+   - Konu bazlı guardrail listesi:
+     * Tıbbi tavsiye → ASLA kesin diagnosis verme
+     * Fiyat → "aralık" ver, "kesin fiyat muayenede/görüşmede belirlenir" ekle
+     * İlaç/dozaj → ASLA öneri yapma, doktora yönlendir
+     * Hukuki (iade hakkı, garanti) → knowledge base'den kaynak göster, yorum ekleme
+   - Confidence-based routing: düşük confidence → human handoff (CS-02 ile entegre)
+   - Audit log: AI'nın verdiği her cevabın kaydı + confidence skoru
+
+4) Etki: YÜKSEK — yasal risk azaltma, güven inşa
+Gerekli yetenekler: C7, C8 (knowledge-grounded response + confidence scoring + audit)
+
+---
+SENARYO CS-04 — SLA watchdog / failover
+Tüm sektörler | Kanıt: A | Phase: 1-2
+Kaynak: scenarios-review-actions.md B1.4 | Tespit: Rapor 3 (ana), Rapor 1
+
+1) Sorun: Mesaj bekleme süresi aşıldığında, agent offline olduğunda veya AI cevap üretemediğinde
+   otomatik müdahale mekanizması yok.
+
+2) Risk senaryoları:
+   - Mesaj 5dk+ cevapsız → müşteri gider (e-ticaret dönüşüm %5'e düşer)
+   - Agent hastalandı, hepsi offline → mesajlar birikiyor, kimse fark etmiyor
+   - AI servisi down → sessizlik → müşteri "bozuk mu bu?" der
+   - VIP lead 1 saat bekliyor → rakibe gitmiş
+
+3) SLA kuralları (tenant bazlı konfigüre edilebilir):
+   - Genel: 5dk içinde ilk yanıt
+   - VIP: 2dk içinde ilk yanıt
+   - Acil (sağlık): 1dk içinde
+
+4) Watchdog mekanizması:
+   - SLA süresi dolmadan 1dk → uyarı (agent'e push)
+   - SLA süresi doldu → otomatik eskalasyon (supervisor'a)
+   - SLA 2x aşıldı → emergency routing (müsait herhangi agent veya AI fallback mesajı)
+
+5) AI failover:
+   - AI servisi down → "Şu an yoğunuz, en kısa sürede döneceğiz" template mesajı
+   - AI 3 kez üst üste düşük confidence → human routing
+
+6) Dashboard metrikleri: SLA breach sayısı, ortalama bekleme, breach recovery süresi
+7) Etki: YÜKSEK — operasyonel güvenilirlik
+Gerekli yetenekler: C1, C2, C4, C8 (SLA timer + escalation routing + dashboard metrics)
+
+---
+SENARYO CS-05 — Churn sinyali tespiti
+Tüm sektörler | Kanıt: B | Phase: 3 (sentiment altyapısı gerekir)
+Kaynak: scenarios-review-actions.md B1.5 | Tespit: Rapor 2, 3
+
+1) Sorun: Müşterinin açıkça şikayet etmeden terk etme sinyalleri veren cümlelerinin
+   AI ile tespit edilip proaktif müdahale yapılması.
+
+2) Churn sinyal kelimeleri/pattern'leri:
+   - Pasif agresif: "neyse", "boş ver", "bir daha uğraşmam"
+   - Karşılaştırma: "rakip X daha ucuz", "başka yere bakıyorum"
+   - Soğuma: 3+ gün cevap yok (aktif konuşmada), "düşüneyim" + sessizlik
+   - Frekans düşüşü: düzenli müşteri → uzun süre sipariş/randevu yok
+
+3) Risk skoru: Low / Medium / High / Critical
+4) Otomatik aksiyon:
+   - Medium: Agent'e "dikkat: kayıp riski" badge
+   - High: Supervisor'a alert + önerilen kurtarma aksiyonu
+   - Critical: Outbound kurtarma mesajı (özel teklif, VIP ilgi)
+
+5) Dashboard: churn risk pipeline, kurtarılan vs kaybedilen
+6) Etki: ORTA-YÜKSEK — retention artışı, LTV artışı
+Gerekli yetenekler: C8, C4, C13 (sentiment analysis + pattern detection + dashboard)
+
+---
+SENARYO CS-06 — Unified customer timeline
+Tüm sektörler | Kanıt: B | Phase: 2-3 (CRM derinleştirme)
+Kaynak: scenarios-review-actions.md B1.6 | Tespit: Rapor 3 (ana)
+
+1) Sorun: Tek bir müşteri/hasta için TÜM kanallardaki (WA, IG DM, telefon, email, sipariş, randevu, yorum)
+   etkileşim geçmişinin tek bir zaman çizelgesinde görülmesi.
+
+2) Bugünkü durum:
+   - WA'dan yazdı → ayrı, IG'den yazdı → ayrı, telefon aradı → ayrı
+   - Agent müşterinin geçmişini göremiyor → "daha önce yazmıştım" → "ne için yazmıştınız?"
+   - Intent AI tek mesaja bakıyor, geçmiş context yok → yüzeysel analiz
+   - VIP flag anlamsızlaşıyor çünkü toplu etkileşim görülmüyor
+   - Follow-up kör: S9'da hasta 3 hafta önce IG'den yazdı, şimdi WA'dan yazıyor, bağlantı kurulamıyor
+
+3) Çözüm:
+   - Müşteri profili: telefon + email + IG handle + WA numara ile eşleştirme
+   - Timeline görünümü: kronolojik, kanal ikonu ile
+   - Her entry'de: kanal, tarih, konu/intent, çözüm durumu, agent
+   - AI için context window: son 10 etkileşim özeti → cevap önerisi için
+   - CRM entegrasyonu: sipariş geçmişi, randevu geçmişi, yorum geçmişi
+
+4) Etki: YÜKSEK — tüm AI ve routing kalitesini artırır
+Gerekli yetenekler: C1, C4, C8 (cross-channel identity + timeline view + AI context)
+
+---
+SENARYO CS-07 — Revenue attribution
+Tüm sektörler | Kanıt: B | Phase: 2-3
+Kaynak: scenarios-review-actions.md B1.7 | Tespit: Rapor 3 (ana), Rapor 1
+
+1) Sorun: Her satışın/randevunun hangi kanaldan, hangi mesajdan, AI mi insan mı tarafından
+   kapatıldığının takibi yok.
+
+2) Bugünkü sorun:
+   - "300K TL kazanıyoruz" diyorsun ama ispat yok
+   - Hangi senaryo gerçekten para kazandırıyor belli değil
+   - Enterprise müşteri soruyor: "AI ROI'niz nedir?" → cevap yok
+   - Kampanya optimizasyonu yapılamıyor: hangi outbound template daha iyi dönüyor?
+
+3) Çözüm:
+   - Conversion source tracking: ilk temas kanalı (WA organic, IG ad, Google, referral)
+   - AI vs Human flag: cevabı AI mi önerdi, insan mı yazdı, ikisi birlikte mi
+   - Deal value: randevu → tedavi tutarı, sipariş → sepet tutarı
+   - Funnel: lead → first response → qualified → appointment/purchase → closed
+   - Dashboard: kanal bazlı ROI, agent bazlı kapanış oranı, AI assist oranı
+
+4) Etki: YÜKSEK — enterprise satış için şart, kendi ROI'mizi kanıtlamamız lazım
+Gerekli yetenekler: C4, C8, C12 (conversion tracking + funnel + dashboard)
+
+---
+SENARYO CS-08 — Compliance otomasyonu (KVKK/GDPR framework)
+Tüm sektörler (sağlıkta kritik) | Kanıt: A | Phase: 1 (temel) → Phase 4 (enterprise tam)
+Kaynak: scenarios-review-actions.md B1.8 | Tespit: Rapor 1, 3, 5
+
+1) Sorun: Sadece "KVKK'ya dikkat" demek yetmez. Sistematik compliance altyapısı gerekli.
+
+2) Neden kritik:
+   - Sağlık verisi = KVKK özel nitelikli veri → ihmal = ağır ceza
+   - AB müşterisi varsa GDPR de geçerli
+   - Opt-in kayıtları, veri silme talepleri, erişim hakları → hepsi otomatik olmalı
+   - Denetim geldiğinde kanıt sunabilmek lazım
+
+3) Bileşenler:
+   - Explicit consent flow: her kanalda açık onam toplama + kayıt (CS-01 ile entegre)
+   - Opt-in log: kim, ne zaman, hangi kanaldan, ne için onam verdi
+   - Template audit trail: gönderilen her template mesajın kaydı
+   - Veri silme hakkı: müşteri "verimi silin" dedi → otomatik iş akışı
+   - Veri erişim hakkı: müşteri "verilerim neler?" dedi → otomatik rapor
+   - Saklama süresi: sağlık verisi X yıl, ticari veri Y yıl (konfigüre edilebilir)
+   - Maskeleme: TC kimlik, telefon, sağlık bilgisi görüntülemede maskelenmeli
+   - Audit log: kim hangi veriye ne zaman erişti → kayıt
+
+4) Etki: YÜKSEK — yasal zorunluluk, enterprise satış engeli
+Gerekli yetenekler: C5, C6 (security + audit + consent + data lifecycle)
+
+---
+
+**Cross-Sector Kritik Senaryo Özeti:**
+
+| Senaryo | Phase | Etki | Bağımlılık |
+|---------|-------|------|------------|
+| CS-01: Opt-in toplama | Phase 1 | BLOCKER | Outbound Engine prerequisite |
+| CS-02: AI → İnsan handoff | Phase 1 | BLOCKER | AI Assist prerequisite |
+| CS-03: AI guardrail | Phase 1 | YÜKSEK | AI Assist + Knowledge |
+| CS-04: SLA watchdog | Phase 1-2 | YÜKSEK | Routing + Dashboard |
+| CS-05: Churn tespiti | Phase 3 | ORTA-YÜKSEK | Sentiment analysis |
+| CS-06: Unified timeline | Phase 2-3 | YÜKSEK | CRM derinleştirme |
+| CS-07: Revenue attribution | Phase 2-3 | YÜKSEK | Dashboard + tracking |
+| CS-08: Compliance framework | Phase 1→4 | YÜKSEK | CS-01 + Security |
+
+> **Kritik bağımlılık:** CS-01 (opt-in) ve CS-02 (handoff) BLOCKER —
+> bu ikisi olmadan outbound ve AI senaryolarının çoğu ÇALIŞMAZ.
+> Phase 1'de EN AZ temel versiyonları hazır olmalı.
+
+============================================================
+D-EK-4) E-TİCARET EK SENARYOLAR (B2 — 7 senaryo)
+============================================================
+
+> **Kaynak:** scenarios-review-actions.md B2 bölümü
+> Mevcut 25 e-ticaret saha senaryosuna (01-25) ek olarak tespit edilen boşluklar.
+
+---
+SENARYO EB-01 — Stok bildirim (back-in-stock)
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1/E2 | Kanıt: B
+Kaynak: scenarios-review-actions.md B2.1 | Phase: 2-3
+
+1) Müşteri: 'Bu ürün gelince haber verin' / 'Stokta yok mu?'
+2) Bugün: Müşteri düzenli kontrol yapıyor veya unutuyor. Satıcı haber verme mekanizması yok.
+3) Nerede batıyor: Talep var ama müşteriye ulaşılamıyor → rakipten alıyor.
+4) Maliyet: (Tahmini) Her kaçırılan stok bildirimi = 200-500 TL satış kaybı
+
+Invekto burada:
+A) Stok girişi olunca otomatik WA mesajı (Outbound Engine + stok entegrasyonu)
+B) Opt-in ZORUNLU (CS-01). Template kategorisi: utility.
+C) Stok entegrasyonu: Trendyol/HB/Shopify API ile stok değişikliği webhook
+Gerekli yetenekler: C1, C3, C8, C11 (stok webhook + outbound template)
+Etki: ORTA — müşteri memnuniyeti + dönüşüm
+
+---
+SENARYO EB-02 — Influencer/affiliate attribution
+Bölge: Türkiye/Global | Dikey: E-ticaret D2C | Avatar: E2 | Kanıt: B
+Kaynak: scenarios-review-actions.md B2.2 | Phase: 3
+
+1) Müşteri: 'Kod neydi?' / 'Link açılmıyor' / 'X influencer'ın kodunu kullanmak istiyorum'
+2) Bugün: Influencer kodu WA'da paylaşılıyor ama tracking yok. Hangi influencer ne kadar sattı bilinmiyor.
+3) Nerede batıyor: Pazarlama bütçesi kör — influencer ROI ölçülemiyor.
+4) Maliyet: Ölçülemeyen pazarlama = israf edilen bütçe
+
+Invekto burada:
+A) UTM + influencer kodu ile kampanya bazlı etiketleme (C12 Ads Attribution)
+B) AI: "Kod neydi?" sorusunda influencer kodunu algıla → doğru linki gönder
+C) Dashboard: influencer bazlı satış raporu + ROI hesaplama
+Gerekli yetenekler: C8, C12 (attribution + campaign tracking)
+Etki: ORTA — pazarlama ROI
+
+---
+SENARYO EB-03 — Proaktif sipariş durum güncelleme
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: A
+Kaynak: scenarios-review-actions.md B2.3 | Phase: 2
+
+1) Durum: Kargo gecikmesi, stok sorunu olunca MÜŞTERİDEN ÖNCE bilgilendir.
+   "Siparişinizdeki X ürünü stok sorunu nedeniyle 2 gün gecikmeli gönderilecek."
+2) Bugün: Müşteri kendi fark ediyor → kızgın mesaj atıyor → kriz yönetimi.
+3) Nerede batıyor: Proaktif bilgilendirme = güven. Reaktif = şikayet. S4 ile ilişkili ama farklı: S4 satış, bu bilgilendirme.
+4) Maliyet: Proaktif bilgilendirme şikayet oranını %40-60 azaltır (Tahmini)
+
+Invekto burada:
+A) Kargo/sipariş durumu değişiklik webhook → otomatik WA mesajı (Outbound trigger)
+B) Template: "Siparişiniz hakkında bilgilendirme" (utility kategori, opt-in gerekli)
+C) Negatif senaryo: gecikme bildirimi + tahmini yeni tarih + özür kuponu
+Gerekli yetenekler: C1, C3, C8, C11 (sipariş webhook + outbound trigger)
+Etki: YÜKSEK — şikayet önleme
+
+---
+SENARYO EB-04 — Cross-platform sipariş eşleştirme
+Bölge: Türkiye | Dikey: E-ticaret Marketplace | Avatar: E1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B2.4 | Phase: 2
+
+1) Müşteri: Trendyol'dan aldı, WA'dan yazıyor, HB siparişi de var. "Hangi sipariş?"
+2) Bugün: Satıcı farklı panellere bakıyor, müşteriden sipariş numarası istiyor — gecikme.
+3) Nerede batıyor: Telefon numarası ile cross-platform eşleştirme yok.
+4) Maliyet: (Tahmini) Sipariş tespit süresi: 5dk → 30sn (otomasyon ile)
+
+Invekto burada:
+A) Phase 2: C11 entegrasyonu ile telefon numarasından otomatik sipariş çekme (Trendyol + HB + Shopify)
+B) AI: Müşteri "siparişim" deyince → son siparişleri listele → doğru olanı seç
+Gerekli yetenekler: C1, C8, C11 (cross-platform order lookup)
+Etki: ORTA — operasyonel verimlilik
+
+---
+SENARYO EB-05 — Şikayetvar / BTK eskalasyon yönetimi
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B2.5 | Phase: 3
+
+1) Durum: Müşteri Şikayetvar'a düştü. Senaryo 03'te bahsedilmiş ama bağımsız workflow yok.
+2) Bugün: Satıcı Şikayetvar'ı düzenli kontrol etmiyor veya geç fark ediyor.
+3) Nerede batıyor: Geç müdahale = etki sıfır. Şikayetvar skoru düşer → potansiyel müşteriler kaçar.
+
+Invekto burada:
+A) Şikayetvar'daki case'in WA üzerinden proaktif çözümü
+B) "Şikayetvar'da yazınızı gördük, sorunu hemen çözmek istiyoruz" — hız kritik
+C) Çözüm sonrası: Şikayetvar güncelleme hatırlatması (müşteriye "çözüldü" yazdırma)
+D) Risk: Çok geç kalırsa etki sıfır → SLA watchdog (CS-04) ile entegre
+Gerekli yetenekler: C1, C2, C3, C8 (proaktif outreach + eskalasyon routing)
+Etki: ORTA — itibar koruma
+
+---
+SENARYO EB-06 — Garanti ve teknik servis yönlendirme
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1/E2 | Kanıt: B
+Kaynak: scenarios-review-actions.md B2.6 | Phase: 3
+
+1) Müşteri: 'Ürün bozuldu, garanti kapsamında mı?' / 'Teknik servise nasıl göndereceğim?'
+2) Bugün: Satıcı garanti süresini kontrol ediyor (sipariş tarihinden hesaplama), teknik servis bilgisi veriyor — tekrarlı iş.
+3) Nerede batıyor: Garanti süresi hesaplama hataları, yanlış teknik servis yönlendirmesi.
+
+Invekto burada:
+A) Knowledge base'den: garanti koşulları, teknik servis adresleri/telefonları
+B) Otomatik garanti süresi kontrolü (sipariş tarihi + garanti süresi)
+C) Dikkat: AI guardrail (CS-03) — garanti kararı AI tarafından verilmez, bilgi sunulur
+Gerekli yetenekler: C1, C7, C8 (knowledge + garanti hesaplama)
+Etki: DÜŞÜK-ORTA
+
+---
+SENARYO EB-07 — Fraud / dolandırıcılık şüphesi
+Bölge: Türkiye | Dikey: E-ticaret | Avatar: E1/E2 | Kanıt: A
+Kaynak: scenarios-review-actions.md B2.7 | Phase: 2
+
+1) Müşteri: 'Bu siparişi ben vermedim' / 'Hesabım çalındı' / 'Tanımadığım bir kargo geldi'
+2) Bugün: Müşteri panik halinde, normal kuyruğa düşüyor, bekliyor — kriz büyüyor.
+3) Nerede batıyor: Yüksek öncelikli, hassas. Gecikme = hukuki risk + güven kaybı.
+
+Invekto burada:
+A) AI panik butonu: fraud intent tespiti → normal kuyruk bypass → acil agent routing
+B) Hesap dondurma talebi → operasyonel eskalasyon (yöneticiye push)
+C) Template: "Hesabınız güvende — durumu inceliyoruz" hemen gönderilir (anxiety azaltma)
+D) Ardından: İnceleme süreci + sonuç bildirimi (Outbound follow-up)
+Gerekli yetenekler: C1, C2, C8 (fraud intent + priority routing + eskalasyon)
+Etki: YÜKSEK — güvenlik
+
+---
+
+**E-ticaret Ek Senaryo Özeti:**
+
+| Senaryo | Phase | Etki | Bağımlılık |
+|---------|-------|------|------------|
+| EB-01: Stok bildirim | Phase 2-3 | ORTA | Outbound + C11 stok webhook |
+| EB-02: Influencer attribution | Phase 3 | ORTA | C12 Ads Attribution |
+| EB-03: Proaktif sipariş güncelleme | Phase 2 | YÜKSEK | C11 + Outbound trigger |
+| EB-04: Cross-platform eşleştirme | Phase 2 | ORTA | C11 entegrasyon |
+| EB-05: Şikayetvar eskalasyon | Phase 3 | ORTA | CS-04 SLA watchdog |
+| EB-06: Garanti/teknik servis | Phase 3 | DÜŞÜK-ORTA | C7 Knowledge |
+| EB-07: Fraud yönetimi | Phase 2 | YÜKSEK | Priority routing |
+
+============================================================
+D-EK-5) SAĞLIK EK SENARYOLAR (B3 — 5 senaryo — DİŞ + ESTETİK)
+============================================================
+
+> **Kaynak:** scenarios-review-actions.md B3 bölümü
+> Mevcut diş (26-50) ve estetik (51-75) saha senaryolarına ek olarak tespit edilen boşluklar.
+> Bu senaryolar her iki sağlık sektörüne de uygulanabilir.
+
+---
+SENARYO SB-01 — Tedavi planı onay akışı
+Bölge: Türkiye | Dikey: Diş + Estetik | Avatar: D1/A1 | Kanıt: A
+Kaynak: scenarios-review-actions.md B3.1 | Phase: 2
+
+1) Durum: Doktor tedavi planı gönderdi (PDF/mesaj), hasta onay vermedi.
+2) Bugün: Onay takibi yapılmıyor veya sekretarya unutuyor. Plan gönderilip takip edilmeyen her hasta = kaybedilen 15-50K TL tedavi.
+3) Nerede batıyor: Onay gelmezse ne olacağı belli değil. Passive churn — hasta "düşünüyorum" diyor ve kayboluyor.
+
+Invekto burada:
+A) Follow-up zinciri (Outbound):
+   - T+1 gün: "Tedavi planınızı incelediniz mi?"
+   - T+3 gün: "Sorularınız varsa yardımcı olabiliriz"
+   - T+7 gün: Son hatırlatma
+B) Onay gelmezse → supervisor'a alert (kaybedilen gelir tahmini ile)
+C) Onay gelirse → randevu slotu öner (Appointments entegrasyon)
+
+Gerekli yetenekler: C1, C3, C8, C10 (follow-up + revenue tracking + appointments)
+Etki: YÜKSEK — ciddi gelir kaybı önleme (15-50K TL/hasta)
+
+---
+SENARYO SB-02 — Sigorta provizyon ön kontrol
+Bölge: Türkiye | Dikey: Diş (ağırlıklı) | Avatar: D2 | Kanıt: B
+Kaynak: scenarios-review-actions.md B3.2 | Phase: 3-4
+
+1) Hasta: 'Sigortam X tedaviyi karşılıyor mu?' / 'Poliçe numaram 12345, kontrol eder misiniz?'
+2) Bugün: Senaryo 37'de sigorta sorusu var ama yüzeysel. Gerçek ihtiyaç: provizyon sorgusu, kapsam kontrolü, katkı payı hesabı. Sekretarya sigorta şirketini arıyor — 30dk-1saat.
+3) Nerede batıyor: Tam otomasyon zor (sigorta API'leri karmaşık ve şirketten şirkete değişiyor).
+
+Invekto burada:
+A) Phase 3 (bilgi toplama): Poliçe no + TC kimlik toplama → manuel provizyon sorgusuna sunma
+B) Phase 4 (entegrasyon): Sigorta API'leri ile otomatik kapsam kontrolü (büyük şirketler önce)
+C) AI: "Sigortanız X tedaviyi genellikle karşılar, kesin bilgi için provizyon sorgusu yapacağız" (guardrail — kesin sonuç söyleme)
+D) KVKK: Sigorta bilgisi = özel nitelikli kişisel veri → rıza + maskeleme
+Gerekli yetenekler: C1, C5, C7, C8 (bilgi toplama + knowledge + KVKK)
+Etki: ORTA — operasyonel yük azaltma
+
+---
+SENARYO SB-03 — Çoklu klinik/şube yönetimi
+Bölge: Türkiye | Dikey: Diş + Estetik (zincir klinikler) | Avatar: D1/A1 | Kanıt: B
+Kaynak: scenarios-review-actions.md B3.3 | Phase: 2
+
+1) Hasta: 'Kadıköy şubenizde Dr. Mehmet hangi günler?' / 'En yakın şubeniz neresi?'
+2) Bugün: Sekretarya doktorun hangi şubede, hangi gün olduğunu ezbere biliyor (veya bilmiyor).
+3) Nerede batıyor: Zincir klinikler için şart. Yanlış şubeye yönlendirme = hasta kaybı + zaman kaybı.
+
+Invekto burada:
+A) Knowledge base: doktor-şube-gün eşleştirme tablosu
+B) AI: konum bazlı yönlendirme ("Kadıköy şubemizde Dr. Mehmet Pazartesi-Çarşamba, Beşiktaş'ta Perşembe-Cumartesi")
+C) Randevu motoru: şube bazlı slot yönetimi (Appointments genişletme)
+Gerekli yetenekler: C1, C7, C8 (knowledge + location routing)
+Etki: ORTA — zincir klinikler için operasyonel verimlilik
+
+---
+SENARYO SB-04 — Tedavi öncesi hazırlık talimatları (pre-op)
+Bölge: Türkiye | Dikey: Diş + Estetik | Avatar: D1/A1 | Kanıt: A
+Kaynak: scenarios-review-actions.md B3.4 | Phase: 2
+
+1) Durum: Ameliyat/tedavi öncesi: 8 saat açlık, X ilacı kesin, Y ilacı devam edin, randevuya refakatçi ile gelin.
+   S8'in tersi — S8 post-op, bu pre-op. Aynı mekanik (mesaj zinciri) ama içerik farklı.
+2) Bugün: Sekretarya telefonda anlatıyor veya basılı kağıt veriyor. Hasta unutuyor → ameliyat iptal.
+3) Nerede batıyor: Hasta hazırlığı eksikse ameliyat iptal → koltuk boş → gelir kaybı.
+4) Maliyet: İptal edilen ameliyat = 5-50K TL gelir kaybı + başka hasta alınamamış slot
+
+Invekto burada:
+A) Otomatik mesaj zinciri (Outbound):
+   - T-3 gün: Genel hazırlık talimatları (açlık, ilaç, refakatçi)
+   - T-1 gün: Hatırlatma + soru varsa "şimdi sorun"
+   - T-sabah: Son kontrol + klinik adresi/ulaşım
+B) Tedavi tipine göre talimat şablonu (S8 varyasyon tablosuyla paralel):
+   - Diş çekim: aspirin kes, 8 saat açlık
+   - İmplant: antibiyotik başla, 12 saat açlık
+   - Rinoplasti: kan sulandırıcı kes, sigara bırak, refakatçi zorunlu
+   - Botox/dolgu: hazırlık minimal, bilgilendirme ağırlıklı
+C) KVKK: Sağlık talimatı = tıbbi veri → rıza gerekli
+Gerekli yetenekler: C1, C3, C7, C8 (knowledge + outbound + treatment-specific templates)
+Etki: YÜKSEK — ameliyat iptal önleme + hasta güvenliği
+
+---
+SENARYO SB-05 — Reçete/ilaç sorguları
+Bölge: Türkiye | Dikey: Diş + Estetik | Avatar: D2/A2 | Kanıt: B
+Kaynak: scenarios-review-actions.md B3.5 | Phase: 3
+
+1) Hasta: 'Reçetemi yazdınız mı?' / 'İlacı nereden alacağım?' / 'Dozajı ne kadardı?'
+2) Bugün: Hasta sekretaryayı arıyor, sekretarya doktora soruyor — tekrarlı sorular.
+3) Nerede batıyor: Tekrarlı, zaman alıcı. Dozaj bilgisi hassas — yanlış bilgi = risk.
+
+Invekto burada:
+A) Knowledge base'den: reçete durumu, eczane bilgisi, genel ilaç bilgisi (hasta bazlı kayıt)
+B) DİKKAT — Guardrail (CS-03 ile entegre):
+   - Dozaj önerisi YAPMA — sadece doktorun verdiği bilgiyi tekrarla
+   - "Dozaj bilgisi için doktorunuza danışınız" standardı
+   - İlaç etkileşimi sorusu → ASLA yanıt → doktora yönlendir (handoff CS-02)
+C) KVKK: Reçete = sağlık verisi → özel nitelikli veri koruması
+Gerekli yetenekler: C1, C7, C8 (knowledge + guardrail + KVKK)
+Etki: DÜŞÜK-ORTA — tekrarlı soru azaltma
+
+---
+
+**Sağlık Ek Senaryo Özeti:**
+
+| Senaryo | Phase | Etki | Bağımlılık |
+|---------|-------|------|------------|
+| SB-01: Tedavi planı onay | Phase 2 | YÜKSEK | Outbound + Appointments |
+| SB-02: Sigorta provizyon | Phase 3-4 | ORTA | Sigorta API (karmaşık) |
+| SB-03: Çoklu şube yönetimi | Phase 2 | ORTA | Knowledge + Appointments |
+| SB-04: Pre-op hazırlık talimatları | Phase 2 | YÜKSEK | Outbound + Knowledge |
+| SB-05: Reçete/ilaç sorguları | Phase 3 | DÜŞÜK-ORTA | Knowledge + CS-03 guardrail |
+
+> **Bağımlılık:** SB-01 ve SB-04 Outbound Engine'e bağlı (S7/S8 ile aynı altyapı).
+> SB-05 mutlaka CS-03 (guardrail) ile birlikte — dozaj bilgisi verilemez!
 
 ============================================================
 E) CAPABILITY GAP ÖZETİ (75 senaryodan çıkarım)
@@ -4668,3 +5062,1131 @@ F) KAYNAK NOTLARI (bu dokümandaki 'A' seviyeli gerçekler için)
 [HEALTH] Özel nitelikli veri rehberi: KVKK rehberi.
 [HEALTH] Sağlıkta WhatsApp kullanımı riskleri ve kayıt tutma zorluğu: PMC makalesi.
 [HEALTH] KVKK kamu duyurusu (WhatsApp gibi uygulamalarla ilgili): duyuru üzerine analiz.
+
+============================================================
+G) YAPISAL EK TABLOLAR (v5 — 2026-02-16)
+============================================================
+
+> Bu bölüm scenarios-review-actions.md C1-C5 aksiyonlarının uygulamasıdır.
+> **v5:** Yeni eklenen senaryolar (CS, EB, SB, O11-O17, M6-M7) tablolara dahil edildi.
+
+---
+
+### G1. Revenue (S#) → Saha Senaryo Mapping Tablosu (C1)
+
+> Her revenue senaryosunun hangi saha senaryolarından beslendiği.
+
+**Revenue → Saha (hangi saha senaryoları bu revenue'yu besliyor):**
+
+| Revenue Senaryo | Besleyen Saha Senaryoları | Not |
+|----------------|--------------------------|-----|
+| S1 (Negatif Yorum Kurtarma) | 03, 15 (kriz senaryoları sentiment verisi sağlar) | Kriz De-eskalasyon grubu |
+| S2 (Satış Öncesi Ürün Soruları) | 11, 12 (beden/stok soruları) | E-ticaret knowledge |
+| S3 (İade Çevirme) | 02, 03, 16, 17, 24 (iade/kargo senaryoları) | Kargo/Lojistik grubu |
+| S4 (Sipariş Sonrası Proaktif Satış) | 14 (sepet terk), tüm e-ticaret | Outbound v2 gerekli |
+| S5 (B2B Lead Tespiti) | O9 (grup rezervasyon), tüm VIP sinyalleri | Cross-sektör |
+| S6 (Fiyat → Randevu) | ~~26~~ (silindi), 27, 41, 51 | Diş + Estetik fiyat soruları |
+| S7 (No-Show Önleme) | ~~29~~ (silindi), 40, ~~55~~ (silindi) | Hatırlatma zinciri |
+| S8 (Tedavi Sonrası Takip) | ~~32, 45, 72~~ (silindi), 30, 57 | Post-treatment zinciri |
+| S9 (Medikal Turizm) | ~~34, 61~~ (silindi), O6 | Multi-language + paket |
+| S10 (Yorum + Referans) | ~~50, 73~~ (silindi → içerik uyumsuz), O7 | Outbound Engine |
+
+**Saha → Revenue (her saha senaryosu hangi revenue'ya katkı sağlıyor):**
+
+| Saha Grup | Senaryolar | Besler → |
+|-----------|-----------|----------|
+| Kargo/Lojistik | 01, 02, 06, 07, 18, 19, 24 | S3 (iade çevirme fırsatı) |
+| Ödeme/Fatura | 08, 13, 21, 22 | Genel operasyonel verimlilik |
+| Kriz De-eskalasyon | 03, 15, 35, 57 | S1 (yorum kurtarma verisi) |
+| KVKK/Veri Güvenliği | 33, 44, 62, 75 | Compliance altyapısı (CS-08) |
+| Lead Dönüşüm | 60 | S6, S10 (lead + sosyal kanıt) |
+| Randevu/Slot | 28, 40, 54, 69 | S7 (no-show), S6 (dönüşüm) |
+| Otel | O1-O17 | S5 (O9), S9 (O6), S10 (O7), in-stay (O11-O13), OTA (O16) |
+| Cross-Sector Kritik | CS-01 to CS-08 | TÜM revenue senaryolarına altyapı (opt-in, handoff, guardrail, SLA) |
+| E-ticaret Ek | EB-01 to EB-07 | S1 (EB-05), S3 (EB-03), S4 (EB-01), C11 (EB-04) |
+| Sağlık Ek | SB-01 to SB-05 | S6 (SB-01 onay), S7 (SB-04 pre-op), S8 (SB-04 zincir) |
+| Mobil | M1-M7 | Tüm operasyonel senaryolara mobil erişim |
+
+---
+
+### G2. Phase Bağımlılık Tablosu (C2)
+
+| Senaryo | Phase | Bağımlılıklar (önce bunlar hazır olmalı) |
+|---------|-------|------------------------------------------|
+| S1 (Yorum Kurtarma) | 3 | C11 (Trendyol API), Outbound Engine, Sentiment analiz |
+| S2 (Ürün Soruları) | 3 | C7 (Knowledge/RAG), ürün katalogu |
+| S3 (İade Çevirme) | 2-3 | C8 (AI Assist), iade politikası knowledge |
+| S4 (Proaktif Satış) | 5 | Outbound v2 (follow-up zinciri + cross-sell), C11, müşteri segmentasyonu |
+| S5 (B2B Lead) | 2 | AI intent tespiti, VIP flag, routing |
+| S6 (Fiyat → Randevu) | 1-2 | AI Assist (Phase 1), Randevu motoru (Phase 2) |
+| S7 (No-Show) | 1 | Outbound temel (broadcast + trigger) |
+| S8 (Tedavi Takip) | 2 (basit) / 5 (tam) | Outbound temel, Knowledge base (Phase 3) |
+| S9 (Medikal Turizm) | 5 | Multi-language AI (Phase 3), Outbound v2, lead scoring |
+| S10 (Yorum Motoru) | 5 | Outbound, Google Business Profile API (Phase 3), sentiment |
+| O1 (Oda fiyat) | 1 (template) / 2 (PMS) | PMS entegrasyonu (Phase 2) |
+| O7 (Yorum rica) | 2 (Outbound) / 5 (yorum motoru) | Outbound Engine |
+| O10 (Kampanya) | 1 (Outbound broadcast) | Outbound Engine |
+| O11 (Oda servisi) | 1 (template) / 2 (POS) | POS entegrasyonu (Phase 2) |
+| O14 (Late check-out) | 1 (template) / 2 (PMS) | PMS entegrasyonu (Phase 2) |
+| O16 (OTA mesaj) | 2-3 | Booking.com Connectivity API |
+| CS-01 (Opt-in) | 1 | Outbound Engine prerequisite — BLOCKER |
+| CS-02 (Handoff) | 1 | AI Assist prerequisite — BLOCKER |
+| CS-03 (Guardrail) | 1 | AI Assist + Knowledge base |
+| CS-04 (SLA Watchdog) | 1-2 | Routing + Dashboard |
+| CS-05 (Churn) | 3 | Sentiment analysis altyapısı |
+| CS-06 (Timeline) | 2-3 | CRM derinleştirme, cross-channel identity |
+| CS-07 (Attribution) | 2-3 | Dashboard + conversion tracking |
+| CS-08 (Compliance) | 1 (temel) → 4 (tam) | CS-01 + C5/C6 Security |
+| EB-03 (Proaktif güncelleme) | 2 | C11 sipariş webhook + Outbound trigger |
+| EB-07 (Fraud) | 2 | Priority routing + eskalasyon |
+| SB-01 (Tedavi planı onay) | 2 | Outbound follow-up + Appointments |
+| SB-04 (Pre-op talimat) | 2 | Outbound zincir + Knowledge base |
+
+> **Outbound Engine iki seviye:**
+> - Phase 1 = temel: broadcast + trigger (S7, O7, O10, CS-01 opt-in için yeterli)
+> - Phase 2 = gelişmiş: follow-up zincirleri + cross-sell kuralları (S4, S8 tam, S9, SB-01, SB-04 için gerekli)
+
+---
+
+### G3. Saha Senaryoları Etki Seviyesi (C3)
+
+| Etki | Kriter | E-ticaret | Diş | Estetik | Otel | Cross-Sector | Ek Senaryolar |
+|------|--------|-----------|-----|---------|------|-------------|---------------|
+| YUKSEK (>50K TL/ay veya kritik risk) | Yüksek hacim veya yüksek birim değer | 01, 03, 14 | 27, 28, 30, 35, 40 | 51, 52, 54, 57, 60 | O1, O4, O9, O11, O12, O14 | CS-01 (BLOCKER), CS-02 (BLOCKER), CS-03, CS-04, CS-06, CS-07, CS-08 | EB-03, EB-07, SB-01, SB-04 |
+| ORTA (10-50K TL/ay) | Orta hacim, operasyonel iyileştirme | 02, 05, 06, 07, 08, 09, 11, 15, 19 | 31, 33, 36, 37, 38, 41, 42, 43 | 53, 56, 58, 59, 63, 64, 65, 66, 68 | O2, O3, O5, O6, O7, O8, O10, O13, O15, O16 | CS-05 | EB-01, EB-02, EB-04, EB-05, SB-02, SB-03 |
+| DUSUK (<10K TL/ay veya düşük hacim) | Düşük hacim veya spesifik durum | 10, 12, 13, 16, 17, 18, 20, 21, 22, 23, 24, 25 | 39, 46, 47, 48, 49 | 69, 70, 71, 74 | O17 | — | EB-06, SB-05, M6, M7 |
+
+---
+
+### G4. Entegrasyon Gereksinimleri Matrisi (C4)
+
+| Entegrasyon | Senaryolar | API/Araç | Phase |
+|-------------|-----------|----------|-------|
+| Trendyol Seller API v2 | S1, 01, 03, 19, 20, EB-01, EB-03, EB-04 | REST API, sipariş/yorum/kargo/stok endpoints | Phase 2 |
+| Hepsiburada Open API | 19, EB-04 | REST API, sipariş/kargo endpoints | Phase 2 |
+| Shopify Admin API | 21, EB-01 | GraphQL/REST, sipariş/ödeme/stok endpoints | Phase 2 |
+| WooCommerce REST API | 22, EB-01 | REST API, sipariş/kargo/fatura/stok endpoints | Phase 2 |
+| PMS Entegrasyonu (Otel) | O1, O3, O5, O11, O14 | OPERA, Protel, Clock PMS vb. | Phase 2 |
+| POS Entegrasyonu (Otel) | O11 | Restoran/mutfak sipariş sistemi | Phase 2 |
+| Booking.com Connectivity API | O16 | Mesaj kanalı entegrasyonu | Phase 2-3 |
+| Expedia Partner Central API | O16 | Mesaj kanalı entegrasyonu | Phase 3 |
+| Google Business Profile API | S10, O7 | Yorum yönetimi + yanıt | Phase 3 |
+| Ödeme Gateway | 36, 68, O15 | iyzico/Param/PayTR | Phase 2 |
+| Sigorta Provizyon API | SB-02 | Şirket bazlı API'ler (karmaşık) | Phase 3-4 |
+| WhatsApp Cloud API | TÜM outbound + CS-01 opt-in | Meta Business API | Phase 1 (mevcut) |
+| Instagram Graph API | 27, 41, 51, 53, 60, 63, EB-02 | DM mesaj yönetimi + attribution | Phase 1 (mevcut) |
+
+---
+
+### G5. KVKK Risk Skoru (C5)
+
+| Risk | Kriter | Senaryolar |
+|------|--------|-----------|
+| YUKSEK | Sağlık verisi, özel nitelikli kişisel veri | 30, 33, 37, 44, 47, 56, 62, 75, M4, SB-01, SB-02, SB-04, SB-05, CS-08 |
+| ORTA | Kişisel veri (ad, telefon, adres, sipariş, fotoğraf) | 08, 09, 13, 14, 27, 36, 38, 48, 52, 54, 58, 66, 68, O1, O5, O9, O15, CS-01, CS-06, EB-04, EB-07 |
+| DUSUK | Anonim/genel bilgi, template mesajlar | 01, 02, 06, 07, 10, 11, 12, 16, 17, 18, 20, 25, O2, O4, O8, O11, O12, O13, O17, M6, M7, EB-01, EB-02, EB-06 |
+
+> **KVKK YUKSEK risk senaryolarında zorunlu:**
+> - Açık rıza / aydınlatma metni
+> - Veri minimizasyonu (sadece gerekli bilgi)
+> - Saklama süresi politikası
+> - Erişim kontrolü (kim hangi veriye erişir)
+> - Maskeleme (TC kimlik, sağlık bilgisi ekranda maskelenmeli)
+
+============================================================
+H) GÜZELLİK SALONU SENARYOLARI (GU-01 ~ GU-25)
+============================================================
+
+> **Sektör:** Kuaför, berber, cilt bakım, nail art, güzellik merkezi
+> **Hedef müşteri:** 2-10 koltuklu salonlar, zincir güzellik merkezleri
+> **Kanal:** WhatsApp + Instagram DM (Instagram özellikle önemli — before/after paylaşımları)
+> **Phase:** Çoğu Phase 1-2 ile başlanabilir (randevu + hatırlatma core altyapı)
+> **v6 (2026-02-16):** D1 kararı ile eklenen yeni sektör
+
+---
+SENARYO GU-01 — Randevu alma / değiştirme / iptal
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A | Grup: Randevu
+
+1) Müşteri mesajı (örnek konuşma)
+   - Müşteri: 'Yarın öğleden sonra saç boyama için yer var mı?'
+   - Müşteri: 'Saat 3'e alabilir misiniz?'
+   - Salon: (resepsiyonist meşgul, müşteri bekliyor)
+
+2) Bugün işletme bunu nasıl yönetiyor?
+   - Resepsiyonist telefon + WhatsApp + yüz yüze aynı anda randevu veriyor
+   - Kağıt/Excel ajanda ile çakışma kontrolü
+   - Yoğun günlerde (Cuma-Cumartesi) cevap gecikince müşteri rakibe gidiyor
+
+3) Nerede batıyor?
+   - Çift randevu verilmesi (ajanda senkron değil)
+   - Cevap gecikmesi → müşteri başka salona gidiyor
+   - İptal/değişiklik takibi zorlaşıyor
+
+4) Gerçek maliyet (tahmini)
+   - Günde 20-40 randevu talebi, 5-10'u geç cevaplanıyor
+   - Kaçan müşteri: 5 × 200 TL = 1.000 TL/gün = 30.000 TL/ay
+
+Invekto burada:
+A) Bugün ne kadarını yapıyor?
+   - C1 inbox + C2 routing ile mesajlar tek yerde
+B) Phase-1 ile ne olur?
+   - C8 Agent Assist: "Yarın saat 15:00 müsait. Onaylamak ister misiniz?" önerisi
+   - Automation flow: randevu intent → müsait slot göster → onay → kayıt
+C) Phase-2+ gerektiren
+   - Randevu motoru (Appointments servis) ile otomatik slot yönetimi
+   - Online randevu takvimi (müşteri self-service)
+
+Gerekli yetenekler: C1, C2, C3, C8 (Phase 1) + Randevu motoru (Phase 2)
+KVKK risk: DUSUK
+
+Pros: Deflection yüksek, en sık gelen mesaj tipi, ROI hızlı
+Cons: Salon ajandası senkron olmadan çift randevu riski → fallback gerekli
+
+---
+SENARYO GU-02 — Fiyat sorgulama
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A | Grup: Fiyat
+
+1) Müşteri mesajı
+   - Müşteri: 'Röfle + bakım ne kadar?'
+   - Müşteri: 'Keratin fiyatı nedir?'
+
+2) Bugün
+   - Fiyat listesi elle gönderiliyor veya "gelince konuşuruz" deniyor
+   - Instagram DM'den gelen fiyat sorularına geç dönülüyor
+
+3) Nerede batıyor?
+   - Fiyat vermeden "gelin görüşelim" → müşteri güvensizlik hissediyor
+   - Her seferinde aynı fiyat listesini kopyala-yapıştır
+   - Saç uzunluğuna göre fiyat farkı var, standart fiyat verilemez
+
+4) Gerçek maliyet
+   - Günde 15-25 fiyat sorusu, %40'ı dönüşüm kaybediyor
+   - 10 kayıp × 200 TL = 2.000 TL/gün = 60.000 TL/ay
+
+Invekto burada:
+A) Bugün: C3 template ile fiyat listesi hızlı gönderim
+B) Phase-1: C8 AI Assist fiyat sorusunu anlar → "Röfle: 500-800 TL (saç uzunluğuna göre). Randevu oluşturmamı ister misiniz?"
+C) Phase-2+: C7 Knowledge base'den detaylı fiyat bilgisi + kampanya fiyatları
+
+Gerekli yetenekler: C1, C2, C3, C8 (Phase 1) + C7 Knowledge (Phase 3)
+KVKK risk: DUSUK
+
+---
+SENARYO GU-03 — Kuaför / stilist seçimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Gelin saçı yapan kuaförünüz var mı?'
+   - 'Balayaj konusunda uzman kim?'
+
+2) Bugün: Resepsiyonist müsait olan kişiyi söylüyor, uzmanlık eşleşmesi yapılmıyor
+3) Nerede batıyor: Yanlış kuaföre yönlendirme → memnuniyetsizlik
+4) Gerçek maliyet: Müşteri memnuniyetsizliği → tekrar gelmeme → lifetime value kaybı
+
+Invekto burada:
+A) Bugün: C2 routing ile kuaförlere yönlendirme
+B) Phase-1: C8 AI Assist stilist uzmanlık bilgisini Knowledge'dan çeker → doğru eşleştirme
+C) Phase-2+: Stilist profili + portfolyo gösterimi, müşteri tercihi kayıt
+
+Gerekli yetenekler: C1, C2, C8 + C7 (stilist bilgisi Knowledge'da)
+KVKK risk: DUSUK
+
+---
+SENARYO GU-04 — Bekleme süresi sorgulama
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Randevusuz gelsem ne kadar beklerim?'
+   - 'Şu an yoğun mu?'
+
+2) Bugün: Tahmini cevap veriliyor, genellikle tutmuyor
+3) Nerede batıyor: Bekleme süresi tutmayınca müşteri sinirleniyor
+
+Invekto burada:
+A) C3 template: "Şu an ortalama bekleme süremiz 20-30 dakika. Randevu oluşturmak ister misiniz?"
+B) Phase-2+: Randevu motorundan gerçek zamanlı slot doluluk bilgisi
+
+Gerekli yetenekler: C1, C3, C8
+KVKK risk: DUSUK
+
+---
+SENARYO GU-05 — Son dakika boşluk bildirimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Senaryo: Randevu iptali oldu, saat 14:00'te boşluk var. Bekleyen müşterilere haber ver.
+
+2) Bugün: İptal olunca o slot boş kalıyor, kimseye haber verilmiyor
+3) Nerede batıyor: Boş koltuk = kayıp gelir. Günde 1-2 iptal × 250 TL = 500 TL/gün kayıp
+
+Invekto burada:
+A) Phase-1: Outbound trigger: iptal → bekleyen müşteri listesine "Bugün 14:00'te yer açıldı! İlgilenir misiniz?"
+B) Phase-2+: Otomatik waitlist sistemi, ilk cevaplayan alır
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK (opt-in zorunlu)
+
+---
+SENARYO GU-06 — No-show / iptal yönetimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A | Grup: Randevu
+
+1) Senaryo: Müşteri randevuya gelmedi. Koltuk 45 dakika boş kaldı.
+
+2) Bugün: Resepsiyonist arar, telefon açılmaz, konu kapanır
+3) Nerede batıyor: No-show oranı %15-20 → günde 3-4 boş koltuk × 200 TL = 800 TL/gün = 24.000 TL/ay
+
+Invekto burada:
+A) Phase-1: Outbound hatırlatma: R-1gün + R-2saat "Yarın saat 15:00 randevunuz var. Onaylıyor musunuz?"
+B) Phase-2+: No-show tracking, repeat offender flag, depozit/kapora sistemi
+
+Gerekli yetenekler: C1, C3, C8, Outbound Engine + Randevu motoru (Phase 2)
+KVKK risk: DUSUK
+
+Pros: S7 ile aynı mekanik — cross-sector altyapı zaten var
+Cons: Güzellik salonlarında depozit kültürü zayıf → yumuşak yaklaşım gerekli
+
+---
+SENARYO GU-07 — İşlem sonrası bakım talimatları
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A
+
+1) Senaryo: Saç boyama yapıldı. Müşteriye: "İlk 48 saat yıkamayın, sülfatsız şampuan kullanın" talimatı gönderilmeli.
+
+2) Bugün: Sözlü söyleniyor, müşteri unutuyor → renk çabuk açılıyor → "boyam tutmadı" şikayeti
+3) Nerede batıyor: Bakım talimatı uygulanmazsa → sonuç kötü → salon suçlanıyor
+
+Invekto burada:
+A) Phase-1: Outbound trigger: işlem sonrası → otomatik bakım talimatı mesajı (işlem tipine göre template)
+B) Phase-2+: T+3 gün "Saçınız nasıl?" follow-up → memnuniyet sorgusu
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK
+S8 (Tedavi Sonrası Takip) ile aynı mekanik — sektör varyasyonu.
+
+---
+SENARYO GU-08 — Şikayet: beğenmeme / hata
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A | Grup: Kriz De-eskalasyon
+
+1) Müşteri mesajı
+   - 'Saç rengim hiç istediğim gibi olmadı!'
+   - 'Kesimi çok kısa kestiniz, çok sinirli oldum'
+   - 'Manikürüm 2 günde çıktı, para iadesi istiyorum'
+
+2) Bugün: Mesaja geç dönülüyor veya savunmacı yaklaşım → Google'a kötü yorum
+3) Nerede batıyor: Hızlı müdahale edilmezse → kötü yorum + müşteri kaybı + referans kaybı
+
+Invekto burada:
+A) Phase-1: C8 AI Assist şikayet intent'i → empati template + düzeltme randevusu teklifi
+   "Çok üzgünüz! Size en kısa sürede düzeltme randevusu ayarlayalım. Ne zaman uygun olur?"
+B) Phase-2+: Şikayet kategorize + severity scoring → yüksek risk → salon sahibine alert
+
+Gerekli yetenekler: C1, C2, C3, C8 + Sentiment (Phase 3)
+KVKK risk: DUSUK
+S1/S10 ile ilişkili — yorum kurtarma mekanizması.
+
+---
+SENARYO GU-09 — Ürün satışı (bakım ürünleri)
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Geçen geldiğimde kullandığınız şampuan hangisiydi?'
+   - 'Saç bakım yağı satıyor musunuz?'
+
+2) Bugün: Resepsiyonist ürünü bilmiyor, kuaföre soruyor → gecikmeli cevap
+3) Nerede batıyor: Ürün satışı salonda yapılıyor ama online takip yok → fırsat kaybı
+
+Invekto burada:
+A) Phase-1: C7 Knowledge: ürün katalogu + C8 AI önerisi
+B) Phase-2+: Ürün linki + ödeme + kargo (e-ticaret entegrasyonu)
+
+Gerekli yetenekler: C1, C3, C8, C7 Knowledge
+KVKK risk: DUSUK
+
+---
+SENARYO GU-10 — Gelin paketi / özel gün
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Gelin paketi ne kadar? Saç + makyaj + cilt bakımı dahil mi?'
+   - 'Düğün 15 Haziran, prova ne zaman?'
+   - 'Nedimeler için de paket var mı?'
+
+2) Bugün: Yüz yüze görüşme ile anlatılıyor, telefonda detay vermek zor
+3) Nerede batıyor: Paket içeriği/fiyat standardize değil → her seferinde farklı bilgi
+
+Invekto burada:
+A) Phase-1: C7 Knowledge'dan gelin paketi detayları + C3 template ile fiyat/içerik gönderimi
+B) Phase-2+: Prova randevusu + düğün günü randevusu booking, nedime paketleri
+
+Gerekli yetenekler: C1, C3, C7, C8 + Randevu motoru (özel gün slotu)
+KVKK risk: DUSUK
+Yüksek birim değer (gelin paketi 5.000-15.000 TL) — düşük hacim, yüksek etki.
+
+---
+SENARYO GU-11 — Abonelik / üyelik paketi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Senaryo: Düzenli gelen müşteriye "Aylık 4 fön = %30 indirim" üyelik teklifi.
+
+2) Bugün: Üyelik sistemi yok, her seferinde tek tek fiyat
+3) Nerede batıyor: Düzenli müşteri sadakat hissetmiyor → rakip indirim yapınca gidiyor
+
+Invekto burada:
+A) Phase-2+: AI tekrarlayan ziyaret tespiti → üyelik teklifi Outbound mesajı
+   "Her ay düzenli geliyorsunuz! Aylık bakım paketimiz size %30 tasarruf sağlar. Detay ister misiniz?"
+B) Phase-3+: Üyelik CRUD + otomatik yenileme + tier sistemi
+
+Gerekli yetenekler: C1, C3, C8, Outbound Engine + Abonelik altyapısı (Phase 3)
+KVKK risk: ORTA (ödeme bilgisi)
+S11 revenue senaryosunun güzellik salonu varyasyonu.
+
+---
+SENARYO GU-12 — Referral / arkadaş getir
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Senaryo: Memnun müşteriye "Arkadaşını getir, ikinize %15 indirim" teklifi.
+
+2) Bugün: Sözlü söyleniyor, sistematik değil
+3) Nerede batıyor: Referans takibi yok, kimin kimi getirdiği bilinmiyor
+
+Invekto burada:
+A) Phase-2+: İşlem sonrası Outbound: "Memnun kaldınız mı? Arkadaşınızı yönlendirin, ikinize %15 indirim!"
+B) Phase-3+: Referans kodu + tracking + otomatik indirim uygulama
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK
+S10 referans motoru ile aynı mekanik.
+
+---
+SENARYO GU-13 — Yorum / review isteme
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A
+
+1) Senaryo: İşlem sonrası Google/Instagram yorumu rica etme.
+
+2) Bugün: Bazen sözlü isteniliyor, çoğu zaman unutuluyor
+3) Nerede batıyor: Memnun müşteri sessiz, memnuniyetsiz hemen yazıyor → puan düşüyor
+
+Invekto burada:
+A) Phase-1: Outbound: T+1 gün "İşleminizden memnun kaldınız mı? (1-5)"
+   → 4-5 ise: Google yorum linki
+   → 1-3 ise: "Üzgünüz, sorunu çözmek istiyoruz"
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK
+S10 yorum motoru sektör varyasyonu.
+
+---
+SENARYO GU-14 — Kampanya / indirim bildirimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A
+
+1) Senaryo: "Bu hafta keratin bakımda %20 indirim" kampanyası duyurmak.
+
+2) Bugün: Instagram story + bireysel mesaj (tek tek gönderim)
+3) Nerede batıyor: Toplu mesaj gönderimi yok → kampanya erişimi düşük
+
+Invekto burada:
+A) Phase-1: Outbound broadcast: segment bazlı kampanya mesajı
+   Hedef: son 3 ayda saç bakımı yaptıran müşteriler → "Bu hafta keratin %20 indirimli!"
+B) Phase-2+: Kampanya performance tracking (kaç mesaj → kaç randevu)
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK (opt-in zorunlu, marketing template)
+
+---
+SENARYO GU-15 — Frekans hatırlatma
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A
+
+1) Senaryo: Saç boyama 6 haftada bir yapılmalı. Son boyama 5 hafta önce. Hatırlatma gönder.
+
+2) Bugün: Müşteri kendisi hatırlayıp arıyor (veya rakibe gidiyor)
+3) Nerede batıyor: Hatırlatma yapılmadığında müşteri başka salonu deniyor → kayıp
+
+Invekto burada:
+A) Phase-2+: Outbound trigger: son işlem tarihi + işlem tipi frekansı → "Saç boyamanızın üzerinden 5 hafta geçti. Randevu oluşturalım mı?"
+B) Phase-3+: Müşteri bazlı kişiselleştirilmiş frekans öğrenme
+
+Gerekli yetenekler: C1, C3, Outbound Engine + CRM (müşteri işlem geçmişi)
+KVKK risk: DUSUK (opt-in zorunlu)
+S7 no-show hatırlatma ile benzer mekanik, farklı tetikleyici.
+
+---
+SENARYO GU-16 — Personel mesai / çalışma günleri sorgulama
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Ayşe hanım hangi günler çalışıyor?'
+   - 'Pazar açık mısınız?'
+
+2) Bugün: Resepsiyonist elle kontrol ediyor
+3) Nerede batıyor: Yanlış bilgi → müşteri geldi, kuaförü yok
+
+Invekto burada:
+A) Phase-1: C7 Knowledge'da personel mesai bilgisi → C8 AI cevabı
+B) Phase-2+: Personel takvimi entegrasyonu
+
+Gerekli yetenekler: C1, C3, C7, C8
+KVKK risk: DUSUK
+
+---
+SENARYO GU-17 — Çoklu hizmet paketi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Saç + makyaj + cilt bakımı yaptırmak istiyorum, paket fiyat var mı?'
+   - 'Düğün öncesi komple bakım ne kadar?'
+
+2) Bugün: Her hizmet ayrı fiyatlandırılıyor, paket teklifi standart değil
+3) Nerede batıyor: Cross-sell fırsatı kaçırılıyor
+
+Invekto burada:
+A) Phase-1: C8 AI paket önerisi: "Saç + makyaj birlikte %10 indirimli, 1.200 TL yerine 1.080 TL"
+B) Phase-2+: Dinamik paket oluşturucu (hizmet seç → otomatik indirimli fiyat)
+
+Gerekli yetenekler: C1, C3, C8 + C7 Knowledge (fiyat/paket bilgisi)
+KVKK risk: DUSUK
+
+---
+SENARYO GU-18 — VIP müşteri yönetimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Senaryo: Ayda 3+ kez gelen, yüksek harcama yapan müşteri VIP olarak etiketlenmeli.
+
+2) Bugün: VIP tanımı yok, herkes aynı muameleyi görüyor
+3) Nerede batıyor: Sadık müşteri özel hissetmiyor → rakip salonda VIP muamelesi görünce gidiyor
+
+Invekto burada:
+A) Phase-2+: AI otomatik VIP scoring (frekans + harcama + referans)
+   VIP müşteriye: öncelikli randevu, özel indirimler, doğum günü sürprizi
+B) Phase-3+: VIP tier sistemi (Silver/Gold/Platinum)
+
+Gerekli yetenekler: C1, C2, C8 + CRM scoring
+KVKK risk: ORTA (kişisel bilgi profilleme)
+
+---
+SENARYO GU-19 — Alerjik reaksiyon / sorun bildirimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B | Grup: Kriz De-eskalasyon
+
+1) Müşteri mesajı
+   - 'Boyadan sonra başım çok kaşınıyor, kıpkırmızı oldu!'
+   - 'Cilt bakımından sonra yüzüm şişti'
+
+2) Bugün: Müşteri panik, salon geç cevap → müşteri hastaneye gidiyor → dava riski
+3) Nerede batıyor: Sağlık riski + hukuki risk. Geç müdahale → kötüleşme
+
+Invekto burada:
+A) Phase-1: AI yüksek öncelik tespiti: alerji/reaksiyon intent → ACIL flag → salon sahibine ANINDA bildirim
+   "Çok üzgünüz! Hemen uzmanımız sizinle ilgilenecek. Belirtileriniz şiddetliyse en yakın sağlık kuruluşuna başvurmanızı öneriyoruz."
+B) Phase-2+: Alerji geçmişi kayıt → sonraki işlemde uyarı
+
+Gerekli yetenekler: C1, C2, C8 (priority routing) + C5 (güvenlik kaydı)
+KVKK risk: ORTA (sağlık bilgisi)
+CS-02 handoff + CS-03 guardrail ile entegre çalışmalı.
+
+---
+SENARYO GU-20 — KVKK: fotoğraf çekimi / before-after
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A | Grup: KVKK/Veri Güvenliği
+
+1) Senaryo: Salon before/after fotoğrafı çekip Instagram'da paylaşmak istiyor. Müşteri onayı gerekli.
+
+2) Bugün: Sözlü izin alınıyor (veya hiç alınmıyor) → KVKK ihlali
+3) Nerede batıyor: Müşteri fotoğrafını görüp şikayet → ceza riski
+
+Invekto burada:
+A) Phase-1: İşlem öncesi otomatik onam mesajı:
+   "İşlem sonrası fotoğraflarınızı sosyal medyamızda paylaşmamıza izin veriyor musunuz? (Evet/Hayır)"
+   Cevap kayıt altına alınır (compliance log)
+B) Phase-2+: Fotoğraf maskeleme (yüz bulanıklaştırma seçeneği)
+
+Gerekli yetenekler: C1, C3, C5/C6 (consent management)
+KVKK risk: ORTA (görsel kişisel veri)
+CS-01 opt-in + CS-08 compliance ile entegre.
+
+---
+SENARYO GU-21 — Mevsimsel trend öneri
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Senaryo: Yaz sezonu → açık tonlar, kış → koyu tonlar. Müşteriye trend öneri.
+
+2) Bugün: Kuaför yüz yüze öneriyor, uzaktan teklif yok
+3) Nerede batıyor: Müşteri trend bilgisi olmadan gelip kötü seçim yapabiliyor
+
+Invekto burada:
+A) Phase-2+: Outbound sezonluk kampanya: "Bu yaz en trend saç renkleri! Sizin için hangisini öneriyoruz?"
+   + AI kişiselleştirilmiş öneri (geçmiş tercihler + saç tipi)
+
+Gerekli yetenekler: C1, C3, C8, Outbound Engine + C7 Knowledge (trend bilgisi)
+KVKK risk: DUSUK
+
+---
+SENARYO GU-22 — Online ürün mağazası
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Geçen aldığım şampuandan bir daha istiyorum, kargolayabilir misiniz?'
+   - 'Saç bakım seti satıyor musunuz?'
+
+2) Bugün: Salonda fiziksel satış var, online sipariş yok
+3) Nerede batıyor: Müşteri marketi/online rakibi tercih ediyor → ürün geliri kaybı
+
+Invekto burada:
+A) Phase-2+: WhatsApp üzerinden sipariş → ödeme linki → kargo/elden teslim
+B) Phase-3+: Ürün katalogu entegrasyonu + otomatik stok kontrolü
+
+Gerekli yetenekler: C1, C3, C8 + Ödeme entegrasyonu (Phase 2) + C11 stok (Phase 3)
+KVKK risk: ORTA (ödeme bilgisi)
+
+---
+SENARYO GU-23 — Grup randevusu (kına gecesi, doğum günü)
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Kına gecesi için 8 kişilik makyaj + saç yapabilir misiniz?'
+   - 'Doğum günü partisi için nail art var mı?'
+
+2) Bugün: Grup randevusu koordinasyonu zor, tek tek mesajlaşma
+3) Nerede batıyor: Kapasiteyi aşan grup kabul edilince kalite düşüyor
+
+Invekto burada:
+A) Phase-1: Grup randevusu intent → kapasite kontrolü → "8 kişi için [tarih] uygun. Onaylıyor musunuz?"
+B) Phase-2+: Grup paketi fiyatlandırma + koordinasyon (tek kişi organize eder)
+
+Gerekli yetenekler: C1, C3, C8 + Randevu motoru (grup desteği)
+KVKK risk: DUSUK
+Yüksek birim değer (grup 3.000-10.000 TL) — düşük hacim.
+
+---
+SENARYO GU-24 — Instagram DM lead yönetimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: A
+
+1) Senaryo: Instagram story/reel'e gelen DM'ler: "Ne kadar?", "Nerede?", "Randevu alabilir miyim?"
+
+2) Bugün: DM'ler geç cevaplanıyor, link gönderilemiyor (24h kuralı)
+3) Nerede batıyor: Instagram → WhatsApp geçişi yapılmıyor → lead kayboluyor
+
+Invekto burada:
+A) Phase-1: C1 Unified Inbox ile IG DM tek yerden yönetim + C8 AI hızlı cevap
+B) Phase-2+: IG → WA geçişi (link gönder), UTM tracking, reklam attribution
+
+Gerekli yetenekler: C1, C2, C3, C8 + C12 Attribution (Phase 2+)
+KVKK risk: DUSUK
+Senaryo 53 (Estetik IG→WA) ile aynı mekanik — güzellik salonu varyasyonu.
+
+---
+SENARYO GU-25 — Franchise / çoklu şube yönetimi
+Bölge: Türkiye | Dikey: Güzellik Salonu | Kanıt: B
+
+1) Senaryo: Zincir salon, 3+ şube. Müşteri hangi şubeye gidecek? Hangi kuaför hangi şubede?
+
+2) Bugün: Her şubenin ayrı WhatsApp'ı, merkezi yönetim yok
+3) Nerede batıyor: Müşteri yanlış şubeye mesaj atıyor → yönlendirme gecikmesi
+
+Invekto burada:
+A) Phase-1: C2 routing: konum bazlı şube yönlendirme
+B) Phase-2+: Merkezi dashboard (tüm şubelerin performansı), şube bazlı raporlama
+C) Phase-3+: Multi-brand (aynı zincir farklı markalar)
+
+Gerekli yetenekler: C1, C2, C3, C8 + Multi-branch routing
+KVKK risk: DUSUK
+SB-03 (Çoklu Klinik/Şube) ile aynı mekanik.
+
+============================================================
+I) EĞİTİM SENARYOLARI (EG-01 ~ EG-25)
+============================================================
+
+> **Sektör:** Dil kursları, dershaneler, mesleki eğitim, online eğitim, özel okullar, dans/müzik/sanat
+> **Hedef müşteri:** 50-500 öğrencili kurs merkezleri, franchise eğitim zincirleri, online eğitim platformları
+> **Kanal:** WhatsApp (birincil) + Instagram DM (genç kitle için) + Web (kayıt formları)
+> **Phase:** Randevu/kayıt core altyapı Phase 1-2, ileri seviye (LMS entegrasyon) Phase 3+
+> **Önemli:** Çocuk/genç verisi = KVKK özel koruma. Veli iletişimi çift taraflı.
+> **v6 (2026-02-16):** D1 kararı ile eklenen yeni sektör
+
+---
+SENARYO EG-01 — Kayıt / başvuru süreci
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A | Grup: Kayıt
+
+1) Müşteri mesajı (örnek konuşma)
+   - Veli: 'İngilizce kursu için kayıt nasıl yapılıyor?'
+   - Öğrenci: 'Yazılım kursuna kayıt olmak istiyorum, hangi belgeler lazım?'
+
+2) Bugün işletme bunu nasıl yönetiyor?
+   - Telefon + yüz yüze kayıt. WhatsApp'tan gelen sorulara geç dönülüyor
+   - Kayıt formu elle dolduruluyor, evrak takibi karışıyor
+
+3) Nerede batıyor?
+   - Kayıt süreci uzun → aday başka kursa gidiyor (speed-to-response kritik)
+   - Kayıt döneminde yoğunluk → tüm sorulara yetişilemiyor
+   - Hangi belge gerekli net anlatılmıyor → tekrarlayan sorular
+
+4) Gerçek maliyet
+   - Kayıt döneminde günde 30-50 soru, %20'si cevapsız/gecikmeli
+   - Kaçan kayıt: 5 × 3.000 TL = 15.000 TL/dönem kayıp
+
+Invekto burada:
+A) Bugün: C1 inbox + C3 template ile kayıt bilgi seti gönderimi
+B) Phase-1: C8 AI Assist: kayıt intent → gerekli belgeler + fiyat + dönem bilgisi → "Kayıt formunu doldurmak ister misiniz? [link]"
+   Automation flow: adım adım bilgi toplama (ad, yaş, seviye, tercih edilen gün)
+C) Phase-2+: Online kayıt formu entegrasyonu, ödeme planı seçimi, otomatik sınıf ataması
+
+Gerekli yetenekler: C1, C2, C3, C8 (Phase 1) + Kayıt motoru (Phase 2)
+KVKK risk: ORTA (kişisel bilgi + çocuk verisi potansiyeli)
+
+Pros: En yüksek hacimli intent, kayıt dönüşümüne direkt etki
+Cons: Her kursun farklı belge/gereksinim kuralı → Knowledge base derinliği gerekli
+
+---
+SENARYO EG-02 — Fiyat / ücret sorgulama
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A | Grup: Fiyat
+
+1) Müşteri mesajı
+   - 'İngilizce A2 kursu ne kadar?'
+   - 'Taksit yapabiliyor musunuz?'
+   - 'Erken kayıt indirimi devam ediyor mu?'
+
+2) Bugün: Telefonda fiyat veriliyor, WhatsApp'ta standart fiyat listesi yok
+3) Nerede batıyor: Fiyat sorgusu = en sık mesaj. Geç cevap = kayıp
+
+Invekto burada:
+A) Phase-1: C8 AI: kurs + seviye intent tespiti → fiyat bilgisi + kampanya + taksit seçenekleri
+   "A2 İngilizce: 4.500 TL / 3 taksit 1.500 TL. Erken kayıt ile 3.800 TL. Kayıt oluşturmamı ister misiniz?"
+B) Phase-2+: C7 Knowledge'dan kurs katalogu + dinamik fiyatlandırma
+
+Gerekli yetenekler: C1, C2, C3, C8 + C7 Knowledge (kurs/fiyat bilgisi)
+KVKK risk: DUSUK
+
+---
+SENARYO EG-03 — Ders programı / saat sorgulama
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Hafta sonu İngilizce kursu var mı?'
+   - 'Akşam 19:00 sonrası sınıf açılıyor mu?'
+   - 'Online mı yoksa yüz yüze mi?'
+
+2) Bugün: Müşteri danışmana ulaşmak zorunda, program bilgisi standartize değil
+3) Nerede batıyor: Yanlış bilgi verilince müşteri geldi, ders yok → güven kaybı
+
+Invekto burada:
+A) Phase-1: C7 Knowledge'da program bilgisi → C8 AI cevabı
+   "Cumartesi 10:00-13:00 A2 grubu müsait. Kontenjan 3 kişi. Kayıt oluşturmamı ister misiniz?"
+B) Phase-2+: Gerçek zamanlı kontenjan bilgisi (LMS entegrasyonu)
+
+Gerekli yetenekler: C1, C3, C7, C8
+KVKK risk: DUSUK
+
+---
+SENARYO EG-04 — Eğitmen / öğretmen bilgisi
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Bu kursu kim veriyor? Özgeçmişi var mı?'
+   - 'Native speaker mı?'
+
+2) Bugün: Sözlü anlatılıyor, eğitmen profiline link yok
+3) Nerede batıyor: Eğitmen bilgisi güven faktörü — bilgi yoksa kayıt yok
+
+Invekto burada:
+A) Phase-1: C7 Knowledge'da eğitmen profilleri → C8 AI cevabı
+B) Phase-2+: Eğitmen değerlendirme puanları, portfolyo gösterimi
+
+Gerekli yetenekler: C1, C3, C7, C8
+KVKK risk: DUSUK
+
+---
+SENARYO EG-05 — Seviye belirleme
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Hangi seviyeye girmem gerekiyor?'
+   - 'Seviye tespit sınavı var mı?'
+
+2) Bugün: Yüz yüze veya online test yapılıyor, WhatsApp'tan yönlendirme zor
+3) Nerede batıyor: Seviye testi yaptırmadan kayıt → yanlış sınıf → memnuniyetsizlik
+
+Invekto burada:
+A) Phase-1: Automation flow: seviye testi intent → online test linki gönder → sonuç → uygun sınıf önerisi
+   "Seviye testinize göre B1 grubuna uygunsunuz. Pazar 10:00 grubu müsait. Kayıt oluşturalım mı?"
+B) Phase-2+: WhatsApp içinden mini seviye testi (interactive mesaj)
+
+Gerekli yetenekler: C1, C3, C8 + Automation flow (quiz)
+KVKK risk: DUSUK
+
+---
+SENARYO EG-06 — Devamsızlık bildirimi
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Bugün derse gelemeyeceğim'
+   - Veli: 'Çocuğum hasta, bu hafta devam edemeyecek'
+
+2) Bugün: Telefon / SMS, kayıt tutma manuel
+3) Nerede batıyor: Devamsızlık takibi zorlaşıyor, telafi planı yapılamıyor
+
+Invekto burada:
+A) Phase-1: AI devamsızlık intent → kayıt + telafi teklifi
+   "Geçmiş olsun! Kaçırdığınız dersi [tarih] telafi edebilirsiniz. Uygun mu?"
+B) Phase-2+: Otomatik devamsızlık takip + uyarı (3+ ders → veli bilgilendirme)
+
+Gerekli yetenekler: C1, C3, C8 + Devamsızlık tracking
+KVKK risk: ORTA (sağlık bilgisi dolaylı olarak paylaşılabilir)
+
+---
+SENARYO EG-07 — Ödeme planı / taksit
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Taksitle ödeyebilir miyim?'
+   - 'Kredi kartı geçiyor mu?'
+   - 'Ödeme son tarihi ne zaman?'
+
+2) Bugün: Muhasebe ile ayrı görüşme gerekiyor
+3) Nerede batıyor: Ödeme belirsizliği kayıt kararını geciktiriyor
+
+Invekto burada:
+A) Phase-1: C8 AI: ödeme seçenekleri bilgisi → "3 taksit (1.500 TL × 3), kredi kartı + havale kabul ediyoruz"
+B) Phase-2+: Online ödeme linki (iyzico/PayTR) + otomatik taksit takibi + gecikme hatırlatma
+
+Gerekli yetenekler: C1, C3, C8 + Ödeme entegrasyonu (Phase 2)
+KVKK risk: ORTA (ödeme bilgisi)
+
+---
+SENARYO EG-08 — İade / cayma / kurs bırakma
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Kursu bırakmak istiyorum, paramı geri alabilir miyim?'
+   - 'İlk 2 derse geldim, cayma hakkım var mı?'
+
+2) Bugün: İade süreci uzun, net kurallar bilinmiyor → şikayet
+3) Nerede batıyor: İade politikası net anlatılmazsa → Tüketici Hakem Heyeti şikayeti
+
+Invekto burada:
+A) Phase-1: C8 AI: iade intent → iade politikası bilgisi (knowledge base) + form yönlendirme
+   "Cayma hakkınız ilk 7 gün içinde geçerlidir. İade işlemi başlatmak ister misiniz?"
+B) Phase-2+: Iade çevirme: "Grup/gün değişikliği ister misiniz?" → bırakmayı önleme
+
+Gerekli yetenekler: C1, C3, C8 + C7 Knowledge (iade politikası)
+KVKK risk: ORTA (kişisel + ödeme bilgisi)
+S3 (İade Çevirme) ile aynı mekanik — eğitim varyasyonu.
+
+---
+SENARYO EG-09 — Ders materyali / not paylaşımı
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Dün ki dersin notlarını gönderir misiniz?'
+   - 'Ödev dosyası açılmıyor'
+   - 'Hangi kitabı kullanıyoruz?'
+
+2) Bugün: Eğitmen WhatsApp grubundan paylaşıyor, geçmiş dosyalar kaybolıyor
+3) Nerede batıyor: Materyal kaybı → öğrenci şikayeti, tekrar gönderim yükü
+
+Invekto burada:
+A) Phase-1: Automation flow: materyal isteme intent → ilgili dosya/link gönderimi (Knowledge base'den)
+B) Phase-2+: LMS entegrasyonu ile otomatik materyal paylaşımı
+
+Gerekli yetenekler: C1, C3, C7 Knowledge + dosya paylaşım
+KVKK risk: DUSUK
+
+---
+SENARYO EG-10 — Sınav / değerlendirme sonuçları
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Sınav sonuçları ne zaman açıklanıyor?'
+   - 'Puanım kaç?'
+   - Veli: 'Çocuğumun sınav sonucu nasıl?'
+
+2) Bugün: Eğitmen tek tek söylüyor veya mail atıyor
+3) Nerede batıyor: Gecikmeli sonuç bildirimi → öğrenci/veli memnuniyetsizliği
+
+Invekto burada:
+A) Phase-2+: Outbound trigger: sınav sonucu yayınlandı → otomatik bildirim
+   Öğrenciye: "B1 sınavınızın sonucu: 82/100. Tebrikler! B2'ye geçiş için kayıt açıktır."
+   Veliye: "[Öğrenci adı] sınav sonucu: 82/100 (Başarılı)"
+B) Phase-3+: LMS entegrasyonu ile otomatik sonuç çekme
+
+Gerekli yetenekler: C1, C3, Outbound Engine + LMS entegrasyonu (Phase 3)
+KVKK risk: YUKSEK (eğitim verisi + çocuk verisi = özel koruma)
+
+---
+SENARYO EG-11 — Veli iletişimi
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı (veli)
+   - 'Çocuğumun durumu nasıl? Derslere düzenli geliyor mu?'
+   - 'Hocasıyla görüşmek istiyorum'
+
+2) Bugün: Veli toplantısı + telefon. WhatsApp'tan düzenli bilgilendirme yok
+3) Nerede batıyor: Veli bilgilendirilmezse → memnuniyetsizlik → kayıt yenilememe
+
+Invekto burada:
+A) Phase-2+: Outbound periyodik rapor: aylık devam + performans özeti
+   "Bu ay [Ad] 12/16 derse katıldı. Genel performans: İyi. Ödev tamamlama: %85"
+B) Phase-3+: Veli portalı + anında durum sorgulama
+
+Gerekli yetenekler: C1, C3, Outbound Engine + Veli-öğrenci ilişki yönetimi
+KVKK risk: YUKSEK (çocuk verisi + eğitim performansı)
+Çift taraflı iletişim: öğrenci + veli → farklı mesaj içerikleri.
+
+---
+SENARYO EG-12 — Online ders teknik destek
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Zoom açılmıyor!'
+   - 'Ses gelmiyor, ne yapacağım?'
+   - 'Ders linki gelmedi'
+
+2) Bugün: Eğitmen ders başında teknik sorunla uğraşıyor → ders gecikmesi
+3) Nerede batıyor: Teknik sorun = ders kaybı = müşteri memnuniyetsizliği
+
+Invekto burada:
+A) Phase-1: C8 AI Assist: teknik sorun intent → adım adım çözüm rehberi (Knowledge base)
+   "Zoom açılmıyorsa: 1) Uygulamayı güncelleyin 2) Bağlantınızı kontrol edin 3) [yardım linki]"
+   → Çözülmezse insan desteğe yönlendir
+B) Phase-2+: Otomatik ders linki gönderimi (ders başlamadan 10dk önce)
+
+Gerekli yetenekler: C1, C3, C7 Knowledge (teknik sorun çözümleri), C8
+KVKK risk: DUSUK
+
+---
+SENARYO EG-13 — Sertifika / diploma sorgulama
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Kurs bittiğinde sertifika veriliyor mu?'
+   - 'Sertifikam ne zaman hazır olacak?'
+   - 'MEB onaylı mı?'
+
+2) Bugün: Her seferinde aynı bilgi anlatılıyor (sertifika tipi, süre, koşullar)
+3) Nerede batıyor: Sertifika beklentisi karşılanmazsa → şikayet + olumsuz yorum
+
+Invekto burada:
+A) Phase-1: C7 Knowledge: sertifika bilgisi → C8 AI cevabı
+   "Kurs sonunda MEB onaylı sertifika verilmektedir. Koşul: %80 devam + sınav başarısı"
+B) Phase-2+: Sertifika hazırlık bildirimi (Outbound: "Sertifikanız hazır, teslim almak ister misiniz?")
+
+Gerekli yetenekler: C1, C3, C7, C8
+KVKK risk: DUSUK
+
+---
+SENARYO EG-14 — Kurs değişikliği / transfer
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Başka gruba geçebilir miyim? Bu saat bana uymuyor'
+   - 'Seviye atlamak istiyorum'
+
+2) Bugün: Danışmanla görüşme + yönetici onayı gerekiyor → uzun süreç
+3) Nerede batıyor: Transfer süreci uzun → öğrenci motivasyon kaybı veya bırakma
+
+Invekto burada:
+A) Phase-1: C8 AI: transfer intent → müsait grup bilgisi → talep formu
+B) Phase-2+: Otomatik kontenjan kontrolü + müsait gruplara anlık transfer
+
+Gerekli yetenekler: C1, C3, C8 + Sınıf/grup yönetimi (Phase 2)
+KVKK risk: DUSUK
+
+---
+SENARYO EG-15 — Kampanya / erken kayıt indirimi
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Erken kayıt indirimi var mı?'
+   - 'Kampanya ne zaman bitiyor?'
+
+2) Bugün: Instagram/web'de duyuru yapılıyor ama ilgili kişilere direkt bildirim yok
+3) Nerede batıyor: Kampanya bilgisi doğru kitleye ulaşmıyor → kayıt potansiyeli kayboluyor
+
+Invekto burada:
+A) Phase-1: Outbound broadcast: "Erken kayıt başladı! [kurs] %20 indirimle 3.600 TL. Son 3 gün!"
+   Hedef: geçmiş dönem öğrencileri + tamamlanmamış kayıtlar
+B) Phase-2+: Kampanya performance tracking (mesaj → kayıt dönüşümü)
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK (opt-in zorunlu, marketing template)
+
+---
+SENARYO EG-16 — Referral / arkadaş getir indirimi
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Senaryo: "Arkadaşını getir, ikinize %15 indirim" kampanyası.
+
+2) Bugün: Sözlü söyleniyor, takip yok
+3) Nerede batıyor: Referans kaynağı belirsiz → pazarlama bütçesi optimize edilemiyor
+
+Invekto burada:
+A) Phase-2+: Dönem sonu Outbound: "Memnun kaldınız mı? Arkadaşınızı yönlendirin, ikinize %15 indirim!"
+B) Phase-3+: Referans kodu + tracking + otomatik indirim
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK
+S10 referans motoru + GU-12 ile aynı mekanik.
+
+---
+SENARYO EG-17 — Şikayet / memnuniyetsizlik
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A | Grup: Kriz De-eskalasyon
+
+1) Müşteri mesajı
+   - 'Hocadan hiç memnun değilim, ders anlatamıyor!'
+   - 'Vaat edilen içerik verilmedi, para iadesi istiyorum'
+   - Veli: 'Çocuğum dersten nefret ediyor, bir şey öğrenememiş'
+
+2) Bugün: Şikayet yönetimi yok → yorum sitelerine/sosyal medyaya yansıyor
+3) Nerede batıyor: Şikayet yönetilmezse → toplu kayıt yenilememe + olumsuz WOM
+
+Invekto burada:
+A) Phase-1: C8 AI şikayet intent → empati + acil yönlendirme
+   "Geri bildiriminiz bizim için çok değerli. Eğitim koordinatörümüz sizinle iletişime geçecek."
+   → Severity scoring: düşük → standart, yüksek → müdür alert
+B) Phase-2+: Şikayet kategorize + trend analizi + kök neden tespiti
+
+Gerekli yetenekler: C1, C2, C3, C8 + Sentiment (Phase 3)
+KVKK risk: DUSUK
+
+---
+SENARYO EG-18 — Yorum / review isteme
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Senaryo: Dönem sonu, memnun öğrenciden Google/kurumsal site yorumu rica etme.
+
+2) Bugün: Sistematik yorum toplama yok
+3) Nerede batıyor: Yeni kayıt adayları "yorum" arıyor → yorum yoksa güven düşük
+
+Invekto burada:
+A) Phase-2+: Outbound: dönem sonu "Deneyiminizi paylaşır mısınız? (1-5)" → 4-5 ise Google link
+B) Phase-3+: NPS anketi + trend takibi
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK
+S10 + GU-13 ile aynı mekanik.
+
+---
+SENARYO EG-19 — Devam takibi hatırlatma
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Senaryo: Öğrenci 3 ders üst üste gelmedi. Kayıp riski var.
+
+2) Bugün: Eğitmen fark edip söylemezse kimse aramıyor
+3) Nerede batıyor: Devamsız öğrenci sessizce bırakıyor → kayıt yenilemiyor → gelir kaybı
+
+Invekto burada:
+A) Phase-2+: Otomatik devamsızlık alert:
+   - 2 ders: Öğrenciye "Sizi özledik! Bir sorun mu var?"
+   - 3 ders: Veliye bilgilendirme + danışman alert
+   - 5+ ders: Supervisor eskalasyon + kurtarma teklifi (telafi/grup değişikliği)
+B) Phase-3+: Churn prediction (S12 ile entegre)
+
+Gerekli yetenekler: C1, C3, Outbound Engine + Devamsızlık tracking
+KVKK risk: ORTA (eğitim durumu)
+S12 Churn Prevention eğitim varyasyonu.
+
+---
+SENARYO EG-20 — Kariyer koçluğu / iş bulma desteği
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Bu kursu bitirince iş bulabilir miyim?'
+   - 'Staj imkanı var mı?'
+   - 'CV hazırlamada yardım ediyor musunuz?'
+
+2) Bugün: Kursun satış argümanı ama gerçek destek yok
+3) Nerede batıyor: Vaat edilen iş desteği karşılanmazsa → güven kaybı + olumsuz yorum
+
+Invekto burada:
+A) Phase-1: C7 Knowledge: kariyer bilgisi + partner şirketler → C8 AI cevabı
+B) Phase-3+: Mezun-şirket eşleştirme, iş fırsatı bildirimi (Outbound)
+
+Gerekli yetenekler: C1, C3, C7, C8 + İş ortağı entegrasyonu (Phase 3+)
+KVKK risk: ORTA (CV/kişisel bilgi)
+
+---
+SENARYO EG-21 — Mezun takibi / alumni
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Senaryo: Mezunlarla iletişimi sürdürme. İleri seviye kurs teklifi, etkinlik daveti, başarı hikayeleri.
+
+2) Bugün: Mezunlarla iletişim kopuyor
+3) Nerede batıyor: Repeat customer (yeni kurs kaydı) potansiyeli kaçırılıyor
+
+Invekto burada:
+A) Phase-2+: Outbound periyodik: "Yeni B2 İngilizce kursumuz başlıyor! Mezunlara %20 özel indirim"
+B) Phase-3+: Alumni topluluğu, etkinlik yönetimi
+
+Gerekli yetenekler: C1, C3, Outbound Engine
+KVKK risk: DUSUK (opt-in zorunlu)
+
+---
+SENARYO EG-22 — Özel ders talebi
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A
+
+1) Müşteri mesajı
+   - 'Birebir ders alabilir miyim?'
+   - 'Online özel ders fiyatı ne kadar?'
+   - 'Sınav hazırlık için 10 saatlik paket var mı?'
+
+2) Bugün: Danışman elle eşleştirme yapıyor
+3) Nerede batıyor: Uygun eğitmen bulunması → gecikmeli dönüş → müşteri rakibe gidiyor
+
+Invekto burada:
+A) Phase-1: C8 AI: özel ders intent → müsait eğitmen + saat + fiyat bilgisi
+B) Phase-2+: Eğitmen müsaitlik takvimi + otomatik eşleştirme
+
+Gerekli yetenekler: C1, C3, C8 + C7 Knowledge (eğitmen bilgisi) + Randevu motoru
+KVKK risk: DUSUK
+
+---
+SENARYO EG-23 — KVKK: çocuk verisi özel koruma
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: A | Grup: KVKK/Veri Güvenliği
+
+1) Senaryo: 18 yaş altı öğrenci verisi KVKK kapsamında özel nitelikli kişisel veri.
+   Fotoğraf, devam durumu, sınav sonucu, sağlık bilgisi → veli izni ZORUNLU.
+
+2) Bugün: Veli izni sözlü alınıyor veya formla (sistematik değil)
+3) Nerede batıyor: İzinsiz veri paylaşımı → KVKK ihlali → ceza riski
+
+Invekto burada:
+A) Phase-1: Kayıt sürecinde otomatik KVKK onam mesajı (veli'ye):
+   "Çocuğunuzun eğitim sürecindeki verilerin (devam, sınav, fotoğraf) işlenmesine izin veriyor musunuz?"
+   Cevap kayıt altına alınır (compliance log)
+B) Phase-2+: Veri erişim/silme talepleri otomatik iş akışı
+   Maskeleme: çocuk fotoğrafı, TC kimlik özel koruma
+
+Gerekli yetenekler: C1, C3, C5/C6 (consent management) + CS-01 opt-in + CS-08 compliance
+KVKK risk: YUKSEK (çocuk verisi = özel nitelikli)
+CS-08 (Compliance Otomasyonu) ile ZORUNLU entegrasyon.
+
+---
+SENARYO EG-24 — Staj / pratik sorgulama
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Müşteri mesajı
+   - 'Kurs süresinde staj imkanı var mı?'
+   - 'Hangi şirketlerle anlaşmalısınız?'
+
+2) Bugün: Genel bilgi veriliyor, detay yok
+3) Nerede batıyor: Staj beklentisi karşılanmazsa → kurs değerliliği sorgulanıyor
+
+Invekto burada:
+A) Phase-1: C7 Knowledge: staj bilgisi + partner listesi → C8 AI cevabı
+B) Phase-3+: Staj eşleştirme + takip sistemi
+
+Gerekli yetenekler: C1, C3, C7, C8
+KVKK risk: DUSUK
+
+---
+SENARYO EG-25 — Çoklu kurs / paket seçenekleri
+Bölge: Türkiye | Dikey: Eğitim | Kanıt: B
+
+1) Müşteri mesajı
+   - 'İngilizce + Excel paketi var mı?'
+   - '2 kurs birden alırsam indirim olur mu?'
+
+2) Bugün: Paket seçenekleri standart değil, her seferinde ayrı hesaplanıyor
+3) Nerede batıyor: Cross-sell fırsatı kaçırılıyor → tek kurs geliri ile sınırlı kalıyor
+
+Invekto burada:
+A) Phase-1: C8 AI: paket önerisi "İngilizce + Excel birlikte %15 indirimli: 6.800 TL yerine 5.780 TL"
+B) Phase-2+: Dinamik paket oluşturucu + kampanya entegrasyonu
+
+Gerekli yetenekler: C1, C3, C8 + C7 Knowledge (kurs katalogu)
+KVKK risk: DUSUK
+GU-17 (Çoklu hizmet paketi) ile aynı mekanik.

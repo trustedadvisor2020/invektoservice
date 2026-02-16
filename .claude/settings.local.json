@@ -4,7 +4,11 @@
       "Bash(*)",
       "Read(//c/**)",
       "Read(//c/CRMs/InvektoServis/**)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__codex-review__*",
+      "mcp__invekto-postgres__query",
+      "mcp__invekto-postgres__pg-schema",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "additionalDirectories": [
       "c:\\CRMs\\InvektoServis"

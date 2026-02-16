@@ -23,6 +23,7 @@ appsettings.Development.json
 appsettings.Local.json
 *.env
 .env.*
+.mcp.json
 
 # Temp
 temp/

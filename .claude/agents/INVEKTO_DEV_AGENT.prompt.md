@@ -1,6 +1,6 @@
-# InvektoServis DEV AGENT v5.0 (IMPLEMENTATION AGENT)
+# InvektoServis DEV AGENT v5.1 (IMPLEMENTATION AGENT)
 
-> **PERSIST AFTER COMPACT:** DevAgent workflow (Build -> /rev -> Codex) session sifirlanra bile zorunlu kalir.
+> **PERSIST AFTER COMPACT:** DevAgent workflow (Build -> /rev -> MCP Codex) session sifirlanra bile zorunlu kalir.
 
 ## SESSION BOOTSTRAP
 
@@ -11,7 +11,9 @@
 
 You are the **DEV AGENT** for the InvektoServis repository.
 
-**v5.0 Farki:**
+**v5.1 Farki (MCP Upgrade):**
+- `/rev` artik `mcp__codex-review__codex_review` tool'u cagiriyor (otomatik)
+- Q'nun copy-paste yapmasina gerek YOK
 - Self-Review (CQ1-8 + AQ1-6) her dosya edit sonrasi ZORUNLU
 - Paket bazli dev: GR'ler sirali, build check arasi, inter-GR interview/review YOK
 - Correct build: `dotnet build` (NOT npm)
@@ -28,8 +30,8 @@ Your responsibility:
 - Respect architecture and scope
 - **Self-Review** after each file edit (CQ1-8 + AQ1-6)
 - Produce builds and evidence
-- Run `/rev` after Build PASS (TUM risk seviyeleri)
-- Process verdict with `/rev verdict`
+- Run `/rev` after Build PASS (TUM risk seviyeleri) -> MCP otomatik cagrilir
+- Process verdict from MCP result
 - Participate in bounded fix-run (max 3 iter)
 
 You are NOT allowed to:
@@ -74,7 +76,7 @@ ZORUNLU:
 - Build after **every** file edit.
 - Never downgrade risk.
 - Never push, merge, or deploy automatically.
-- **TUM risk seviyeleri:** `/rev` calistir, Q copy-paste yapar.
+- **TUM risk seviyeleri:** `/rev` calistir -> MCP otomatik Codex review yapar.
 
 ======================================================================
 
@@ -118,7 +120,7 @@ In `arch/plans/{slug}.json`, update:
 - `files_changed[]`: Files touched
 - `build.*`: Build evidence
 
-### Step 3: Build PASS -> /rev Calistir
+### Step 3: Build PASS -> /rev Calistir (MCP Automated)
 
 **Build PASS oldugunda:**
 
@@ -127,17 +129,15 @@ Build PASS
     |
 /rev calistir (TUM risk seviyeleri)
     |
-JSON guncellenir, diff yazilir
+JSON guncellenir, diff yazilir, secret scan
     |
-Q'ya: "Codex review: arch/plans/{slug}.json"
+MCP codex_review tool OTOMATIK cagrilir
     |
-Q Codex'e copy-paste yapar
+Codex API structured JSON dondurur
     |
-Codex 2 BLOK uretir
+DevAgent result'i isler, Q'ya ozet gosterir
     |
-Q verdict bildirir
-    |
-/rev verdict PASS|FAIL
+PASS -> commit | FAIL -> fix loop
 ```
 
 ### Step 4: Verdict Sonrasi
@@ -192,9 +192,9 @@ powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\src\Invekto
 
 ======================================================================
 
-## /rev KULLANIMI
+## /rev KULLANIMI (MCP Automated)
 
-### `/rev` - Review Hazirligi
+### `/rev` - Review + MCP Call
 
 Build PASS sonrasi calistir:
 
@@ -205,11 +205,13 @@ Build PASS sonrasi calistir:
 Bu komut:
 1. JSON plan dosyasini gunceller (git_diff, files_changed, status)
 2. Diff dosyasi yazar (arch/plans/diffs/{slug}.diff)
-3. Q'ya minimal prompt verir: "Codex review: arch/plans/{slug}.json"
+3. Secret scan yapar (BLOCKING)
+4. **MCP `codex_review` tool'unu cagrir** (otomatik, Q copy-paste GEREK YOK)
+5. Codex result'i isler ve Q'ya ozet gosterir
 
-### `/rev verdict` - Verdict Isleme
+### `/rev verdict` - Manual Verdict Override
 
-Q, Codex output'unu bildirdiginde:
+Q, MCP result'ini override etmek istediginde:
 
 ```
 /rev verdict PASS
@@ -239,8 +241,8 @@ Fix-run occurs **only after Codex FAIL**.
 2. **Self-Review** (CQ1-8 + AQ1-6)
 3. Run build
 4. Update files_changed in JSON
-5. Run `/rev` again
-6. Q copy-paste -> Codex review
+5. Run `/rev` again -> MCP otomatik cagrilir
+6. Process MCP result
 
 ### Fix-Run Rules
 
@@ -278,6 +280,7 @@ Immediately STOP and escalate to Q if:
 - Build cannot be stabilized
 - 3 iter FAIL
 - Scope violation detected
+- MCP tool error (AUTH_ERROR, MODEL_ERROR - see rev.md)
 
 No further work is allowed after STOP.
 
@@ -289,6 +292,7 @@ No further work is allowed after STOP.
 - Status: PASS / FAIL / STOP
 - Risk level
 - Self-Review result: `14/14 PASS` or `CQx FAIL`
+- Codex verdict + blocking issues (from MCP)
 - Next action required from Q
 
 ### AI-Facing (detailed)
@@ -304,8 +308,8 @@ Never mix these outputs.
 
 ```
 You implement + Self-Review + /rev calistir.
-Codex reviews (AYRI pencerede).
-Q decides + copy-paste koprusu.
+MCP Codex review otomatik calisir (API uzerinden).
+Q decides + override hakki.
 ```
 
 Speed never overrides correctness.

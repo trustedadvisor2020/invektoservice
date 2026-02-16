@@ -1,23 +1,24 @@
-# agents.md -- InvektoServis Codex Review Agent v3.1
+# agents.md -- InvektoServis Codex Review Agent v5.1
 
-> **Kaynak:** TONIVA agents.md'den uyarlanmıştır.
+> **Kaynak:** TONIVA agents.md'den uyarlanmıştır. v5.1 MCP upgrade (2026-02-16).
 
 Bu dosya **Codex Review Agent**'ın nasıl çalışacağını tanımlar.
-Codex ayrı bir pencerede çalışır ve Q copy-paste ile DevAgent'tan gelen review isteklerini iletir.
+Codex review `mcp__codex-review__codex_review` MCP tool üzerinden otomatik çalışır. Copy-paste YOK.
 
 ======================================================================
 
-## MODEL (v3.1 - Copy-Paste)
+## MODEL (v5.1 - MCP Automated)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  v3.1 COPY-PASTE MODEL                   │
+│                  v5.1 MCP AUTOMATED MODEL                │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  Codex → Review yapar, verdict verir                    │
+│  Codex → MCP tool üzerinden otomatik review yapar       │
 │                                                          │
 │  Codex SADECE review agent'tır.                         │
 │  Kod yazmaz, plan yapmaz, interview yapmaz.             │
+│  Copy-paste YOK - MCP API ile otomatik.                 │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -25,24 +26,24 @@ Codex ayrı bir pencerede çalışır ve Q copy-paste ile DevAgent'tan gelen rev
 ### İletişim Akışı
 
 ```
-DevAgent              Q              Codex
-    │                 │                 │
-    │ /rev çalıştır   │                 │
-    ├────────────────►│                 │
-    │   "Codex review:│                 │
-    │   {slug}.json"  │                 │
-    │                 ├────────────────►│
-    │                 │  JSON oku       │
-    │                 │  2 BLOK üret    │
-    │                 │◄────────────────┤
-    │                 │  Codex output   │
-    │◄────────────────┤                 │
-    │  Q verdict      │                 │
-    │  bildirir       │                 │
-    │                 │                 │
-    │ /rev verdict    │                 │
-    │ PASS/FAIL       │                 │
-    ▼                 ▼                 ▼
+DevAgent                    Codex API (MCP)
+    │                            │
+    │ /rev çalıştır              │
+    │ mcp__codex-review__        │
+    │ codex_review tool cagir    │
+    ├───────────────────────────►│
+    │                            │  Diff + plan analiz
+    │                            │  CQ1-8 + CoVe kontrol
+    │                            │  2 BLOK + verdict üret
+    │◄───────────────────────────┤
+    │  Structured JSON response  │
+    │  (verdict + blocking_issues│
+    │   + summary + token_usage) │
+    │                            │
+    │ Q'ya özet göster           │
+    │ PASS → commit              │
+    │ FAIL → fix → /rev          │
+    ▼                            ▼
 ```
 
 ======================================================================
@@ -135,12 +136,12 @@ DevAgent              Q              Codex
 
 ### Codex Başlangıç Davranışı
 
-Q, Codex penceresine prompt yapıştırdığında Codex:
+MCP tool çağrıldığında Codex API:
 1. **Interview YAPMAZ** - Soru sormadan başlar
-2. Plan JSON'ı okur (`arch/plans/{slug}.json`)
-3. Diff dosyasını okur (`arch/plans/diffs/{slug}.diff`)
+2. MCP tool'dan gelen `git_diff` ve `verification_questions` verisini alır
+3. `files_changed` listesini analiz eder
 4. Doğrudan **2 BLOK output** üretir
-5. **OVERALL verdict** verir
+5. **OVERALL verdict** verir (structured JSON olarak)
 
 **EĞer Codex interview sorusu sorarsa → YANLIŞ ÇALIŞIYOR**
 
@@ -175,7 +176,7 @@ Q, Codex penceresine prompt yapıştırdığında Codex:
 
 ## CODE QUALITY GATE (Mandatory for ALL)
 
-### Zorunluluk Tablosu (v3.1)
+### Zorunluluk Tablosu (v5.1)
 
 | Risk | Code Quality Gate |
 |------|-------------------|
@@ -233,7 +234,7 @@ Overall verdict = FAIL
 
 **Chain-of-Verification** - Confirmation bias'ı engelleyen zorunlu doğrulama.
 
-### Zorunluluk Tablosu (v3.1)
+### Zorunluluk Tablosu (v5.1)
 
 | Risk | Verification |
 |------|--------------|
@@ -335,80 +336,50 @@ BLOCKING ISSUES: [liste veya "None"]
 
 ======================================================================
 
-## Q'NUN CODEX'E YAPIŞTIRMASI GEREKEN PROMPT
+## MCP TOOL CALL (v5.1 - Otomatik)
 
-Q bu prompt'u Codex penceresine yapıştırır. Codex bu prompt'u görünce
-interview yapmadan, soru sormadan, doğrudan review yapmalı.
+DevAgent `/rev` çalıştırdığında MCP tool otomatik çağrılır.
+Q'nun copy-paste yapmasına gerek YOK.
+
+### MCP Tool Args
 
 ```
-Sen InvektoServis Codex Review Agent'ısın.
-
-## KRİTİK KURALLAR
-- Interview YAPMA - Soru sorma, bilgi isteme
-- Kod YAZMA - Hiçbir dosyaya dokunma
-- Fix ÖNERME - "Şunu dene" deme
-- AskUserQuestion tool KULLANMA
-
-## GÖREVİN
-1. Plan JSON'ı oku: arch/plans/{slug}.json
-2. Diff dosyasını oku: arch/plans/diffs/{slug}.diff
-3. 2 BLOK output üret (aşağıdaki formatta)
-4. OVERALL verdict ver (PASS/FAIL/UNKNOWN)
-
-## OUTPUT FORMAT (HER ZAMAN BU FORMATI KULLAN)
-
-=== CODE QUALITY GATE ===
-
-CQ1: "Hata yakalama ve kullanıcıya geri bildirim nerede?"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {dosya:satır + mesaj}
-
-CQ2: "Silent failure üretebilir mi?"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {catch blokları + broad try-catch + early-return}
-
-CQ3: "Diff minimum mu? Scope dışı refactor var mı?"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {satır sayıları}
-
-CQ4: "Bu kod codebase'de zaten var mı? (duplicate)"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {grep/search sonucu}
-
-CQ5: "Codebase pattern'larına uyuyor mu?"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {naming, error handling, dosya yapısı}
-
-CQ6: "Performans sorunu var mı? (O(n²), N+1 query, memory leak)"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {nested loops, döngü içi query, kapatılmayan resource, büyük buffer}
-
-CQ7: "Yeni TODO/HACK/FIXME eklendi mi?"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {yeni eklenen tech debt marker'ları - diff'te + ile başlayan satırlar}
-
-CQ8: "Breaking change var mı? (API contract, export, shared type)"
-Result: PASS | FAIL | UNKNOWN
-Evidence: {kaldırılan export, değişen interface, contract uyumsuzluğu}
-
-CODE QUALITY VERDICT: PASS | FAIL
-
-=== COVE VERIFICATION ===
-
-[JSON'daki verification_questions'ı cevapla]
-
-CoVe VERDICT: PASS | FAIL
-
-=== VERDICT ===
-
-OVERALL: PASS | FAIL | UNKNOWN
-BLOCKING ISSUES: [liste veya "None"]
-
----
-Plan: arch/plans/{slug}.json
+mcp__codex-review__codex_review:
+  slug: {plan slug}
+  risk_level: LOW | MEDIUM | HIGH | CRITICAL
+  iteration: 0 (0-based)
+  summary: {plan summary}
+  files_changed: [{path, is_new}]
+  git_diff: {full staged diff text}
+  verification_questions: [{question, category}]
+  build_status: "PASS"
 ```
 
-**Kullanım:** Q, `{slug}` yerine gerçek slug'ı yazar ve Codex'e yapıştırır.
+### MCP Tool Response
+
+```json
+{
+  "verdict": "PASS | FAIL | UNKNOWN",
+  "code_quality_gate": { "CQ1": {...}, ... "CQ8": {...} },
+  "cove_verification": { "Q1": {...}, ... },
+  "blocking_issues": [],
+  "summary": "1-2 sentence review summary",
+  "raw_response": "full Codex output text",
+  "model_used": "gpt-5.2-codex",
+  "token_usage": { "prompt": 0, "completion": 0, "total": 0 }
+}
+```
+
+### MCP Error Handling
+
+| Error Type | Action |
+|-----------|--------|
+| `AUTH_ERROR` | Check OPENAI_API_KEY in .mcp.json |
+| `RATE_LIMIT` | Wait and retry |
+| `TIMEOUT` | Try smaller diff or check network |
+| `MODEL_ERROR` | Check CODEX_MODEL env var |
+
+**MCP Server:** `mcp-servers/codex-review/` | Tool: `codex_review` | Model: `gpt-5.2-codex`
 
 ======================================================================
 
@@ -483,11 +454,12 @@ Q her zaman müdahale edebilir:
 
 ======================================================================
 
-## LOW RISK POLICY (v3.1 - Codex ZORUNLU)
+## LOW RISK POLICY (v5.1 - Codex ZORUNLU)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  v3.1 ile LOW Risk dahil TÜM risk seviyeleri Codex review alır.    │
+│  v5.1 ile LOW Risk dahil TÜM risk seviyeleri Codex review alır.    │
+│  Review MCP tool üzerinden OTOMATIK yapılır.                        │
 │                                                                      │
 │  LOW Risk = Codex ZORUNLU (SKIP yok)                                │
 │                                                                      │
@@ -496,6 +468,7 @@ Q her zaman müdahale edebilir:
 │  - auto.md                                                           │
 │  - rev.md                                                            │
 │  - CLAUDE.md                                                         │
+│  - INVEKTO_BASE.prompt.md                                            │
 │                                                                      │
 │  TÜM risk seviyeleri aynı akışı takip eder.                         │
 └─────────────────────────────────────────────────────────────────────┘
@@ -536,25 +509,24 @@ MSV4: "Bu servis bağımsız deploy edilebilir mi?"
 ## SUMMARY
 
 ```
-Codex = SADECE Review Agent
+Codex = SADECE Review Agent (MCP API üzerinden otomatik)
 
 DevAgent /rev çalıştırır
     ↓
-Q'ya Codex prompt'u gösterilir
+MCP codex_review tool OTOMATIK çağrılır
     ↓
-Q Codex penceresine yapıştırır
-    ↓
-Codex:
-  1. Plan JSON okur (read-only)
-  2. Diff okur (read-only)
+Codex API:
+  1. Diff + verification questions analiz eder
+  2. CQ1-8 + CoVe kontrol eder
   3. 2 BLOK output üretir
-  4. OVERALL verdict verir
+  4. Structured JSON verdict döner
     ↓
-Q verdict'i DevAgent'a bildirir
+DevAgent verdict'i işler, Q'ya özet gösterir
     ↓
 PASS → commit
-FAIL → DevAgent fix yapar → tekrar /rev
+FAIL → DevAgent fix yapar → tekrar /rev (max 3 iter)
 ```
 
 **Codex'in Tek Görevi:** Evidence-based review + PASS/FAIL verdict
 **Codex'in Yapmadığı:** Interview, kod yazma, fix önerme, plan değiştirme
+**MCP Upgrade (v5.1):** Copy-paste kaldırıldı, tüm akış otomatik

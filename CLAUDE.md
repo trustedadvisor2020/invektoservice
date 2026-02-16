@@ -1,5 +1,5 @@
-<!-- VERSION: 5.0 | UPDATED: 2026-02-15 | Persist After Compact | Auto Workflow Active -->
-<!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> Codex -> Commit -->
+<!-- VERSION: 5.1 | UPDATED: 2026-02-16 | Persist After Compact | Auto Workflow Active | MCP Codex Review -->
+<!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> MCP Codex -> Commit -->
 # InvektoServis
 
 Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
@@ -241,14 +241,14 @@ Bu, Codex review'i ORTADAN KALDIRMAZ - sadece ilk filtreleme katmani.
 ## Agent Prompts
 
 All agents in `.claude/agents/`:
-- `INVEKTO_BASE.prompt.md` - Global rules v5.0 (canonical source for Bootstrap + PP-006 + Self-Review)
+- `INVEKTO_BASE.prompt.md` - Global rules v5.1 (canonical source for Bootstrap + PP-006 + Self-Review + MCP Codex)
 - `INVEKTO_PLAN_AGENT.prompt.md` - Planning v5.0 (interview + JSON plan)
-- `INVEKTO_DEV_AGENT.prompt.md` - Implementation v5.0 (self-review + paket dev)
+- `INVEKTO_DEV_AGENT.prompt.md` - Implementation v5.1 (self-review + paket dev + MCP Codex)
 - `INVEKTO_AUDIT_AGENT.prompt.md` - Codebase audit (Q triggers manually)
 
 Skills in `.claude/commands/`:
-- `auto.md` - Default workflow v5.0 (otomatik uygulanir, /auto yazmaya gerek yok)
-- `rev.md` - Review protocol v5.0 (/rev komutu)
+- `auto.md` - Default workflow v5.1 (otomatik uygulanir, /auto yazmaya gerek yok, MCP Codex)
+- `rev.md` - Review protocol v5.1 (/rev komutu, MCP automated)
 - `aha.md` - Detayli aha moment analizi (`/aha` ile cagrilir)
 - `learn.md` - Session learnings kayit v2.0 (`/learn` ile cagrilir, auto mode destekli)
 - `push.md` - Git push shortcut (`/push` ile cagrilir, secret scan BLOCKING)
@@ -270,7 +270,7 @@ Skills in `.claude/commands/`:
 
 ---
 
-## Workflow (v5.0 - 8 Paket Stratejisi)
+## Workflow (v5.1 - 8 Paket Stratejisi + MCP Codex Review)
 
 > **PERSIST AFTER COMPACT:** Bu bolum session sifirlanra bile gecerlidir.
 
@@ -279,11 +279,12 @@ Skills in `.claude/commands/`:
 **Her kod degisikligi otomatik olarak auto.md kurallarini takip eder.**
 `/auto` yazmaya GEREK YOK - sadece ne istedigini soyle.
 
-**v5.0 Farki (2026-02-15):**
-- **Paket bazli yurutme:** Tekli GR dongusu yerine 2-3 GR/paket
+**v5.1 Farki (2026-02-16):**
+- **MCP Codex Review:** Copy-paste yerine `mcp__codex-review__codex_review` tool ile otomatik
+- **Paket bazli yurutme:** Tekli GR dongusu yerine 2-3 GR/paket (v5.0'dan devam)
 - Interview: Paket scope'unda AskUserQuestion ile (tek interview tum GR'ler icin, max 4 soru/batch)
 - Plan JSON: Paket bazli (birden fazla GR tek plan'da, `packet_id` + `gr_list`)
-- Codex review: Paket bazli (tum GR'lerin diff'i tek Codex review'da)
+- Codex review: Paket bazli (tum GR'lerin diff'i tek MCP call'da)
 - Paket ici GR'ler arasi interview/review YOK, sadece build check
 
 **Paket Akisi:**
@@ -292,31 +293,27 @@ Skills in `.claude/commands/`:
 3. Agent risk'i belirler (LOW/MEDIUM/HIGH/CRITICAL)
 4. Plan JSON olusturulur (paket bazli, tum GR'ler tek plan'da)
 5. Implement (GR'ler sirali, her GR sonrasi build check)
-6. /rev -> Q copy-paste -> Codex -> PASS/FAIL
+6. /rev -> MCP codex_review (OTOMATIK) -> PASS/FAIL
 
 **8 Paket Referansi:** `arch/active-work.md` -> Execution Queue
 
-**Review Akisi (v5.0 - Copy-Paste):**
+**Review Akisi (v5.1 - MCP Automated):**
 ```
 DevAgent kod yazar -> Self-Review -> Build PASS
     |
 DevAgent /rev calistirir (TUM risk seviyeleri)
     |
-ZORUNLU: Q'ya Codex prompt gosterilir
+MCP codex_review tool OTOMATIK cagrilir (copy-paste YOK)
     |
-Q AYRI Codex penceresine yapistirir
+Codex API structured JSON doner (CQ1-8 + CoVe + verdict)
     |
-Codex 2 BLOK uretir (Code Quality + CoVe)
-    |
-Q verdict bildirir
-    |
-DevAgent /rev verdict PASS|FAIL
+DevAgent verdict'i isler, Q'ya ozet gosterir
     |
 PASS -> commit -> DONE
 FAIL -> fix -> /rev (max 3 iter)
 ```
 
-**HARD RULE:** /rev sonrasi Codex prompt'u Q'ya gosterilmeden ASLA commit yapilamaz!
+**HARD RULE:** /rev sonrasi Codex review yapilmadan ASLA commit yapilamaz!
 
 **Escalation Kategorileri (3 iter sonrasi):**
 | Kategori | Aciklama |
@@ -327,15 +324,15 @@ FAIL -> fix -> /rev (max 3 iter)
 | SCOPE_INSUFFICIENT | Scope yetersiz |
 | ARCHITECTURE_CONFLICT | Mimari celiski |
 
-**Q'nun yapacagi:** Interview cevapla -> Plan onayla -> Copy-paste koprusu -> Izle.
+**Q'nun yapacagi:** Interview cevapla -> Plan onayla -> Codex sonucunu izle -> Override gerekirse FORCE PASS/SKIP CODEX.
 
 **Risk-Based Trigger:**
 | Risk | Build PASS Sonrasi |
 |------|-------------------|
-| LOW | /rev -> Q copy-paste -> Codex |
-| MEDIUM | /rev -> Q copy-paste -> Codex |
-| HIGH | /rev -> Q copy-paste -> Codex |
-| CRITICAL | /rev + Q onay bekle |
+| LOW | /rev -> MCP Codex (otomatik) |
+| MEDIUM | /rev -> MCP Codex (otomatik) |
+| HIGH | /rev -> MCP Codex (otomatik) |
+| CRITICAL | /rev -> MCP Codex + Q onay bekle |
 
 ## Execution
 

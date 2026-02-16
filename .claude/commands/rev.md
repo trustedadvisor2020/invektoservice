@@ -1,21 +1,23 @@
 ---
 name: reviewing-code
-description: Prepares Codex review by updating plan JSON and generating diff files. Processes PASS/FAIL/UNKNOWN verdicts after Q relays Codex output. Use after build passes or to submit a review verdict.
+description: Runs automated Codex review via MCP tool, updates plan JSON, processes verdict. Use after build passes or to submit a review verdict.
 ---
 
-# /rev - Codex Review Prep (v5.0)
+# /rev - Codex Review via MCP (v5.1)
 
 > **PERSIST AFTER COMPACT:** Staged changes require Codex review even after session reset.
 
-Codex is a **reviewer only**. It never implements code. It **DOES NOT modify files** - it only produces text output.
+Codex is a **reviewer only**. It never implements code. It **DOES NOT modify files** - it only produces structured JSON output via MCP tool.
+
+**v5.1 Upgrade:** Copy-paste workflow replaced with `mcp__codex-review__codex_review` tool. Q no longer needs to relay prompts manually.
 
 ---
 
 ## Usage Modes
 
-### 1. `/rev` - After Build PASS (Review Prep)
+### 1. `/rev` - After Build PASS (Automated Review)
 
-Runs after build PASS. Updates the JSON plan file.
+Runs after build PASS. Updates plan JSON + calls Codex via MCP.
 
 **Preconditions (Hard Fail):**
 
@@ -24,7 +26,7 @@ Runs after build PASS. Updates the JSON plan file.
 3. Build PASS evidence? (`build.timestamp`) -> "No build evidence. Run build first."
 4. `allowed_files` scope check -> WARN if diff contains files outside allowed_files
 
-**JSON Updates:**
+**JSON Updates (same as v5.0):**
 
 ```json
 {
@@ -53,21 +55,58 @@ grep -iE 'sk-|apikey.*[a-zA-Z0-9]{20}|password\s*[:=]' diff_file
 ```
 If match found -> WARN Q, do NOT proceed until resolved.
 
-**Prompt shown to Q:**
+**MCP Tool Call (v2.1 - diff_file_path fallback):**
+
+After preconditions pass, diff written, and secret scan clean:
 
 ```
-{slug-name} ---
-# CODEX REVIEW REQUEST
-Plan: arch/plans/{slug}.json
-{RISK} :{iteration}
-{plan.summary}
+Call: mcp__codex-review__codex_review
+Args:
+  slug: {plan slug from JSON}
+  risk_level: {plan risk level}
+  iteration: {current iteration, 0-based}
+  summary: {plan summary}
+  files_changed: {from plan JSON files_changed array}
+  git_diff: {full staged diff text from `git diff --cached`}
+  diff_file_path: "arch/plans/diffs/{slug}.diff"
+  verification_questions: {from plan JSON verification_questions}
+  build_status: "PASS"
 ```
+
+**CRITICAL - Diff Resolution (3-tier fallback):**
+1. `git_diff` inline string (en az 50 char) -> kullan
+2. `git_diff` boş/kısa -> `diff_file_path` dosyasını diskten oku
+3. `diff_file_path` de yoksa -> `arch/plans/diffs/{slug}.diff` otomatik dene
+4. Hiçbiri yoksa -> HATA (API çağrısı yapılmaz, token israfı önlenir)
+
+**DevAgent MUST:**
+- `git diff --cached` çıktısını `git_diff` parametresine string olarak gönder
+- AYRICA `diff_file_path` parametresini her zaman ekle (güvenlik ağı)
+- Diff boşsa MCP tool HATA döner (UNKNOWN yerine açık hata mesajı)
+
+**Result Processing:**
+
+The MCP tool returns structured JSON with:
+- `verdict`: "PASS" | "FAIL" | "UNKNOWN"
+- `code_quality_gate`: CQ1-CQ8 results with evidence
+- `cove_verification`: Q1-Qn results with reasoning
+- `blocking_issues`: array of issue descriptions
+- `summary`: 1-2 sentence review summary
+- `raw_response`: full Codex output text
+- `model_used`: actual model that ran
+- `token_usage`: prompt/completion/total tokens
+
+**After MCP response:**
+1. Show Q a concise summary: verdict, blocking issues, summary
+2. Auto-process verdict (see section 3 below)
+3. If FAIL -> show blocking issues, fix, re-run `/rev`
+4. If PASS -> proceed to commit
 
 ---
 
 ### 2. `/rev validate` - Validation Only (Optional)
 
-Runs validation without updating JSON.
+Runs validation without calling Codex.
 
 ```
 /rev validate -> Schema validation -> Coverage check -> Preconditions -> PASS/FAIL report
@@ -75,9 +114,9 @@ Runs validation without updating JSON.
 
 ---
 
-### 3. `/rev verdict <PASS|FAIL|UNKNOWN> [issue]` - Verdict Processing
+### 3. `/rev verdict <PASS|FAIL|UNKNOWN> [issue]` - Manual Verdict Override
 
-Used when Q relays Codex output to DevAgent.
+Used when Q wants to manually override the MCP result.
 
 ```bash
 /rev verdict PASS
@@ -89,7 +128,7 @@ Used when Q relays Codex output to DevAgent.
 - `/rev verdict FAIL` -> ERROR: blocking_issues cannot be empty
 - `/rev verdict FAIL "CQ2 failed: ..."` -> OK
 
-**Iteration increment:** Only incremented on `/rev verdict` calls, not on `/rev` (review prep).
+**Iteration increment:** Only incremented on verdict processing (auto or manual).
 
 **Escalation trigger:** When iteration >= 3:
 - `"escalation_required": true` added to JSON
@@ -110,36 +149,39 @@ During review, challenge the code - don't rubber-stamp:
 
 ---
 
-## Flow Summary
+## Flow Summary (v5.1 - MCP Automated)
 
 ```
-DevAgent /rev -> JSON updated, diff written
+DevAgent /rev -> JSON updated, diff written, secret scan
     |
-Q shown: "Codex review: arch/plans/{slug}.json"
+DevAgent calls mcp__codex-review__codex_review (AUTOMATED)
     |
-Q pastes prompt to Codex
+Codex API returns structured JSON (CQ1-8 + CoVe + verdict)
     |
-Codex produces 2 blocks (DOES NOT modify files)
-    |
-Q relays Codex output to DevAgent
-    |
-DevAgent /rev verdict PASS|FAIL|UNKNOWN
+DevAgent parses result, shows Q summary
     |
 PASS -> commit -> DONE
-FAIL -> fix -> /rev (max 3 iterations)
+FAIL -> show blocking issues -> fix -> /rev (max 3 iterations)
 UNKNOWN -> Q escalation
 ```
+
+**No more copy-paste!** The entire review flow is automated via MCP.
 
 ---
 
 ## Critical Rules
 
-1. **Codex DOES NOT modify files** - it reads JSON, produces 2 text blocks
-2. **Who fills verdict fields?** - DevAgent (based on Q's input)
+1. **Codex DOES NOT modify files** - MCP tool is read-only, returns review JSON
+2. **Who processes verdict?** - DevAgent (auto from MCP result, or manual via `/rev verdict`)
 3. **FAIL + empty blocking_issues = ERROR** - issue description is mandatory
 4. **Iteration reaches 3 -> Q escalation** - no new iteration without Q permission
 5. **Scope violation = HARD FAIL** - changes outside allowed_files are rejected
-6. **Secret in diff = BLOCKING** - scan diff for secrets before proceeding
+6. **Secret in diff = BLOCKING** - scan diff for secrets before MCP call
+7. **MCP error handling:** If MCP tool returns `error: true`, categorize by `error_type`:
+   - `AUTH_ERROR` -> Check OPENAI_API_KEY in .mcp.json
+   - `RATE_LIMIT` -> Wait and retry
+   - `TIMEOUT` -> Try smaller diff or check network
+   - `MODEL_ERROR` -> Check CODEX_MODEL env var
 
 ---
 
@@ -159,8 +201,24 @@ For the expected Codex output format (Code Quality Gate + CoVe Verification bloc
 
 ---
 
+## MCP Server Info
+
+| Property | Value |
+|----------|-------|
+| Server | `mcp-servers/codex-review/` |
+| Version | `v2.1.0` (diff_file_path fallback + auto-discover) |
+| Tool name | `codex_review` |
+| MCP config | `.mcp.json` (gitignored, contains API key) |
+| Model | `gpt-5.2-codex` (configurable via CODEX_MODEL env) |
+| Permission | `mcp__codex-review__*` in `.claude/settings.local.json` |
+| Min diff | 50 chars (shorter = error, prevents empty diff UNKNOWN results) |
+
+---
+
 ## Canonical Rule
 
-Codex enforces correctness. DevAgent implements + runs /rev. Q owns decisions + copy-paste bridge.
+Codex enforces correctness. DevAgent implements + runs /rev. Q owns decisions.
+
+MCP automates the bridge - no manual copy-paste required.
 
 This rule overrides convenience and speed.

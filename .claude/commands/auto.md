@@ -3,7 +3,7 @@ name: automating-workflow
 description: Manages the full automated dev workflow including interview, planning, implementation, build, Codex review, and commit. Activates on any code change request without needing to type /auto.
 ---
 
-# Auto Workflow v5.0 (Paket Bazli Yurutme)
+# Auto Workflow v5.1 (MCP Codex Review)
 
 ## Overview
 
@@ -12,12 +12,14 @@ description: Manages the full automated dev workflow including interview, planni
 **This workflow applies automatically to EVERY code change.**
 No need to type `/auto` - just tell Q what you need, and the workflow starts.
 
-### v5.0 Farki
+### v5.1 Farki (MCP Upgrade)
 
-- **Paket bazli yurutme:** Birden fazla GR tek pakette islenebilir
+- **Codex review artik MCP uzerinden otomatik:** `mcp__codex-review__codex_review` tool
+- Q'nun copy-paste yapmasina gerek YOK - DevAgent direkt API'yi cagiriyor
+- **Paket bazli yurutme** (v5.0'dan devam): Birden fazla GR tek pakette
 - **Tek interview:** Paket scope'unda (tum GR'ler icin), max 4 soru/batch
 - **Tek plan:** Paket bazli (`packet_id` + `gr_list` JSON alanlari)
-- **Tek Codex review:** Tum GR'lerin diff'i tek review'da
+- **Tek Codex review:** Tum GR'lerin diff'i tek MCP call'da
 - **Paket ici:** GR'ler arasi interview/review YOK, sadece build check
 
 ### After Compact (Session Reset)
@@ -29,17 +31,17 @@ After compact, auto workflow **DOES NOT STOP**:
 
 ---
 
-## Q's Role
+## Q's Role (Simplified with MCP)
 
 | Step | What Q Does |
 |------|-------------|
 | 1 | Describe the task (or next packet) |
 | 2 | Answer interview questions |
 | 3 | Approve the plan |
-| 4 | COPY-PASTE bridge (DevAgent <-> Codex) |
-| 5 | See result (DONE or escalation) |
+| 4 | See Codex result (AUTOMATED - no copy-paste needed!) |
+| 5 | Override if needed (FORCE PASS / SKIP CODEX) |
 
-Codex trigger: Q's manual copy-paste.
+Codex trigger: Automated via MCP tool after `/rev`.
 
 ---
 
@@ -77,7 +79,7 @@ For detailed phase instructions, see the reference files:
 
 - **Phase 1 - Plan:** See [references/phases.md](auto/references/phases.md#phase-1-plan)
 - **Phase 2 - Dev:** See [references/phases.md](auto/references/phases.md#phase-2-dev)
-- **Phase 3 - Review:** See [references/phases.md](auto/references/phases.md#phase-3-review)
+- **Phase 3 - Review (MCP):** See [references/phases.md](auto/references/phases.md#phase-3-review-mcp-automated)
 - **Phase 4 - Fix-Run:** See [references/phases.md](auto/references/phases.md#phase-4-fix-run)
 - **Phase 5 - Done:** See [references/phases.md](auto/references/phases.md#phase-5-done)
 
@@ -98,14 +100,14 @@ Quick reference:
 
 | Risk | Examples | Post-Build |
 |------|----------|------------|
-| LOW | Typo, comment, log, UI text | /rev -> Codex |
-| MEDIUM | Business logic, queries, routing | /rev -> Codex |
-| HIGH | DB schema, multi-file | /rev -> Codex |
-| CRITICAL | Auth/security | /rev + Q approval |
+| LOW | Typo, comment, log, UI text | /rev -> MCP Codex |
+| MEDIUM | Business logic, queries, routing | /rev -> MCP Codex |
+| HIGH | DB schema, multi-file | /rev -> MCP Codex |
+| CRITICAL | Auth/security | /rev -> MCP Codex + Q approval |
 
 ---
 
-## Summary Flow
+## Summary Flow (v5.1 - MCP Automated)
 
 ```
 Q requests packet (or single task)
@@ -118,13 +120,11 @@ GR'ler sirali implement -> build check between GR's
     |
 All GR's done -> Final Build PASS
     |
-/rev -> Q copy-paste to Codex
+/rev -> MCP codex_review tool (AUTOMATED - no copy-paste!)
     |
-Codex produces 2 blocks (entire packet diff)
+Codex API returns structured JSON (CQ1-8 + CoVe + verdict)
     |
-Q reports verdict
-    |
-/rev verdict PASS|FAIL
+DevAgent processes verdict, shows Q summary
     |
 PASS -> commit -> DONE
 FAIL -> fix -> /rev (max 3 iterations)

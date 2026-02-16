@@ -5,6 +5,9 @@
 > **Müşteri Hedefi:** 200++
 > **Bağımlılık:** Phase 6 tamamlanmış olmalı
 > **Durum:** ⬜ Başlamadı
+>
+> **v6 (2026-02-16):** 2 yeni GR eklendi: GR-7.6 QR Kod (M6),
+> GR-7.7 Çevrimdışı Mod (M7). Toplam: 7 GR.
 
 ---
 
@@ -17,6 +20,8 @@
 | GR-7.3 Voice & Video | ⬜ Başlamadı | — | — |
 | GR-7.4 Predictive Analytics | ⬜ Başlamadı | — | — |
 | GR-7.5 Global Pazar Hazırlığı | ⬜ Başlamadı | — | — |
+| GR-7.6 QR Kod ile Hızlı Erişim | ⬜ Başlamadı | — | v6: M6, fiziksel→dijital köprü |
+| GR-7.7 Çevrimdışı Mod | ⬜ Başlamadı | — | v6: M7, offline mesaj kuyruğu |
 
 ---
 
@@ -127,6 +132,39 @@ WhatsApp + 7 kanal zaten var. Bu phase: mobil erişim, yeni kanallar, global paz
 **Yapılmayacak:**
 - ❌ Her ülkeye ayrı instance (multi-tenant yeterli)
 - ❌ Local payment gateway'ler (iyzico/PayTR global desteği yeterli)
+
+---
+
+### GR-7.6: QR Kod ile Hızlı Erişim
+
+> **Servis:** Backend + Mobil Uygulama
+> **Kaynak:** M6 (B5.1 — QR Kod)
+> **Sektör:** Tümü
+> **Etki:** ORTA — fiziksel→dijital köprü
+>
+> **v6 (2026-02-16):** Otel odası, restoran masası, klinik bekleme salonunda QR → direkt WA.
+
+- [ ] **7.6.1** QR kod jeneratörü: tenant + konum + kanal bilgisi gömülü
+- [ ] **7.6.2** QR tarama → WA konuşma başlatma (pre-filled mesaj)
+- [ ] **7.6.3** QR tarama anında opt-in toplama fırsatı (GR-3.26 ile entegre)
+- [ ] **7.6.4** Konum bazlı routing: QR'daki konum bilgisine göre doğru şubeye yönlendirme
+- [ ] **7.6.5** QR analytics: tarama sayısı, dönüşüm, lokasyon bazlı performans
+
+---
+
+### GR-7.7: Çevrimdışı Mod
+
+> **Servis:** Mobil Uygulama (GR-7.1)
+> **Kaynak:** M7 (B5.2 — Çevrimdışı Mod)
+> **Sektör:** Tümü
+> **Etki:** DÜŞÜK-ORTA — saha çalışanları için
+>
+> **v6 (2026-02-16):** İnternet olmadan önceki mesajları görme, taslak kaydetme.
+
+- [ ] **7.7.1** Offline mesaj kuyruğu: internet yokken yazdığın mesajlar local'de saklanır
+- [ ] **7.7.2** Son mesajları cache'leme: son N konuşmayı offline erişilebilir yap
+- [ ] **7.7.3** Taslak kaydetme: offline hazırlanan cevapları kuyrukta tut
+- [ ] **7.7.4** Sync mekanizması: internet gelince otomatik gönder + çakışma çöz
 
 ---
 

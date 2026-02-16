@@ -5,6 +5,9 @@
 > **Müşteri Hedefi:** 130+
 > **Bağımlılık:** Phase 3 tamamlanmış olmalı
 > **Durum:** ⬜ Başlamadı
+>
+> **v6 (2026-02-16):** 2 yeni GR eklendi: GR-4.8 Sigorta Provizyon (SB-02),
+> GR-4.9 Compliance Tam/Enterprise (CS-08). Toplam: 9 GR.
 
 ---
 
@@ -19,6 +22,8 @@
 | GR-4.5 Admin Panel | ⬜ Başlamadı | — | — |
 | GR-4.6 QA & Mining Hazırlık | ⬜ Başlamadı | — | — |
 | GR-4.7 Sağlık Niche Enterprise | ⬜ Başlamadı | — | — |
+| GR-4.8 Sigorta Provizyon Ön Kontrol | ⬜ Başlamadı | — | v6: SB-02, sigorta API entegrasyonu |
+| GR-4.9 Compliance Tam (KVKK/GDPR Enterprise) | ⬜ Başlamadı | — | v6: CS-08 enterprise, temel → Phase 3A GR-3.29 |
 
 ---
 
@@ -159,6 +164,42 @@ Kurumsal müşteriler kapıyı çalıyor. "Demo güzel ama SSO yok, audit yok �
 - ❌ Tedavi sonrası takip otomasyonu (Phase 5)
 - ❌ Google yorum motoru (Phase 5)
 - ❌ HBYS entegrasyonu (çok erken)
+
+---
+
+### GR-4.8: Sigorta Provizyon Ön Kontrol
+
+> **Servis:** `Invekto.Integrations` genişleme + Backend
+> **Kaynak:** SB-02 (B3.2 — Sigorta Provizyon)
+> **Sektör:** Sağlık (Diş + Estetik)
+> **Etki:** ORTA — operasyonel yük azaltma
+>
+> **v6 (2026-02-16):** Sigorta kapsam sorgusu otomasyon adayı. Tam otomasyon zor (sigorta API karmaşık),
+> en azından bilgi toplama + manuel onaya sunma süreci.
+
+- [ ] **4.8.1** Sigorta sorusu intent: "SGK karşılıyor mu?", "Özel sigortam var"
+- [ ] **4.8.2** Poliçe bilgi toplama: sigorta şirketi, poliçe no, TC kimlik
+- [ ] **4.8.3** Kapsam bilgisi Knowledge base'den (hangi sigorta hangi tedaviyi karşılar)
+- [ ] **4.8.4** Manuel provizyon onaya sunma akışı (otomatik sorgu → sonuç → hasta bilgilendirme)
+- [ ] **4.8.5** Katkı payı tahmini hesaplama (Knowledge'dan)
+
+---
+
+### GR-4.9: Compliance Tam (KVKK/GDPR Enterprise)
+
+> **Servis:** `Invekto.Audit` + Backend + Dashboard
+> **Kaynak:** CS-08 (B1.8 — Compliance Otomasyonu) — ENTERPRISE KATMAN
+> **Temel altyapı:** Phase 3A GR-3.29
+> **Etki:** YÜKSEK — enterprise satış engeli, yasal zorunluluk
+>
+> **v6 (2026-02-16):** GR-3.29 temel compliance üzerine enterprise özellikleri ekler.
+
+- [ ] **4.9.1** Veri erişim hakkı: müşteri "verilerim neler?" → otomatik rapor oluşturma
+- [ ] **4.9.2** Gelişmiş veri silme: cascade silme (tüm servislerdeki veri), silme kanıtı log
+- [ ] **4.9.3** GDPR uyumu: AB müşterisi varsa DPA (Data Processing Agreement) desteği
+- [ ] **4.9.4** Denetim modu: compliance officer için readonly audit view
+- [ ] **4.9.5** PII gelişmiş maskeleme: sağlık verisi, fotoğraf, rapor (GR-4.3 ile entegre)
+- [ ] **4.9.6** Saklama süresi otomasyonu: süre dolunca otomatik silme + log
 
 ---
 

@@ -40,6 +40,10 @@
 | 2026-02-16 | Codex CQ3 false positive: diff context satirlarini yeni ekleme zannetti | Q FORCE PASS (2 iter sonra) | **Codex diff context satiri (boslukla baslar) ile ekleme (+) satiri karistirabilir - false positive olarak belgele** |
 | 2026-02-16 | Codex CQ4 duplicate: her repo'daki GetTenantHealthInfoAsync'i DRY violation zannetti | Q FORCE PASS - mimari karar (mikro-servis izolasyonu) | **Mikro-servis izolasyonu = bilinçli duplikasyon. Codex'e architectural decision olarak belgele, 2. iter'de Q escalation** |
 | 2026-02-16 | ErrorCodes constant adi yanlis kullanildi (KnowledgePhotoBlockedHealth vs KnowledgePhotoBlockedHealthTenant) | ErrorCodes.cs'ten dogrusu kontrol edildi | **ErrorCodes constant kullanirken ONCE ErrorCodes.cs'teki tam adi kontrol et** |
+| 2026-02-17 | PKT-4 Codex 7 iter: her iter yeni typed catch/IDisposable/silent-catch buldu | Her iter fixlendi, son iter PASS | **Codex iter sayisi yuksek = pre-write 5 soru kontrolu yetersiz yapilmis demek. static metod logger erisimsiz = silent catch riski** |
+| 2026-02-17 | Large diff (122KB+) git_diff inline truncation = ALL UNKNOWN verdict | diff_file_path fallback kullanildi | **Diff >50KB ise git_diff bos birak + diff_file_path ile disk'ten oku** |
+| 2026-02-17 | Static method logging yapamaz = silent failure (ClassifyByKeyword) | static -> instance method degistirip _logger eristirme | **Exception catch + return null/continue olan metodlar INSTANCE olsun (logger erisimi icin)** |
+| 2026-02-17 | Claude batch processing catch(Exception) cok genis | ArgumentOutOfRangeException + InvalidOperationException typed catches | **Batch mapping/processing = ArgumentOutOfRange + InvalidOperation yeterli, Exception gereksiz genis** |
 
 ### Deploy & Config
 

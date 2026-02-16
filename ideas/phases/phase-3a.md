@@ -9,6 +9,9 @@
 > **v4.3 Bölünme (2026-02-14):** Phase 3 (22 GR) ikiye bölündü. 3A platform altyapısını kurar
 > (Integrations servisi, Outbound v2, Randevu Advanced, Dashboard genişletme, Ads Attribution).
 > 3B'deki niche GR'lar bu altyapıya bağımlıdır — 3A önce tamamlanmalı.
+>
+> **v6 (2026-02-16):** 4 yeni GR eklendi: GR-3.26 Opt-in (CS-01), GR-3.27 SLA (CS-04),
+> GR-3.28 Proaktif Güncelleme (EB-03), GR-3.29 Compliance Temel (CS-08). Toplam: 10 GR.
 
 ---
 
@@ -22,6 +25,10 @@
 | GR-3.15 Outbound Engine v2 | ⬜ Başlamadı | — | Kampanya + A/B + conversion |
 | GR-3.18 Dashboard Genişletme | ⬜ Başlamadı | — | Outbound + iade + yorum panelleri |
 | GR-3.19 Randevu Motoru v2 (Advanced) | ⬜ Başlamadı | — | v4.2: Phase 2'den bölünen advanced |
+| GR-3.26 Opt-in Toplama Framework | ⬜ Başlamadı | — | v6: CS-01, tüm outbound prerequisite |
+| GR-3.27 SLA Watchdog / Failover | ⬜ Başlamadı | — | v6: CS-04, operasyonel güvenilirlik |
+| GR-3.28 Proaktif Sipariş Güncelleme | ⬜ Başlamadı | — | v6: EB-03, kriz öncesi bilgilendirme |
+| GR-3.29 Compliance Temel (KVKK/GDPR) | ⬜ Başlamadı | — | v6: CS-08 kısmen, tam → Phase 4 GR-4.9 |
 
 ---
 
@@ -144,6 +151,80 @@ Platform altyapısını kuran GR'lar. Integrations servisini (:7106) doğurur, O
 
 ---
 
+### GR-3.26: Opt-in Toplama Framework
+
+> **Servis:** `Invekto.Outbound` + Backend
+> **Kaynak:** CS-01 (B1.1 — Opt-in Toplama Senaryosu)
+> **Etki:** BLOCKER — bu olmadan tüm outbound senaryoları yasal olarak çalışmaz
+>
+> **v6 (2026-02-16):** Cross-sektör kritik eksiklik. 5 raporun 4'ü tespit etti.
+
+- [ ] **3.26.1** Opt-in toplama kanalları: ilk WA mesajında, web formunda, sipariş onayında, randevu formunda
+- [ ] **3.26.2** Opt-in saklama: müşteri profilinde `wa_opt_in`, `opt_in_date`, `opt_in_source`
+- [ ] **3.26.3** Opt-out yönetimi: "STOP" mesajı → otomatik unsubscribe + onay mesajı
+- [ ] **3.26.4** Kategori bazlı onam: utility vs marketing template ayrımı
+- [ ] **3.26.5** Compliance log: kim, ne zaman, hangi kanaldan opt-in verdi
+- [ ] **3.26.6** DB:
+  ```sql
+  consent_records (id, tenant_id, customer_phone, consent_type, channel, source, opted_in, opted_in_at, opted_out_at, created_at)
+  ```
+
+---
+
+### GR-3.27: SLA Watchdog / Failover
+
+> **Servis:** Backend + `Invekto.Outbound`
+> **Kaynak:** CS-04 (B1.4 — SLA Watchdog)
+> **Etki:** YÜKSEK — operasyonel güvenilirlik
+>
+> **v6 (2026-02-16):** Cross-sektör. Mesaj bekleme süresi aşıldığında otomatik müdahale.
+
+- [ ] **3.27.1** SLA kuralları (tenant bazlı): genel 5dk, VIP 2dk, acil sağlık 1dk
+- [ ] **3.27.2** Watchdog: SLA-1dk → agent'e push, SLA doldu → supervisor eskalasyon
+- [ ] **3.27.3** Emergency routing: SLA 2x aşıldı → müsait agent veya AI fallback mesajı
+- [ ] **3.27.4** AI failover: servis down → "Şu an yoğunuz, en kısa sürede döneceğiz" template
+- [ ] **3.27.5** Dashboard: SLA breach sayısı, ortalama bekleme, recovery süresi
+- [ ] **3.27.6** DB:
+  ```sql
+  sla_rules (id, tenant_id, priority, max_response_sec, escalation_target, created_at, updated_at)
+  sla_breaches (id, tenant_id, conversation_id, rule_id, breach_type, resolved_at, created_at)
+  ```
+
+---
+
+### GR-3.28: Proaktif Sipariş Durum Güncelleme
+
+> **Servis:** `Invekto.Outbound` + `Invekto.Integrations`
+> **Kaynak:** EB-03 (B2.3 — Proaktif Güncelleme)
+> **Sektör:** E-ticaret
+> **Etki:** YÜKSEK — şikayet önleme
+>
+> **v6 (2026-02-16):** Kargo gecikmesi/stok sorunu → müşteriden ÖNCE bilgilendir.
+
+- [ ] **3.28.1** Gecikme tespiti: Integrations'tan sipariş durumu değişikliği izleme
+- [ ] **3.28.2** Proaktif bildirim: "Siparişinizdeki X ürünü 2 gün gecikmeli gönderilecek"
+- [ ] **3.28.3** Stok sorunu bilgilendirme: stok bitince alternatif veya bekleme süresi
+- [ ] **3.28.4** Template yapılandırma: tenant bazlı mesaj şablonları
+
+---
+
+### GR-3.29: Compliance Temel (KVKK/GDPR Framework)
+
+> **Servis:** Backend + `Invekto.Outbound`
+> **Kaynak:** CS-08 (B1.8 — Compliance Otomasyonu) — TEMEL KATMAN
+> **Tam enterprise compliance:** Phase 4 GR-4.9
+> **Etki:** YÜKSEK — yasal zorunluluk
+>
+> **v6 (2026-02-16):** Cross-sektör. Temel consent + saklama + silme altyapısı.
+
+- [ ] **3.29.1** Explicit consent flow: her kanalda açık onam toplama (GR-3.26 ile entegre)
+- [ ] **3.29.2** Template audit trail: gönderilen her template mesajın kaydı
+- [ ] **3.29.3** Veri silme hakkı: müşteri "verimi silin" → temel iş akışı
+- [ ] **3.29.4** Saklama süresi: sağlık X yıl, ticari Y yıl (tenant bazlı config)
+- [ ] **3.29.5** Temel maskeleme: TC kimlik, telefon numarası görüntülemede maskeleme
+
+---
+
 ## Çıkış Kriterleri (Phase 3B'ye Geçiş Şartı)
 
 - [ ] Integrations servisi (:7106) çalışıyor, HB API bağlı
@@ -157,7 +238,7 @@ Platform altyapısını kuran GR'lar. Integrations servisini (:7106) doğurur, O
 
 ## Notlar
 
-- v4.3'te Phase 3'ten bölündü (6/22 GR — platform enablers)
+- v4.3'te Phase 3'ten bölündü (6/22 GR — platform enablers), v6'da 10 GR'a çıktı (+4 CS/EB)
 - Integrations servisi (:7106) bu phase'te doğar
 - 3B'deki niche GR'lar bu altyapıya bağımlı: sipariş kartı (3.3→3.4), yorum kurtarma (3.16→3.4), iade v2 (3.17→3.8)
 - Outbound v2 tüm niche outbound senaryolarının (3.7, 3.11, 3.20, 3.21) temeli

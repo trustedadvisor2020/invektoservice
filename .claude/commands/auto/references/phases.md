@@ -79,45 +79,46 @@ Paket icinde birden fazla GR varsa:
 
 ---
 
-## Phase 3: Review (Copy-Paste)
+## Phase 3: Review (MCP Automated)
 
 ### Risk-Based Trigger
 
 | Risk | Next Step |
 |------|-----------|
-| LOW | /rev -> Q copy-paste -> Codex |
-| MEDIUM | /rev -> Q copy-paste -> Codex |
-| HIGH | /rev -> Q copy-paste -> Codex |
-| CRITICAL | /rev + wait for Q approval |
+| LOW | /rev -> MCP codex_review (automated) |
+| MEDIUM | /rev -> MCP codex_review (automated) |
+| HIGH | /rev -> MCP codex_review (automated) |
+| CRITICAL | /rev -> MCP codex_review + wait for Q approval |
 
 **Note:** Codex review is mandatory for ALL risk levels.
 
-### Copy-Paste Review Flow
+### MCP Review Flow (v5.1 - Replaces Copy-Paste)
 
 1. DevAgent runs `/rev`
 2. JSON plan file is updated
 3. Diff file written: `arch/plans/diffs/{slug}.diff`
 4. **Secret scan on diff** (BLOCKING - see rev.md)
-5. Codex prompt shown to Q:
-   ```
-   {slug-name} ---
-   # CODEX REVIEW REQUEST
-   Plan: arch/plans/{slug}.json
-   {RISK} :{iteration}
-   {plan.summary}
+5. DevAgent calls `mcp__codex-review__codex_review` with:
+   - slug, risk_level, iteration, summary
+   - files_changed, git_diff, verification_questions
+   - build_status: "PASS"
+6. MCP tool calls OpenAI Codex API and returns structured JSON
+7. DevAgent processes result:
+   - `verdict: "PASS"` -> proceed to commit
+   - `verdict: "FAIL"` -> show blocking_issues to Q, enter fix loop
+   - `verdict: "UNKNOWN"` -> escalate to Q
+8. Show Q concise summary: verdict + blocking issues + summary
+9. PASS -> commit | FAIL -> fix (max 3 iterations)
 
-   ## Verification Questions
-   - [ ] {Q1.category}: {Q1.question}
-   - [ ] {Q2.category}: {Q2.question}
-   - [ ] {Q3.category}: {Q3.question}
-   ```
-6. Q pastes to Codex window
-7. Codex produces 2 review blocks
-8. Q reports Codex output to DevAgent
-9. DevAgent runs `/rev verdict PASS|FAIL` to update JSON
-10. PASS -> commit | FAIL -> fix (max 3 iterations)
+**No manual copy-paste needed.** The entire Codex review is automated via MCP.
 
-**Hard Rule:** After /rev, commit is NEVER allowed until Codex prompt is shown to Q.
+### MCP Error Handling
+
+If MCP tool returns `error: true`:
+- `AUTH_ERROR` -> Check OPENAI_API_KEY in .mcp.json
+- `RATE_LIMIT` -> Wait and retry
+- `TIMEOUT` -> Try smaller diff or check network
+- `MODEL_ERROR` -> Check CODEX_MODEL env var
 
 ---
 
@@ -134,7 +135,7 @@ Paket icinde birden fazla GR varsa:
 ### Fix Loop
 
 ```
-FAIL verdict -> DevAgent fixes -> Self-Review -> Build -> /rev -> Q copy-paste -> Codex
+FAIL verdict -> DevAgent fixes -> Self-Review -> Build -> /rev -> MCP codex_review
 -> PASS -> commit | FAIL -> fix again (iteration++)
 ```
 

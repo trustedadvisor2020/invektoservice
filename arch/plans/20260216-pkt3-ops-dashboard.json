@@ -1,0 +1,168 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-3",
+  "gr_list": [
+    {
+      "id": "GR-2.5",
+      "description": "Otomasyon Dashboard + Log İyileştirme: deflection/handoff rate, trend grafikleri, intent performance, FRT, conversation metadata",
+      "services_affected": ["Invekto.Backend", "Invekto.Shared"]
+    },
+    {
+      "id": "WA-4",
+      "description": "BI Dashboard: Agent performans raporu, conversion raporu, trend raporları (WA stages 1-3 verilerinden)",
+      "services_affected": ["Invekto.Backend"]
+    }
+  ],
+  "slug": "20260216-pkt3-ops-dashboard",
+  "risk": "MEDIUM",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-02-16T10:00:00Z",
+  "updated_at": "2026-02-16T10:00:00Z",
+  "plan": {
+    "summary": "PKT-3: Analytics dashboard ekleme — Backend'de IHostedService ile 5dk periyodik aggregation (Automation DB'den daily_metrics), AnalyticsRepository (metrics + WA direkt DB query), 8 yeni API endpoint, React AnalyticsPage (tenant dropdown, 7d default, recharts grafikler, intent/agent tablolar).",
+    "q_intent": "pkt3 ops dashboard dosyasındaki yapılacak listesi var. planla ve başla",
+    "interview_notes": "Q kararları: (1) Periyodik aggregation (Backend IHostedService, 5dk, Automation'da değişiklik yok), (2) WA-4 direkt DB query (aynı PostgreSQL instance), (3) Tenant dropdown ile filtreleme, (4) 7 gün default + WA stages 1-3 yeterli."
+  },
+  "allowed_files": [
+    "arch/db/backend-metrics.sql",
+    "arch/contracts/analytics-metrics.json",
+    "arch/errors.md",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/AnalyticsRepository.cs",
+    "src/Invekto.Backend/Services/MetricsAggregationService.cs",
+    "src/Invekto.Shared/DTOs/Analytics/AnalyticsDtos.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/AnalyticsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/MetricCards.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/DeflectionChart.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/IntentTable.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/WaTrendsChart.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/WaAgentTable.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "stats": {
+      "insertions": 0,
+      "deletions": 0,
+      "files_count": 0
+    }
+  },
+  "build": {
+    "status": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do all /api/ops/analytics/* endpoints validate OpsAuth (Basic Auth) before returning data, following the existing pattern?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the MetricsAggregationService include tenant_id WHERE clause in ALL aggregation queries, preventing cross-tenant data leakage?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Are daily_metrics UPSERT operations idempotent (ON CONFLICT DO UPDATE) so re-running aggregation does not create duplicate rows?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Do WA-4 queries use parameterized NpgsqlCommand with tenant_id filtering, consistent with existing repository patterns?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does the AnalyticsPage follow the existing Dashboard patterns (usePolling, OpsApiClient, recharts ResponsiveContainer, Layout nav integration)?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.Knowledge/",
+      "src/Invekto.Appointments/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.ChatAnalysis/"
+    ],
+    "non_goals": [
+      "Tam SLA tracker (Phase 6)",
+      "QA scoring (Phase 6)",
+      "Revenue attribution (Phase 5)",
+      "Script compliance check (Phase 4)",
+      "NLP stages 4-7 (PKT-4)",
+      "Automation servisinde değişiklik"
+    ],
+    "intentional_exclusions": [
+      "WA NLP verileri (intent, sentiment, FAQ) - PKT-4'te yapılacak",
+      "Real-time WebSocket push - polling yeterli",
+      "Export/download özelliği - sonraki fazda"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "AnalyticsRepository.cs: Her query method'da NpgsqlException + Exception catch",
+      "MetricsAggregationService.cs: Timer callback'de Exception catch + warning log",
+      "Program.cs: Her analytics endpoint'te try-catch + error response"
+    ],
+    "user_facing_errors": [
+      "INV-MT-001: Metrik toplama hatası (aggregation service)",
+      "INV-MT-002: Analitik sorgu hatası (query failure)",
+      "INV-MT-003: Geçersiz tarih aralığı (from > to veya negatif)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Aggregation service hata durumunda SystemWarn ile loglar ve bir sonraki periyotta tekrar dener. Query hataları INV-MT-002 ile döner. Hiçbir hata yutulmaz."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant bazlı deflection rate göremiyorum, hangi tenant sorunlu bilemiyorum",
+      "suggestion": "Tenant dropdown + deflection rate kırmızı/yeşil renk kodlaması (<%50 kırmızı, >%80 yeşil)",
+      "aha_moment": "Dashboard'a girince hangi tenant'ın sorunlu olduğunu 2 saniyede görüyorum"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Metrikler anlık değil, günlük rapor beklemem gerekiyor",
+      "suggestion": "5dk periyodik aggregation + 60s polling = yaklaşık gerçek zamanlı dashboard",
+      "aha_moment": "Bugünkü deflection rate'i 5 dakika gecikmeli ama sürekli güncel görüyorum"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Aggregation servisi çökerse metrikler kaybolur",
+      "suggestion": "UPSERT ile idempotent aggregation + source veriler (auto_reply_log) her zaman mevcut, yeniden hesaplanabilir",
+      "aha_moment": "Backend yeniden başlasa bile metrikler kaybolmuyor, aggregation otomatik devam ediyor"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Hangi intent'lerin cevaplanamadığını bilmiyorum, bilgi tabanı eksik",
+      "suggestion": "Top unanswered intents listesi — en çok handoff edilen intent'leri göster",
+      "aha_moment": "Unanswered listesini görünce bilgi tabanına eklemem gereken konuları anında biliyorum"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "WA agent performansını karşılaştıramıyorum, kimin daha iyi sattığını bilmiyorum",
+      "suggestion": "Agent bazlı conversion rate tablosu — sale/offered/no_sale breakdown",
+      "aha_moment": "Agent karşılaştırma tablosunda en yüksek conversion rate'i görüp best practice'i paylaşabiliyorum"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}

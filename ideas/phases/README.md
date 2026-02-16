@@ -1,6 +1,6 @@
 # Invekto Phase Dosyaları
 
-> Son güncelleme: 2026-02-15 (v5.1 — 10 Paket Execution Stratejisi)
+> Son güncelleme: 2026-02-16 (v6 — 2 yeni sektör, CS/EB/SB boşlukları, S11/S12)
 > Ana kaynak: [../roadmap.md](../roadmap.md)
 > Execution detay: `arch/active-work.md`
 
@@ -37,14 +37,16 @@
 | **1** | [phase-1.md](phase-1.md) | 3-8 (gerçekçi: 10-15) | 200-300K | 60+ | ✅ Core Tamamlandı (polish ertelendi, 1 tenant production pending) |
 | **2** | [phase-2.md](phase-2.md) | 9-16 | 300-500K | 75+ | 🔄 Kısmen Tamamlandı — GR-2.1 ✅, kalan: PKT-1~4 |
 | **3** | [phase-3.md](phase-3.md) | 17-24 | 500-800K | 100+ | ⬜ Başlamadı — PKT-5~8 ile tamamlanacak |
-| ↳ 3A | [phase-3a.md](phase-3a.md) | 17-20 | 500-650K | 85+ | ⬜ Başlamadı — **PKT-5** Platform Enablers (6 GR) |
-| ↳ 3B | [phase-3b.md](phase-3b.md) | 21-24 | 650-800K | 100+ | ⬜ Başlamadı — **PKT-6A/6B/6C** Niche Derinleştirme (19 GR, 3 alt paket) |
+| ↳ 3A | [phase-3a.md](phase-3a.md) | 17-20 | 500-650K | 85+ | ⬜ Başlamadı — **PKT-5** Platform Enablers (10 GR, v6: +4) |
+| ↳ 3B | [phase-3b.md](phase-3b.md) | 21-24 | 650-800K | 100+ | ⬜ Başlamadı — **PKT-6A/6B/6C** Niche Derinleştirme (34 GR, v6: +15) |
 | ↳ 3C | [phase-3c.md](phase-3c.md) | 25-28 | 800K-1M | 110+ | ⬜ Başlamadı — **PKT-7** Visual AI (8 GR, port 7111) |
 | ↳ 3D | [phase-3d.md](phase-3d.md) | 29-32 | 1M-1.2M | 120+ | ⬜ Başlamadı — **PKT-8** Face AI (5 GR, port 7110) |
-| **4** | [phase-4.md](phase-4.md) | 33-40 | 1.2-1.5M | 140+ | ⬜ Başlamadı |
-| **5** | [phase-5.md](phase-5.md) | 33-40 | 1.2-2M | 170+ | ⬜ Başlamadı |
+| ↳ 3E | [phase-3e.md](phase-3e.md) | 3B sonrası | — | — | ⬜ Başlamadı — Güzellik Salonu Niche (8 GR, v6) |
+| ↳ 3F | [phase-3f.md](phase-3f.md) | 3B sonrası | — | — | ⬜ Başlamadı — Eğitim Niche (8 GR, v6) |
+| **4** | [phase-4.md](phase-4.md) | 33-40 | 1.2-1.5M | 140+ | ⬜ Başlamadı — 9 GR (v6: +2) |
+| **5** | [phase-5.md](phase-5.md) | 33-40 | 1.2-2M | 170+ | ⬜ Başlamadı — 8 GR (v6: +2) |
 | **6** | [phase-6.md](phase-6.md) | 41-48 | 2M+ | 200+ | ⬜ Başlamadı |
-| **7** | [phase-7.md](phase-7.md) | 49+ | 2M++ | 200++ | ⬜ Başlamadı |
+| **7** | [phase-7.md](phase-7.md) | 49+ | 2M++ | 200++ | ⬜ Başlamadı — 7 GR (v6: +2) |
 
 ---
 
