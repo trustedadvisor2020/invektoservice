@@ -26,6 +26,9 @@ netsh advfirewall firewall add rule name="Invekto Knowledge (TCP 7104)" dir=in a
 REM Appointments (port 7102) - Localhost only (Backend proxies, not direct external access)
 netsh advfirewall firewall add rule name="Invekto Appointments (TCP 7102)" dir=in action=allow protocol=tcp localport=7102 profile=any remoteip=127.0.0.1
 
+REM Integrations (port 7106) - Localhost only (Backend proxies, not direct external access)
+netsh advfirewall firewall add rule name="Invekto Integrations (TCP 7106)" dir=in action=allow protocol=tcp localport=7106 profile=any remoteip=127.0.0.1
+
 REM WhatsAppAnalytics (port 7109) - Localhost only (Backend proxies, not direct external access)
 netsh advfirewall firewall add rule name="Invekto WhatsAppAnalytics (TCP 7109)" dir=in action=allow protocol=tcp localport=7109 profile=any remoteip=127.0.0.1
 
@@ -47,6 +50,7 @@ echo    7101  ChatAnalysis  (localhost only)
 echo    7102  Appointments  (localhost only)
 echo    7104  Knowledge     (localhost only)
 echo    7105  AgentAI       (localhost only)
+echo    7106  Integrations  (localhost only)
 echo    7107  Outbound      (localhost only)
 echo    7108  Automation    (external)
 echo    7109  WA Analytics  (localhost only)

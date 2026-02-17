@@ -8,6 +8,7 @@ using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,9 +68,11 @@ builder.Services.AddSingleton<OutboundRepository>();
 // Register services
 builder.Services.AddSingleton<TemplateEngine>();
 builder.Services.AddSingleton<OptOutManager>();
+builder.Services.AddSingleton<ConsentManager>();
 builder.Services.AddSingleton(new RateLimiter(defaultMsgPerMin, logger));
 builder.Services.AddSingleton<BroadcastOrchestrator>();
 builder.Services.AddSingleton<TriggerProcessor>();
+builder.Services.AddSingleton<CampaignOrchestrator>();
 
 // Register MainAppCallbackClient with HttpClient
 var callbackSettings = new CallbackSettings
@@ -100,6 +103,10 @@ builder.Services.AddSingleton<MessageSenderService>(sp =>
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MessageSenderService>());
 
 var app = builder.Build();
+
+// GR-3.26: Wire OptOutManager → ConsentManager for STOP keyword sync
+app.Services.GetRequiredService<OptOutManager>()
+    .SetConsentManager(app.Services.GetRequiredService<ConsentManager>());
 
 // Enable traffic logging middleware
 app.UseTrafficLogging();
@@ -163,7 +170,7 @@ app.MapPost("/api/v1/broadcast/send", async (
             _ => 400
         };
         return Results.Json(
-            ErrorResponse.Create(errorCode!, errorMessage!, requestId),
+            ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Islem basarisiz oldu. Lutfen tekrar deneyin.", requestId),
             statusCode: statusCode);
     }
 
@@ -241,7 +248,7 @@ app.MapPost("/api/v1/webhook/trigger", async (
     if (response == null)
     {
         return Results.Json(
-            ErrorResponse.Create(errorCode!, errorMessage!, requestId),
+            ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Islem basarisiz oldu. Lutfen tekrar deneyin.", requestId),
             statusCode: statusCode);
     }
 
@@ -545,6 +552,296 @@ app.MapGet("/api/v1/optout/check/{phone}", async (
 });
 
 // ============================================================
+// Campaign endpoints (GR-3.15)
+// ============================================================
+
+app.MapPost("/api/v1/campaigns", async (
+    HttpContext ctx,
+    CampaignOrchestrator campaignOrchestrator,
+    JsonLinesLogger jsonLogger,
+    CampaignCreateRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (request == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidCampaignPayload, "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (response, errorCode, errorMessage) = await campaignOrchestrator.CreateCampaignAsync(
+        tenantContext.TenantId, request, CancellationToken.None);
+
+    if (response == null)
+    {
+        var statusCode = errorCode == ErrorCodes.OutboundTemplateNotFound ? 404 : 400;
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Islem basarisiz oldu. Lutfen tekrar deneyin.", requestId), statusCode: statusCode);
+    }
+
+    jsonLogger.StepInfo($"Campaign created: id={response.Id}, name={response.Name}", requestId);
+    return Results.Json(response, statusCode: 201);
+});
+
+app.MapGet("/api/v1/campaigns", async (
+    HttpContext ctx,
+    OutboundRepository repository,
+    string? status) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var campaigns = await repository.ListCampaignsAsync(tenantContext.TenantId, status);
+    return Results.Ok(new { campaigns });
+});
+
+app.MapGet("/api/v1/campaigns/{id:int}", async (
+    HttpContext ctx,
+    OutboundRepository repository,
+    int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var campaign = await repository.GetCampaignAsync(tenantContext.TenantId, id);
+    if (campaign == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.OutboundCampaignNotFound, $"Campaign {id} not found", requestId), statusCode: 404);
+
+    return Results.Ok(campaign);
+});
+
+app.MapPost("/api/v1/campaigns/{id:int}/activate", async (
+    HttpContext ctx,
+    CampaignOrchestrator campaignOrchestrator,
+    JsonLinesLogger jsonLogger,
+    int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (success, errorCode, errorMessage) = await campaignOrchestrator.ActivateCampaignAsync(
+        tenantContext.TenantId, id, CancellationToken.None);
+
+    if (!success)
+    {
+        var statusCode = errorCode == ErrorCodes.OutboundCampaignNotFound ? 404 : 409;
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Islem basarisiz oldu. Lutfen tekrar deneyin.", requestId), statusCode: statusCode);
+    }
+
+    jsonLogger.StepInfo($"Campaign activated: id={id}", requestId);
+    return Results.Ok(new { id, activated = true });
+});
+
+app.MapPost("/api/v1/campaigns/{id:int}/pause", async (
+    HttpContext ctx,
+    OutboundRepository repository,
+    JsonLinesLogger jsonLogger,
+    int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var updated = await repository.UpdateCampaignStatusAsync(tenantContext.TenantId, id, "paused");
+    if (!updated)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.OutboundCampaignNotFound, $"Campaign {id} not found", requestId), statusCode: 404);
+
+    jsonLogger.StepInfo($"Campaign paused: id={id}", requestId);
+    return Results.Ok(new { id, paused = true });
+});
+
+app.MapGet("/api/v1/campaigns/{id:int}/roi", async (
+    HttpContext ctx,
+    OutboundRepository repository,
+    int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var roi = await repository.GetCampaignRoiAsync(tenantContext.TenantId, id);
+    if (roi == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.OutboundCampaignNotFound, $"Campaign {id} not found", requestId), statusCode: 404);
+
+    return Results.Ok(roi);
+});
+
+// ============================================================
+// Conversion endpoints (GR-3.15)
+// ============================================================
+
+app.MapPost("/api/v1/conversions", async (
+    HttpContext ctx,
+    CampaignOrchestrator campaignOrchestrator,
+    JsonLinesLogger jsonLogger,
+    ConversionRecordRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (request == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundConversionRecordFailed, "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (conversionId, errorCode, errorMessage) = await campaignOrchestrator.RecordConversionAsync(
+        tenantContext.TenantId, request, CancellationToken.None);
+
+    if (conversionId == null)
+    {
+        return Results.Json(ErrorResponse.Create(errorCode ?? ErrorCodes.GeneralUnknown, errorMessage ?? "Islem basarisiz oldu. Lutfen tekrar deneyin.", requestId), statusCode: 400);
+    }
+
+    jsonLogger.StepInfo(
+        $"Conversion recorded: id={conversionId}, type={request.ConversionType}", requestId);
+
+    return Results.Json(new { id = conversionId, conversion_type = request.ConversionType }, statusCode: 201);
+});
+
+// ============================================================
+// Consent endpoints (GR-3.26)
+// ============================================================
+
+app.MapPost("/api/v1/consent", async (
+    HttpContext ctx,
+    ConsentManager consentManager,
+    JsonLinesLogger jsonLogger,
+    ConsentRecordRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (request == null || string.IsNullOrWhiteSpace(request.CustomerPhone))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidConsentPayload, "customer_phone is required", requestId),
+            statusCode: 400);
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Channel))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidConsentPayload, "channel is required", requestId),
+            statusCode: 400);
+    }
+
+    var validTypes = new HashSet<string> { "marketing", "utility", "all" };
+    if (!validTypes.Contains(request.ConsentType))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundInvalidConsentPayload,
+                "consent_type must be one of: marketing, utility, all", requestId),
+            statusCode: 400);
+    }
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var response = await consentManager.UpsertConsentAsync(
+        tenantContext.TenantId, request, CancellationToken.None);
+
+    jsonLogger.StepInfo(
+        $"Consent upserted: phone={request.CustomerPhone}, type={request.ConsentType}, opted_in={request.OptedIn}",
+        requestId);
+
+    return Results.Json(response, statusCode: 200);
+});
+
+app.MapGet("/api/v1/consent/check/{phone}", async (
+    HttpContext ctx,
+    ConsentManager consentManager,
+    string phone) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var response = await consentManager.CheckConsentAsync(
+        tenantContext.TenantId, phone);
+    return Results.Ok(response);
+});
+
+// ============================================================
+// Data deletion endpoints (GR-3.29)
+// ============================================================
+
+app.MapPost("/api/v1/data-deletion", async (
+    HttpContext ctx,
+    OutboundRepository repository,
+    JsonLinesLogger jsonLogger,
+    DataDeletionRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (request == null || string.IsNullOrWhiteSpace(request.CustomerPhone))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundDataDeletionFailed, "customer_phone is required", requestId),
+            statusCode: 400);
+    }
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    try
+    {
+        var deletionId = await repository.CreateDeletionRequestAsync(
+            tenantContext.TenantId, request.CustomerPhone, request.RequestedBy, CancellationToken.None);
+
+        var servicesCleaned = await repository.ExecuteDataDeletionAsync(
+            tenantContext.TenantId, request.CustomerPhone, CancellationToken.None);
+
+        await repository.UpdateDeletionRequestAsync(
+            tenantContext.TenantId, deletionId, "completed", servicesCleaned, null, CancellationToken.None);
+
+        jsonLogger.StepInfo(
+            $"Data deletion completed: phone={request.CustomerPhone}, services={string.Join(",", servicesCleaned)}",
+            requestId);
+
+        return Results.Ok(new DataDeletionResponse
+        {
+            Id = deletionId,
+            CustomerPhone = request.CustomerPhone,
+            Status = "completed",
+            ServicesCleaned = servicesCleaned,
+            CompletedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"Data deletion DB error: phone={request.CustomerPhone}, error={ex.Message}");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundDataDeletionFailed, "Data deletion failed", requestId),
+            statusCode: 500);
+    }
+    catch (InvalidOperationException ex)
+    {
+        jsonLogger.SystemError($"Data deletion logic error: phone={request.CustomerPhone}, error={ex.Message}");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.OutboundDataDeletionFailed, "Data deletion failed", requestId),
+            statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -564,6 +861,16 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/optout", Description = "Manual opt-out add", Auth = "Bearer JWT", Category = "OptOut" },
         new() { Method = "DELETE", Path = "/api/v1/optout/{phone}", Description = "Remove opt-out", Auth = "Bearer JWT", Category = "OptOut" },
         new() { Method = "GET", Path = "/api/v1/optout/check/{phone}", Description = "Check if phone opted out", Auth = "Bearer JWT", Category = "OptOut" },
+        new() { Method = "POST", Path = "/api/v1/campaigns", Description = "Create campaign (GR-3.15)", Auth = "Bearer JWT", Category = "Campaign" },
+        new() { Method = "GET", Path = "/api/v1/campaigns", Description = "List campaigns", Auth = "Bearer JWT", Category = "Campaign" },
+        new() { Method = "GET", Path = "/api/v1/campaigns/{id}", Description = "Get campaign details", Auth = "Bearer JWT", Category = "Campaign" },
+        new() { Method = "POST", Path = "/api/v1/campaigns/{id}/activate", Description = "Activate campaign", Auth = "Bearer JWT", Category = "Campaign" },
+        new() { Method = "POST", Path = "/api/v1/campaigns/{id}/pause", Description = "Pause campaign", Auth = "Bearer JWT", Category = "Campaign" },
+        new() { Method = "GET", Path = "/api/v1/campaigns/{id}/roi", Description = "Campaign ROI stats", Auth = "Bearer JWT", Category = "Campaign" },
+        new() { Method = "POST", Path = "/api/v1/conversions", Description = "Record conversion event (GR-3.15)", Auth = "Bearer JWT", Category = "Conversion" },
+        new() { Method = "POST", Path = "/api/v1/consent", Description = "Upsert consent record (GR-3.26)", Auth = "Bearer JWT", Category = "Consent" },
+        new() { Method = "GET", Path = "/api/v1/consent/check/{phone}", Description = "Check consent status", Auth = "Bearer JWT", Category = "Consent" },
+        new() { Method = "POST", Path = "/api/v1/data-deletion", Description = "KVKK data deletion request (GR-3.29)", Auth = "Bearer JWT", Category = "Compliance" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },

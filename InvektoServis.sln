@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.WhatsAppAnalytics",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Appointments", "src\Invekto.Appointments\Invekto.Appointments.csproj", "{C4B2D1E3-6F78-4A9B-BC01-DE23F456B789}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Invekto.Integrations", "src\Invekto.Integrations\Invekto.Integrations.csproj", "{CADE01AF-6143-4583-AFB6-8FEABFB83BAA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -82,6 +84,10 @@ Global
 		{C4B2D1E3-6F78-4A9B-BC01-DE23F456B789}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4B2D1E3-6F78-4A9B-BC01-DE23F456B789}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4B2D1E3-6F78-4A9B-BC01-DE23F456B789}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CADE01AF-6143-4583-AFB6-8FEABFB83BAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CADE01AF-6143-4583-AFB6-8FEABFB83BAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CADE01AF-6143-4583-AFB6-8FEABFB83BAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CADE01AF-6143-4583-AFB6-8FEABFB83BAA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{15F8FD75-7433-4D26-A091-8B804B50C75C} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
@@ -95,5 +101,6 @@ Global
 		{961A69D3-4D28-4D8A-B499-379624786D77} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
 		{72AE9F96-6534-42F5-AAE6-EB355BCC0DAD} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
 		{C4B2D1E3-6F78-4A9B-BC01-DE23F456B789} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
+		{CADE01AF-6143-4583-AFB6-8FEABFB83BAA} = {2D97BB8D-A179-4B02-AABE-097A26C8ECFD}
 	EndGlobalSection
 EndGlobal

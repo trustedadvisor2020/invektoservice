@@ -51,6 +51,13 @@ public sealed class BroadcastSendResponse
 
     [JsonPropertyName("skipped_optout")]
     public int SkippedOptout { get; set; }
+
+    /// <summary>
+    /// GR-3.26: Recipients skipped due to missing marketing consent.
+    /// </summary>
+    [JsonPropertyName("skipped_consent")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int SkippedConsent { get; set; }
 }
 
 /// <summary>

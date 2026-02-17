@@ -15,6 +15,7 @@ echo Stopping services...
 %NSSM% stop InvektoOutbound
 %NSSM% stop InvektoKnowledge
 %NSSM% stop InvektoAppointments
+%NSSM% stop InvektoIntegrations
 %NSSM% stop InvektoWhatsAppAnalytics
 timeout /t 3 /nobreak >nul
 
@@ -34,6 +35,8 @@ timeout /t 2 /nobreak >nul
 timeout /t 2 /nobreak >nul
 %NSSM% start InvektoAppointments
 timeout /t 2 /nobreak >nul
+%NSSM% start InvektoIntegrations
+timeout /t 2 /nobreak >nul
 %NSSM% start InvektoWhatsAppAnalytics
 timeout /t 2 /nobreak >nul
 
@@ -46,6 +49,7 @@ echo Status:
 %NSSM% status InvektoOutbound
 %NSSM% status InvektoKnowledge
 %NSSM% status InvektoAppointments
+%NSSM% status InvektoIntegrations
 %NSSM% status InvektoWhatsAppAnalytics
 echo.
 echo Test: http://localhost:5000/health
@@ -55,6 +59,7 @@ echo Test: http://localhost:7105/health
 echo Test: http://localhost:7107/health
 echo Test: http://localhost:7102/health
 echo Test: http://localhost:7108/health
+echo Test: http://localhost:7106/health
 echo Test: http://localhost:7109/health
 echo.
 pause

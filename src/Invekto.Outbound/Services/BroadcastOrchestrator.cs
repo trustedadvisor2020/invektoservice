@@ -16,17 +16,20 @@ public sealed class BroadcastOrchestrator
     private readonly OutboundRepository _repository;
     private readonly TemplateEngine _templateEngine;
     private readonly OptOutManager _optOutManager;
+    private readonly ConsentManager _consentManager;
     private readonly JsonLinesLogger _logger;
 
     public BroadcastOrchestrator(
         OutboundRepository repository,
         TemplateEngine templateEngine,
         OptOutManager optOutManager,
+        ConsentManager consentManager,
         JsonLinesLogger logger)
     {
         _repository = repository;
         _templateEngine = templateEngine;
         _optOutManager = optOutManager;
+        _consentManager = consentManager;
         _logger = logger;
     }
 
@@ -66,8 +69,16 @@ public sealed class BroadcastOrchestrator
         var (healthSettingsJson, healthSector) = await _repository.GetTenantHealthInfoAsync(tenantId, ct);
         var isHealthTenant = KvkkHelper.IsHealthTenant(healthSettingsJson, healthSector);
 
+        // GR-3.26: Batch marketing consent check (broadcasts are marketing)
+        var nonOptoutPhones = validRecipients
+            .Where(r => !optedOutPhones.Contains(r.Phone))
+            .Select(r => r.Phone).ToList();
+        var noConsentPhones = await _consentManager.GetPhonesWithoutMarketingConsentAsync(
+            tenantId, nonOptoutPhones, ct);
+
         // Filter and prepare messages
         var skippedOptout = 0;
+        var skippedConsent = 0;
         var messagesToInsert = new List<(string phone, string text)>();
 
         foreach (var recipient in validRecipients)
@@ -75,6 +86,13 @@ public sealed class BroadcastOrchestrator
             if (optedOutPhones.Contains(recipient.Phone))
             {
                 skippedOptout++;
+                continue;
+            }
+
+            // GR-3.26: Skip if no marketing consent
+            if (noConsentPhones.Contains(recipient.Phone))
+            {
+                skippedConsent++;
                 continue;
             }
 
@@ -110,16 +128,22 @@ public sealed class BroadcastOrchestrator
             tenantId, broadcastId, request.TemplateId, messagesToInsert, lang, ct);
         var queuedCount = messagesToInsert.Count;
 
+        // GR-3.29: Audit trail - batch insert for compliance (single multi-row INSERT)
+        await _repository.BatchInsertAuditTrailAsync(
+            tenantId, request.TemplateId, null, messagesToInsert, ct);
+
         _logger.SystemInfo(
             $"Broadcast created: id={broadcastId}, tenant={tenantId}, " +
-            $"total={request.Recipients.Count}, queued={queuedCount}, skipped_optout={skippedOptout}");
+            $"total={request.Recipients.Count}, queued={queuedCount}, " +
+            $"skipped_optout={skippedOptout}, skipped_consent={skippedConsent}");
 
         return (new BroadcastSendResponse
         {
             BroadcastId = broadcastId,
             TotalRecipients = request.Recipients.Count,
             Queued = queuedCount,
-            SkippedOptout = skippedOptout
+            SkippedOptout = skippedOptout,
+            SkippedConsent = skippedConsent
         }, null, null);
     }
 }

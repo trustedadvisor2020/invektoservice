@@ -25,7 +25,8 @@ INV-{SERVICE}-{NUMBER}
 | INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
 | DB | Database | Veritabanı hataları |
 | VAL | Validation | Validasyon hataları |
-| OB | Outbound | GR-1.3: Broadcast & trigger engine hataları |
+| OB | Outbound | GR-1.3/3.15/3.26/3.29: Broadcast, campaign, consent, compliance hatalari |
+| IG | Integrations | GR-3.4/3.6: Marketplace & kargo entegrasyonlari |
 | AP | Appointments | GR-2.4: Randevu Motoru hatalari |
 | KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
 | MT | Metrics | PKT-3: Analitik/metrik hatalari |
@@ -173,6 +174,28 @@ INV-{SERVICE}-{NUMBER}
 | INV-OB-010 | Too many recipients (max 1000) | Alici sayisi siniri asildi (max 1000). |
 | INV-OB-011 | Template language not available | Istenen dilde sablon bulunamadi, varsayilan dil kullanildi. |
 | INV-OB-012 | No template for language | Bu dilde sablon tanimlanmamis. |
+| INV-OB-013 | Invalid campaign payload | Gecersiz kampanya istegi. |
+| INV-OB-014 | Campaign not found | Kampanya bulunamadi. |
+| INV-OB-015 | Campaign already active | Kampanya zaten aktif/zamanlanmis. |
+| INV-OB-016 | Conversion record failed | Donusum kaydi olusturulamadi. |
+| INV-OB-017 | AI personalization unavailable | AI kisisellistirme servisi kullanilamiyor. |
+| INV-OB-018 | Consent not given | Alici pazarlama izni vermemis. |
+| INV-OB-019 | Invalid consent payload | Gecersiz izin kaydi istegi. |
+| INV-OB-020 | Data deletion failed | Veri silme islemi basarisiz oldu. |
+
+---
+
+## IG - Integrations Errors (GR-3.4/3.6)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-IG-001 | Invalid account payload | Gecersiz entegrasyon hesabi istegi. |
+| INV-IG-002 | Account not found | Entegrasyon hesabi bulunamadi. |
+| INV-IG-003 | Provider sync failed | Saglayici senkronizasyonu basarisiz. |
+| INV-IG-004 | Order not found | Siparis bulunamadi. |
+| INV-IG-005 | Provider connection failed | Saglayici baglanti testi basarisiz. |
+| INV-IG-006 | Invalid order query | Gecersiz siparis sorgusu. |
+| INV-IG-007 | Cargo tracking unavailable | Kargo takip bilgisi kullanilamiyor. |
 
 ---
 

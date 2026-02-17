@@ -138,6 +138,25 @@ public static class ErrorCodes
     public const string WAStorageError = "INV-WA-014";
     public const string WADatabaseError = "INV-WA-015";
 
+    // Integrations errors (INV-IG-xxx) -- GR-3.4/3.6
+    public const string IntegrationsInvalidAccountPayload = "INV-IG-001";
+    public const string IntegrationsAccountNotFound = "INV-IG-002";
+    public const string IntegrationsProviderSyncFailed = "INV-IG-003";
+    public const string IntegrationsOrderNotFound = "INV-IG-004";
+    public const string IntegrationsProviderConnectionFailed = "INV-IG-005";
+    public const string IntegrationsInvalidOrderQuery = "INV-IG-006";
+    public const string IntegrationsCargoTrackingUnavailable = "INV-IG-007";
+
+    // Outbound v2 errors (INV-OB-013+) -- GR-3.15/3.26/3.29
+    public const string OutboundInvalidCampaignPayload = "INV-OB-013";
+    public const string OutboundCampaignNotFound = "INV-OB-014";
+    public const string OutboundCampaignAlreadyActive = "INV-OB-015";
+    public const string OutboundConversionRecordFailed = "INV-OB-016";
+    public const string OutboundAiPersonalizationUnavailable = "INV-OB-017";
+    public const string OutboundConsentNotGiven = "INV-OB-018";
+    public const string OutboundInvalidConsentPayload = "INV-OB-019";
+    public const string OutboundDataDeletionFailed = "INV-OB-020";
+
     // Metrics/Analytics errors (INV-MT-xxx) -- PKT-3
     public const string MetricsAggregationFailed = "INV-MT-001";
     public const string MetricsQueryFailed = "INV-MT-002";

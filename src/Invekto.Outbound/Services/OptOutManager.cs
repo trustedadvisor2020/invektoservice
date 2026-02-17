@@ -11,6 +11,7 @@ public sealed class OptOutManager
 {
     private readonly OutboundRepository _repository;
     private readonly JsonLinesLogger _logger;
+    private ConsentManager? _consentManager;
 
     // Stop keywords - normalized to uppercase for comparison
     private static readonly string[] StopKeywords =
@@ -23,6 +24,13 @@ public sealed class OptOutManager
         _repository = repository;
         _logger = logger;
     }
+
+    /// <summary>
+    /// GR-3.26: Set ConsentManager for STOP keyword sync.
+    /// Called after DI to avoid circular dependency.
+    /// </summary>
+    public void SetConsentManager(ConsentManager consentManager)
+        => _consentManager = consentManager;
 
     /// <summary>
     /// Check if a phone number has opted out for a given tenant.
@@ -67,6 +75,12 @@ public sealed class OptOutManager
         else
         {
             _logger.SystemInfo($"Opt-out already exists: tenant={tenantId}, phone={phone}");
+        }
+
+        // GR-3.26: Sync STOP keyword to consent_records
+        if (_consentManager != null)
+        {
+            await _consentManager.SyncStopKeywordToConsentAsync(tenantId, phone, keyword, ct);
         }
 
         return (true, keyword);

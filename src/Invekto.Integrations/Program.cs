@@ -1,0 +1,328 @@
+using Invekto.Integrations.Data;
+using Invekto.Integrations.Services;
+using Invekto.Shared.Auth;
+using Invekto.Shared.Constants;
+using Invekto.Shared.Data;
+using Invekto.Shared.DTOs;
+using Invekto.Shared.DTOs.Integrations;
+using Invekto.Shared.Logging;
+using Invekto.Shared.Middleware;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Windows Service support
+builder.Host.UseWindowsService();
+
+// Read configuration
+var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", ServiceConstants.IntegrationsPort);
+var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
+var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
+var syncIntervalMs = builder.Configuration.GetValue<int>("Sync:IntervalMs", 300_000);
+
+// Validate required config
+if (string.IsNullOrEmpty(pgConnStr))
+    throw new InvalidOperationException("FATAL: ConnectionStrings:PostgreSQL is not configured");
+if (string.IsNullOrEmpty(jwtSecretKey))
+    throw new InvalidOperationException("FATAL: Jwt:SecretKey is not configured");
+
+// Configure Kestrel
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(listenPort);
+});
+
+// Register logger
+var logger = new JsonLinesLogger(ServiceConstants.IntegrationsServiceName, logPath);
+builder.Services.AddSingleton(logger);
+
+// Register log cleanup
+builder.Services.AddSingleton<LogCleanupService>(sp =>
+    new LogCleanupService(logPath, ServiceConstants.LogRetentionDays));
+
+// Register JWT validator
+var jwtSettings = new JwtSettings
+{
+    SecretKey = jwtSecretKey,
+    Issuer = builder.Configuration["Jwt:Issuer"],
+    Audience = builder.Configuration["Jwt:Audience"],
+    ClockSkewSeconds = builder.Configuration.GetValue<int>("Jwt:ClockSkewSeconds", 60)
+};
+var jwtValidator = new JwtValidator(jwtSettings);
+builder.Services.AddSingleton(jwtValidator);
+
+// Register PostgreSQL connection factory
+var pgFactory = new PostgresConnectionFactory(pgConnStr);
+builder.Services.AddSingleton(pgFactory);
+
+// Register repository
+builder.Services.AddSingleton<IntegrationsRepository>();
+
+// Register marketplace providers (mock implementations)
+builder.Services.AddSingleton<IMarketplaceProvider, HepsiburadaMockProvider>();
+
+// Register cargo providers (mock implementations)
+builder.Services.AddSingleton<ICargoProvider, ArasCargoMockProvider>();
+builder.Services.AddSingleton<ICargoProvider, YurticiCargoMockProvider>();
+
+// Register background order sync
+builder.Services.AddSingleton<OrderSyncService>(sp =>
+    new OrderSyncService(
+        sp.GetRequiredService<IntegrationsRepository>(),
+        sp.GetServices<IMarketplaceProvider>(),
+        sp.GetRequiredService<JsonLinesLogger>(),
+        syncIntervalMs));
+builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderSyncService>());
+
+var app = builder.Build();
+
+// Enable traffic logging middleware
+app.UseTrafficLogging();
+
+// Enable JWT auth for /api/v1/ prefixed paths
+app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
+
+// Start log cleanup
+_ = app.Services.GetRequiredService<LogCleanupService>();
+
+// ============================================================
+// Health endpoints
+// ============================================================
+
+app.MapGet("/health", () => Results.Ok(HealthResponse.Ok(ServiceConstants.IntegrationsServiceName)));
+app.MapGet("/ready", async (PostgresConnectionFactory db) =>
+{
+    var (ok, error) = await db.TestConnectionAsync();
+    if (!ok)
+        return Results.Json(new { status = "unhealthy", error }, statusCode: 503);
+    return Results.Ok(HealthResponse.Ok(ServiceConstants.IntegrationsServiceName));
+});
+
+// ============================================================
+// Integration Account endpoints
+// ============================================================
+
+app.MapGet("/api/v1/accounts", async (
+    HttpContext ctx,
+    IntegrationsRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var accounts = await repo.ListAccountsAsync(tenantContext.TenantId);
+    return Results.Ok(accounts);
+});
+
+app.MapGet("/api/v1/accounts/{provider}", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    string provider) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var account = await repo.GetAccountAsync(tenantContext.TenantId, provider);
+    if (account == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsAccountNotFound, $"No integration account for provider '{provider}'", requestId), statusCode: 404);
+
+    return Results.Ok(account);
+});
+
+app.MapPost("/api/v1/accounts", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    JsonLinesLogger jsonLogger,
+    IntegrationAccountRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    if (request == null || string.IsNullOrWhiteSpace(request.Provider))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidAccountPayload, "Provider is required", requestId), statusCode: 400);
+
+    var validProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "hepsiburada", "trendyol", "aras_kargo", "yurtici_kargo" };
+
+    if (!validProviders.Contains(request.Provider))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidAccountPayload, $"Invalid provider: {request.Provider}", requestId), statusCode: 400);
+
+    var settingsJson = request.Settings != null
+        ? System.Text.Json.JsonSerializer.Serialize(request.Settings)
+        : null;
+
+    var id = await repo.UpsertAccountAsync(
+        tenantContext.TenantId, request.Provider,
+        request.ApiKey, request.ApiSecret, request.SellerId,
+        settingsJson);
+
+    jsonLogger.StepInfo($"Integration account upserted: id={id}, provider={request.Provider}", requestId);
+    return Results.Json(new { id, provider = request.Provider, status = "active" }, statusCode: 201);
+});
+
+app.MapPost("/api/v1/accounts/{provider}/test", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    IEnumerable<IMarketplaceProvider> providers,
+    string provider) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var creds = await repo.GetAccountCredentialsAsync(tenantContext.TenantId, provider);
+    if (creds == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsAccountNotFound, $"No active account for provider '{provider}'", requestId), statusCode: 404);
+
+    var marketplaceProvider = providers.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+
+    if (marketplaceProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsProviderConnectionFailed, $"Provider '{provider}' not supported", requestId), statusCode: 400);
+
+    var (apiKeyEnc, apiSecretEnc, sellerId) = creds.Value;
+    var (success, errorMessage) = await marketplaceProvider.TestConnectionAsync(
+        apiKeyEnc ?? "", apiSecretEnc, sellerId, CancellationToken.None);
+
+    if (!success)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsProviderConnectionFailed, errorMessage ?? "Connection test failed", requestId), statusCode: 502);
+
+    return Results.Ok(new { provider, status = "connected" });
+});
+
+// ============================================================
+// Orders endpoints
+// ============================================================
+
+app.MapGet("/api/v1/orders", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    string? provider, string? status, string? phone,
+    DateTime? from, DateTime? to,
+    int? limit, int? offset) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var orders = await repo.QueryOrdersAsync(
+        tenantContext.TenantId, provider, status, phone,
+        from, to, limit ?? 50, offset ?? 0);
+
+    return Results.Ok(orders);
+});
+
+app.MapGet("/api/v1/orders/{provider}/{externalOrderId}", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    string provider, string externalOrderId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var order = await repo.GetOrderByExternalIdAsync(tenantContext.TenantId, provider, externalOrderId);
+    if (order == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsOrderNotFound, $"Order '{externalOrderId}' not found", requestId), statusCode: 404);
+
+    return Results.Ok(order);
+});
+
+// ============================================================
+// Cargo tracking endpoints (GR-3.6)
+// ============================================================
+
+app.MapGet("/api/v1/cargo/{trackingCode}", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    IEnumerable<ICargoProvider> cargoProviders,
+    string trackingCode,
+    string? cargoProvider) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    // First check DB cache
+    var events = await repo.GetCargoEventsAsync(tenantContext.TenantId, trackingCode);
+    if (events.Count > 0)
+    {
+        var cached = new Invekto.Shared.DTOs.Integrations.CargoTrackingResponse
+        {
+            TrackingCode = trackingCode,
+            CargoProvider = cargoProvider ?? "unknown",
+            CurrentStatus = events[^1].Status,
+            Events = events.Select(e => new Invekto.Shared.DTOs.Integrations.CargoTrackingEvent
+            {
+                Status = e.Status,
+                Location = e.Location,
+                EventTime = e.EventTime
+            }).ToList()
+        };
+        return Results.Ok(cached);
+    }
+
+    // If no cached events and a provider is specified, query the mock
+    if (!string.IsNullOrEmpty(cargoProvider))
+    {
+        var provider = cargoProviders.FirstOrDefault(p =>
+            string.Equals(p.ProviderName, cargoProvider, StringComparison.OrdinalIgnoreCase));
+
+        if (provider == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsCargoTrackingUnavailable, $"Cargo provider '{cargoProvider}' not supported", requestId), statusCode: 400);
+
+        var result = await provider.TrackShipmentAsync(trackingCode, CancellationToken.None);
+        if (result == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsCargoTrackingUnavailable, "Tracking info not available", requestId), statusCode: 404);
+
+        var response = new Invekto.Shared.DTOs.Integrations.CargoTrackingResponse
+        {
+            TrackingCode = result.TrackingCode,
+            CargoProvider = result.CargoProvider,
+            CurrentStatus = result.CurrentStatus,
+            Events = result.Events.Select(e => new Invekto.Shared.DTOs.Integrations.CargoTrackingEvent
+            {
+                Status = e.Status,
+                Location = e.Location,
+                EventTime = e.EventTime
+            }).ToList()
+        };
+        return Results.Ok(response);
+    }
+
+    return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsCargoTrackingUnavailable, "No tracking data found. Specify cargo_provider parameter to query live.", requestId), statusCode: 404);
+});
+
+// ============================================================
+// Ops endpoints
+// ============================================================
+
+app.MapGet("/api/ops/endpoints", () =>
+{
+    var endpoints = new List<EndpointInfo>
+    {
+        new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
+        new() { Method = "GET", Path = "/ready", Description = "Readiness probe", Auth = "none", Category = "Health" },
+        new() { Method = "GET", Path = "/api/v1/accounts", Description = "List integration accounts", Auth = "Bearer", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/accounts/{provider}", Description = "Get integration account by provider", Auth = "Bearer", Category = "API" },
+        new() { Method = "POST", Path = "/api/v1/accounts", Description = "Create/update integration account", Auth = "Bearer", Category = "API" },
+        new() { Method = "POST", Path = "/api/v1/accounts/{provider}/test", Description = "Test provider connection", Auth = "Bearer", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/orders", Description = "Query cached orders", Auth = "Bearer", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/orders/{provider}/{externalOrderId}", Description = "Get single order", Auth = "Bearer", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/cargo/{trackingCode}", Description = "Track cargo shipment", Auth = "Bearer", Category = "API" },
+        new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
+    };
+    return Results.Ok(endpoints);
+});
+
+logger.SystemInfo($"Invekto.Integrations starting on port {listenPort}");
+app.Run();

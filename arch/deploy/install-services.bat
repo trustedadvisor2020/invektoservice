@@ -13,7 +13,7 @@ echo ============================================
 echo.
 
 REM Backend Service
-echo [1/8] Installing InvektoBackend...
+echo [1/9] Installing InvektoBackend...
 %NSSM% install InvektoBackend "E:\Invekto\Backend\current\Invekto.Backend.exe"
 %NSSM% set InvektoBackend DisplayName "Invekto Backend"
 %NSSM% set InvektoBackend Description "Invekto Backend API - Port 5000"
@@ -32,7 +32,7 @@ echo [OK] InvektoBackend installed
 echo.
 
 REM ChatAnalysis Service
-echo [2/8] Installing InvektoChatAnalysis...
+echo [2/9] Installing InvektoChatAnalysis...
 %NSSM% install InvektoChatAnalysis "E:\Invekto\ChatAnalysis\current\Invekto.ChatAnalysis.exe"
 %NSSM% set InvektoChatAnalysis DisplayName "Invekto ChatAnalysis"
 %NSSM% set InvektoChatAnalysis Description "Invekto Chat Analysis Microservice - Port 7101"
@@ -51,7 +51,7 @@ echo [OK] InvektoChatAnalysis installed
 echo.
 
 REM Automation Service
-echo [3/8] Installing InvektoAutomation...
+echo [3/9] Installing InvektoAutomation...
 %NSSM% install InvektoAutomation "E:\Invekto\Automation\current\Invekto.Automation.exe"
 %NSSM% set InvektoAutomation DisplayName "Invekto Automation"
 %NSSM% set InvektoAutomation Description "Invekto Automation Chatbot/Flow Builder - Port 7108"
@@ -70,7 +70,7 @@ echo [OK] InvektoAutomation installed
 echo.
 
 REM AgentAI Service
-echo [4/8] Installing InvektoAgentAI...
+echo [4/9] Installing InvektoAgentAI...
 %NSSM% install InvektoAgentAI "E:\Invekto\AgentAI\current\Invekto.AgentAI.exe"
 %NSSM% set InvektoAgentAI DisplayName "Invekto AgentAI"
 %NSSM% set InvektoAgentAI Description "Invekto AI Agent Assist Microservice - Port 7105"
@@ -89,7 +89,7 @@ echo [OK] InvektoAgentAI installed
 echo.
 
 REM Outbound Service
-echo [5/8] Installing InvektoOutbound...
+echo [5/9] Installing InvektoOutbound...
 %NSSM% install InvektoOutbound "E:\Invekto\Outbound\current\Invekto.Outbound.exe"
 %NSSM% set InvektoOutbound DisplayName "Invekto Outbound"
 %NSSM% set InvektoOutbound Description "Invekto Outbound Broadcast Messaging - Port 7107"
@@ -108,7 +108,7 @@ echo [OK] InvektoOutbound installed
 echo.
 
 REM Knowledge Service
-echo [6/8] Installing InvektoKnowledge...
+echo [6/9] Installing InvektoKnowledge...
 %NSSM% install InvektoKnowledge "E:\Invekto\Knowledge\current\Invekto.Knowledge.exe"
 %NSSM% set InvektoKnowledge DisplayName "Invekto Knowledge"
 %NSSM% set InvektoKnowledge Description "Invekto Knowledge RAG Service - Port 7104"
@@ -127,7 +127,7 @@ echo [OK] InvektoKnowledge installed
 echo.
 
 REM Appointments Service
-echo [7/8] Installing InvektoAppointments...
+echo [7/9] Installing InvektoAppointments...
 %NSSM% install InvektoAppointments "E:\Invekto\Appointments\current\Invekto.Appointments.exe"
 %NSSM% set InvektoAppointments DisplayName "Invekto Appointments"
 %NSSM% set InvektoAppointments Description "Invekto Appointment Scheduling Engine - Port 7102"
@@ -145,8 +145,27 @@ echo [7/8] Installing InvektoAppointments...
 echo [OK] InvektoAppointments installed
 echo.
 
+REM Integrations Service
+echo [8/9] Installing InvektoIntegrations...
+%NSSM% install InvektoIntegrations "E:\Invekto\Integrations\current\Invekto.Integrations.exe"
+%NSSM% set InvektoIntegrations DisplayName "Invekto Integrations"
+%NSSM% set InvektoIntegrations Description "Invekto Marketplace & Cargo Integrations - Port 7106"
+%NSSM% set InvektoIntegrations AppDirectory "E:\Invekto\Integrations\current"
+%NSSM% set InvektoIntegrations AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production"
+%NSSM% set InvektoIntegrations AppStdout "E:\Invekto\Integrations\logs\service-stdout.log"
+%NSSM% set InvektoIntegrations AppStderr "E:\Invekto\Integrations\logs\service-stderr.log"
+%NSSM% set InvektoIntegrations AppStdoutCreationDisposition 4
+%NSSM% set InvektoIntegrations AppStderrCreationDisposition 4
+%NSSM% set InvektoIntegrations AppRotateFiles 1
+%NSSM% set InvektoIntegrations AppRotateBytes 10485760
+%NSSM% set InvektoIntegrations Start SERVICE_AUTO_START
+%NSSM% set InvektoIntegrations AppExit Default Restart
+%NSSM% set InvektoIntegrations AppRestartDelay 5000
+echo [OK] InvektoIntegrations installed
+echo.
+
 REM WhatsAppAnalytics Service
-echo [8/8] Installing InvektoWhatsAppAnalytics...
+echo [9/9] Installing InvektoWhatsAppAnalytics...
 %NSSM% install InvektoWhatsAppAnalytics "E:\Invekto\WhatsAppAnalytics\current\Invekto.WhatsAppAnalytics.exe"
 %NSSM% set InvektoWhatsAppAnalytics DisplayName "Invekto WhatsAppAnalytics"
 %NSSM% set InvektoWhatsAppAnalytics Description "Invekto WhatsApp Analytics Pipeline - Port 7109"
@@ -172,6 +191,7 @@ if not exist "E:\Invekto\AgentAI\logs" mkdir "E:\Invekto\AgentAI\logs"
 if not exist "E:\Invekto\Outbound\logs" mkdir "E:\Invekto\Outbound\logs"
 if not exist "E:\Invekto\Knowledge\logs" mkdir "E:\Invekto\Knowledge\logs"
 if not exist "E:\Invekto\Appointments\logs" mkdir "E:\Invekto\Appointments\logs"
+if not exist "E:\Invekto\Integrations\logs" mkdir "E:\Invekto\Integrations\logs"
 if not exist "E:\Invekto\WhatsAppAnalytics\logs" mkdir "E:\Invekto\WhatsAppAnalytics\logs"
 if not exist "E:\Invekto\WhatsAppAnalytics\uploads" mkdir "E:\Invekto\WhatsAppAnalytics\uploads"
 
@@ -191,6 +211,8 @@ timeout /t 3 /nobreak >nul
 timeout /t 3 /nobreak >nul
 %NSSM% start InvektoAppointments
 timeout /t 3 /nobreak >nul
+%NSSM% start InvektoIntegrations
+timeout /t 3 /nobreak >nul
 %NSSM% start InvektoWhatsAppAnalytics
 timeout /t 3 /nobreak >nul
 
@@ -207,6 +229,7 @@ echo Services:
 %NSSM% status InvektoOutbound
 %NSSM% status InvektoKnowledge
 %NSSM% status InvektoAppointments
+%NSSM% status InvektoIntegrations
 %NSSM% status InvektoWhatsAppAnalytics
 echo.
 echo Test:
@@ -217,6 +240,7 @@ echo   http://localhost:7105/health
 echo   http://localhost:7107/health
 echo   http://localhost:7102/health
 echo   http://localhost:7108/health
+echo   http://localhost:7106/health
 echo   http://localhost:7109/health
 echo.
 echo Manage:
@@ -227,6 +251,7 @@ echo   %NSSM% edit InvektoAgentAI
 echo   %NSSM% edit InvektoOutbound
 echo   %NSSM% edit InvektoKnowledge
 echo   %NSSM% edit InvektoAppointments
+echo   %NSSM% edit InvektoIntegrations
 echo   %NSSM% edit InvektoWhatsAppAnalytics
 echo.
 pause

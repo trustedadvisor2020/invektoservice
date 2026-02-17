@@ -16,17 +16,20 @@ public sealed class TriggerProcessor
     private readonly OutboundRepository _repository;
     private readonly TemplateEngine _templateEngine;
     private readonly OptOutManager _optOutManager;
+    private readonly ConsentManager _consentManager;
     private readonly JsonLinesLogger _logger;
 
     public TriggerProcessor(
         OutboundRepository repository,
         TemplateEngine templateEngine,
         OptOutManager optOutManager,
+        ConsentManager consentManager,
         JsonLinesLogger logger)
     {
         _repository = repository;
         _templateEngine = templateEngine;
         _optOutManager = optOutManager;
+        _consentManager = consentManager;
         _logger = logger;
     }
 
@@ -49,6 +52,20 @@ public sealed class TriggerProcessor
             _logger.SystemInfo($"Trigger skipped (opted out): tenant={tenantId}, phone={request.Phone}, event={request.Event}");
             return (null, ErrorCodes.OutboundRecipientOptedOut,
                 $"Recipient {request.Phone} has opted out of messages", 409);
+        }
+
+        // GR-3.26: Marketing consent check (utility events exempt)
+        if (!ConsentManager.IsUtilityEvent(request.Event))
+        {
+            var hasConsent = await _consentManager.HasMarketingConsentAsync(
+                tenantId, request.Phone, ct);
+            if (!hasConsent)
+            {
+                _logger.SystemInfo(
+                    $"Trigger skipped (no marketing consent): tenant={tenantId}, phone={request.Phone}, event={request.Event}");
+                return (null, ErrorCodes.OutboundConsentNotGiven,
+                    $"Recipient {request.Phone} has not given marketing consent", 403);
+            }
         }
 
         // GR-2.3: Resolve language (request > normalize > default "tr", no auto-detect)
@@ -111,6 +128,10 @@ public sealed class TriggerProcessor
         // Insert single message (no broadcast_id, GR-2.3: with effective language)
         var messageId = await _repository.InsertMessageAsync(
             tenantId, null, template.Id, request.Phone, finalText, effectiveLang, ct);
+
+        // GR-3.29: Audit trail for compliance
+        await _repository.InsertAuditTrailAsync(
+            tenantId, template.Id, null, request.Phone, finalText, ct);
 
         _logger.SystemInfo(
             $"Trigger message queued: id={messageId}, tenant={tenantId}, " +

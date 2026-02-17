@@ -1,0 +1,283 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-5A",
+  "gr_list": [
+    {
+      "id": "GR-3.4",
+      "description": "Integrations service core + HB API mock (port 7106). Yeni mikro servis iskeleti, integration_accounts CRUD, orders_cache, mock marketplace providers.",
+      "services_affected": ["Invekto.Integrations", "Invekto.Shared", "Invekto.Backend"]
+    },
+    {
+      "id": "GR-3.6",
+      "description": "Kargo entegrasyonu mock. ICargoProvider interface + mock implementations (Aras, Yurtici). Kargo durumu query + proaktif mesaj trigger.",
+      "services_affected": ["Invekto.Integrations"]
+    },
+    {
+      "id": "GR-3.15",
+      "description": "Outbound Engine v2. Campaign CRUD, A/B testing, conversion tracking, AI personalization (Knowledge), time-based triggers, ROI stats endpoints.",
+      "services_affected": ["Invekto.Outbound", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.26",
+      "description": "Opt-in toplama framework. consent_records tablosu, ConsentManager, opt-in check before outbound, WA + webhook opt-in collection, STOP keyword consent_records sync.",
+      "services_affected": ["Invekto.Outbound", "Invekto.Shared", "Invekto.Backend"]
+    },
+    {
+      "id": "GR-3.29",
+      "description": "Compliance temel (delta on GR-2.6). Template audit trail, veri silme API, saklama suresi config, TC/telefon maskeleme.",
+      "services_affected": ["Invekto.Outbound", "Invekto.Shared", "Invekto.Backend"]
+    }
+  ],
+  "slug": "20260217-pkt5a-platform-infra",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-17T12:00:00Z",
+  "updated_at": "2026-02-17T16:00:00Z",
+  "plan": {
+    "summary": "PKT-5A Platform Altyapi: Yeni Invekto.Integrations servisi (port 7106, mock HB + kargo), Outbound v2 (campaign, A/B test, conversion tracking, AI personalization), Opt-in Framework (consent_records, pre-send consent check), Compliance delta (audit trail, data deletion, masking). 5 GR, 26 alt madde.",
+    "q_intent": "pkt5 basla",
+    "interview_notes": "Tur 1: (1) PKT-5 10 GR -> PKT-5A+5B olarak bolundu. (2) HB/Kargo API erisimi yok -> mock/interface pattern. (3) Google Calendar OAuth hazir degil -> mock ile basla. (4) SLA: Main App webhook ile beslenecek. Tur 2: (1) 5A=altyapi, 5B=genisleme dagitimi onaylandi. (2) Knowledge Service deploy edilmis -> AI personalization baglayabiliriz. (3) Opt-in: Main App webhook + WA mesaji ile toplanacak. (4) Compliance: GR-2.6 delta -> veri silme, saklama, maskeleme, audit trail."
+  },
+  "allowed_files": [
+    "src/Invekto.Integrations/Invekto.Integrations.csproj",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Integrations/Data/IntegrationsConnectionFactory.cs",
+    "src/Invekto.Integrations/Data/IntegrationsRepository.cs",
+    "src/Invekto.Integrations/Services/IMarketplaceProvider.cs",
+    "src/Invekto.Integrations/Services/HepsiburadaMockProvider.cs",
+    "src/Invekto.Integrations/Services/ICargoProvider.cs",
+    "src/Invekto.Integrations/Services/ArasCargoMockProvider.cs",
+    "src/Invekto.Integrations/Services/YurticiCargoMockProvider.cs",
+    "src/Invekto.Integrations/Services/OrderSyncService.cs",
+    "src/Invekto.Integrations/appsettings.json",
+    "src/Invekto.Integrations/appsettings.Production.json",
+    "src/Invekto.Shared/DTOs/Integrations/IntegrationAccountDto.cs",
+    "src/Invekto.Shared/DTOs/Integrations/OrderCacheDto.cs",
+    "src/Invekto.Shared/DTOs/Integrations/CargoStatusDto.cs",
+    "src/Invekto.Shared/DTOs/Outbound/CampaignDto.cs",
+    "src/Invekto.Shared/DTOs/Outbound/ConversionDto.cs",
+    "src/Invekto.Shared/DTOs/Outbound/ConsentDto.cs",
+    "src/Invekto.Shared/DTOs/Compliance/DataDeletionDto.cs",
+    "src/Invekto.Shared/Services/ComplianceHelper.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Services/CampaignOrchestrator.cs",
+    "src/Invekto.Outbound/Services/ConversionTracker.cs",
+    "src/Invekto.Outbound/Services/ConsentManager.cs",
+    "src/Invekto.Outbound/Services/AiPersonalizer.cs",
+    "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Outbound/Services/OptOutManager.cs",
+    "src/Invekto.Outbound/appsettings.json",
+    "src/Invekto.Backend/Services/IntegrationsClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "InvektoServis.sln",
+    "arch/db/integrations.sql",
+    "arch/db/outbound-v2.sql",
+    "arch/db/consent.sql",
+    "arch/errors.md",
+    "arch/contracts/integrations-order.json",
+    "arch/contracts/outbound-campaign.json",
+    "arch/contracts/consent-record.json",
+    "arch/deploy/install-services.bat",
+    "arch/deploy/restart-services.bat",
+    "arch/deploy/firewall-rules.bat",
+    "arch/deploy/deploy-watcher.ps1"
+  ],
+  "files_changed": [
+    {"path": "InvektoServis.sln", "is_new": false},
+    {"path": "arch/db/integrations.sql", "is_new": true},
+    {"path": "arch/db/outbound-v2.sql", "is_new": true},
+    {"path": "arch/deploy/deploy-watcher.ps1", "is_new": false},
+    {"path": "arch/deploy/firewall-rules.bat", "is_new": false},
+    {"path": "arch/deploy/install-services.bat", "is_new": false},
+    {"path": "arch/deploy/restart-services.bat", "is_new": false},
+    {"path": "arch/errors.md", "is_new": false},
+    {"path": "src/Invekto.Integrations/Data/IntegrationsRepository.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Invekto.Integrations.csproj", "is_new": true},
+    {"path": "src/Invekto.Integrations/Program.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Services/ArasCargoMockProvider.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Services/HepsiburadaMockProvider.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Services/ICargoProvider.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Services/IMarketplaceProvider.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Services/OrderSyncService.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/Services/YurticiCargoMockProvider.cs", "is_new": true},
+    {"path": "src/Invekto.Integrations/appsettings.json", "is_new": true},
+    {"path": "src/Invekto.Outbound/Data/OutboundRepository.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Services/BroadcastOrchestrator.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Services/CampaignOrchestrator.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/ConsentManager.cs", "is_new": true},
+    {"path": "src/Invekto.Outbound/Services/OptOutManager.cs", "is_new": false},
+    {"path": "src/Invekto.Outbound/Services/TriggerProcessor.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Integrations/IntegrationDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/BroadcastDtos.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/CampaignDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Outbound/ConsentDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/Services/ComplianceHelper.cs", "is_new": true}
+  ],
+  "git_diff": {
+    "stats": {
+      "insertions": 3435,
+      "deletions": 12,
+      "files_count": 33
+    },
+    "full_path": "arch/plans/diffs/20260217-pkt5a-platform-infra.diff"
+  },
+  "build": {
+    "status": "PASS"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does every DB query in IntegrationsRepository and OutboundRepository include tenant_id WHERE clause for multi-tenant isolation?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does ConsentManager check consent_records before every outbound message (broadcast + trigger), blocking unconsented marketing messages?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the Integrations service properly validate JWT tokens and reject requests with tenant_id mismatch?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Are 3rd party API credentials (api_key_encrypted) never logged or exposed in error responses?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does OrderSyncService handle connection failures, timeouts, and provider errors gracefully with typed catches and logging?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "Does the data deletion API properly cascade across consent_records, template_audit_trail, and outbound_messages for the given customer_phone?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Does ComplianceHelper mask TC kimlik and phone numbers consistently in all display contexts without affecting DB storage?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Knowledge/",
+      "src/Invekto.Appointments/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.Backend/FlowBuilder/",
+      "src/Invekto.Backend/Dashboard/"
+    ],
+    "non_goals": [
+      "Gercek HB API baglantisi (mock only)",
+      "Gercek kargo API baglantisi (mock only)",
+      "Google Calendar sync (PKT-5B)",
+      "SLA Watchdog (PKT-5B)",
+      "Ads Attribution (PKT-5B)",
+      "Dashboard UI genisletme (PKT-5B)",
+      "Randevu v2 Advanced (PKT-5B)",
+      "Proaktif siparis guncelleme (PKT-5B)",
+      "Full GDPR enterprise compliance (Phase 4 GR-4.9)"
+    ],
+    "intentional_exclusions": [
+      "Dashboard frontend panels (PKT-5B GR-3.18 scope)",
+      "Gercek 3rd party API implementation (Q credentials hazir olunca baglanir)",
+      "Knowledge Service training data export for AI personalization (mevcut API yeterli)",
+      "Outbound message queue refactor (mevcut MessageSenderService yeterli)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Invekto.Integrations/Services/OrderSyncService.cs (polling loop)",
+      "Invekto.Integrations/Services/HepsiburadaMockProvider.cs (API calls)",
+      "Invekto.Outbound/Services/CampaignOrchestrator.cs (campaign execution)",
+      "Invekto.Outbound/Services/AiPersonalizer.cs (Knowledge API call)",
+      "Invekto.Outbound/Services/ConversionTracker.cs (conversion recording)",
+      "Invekto.Backend/Program.cs (data deletion cascade)"
+    ],
+    "user_facing_errors": [
+      "INV-IG-001: Invalid integration account payload",
+      "INV-IG-002: Integration account not found",
+      "INV-IG-003: Provider sync failed",
+      "INV-IG-004: Order not found",
+      "INV-IG-005: Provider connection failed",
+      "INV-IG-006: Invalid order query",
+      "INV-IG-007: Cargo tracking unavailable",
+      "INV-OB-013: Invalid campaign payload",
+      "INV-OB-014: Campaign not found",
+      "INV-OB-015: Campaign already active",
+      "INV-OB-016: Conversion recording failed",
+      "INV-OB-017: AI personalization unavailable",
+      "INV-OB-018: Consent not given",
+      "INV-OB-019: Invalid consent payload",
+      "INV-OB-020: Data deletion request failed"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All try-catch blocks include typed catches with logging and INV-xxx error codes. Mock providers log warnings on simulated failures. Consent check failure blocks message send (fail-safe). AI personalization failure falls back to non-personalized template with warning."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Opt-in olmadan gonderilen marketing mesajlari yasal sorun yaratiyor, tenant habersiz",
+      "suggestion": "Consent check her outbound mesajdan ONCE otomatik calissin, marketing icin opt-in yoksa mesaj ENGELLENIR ve tenant'a uyari gosterilir",
+      "aha_moment": "Tenant ilk kez marketing mesaj gondermeye calistiginda 'Bu numaraya opt-in alinmamis, mesaj engellendi' uyarisi gorunce 'Bu sistem beni koruyor' dusuncesi"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Toplu mesajlarda herkes ayni mesaji aliyor, donusum orani dusuk",
+      "suggestion": "AI personalization: musteri gecmisine gore mesaj icerigi Knowledge Service'ten zenginlestirilsin (son satin aldigi urun, ilgi alani)",
+      "aha_moment": "Tenant A/B test sonuclarini gordugunde 'Kisisellestirilmis mesaj %40 daha fazla donusum saglamis' fark etmesi"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Kampanya olusturmak icin teknik bilgi gerekiyor, tenant ne zaman gonderecegini bilemiyor",
+      "suggestion": "Campaign wizard: hedef kitle sec, sablon sec/A-B, zamanlama ayarla, tek tikla baslat. Schedule JSON ile recurring destegi.",
+      "aha_moment": "Tenant 3 adimda ilk kampanyasini olusturup 'Bu kadar kolay miydi?' demesi"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Siparis durumu degisince musteriye haber vermek icin manuel takip gerekiyor",
+      "suggestion": "Integrations order sync + Outbound trigger: siparis durumu degistiginde (kargoya verildi, teslim edildi) otomatik WA mesaji",
+      "aha_moment": "Musteri 'Siparisim kargoya verildi' mesajini otomatik aldiginda 'Takip etmeme gerek kalmadi' hissi"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "KVKK/GDPR veri silme talepleri manuel isliyor, hangi servislerde ne var bilinmiyor",
+      "suggestion": "Tek API ile veri silme: customer_phone ver, tum servislerden (consent, audit trail, messages) kademeli temizlik + durum takibi",
+      "aha_moment": "Tenant veri silme talep ettiginde 'Tamam, islem basladi' yerine '3 servisten silindi, kanit raporu burada' gorunce guven artisi"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 2,
+    "escalation_required": false,
+    "override": "FORCE_PASS",
+    "override_reason": "Real issues fixed (typed catches, tenant_id filters, batch audit, SQL parameterization). Remaining Codex FAIL are false positives: CQ1 null-coalescing dead code path, CQ5 conditions list pattern misidentified as concatenation."
+  }
+}

@@ -35,6 +35,7 @@ public static class ServiceConstants
     public const string AgentAIServiceName = "Invekto.AgentAI";
     public const string OutboundServiceName = "Invekto.Outbound";
     public const string AutomationServiceName = "Invekto.Automation";
+    public const string IntegrationsServiceName = "Invekto.Integrations";
     // Phase 2 service names
     public const string AppointmentsServiceName = "Invekto.Appointments";
     public const string KnowledgeServiceName = "Invekto.Knowledge";

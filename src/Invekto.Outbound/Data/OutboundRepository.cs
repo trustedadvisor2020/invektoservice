@@ -584,6 +584,481 @@ public sealed class OutboundRepository
             _logger.SystemWarn($"Reset {rows} stale 'sending' messages back to 'queued' on shutdown");
     }
 
+    // ================================================================
+    // Consent Records (GR-3.26)
+    // ================================================================
+
+    public async Task<bool> HasMarketingConsentAsync(
+        int tenantId, string customerPhone, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT 1 FROM consent_records
+            WHERE tenant_id = @tid AND customer_phone = @phone
+              AND consent_type IN ('marketing', 'all')
+              AND opted_in = TRUE
+            LIMIT 1";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", customerPhone);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result != null;
+    }
+
+    public async Task<HashSet<string>> BatchCheckMarketingConsentAsync(
+        int tenantId, List<string> phones, CancellationToken ct = default)
+    {
+        if (phones.Count == 0) return new HashSet<string>();
+
+        const string sql = @"
+            SELECT DISTINCT customer_phone FROM consent_records
+            WHERE tenant_id = @tid AND customer_phone = ANY(@phones)
+              AND consent_type IN ('marketing', 'all')
+              AND opted_in = TRUE";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phones", phones.ToArray());
+
+        var consented = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            consented.Add(reader.GetString(0));
+        return consented;
+    }
+
+    public async Task UpsertConsentAsync(
+        int tenantId, string customerPhone, string consentType,
+        string channel, string? source, bool optedIn,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO consent_records
+                (tenant_id, customer_phone, consent_type, channel, source, opted_in, opted_in_at)
+            VALUES
+                (@tid, @phone, @type, @channel, @source, @optedIn, CASE WHEN @optedIn THEN NOW() ELSE NULL END)
+            ON CONFLICT (tenant_id, customer_phone, consent_type)
+            DO UPDATE SET
+                opted_in = EXCLUDED.opted_in,
+                channel = EXCLUDED.channel,
+                source = EXCLUDED.source,
+                opted_in_at = CASE WHEN EXCLUDED.opted_in THEN NOW() ELSE consent_records.opted_in_at END,
+                opted_out_at = CASE WHEN NOT EXCLUDED.opted_in THEN NOW() ELSE consent_records.opted_out_at END,
+                updated_at = NOW()";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", customerPhone);
+        cmd.Parameters.AddWithValue("type", consentType);
+        cmd.Parameters.AddWithValue("channel", channel);
+        cmd.Parameters.AddWithValue("source", (object?)source ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("optedIn", optedIn);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<List<(int Id, string ConsentType, string Channel, bool OptedIn, DateTime? OptedInAt, DateTime? OptedOutAt)>>
+        GetConsentRecordsAsync(int tenantId, string customerPhone, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, consent_type, channel, opted_in, opted_in_at, opted_out_at
+            FROM consent_records
+            WHERE tenant_id = @tid AND customer_phone = @phone
+            ORDER BY created_at DESC";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", customerPhone);
+
+        var records = new List<(int, string, string, bool, DateTime?, DateTime?)>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            records.Add((
+                reader.GetInt32(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetBoolean(3),
+                reader.IsDBNull(4) ? null : reader.GetDateTime(4),
+                reader.IsDBNull(5) ? null : reader.GetDateTime(5)
+            ));
+        }
+        return records;
+    }
+
+    // ================================================================
+    // Template Audit Trail (GR-3.29)
+    // ================================================================
+
+    public async Task InsertAuditTrailAsync(
+        int tenantId, int? templateId, int? campaignId,
+        string recipientPhone, string templateContent,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO template_audit_trail
+                (tenant_id, template_id, campaign_id, recipient_phone, template_content)
+            VALUES (@tid, @tmpl, @campaign, @phone, @content)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("tmpl", (object?)templateId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("campaign", (object?)campaignId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("phone", recipientPhone);
+        cmd.Parameters.AddWithValue("content", templateContent);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// GR-3.29: Batch insert audit trail records (single multi-row INSERT for broadcast perf).
+    /// </summary>
+    public async Task BatchInsertAuditTrailAsync(
+        int tenantId, int? templateId, int? campaignId,
+        List<(string phone, string content)> records,
+        CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var batch = new NpgsqlBatch(conn);
+
+        foreach (var (phone, content) in records)
+        {
+            var cmd = new NpgsqlBatchCommand(@"
+                INSERT INTO template_audit_trail
+                    (tenant_id, template_id, campaign_id, recipient_phone, template_content)
+                VALUES ($1, $2, $3, $4, $5)");
+            cmd.Parameters.AddWithValue(tenantId);
+            cmd.Parameters.AddWithValue((object?)templateId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue((object?)campaignId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue(phone);
+            cmd.Parameters.AddWithValue(content);
+            batch.BatchCommands.Add(cmd);
+        }
+
+        await batch.ExecuteNonQueryAsync(ct);
+    }
+
+    // ================================================================
+    // Data Deletion (GR-3.29)
+    // ================================================================
+
+    public async Task<int> CreateDeletionRequestAsync(
+        int tenantId, string customerPhone, string? requestedBy,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO data_deletion_requests (tenant_id, customer_phone, requested_by)
+            VALUES (@tid, @phone, @by)
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", customerPhone);
+        cmd.Parameters.AddWithValue("by", (object?)requestedBy ?? DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(result);
+    }
+
+    public async Task<List<string>> ExecuteDataDeletionAsync(
+        int tenantId, string customerPhone, CancellationToken ct = default)
+    {
+        var cleaned = new List<string>();
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Delete consent records
+            await using (var cmd = new NpgsqlCommand(
+                "DELETE FROM consent_records WHERE tenant_id = @tid AND customer_phone = @phone", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("tid", tenantId);
+                cmd.Parameters.AddWithValue("phone", customerPhone);
+                var rows = await cmd.ExecuteNonQueryAsync(ct);
+                if (rows > 0) cleaned.Add("consent_records");
+            }
+
+            // Delete template audit trail
+            await using (var cmd = new NpgsqlCommand(
+                "DELETE FROM template_audit_trail WHERE tenant_id = @tid AND recipient_phone = @phone", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("tid", tenantId);
+                cmd.Parameters.AddWithValue("phone", customerPhone);
+                var rows = await cmd.ExecuteNonQueryAsync(ct);
+                if (rows > 0) cleaned.Add("template_audit_trail");
+            }
+
+            // Delete opt-out records
+            await using (var cmd = new NpgsqlCommand(
+                "DELETE FROM outbound_optouts WHERE tenant_id = @tid AND phone = @phone", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("tid", tenantId);
+                cmd.Parameters.AddWithValue("phone", customerPhone);
+                var rows = await cmd.ExecuteNonQueryAsync(ct);
+                if (rows > 0) cleaned.Add("outbound_optouts");
+            }
+
+            // Anonymize outbound messages (nullify phone, keep stats)
+            await using (var cmd = new NpgsqlCommand(
+                "UPDATE outbound_messages SET recipient_phone = 'DELETED', message_text = '[DELETED]' WHERE tenant_id = @tid AND recipient_phone = @phone", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("tid", tenantId);
+                cmd.Parameters.AddWithValue("phone", customerPhone);
+                var rows = await cmd.ExecuteNonQueryAsync(ct);
+                if (rows > 0) cleaned.Add("outbound_messages");
+            }
+
+            await tx.CommitAsync(ct);
+        }
+        catch (NpgsqlException)
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+
+        return cleaned;
+    }
+
+    public async Task UpdateDeletionRequestAsync(
+        int tenantId, int requestId, string status, List<string> servicesCleaned,
+        string? errorMessage, CancellationToken ct = default)
+    {
+        var sql = @"
+            UPDATE data_deletion_requests
+            SET status = @status,
+                services_cleaned = @services::jsonb,
+                error_message = @error,
+                completed_at = CASE WHEN @status IN ('completed', 'failed') THEN NOW() ELSE NULL END
+            WHERE id = @id AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", requestId);
+        cmd.Parameters.AddWithValue("status", status);
+        cmd.Parameters.AddWithValue("services", System.Text.Json.JsonSerializer.Serialize(servicesCleaned));
+        cmd.Parameters.AddWithValue("error", (object?)errorMessage ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // ============================================================
+    // Campaigns (GR-3.15)
+    // ============================================================
+
+    public async Task<int> CreateCampaignAsync(
+        int tenantId, string name, string triggerType, int templateId,
+        int? abTemplateId, int abSplitPct,
+        string? targetCriteriaJson, string? scheduleJson,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO outbound_campaigns
+                (tenant_id, name, trigger_type, template_id,
+                 ab_template_id, ab_split_pct, target_criteria_json, schedule_json, status)
+            VALUES
+                (@tid, @name, @type, @tmpl,
+                 @abTmpl, @abPct, @criteria::jsonb, @schedule::jsonb, 'draft')
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", name);
+        cmd.Parameters.AddWithValue("type", triggerType);
+        cmd.Parameters.AddWithValue("tmpl", templateId);
+        cmd.Parameters.AddWithValue("abTmpl", (object?)abTemplateId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("abPct", abSplitPct);
+        cmd.Parameters.AddWithValue("criteria", (object?)targetCriteriaJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("schedule", (object?)scheduleJson ?? DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(result);
+    }
+
+    public async Task<CampaignResponse?> GetCampaignAsync(
+        int tenantId, int campaignId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, name, trigger_type, template_id, ab_template_id,
+                   ab_split_pct, status, stats_json::text, created_at, updated_at
+            FROM outbound_campaigns
+            WHERE tenant_id = @tid AND id = @cid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", campaignId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+        return ReadCampaignResponse(reader);
+    }
+
+    public async Task<List<CampaignResponse>> ListCampaignsAsync(
+        int tenantId, string? status, CancellationToken ct = default)
+    {
+        var conditions = new List<string> { "tenant_id = @tid" };
+        var parameters = new List<NpgsqlParameter> { new("tid", tenantId) };
+
+        if (status != null)
+        {
+            conditions.Add("status = @status");
+            parameters.Add(new("status", status));
+        }
+
+        var sql = $@"
+            SELECT id, name, trigger_type, template_id, ab_template_id,
+                   ab_split_pct, status, stats_json::text, created_at, updated_at
+            FROM outbound_campaigns
+            WHERE {string.Join(" AND ", conditions)}
+            ORDER BY created_at DESC LIMIT 100";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddRange(parameters.ToArray());
+
+        var campaigns = new List<CampaignResponse>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            campaigns.Add(ReadCampaignResponse(reader));
+        return campaigns;
+    }
+
+    public async Task<bool> UpdateCampaignStatusAsync(
+        int tenantId, int campaignId, string newStatus, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE outbound_campaigns SET status = @status, updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @cid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", campaignId);
+        cmd.Parameters.AddWithValue("status", newStatus);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    public async Task UpdateCampaignStatsAsync(
+        int tenantId, int campaignId, string statsJson, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE outbound_campaigns SET stats_json = @stats::jsonb, updated_at = NOW()
+            WHERE id = @cid AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", campaignId);
+        cmd.Parameters.AddWithValue("stats", statsJson);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    private CampaignResponse ReadCampaignResponse(NpgsqlDataReader reader)
+    {
+        CampaignStats? stats = null;
+        var statsStr = reader.IsDBNull(7) ? null : reader.GetString(7);
+        if (statsStr != null)
+        {
+            try { stats = JsonSerializer.Deserialize<CampaignStats>(statsStr); }
+            catch (JsonException) { _logger.SystemWarn($"ReadCampaignResponse: malformed stats_json for campaign, skipping deserialization"); }
+        }
+
+        return new CampaignResponse
+        {
+            Id = reader.GetInt32(0),
+            Name = reader.GetString(1),
+            TriggerType = reader.GetString(2),
+            TemplateId = reader.GetInt32(3),
+            AbTemplateId = reader.IsDBNull(4) ? null : reader.GetInt32(4),
+            AbSplitPct = reader.GetInt32(5),
+            Status = reader.GetString(6),
+            Stats = stats,
+            CreatedAt = reader.GetDateTime(8),
+            UpdatedAt = reader.GetDateTime(9)
+        };
+    }
+
+    // ============================================================
+    // Conversions (GR-3.15)
+    // ============================================================
+
+    public async Task<int> RecordConversionAsync(
+        int tenantId, long? messageId, int? campaignId,
+        string conversionType, decimal? valueAmount,
+        string? metadataJson, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO outbound_conversions
+                (tenant_id, message_id, campaign_id, conversion_type, value_amount, metadata_json)
+            VALUES
+                (@tid, @msg, @cmp, @type, @value, @meta::jsonb)
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("msg", (object?)messageId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("cmp", (object?)campaignId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("type", conversionType);
+        cmd.Parameters.AddWithValue("value", (object?)valueAmount ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("meta", (object?)metadataJson ?? DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(result);
+    }
+
+    public async Task<CampaignRoiResponse?> GetCampaignRoiAsync(
+        int tenantId, int campaignId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT c.id, c.name,
+                   COALESCE((c.stats_json->>'sent')::int, 0),
+                   COALESCE((c.stats_json->>'delivered')::int, 0),
+                   COUNT(cv.id),
+                   COALESCE(SUM(cv.value_amount), 0)
+            FROM outbound_campaigns c
+            LEFT JOIN outbound_conversions cv ON cv.campaign_id = c.id AND cv.tenant_id = c.tenant_id
+            WHERE c.tenant_id = @tid AND c.id = @cid
+            GROUP BY c.id, c.name, c.stats_json";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", campaignId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+
+        var totalSent = reader.GetInt32(2);
+        var totalConversions = reader.GetInt32(4);
+
+        return new CampaignRoiResponse
+        {
+            CampaignId = reader.GetInt32(0),
+            CampaignName = reader.GetString(1),
+            TotalSent = totalSent,
+            TotalDelivered = reader.GetInt32(3),
+            TotalConversions = totalConversions,
+            ConversionRate = totalSent > 0 ? Math.Round((double)totalConversions / totalSent * 100, 2) : 0,
+            TotalRevenue = reader.GetDecimal(5)
+        };
+    }
+
     // ============================================================
     // KVKK health tenant check (GR-2.6)
     // ============================================================
