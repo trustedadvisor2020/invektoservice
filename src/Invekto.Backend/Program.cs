@@ -2371,6 +2371,21 @@ async Task<IResult> MarketingProxyPut(HttpContext ctx, MarketingClient mkClient,
     return Results.Empty;
 }
 
+async Task<IResult> MarketingProxyDelete(HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var (statusCode, body) = await mkClient.ProxyDeleteAsync(targetPath, authHeader, requestId);
+
+    jsonLog.StepInfo($"Marketing proxy DELETE {targetPath}: status={statusCode}", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
 // Reviews (GR-3.21)
 app.MapPost("/api/v1/reviews/request", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
     await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/reviews/request"));
@@ -2415,6 +2430,56 @@ app.MapPut("/api/v1/tourism/leads/{id:int}", async (HttpContext ctx, MarketingCl
 
 app.MapGet("/api/v1/tourism/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
     await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/stats"));
+
+// Review Rescue (GR-3.24)
+app.MapPost("/api/v1/rescue/risks", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/rescue/risks"));
+
+app.MapGet("/api/v1/rescue/risks", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/rescue/risks"));
+
+app.MapPut("/api/v1/rescue/risks/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/rescue/risks/{id}"));
+
+app.MapGet("/api/v1/rescue/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/rescue/stats"));
+
+app.MapPost("/api/v1/rescue/templates", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/rescue/templates"));
+
+app.MapGet("/api/v1/rescue/templates", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/rescue/templates"));
+
+app.MapPut("/api/v1/rescue/templates/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/rescue/templates/{id}"));
+
+app.MapDelete("/api/v1/rescue/templates/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyDelete(ctx, mkClient, jsonLog, $"/api/v1/rescue/templates/{id}"));
+
+// Tourism Catalog + Conversations (GR-3.25)
+app.MapPost("/api/v1/tourism/catalog", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/catalog"));
+
+app.MapGet("/api/v1/tourism/catalog", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/catalog"));
+
+app.MapPut("/api/v1/tourism/catalog/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/tourism/catalog/{id}"));
+
+app.MapDelete("/api/v1/tourism/catalog/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyDelete(ctx, mkClient, jsonLog, $"/api/v1/tourism/catalog/{id}"));
+
+app.MapPost("/api/v1/tourism/conversations", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/conversations"));
+
+app.MapGet("/api/v1/tourism/conversations", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/conversations"));
+
+app.MapPost("/api/v1/tourism/respond", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/respond"));
+
+app.MapGet("/api/v1/tourism/conversations/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/conversations/stats"));
 
 // ============================================
 // GR-3.14: ATTRIBUTION ENDPOINTS (/api/v1/attribution/*)

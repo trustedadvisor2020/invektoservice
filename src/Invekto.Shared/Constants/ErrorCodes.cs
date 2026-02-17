@@ -233,6 +233,23 @@ public static class ErrorCodes
     public const string MarketingReviewStatsFailed = "INV-MK-009";
     public const string MarketingTourismStatsFailed = "INV-MK-010";
 
+    // Marketing errors (INV-MK-xxx) -- GR-3.24 Review Rescue
+    public const string MarketingInvalidRiskPayload = "INV-MK-011";
+    public const string MarketingRiskNotFound = "INV-MK-012";
+    public const string MarketingInvalidRiskStatus = "INV-MK-013";
+    public const string MarketingRescueStatsFailed = "INV-MK-014";
+    public const string MarketingInvalidTemplatePayload = "INV-MK-015";
+    public const string MarketingTemplateNotFound = "INV-MK-016";
+
+    // Marketing errors (INV-MK-xxx) -- GR-3.25 Multilingual Tourism
+    public const string MarketingInvalidCatalogPayload = "INV-MK-017";
+    public const string MarketingCatalogItemNotFound = "INV-MK-018";
+    public const string MarketingInvalidConversationPayload = "INV-MK-019";
+    public const string MarketingConversationNotFound = "INV-MK-020";
+    public const string MarketingConversationStatsFailed = "INV-MK-021";
+    public const string MarketingResponseGenerationFailed = "INV-MK-022";
+    public const string MarketingClaudeUnavailable = "INV-MK-023";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

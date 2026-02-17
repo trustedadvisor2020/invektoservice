@@ -256,6 +256,19 @@ INV-{SERVICE}-{NUMBER}
 | INV-MK-008 | Invalid tourism lead status | Gecersiz lead durumu. |
 | INV-MK-009 | Review stats query failed | Yorum istatistikleri sorgusu basarisiz. |
 | INV-MK-010 | Tourism stats query failed | Turizm istatistikleri sorgusu basarisiz. |
+| INV-MK-011 | Invalid risk assessment payload | Gecersiz risk degerlendirmesi istegi. |
+| INV-MK-012 | Review risk not found | Risk kaydi bulunamadi. |
+| INV-MK-013 | Invalid risk/rescue status | Gecersiz risk veya kurtarma durumu. |
+| INV-MK-014 | Rescue stats query failed | Kurtarma istatistikleri sorgusu basarisiz. |
+| INV-MK-015 | Invalid rescue template payload | Gecersiz kurtarma sablonu istegi. |
+| INV-MK-016 | Rescue template not found | Kurtarma sablonu bulunamadi. |
+| INV-MK-017 | Invalid treatment catalog payload | Gecersiz tedavi katalogu istegi. |
+| INV-MK-018 | Treatment catalog item not found | Tedavi katalogu kaydi bulunamadi. |
+| INV-MK-019 | Invalid conversation payload | Gecersiz konusma istegi. |
+| INV-MK-020 | Tourism conversation not found | Turizm konusmasi bulunamadi. |
+| INV-MK-021 | Conversation stats query failed | Konusma istatistikleri sorgusu basarisiz. |
+| INV-MK-022 | Response generation failed | Cok dilli cevap uretimi basarisiz. |
+| INV-MK-023 | Claude AI service unavailable | Claude AI servisi kullanilamiyor. |
 
 ---
 

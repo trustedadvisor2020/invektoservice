@@ -1,4 +1,5 @@
 using Invekto.Marketing.Data;
+using Invekto.Marketing.Services;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
@@ -57,6 +58,20 @@ var pgFactory = new PostgresConnectionFactory(pgConnStr);
 builder.Services.AddSingleton(pgFactory);
 builder.Services.AddSingleton<MarketingRepository>();
 
+// Claude Haiku — Multilingual Tourism Response (GR-3.25)
+var claudeApiKey = builder.Configuration["Claude:ApiKey"] ?? "";
+var claudeModel = builder.Configuration["Claude:Model"] ?? "claude-haiku-4-5-20251001";
+var claudeMaxTokens = builder.Configuration.GetValue<int>("Claude:MaxTokens", 1024);
+var claudeTimeoutSecs = builder.Configuration.GetValue<int>("Claude:TimeoutSeconds", 15);
+
+if (string.IsNullOrEmpty(claudeApiKey))
+    throw new InvalidOperationException("FATAL: Claude:ApiKey is not configured");
+
+builder.Services.AddHttpClient<TourismResponseGenerator>()
+    .AddTypedClient((httpClient, sp) => new TourismResponseGenerator(
+        httpClient, claudeApiKey, claudeModel, claudeMaxTokens, claudeTimeoutSecs,
+        sp.GetRequiredService<JsonLinesLogger>()));
+
 // ============================================
 // APP
 // ============================================
@@ -99,7 +114,25 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/tourism/leads", Description = "List tourism leads", Category = "Tourism" },
         new() { Method = "GET", Path = "/api/v1/tourism/leads/{id}", Description = "Get tourism lead", Category = "Tourism" },
         new() { Method = "PUT", Path = "/api/v1/tourism/leads/{id}", Description = "Update tourism lead", Category = "Tourism" },
-        new() { Method = "GET", Path = "/api/v1/tourism/stats", Description = "Tourism statistics", Category = "Tourism" }
+        new() { Method = "GET", Path = "/api/v1/tourism/stats", Description = "Tourism statistics", Category = "Tourism" },
+        // GR-3.24: Rescue
+        new() { Method = "POST", Path = "/api/v1/rescue/risks", Description = "Create review risk assessment", Category = "Rescue" },
+        new() { Method = "GET", Path = "/api/v1/rescue/risks", Description = "List review risks", Category = "Rescue" },
+        new() { Method = "PUT", Path = "/api/v1/rescue/risks/{id}", Description = "Update review risk", Category = "Rescue" },
+        new() { Method = "GET", Path = "/api/v1/rescue/stats", Description = "Rescue statistics", Category = "Rescue" },
+        new() { Method = "POST", Path = "/api/v1/rescue/templates", Description = "Create rescue template", Category = "Rescue" },
+        new() { Method = "GET", Path = "/api/v1/rescue/templates", Description = "List rescue templates", Category = "Rescue" },
+        new() { Method = "PUT", Path = "/api/v1/rescue/templates/{id}", Description = "Update rescue template", Category = "Rescue" },
+        new() { Method = "DELETE", Path = "/api/v1/rescue/templates/{id}", Description = "Deactivate rescue template", Category = "Rescue" },
+        // GR-3.25: Tourism Catalog + Conversations
+        new() { Method = "POST", Path = "/api/v1/tourism/catalog", Description = "Create treatment", Category = "Tourism Catalog" },
+        new() { Method = "GET", Path = "/api/v1/tourism/catalog", Description = "List treatments", Category = "Tourism Catalog" },
+        new() { Method = "PUT", Path = "/api/v1/tourism/catalog/{id}", Description = "Update treatment", Category = "Tourism Catalog" },
+        new() { Method = "DELETE", Path = "/api/v1/tourism/catalog/{id}", Description = "Deactivate treatment", Category = "Tourism Catalog" },
+        new() { Method = "POST", Path = "/api/v1/tourism/conversations", Description = "Record conversation", Category = "Tourism Conversations" },
+        new() { Method = "GET", Path = "/api/v1/tourism/conversations", Description = "List conversations", Category = "Tourism Conversations" },
+        new() { Method = "POST", Path = "/api/v1/tourism/respond", Description = "Generate multilingual response (Claude)", Category = "Tourism Conversations" },
+        new() { Method = "GET", Path = "/api/v1/tourism/conversations/stats", Description = "Conversation statistics", Category = "Tourism Conversations" }
     };
     return Results.Ok(new EndpointDiscoveryResponse
     {
@@ -486,6 +519,493 @@ app.MapGet("/api/v1/tourism/stats", async (HttpContext ctx, MarketingRepository 
 });
 
 // ============================================
+// RESCUE RISK ENDPOINTS (GR-3.24)
+// ============================================
+
+app.MapPost("/api/v1/rescue/risks", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    RiskCreateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<RiskCreateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in risk create: {ex.Message}"); request = null; }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.CustomerPhone) || request.RiskScore < 0 || request.RiskScore > 100)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskPayload, "customer_phone and risk_score (0-100) are required", requestId), statusCode: 400);
+
+    var validLevels = new[] { "low", "medium", "high", "critical" };
+    if (string.IsNullOrWhiteSpace(request.RiskLevel) || !validLevels.Contains(request.RiskLevel))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskPayload, $"risk_level must be one of: {string.Join(", ", validLevels)}", requestId), statusCode: 400);
+
+    try
+    {
+        var id = await repo.CreateReviewRiskAsync(
+            tenantContext.TenantId, request.CustomerPhone, request.ConversationId,
+            request.RiskScore, request.RiskLevel, request.TriggerReason);
+        jsonLog.StepInfo($"Review risk created: id={id}, phone={request.CustomerPhone}, level={request.RiskLevel}", requestId);
+        return Results.Json(new { id }, statusCode: 201);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Review risk creation failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Review risk creation failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/rescue/risks", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var level = ctx.Request.Query["level"].FirstOrDefault();
+    var status = ctx.Request.Query["status"].FirstOrDefault();
+
+    try
+    {
+        var risks = await repo.ListReviewRisksAsync(tenantContext.TenantId, level, status);
+        return Results.Ok(new { risks });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Review risks query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Review risks query failed", "-"), statusCode: 500);
+    }
+});
+
+app.MapPut("/api/v1/rescue/risks/{id:int}", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog, int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    RiskUpdateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<RiskUpdateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in risk update: {ex.Message}"); request = null; }
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskPayload, "Request body is required", requestId), statusCode: 400);
+
+    // Validate rescue_status if provided
+    if (request.RescueStatus != null)
+    {
+        var validStatuses = new[] { "pending", "in_progress", "rescued", "failed", "expired" };
+        if (!validStatuses.Contains(request.RescueStatus))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskStatus, $"Invalid rescue_status. Valid values: {string.Join(", ", validStatuses)}", requestId), statusCode: 400);
+    }
+
+    // Validate rescue_strategy if provided
+    if (request.RescueStrategy != null)
+    {
+        var validStrategies = new[] { "apology", "discount", "free_return", "exchange", "full_refund" };
+        if (!validStrategies.Contains(request.RescueStrategy))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskPayload, $"Invalid rescue_strategy. Valid values: {string.Join(", ", validStrategies)}", requestId), statusCode: 400);
+    }
+
+    // Validate customer_response if provided
+    if (request.CustomerResponse != null)
+    {
+        var validResponses = new[] { "satisfied", "unsatisfied", "no_response" };
+        if (!validResponses.Contains(request.CustomerResponse))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskPayload, $"Invalid customer_response. Valid values: {string.Join(", ", validResponses)}", requestId), statusCode: 400);
+    }
+
+    try
+    {
+        var updated = await repo.UpdateReviewRiskAsync(
+            tenantContext.TenantId, id, request.RescueStatus, request.RescueStrategy,
+            request.RescueCost, request.CustomerResponse, request.ReviewPosted, request.ReviewRating);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingRiskNotFound, "Review risk not found", requestId), statusCode: 404);
+        jsonLog.StepInfo($"Review risk updated: id={id}, status={request.RescueStatus}", requestId);
+        return Results.Ok(new { success = true });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Review risk update failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Review risk update failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/rescue/stats", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    try
+    {
+        var stats = await repo.GetRescueStatsAsync(tenantContext.TenantId);
+        return Results.Ok(stats);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Rescue stats query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingRescueStatsFailed, "Rescue stats query failed", "-"), statusCode: 500);
+    }
+});
+
+// ============================================
+// RESCUE TEMPLATE ENDPOINTS (GR-3.24)
+// ============================================
+
+app.MapPost("/api/v1/rescue/templates", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    RescueTemplateCreateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<RescueTemplateCreateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in rescue template create: {ex.Message}"); request = null; }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.TemplateName) || string.IsNullOrWhiteSpace(request.MessageTemplate))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidTemplatePayload, "template_name and message_template are required", requestId), statusCode: 400);
+
+    var validLevels = new[] { "low", "medium", "high", "critical" };
+    if (string.IsNullOrWhiteSpace(request.RiskLevel) || !validLevels.Contains(request.RiskLevel))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidTemplatePayload, $"risk_level must be one of: {string.Join(", ", validLevels)}", requestId), statusCode: 400);
+
+    var validStrategies = new[] { "apology", "discount", "free_return", "exchange", "full_refund" };
+    if (string.IsNullOrWhiteSpace(request.Strategy) || !validStrategies.Contains(request.Strategy))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidTemplatePayload, $"strategy must be one of: {string.Join(", ", validStrategies)}", requestId), statusCode: 400);
+
+    try
+    {
+        var id = await repo.CreateRescueTemplateAsync(
+            tenantContext.TenantId, request.TemplateName, request.RiskLevel,
+            request.Strategy, request.MessageTemplate, request.MaxDiscountPct);
+        jsonLog.StepInfo($"Rescue template created: id={id}, name={request.TemplateName}", requestId);
+        return Results.Json(new { id }, statusCode: 201);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Rescue template creation failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Rescue template creation failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/rescue/templates", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var level = ctx.Request.Query["level"].FirstOrDefault();
+    var activeStr = ctx.Request.Query["active"].FirstOrDefault();
+    var activeOnly = activeStr != "false"; // default: only active
+
+    try
+    {
+        var templates = await repo.ListRescueTemplatesAsync(tenantContext.TenantId, level, activeOnly);
+        return Results.Ok(new { templates });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Rescue templates query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Rescue templates query failed", "-"), statusCode: 500);
+    }
+});
+
+app.MapPut("/api/v1/rescue/templates/{id:int}", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog, int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    RescueTemplateUpdateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<RescueTemplateUpdateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in rescue template update: {ex.Message}"); request = null; }
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidTemplatePayload, "Request body is required", requestId), statusCode: 400);
+
+    try
+    {
+        var updated = await repo.UpdateRescueTemplateAsync(
+            tenantContext.TenantId, id, request.TemplateName, request.MessageTemplate,
+            request.MaxDiscountPct, request.IsActive);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingTemplateNotFound, "Rescue template not found", requestId), statusCode: 404);
+        jsonLog.StepInfo($"Rescue template updated: id={id}", requestId);
+        return Results.Ok(new { success = true });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Rescue template update failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Rescue template update failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapDelete("/api/v1/rescue/templates/{id:int}", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog, int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    try
+    {
+        var deactivated = await repo.DeactivateRescueTemplateAsync(tenantContext.TenantId, id);
+        if (!deactivated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingTemplateNotFound, "Rescue template not found or already inactive", requestId), statusCode: 404);
+        jsonLog.StepInfo($"Rescue template deactivated: id={id}", requestId);
+        return Results.Ok(new { success = true });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Rescue template deactivation failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Rescue template deactivation failed", requestId), statusCode: 500);
+    }
+});
+
+// ============================================
+// TREATMENT CATALOG ENDPOINTS (GR-3.25)
+// ============================================
+
+app.MapPost("/api/v1/tourism/catalog", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    TreatmentCreateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<TreatmentCreateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in treatment create: {ex.Message}"); request = null; }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.TreatmentName))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidCatalogPayload, "treatment_name is required", requestId), statusCode: 400);
+
+    try
+    {
+        var id = await repo.CreateTreatmentAsync(
+            tenantContext.TenantId, request.TreatmentName, request.TreatmentNameEn,
+            request.Category, request.PriceMin, request.PriceMax,
+            request.PriceCurrency ?? "EUR", request.DurationDays, request.RecoveryDays,
+            request.DescriptionTr, request.DescriptionEn, request.PackageIncludes);
+        jsonLog.StepInfo($"Treatment created: id={id}, name={request.TreatmentName}", requestId);
+        return Results.Json(new { id }, statusCode: 201);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Treatment creation failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Treatment creation failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/tourism/catalog", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var category = ctx.Request.Query["category"].FirstOrDefault();
+    var activeStr = ctx.Request.Query["active"].FirstOrDefault();
+    var activeOnly = activeStr != "false";
+
+    try
+    {
+        var treatments = await repo.ListTreatmentsAsync(tenantContext.TenantId, category, activeOnly);
+        return Results.Ok(new { treatments });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Treatment catalog query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Treatment catalog query failed", "-"), statusCode: 500);
+    }
+});
+
+app.MapPut("/api/v1/tourism/catalog/{id:int}", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog, int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    TreatmentUpdateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<TreatmentUpdateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in treatment update: {ex.Message}"); request = null; }
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidCatalogPayload, "Request body is required", requestId), statusCode: 400);
+
+    try
+    {
+        var updated = await repo.UpdateTreatmentAsync(
+            tenantContext.TenantId, id, request.TreatmentName, request.TreatmentNameEn,
+            request.Category, request.PriceMin, request.PriceMax, request.PriceCurrency,
+            request.DurationDays, request.RecoveryDays, request.DescriptionTr,
+            request.DescriptionEn, request.PackageIncludes, request.IsActive);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingCatalogItemNotFound, "Treatment not found", requestId), statusCode: 404);
+        jsonLog.StepInfo($"Treatment updated: id={id}", requestId);
+        return Results.Ok(new { success = true });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Treatment update failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Treatment update failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapDelete("/api/v1/tourism/catalog/{id:int}", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog, int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    try
+    {
+        var deactivated = await repo.DeactivateTreatmentAsync(tenantContext.TenantId, id);
+        if (!deactivated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingCatalogItemNotFound, "Treatment not found or already inactive", requestId), statusCode: 404);
+        jsonLog.StepInfo($"Treatment deactivated: id={id}", requestId);
+        return Results.Ok(new { success = true });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Treatment deactivation failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Treatment deactivation failed", requestId), statusCode: 500);
+    }
+});
+
+// ============================================
+// TOURISM CONVERSATION ENDPOINTS (GR-3.25)
+// ============================================
+
+app.MapPost("/api/v1/tourism/conversations", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    ConversationCreateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<ConversationCreateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in conversation create: {ex.Message}"); request = null; }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.PatientPhone) || string.IsNullOrWhiteSpace(request.PatientLang) || string.IsNullOrWhiteSpace(request.PatientMessage))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidConversationPayload, "patient_phone, patient_lang and patient_message are required", requestId), statusCode: 400);
+
+    try
+    {
+        var id = await repo.CreateTourismConversationAsync(
+            tenantContext.TenantId, request.LeadId, request.PatientPhone, request.PatientLang,
+            request.PatientCountry, request.PatientMessage, request.DetectedIntent,
+            request.AiResponse, request.AiResponseLang, request.TrTranslation,
+            request.TreatmentInterest, request.ResponseGenerated);
+        jsonLog.StepInfo($"Tourism conversation recorded: id={id}, phone={request.PatientPhone}, lang={request.PatientLang}", requestId);
+        return Results.Json(new { id }, statusCode: 201);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Tourism conversation creation failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Tourism conversation creation failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/tourism/conversations", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var lang = ctx.Request.Query["lang"].FirstOrDefault();
+    var country = ctx.Request.Query["country"].FirstOrDefault();
+
+    try
+    {
+        var conversations = await repo.ListTourismConversationsAsync(tenantContext.TenantId, lang, country);
+        return Results.Ok(new { conversations });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Tourism conversations query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Tourism conversations query failed", "-"), statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/tourism/respond", async (HttpContext ctx, MarketingRepository repo, TourismResponseGenerator generator, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    TourismRespondRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<TourismRespondRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in tourism respond: {ex.Message}"); request = null; }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.PatientPhone) || string.IsNullOrWhiteSpace(request.PatientLang) || string.IsNullOrWhiteSpace(request.PatientMessage))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidConversationPayload, "patient_phone, patient_lang and patient_message are required", requestId), statusCode: 400);
+
+    try
+    {
+        // Fetch active treatments for Claude context
+        var catalog = await repo.GetActiveTreatmentsForResponseAsync(tenantContext.TenantId);
+
+        var result = await generator.GenerateResponseAsync(
+            tenantContext.TenantId, request.PatientLang, request.PatientMessage,
+            request.PatientCountry, request.TreatmentInterest, catalog);
+
+        if (result == null)
+        {
+            jsonLog.SystemWarn($"[{requestId}] Claude response generation returned null (tenant={tenantContext.TenantId})");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingClaudeUnavailable, "AI response service temporarily unavailable", requestId), statusCode: 503);
+        }
+
+        // Persist conversation record
+        var convId = await repo.CreateTourismConversationAsync(
+            tenantContext.TenantId, request.LeadId, request.PatientPhone, request.PatientLang,
+            request.PatientCountry, request.PatientMessage, result.DetectedIntent,
+            result.Response, result.ResponseLang, result.TrTranslation,
+            request.TreatmentInterest, true);
+
+        jsonLog.StepInfo($"Tourism response generated: conv_id={convId}, lang={request.PatientLang}, intent={result.DetectedIntent}, ms={result.ProcessingTimeMs}", requestId);
+        return Results.Ok(new
+        {
+            conversation_id = convId,
+            response = result.Response,
+            response_lang = result.ResponseLang,
+            tr_translation = result.TrTranslation,
+            detected_intent = result.DetectedIntent,
+            processing_time_ms = result.ProcessingTimeMs
+        });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Tourism respond DB error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Tourism respond failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/tourism/conversations/stats", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    try
+    {
+        var stats = await repo.GetTourismConversationStatsAsync(tenantContext.TenantId);
+        return Results.Ok(stats);
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Tourism conversation stats query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingConversationStatsFailed, "Conversation stats query failed", "-"), statusCode: 500);
+    }
+});
+
+// ============================================
 // STARTUP
 // ============================================
 
@@ -549,4 +1069,98 @@ public sealed class TourismLeadUpdateRequest
     public string? PatientName { get; set; }
     public string? BudgetCurrency { get; set; }
     public decimal? BudgetAmount { get; set; }
+}
+
+// GR-3.24: Review Rescue Request DTOs
+public sealed class RiskCreateRequest
+{
+    public string CustomerPhone { get; set; } = "";
+    public string? ConversationId { get; set; }
+    public short RiskScore { get; set; }
+    public string RiskLevel { get; set; } = "";
+    public string? TriggerReason { get; set; }
+}
+
+public sealed class RiskUpdateRequest
+{
+    public string? RescueStatus { get; set; }
+    public string? RescueStrategy { get; set; }
+    public decimal? RescueCost { get; set; }
+    public string? CustomerResponse { get; set; }
+    public bool? ReviewPosted { get; set; }
+    public short? ReviewRating { get; set; }
+}
+
+public sealed class RescueTemplateCreateRequest
+{
+    public string TemplateName { get; set; } = "";
+    public string RiskLevel { get; set; } = "";
+    public string Strategy { get; set; } = "";
+    public string MessageTemplate { get; set; } = "";
+    public short? MaxDiscountPct { get; set; }
+}
+
+public sealed class RescueTemplateUpdateRequest
+{
+    public string? TemplateName { get; set; }
+    public string? MessageTemplate { get; set; }
+    public short? MaxDiscountPct { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+// GR-3.25: Tourism Catalog + Conversation Request DTOs
+public sealed class TreatmentCreateRequest
+{
+    public string TreatmentName { get; set; } = "";
+    public string? TreatmentNameEn { get; set; }
+    public string? Category { get; set; }
+    public decimal? PriceMin { get; set; }
+    public decimal? PriceMax { get; set; }
+    public string? PriceCurrency { get; set; }
+    public short? DurationDays { get; set; }
+    public short? RecoveryDays { get; set; }
+    public string? DescriptionTr { get; set; }
+    public string? DescriptionEn { get; set; }
+    public string? PackageIncludes { get; set; }
+}
+
+public sealed class TreatmentUpdateRequest
+{
+    public string? TreatmentName { get; set; }
+    public string? TreatmentNameEn { get; set; }
+    public string? Category { get; set; }
+    public decimal? PriceMin { get; set; }
+    public decimal? PriceMax { get; set; }
+    public string? PriceCurrency { get; set; }
+    public short? DurationDays { get; set; }
+    public short? RecoveryDays { get; set; }
+    public string? DescriptionTr { get; set; }
+    public string? DescriptionEn { get; set; }
+    public string? PackageIncludes { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+public sealed class ConversationCreateRequest
+{
+    public int? LeadId { get; set; }
+    public string PatientPhone { get; set; } = "";
+    public string PatientLang { get; set; } = "";
+    public string? PatientCountry { get; set; }
+    public string PatientMessage { get; set; } = "";
+    public string? DetectedIntent { get; set; }
+    public string? AiResponse { get; set; }
+    public string? AiResponseLang { get; set; }
+    public string? TrTranslation { get; set; }
+    public string? TreatmentInterest { get; set; }
+    public bool ResponseGenerated { get; set; }
+}
+
+public sealed class TourismRespondRequest
+{
+    public int? LeadId { get; set; }
+    public string PatientPhone { get; set; } = "";
+    public string PatientLang { get; set; } = "";
+    public string? PatientCountry { get; set; }
+    public string PatientMessage { get; set; } = "";
+    public string? TreatmentInterest { get; set; }
 }
