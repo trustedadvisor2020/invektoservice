@@ -4,9 +4,9 @@
 
 ## Last Update
 
-- **Date:** 2026-02-16
+- **Date:** 2026-02-17
 - **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-4 WA Analytics — DONE. Codex iter 7 PASS. 18 dosya +5781/-16.
+- **Last Task:** Workflow v5.2 upgrade — Insights raporu analiz, CLAUDE.md iyilestirmeleri (Session Management, PowerShell `$` escape), `/wrap` + `/session-prompt` skill'leri, .gitignore audit (deploy_output, usage-data, diffs).
 - **Next Task:** PKT-5 Platform (Phase 3A: Integrations, Outbound v2, Randevu Advanced, Dashboard, Ads).
 - **Strateji:** Overhead %60 azaltma. 10 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.

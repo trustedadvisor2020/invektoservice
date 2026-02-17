@@ -32,6 +32,7 @@ tmp/
 # Build outputs
 publish/
 out/
+deploy_output/
 
 # NuGet
 *.nupkg
@@ -60,3 +61,9 @@ venv/
 
 # WhatsApp Analyzer data (large CSV files)
 tools/whatsapp-analyzer/data/
+
+# Claude Code usage data
+.claude/usage-data/
+
+# Diff files (may contain secrets from code review)
+arch/plans/diffs/*.diff

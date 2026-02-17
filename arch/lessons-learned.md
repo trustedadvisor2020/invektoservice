@@ -207,6 +207,9 @@
 | Pre-write 5 soru gating (Codex Utansin) | Her kod satiri oncesi | Hata yazildiktan sonra degil, yazilmadan ONCE engellenir - iteration=0 |
 | DRY canonical source + referans pattern | INVEKTO_BASE -> tum dosyalar | Kural tek yerde tanimlanir, tutarsizlik imkansiz |
 | 4 nokta kural yayilimi | Doktrin yazimi | Yeni kural -> INVEKTO_BASE + CLAUDE.md + DEV_AGENT + MEMORY.md = hicbir session kacirmaz |
+| Insights raporu -> CLAUDE.md feedback dongusu | Workflow v5.2 | Insights friction analizi -> mevcut kurallara karsilastir -> eksik kurallari ekle, var olanlari skip et |
+| `/wrap` skill ile post-phase konsolidasyonu | Session kapama | 5 adim (tracking + learn + secret scan + push + prompt) tek komut, Q manual adim hatirlamaz |
+| .gitignore proaktif audit | Git hygiene | deploy_output + usage-data + diffs eklenmezse secret leak + 10K+ pending dosya riski |
 
 ### UI & Frontend
 

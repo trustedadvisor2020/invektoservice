@@ -8,7 +8,11 @@
       "mcp__codex-review__*",
       "mcp__invekto-postgres__query",
       "mcp__invekto-postgres__pg-schema",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:openai.com)",
+      "WebFetch(domain:app.daily.dev)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:medium.com)"
     ],
     "additionalDirectories": [
       "c:\\CRMs\\InvektoServis"

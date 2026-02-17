@@ -140,3 +140,16 @@ FAIL -> fix -> /rev (max 3 iterations)
 | `SKIP CODEX` | Skip Codex review (Q permission only) |
 | `FORCE PASS` | Override verdict (Q permission only) |
 | `ROLLBACK` | Revert last changes |
+
+---
+
+## Context Management Between Packets
+
+Paket tamamlaninca (Codex PASS + commit):
+
+1. DevAgent Q'ya onerir: "Paket tamamlandi. `/clear` ile context temizleyebilirsiniz."
+2. Q `/clear` derse -> session sifirlanir, auto workflow PERSIST AFTER COMPACT ile aktif kalir
+3. Q devam derse -> ayni session'da siradaki pakete gec
+4. 3+ paket biriktiyse -> DevAgent PROAKTIF `/clear` onerir
+
+**HARD RULE:** `/clear` sonrasi `/auto` yazmaya GEREK YOK - SESSION BOOTSTRAP otomatik aktif eder.
