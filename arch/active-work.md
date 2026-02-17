@@ -41,6 +41,7 @@
 | 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ✅ PASS (iter 2, FORCE PASS) |
 | 6C1 | **Health Automation** | PKT-6C1 | Phase 3B: TreatmentLifecycleService (GR-3.20+3.41+3.43) | 3 GR, ~12 alt madde | ✅ PASS (iter 7, FORCE PASS) |
 | 6C2 | **Niche Marketing** | PKT-6C2 | Phase 3B: Google Yorum + Referans + Medikal Turizm Lead (split: GR-3.21+3.22 only) | 2 GR, ~12 alt madde | ✅ PASS (iter 3) |
+| 6C3 | **Marketing v2** | PKT-6C3 | Phase 3B: Review Rescue + Multilingual Medical Tourism (GR-3.24+3.25) | 2 GR, ~10 alt madde | ✅ PASS (iter 2, FORCE PASS) |
 | 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
 | 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
 | 9 | **Güzellik Salonu** | PKT-9 | Phase 3E: Güzellik Niche (config+content katmanı) | 8 GR, ~32 alt madde | ⬜ Bekliyor |
@@ -153,6 +154,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260218-pkt6c3-marketing-v2 | 2026-02-18 | Paket 6C3: Marketing v2 (2 GR: GR-3.24+3.25). Review Rescue (review_risks + rescue_templates) + Multilingual Medical Tourism (treatment_catalog + tourism_conversations + Claude Haiku TourismResponseGenerator). 4 yeni tablo, 16 endpoint, Backend proxy (16 routes + MarketingProxyDelete). 9 dosya +2012. Codex 3-chunk 2 iter FORCE PASS. Plan: `arch/plans/20260218-pkt6c3-marketing-v2.json` |
 | 20260217-pkt6c2-niche-marketing | 2026-02-17 | Paket 6C2: Niche Marketing (2 GR: GR-3.21+3.22). Yeni Invekto.Marketing servisi (port 7112), 3 DB tablosu, 16 endpoint, Backend proxy (14 routes). 13 dosya +2039. Codex 3 iter PASS. Plan: `arch/plans/20260217-pkt6c2-niche-marketing.json` |
 | 20260217-pkt6c1-health-automation | 2026-02-17 | Paket 6C1: Health Automation (3 GR: GR-3.20+3.41+3.43). TreatmentLifecycleService IHostedService, 2 DB tablosu, 5 endpoint, Backend proxy. 9 dosya +1450. Codex 3-chunk 7 iter, chunk 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6c1-health-automation.json` |
 | 20260217-pkt6b1-niche-business | 2026-02-17 | Paket 6B: Niche Business Logic (7 GR: Outbound e-ticaret/klinik, iade cevirme v1+v2, lead mgmt v2, agent assist e-ticaret, yorum kurtarma). 21 dosya. Codex 5-chunk review, 3 fix round, iter 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6b1-niche-business.json` |

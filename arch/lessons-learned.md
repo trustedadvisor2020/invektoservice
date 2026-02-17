@@ -64,6 +64,9 @@
 | 2026-02-17 | GET endpoint'lere NpgsqlException log eklenince jsonLog scope'ta yok - CS0103 | `JsonLinesLogger jsonLog` DI parametresi eklendi | **NpgsqlException catch'e log eklerken endpoint signature'da jsonLog VAR MI kontrol et** |
 | 2026-02-17 | Backend MapPost("/redeem") ama Marketing PUT endpoint bekliyor - CQ8 FAIL | MapPost -> MapPut + ProxyPost -> ProxyPut degistirildi | **Proxy route HTTP method'u downstream servisin method'uyla BIREBIR eslessin** |
 | 2026-02-17 | Codex diff'te untracked dosyalar yok - tum CQ UNKNOWN | `git add` ile stage ettikten sonra diff olusturuldu | **Yeni dosyalar iceren PKT'de /rev oncesi `git add` ile stage et, yoksa diff bos gelir** |
+| 2026-02-18 | GenerateResponseAsync'te catch(Exception ex) + ParseResponse'ta catch(Exception ex) — 2 iter gerekti | iter 0: GenerateResponseAsync fix, iter 1: ParseResponse fix | **Typed catch fix yaparken TUM metotlari tara, sadece ilk bulunanı degil — ayni dosyadaki diger generic catch'leri de kontrol et** |
+| 2026-02-18 | ParseResponse'ta sadece JsonDocument.Parse + TryGetProperty var, generic catch gereksiz | Generic catch kaldirildi, sadece JsonException kaldi | **catch(Exception) eklemeden ONCE: metotta hangi exception tipleri mumkun? JsonDocument = JsonException, string ops = exception atmaz → generic catch GEREKSIZ** |
+| 2026-02-18 | Chunked review CoVe UNKNOWN items cross-file verification (Q4 auth, Q5 CHECK constraints) | Manual verification: proxy auth = downstream JWT, CHECK = validation arrays 1:1 | **Chunked review UNKNOWN = manual cross-file verification yap, sonucu plan JSON verdict note'una yaz** |
 
 ### Deploy & Config
 

@@ -4,10 +4,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅ + PKT-6C1 ✅ + PKT-6C2 ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-6C2 Niche Marketing — DONE. 2 GR (GR-3.21 Google Yorum + Referans Motoru, GR-3.22 Medikal Turizm Lead Capture): Yeni Invekto.Marketing servisi (port 7112), 3 DB tablosu (review_requests, referrals, medical_tourism_leads), MarketingRepository (crypto-random referral codes), 16 API endpoint, Backend proxy (14 routes), MarketingClient. Codex 3 iteration PASS.
-- **Next Task:** PKT-6C3 (GR-3.24 Proactive Review Rescue + GR-3.25 Multilingual Medical Tourism) veya PKT-7 Visual AI.
+- **Date:** 2026-02-18
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅ + PKT-6C1 ✅ + PKT-6C2 ✅ + PKT-6C3 ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-6C3 Marketing v2 — DONE. 2 GR (GR-3.24 Proactive Review Rescue, GR-3.25 Multilingual Medical Tourism): 4 DB tablosu (review_risks, rescue_templates, treatment_catalog, tourism_conversations), TourismResponseGenerator (Claude Haiku multilingual response), 16 API endpoint, Backend proxy (16 routes + MarketingProxyDelete). Codex 3-chunk review, iteration=2 FORCE PASS.
+- **Next Task:** PKT-7 Visual AI (Phase 3C: Visual Product Search + Size/Fit AI, port 7111).
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 - **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
@@ -48,6 +48,7 @@
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ✅ PASS (iter 2, FORCE PASS) |
 | 6C1 | **PKT-6C1 Health Automation** | Phase 3B: TreatmentLifecycleService (3 GR: 3.20+3.41+3.43) | ✅ PASS (iter 7, FORCE PASS) |
 | 6C2 | **PKT-6C2 Niche Marketing** | Phase 3B: Google Yorum + Referans + Medikal Turizm Lead (split: GR-3.21+3.22) | ✅ PASS (iter 3) |
+| 6C3 | **PKT-6C3 Marketing v2** | Phase 3B: Review Rescue + Multilingual Medical Tourism (GR-3.24+3.25) | ✅ PASS (iter 2, FORCE PASS) |
 | 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
 | 8 | **PKT-8 Face AI** | Phase 3D (Face Analysis, :7110) | ⬜ Bekliyor |
 
@@ -229,7 +230,7 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 | WhatsAppAnalytics | 7109 | Implemented (WA-5/6 Phase A) |
 | VisualSearch | 7111 | Planned (Phase 3C, PKT-7) — ~~7109~~ çakışma fix |
 | FaceAnalysis | 7110 | Planned (Phase 3D, PKT-8) |
-| Marketing | 7112 | Implemented (GR-3.21/3.22 PKT-6C2) |
+| Marketing | 7112 | Implemented (GR-3.21/3.22/3.24/3.25 PKT-6C2+6C3) |
 | Simulator | 4500 | Dev-only tool (Node.js) |
 | FlowBuilder | 3002 | Dev-only SPA (Vite, serve via Backend:5000) |
 
@@ -370,8 +371,9 @@ src/
 │   ├── Data/                # AutomationRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
 │   └── Services/            # FlowEngine, IntentDetector, FaqMatcher, WorkingHoursChecker, AutomationOrchestrator
-├── Invekto.Marketing/        # GR-3.21/3.22: Google Review + Referral + Tourism (Port 7112)
-│   └── Data/                # MarketingRepository
+├── Invekto.Marketing/        # GR-3.21/3.22/3.24/3.25: Marketing (Port 7112)
+│   ├── Data/                # MarketingRepository
+│   └── Services/            # TourismResponseGenerator (Claude Haiku multilingual)
 ├── Invekto.Outbound/         # GR-1.3: Broadcast & Trigger Engine (Port 7107)
 │   ├── Data/                # OutboundRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
@@ -392,6 +394,39 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-6C3 Marketing v2 TAMAMLANDI (2026-02-18)
+
+**Plan:** `arch/plans/20260218-pkt6c3-marketing-v2.json` (status: DONE)
+**Scope:** 2 GR — GR-3.24 Proactive Review Rescue, GR-3.25 Multilingual Medical Tourism.
+**Stats:** 9 dosya +2012/-2. Codex 3-chunk review, iteration=2 FORCE PASS.
+
+**GR-3.24 Review Rescue:**
+- review_risks + rescue_templates tabloları (risk score 0-100, 5 rescue strategy, customer response tracking)
+- 8 endpoint: Risk CRUD + stats, Template CRUD + deactivate
+- Risk level bazlı şablon eşleştirme (low→apology, critical→full_refund)
+
+**GR-3.25 Multilingual Medical Tourism:**
+- treatment_catalog + tourism_conversations tabloları
+- TourismResponseGenerator: Claude Haiku multilingual response generation
+- System prompt: treatment catalog formatted, price ranges, next step suggestion
+- AI JSON output: response (patient lang) + tr_translation (staff) + detected_intent
+- 8 endpoint: Catalog CRUD, Conversation CRUD, Respond (Claude), Stats
+
+**Backend proxy:** 16 yeni route + MarketingProxyDelete helper
+**Error codes:** INV-MK-011~023 (13 yeni kod)
+**Claude config:** appsettings.json Claude section (ApiKey, Model, MaxTokens, TimeoutSeconds)
+
+**Codex Review (3-chunk, 2 iter):**
+- iter 0: CQ5 FAIL x3 — `catch(Exception ex)` in TourismResponseGenerator (GenerateResponseAsync + ParseResponse)
+- iter 1: CQ5 FAIL chunk 1 — ParseResponse'ta kalan generic catch
+- iter 2: ALL CQ1-CQ8 PASS. CoVe UNKNOWN = chunking artifacts. Q FORCE PASS.
+- Fix: Typed catches (HttpRequestException + JsonException), generic catch removed from ParseResponse
+
+**Q Operational Tasks (PKT-6C3):**
+- [ ] marketing-v2.sql çalıştır (PostgreSQL) — 4 yeni tablo
+- [ ] Marketing appsettings.Production.json Claude:ApiKey doldurun (varsa)
+- [ ] Claude API key yoksa TourismResponseGenerator 503 döner — production'da Claude kullanılmayacaksa bu OK
 
 ### PKT-6C2 Niche Marketing TAMAMLANDI (2026-02-17)
 
