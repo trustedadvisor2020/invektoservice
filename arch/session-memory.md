@@ -5,11 +5,12 @@
 ## Last Update
 
 - **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** Workflow v5.2 upgrade — Insights raporu analiz, CLAUDE.md iyilestirmeleri (Session Management, PowerShell `$` escape), `/wrap` + `/session-prompt` skill'leri, .gitignore audit (deploy_output, usage-data, diffs).
-- **Next Task:** PKT-5 Platform (Phase 3A: Integrations, Outbound v2, Randevu Advanced, Dashboard, Ads).
-- **Strateji:** Overhead %60 azaltma. 10 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-5A Platform Infra — GR-3.4 Integrations (:7106), GR-3.6 Kargo mock, GR-3.15 Outbound v2, GR-3.26 Opt-in Framework, GR-3.29 Compliance delta. Commit: d1e28bc (33 dosya +3445/-14). Codex iter 2 FORCE PASS.
+- **Next Task:** PKT-5B Platform kalan (GR-3.14 Ads Attribution, GR-3.18 Dashboard, GR-3.19 Randevu Advanced) veya PKT-6A. Q sunucu taşıma sonrası deploy yapacak.
+- **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
+- **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
 
 ### ✅ TAMAMLANDI: WhatsApp Analytics WA-1 + WA-2 (2026-02-14)
 
@@ -41,7 +42,8 @@
 | 2 | **PKT-2 Sağlık Core** | GR-2.4 + GR-2.6 (Randevu + KVKK) | ✅ PASS (iter 1, FORCE PASS) |
 | 3 | **PKT-3 Ops Dashboard** | GR-2.5 + WA-4 (Dashboard + BI) | ✅ PASS (iter 1, FORCE PASS) |
 | 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ✅ PASS (iter 7) |
-| 5 | **PKT-5 Platform** | Phase 3A (Integrations, Outbound v2, Randevu Adv.) | ⬜ Bekliyor |
+| 5A | **PKT-5A Platform Infra** | Phase 3A: Integrations (:7106), Kargo mock, Outbound v2, Opt-in, Compliance | ✅ PASS (iter 2, FORCE PASS) |
+| 5B | **PKT-5B Platform UI+Adv** | Phase 3A kalan: Ads Attribution, Dashboard, Randevu Advanced | ⬜ Bekliyor |
 | 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ⬜ Bekliyor |
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ⬜ Bekliyor |
 | 6C | **PKT-6C Niche Health Expansion** | Phase 3B: Sağlık + Review Rescue + Multilingual (5 GR) | ⬜ Bekliyor |
@@ -218,7 +220,7 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 | Backend | 5000 | Active |
 | ChatAnalysis | 7101 | Active |
 | AgentAI | 7105 | Implemented (GR-1.2) |
-| Integrations | 7106 | Reserved (Phase 2+) |
+| Integrations | 7106 | Implemented (GR-3.4 PKT-5A) |
 | Outbound | 7107 | Implemented (GR-1.3) |
 | Knowledge | 7104 | Implemented (GR-2.1 Phase A+B) |
 | Appointments | 7102 | Implemented (GR-2.4 PKT-2) |
@@ -386,6 +388,51 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-5A Platform Infra TAMAMLANDI (2026-02-17)
+
+**Plan:** `arch/plans/20260217-pkt5a-platform-infra.json` (status: DONE)
+**Commit:** `d1e28bc` — feat(pkt5a): Platform Infra - 5 GR (33 dosya +3445/-14)
+
+**GR-3.4 Integrations Service (:7106):**
+- Yeni Invekto.Integrations mikro servisi (port 7106)
+- HepsiburadaClient: Order sync, listing fetch, order status update
+- OrderSyncService (IHostedService): Periodic sync across all active accounts
+- IntegrationsRepository: Account CRUD, order cache, sync state tracking
+- Backend proxy: IntegrationsClient + proxy endpoints
+
+**GR-3.6 Kargo Mock:**
+- ShipmentTrackingService: Mock kargo takip (HB, Trendyol, N11 provider desteği)
+- Shipment status webhook callbacks
+
+**GR-3.15 Outbound v2:**
+- Campaign engine: CampaignOrchestrator, CampaignSenderService (IHostedService)
+- ListCampaignsAsync: SQL conditions list pattern (injection-safe)
+- UpdateCampaignStatsAsync: tenant_id filtered
+- BatchInsertAuditTrailAsync: NpgsqlBatch bulk insert (GR-3.29)
+
+**GR-3.26 Opt-in Framework:**
+- ConsentManager: Marketing consent check (batch query)
+- Broadcast filtering: opt-out + consent double-gate
+- GetPhonesWithoutMarketingConsentAsync batch query
+
+**GR-3.29 Compliance Delta:**
+- ComplianceHelper: GetRetentionDays, data deletion flow
+- ExecuteDataDeletionAsync: typed catches (NpgsqlException)
+- UpdateDeletionRequestAsync: tenant_id WHERE clause
+- Batch audit trail for compliance (NpgsqlBatch)
+
+**Codex Review:** 3 iterations (split review: Part1 Integrations 137KB + Part2 Outbound/Shared 209KB). iter 2 FORCE PASS (circular false positives on CQ1/CQ5).
+
+**Q Not:** Sunucu taşıma planlanıyor, deploy sonra yapılacak.
+
+### Q Operational Tasks (PKT-5A)
+
+- [ ] integrations.sql çalıştır (PostgreSQL)
+- [ ] Integrations appsettings.Production.json oluştur (JWT, PG password)
+- [ ] Integrations deploy + NSSM servis kurulumu (InvektoIntegrations, port 7106)
+- [ ] outbound.sql migration çalıştır (campaign + consent tables)
+- [ ] compliance.sql migration çalıştır (deletion_requests + audit updates)
 
 ### PKT-3 Ops Dashboard TAMAMLANDI (2026-02-16)
 

@@ -162,12 +162,15 @@ Cannot mark as DONE if:
 
 DONE only when: Build PASS + Codex PASS -> commit
 
-### After PASS
+### After PASS -> /wrap Otomatik Calisir
 
 1. Generate commit message (conventional commit)
-2. Commit to work branch
-3. Merge to master
-4. Update: `arch/session-memory.md`, `arch/active-work.md`
-5. JSON plan: `status`: "DONE"
-6. Inform Q: "DONE - {slug}"
-7. Auto-record lessons to `arch/lessons-learned.md` (no Q approval needed)
+2. Secret scan (BLOCKING) -> Commit -> Push
+3. Update: `arch/session-memory.md`, `arch/active-work.md`
+4. JSON plan: `status`: "DONE"
+5. Auto-record lessons to `arch/lessons-learned.md` (no Q approval needed)
+6. Generate next-session continuation prompt
+7. Inform Q: "DONE - {slug}" + `/clear` oner (3+ paket ise PROAKTIF)
+
+> **`/wrap` otomatik calisir.** Q'nun ayrica `/wrap` yazmasina gerek yok.
+> Detaylar: `.claude/commands/wrap.md`

@@ -44,6 +44,10 @@
 | 2026-02-17 | Large diff (122KB+) git_diff inline truncation = ALL UNKNOWN verdict | diff_file_path fallback kullanildi | **Diff >50KB ise git_diff bos birak + diff_file_path ile disk'ten oku** |
 | 2026-02-17 | Static method logging yapamaz = silent failure (ClassifyByKeyword) | static -> instance method degistirip _logger eristirme | **Exception catch + return null/continue olan metodlar INSTANCE olsun (logger erisimi icin)** |
 | 2026-02-17 | Claude batch processing catch(Exception) cok genis | ArgumentOutOfRangeException + InvalidOperationException typed catches | **Batch mapping/processing = ArgumentOutOfRange + InvalidOperation yeterli, Exception gereksiz genis** |
+| 2026-02-17 | 345KB diff Codex context window asti - MODEL_ERROR | Diff'i servis bazli split (Part1 137KB + Part2 209KB) | **Diff >200KB ise servis bazli split review yap, full diff gonderme** |
+| 2026-02-17 | Secret scan hook `password\s*[:=]` appsettings.json'da yakaladi | Password/SecretKey field'larini dev template'den cikar | **Dev appsettings.json'da password field BIRAKMA - Production.json'da olsun** |
+| 2026-02-17 | Codex CQ1 `!` reddetti sonra `??` fallback'i de reddetti (dongusal) | Q FORCE PASS (2 iter sonra) | **Codex dongusal cikis yolu yoksa 2. iter'de Q FORCE PASS escalation** |
+| 2026-02-17 | NpgsqlBatch per-message audit loop yerine batch insert | BatchInsertAuditTrailAsync tek batch | **N+1 insert dongusu yerine NpgsqlBatch kullan - ozellikle audit trail gibi bulk insert'lerde** |
 
 ### Deploy & Config
 
@@ -210,6 +214,8 @@
 | Insights raporu -> CLAUDE.md feedback dongusu | Workflow v5.2 | Insights friction analizi -> mevcut kurallara karsilastir -> eksik kurallari ekle, var olanlari skip et |
 | `/wrap` skill ile post-phase konsolidasyonu | Session kapama | 5 adim (tracking + learn + secret scan + push + prompt) tek komut, Q manual adim hatirlamaz |
 | .gitignore proaktif audit | Git hygiene | deploy_output + usage-data + diffs eklenmezse secret leak + 10K+ pending dosya riski |
+| Split Codex review (servis bazli) | PKT-5A 345KB diff | Full diff context asar, servis bazli split = her part <200KB, anlamli review |
+| NpgsqlBatch bulk insert | Audit trail, batch ops | N+1 insert dongusu yerine tek batch = tek roundtrip, atomik |
 
 ### UI & Frontend
 

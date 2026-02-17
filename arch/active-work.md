@@ -6,7 +6,7 @@
 
 | Slug | Status | Started | Description |
 |------|--------|---------|-------------|
-| 20260216-pkt3-ops-dashboard | ✅ DONE | 2026-02-16 | PKT-3: Ops Dashboard (GR-2.5 + WA-4). Commit: 63543d4. Codex CQ 8/8 PASS, Q FORCE PASS. |
+| (none) | - | - | - |
 
 ---
 
@@ -35,7 +35,8 @@
 | 2 | **Sağlık Core** | PKT-2 | GR-2.4 Randevu Motoru + GR-2.6 KVKK | 2 GR, 11 alt madde | ✅ PASS (iter 1, FORCE PASS) |
 | 3 | **Ops Dashboard** | PKT-3 | GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard | 2 GR, 12 alt madde | ✅ PASS (iter 1, FORCE PASS) |
 | 4 | **WA Analytics** | PKT-4 | WA-6 NLP Stages 4-7 + Backend proxy | 1 WA faz, ~8 alt madde | ✅ PASS (iter 7) |
-| 5 | **Platform** | PKT-5 | Phase 3A: Integrations (:7106) + Outbound v2 + Randevu Advanced + Dashboard + Ads | 6 GR, 30 alt madde | ⬜ Bekliyor |
+| 5A | **Platform Infra** | PKT-5A | Phase 3A: Integrations (:7106) + Outbound v2 + Opt-in + Compliance | 5 GR, ~22 alt madde | ✅ PASS (iter 2, FORCE PASS) |
+| 5B | **Platform UI+Adv** | PKT-5B | Phase 3A kalan: Ads Attribution + Dashboard + Randevu Advanced | 3 GR, ~10 alt madde | ⬜ Bekliyor |
 | 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ⬜ Bekliyor |
 | 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ⬜ Bekliyor |
 | 6C | **Niche Health Expansion** | PKT-6C | Phase 3B: Saglik genisleme + Review Rescue + Multilingual (PKT-6B'ye bagli) | 5 GR, ~22 alt madde | ⬜ Bekliyor |
@@ -66,8 +67,12 @@
 **PKT-4: WA Analytics** — WhatsAppAnalytics servis genişletme
 - WA-6: NLP stages 4-7 (intent, FAQ, sentiment, product) C# portu + query layer + Backend proxy
 
-**PKT-5: Platform** — Yeni servis (Integrations :7106) + genişletmeler
-- GR-3.4 HB API, GR-3.6 Kargo, GR-3.14 Ads Attribution, GR-3.15 Outbound v2, GR-3.18 Dashboard, GR-3.19 Randevu Advanced
+**PKT-5A: Platform Infra** ✅ — Yeni servis (Integrations :7106) + Outbound v2 + Compliance
+- GR-3.4 HB API, GR-3.6 Kargo mock, GR-3.15 Outbound v2 (campaigns), GR-3.26 Opt-in Framework, GR-3.29 Compliance delta
+- Commit: d1e28bc (33 dosya +3445/-14). Codex iter 2 FORCE PASS.
+
+**PKT-5B: Platform UI+Adv** — Dashboard + Ads + Randevu genişletme
+- GR-3.14 Ads Attribution, GR-3.18 Dashboard genişletme, GR-3.19 Randevu Advanced
 
 **PKT-6A: Niche Foundation** — Intent + Onboarding + Voice AI (7 GR, ~28 item)
 - GR-3.1 Intent Genişletme + Oto. Etiketleme (e-ticaret)
@@ -142,6 +147,8 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260217-pkt5a-platform-infra | 2026-02-17 | Paket 5A: Platform Infra (GR-3.4 Integrations :7106 + GR-3.6 Kargo mock + GR-3.15 Outbound v2 + GR-3.26 Opt-in + GR-3.29 Compliance). 33 dosya +3445/-14. Codex iter 2 FORCE PASS (split review: Part1 137KB + Part2 209KB). Commit: d1e28bc. Plan: `arch/plans/20260217-pkt5a-platform-infra.json` |
+| PKT-3-ops-dashboard | 2026-02-16 | Paket 3: Ops Dashboard (GR-2.5 + WA-4). Commit: 63543d4. Codex CQ 8/8 PASS, Q FORCE PASS. |
 | PKT-2-saglik-core | 2026-02-16 | Paket 2: Saglik Core (GR-2.4 Randevu Motoru + GR-2.6 KVKK Minimum). Yeni Invekto.Appointments servis (port 7102), slot CRUD, booking, IHostedService reminder (T-48h/T-2h), KVKK 5 servis (disclaimer, photo block, medical tag, AgentAI warning). 31 dosya +9006/-15. Codex iter 1 FORCE PASS. Commit: e994e29. Plan: `arch/plans/20260215-pkt2-saglik-core.json` |
 | PKT-1-ai-upgrade | 2026-02-15 | Paket 1: AI Upgrade (GR-2.2 Agent Assist v2 + GR-2.3 Multi-lang). Codex iter 3 FORCE PASS. Commit: 97d9888. Plan: `arch/plans/20260215-pkt1-ai-upgrade.json` |
 | 20260214-wa-analytics-phaseA | 2026-02-15 | WA-5/6 Phase A: Invekto.WhatsAppAnalytics (Port 7109). Full C# port of pipeline stages 1-3. Streaming CSV, Turkish text normalization, SHA256 dedup, 25 outcome patterns, IAsyncEnumerable streaming, restart recovery (stale timeout + SKIP LOCKED). 10-table PostgreSQL schema, 15 error codes. 20 dosya +5417. Codex 4 iter PASS. Commit: 18f387f. Plan: `arch/plans/20260214-wa-analytics-phaseA.json` |

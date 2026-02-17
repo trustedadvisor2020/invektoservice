@@ -126,7 +126,7 @@ Codex API returns structured JSON (CQ1-8 + CoVe + verdict)
     |
 DevAgent processes verdict, shows Q summary
     |
-PASS -> commit -> DONE
+PASS -> /wrap otomatik (commit + push + tracking + learn + prompt) -> DONE
 FAIL -> fix -> /rev (max 3 iterations)
 ```
 
@@ -143,13 +143,25 @@ FAIL -> fix -> /rev (max 3 iterations)
 
 ---
 
+## Phase 5: /wrap Otomatik (Q'nun Yazmasi Gerekmez)
+
+Codex PASS sonrasi `/wrap` workflow'u OTOMATIK calisir:
+
+1. **Tracking update:** `arch/session-memory.md` + `arch/active-work.md`
+2. **Learn (auto):** Session lessons -> `arch/lessons-learned.md` (Q onay gerektirmez)
+3. **Secret scan** (BLOCKING) -> **Commit** -> **Push**
+4. **Next-session prompt** uretimi
+5. Q'ya onerir: "`/clear` ile context temizleyebilirsiniz." (3+ paket ise PROAKTIF)
+
+> **Q'nun `/wrap` yazmasina GEREK YOK.** Codex PASS -> /wrap otomatik.
+> Q isterse manual da cagirabilir: `/wrap` veya `/wrap "mesaj"`
+
 ## Context Management Between Packets
 
-Paket tamamlaninca (Codex PASS + commit):
+Paket tamamlaninca (/wrap otomatik calistiktan sonra):
 
-1. DevAgent Q'ya onerir: "Paket tamamlandi. `/clear` ile context temizleyebilirsiniz."
-2. Q `/clear` derse -> session sifirlanir, auto workflow PERSIST AFTER COMPACT ile aktif kalir
-3. Q devam derse -> ayni session'da siradaki pakete gec
-4. 3+ paket biriktiyse -> DevAgent PROAKTIF `/clear` onerir
+1. Q `/clear` derse -> session sifirlanir, auto workflow PERSIST AFTER COMPACT ile aktif kalir
+2. Q devam derse -> ayni session'da siradaki pakete gec
+3. 3+ paket biriktiyse -> DevAgent PROAKTIF `/clear` onerir
 
 **HARD RULE:** `/clear` sonrasi `/auto` yazmaya GEREK YOK - SESSION BOOTSTRAP otomatik aktif eder.
