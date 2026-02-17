@@ -106,7 +106,7 @@
 - GR-3.21 Google Yorum + Referans Motoru ✅
 - GR-3.22 Medikal Turizm Lead Capture (EN only) ✅
 - **Split:** GR-3.24+3.25 → PKT-6C3'e taşındı
-- **Commit:** TBD (Codex PASS iter 3, 13 dosya +2039)
+- **Commit:** aa2ca9b (Codex PASS iter 3, 16 dosya +1886)
 
 **PKT-7: Visual AI** — Yeni servis (VisualSearch :7111)
 - GR-3C.1~3C.8: CLIP engine, katalog, web widget, tenant mgmt, WA/IG entegrasyon, analytics, Size/Fit AI
