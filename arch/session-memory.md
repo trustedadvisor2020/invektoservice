@@ -5,9 +5,9 @@
 ## Last Update
 
 - **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-5A Platform Infra — GR-3.4 Integrations (:7106), GR-3.6 Kargo mock, GR-3.15 Outbound v2, GR-3.26 Opt-in Framework, GR-3.29 Compliance delta. Commit: d1e28bc (33 dosya +3445/-14). Codex iter 2 FORCE PASS.
-- **Next Task:** PKT-5B Platform kalan (GR-3.14 Ads Attribution, GR-3.18 Dashboard, GR-3.19 Randevu Advanced) veya PKT-6A. Q sunucu taşıma sonrası deploy yapacak.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-5B Platform UI+Adv — GR-3.14 Ads Attribution (UTM/Meta webhook, lead CRUD, CPL), GR-3.18 Dashboard genişletme (campaign+attribution panel), GR-3.19 Randevu Advanced (waitlist, no-show, pricing, doctor slots, calendar sync mock). Commit: 93d2392 (22 dosya +2863/-55). Codex 4 iter FORCE PASS.
+- **Next Task:** PKT-6A Niche Foundation (7 GR: Intent genişletme, Onboarding, Voice AI) veya Q deploy. Phase 3A (PKT-5A+5B) tamamlandı.
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 - **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
@@ -43,7 +43,7 @@
 | 3 | **PKT-3 Ops Dashboard** | GR-2.5 + WA-4 (Dashboard + BI) | ✅ PASS (iter 1, FORCE PASS) |
 | 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ✅ PASS (iter 7) |
 | 5A | **PKT-5A Platform Infra** | Phase 3A: Integrations (:7106), Kargo mock, Outbound v2, Opt-in, Compliance | ✅ PASS (iter 2, FORCE PASS) |
-| 5B | **PKT-5B Platform UI+Adv** | Phase 3A kalan: Ads Attribution, Dashboard, Randevu Advanced | ⬜ Bekliyor |
+| 5B | **PKT-5B Platform UI+Adv** | Phase 3A kalan: Ads Attribution, Dashboard, Randevu Advanced | ✅ PASS (iter 4, FORCE PASS) |
 | 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ⬜ Bekliyor |
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ⬜ Bekliyor |
 | 6C | **PKT-6C Niche Health Expansion** | Phase 3B: Sağlık + Review Rescue + Multilingual (5 GR) | ⬜ Bekliyor |
@@ -388,6 +388,42 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-5B Platform UI+Adv TAMAMLANDI (2026-02-17)
+
+**Plan:** `arch/plans/20260217-pkt5b-platform-ui-adv.json` (status: DONE)
+**Commit:** `93d2392` — feat(pkt5b): Ads Attribution + Dashboard Expansion + Appointments Advanced (22 dosya +2863/-55)
+
+**GR-3.14 Ads Attribution:**
+- UTM/Meta click webhook capture (conversation_started event)
+- AttributionRepository: lead_attributions CRUD, ad_costs CRUD, summary/CPL queries
+- AttributionService: null-safe UTM extraction, typed catches
+- 7 JWT-auth attribution endpoints + 3 ops analytics endpoints
+
+**GR-3.18 Dashboard Genişletme:**
+- CampaignPanel (gerçek campaign_stats data), AttributionPanel, PlaceholderPanel (İade/Yorum)
+- AnalyticsPage: 3 bağımsız error-bounded fetch (Promise.all yerine)
+- api.ts: getAttributionSummary, getCostPerLead, getCampaignStats
+
+**GR-3.19 Randevu Advanced:**
+- Waitlist CRUD + WaitlistService (IHostedService, 5min expiry timer, cancel-flow notification)
+- No-show stats (configurable threshold via settings_json)
+- Service pricing CRUD (COALESCE update pattern)
+- Doctor slot filtering, ICalendarSyncService interface + MockCalendarSyncService
+
+**Quality (Codex 4 iter):**
+- SQL string concat → const parameterized queries (5 methods refactored)
+- Typed catches throughout (NpgsqlException, JsonException, HttpRequestException, FormatException)
+- HTTP disposables managed (using var), fire-and-forget with ContinueWith logging
+- DateOnly.Parse → FormatException try-catch + 400 response (8 endpoints)
+
+**Q Not:** Phase 3A (PKT-5A + PKT-5B) tamamlandı. Sunucu taşıma sonrası deploy yapılacak.
+
+### Q Operational Tasks (PKT-5B)
+
+- [ ] appointments-v2.sql migration çalıştır (waitlist, service_pricing tabloları)
+- [ ] attribution.sql migration çalıştır (lead_attributions, ad_costs tabloları)
+- [ ] Deploy sonrası: Attribution webhook'u Main App'ten conversation_started event'i ile tetiklenecek
 
 ### PKT-5A Platform Infra TAMAMLANDI (2026-02-17)
 

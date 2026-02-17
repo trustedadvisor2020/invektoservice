@@ -36,7 +36,7 @@
 | 3 | **Ops Dashboard** | PKT-3 | GR-2.5 Otomasyon Dashboard + WA-4 BI Dashboard | 2 GR, 12 alt madde | ✅ PASS (iter 1, FORCE PASS) |
 | 4 | **WA Analytics** | PKT-4 | WA-6 NLP Stages 4-7 + Backend proxy | 1 WA faz, ~8 alt madde | ✅ PASS (iter 7) |
 | 5A | **Platform Infra** | PKT-5A | Phase 3A: Integrations (:7106) + Outbound v2 + Opt-in + Compliance | 5 GR, ~22 alt madde | ✅ PASS (iter 2, FORCE PASS) |
-| 5B | **Platform UI+Adv** | PKT-5B | Phase 3A kalan: Ads Attribution + Dashboard + Randevu Advanced | 3 GR, ~10 alt madde | ⬜ Bekliyor |
+| 5B | **Platform UI+Adv** | PKT-5B | Phase 3A kalan: Ads Attribution + Dashboard + Randevu Advanced | 3 GR, ~10 alt madde | ✅ PASS (iter 4, FORCE PASS) |
 | 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ⬜ Bekliyor |
 | 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ⬜ Bekliyor |
 | 6C | **Niche Health Expansion** | PKT-6C | Phase 3B: Saglik genisleme + Review Rescue + Multilingual (PKT-6B'ye bagli) | 5 GR, ~22 alt madde | ⬜ Bekliyor |
@@ -71,8 +71,9 @@
 - GR-3.4 HB API, GR-3.6 Kargo mock, GR-3.15 Outbound v2 (campaigns), GR-3.26 Opt-in Framework, GR-3.29 Compliance delta
 - Commit: d1e28bc (33 dosya +3445/-14). Codex iter 2 FORCE PASS.
 
-**PKT-5B: Platform UI+Adv** — Dashboard + Ads + Randevu genişletme
+**PKT-5B: Platform UI+Adv** ✅ — Dashboard + Ads + Randevu genişletme
 - GR-3.14 Ads Attribution, GR-3.18 Dashboard genişletme, GR-3.19 Randevu Advanced
+- Commit: 93d2392 (22 dosya +2863/-55). Codex iter 4 FORCE PASS.
 
 **PKT-6A: Niche Foundation** — Intent + Onboarding + Voice AI (7 GR, ~28 item)
 - GR-3.1 Intent Genişletme + Oto. Etiketleme (e-ticaret)
@@ -147,6 +148,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260217-pkt5b-platform-ui-adv | 2026-02-17 | Paket 5B: Platform UI+Adv (GR-3.14 Ads Attribution + GR-3.18 Dashboard + GR-3.19 Randevu Advanced). 22 dosya +2863/-55. Codex iter 4 FORCE PASS (chunked review: 4 chunks). Commit: 93d2392. Plan: `arch/plans/20260217-pkt5b-platform-ui-adv.json` |
 | 20260217-pkt5a-platform-infra | 2026-02-17 | Paket 5A: Platform Infra (GR-3.4 Integrations :7106 + GR-3.6 Kargo mock + GR-3.15 Outbound v2 + GR-3.26 Opt-in + GR-3.29 Compliance). 33 dosya +3445/-14. Codex iter 2 FORCE PASS (split review: Part1 137KB + Part2 209KB). Commit: d1e28bc. Plan: `arch/plans/20260217-pkt5a-platform-infra.json` |
 | PKT-3-ops-dashboard | 2026-02-16 | Paket 3: Ops Dashboard (GR-2.5 + WA-4). Commit: 63543d4. Codex CQ 8/8 PASS, Q FORCE PASS. |
 | PKT-2-saglik-core | 2026-02-16 | Paket 2: Saglik Core (GR-2.4 Randevu Motoru + GR-2.6 KVKK Minimum). Yeni Invekto.Appointments servis (port 7102), slot CRUD, booking, IHostedService reminder (T-48h/T-2h), KVKK 5 servis (disclaimer, photo block, medical tag, AgentAI warning). 31 dosya +9006/-15. Codex iter 1 FORCE PASS. Commit: e994e29. Plan: `arch/plans/20260215-pkt2-saglik-core.json` |

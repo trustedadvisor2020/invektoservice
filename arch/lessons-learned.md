@@ -48,6 +48,12 @@
 | 2026-02-17 | Secret scan hook `password\s*[:=]` appsettings.json'da yakaladi | Password/SecretKey field'larini dev template'den cikar | **Dev appsettings.json'da password field BIRAKMA - Production.json'da olsun** |
 | 2026-02-17 | Codex CQ1 `!` reddetti sonra `??` fallback'i de reddetti (dongusal) | Q FORCE PASS (2 iter sonra) | **Codex dongusal cikis yolu yoksa 2. iter'de Q FORCE PASS escalation** |
 | 2026-02-17 | NpgsqlBatch per-message audit loop yerine batch insert | BatchInsertAuditTrailAsync tek batch | **N+1 insert dongusu yerine NpgsqlBatch kullan - ozellikle audit trail gibi bulk insert'lerde** |
+| 2026-02-17 | SQL string concatenation (5 method) Codex CQ5 FAIL | const string + COALESCE/conditional WHERE refactor | **Dinamik WHERE/SET icin string concat YASAK - `@param IS NULL OR col = @param` veya COALESCE pattern kullan** |
+| 2026-02-17 | DateOnly.Parse query param'da try-catch yok - unhandled 500 | FormatException catch + 400 response | **User input parse (DateOnly, int, etc.) MUTLAKA TryParse/try-catch ile dogrula** |
+| 2026-02-17 | Fire-and-forget `_ = service.MethodAsync()` exception kayboldu | `.ContinueWith(OnlyOnFaulted)` + SystemWarn | **Fire-and-forget Task = ContinueWith(OnlyOnFaulted) ile LOGLA** |
+| 2026-02-17 | HttpRequestMessage/HttpResponseMessage dispose edilmedi | `using var` eklendi | **HTTP message nesneleri MUTLAKA using ile sarmalani** |
+| 2026-02-17 | Chunked Codex review CoVe UNKNOWN - logic baska chunk'ta | Chunk'lar arasi verdict birlestirildi | **Chunked review'da CoVe UNKNOWN = baska chunk'ta PASS olabilir, cross-reference kontrol et** |
+| 2026-02-17 | Backend Program.cs logger adi `jsonLog` ama `jsonLogger` yazildi | Endpoint imzasindaki parametre adi kontrol edildi | **Logger kullanirken ONCE endpoint method signature'daki parametre adini kontrol et** |
 
 ### Deploy & Config
 
