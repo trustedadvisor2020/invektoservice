@@ -222,6 +222,8 @@
 | .gitignore proaktif audit | Git hygiene | deploy_output + usage-data + diffs eklenmezse secret leak + 10K+ pending dosya riski |
 | Split Codex review (servis bazli) | PKT-5A 345KB diff | Full diff context asar, servis bazli split = her part <200KB, anlamli review |
 | NpgsqlBatch bulk insert | Audit trail, batch ops | N+1 insert dongusu yerine tek batch = tek roundtrip, atomik |
+| Cross-service client (Service→Service HTTP) | KnowledgeIntentClient (Automation→Knowledge) | Servisler arasi veri cekme icin typed HTTP client + fallback + timeout, DB dogrudan erisim YASAK |
+| DB-driven intent pattern (seed + runtime) | PKT-6A AiIntentHandler | Hardcoded intent yerine DB'den cek, sektor bazli seed data ile bootstrap, runtime'da CRUD |
 
 ### UI & Frontend
 

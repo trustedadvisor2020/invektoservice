@@ -28,6 +28,12 @@ public sealed class ExecutionContext
     public bool IsSimulation { get; init; }
     /// <summary>Tenant ID for tenant-scoped services (e.g. FaqMatcher DB query). 0 = unknown.</summary>
     public int TenantId { get; init; }
+
+    /// <summary>PKT-6A: DB-loaded tenant intent names from Knowledge service. Null = use IntentDetector defaults.</summary>
+    public string[]? TenantIntents { get; init; }
+
+    /// <summary>PKT-6A: Tenant confidence threshold from settings_json. Used as fallback by AiIntentHandler.</summary>
+    public double TenantConfidenceThreshold { get; init; } = 0.5;
 }
 
 /// <summary>

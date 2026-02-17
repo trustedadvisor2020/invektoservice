@@ -113,6 +113,29 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<SimulationEngine>(
 builder.Services.AddSingleton<MockFaqMatcher>();
 builder.Services.AddSingleton<MockIntentDetector>();
 
+// PKT-6A: Register JwtGenerator for service-to-service auth
+var jwtGenerator = new JwtGenerator(jwtSettings);
+builder.Services.AddSingleton(jwtGenerator);
+
+// PKT-6A: Register KnowledgeIntentClient (typed HttpClient with 3s timeout)
+var knowledgeBaseUrl = builder.Configuration["Knowledge:BaseUrl"] ?? "http://localhost:7104";
+var knowledgeTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:IntentFetchTimeoutMs", 3000);
+builder.Services.AddHttpClient<KnowledgeIntentClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri(knowledgeBaseUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(knowledgeTimeoutMs);
+});
+
+// PKT-6A: Register VipDetectionService (with HttpClient for sales webhook)
+builder.Services.AddHttpClient<VipDetectionService>();
+
+// PKT-6A: Register OnboardingService (with HttpClient for Knowledge seed API)
+builder.Services.AddHttpClient<OnboardingService>((sp, client) =>
+{
+    client.BaseAddress = new Uri(knowledgeBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // Register orchestrator
 builder.Services.AddSingleton<AutomationOrchestrator>();
 
@@ -122,7 +145,7 @@ var app = builder.Build();
 app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
-app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/");
+app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/", "/api/v1/onboarding/");
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -871,6 +894,50 @@ app.MapDelete("/api/v1/faq/{tenantId:int}/{id:int}", async (int tenantId, int id
 });
 
 // ============================================================
+// PKT-6A: Onboarding endpoint (seed tenant intents from sector templates)
+// ============================================================
+
+app.MapPost("/api/v1/onboarding/{tenantId:int}/seed-intents", async (int tenantId, HttpContext ctx, OnboardingService onboarding, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var sector = root.TryGetProperty("sector", out var s) ? s.GetString() : null;
+        if (string.IsNullOrWhiteSpace(sector))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector is required (eticaret, dis_klinik, estetik)", requestId), statusCode: 400);
+
+        // Generate service JWT for Knowledge API call
+        var jwtGen = app.Services.GetRequiredService<JwtGenerator>();
+        var serviceJwt = jwtGen.GenerateServiceToken(tenantId);
+
+        var count = await onboarding.SeedTenantIntentsAsync(tenantId, sector, serviceJwt, ctx.RequestAborted);
+
+        if (count < 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationKnowledgeIntentFetchFailed, "Knowledge service seed call failed", requestId), statusCode: 502);
+
+        jsonLogger.StepInfo($"Onboarding: seeded {count} intents for tenant {tenantId}, sector={sector}", requestId);
+        return Results.Ok(new { tenant_id = tenantId, sector, intents_seeded = count, status = "seeded" });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"Onboarding seed failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -895,6 +962,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/faq/{tenantId}", Description = "Create FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "PUT", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Update FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "DELETE", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Delete FAQ entry", Auth = "Bearer JWT", Category = "API" },
+        new() { Method = "POST", Path = "/api/v1/onboarding/{tenantId}/seed-intents", Description = "Seed tenant intents from sector templates (PKT-6A)", Auth = "Bearer JWT", Category = "Onboarding" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },

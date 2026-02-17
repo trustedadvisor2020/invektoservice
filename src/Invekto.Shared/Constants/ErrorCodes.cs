@@ -66,6 +66,10 @@ public static class ErrorCodes
     public const string AutomationApiCallTimeout = "INV-AT-023";
     public const string AutomationApiCallHttpError = "INV-AT-024";
 
+    // Automation PKT-6A: Niche Foundation (INV-AT-025+)
+    public const string AutomationKnowledgeIntentFetchFailed = "INV-AT-025";
+    public const string AutomationVipDetectionFailed = "INV-AT-026";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";
@@ -120,6 +124,10 @@ public static class ErrorCodes
     public const string KnowledgeDocumentNotFound = "INV-KN-014";
     public const string KnowledgeUploadFailed = "INV-KN-015";
     public const string KnowledgePhotoBlockedHealthTenant = "INV-KN-016";
+
+    // Knowledge PKT-6A: Niche Foundation (INV-KN-017+)
+    public const string KnowledgeIntentPatternsNotFound = "INV-KN-017";
+    public const string KnowledgeIntentReadFailed = "INV-KN-018";
 
     // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
     public const string WAAnalysisNotFound = "INV-WA-001";

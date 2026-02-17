@@ -48,7 +48,7 @@ public sealed class AiIntentHandler : INodeHandler
     private async Task<NodeResult> DetectAndRoute(FlowNodeV2 node, ExecutionContext ctx, string userInput, CancellationToken ct)
     {
         var label = node.GetData("label", node.Id);
-        var threshold = ParseThreshold(node.GetData("confidence_threshold"), 0.5);
+        var threshold = ParseThreshold(node.GetData("confidence_threshold"), ctx);
         var customIntents = ParseIntents(node.GetData("intents"), ctx);
 
         string? detectedIntent = null;
@@ -103,34 +103,46 @@ public sealed class AiIntentHandler : INodeHandler
         };
     }
 
-    private static double ParseThreshold(string? raw, double fallback)
+    /// <summary>
+    /// Fallback chain: node config > tenant settings > 0.5 default.
+    /// PKT-6A: ctx.TenantConfidenceThreshold used as fallback instead of hardcoded 0.5.
+    /// </summary>
+    private static double ParseThreshold(string? raw, ExecutionContext ctx)
     {
-        if (string.IsNullOrWhiteSpace(raw))
-            return fallback;
-        return double.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var v)
-            ? Math.Clamp(v, 0.0, 1.0)
-            : fallback;
+        if (!string.IsNullOrWhiteSpace(raw) &&
+            double.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var v))
+            return Math.Clamp(v, 0.0, 1.0);
+
+        return ctx.TenantConfidenceThreshold;
     }
 
+    /// <summary>
+    /// Fallback chain: node config intents > ctx.TenantIntents (from Knowledge DB) > null (use defaults).
+    /// PKT-6A: DB-driven intents via ExecutionContext.
+    /// </summary>
     private static string[]? ParseIntents(string? rawJson, ExecutionContext ctx)
     {
-        if (string.IsNullOrWhiteSpace(rawJson) || rawJson == "[]")
-            return null;
+        // 1. Node-level explicit intents take priority
+        if (!string.IsNullOrWhiteSpace(rawJson) && rawJson != "[]")
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(rawJson);
+                var intents = doc.RootElement.EnumerateArray()
+                    .Select(e => e.GetString())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s!)
+                    .ToArray();
+                if (intents.Length > 0)
+                    return intents;
+            }
+            catch (JsonException ex)
+            {
+                ctx.Logger.SystemWarn($"AiIntent: intents JSON parse failed: {ex.Message}, raw={rawJson}");
+            }
+        }
 
-        try
-        {
-            using var doc = JsonDocument.Parse(rawJson);
-            var intents = doc.RootElement.EnumerateArray()
-                .Select(e => e.GetString())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s!)
-                .ToArray();
-            return intents.Length > 0 ? intents : null;
-        }
-        catch (JsonException ex)
-        {
-            ctx.Logger.SystemWarn($"AiIntent: intents JSON parse failed: {ex.Message}, raw={rawJson}");
-            return null;
-        }
+        // 2. Tenant-level intents from Knowledge DB (PKT-6A)
+        return ctx.TenantIntents;
     }
 }

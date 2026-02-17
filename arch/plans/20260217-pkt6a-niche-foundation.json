@@ -1,0 +1,165 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-6A",
+  "gr_list": [
+    { "id": "GR-3.1", "description": "E-ticaret intent 5->12 + auto-tag + confidence threshold", "services_affected": ["Automation", "Knowledge", "Shared"] },
+    { "id": "GR-3.2", "description": "B2B/VIP lead detection + sales webhook", "services_affected": ["Automation"] },
+    { "id": "GR-3.5", "description": "Onboarding: sektor bazli intent seed + default ayarlar", "services_affected": ["Knowledge", "Automation"] },
+    { "id": "GR-3.9", "description": "Dis klinik 8 intent seeds", "services_affected": ["Knowledge"] },
+    { "id": "GR-3.10", "description": "Dis onboarding template", "services_affected": ["Knowledge"] },
+    { "id": "GR-3.12", "description": "Estetik 9 intent seeds", "services_affected": ["Knowledge"] }
+  ],
+  "slug": "20260217-pkt6a-niche-foundation",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-02-17T14:00:00Z",
+  "updated_at": "2026-02-17T16:30:00Z",
+  "plan": {
+    "summary": "DB-driven intent architecture: Knowledge service intent READ API, sector intent template seeds (3 sectors x 22 intents), B2B/VIP lead detection, auto-tagging via existing ApplyTag callback, confidence threshold fallback chain.",
+    "q_intent": "Pkt6a basla — Niche Foundation with 6 GRs (split from 11, remaining deferred to PKT-6B)",
+    "interview_notes": "Q chose: Split 6A+6B scope, Whisper API (cloud) for voice (deferred), DB-driven intents (recommended). Excluded: multi-turn (GR-3.1.4), API key self-service, wizard UI."
+  },
+  "allowed_files": [
+    "arch/db/pkt6a-niche.sql",
+    "arch/db/pkt6a-niche-seeds.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs",
+    "src/Invekto.Automation/Services/KnowledgeIntentClient.cs",
+    "src/Invekto.Automation/Services/VipDetectionService.cs",
+    "src/Invekto.Automation/Services/OnboardingService.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/appsettings.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/pkt6a-niche.sql", "is_new": true, "change": "DDL: sector_intent_templates + vip_flags tables" },
+    { "path": "arch/db/pkt6a-niche-seeds.sql", "is_new": true, "change": "22 sector intent seed records (7 eticaret + 6 dis_klinik + 9 estetik)" },
+    { "path": "arch/errors.md", "is_new": false, "change": "+4 error codes (INV-AT-025/026, INV-KN-017/018)" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+4 error code constants" },
+    { "path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false, "change": "+GetTenantIntentNamesAsync +GetSectorTemplatesAsync +SeedTenantIntentsFromSectorAsync +SectorIntentTemplateDto" },
+    { "path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "+GET /intents/{tid} +POST /intents/{tid}/seed endpoints" },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs", "is_new": false, "change": "ExecutionContext +TenantIntents +TenantConfidenceThreshold" },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs", "is_new": false, "change": "ParseIntents/ParseThreshold context-driven fallback chain" },
+    { "path": "src/Invekto.Automation/Services/KnowledgeIntentClient.cs", "is_new": true, "change": "Typed HTTP client for Knowledge intent fetch with graceful degradation" },
+    { "path": "src/Invekto.Automation/Services/VipDetectionService.cs", "is_new": true, "change": "B2B keyword scanner + vip_flags upsert + sales webhook" },
+    { "path": "src/Invekto.Automation/Services/OnboardingService.cs", "is_new": true, "change": "Sector template to tenant intent seeding via Knowledge API" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "+UpsertVipFlagAsync +IsVipPhoneAsync" },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false, "change": "+KnowledgeIntentClient/VipDetection DI, +pre-flow intent fetch, +post-flow VIP detection + auto-tag" },
+    { "path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "is_new": false, "change": "+tenantIntents/tenantConfidenceThreshold params to ExecuteAsync" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "+JwtGenerator, +KnowledgeIntentClient, +VipDetectionService, +OnboardingService DI, +onboarding endpoint" },
+    { "path": "src/Invekto.Automation/appsettings.json", "is_new": false, "change": "+Knowledge section (BaseUrl, IntentFetchTimeoutMs)" }
+  ],
+  "git_diff": {
+    "sha256": "37CE10C487268782B3A8F9E2D9A4B0A431A52AE274B2B38B6460BA821FC7FD49",
+    "full_path": "arch/plans/diffs/20260217-pkt6a-niche-foundation.diff",
+    "stats": {
+      "insertions": 918,
+      "deletions": 28,
+      "files_count": 16
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-17T16:25:00Z",
+    "duration_ms": 16900,
+    "output_tail": "Build succeeded. 0 Error(s). 12 Warning(s).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Knowledge", "Invekto.Automation"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does every SQL query include tenant_id in WHERE clause for data isolation?", "category": "Data" },
+    { "id": "Q2", "question": "Does KnowledgeIntentClient send JWT Bearer token with every request?", "category": "Auth" },
+    { "id": "Q3", "question": "When Knowledge service is down, does Automation gracefully fall back to default intents?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "Is B2B keyword matching case-insensitive via ToLowerInvariant?", "category": "Process/Policy" },
+    { "id": "Q5", "question": "Is vip_flags upsert idempotent via ON CONFLICT with GREATEST for score?", "category": "Data" },
+    { "id": "Q6", "question": "Does GET /intents/{tid} validate JWT tenant_id claim matches route tenantId?", "category": "Auth" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/", "src/Invekto.Outbound/", "src/Invekto.WhatsAppAnalytics/"],
+    "non_goals": ["Multi-turn intent (GR-3.1.4)", "Voice AI (GR-3.23)", "Handoff (GR-3.30)", "API key self-service", "Wizard UI"],
+    "intentional_exclusions": ["appsettings.Production.json (deploy phase)", "Frontend changes", "Integration tests"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "KnowledgeIntentClient.cs:31-81 (3 typed catch blocks)",
+      "VipDetectionService.cs:59-122 (NpgsqlException + general)",
+      "OnboardingService.cs:35-72 (TaskCanceled + HttpRequest)",
+      "AutomationOrchestrator.cs:305-315 (pre-flow enrichment)",
+      "AutomationOrchestrator.cs:SendAutoTagCallbackAsync (fire-and-forget)"
+    ],
+    "user_facing_errors": [
+      "502 Bad Gateway: Knowledge service seed call failed",
+      "400: sector is required",
+      "403: Token tenant does not match route tenant"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks log with error codes (INV-AT-025/026). KnowledgeIntentClient returns null on failure (logged). VipDetection returns null on failure (logged). No silent swallowing."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "B2B leads gizli kaliyor, satis ekibi toptan talepleri kaciriyor",
+      "suggestion": "VIP detection ile otomatik sales webhook tetikleme, aninda lead bildirim",
+      "aha_moment": "Satis ekibi toptan siparis mesajini aninda gorunce musteri henuz sicakken arayabilir"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni tenant onboarding'de intent'ler elle tanimlanmak zorunda",
+      "suggestion": "Sektor bazli tek API cagirisi ile 7-9 intent otomatik seed",
+      "aha_moment": "Tenant 1 dakikada sektorune ozel chatbot intent setine kavusur, elle tanimlamaya gerek yok"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Hardcoded 5 intent e-ticaret tenant'lari icin yetersiz, iade/iptal intent'leri eksik",
+      "suggestion": "DB-driven intent mimarisi ile tenant basina 12+ intent, sektor ozel",
+      "aha_moment": "E-ticaret tenant'i iade talebini ilk kez otomatik algilar, musteri bekleme suresi sifir"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Detected intent sonrasi müsteriye etiket atanmiyor, CRM'de filtreleme yapılamıyor",
+      "suggestion": "Auto-tag: detected intent otomatik olarak chat'e intent:xxx etiketi olarak uygulanir",
+      "aha_moment": "CRM'de 'intent:return_request' filtresini uygulayinca tum iade taleplerini tek ekranda goruntuler"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Dis klinik ve estetik klinikleri icin sektore ozel intent yok, genel intent'ler yetersiz",
+      "suggestion": "3 sektor (eticaret/dis/estetik) icin toplam 22 ozel intent template seed",
+      "aha_moment": "Dis klinigi acil dis agrisi mesajini 'emergency' olarak algilar, oncelikli yonlendirme yapar"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-17T16:40:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-17T16:45:00Z",
+    "iteration": 1,
+    "blocking_issues": [],
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "All endpoints return specific error codes" },
+      "CQ2": { "result": "PASS", "evidence": "No silent failures - all catch blocks log with error codes" },
+      "CQ3": { "result": "PASS", "evidence": "Minimal diff aligned with plan scope" },
+      "CQ4": { "result": "PASS", "evidence": "No duplicate logic" },
+      "CQ5": { "result": "PASS", "evidence": "Null-forgiving operator fixed. Bare catch(Exception) is existing pattern for fire-and-forget" },
+      "CQ6": { "result": "PASS", "evidence": "No N+1 or unbounded loops" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK markers" },
+      "CQ8": { "result": "PASS", "evidence": "FlowEngineV2 signature change uses defaults, all 3 call sites verified backward compatible" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "All tenant-scoped queries use tenant_id. sector_intent_templates is by-design global (no tenant FK)." },
+      "Q2": { "result": "PASS", "reasoning": "KnowledgeIntentClient.cs:35 sets Bearer auth on every request." },
+      "Q3": { "result": "PASS", "reasoning": "Returns null on all failure modes, orchestrator falls back to defaults." },
+      "Q4": { "result": "PASS", "reasoning": "ToLowerInvariant + StringComparison.Ordinal matching." },
+      "Q5": { "result": "PASS", "reasoning": "ON CONFLICT (tenant_id, phone) DO UPDATE with GREATEST." },
+      "Q6": { "result": "PASS", "reasoning": "GetValidatedTenant checks JWT tenant matches route." }
+    }
+  }
+}

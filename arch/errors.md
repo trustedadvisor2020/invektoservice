@@ -109,6 +109,8 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-022 | API call SSRF blocked | API adresi guvenlik kontrolunden gecemedi (dahili adresler engellenmistir). |
 | INV-AT-023 | API call timeout | API cagrisi zaman asimina ugradi ({timeout_ms}ms). |
 | INV-AT-024 | API call HTTP error | API cagrisi HTTP hatasi ({status_code}): {reason} |
+| INV-AT-025 | Knowledge intent fetch failed | Intent bilgileri alinamadi, varsayilan intent seti kullaniliyor. |
+| INV-AT-026 | VIP detection failed | VIP/B2B tespit islemi basarisiz (akis etkilenmez). |
 
 ---
 
@@ -254,6 +256,8 @@ INV-{SERVICE}-{NUMBER}
 | INV-KN-014 | Document not found | Dokuman bulunamadi. |
 | INV-KN-015 | Upload failed | Dosya yukleme hatasi. |
 | INV-KN-016 | Photo blocked (health tenant) | Saglik tenant'lari icin hasta fotografi yuklemesi engellendi (KVKK). |
+| INV-KN-017 | Intent patterns not found | Bu tenant icin intent tanimlari bulunamadi. |
+| INV-KN-018 | Intent read failed | Intent tanimlari okunurken hata olustu. |
 
 ---
 

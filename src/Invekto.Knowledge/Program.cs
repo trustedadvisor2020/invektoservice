@@ -573,6 +573,69 @@ app.MapDelete("/api/v1/knowledge/{tenantId:int}/documents/{docId:int}", async (
 });
 
 // ============================================================
+// Intent patterns endpoints (PKT-6A: Niche Foundation)
+// ============================================================
+
+// Get tenant intent names (used by Automation service for DB-driven intents)
+app.MapGet("/api/v1/knowledge/{tenantId:int}/intents", async (
+    int tenantId,
+    HttpContext ctx,
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var intents = await repo.GetTenantIntentNamesAsync(tenantId);
+        return Results.Ok(new { intents, count = intents.Count });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeIntentReadFailed}] Intent read failed for tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentReadFailed, "Intent read failed", requestId), statusCode: 500);
+    }
+});
+
+// Seed tenant intents from sector templates (onboarding)
+app.MapPost("/api/v1/knowledge/{tenantId:int}/intents/seed", async (
+    int tenantId,
+    HttpContext ctx,
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger,
+    string? sector) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "sector query parameter is required (eticaret, dis_klinik, estetik)", requestId), statusCode: 400);
+
+    try
+    {
+        var seeded = await repo.SeedTenantIntentsFromSectorAsync(tenantId, sector);
+        if (seeded == 0)
+        {
+            jsonLogger.SystemWarn($"[{ErrorCodes.KnowledgeIntentPatternsNotFound}] No templates found for sector '{sector}', tenant {tenantId}");
+            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentPatternsNotFound, $"No templates found for sector '{sector}'", requestId), statusCode: 404);
+        }
+
+        jsonLogger.StepInfo($"Seeded {seeded} intents for tenant {tenantId} from sector '{sector}'", requestId);
+        return Results.Ok(new { seeded, sector, tenantId });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeIntentReadFailed}] Intent seed failed for tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentReadFailed, "Intent seed failed", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Generate embeddings endpoint (background trigger)
 // ============================================================
 
@@ -645,6 +708,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/knowledge/{tenantId}/documents/{id}", Description = "Get document detail", Auth = "Bearer JWT", Category = "Document" },
         new() { Method = "DELETE", Path = "/api/v1/knowledge/{tenantId}/documents/{id}", Description = "Delete document + chunks", Auth = "Bearer JWT", Category = "Document" },
         new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/generate-embeddings", Description = "Generate embeddings for FAQs without one", Auth = "Bearer JWT", Category = "Embedding" },
+        new() { Method = "GET", Path = "/api/v1/knowledge/{tenantId}/intents", Description = "Get tenant intent names (DB-driven)", Auth = "Bearer JWT", Category = "Intent" },
+        new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/intents/seed", Description = "Seed intents from sector templates", Auth = "Bearer JWT", Category = "Intent" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

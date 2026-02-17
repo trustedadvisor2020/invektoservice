@@ -868,6 +868,90 @@ public sealed class KnowledgeRepository
     }
 
     // ============================================================
+    // Intent patterns READ (PKT-6A: Niche Foundation)
+    // ============================================================
+
+    /// <summary>
+    /// Get intent names for a tenant from intent_patterns table.
+    /// Returns empty list if no patterns exist (caller decides fallback).
+    /// </summary>
+    public async Task<List<string>> GetTenantIntentNamesAsync(int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT intent_name FROM intent_patterns
+            WHERE tenant_id = @tid
+            ORDER BY intent_name";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var names = new List<string>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            names.Add(reader.GetString(0));
+
+        return names;
+    }
+
+    /// <summary>
+    /// Get sector intent templates (global, no tenant FK).
+    /// Used by onboarding to seed tenant-specific intents.
+    /// </summary>
+    public async Task<List<SectorIntentTemplateDto>> GetSectorTemplatesAsync(string sector, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT id, sector, intent_name, keywords, description
+            FROM sector_intent_templates
+            WHERE sector = @sector
+            ORDER BY intent_name";
+        cmd.Parameters.AddWithValue("sector", sector);
+
+        var templates = new List<SectorIntentTemplateDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            templates.Add(new SectorIntentTemplateDto
+            {
+                Id = reader.GetInt32(0),
+                Sector = reader.GetString(1),
+                IntentName = reader.GetString(2),
+                Keywords = reader.IsDBNull(3) ? Array.Empty<string>() : (string[])reader.GetValue(3),
+                Description = reader.IsDBNull(4) ? null : reader.GetString(4)
+            });
+        }
+
+        return templates;
+    }
+
+    /// <summary>
+    /// Seed tenant intent_patterns from sector_intent_templates.
+    /// Uses existing BatchInsertIntentPatternsAsync internally.
+    /// Returns count of seeded intents.
+    /// </summary>
+    public async Task<int> SeedTenantIntentsFromSectorAsync(int tenantId, string sector, CancellationToken ct = default)
+    {
+        var templates = await GetSectorTemplatesAsync(sector, ct);
+        if (templates.Count == 0)
+        {
+            _logger.SystemWarn($"[{Invekto.Shared.Constants.ErrorCodes.KnowledgeIntentPatternsNotFound}] No sector templates found for sector '{sector}'");
+            return 0;
+        }
+
+        var rows = templates.Select(t => new IntentPatternRow
+        {
+            IntentName = t.IntentName,
+            Keywords = t.Keywords,
+            ConfidenceAvg = null,
+            SampleCount = 0,
+            SampleMessagesJson = "[]"
+        }).ToList();
+
+        return await BatchInsertIntentPatternsAsync(tenantId, rows, ct);
+    }
+
+    // ============================================================
     // KVKK health tenant check (GR-2.6)
     // ============================================================
 
@@ -1049,4 +1133,14 @@ public sealed class ChunkInsertRow
     public required string Content { get; init; }
     public int ChunkIndex { get; init; }
     public string? MetadataJson { get; init; }
+}
+
+// PKT-6A: Sector intent template DTO
+public sealed class SectorIntentTemplateDto
+{
+    public int Id { get; init; }
+    public required string Sector { get; init; }
+    public required string IntentName { get; init; }
+    public string[] Keywords { get; init; } = Array.Empty<string>();
+    public string? Description { get; init; }
 }

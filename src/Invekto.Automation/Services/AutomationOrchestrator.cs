@@ -27,6 +27,9 @@ public sealed class AutomationOrchestrator
     private readonly IntentDetector _intentDetector;
     private readonly WorkingHoursChecker _workingHours;
     private readonly MainAppCallbackClient _callbackClient;
+    private readonly KnowledgeIntentClient _knowledgeIntentClient;
+    private readonly VipDetectionService _vipDetection;
+    private readonly JwtGenerator _jwtGenerator;
     private readonly JsonLinesLogger _logger;
 
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
@@ -40,6 +43,9 @@ public sealed class AutomationOrchestrator
         IntentDetector intentDetector,
         WorkingHoursChecker workingHours,
         MainAppCallbackClient callbackClient,
+        KnowledgeIntentClient knowledgeIntentClient,
+        VipDetectionService vipDetection,
+        JwtGenerator jwtGenerator,
         JsonLinesLogger logger)
     {
         _repo = repo;
@@ -49,6 +55,9 @@ public sealed class AutomationOrchestrator
         _intentDetector = intentDetector;
         _workingHours = workingHours;
         _callbackClient = callbackClient;
+        _knowledgeIntentClient = knowledgeIntentClient;
+        _vipDetection = vipDetection;
+        _jwtGenerator = jwtGenerator;
         _logger = logger;
     }
 
@@ -289,8 +298,25 @@ public sealed class AutomationOrchestrator
             state.Variables["__last_input"] = messageText;
         }
 
-        // 4. Execute pure engine
-        var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId);
+        // 4a. PKT-6A: Fetch tenant intents from Knowledge (graceful degradation: null = defaults)
+        string[]? tenantIntents = null;
+        double tenantConfidenceThreshold = 0.5;
+        string? settingsJson = null;
+        try
+        {
+            var serviceJwt = _jwtGenerator.GenerateServiceToken(tenantId);
+            tenantIntents = await _knowledgeIntentClient.GetTenantIntentsAsync(tenantId, serviceJwt, ct);
+            settingsJson = await _repo.GetTenantSettingsJsonAsync(tenantId, ct);
+            tenantConfidenceThreshold = ExtractConfidenceThreshold(settingsJson);
+        }
+        catch (Exception ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment failed for tenant {tenantId}: {ex.Message}");
+        }
+
+        // 4b. Execute pure engine (with tenant intents + threshold)
+        var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
+            tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold);
 
         // 5. Side-effects: send messages
         if (result.Messages.Count > 0)
@@ -345,6 +371,21 @@ public sealed class AutomationOrchestrator
         {
             var stateJson = SerializeV2State(result.State);
             await _repo.UpdateSessionAsync(session.Id, "v2_active", stateJson, ct);
+        }
+
+        // 8. PKT-6A: Post-flow side-effects (fire-and-forget, non-blocking)
+        //    a) Auto-tag: if detected_intent present, send apply_tag callback
+        if (result.State.Variables.TryGetValue("detected_intent", out var detectedIntent)
+            && !string.IsNullOrWhiteSpace(detectedIntent) && detectedIntent != "unknown")
+        {
+            _ = SendAutoTagCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                detectedIntent, callbackUrl, ct);
+        }
+
+        //    b) VIP/B2B detection on every user message
+        if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(messageText))
+        {
+            _ = _vipDetection.CheckAndRecordAsync(tenantId, phone, messageText, settingsJson, CancellationToken.None);
         }
 
         return true;
@@ -540,6 +581,66 @@ public sealed class AutomationOrchestrator
         var isHealth = KvkkHelper.IsHealthTenant(settingsJson, sector);
         _healthTenantCache.TryAdd(tenantId, isHealth);
         return isHealth;
+    }
+
+    /// <summary>
+    /// PKT-6A: Send auto-tag callback to Backend for detected intent.
+    /// Uses existing CallbackActions.ApplyTag + CallbackData.TagName. Fire-and-forget.
+    /// </summary>
+    private async Task SendAutoTagCallbackAsync(
+        string requestId, int tenantId, int chatId, long sequenceId,
+        string intentName, string? callbackUrl, CancellationToken ct)
+    {
+        try
+        {
+            var tagName = $"intent:{intentName}";
+            var callback = new OutgoingCallback
+            {
+                RequestId = requestId,
+                Action = CallbackActions.ApplyTag,
+                TenantId = tenantId,
+                ChatId = chatId,
+                SequenceId = sequenceId,
+                Data = new CallbackData
+                {
+                    TagName = tagName,
+                    Intent = intentName
+                },
+                ProcessingTimeMs = 0
+            };
+
+            var delivered = await _callbackClient.SendCallbackAsync(callback, callbackUrl, ct);
+            if (!delivered)
+                _logger.SystemWarn($"Auto-tag callback failed: tenant={tenantId}, chat={chatId}, tag={tagName}");
+        }
+        catch (Exception ex)
+        {
+            _logger.SystemWarn($"Auto-tag callback error: tenant={tenantId}, chat={chatId}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// PKT-6A: Extract confidence_threshold from tenant settings_json.
+    /// Returns 0.5 default if not found or invalid.
+    /// </summary>
+    private static double ExtractConfidenceThreshold(string? settingsJson)
+    {
+        if (string.IsNullOrWhiteSpace(settingsJson))
+            return 0.5;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(settingsJson);
+            if (doc.RootElement.TryGetProperty("confidence_threshold", out var threshEl)
+                && threshEl.ValueKind == JsonValueKind.Number)
+            {
+                var value = threshEl.GetDouble();
+                return value is > 0 and <= 1.0 ? value : 0.5;
+            }
+        }
+        catch (JsonException) { }
+
+        return 0.5;
     }
 
     private async Task<bool> SendHandoffAsync(

@@ -5,9 +5,9 @@
 ## Last Update
 
 - **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-5B Platform UI+Adv — GR-3.14 Ads Attribution (UTM/Meta webhook, lead CRUD, CPL), GR-3.18 Dashboard genişletme (campaign+attribution panel), GR-3.19 Randevu Advanced (waitlist, no-show, pricing, doctor slots, calendar sync mock). Commit: 93d2392 (22 dosya +2863/-55). Codex 4 iter FORCE PASS.
-- **Next Task:** PKT-6A Niche Foundation (7 GR: Intent genişletme, Onboarding, Voice AI) veya Q deploy. Phase 3A (PKT-5A+5B) tamamlandı.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-6A Niche Foundation — DONE. 7 GR: DB-driven intent mimarisi (Knowledge→Automation bridge), 22 sektor intent seed (eticaret/dis/estetik), B2B/VIP lead detection + sales webhook, auto-tagging via ApplyTag callback, confidence threshold fallback chain, onboarding seed API. 16 dosya +918/-28. Codex 2-chunk review, iteration=1 PASS.
+- **Next Task:** PKT-6B Niche Business Logic (7 GR: Outbound E-ticaret, Iade Cevirme, Lead Mgmt v2, Agent Assist genisleme, Yorum Kurtarma). Phase 3B devam.
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 - **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
@@ -44,7 +44,7 @@
 | 4 | **PKT-4 WA Analytics** | WA-6 (NLP stages 4-7 + proxy) | ✅ PASS (iter 7) |
 | 5A | **PKT-5A Platform Infra** | Phase 3A: Integrations (:7106), Kargo mock, Outbound v2, Opt-in, Compliance | ✅ PASS (iter 2, FORCE PASS) |
 | 5B | **PKT-5B Platform UI+Adv** | Phase 3A kalan: Ads Attribution, Dashboard, Randevu Advanced | ✅ PASS (iter 4, FORCE PASS) |
-| 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ⬜ Bekliyor |
+| 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ✅ PASS (iter 1) |
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ⬜ Bekliyor |
 | 6C | **PKT-6C Niche Health Expansion** | Phase 3B: Sağlık + Review Rescue + Multilingual (5 GR) | ⬜ Bekliyor |
 | 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
@@ -388,6 +388,30 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-6A Niche Foundation TAMAMLANDI (2026-02-17)
+
+**Plan:** `arch/plans/20260217-pkt6a-niche-foundation.json` (status: DONE)
+**Scope:** 7 GR — DB-driven intent mimarisi, Knowledge→Automation bridge, 22 sektor intent seed, B2B/VIP lead detection, auto-tagging, onboarding seed API.
+**Stats:** 16 dosya +918/-28. Codex 2-chunk review, iteration=1 PASS.
+
+**GR-3.1 Intent Genisleme + Oto. Etiketleme:**
+- KnowledgeIntentClient: Knowledge Service'ten sektor intent pattern'leri cekme
+- AiIntentHandler: DB-driven intent match (confidence threshold fallback chain)
+- ApplyTag callback via AutomationOrchestrator
+
+**GR-3.2 B2B / VIP Lead Tespiti:**
+- VipDetectionService: Siparis hacmi, mesaj frekansi, anahtar kelime analizi
+- Sales webhook notification (high-value lead alert)
+
+**GR-3.5 + GR-3.9 + GR-3.10 + GR-3.12 Onboarding + Sektor Intent:**
+- OnboardingService: Tenant sektor bazli seed data (intent + FAQ + flow template)
+- Knowledge endpoint: Sektor intent pattern CRUD
+- 22 intent seed (eticaret/dis/estetik)
+
+**Q Operational Tasks (PKT-6A):**
+- [ ] pkt6a-niche.sql calistir (PostgreSQL)
+- [ ] pkt6a-niche-seeds.sql calistir (seed data)
 
 ### PKT-5B Platform UI+Adv TAMAMLANDI (2026-02-17)
 

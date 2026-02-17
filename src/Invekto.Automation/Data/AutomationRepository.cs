@@ -437,6 +437,53 @@ public sealed class AutomationRepository
     }
 
     // ============================================================
+    // vip_flags (PKT-6A: GR-3.2 B2B/VIP Lead Detection)
+    // ============================================================
+
+    /// <summary>
+    /// Upsert a VIP flag. Returns true if newly inserted (first detection), false if updated.
+    /// ON CONFLICT: updates last_seen and takes the higher detection_score.
+    /// </summary>
+    public async Task<bool> UpsertVipFlagAsync(
+        int tenantId, string phone, string vipType, decimal detectionScore,
+        string[] matchedSignals, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO vip_flags (tenant_id, phone, vip_type, detection_score, matched_signals)
+            VALUES (@tid, @phone, @type, @score, @signals)
+            ON CONFLICT (tenant_id, phone) DO UPDATE SET
+                last_seen = NOW(),
+                detection_score = GREATEST(vip_flags.detection_score, EXCLUDED.detection_score),
+                matched_signals = EXCLUDED.matched_signals
+            RETURNING (xmax = 0) AS is_insert";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", phone);
+        cmd.Parameters.AddWithValue("type", vipType);
+        cmd.Parameters.AddWithValue("score", detectionScore);
+        cmd.Parameters.Add(new NpgsqlParameter("signals", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = matchedSignals });
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is bool isInsert && isInsert;
+    }
+
+    /// <summary>
+    /// Check if a phone is flagged as VIP for a tenant.
+    /// </summary>
+    public async Task<bool> IsVipPhoneAsync(int tenantId, string phone, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM vip_flags WHERE tenant_id = @tid AND phone = @phone";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", phone);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result != null;
+    }
+
+    // ============================================================
     // Working hours (from tenant_registry.settings_json)
     // ============================================================
 
