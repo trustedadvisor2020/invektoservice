@@ -1217,6 +1217,11 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/appointments/pricing", Description = "Create pricing proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "PUT", Path = "/api/v1/appointments/pricing/{id}", Description = "Update pricing proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/appointments/calendar/status", Description = "Calendar sync status proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/lifecycle/start", Description = "Start treatment lifecycle proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/lifecycle", Description = "List lifecycles proxy (?type=&status=)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/lifecycle/{id}", Description = "Get lifecycle proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/lifecycle/{id}/cancel", Description = "Cancel lifecycle proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/lifecycle/{id}/response", Description = "Record patient response proxy", Auth = "Bearer", Category = "API" },
 
             // GR-3.14: Attribution
             new() { Method = "GET", Path = "/api/v1/attribution/leads", Description = "List lead attributions", Auth = "Bearer", Category = "API" },
@@ -2228,6 +2233,22 @@ app.MapPut("/api/v1/appointments/pricing/{id:int}", async (HttpContext ctx, Appo
 // GR-3.19: Calendar sync status proxy
 app.MapGet("/api/v1/appointments/calendar/status", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
     await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/calendar/status"));
+
+// GR-3.20/3.41/3.43: Treatment Lifecycle proxy endpoints
+app.MapPost("/api/v1/appointments/lifecycle/start", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/lifecycle/start"));
+
+app.MapGet("/api/v1/appointments/lifecycle", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/lifecycle"));
+
+app.MapGet("/api/v1/appointments/lifecycle/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}"));
+
+app.MapPost("/api/v1/appointments/lifecycle/{id:int}/cancel", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}/cancel"));
+
+app.MapPost("/api/v1/appointments/lifecycle/{id:int}/response", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}/response"));
 
 // ============================================
 // GR-3.14: ATTRIBUTION ENDPOINTS (/api/v1/attribution/*)

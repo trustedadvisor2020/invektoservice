@@ -221,6 +221,11 @@ INV-{SERVICE}-{NUMBER}
 | INV-AP-013 | Invalid pricing payload | Gecersiz fiyat tanimlama istegi. |
 | INV-AP-014 | Pricing not found | Fiyat kaydi bulunamadi. |
 | INV-AP-015 | Calendar sync failed | Takvim senkronizasyon hatasi. |
+| INV-AP-016 | Invalid lifecycle payload | Gecersiz tedavi takip istegi. |
+| INV-AP-017 | Lifecycle not found | Tedavi takip kaydi bulunamadi. |
+| INV-AP-018 | Lifecycle already finished | Tedavi takip sureci zaten tamamlanmis veya iptal edilmis. |
+| INV-AP-019 | Invalid lifecycle type | Gecersiz takip tipi (post_treatment, plan_approval, pre_op). |
+| INV-AP-020 | Lifecycle step send failed | Takip mesaji gonderilemedi. |
 
 ---
 

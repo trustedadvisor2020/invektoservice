@@ -39,7 +39,8 @@
 | 5B | **Platform UI+Adv** | PKT-5B | Phase 3A kalan: Ads Attribution + Dashboard + Randevu Advanced | 3 GR, ~10 alt madde | ✅ PASS (iter 4, FORCE PASS) |
 | 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ✅ PASS (iter 1) |
 | 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ✅ PASS (iter 2, FORCE PASS) |
-| 6C | **Niche Health Expansion** | PKT-6C | Phase 3B: Saglik genisleme + Review Rescue + Multilingual (PKT-6B'ye bagli) | 5 GR, ~22 alt madde | ⬜ Bekliyor |
+| 6C1 | **Health Automation** | PKT-6C1 | Phase 3B: TreatmentLifecycleService (GR-3.20+3.41+3.43) | 3 GR, ~12 alt madde | ✅ PASS (iter 7, FORCE PASS) |
+| 6C2 | **Niche Marketing** | PKT-6C2 | Phase 3B: Google Yorum + Medikal Turizm + Review Rescue + Multilingual | 4 GR, ~18 alt madde | ⬜ Bekliyor |
 | 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
 | 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
 | 9 | **Güzellik Salonu** | PKT-9 | Phase 3E: Güzellik Niche (config+content katmanı) | 8 GR, ~32 alt madde | ⬜ Bekliyor |
@@ -95,8 +96,13 @@
 - GR-3.17 İade Çevirme v2 (← GR-3.8 aynı paket)
 - **Bağımlılık:** PKT-5 Integrations (GR-3.3, 3.16, 3.17)
 
-**PKT-6C: Niche Health Expansion** — Sağlık genişleme + Review Rescue + Multilingual (5 GR, ~22 item)
-- GR-3.20 Tedavi Sonrası Takip
+**PKT-6C1: Health Automation** — TreatmentLifecycleService (3 GR, ~12 item) ✅ DONE
+- GR-3.20 Tedavi Sonrası Takip (T+24h, T+168h, T+720h)
+- GR-3.41 Tedavi Plani Onay Akisi (T+24h, T+72h, T+168h)
+- GR-3.43 Tedavi Oncesi Hazirlik (T-72h, T-24h, T-3h)
+- **Bağımlılık:** PKT-2 Appointments (mevcut servis genisleme)
+
+**PKT-6C2: Niche Marketing** — Google Yorum + Medikal Turizm + Review Rescue + Multilingual (4 GR, ~18 item)
 - GR-3.21 Google Yorum + Referans Motoru
 - GR-3.22 Medikal Turizm Lead (AR hariç)
 - GR-3.24 Proactive Review Rescue (← GR-3.8 PKT-6B + GR-3.16 PKT-6B)
@@ -148,6 +154,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260217-pkt6c1-health-automation | 2026-02-17 | Paket 6C1: Health Automation (3 GR: GR-3.20+3.41+3.43). TreatmentLifecycleService IHostedService, 2 DB tablosu, 5 endpoint, Backend proxy. 9 dosya +1450. Codex 3-chunk 7 iter, chunk 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6c1-health-automation.json` |
 | 20260217-pkt6b1-niche-business | 2026-02-17 | Paket 6B: Niche Business Logic (7 GR: Outbound e-ticaret/klinik, iade cevirme v1+v2, lead mgmt v2, agent assist e-ticaret, yorum kurtarma). 21 dosya. Codex 5-chunk review, 3 fix round, iter 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6b1-niche-business.json` |
 | 20260217-pkt6a-niche-foundation | 2026-02-17 | Paket 6A: Niche Foundation (7 GR: Intent genisleme, VIP lead detection, onboarding seed, sektor intent). 16 dosya +918/-28. Codex 2-chunk review, iter 1 PASS. Plan: `arch/plans/20260217-pkt6a-niche-foundation.json` |
 | 20260217-pkt5b-platform-ui-adv | 2026-02-17 | Paket 5B: Platform UI+Adv (GR-3.14 Ads Attribution + GR-3.18 Dashboard + GR-3.19 Randevu Advanced). 22 dosya +2863/-55. Codex iter 4 FORCE PASS (chunked review: 4 chunks). Commit: 93d2392. Plan: `arch/plans/20260217-pkt5b-platform-ui-adv.json` |

@@ -22,6 +22,8 @@ var outboundUrl = builder.Configuration["Outbound:Url"] ?? "";
 var outboundTimeoutMs = builder.Configuration.GetValue<int>("Outbound:TimeoutMs", 10000);
 var reminderIntervalMs = builder.Configuration.GetValue<int>("Reminder:IntervalMs", 300_000);
 var reminderBatchSize = builder.Configuration.GetValue<int>("Reminder:BatchSize", 50);
+var lifecycleIntervalMs = builder.Configuration.GetValue<int>("Lifecycle:IntervalMs", 300_000);
+var lifecycleBatchSize = builder.Configuration.GetValue<int>("Lifecycle:BatchSize", 50);
 
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
@@ -89,6 +91,17 @@ builder.Services.AddSingleton<WaitlistService>(sp =>
         sp.GetRequiredService<JwtGenerator>(),
         sp.GetRequiredService<JsonLinesLogger>()));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<WaitlistService>());
+
+// GR-3.20/3.41/3.43: Register TreatmentLifecycleService (IHostedService)
+builder.Services.AddSingleton<TreatmentLifecycleService>(sp =>
+    new TreatmentLifecycleService(
+        sp.GetRequiredService<AppointmentsRepository>(),
+        sp.GetRequiredService<IHttpClientFactory>(),
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>(),
+        lifecycleIntervalMs,
+        lifecycleBatchSize));
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TreatmentLifecycleService>());
 
 // GR-3.19: Calendar sync (mock for now, interface ready for Google Calendar)
 builder.Services.AddSingleton<ICalendarSyncService, MockCalendarSyncService>();
@@ -695,6 +708,189 @@ app.MapGet("/api/v1/appointments/no-show-stats", async (
 });
 
 // ============================================================
+// GR-3.20/3.41/3.43: Treatment Lifecycle endpoints
+// ============================================================
+
+app.MapPost("/api/v1/lifecycle/start", async (
+    HttpContext ctx, TreatmentLifecycleService lifecycleService,
+    JsonLinesLogger jsonLogger, LifecycleStartRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null
+        || string.IsNullOrWhiteSpace(request.LifecycleType)
+        || string.IsNullOrWhiteSpace(request.PatientPhone)
+        || string.IsNullOrWhiteSpace(request.PatientName)
+        || string.IsNullOrWhiteSpace(request.ReferenceDate))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleInvalidPayload,
+            "lifecycle_type, patient_phone, patient_name, reference_date are required", rid), statusCode: 400);
+    }
+
+    var validTypes = new[] { "post_treatment", "plan_approval", "pre_op" };
+    if (!validTypes.Contains(request.LifecycleType))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleInvalidType,
+            $"lifecycle_type must be one of: {string.Join(", ", validTypes)}", rid), statusCode: 400);
+    }
+
+    if (!DateTimeOffset.TryParse(request.ReferenceDate, out _))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleInvalidPayload,
+            "reference_date must be a valid ISO 8601 datetime", rid), statusCode: 400);
+    }
+
+    try
+    {
+        var followupId = await lifecycleService.StartLifecycleAsync(tenantContext.TenantId, request);
+        jsonLogger.SystemInfo($"Lifecycle started via API: id={followupId}, type={request.LifecycleType}, tenant={tenantContext.TenantId}");
+        return Results.Ok(new { id = followupId, lifecycle_type = request.LifecycleType, status = "active" });
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleInvalidType, ex.Message, rid), statusCode: 400);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Lifecycle start failed: tenant={tenantContext.TenantId}, error={ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Lifecycle start failed due to a database error", rid), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/lifecycle", async (
+    HttpContext ctx, AppointmentsRepository repository, JsonLinesLogger jsonLogger,
+    string? type, string? status) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var followups = await repository.GetFollowupsAsync(tenantContext.TenantId, type, status);
+        return Results.Ok(new { followups });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Lifecycle list failed: tenant={tenantContext.TenantId}, error={ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Lifecycle list failed due to a database error", rid), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/lifecycle/{id:int}", async (
+    HttpContext ctx, AppointmentsRepository repository, JsonLinesLogger jsonLogger, int id) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var followup = await repository.GetFollowupByIdAsync(tenantContext.TenantId, id);
+        if (followup == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleNotFound, "Lifecycle not found", rid), statusCode: 404);
+        return Results.Ok(followup);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Lifecycle get failed: id={id}, tenant={tenantContext.TenantId}, error={ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Lifecycle retrieval failed due to a database error", rid), statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/lifecycle/{id:int}/cancel", async (
+    HttpContext ctx, AppointmentsRepository repository, JsonLinesLogger jsonLogger, int id) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var cancelled = await repository.CancelFollowupAsync(tenantContext.TenantId, id);
+        if (!cancelled)
+        {
+            var existing = await repository.GetFollowupByIdAsync(tenantContext.TenantId, id);
+            if (existing == null)
+                return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleNotFound, "Lifecycle not found", rid), statusCode: 404);
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleAlreadyFinished,
+                $"Lifecycle already {existing.Status}", rid), statusCode: 409);
+        }
+
+        jsonLogger.SystemInfo($"Lifecycle cancelled via API: id={id}, tenant={tenantContext.TenantId}");
+        return Results.Ok(new { id, status = "cancelled" });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Lifecycle cancel failed: id={id}, tenant={tenantContext.TenantId}, error={ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Lifecycle cancellation failed due to a database error", rid), statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/lifecycle/{id:int}/response", async (
+    HttpContext ctx, AppointmentsRepository repository,
+    TreatmentLifecycleService lifecycleService,
+    JsonLinesLogger jsonLogger, int id, LifecycleResponseRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null || request.StepId <= 0)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleInvalidPayload,
+            "step_id is required and must be > 0", rid), statusCode: 400);
+    }
+
+    try
+    {
+        // Verify followup exists and is active
+        var followup = await repository.GetFollowupByIdAsync(tenantContext.TenantId, id);
+        if (followup == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleNotFound, "Lifecycle not found", rid), statusCode: 404);
+
+        if (followup.Status != "active")
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LifecycleAlreadyFinished,
+                $"Lifecycle already {followup.Status}", rid), statusCode: 409);
+
+        await repository.RecordPatientResponseAsync(
+            tenantContext.TenantId, id, request.StepId,
+            request.ResponseText, request.ComplaintDetected);
+
+        // If complaint detected, escalate to doctor
+        if (request.ComplaintDetected)
+        {
+            var stepContext = new DueStepCandidate
+            {
+                StepId = request.StepId,
+                FollowupId = id,
+                TenantId = tenantContext.TenantId,
+                PatientPhone = followup.PatientPhone,
+                PatientName = followup.PatientName,
+                LifecycleType = followup.LifecycleType,
+                TreatmentType = followup.TreatmentType
+            };
+            await lifecycleService.HandleComplaintEscalationAsync(tenantContext.TenantId, id, stepContext);
+            jsonLogger.SystemInfo($"Patient response with complaint: lifecycle={id}, step={request.StepId}, tenant={tenantContext.TenantId}");
+        }
+
+        return Results.Ok(new { message = "Response recorded", step_id = request.StepId, complaint_escalated = request.ComplaintDetected });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemError($"[{ErrorCodes.DatabaseConnectionFailed}] Lifecycle response failed: id={id}, step={request.StepId}, tenant={tenantContext.TenantId}, error={ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Lifecycle response recording failed due to a database error", rid), statusCode: 500);
+    }
+});
+
+// ============================================================
 // GR-3.19: Calendar sync status
 // ============================================================
 
@@ -733,6 +929,11 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/pricing", Description = "List service pricing (?all=true)", Auth = "Bearer JWT", Category = "Pricing" },
         new() { Method = "POST", Path = "/api/v1/pricing", Description = "Create service pricing", Auth = "Bearer JWT", Category = "Pricing" },
         new() { Method = "PUT", Path = "/api/v1/pricing/{id}", Description = "Update service pricing", Auth = "Bearer JWT", Category = "Pricing" },
+        new() { Method = "POST", Path = "/api/v1/lifecycle/start", Description = "Start treatment lifecycle", Auth = "Bearer JWT", Category = "Lifecycle" },
+        new() { Method = "GET", Path = "/api/v1/lifecycle", Description = "List lifecycles (?type=&status=)", Auth = "Bearer JWT", Category = "Lifecycle" },
+        new() { Method = "GET", Path = "/api/v1/lifecycle/{id}", Description = "Get lifecycle with steps", Auth = "Bearer JWT", Category = "Lifecycle" },
+        new() { Method = "POST", Path = "/api/v1/lifecycle/{id}/cancel", Description = "Cancel lifecycle", Auth = "Bearer JWT", Category = "Lifecycle" },
+        new() { Method = "POST", Path = "/api/v1/lifecycle/{id}/response", Description = "Record patient response", Auth = "Bearer JWT", Category = "Lifecycle" },
         new() { Method = "GET", Path = "/api/v1/calendar/status", Description = "Calendar sync status", Auth = "Bearer JWT", Category = "Calendar" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },

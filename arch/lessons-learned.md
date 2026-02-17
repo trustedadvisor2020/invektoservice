@@ -53,6 +53,10 @@
 | 2026-02-17 | Fire-and-forget `_ = service.MethodAsync()` exception kayboldu | `.ContinueWith(OnlyOnFaulted)` + SystemWarn | **Fire-and-forget Task = ContinueWith(OnlyOnFaulted) ile LOGLA** |
 | 2026-02-17 | HttpRequestMessage/HttpResponseMessage dispose edilmedi | `using var` eklendi | **HTTP message nesneleri MUTLAKA using ile sarmalani** |
 | 2026-02-17 | Chunked Codex review CoVe UNKNOWN - logic baska chunk'ta | Chunk'lar arasi verdict birlestirildi | **Chunked review'da CoVe UNKNOWN = baska chunk'ta PASS olabilir, cross-reference kontrol et** |
+| 2026-02-17 | Codex 8 iter scheduler cross-tenant query'ye tenant_id parametresi istiyor | Q FORCE PASS (scheduler by design) | **Scheduler (IHostedService) query'leri cross-tenant = verification question'da ACIKCA belirt, 3 iter sonra Q FORCE PASS** |
+| 2026-02-17 | Generic "Database error" user-facing mesajlar CQ1 FAIL | Operation-specific mesajlar yazildi | **User-facing error mesajlari operasyon adini icermeli: "Lifecycle start failed" > "Database error"** |
+| 2026-02-17 | HandleLastStepAsync escalation logic bug: response durumuna bakmadan escalation gonderiyor | Combined condition: `!IsNullOrEmpty(target) && !responded` | **Codex GERCEK logic bug bulabilir - PASS beklentisi ile ilerlemek yerine her FAIL'i ciddi al** |
+| 2026-02-17 | Empty cycle (idle timer tick) log'lanmayinca Q5 FAIL | SystemInfo idle cycle log eklendi | **Timer-based IHostedService'te idle tick'ler bile loglanmali (log volume kabul edilebilir)** |
 | 2026-02-17 | Backend Program.cs logger adi `jsonLog` ama `jsonLogger` yazildi | Endpoint imzasindaki parametre adi kontrol edildi | **Logger kullanirken ONCE endpoint method signature'daki parametre adini kontrol et** |
 | 2026-02-17 | 6 lead endpoint'te NpgsqlException catch eksik - Codex CQ1 FAIL | Her endpoint'e NpgsqlException catch eklendi | **DB cagiran TUM endpoint'ler (sadece repo degil) NpgsqlException catch ZORUNLU** |
 | 2026-02-17 | GetPendingFollowUpsAsync tenant_id parametresi yoktu | `int tenantId` + WHERE tenant_id = @tid eklendi | **Scheduled/helper query'ler de tenant_id filtresi ZORUNLU - "internal" olsa bile** |

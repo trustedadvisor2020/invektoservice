@@ -1,0 +1,192 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-6C1",
+  "gr_list": [
+    {
+      "id": "GR-3.20",
+      "description": "Tedavi Sonrasi Takip Otomasyonu (T+1, T+7, T+30 follow-up zinciri)",
+      "services_affected": ["Invekto.Appointments", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.41",
+      "description": "Tedavi Plani Onay Akisi (T+1, T+3, T+7 plan approval follow-up)",
+      "services_affected": ["Invekto.Appointments", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.43",
+      "description": "Tedavi Oncesi Hazirlik Talimatlari (T-3, T-1, T-sabah pre-op mesajlari)",
+      "services_affected": ["Invekto.Appointments", "Invekto.Shared"]
+    }
+  ],
+  "slug": "20260217-pkt6c1-health-automation",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-17T20:00:00Z",
+  "updated_at": "2026-02-17T20:00:00Z",
+  "plan": {
+    "summary": "TreatmentLifecycleService: Ortak IHostedService ile 3 saglik yasam dongusu otomasyonu (post-treatment, plan-approval, pre-op). 2 yeni DB tablosu, 5 yeni endpoint, Backend proxy, Outbound entegrasyonu.",
+    "q_intent": "PKT-6C1 Health Automation: GR-3.20 Tedavi Sonrasi Takip + GR-3.41 Tedavi Plani Onay + GR-3.43 Pre-op Hazirlik. Ortak TreatmentLifecycleService pattern. GR-3.44 ertelendi (GR-3.31 bagimlilik).",
+    "interview_notes": "Q kararlari: (1) PKT-6C split: 6C1 (3 GR health automation) + 6C2 (5 GR marketing+multilingual). (2) GR-3.44 ertelendi (GR-3.31 Guardrail bagimliligi). (3) Ortak TreatmentLifecycleService pattern. (4) PKT-6C1 once."
+  },
+  "allowed_files": [
+    "arch/db/appointments-v3.sql",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Appointments/Data/AppointmentsRepository.cs",
+    "src/Invekto.Appointments/Services/TreatmentLifecycleService.cs",
+    "src/Invekto.Appointments/Services/LifecycleStepDefinitions.cs",
+    "src/Invekto.Shared/DTOs/Appointments/LifecycleDto.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/AppointmentsClient.cs",
+    "arch/errors.md",
+    "arch/db/appointments-v3.sql"
+  ],
+  "files_changed": [
+    { "path": "arch/db/appointments-v3.sql", "is_new": true },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "src/Invekto.Appointments/Data/AppointmentsRepository.cs", "is_new": false },
+    { "path": "src/Invekto.Appointments/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Appointments/Services/LifecycleStepDefinitions.cs", "is_new": true },
+    { "path": "src/Invekto.Appointments/Services/TreatmentLifecycleService.cs", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Appointments/LifecycleDto.cs", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260217-pkt6c1-health-automation.diff",
+    "total_bytes": 67902,
+    "chunks": 3,
+    "stats": {
+      "insertions": 1383,
+      "deletions": 0,
+      "files_count": 9
+    }
+  },
+  "build": {
+    "status": "PASS"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do ALL treatment_followups and treatment_followup_steps queries include tenant_id WHERE clause for multi-tenant isolation?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does TreatmentLifecycleService use Interlocked.CompareExchange for overlap prevention, matching ReminderSchedulerService pattern?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Are all new DB-calling endpoints (both in Appointments and Backend proxy) wrapped with NpgsqlException typed catches?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does the step scheduling correctly handle both positive offsets (post-treatment T+1d) and negative offsets (pre-op T-3d) relative to reference_date?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Are all fire-and-forget operations logged with ContinueWith(OnlyOnFaulted) and never swallowed silently?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "Does the escalation path work correctly: complaint_detected or no_response_after_final_step triggers Outbound alert to doctor/supervisor?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Knowledge/",
+      "src/Invekto.Automation/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.Integrations/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.Backend/FlowBuilder/",
+      "src/Invekto.Backend/Dashboard/"
+    ],
+    "non_goals": [
+      "Knowledge service integration for pre-op template retrieval (future enhancement)",
+      "GR-3.44 Recete/Ilac Sorgulari (ertelendi, GR-3.31 Guardrail bagimliligi)",
+      "Dashboard UI for lifecycle management",
+      "Voice AI integration (GR-3.23)",
+      "Multilingual message templates"
+    ],
+    "intentional_exclusions": [
+      "Dynamic step configuration via DB/API (hardcoded step definitions sufficient for v1)",
+      "Real-time websocket notifications (Outbound trigger sufficient)",
+      "Patient sentiment analysis on responses (future GR-3.24 scope)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "TreatmentLifecycleService.ProcessDueStepsAsync - HttpRequestException, TaskCanceledException, NpgsqlException",
+      "AppointmentsRepository lifecycle methods - NpgsqlException",
+      "Program.cs lifecycle endpoints - NpgsqlException, FormatException"
+    ],
+    "user_facing_errors": [
+      "INV-AP-016: Invalid lifecycle start request payload",
+      "INV-AP-017: Lifecycle not found",
+      "INV-AP-018: Lifecycle already completed or cancelled",
+      "INV-AP-019: Invalid lifecycle type (must be post_treatment, plan_approval, or pre_op)",
+      "INV-AP-020: Lifecycle step send failed"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All error paths have typed catches with logging. TreatmentLifecycleService follows ReminderSchedulerService pattern with per-step error handling and batch-level logging."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tedavi sonrasi hasta takibi manuel yapiliyor, doktor unutuyor, hasta sikayet ediyor",
+      "suggestion": "Otomatik T+1/T+7/T+30 follow-up zinciri: tedavi tamamlaninca otomatik baslat, sikayet algilaninca doktora alert",
+      "aha_moment": "Doktor sabah ofise geldiginde 'Dun 3 hastanin takibi otomatik yapildi, 1 sikayet algilandi' bildirimini gorur"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Tedavi plani gonderildi ama hasta cevap vermiyor, klinik 15-50K TL tedavi kaybediyor",
+      "suggestion": "Plan onay follow-up zinciri: T+1 incelediniz mi, T+3 sorulariniz var mi, T+7 ozel teklif. Supervisor'a kayip riski alert.",
+      "aha_moment": "Klinik sahibi haftalik raporda 'Bu ay 12 hasta plan onaylamasina ragmen 8'i follow-up ile geri kazanildi' gorur"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Hasta ameliyata hazirliksiz geliyor, ameliyat iptal ediliyor, koltuk bos kaliyor",
+      "suggestion": "Pre-op mesaj zinciri: T-3 hazirlik talimati, T-1 hatirlatma, T-sabah son kontrol. 'Okudum' onay takibi.",
+      "aha_moment": "Hasta ameliyat gununde 'Tum hazirliklarimi tamamladim' diye gonderdiginde klinik guvenle baslar"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her tedavi tipi icin farkli follow-up sureci, yonetim karisik",
+      "suggestion": "Tek TreatmentLifecycleService 3 lifecycle tipini yonetir: lifecycle_type + step config. Yeni tip eklemek sadece config.",
+      "aha_moment": "Klinik admin 'Ortodonti tedavisi icin de otomatik takip istiyoruz' dediginde 1 config ile hazir"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Hasta sikayeti gec algilaniyor, Google'a kotu yorum yaziliyor",
+      "suggestion": "T+1 check-in'de 'sikayet' keyword algilaninca aninda doktor alert + oncelikli eskalasyon",
+      "aha_moment": "Doktor hasta sikayetini saat icinde ogrenip arayinca hasta 'cok ilgileniyor bu klinik' hisseder"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 7,
+    "notes": "Chunk 1 PASS (iter 0), Chunk 2 FORCE PASS (Q override - GetDueStepsAsync is cross-tenant scheduler by design, Codex false positive on tenant_id filter for 8 iterations), Chunk 3 PASS (iter 7). Real bug found iter 4: HandleLastStepAsync escalation logic fixed."
+  }
+}

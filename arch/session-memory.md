@@ -5,9 +5,9 @@
 ## Last Update
 
 - **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-6B Niche Business Logic — DONE. 7 GR: Outbound e-ticaret/klinik trigger'lar, iade cevirme v1+v2, lead management v2 (CRUD+scoring+pipeline), agent assist e-ticaret (order card+escalation note), negatif yorum kurtarma. 21 dosya. Codex 5-chunk review, 3 fix round (tenant_id, typed catches, SQL concat, NpgsqlException endpoints), iteration=2 FORCE PASS.
-- **Next Task:** PKT-6C Niche Health Expansion (5 GR: Tedavi Sonrasi Takip, Google Yorum+Referans, Medikal Turizm Lead, Proactive Review Rescue, Multilingual Medical Tourism). Phase 3B devam.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅ + PKT-6C1 ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-6C1 Health Automation — DONE. 3 GR (GR-3.20 + GR-3.41 + GR-3.43): Ortak TreatmentLifecycleService (IHostedService, Timer + Interlocked overlap prevention), 2 DB tablosu, 5 endpoint, Backend proxy. Codex 3-chunk review, 7 iteration (1 real bug found: escalation logic), chunk 2 FORCE PASS (scheduler cross-tenant false positive).
+- **Next Task:** PKT-6C2 Niche Marketing+Multilingual (GR-3.21 Google Yorum, GR-3.22 Medikal Turizm Lead, GR-3.24 Proactive Review Rescue, GR-3.25 Multilingual). Phase 3B devam.
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 - **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
@@ -46,7 +46,8 @@
 | 5B | **PKT-5B Platform UI+Adv** | Phase 3A kalan: Ads Attribution, Dashboard, Randevu Advanced | ✅ PASS (iter 4, FORCE PASS) |
 | 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ✅ PASS (iter 1) |
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ✅ PASS (iter 2, FORCE PASS) |
-| 6C | **PKT-6C Niche Health Expansion** | Phase 3B: Sağlık + Review Rescue + Multilingual (5 GR) | ⬜ Bekliyor |
+| 6C1 | **PKT-6C1 Health Automation** | Phase 3B: TreatmentLifecycleService (3 GR: 3.20+3.41+3.43) | ✅ PASS (iter 7, FORCE PASS) |
+| 6C2 | **PKT-6C2 Niche Marketing** | Phase 3B: Google Yorum + Medikal Turizm + Review Rescue + Multilingual | ⬜ Bekliyor |
 | 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
 | 8 | **PKT-8 Face AI** | Phase 3D (Face Analysis, :7110) | ⬜ Bekliyor |
 
@@ -363,7 +364,7 @@ src/
 │   └── Services/            # ImportService, EmbeddingService, RetrievalService, PdfChunkingService, DocumentProcessingService
 ├── Invekto.Appointments/     # GR-2.4: Appointment Engine (Port 7102)
 │   ├── Data/                # AppointmentsRepository
-│   └── Services/            # ReminderSchedulerService (IHostedService)
+│   └── Services/            # ReminderSchedulerService, TreatmentLifecycleService, LifecycleStepDefinitions
 ├── Invekto.Automation/       # GR-1.1: Chatbot/Flow Builder (Port 7108)
 │   ├── Data/                # AutomationRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
@@ -388,6 +389,39 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-6C1 Health Automation TAMAMLANDI (2026-02-17)
+
+**Plan:** `arch/plans/20260217-pkt6c1-health-automation.json` (status: DONE)
+**Scope:** 3 GR — GR-3.20 Tedavi Sonrasi Takip, GR-3.41 Tedavi Plani Onay, GR-3.43 Pre-op Hazirlik.
+**Stats:** 9 dosya +1450. Codex 3-chunk review, 7 iteration, chunk 2 FORCE PASS.
+
+**TreatmentLifecycleService (IHostedService):**
+- Ortak servis 3 lifecycle tipi yonetir: post_treatment, plan_approval, pre_op
+- Timer-based (5min default) + Interlocked.CompareExchange overlap prevention
+- LifecycleStepDefinitions: Static config (pozitif offset T+24h/T+168h, negatif offset T-72h/T-24h/T-3h)
+- Outbound trigger entegrasyonu (lifecycle_{type} event, JWT service token)
+- Escalation: complaint -> doctor alert, no-response final step -> supervisor/doctor alert
+- HandleLastStepAsync: combined condition fix (real bug found by Codex iter 4)
+
+**DB Schema (2 tablo):**
+- treatment_followups: lifecycle instance (tenant_id, lifecycle_type, patient_phone, status)
+- treatment_followup_steps: individual steps (scheduled_at, sent_at, patient_responded, escalation)
+
+**5 API Endpoint:**
+- POST /api/v1/lifecycle/start (lifecycle baslatma)
+- GET /api/v1/lifecycle (liste, type+status filtre)
+- GET /api/v1/lifecycle/{id} (detay + steps)
+- POST /api/v1/lifecycle/{id}/cancel (iptal)
+- POST /api/v1/lifecycle/{id}/response (hasta yaniti + complaint escalation)
+
+**Codex Review (7 iter):**
+- Real bug found iter 4: HandleLastStepAsync escalation sent regardless of response
+- Chunk 2 persistent false positive: GetDueStepsAsync cross-tenant scheduler (8 iter)
+- FORCE PASS: Chunk 2 (scheduler tenant_id), all CQ1-CQ8 PASS
+
+**Q Operational Tasks (PKT-6C1):**
+- [ ] appointments-v3.sql calistir (PostgreSQL)
 
 ### PKT-6B Niche Business Logic TAMAMLANDI (2026-02-17)
 

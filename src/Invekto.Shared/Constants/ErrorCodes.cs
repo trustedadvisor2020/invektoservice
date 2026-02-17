@@ -209,6 +209,13 @@ public static class ErrorCodes
     public const string AppointmentPricingNotFound = "INV-AP-014";
     public const string AppointmentCalendarSyncFailed = "INV-AP-015";
 
+    // Treatment Lifecycle errors (INV-AP-016+) -- GR-3.20/3.41/3.43
+    public const string LifecycleInvalidPayload = "INV-AP-016";
+    public const string LifecycleNotFound = "INV-AP-017";
+    public const string LifecycleAlreadyFinished = "INV-AP-018";
+    public const string LifecycleInvalidType = "INV-AP-019";
+    public const string LifecycleStepSendFailed = "INV-AP-020";
+
     // Metrics/Analytics errors (INV-MT-xxx) -- PKT-3
     public const string MetricsAggregationFailed = "INV-MT-001";
     public const string MetricsQueryFailed = "INV-MT-002";

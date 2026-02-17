@@ -701,8 +701,391 @@ public sealed class AppointmentsRepository
     }
 
     // ================================================================
+    // GR-3.20/3.41/3.43: Treatment Lifecycle
+    // ================================================================
+
+    /// <summary>
+    /// Create a new lifecycle instance. Returns the new followup ID.
+    /// </summary>
+    public async Task<int> CreateFollowupAsync(
+        int tenantId, string lifecycleType, string patientPhone, string patientName,
+        string? treatmentType, long? appointmentId, DateTimeOffset referenceDate,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO treatment_followups
+                (tenant_id, lifecycle_type, patient_phone, patient_name,
+                 treatment_type, appointment_id, reference_date)
+            VALUES (@tid, @type, @phone, @name, @ttype, @apptId, @refDate)
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("type", lifecycleType);
+        cmd.Parameters.AddWithValue("phone", patientPhone);
+        cmd.Parameters.AddWithValue("name", patientName);
+        cmd.Parameters.AddWithValue("ttype", (object?)treatmentType ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("apptId", appointmentId.HasValue ? appointmentId.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("refDate", referenceDate);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int id ? id : Convert.ToInt32(result);
+    }
+
+    /// <summary>
+    /// Batch-insert steps for a lifecycle. Uses NpgsqlBatch for efficiency.
+    /// </summary>
+    public async Task CreateFollowupStepsAsync(
+        int followupId, int tenantId,
+        IReadOnlyList<(int stepOrder, string stepKey, string messageTemplate,
+            DateTimeOffset scheduledAt, string? escalationTarget)> steps,
+        CancellationToken ct = default)
+    {
+        if (steps.Count == 0) return;
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var batch = new NpgsqlBatch(conn);
+
+        foreach (var (stepOrder, stepKey, messageTemplate, scheduledAt, escalationTarget) in steps)
+        {
+            var cmd = new NpgsqlBatchCommand(@"
+                INSERT INTO treatment_followup_steps
+                    (followup_id, tenant_id, step_order, step_key, message_template,
+                     scheduled_at, escalation_target)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)");
+            cmd.Parameters.AddWithValue(followupId);
+            cmd.Parameters.AddWithValue(tenantId);
+            cmd.Parameters.AddWithValue((short)stepOrder);
+            cmd.Parameters.AddWithValue(stepKey);
+            cmd.Parameters.AddWithValue(messageTemplate);
+            cmd.Parameters.AddWithValue(scheduledAt);
+            cmd.Parameters.AddWithValue((object?)escalationTarget ?? DBNull.Value);
+            batch.BatchCommands.Add(cmd);
+        }
+
+        await batch.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get due steps: scheduled_at <= NOW(), sent_at IS NULL, parent lifecycle is active.
+    /// Joins with treatment_followups for patient info and lifecycle context.
+    /// </summary>
+    public async Task<List<DueStepCandidate>> GetDueStepsAsync(
+        int batchSize = 50, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT s.id, s.followup_id, s.tenant_id, s.step_key, s.message_template,
+                   f.patient_phone, f.patient_name, f.lifecycle_type, f.treatment_type,
+                   s.escalation_target, s.step_order,
+                   (SELECT COUNT(*) FROM treatment_followup_steps s2
+                    WHERE s2.followup_id = s.followup_id AND s2.tenant_id = s.tenant_id) AS total_steps
+            FROM treatment_followup_steps s
+            INNER JOIN treatment_followups f
+                ON f.id = s.followup_id AND f.tenant_id = s.tenant_id AND f.status = 'active'
+            INNER JOIN tenant_registry tr ON tr.tenant_id = s.tenant_id AND tr.is_active = TRUE
+            WHERE s.sent_at IS NULL
+              AND s.scheduled_at <= NOW()
+              AND s.tenant_id = f.tenant_id
+            ORDER BY s.scheduled_at ASC
+            LIMIT @lim";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("lim", batchSize);
+
+        var candidates = new List<DueStepCandidate>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            candidates.Add(new DueStepCandidate
+            {
+                StepId = reader.GetInt32(0),
+                FollowupId = reader.GetInt32(1),
+                TenantId = reader.GetInt32(2),
+                StepKey = reader.GetString(3),
+                MessageTemplate = reader.GetString(4),
+                PatientPhone = reader.GetString(5),
+                PatientName = reader.GetString(6),
+                LifecycleType = reader.GetString(7),
+                TreatmentType = reader.IsDBNull(8) ? null : reader.GetString(8),
+                EscalationTarget = reader.IsDBNull(9) ? null : reader.GetString(9),
+                StepOrder = reader.GetInt16(10),
+                TotalSteps = (int)reader.GetInt64(11)
+            });
+        }
+        return candidates;
+    }
+
+    /// <summary>
+    /// Mark a step as sent (set sent_at = NOW()).
+    /// </summary>
+    public async Task MarkStepSentAsync(int tenantId, int stepId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE treatment_followup_steps
+            SET sent_at = NOW()
+            WHERE id = @id AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", stepId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Record a patient response to a step.
+    /// </summary>
+    public async Task<bool> RecordPatientResponseAsync(
+        int tenantId, int followupId, int stepId,
+        string? responseText, bool complaintDetected, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE treatment_followup_steps
+            SET patient_responded = TRUE,
+                response_text = @text,
+                complaint_detected = @complaint
+            WHERE id = @stepId AND tenant_id = @tid
+              AND followup_id = @fid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("stepId", stepId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", followupId);
+        cmd.Parameters.AddWithValue("text", (object?)responseText ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("complaint", complaintDetected);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Mark a step as escalated.
+    /// </summary>
+    public async Task MarkStepEscalatedAsync(int tenantId, int stepId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE treatment_followup_steps
+            SET escalated = TRUE
+            WHERE id = @id AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", stepId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// List lifecycle instances for a tenant (with optional filters).
+    /// </summary>
+    public async Task<List<LifecycleDto>> GetFollowupsAsync(
+        int tenantId, string? lifecycleType = null, string? status = null,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, lifecycle_type, patient_phone, patient_name,
+                   treatment_type, appointment_id, reference_date, status, created_at
+            FROM treatment_followups
+            WHERE tenant_id = @tid
+              AND (@type IS NULL OR lifecycle_type = @type)
+              AND (@status IS NULL OR status = @status)
+            ORDER BY created_at DESC
+            LIMIT 200";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("type", (object?)lifecycleType ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", (object?)status ?? DBNull.Value);
+
+        var result = new List<LifecycleDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(ReadLifecycleDto(reader));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Get a single lifecycle instance with all its steps.
+    /// </summary>
+    public async Task<LifecycleDto?> GetFollowupByIdAsync(
+        int tenantId, int followupId, CancellationToken ct = default)
+    {
+        const string followupSql = @"
+            SELECT id, tenant_id, lifecycle_type, patient_phone, patient_name,
+                   treatment_type, appointment_id, reference_date, status, created_at
+            FROM treatment_followups
+            WHERE tenant_id = @tid AND id = @id";
+
+        const string stepsSql = @"
+            SELECT id, step_order, step_key, scheduled_at, sent_at,
+                   patient_responded, response_text, complaint_detected,
+                   escalated, escalation_target
+            FROM treatment_followup_steps
+            WHERE tenant_id = @tid AND followup_id = @fid
+            ORDER BY step_order";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        // Read followup
+        LifecycleDto? followup;
+        await using (var cmd = new NpgsqlCommand(followupSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("id", followupId);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (!await reader.ReadAsync(ct))
+                return null;
+            followup = ReadLifecycleDto(reader);
+        }
+
+        // Read steps
+        followup.Steps = new List<LifecycleStepDto>();
+        await using (var cmd = new NpgsqlCommand(stepsSql, conn))
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            cmd.Parameters.AddWithValue("fid", followupId);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                followup.Steps.Add(new LifecycleStepDto
+                {
+                    Id = reader.GetInt32(0),
+                    StepOrder = reader.GetInt16(1),
+                    StepKey = reader.GetString(2),
+                    ScheduledAt = reader.GetDateTime(3).ToString("o"),
+                    SentAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4).ToString("o"),
+                    PatientResponded = reader.GetBoolean(5),
+                    ResponseText = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    ComplaintDetected = reader.GetBoolean(7),
+                    Escalated = reader.GetBoolean(8),
+                    EscalationTarget = reader.IsDBNull(9) ? null : reader.GetString(9)
+                });
+            }
+        }
+
+        return followup;
+    }
+
+    /// <summary>
+    /// Cancel a lifecycle (set status = 'cancelled'). Only active lifecycles can be cancelled.
+    /// </summary>
+    public async Task<bool> CancelFollowupAsync(
+        int tenantId, int followupId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE treatment_followups
+            SET status = 'cancelled'
+            WHERE tenant_id = @tid AND id = @id AND status = 'active'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", followupId);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Complete a lifecycle (set status = 'completed'). Called when all steps are done.
+    /// </summary>
+    public async Task CompleteFollowupAsync(
+        int tenantId, int followupId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE treatment_followups
+            SET status = 'completed'
+            WHERE tenant_id = @tid AND id = @id AND status = 'active'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", followupId);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Escalate a lifecycle (set status = 'escalated'). Called when final step has no response.
+    /// </summary>
+    public async Task EscalateFollowupAsync(
+        int tenantId, int followupId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE treatment_followups
+            SET status = 'escalated'
+            WHERE tenant_id = @tid AND id = @id AND status = 'active'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", followupId);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Check if a lifecycle has all steps sent and the last step is past its deadline.
+    /// Used to determine auto-completion or escalation.
+    /// Returns (allSent, lastStepHadResponse, lastStepEscalationTarget).
+    /// </summary>
+    public async Task<(bool allSent, bool lastStepResponded, string? lastStepEscalationTarget)>
+        CheckFollowupCompletionAsync(int tenantId, int followupId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT
+                COUNT(*) FILTER (WHERE sent_at IS NULL) AS unsent_count,
+                (SELECT patient_responded FROM treatment_followup_steps
+                 WHERE followup_id = @fid AND tenant_id = @tid
+                 ORDER BY step_order DESC LIMIT 1) AS last_responded,
+                (SELECT escalation_target FROM treatment_followup_steps
+                 WHERE followup_id = @fid AND tenant_id = @tid
+                 ORDER BY step_order DESC LIMIT 1) AS last_escalation
+            FROM treatment_followup_steps
+            WHERE followup_id = @fid AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("fid", followupId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (await reader.ReadAsync(ct))
+        {
+            var unsentCount = reader.GetInt64(0);
+            var lastResponded = reader.IsDBNull(1) ? false : reader.GetBoolean(1);
+            var lastEscalation = reader.IsDBNull(2) ? null : reader.GetString(2);
+            return (unsentCount == 0, lastResponded, lastEscalation);
+        }
+        return (false, false, null);
+    }
+
+    // ================================================================
     // Private helpers
     // ================================================================
+
+    private static LifecycleDto ReadLifecycleDto(NpgsqlDataReader reader)
+    {
+        return new LifecycleDto
+        {
+            Id = reader.GetInt32(0),
+            TenantId = reader.GetInt32(1),
+            LifecycleType = reader.GetString(2),
+            PatientPhone = reader.GetString(3),
+            PatientName = reader.GetString(4),
+            TreatmentType = reader.IsDBNull(5) ? null : reader.GetString(5),
+            AppointmentId = reader.IsDBNull(6) ? null : reader.GetInt64(6),
+            ReferenceDate = reader.GetDateTime(7).ToString("o"),
+            Status = reader.GetString(8),
+            CreatedAt = reader.GetDateTime(9).ToString("o")
+        };
+    }
 
     private static WaitlistDto ReadWaitlistDto(NpgsqlDataReader reader)
     {
