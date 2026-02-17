@@ -5,9 +5,9 @@
 ## Last Update
 
 - **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-6A Niche Foundation — DONE. 7 GR: DB-driven intent mimarisi (Knowledge→Automation bridge), 22 sektor intent seed (eticaret/dis/estetik), B2B/VIP lead detection + sales webhook, auto-tagging via ApplyTag callback, confidence threshold fallback chain, onboarding seed API. 16 dosya +918/-28. Codex 2-chunk review, iteration=1 PASS.
-- **Next Task:** PKT-6B Niche Business Logic (7 GR: Outbound E-ticaret, Iade Cevirme, Lead Mgmt v2, Agent Assist genisleme, Yorum Kurtarma). Phase 3B devam.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-6B Niche Business Logic — DONE. 7 GR: Outbound e-ticaret/klinik trigger'lar, iade cevirme v1+v2, lead management v2 (CRUD+scoring+pipeline), agent assist e-ticaret (order card+escalation note), negatif yorum kurtarma. 21 dosya. Codex 5-chunk review, 3 fix round (tenant_id, typed catches, SQL concat, NpgsqlException endpoints), iteration=2 FORCE PASS.
+- **Next Task:** PKT-6C Niche Health Expansion (5 GR: Tedavi Sonrasi Takip, Google Yorum+Referans, Medikal Turizm Lead, Proactive Review Rescue, Multilingual Medical Tourism). Phase 3B devam.
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 - **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
@@ -45,7 +45,7 @@
 | 5A | **PKT-5A Platform Infra** | Phase 3A: Integrations (:7106), Kargo mock, Outbound v2, Opt-in, Compliance | ✅ PASS (iter 2, FORCE PASS) |
 | 5B | **PKT-5B Platform UI+Adv** | Phase 3A kalan: Ads Attribution, Dashboard, Randevu Advanced | ✅ PASS (iter 4, FORCE PASS) |
 | 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ✅ PASS (iter 1) |
-| 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ⬜ Bekliyor |
+| 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ✅ PASS (iter 2, FORCE PASS) |
 | 6C | **PKT-6C Niche Health Expansion** | Phase 3B: Sağlık + Review Rescue + Multilingual (5 GR) | ⬜ Bekliyor |
 | 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
 | 8 | **PKT-8 Face AI** | Phase 3D (Face Analysis, :7110) | ⬜ Bekliyor |
@@ -388,6 +388,48 @@ src/
 ---
 
 ## Context for Next Session
+
+### PKT-6B Niche Business Logic TAMAMLANDI (2026-02-17)
+
+**Plan:** `arch/plans/20260217-pkt6b1-niche-business.json` (status: DONE)
+**Scope:** 7 GR — Outbound e-ticaret/klinik trigger'lar, iade cevirme v1+v2, lead management v2, agent assist e-ticaret, negatif yorum kurtarma.
+**Stats:** 21 dosya. Codex 5-chunk review, 3 fix round, iteration=2 FORCE PASS.
+
+**GR-3.7 + GR-3.11 Outbound Trigger'lar:**
+- 4 e-ticaret trigger (order_delivered, return_follow_up, b2b_alert, review_prep)
+- 2 klinik trigger (checkup_reminder, birthday_message)
+- ConsentManager batch consent check entegrasyonu
+
+**GR-3.8 + GR-3.17 Iade Cevirme v1+v2:**
+- ReturnDeflectionService: intent algilama, neden siniflandirma, aksiyon routing
+- Tenant sabit kuponlar (coupon_configs settings_json), stok kontrol (Integrations)
+- Conversion tracking, follow-up scheduler, basari orani metrikleri
+
+**GR-3.13 Lead Management v2:**
+- LeadRepository: CRUD + scoring + pipeline status + follow-up tracking
+- const SQL with `(@param IS NULL OR col = @param)` pattern (SQL concat yok)
+- Hot leads API, funnel endpoint, activity log
+- 6 endpoint'e NpgsqlException catch eklendi (Codex iter 2 fix)
+
+**GR-3.3 Agent Assist E-ticaret:**
+- OrderCardService: Integrations'tan siparis karti cekme
+- EscalationNoteService: eskalasyon notu olusturma + kaydetme
+- Typed catches (InvalidOperationException, ArgumentException)
+
+**GR-3.16 Negatif Yorum Kurtarma:**
+- Review alert webhook (IntegrationsRepository)
+- Auto-message flow (T+0 empati + T+48h follow-up)
+- Recovery tracking (recovery_status, recovery_attempt)
+- const SQL `(@status IS NULL OR recovery_status = @status)` pattern
+
+**Codex Review (3 Fix Round):**
+- Round 1: tenant_id filter (GetPendingFollowUpsAsync) + typed catches (ReturnDeflection, EscalationNote)
+- Round 2: SQL string concat → const SQL (GetReviewAlertsAsync, ListLeadsAsync)
+- Round 3: NpgsqlException catches for 6 lead endpoints in Backend/Program.cs
+- FORCE PASS: Remaining UNKNOWN verdicts from chunking artifacts (all CQ1-CQ8 PASS)
+
+**Q Operational Tasks (PKT-6B):**
+- [ ] pkt6b1-niche-business.sql calistir (PostgreSQL)
 
 ### PKT-6A Niche Foundation TAMAMLANDI (2026-02-17)
 

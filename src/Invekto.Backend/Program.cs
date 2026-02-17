@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using Invekto.Shared.Middleware;
+using Invekto.Backend.Data;
 using Invekto.Backend.Services;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
@@ -11,6 +12,7 @@ using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
 using Invekto.Shared.DTOs.Analytics;
 using Invekto.Shared.DTOs.Attribution;
+using Invekto.Shared.DTOs.Leads;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
@@ -187,6 +189,9 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     // GR-3.14: Attribution tracking (singleton, thread-safe via connection pooling)
     builder.Services.AddSingleton<AttributionRepository>();
     builder.Services.AddSingleton<AttributionService>();
+
+    // PKT-6B1: Lead Management v2 (GR-3.13)
+    builder.Services.AddSingleton<LeadRepository>();
 }
 
 // Callback client for async results to Main App
@@ -215,7 +220,7 @@ app.UseTrafficLogging(
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/attribution/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/attribution/", "/api/v1/leads/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -1236,6 +1241,18 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "GET", Path = "/api/ops/postman", Description = "Postman collection download", Auth = "Basic", Category = "Ops" },
             new() { Method = "POST", Path = "/api/ops/services/{name}/restart", Description = "Restart Windows Service", Auth = "Basic", Category = "Ops" },
             new() { Method = "GET", Path = "/api/ops/test/{service}/{path}", Description = "Test proxy for microservices", Auth = "Basic", Category = "Ops" },
+
+            // Lead Management (PKT-6B1: GR-3.13)
+            new() { Method = "POST", Path = "/api/v1/leads", Description = "Create/upsert lead", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "GET", Path = "/api/v1/leads", Description = "List leads", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "GET", Path = "/api/v1/leads/{id}", Description = "Get lead", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "PUT", Path = "/api/v1/leads/{id}/status", Description = "Update lead pipeline status", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "PUT", Path = "/api/v1/leads/{id}/score", Description = "Update lead score", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "POST", Path = "/api/v1/leads/{id}/activities", Description = "Add lead activity", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "GET", Path = "/api/v1/leads/{id}/activities", Description = "Get lead activities", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "GET", Path = "/api/v1/leads/funnel", Description = "Lead funnel stats", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "GET", Path = "/api/v1/leads/hot", Description = "Hot leads list", Auth = "Bearer JWT", Category = "Leads" },
+            new() { Method = "POST", Path = "/api/v1/leads/{id}/followup", Description = "Schedule lead follow-up", Auth = "Bearer JWT", Category = "Leads" },
 
             // Legacy Ops (plain JSON)
             new() { Method = "GET", Path = "/ops", Description = "Operations dashboard (legacy)", Auth = "Basic", Category = "Legacy" },
@@ -2413,6 +2430,298 @@ app.MapDelete("/api/v1/attribution/costs/{id:int}", async (HttpContext ctx, Attr
     {
         jsonLog.SystemWarn($"Attribution cost delete failed: {ex.Message}");
         return Results.Json(new { error = ErrorCodes.AttributionCostNotFound, message = "Maliyet silme basarisiz." }, statusCode: 500);
+    }
+});
+
+// ============================================
+// PKT-6B1: LEAD MANAGEMENT ENDPOINTS (/api/v1/leads/*)
+// GR-3.13: Lead Management v2 - Backend API only (no UI)
+// ============================================
+
+app.MapPost("/api/v1/leads", async (HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, LeadRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null || string.IsNullOrWhiteSpace(request.Phone))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPayload, "phone is required", rid), statusCode: 400);
+
+    try
+    {
+        var leadId = await leadRepo.UpsertLeadAsync(tenantContext.TenantId, request, ctx.RequestAborted);
+
+        // Insert creation activity
+        await leadRepo.InsertActivityAsync(tenantContext.TenantId, leadId, "created", null, "new", null, ctx.RequestAborted);
+
+        jsonLog.StepInfo($"Lead upserted: id={leadId}, phone={request.Phone}, source={request.Source}", rid);
+        return Results.Json(new { id = leadId, phone = request.Phone, pipeline_status = "new" }, statusCode: 201);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadInvalidPayload}] Lead upsert DB error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPayload, "Lead kaydi olusturulamadi", rid), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/leads", async (
+    HttpContext ctx, LeadRepository leadRepo,
+    string? status, bool? is_hot, string? search, int? limit, int? offset) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (status != null && !LeadPipelineStatuses.IsValid(status))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPipelineStatus,
+            $"Invalid status. Valid: {string.Join(", ", LeadPipelineStatuses.All)}", rid), statusCode: 400);
+
+    try
+    {
+        var leads = await leadRepo.ListLeadsAsync(
+            tenantContext.TenantId, status, is_hot, search, limit ?? 50, offset ?? 0, ctx.RequestAborted);
+        return Results.Ok(new { leads, count = leads.Count });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        var jsonLog = ctx.RequestServices.GetRequiredService<JsonLinesLogger>();
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadInvalidPayload}] Lead list query error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPayload, "Lead listesi alinamadi", rid), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/leads/{id:int}", async (HttpContext ctx, LeadRepository leadRepo, int id) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var lead = await leadRepo.GetLeadAsync(tenantContext.TenantId, id, ctx.RequestAborted);
+        if (lead == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadNotFound, $"Lead {id} not found", rid), statusCode: 404);
+
+        return Results.Ok(lead);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        var jsonLog = ctx.RequestServices.GetRequiredService<JsonLinesLogger>();
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadNotFound}] Lead get DB error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadNotFound, "Lead sorgusu basarisiz", rid), statusCode: 500);
+    }
+});
+
+app.MapPut("/api/v1/leads/{id:int}/status", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog,
+    int id, LeadPipelineUpdateRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null || string.IsNullOrWhiteSpace(request.PipelineStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPipelineStatus, "pipeline_status is required", rid), statusCode: 400);
+
+    if (!LeadPipelineStatuses.IsValid(request.PipelineStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPipelineStatus,
+            $"Invalid status. Valid: {string.Join(", ", LeadPipelineStatuses.All)}", rid), statusCode: 400);
+
+    try
+    {
+        var updated = await leadRepo.UpdatePipelineStatusAsync(
+            tenantContext.TenantId, id, request.PipelineStatus, request.AssignedTo, ctx.RequestAborted);
+
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadNotFound, $"Lead {id} not found", rid), statusCode: 404);
+
+        jsonLog.StepInfo($"Lead status updated: id={id}, status={request.PipelineStatus}", rid);
+        return Results.Ok(new { id, pipeline_status = request.PipelineStatus });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadInvalidPipelineStatus}] Lead status update error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidPipelineStatus, "Status guncellenemedi", rid), statusCode: 500);
+    }
+});
+
+app.MapPut("/api/v1/leads/{id:int}/score", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, int id) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        if (!root.TryGetProperty("score", out var scoreEl) || scoreEl.ValueKind != System.Text.Json.JsonValueKind.Number)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadScoringFailed, "score (0-100) is required", rid), statusCode: 400);
+
+        var score = scoreEl.GetInt32();
+        if (score < 0 || score > 100)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadScoringFailed, "score must be 0-100", rid), statusCode: 400);
+
+        var updated = await leadRepo.UpdateScoreAsync(tenantContext.TenantId, id, score, ctx.RequestAborted);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadNotFound, $"Lead {id} not found", rid), statusCode: 404);
+
+        jsonLog.StepInfo($"Lead score updated: id={id}, score={score}", rid);
+        return Results.Ok(new { id, score, is_hot = score >= 80 });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadScoringFailed}] Lead score update DB error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadScoringFailed, "Score guncellenemedi", rid), statusCode: 500);
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadScoringFailed, "Invalid JSON body", rid), statusCode: 400);
+    }
+});
+
+app.MapPost("/api/v1/leads/{id:int}/activities", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, int id) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var activityType = root.TryGetProperty("activity_type", out var at) ? at.GetString() : null;
+        if (string.IsNullOrWhiteSpace(activityType))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidActivityPayload, "activity_type is required", rid), statusCode: 400);
+
+        var note = root.TryGetProperty("note", out var n) ? n.GetString() : null;
+        var oldValue = root.TryGetProperty("old_value", out var ov) ? ov.GetString() : null;
+        var newValue = root.TryGetProperty("new_value", out var nv) ? nv.GetString() : null;
+
+        var activityId = await leadRepo.InsertActivityAsync(
+            tenantContext.TenantId, id, activityType, oldValue, newValue, note, ctx.RequestAborted);
+
+        jsonLog.StepInfo($"Lead activity added: lead={id}, type={activityType}", rid);
+        return Results.Json(new { id = activityId, lead_id = id, activity_type = activityType }, statusCode: 201);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadInvalidActivityPayload}] Lead activity insert error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidActivityPayload, "Aktivite kaydedilemedi", rid), statusCode: 500);
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidActivityPayload, "Invalid JSON body", rid), statusCode: 400);
+    }
+});
+
+app.MapGet("/api/v1/leads/{id:int}/activities", async (
+    HttpContext ctx, LeadRepository leadRepo, int id, int? limit) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var activities = await leadRepo.GetActivitiesAsync(tenantContext.TenantId, id, limit ?? 50, ctx.RequestAborted);
+        return Results.Ok(new { activities });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        var jsonLog = ctx.RequestServices.GetRequiredService<JsonLinesLogger>();
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadInvalidActivityPayload}] Lead activities query error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadInvalidActivityPayload, "Aktiviteler alinamadi", rid), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/leads/funnel", async (HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var stats = await leadRepo.GetFunnelStatsAsync(tenantContext.TenantId, ctx.RequestAborted);
+        return Results.Ok(stats);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadFunnelQueryFailed}] Funnel stats error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadFunnelQueryFailed, "Funnel sorgusu basarisiz", rid), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/leads/hot", async (HttpContext ctx, LeadRepository leadRepo, int? limit) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        var leads = await leadRepo.GetHotLeadsAsync(tenantContext.TenantId, limit ?? 20, ctx.RequestAborted);
+        return Results.Ok(new { leads, count = leads.Count });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        var jsonLog = ctx.RequestServices.GetRequiredService<JsonLinesLogger>();
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadHotAlertFailed}] Hot leads query error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadHotAlertFailed, "Hot lead listesi alinamadi", rid), statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/leads/{id:int}/followup", async (
+    HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog, int id) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var followUpStr = root.TryGetProperty("follow_up_at", out var fu) ? fu.GetString() : null;
+        if (string.IsNullOrWhiteSpace(followUpStr) || !DateTime.TryParse(followUpStr, out var followUpAt))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadFollowUpScheduleFailed, "follow_up_at (ISO date) is required", rid), statusCode: 400);
+
+        var scheduled = await leadRepo.ScheduleFollowUpAsync(
+            tenantContext.TenantId, id, followUpAt, ctx.RequestAborted);
+
+        if (!scheduled)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.LeadNotFound, $"Lead {id} not found or in terminal status", rid), statusCode: 404);
+
+        await leadRepo.InsertActivityAsync(
+            tenantContext.TenantId, id, "followup_scheduled", null, followUpAt.ToString("o"), null, ctx.RequestAborted);
+
+        jsonLog.StepInfo($"Lead follow-up scheduled: id={id}, at={followUpAt:o}", rid);
+        return Results.Ok(new { id, next_followup_at = followUpAt });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.LeadFollowUpScheduleFailed}] Lead follow-up DB error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadFollowUpScheduleFailed, "Follow-up zamanlanamadi", rid), statusCode: 500);
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.LeadFollowUpScheduleFailed, "Invalid JSON body", rid), statusCode: 400);
     }
 });
 

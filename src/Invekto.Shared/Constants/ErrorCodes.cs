@@ -70,6 +70,11 @@ public static class ErrorCodes
     public const string AutomationKnowledgeIntentFetchFailed = "INV-AT-025";
     public const string AutomationVipDetectionFailed = "INV-AT-026";
 
+    // Automation PKT-6B1: Return Deflection (INV-AT-027+)
+    public const string AutomationReturnDeflectionFailed = "INV-AT-027";
+    public const string AutomationReturnReasonClassifyFailed = "INV-AT-028";
+    public const string AutomationCouponAssignFailed = "INV-AT-029";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";
@@ -80,6 +85,11 @@ public static class ErrorCodes
     public const string AgentAIKnowledgeUnavailable = "INV-AA-007";
     public const string AgentAILanguageDetectionFailed = "INV-AA-008";
     public const string AgentAIConversationSummaryFailed = "INV-AA-009";
+
+    // AgentAI PKT-6B1: E-commerce Agent Assist (INV-AA-010+)
+    public const string AgentAIOrderCardFetchFailed = "INV-AA-010";
+    public const string AgentAIEscalationNoteFailed = "INV-AA-011";
+    public const string AgentAIEcomReplyEnrichFailed = "INV-AA-012";
 
     // Outbound errors (INV-OB-xxx) -- GR-1.3
     public const string OutboundInvalidBroadcastPayload = "INV-OB-001";
@@ -155,6 +165,11 @@ public static class ErrorCodes
     public const string IntegrationsInvalidOrderQuery = "INV-IG-006";
     public const string IntegrationsCargoTrackingUnavailable = "INV-IG-007";
 
+    // Integrations PKT-6B1: Review Alerts + Stock Query (INV-IG-008+)
+    public const string IntegrationsInvalidReviewWebhook = "INV-IG-008";
+    public const string IntegrationsReviewAlertCreateFailed = "INV-IG-009";
+    public const string IntegrationsStockQueryFailed = "INV-IG-010";
+
     // Outbound v2 errors (INV-OB-013+) -- GR-3.15/3.26/3.29
     public const string OutboundInvalidCampaignPayload = "INV-OB-013";
     public const string OutboundCampaignNotFound = "INV-OB-014";
@@ -164,6 +179,21 @@ public static class ErrorCodes
     public const string OutboundConsentNotGiven = "INV-OB-018";
     public const string OutboundInvalidConsentPayload = "INV-OB-019";
     public const string OutboundDataDeletionFailed = "INV-OB-020";
+
+    // Outbound PKT-6B1: E-com/Clinic triggers + Lead follow-up (INV-OB-021+)
+    public const string OutboundEcomTriggerTemplateMissing = "INV-OB-021";
+    public const string OutboundClinicTriggerTemplateMissing = "INV-OB-022";
+    public const string OutboundLeadFollowUpFailed = "INV-OB-023";
+
+    // Lead Management errors (INV-LD-xxx) -- GR-3.13
+    public const string LeadInvalidPayload = "INV-LD-001";
+    public const string LeadNotFound = "INV-LD-002";
+    public const string LeadInvalidPipelineStatus = "INV-LD-003";
+    public const string LeadScoringFailed = "INV-LD-004";
+    public const string LeadFollowUpScheduleFailed = "INV-LD-005";
+    public const string LeadInvalidActivityPayload = "INV-LD-006";
+    public const string LeadFunnelQueryFailed = "INV-LD-007";
+    public const string LeadHotAlertFailed = "INV-LD-008";
 
     // Attribution errors (INV-AD-xxx) -- GR-3.14
     public const string AttributionInvalidPayload = "INV-AD-001";

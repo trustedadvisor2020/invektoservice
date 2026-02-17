@@ -38,7 +38,7 @@
 | 5A | **Platform Infra** | PKT-5A | Phase 3A: Integrations (:7106) + Outbound v2 + Opt-in + Compliance | 5 GR, ~22 alt madde | ✅ PASS (iter 2, FORCE PASS) |
 | 5B | **Platform UI+Adv** | PKT-5B | Phase 3A kalan: Ads Attribution + Dashboard + Randevu Advanced | 3 GR, ~10 alt madde | ✅ PASS (iter 4, FORCE PASS) |
 | 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ✅ PASS (iter 1) |
-| 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ⬜ Bekliyor |
+| 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ✅ PASS (iter 2, FORCE PASS) |
 | 6C | **Niche Health Expansion** | PKT-6C | Phase 3B: Saglik genisleme + Review Rescue + Multilingual (PKT-6B'ye bagli) | 5 GR, ~22 alt madde | ⬜ Bekliyor |
 | 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
 | 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
@@ -148,6 +148,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260217-pkt6b1-niche-business | 2026-02-17 | Paket 6B: Niche Business Logic (7 GR: Outbound e-ticaret/klinik, iade cevirme v1+v2, lead mgmt v2, agent assist e-ticaret, yorum kurtarma). 21 dosya. Codex 5-chunk review, 3 fix round, iter 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6b1-niche-business.json` |
 | 20260217-pkt6a-niche-foundation | 2026-02-17 | Paket 6A: Niche Foundation (7 GR: Intent genisleme, VIP lead detection, onboarding seed, sektor intent). 16 dosya +918/-28. Codex 2-chunk review, iter 1 PASS. Plan: `arch/plans/20260217-pkt6a-niche-foundation.json` |
 | 20260217-pkt5b-platform-ui-adv | 2026-02-17 | Paket 5B: Platform UI+Adv (GR-3.14 Ads Attribution + GR-3.18 Dashboard + GR-3.19 Randevu Advanced). 22 dosya +2863/-55. Codex iter 4 FORCE PASS (chunked review: 4 chunks). Commit: 93d2392. Plan: `arch/plans/20260217-pkt5b-platform-ui-adv.json` |
 | 20260217-pkt5a-platform-infra | 2026-02-17 | Paket 5A: Platform Infra (GR-3.4 Integrations :7106 + GR-3.6 Kargo mock + GR-3.15 Outbound v2 + GR-3.26 Opt-in + GR-3.29 Compliance). 33 dosya +3445/-14. Codex iter 2 FORCE PASS (split review: Part1 137KB + Part2 209KB). Commit: d1e28bc. Plan: `arch/plans/20260217-pkt5a-platform-infra.json` |

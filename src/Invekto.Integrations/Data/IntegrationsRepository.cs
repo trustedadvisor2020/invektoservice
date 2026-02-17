@@ -393,6 +393,151 @@ public sealed class IntegrationsRepository
     }
 
     // ================================================================
+    // Review Alerts (PKT-6B1: GR-3.16)
+    // ================================================================
+
+    /// <summary>
+    /// Insert a review alert from external webhook. ON CONFLICT updates review_text + rating.
+    /// Returns the review alert id.
+    /// </summary>
+    public async Task<int> UpsertReviewAlertAsync(
+        int tenantId, string provider, string? externalReviewId,
+        int rating, string? reviewText, string? customerPhone, string? orderId,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO review_alerts
+                (tenant_id, provider, external_review_id, rating, review_text,
+                 customer_phone, order_id)
+            VALUES
+                (@tid, @provider, @extId, @rating, @text, @phone, @orderId)
+            ON CONFLICT (tenant_id, provider, external_review_id)
+                WHERE external_review_id IS NOT NULL
+            DO UPDATE SET
+                rating = EXCLUDED.rating,
+                review_text = EXCLUDED.review_text,
+                updated_at = NOW()
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("provider", provider);
+        cmd.Parameters.AddWithValue("extId", (object?)externalReviewId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("rating", rating);
+        cmd.Parameters.AddWithValue("text", (object?)reviewText ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("phone", (object?)customerPhone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("orderId", (object?)orderId ?? DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(result);
+    }
+
+    /// <summary>
+    /// Get review alerts for a tenant, optionally filtered by status.
+    /// </summary>
+    public async Task<List<(int Id, string Provider, string? ExternalReviewId, int Rating,
+        string? ReviewText, string? CustomerPhone, string RecoveryStatus,
+        int RecoveryAttempt, DateTime CreatedAt)>> GetReviewAlertsAsync(
+        int tenantId, string? status, int limit, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, provider, external_review_id, rating, review_text,
+                   customer_phone, recovery_status, recovery_attempt, created_at
+            FROM review_alerts
+            WHERE tenant_id = @tid
+              AND (@status IS NULL OR recovery_status = @status)
+            ORDER BY created_at DESC LIMIT @limit";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("status", (object?)status ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("limit", Math.Min(limit, 100));
+
+        var alerts = new List<(int, string, string?, int, string?, string?, string, int, DateTime)>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            alerts.Add((
+                reader.GetInt32(0),
+                reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.GetInt32(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.GetString(6),
+                reader.GetInt32(7),
+                reader.GetDateTime(8)
+            ));
+        }
+        return alerts;
+    }
+
+    /// <summary>
+    /// Update recovery status and increment attempt counter.
+    /// </summary>
+    public async Task<bool> UpdateRecoveryStatusAsync(
+        int tenantId, int alertId, string newStatus, string? recoveryMessage,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE review_alerts
+            SET recovery_status = @status,
+                recovery_message = COALESCE(@msg, recovery_message),
+                recovery_attempt = recovery_attempt + 1,
+                last_attempt_at = NOW(),
+                resolved_at = CASE WHEN @status IN ('resolved', 'unresolved', 'expired') THEN NOW() ELSE resolved_at END,
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", alertId);
+        cmd.Parameters.AddWithValue("status", newStatus);
+        cmd.Parameters.AddWithValue("msg", (object?)recoveryMessage ?? DBNull.Value);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Get review recovery stats: total, by status, by provider.
+    /// </summary>
+    public async Task<(int Total, Dictionary<string, int> ByStatus, Dictionary<string, int> ByProvider)>
+        GetReviewRecoveryStatsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT recovery_status, provider, COUNT(*) as cnt
+            FROM review_alerts
+            WHERE tenant_id = @tid
+            GROUP BY recovery_status, provider";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var byStatus = new Dictionary<string, int>();
+        var byProvider = new Dictionary<string, int>();
+        var total = 0;
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var status = reader.GetString(0);
+            var provider = reader.GetString(1);
+            var count = reader.GetInt32(2);
+            total += count;
+
+            byStatus[status] = byStatus.GetValueOrDefault(status) + count;
+            byProvider[provider] = byProvider.GetValueOrDefault(provider) + count;
+        }
+
+        return (total, byStatus, byProvider);
+    }
+
+    // ================================================================
     // Helpers
     // ================================================================
 

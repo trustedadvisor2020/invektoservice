@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Invekto.Integrations.Data;
 using Invekto.Integrations.Services;
 using Invekto.Shared.Auth;
@@ -5,6 +6,7 @@ using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Integrations;
+using Invekto.Shared.DTOs.Reviews;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Middleware;
 
@@ -303,6 +305,147 @@ app.MapGet("/api/v1/cargo/{trackingCode}", async (
 });
 
 // ============================================================
+// Review Alerts endpoints (PKT-6B1: GR-3.16)
+// ============================================================
+
+app.MapPost("/api/v1/reviews/webhook", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    JsonLinesLogger jsonLogger,
+    ReviewAlertWebhookRequest? request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (request == null || string.IsNullOrWhiteSpace(request.Provider))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidReviewWebhook, "provider is required", requestId), statusCode: 400);
+
+    if (request.Rating < 1 || request.Rating > 5)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidReviewWebhook, "rating must be 1-5", requestId), statusCode: 400);
+
+    var validProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "trendyol", "hepsiburada", "google", "manual" };
+
+    if (!validProviders.Contains(request.Provider))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidReviewWebhook, $"Invalid provider: {request.Provider}", requestId), statusCode: 400);
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    try
+    {
+        var alertId = await repo.UpsertReviewAlertAsync(
+            tenantContext.TenantId, request.Provider, request.ExternalReviewId,
+            request.Rating, request.ReviewText, request.CustomerPhone, request.OrderId,
+            ctx.RequestAborted);
+
+        jsonLogger.StepInfo(
+            $"Review alert created: id={alertId}, provider={request.Provider}, rating={request.Rating}", requestId);
+
+        return Results.Json(new ReviewAlertResponse
+        {
+            Id = alertId,
+            Provider = request.Provider,
+            Rating = request.Rating,
+            RecoveryStatus = "pending",
+            CreatedAt = DateTime.UtcNow
+        }, statusCode: 201);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"Review alert DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsReviewAlertCreateFailed, "Review alert creation failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/reviews/alerts", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    string? status, int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var alerts = await repo.GetReviewAlertsAsync(tenantContext.TenantId, status, limit ?? 50, ctx.RequestAborted);
+
+    var response = alerts.Select(a => new ReviewAlertResponse
+    {
+        Id = a.Id,
+        Provider = a.Provider,
+        ExternalReviewId = a.ExternalReviewId,
+        Rating = a.Rating,
+        ReviewText = a.ReviewText,
+        CustomerPhone = a.CustomerPhone,
+        RecoveryStatus = a.RecoveryStatus,
+        RecoveryAttempt = a.RecoveryAttempt,
+        CreatedAt = a.CreatedAt
+    }).ToList();
+
+    return Results.Ok(new { alerts = response });
+});
+
+app.MapPut("/api/v1/reviews/alerts/{alertId:int}/status", async (
+    HttpContext ctx,
+    IntegrationsRepository repo,
+    JsonLinesLogger jsonLogger,
+    int alertId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var newStatus = root.TryGetProperty("recovery_status", out var s) ? s.GetString() : null;
+        if (string.IsNullOrWhiteSpace(newStatus))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidReviewWebhook, "recovery_status is required", requestId), statusCode: 400);
+
+        var validStatuses = new HashSet<string> { "pending", "contacted", "resolved", "unresolved", "expired" };
+        if (!validStatuses.Contains(newStatus))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidReviewWebhook,
+                $"recovery_status must be one of: {string.Join(", ", validStatuses)}", requestId), statusCode: 400);
+
+        var message = root.TryGetProperty("recovery_message", out var m) ? m.GetString() : null;
+
+        var updated = await repo.UpdateRecoveryStatusAsync(tenantContext.TenantId, alertId, newStatus, message, ctx.RequestAborted);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsReviewAlertCreateFailed, $"Alert {alertId} not found", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Review alert status updated: id={alertId}, status={newStatus}", requestId);
+        return Results.Ok(new { id = alertId, recovery_status = newStatus });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidReviewWebhook, "Invalid JSON body", requestId), statusCode: 400);
+    }
+});
+
+app.MapGet("/api/v1/reviews/stats", async (
+    HttpContext ctx,
+    IntegrationsRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var (total, byStatus, byProvider) = await repo.GetReviewRecoveryStatsAsync(tenantContext.TenantId, ctx.RequestAborted);
+
+    return Results.Ok(new ReviewRecoveryStatsResponse
+    {
+        TotalAlerts = total,
+        ByStatus = byStatus,
+        ByProvider = byProvider
+    });
+});
+
+// ============================================================
 // Ops endpoints
 // ============================================================
 
@@ -319,6 +462,10 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/orders", Description = "Query cached orders", Auth = "Bearer", Category = "API" },
         new() { Method = "GET", Path = "/api/v1/orders/{provider}/{externalOrderId}", Description = "Get single order", Auth = "Bearer", Category = "API" },
         new() { Method = "GET", Path = "/api/v1/cargo/{trackingCode}", Description = "Track cargo shipment", Auth = "Bearer", Category = "API" },
+        new() { Method = "POST", Path = "/api/v1/reviews/webhook", Description = "Receive review alert webhook (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
+        new() { Method = "GET", Path = "/api/v1/reviews/alerts", Description = "List review alerts (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
+        new() { Method = "PUT", Path = "/api/v1/reviews/alerts/{alertId}/status", Description = "Update review recovery status (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
+        new() { Method = "GET", Path = "/api/v1/reviews/stats", Description = "Review recovery stats (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
     return Results.Ok(endpoints);

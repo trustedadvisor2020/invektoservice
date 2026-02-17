@@ -96,6 +96,18 @@ builder.Services.AddHttpClient<KnowledgeHttpClient>()
             sp.GetRequiredService<JsonLinesLogger>());
     });
 
+// PKT-6B1: Register OrderCardService (GR-3.3, typed HttpClient → Integrations)
+var integrationsBaseUrl = builder.Configuration["Integrations:BaseUrl"] ?? "http://localhost:7106";
+var integrationsTimeoutMs = builder.Configuration.GetValue<int>("Integrations:TimeoutMs", 3000);
+builder.Services.AddHttpClient<OrderCardService>((sp, client) =>
+{
+    client.BaseAddress = new Uri(integrationsBaseUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
+});
+
+// PKT-6B1: Register EscalationNoteService (GR-3.3, no HttpClient needed)
+builder.Services.AddSingleton<EscalationNoteService>();
+
 // GR-2.2: Register ConversationSummarizer
 builder.Services.AddHttpClient<ConversationSummarizer>()
     .AddTypedClient((httpClient, sp) =>
@@ -397,6 +409,74 @@ app.MapPost("/api/v1/feedback", async (
 });
 
 // ============================================================
+// E-commerce Agent Assist endpoints (PKT-6B1: GR-3.3)
+// ============================================================
+
+app.MapGet("/api/v1/ecom/order-card/{phone}", async (
+    HttpContext ctx,
+    OrderCardService orderCardService,
+    string phone) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var jwtToken = ctx.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", "");
+
+    var card = await orderCardService.GetOrderCardAsync(
+        tenantContext.TenantId, phone, jwtToken, ctx.RequestAborted);
+
+    if (card == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AgentAIOrderCardFetchFailed, "Order card unavailable", requestId), statusCode: 502);
+
+    return Results.Ok(card);
+});
+
+app.MapPost("/api/v1/ecom/escalation-note", async (
+    HttpContext ctx,
+    EscalationNoteService escalationService) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var intent = root.TryGetProperty("intent", out var i) ? i.GetString() : null;
+        var sentiment = root.TryGetProperty("sentiment", out var s) ? s.GetString() : null;
+
+        List<ConversationEntry>? messages = null;
+        if (root.TryGetProperty("messages", out var msgArr) && msgArr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            messages = new List<ConversationEntry>();
+            foreach (var msg in msgArr.EnumerateArray())
+            {
+                messages.Add(new ConversationEntry
+                {
+                    Role = msg.TryGetProperty("role", out var r) ? r.GetString() ?? "" : "",
+                    Text = msg.TryGetProperty("text", out var t) ? t.GetString() ?? "" : ""
+                });
+            }
+        }
+
+        var note = escalationService.GenerateNote(tenantContext.TenantId, intent, sentiment, messages);
+        if (note == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AgentAIEscalationNoteFailed, "Escalation note generation failed", requestId), statusCode: 500);
+
+        return Results.Ok(note);
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AgentAIEscalationNoteFailed, "Invalid JSON body", requestId), statusCode: 400);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -406,6 +486,8 @@ app.MapGet("/api/ops/endpoints", () =>
     {
         new() { Method = "POST", Path = "/api/v1/suggest", Description = "Generate AI reply suggestion (sync)", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "POST", Path = "/api/v1/feedback", Description = "Submit agent feedback on suggestion", Auth = "Bearer JWT", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/ecom/order-card/{phone}", Description = "Order card for customer (PKT-6B1)", Auth = "Bearer JWT", Category = "Ecom" },
+        new() { Method = "POST", Path = "/api/v1/ecom/escalation-note", Description = "Generate escalation note (PKT-6B1)", Auth = "Bearer JWT", Category = "Ecom" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },

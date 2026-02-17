@@ -1,0 +1,269 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-6B1",
+  "gr_list": [
+    {
+      "id": "GR-3.7",
+      "description": "Outbound E-ticaret Senaryolari: order_delivered, return_follow_up, b2b_alert, review_prep trigger'lari",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR-3.8",
+      "description": "Iade Cevirme v1: iade intent algilama, neden siniflandirma, aksiyon routing, conversion tracking",
+      "services_affected": ["Invekto.Automation", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.11",
+      "description": "Klinik Outbound v1: checkup_reminder, birthday_message trigger'lari",
+      "services_affected": ["Invekto.Outbound"]
+    },
+    {
+      "id": "GR-3.13",
+      "description": "Lead Management v2: lead CRUD, scoring, pipeline, follow-up trigger, funnel API",
+      "services_affected": ["Invekto.Backend", "Invekto.Shared", "Invekto.Outbound"]
+    },
+    {
+      "id": "GR-3.3",
+      "description": "Agent Assist E-ticaret: siparis karti (Integrations), eskalasyon notu, e-com reply kalitesi",
+      "services_affected": ["Invekto.AgentAI", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.16",
+      "description": "Negatif Yorum Kurtarma: review webhook, auto-message, T+0/T+48h flow, recovery tracking",
+      "services_affected": ["Invekto.Integrations", "Invekto.Outbound", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.17",
+      "description": "Iade Cevirme v2: tenant sabit kuponlar, stok kontrol (Integrations), basari orani, follow-up",
+      "services_affected": ["Invekto.Automation", "Invekto.Integrations", "Invekto.Shared"]
+    }
+  ],
+  "slug": "20260217-pkt6b1-niche-business",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-17T23:00:00Z",
+  "updated_at": "2026-02-18T01:30:00Z",
+  "plan": {
+    "summary": "PKT-6B1 Niche Business Logic: 7 GR ile e-ticaret outbound senaryolari, iade cevirme (v1+v2), klinik outbound, lead management v2, agent assist e-ticaret genislemesi, negatif yorum kurtarma. 5 serviste degisiklik, 3 yeni DB tablosu, mevcut PKT-6A pattern'leri (cross-service client, DB-driven config) genisletiliyor.",
+    "q_intent": "PKT-6B1 interview baslat, orijinal 7 GR ile devam. GR-3.8 Automation flow+helper, GR-3.16 webhook-based, GR-3.13 API only (UI yok), GR-3.17 tenant sabit kuponlar.",
+    "interview_notes": "1) PKT-6B 14 GR -> PKT-6B1 (orijinal 7) + PKT-6B2 (v6 7) split. 2) Sikayetvar: mock/webhook approach. 3) service_catalog yerine mevcut service_pricing genisletme. 4) GR-3.8: Automation flow+helper. 5) GR-3.16: Webhook-based review alert. 6) GR-3.13: Backend API only, UI yok. 7) GR-3.17: Tenant sabit kuponlar (dinamik uretim yok)."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Leads/LeadDtos.cs",
+    "src/Invekto.Shared/DTOs/Returns/ReturnDeflectionDtos.cs",
+    "src/Invekto.Shared/DTOs/Reviews/ReviewAlertDtos.cs",
+    "src/Invekto.Shared/DTOs/AgentAI/OrderCardDto.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Automation/Services/ReturnDeflectionService.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.AgentAI/Services/ReplyGenerator.cs",
+    "src/Invekto.AgentAI/Services/OrderCardService.cs",
+    "src/Invekto.AgentAI/Services/EscalationNoteService.cs",
+    "src/Invekto.AgentAI/Data/AgentAIRepository.cs",
+    "src/Invekto.AgentAI/Program.cs",
+    "src/Invekto.Outbound/Services/TriggerProcessor.cs",
+    "src/Invekto.Outbound/Services/ReviewRecoveryService.cs",
+    "src/Invekto.Outbound/Services/LeadFollowUpService.cs",
+    "src/Invekto.Outbound/Data/OutboundRepository.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Integrations/Services/ReviewWebhookService.cs",
+    "src/Invekto.Integrations/Services/StockQueryService.cs",
+    "src/Invekto.Integrations/Data/IntegrationsRepository.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Backend/Data/LeadRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Outbound/Services/ConsentManager.cs",
+    "arch/db/pkt6b1-niche-business.sql",
+    "arch/db/pkt6b1-niche-business-seeds.sql",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Returns/ReturnDeflectionDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Reviews/ReviewAlertDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Leads/LeadDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/AgentAI/OrderCardDto.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/ReturnDeflectionService.cs", "is_new": true },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Integrations/Data/IntegrationsRepository.cs", "is_new": false },
+    { "path": "src/Invekto.Integrations/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Outbound/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Outbound/Services/ConsentManager.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Data/LeadRepository.cs", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.AgentAI/Services/OrderCardService.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Services/EscalationNoteService.cs", "is_new": true },
+    { "path": "src/Invekto.AgentAI/Program.cs", "is_new": false },
+    { "path": "arch/db/pkt6b1-niche-business.sql", "is_new": true },
+    { "path": "arch/plans/20260217-pkt6b1-niche-business.json", "is_new": true }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260217-pkt6b1-niche-business.diff",
+    "total_bytes": 118662,
+    "chunks": 4,
+    "stats": {
+      "insertions": 2370,
+      "deletions": 5,
+      "files_count": 19
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "services": [
+      "Invekto.Shared",
+      "Invekto.Automation",
+      "Invekto.AgentAI",
+      "Invekto.Outbound",
+      "Invekto.Integrations",
+      "Invekto.Backend"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "return_deflections tablosunda tenant_id WHERE clause tum query'lerde var mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "ReviewWebhookService review_alerts insert'inde typed catch (NpgsqlException) kullaniliyor mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "LeadFollowUpService IHostedService graceful shutdown (CancellationToken) handle ediyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "OrderCardService Integrations'a HTTP call yaparken timeout + typed catch + graceful fallback zinciri var mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Lead scoring hesaplamasi kullanici girdisi (score parametreleri) icin boundary validation yapiliyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "ReturnDeflectionService kupon kodu atamasinda tenant settings_json'dan okunan deger null/bos ise fallback/warning var mi?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q7",
+      "question": "Tum fire-and-forget callback'ler ContinueWith(OnlyOnFaulted) pattern'i ile loglaniyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Knowledge/",
+      "src/Invekto.Appointments/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.Backend/FlowBuilder/",
+      "src/Invekto.Backend/Dashboard/",
+      "temp/",
+      "deploy_output/"
+    ],
+    "non_goals": [
+      "Dashboard UI (Lead pipeline kanban, return stats chart) - sadece API",
+      "Gercek Trendyol/HB Review API entegrasyonu - sadece webhook",
+      "Dinamik kupon uretimi - sadece tenant sabit kuponlar",
+      "PKT-6B2 scope (v6 GR'lar: churn, timeline, revenue attribution, stok bildirim, influencer, cross-platform, sikayetvar)"
+    ],
+    "intentional_exclusions": [
+      "React Dashboard components (PKT-6B2 veya sonraki paket)",
+      "Sikayetvar entegrasyonu (PKT-6B2)",
+      "Churn signal detection (PKT-6B2)",
+      "Unified customer timeline (PKT-6B2)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ReturnDeflectionService: intent match + reason classification + coupon assignment",
+      "OrderCardService: Integrations HTTP call + JSON parse",
+      "ReviewWebhookService: webhook payload parse + DB insert",
+      "LeadFollowUpService: timer tick + Outbound trigger call",
+      "StockQueryService: Integrations order lookup",
+      "LeadRepository: all CRUD operations"
+    ],
+    "user_facing_errors": [
+      "INV-AT-027: Iade cevirme islemi basarisiz",
+      "INV-AT-028: Iade nedeni siniflandirilamadi",
+      "INV-AT-029: Kupon atama basarisiz (tenant ayarlari kontrol edin)",
+      "INV-AA-010: Siparis bilgisi alinamadi (Integrations servisi)",
+      "INV-AA-011: Eskalasyon notu olusturulamadi",
+      "INV-AA-012: E-ticaret cevap zenginlestirme basarisiz",
+      "INV-IG-008: Yorum alert webhook payload gecersiz",
+      "INV-IG-009: Yorum alert kaydi olusturulamadi",
+      "INV-IG-010: Stok sorgusu basarisiz",
+      "INV-OB-021: E-ticaret trigger sablonu bulunamadi",
+      "INV-OB-022: Klinik trigger sablonu bulunamadi",
+      "INV-OB-023: Lead follow-up trigger basarisiz",
+      "INV-LD-001: Gecersiz lead istegi",
+      "INV-LD-002: Lead bulunamadi",
+      "INV-LD-003: Gecersiz pipeline durumu",
+      "INV-LD-004: Lead scoring hesaplama hatasi",
+      "INV-LD-005: Follow-up zamanlama hatasi",
+      "INV-LD-006: Gecersiz lead aktivite istegi",
+      "INV-LD-007: Lead funnel sorgusu basarisiz",
+      "INV-LD-008: Hot lead alert gonderilemedi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum servisler SystemWarn ile loglar, fire-and-forget ContinueWith pattern'i kullanir. Graceful degradation: Integrations down = fallback mesaj, scoring fail = default score."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Iade talebi geldiginde musteri kaybediliyor, cevirme firsati kaciyor",
+      "suggestion": "Iade intent algilandiginda ANINDA neden sor + alternatif sun (degisim/kupon). Kurtarilan geliri dashboard'da goster.",
+      "aha_moment": "Magaza sahibi '₺45K iade kurtarildi bu ay' gorduğunde ROI hemen anlasilir"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Negatif yorum gelince fark edilmesi saatler aliyor, musteri kopmus oluyor",
+      "suggestion": "Yorum webhook tetiklenir tetiklenmez WA mesaji hazirla + T+0 gonder. Ilk 1 saatte ulasan kurtarma orani %40 daha yuksek.",
+      "aha_moment": "Musteri 1-yildiz verdikten 5 dk sonra 'ozur dileriz' mesaji alinca sasirma + yumusama"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Lead'ler takip edilmiyor, sicak lead soguyunca randevuya donusmuyor",
+      "suggestion": "Otomatik follow-up zinciri: T+24h ilk hatirlatma, T+72h ikinci, T+7d son. Hot lead = aninda alert.",
+      "aha_moment": "Doktor 'Bu lead 3 gun once geldi ama kimse aramadi' derdini bitirir"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Agent musterinin siparis gecmisini gormeden cevap veriyor, tekrar sormak zorunda",
+      "suggestion": "Siparis karti: musteri yazdiginda son 5 siparisi otomatik goster (Trendyol/HB'den). Agent hemen context sahibi.",
+      "aha_moment": "Agent 'Siparis numaranizi alabilir miyim?' yerine 'XYZ siparisini mi soruyorsunuz?' diyebildiginde"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Klinik hastalarina dogum gunu/kontrol hatirlatmasi manuel yapiliyor, unutuluyor",
+      "suggestion": "Otomatik trigger: tedavi+30gun = kontrol hatirlatma, dogum gunu = kutlama mesaji. Opt-out saygili.",
+      "aha_moment": "Hasta 'Klinigim beni hatirladi!' hissi = sadakat + referans"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}

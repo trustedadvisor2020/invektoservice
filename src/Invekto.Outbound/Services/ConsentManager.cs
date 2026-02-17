@@ -19,7 +19,9 @@ public sealed class ConsentManager
     /// </summary>
     private static readonly HashSet<string> UtilityEvents = new(StringComparer.OrdinalIgnoreCase)
     {
-        "payment_received", "appointment_reminder"
+        "payment_received", "appointment_reminder",
+        "return_exchange", "return_coupon", "review_recovery",
+        "clinic_reminder", "post_treatment"
     };
 
     public ConsentManager(OutboundRepository repository, JsonLinesLogger logger)

@@ -388,7 +388,9 @@ app.MapPost("/api/v1/templates", async (
     }
 
     // Validate trigger_event
-    var validEvents = new[] { "manual", "new_lead", "payment_received", "appointment_reminder" };
+    var validEvents = new[] { "manual", "new_lead", "payment_received", "appointment_reminder",
+        "return_exchange", "return_coupon", "review_recovery", "lead_followup",
+        "clinic_reminder", "post_treatment" };
     if (!validEvents.Contains(request.TriggerEvent))
     {
         return Results.Json(
@@ -430,7 +432,9 @@ app.MapPut("/api/v1/templates/{id:int}", async (
     // Validate trigger_event if provided
     if (request.TriggerEvent != null)
     {
-        var validEvents = new[] { "manual", "new_lead", "payment_received", "appointment_reminder" };
+        var validEvents = new[] { "manual", "new_lead", "payment_received", "appointment_reminder",
+        "return_exchange", "return_coupon", "review_recovery", "lead_followup",
+        "clinic_reminder", "post_treatment" };
         if (!validEvents.Contains(request.TriggerEvent))
         {
             return Results.Json(

@@ -519,6 +519,159 @@ public sealed class AutomationRepository
         }
         return (null, null);
     }
+
+    // ============================================================
+    // PKT-6B1: Return Deflections (GR-3.8 + GR-3.17)
+    // ============================================================
+
+    /// <summary>Insert a new return deflection record.</summary>
+    public async Task<int> InsertReturnDeflectionAsync(
+        int tenantId, string? conversationId, string phone,
+        string reasonCategory, string? reasonText,
+        string actionTaken, string? couponCode, decimal? couponValue,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO return_deflections
+                (tenant_id, conversation_id, customer_phone, reason_category, reason_text,
+                 action_taken, coupon_code, coupon_value)
+            VALUES (@tid, @cid, @phone, @reason, @reasonText, @action, @coupon, @couponVal)
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", (object?)conversationId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("phone", phone);
+        cmd.Parameters.AddWithValue("reason", reasonCategory);
+        cmd.Parameters.AddWithValue("reasonText", (object?)reasonText ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("action", actionTaken);
+        cmd.Parameters.AddWithValue("coupon", (object?)couponCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("couponVal", (object?)couponValue ?? DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return (int)(result ?? 0);
+    }
+
+    /// <summary>Update deflection result (was_deflected, revenue saved).</summary>
+    public async Task<bool> UpdateReturnDeflectionResultAsync(
+        int tenantId, int deflectionId, bool wasDeflected, decimal? revenueSaved,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE return_deflections
+            SET was_deflected = @deflected,
+                deflection_revenue = COALESCE(@revenue, deflection_revenue),
+                updated_at = NOW()
+            WHERE id = @id AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", deflectionId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("deflected", wasDeflected);
+        cmd.Parameters.AddWithValue("revenue", (object?)revenueSaved ?? DBNull.Value);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>Get deflection stats for a tenant (GR-3.17 success rate).</summary>
+    public async Task<(int Total, int Deflected, decimal RevenueSaved,
+        Dictionary<string, int> ByReason, Dictionary<string, int> ByAction)>
+        GetReturnDeflectionStatsAsync(int tenantId, DateTime? from, DateTime? to,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE was_deflected = TRUE) AS deflected,
+                COALESCE(SUM(deflection_revenue) FILTER (WHERE was_deflected = TRUE), 0) AS revenue_saved,
+                reason_category,
+                action_taken
+            FROM return_deflections
+            WHERE tenant_id = @tid
+              AND (@from IS NULL OR created_at >= @from)
+              AND (@to IS NULL OR created_at <= @to)
+            GROUP BY GROUPING SETS ((), (reason_category), (action_taken))";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("from", (object?)from ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("to", (object?)to ?? DBNull.Value);
+
+        int total = 0, deflected = 0;
+        decimal revenueSaved = 0;
+        var byReason = new Dictionary<string, int>();
+        var byAction = new Dictionary<string, int>();
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var reasonCat = reader.IsDBNull(3) ? null : reader.GetString(3);
+            var actionTk = reader.IsDBNull(4) ? null : reader.GetString(4);
+
+            if (reasonCat == null && actionTk == null)
+            {
+                total = reader.GetInt32(0);
+                deflected = reader.GetInt32(1);
+                revenueSaved = reader.GetDecimal(2);
+            }
+            else if (reasonCat != null && actionTk == null)
+            {
+                byReason[reasonCat] = reader.GetInt32(0);
+            }
+            else if (reasonCat == null && actionTk != null)
+            {
+                byAction[actionTk] = reader.GetInt32(0);
+            }
+        }
+
+        return (total, deflected, revenueSaved, byReason, byAction);
+    }
+
+    /// <summary>Get deflections pending follow-up for a specific tenant.</summary>
+    public async Task<List<(int Id, int TenantId, string Phone, string ActionTaken)>>
+        GetPendingFollowUpsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, customer_phone, action_taken
+            FROM return_deflections
+            WHERE tenant_id = @tid
+              AND follow_up_sent = FALSE
+              AND follow_up_at IS NOT NULL
+              AND follow_up_at <= NOW()
+            ORDER BY follow_up_at
+            LIMIT 50
+            FOR UPDATE SKIP LOCKED";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = new List<(int, int, string, string)>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add((reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2), reader.GetString(3)));
+        }
+        return result;
+    }
+
+    /// <summary>Mark follow-up as sent for a deflection.</summary>
+    public async Task MarkFollowUpSentAsync(int tenantId, int deflectionId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE return_deflections
+            SET follow_up_sent = TRUE, updated_at = NOW()
+            WHERE id = @id AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", deflectionId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
 }
 
 // ============================================================

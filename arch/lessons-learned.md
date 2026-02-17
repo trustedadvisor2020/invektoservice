@@ -54,6 +54,9 @@
 | 2026-02-17 | HttpRequestMessage/HttpResponseMessage dispose edilmedi | `using var` eklendi | **HTTP message nesneleri MUTLAKA using ile sarmalani** |
 | 2026-02-17 | Chunked Codex review CoVe UNKNOWN - logic baska chunk'ta | Chunk'lar arasi verdict birlestirildi | **Chunked review'da CoVe UNKNOWN = baska chunk'ta PASS olabilir, cross-reference kontrol et** |
 | 2026-02-17 | Backend Program.cs logger adi `jsonLog` ama `jsonLogger` yazildi | Endpoint imzasindaki parametre adi kontrol edildi | **Logger kullanirken ONCE endpoint method signature'daki parametre adini kontrol et** |
+| 2026-02-17 | 6 lead endpoint'te NpgsqlException catch eksik - Codex CQ1 FAIL | Her endpoint'e NpgsqlException catch eklendi | **DB cagiran TUM endpoint'ler (sadece repo degil) NpgsqlException catch ZORUNLU** |
+| 2026-02-17 | GetPendingFollowUpsAsync tenant_id parametresi yoktu | `int tenantId` + WHERE tenant_id = @tid eklendi | **Scheduled/helper query'ler de tenant_id filtresi ZORUNLU - "internal" olsa bile** |
+| 2026-02-17 | Chunked review: 5 chunk, tum CQ PASS ama CoVe UNKNOWN = Q FORCE PASS | Chunking artifact olarak belgelendi | **Tum CQ1-CQ8 PASS + CoVe sadece UNKNOWN = FORCE PASS uygun (real fail yok)** |
 
 ### Deploy & Config
 

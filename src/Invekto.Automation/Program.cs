@@ -8,6 +8,7 @@ using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Integration;
+using Invekto.Shared.DTOs.Returns;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
 
@@ -129,6 +130,9 @@ builder.Services.AddHttpClient<KnowledgeIntentClient>((sp, client) =>
 // PKT-6A: Register VipDetectionService (with HttpClient for sales webhook)
 builder.Services.AddHttpClient<VipDetectionService>();
 
+// PKT-6B1: Register ReturnDeflectionService (GR-3.8 + GR-3.17)
+builder.Services.AddSingleton<ReturnDeflectionService>();
+
 // PKT-6A: Register OnboardingService (with HttpClient for Knowledge seed API)
 builder.Services.AddHttpClient<OnboardingService>((sp, client) =>
 {
@@ -145,7 +149,7 @@ var app = builder.Build();
 app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
-app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/", "/api/v1/onboarding/");
+app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/", "/api/v1/onboarding/", "/api/v1/returns/");
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -938,6 +942,73 @@ app.MapPost("/api/v1/onboarding/{tenantId:int}/seed-intents", async (int tenantI
 });
 
 // ============================================================
+// Return Deflection endpoints (PKT-6B1: GR-3.8 + GR-3.17)
+// ============================================================
+
+app.MapGet("/api/v1/returns/{tenantId:int}/stats", async (
+    int tenantId, HttpContext ctx,
+    ReturnDeflectionService deflectionService,
+    AutomationRepository repo,
+    JsonLinesLogger jsonLogger,
+    string? from, string? to) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var fromDate = !string.IsNullOrEmpty(from) ? DateTime.Parse(from) : DateTime.UtcNow.AddDays(-30);
+        var toDate = !string.IsNullOrEmpty(to) ? DateTime.Parse(to) : DateTime.UtcNow;
+
+        var stats = await repo.GetReturnDeflectionStatsAsync(tenantId, fromDate, toDate, ctx.RequestAborted);
+        return Results.Ok(stats);
+    }
+    catch (FormatException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid date format. Use yyyy-MM-dd", requestId), statusCode: 400);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"Return deflection stats DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationReturnDeflectionFailed, "Stats query failed", requestId), statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/returns/{tenantId:int}/{deflectionId:int}/deflected", async (
+    int tenantId, int deflectionId, HttpContext ctx,
+    ReturnDeflectionService deflectionService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+        var revenueSaved = root.TryGetProperty("revenue_saved", out var r) && r.ValueKind == JsonValueKind.Number
+            ? r.GetDecimal() : (decimal?)null;
+
+        var updated = await deflectionService.MarkDeflectedAsync(tenantId, deflectionId, revenueSaved, ctx.RequestAborted);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationReturnDeflectionFailed, "Deflection not found", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Return deflection marked: tenant={tenantId}, id={deflectionId}, revenue={revenueSaved}", requestId);
+        return Results.Ok(new { deflection_id = deflectionId, was_deflected = true, revenue_saved = revenueSaved });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId), statusCode: 400);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -963,6 +1034,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "PUT", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Update FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "DELETE", Path = "/api/v1/faq/{tenantId}/{id}", Description = "Delete FAQ entry", Auth = "Bearer JWT", Category = "API" },
         new() { Method = "POST", Path = "/api/v1/onboarding/{tenantId}/seed-intents", Description = "Seed tenant intents from sector templates (PKT-6A)", Auth = "Bearer JWT", Category = "Onboarding" },
+        new() { Method = "GET", Path = "/api/v1/returns/{tenantId}/stats", Description = "Return deflection stats (PKT-6B1)", Auth = "Bearer JWT", Category = "Returns" },
+        new() { Method = "POST", Path = "/api/v1/returns/{tenantId}/{deflectionId}/deflected", Description = "Mark deflection as successful (PKT-6B1)", Auth = "Bearer JWT", Category = "Returns" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
