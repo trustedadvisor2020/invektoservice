@@ -81,7 +81,7 @@ public sealed class AppointmentsRepository
         cmd.Parameters.AddWithValue("maxBookings", req.MaxBookings);
 
         var result = await cmd.ExecuteScalarAsync(ct);
-        return (int)result!;
+        return result is int id ? id : Convert.ToInt32(result);
     }
 
     public async Task<bool> UpdateSlotAsync(
@@ -287,45 +287,6 @@ public sealed class AppointmentsRepository
         return Convert.ToInt32(result);
     }
 
-    public async Task<List<AvailableSlotDto>> GetAvailableSlotsAsync(
-        int tenantId, DateOnly date, CancellationToken ct = default)
-    {
-        var dayOfWeek = (int)date.DayOfWeek; // 0=Sunday matches PostgreSQL convention
-
-        const string sql = @"
-            SELECT s.id, s.start_time, s.end_time, s.max_bookings, s.doctor_id,
-                   COALESCE(
-                       (SELECT COUNT(*) FROM appointments a
-                        WHERE a.slot_id = s.id AND a.appointment_date = @date AND a.status = 'confirmed'),
-                       0
-                   ) AS current_bookings
-            FROM appointment_slots s
-            WHERE s.tenant_id = @tid AND s.day_of_week = @dow AND s.is_active = TRUE
-            ORDER BY s.start_time";
-
-        await using var conn = await _db.OpenConnectionAsync(ct);
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("tid", tenantId);
-        cmd.Parameters.AddWithValue("dow", (short)dayOfWeek);
-        cmd.Parameters.AddWithValue("date", date);
-
-        var slots = new List<AvailableSlotDto>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            slots.Add(new AvailableSlotDto
-            {
-                SlotId = reader.GetInt32(0),
-                StartTime = reader.GetFieldValue<TimeOnly>(1).ToString("HH:mm"),
-                EndTime = reader.GetFieldValue<TimeOnly>(2).ToString("HH:mm"),
-                MaxBookings = reader.GetInt32(3),
-                DoctorId = reader.IsDBNull(4) ? null : reader.GetInt32(4),
-                CurrentBookings = reader.GetInt32(5)
-            });
-        }
-        return slots;
-    }
-
     // ================================================================
     // Reminders (scheduler queries)
     // ================================================================
@@ -423,8 +384,344 @@ public sealed class AppointmentsRepository
     }
 
     // ================================================================
+    // GR-3.19: Waitlist
+    // ================================================================
+
+    public async Task<int> InsertWaitlistAsync(
+        int tenantId, WaitlistCreateRequest req, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO waitlist (tenant_id, patient_phone, patient_name,
+                preferred_date, preferred_time, service_type, doctor_id,
+                expires_at)
+            VALUES (@tid, @phone, @name,
+                @pdate, @ptime, @stype, @docId,
+                NOW() + INTERVAL '14 days')
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", req.PatientPhone);
+        cmd.Parameters.AddWithValue("name", req.PatientName);
+        cmd.Parameters.AddWithValue("pdate",
+            !string.IsNullOrEmpty(req.PreferredDate) ? DateOnly.Parse(req.PreferredDate) : DBNull.Value);
+        cmd.Parameters.AddWithValue("ptime",
+            !string.IsNullOrEmpty(req.PreferredTime) ? TimeOnly.Parse(req.PreferredTime) : DBNull.Value);
+        cmd.Parameters.AddWithValue("stype", (object?)req.ServiceType ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("docId", req.DoctorId.HasValue ? req.DoctorId.Value : DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int id ? id : Convert.ToInt32(result);
+    }
+
+    public async Task<List<WaitlistDto>> GetWaitlistAsync(
+        int tenantId, string? status = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, patient_phone, patient_name,
+                   preferred_date::text, preferred_time::text, service_type, doctor_id,
+                   status, notified_at, expires_at, created_at
+            FROM waitlist
+            WHERE tenant_id = @tid
+              AND (@status IS NULL OR status = @status)
+            ORDER BY created_at DESC LIMIT 200";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("status", (object?)status ?? DBNull.Value);
+
+        var result = new List<WaitlistDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(ReadWaitlistDto(reader));
+        }
+        return result;
+    }
+
+    public async Task<bool> UpdateWaitlistStatusAsync(
+        int tenantId, int id, string newStatus, CancellationToken ct = default)
+    {
+        var sql = @"
+            UPDATE waitlist
+            SET status = @status,
+                notified_at = CASE WHEN @status = 'notified' THEN NOW() ELSE notified_at END
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("status", newStatus);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Find waiting entries that match a cancelled appointment (date + doctor).
+    /// Used by cancel endpoint to trigger waitlist notifications.
+    /// </summary>
+    public async Task<List<WaitlistDto>> FindMatchingWaitlistAsync(
+        int tenantId, DateOnly appointmentDate, int? doctorId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, patient_phone, patient_name,
+                   preferred_date::text, preferred_time::text, service_type, doctor_id,
+                   status, notified_at, expires_at, created_at
+            FROM waitlist
+            WHERE tenant_id = @tid
+              AND status = 'waiting'
+              AND (preferred_date IS NULL OR preferred_date = @apptDate)
+              AND (doctor_id IS NULL OR (@docId IS NOT NULL AND doctor_id = @docId))
+            ORDER BY created_at ASC
+            LIMIT 5";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("apptDate", appointmentDate);
+        cmd.Parameters.AddWithValue("docId", doctorId.HasValue ? doctorId.Value : DBNull.Value);
+
+        var result = new List<WaitlistDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(ReadWaitlistDto(reader));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Mark expired waitlist entries (status=waiting, expires_at past).
+    /// Background timer job: processes all valid tenants via tenant_registry join.
+    /// Returns count of expired entries.
+    /// </summary>
+    public async Task<int> ExpireWaitlistEntriesAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE waitlist
+            SET status = 'expired'
+            WHERE status = 'waiting'
+              AND expires_at IS NOT NULL
+              AND expires_at < NOW()
+              AND tenant_id IN (SELECT tenant_id FROM tenant_registry)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+
+        return await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // ================================================================
+    // GR-3.19: Service Pricing
+    // ================================================================
+
+    public async Task<List<ServicePricingDto>> GetPricingAsync(
+        int tenantId, bool activeOnly = true, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, service_name, price_min, price_max, currency,
+                   duration_minutes, description, is_active, created_at, updated_at
+            FROM service_pricing
+            WHERE tenant_id = @tid
+              AND (@activeOnly = FALSE OR is_active = TRUE)
+            ORDER BY service_name";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("activeOnly", activeOnly);
+
+        var result = new List<ServicePricingDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new ServicePricingDto
+            {
+                Id = reader.GetInt32(0),
+                TenantId = reader.GetInt32(1),
+                ServiceName = reader.GetString(2),
+                PriceMin = reader.GetDecimal(3),
+                PriceMax = reader.GetDecimal(4),
+                Currency = reader.GetString(5),
+                DurationMinutes = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                Description = reader.IsDBNull(7) ? null : reader.GetString(7),
+                IsActive = reader.GetBoolean(8),
+                CreatedAt = reader.GetDateTime(9),
+                UpdatedAt = reader.GetDateTime(10)
+            });
+        }
+        return result;
+    }
+
+    public async Task<int> CreatePricingAsync(
+        int tenantId, PricingCreateRequest req, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO service_pricing (tenant_id, service_name, price_min, price_max, currency, duration_minutes, description)
+            VALUES (@tid, @name, @pmin, @pmax, @currency, @duration, @desc)
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", req.ServiceName);
+        cmd.Parameters.AddWithValue("pmin", req.PriceMin);
+        cmd.Parameters.AddWithValue("pmax", req.PriceMax);
+        cmd.Parameters.AddWithValue("currency", req.Currency);
+        cmd.Parameters.AddWithValue("duration", req.DurationMinutes.HasValue ? req.DurationMinutes.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("desc", (object?)req.Description ?? DBNull.Value);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int id ? id : Convert.ToInt32(result);
+    }
+
+    public async Task<bool> UpdatePricingAsync(
+        int tenantId, int id, PricingUpdateRequest req, CancellationToken ct = default)
+    {
+        if (req.ServiceName == null && !req.PriceMin.HasValue && !req.PriceMax.HasValue
+            && req.Currency == null && !req.DurationMinutes.HasValue && req.Description == null
+            && !req.IsActive.HasValue)
+            return false;
+
+        const string sql = @"
+            UPDATE service_pricing
+            SET service_name = COALESCE(@name, service_name),
+                price_min = COALESCE(@pmin, price_min),
+                price_max = COALESCE(@pmax, price_max),
+                currency = COALESCE(@currency, currency),
+                duration_minutes = COALESCE(@duration, duration_minutes),
+                description = COALESCE(@desc, description),
+                is_active = COALESCE(@active, is_active),
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("name", (object?)req.ServiceName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("pmin", req.PriceMin.HasValue ? req.PriceMin.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("pmax", req.PriceMax.HasValue ? req.PriceMax.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("currency", (object?)req.Currency ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("duration", req.DurationMinutes.HasValue ? req.DurationMinutes.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("desc", (object?)req.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("active", req.IsActive.HasValue ? req.IsActive.Value : DBNull.Value);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    // ================================================================
+    // GR-3.19: No-show stats
+    // ================================================================
+
+    public async Task<NoShowStatsDto> GetNoShowStatsAsync(
+        int tenantId, string patientPhone, int threshold = 2, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'no_show') AS no_show_count,
+                COUNT(*) AS total_appointments
+            FROM appointments
+            WHERE tenant_id = @tid AND patient_phone = @phone";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("phone", patientPhone);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (await reader.ReadAsync(ct))
+        {
+            var noShows = (int)reader.GetInt64(0);
+            var total = (int)reader.GetInt64(1);
+            return new NoShowStatsDto
+            {
+                PatientPhone = patientPhone,
+                NoShowCount = noShows,
+                TotalAppointments = total,
+                NoShowRate = total > 0 ? Math.Round((double)noShows / total * 100, 1) : 0,
+                ExceedsThreshold = noShows >= threshold,
+                Threshold = threshold
+            };
+        }
+
+        return new NoShowStatsDto
+        {
+            PatientPhone = patientPhone,
+            Threshold = threshold
+        };
+    }
+
+    // ================================================================
+    // GR-3.19: Available slots with doctor filter
+    // ================================================================
+
+    public async Task<List<AvailableSlotDto>> GetAvailableSlotsAsync(
+        int tenantId, DateOnly date, int? doctorId, CancellationToken ct = default)
+    {
+        var dayOfWeek = (int)date.DayOfWeek;
+
+        const string sql = @"
+            SELECT s.id, s.start_time, s.end_time, s.max_bookings, s.doctor_id,
+                   COALESCE(
+                       (SELECT COUNT(*) FROM appointments a
+                        WHERE a.slot_id = s.id AND a.appointment_date = @date AND a.status = 'confirmed'),
+                       0
+                   ) AS current_bookings
+            FROM appointment_slots s
+            WHERE s.tenant_id = @tid AND s.day_of_week = @dow AND s.is_active = TRUE
+              AND (@docId IS NULL OR s.doctor_id = @docId)
+            ORDER BY s.start_time";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("dow", (short)dayOfWeek);
+        cmd.Parameters.AddWithValue("date", date);
+        cmd.Parameters.AddWithValue("docId", doctorId.HasValue ? doctorId.Value : DBNull.Value);
+
+        var slots = new List<AvailableSlotDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            slots.Add(new AvailableSlotDto
+            {
+                SlotId = reader.GetInt32(0),
+                StartTime = reader.GetFieldValue<TimeOnly>(1).ToString("HH:mm"),
+                EndTime = reader.GetFieldValue<TimeOnly>(2).ToString("HH:mm"),
+                MaxBookings = reader.GetInt32(3),
+                DoctorId = reader.IsDBNull(4) ? null : reader.GetInt32(4),
+                CurrentBookings = reader.GetInt32(5)
+            });
+        }
+        return slots;
+    }
+
+    // ================================================================
     // Private helpers
     // ================================================================
+
+    private static WaitlistDto ReadWaitlistDto(NpgsqlDataReader reader)
+    {
+        return new WaitlistDto
+        {
+            Id = reader.GetInt32(0),
+            TenantId = reader.GetInt32(1),
+            PatientPhone = reader.GetString(2),
+            PatientName = reader.GetString(3),
+            PreferredDate = reader.IsDBNull(4) ? null : reader.GetString(4),
+            PreferredTime = reader.IsDBNull(5) ? null : reader.GetString(5),
+            ServiceType = reader.IsDBNull(6) ? null : reader.GetString(6),
+            DoctorId = reader.IsDBNull(7) ? null : reader.GetInt32(7),
+            Status = reader.GetString(8),
+            NotifiedAt = reader.IsDBNull(9) ? null : reader.GetDateTime(9),
+            ExpiresAt = reader.IsDBNull(10) ? null : reader.GetDateTime(10),
+            CreatedAt = reader.GetDateTime(11)
+        };
+    }
 
     private async Task<List<ReminderCandidate>> ExecuteReminderQueryAsync(
         string sql, int batchSize, CancellationToken ct)

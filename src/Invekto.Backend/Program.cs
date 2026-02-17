@@ -10,6 +10,7 @@ using Invekto.Shared.DTOs.ChatAnalysis;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
 using Invekto.Shared.DTOs.Analytics;
+using Invekto.Shared.DTOs.Attribution;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
@@ -182,6 +183,10 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     builder.Services.AddSingleton<AnalyticsRepository>();
     // PKT-3: MetricsAggregationService (IHostedService, 5min aggregation timer)
     builder.Services.AddHostedService<MetricsAggregationService>();
+
+    // GR-3.14: Attribution tracking (singleton, thread-safe via connection pooling)
+    builder.Services.AddSingleton<AttributionRepository>();
+    builder.Services.AddSingleton<AttributionService>();
 }
 
 // Callback client for async results to Main App
@@ -210,7 +215,7 @@ app.UseTrafficLogging(
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/attribution/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -934,7 +939,7 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
 
 // Webhook event receiver (Main App -> InvektoServis)
 // JWT auth enforced by middleware for /api/v1/webhook/ prefix
-app.MapPost("/api/v1/webhook/event", (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
+app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent, AttributionService? attrService) =>
 {
     var sw = System.Diagnostics.Stopwatch.StartNew();
     var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -972,6 +977,17 @@ app.MapPost("/api/v1/webhook/event", (HttpContext ctx, JsonLinesLogger jsonLogge
                 $"Unknown event_type: {webhookEvent.EventType}. Valid: new_message, conversation_closed, tag_changed, conversation_started, agent_assigned",
                 requestId),
             statusCode: 400);
+    }
+
+    // GR-3.14: Track attribution on conversation_started (fire-and-forget with error logging)
+    if (webhookEvent.EventType == "conversation_started" && attrService != null)
+    {
+        _ = attrService.TrackFromWebhookAsync(tenantContext.TenantId, webhookEvent, ctx.RequestAborted)
+            .ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    jsonLogger.SystemWarn($"Attribution tracking failed for tenant {tenantContext.TenantId}: {t.Exception?.GetBaseException().Message}");
+            }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
     sw.Stop();
@@ -1187,7 +1203,24 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "GET", Path = "/api/v1/appointments/list", Description = "List appointments proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/appointments/{id}", Description = "Get appointment proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "POST", Path = "/api/v1/appointments/{id}/cancel", Description = "Cancel appointment proxy", Auth = "Bearer", Category = "API" },
-            new() { Method = "GET", Path = "/api/v1/appointments/available-slots", Description = "Available slots proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/available-slots", Description = "Available slots proxy (?doctor_id=)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/no-show-stats", Description = "No-show stats proxy (?phone=)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/waitlist", Description = "List waitlist proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/waitlist", Description = "Add to waitlist proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/appointments/waitlist/{id}/status", Description = "Update waitlist status proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/pricing", Description = "List pricing proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/appointments/pricing", Description = "Create pricing proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/appointments/pricing/{id}", Description = "Update pricing proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/appointments/calendar/status", Description = "Calendar sync status proxy", Auth = "Bearer", Category = "API" },
+
+            // GR-3.14: Attribution
+            new() { Method = "GET", Path = "/api/v1/attribution/leads", Description = "List lead attributions", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/attribution/leads/{id}/status", Description = "Update lead status", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/attribution/summary", Description = "Attribution summary", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/attribution/cost-per-lead", Description = "Cost per lead by platform", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/attribution/costs", Description = "List ad costs", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/attribution/costs", Description = "Create ad cost entry", Auth = "Bearer", Category = "API" },
+            new() { Method = "DELETE", Path = "/api/v1/attribution/costs/{id}", Description = "Delete ad cost entry", Auth = "Bearer", Category = "API" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
@@ -2147,9 +2180,241 @@ app.MapGet("/api/v1/appointments/{id:long}", async (HttpContext ctx, Appointment
 app.MapPost("/api/v1/appointments/{id:long}/cancel", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, long id) =>
     await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/appointments/{id}/cancel"));
 
-// Available slots
+// Available slots (GR-3.19: now supports ?doctor_id= filter)
 app.MapGet("/api/v1/appointments/available-slots", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
     await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments/available-slots"));
+
+// GR-3.19: No-show stats proxy
+app.MapGet("/api/v1/appointments/no-show-stats", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/appointments/no-show-stats"));
+
+// GR-3.19: Waitlist proxy
+app.MapGet("/api/v1/appointments/waitlist", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/waitlist"));
+
+app.MapPost("/api/v1/appointments/waitlist", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/waitlist"));
+
+app.MapPut("/api/v1/appointments/waitlist/{id:int}/status", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPut(ctx, apClient, jsonLog, $"/api/v1/waitlist/{id}/status"));
+
+// GR-3.19: Pricing proxy
+app.MapGet("/api/v1/appointments/pricing", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/pricing"));
+
+app.MapPost("/api/v1/appointments/pricing", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyPost(ctx, apClient, jsonLog, "/api/v1/pricing"));
+
+app.MapPut("/api/v1/appointments/pricing/{id:int}", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
+    await AppointmentsProxyPut(ctx, apClient, jsonLog, $"/api/v1/pricing/{id}"));
+
+// GR-3.19: Calendar sync status proxy
+app.MapGet("/api/v1/appointments/calendar/status", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog) =>
+    await AppointmentsProxyGet(ctx, apClient, jsonLog, "/api/v1/calendar/status"));
+
+// ============================================
+// GR-3.14: ATTRIBUTION ENDPOINTS (/api/v1/attribution/*)
+// JWT auth enforced by middleware for /api/v1/attribution/ prefix
+// ============================================
+
+// List leads with optional date range
+app.MapGet("/api/v1/attribution/leads", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, string? from, string? to) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    DateOnly? toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? null : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? null : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid date format (expected yyyy-MM-dd)", rid), statusCode: 400);
+    }
+
+    try
+    {
+        var leads = await attrRepo.GetLeadAttributionsAsync(tenantContext.TenantId, fromDate, toDate);
+        return Results.Ok(new { leads });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution leads query failed ({ErrorCodes.AttributionInvalidPayload}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionInvalidPayload, message = "Attribution sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+// Update lead conversion status
+app.MapPut("/api/v1/attribution/leads/{id:int}/status", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, int id) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    LeadStatusUpdateRequest? req;
+    try { req = await ctx.Request.ReadFromJsonAsync<LeadStatusUpdateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"Malformed JSON in lead status update: {ex.Message}"); req = null; }
+
+    if (req == null || string.IsNullOrEmpty(req.ConversionStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AttributionInvalidPayload, "conversion_status required", rid), statusCode: 400);
+
+    if (!AttributionService.IsValidConversionStatus(req.ConversionStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AttributionInvalidLeadStatus,
+            "Valid: new, contacted, qualified, converted, lost", rid), statusCode: 400);
+
+    try
+    {
+        var updated = await attrRepo.UpdateLeadStatusAsync(tenantContext.TenantId, id, req);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AttributionNotFound, "Lead not found", rid), statusCode: 404);
+
+        return Results.Ok(new { message = "Lead status updated", id, status = req.ConversionStatus });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution lead status update failed ({ErrorCodes.AttributionNotFound}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionNotFound, message = "Guncelleme basarisiz." }, statusCode: 500);
+    }
+});
+
+// Attribution summary (by source + by campaign breakdowns)
+app.MapGet("/api/v1/attribution/summary", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, string? from, string? to) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-30) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid date format (expected yyyy-MM-dd)", rid), statusCode: 400);
+    }
+
+    try
+    {
+        var summary = await attrRepo.GetAttributionSummaryAsync(tenantContext.TenantId, fromDate, toDate);
+        return Results.Ok(summary);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution summary failed for tenant ({ErrorCodes.AttributionInvalidPayload}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionInvalidPayload, message = "Attribution ozet sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+// Cost-per-lead by platform
+app.MapGet("/api/v1/attribution/cost-per-lead", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, string? from, string? to) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-30) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid date format (expected yyyy-MM-dd)", rid), statusCode: 400);
+    }
+
+    try
+    {
+        var result = await attrRepo.GetCostPerLeadAsync(tenantContext.TenantId, fromDate, toDate);
+        return Results.Ok(new { cost_per_lead = result });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution cost-per-lead failed ({ErrorCodes.AttributionInvalidCostEntry}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionInvalidCostEntry, message = "Maliyet sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+// Ad costs CRUD
+app.MapGet("/api/v1/attribution/costs", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    try
+    {
+        var costs = await attrRepo.GetAdCostsAsync(tenantContext.TenantId);
+        return Results.Ok(new { costs });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution costs query failed: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionInvalidCostEntry, message = "Maliyet listesi basarisiz." }, statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/attribution/costs", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    AdCostCreateRequest? req;
+    try { req = await ctx.Request.ReadFromJsonAsync<AdCostCreateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"Malformed JSON in ad cost create: {ex.Message}"); req = null; }
+
+    if (req == null || string.IsNullOrEmpty(req.Platform) || req.CostAmount <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AttributionInvalidCostEntry, "platform and cost_amount > 0 required", rid), statusCode: 400);
+
+    if (!AttributionService.IsValidPlatform(req.Platform))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AttributionInvalidCostEntry,
+            "Valid platforms: meta, google, tiktok, linkedin, other", rid), statusCode: 400);
+
+    try
+    {
+        var id = await attrRepo.InsertAdCostAsync(tenantContext.TenantId, req);
+        return Results.Json(new { message = "Ad cost created", id }, statusCode: 201);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution cost insert failed: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionInvalidCostEntry, message = "Maliyet kaydi basarisiz." }, statusCode: 500);
+    }
+});
+
+app.MapDelete("/api/v1/attribution/costs/{id:int}", async (HttpContext ctx, AttributionRepository attrRepo, JsonLinesLogger jsonLog, int id) =>
+{
+    var rid = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", rid), statusCode: 401);
+
+    try
+    {
+        var deleted = await attrRepo.DeleteAdCostAsync(tenantContext.TenantId, id);
+        if (!deleted)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AttributionCostNotFound, "Ad cost not found", rid), statusCode: 404);
+
+        return Results.Ok(new { message = "Ad cost deleted", id });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Attribution cost delete failed: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.AttributionCostNotFound, message = "Maliyet silme basarisiz." }, statusCode: 500);
+    }
+});
 
 // ============================================
 // PKT-3: ANALYTICS DASHBOARD ENDPOINTS (/api/ops/analytics/*)
@@ -2190,8 +2455,16 @@ app.MapGet("/api/ops/analytics/automation/summary", async (HttpContext ctx, Anal
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
     }
 
-    var toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
-    var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid date format (expected yyyy-MM-dd)" });
+    }
 
     if (fromDate > toDate)
     {
@@ -2224,8 +2497,16 @@ app.MapGet("/api/ops/analytics/automation/trends", async (HttpContext ctx, Analy
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
     }
 
-    var toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
-    var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid date format (expected yyyy-MM-dd)" });
+    }
 
     if (fromDate > toDate)
     {
@@ -2258,8 +2539,16 @@ app.MapGet("/api/ops/analytics/automation/intents", async (HttpContext ctx, Anal
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
     }
 
-    var toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
-    var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid date format (expected yyyy-MM-dd)" });
+    }
 
     if (fromDate > toDate)
     {
@@ -2501,6 +2790,98 @@ app.MapGet("/api/ops/analytics/wa/nlp-summary", async (HttpContext ctx, WhatsApp
         ctx.Request.Headers["X-Request-Id"].FirstOrDefault());
 
     return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// ============================================
+// GR-3.18: ATTRIBUTION + CAMPAIGN ANALYTICS (ops-level, Basic auth)
+// ============================================
+
+app.MapGet("/api/ops/analytics/attribution/summary", async (HttpContext ctx, AttributionRepository attrRepo, int? tenant_id, string? from, string? to) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-30) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid date format (expected yyyy-MM-dd)" });
+    }
+
+    try
+    {
+        var summary = await attrRepo.GetAttributionSummaryAsync(tenant_id.Value, fromDate, toDate);
+        return Results.Ok(summary);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Attribution summary failed ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Attribution sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+app.MapGet("/api/ops/analytics/attribution/cost-per-lead", async (HttpContext ctx, AttributionRepository attrRepo, int? tenant_id, string? from, string? to) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-30) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid date format (expected yyyy-MM-dd)" });
+    }
+
+    try
+    {
+        var result = await attrRepo.GetCostPerLeadAsync(tenant_id.Value, fromDate, toDate);
+        return Results.Ok(new { cost_per_lead = result });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Attribution cost-per-lead failed ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Maliyet sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+app.MapGet("/api/ops/analytics/campaigns", async (HttpContext ctx, AnalyticsRepository analyticsRepo, int? tenant_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+        return Results.Unauthorized();
+    }
+    if (!tenant_id.HasValue)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
+
+    try
+    {
+        var campaigns = await analyticsRepo.GetCampaignStatsAsync(tenant_id.Value);
+        return Results.Ok(new { campaigns });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        logger.SystemWarn($"Campaign stats failed ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Kampanya sorgusu basarisiz." }, statusCode: 500);
+    }
 });
 
 // ============================================

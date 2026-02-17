@@ -157,6 +157,20 @@ public static class ErrorCodes
     public const string OutboundInvalidConsentPayload = "INV-OB-019";
     public const string OutboundDataDeletionFailed = "INV-OB-020";
 
+    // Attribution errors (INV-AD-xxx) -- GR-3.14
+    public const string AttributionInvalidPayload = "INV-AD-001";
+    public const string AttributionNotFound = "INV-AD-002";
+    public const string AttributionInvalidCostEntry = "INV-AD-003";
+    public const string AttributionCostNotFound = "INV-AD-004";
+    public const string AttributionInvalidLeadStatus = "INV-AD-005";
+
+    // Appointments Advanced errors (INV-AP-011+) -- GR-3.19
+    public const string AppointmentInvalidWaitlistPayload = "INV-AP-011";
+    public const string AppointmentWaitlistNotFound = "INV-AP-012";
+    public const string AppointmentInvalidPricingPayload = "INV-AP-013";
+    public const string AppointmentPricingNotFound = "INV-AP-014";
+    public const string AppointmentCalendarSyncFailed = "INV-AP-015";
+
     // Metrics/Analytics errors (INV-MT-xxx) -- PKT-3
     public const string MetricsAggregationFailed = "INV-MT-001";
     public const string MetricsQueryFailed = "INV-MT-002";

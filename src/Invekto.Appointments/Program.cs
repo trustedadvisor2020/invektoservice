@@ -81,6 +81,18 @@ builder.Services.AddSingleton<ReminderSchedulerService>(sp =>
         reminderBatchSize));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ReminderSchedulerService>());
 
+// GR-3.19: Register WaitlistService (IHostedService - expiration timer + cancel-flow hook)
+builder.Services.AddSingleton<WaitlistService>(sp =>
+    new WaitlistService(
+        sp.GetRequiredService<AppointmentsRepository>(),
+        sp.GetRequiredService<IHttpClientFactory>(),
+        sp.GetRequiredService<JwtGenerator>(),
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddHostedService(sp => sp.GetRequiredService<WaitlistService>());
+
+// GR-3.19: Calendar sync (mock for now, interface ready for Google Calendar)
+builder.Services.AddSingleton<ICalendarSyncService, MockCalendarSyncService>();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -448,6 +460,7 @@ app.MapGet("/api/v1/appointments/{id:long}", async (
 app.MapPost("/api/v1/appointments/{id:long}/cancel", async (
     HttpContext ctx,
     AppointmentsRepository repository,
+    WaitlistService waitlistService,
     JsonLinesLogger jsonLogger,
     long id,
     AppointmentCancelRequest? request) =>
@@ -488,6 +501,11 @@ app.MapPost("/api/v1/appointments/{id:long}/cancel", async (
             statusCode: 409);
     }
 
+    // GR-3.19: Trigger waitlist matching (fire-and-forget, must not block cancel response)
+    var apptDate = DateOnly.ParseExact(appointment.AppointmentDate, "yyyy-MM-dd");
+    _ = waitlistService.ProcessCancelledAppointmentAsync(
+        tenantContext.TenantId, apptDate, appointment.DoctorId, ctx.RequestAborted);
+
     jsonLogger.StepInfo($"Appointment cancelled: id={id}, reason={request?.Reason ?? "none"}", requestId);
     return Results.Ok(new { id, status = "cancelled" });
 });
@@ -499,7 +517,8 @@ app.MapPost("/api/v1/appointments/{id:long}/cancel", async (
 app.MapGet("/api/v1/appointments/available-slots", async (
     HttpContext ctx,
     AppointmentsRepository repository,
-    string? date) =>
+    string? date,
+    int? doctor_id) =>
 {
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
@@ -523,8 +542,171 @@ app.MapGet("/api/v1/appointments/available-slots", async (
             statusCode: 400);
     }
 
-    var slots = await repository.GetAvailableSlotsAsync(tenantContext.TenantId, dateValue);
-    return Results.Ok(new { date = dateValue.ToString("yyyy-MM-dd"), slots });
+    // GR-3.19: Optional doctor_id filter
+    var slots = await repository.GetAvailableSlotsAsync(tenantContext.TenantId, dateValue, doctor_id);
+    return Results.Ok(new { date = dateValue.ToString("yyyy-MM-dd"), doctor_id, slots });
+});
+
+// ============================================================
+// GR-3.19: Waitlist endpoints
+// ============================================================
+
+app.MapGet("/api/v1/waitlist", async (
+    HttpContext ctx, AppointmentsRepository repository, string? status) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var entries = await repository.GetWaitlistAsync(tenantContext.TenantId, status);
+    return Results.Ok(new { waitlist = entries });
+});
+
+app.MapPost("/api/v1/waitlist", async (
+    HttpContext ctx, AppointmentsRepository repository, JsonLinesLogger jsonLogger,
+    WaitlistCreateRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null || string.IsNullOrEmpty(request.PatientPhone) || string.IsNullOrEmpty(request.PatientName))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentInvalidWaitlistPayload,
+            "patient_phone and patient_name are required", rid), statusCode: 400);
+
+    var id = await repository.InsertWaitlistAsync(tenantContext.TenantId, request);
+    jsonLogger.StepInfo($"Waitlist entry created: id={id}, phone={request.PatientPhone}", rid);
+    return Results.Json(new { message = "Waitlist entry created", id }, statusCode: 201);
+});
+
+app.MapPut("/api/v1/waitlist/{id:int}/status", async (
+    HttpContext ctx, AppointmentsRepository repository, int id, string? status) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (string.IsNullOrEmpty(status) || status is not ("waiting" or "notified" or "booked" or "expired" or "cancelled"))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentInvalidWaitlistPayload,
+            "Valid status: waiting, notified, booked, expired, cancelled", rid), statusCode: 400);
+
+    var updated = await repository.UpdateWaitlistStatusAsync(tenantContext.TenantId, id, status);
+    if (!updated)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentWaitlistNotFound, "Waitlist entry not found", rid), statusCode: 404);
+
+    return Results.Ok(new { id, status });
+});
+
+// ============================================================
+// GR-3.19: Service pricing endpoints
+// ============================================================
+
+app.MapGet("/api/v1/pricing", async (
+    HttpContext ctx, AppointmentsRepository repository, bool? all) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var pricing = await repository.GetPricingAsync(tenantContext.TenantId, activeOnly: all != true);
+    return Results.Ok(new { pricing });
+});
+
+app.MapPost("/api/v1/pricing", async (
+    HttpContext ctx, AppointmentsRepository repository, JsonLinesLogger jsonLogger,
+    PricingCreateRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null || string.IsNullOrEmpty(request.ServiceName) || request.PriceMin < 0 || request.PriceMax < request.PriceMin)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentInvalidPricingPayload,
+            "service_name required, price_min >= 0, price_max >= price_min", rid), statusCode: 400);
+
+    try
+    {
+        var id = await repository.CreatePricingAsync(tenantContext.TenantId, request);
+        jsonLogger.StepInfo($"Pricing created: id={id}, service={request.ServiceName}", rid);
+        return Results.Json(new { message = "Pricing created", id }, statusCode: 201);
+    }
+    catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505") // unique violation
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentInvalidPricingPayload,
+            $"Service '{request.ServiceName}' already has active pricing", rid), statusCode: 409);
+    }
+});
+
+app.MapPut("/api/v1/pricing/{id:int}", async (
+    HttpContext ctx, AppointmentsRepository repository, int id,
+    PricingUpdateRequest? request) =>
+{
+    var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", rid), statusCode: 401);
+
+    if (request == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentInvalidPricingPayload, "Request body required", rid), statusCode: 400);
+
+    var updated = await repository.UpdatePricingAsync(tenantContext.TenantId, id, request);
+    if (!updated)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AppointmentPricingNotFound, "Pricing not found", rid), statusCode: 404);
+
+    return Results.Ok(new { message = "Pricing updated", id });
+});
+
+// ============================================================
+// GR-3.19: No-show stats endpoint
+// ============================================================
+
+app.MapGet("/api/v1/appointments/no-show-stats", async (
+    HttpContext ctx, AppointmentsRepository repository, JsonLinesLogger jsonLogger, string? phone) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    if (string.IsNullOrEmpty(phone))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "phone query parameter required", "-"), statusCode: 400);
+
+    // Get no-show threshold from tenant settings (default 2)
+    var (settingsJson, _) = await repository.GetTenantHealthInfoAsync(tenantContext.TenantId);
+    var threshold = 2;
+    if (!string.IsNullOrEmpty(settingsJson))
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(settingsJson);
+            if (doc.RootElement.TryGetProperty("no_show_threshold", out var thresholdEl))
+                threshold = thresholdEl.GetInt32();
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            jsonLogger.SystemWarn($"Malformed settings_json for tenant {tenantContext.TenantId}: {ex.Message}");
+        }
+    }
+
+    var stats = await repository.GetNoShowStatsAsync(tenantContext.TenantId, phone, threshold);
+    return Results.Ok(stats);
+});
+
+// ============================================================
+// GR-3.19: Calendar sync status
+// ============================================================
+
+app.MapGet("/api/v1/calendar/status", async (
+    HttpContext ctx, ICalendarSyncService calendarSync) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", "-"), statusCode: 401);
+
+    var available = await calendarSync.IsAvailableAsync(tenantContext.TenantId);
+    return Results.Ok(new { calendar_sync_available = available, provider = "mock" });
 });
 
 // ============================================================
@@ -542,8 +724,16 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/appointments/book", Description = "Book appointment", Auth = "Bearer JWT", Category = "Appointments" },
         new() { Method = "GET", Path = "/api/v1/appointments", Description = "List appointments (optional ?date=&status= filter)", Auth = "Bearer JWT", Category = "Appointments" },
         new() { Method = "GET", Path = "/api/v1/appointments/{id}", Description = "Get appointment by ID", Auth = "Bearer JWT", Category = "Appointments" },
-        new() { Method = "POST", Path = "/api/v1/appointments/{id}/cancel", Description = "Cancel appointment", Auth = "Bearer JWT", Category = "Appointments" },
-        new() { Method = "GET", Path = "/api/v1/appointments/available-slots", Description = "Get available slots for a date (?date=yyyy-MM-dd)", Auth = "Bearer JWT", Category = "Appointments" },
+        new() { Method = "POST", Path = "/api/v1/appointments/{id}/cancel", Description = "Cancel appointment + waitlist trigger", Auth = "Bearer JWT", Category = "Appointments" },
+        new() { Method = "GET", Path = "/api/v1/appointments/available-slots", Description = "Available slots (?date=&doctor_id=)", Auth = "Bearer JWT", Category = "Appointments" },
+        new() { Method = "GET", Path = "/api/v1/appointments/no-show-stats", Description = "No-show stats for patient (?phone=)", Auth = "Bearer JWT", Category = "Appointments" },
+        new() { Method = "GET", Path = "/api/v1/waitlist", Description = "List waitlist entries (?status=)", Auth = "Bearer JWT", Category = "Waitlist" },
+        new() { Method = "POST", Path = "/api/v1/waitlist", Description = "Add to waitlist", Auth = "Bearer JWT", Category = "Waitlist" },
+        new() { Method = "PUT", Path = "/api/v1/waitlist/{id}/status", Description = "Update waitlist status (?status=)", Auth = "Bearer JWT", Category = "Waitlist" },
+        new() { Method = "GET", Path = "/api/v1/pricing", Description = "List service pricing (?all=true)", Auth = "Bearer JWT", Category = "Pricing" },
+        new() { Method = "POST", Path = "/api/v1/pricing", Description = "Create service pricing", Auth = "Bearer JWT", Category = "Pricing" },
+        new() { Method = "PUT", Path = "/api/v1/pricing/{id}", Description = "Update service pricing", Auth = "Bearer JWT", Category = "Pricing" },
+        new() { Method = "GET", Path = "/api/v1/calendar/status", Description = "Calendar sync status", Auth = "Bearer JWT", Category = "Calendar" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },

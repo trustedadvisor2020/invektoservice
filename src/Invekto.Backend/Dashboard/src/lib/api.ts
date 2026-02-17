@@ -204,6 +204,56 @@ export interface WaTrend {
   offered_count: number;
 }
 
+// GR-3.18: Attribution types
+export interface AttributionSummary {
+  tenant_id: number;
+  from: string;
+  to: string;
+  total_leads: number;
+  converted_leads: number;
+  conversion_rate: number;
+  total_revenue: number;
+  by_source: SourceBreakdown[];
+  by_campaign: CampaignBreakdown[];
+}
+
+export interface SourceBreakdown {
+  lead_source: string;
+  lead_count: number;
+  converted_count: number;
+  conversion_rate: number;
+  total_revenue: number;
+}
+
+export interface CampaignBreakdown {
+  utm_campaign: string;
+  lead_source: string;
+  lead_count: number;
+  converted_count: number;
+  conversion_rate: number;
+  total_revenue: number;
+}
+
+export interface CostPerLead {
+  platform: string;
+  total_cost: number;
+  lead_count: number;
+  cost_per_lead: number;
+  converted_count: number;
+  cost_per_conversion: number;
+}
+
+// GR-3.18: Campaign types
+export interface CampaignStat {
+  id: number;
+  name: string;
+  trigger_type: string;
+  status: string;
+  stats_json: string;
+  template_name: string | null;
+  created_at: string;
+}
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
@@ -456,6 +506,27 @@ class OpsApiClient {
 
   async getWaTrends(tenantId: number, analysisId: number): Promise<{ trends: WaTrend[] }> {
     return this.request<{ trends: WaTrend[] }>(`/api/ops/analytics/wa/trends?tenant_id=${tenantId}&analysis_id=${analysisId}`);
+  }
+
+  // GR-3.18: Attribution + Campaign analytics
+  async getAttributionSummary(tenantId: number, from?: string, to?: string): Promise<AttributionSummary> {
+    const sp = new URLSearchParams();
+    sp.set('tenant_id', tenantId.toString());
+    if (from) sp.set('from', from);
+    if (to) sp.set('to', to);
+    return this.request<AttributionSummary>(`/api/ops/analytics/attribution/summary?${sp}`);
+  }
+
+  async getCostPerLead(tenantId: number, from?: string, to?: string): Promise<{ cost_per_lead: CostPerLead[] }> {
+    const sp = new URLSearchParams();
+    sp.set('tenant_id', tenantId.toString());
+    if (from) sp.set('from', from);
+    if (to) sp.set('to', to);
+    return this.request<{ cost_per_lead: CostPerLead[] }>(`/api/ops/analytics/attribution/cost-per-lead?${sp}`);
+  }
+
+  async getCampaignStats(tenantId: number): Promise<{ campaigns: CampaignStat[] }> {
+    return this.request<{ campaigns: CampaignStat[] }>(`/api/ops/analytics/campaigns?tenant_id=${tenantId}`);
   }
 
   private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {

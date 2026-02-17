@@ -10,6 +10,9 @@ import type {
   WaSummary,
   WaAgentMetric,
   WaTrend,
+  AttributionSummary,
+  CostPerLead,
+  CampaignStat,
 } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
 import { MetricCards } from '../components/analytics/MetricCards';
@@ -17,6 +20,9 @@ import { DeflectionChart } from '../components/analytics/DeflectionChart';
 import { IntentTable } from '../components/analytics/IntentTable';
 import { WaTrendsChart } from '../components/analytics/WaTrendsChart';
 import { WaAgentTable } from '../components/analytics/WaAgentTable';
+import AttributionPanel from '../components/analytics/AttributionPanel';
+import CampaignPanel from '../components/analytics/CampaignPanel';
+import PlaceholderPanel from '../components/analytics/PlaceholderPanel';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 
@@ -42,6 +48,11 @@ export function AnalyticsPage() {
   const [waSummary, setWaSummary] = useState<WaSummary | null>(null);
   const [waAgents, setWaAgents] = useState<WaAgentMetric[]>([]);
   const [waTrends, setWaTrends] = useState<WaTrend[]>([]);
+
+  // GR-3.18: Attribution + Campaign data
+  const [attrSummary, setAttrSummary] = useState<AttributionSummary | null>(null);
+  const [costPerLead, setCostPerLead] = useState<CostPerLead[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignStat[]>([]);
 
   const [loading, setLoading] = useState(false);
 
@@ -123,6 +134,20 @@ export function AnalyticsPage() {
       })
       .catch(err => console.warn('WA detail fetch failed:', err instanceof Error ? err.message : 'Unknown'));
   }, [selectedTenant, selectedAnalysis]);
+
+  // GR-3.18: Fetch attribution + campaign data (independently error-bounded)
+  useEffect(() => {
+    if (!selectedTenant) return;
+    api.getAttributionSummary(selectedTenant, fromDate, toDate)
+      .then(attr => setAttrSummary(attr))
+      .catch(err => console.warn('Attribution summary fetch failed:', err instanceof Error ? err.message : 'Unknown'));
+    api.getCostPerLead(selectedTenant, fromDate, toDate)
+      .then(cpl => setCostPerLead(cpl.cost_per_lead))
+      .catch(err => console.warn('Cost-per-lead fetch failed:', err instanceof Error ? err.message : 'Unknown'));
+    api.getCampaignStats(selectedTenant)
+      .then(camp => setCampaigns(camp.campaigns))
+      .catch(err => console.warn('Campaign stats fetch failed:', err instanceof Error ? err.message : 'Unknown'));
+  }, [selectedTenant, fromDate, toDate]);
 
   const currentTenant = tenants.find(t => t.tenant_id === selectedTenant);
 
@@ -249,6 +274,20 @@ export function AnalyticsPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* GR-3.18: Campaign Stats */}
+      {selectedTenant && <CampaignPanel campaigns={campaigns} />}
+
+      {/* GR-3.18: Lead Attribution */}
+      {selectedTenant && <AttributionPanel summary={attrSummary} costPerLead={costPerLead} />}
+
+      {/* GR-3.18: Placeholder panels */}
+      {selectedTenant && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <PlaceholderPanel title="Iade Takibi" description="Iade surecleri ve istatistikleri bu alanda goruntulenecek." />
+          <PlaceholderPanel title="Yorum Analizi" description="Musteri yorumlari ve sentiment analizi bu alanda goruntulenecek." />
+        </div>
       )}
     </div>
   );

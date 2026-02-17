@@ -441,6 +441,51 @@ public sealed class AnalyticsRepository
     }
 
     // ============================================================
+    // GR-3.18: CAMPAIGN STATS (from outbound_campaigns)
+    // ============================================================
+
+    /// <summary>
+    /// Get campaign stats for a tenant (from outbound_campaigns table).
+    /// Returns top 20 campaigns ordered by created_at DESC.
+    /// </summary>
+    public async Task<List<CampaignStatDto>> GetCampaignStatsAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT
+                c.id, c.name, c.trigger_type, c.status,
+                c.stats_json,
+                t.template_name,
+                c.created_at
+            FROM outbound_campaigns c
+            LEFT JOIN outbound_templates t ON t.id = c.template_id
+            WHERE c.tenant_id = @tid
+            ORDER BY c.created_at DESC
+            LIMIT 20";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = new List<CampaignStatDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var statsJson = reader.IsDBNull(4) ? "{}" : reader.GetString(4);
+            result.Add(new CampaignStatDto
+            {
+                Id = reader.GetInt32(0),
+                Name = reader.GetString(1),
+                TriggerType = reader.GetString(2),
+                Status = reader.GetString(3),
+                StatsJson = statsJson,
+                TemplateName = reader.IsDBNull(5) ? null : reader.GetString(5),
+                CreatedAt = reader.GetDateTime(6).ToString("yyyy-MM-dd HH:mm")
+            });
+        }
+        return result;
+    }
+
+    // ============================================================
     // AGGREGATION (called by MetricsAggregationService)
     // ============================================================
 

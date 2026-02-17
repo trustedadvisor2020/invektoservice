@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Invekto.Shared.DTOs.Analytics;
 
 /// <summary>
@@ -107,4 +109,32 @@ public sealed class WaTrendDto
     public int ConversationCount { get; set; }
     public int SaleCount { get; set; }
     public int OfferedCount { get; set; }
+}
+
+/// <summary>
+/// GR-3.18: Campaign stats from outbound_campaigns. GET /api/ops/analytics/campaigns
+/// </summary>
+public sealed class CampaignStatDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("trigger_type")]
+    public string TriggerType { get; set; } = "";
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "";
+
+    [JsonPropertyName("stats_json")]
+    public string StatsJson { get; set; } = "{}";
+
+    [JsonPropertyName("template_name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TemplateName { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public string CreatedAt { get; set; } = "";
 }

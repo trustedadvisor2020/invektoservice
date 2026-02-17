@@ -70,4 +70,30 @@ public sealed class WebhookEventData
     /// <summary>Tag action: added or removed (for tag_changed)</summary>
     [JsonPropertyName("tag_action")]
     public string? TagAction { get; init; }
+
+    // --- GR-3.14: Ads Attribution fields (for conversation_started) ---
+
+    /// <summary>UTM source parameter (google, meta, tiktok, etc.)</summary>
+    [JsonPropertyName("utm_source")]
+    public string? UtmSource { get; init; }
+
+    /// <summary>UTM medium parameter (cpc, cpm, social, email, etc.)</summary>
+    [JsonPropertyName("utm_medium")]
+    public string? UtmMedium { get; init; }
+
+    /// <summary>UTM campaign name</summary>
+    [JsonPropertyName("utm_campaign")]
+    public string? UtmCampaign { get; init; }
+
+    /// <summary>UTM content identifier (ad variant)</summary>
+    [JsonPropertyName("utm_content")]
+    public string? UtmContent { get; init; }
+
+    /// <summary>UTM term (keyword for search ads)</summary>
+    [JsonPropertyName("utm_term")]
+    public string? UtmTerm { get; init; }
+
+    /// <summary>Meta click ID (fbclid / ctwa_clid from Click-to-WhatsApp ads)</summary>
+    [JsonPropertyName("meta_click_id")]
+    public string? MetaClickId { get; init; }
 }

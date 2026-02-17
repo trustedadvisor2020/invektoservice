@@ -29,6 +29,7 @@ INV-{SERVICE}-{NUMBER}
 | IG | Integrations | GR-3.4/3.6: Marketplace & kargo entegrasyonlari |
 | AP | Appointments | GR-2.4: Randevu Motoru hatalari |
 | KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
+| AD | Attribution | GR-3.14: Ads Attribution hatalari |
 | MT | Metrics | PKT-3: Analitik/metrik hatalari |
 | EXT | External | Dış servis hataları |
 
@@ -213,6 +214,23 @@ INV-{SERVICE}-{NUMBER}
 | INV-AP-008 | Booking in the past | Gecmis tarihli randevu alinamaz. |
 | INV-AP-009 | Reminder send failed | Hatirlatma mesaji gonderilemedi. |
 | INV-AP-010 | Outbound service unavailable | Mesaj gonderim servisi gecici olarak kullanilamiyor. |
+| INV-AP-011 | Invalid waitlist payload | Gecersiz bekleme listesi istegi. |
+| INV-AP-012 | Waitlist entry not found | Bekleme listesi kaydi bulunamadi. |
+| INV-AP-013 | Invalid pricing payload | Gecersiz fiyat tanimlama istegi. |
+| INV-AP-014 | Pricing not found | Fiyat kaydi bulunamadi. |
+| INV-AP-015 | Calendar sync failed | Takvim senkronizasyon hatasi. |
+
+---
+
+## AD - Attribution Errors (GR-3.14)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-AD-001 | Invalid attribution payload | Gecersiz attribution istegi. |
+| INV-AD-002 | Attribution not found | Attribution kaydi bulunamadi. |
+| INV-AD-003 | Invalid cost entry | Gecersiz reklam maliyeti girisi. |
+| INV-AD-004 | Cost not found | Reklam maliyeti kaydi bulunamadi. |
+| INV-AD-005 | Invalid lead status update | Gecersiz lead durum guncellemesi. |
 
 ---
 
