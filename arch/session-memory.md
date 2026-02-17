@@ -5,9 +5,9 @@
 ## Last Update
 
 - **Date:** 2026-02-17
-- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅ + PKT-6C1 ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-6C1 Health Automation — DONE. 3 GR (GR-3.20 + GR-3.41 + GR-3.43): Ortak TreatmentLifecycleService (IHostedService, Timer + Interlocked overlap prevention), 2 DB tablosu, 5 endpoint, Backend proxy. Codex 3-chunk review, 7 iteration (1 real bug found: escalation logic), chunk 2 FORCE PASS (scheduler cross-tenant false positive).
-- **Next Task:** PKT-6C2 Niche Marketing+Multilingual (GR-3.21 Google Yorum, GR-3.22 Medikal Turizm Lead, GR-3.24 Proactive Review Rescue, GR-3.25 Multilingual). Phase 3B devam.
+- **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅ + PKT-6C1 ✅ + PKT-6C2 ✅. **12 Paket Stratejisi** aktif (v5.2).
+- **Last Task:** PKT-6C2 Niche Marketing — DONE. 2 GR (GR-3.21 Google Yorum + Referans Motoru, GR-3.22 Medikal Turizm Lead Capture): Yeni Invekto.Marketing servisi (port 7112), 3 DB tablosu (review_requests, referrals, medical_tourism_leads), MarketingRepository (crypto-random referral codes), 16 API endpoint, Backend proxy (14 routes), MarketingClient. Codex 3 iteration PASS.
+- **Next Task:** PKT-6C3 (GR-3.24 Proactive Review Rescue + GR-3.25 Multilingual Medical Tourism) veya PKT-7 Visual AI.
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
 - **v5.2 (2026-02-17):** PKT-5 → PKT-5A/5B olarak bölündü (5A: Integrations+Outbound+Compliance, 5B: Ads+Dashboard+Randevu).
@@ -47,7 +47,7 @@
 | 6A | **PKT-6A Niche Foundation** | Phase 3B: Intent + Onboarding + Voice AI (7 GR) | ✅ PASS (iter 1) |
 | 6B | **PKT-6B Niche Business Logic** | Phase 3B: Outbound + İade + Lead + Yorum (7 GR) | ✅ PASS (iter 2, FORCE PASS) |
 | 6C1 | **PKT-6C1 Health Automation** | Phase 3B: TreatmentLifecycleService (3 GR: 3.20+3.41+3.43) | ✅ PASS (iter 7, FORCE PASS) |
-| 6C2 | **PKT-6C2 Niche Marketing** | Phase 3B: Google Yorum + Medikal Turizm + Review Rescue + Multilingual | ⬜ Bekliyor |
+| 6C2 | **PKT-6C2 Niche Marketing** | Phase 3B: Google Yorum + Referans + Medikal Turizm Lead (split: GR-3.21+3.22) | ✅ PASS (iter 3) |
 | 7 | **PKT-7 Visual AI** | Phase 3C (Visual Search + Size/Fit, :7111) | ⬜ Bekliyor |
 | 8 | **PKT-8 Face AI** | Phase 3D (Face Analysis, :7110) | ⬜ Bekliyor |
 
@@ -229,6 +229,7 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 | WhatsAppAnalytics | 7109 | Implemented (WA-5/6 Phase A) |
 | VisualSearch | 7111 | Planned (Phase 3C, PKT-7) — ~~7109~~ çakışma fix |
 | FaceAnalysis | 7110 | Planned (Phase 3D, PKT-8) |
+| Marketing | 7112 | Implemented (GR-3.21/3.22 PKT-6C2) |
 | Simulator | 4500 | Dev-only tool (Node.js) |
 | FlowBuilder | 3002 | Dev-only SPA (Vite, serve via Backend:5000) |
 
@@ -240,7 +241,7 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 - **Sunucu Domain:** services.invekto.com
 - **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
 - **Service Manager:** NSSM (`E:\nssm.exe`)
-- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoAppointments, InvektoWhatsAppAnalytics, InvektoDeployWatcher (auto-start, auto-restart)
+- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoAppointments, InvektoWhatsAppAnalytics, InvektoMarketing, InvektoDeployWatcher (auto-start, auto-restart)
 - **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
 - **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
 - **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
@@ -369,6 +370,8 @@ src/
 │   ├── Data/                # AutomationRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
 │   └── Services/            # FlowEngine, IntentDetector, FaqMatcher, WorkingHoursChecker, AutomationOrchestrator
+├── Invekto.Marketing/        # GR-3.21/3.22: Google Review + Referral + Tourism (Port 7112)
+│   └── Data/                # MarketingRepository
 ├── Invekto.Outbound/         # GR-1.3: Broadcast & Trigger Engine (Port 7107)
 │   ├── Data/                # OutboundRepository
 │   ├── Middleware/           # Traffic logging + JWT auth
@@ -383,12 +386,35 @@ src/
     ├── FlowBuilder/          # React Flow SPA (Dev:3002, Serve:/flow-builder/)
     │   └── src/              # nodes/, components/, panels/, store/, types/, lib/, pages/
     ├── Middleware/            # Traffic logging + JWT auth
-    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient, KnowledgeClient, AppointmentsClient
+    └── Services/             # ChatAnalysisClient, AutomationClient, AgentAIClient, OutboundClient, FlowBuilderClient, KnowledgeClient, AppointmentsClient, MarketingClient
 ```
 
 ---
 
 ## Context for Next Session
+
+### PKT-6C2 Niche Marketing TAMAMLANDI (2026-02-17)
+
+**Plan:** `arch/plans/20260217-pkt6c2-niche-marketing.json` (status: DONE)
+**Scope:** 2 GR (split from 4) — GR-3.21 Google Yorum + Referans Motoru, GR-3.22 Medikal Turizm Lead Capture.
+**Stats:** 13 dosya +2039. Codex 3 iteration PASS.
+
+**Yeni Invekto.Marketing servisi (port 7112):**
+- MarketingRepository: 3 tablo CRUD, crypto-random referral codes (REF-XXXXXXXX, RandomNumberGenerator)
+- 16 API endpoint: Reviews (5), Referrals (4), Tourism Leads (5), Health/Ops (2)
+- JWT auth, tenant_id isolation, typed catches, const SQL, parameterized queries
+- Backend proxy: MarketingClient + 14 route mappings + 3 proxy helpers
+
+**DB Schema (3 tablo):**
+- review_requests: Google review tracking (satisfaction_score, platform, status lifecycle)
+- referrals: Patient referral codes (unique per tenant, discount_pct, redeemed tracking)
+- medical_tourism_leads: International patient pipeline (country, lang, treatment_interest, budget)
+
+**Interview Decision:** 4 GR -> 2+2 split (PKT-6C2: GR-3.21+3.22, PKT-6C3: GR-3.24+3.25). EN only. Yeni Marketing servisi.
+
+**Q Operational Tasks (PKT-6C2):**
+- [ ] Marketing appsettings.Production.json olustur (JWT, PG password)
+- [ ] Marketing deploy + NSSM servis kurulumu (InvektoMarketing, port 7112)
 
 ### PKT-6C1 Health Automation TAMAMLANDI (2026-02-17)
 

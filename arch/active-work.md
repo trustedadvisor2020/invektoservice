@@ -40,7 +40,7 @@
 | 6A | **Niche Foundation** | PKT-6A | Phase 3B: Intent + Onboarding + Voice AI (bagimsiz, PKT-5 sonrasi hemen baslanabilir) | 7 GR, ~28 alt madde | ✅ PASS (iter 1) |
 | 6B | **Niche Business Logic** | PKT-6B | Phase 3B: Outbound + Iade + Lead + Yorum Kurtarma (PKT-5 Integrations'a bagli) | 7 GR, ~30 alt madde | ✅ PASS (iter 2, FORCE PASS) |
 | 6C1 | **Health Automation** | PKT-6C1 | Phase 3B: TreatmentLifecycleService (GR-3.20+3.41+3.43) | 3 GR, ~12 alt madde | ✅ PASS (iter 7, FORCE PASS) |
-| 6C2 | **Niche Marketing** | PKT-6C2 | Phase 3B: Google Yorum + Medikal Turizm + Review Rescue + Multilingual | 4 GR, ~18 alt madde | ⬜ Bekliyor |
+| 6C2 | **Niche Marketing** | PKT-6C2 | Phase 3B: Google Yorum + Referans + Medikal Turizm Lead (split: GR-3.21+3.22 only) | 2 GR, ~12 alt madde | ✅ PASS (iter 3) |
 | 7 | **Visual AI** | PKT-7 | Phase 3C: Visual Product Search + Size/Fit AI (:7111) | 8 GR, ~30 alt madde | ⬜ Bekliyor |
 | 8 | **Face AI** | PKT-8 | Phase 3D: Face Analysis AI (:7110) | 5 GR, ~20 alt madde | ⬜ Bekliyor |
 | 9 | **Güzellik Salonu** | PKT-9 | Phase 3E: Güzellik Niche (config+content katmanı) | 8 GR, ~32 alt madde | ⬜ Bekliyor |
@@ -102,12 +102,11 @@
 - GR-3.43 Tedavi Oncesi Hazirlik (T-72h, T-24h, T-3h)
 - **Bağımlılık:** PKT-2 Appointments (mevcut servis genisleme)
 
-**PKT-6C2: Niche Marketing** — Google Yorum + Medikal Turizm + Review Rescue + Multilingual (4 GR, ~18 item)
-- GR-3.21 Google Yorum + Referans Motoru
-- GR-3.22 Medikal Turizm Lead (AR hariç)
-- GR-3.24 Proactive Review Rescue (← GR-3.8 PKT-6B + GR-3.16 PKT-6B)
-- GR-3.25 Multilingual Medical Tourism (← GR-3.22 aynı paket)
-- **Bağımlılık:** PKT-6B (GR-3.24 için GR-3.8+3.16 gerekli)
+**PKT-6C2: Niche Marketing** ✅ — Google Yorum + Referans + Medikal Turizm Lead (2 GR, split from 4)
+- GR-3.21 Google Yorum + Referans Motoru ✅
+- GR-3.22 Medikal Turizm Lead Capture (EN only) ✅
+- **Split:** GR-3.24+3.25 → PKT-6C3'e taşındı
+- **Commit:** TBD (Codex PASS iter 3, 13 dosya +2039)
 
 **PKT-7: Visual AI** — Yeni servis (VisualSearch :7111)
 - GR-3C.1~3C.8: CLIP engine, katalog, web widget, tenant mgmt, WA/IG entegrasyon, analytics, Size/Fit AI
@@ -154,6 +153,7 @@
 
 | Slug | Completed | Description |
 |------|-----------|-------------|
+| 20260217-pkt6c2-niche-marketing | 2026-02-17 | Paket 6C2: Niche Marketing (2 GR: GR-3.21+3.22). Yeni Invekto.Marketing servisi (port 7112), 3 DB tablosu, 16 endpoint, Backend proxy (14 routes). 13 dosya +2039. Codex 3 iter PASS. Plan: `arch/plans/20260217-pkt6c2-niche-marketing.json` |
 | 20260217-pkt6c1-health-automation | 2026-02-17 | Paket 6C1: Health Automation (3 GR: GR-3.20+3.41+3.43). TreatmentLifecycleService IHostedService, 2 DB tablosu, 5 endpoint, Backend proxy. 9 dosya +1450. Codex 3-chunk 7 iter, chunk 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6c1-health-automation.json` |
 | 20260217-pkt6b1-niche-business | 2026-02-17 | Paket 6B: Niche Business Logic (7 GR: Outbound e-ticaret/klinik, iade cevirme v1+v2, lead mgmt v2, agent assist e-ticaret, yorum kurtarma). 21 dosya. Codex 5-chunk review, 3 fix round, iter 2 FORCE PASS. Plan: `arch/plans/20260217-pkt6b1-niche-business.json` |
 | 20260217-pkt6a-niche-foundation | 2026-02-17 | Paket 6A: Niche Foundation (7 GR: Intent genisleme, VIP lead detection, onboarding seed, sektor intent). 16 dosya +918/-28. Codex 2-chunk review, iter 1 PASS. Plan: `arch/plans/20260217-pkt6a-niche-foundation.json` |

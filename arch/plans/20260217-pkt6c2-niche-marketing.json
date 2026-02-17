@@ -1,0 +1,179 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-6C2",
+  "gr_list": [
+    {
+      "id": "GR-3.21",
+      "description": "Google Yorum + Referans Motoru: Review request gonderme, referral code uretme, tracking",
+      "services_affected": ["Invekto.Marketing", "Invekto.Backend", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.22",
+      "description": "Medikal Turizm Lead Capture: Yabanci hasta akisi, doviz bazli fiyat, EN dil destegi",
+      "services_affected": ["Invekto.Marketing", "Invekto.Backend", "Invekto.Shared"]
+    }
+  ],
+  "slug": "20260217-pkt6c2-niche-marketing",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-17T19:00:00Z",
+  "updated_at": "2026-02-17T19:00:00Z",
+  "plan": {
+    "summary": "Yeni Invekto.Marketing mikroservisi (port 7112) olustur: GR-3.21 Google Yorum + Referans Motoru (review_requests, referrals tablolari, review link gonderme, referral code uretme) ve GR-3.22 Medikal Turizm Lead Capture (medical_tourism_leads tablosu, yabanci hasta akisi, EN dil destegi). Backend proxy + mevcut pattern.",
+    "q_intent": "PKT-6C2 interview sonucu: Split 6C2+6C3, yeni Marketing servisi (7112), sadece EN dil, ChatAnalysis/AgentAI degisikligi yok.",
+    "interview_notes": "1) Scope split: PKT-6C2 (GR-3.21+3.22) + PKT-6C3 (GR-3.24+3.25). 2) Cross-service: sadece Appointments+Backend. 3) Service: yeni Invekto.Marketing (7112). 4) Languages: EN only. 5) GR-3.22 de Marketing servisinde."
+  },
+  "allowed_files": [
+    "src/Invekto.Marketing/Invekto.Marketing.csproj",
+    "src/Invekto.Marketing/Program.cs",
+    "src/Invekto.Marketing/Data/MarketingRepository.cs",
+    "src/Invekto.Marketing/appsettings.json",
+    "src/Invekto.Backend/Services/MarketingClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/db/marketing.sql",
+    "arch/errors.md",
+    "InvektoServis.sln"
+  ],
+  "files_changed": [
+    "src/Invekto.Marketing/Program.cs",
+    "src/Invekto.Marketing/Data/MarketingRepository.cs",
+    "src/Invekto.Marketing/Invekto.Marketing.csproj",
+    "src/Invekto.Marketing/appsettings.json",
+    "src/Invekto.Backend/Services/MarketingClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/db/marketing.sql",
+    "arch/errors.md",
+    "InvektoServis.sln"
+  ],
+  "git_diff": {
+    "stats": { "insertions": 2039, "deletions": 7, "files_count": 13 }
+  },
+  "build": {
+    "status": "PASS",
+    "services": ["Invekto.Shared", "Invekto.Marketing", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do all repository queries include tenant_id in WHERE clauses for multi-tenant isolation?",
+      "category": "Data",
+      "codex_answer": "All SELECT/UPDATE queries include tenant_id filters",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "Are all SQL queries using const string with parameterized queries (no string concatenation)?",
+      "category": "Data",
+      "codex_answer": "Repository SQL is declared as const strings and uses NpgsqlCommand parameters only",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the Marketing service JWT auth middleware protect all /api/v1/ endpoints and reject unauthenticated requests?",
+      "category": "Auth",
+      "codex_answer": "app.UseJwtAuth applied before endpoints, each endpoint validates TenantContext",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q4",
+      "question": "Do all endpoints catch NpgsqlException and return proper error codes (INV-MK-xxx or INV-DB-001)?",
+      "category": "Process/Policy",
+      "codex_answer": "Each Marketing endpoint wraps repository calls with NpgsqlException catch and returns INV-DB-001 or INV-MK codes",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q5",
+      "question": "Are referral codes generated with sufficient entropy to prevent guessing (e.g., GUID-based or crypto-random)?",
+      "category": "Auth",
+      "codex_answer": "Referral codes use RandomNumberGenerator.Fill with 8 random bytes and 32-char alphanumeric alphabet",
+      "codex_result": "PASS"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Automation/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.Knowledge/",
+      "src/Invekto.Appointments/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.Integrations/"
+    ],
+    "non_goals": [
+      "Risk engine veya sentiment analizi (PKT-6C3 scope)",
+      "Language router veya multi-lang pipeline (PKT-6C3 scope)",
+      "Google Maps API entegrasyonu (sadece link gonderme)",
+      "Outbound trigger entegrasyonu (review_link_sent tracking yeterli)",
+      "Dashboard UI (backend only)"
+    ],
+    "intentional_exclusions": [
+      "AR/RU/DE dil destegi (EN only MVP)",
+      "Kulturel uyum katmani (PKT-6C3)",
+      "Proactive Review Rescue (PKT-6C3 GR-3.24)",
+      "Multilingual Medical Tourism (PKT-6C3 GR-3.25)",
+      "A/B test altyapisi"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Marketing/Program.cs: her endpoint NpgsqlException + FormatException catch",
+      "MarketingClient.cs: ProxyRequestAsync TaskCanceledException + Exception catch"
+    ],
+    "user_facing_errors": [
+      "INV-MK-001: Invalid review request payload",
+      "INV-MK-002: Review request not found",
+      "INV-MK-003: Invalid referral payload",
+      "INV-MK-004: Referral not found",
+      "INV-MK-005: Referral code already exists",
+      "INV-MK-006: Invalid tourism lead payload",
+      "INV-MK-007: Tourism lead not found",
+      "INV-MK-008: Invalid tourism lead status"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All DB calls wrapped in try-catch with typed catches. All proxy calls have timeout + error handling."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Klinik tedavi sonrasi hasta memnun ama yorum yazmayi unutuyor, Google puani dusuk kaliyor",
+      "suggestion": "Otomatik review request: tedavi basarili + hasta memnun -> Google Maps link ile yorum rica mesaji",
+      "aha_moment": "Klinik sahibi dashboard'da 'Bu ay 15 yeni Google yorumu aldik' goruyor — once ayda 2 yorumlari vardi"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Klinik referral takibi yok, hangi hasta kimi getirdi bilinmiyor, indirim kontrolsuz veriliyor",
+      "suggestion": "Referral code sistemi: her memnun hastaya unique kod, arkadasi kodu kullaninca her ikisine indirim, tracking otomatik",
+      "aha_moment": "Klinik sahibi 'REF-A7X2 kodu ile 8 yeni hasta geldi, toplam 40K TL gelir' raporunu goruyor"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yabanci hasta gece 2'de yaziyor, sabah 9'a kadar cevap yok, hasta rakibe gitmis",
+      "suggestion": "Medical tourism lead otomatik yakalama: patient_country + lang + treatment_interest aninda kayit",
+      "aha_moment": "Klinik sabah acildiginda 'Gece 3 yeni uluslararasi lead geldi, hepsi kayitli' goruyor — once kayboluyorlardi"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Referral kodlari elle takip ediliyor, Excel'de kayboluyor, duplike indirim veriliyor",
+      "suggestion": "Crypto-random referral code + unique constraint + status tracking (active/redeemed/expired)",
+      "aha_moment": "Klinik 'Bu kod zaten kullanilmis' uyarisi aliyor — once ayni kodu 3 kez farkli kisiye veriyorlardi"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Medikal turizm leadleri farkli kanallarda dagilmis, takip edilen/edilmeyen belli degil",
+      "suggestion": "Tek pipeline: lead -> contacted -> consultation -> booked -> treated -> reviewed, status tracking ile",
+      "aha_moment": "Klinik koordinatoru 'Bu hafta 12 lead var, 5 consulted, 2 booked' goruyor — once sayilari tahmin ediyorlardi"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3
+  }
+}

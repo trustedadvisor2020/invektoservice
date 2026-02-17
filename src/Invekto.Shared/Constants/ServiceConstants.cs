@@ -27,6 +27,8 @@ public static class ServiceConstants
     public const int AppointmentsPort = 7102;
     public const int KnowledgePort = 7104;
     public const int WhatsAppAnalyticsPort = 7109;
+    // Phase 3B service ports
+    public const int MarketingPort = 7112;
 
     // Service names
     public const string BackendServiceName = "Invekto.Backend";
@@ -40,6 +42,8 @@ public static class ServiceConstants
     public const string AppointmentsServiceName = "Invekto.Appointments";
     public const string KnowledgeServiceName = "Invekto.Knowledge";
     public const string WhatsAppAnalyticsServiceName = "Invekto.WhatsAppAnalytics";
+    // Phase 3B service names
+    public const string MarketingServiceName = "Invekto.Marketing";
 
     // Log retention
     public const int LogRetentionDays = 30;

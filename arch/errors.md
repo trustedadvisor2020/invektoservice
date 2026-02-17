@@ -30,6 +30,7 @@ INV-{SERVICE}-{NUMBER}
 | AP | Appointments | GR-2.4: Randevu Motoru hatalari |
 | KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
 | AD | Attribution | GR-3.14: Ads Attribution hatalari |
+| MK | Marketing | GR-3.21/3.22: Google Yorum, Referans, Medikal Turizm hatalari |
 | MT | Metrics | PKT-3: Analitik/metrik hatalari |
 | EXT | External | Dış servis hataları |
 
@@ -238,6 +239,23 @@ INV-{SERVICE}-{NUMBER}
 | INV-AD-003 | Invalid cost entry | Gecersiz reklam maliyeti girisi. |
 | INV-AD-004 | Cost not found | Reklam maliyeti kaydi bulunamadi. |
 | INV-AD-005 | Invalid lead status update | Gecersiz lead durum guncellemesi. |
+
+---
+
+## MK - Marketing Errors (GR-3.21/3.22)
+
+| Code | Description | User Message |
+|------|-------------|--------------|
+| INV-MK-001 | Invalid review request payload | Gecersiz yorum talebi istegi. |
+| INV-MK-002 | Review request not found | Yorum talebi bulunamadi. |
+| INV-MK-003 | Invalid referral payload | Gecersiz referans istegi. |
+| INV-MK-004 | Referral not found | Referans kaydi bulunamadi. |
+| INV-MK-005 | Referral code already exists | Referans kodu zaten mevcut (tekrar deneyin). |
+| INV-MK-006 | Invalid tourism lead payload | Gecersiz medikal turizm lead istegi. |
+| INV-MK-007 | Tourism lead not found | Medikal turizm lead bulunamadi. |
+| INV-MK-008 | Invalid tourism lead status | Gecersiz lead durumu. |
+| INV-MK-009 | Review stats query failed | Yorum istatistikleri sorgusu basarisiz. |
+| INV-MK-010 | Tourism stats query failed | Turizm istatistikleri sorgusu basarisiz. |
 
 ---
 

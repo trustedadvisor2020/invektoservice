@@ -49,6 +49,9 @@ var appointmentsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Ap
 var waAnalyticsUrl = builder.Configuration["Microservice:WhatsAppAnalytics:Url"]
     ?? $"http://localhost:{ServiceConstants.WhatsAppAnalyticsPort}";
 var waAnalyticsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:WhatsAppAnalytics:TimeoutMs", 30000);
+var marketingUrl = builder.Configuration["Microservice:Marketing:Url"]
+    ?? $"http://localhost:{ServiceConstants.MarketingPort}";
+var marketingTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Marketing:TimeoutMs", 10000);
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -134,6 +137,13 @@ builder.Services.AddHttpClient<AppointmentsClient>(client =>
 {
     client.BaseAddress = new Uri(appointmentsUrl);
     client.Timeout = TimeSpan.FromMilliseconds(appointmentsTimeoutMs);
+});
+
+// Configure Marketing HTTP client (GR-3.21/3.22)
+builder.Services.AddHttpClient<MarketingClient>(client =>
+{
+    client.BaseAddress = new Uri(marketingUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(marketingTimeoutMs);
 });
 
 // Configure FlowBuilder proxy HTTP client (reuses Automation URL for flow management)
@@ -444,7 +454,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -568,6 +578,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = waAnalyticsHealthy ? null : "Service unreachable"
+    });
+
+    // Marketing - check health with timing (GR-3.21/3.22)
+    var swMarketing = System.Diagnostics.Stopwatch.StartNew();
+    var marketingHealthy = await marketingClient.CheckHealthAsync();
+    swMarketing.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.MarketingServiceName,
+        status = marketingHealthy ? "ok" : "unavailable",
+        responseTimeMs = marketingHealthy ? (int?)swMarketing.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = marketingHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -797,7 +822,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -903,6 +928,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await waAnalyticsClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "marketing")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await marketingClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -1160,7 +1200,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1232,6 +1272,22 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "POST", Path = "/api/v1/attribution/costs", Description = "Create ad cost entry", Auth = "Bearer", Category = "API" },
             new() { Method = "DELETE", Path = "/api/v1/attribution/costs/{id}", Description = "Delete ad cost entry", Auth = "Bearer", Category = "API" },
 
+            // Marketing proxy endpoints (GR-3.21/3.22)
+            new() { Method = "POST", Path = "/api/v1/reviews/request", Description = "Create review request proxy (Backend -> Marketing)", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/reviews", Description = "List review requests proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/reviews/{id}/sent", Description = "Mark review sent proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/reviews/{id}/posted", Description = "Mark review posted proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/reviews/stats", Description = "Review stats proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/referrals", Description = "Create referral proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/referrals", Description = "List referrals proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/referrals/lookup/{code}", Description = "Lookup referral by code proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/referrals/{id}/redeem", Description = "Redeem referral proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/tourism/leads", Description = "Create tourism lead proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/tourism/leads", Description = "List tourism leads proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/tourism/leads/{id}", Description = "Get tourism lead proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "PUT", Path = "/api/v1/tourism/leads/{id}", Description = "Update tourism lead proxy", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/tourism/stats", Description = "Tourism stats proxy", Auth = "Bearer", Category = "API" },
+
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
 
@@ -1290,6 +1346,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch WhatsApp Analytics endpoints (internal call, PKT-4)
     var waAnalyticsEndpoints = await waAnalyticsClient.GetEndpointsAsync();
 
+    // Fetch Marketing endpoints (internal call, GR-3.21/3.22)
+    var marketingEndpoints = await marketingClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -1318,6 +1377,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (waAnalyticsEndpoints != null)
     {
         services.Add(waAnalyticsEndpoints);
+    }
+    if (marketingEndpoints != null)
+    {
+        services.Add(marketingEndpoints);
     }
 
     return Results.Ok(new { services });
@@ -2249,6 +2312,109 @@ app.MapPost("/api/v1/appointments/lifecycle/{id:int}/cancel", async (HttpContext
 
 app.MapPost("/api/v1/appointments/lifecycle/{id:int}/response", async (HttpContext ctx, AppointmentsClient apClient, JsonLinesLogger jsonLog, int id) =>
     await AppointmentsProxyPost(ctx, apClient, jsonLog, $"/api/v1/lifecycle/{id}/response"));
+
+// ============================================
+// MARKETING PROXY ENDPOINTS (GR-3.21/3.22)
+// ============================================
+
+// Marketing proxy helpers
+async Task<IResult> MarketingProxyPost(HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var (statusCode, body) = await mkClient.ProxyPostAsync(targetPath, requestBody, authHeader, requestId);
+    sw.Stop();
+
+    jsonLog.StepInfo($"Marketing proxy POST {targetPath}: status={statusCode}, time={sw.ElapsedMilliseconds}ms", requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> MarketingProxyGet(HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var queryString = ctx.Request.QueryString.Value ?? "";
+
+    var (statusCode, body) = await mkClient.ProxyGetAsync(targetPath + queryString, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+async Task<IResult> MarketingProxyPut(HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    string requestBody;
+    using (var reader = new StreamReader(ctx.Request.Body))
+        requestBody = await reader.ReadToEndAsync();
+
+    var (statusCode, body) = await mkClient.ProxyPutAsync(targetPath, requestBody, authHeader, requestId);
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+}
+
+// Reviews (GR-3.21)
+app.MapPost("/api/v1/reviews/request", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/reviews/request"));
+
+app.MapGet("/api/v1/reviews", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/reviews"));
+
+app.MapPost("/api/v1/reviews/{id:int}/sent", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, $"/api/v1/reviews/{id}/sent"));
+
+app.MapPost("/api/v1/reviews/{id:int}/posted", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, $"/api/v1/reviews/{id}/posted"));
+
+app.MapGet("/api/v1/reviews/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/reviews/stats"));
+
+// Referrals (GR-3.21)
+app.MapPost("/api/v1/referrals", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/referrals"));
+
+app.MapGet("/api/v1/referrals", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/referrals"));
+
+app.MapGet("/api/v1/referrals/lookup/{code}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, string code) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, $"/api/v1/referrals/lookup/{code}"));
+
+app.MapPut("/api/v1/referrals/{id:int}/redeem", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/referrals/{id}/redeem"));
+
+// Tourism Leads (GR-3.22)
+app.MapPost("/api/v1/tourism/leads", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyPost(ctx, mkClient, jsonLog, "/api/v1/tourism/leads"));
+
+app.MapGet("/api/v1/tourism/leads", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/leads"));
+
+app.MapGet("/api/v1/tourism/leads/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, $"/api/v1/tourism/leads/{id}"));
+
+app.MapPut("/api/v1/tourism/leads/{id:int}", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog, int id) =>
+    await MarketingProxyPut(ctx, mkClient, jsonLog, $"/api/v1/tourism/leads/{id}"));
+
+app.MapGet("/api/v1/tourism/stats", async (HttpContext ctx, MarketingClient mkClient, JsonLinesLogger jsonLog) =>
+    await MarketingProxyGet(ctx, mkClient, jsonLog, "/api/v1/tourism/stats"));
 
 // ============================================
 // GR-3.14: ATTRIBUTION ENDPOINTS (/api/v1/attribution/*)

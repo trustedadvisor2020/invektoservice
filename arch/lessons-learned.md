@@ -61,6 +61,9 @@
 | 2026-02-17 | 6 lead endpoint'te NpgsqlException catch eksik - Codex CQ1 FAIL | Her endpoint'e NpgsqlException catch eklendi | **DB cagiran TUM endpoint'ler (sadece repo degil) NpgsqlException catch ZORUNLU** |
 | 2026-02-17 | GetPendingFollowUpsAsync tenant_id parametresi yoktu | `int tenantId` + WHERE tenant_id = @tid eklendi | **Scheduled/helper query'ler de tenant_id filtresi ZORUNLU - "internal" olsa bile** |
 | 2026-02-17 | Chunked review: 5 chunk, tum CQ PASS ama CoVe UNKNOWN = Q FORCE PASS | Chunking artifact olarak belgelendi | **Tum CQ1-CQ8 PASS + CoVe sadece UNKNOWN = FORCE PASS uygun (real fail yok)** |
+| 2026-02-17 | GET endpoint'lere NpgsqlException log eklenince jsonLog scope'ta yok - CS0103 | `JsonLinesLogger jsonLog` DI parametresi eklendi | **NpgsqlException catch'e log eklerken endpoint signature'da jsonLog VAR MI kontrol et** |
+| 2026-02-17 | Backend MapPost("/redeem") ama Marketing PUT endpoint bekliyor - CQ8 FAIL | MapPost -> MapPut + ProxyPost -> ProxyPut degistirildi | **Proxy route HTTP method'u downstream servisin method'uyla BIREBIR eslessin** |
+| 2026-02-17 | Codex diff'te untracked dosyalar yok - tum CQ UNKNOWN | `git add` ile stage ettikten sonra diff olusturuldu | **Yeni dosyalar iceren PKT'de /rev oncesi `git add` ile stage et, yoksa diff bos gelir** |
 
 ### Deploy & Config
 

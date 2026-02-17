@@ -221,6 +221,18 @@ public static class ErrorCodes
     public const string MetricsQueryFailed = "INV-MT-002";
     public const string MetricsInvalidDateRange = "INV-MT-003";
 
+    // Marketing errors (INV-MK-xxx) -- GR-3.21/3.22
+    public const string MarketingInvalidReviewPayload = "INV-MK-001";
+    public const string MarketingReviewNotFound = "INV-MK-002";
+    public const string MarketingInvalidReferralPayload = "INV-MK-003";
+    public const string MarketingReferralNotFound = "INV-MK-004";
+    public const string MarketingReferralCodeExists = "INV-MK-005";
+    public const string MarketingInvalidTourismPayload = "INV-MK-006";
+    public const string MarketingTourismLeadNotFound = "INV-MK-007";
+    public const string MarketingInvalidTourismStatus = "INV-MK-008";
+    public const string MarketingReviewStatsFailed = "INV-MK-009";
+    public const string MarketingTourismStatsFailed = "INV-MK-010";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";
