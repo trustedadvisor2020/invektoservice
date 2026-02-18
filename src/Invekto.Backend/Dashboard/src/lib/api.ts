@@ -254,15 +254,59 @@ export interface CampaignStat {
   created_at: string;
 }
 
+// inma SSO session info stored after successful auth
+export interface InseSession {
+  token: string;
+  tenantId: number;
+  userId: number;
+  role: string;
+  fullName: string;
+  lang: string;
+  inseFeatures: string[];
+  expiresAt: number; // Unix timestamp ms
+}
+
+// inma auth response from backend
+export interface InmaAuthResponse {
+  token: string;
+  tenant_id: number;
+  user_id: number;
+  role: string;
+  full_name: string;
+  lang: string;
+  inse_features: string[];
+  expires_in: number;
+  token_type: string;
+}
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
+  private session: InseSession | null = null;
   public readonly baseUrl: string = '';
 
   constructor() {
-    // Restore credentials from sessionStorage
+    // Restore Basic Auth credentials (ops admin)
     this.credentials = sessionStorage.getItem('ops_auth');
+    // Restore inma SSO session
+    const raw = sessionStorage.getItem('inse_session');
+    if (raw) {
+      try {
+        const parsed: InseSession = JSON.parse(raw);
+        if (parsed.expiresAt > Date.now()) {
+          this.session = parsed;
+        } else {
+          sessionStorage.removeItem('inse_session');
+        }
+      } catch (_e: unknown) {
+        // Corrupted JSON in sessionStorage — clear silently, user will re-login
+        console.error('[api] Failed to parse inse_session, clearing.', _e);
+        sessionStorage.removeItem('inse_session');
+      }
+    }
   }
+
+  // --- Basic Auth (ops admin) ---
 
   setCredentials(username: string, password: string): void {
     this.credentials = btoa(`${username}:${password}`);
@@ -274,26 +318,98 @@ class OpsApiClient {
     sessionStorage.removeItem('ops_auth');
   }
 
+  // --- inma SSO session ---
+
+  setSession(resp: InmaAuthResponse): void {
+    this.session = {
+      token: resp.token,
+      tenantId: resp.tenant_id,
+      userId: resp.user_id,
+      role: resp.role,
+      fullName: resp.full_name,
+      lang: resp.lang,
+      inseFeatures: resp.inse_features ?? [],
+      expiresAt: Date.now() + resp.expires_in * 1000,
+    };
+    sessionStorage.setItem('inse_session', JSON.stringify(this.session));
+  }
+
+  clearSession(): void {
+    this.session = null;
+    sessionStorage.removeItem('inse_session');
+  }
+
+  getSession(): InseSession | null {
+    return this.session;
+  }
+
+  hasFeature(feature: string): boolean {
+    return this.session?.inseFeatures?.includes(feature) ?? false;
+  }
+
   isAuthenticated(): boolean {
+    if (this.session && this.session.expiresAt > Date.now()) return true;
     return this.credentials !== null;
+  }
+
+  isInmaSession(): boolean {
+    return this.session !== null && this.session.expiresAt > Date.now();
   }
 
   getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (this.credentials) {
+    if (this.session) {
+      headers['Authorization'] = `Bearer ${this.session.token}`;
+    } else if (this.credentials) {
       headers['Authorization'] = `Basic ${this.credentials}`;
     }
     return headers;
   }
+
+  // --- inma auth calls ---
+
+  async exchangeInmaToken(inmaToken: string): Promise<InmaAuthResponse> {
+    const response = await fetch('/api/v1/inma/auth/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: inmaToken }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async loginWithInmaCredentials(
+    companyName: string,
+    username: string,
+    password: string
+  ): Promise<InmaAuthResponse> {
+    const response = await fetch('/api/v1/inma/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ company_name: companyName, username, password }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  // --- internal request helper ---
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    if (this.credentials) {
+    if (this.session && this.session.expiresAt > Date.now()) {
+      headers['Authorization'] = `Bearer ${this.session.token}`;
+    } else if (this.credentials) {
       headers['Authorization'] = `Basic ${this.credentials}`;
     }
 
@@ -307,6 +423,7 @@ class OpsApiClient {
 
     if (response.status === 401) {
       this.clearCredentials();
+      this.clearSession();
       throw new Error('Unauthorized');
     }
 
@@ -535,12 +652,18 @@ class OpsApiClient {
     if (title) formData.append('title', title);
 
     const headers: Record<string, string> = {};
-    if (this.credentials) {
+    if (this.session && this.session.expiresAt > Date.now()) {
+      headers['Authorization'] = `Bearer ${this.session.token}`;
+    } else if (this.credentials) {
       headers['Authorization'] = `Basic ${this.credentials}`;
     }
 
     const response = await fetch(endpoint, { method: 'POST', headers, body: formData });
-    if (response.status === 401) { this.clearCredentials(); throw new Error('Unauthorized'); }
+    if (response.status === 401) {
+      this.clearCredentials();
+      this.clearSession();
+      throw new Error('Unauthorized');
+    }
     if (!response.ok) { const error = await response.text(); throw new Error(error || `HTTP ${response.status}`); }
     return response.json();
   }

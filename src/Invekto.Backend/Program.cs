@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using Invekto.Shared.Middleware;
 using Invekto.Backend.Data;
 using Invekto.Backend.Services;
@@ -49,6 +50,9 @@ var appointmentsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Ap
 var waAnalyticsUrl = builder.Configuration["Microservice:WhatsAppAnalytics:Url"]
     ?? $"http://localhost:{ServiceConstants.WhatsAppAnalyticsPort}";
 var waAnalyticsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:WhatsAppAnalytics:TimeoutMs", 30000);
+var integrationsUrl = builder.Configuration["Microservice:Integrations:Url"]
+    ?? $"http://localhost:{ServiceConstants.IntegrationsPort}";
+var integrationsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Integrations:TimeoutMs", 10000);
 var marketingUrl = builder.Configuration["Microservice:Marketing:Url"]
     ?? $"http://localhost:{ServiceConstants.MarketingPort}";
 var marketingTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Marketing:TimeoutMs", 10000);
@@ -91,10 +95,22 @@ builder.Services.AddSingleton<LogCleanupService>(sp =>
 // PKT-3: Register AnalyticsRepository + MetricsAggregationService (requires PostgreSQL)
 // Deferred registration: actual singleton created after pgFactory is available (see below)
 
-// Configure Kestrel to listen on configured port
+// Configure Kestrel to listen on configured port + HTTPS if certificate is configured
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(ServiceConstants.BackendPort);
+
+    var certPath = builder.Configuration["Kestrel:Certificate:Path"];
+    var certPassword = builder.Configuration["Kestrel:Certificate:Password"];
+    var httpsPort = builder.Configuration.GetValue("Kestrel:HttpsPort", 0);
+
+    if (!string.IsNullOrEmpty(certPath) && File.Exists(certPath) && httpsPort > 0)
+    {
+        options.ListenAnyIP(httpsPort, listenOptions =>
+        {
+            listenOptions.UseHttps(certPath, certPassword);
+        });
+    }
 });
 
 // Configure ChatAnalysis HTTP client with 600ms timeout (Stage-0 rule)
@@ -137,6 +153,13 @@ builder.Services.AddHttpClient<AppointmentsClient>(client =>
 {
     client.BaseAddress = new Uri(appointmentsUrl);
     client.Timeout = TimeSpan.FromMilliseconds(appointmentsTimeoutMs);
+});
+
+// Configure Integrations HTTP client
+builder.Services.AddHttpClient<IntegrationsClient>(client =>
+{
+    client.BaseAddress = new Uri(integrationsUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
 });
 
 // Configure Marketing HTTP client (GR-3.21/3.22)
@@ -182,6 +205,29 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
     builder.Services.AddSingleton(jwtValidator);
     builder.Services.AddSingleton(jwtGenerator);
 }
+
+// InmaJwtValidator + settings (singleton, thread-safe)
+InmaJwtValidator? inmaJwtValidator = null;
+InmaJwtSettings? inmaJwtSettings = null;
+var inmaSecretKey = builder.Configuration["InmaAuth:SecretKey"];
+if (!string.IsNullOrEmpty(inmaSecretKey))
+{
+    inmaJwtSettings = new InmaJwtSettings
+    {
+        SecretKey = inmaSecretKey,
+        LoginUrl = builder.Configuration["InmaAuth:LoginUrl"] ?? string.Empty,
+        ClockSkewSeconds = builder.Configuration.GetValue<int>("InmaAuth:ClockSkewSeconds", 60),
+        LoginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000)
+    };
+    inmaJwtValidator = new InmaJwtValidator(inmaJwtSettings);
+}
+
+// inma login proxy HTTP client (no base address — LoginUrl is full URL from config)
+builder.Services.AddHttpClient("inma_login", client =>
+{
+    var loginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000);
+    client.Timeout = TimeSpan.FromMilliseconds(loginTimeoutMs);
+});
 
 // PostgreSQL connection factory (singleton, thread-safe pooling)
 PostgresConnectionFactory? pgFactory = null;
@@ -454,7 +500,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -563,6 +609,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = appointmentsHealthy ? null : "Service unreachable"
+    });
+
+    // Integrations - check health with timing
+    var swIntegrations = System.Diagnostics.Stopwatch.StartNew();
+    var integrationsHealthy = await integrationsClient.CheckHealthAsync();
+    swIntegrations.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.IntegrationsServiceName,
+        status = integrationsHealthy ? "ok" : "unavailable",
+        responseTimeMs = integrationsHealthy ? (int?)swIntegrations.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = integrationsHealthy ? null : "Service unreachable"
     });
 
     // WhatsApp Analytics - check health with timing (PKT-4)
@@ -822,7 +883,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -924,7 +985,22 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
             });
         }
 
-        if (serviceName == "wa-analytics")
+        if (serviceName == "integrations")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await integrationsClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "whatsappanalytics" || serviceName == "wa-analytics")
         {
             var endpoint = "/" + (path ?? "health");
             var result = await waAnalyticsClient.TestEndpointAsync(endpoint);
@@ -1200,7 +1276,7 @@ app.MapPost("/api/v1/chat/analyze", async (
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1346,6 +1422,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch WhatsApp Analytics endpoints (internal call, PKT-4)
     var waAnalyticsEndpoints = await waAnalyticsClient.GetEndpointsAsync();
 
+    // Fetch Integrations endpoints (internal call)
+    var integrationsEndpoints = await integrationsClient.GetEndpointsAsync();
+
     // Fetch Marketing endpoints (internal call, GR-3.21/3.22)
     var marketingEndpoints = await marketingClient.GetEndpointsAsync();
 
@@ -1373,6 +1452,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (appointmentsEndpoints != null)
     {
         services.Add(appointmentsEndpoints);
+    }
+    if (integrationsEndpoints != null)
+    {
+        services.Add(integrationsEndpoints);
     }
     if (waAnalyticsEndpoints != null)
     {
@@ -3442,6 +3525,198 @@ app.MapGet("/api/ops/analytics/campaigns", async (HttpContext ctx, AnalyticsRepo
     {
         logger.SystemWarn($"Campaign stats failed ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
         return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Kampanya sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+// ============================================
+// INMA SSO AUTH ENDPOINTS
+// ============================================
+
+// Akis 1: inma JWT -> inse JWT exchange (URL token flow)
+// inma'dan gelen ?accesstoken= parametresi bu endpoint'e gonderilir.
+app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (inmaJwtValidator == null || jwtGenerator == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
+            statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var inmaToken = root.TryGetProperty("token", out var t) ? t.GetString() : null;
+        if (string.IsNullOrWhiteSpace(inmaToken))
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralValidation, "token field required", requestId),
+                statusCode: 400);
+
+        var (inmaCtx, error) = inmaJwtValidator.ValidateToken(inmaToken);
+        if (inmaCtx == null)
+        {
+            jsonLogger.StepWarn($"inma token exchange failed: {error}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Invalid token", requestId),
+                statusCode: 401);
+        }
+
+        var tokenExpiry = TimeSpan.FromHours(8);
+        var inseToken = jwtGenerator.GenerateToken(
+            inmaCtx.TenantId, inmaCtx.Role, "inma_exchange", tokenExpiry, inmaCtx.UserId.ToString());
+
+        jsonLogger.StepInfo($"inma token exchange success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
+        return Results.Ok(new
+        {
+            token = inseToken,
+            tenant_id = inmaCtx.TenantId,
+            user_id = inmaCtx.UserId,
+            role = inmaCtx.Role,
+            full_name = inmaCtx.FullName,
+            lang = inmaCtx.Lang,
+            inse_features = inmaCtx.InseFeatures,
+            expires_in = (int)tokenExpiry.TotalSeconds,
+            token_type = "Bearer"
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
+            statusCode: 400);
+    }
+});
+
+// Akis 2: firma + kullanici + parola -> inma login -> inse JWT
+// inse login ekranindan kullanici inma credentials ile giris yapar.
+app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (inmaJwtValidator == null || jwtGenerator == null || inmaJwtSettings == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
+            statusCode: 503);
+
+    if (string.IsNullOrEmpty(inmaJwtSettings.LoginUrl))
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma login URL not configured", requestId),
+            statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var companyName = root.TryGetProperty("company_name", out var c) ? c.GetString() : null;
+        var username = root.TryGetProperty("username", out var u) ? u.GetString() : null;
+        var password = root.TryGetProperty("password", out var p) ? p.GetString() : null;
+
+        if (string.IsNullOrWhiteSpace(companyName) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralValidation, "company_name, username and password are required", requestId),
+                statusCode: 400);
+
+        // Proxy credentials to inma login endpoint
+        var inmaClient = httpClientFactory.CreateClient("inma_login");
+        var loginPayload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            companyName,
+            username,
+            password
+        });
+
+        using var inmaRequest = new HttpRequestMessage(HttpMethod.Post, inmaJwtSettings.LoginUrl)
+        {
+            Content = new StringContent(loginPayload, Encoding.UTF8, "application/json")
+        };
+
+        HttpResponseMessage inmaResponse;
+        try
+        {
+            inmaResponse = await inmaClient.SendAsync(inmaRequest);
+        }
+        catch (HttpRequestException ex)
+        {
+            jsonLogger.StepWarn($"inma login proxy failed (network): {ex.Message}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma servisine erisim saglanamadi", requestId),
+                statusCode: 503);
+        }
+        catch (TaskCanceledException)
+        {
+            jsonLogger.StepWarn("inma login proxy timed out", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma servisine erisim zaman asimina ugradi", requestId),
+                statusCode: 503);
+        }
+
+        if (!inmaResponse.IsSuccessStatusCode)
+        {
+            jsonLogger.StepWarn($"inma login rejected: HTTP {(int)inmaResponse.StatusCode}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Gecersiz firma adi, kullanici adi veya parola", requestId),
+                statusCode: 401);
+        }
+
+        var inmaBody = await inmaResponse.Content.ReadAsStringAsync();
+        // inma returns the JWT token in the response body — extract accesstoken
+        string? inmaToken = null;
+        try
+        {
+            using var respDoc = JsonDocument.Parse(inmaBody);
+            inmaToken = respDoc.RootElement.TryGetProperty("accesstoken", out var at) ? at.GetString()
+                      : respDoc.RootElement.TryGetProperty("token", out var tk) ? tk.GetString()
+                      : null;
+        }
+        catch (JsonException)
+        {
+            // inma may return plain token string
+            inmaToken = inmaBody.Trim('"');
+        }
+
+        if (string.IsNullOrWhiteSpace(inmaToken))
+        {
+            jsonLogger.StepWarn("inma login succeeded but token missing in response", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma token alinamadi", requestId),
+                statusCode: 500);
+        }
+
+        var (inmaCtx, error) = inmaJwtValidator.ValidateToken(inmaToken);
+        if (inmaCtx == null)
+        {
+            jsonLogger.StepWarn($"inma login token validation failed: {error}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Token dogrulanamadi", requestId),
+                statusCode: 401);
+        }
+
+        var tokenExpiry = TimeSpan.FromHours(8);
+        var inseToken = jwtGenerator.GenerateToken(
+            inmaCtx.TenantId, inmaCtx.Role, "inma_login", tokenExpiry, inmaCtx.UserId.ToString());
+
+        jsonLogger.StepInfo($"inma login success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
+        return Results.Ok(new
+        {
+            token = inseToken,
+            tenant_id = inmaCtx.TenantId,
+            user_id = inmaCtx.UserId,
+            role = inmaCtx.Role,
+            full_name = inmaCtx.FullName,
+            lang = inmaCtx.Lang,
+            inse_features = inmaCtx.InseFeatures,
+            expires_in = (int)tokenExpiry.TotalSeconds,
+            token_type = "Bearer"
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
+            statusCode: 400);
     }
 });
 

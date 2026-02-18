@@ -1,26 +1,53 @@
 import { useState, useCallback, useEffect } from 'react';
-import { api } from '../lib/api';
+import { useNavigate } from 'react-router-dom';
+import { api, type InseSession } from '../lib/api';
 
 export function useAuth() {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(api.isAuthenticated());
+  const [session, setSession] = useState<InseSession | null>(api.getSession());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // URL token detection: ?accesstoken= parametresi varsa otomatik exchange yap
   useEffect(() => {
-    setIsAuthenticated(api.isAuthenticated());
-  }, []);
+    const params = new URLSearchParams(window.location.search);
+    const inmaToken = params.get('accesstoken');
+    if (!inmaToken) return;
 
-  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
+    // URL'den token'i temizle (browser history'de kalmasin)
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState(null, '', cleanUrl);
+
     setIsLoading(true);
     setError(null);
 
+    api.exchangeInmaToken(inmaToken)
+      .then(resp => {
+        api.setSession(resp);
+        setSession(api.getSession());
+        setIsAuthenticated(true);
+        navigate('/', { replace: true });
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Token dogrulanamadi');
+        setIsAuthenticated(false);
+      })
+      .finally(() => setIsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ops Basic Auth login (mevcut, degismiyor)
+  const loginWithOps = useCallback(async (username: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
     try {
       api.setCredentials(username, password);
-      // Test credentials by making a request
       await api.getOpsStatus();
       setIsAuthenticated(true);
+      setSession(null);
       return true;
-    } catch (err) {
+    } catch (err: unknown) {
       api.clearCredentials();
       setIsAuthenticated(false);
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -30,16 +57,47 @@ export function useAuth() {
     }
   }, []);
 
+  // inma SSO login (firma adi + kullanici + parola)
+  const loginWithInma = useCallback(async (
+    companyName: string,
+    username: string,
+    password: string
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const resp = await api.loginWithInmaCredentials(companyName, username, password);
+      api.setSession(resp);
+      setSession(api.getSession());
+      setIsAuthenticated(true);
+      return true;
+    } catch (err: unknown) {
+      api.clearSession();
+      setIsAuthenticated(false);
+      setError(err instanceof Error ? err.message : 'Giris basarisiz');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     api.clearCredentials();
+    api.clearSession();
     setIsAuthenticated(false);
+    setSession(null);
   }, []);
 
   return {
     isAuthenticated,
+    session,
+    isInmaSession: api.isInmaSession(),
     isLoading,
     error,
-    login,
+    loginWithOps,
+    loginWithInma,
+    // legacy alias — LoginPage'deki ops login icin backward compat
+    login: loginWithOps,
     logout,
   };
 }

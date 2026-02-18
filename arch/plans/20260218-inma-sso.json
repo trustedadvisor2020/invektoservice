@@ -1,0 +1,136 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "slug": "20260218-inma-sso",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-18T00:00:00Z",
+  "updated_at": "2026-02-18T00:00:00Z",
+  "plan": {
+    "summary": "inma (Invekto Main App) ile inse (InvektoServices) arasinda SSO entegrasyonu. Iki akis: (1) inma'dan URL ile JWT gonderimi, (2) inse login ekraninda inma credentials ile giris. Backend'e InmaJwtValidator + 2 auth endpoint ekleniyor; Dashboard frontend'e firma-bazli JWT auth, InseFeatures tabanli nav ve yeni modul sayfalari ekleniyor.",
+    "q_intent": "inma main app ta varolan bir firma kullanici izinler vs yapisi zaten var. invekto servisleri (inse) kendi UI icinde invekto firmalarinin bu ozellikleri kullanabilmesini saglayacak.",
+    "interview_notes": "JWT validation: Shared HS256 secret. Tenant mapping: CompanyId=tenant_id. inse'de InmaJwtValidator yazilacak (CompanyId claim'ini tenant_id'ye map eder). URL security: short TTL, prod'da imzali JWT. Login ekrani: firma adi + kullanici adi + parola (inma'nin mevcut login endpoint'i kullanilir). Kapsam: tum modüller tenant bazli, lisanslama JWT'deki InseFeatures claim ile. Yetki: JWT AuthorizedAreas bazinda. InseFeatures format: ['FlowBuilder','ChatAnalysis',...] string array."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Auth/InmaJwtValidator.cs",
+    "src/Invekto.Shared/Auth/InmaTokenContext.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/FlowBuilderPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/CampaignsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/AppointmentsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/IntegrationsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/MarketingPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": { "status": null },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "InmaJwtValidator, inma JWT'sindeki CompanyId claim'ini dogru sekilde tenant_id olarak map ediyor mu ve gecersiz/eksik claim durumunda anlamli hata donuyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "/api/v1/inma/auth/exchange endpoint'i suresi dolmus veya imzasi gecersiz JWT ile cagirildiginda 401 donuyor mu, exception firlatmiyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "/api/v1/inma/auth/login endpoint'i inma'nin login URL'si yapilandirma eksikse veya inma'ya erisim yoksa anlamli 503/500 donuyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Frontend URL'de ?accesstoken= parametresi alindiktan sonra URL replaceState ile temizleniyor mu (browser history'de token kalmiyor mu)?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q5",
+      "question": "InseFeatures bos veya tanimsiz oldugunda Layout navigasyonu cokmuyor mu, sadece her zaman acik sayfalar gosteriliyor mu?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.Appointments/",
+      "src/Invekto.Knowledge/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Integrations/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.Automation/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.Marketing/",
+      "arch/db/"
+    ],
+    "non_goals": [
+      "Yeni DB migration - tenant_registry mevcut",
+      "Mevcut Basic Auth (ops admin) kaldirilmasi - korunuyor",
+      "inma tarafinda kod yazmak",
+      "Yeni sayfalarin tam implementasyonu - placeholder yeterli",
+      "Role-based API endpoint kısıtlamasi - UI seviyesinde yeterli"
+    ],
+    "intentional_exclusions": [
+      "Ops/admin Basic Auth korunuyor (backwards compatible)",
+      "Refresh token mekanizmasi - 8 saatlik JWT TTL yeterli",
+      "Multi-tab session sync - scope disi"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum auth hatalari 401/400/503 ile acikca donuyor. Frontend hata state'i kullaniciya gosteriyor.",
+    "user_facing_errors": [
+      "Gecersiz firma adi, kullanici adi veya parola",
+      "inma servisine erisim saglanamadi",
+      "Token suresi dolmus, lutfen tekrar giris yapin",
+      "Bu ozellik firmanizin lisansinda bulunmuyor"
+    ]
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "inma'dan inse'ye geciste tekrar login yapmak sinir bozucu",
+      "suggestion": "inma'dan gelen JWT URL parametresi otomatik aliniyor, kullanici hicbir sey yapmadan inse'ye giris yapiliyor",
+      "aha_moment": "Kullanici 'Flow Builder Ac' tikliyor, yeni tab aninda aciliyor ve login ekrani gormuyor"
+    },
+    {
+      "category": "UX",
+      "user_pain": "inse'de hangi ozelliklerin kullanilabildigini bilmemek",
+      "suggestion": "InseFeatures'a gore sidebar sadece lisanslanan modulleri gosteriyor, kilitli moduller greyed-out ile gorunuyor",
+      "aha_moment": "Kullanici sidebar'da sadece kendi paketindeki ozellikleri goruyor, kafasi karismıyor"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo sirasinda tum modulleri gostermek icin farkli hesaplar gerekiyor",
+      "suggestion": "InseFeatures JWT'de oldugu icin demo JWT ile tum modüller acilabiliyor",
+      "aha_moment": "Sales ekibi tek token ile tum ozellikleri gosteren demo yapabiliyor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "inma down oldugunda inse de calismaz hale geliyor",
+      "suggestion": "inse JWT 8 saat gecerli, inma down olsa bile aktif session'lar devam ediyor",
+      "aha_moment": "Sabah giris yapan kullanici gün boyu inma'ya bagli kalmadan calisabiliyor"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Kullanici 'giris yapamiyorum' diye sikayet ediyor, nerede takildigi bilinmiyor",
+      "suggestion": "Auth endpoint loglari tenant_id ve error_code ile kayit altinaaliyor",
+      "aha_moment": "Support ekibi auth loglarinda hangi firmadan, kac kez yanlis parola girildigini anlık gorebiliyor"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3,
+    "override": "FORCE PASS by Q — false positives from chunked diff presentation (build PASS, no real code issues)"
+  }
+}

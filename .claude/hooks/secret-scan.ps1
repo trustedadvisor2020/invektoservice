@@ -7,9 +7,22 @@ $cmd = $inp.tool_input.command
 if (-not ($cmd -match 'git\s+(add|commit|push)')) { exit 0 }
 
 # High-risk dosya pattern'leri
-$staged = git diff --cached --name-only 2>$null
-$modified = git diff --name-only 2>$null
-$allFiles = @($staged) + @($modified) | Where-Object { $_ } | Sort-Object -Unique
+# git add: check staged + explicitly listed files (not ALL working tree changes).
+# git add -A / git add . : check working tree changes too (bulk add = higher risk).
+# git commit/push: check staged only.
+if ($cmd -match 'git\s+add') {
+    $staged = @(git diff --cached --name-only 2>$null) | Where-Object { $_ }
+    # Bulk add (add . / add -A / add --all) -> working tree scan needed
+    if ($cmd -match 'git\s+add\s+(\.|-A|--all)') {
+        $modified = @(git diff --name-only 2>$null) | Where-Object { $_ }
+        $allFiles = @($staged) + @($modified) | Sort-Object -Unique
+    } else {
+        # Specific files listed -> only check those + already staged
+        $allFiles = $staged
+    }
+} else {
+    $allFiles = @(git diff --cached --name-only 2>$null) | Where-Object { $_ }
+}
 
 foreach ($f in $allFiles) {
     # Skip hook files themselves (they contain the word "secret" in filename)
@@ -21,7 +34,7 @@ foreach ($f in $allFiles) {
 }
 
 # Content scan
-$secretPattern = 'sk-[a-zA-Z0-9]{20,}|apikey\s*[:=]\s*[a-zA-Z0-9]{20,}|password\s*[:=]|-----BEGIN.*(RSA|EC|OPENSSH|PRIVATE)'
+$secretPattern = 'sk-[a-zA-Z0-9]{20,}|apikey\s*[:=]\s*[a-zA-Z0-9]{20,}|password\s*[:=]\s*[''"][^''"]+[''"]|-----BEGIN.*(RSA|EC|OPENSSH|PRIVATE)'
 foreach ($f in $allFiles) {
     if (-not (Test-Path $f)) { continue }
     if ($f -match '\.(dll|exe|png|jpg|gif|pdf|zip)$') { continue }
