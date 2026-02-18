@@ -294,24 +294,34 @@ app.MapGet("/health", () =>
     return Results.Ok(HealthResponse.Ok(ServiceConstants.BackendServiceName));
 });
 
-// Basic Auth check for /ops endpoints
+// Ops auth: Basic Auth (admin) veya Bearer inse JWT (role=admin)
 bool ValidateOpsAuth(HttpContext ctx)
 {
     var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
-    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Basic "))
-        return false;
+    if (string.IsNullOrEmpty(authHeader)) return false;
 
-    try
+    // Basic Auth
+    if (authHeader.StartsWith("Basic "))
     {
-        var encoded = authHeader["Basic ".Length..];
-        var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
-        var parts = decoded.Split(':', 2);
-        return parts.Length == 2 && parts[0] == opsUsername && parts[1] == opsPassword;
+        try
+        {
+            var encoded = authHeader["Basic ".Length..];
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+            var parts = decoded.Split(':', 2);
+            return parts.Length == 2 && parts[0] == opsUsername && parts[1] == opsPassword;
+        }
+        catch { return false; }
     }
-    catch
+
+    // Bearer JWT (inse superadmin token — role=admin erişim)
+    if (jwtValidator != null && authHeader.StartsWith("Bearer "))
     {
-        return false;
+        var token = authHeader["Bearer ".Length..];
+        var (context, _) = jwtValidator.ValidateToken(token);
+        return context?.Role == "admin";
     }
+
+    return false;
 }
 
 // OPS endpoint - Stage-0 troubleshooting dashboard
@@ -3775,6 +3785,39 @@ app.MapPost("/api/v1/inma/auth/mock-login", async (HttpContext ctx, JsonLinesLog
             ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
             statusCode: 400);
     }
+});
+
+// Ops superadmin quick login (MockEnabled gate) — sifre gerektirmez, inse JWT ile ops yetkisi
+app.MapPost("/api/v1/ops/auth/quicklogin", (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (!inmaAuthMockEnabled)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Quick login disabled", requestId),
+            statusCode: 503);
+
+    if (jwtGenerator == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId),
+            statusCode: 503);
+
+    var tokenExpiry = TimeSpan.FromHours(8);
+    var inseToken = jwtGenerator.GenerateToken(0, "admin", "ops_quicklogin", tokenExpiry, "0");
+
+    jsonLogger.StepInfo("ops quicklogin: superadmin JWT issued", requestId);
+    return Results.Ok(new
+    {
+        token = inseToken,
+        tenant_id = 0,
+        user_id = 0,
+        role = "admin",
+        full_name = "Super Admin",
+        lang = "tr",
+        inse_features = new[] { "FlowBuilder", "Knowledge", "Outbound", "Appointments", "Analytics", "Integrations", "Marketing" },
+        expires_in = (int)tokenExpiry.TotalSeconds,
+        token_type = "Bearer"
+    });
 });
 
 // ============================================

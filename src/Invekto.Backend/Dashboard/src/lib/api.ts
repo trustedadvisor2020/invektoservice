@@ -400,6 +400,18 @@ class OpsApiClient {
     return response.json();
   }
 
+  async quickAdminLogin(): Promise<InmaAuthResponse> {
+    const response = await fetch('/api/v1/ops/auth/quicklogin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
   async mockLogin(scenario: 'full' | 'klinik' | 'otel'): Promise<InmaAuthResponse> {
     const response = await fetch('/api/v1/inma/auth/mock-login', {
       method: 'POST',

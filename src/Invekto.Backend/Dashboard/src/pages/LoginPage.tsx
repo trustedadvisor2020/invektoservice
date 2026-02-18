@@ -10,12 +10,17 @@ type LoginMode = 'inma' | 'ops';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithInma, loginWithOps, loginWithMock, isLoading, error } = useAuth();
+  const { loginWithInma, loginWithOps, loginWithMock, loginWithQuickAdmin, isLoading, error } = useAuth();
 
   const [mode, setMode] = useState<LoginMode>('inma');
   const [companyName, setCompanyName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  const handleQuickAdminLogin = async () => {
+    const success = await loginWithQuickAdmin();
+    if (success) navigate('/');
+  };
 
   const handleMockLogin = async (scenario: 'full' | 'klinik' | 'otel') => {
     const success = await loginWithMock(scenario);
@@ -123,6 +128,19 @@ export function LoginPage() {
               {isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
             </Button>
           </form>
+
+          {mode === 'ops' && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleQuickAdminLogin}
+                disabled={isLoading}
+                className="w-full text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
+              >
+                Super Admin Girisi
+              </button>
+            </div>
+          )}
 
           {mode === 'inma' && (
             <div className="mt-4 pt-4 border-t border-slate-200">

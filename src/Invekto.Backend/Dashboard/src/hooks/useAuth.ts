@@ -57,6 +57,26 @@ export function useAuth() {
     }
   }, []);
 
+  // Ops superadmin hizli giris (MockEnabled gate) — sifre gerekmez
+  const loginWithQuickAdmin = useCallback(async (): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const resp = await api.quickAdminLogin();
+      api.setSession(resp);
+      setSession(api.getSession());
+      setIsAuthenticated(true);
+      return true;
+    } catch (err: unknown) {
+      api.clearSession();
+      setIsAuthenticated(false);
+      setError(err instanceof Error ? err.message : 'Hizli giris basarisiz');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // inma mock login (DEV only — InmaAuth:MockEnabled=true)
   const loginWithMock = useCallback(async (
     scenario: 'full' | 'klinik' | 'otel'
@@ -117,6 +137,7 @@ export function useAuth() {
     isLoading,
     error,
     loginWithOps,
+    loginWithQuickAdmin,
     loginWithInma,
     loginWithMock,
     // legacy alias — LoginPage'deki ops login icin backward compat
