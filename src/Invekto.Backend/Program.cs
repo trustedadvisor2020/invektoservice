@@ -221,6 +221,7 @@ if (!string.IsNullOrEmpty(inmaSecretKey))
     };
     inmaJwtValidator = new InmaJwtValidator(inmaJwtSettings);
 }
+var inmaAuthMockEnabled = builder.Configuration.GetValue<bool>("InmaAuth:MockEnabled", false);
 
 // inma login proxy HTTP client (no base address — LoginUrl is full URL from config)
 builder.Services.AddHttpClient("inma_login", client =>
@@ -3708,6 +3709,62 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
             full_name = inmaCtx.FullName,
             lang = inmaCtx.Lang,
             inse_features = inmaCtx.InseFeatures,
+            expires_in = (int)tokenExpiry.TotalSeconds,
+            token_type = "Bearer"
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
+            statusCode: 400);
+    }
+});
+
+// Akis 3: Mock login (DEV/TEST only — InmaAuth:MockEnabled=true zorunlu)
+// inma hazir olmadan UI akisini test etmek icin. Hardcoded scenariolar, inse JWT uretir.
+app.MapPost("/api/v1/inma/auth/mock-login", async (HttpContext ctx, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (!inmaAuthMockEnabled)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Mock login disabled", requestId),
+            statusCode: 503);
+
+    if (jwtGenerator == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId),
+            statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var scenario = bodyDoc.RootElement.TryGetProperty("scenario", out var s) ? s.GetString() : null;
+
+        var (tenantId, userId, role, fullName, features) = scenario switch
+        {
+            "klinik" => (1, 9002, "admin", "Demo Klinik",
+                new[] { "Appointments", "Knowledge", "Analytics" }),
+            "otel"   => (1, 9003, "admin", "Demo Otel",
+                new[] { "FlowBuilder", "Knowledge", "Outbound", "Marketing" }),
+            _        => (1, 9001, "admin", "Demo Admin (Tam Yetkili)",
+                new[] { "FlowBuilder", "Knowledge", "Outbound", "Appointments", "Analytics", "Integrations", "Marketing" })
+        };
+
+        var tokenExpiry = TimeSpan.FromHours(8);
+        var inseToken = jwtGenerator.GenerateToken(tenantId, role, "inma_mock", tokenExpiry, userId.ToString());
+
+        jsonLogger.StepInfo($"inma mock login: scenario={scenario ?? "full"} tenant={tenantId} user={userId}", requestId);
+        return Results.Ok(new
+        {
+            token = inseToken,
+            tenant_id = tenantId,
+            user_id = userId,
+            role,
+            full_name = fullName,
+            lang = "tr",
+            inse_features = features,
             expires_in = (int)tokenExpiry.TotalSeconds,
             token_type = "Bearer"
         });

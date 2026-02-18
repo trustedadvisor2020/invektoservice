@@ -10,12 +10,17 @@ type LoginMode = 'inma' | 'ops';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithInma, loginWithOps, isLoading, error } = useAuth();
+  const { loginWithInma, loginWithOps, loginWithMock, isLoading, error } = useAuth();
 
   const [mode, setMode] = useState<LoginMode>('inma');
   const [companyName, setCompanyName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  const handleMockLogin = async (scenario: 'full' | 'klinik' | 'otel') => {
+    const success = await loginWithMock(scenario);
+    if (success) navigate('/');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +123,38 @@ export function LoginPage() {
               {isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
             </Button>
           </form>
+
+          {mode === 'inma' && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <p className="text-xs text-slate-400 mb-2 text-center">Test Girisleri</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleMockLogin('full')}
+                  disabled={isLoading}
+                  className="flex-1 text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
+                >
+                  Tam Yetkili
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMockLogin('klinik')}
+                  disabled={isLoading}
+                  className="flex-1 text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
+                >
+                  Demo Klinik
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMockLogin('otel')}
+                  disabled={isLoading}
+                  className="flex-1 text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
+                >
+                  Demo Otel
+                </button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

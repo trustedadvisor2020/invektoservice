@@ -400,6 +400,19 @@ class OpsApiClient {
     return response.json();
   }
 
+  async mockLogin(scenario: 'full' | 'klinik' | 'otel'): Promise<InmaAuthResponse> {
+    const response = await fetch('/api/v1/inma/auth/mock-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
   // --- internal request helper ---
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {

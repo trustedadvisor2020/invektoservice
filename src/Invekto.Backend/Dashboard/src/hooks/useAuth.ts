@@ -57,6 +57,28 @@ export function useAuth() {
     }
   }, []);
 
+  // inma mock login (DEV only — InmaAuth:MockEnabled=true)
+  const loginWithMock = useCallback(async (
+    scenario: 'full' | 'klinik' | 'otel'
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const resp = await api.mockLogin(scenario);
+      api.setSession(resp);
+      setSession(api.getSession());
+      setIsAuthenticated(true);
+      return true;
+    } catch (err: unknown) {
+      api.clearSession();
+      setIsAuthenticated(false);
+      setError(err instanceof Error ? err.message : 'Mock login basarisiz');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // inma SSO login (firma adi + kullanici + parola)
   const loginWithInma = useCallback(async (
     companyName: string,
@@ -96,6 +118,7 @@ export function useAuth() {
     error,
     loginWithOps,
     loginWithInma,
+    loginWithMock,
     // legacy alias — LoginPage'deki ops login icin backward compat
     login: loginWithOps,
     logout,
