@@ -6,7 +6,7 @@
 
 - **Date:** 2026-02-18
 - **Status:** Phase 1 ✅ + GR-2.1 ✅ + WA-1~3,5,6 ✅ + PKT-1 ✅ + PKT-2 ✅ + PKT-3 ✅ + PKT-4 ✅ + PKT-5A ✅ + PKT-5B ✅ + PKT-6A ✅ + PKT-6B ✅ + PKT-6C1 ✅ + PKT-6C2 ✅ + PKT-6C3 ✅. **12 Paket Stratejisi** aktif (v5.2).
-- **Last Task:** PKT-6C3 Marketing v2 — DONE. 2 GR (GR-3.24 Proactive Review Rescue, GR-3.25 Multilingual Medical Tourism): 4 DB tablosu (review_risks, rescue_templates, treatment_catalog, tourism_conversations), TourismResponseGenerator (Claude Haiku multilingual response), 16 API endpoint, Backend proxy (16 routes + MarketingProxyDelete). Codex 3-chunk review, iteration=2 FORCE PASS.
+- **Last Task:** Ops: Deploy-watcher (Invekto_DeployWatcher) NSSM servisi yeni sunucudan kaldırıldı. SSH/MCP deploy ile artık gereksiz.
 - **Next Task:** PKT-7 Visual AI (Phase 3C: Visual Product Search + Size/Fit AI, port 7111).
 - **Strateji:** Overhead %60 azaltma. 12 paket. Her paket: 1 interview + 1 plan + sıralı dev + 1 build + 1 Codex review.
 - **v5.1 (2026-02-15):** PKT-6 (19 GR, ~80 item) → PKT-6A/6B/6C olarak bölündü. Codex PASS olasılığı artırmak için.
@@ -235,15 +235,13 @@ Review Rescue (e-ticaret, 3B) → GR-3.8/3.16 proaktif genişletme
 | FlowBuilder | 3002 | Dev-only SPA (Vite, serve via Backend:5000) |
 
 ### Deploy
-- **Script:** `dev-to-invekto-services.bat`
-- **Protokol:** FTPES (explicit TLS)
-- **FTP Host:** services.invekto.com
-- **Sunucu Yapi:** `E:\Invekto\Backend\current\`, `E:\Invekto\ChatAnalysis\current\`, `E:\Invekto\Automation\current\`, `E:\Invekto\AgentAI\current\`, `E:\Invekto\Outbound\current\`, `E:\Invekto\Knowledge\current\`, `E:\Invekto\Appointments\current\`, `E:\Invekto\WhatsAppAnalytics\current\`
+- **Deploy:** MCP `server-deploy` tool (SSH/SFTP, atomik: stop → zip → upload → extract → config restore → start → health)
+- **Sunucu Yapi:** `E:\InvektoServices\Backend\current\`, `E:\InvektoServices\ChatAnalysis\current\`, vb.
 - **Sunucu Domain:** services.invekto.com
 - **Sunucu Root:** `E:\Invekto\` (Backend, ChatAnalysis, scripts, logs)
 - **Service Manager:** NSSM (`E:\nssm.exe`)
-- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoAppointments, InvektoWhatsAppAnalytics, InvektoMarketing, InvektoDeployWatcher (auto-start, auto-restart)
-- **Deploy Watcher:** `E:\Invekto\scripts\deploy-watcher.ps1` (flag-based stop/start)
+- **Servisler:** InvektoBackend, InvektoChatAnalysis, InvektoAutomation, InvektoAgentAI, InvektoOutbound, InvektoKnowledge, InvektoAppointments, InvektoWhatsAppAnalytics, InvektoMarketing (auto-start, auto-restart)
+- **Deploy:** SSH/MCP (server-deploy tool: stop → zip/upload → extract → start → health check). Deploy-watcher kaldırıldı (2026-02-18).
 - **.NET Runtime:** ASP.NET Core 8.0.23 (`C:\Program Files\dotnet`)
 - **PostgreSQL:** localhost:5432 / invekto DB (pgAdmin ile yonetim)
 

@@ -82,6 +82,7 @@
 | 2026-02-14 | .bat'ta embedded PowerShell pipe CMD yorumladi | Ayri .ps1 + .bat wrapper | **PowerShell logic'i .bat'a GOMME** |
 | 2026-02-14 | DLL transfer basarisiz - servis dosyayi kilitliyor | Servis durdur -> deploy -> baslat | **Deploy oncesi hedef servisi DURDUR** |
 | 2026-02-14 | deploy -mirror production secrets'i sildi | Production.json'a tasindi | **Sunucuda appsettings.json DUZENLEME - deploy ezer** |
+| 2026-02-18 | Deploy-watcher (flag polling) SSH/MCP deploy varken gereksiz | NSSM servisi kaldırıldı | **SSH doğrudan erişim varsa polling mekanizması KURMA — MCP server-deploy atomik akışı yeterli** |
 | 2026-02-14 | Test script bos JWT key okudu | ConfigPath = Production.json | **Sunucu test scriptleri Production.json'dan okusun** |
 | 2026-02-14 | NuGet stable version yok - build failed | PdfPig (v0.1.13) | **NuGet eklerken stable version VAR MI kontrol et** |
 | 2026-02-15 | FK `tenant_registry(id)` ama PK aslinda `tenant_id` | `tenant_registry(tenant_id)` duzeltildi | **FK yazarken hedef tablonun PK/kolon adini schema'dan DOGRULA** |
@@ -204,7 +205,7 @@
 | Ayri .ps1 + .bat wrapper | Deploy scripts | Pipe/escape sorunlari ortadan kalkar |
 | appsettings.Production.json | Deploy-safe config | Sunucu secrets korunur |
 | Yeni Mikroservis Checklist | Her yeni servis | 17 maddelik otomatik checklist |
-| Yeni Servis Deploy Yardimi | Her yeni servis deploy'u | SQL fix + appsettings + NSSM + firewall + restart + watcher OTOMATIK sunulur |
+| Yeni Servis Deploy Yardimi | Her yeni servis deploy'u | SQL fix + appsettings + NSSM + firewall + restart OTOMATIK sunulur (watcher artık gereksiz — SSH/MCP deploy) |
 | Selective git staging | /rev workflow | Focused diff, Codex review kolaylasir |
 | Port haritasi cross-check | Yeni servis planlama | Port cakismasi onlenir |
 
