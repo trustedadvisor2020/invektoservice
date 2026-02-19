@@ -4,37 +4,37 @@ import { api, type InseSession } from '../lib/api';
 
 export function useAuth() {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(api.isAuthenticated());
-  const [session, setSession] = useState<InseSession | null>(api.getSession());
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [welcomeData, setWelcomeData] = useState<unknown>(null);
 
-  // URL token detection: ?accesstoken=xxx&refreshtoken=yyy
-  useEffect(() => {
+  // Synchronous URL token extraction — runs BEFORE first render
+  // so ProtectedRoute sees isAuthenticated=true immediately
+  const [urlTokenHandled] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('accesstoken');
     const refreshToken = params.get('refreshtoken');
-
-    if (!accessToken) return;
+    if (!accessToken) return false;
 
     // URL'den token'lari temizle (browser history'de kalmasin)
     window.history.replaceState(null, '', window.location.pathname);
 
     // Token'lari localStorage'a kaydet
     api.storeTokens(accessToken, refreshToken ?? '');
+    return true;
+  });
 
-    // Decode et ve session olustur
-    const newSession = api.getSession();
-    if (newSession) {
-      setSession(newSession);
-      setIsAuthenticated(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(api.isAuthenticated());
+  const [session, setSession] = useState<InseSession | null>(api.getSession());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [welcomeData, setWelcomeData] = useState<unknown>(null);
 
-      // Welcome endpoint'ini cagir (non-critical — log and continue)
+  // Post-mount: navigate + welcome fetch (effects can't run during init)
+  useEffect(() => {
+    if (!urlTokenHandled) return;
+
+    if (session) {
       api.getWelcome()
         .then(data => setWelcomeData(data))
         .catch(err => console.warn('[useAuth] welcome fetch failed:', err));
-
       navigate('/', { replace: true });
     } else {
       api.removeTokens();
