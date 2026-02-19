@@ -208,19 +208,18 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
 
 // InmaJwtValidator + settings (singleton, thread-safe)
 InmaJwtValidator? inmaJwtValidator = null;
-InmaJwtSettings? inmaJwtSettings = null;
-var inmaSecretKey = builder.Configuration["InmaAuth:SecretKey"];
-if (!string.IsNullOrEmpty(inmaSecretKey))
+// Always create settings if any InmaAuth config exists (proxy endpoints need URLs even without SecretKey)
+var inmaJwtSettings = new InmaJwtSettings
 {
-    inmaJwtSettings = new InmaJwtSettings
-    {
-        SecretKey = inmaSecretKey,
-        LoginUrl = builder.Configuration["InmaAuth:LoginUrl"] ?? string.Empty,
-        ClockSkewSeconds = builder.Configuration.GetValue<int>("InmaAuth:ClockSkewSeconds", 60),
-        LoginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000),
-        RefreshUrl = builder.Configuration["InmaAuth:RefreshUrl"],
-        ApiBaseUrl = builder.Configuration["InmaAuth:ApiBaseUrl"]
-    };
+    SecretKey = builder.Configuration["InmaAuth:SecretKey"] ?? string.Empty,
+    LoginUrl = builder.Configuration["InmaAuth:LoginUrl"] ?? string.Empty,
+    ClockSkewSeconds = builder.Configuration.GetValue<int>("InmaAuth:ClockSkewSeconds", 60),
+    LoginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000),
+    RefreshUrl = builder.Configuration["InmaAuth:RefreshUrl"],
+    ApiBaseUrl = builder.Configuration["InmaAuth:ApiBaseUrl"]
+};
+if (!string.IsNullOrEmpty(inmaJwtSettings.SecretKey))
+{
     inmaJwtValidator = new InmaJwtValidator(inmaJwtSettings);
 }
 var inmaAuthMockEnabled = builder.Configuration.GetValue<bool>("InmaAuth:MockEnabled", false);
@@ -3597,7 +3596,7 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    if (inmaJwtValidator == null || jwtGenerator == null || inmaJwtSettings == null)
+    if (inmaJwtValidator == null || jwtGenerator == null)
         return Results.Json(
             ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
             statusCode: 503);
@@ -3818,11 +3817,6 @@ app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFact
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    if (inmaJwtSettings == null)
-        return Results.Json(
-            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
-            statusCode: 503);
-
     var refreshUrl = inmaJwtSettings.RefreshUrl;
     if (string.IsNullOrEmpty(refreshUrl))
         return Results.Json(
@@ -3932,11 +3926,6 @@ app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFact
 app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
-
-    if (inmaJwtSettings == null)
-        return Results.Json(
-            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
-            statusCode: 503);
 
     var apiBaseUrl = inmaJwtSettings.ApiBaseUrl;
     if (string.IsNullOrEmpty(apiBaseUrl))
