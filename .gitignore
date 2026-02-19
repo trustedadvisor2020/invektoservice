@@ -67,3 +67,10 @@ tools/whatsapp-analyzer/data/
 
 # Diff files (may contain secrets from code review)
 arch/plans/diffs/*.diff
+
+# Certificates
+*.pfx
+*.p12
+
+# Test outputs
+test-results/
