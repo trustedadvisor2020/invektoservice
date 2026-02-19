@@ -1,0 +1,102 @@
+{
+  "id": "eg09",
+  "title": "Ders Materyali / Not Paylasimi",
+  "subtitle": "Course Materials Sharing",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Kacirdigi dersin notlarini veya materyallerini isteyen ogrenciye Automation flow ile dosya gonderimi yapilir. Knowledge Base'deki ders materyalleri otomatik paylasılir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Online Egitim)" },
+      { "label": "Sorun", "value": "Ogrenciler kacirdiklari dersin notlarini istiyor — agent dosyayi bulup gondermek icin zaman harcıyor" },
+      { "label": "Deger", "value": "Otomatik materyal gonderimi = agent zamani kazanılır, ogrenci hemen calisabilir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI materyal istegi intent'ini algilar, Knowledge Base'den ilgili ders notlari ve materyalleri bulunur ve ogrenciye otomatik gonderilir.",
+    "steps": [
+      {
+        "title": "Materyal Intent Tespiti",
+        "goal": "Ders notu talebini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'ders notlarini gonderir misiniz', 'materyali alabilir miyim', 'kacirdigim dersin konusu' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Materyal Arama",
+        "goal": "Dogru dosyayi bul",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Materyal)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den ogrencinin sinifi, tarih ve konu bazli ders materyali aranir."
+      },
+      {
+        "title": "Dosya Gonderimi",
+        "goal": "Materyali ilet",
+        "badges": [
+          { "text": "Sistem (Automation)", "color": "purple" },
+          { "text": "Tenant (Dosya)", "color": "green" }
+        ],
+        "content": "Bulunan ders notu, sunum veya odev dosyasi ogrenciye WhatsApp uzerinden gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kacirilan Ders Materyali Talebi",
+      "description": "Ogrenci kacirdigi dersin notlarini ve materyallerini istiyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Materyal Paylasimi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ders materyalleri arsivi", "service": "Knowledge", "page": "Bilgi Bankasi > Ders Materyalleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her ders sonrasi notlari ve materyalleri Knowledge Base'e yukleyin" }
+        ],
+        "provider": [
+          { "text": "Materyal intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Materyal", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Ders materyali istegi intent'i varsayilan olarak tanimli" },
+          { "text": "Dosya gonderim sablonu", "service": "Backend", "page": "Sablonlar > Materyal Gonderim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Dosya gonderim sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Dun aksam derse gelemedim. Ders notlarini gonderebilir misiniz?" },
+        { "role": "ai", "content": "Intent: Ders Materyali Talebi. Ogrenci: Telefon eslestirme. Tarih: Dun aksam. Knowledge Base materyal arama." },
+        { "role": "bot", "content": "Tabii! Dun aksamki dersinizin materyallerini gonderiyorum:\n\nIngilizce B1 — 19 Subat 2026 (Carsamba)\nKonu: Unit 8 — Passive Voice\n\nMateryaller:\n1. Ders notu (PDF): [Dosya indirme linki]\n2. Calisma yapraqi (PDF): [Dosya indirme linki]\n3. Dinleme dosyasi (MP3): [Dosya indirme linki]\n\nOdev: Sayfa 45-46, Alistirma 1-3\nTeslim: Gelecek Carsamba\n\nSorunuz olursa yazabilirsiniz!" },
+        { "role": "user", "content": "Tesekkurler, cok yardimci oldu!" },
+        { "role": "system", "content": "Otomatik cozum: Kacirilan dersin materyalleri + odev bilgisi Knowledge Base'den cekilip gonderildi. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Ders materyalleri Knowledge Base uzerinden arsivlenir. Ogrenci sinifi ve tarih bazli otomatik eslestirme yapilir.",
+    "backend": [
+      { "title": "Material Archive Service", "goal": "Materyal Arsivi", "content": "Ders bazli materyaller (PDF, sunum, ses dosyasi) Knowledge Base'de arsivlenir. Tarih ve konu bazli aranabilir." },
+      { "title": "Student-Class Matcher", "goal": "Ogrenci-Ders Eslestirme", "content": "Ogrencinin kayitli sinifi ve kacirdigi tarihi belirleyerek dogru materyali bulur." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base Material API", "goal": "Materyal Sorgulama", "content": "Sinif, tarih ve konu bazli ders materyali arama. Dosya linkleri ile birlikte doner." },
+      { "title": "File Delivery API", "goal": "Dosya Gonderimi", "content": "WhatsApp uzerinden PDF, ses dosyasi ve diger materyalleri ogrenciye gonderir." }
+    ]
+  },
+  "impact": {
+    "title": "Materyal Paylasiminda Tasarruf",
+    "description": "Ders materyali taleplerinin otomatik karsilanmasi ile agent yukunu azaltma ve ogrenci memnuniyetini artirma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyMaterialRequests", "label": "Gunluk Materyal Talebi", "default": 6, "hint": "Gunluk ortalama ders materyali talebi sayisi", "editable": true },
+      { "key": "minutesPerRequest", "label": "Talep Basina Dakika", "default": 8, "hint": "Agent'in dosyayi bulup gondermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyMaterialRequests * minutesPerRequest * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

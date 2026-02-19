@@ -1,0 +1,130 @@
+{
+  "id": "e05",
+  "title": "Yanlis Urun / Eksik Parca Cozumu",
+  "subtitle": "Wrong Product Resolution",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Yanlis urun veya eksik parca gelen musterinin siparis verisini AI ile karsilastiran, hatanin kaynagini tespit eden ve degisim surecini otomatik baslatan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Yanlis urun/eksik parca sikayetlerinde agent siparis verisini bulana kadar musteri bekliyor" },
+      { "label": "Deger", "value": "Otomatik siparis karsilastirma ile cozum suresi %80 kisalir" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Routing (C2)", "color": "blue" }
+    ],
+    "servicesNote": "AI siparis icerigini API'den ceker, musteri bildirimiyle karsilastirir. Tutarsizlik varsa degisim akisini otomatik baslatir.",
+    "steps": [
+      {
+        "title": "Siparis Karsilastirma",
+        "goal": "Hatayi dogrula",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "AI siparis verisini cekerr, musteri mesajindaki urun bilgisiyle karsilastirir. Uyumsuzlugu tespit eder."
+      },
+      {
+        "title": "Kanit Toplama",
+        "goal": "Gelen urunu dogrula",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Prosedur)", "color": "blue" }
+        ],
+        "content": "Mustteriden gelen urunun fotografini ister. AI fotografi siparis verisiyle karsilastirir."
+      },
+      {
+        "title": "Degisim Basllatma",
+        "goal": "Dogru urunu gonder",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Depo)", "color": "green" }
+        ],
+        "content": "Dogrulama sonrasi dogru urun kargoya hazirlanir, yanlis urun icin iade kodu olusturulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Yanlis Urun Geldi",
+      "description": "Siparis edilen ile gelen urun farkli.",
+      "tags": [
+        { "text": "Yanlis Urun", "color": "rose" },
+        { "text": "Degisim", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Siparis detay API erisimi", "service": "Integrations", "page": "E-ticaret > Siparis API", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform API'sinden siparis icerik detayina erisim gerekir" },
+          { "text": "Degisim proseduru", "service": "Knowledge", "page": "Dokuman Bankasi > Degisim Sureci", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Yanlis urun degisim adimlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Siparis icerik karsilastirma", "service": "AgentAI", "page": "Siparis Analizi > Uyumsuzluk", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI siparis verisi ile musteri bildirimi karsilastirma hazir" },
+          { "text": "Otomatik degisim akisi", "service": "Automation", "page": "Is Akislari > Degisim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Degisim is akisi otomatik tetikleme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Yanlis urun geldi, ben bunu siparis etmedim! Mavi tisort siparis ettim, siyah geldi." },
+        { "role": "ai", "content": "Intent: Yanlis Urun. Siparis: #334455. Siparis Icerigi: Mavi Tisort (L). Musteri Bildirimi: Siyah geldi. UYUMSUZLUK TESPIT." },
+        { "role": "bot", "content": "Cok ozur dileriz! Siparisiniizi kontrol ettim:\n\n✅ Siparis ettiginiz: Mavi Tisort (L)\n❌ Gelen: Siyah Tisort\n\nHata bizde. Dogru urununuzu hemen gondermek icin:\n1️⃣ Gelen urunun bir fotografini ceker misiniz?\n2️⃣ Yanlis urunu iade etmenize GEREK YOK" },
+        { "role": "user", "content": "[Fotograf gonderiyor]" },
+        { "role": "bot", "content": "Dogrulandi! Mavi Tisort (L) yarin kargoya verilecek. Tahmini teslimat: 2-3 gun.\n\nOzur hediyesi olarak sonraki alisverisiniizde %10 indirim kodunuz: OZUR10" },
+        { "role": "system", "content": "Yanlis urun degisimi baslatildi. Dogru urun kargoya hazırlaniyor. Telafi kodu tanimlandi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Eksik Parca / Aksesuar",
+      "description": "Siparis tamam ama icerikten bir parca eksik.",
+      "tags": [
+        { "text": "Eksik Parca", "color": "amber" },
+        { "text": "Tamamlama", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun icerik listesi", "service": "Knowledge", "page": "Urun Katalogu > Icerik Listeleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her urunun kutu icerigi listesini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Icerik karsilastirma", "service": "AgentAI", "page": "Siparis Analizi > Icerik Kontrolu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Urun icerik listesi ile musteri bildirimi karsilastirma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Telefon kilifi aldim ama icinde sarj kablosu yoktu, halbuki resimde var." },
+        { "role": "ai", "content": "Intent: Eksik Parca. Urun: Telefon Kilifi Seti. Beklenen icerik: Kilif + Sarj Kablosu + Cam. Eksik: Sarj Kablosu." },
+        { "role": "bot", "content": "Haklisiniz! Urun setinde sarj kablosu dahil olmali. Eksik parcayi ayrica gondermemiz mi yoksa tam set degisimi mi tercih edersiniz?" },
+        { "role": "user", "content": "Sadece kabloyu gonderin yeter." },
+        { "role": "bot", "content": "Sarj kablosu yarin kargoya verilecek, ucretsiz gonderim. Takip bilgisini paylasacagim. Ozur dileriz!" },
+        { "role": "system", "content": "Eksik parca gonderimi baslatildi. Musteri memnun." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo siparis API + urun icerik bilgisi birlesiminde calisir. AI siparis verisini cekerr ve musteri bildirimiyle otomatik karsilastirma yapar.",
+    "backend": [
+      { "title": "Order Content Validator", "goal": "Icerik Dogrulama", "content": "Siparis icerik listesini API'den cekerr, musteri bildirimiyle karsilastirarak uyumsuzlugu tespit eder." },
+      { "title": "Exchange Coordinator", "goal": "Degisim Yonetimi", "content": "Yanlis/eksik urun icin degisim veya tamamlama is akisini otomatik baslatir." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Siparis Detayi", "content": "Siparis icerik listesi, urun varyant bilgisi ve kargo durumu." },
+      { "title": "Depo/WMS API", "goal": "Stok + Gonderim", "content": "Degisim urunun stok kontrolu ve kargoya hazırlama emri." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Cozum Hizi Kazanimi",
+    "description": "Otomatik siparis karsilastirma ile hizlanan degisim sureci ve korunan musteri degeri.",
+    "resultLabel": "Kazanim (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyWrongOrders", "label": "Aylik Yanlis/Eksik", "default": 15, "hint": "Yanlis urun + eksik parca", "editable": true },
+      { "key": "savedMinutesPerCase", "label": "Kazanilan Dakika", "default": 15, "hint": "Case basina kazanilan sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyWrongOrders * savedMinutesPerCase * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

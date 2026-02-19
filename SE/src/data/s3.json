@@ -1,0 +1,197 @@
+{
+  "id": "s3",
+  "title": "Iade Cevirme",
+  "subtitle": "Return Deflection",
+  "phase": "Phase 2-3",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Iade taleplerini AI ile analiz edip, cozulebilir iadelerde alternatif sunarak (degisim, kupon, egitim) iade maliyetinden kurtaran akilli sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Pazaryeri + D2C Saticilari)" },
+      { "label": "Sorun", "value": "Gunluk 200 siparis x %10 iade = 20 iade/gun" },
+      { "label": "Firsat", "value": "Iadelerin %40'i aslinda cozulebilir" }
+    ],
+    "services": [
+      { "name": "AI Intent Detection", "color": "blue" },
+      { "name": "WhatsApp Business API", "color": "green" },
+      { "name": "Automation Engine", "color": "purple" },
+      { "name": "CRM Database", "color": "amber" }
+    ],
+    "servicesNote": "AI iade intent'ini yakalar ama direkt iade islemi baslatmaz. Once sebebi sorar, sonra alternatif sunar.",
+    "steps": [
+      {
+        "title": "Tespit (Detection)",
+        "goal": "Iade niyetini yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "amber" }
+        ],
+        "content": "AI mesajda 'iade', 'geri gondermek', 'degisim' gibi intent'leri tespit eder. Direkt iade proseduru baslatmaz."
+      },
+      {
+        "title": "Neden Analizi",
+        "goal": "Sebebi anla",
+        "badges": [
+          { "text": "Sistem (Soru)", "color": "purple" },
+          { "text": "Tenant (Kurallar)", "color": "blue" }
+        ],
+        "content": "Musteriye iade sebebi sorulur: Beden? Kullanim? Hasar? Memnuniyetsizlik? Sebebe gore farkli yol izlenir."
+      },
+      {
+        "title": "Alternatif Sun",
+        "goal": "Iadeyi onle",
+        "badges": [
+          { "text": "Sistem (Oneri)", "color": "purple" },
+          { "text": "Tenant (Kupon Limiti)", "color": "green" }
+        ],
+        "content": "Beden → degisim onerisi (kargo bizden). Kullanim → video/rehber gonder. Memnuniyetsizlik → %15 indirim kuponu."
+      },
+      {
+        "title": "Sonuc Takibi",
+        "goal": "Kurtarilan geliri raporla",
+        "badges": [
+          { "text": "Sistem (Dashboard)", "color": "purple" },
+          { "text": "Tenant (Raporlar)", "color": "amber" }
+        ],
+        "content": "Dashboard'da: onlenen iade sayisi, kurtarilan gelir, iade nedeni dagilimi raporlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Beden Sorunu → Degisim",
+      "description": "Musteri beden kucuk/buyuk oldugu icin iade istiyor.",
+      "tags": [
+        { "text": "Degisim", "color": "blue" },
+        { "text": "Kargo Bizden", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Yedek stok (farkli beden)", "service": "Backend", "page": "Urun Katalogu > Stok Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Farkli beden/varyant stoklarini guncel tutun" },
+          { "text": "Ucretsiz degisim kargo anlasmasi", "service": "Integrations", "page": "Kargo Entegrasyonlari", "status": "setup", "priority": "recommended", "effort": "medium", "capability": "C11", "hint": "Kargo firmasiyla degisim icin ozel anlasma yapilmasi gerekir" }
+        ],
+        "provider": [
+          { "text": "Beden eslestirme mantigi", "service": "AgentAI", "page": "Eslestirme Kurallari > Beden", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI beden donusturme mantigi hazir" },
+          { "text": "Degisim workflow otomasyonu", "service": "Automation", "page": "Is Akislari > Degisim Sureci", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Otomatik degisim workflow hazir, tenant ayarlariyla ozellestirilebilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, iade etmek istiyorum. Beden kucuk geldi." },
+        { "role": "ai", "content": "Intent: Iade Talebi. Sebep: Beden. Aksiyon: Degisim Onerisi." },
+        { "role": "bot", "content": "Anliyoruz! Beden sorunu icin degisim yapabiliriz, kargo bizden. Bir ust beden (L yerine XL) gondermemizi ister misiniz?" },
+        { "role": "user", "content": "Olur, XL gonderseniz iyi olur." },
+        { "role": "bot", "content": "XL bedeniniz hazirlandi! Yeni urun kargoya verilince size bildirim gelecek. Mevcut urunu de kargo geldiginde geri verebilirsiniz." },
+        { "role": "system", "content": "Iade Onlendi — Degisim ile Cozuldu. Kurtarilan: 150 TL" }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Kullanim Sorunu → Egitim",
+      "description": "Musteri urunu kullanamadi, bozuk sandi.",
+      "tags": [
+        { "text": "Egitim", "color": "purple" },
+        { "text": "Video Rehber", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kullanim kilavuzu/video", "service": "Knowledge", "page": "Medya Kutuphanesi > Videolar", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Urun bazinda kullanim videolarini/kilavuzlarini yukleyin" },
+          { "text": "SSS dokumani", "service": "Knowledge", "page": "Dokuman Bankasi > SSS", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Sikca sorulan sorulari Knowledge Base'e ekleyin" }
+        ],
+        "provider": [
+          { "text": "Video/rehber veritabani", "service": "Knowledge", "page": "Medya Kutuphanesi > Videolar", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Medya kutuphanesi hazir — video/rehber yuklenince otomatik eslenir" },
+          { "text": "Knowledge RAG (C7)", "service": "Knowledge", "page": "RAG Pipeline", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Bilgi cekme pipeline'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu urunu iade etmek istiyorum, calismiyor." },
+        { "role": "ai", "content": "Intent: Iade. Sebep Analizi: 'calismiyor' → Kullanim Hatasi Ihtimali." },
+        { "role": "bot", "content": "Uzuldum! Urun hakkinda kisa bir soru sorabilir miyim? Sarj ettikten sonra ustundeki dugmeye 3 saniye basili tutmaniz gerekiyor. Denediniz mi?" },
+        { "role": "user", "content": "Hayir, denemedim. Bir deneyeyim." },
+        { "role": "bot", "content": "Tabii! Iste kullanim videomuz: [Video Link]. Sorun devam ederse hemen yazin, iade/degisim yapalim." },
+        { "role": "user", "content": "Calistiiii! Tesekkurler." },
+        { "role": "system", "content": "Iade Onlendi — Egitim ile Cozuldu. Kurtarilan: 150 TL" }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Memnuniyetsizlik → Kupon",
+      "description": "Musteri urunu begenmedi, genel memnuniyetsizlik.",
+      "tags": [
+        { "text": "Kupon", "color": "green" },
+        { "text": "Retention", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Indirim kuponu limiti (tenant tanimi)", "service": "Backend", "page": "Kampanya Yonetimi > Kupon Limitleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Maksimum kupon degeri ve yuzdesini tenant ayarlarindan tanimlayin" },
+          { "text": "Urun degisim opsiyonu", "service": "Backend", "page": "Iade Politikalari > Degisim", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C3", "hint": "Degisim kosullarini tenant ayarlarindan belirleyin" }
+        ],
+        "provider": [
+          { "text": "Kupon uretim sistemi", "service": "Backend", "page": "Kampanya Yonetimi > Kupon Motoru", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Otomatik kupon uretimi hazir" },
+          { "text": "Musteri gecmisi analizi", "service": "ChatAnalysis", "page": "Musteri Profili > Gecmis", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Musteri satin alma ve iletisim gecmisi analizi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Urun bekledigim gibi degildi, iade etmek istiyorum." },
+        { "role": "ai", "content": "Intent: Iade. Sebep: Memnuniyetsizlik. Aksiyon: Kupon Teklifi." },
+        { "role": "bot", "content": "Uzgunuz! Urununuz beklentinizi karsilamadiysa, size ozel %15 indirim kuponu verebiliriz. Baska bir urun secmek ister misiniz?" },
+        { "role": "user", "content": "Hmm, %15 indirim iyi. Baska urune bakayim." },
+        { "role": "bot", "content": "Harika! Kuponunuz: MEMNUN15. Tum urunlerimizde gecerli. Keyifli alisverisler!" },
+        { "role": "system", "content": "Iade Onlendi — Kupon ile Yonlendirildi. Kurtarilan: 150 TL + Ek Satis Potansiyeli" }
+      ]
+    },
+    {
+      "id": "flow-4",
+      "title": "Gercek Iade → Surec Baslat",
+      "description": "Cozulemeyecek iade, surec baslatilir.",
+      "tags": [
+        { "text": "Iade Sureci", "color": "gray" },
+        { "text": "Prosedur", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Iade proseduru dokumani", "service": "Knowledge", "page": "Dokuman Bankasi > Iade Politikalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Iade kosul ve prosedurlerini Knowledge Base'e tanimlayin" },
+          { "text": "Kargo anlasmasi", "service": "Integrations", "page": "Kargo Entegrasyonlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Iade kargo icin firma entegrasyonunu kurun" }
+        ],
+        "provider": [
+          { "text": "Iade surec yonetimi", "service": "Automation", "page": "Is Akislari > Iade Sureci", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Otomatik iade is akisi hazir" },
+          { "text": "Marketplace API (C11)", "service": "Integrations", "page": "E-Ticaret > Marketplace API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Marketplace iade API entegrasyonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Urun hasar gormus, kesinlikle iade istiyorum." },
+        { "role": "ai", "content": "Intent: Iade. Sebep: Hasar. Alternatif kabul edilmedi. Aksiyon: Iade Sureci." },
+        { "role": "bot", "content": "Anliyoruz! Hasarli urun icin iade sureci baslatiyoruz. Hasarli urunun fotografini gonderir misiniz?" },
+        { "role": "user", "content": "[Fotograf]" },
+        { "role": "bot", "content": "Tesekkurler. Iade kodunuz: IAD-12345. MNG Kargo'ya teslim edebilirsiniz. Iadeniz 2-5 is gunu icinde tamamlanir." },
+        { "role": "system", "content": "Iade Islendi — Cozum basarisiz, standart iade sureci." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo senkron calisir. Musteri iade mesaji gonderdigi anda AI analiz baslar. Sebep tespiti ve alternatif sunumu 5-10 saniyede tamamlanir.",
+    "backend": [
+      { "title": "Intent Detection Engine", "goal": "Iade Niyeti Tespiti", "content": "AI, mesajdaki iade sinyallerini tespit eder ve sebep kategorisini belirler (beden, kullanim, hasar, memnuniyetsizlik)." },
+      { "title": "Deflection Rules Engine", "goal": "Alternatif Sunumu", "content": "Sebep kategorisine gore tenant-tanimli kurallarla alternatif onerisi uretilir (degisim, kupon, egitim, vb)." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Cloud API", "goal": "Mesajlasma", "content": "Gelen iade mesajlari ve AI yanitlari WhatsApp uzerinden gonderilir." },
+      { "title": "E-commerce API (C11)", "goal": "Siparis Verisi", "content": "Siparis detayi, beden bilgisi ve iade politikasi otomatik cekilir." }
+    ],
+    "config": "{\n  \"scenario\": \"S3_ReturnDeflection\",\n  \"deflection_rules\": [\n    { \"reason\": \"wrong_size\", \"action\": \"offer_exchange\", \"auto\": true },\n    { \"reason\": \"usage_issue\", \"action\": \"send_guide\", \"auto\": true },\n    { \"reason\": \"dissatisfied\", \"action\": \"offer_coupon\", \"coupon_percent\": 15 },\n    { \"reason\": \"damaged\", \"action\": \"process_return\", \"auto\": false }\n  ],\n  \"max_coupon_value\": 100,\n  \"channels\": [\"whatsapp\"]\n}"
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Gelir",
+    "description": "Degerlerinizi duzenleyin — cozulebilir iadelerin %50'sinin basariyla onlendigi varsayimiyla hesaplanir.",
+    "resultLabel": "Kurtarilan (Aylik)",
+    "subscriptionCost": 5000,
+    "inputs": [
+      { "key": "dailyReturns", "label": "Gunluk Iade", "default": 20, "hint": "Ortalama iade sayisi", "editable": true },
+      { "key": "solvableRate", "label": "Cozulebilir Oran", "default": 40, "prefix": "%", "hint": "Beden/kullanim/memnuniyet", "editable": true },
+      { "key": "costPerReturn", "label": "Iade Basi Maliyet", "default": 150, "suffix": "TL", "hint": "Urun + kargo + komisyon", "editable": true }
+    ],
+    "formula": "dailyReturns * (solvableRate / 100) * 0.5 * costPerReturn * 30",
+    "formulaDisplay": null
+  }
+}

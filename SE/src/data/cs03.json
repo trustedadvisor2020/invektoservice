@@ -1,0 +1,127 @@
+{
+  "id": "cs03",
+  "title": "AI Hallucination Guardrail",
+  "subtitle": "AI Safety Guardrails",
+  "phase": "Phase 1",
+  "category": "CROSS-SECTOR KRITIK",
+  "niche": "crossSector",
+  "description": "AI'nin tibbi, finansal veya hukuki konularda yanlis bilgi uretme (hallucination) riskine karsi koruma mekanizmasi. Konu bazli guardrail kurallari, confidence routing ve otomatik insan handoff ile AI hatalari onlenir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik, Finans, Hukuk, Sigorta — AI kullanirken yasal sorumluluk tasian sektorler" },
+      { "label": "Sorun", "value": "AI tibbi teshis, finansal tavsiye veya hukuki gorus verirse ciddi yasal ve etik sorunlar dogabilir" },
+      { "label": "Deger", "value": "Yasal risk sifirlanmasi + musteri guveni + AI guvenilirligi + marka korumasi" }
+    ],
+    "services": [
+      { "name": "Knowledge Base (C7)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "green" }
+    ],
+    "servicesNote": "Guardrail katmani AI cevaplari oncesinde konu siniflandirmasi yapar. Hassas konularda AI cevap vermez, insan agent'a yonlendirir. Knowledge Base'den dogrulanmis bilgi kullanir.",
+    "steps": [
+      {
+        "title": "Konu Siniflandirma",
+        "goal": "Hassas konulari tespit et",
+        "badges": [
+          { "text": "Sistem (Guardrail)", "color": "purple" },
+          { "text": "Tenant (Konu Listesi)", "color": "red" }
+        ],
+        "content": "AI her gelen mesaji once konu siniflandirmasina tabi tutar: tibbi, finansal, hukuki, teknik, genel. Hassas konularda farkli cevap politikasi uygulanir."
+      },
+      {
+        "title": "Confidence Routing",
+        "goal": "Cevap kalitesini kontrol et",
+        "badges": [
+          { "text": "Sistem (Confidence)", "color": "purple" },
+          { "text": "Tenant (Esik)", "color": "amber" }
+        ],
+        "content": "Hassas konularda confidence esigi yukseltilir (ornegin %90). Esik altinda kalan cevaplar verilmez, insan agent'a yonlendirilir."
+      },
+      {
+        "title": "Guardrail Mesaji",
+        "goal": "Guvenli ve duzgun iletisim",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Sorumluluk Reddi)", "color": "blue" }
+        ],
+        "content": "Hassas konularda AI, genel bilgilendirme + sorumluluk reddi + uzman yonlendirmesi seklinde yapilandirilmis cevap verir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Tibbi Soru Guardrail",
+      "description": "Hasta AI'ya tibbi teshis soruyor, guardrail devreye giriyor.",
+      "tags": [
+        { "text": "Tibbi Guardrail", "color": "red" },
+        { "text": "Insan Handoff", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Hassas konu listesi tanimi", "service": "Backend", "page": "AI Ayarlari > Guardrail Konulari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tibbi, finansal, hukuki gibi hassas konu kategorilerini tanimlayin" },
+          { "text": "Sorumluluk reddi metni", "service": "Knowledge", "page": "Dokuman Bankasi > Yasal Metinler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her hassas konu kategorisi icin uyari ve yonlendirme metnini hazirllayin" }
+        ],
+        "provider": [
+          { "text": "Konu siniflandirma motoru", "service": "AgentAI", "page": "Guardrail > Siniflandirma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesaj iceriginden hassas konu tespiti otomatik calisir" },
+          { "text": "Confidence yukseltme mekanizmasi", "service": "AgentAI", "page": "Guardrail > Confidence Override", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Hassas konularda confidence esigi otomatik yukseltilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Gogsum agriyor ve nefes darligim var. Bu kalp krizi mi? Ne ilac almaliyim?" },
+        { "role": "ai", "content": "Konu Siniflandirma: TIBBI (kirmizi). Alt kategori: Teshis + Tedavi Talebi. Guardrail: AKTIF. AI cevap ENGELLENDI. Insan handoff tetikleniyor." },
+        { "role": "bot", "content": "Bu belirtiler onemli ve bir saglik profesyoneli tarafindan degerlendirilmelidir. AI olarak tibbi teshis koyamam ve ilac oneremem.\n\nACIL DURUMDA: Hemen 112'yi arayin.\n\nSizi doktor/hemsire ekibimize yonlendiriyorum. Lutfen kisa sure bekleyin." },
+        { "role": "system", "content": "GUARDRAIL HANDOFF: Tibbi konu, teshis/tedavi talebi. Konusma → Saglik personeline atandi." },
+        { "role": "bot", "content": "[Hemsire devralir]\n\nMerhaba, ben Hemsire Elif. Belirtilerinizi duydum. Gogus agriniz ne zaman basladi ve nefes darliginiz surekli mi?" }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Finansal Tavsiye Guardrail",
+      "description": "Musteri yatirim tavsiyesi istiyor, AI genel bilgi verebilir ama tavsiye veremez.",
+      "tags": [
+        { "text": "Finansal Guardrail", "color": "amber" },
+        { "text": "Genel Bilgi", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Finansal urun bilgi bankasi", "service": "Knowledge", "page": "Dokuman Bankasi > Finansal Urunler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun bilgileri, faiz oranlari ve kosullari Knowledge Base'e yukleyin" }
+        ],
+        "provider": [
+          { "text": "Finansal guardrail sablon", "service": "AgentAI", "page": "Guardrail > Finansal Sablonlar", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Finansal konularda bilgi + sorumluluk reddi sablonlari hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "100.000 TL'm var. Dolar mi alsam, altin mi, yoksa hisse senedi mi? En cok hangisi kazandirir?" },
+        { "role": "ai", "content": "Konu Siniflandirma: FINANSAL. Alt kategori: Yatirim Tavsiyesi. Guardrail: AKTIF. AI tavsiye ENGELLENDI. Genel bilgi modu." },
+        { "role": "bot", "content": "Yatirim kararlari kisisel finansal durumunuza, risk toleransiniza ve vadeye gore degisir. AI olarak yatirim tavsiyesi veremem.\n\nGenel bilgi olarak sunlari paylasabilirim:\n- Doviz: Kisa vadeli dalgalanma yuksek\n- Altin: Enflasyona karsi koruma araci\n- Hisse: Uzun vadede yuksek getiri potansiyeli, yuksek risk\n\nBu bilgiler yatirim tavsiyesi niteligi tasimaz. Size ozel degerlendirme icin yatirim danisamanimiz ile gorusmenizi oneriyorum. Baglantik kurmami ister misiniz?" },
+        { "role": "user", "content": "Evet lutfen." },
+        { "role": "bot", "content": "Yatirim danismanímiz Burak Bey ile gorusme ayarliyorum. Size uygun saatleri paylasacagim." },
+        { "role": "system", "content": "Guardrail calisti: Tavsiye engellendi, genel bilgi verildi, uzman yonlendirmesi yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Guardrail katmani AI cevap uretimi oncesinde calisan bir ara katmandir. Konu siniflandirmasi, confidence override ve sablon bazli guvenli cevap mekanizmasi icerir.",
+    "backend": [
+      { "title": "Guardrail Classification Layer", "goal": "Konu Siniflandirma", "content": "Gelen mesaji tibbi, finansal, hukuki, teknik, genel kategorilerine ayirir. Her kategori icin farkli confidence esigi ve cevap politikasi uygulanir." },
+      { "title": "Safety Response Generator", "goal": "Guvenli Cevap", "content": "Hassas konularda AI cevabini yapilandirir: genel bilgi + sorumluluk reddi + uzman yonlendirmesi sablonu." }
+    ],
+    "apis": [
+      { "title": "Topic Classification API", "goal": "Konu Tespiti", "content": "Mesaj iceriginden hassas konu kategorisini ve alt kategorisini belirler." },
+      { "title": "Guardrail Policy API", "goal": "Politika Uygulama", "content": "Konu kategorisine gore uygulanacak guardrail politikasini (engelle, genel bilgi ver, handoff) belirler." }
+    ]
+  },
+  "impact": {
+    "title": "Onlenen Yasal Risk ve Itibar Kaybi",
+    "description": "AI hallucination guardrail'lari ile onlenen yanlis bilgi kaynaklı yasal sorunlar ve itibar hasari.",
+    "resultLabel": "Korunan Risk Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailySensitiveQueries", "label": "Gunluk Hassas Soru", "default": 20, "hint": "Tibbi, finansal veya hukuki icerikli gunluk soru sayisi", "editable": true },
+      { "key": "hallucinationRisk", "label": "Guardrail Olmadan Hata Orani", "default": 5, "suffix": "%", "hint": "Guardrail olmadan yanlis bilgi verilme yuzdesi", "editable": true },
+      { "key": "avgLegalCost", "label": "Hata Basina Maliyet", "default": 10000, "suffix": "TL", "hint": "Yanlis bilgiden dogan yasal/itibar maliyeti", "editable": true }
+    ],
+    "formula": "dailySensitiveQueries * (hallucinationRisk / 100) * avgLegalCost * 30",
+    "formulaDisplay": null
+  }
+}

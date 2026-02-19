@@ -1,0 +1,92 @@
+{
+  "id": "a52",
+  "title": "Before/After Fotograf Istegi",
+  "subtitle": "Before/After Photo Gallery",
+  "phase": "Phase 1",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Before/after fotograf gormek isteyen potansiyel hastaya AI ile uygun gorselleri gonderen ve guven olusturarak randevuya yonlendiren sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Before/after istegi en yaygin lead mesaji — gec cevap lead kaybina yol acar" },
+      { "label": "Deger", "value": "Aninda before/after paylasimi ile guven olusturulur, randevu donusumu artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI before/after intent'ini tespit eder, islem tipine gore uygun gorselleri gonderir.",
+    "steps": [
+      {
+        "title": "Intent Tespiti",
+        "goal": "Gorsel talebini yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Galeri)", "color": "blue" }
+        ],
+        "content": "AI before/after fotograf talebini ve islem tipini tespit eder."
+      },
+      {
+        "title": "Gorsel Paylasimi",
+        "goal": "Guven olustur",
+        "badges": [
+          { "text": "Sistem (Medya)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "green" }
+        ],
+        "content": "Islem tipine uygun before/after gorselleri gonderilir ve randevu teklifi yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Before/After Fotograf Paylasimi",
+      "description": "Lead dolgu before/after gormek istiyor.",
+      "tags": [
+        { "text": "Before/After", "color": "blue" },
+        { "text": "Guven", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Before/after foto galerisi", "service": "Knowledge", "page": "Dokuman Bankasi > Before/After", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Islem bazli KVKK onamli before/after fotograflari yukleyin" }
+        ],
+        "provider": [
+          { "text": "Before/after intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Before/After", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Before/after fotograf talebi intent'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Before/after fotograflariniz var mi? Gorebilir miyim?" },
+        { "role": "ai", "content": "Intent: Before/After Talebi. Islem tipi sorulacak." },
+        { "role": "bot", "content": "Tabii! Hangi islem icin before/after gormek istersiniz?\n\n💉 Dolgu (dudak, elmacik kemigi)\n💎 Botox\n✨ Lazer cilt yenileme\n👃 Burun estetigi" },
+        { "role": "user", "content": "Dudak dolgusu." },
+        { "role": "bot", "content": "Iste dudak dolgusu sonuclarimiz! 💋\n\n[Before/After Foto 1]\n[Before/After Foto 2]\n[Before/After Foto 3]\n\n🎁 Ucretsiz konsultasyon ile size ozel plan cikaralim!\n📅 Randevu ayarlayalim mi?" },
+        { "role": "system", "content": "Before/after gorselleri gonderildi. Randevu teklifi yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI Intent + Medya Yonetimi birlesimiyle calisir. KVKK onamli before/after galerisi.",
+    "backend": [
+      { "title": "Gallery Manager", "goal": "Galeri Yonetimi", "content": "Islem bazli before/after foto galerisi yonetimi ve KVKK onam kontrolu." }
+    ],
+    "apis": [
+      { "title": "Media API", "goal": "Gorsel Gonderim", "content": "Before/after gorsellerinin WA uzerinden gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Guven ile Donusum",
+    "description": "Before/after paylasimi ile artan randevu donusumu.",
+    "resultLabel": "Ek Randevu Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyBARequests", "label": "Aylik B/A Istegi", "default": 25, "hint": "Before/after fotograf talebi", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 40, "prefix": "%", "hint": "Gorsel sonrasi randevuya donusen", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Islem Degeri", "default": 4000, "suffix": "TL", "hint": "Ortalama estetik islem tutari", "editable": true }
+    ],
+    "formula": "monthlyBARequests * (conversionRate / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

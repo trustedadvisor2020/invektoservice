@@ -1,0 +1,168 @@
+{
+  "id": "s10",
+  "title": "Google Yorum + Referans Motoru",
+  "subtitle": "Review Engine",
+  "phase": "Phase 5",
+  "category": "SAGLIK OTOMASYONU",
+  "niche": "health",
+  "description": "Tedavi sonrasi memnuniyet anketi + Google yorum ricasi + referans programi ile kliniklerin online itibarini sistematik olarak yoneten motor.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Google 4.2 vs rakip 4.8 → %40 daha az tiklama" },
+      { "label": "Gercek", "value": "Memnun hastalar sessiz, sikayetci hastalar yaziyor" }
+    ],
+    "services": [
+      { "name": "Outbound Engine", "color": "blue" },
+      { "name": "Memnuniyet Anketi", "color": "green" },
+      { "name": "Review Link Generator", "color": "purple" },
+      { "name": "Referral System", "color": "amber" }
+    ],
+    "servicesNote": "Memnuniyet anketi → puan 4-5 ise yorum linki → puan 1-3 ise sorun cozme. Referans programi ile 'arkadasini getir' kampanyasi.",
+    "steps": [
+      {
+        "title": "Memnuniyet Anketi (T+3)",
+        "goal": "Hasta memnun mu?",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Zamanlama)", "color": "amber" }
+        ],
+        "content": "Tedaviden 3 gun sonra WhatsApp'tan: 'Tedavinizden memnun kaldiniz mi? (1-5 puan)'"
+      },
+      {
+        "title": "Yorum Yonlendirme",
+        "goal": "Olumlu yorumu al",
+        "badges": [
+          { "text": "Sistem (Kosullu)", "color": "purple" },
+          { "text": "Tenant (Yorum Linki)", "color": "blue" }
+        ],
+        "content": "Puan 4-5: 'Deneyiminizi Google'da paylasmak ister misiniz? [link]'. Puan 1-3: 'Uzgunuz! Sorununuzu cozmek istiyoruz.'"
+      },
+      {
+        "title": "Sorun Cozme (Negatif)",
+        "goal": "Kotu yorumu onle",
+        "badges": [
+          { "text": "Sistem (Eskalasyon)", "color": "purple" },
+          { "text": "Tenant (Cozum Ekibi)", "color": "green" }
+        ],
+        "content": "Dusuk puan veren hastanin sikayeti dinlenir, cozum sunulur. Kotu yorum onlenir."
+      },
+      {
+        "title": "Referans Programi (T+30)",
+        "goal": "Yeni hasta kazan",
+        "badges": [
+          { "text": "Sistem (Referral)", "color": "purple" },
+          { "text": "Tenant (Kampanya)", "color": "green" }
+        ],
+        "content": "1 ay sonra: 'Bir yakininiz tedaviye ihtiyac duyarsa, sizi yonlendirdiginizde %10 indirim hediyemiz olsun.'"
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Memnun Hasta → Google Yorum",
+      "description": "Hasta memnun, Google yoruma yonlendirilir.",
+      "tags": [
+        { "text": "Olumlu", "color": "green" },
+        { "text": "Google Yorum", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Google Business yorum linki", "service": "Backend", "page": "Ayarlar > Yorum Linkleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Google Business yorum linkini tanimlayin" },
+          { "text": "Klinik Google profili", "service": "Integrations", "page": "Google Business > Profil", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Google Business profilinizi aktif ve guncel tutun" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine (T+3)", "service": "Outbound", "page": "Takip Zinciri > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+3 memnuniyet anketi otomatik tetiklenir" },
+          { "text": "Memnuniyet anketi", "service": "Backend", "page": "Anket Sablonlari > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "1-5 puan memnuniyet anketi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+3 Gun: Memnuniyet anketi tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Tedavinizden memnun kaldiniz mi? Bize 1-5 arasi puan verir misiniz?" },
+        { "role": "user", "content": "5 puan, cok memnunum!" },
+        { "role": "bot", "content": "Cok mutlu olduk! Deneyiminizi Google'da paylasmak ister misiniz? Yorumunuz bize cok degerli: [Google Yorum Linki]" },
+        { "role": "system", "content": "Puan: 5/5. Google yorum linki gonderildi. Beklenen etki: +1 olumlu yorum." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Memnuniyetsiz Hasta → Kurtarma",
+      "description": "Hasta memnun degil, sorun cozmeye yonlendirilir.",
+      "tags": [
+        { "text": "Negatif", "color": "rose" },
+        { "text": "Kurtarma", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sikayet cozum ekibi", "service": "Backend", "page": "Ekip Yonetimi > Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayet cozum ekibi/kisisi bilgisini tanimlayin" },
+          { "text": "Telafi politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Telafi Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Memnuniyetsizlik telafi kosullarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Eskalasyon sistemi", "service": "Backend", "page": "Bildirim Sistemi > Eskalasyon Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Negatif puan eskalasyonu hazir" },
+          { "text": "Sorun tespit algoritmasi", "service": "AgentAI", "page": "Sentiment > Sorun Analizi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI sorun kategorilendirme ve cozum onerisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+3 Gun: Memnuniyet anketi tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Tedavinizden memnun kaldiniz mi? Bize 1-5 arasi puan verir misiniz?" },
+        { "role": "user", "content": "2 puan. Bekledigim gibi olmadi." },
+        { "role": "ai", "content": "Puan: 2/5. NEGATIF. Aksiyon: Sorun Cozme. Eskalasyon aktif." },
+        { "role": "bot", "content": "Cok uzgunuz! Deneyiminizin beklentinizi karsilamamasi bizim icin kabul edilemez. Sorununuzu anlamak ve cozmek istiyoruz. Ne oldu?" },
+        { "role": "user", "content": "Agrim hala devam ediyor." },
+        { "role": "system", "content": "Eskalasyon: Doktora bildirim gonderildi. Hasta memnuniyetsiz + devam eden agri." },
+        { "role": "bot", "content": "Bilginizi doktorumuza ilettik. Sizi hemen aramasi icin bilgilendirdik. Kontrol randevusu olusturalim mi?" }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Referans Programi",
+      "description": "Memnun hastaya 'arkadasini getir' kampanyasi.",
+      "tags": [
+        { "text": "Referans", "color": "green" },
+        { "text": "Kampanya", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Referans indirim orani", "service": "Backend", "page": "Kampanya Yonetimi > Referans Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Referans indirim orani ve kosullarini tanimlayin" },
+          { "text": "Kampanya suresi", "service": "Backend", "page": "Kampanya Yonetimi > Zamanlama", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C10", "hint": "Kampanya gecerlilik suresini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Referral code generator", "service": "Backend", "page": "Kampanya Yonetimi > Referans Kodu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Benzersiz referans kodu uretimi hazir" },
+          { "text": "Outbound Engine (T+30)", "service": "Outbound", "page": "Follow-Up Zinciri > Referans", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+30 referans kampanyasi otomatik tetiklenir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+30 Gun: Referans programi tetiklendi. Hasta daha once 5/5 puan vermisti." },
+        { "role": "bot", "content": "Merhaba [Ad]! Tedavinizin uzerinden 1 ay gecti. Bir yakininiz tedaviye ihtiyac duyarsa, sizi yonlendirdiginizde hem size hem arkadasiniza %10 indirim hediyemiz olsun! Referans kodunuz: REF-[KOD]" },
+        { "role": "user", "content": "Tesekkurler, arkadasima soyleyecegim." },
+        { "role": "system", "content": "Referans kodu olusturuldu: REF-[KOD]. Beklenen etki: 1 yeni hasta/ay." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Outbound Engine ile zamanli tetiklenir. T+3 memnuniyet anketi → T+30 referans programi. Negatif puanlar ic eskalasyon ile yonetilir.",
+    "backend": [
+      { "title": "Survey Engine", "goal": "Memnuniyet Olcumu", "content": "WhatsApp uzerinden 1-5 puan anketi. Sonuclara gore otomatik aksiyon (yorum linki veya eskalasyon)." },
+      { "title": "Referral Code Generator", "goal": "Referans Yonetimi", "content": "Benzersiz referans kodlari olusturur. Kullanim takibi ve indirim uygulama." }
+    ],
+    "apis": [
+      { "title": "Google Business API", "goal": "Yorum Takibi", "content": "Google Business yorum linki olusturma ve yorum sayisi/puan takibi." },
+      { "title": "WhatsApp Template API", "goal": "Anket + Referans", "content": "Memnuniyet anketi ve referans kampanyasi template mesajlari." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Ek Gelir (Yorum + Referans)",
+    "description": "Google puani artisi ile yeni hasta + referans programi geliri.",
+    "resultLabel": "Toplam Etki (Aylik)",
+    "subscriptionCost": 10000,
+    "inputs": [
+      { "key": "monthlyPatients", "label": "Aylik Hasta", "default": 150, "hint": "Tedavi goren hasta", "editable": true },
+      { "key": "reviewRate", "label": "Yorum Orani", "default": 20, "prefix": "%", "hint": "%5 → %20 hedef", "editable": true },
+      { "key": "monthlyReferrals", "label": "Aylik Referans", "default": 5, "hint": "Referans ile gelen hasta", "editable": true },
+      { "key": "avgPatientValue", "label": "Ort. Hasta Degeri", "default": 3000, "suffix": "TL", "hint": "Tedavi geliri", "editable": true }
+    ],
+    "formula": "(monthlyReferrals * avgPatientValue) + (monthlyPatients * (reviewRate / 100) * 0.3 * avgPatientValue * 0.1)",
+    "formulaDisplay": null
+  }
+}

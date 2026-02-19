@@ -1,0 +1,105 @@
+{
+  "id": "eg08",
+  "title": "Iade / Cayma / Kurs Birakma",
+  "subtitle": "Refund & Course Withdrawal",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Kursu birakmak isteyen veya ucret iadesi talep eden ogrenciye AI iade politikasini Knowledge Base'den ceker ve cayma prosedurunu adim adim iletir. Hassas konuda dogru bilgilendirme saglanir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Ogretim)" },
+      { "label": "Sorun", "value": "Iade ve cayma talepleri hassas konular — yanlis bilgi hukuki sorun yaratir, agent her seferinde politikayi kontrol ediyor" },
+      { "label": "Deger", "value": "Dogru iade politikasi + net prosedur = hukuki uyum + ogrenci memnuniyeti" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI iade/cayma intent'ini algilar, Knowledge Base'den iade politikasi ve cayma prosedurunu ceker. Hassas konularda agent'e devir secenegi de sunulur.",
+    "steps": [
+      {
+        "title": "Iade Intent Tespiti",
+        "goal": "Cayma/iade talebini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'kursu birakmak istiyorum', 'paramı geri alabilir miyim', 'cayma hakki' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Politika Bilgisi Cekme",
+        "goal": "Iade kurallarini sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den iade politikasi, cayma suresi, kesinti oranlari ve gerekli islemler cekilir."
+      },
+      {
+        "title": "Prosedur Yonlendirmesi",
+        "goal": "Adim adim rehberlik et",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Prosedur)", "color": "red" }
+        ],
+        "content": "Cayma dilekce ornegi, gerekli belgeler ve islem sureci adim adim anlatilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kurs Birakma ve Iade Talebi",
+      "description": "Ogrenci kursu birakmak ve ucret iadesi almak istiyor.",
+      "tags": [
+        { "text": "Hassas Konu", "color": "red" },
+        { "text": "Iade Politikasi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Iade ve cayma politikasi", "service": "Knowledge", "page": "Bilgi Bankasi > Iade Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Iade kosullari, sureler ve kesinti oranlarini detayli tanimlayin" },
+          { "text": "Cayma dilekce sablonu", "service": "Knowledge", "page": "Bilgi Bankasi > Dilekceler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Cayma dilekce ornegini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Iade intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Iade", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Iade ve cayma intent'i varsayilan olarak tanimli" },
+          { "text": "Iade prosedur sablonu", "service": "Backend", "page": "Sablonlar > Iade Sureci", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Adim adim iade sureci sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Almanca kursumu birakmak istiyorum. Paramı geri alabilir miyim?" },
+        { "role": "ai", "content": "Intent: Kurs Birakma / Iade. Kurs: Almanca. Knowledge Base iade politikasi sorgusu. Hassas konu — dikkatli bilgilendirme." },
+        { "role": "bot", "content": "Anladim, size iade politikamiz hakkinda bilgi vereyim:\n\nIade Kosullari:\n- Kurs baslamadan once: %100 iade (tam iade)\n- Ilk 1 hafta icinde: %90 iade (%10 idari kesinti)\n- 2-4 hafta arasi: %50 iade\n- 4 hafta sonrasi: Iade yapilmaz\n\nSizin durumunuz icin:\nKayit tarihiniz ve kursun baslangic tarihine gore iade oraniniz belirlenir.\n\nSureci baslatmak icin:\n1. Cayma dilekcesini doldurun: [Dilekce Ornegi]\n2. Subemize teslim edin veya e-posta gonderin\n3. Iade 10 is gunu icinde hesabiniza yansir\n\nSureci baslatmamizi ister misiniz, yoksa baska bir cozum dusunur musunuz?" },
+        { "role": "user", "content": "Kurs baslayali 1 hafta oldu. Islemi baslatmak istiyorum." },
+        { "role": "bot", "content": "Ilk 1 hafta icinde oldugunuz icin %90 iade hakkiniz var.\n\nIade tutari: 10.500 TL x %90 = 9.450 TL\nKesinti: 1.050 TL (idari masraf)\n\nSureci baslatmak icin:\n1. Cayma dilekcesini indirin: [Dilekce PDF]\n2. Doldurduktan sonra iade@kurum.com adresine gonderin\n3. 3 is gunu icinde onay maili alacaksiniz\n4. Onay sonrasi 7 is gunu icinde hesabiniza yatar\n\nBu konuda bir yetkilimizle gorusmek isterseniz sizi yonlendirebilirim." },
+        { "role": "system", "content": "Otomatik cozum: Iade politikasi + tutar hesabi + prosedur adımlari iletildi. Hassas konu oldugundan agent devir secenegi sunuldu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Iade politikasi Knowledge Base uzerinden yonetilir. Hassas konularda agent devir mekanizmasi aktiftir.",
+    "backend": [
+      { "title": "Refund Policy Engine", "goal": "Iade Politikasi Hesaplama", "content": "Kayit tarihi, kurs baslangici ve gecen sure bazli iade oranini hesaplar. Tenant bazli farkli iade politikalari destekler." },
+      { "title": "Withdrawal Process Manager", "goal": "Cayma Sureci Yonetimi", "content": "Cayma basvurusunu takip eder, onay akisini yonetir ve iade islemini baslatir." }
+    ],
+    "apis": [
+      { "title": "Refund Calculator API", "goal": "Iade Tutari Hesaplama", "content": "Ogrenci kayit tarihi ve gecen sure bazli iade orani ve tutarini hesaplar." },
+      { "title": "Withdrawal Form API", "goal": "Cayma Dilekcesi", "content": "Cayma dilekce sablonunu ogrenci bilgileriyle doldurulmus olarak olusturur." }
+    ]
+  },
+  "impact": {
+    "title": "Iade Surecinde Tasarruf ve Uyum",
+    "description": "Iade politikasinin dogru ve tutarli aktarilmasi ile hukuki riskin azaltilmasi ve agent yukunu hafifletme.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyRefundQueries", "label": "Gunluk Iade Sorusu", "default": 5, "hint": "Gunluk ortalama iade/cayma sorgulama sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 15, "hint": "Agent'in iade sureci icin harcadigi sure (politika kontrol + hesaplama)", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyRefundQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

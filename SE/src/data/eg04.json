@@ -1,0 +1,104 @@
+{
+  "id": "eg04",
+  "title": "Egitmen / Ogretmen Bilgisi",
+  "subtitle": "Instructor Information",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Kursu verecek egitmenin nitelikleri, deneyimi ve sertifikalari hakkinda bilgi sorularina AI aninda yanit verir. Knowledge Base'den egitmen profil bilgileri cekilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Universite Hazirlik, Mesleki Egitim)" },
+      { "label": "Sorun", "value": "Ogrenciler/veliler egitmen niteliklerini soruyor — agent her seferinde egitmen bilgilerini arastirip cevaplayor" },
+      { "label": "Deger", "value": "Egitmen profili + sertifika bilgisi = guvene dayali kayit karari" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI egitmen bilgi intent'ini algilar, Knowledge Base'den egitmen profili, sertifikalari ve ogrenci degerlendirmelerini ceker.",
+    "steps": [
+      {
+        "title": "Egitmen Bilgi Intent Tespiti",
+        "goal": "Hangi egitmen/kurs soruldugunu anla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'hocamiz kim', 'egitmen deneyimi', 'sertifikasi var mi' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Egitmen Profili Cekme",
+        "goal": "Detayli egitmen bilgisi sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Profil)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den egitmenin egitim gecmisi, sertifikalari, deneyim yili ve uzmanlik alanlari cekilir."
+      },
+      {
+        "title": "Profil Sunumu",
+        "goal": "Guven olusturan bilgi ver",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Egitmen)", "color": "green" }
+        ],
+        "content": "Egitmen profili, sertifikalar ve ogrenci memnuniyet orani ile birlikte sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Egitmen Profil Sorgulama",
+      "description": "Ogrenci veya veli belirli bir kursun egitmeni hakkinda bilgi soruyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Egitmen Bilgisi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Egitmen profil bilgileri", "service": "Knowledge", "page": "Bilgi Bankasi > Egitmen Profilleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her egitmenin sertifika, deneyim ve uzmanlik bilgilerini girin" }
+        ],
+        "provider": [
+          { "text": "Egitmen intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Egitmen", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Egitmen bilgi sorgulama intent'i varsayilan olarak tanimli" },
+          { "text": "Egitmen profil sablonu", "service": "Backend", "page": "Sablonlar > Egitmen Profili", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Egitmen profil goruntuleme sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Ingilizce B1 kursunun hocasi kim olacak? Deneyimi nedir?" },
+        { "role": "ai", "content": "Intent: Egitmen Bilgisi. Kurs: Ingilizce B1. Knowledge Base egitmen profili sorgusu." },
+        { "role": "bot", "content": "Ingilizce B1 kursunuzun egitmeni:\n\nSelin Yilmaz\n- Egitim: Istanbul Universitesi Ingiliz Dili ve Edebiyati\n- Sertifikalar: CELTA, DELTA, IELTS Trainer\n- Deneyim: 8 yil (4 yili kurumsalda)\n- Uzmanlik: Konusma ve dinleme becerileri\n- Ogrenci Memnuniyeti: %94\n\nSelin Hoca, ozellikle konusma pratigiyle taninan, interaktif ders isleme yontemini benimseyen deneyimli bir egitmendir.\n\nBaska sorunuz var mi?" },
+        { "role": "user", "content": "Cok iyi, tesekkurler. Kayit yaptirmak istiyorum." },
+        { "role": "bot", "content": "Harika! Ingilizce B1 kursu icin kayit:\n\nHemen kayit: [Online Kayit Formu]\nTelefon: 0212 555 12 34\n\nSelin Hoca'nin grubu hizla doluyor, 6 kontenjan kaldi!" },
+        { "role": "system", "content": "Otomatik cozum: Egitmen profili sunuldu + kayit yonlendirmesi yapildi. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Egitmen profilleri Knowledge Base uzerinden merkezi olarak yonetilir. Sertifika ve deneyim bilgileri tenant tarafindan guncellenir.",
+    "backend": [
+      { "title": "Instructor Profile Service", "goal": "Egitmen Bilgi Yonetimi", "content": "Egitmen profilleri, sertifikalar, deneyim ve uzmanlik alanlari Knowledge Base'den cekilir. Kurs-egitmen eslestirmesi yapilir." },
+      { "title": "Satisfaction Score Tracker", "goal": "Memnuniyet Skoru", "content": "Ogrenci degerlendirmelerinden egitmen memnuniyet skorunu hesaplar ve profilde gosterir." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base Instructor API", "goal": "Egitmen Profili", "content": "Kurs veya egitmen adi bazli profil sorgusu. Sertifikalar, deneyim ve memnuniyet skoru ile birlikte doner." },
+      { "title": "Course-Instructor Mapping API", "goal": "Kurs-Egitmen Eslestirme", "content": "Belirli bir kurs ve doneme atanmis egitmen bilgisini doner." }
+    ]
+  },
+  "impact": {
+    "title": "Egitmen Bilgi Sorularinda Tasarruf",
+    "description": "Egitmen profil sorularinin otomatik cevaplanmasi ile agent yukunu azaltma ve guven olusturarak kayit donusumunu artirma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyInstructorQueries", "label": "Gunluk Egitmen Sorusu", "default": 10, "hint": "Gunluk ortalama egitmen bilgi sorgulama sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 5, "hint": "Agent'in egitmen bilgisi vermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyInstructorQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

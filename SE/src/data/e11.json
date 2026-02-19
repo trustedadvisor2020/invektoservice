@@ -1,0 +1,94 @@
+{
+  "id": "e11",
+  "title": "Beden & Urun Uyum Danismanligi",
+  "subtitle": "Size & Fit Advisor",
+  "phase": "Phase 1",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Instagram DM veya WhatsApp'tan gelen beden/urun uyumu sorularini AI Knowledge Base'den beden tablosu cekerek kisisellestirilmis cevap verir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Giyim, Ayakkabi, Aksesuar)" },
+      { "label": "Sorun", "value": "Beden sorusu en sik gelen pre-sale soru — agent her seferinde beden tablosunu aramak zorunda" },
+      { "label": "Deger", "value": "Dogru beden onerisi ile iade orani %30 duser, donusum orani artar" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Unified Inbox (C1)", "color": "blue" }
+    ],
+    "servicesNote": "AI musteri olculerini alir, Knowledge Base'deki beden tablosuyla eslestirir ve kisisellestirilmis beden onerisi sunar.",
+    "steps": [
+      {
+        "title": "Beden Sorusu Tespiti",
+        "goal": "Urun + beden intent'ini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI 'beden', 'numara', 'uyar mi', 'boy/kilo' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Beden Tablosu Eslestirme",
+        "goal": "Dogru bedeni bul",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Beden Tablosu)", "color": "green" }
+        ],
+        "content": "Knowledge Base'deki beden tablosundan musteri olculeerine gore dogru beden onerilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "IG DM Beden Sorusu",
+      "description": "Instagram DM'den gelen beden uyumu sorusu.",
+      "tags": [
+        { "text": "Instagram", "color": "purple" },
+        { "text": "Beden", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun beden tablolari", "service": "Knowledge", "page": "Dokuman Bankasi > Beden Tablolari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her urun kategorisi icin beden tablosunu Knowledge Base'e yukleyin" },
+          { "text": "Urun gorselleri", "service": "Knowledge", "page": "Medya Kutuphanesi > Urun Gorselleri", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Beden referans gorselleri yukleyin" }
+        ],
+        "provider": [
+          { "text": "Beden eslestirme AI", "service": "AgentAI", "page": "Cevap Motoru > Beden Danismanligi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Boy/kilo/olcu bilgisinden beden onerisi hazir" },
+          { "text": "Knowledge RAG beden tablosu", "service": "Knowledge", "page": "RAG Engine > Beden", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun bazli beden tablosu RAG ile sunulur" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu ceket L bedene uyar mi? 1.75 boyum, 78 kiloyum." },
+        { "role": "ai", "content": "Intent: Beden Sorusu. Urun: Ceket. Boy: 1.75. Kilo: 78. Beden tablosu cekiliiyor." },
+        { "role": "bot", "content": "1.75 boy ve 78 kilo icin bu cekettte:\n\n📏 Onerilen beden: L\n📐 Gogus: L = 104-108 cm\n📐 Omuz: L = 46 cm\n\nL beden size uygun gorunuyor! Rahat bir kesim tercih ederseniz XL de deneyebilirsiniz.\n\nSiparis vermek ister misiniz?" },
+        { "role": "user", "content": "Tamam L alayim." },
+        { "role": "system", "content": "Beden danismanligi tamamlandi. Musteri L beden siparis veriyor. Dounusum basarili." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge RAG ile beden tablosu cekerek calisir. AI musteri olculerini anlar ve en uygun bedeni onerir.",
+    "backend": [
+      { "title": "Size Recommender", "goal": "Beden Onerisi", "content": "Boy, kilo ve olcu bilgisinden urun bazli beden eslestirmesi yapar." },
+      { "title": "Knowledge RAG", "goal": "Beden Tablosu", "content": "Urun kategorisine gore beden tablosu, olcu bilgisi ve fit onerisi." }
+    ],
+    "apis": [
+      { "title": "Product API", "goal": "Urun Bilgisi", "content": "Urun varyantlari, beden secenekleri ve stok durumu." },
+      { "title": "Instagram DM API", "goal": "Kanal Entegrasyonu", "content": "Instagram DM mesajlarini Unified Inbox'a cekerek otomatik cevap." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Ek Satis + Iade Azalisi",
+    "description": "Dogru beden onerisi ile artan donusum ve azalan iade orani.",
+    "resultLabel": "Kazanim (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlySizeQueries", "label": "Aylik Beden Sorusu", "default": 60, "hint": "Beden/uyum sorusu sayisi", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 30, "prefix": "%", "hint": "Sorudan satisa gecis", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis Degeri", "default": 400, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlySizeQueries * (conversionRate / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

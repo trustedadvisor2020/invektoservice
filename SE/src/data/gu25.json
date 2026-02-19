@@ -1,0 +1,155 @@
+{
+  "id": "gu25",
+  "title": "Franchise / Coklu Sube Yonetimi",
+  "subtitle": "Franchise Multi-Branch Management",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Zincir salon subeleri arasinda musteri cakismasi ve yanlis yonlendirme yasaniyor. Routing ile konuma gore dogru subeye otomatik yonlendirme ve merkezi yonetim sistemi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Zincir/Franchise)" },
+      { "label": "Sorun", "value": "Birden fazla sube var ama musteri hangi subeye gitmesi gerektigini bilmiyor — mesajlar karisıyor" },
+      { "label": "Deger", "value": "Konum bazli otomatik routing + merkezi raporlama = sube verimliliginde %40 artis" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Routing sistemi musteri konumunu veya tercihini tespit ederek dogru subeye otomatik yonlendirir. Merkezi panel tum subeleri tek ekranda yonetir.",
+    "steps": [
+      {
+        "title": "Konum Tespiti",
+        "goal": "Musterinin yakın subesini belirle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Sube Listesi)", "color": "amber" }
+        ],
+        "content": "AI mesajdaki konum bilgisini (semt, ilce, 'yakin sube' gibi) tespit eder veya musteriye sube secimi sunar."
+      },
+      {
+        "title": "Sube Yonlendirme",
+        "goal": "Dogru subeye routing",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Sube Yonetimi)", "color": "blue" }
+        ],
+        "content": "Musteri dogru subeye yonlendirilir. Sube bazli personel, fiyat ve kapasite bilgileri sunulur."
+      },
+      {
+        "title": "Merkezi Raporlama",
+        "goal": "Tum subeleri tek panelden izle",
+        "badges": [
+          { "text": "Sistem (Dashboard)", "color": "purple" },
+          { "text": "Tenant (Franchise)", "color": "green" }
+        ],
+        "content": "Merkez ofis tum subelerin mesaj, randevu ve performans metriklerini tek panelden gorur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Konum Bazli Sube Yonlendirme",
+      "description": "Musteri randevu almak istiyor, en yakin subeye yonlendiriliyor.",
+      "tags": [
+        { "text": "Routing", "color": "blue" },
+        { "text": "Coklu Sube", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sube bilgileri ve konum verileri", "service": "Backend", "page": "Sube Yonetimi > Sube Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Her subenin adresi, calisma saatleri ve iletisim bilgilerini girin" },
+          { "text": "Sube bazli hizmet ve fiyat farkliliklari", "service": "Knowledge", "page": "Dokuman Bankasi > Sube Fiyatlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Subelere gore farkli fiyat veya hizmet varsa tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Konum bazli routing motoru", "service": "Backend", "page": "Routing > Konum Yonlendirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Musteri konumuna gore en yakin subeye yonlendirme hazir" },
+          { "text": "Sube secim dialog akisi", "service": "AgentAI", "page": "Dialog Akislari > Sube Secimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Konum bilgisi yoksa musteri secimi icin sube listesi sunma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, sac boyama randevusu almak istiyorum. Kadikoy'e yakin bir subeniz var mi?" },
+        { "role": "ai", "content": "Intent: Randevu Talebi. Konum bilgisi: Kadikoy. Sube eslestirme: Kadikoy Sube. Routing baslatiliyor." },
+        { "role": "bot", "content": "Merhaba! Kadikoy'e en yakin subemiz:\n\nGuzellik Merkezi — Kadikoy Sube\nAdres: Caferaga Mah. Moda Cad. No:42\nCalisma Saatleri: 09:00-20:00 (Pazartesi-Cumartesi)\n\nSac boyama icin musait slotlar:\nYarin Carsamba: 10:00, 14:30\nPersembe: 11:00, 16:00\n\nHangi gun ve saat uygun olur?" },
+        { "role": "user", "content": "Carsamba 14:30 olsun" },
+        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nSube: Guzellik Merkezi — Kadikoy\nHizmet: Sac Boyama\nTarih: Carsamba, 14:30\nAdres: Caferaga Mah. Moda Cad. No:42\n\nYol tarifi: [Google Maps link]\n\nRandevunuzdan 1 gun once hatirlatma gonderecegiz!" },
+        { "role": "system", "content": "Konum bazli routing basarili. Kadikoy sube takvimi guncellendi. Merkezi panele yansitildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Sube Degistirme / Transfer",
+      "description": "Mevcut musteri farkli subeye gecmek istiyor.",
+      "tags": [
+        { "text": "Transfer", "color": "amber" },
+        { "text": "Coklu Sube", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sube arasi musteri transfer politikasi", "service": "Backend", "page": "Sube Yonetimi > Transfer Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sube degistiren musterinin gecmis kayitlarinin aktarilma kurallarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Musteri profil transfer sistemi", "service": "Backend", "page": "CRM > Sube Transfer", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Musteri profili ve islem gecmisini subeler arasi transfer etme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Besiktas subenize gidiyordum ama tasindigim icin artik Atasehir'e yakin bir yer lazim" },
+        { "role": "ai", "content": "Intent: Sube Degistirme. Mevcut sube: Besiktas. Hedef bolge: Atasehir. Musteri profili transfer edilecek." },
+        { "role": "bot", "content": "Tabi ki! Atasehir subemize hosgeldiniz:\n\nGuzellik Merkezi — Atasehir Sube\nAdres: Barbaros Mah. Halk Cad. No:18\nCalisma Saatleri: 09:00-20:00\n\nBesiktas subemizdeki islem gecmisiniz ve tercihleriniz Atasehir subesine aktariliyor. Ayni kalitede hizmet almaya devam edeceksiniz!\n\nAtasehir subesinde ilk randevunuzu almak ister misiniz?" },
+        { "role": "user", "content": "Evet, bu hafta sac bakimi yaptirmak istiyorum" },
+        { "role": "bot", "content": "Atasehir subemizde bu hafta musait slotlar:\n\nPersembe: 10:00, 14:00, 17:00\nCuma: 11:00, 15:00\nCumartesi: 09:00, 12:00\n\nNot: Besiktas'taki kuaforunuz Deniz Hanim'in Atasehir'deki karsılığı Burcu Hanim — ayni uzmanlik alaninda!\n\nHangi gun uygun?" },
+        { "role": "system", "content": "Sube transferi tamamlandi. Musteri profili Atasehir subesine aktarildi. Islem gecmisi korundu. Merkezi panelde guncellendi." }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Merkezi Performans Raporu",
+      "description": "Franchise sahibi tum subelerin performansini gormek istiyor.",
+      "tags": [
+        { "text": "Raporlama", "color": "green" },
+        { "text": "Franchise", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sube bazli KPI tanimlari", "service": "Backend", "page": "Raporlama > KPI Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Her sube icin takip edilecek KPI'lari tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Merkezi raporlama paneli", "service": "Backend", "page": "Dashboard > Franchise Raporu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tum sube metriklerini tek panelde gosteren dashboard hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu ayin tum subelerin performans raporunu gonder" },
+        { "role": "ai", "content": "Intent: Performans Raporu. Kapsam: Tum subeler. Donem: Bu ay. Merkezi rapor hazirlaniyor." },
+        { "role": "bot", "content": "Bu ayin sube performans ozeti:\n\nKadikoy Sube:\nToplam Randevu: 245 | Doluluk: %82\nYeni Musteri: 34 | WA Mesaj: 380\n\nBesiktas Sube:\nToplam Randevu: 198 | Doluluk: %71\nYeni Musteri: 28 | WA Mesaj: 310\n\nAtasehir Sube:\nToplam Randevu: 176 | Doluluk: %65\nYeni Musteri: 22 | WA Mesaj: 250\n\nEn Yuksek Performans: Kadikoy\nGelisme Alani: Atasehir (doluluk duşuk)\n\nDetayli rapor icin: [Dashboard Link]" },
+        { "role": "system", "content": "Merkezi performans raporu gonderildi. Tum sube metrikleri tek panelden izleniyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Multi-tenant mimaride sube bazli routing ve merkezi raporlama. Her sube bagimsiz takvim ve personel yonetimi yaparken franchise sahibi tum subeleri tek panelden izler.",
+    "backend": [
+      { "title": "Branch Router", "goal": "Sube Yonlendirme", "content": "Musteri konumu veya tercihine gore dogru subeye yonlendiren routing motoru." },
+      { "title": "Profile Transfer Manager", "goal": "Musteri Transferi", "content": "Subeler arasi musteri profili ve islem gecmisi transferi yapan yonetim sistemi." },
+      { "title": "Central Dashboard", "goal": "Merkezi Raporlama", "content": "Tum subelerin randevu, mesaj ve performans metriklerini toplu gosteren merkezi panel." }
+    ],
+    "apis": [
+      { "title": "Geolocation API", "goal": "Konum Tespiti", "content": "Musteri konumunu belirleyerek en yakin subeyi hesaplayan konum servisi." },
+      { "title": "Multi-Branch Calendar API", "goal": "Coklu Takvim", "content": "Birden fazla subenin takvimini sorgulayan ve eslestiren API." }
+    ]
+  },
+  "impact": {
+    "title": "Franchise Verimlilik Artisi",
+    "description": "Dogru sube yonlendirme ve merkezi yonetim ile artan verimlilik ve azalan musteri kaybi.",
+    "resultLabel": "Verimlilik Kazanci (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "totalBranches", "label": "Sube Sayisi", "default": 3, "hint": "Toplam sube sayisi", "editable": true },
+      { "key": "monthlyMisdirections", "label": "Aylik Yanlis Yonlendirme", "default": 30, "hint": "Yanlis subeye yonlenen musteri sayisi", "editable": true },
+      { "key": "lostCustomerCost", "label": "Kayip Musteri Maliyeti", "default": 1500, "suffix": "TL", "hint": "Yanlis yonlendirme sonucu kaybedilen ortalama gelir", "editable": true },
+      { "key": "correctionRate", "label": "Duzeltme Orani", "default": 85, "prefix": "%", "hint": "Otomatik routing ile duzeltilen yanlis yonlendirme orani", "editable": true }
+    ],
+    "formula": "monthlyMisdirections * lostCustomerCost * (correctionRate / 100)",
+    "formulaDisplay": null
+  }
+}

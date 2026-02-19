@@ -1,0 +1,127 @@
+{
+  "id": "m02",
+  "title": "Acil Mesaj Push Notification",
+  "subtitle": "Emergency Push Notification",
+  "phase": "Phase 7",
+  "category": "MOBIL UYGULAMA",
+  "niche": "mobile",
+  "description": "SLA ihlali yaklasirken veya VIP musteriden acil etiketli mesaj geldiginde bilgisayar basinda olmayan temsilciye mobil push notification gonderilir. Proaktif uyari sistemi sayesinde hicbir kritik mesaj cevapsiz kalmaz.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Tum Sektorler — SLA taahhudu olan isletmeler, VIP musteri segmenti bulunan firmalar" },
+      { "label": "Sorun", "value": "SLA suresi dolmak uzere ama sorumlu temsilci bilgisayar basinda degil; kritik mesajlar cevapsiz kaliyor" },
+      { "label": "Deger", "value": "SLA ihlallerini %90 azaltma + VIP musteri memnuniyetini koruma" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Smart Routing (C2)", "color": "amber" }
+    ],
+    "servicesNote": "SLA watchdog mekanizmasi mesaj bekleme surelerini izler. Esik asildiginda veya VIP/acil etiketli mesaj geldiginde aninda push notification tetiklenir. Proaktif bildirim sistemi.",
+    "steps": [
+      {
+        "title": "SLA Izleme",
+        "goal": "Bekleme suresini takip et",
+        "badges": [
+          { "text": "Sistem (Watchdog)", "color": "purple" },
+          { "text": "Tenant (SLA Kurali)", "color": "amber" }
+        ],
+        "content": "Her mesajin bekleme suresi tenant bazli SLA kurallarina gore izlenir. %70, %90 ve %100 esiklerinde uyari seviyeleri tetiklenir."
+      },
+      {
+        "title": "Etiket Tespiti",
+        "goal": "VIP ve acil mesajlari ayikla",
+        "badges": [
+          { "text": "Sistem (Filtre)", "color": "purple" },
+          { "text": "Tenant (Etiket)", "color": "blue" }
+        ],
+        "content": "Gelen mesajin gondericisi VIP etiketli mi, mesaj icerigi acil mi, yoksa SLA esigi mi asildi — uc farkli tetikleme kosuluyla calisir."
+      },
+      {
+        "title": "Push Gonderimi",
+        "goal": "Temsilciyi aninda uyar",
+        "badges": [
+          { "text": "Sistem (FCM)", "color": "purple" },
+          { "text": "Tenant (Routing)", "color": "green" }
+        ],
+        "content": "Sorumlu temsilcinin mobil cihazina detayli push notification gonderilir: musteri adi, mesaj ozeti, kalan SLA suresi."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "SLA Breach Yaklasirken Push",
+      "description": "Mesaj 25 dakikadir cevap bekliyor, SLA limiti 30 dakika.",
+      "tags": [
+        { "text": "SLA Uyari", "color": "red" },
+        { "text": "Push Bildirim", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Tenant bazli SLA suresi tanimi", "service": "Backend", "page": "SLA Ayarlari > Sure Tanimlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Genel ve kategori bazli SLA surelerini dakika cinsinden tanimlayin" },
+          { "text": "Temsilci mobil push izni", "service": "Backend", "page": "Ekip Yonetimi > Mobil Izinler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tum temsilcilerin mobil bildirim iznini aktif edin" }
+        ],
+        "provider": [
+          { "text": "SLA watchdog zamanlayicisi", "service": "Backend", "page": "SLA Motoru > Watchdog", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "SLA esik kontrolu her dakika calisir, yapilandirma hazir" },
+          { "text": "Push notification servisi", "service": "Backend", "page": "Bildirim Motoru > Push", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "FCM entegrasyonu hazir, aninda push gonderimi desteklenir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, siparis durumumu ogrenmek istiyorum. Acil lazim." },
+        { "role": "system", "content": "Mesaj alindi. SLA Zamanlayicisi baslatildi: 30 dakika. Atanan temsilci: Ahmet (cevrimdisi)." },
+        { "role": "system", "content": "SLA Uyari: %83 (25/30 dk). Temsilci Ahmet hala cevrimdisi. Push Notification gonderiliyor." },
+        { "role": "system", "content": "PUSH → Ahmet'in telefonu: 'ACIL — Musteri Ali Yilmaz 25 dk bekliyor! SLA: 5 dk kaldi. Dokunun ve cevaplayin.'" },
+        { "role": "bot", "content": "[Ahmet push'a dokunur, mobil uygulamadan cevaplayir]\n\nMerhaba Ali Bey, gecikme icin ozur dilerim. Siparis durumunuzu hemen kontrol ediyorum. 2 dakika icinde detayli bilgi verecegim." },
+        { "role": "system", "content": "SLA durumu: Zamaninda cevaplandi (27/30 dk). Ihlal onlendi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "VIP Musteri Acil Etiketi",
+      "description": "VIP musteriden gelen mesaj otomatik acil etiketleniyor.",
+      "tags": [
+        { "text": "VIP", "color": "amber" },
+        { "text": "Aninda Push", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "VIP musteri listesi", "service": "Backend", "page": "CRM > VIP Segmenti", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "VIP musteri segmentini CRM uzerinden tanimlayin" }
+        ],
+        "provider": [
+          { "text": "VIP mesaj onceliklendirme", "service": "Backend", "page": "Routing Kurallari > VIP", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "VIP musterilerden gelen mesajlar otomatik onceliklendirilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Acil yardim lazim, sistemimiz coktu ve musterilerimiz yazamiyor!" },
+        { "role": "system", "content": "VIP Musteri Tespiti: Mega Holding (Aylik 50.000 TL). Acil Etiket: Sistem Arizasi. ANINDA push gonderiliyor." },
+        { "role": "system", "content": "PUSH → Sorumlu Temsilci + Supervisor: 'VIP ACIL — Mega Holding: Sistem coktu. Hemen mudale edin!'" },
+        { "role": "bot", "content": "[Temsilci aninda push'tan mobil uygulamaya gecer]\n\nMega Holding ekibine merhaba! Durumu anladim, teknik ekibi hemen devreye aliyorum. 10 dakika icinde ilk geri donus yapacagiz." },
+        { "role": "system", "content": "Tepki suresi: 45 saniye. VIP SLA (5 dk) icinde cevaplanmis." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "SLA watchdog servisi her dakika calisarak bekleme surelerini kontrol eder. Esik asildiginda FCM uzerinden push notification tetiklenir. VIP ve acil etiket tespiti mesaj alinir alinmaz yapilir.",
+    "backend": [
+      { "title": "SLA Watchdog Service", "goal": "Sure Takibi", "content": "Tenant bazli SLA kurallarini her dakika kontrol eder. %70, %90, %100 esiklerinde farkli seviye push bildirimleri tetikler." },
+      { "title": "Priority Push Engine", "goal": "Oncelikli Bildirim", "content": "VIP etiketi, acil anahtar kelimeler ve SLA esik asimlarini birlestiren coklu tetikleme motoru." }
+    ],
+    "apis": [
+      { "title": "Firebase Cloud Messaging", "goal": "Push Delivery", "content": "Android ve iOS cihazlara oncelikli push notification gonderimi. High-priority flag ile aninda teslimat." },
+      { "title": "SLA Monitoring API", "goal": "Durum Sorgulama", "content": "Aktif mesajlarin SLA durumlarini sorgulama ve esik kontrolu yapma." }
+    ]
+  },
+  "impact": {
+    "title": "Onlenen SLA Ihlali Degeri",
+    "description": "Push notification sayesinde zamaninda cevaplanan mesajlarla onlenen SLA ihlalleri ve korunan musteri iliskisi.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyUrgentMessages", "label": "Gunluk Acil/VIP Mesaj", "default": 8, "hint": "SLA riski tasian veya VIP mesaj sayisi", "editable": true },
+      { "key": "slaBreachRate", "label": "Push Olmadan Ihlal Orani", "default": 40, "suffix": "%", "hint": "Push yokken SLA ihlal yuzdesi", "editable": true },
+      { "key": "breachCost", "label": "Ihlal Basina Maliyet", "default": 500, "suffix": "TL", "hint": "Musteri kaybi + itibar maliyeti", "editable": true }
+    ],
+    "formula": "dailyUrgentMessages * (slaBreachRate / 100) * breachCost * 30",
+    "formulaDisplay": null
+  }
+}

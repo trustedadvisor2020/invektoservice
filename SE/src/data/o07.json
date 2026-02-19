@@ -1,0 +1,130 @@
+{
+  "id": "o07",
+  "title": "Check-out Sonrasi Yorum Rica",
+  "subtitle": "Post-Checkout Review Request",
+  "phase": "Phase 2",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Check-out sonrasi misafire memnuniyet anketi gonderilir. 4-5 puan veren misafirlere Google yorum linki iletilir, 1-3 puan verenlere eskalasyon uygulanir. Proaktif outbound senaryo.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Tum Otel Tipleri)" },
+      { "label": "Sorun", "value": "Memnun misafirler yorum yapmayi unutuyor — otelin online itibari buyumuyor. Memnuniyetsiz misafirler ise sessizce kotu yorum yaziyor" },
+      { "label": "Deger", "value": "Proaktif anket + yorum yonlendirmesi = Google puani artisi + kotu yorum onleme" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Check-out sonrasi T+1 gun otomatik outbound mesaj gonderilir. Memnuniyet skoru toplananir. Yuksek puan verenlere Google yorum linki, dusuk puan verenlere ozel ilgi gosterilir.",
+    "steps": [
+      {
+        "title": "Check-out Tetikleme",
+        "goal": "Otomatik outbound baslat",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (PMS)", "color": "amber" }
+        ],
+        "content": "PMS'den check-out bilgisi alindiginda T+1 gun otomatik WhatsApp mesaji planlanir."
+      },
+      {
+        "title": "Memnuniyet Anketi",
+        "goal": "Puan topla",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Anket Tasarimi)", "color": "blue" }
+        ],
+        "content": "Kisa anket mesaji ile 1-5 arasi puan istenir. Misafir tek rakamla cevaplayabilir."
+      },
+      {
+        "title": "Sonuca Gore Aksiyon",
+        "goal": "Yorum veya eskalasyon",
+        "badges": [
+          { "text": "Sistem (Kosul Mantigi)", "color": "purple" },
+          { "text": "Tenant (Google Link)", "color": "green" }
+        ],
+        "content": "4-5 puan: Google yorum linki gonderilir. 1-3 puan: Geri bildirim istenir ve yoneticiye eskalasyon yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Memnun Misafir — Yorum Yonlendirmesi",
+      "description": "Check-out sonrasi memnun misafire anket gonderilir, yuksek puan sonrasi Google yorum linki iletilir.",
+      "tags": [
+        { "text": "Proaktif Outbound", "color": "purple" },
+        { "text": "Yorum Yonetimi", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Google Business yorum linki", "service": "Knowledge", "page": "Dokuman Bankasi > Sosyal Medya Linkleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Google Isletme Profilinizden kisa yorum linkini alin ve tanimlayin" },
+          { "text": "Check-out tetikleme entegrasyonu", "service": "Integrations", "page": "Otel Entegrasyonlari > PMS Webhook", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "PMS'den check-out event'i alinarak outbound mesaj tetiklenir" }
+        ],
+        "provider": [
+          { "text": "Outbound anket mesaj sablonu", "service": "Automation", "page": "Outbound Kampanyalar > Anket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Check-out sonrasi T+1 gun otomatik gonderilecek anket sablonu hazir" },
+          { "text": "Puan bazli dallanma mantigi", "service": "AgentAI", "page": "Dialog Akislari > Anket Dallanma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "1-3 puan eskalasyon, 4-5 puan yorum linki otomatik calisan kosul mantigi" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "PMS Event: Check-out tamamlandi. Misafir: Ayse Yilmaz. Oda: 302. Konaklama: 3 gece. T+1 gun outbound planlandı." },
+        { "role": "bot", "content": "Merhaba Ayse Hanim! Bizimle konakladiginiz icin tesekkur ederiz. Deneyiminizi kisa bir puanla degerlendirmenizi rica edebilir miyiz?\n\n1-5 arasi bir puan verin (1: Cok kotu — 5: Mukemmel)" },
+        { "role": "user", "content": "5" },
+        { "role": "bot", "content": "Cok tesekkur ederiz! Mukemmel puaniniz bizi cok mutlu etti!\n\nDeneyiminizi diger misafirlerle de paylasmaniz bizim icin cok degerli olur. Google'da 30 saniyede yorum birakabilirsiniz:\n\n[Google Yorum Linki]\n\nTekrar bekleriz, iyi gunler dileriz!" },
+        { "role": "system", "content": "Outbound basarili: 5/5 puan alindi. Google yorum linki gonderildi. Yorum donusum takibi baslatildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Memnuniyetsiz Misafir — Eskalasyon",
+      "description": "Check-out sonrasi dusuk puan veren misafire ozel ilgi gosterilir ve yoneticiye eskalasyon yapilir.",
+      "tags": [
+        { "text": "Proaktif Outbound", "color": "purple" },
+        { "text": "Eskalasyon", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Yonetici eskalasyon bilgileri", "service": "Backend", "page": "Ekip Yonetimi > Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Dusuk puan durumunda bilgilendirilecek yonetici/GM bilgisini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Dusuk puan eskalasyon akisi", "service": "Automation", "page": "Eskalasyon > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "1-3 puan otomatik olarak yoneticiye eskalasyon tetikler" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "PMS Event: Check-out tamamlandi. Misafir: Hans Mueller. Oda: 507. T+1 gun outbound." },
+        { "role": "bot", "content": "Merhaba Hans Bey! Bizimle konakladiginiz icin tesekkur ederiz. Deneyiminizi 1-5 arasi puanlayabilir misiniz?\n\n(1: Cok kotu — 5: Mukemmel)" },
+        { "role": "user", "content": "2" },
+        { "role": "bot", "content": "Geri bildiriminiz icin tesekkur ederiz. Beklentilerinizi karsilayamamis olmak bizi cok uzdu.\n\nNe yazik ki yasadiginiz olumsuzlugu daha iyi anlamak istiyoruz. Kisa bir aciklama paylasabilir misiniz? Otel mudurumuz sizinle kisisel olarak ilgilenecektir." },
+        { "role": "user", "content": "Odanin temizligi yetersizdi ve sabah kahvaltida secenekler azdi." },
+        { "role": "system", "content": "ESKALASYON: 2/5 puan. Sikayet: Temizlik + Kahvalti. Otel Mudurune bildirim gonderildi. Kurtarma akisi baslatildi." },
+        { "role": "bot", "content": "Geri bildiriminiz icin cok tesekkur ederiz Hans Bey. Otel mudurumuz sizinle kisisel olarak iletisime gececek ve bu durumu duzeltmek icin elimizden geleni yapacagiz. Bir sonraki konaklamanizda ozel bir surprizimiz olacak." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "PMS check-out event'i outbound mesaji tetikler. T+1 gun zamanlama ile anket gonderilir. Puan sonucuna gore dallanma: yuksek puan = yorum linki, dusuk puan = eskalasyon.",
+    "backend": [
+      { "title": "Checkout Event Listener", "goal": "Tetikleme", "content": "PMS webhook veya cron ile check-out yapan misafirleri tespit eder ve T+1 gun outbound mesaj planlar." },
+      { "title": "Survey Scoring Engine", "goal": "Puan Degerlendirme", "content": "Misafirin verdigi puani alir ve 4-5 = yorum linki, 1-3 = eskalasyon dallanmasini uygular." }
+    ],
+    "apis": [
+      { "title": "Outbound Message API", "goal": "Proaktif Mesajlasma", "content": "WhatsApp Business API uzerinden zamanlanmis outbound mesaj gonderimi." },
+      { "title": "Google Business API", "goal": "Yorum Takibi", "content": "Gonderilen yorum linkinin tiklanma ve yorum yazilma durumunu takip eder (opsiyonel)." }
+    ]
+  },
+  "impact": {
+    "title": "Google Yorum Artisi ile Gelir Etkisi",
+    "description": "Proaktif anket ve yorum yonlendirmesiyle artan Google puaninin otele saglayacagi ek rezervasyon geliri.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyCheckouts", "label": "Aylik Check-out", "default": 500, "hint": "Aylik toplam check-out sayisi", "editable": true },
+      { "key": "surveyResponseRate", "label": "Anket Yanit Orani (%)", "default": 35, "hint": "Ankete cevap veren misafir orani", "editable": true },
+      { "key": "reviewConversionRate", "label": "Yorum Birakma Orani (%)", "default": 20, "hint": "4-5 puan verenlerden yorum birakanlar", "editable": true },
+      { "key": "revenuePerReview", "label": "Yorum Basina Gelir Etkisi", "default": 5000, "suffix": "TL", "hint": "Her olumlu yorumun getirdigi tahmini ek gelir", "editable": true }
+    ],
+    "formula": "monthlyCheckouts * (surveyResponseRate / 100) * 0.8 * (reviewConversionRate / 100) * revenuePerReview",
+    "formulaDisplay": null
+  }
+}

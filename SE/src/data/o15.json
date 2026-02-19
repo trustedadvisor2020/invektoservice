@@ -1,0 +1,144 @@
+{
+  "id": "o15",
+  "title": "Fatura / Odeme Sorunlari",
+  "subtitle": "Invoice & Payment Issues",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir faturada hata, ekstra ucret veya odeme sorunlari ile geliyor. AI fatura politikasini aninda aciklar, detayli doküm sunar. Cozulemeyen konularda muhasebe departmanina otomatik eskalasyon yapilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Her Olcek)" },
+      { "label": "Sorun", "value": "Fatura sorulari resepsiyonu mesgul ediyor, misafirler aciklama bekliyor, muhasebe eskalasyonu gecikiyor" },
+      { "label": "Deger", "value": "Anlik fatura aciklamasi, muhasebe eskalasyonunda hiz, misafir guveni" }
+    ],
+    "services": [
+      { "name": "WhatsApp Business API (C1)", "color": "green" },
+      { "name": "Akilli Yonlendirme (C2)", "color": "amber" },
+      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "purple" },
+      { "name": "AI Karar Motoru (C8)", "color": "red" }
+    ],
+    "servicesNote": "AI fatura ile ilgili sikca sorulan sorulari Knowledge Base'den cevaplayarak aninda bilgi verir. Karmasik konularda muhasebe departmanina otomatik eskalasyon saglar.",
+    "steps": [
+      {
+        "title": "Sorun Tespiti (Detection)",
+        "goal": "Fatura sorununu kategorize et",
+        "badges": [
+          { "text": "Sistem (AI Analiz)", "color": "purple" },
+          { "text": "Tenant (Fatura Verisi)", "color": "blue" }
+        ],
+        "content": "AI misafirin mesajindan fatura sorununu siniflandirir: ekstra ucret sorgusu, yanlis tutar, kurumsal fatura talebi veya odeme problemi."
+      },
+      {
+        "title": "Otomatik Aciklama (Response)",
+        "goal": "Standart sorulari aninda yanitla",
+        "badges": [
+          { "text": "Sistem (Knowledge Base)", "color": "purple" },
+          { "text": "Tenant (Fiyat Politikasi)", "color": "amber" }
+        ],
+        "content": "Minibar, spa, oda servisi gibi ekstra ucretler fatura detayiyla aciklanir. Sehir vergisi, turizm vergisi gibi yasal ucretler hakkinda bilgi verilir."
+      },
+      {
+        "title": "Eskalasyon (Escalation)",
+        "goal": "Cozulemeyen konulari muhasabeye ilet",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Muhasebe)", "color": "red" }
+        ],
+        "content": "AI'nin cevaplayamadigi fatura uyusmazliklari veya iade talepleri muhasebe departmanina context ile birlikte devredilir."
+      },
+      {
+        "title": "Cozum & Takip (Resolution)",
+        "goal": "Sorunu kapat, memnuniyeti olc",
+        "badges": [
+          { "text": "Sistem (Follow-up)", "color": "purple" },
+          { "text": "Tenant (Kalite)", "color": "green" }
+        ],
+        "content": "Sorun cozuldugunde misafire bildirilir. Kurumsal fatura talepleri icin e-fatura link gonderimi yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Ekstra Ucret Sorgusu",
+      "description": "Misafir faturada beklemedigi ucretleri soruyor.",
+      "tags": [
+        { "text": "Fatura", "color": "amber" },
+        { "text": "Aciklama", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ucretlendirme politikasi dokumani", "service": "Knowledge", "page": "Politikalar > Ucretlendirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Minibar, spa, oda servisi, sehir vergisi gibi kalemlerin aciklamalarini ekleyin" },
+          { "text": "Fatura detay erisim yetkisi", "service": "Backend", "page": "PMS Entegrasyonu > Fatura API", "status": "setup", "priority": "required", "effort": "medium", "capability": "C8", "hint": "AI'nin misafir faturasindaki kalemleri gorebilmesi icin PMS API erisimi" }
+        ],
+        "provider": [
+          { "text": "Fatura aciklama AI promptu", "service": "AgentAI", "page": "Prompt Sablonlari > Fatura Aciklama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fatura kalemlerini misafir dostu dilde aciklayan prompt hazir" },
+          { "text": "Muhasebe eskalasyon routing modulu", "service": "Automation", "page": "Routing Kurallari > Muhasebe", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Cozulemeyen fatura sorunlari otomatik muhasebe ekibine yonlendirilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Faturamda 350 TL ekstra ucret var, bu ne icin?" },
+        { "role": "ai", "content": "Intent: Fatura Sorgusu. Kategori: Ekstra Ucret. Misafir profili ve fatura detayi gerekli." },
+        { "role": "bot", "content": "Merhaba! Faturanizi inceliyorum. Oda numaranizi paylasir misiniz lutfen?" },
+        { "role": "user", "content": "Oda 218, Mehmet Yilmaz." },
+        { "role": "ai", "content": "PMS Sorgu: Oda 218, Mehmet Yilmaz. Fatura kalemleri: Minibar 2x Bira (120 TL), Spa Havlu Kaybi (230 TL). Toplam ekstra: 350 TL." },
+        { "role": "bot", "content": "Mehmet Bey, faturanizi inceledim. 350 TL'lik ekstra ucretinizin detayi:\n\n- Minibar: 2x Bira — 120 TL\n- Spa Havlu Kullanimi — 230 TL\n\nMinibar tuketimi otomatik sensor ile kaydedilmektedir. Spa havlusu ucreti ise spa alaninda kullanilan ozel havlularin iade edilmemesi durumunda uygulanan standart ucrettir. \n\nBir itiraziniz varsa muhasebe ekibimize yonlendirebilirim." },
+        { "role": "user", "content": "Spa havlusunu odaya biraktim, iade ettim aslinda." },
+        { "role": "bot", "content": "Anladim, konuyu muhasebe ekibimize iletiyorum. Spa ekibinden teyit alindiginda faturaniz guncellenecek ve size bilgi verecegiz. En gec 2 saat icerisinde donus yapilacaktir." },
+        { "role": "system", "content": "Eskalasyon: Muhasebe #FA-2024-0092. Konu: Spa havlu ucreti itiraz. Spa ekibinden dogrulama bekleniyor." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Kurumsal Fatura Talebi",
+      "description": "Misafir is seyahati icin kurumsal fatura istiyor.",
+      "tags": [
+        { "text": "Fatura", "color": "amber" },
+        { "text": "Kurumsal", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "E-fatura sistemi entegrasyonu", "service": "Backend", "page": "Muhasebe > E-Fatura", "status": "setup", "priority": "required", "effort": "medium", "capability": "C8", "hint": "E-fatura portali ile entegrasyon kurulmasi gerekir" }
+        ],
+        "provider": [
+          { "text": "Kurumsal bilgi toplama template'i", "service": "AgentAI", "page": "Template Kutuphanesi > Kurumsal Fatura", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Firma adi, VKN, adres bilgilerini toplayan akis hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Is seyahati icin kurumsal fatura keser misiniz?" },
+        { "role": "bot", "content": "Tabii! Kurumsal fatura icin asagidaki bilgilere ihtiyacimiz var:\n\n1. Firma Adi\n2. Vergi Dairesi\n3. Vergi Numarasi (VKN)\n4. Firma Adresi\n\nBilgileri mesaj olarak gonderebilirsiniz." },
+        { "role": "user", "content": "ABC Teknoloji A.S., Besiktas Vergi Dairesi, VKN: 1234567890, Levent Mah. Buyukdere Cad. No:123 Istanbul" },
+        { "role": "bot", "content": "Bilgileriniz alindi! Kurumsal faturaniz su sekilde kesilecek:\n\nABC Teknoloji A.S.\nBesiktas V.D. / 1234567890\nLevent Mah. Buyukdere Cad. No:123 Istanbul\n\nDogruluyorsa onaylayin, e-fatura check-out sirasinda e-posta adresinize gonderilecektir." },
+        { "role": "user", "content": "Dogru, onayliyorum." },
+        { "role": "bot", "content": "Kurumsal fatura kaydedildi! Check-out'ta e-posta adresinize e-fatura otomatik gonderilecek. Baska bir konuda yardimci olabilir miyim?" },
+        { "role": "system", "content": "Kurumsal fatura bilgisi PMS'e kaydedildi. E-fatura otomatik gonderim: Check-out sonrasi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Fatura sorulari AI Knowledge Base'den cevplanir. Karmasik konularda muhasebe departmanina context bazli eskalasyon yapilir.",
+    "backend": [
+      { "title": "Invoice Query Engine", "goal": "Fatura Sorgulama", "content": "PMS'den fatura kalemlerini cekerek misafir dostu aciklamalar olusturur." },
+      { "title": "Escalation Router", "goal": "Muhasebe Yonlendirme", "content": "AI'nin cevaplayamadigi fatura uyusmazliklari tum context ile muhasebe ekibine iletilir." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Misafir Iletisimi", "content": "Fatura sorgusu, aciklama ve bilgi toplama WhatsApp uzerinden." },
+      { "title": "PMS Fatura API", "goal": "Fatura Verisi", "content": "Misafir faturasindaki kalemler, tutarlar ve aciklamalar PMS'den cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Fatura Islem Verimliligi",
+    "description": "AI ile fatura sorularinin aninda cevaplanmasi resepsiyon ve muhasebe is yukunu azaltir.",
+    "resultLabel": "Aylik Tasarruf Edilen Saat",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyInquiries", "label": "Aylik Fatura Sorusu", "default": 250, "hint": "Aylik toplam fatura ile ilgili misafir sorgusu", "editable": true },
+      { "key": "manualMinutes", "label": "Manuel Islem Suresi (dk)", "default": 12, "hint": "Resepsiyon + muhasebe kontrol + geri donus suresi", "editable": true },
+      { "key": "autoResolveRate", "label": "AI ile Cozum Orani", "default": 70, "hint": "AI'nin dogrudan cevaplayabildigi oran (%)", "editable": true }
+    ],
+    "formula": "Math.round(monthlyInquiries * (autoResolveRate / 100) * manualMinutes / 60)",
+    "formulaDisplay": null
+  }
+}

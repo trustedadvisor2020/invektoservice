@@ -1,0 +1,92 @@
+{
+  "id": "d31",
+  "title": "Tedavi Plani: Surec Anlatimi",
+  "subtitle": "Treatment Plan Explanation",
+  "phase": "Phase 2",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Tedavi planini ve seans sayisini soran hastaya AI ile Knowledge Base'den tedavi tipi bazli standart plan bilgisini sunan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Hasta tedavi surecini bilmiyor — kac seans, ne yapilacak, ne kadar surecek sorulari cok geliyor" },
+      { "label": "Deger", "value": "AI ile standart tedavi plan bilgisi aninda sunulur, hasta guveni artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI tedavi plani sorusunu tespit eder, Knowledge Base'den ilgili tedavi surecini ve seans bilgisini cekar.",
+    "steps": [
+      {
+        "title": "Tedavi Tespiti",
+        "goal": "Hangi tedavi soruluyor?",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Tedavi)", "color": "blue" }
+        ],
+        "content": "AI hasta mesajindan hangi tedavi hakkinda sordugunu belirler."
+      },
+      {
+        "title": "Plan Sunumu",
+        "goal": "Bilgiyi sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "green" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Knowledge Base'den tedavi tipi bazli seans sayisi, sure ve asamalar bilgisi sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Tedavi Plani Sorusu",
+      "description": "Hasta implant tedavi planini soruyor.",
+      "tags": [
+        { "text": "Tedavi Plani", "color": "blue" },
+        { "text": "Bilgi", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Tedavi planlari Knowledge Base", "service": "Knowledge", "page": "Dokuman Bankasi > Tedavi Planlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Tedavi bazli seans, sure ve asamalar bilgisini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Tedavi intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Tedavi Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tedavi plani sorgu intent'i hazir" },
+          { "text": "Knowledge RAG sorgu", "service": "Knowledge", "page": "RAG > Tedavi Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tedavi bazli plan bilgisi RAG ile cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Tedavi kac seans surecek? Ne yapilacak?" },
+        { "role": "ai", "content": "Intent: Tedavi Plani Sorgusu. Mevcut tedavi: Implant. Knowledge Base'den plan cekilecek." },
+        { "role": "bot", "content": "Implant tedavi planiniZ hakkinda bilgi:\n\n📋 Toplam surec: 3-6 ay\n\n1️⃣ Ilk seans: Muayene + röntgen + planlama\n2️⃣ Implant yerlestirme: Cerrahi islem (1 saat)\n3️⃣ Iyilesme sureci: 2-4 ay\n4️⃣ Olcu alma: Protez hazirlik\n5️⃣ Protez yerlestirme: Son seans\n\n💡 Kisisel planiniz muayene sonrasi netlesiR.\n\nMuayene randevusu ayarlayalim mi?" },
+        { "role": "system", "content": "Tedavi plan bilgisi sunuldu. Randevu teklifi yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge RAG + AI intent tespiti birlesimiyle calisir. Tedavi bazli standart plan bilgisi sunumu.",
+    "backend": [
+      { "title": "Treatment Identifier", "goal": "Tedavi Tespiti", "content": "Hasta mesajindan hangi tedavi hakkinda sordugunu belirler." },
+      { "title": "Plan Retriever", "goal": "Plan Bilgisi", "content": "Knowledge Base'den tedavi tipi bazli seans ve sure bilgisini cekar." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Tedavi planlari, seans detaylari ve sure bilgisi RAG ile sunulur." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik tedavi plan bilgisi ile kazanilan verimlilik.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPlanQueries", "label": "Aylik Plan Sorusu", "default": 25, "hint": "Tedavi plan bilgisi talebi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Sorgu Basina Dakika", "default": 5, "hint": "Resepsiyonistin harcadigi sure", "editable": true },
+      { "key": "staffHourlyCost", "label": "Personel Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Resepsiyonist saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyPlanQueries * minutesPerQuery * (staffHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

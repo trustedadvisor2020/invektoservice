@@ -1,0 +1,127 @@
+{
+  "id": "gu18",
+  "title": "VIP Musteri Yonetimi",
+  "subtitle": "VIP Customer Management",
+  "phase": "Phase 2",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Ayda 3+ kez gelen ve yuksek harcama yapan musteriler tanimlanamıyor, ozel muamele yapılamiyor. AI frekans + harcama analizi ile otomatik VIP scoring ve proaktif ozel teklifler.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (VIP Musteri Segmenti)" },
+      { "label": "Sorun", "value": "Yuksek degerli musteriler tanimlanamıyor — herkes ayni muameleyi goruyor, sadakat azaliyor" },
+      { "label": "Deger", "value": "AI ile otomatik VIP skorlama + ozel teklifler = %60 daha yuksek musteri yasam degeri" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI musteri ziyaret frekansi ve harcama verilerini analiz ederek otomatik VIP skorlama yapar. VIP musterilere proaktif ozel teklifler gonderilir.",
+    "steps": [
+      {
+        "title": "VIP Skorlama",
+        "goal": "Yuksek degerli musterileri tespit et",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (CRM Verisi)", "color": "blue" }
+        ],
+        "content": "AI son 3 aydaki ziyaret frekansi, toplam harcama ve hizmet cesitliligini analiz ederek VIP skoru hesaplar."
+      },
+      {
+        "title": "Ozel Muamele",
+        "goal": "VIP musteriye ayricalik sun",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (VIP Politikasi)", "color": "amber" }
+        ],
+        "content": "VIP musteriler oncelikli slot, ozel fiyatlandirma ve kisisel danismanlik gibi ayricaliklar alir."
+      },
+      {
+        "title": "Proaktif Iletisim",
+        "goal": "VIP sadakatini koru",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (WA Hatti)", "color": "green" }
+        ],
+        "content": "VIP musterilere dogum gunu, yildonumu ve ozel gun teklifleri proaktif gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Otomatik VIP Terfisi",
+      "description": "Musteri VIP esigine ulasti, otomatik bilgilendirme ve ayricalik sunumu.",
+      "tags": [
+        { "text": "Proaktif", "color": "green" },
+        { "text": "VIP", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "VIP esik degerleri", "service": "Backend", "page": "CRM > VIP Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "VIP icin minimum ziyaret frekansi ve harcama esigini belirleyin (orn: 3+ ziyaret/ay, 3000+ TL/ay)" },
+          { "text": "VIP avantajlari listesi", "service": "Knowledge", "page": "Dokuman Bankasi > VIP Programi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "VIP musterilere sunulacak avantajlari tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Frekans + harcama analiz motoru", "service": "AgentAI", "page": "Musteri Analizi > VIP Scoring", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI tabanli VIP skorlama algoritması hazir" },
+          { "text": "VIP routing onceliklendirme", "service": "Backend", "page": "Routing > VIP Oncelik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "VIP musterilerin mesajlarina oncelik verme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "AI Analiz: Derya Ozturk — Son 3 ay: 11 ziyaret, toplam harcama 8.400 TL. VIP esigi asildi (3+ ziyaret/ay, 2000+ TL/ay). VIP terfisi tetikleniyor." },
+        { "role": "bot", "content": "Merhaba Derya Hanim! Size cok guzel bir haberimiz var:\n\nSiz artik VIP musterimizsiniz! Sadakatiniz icin tesekkur ederiz.\n\nVIP Ayricaliklarniz:\nOncelikli randevu hakki\nTum hizmetlerde %10 surekli indirim\nUcretsiz saç bakım urunleri (ayda 1)\nOzel gun surprizleri\n\nBundan sonra her randevunuzda VIP avantajlariniz otomatik uygulanacak!" },
+        { "role": "user", "content": "Vay, cok tesekkur ederim! Bu hafta sac boyama yaptirmak istiyorum." },
+        { "role": "bot", "content": "VIP musterimiz olarak size oncelikli slotlar ayirdik:\n\nYarin Carsamba: 10:00 (VIP slot)\nPersembe: 14:00, 16:00 (VIP slot)\n\nDip boyama: 1.200 TL → VIP fiyat: 1.080 TL (%10 indirim)\n\nHangi gun uygun?" },
+        { "role": "user", "content": "Yarin 10:00 olsun" },
+        { "role": "system", "content": "VIP randevu olusturuldu. VIP indirim otomatik uygulandi. Oncelikli slot atandi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "VIP Musteri Risk Tespiti",
+      "description": "VIP musteri 3 haftadir gelmedi, kayip riski.",
+      "tags": [
+        { "text": "Proaktif", "color": "green" },
+        { "text": "Churn Risk", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "VIP geri kazanma teklifi", "service": "Backend", "page": "CRM > VIP Geri Kazanma", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "VIP kaybini onlemek icin ozel teklif senaryolarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Churn risk tespiti", "service": "AgentAI", "page": "Musteri Analizi > Churn Risk", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "VIP musteri normal frekansinin altina dusunce risk alarmi tetiklenir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "AI Alarm: VIP musteri Derya Ozturk 22 gundur gelmedi (normal frekans: 7 gun). Churn risk skoru: YUKSEK. Geri kazanma akisi baslatiliyor." },
+        { "role": "bot", "content": "Merhaba Derya Hanim! Sizi ozledik!\n\nVIP musterimiz olarak size ozel bir teklif hazirlad k:\n\nBu hafta randevu alirsaniz herhangi bir hizmetinize ek olarak ucretsiz sac maskesi hediye!\n\nSize en uygun zamani soylerseniz hemen ayarlayalim." },
+        { "role": "user", "content": "Cok yogundum, Cuma gelebilirim" },
+        { "role": "bot", "content": "Sizi arlayacagimiz icin mutluyuz!\n\nCuma musait saatler:\n10:00, 13:00, 15:00 (VIP oncelikli)\n\nHangi saat uygun?" },
+        { "role": "system", "content": "VIP geri kazanma basarili. Musteri 22 gun sonra geri dondu. Hediye sac maskesi uygulandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "AI musteri verilerini analiz ederek otomatik VIP skorlama yapar. Churn risk tespiti ile VIP musteri kaybi proaktif onlenir.",
+    "backend": [
+      { "title": "VIP Scoring Engine", "goal": "VIP Skorlama", "content": "Ziyaret frekansi, harcama tutari ve hizmet cesitliligi bazli otomatik VIP skor hesaplama." },
+      { "title": "Churn Predictor", "goal": "Kayip Tahmini", "content": "VIP musteri normal frekansinin altina dustugunde erken uyari olusturan tahmin motoru." }
+    ],
+    "apis": [
+      { "title": "Customer Analytics API", "goal": "Musteri Analizi", "content": "Musteri ziyaret, harcama ve davranis verilerini analiz eden API." }
+    ]
+  },
+  "impact": {
+    "title": "VIP Programi ile Korunan Gelir",
+    "description": "VIP musteri sadakati ve geri kazanma ile korunan ve artirilan gelir.",
+    "resultLabel": "Korunan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "vipCustomerCount", "label": "VIP Musteri Sayisi", "default": 15, "hint": "Aktif VIP musteri sayisi", "editable": true },
+      { "key": "avgVipMonthlySpend", "label": "VIP Aylik Harcama", "default": 2800, "suffix": "TL", "hint": "VIP musteri ortalama aylik harcamasi", "editable": true },
+      { "key": "churnReduction", "label": "Kayip Azalma Orani", "default": 30, "prefix": "%", "hint": "VIP program ile onlenen kayip", "editable": true }
+    ],
+    "formula": "vipCustomerCount * avgVipMonthlySpend * (churnReduction / 100)",
+    "formulaDisplay": null
+  }
+}

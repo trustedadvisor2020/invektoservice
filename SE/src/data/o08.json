@@ -1,0 +1,108 @@
+{
+  "id": "o08",
+  "title": "Shuttle / Transfer Rezervasyonu",
+  "subtitle": "Airport Shuttle Booking",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir havaalani shuttle veya transfer bilgisi soruyor ve rezervasyon yaptirmak istiyor. Chatbot FAQ ile detaylari veriyor, template uzerinden ucus bilgilerini alarak shuttle ayarliyor.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Havalimani Yakinindaki Oteller, Resort)" },
+      { "label": "Sorun", "value": "Shuttle talepleri telefon veya e-posta ile aliyor — resepsiyon koordinasyonu zaman alici ve hata riski yuksek" },
+      { "label": "Deger", "value": "WhatsApp uzerinden otomatik shuttle bilgi + rezervasyon = operasyonel verimlilik + misafir konforu" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Knowledge Base'den shuttle programi ve fiyat bilgisi cekilir. Template ile ucus bilgileri toplanir ve shuttle rezervasyonu olusturulur.",
+    "steps": [
+      {
+        "title": "Talep Algilama",
+        "goal": "Shuttle/transfer intent tespiti",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'shuttle var mi', 'havalimani transfer', 'nasil gelirim' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Bilgi Sunumu",
+        "goal": "Shuttle detaylari",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Shuttle Programi)", "color": "green" }
+        ],
+        "content": "Knowledge Base'den shuttle saatleri, fiyatlar, rota bilgisi ve alternatif ulasim secenekleri cekilir."
+      },
+      {
+        "title": "Rezervasyon",
+        "goal": "Ucus bilgisi al, shuttle ayarla",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Operasyon)", "color": "amber" }
+        ],
+        "content": "Template ile misafirden ucus numarasi, varis saati ve kisi sayisi alinarak shuttle rezervasyonu olusturulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Shuttle Bilgi ve Rezervasyon",
+      "description": "Misafir shuttle bilgisi soruyor ve WhatsApp uzerinden hemen rezervasyon yaptiriyor.",
+      "tags": [
+        { "text": "FAQ + Rezervasyon", "color": "blue" },
+        { "text": "Otomatik", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Shuttle programi ve fiyat bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Shuttle & Transfer", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Shuttle saatleri, rotalar, fiyatlar ve kapasite bilgilerini Knowledge Base'e girin" },
+          { "text": "Shuttle rezervasyon bildirimi (operasyon ekibi)", "service": "Backend", "page": "Bildirim Ayarlari > Operasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Yeni shuttle rezervasyonunda sofor/operasyon ekibine bildirim gidecek sekilde ayarlayin" }
+        ],
+        "provider": [
+          { "text": "Shuttle intent ve bilgi eslestirme", "service": "AgentAI", "page": "Intent Tespiti > Ulasim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Shuttle/transfer intent'leri ve Knowledge Base eslestirmesi hazir" },
+          { "text": "Ucus bilgisi toplama template", "service": "Automation", "page": "Sablonlar > Shuttle Form", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ucus no, varis saati, kisi sayisi toplama sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, havalimani shuttle hizmetiniz var mi? Fiyati ne kadar?" },
+        { "role": "ai", "content": "Intent: Shuttle Bilgi. Knowledge Base sorgusu: Shuttle detaylari." },
+        { "role": "bot", "content": "Merhaba! Evet, havalimani shuttle hizmetimiz mevcuttur:\n\nIstanbul Havalimani (IST) Shuttle:\nUcret: 350 TL/kisi (tek yon)\nSure: Yaklasik 45 dakika\nCalısma Saatleri: 06:00 — 23:00\n\nSabiha Gokcen (SAW) Shuttle:\nUcret: 250 TL/kisi (tek yon)\nSure: Yaklasik 30 dakika\n\nShuttle ayartmak ister misiniz? Ucus bilgilerinizi paylasmaniz yeterli!" },
+        { "role": "user", "content": "Evet, Istanbul Havalimani'ndan gelecegiz. Yarin saat 14:30'da iniyoruz, 2 kisi." },
+        { "role": "bot", "content": "Harika! Shuttle rezervasyonunuz olusturuldu:\n\nTarih: Yarin\nHavalimani: Istanbul (IST)\nVaris Saati: 14:30\nKisi: 2\nToplam Ucret: 700 TL\n\nSoforumuz isminizin yazili oldugu tabela ile cikis kapisinda sizi karsilayacak. Ucus numaranizi paylasin, olasi gecikmelerde sizi takip edelim." },
+        { "role": "user", "content": "Ucus numaram TK 1234." },
+        { "role": "bot", "content": "Tesekkurler! Ucus TK 1234 ile kaydinizi olusturduk. Soforumuz sizi karsilayacak.\n\nIyi yolculuklar, gorusmek uzere!" },
+        { "role": "system", "content": "Shuttle rezervasyonu olusturuldu. Operasyon ekibine bildirim gonderildi. Ucus takibi aktif." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Knowledge Base'den shuttle programi ve fiyatlar cekilir. Template ile ucus bilgileri toplanir. Operasyon ekibine otomatik bildirim gonderilir.",
+    "backend": [
+      { "title": "Shuttle Booking Service", "goal": "Rezervasyon Yonetimi", "content": "Misafir bilgileri, ucus detaylari ve shuttle tercihini kaydeder. Operasyon ekibine bildirim gonderir." },
+      { "title": "Flight Tracker (Opsiyonel)", "goal": "Ucus Takibi", "content": "Ucus numarasi ile gercek zamanli ucus durumu takip edilir. Gecikme durumunda shuttle saati otomatik guncellenir." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Shuttle Bilgisi", "content": "Shuttle saatleri, fiyatlar, rotalar ve kapasite bilgisini AI'a sunar." },
+      { "title": "Notification API", "goal": "Operasyon Bildirimi", "content": "Yeni shuttle rezervasyonunda sofor ve operasyon ekibine aninda bildirim gonderir." }
+    ]
+  },
+  "impact": {
+    "title": "Shuttle Geliri ve Operasyonel Tasarruf",
+    "description": "WhatsApp uzerinden kolay shuttle rezervasyonu ile artan shuttle kullanimi ve azalan koordinasyon maliyeti.",
+    "resultLabel": "Ek Gelir + Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyShuttleBookings", "label": "Aylik Shuttle Rez.", "default": 80, "hint": "WhatsApp uzerinden alinan aylik shuttle rezervasyonu", "editable": true },
+      { "key": "avgShuttleRevenue", "label": "Ort. Shuttle Geliri", "default": 500, "suffix": "TL", "hint": "Rezervasyon basina ortalama gelir", "editable": true },
+      { "key": "minutesSavedPerBooking", "label": "Rez. Basina Tasarruf", "default": 8, "hint": "Manuel koordinasyona kiyasla kazanilan dakika", "editable": true },
+      { "key": "staffHourlyCost", "label": "Personel Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Resepsiyon personeli saatlik ucreti", "editable": true }
+    ],
+    "formula": "(monthlyShuttleBookings * avgShuttleRevenue) + (monthlyShuttleBookings * minutesSavedPerBooking * (staffHourlyCost / 60))",
+    "formulaDisplay": null
+  }
+}

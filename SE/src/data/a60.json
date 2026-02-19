@@ -1,0 +1,121 @@
+{
+  "id": "a60",
+  "title": "Yorum/Sikayet Yonetimi (Sosyal Kanit)",
+  "subtitle": "Review & Complaint Management",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Hasta yorum birakmak veya sikayet iletmek istiyor. Memnun hasta icin yorum linki gonderilir, memnuniyetsiz hasta icin eskalasyon ve cozum sureci baslatilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Memnun hastalar yorum birakmiyor, memnuniyetsiz hastalar sosyal medyada patlak veriyor" },
+      { "label": "Deger", "value": "AI ile memnun hastadan yorum alinir, sikayet hizla cozulerek kriz onlenir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Revenue Agent (C10)", "color": "green" },
+      { "name": "Ads Attribution (C12)", "color": "amber" }
+    ],
+    "servicesNote": "AI memnuniyet seviyesini tespit eder, memnun hastaya yorum linki gonderir, memnuniyetsiz hastada eskalasyon baslatir.",
+    "steps": [
+      {
+        "title": "Memnuniyet Tespiti",
+        "goal": "Memnun mu sikayet mi?",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Deneyim)", "color": "blue" }
+        ],
+        "content": "AI mesaj tonundan memnuniyet seviyesini tespit eder: pozitif vs negatif."
+      },
+      {
+        "title": "Aksiyon",
+        "goal": "Uygun yonlendirme yap",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Itibar)", "color": "green" }
+        ],
+        "content": "Memnun: Google/IG yorum linki. Memnuniyetsiz: yonetici eskalasyon + telafi teklifi."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Memnun Hasta — Yorum Yonlendirme",
+      "description": "Hasta islemden memnun, tesekkur ediyor. AI yorum linki gonderiyor.",
+      "tags": [
+        { "text": "Yorum", "color": "green" },
+        { "text": "Sosyal Kanit", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Google Maps yorum linki", "service": "Backend", "page": "Ayarlar > Yorum Linkleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Google Maps, Doktorsitesi vb. yorum linklerinizi tanimlayin" },
+          { "text": "Yorum tesvik mesaj template'i", "service": "Knowledge", "page": "Template > Yorum Tesvik", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C3", "hint": "Memnun hastaya gonderilecek yorum tesvik mesajini hazirlayin" }
+        ],
+        "provider": [
+          { "text": "Memnuniyet sentiment analizi", "service": "AgentAI", "page": "Sentiment > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Pozitif/negatif memnuniyet tespiti hazir" },
+          { "text": "Yorum linki gonderim otomasyonu", "service": "Automation", "page": "Is Akislari > Yorum Talep", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Memnun hasta tespitinde otomatik yorum linki gonderimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Dudak dolgum harika oldu, cok memnunum! Tesekkurler Dr. Selin'e." },
+        { "role": "ai", "content": "Sentiment: POZITIF. Memnuniyet seviyesi yuksek. Yorum yonlendirmesi baslatiliyor." },
+        { "role": "bot", "content": "Cok sevindik! Dr. Selin'e iletiriz \ud83d\ude0a\n\nDeneyiminizi diger hastalarla da paylasmak ister misiniz?\n\n\u2b50 Google'da yorum birakin:\n\ud83d\udd17 [Google Maps Yorum Linki]\n\n\ud83d\udcf8 Instagram'da bizi etiketleyin:\n@klinikadiniz\n\nYorumunuz bizi cok mutlu eder!" },
+        { "role": "user", "content": "Tabii, simdi yazarim!" },
+        { "role": "bot", "content": "Harika, cok tesekkur ederiz! \ud83d\ude4f\n\nBir sonraki kontrolunuz icin sizi arariz. Herhangi bir sorunuz olursa bize yazabilirsiniz." },
+        { "role": "system", "content": "Yorum linki gonderildi. Hasta CRM'de 'memnun + yorum bekliyor' olarak isaretlendi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Memnuniyetsiz Hasta — Sikayet Eskalasyon",
+      "description": "Hasta islemden memnun degil, sikayet iletmek istiyor.",
+      "tags": [
+        { "text": "Sikayet", "color": "red" },
+        { "text": "Eskalasyon", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sikayet eskalasyon kurallari", "service": "Backend", "page": "Ayarlar > Sikayet Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayet severity'sine gore yonlendirme kurallarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Negatif sentiment tespiti", "service": "AgentAI", "page": "Sentiment > Sikayet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sikayet ve memnuniyetsizlik tespiti hazir" },
+          { "text": "Yonetici alert sistemi", "service": "Automation", "page": "Bildirim > Sikayet Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayet tespitinde yonetici bildirim sistemi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Cok kotu oldu, dudaklarim asimetrik duruyor! Duzeltilmesini istiyorum." },
+        { "role": "ai", "content": "Sentiment: NEGATIF. Sikayet severity: YUKSEK. Eskalasyon gerekli." },
+        { "role": "bot", "content": "Cok uzgunuz bu durumu duydugumuza. Sizin icin hemen harekete geciyoruz.\n\n\ud83d\udcde Klinik koordinatoru 30 dakika icinde sizi arayacak.\n\ud83d\udc68\u200d\u2695\ufe0f Dr. Selin'e bilgi verildi.\n\ud83d\udcc5 En kisa surede duzeltme randevusu ayarlanacak.\n\nSizin memnuniyetiniz bizim onceligimiz." },
+        { "role": "system", "content": "Sikayet eskalasyonu yapildi. Klinik yoneticisi + doktor bilgilendirildi. Oncelikli cozum sureci baslatildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Sentiment Analiz + Eskalasyon Routing + Yorum Otomasyonu birlesimiyle calisir.",
+    "backend": [
+      { "title": "Sentiment Analyzer", "goal": "Memnuniyet Tespiti", "content": "Mesaj tonundan pozitif/negatif memnuniyet seviyesini tespit eder." },
+      { "title": "Review Router", "goal": "Yorum/Sikayet Yonlendirme", "content": "Memnuniyet seviyesine gore yorum linki veya sikayet eskalasyonu tetikler." }
+    ],
+    "apis": [
+      { "title": "Google Business API", "goal": "Yorum Takibi", "content": "Google Maps yorum linkinin olusturu lmasi ve yorum takibi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Yorum Degeri",
+    "description": "Memnun hastalardan alinan yorumlar ile artan online itibar ve yeni hasta kazanimi.",
+    "resultLabel": "Yorum Getirisi (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyHappyPatients", "label": "Aylik Memnun Hasta", "default": 40, "hint": "Islem sonrasi memnun hasta sayisi", "editable": true },
+      { "key": "reviewRate", "label": "Yorum Birakma Orani", "default": 25, "prefix": "%", "hint": "Yorum linki gonderilenlerden yorum birakan", "editable": true },
+      { "key": "reviewLeadValue", "label": "Yorum Basina Lead Degeri", "default": 3000, "suffix": "TL", "hint": "Her 5 yildiz yorumun getirdigi tahmini lead degeri", "editable": true }
+    ],
+    "formula": "monthlyHappyPatients * (reviewRate / 100) * reviewLeadValue",
+    "formulaDisplay": null
+  }
+}

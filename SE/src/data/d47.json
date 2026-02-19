@@ -1,0 +1,94 @@
+{
+  "id": "d47",
+  "title": "Ikinci Gorus: Onceki Tetkikler",
+  "subtitle": "Second Opinion with Prior Records",
+  "phase": "Phase 3",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Baska klinikten gelen hasta tetkik dosyalarini AI ile toplayan, doktora ileten ve konsultasyon randevusu olusturan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Ikinci gorus icin gelen hasta dosyalarini WA'dan gonderiyor — dosyalar dagiliniyor" },
+      { "label": "Deger", "value": "Merkezi dosya toplama + doktor iletimi ile profesyonel ikinci gorus sureci" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI tetkik dosyalarini toplar, merkezi arsive kaydeder ve ilgili doktora iletir.",
+    "steps": [
+      {
+        "title": "Dosya Toplama",
+        "goal": "Tetkikleri al",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Arsiv)", "color": "blue" }
+        ],
+        "content": "AI hastadan gerekli dosyalari talep eder ve merkezi arsive kaydeder."
+      },
+      {
+        "title": "Doktor Iletimi",
+        "goal": "Degerlendirmeye gonder",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Doktor)", "color": "green" }
+        ],
+        "content": "Toplanan dosyalar ilgili doktora iletilir ve konsultasyon randevusu olusturulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Ikinci Gorus — Dosya Toplama",
+      "description": "Hasta baska klinikten tetkik sonuclarini gonderiyor.",
+      "tags": [
+        { "text": "Ikinci Gorus", "color": "blue" },
+        { "text": "Tetkik", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Konsultasyon randevu tipi", "service": "Backend", "page": "Randevu Yonetimi > Konsultasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Ikinci gorus icin ozel randevu tipi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Dosya toplama akisi", "service": "AgentAI", "page": "AI > Dosya Toplama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tetkik dosyasi toplama ve doktor iletim akisi hazir" },
+          { "text": "Merkezi dosya arsivleme", "service": "Backend", "page": "Arsiv > Hasta Dosyasi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Gonderilen dosyalar merkezi arsivde hasta dosyasina baglantili saklanir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Baska klinikten tetkik sonuclarim var, degerlendirir misiniz?" },
+        { "role": "ai", "content": "Intent: Ikinci Gorus Talebi. Tetkik dosyasi toplama akisi baslatiliyor." },
+        { "role": "bot", "content": "Tabii, memnuniyetle degerlendiririz!\n\nLutfen su dosyalari gonderin:\n📄 Panoramik rontgen\n📄 Onceki tedavi raporu (varsa)\n📄 Tetkik sonuclari\n\nDosyalarinizi bu mesaja yanit olarak gonderebilirsiniz." },
+        { "role": "user", "content": "[Rontgen ve rapor dosyalari gonderiyor]" },
+        { "role": "bot", "content": "Dosyalariniz alindi! ✅\n\n📋 Dr. Mehmet'e iletilecek ve on degerlendirme yapilacak.\n📅 Konsultasyon randevusu icin sizi araiyalim mi?\n\nGenellikle 1-2 is gunu icinde on degerlendirme tamamlanir." },
+        { "role": "system", "content": "Tetkik dosyalari arsivlendi. Dr. Mehmet'e iletildi. Konsultasyon randevusu teklifi yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Dosya Toplama + Merkezi Arsiv + Doktor Routing birlesimiyle calisir.",
+    "backend": [
+      { "title": "Document Collector", "goal": "Dosya Toplama", "content": "Hasta dosyalarini WA uzerinden toplar ve merkezi arsive kaydeder." },
+      { "title": "Doctor Router", "goal": "Doktor Iletimi", "content": "Toplanan dosyalari ilgili doktora iletir ve bildirim gonderir." }
+    ],
+    "apis": [
+      { "title": "File Storage API", "goal": "Dosya Depolama", "content": "Hasta dosyalarinin sifrelenmis depolamaya yuklenmesi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kazanilan Konsultasyon",
+    "description": "Profesyonel ikinci gorus sureci ile kazanilan yeni hastalar.",
+    "resultLabel": "Konsultasyon Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlySecondOpinions", "label": "Aylik Ikinci Gorus", "default": 8, "hint": "Ikinci gorus talebi", "editable": true },
+      { "key": "conversionRate", "label": "Tedaviye Donusum", "default": 50, "prefix": "%", "hint": "Tedaviye baslayan hasta", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Tedavi Degeri", "default": 8000, "suffix": "TL", "hint": "Ortalama tedavi tutari", "editable": true }
+    ],
+    "formula": "monthlySecondOpinions * (conversionRate / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

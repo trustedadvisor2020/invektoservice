@@ -1,0 +1,97 @@
+{
+  "id": "a63",
+  "title": "Reklam Kaynagi: Click-to-WA Lead",
+  "subtitle": "Click-to-WhatsApp Ad Lead",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Click-to-WhatsApp reklamindan gelen lead'i yakalayan, UTM/kampanya bilgisini kaydeden ve lead kaynagini otomatik etiketleyen sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Dijital Reklam Veren)" },
+      { "label": "Sorun", "value": "Reklam harcamasi yapiliyor ama hangi reklamdan geldigini takip etmek imkansiz" },
+      { "label": "Deger", "value": "UTM tracking ile her lead'in kaynak reklamini bilir, ROAS olcersiniz" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Ads Attribution (C12)", "color": "amber" }
+    ],
+    "servicesNote": "C12 ile reklam UTM parametrelerini yakalayip lead kaynagi etiketler, AI hizli yanit verir.",
+    "steps": [
+      {
+        "title": "UTM Yakalama",
+        "goal": "Lead kaynagini tespit et",
+        "badges": [
+          { "text": "Sistem (Attribution)", "color": "amber" },
+          { "text": "Tenant (Reklam)", "color": "pink" }
+        ],
+        "content": "Click-to-WA linkindeki UTM parametreleri otomatik yakalanir ve lead'e etiketlenir."
+      },
+      {
+        "title": "Hizli Yanit + Yonlendirme",
+        "goal": "Reklam lead'ini donustur",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "AI reklam icerigi ile uyumlu karsilama mesaji gonderir ve randevuya yonlendirir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Instagram Reklam — Lazer Epilasyon Lead",
+      "description": "Instagram Click-to-WA reklamina tiklayan lead otomatik yakalaniyor.",
+      "tags": [
+        { "text": "Reklam", "color": "pink" },
+        { "text": "Attribution", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Click-to-WA reklam kampanyasi", "service": "Integrations", "page": "Reklam > Click-to-WA Setup", "status": "setup", "priority": "required", "effort": "medium", "capability": "C12", "hint": "Meta Ads uzerinden Click-to-WhatsApp kampanyasi olusturun ve UTM parametreleri ekleyin" },
+          { "text": "Kampanya bazli karsilama mesajlari", "service": "Knowledge", "page": "Template > Reklam Karsilama", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C3", "hint": "Her kampanya icin ozellesmis karsilama mesaji tanimlayin" }
+        ],
+        "provider": [
+          { "text": "UTM parametre yakalama", "service": "Backend", "page": "Attribution > UTM Parser", "status": "ready", "priority": "required", "effort": "easy", "capability": "C12", "hint": "Click-to-WA linkindeki UTM parametrelerini otomatik parse etme hazir" },
+          { "text": "Kampanya bazli AI karsilama", "service": "AgentAI", "page": "Intent Tespiti > Reklam Lead", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Reklam kaynagina gore ozellesmis AI karsilama hazir" },
+          { "text": "ROAS raporlama", "service": "Backend", "page": "Raporlar > Reklam ROAS", "status": "ready", "priority": "recommended", "effort": "easy", "capability": "C12", "hint": "Kampanya bazli lead ve donusum raporlama hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, reklamda gordugum lazer kampanyasi hakkinda bilgi almak istiyorum." },
+        { "role": "ai", "content": "Attribution: Instagram Ad > Lazer Kampanyasi (utm_campaign=lazer_feb26, utm_source=instagram). Lead etiketlendi." },
+        { "role": "bot", "content": "Hosgeldiniz! \ud83c\udf1f Lazer epilasyon kampanyamizi gordunuz, harika!\n\nSubat ayi ozel kampanyamiz:\n\u2728 6 Seans Full Body: 18.000 TL \u2192 14.400 TL (%20 indirim)\n\u2728 6 Seans Bikini: 4.500 TL \u2192 3.600 TL (%20 indirim)\n\n\u23f0 Kampanya 28 Subat'a kadar gecerli!\n\n\ud83d\udcc5 Ucretsiz cilt analizi icin randevu ayarlayalim mi?" },
+        { "role": "user", "content": "Full body icin randevu almak istiyorum." },
+        { "role": "bot", "content": "Harika! Full Body Lazer icin musait slotlar:\n\n\ud83d\udcc5 Carsamba 14:00 — Teknisyen Elif\n\ud83d\udcc5 Cuma 11:00 — Teknisyen Elif\n\n\u2705 Ilk seans ucretsiz cilt analizi dahil.\n\nHangi gun uygun?" },
+        { "role": "system", "content": "Lead yakalandi. Attribution: Instagram Ad — lazer_feb26. Randevu surecine yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Click-to-WA Attribution + AI kampanya eslesmesi + ROAS raporlama ile calisir.",
+    "backend": [
+      { "title": "UTM Parser", "goal": "Kaynak Tespiti", "content": "Click-to-WA linkindeki UTM parametrelerini parse eder ve lead'e etiketler." },
+      { "title": "Campaign Matcher", "goal": "Kampanya Esleme", "content": "UTM campaign degerine gore ilgili kampanya bilgisini ve ozel teklifi cekar." }
+    ],
+    "apis": [
+      { "title": "Meta Conversions API", "goal": "Donusum Takibi", "content": "Lead ve randevu donusumlerini Meta'ya geri bildirerek reklam optimizasyonu saglar." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Reklam Lead Degeri",
+    "description": "Click-to-WA reklamlardan yakalanan lead'lerin takip edilebilir donusum degeri.",
+    "resultLabel": "Reklam Donusum Geliri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAdLeads", "label": "Aylik Reklam Lead", "default": 60, "hint": "Click-to-WA reklamdan gelen lead", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 25, "prefix": "%", "hint": "Reklam lead'inden randevuya donusen", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Islem Degeri", "default": 6000, "suffix": "TL", "hint": "Reklam kampanyasi ortalama islem tutari", "editable": true }
+    ],
+    "formula": "monthlyAdLeads * (conversionRate / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

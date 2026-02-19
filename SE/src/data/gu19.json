@@ -1,0 +1,129 @@
+{
+  "id": "gu19",
+  "title": "Alerjik Reaksiyon / Sorun Bildirimi",
+  "subtitle": "Allergic Reaction & Issue Report",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Boyama sonrasi alerjik reaksiyon yasayan musteri mesaj atiyor ama normal kuyrukta bekliyor. AI alerji intent'ini tespit eder, ACIL flag atar ve salon sahibine aninda bildirim gonderir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Saglik/Guvenlik)" },
+      { "label": "Sorun", "value": "Alerjik reaksiyon bildirimi normal mesaj kuyrugunda kaybolur — geciken mudahale hukuki risk yaratir" },
+      { "label": "Deger", "value": "Aninda tespit + ACIL eskalasyon = musteri guvenligi + hukuki koruma" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Automation (C5)", "color": "red" }
+    ],
+    "servicesNote": "AI alerji/yan etki intent'ini yuksek oncelikle tespit eder, ACIL flag ile salon sahibine aninda bildirim gonderir ve musteriye ilk mudahale yonlendirmesi yapar.",
+    "steps": [
+      {
+        "title": "Acil Tespit",
+        "goal": "Alerji bildirimi yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "ACIL", "color": "red" }
+        ],
+        "content": "AI 'alerji', 'kasinti', 'sisme', 'kizariklik', 'yanma' gibi anahtar kelimeleri ve intent'leri ACIL oncelikle tespit eder."
+      },
+      {
+        "title": "Salon Sahibi Bildirimi",
+        "goal": "Yetkili kisiye aninda haber ver",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Acil Kontak)", "color": "red" }
+        ],
+        "content": "Salon sahibi ve ilgili personele aninda WhatsApp + SMS bildirimi gonderilir. Kullanilan urun bilgisi eklenir."
+      },
+      {
+        "title": "Musteri Yonlendirme",
+        "goal": "Ilk mudahale tavsiyeleri",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Saglik Protokolu)", "color": "green" }
+        ],
+        "content": "Musteriye ilk mudahale onerileri verilir: soguk kompres, antialerjik, gerekirse acil servise yonlendirme."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Boya Sonrasi Alerjik Reaksiyon",
+      "description": "Musteri sac boyamasindan sonra kasinti ve kizariklik bildiriyor.",
+      "tags": [
+        { "text": "ACIL", "color": "red" },
+        { "text": "Saglik", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Acil durum iletisim bilgileri", "service": "Backend", "page": "Ayarlar > Acil Durum Kontaklari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Salon sahibi ve sorumlu personelin acil durum telefon numaralarini girin" },
+          { "text": "Kullanilan urun/kimyasal kaydi", "service": "Backend", "page": "Islem Gecmisi > Urun Detayi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Her islemde kullanilan boya/kimyasal markasi ve seri numarasi kayit altinda olmali" }
+        ],
+        "provider": [
+          { "text": "Alerji intent tespiti (yuksek oncelik)", "service": "AgentAI", "page": "Intent Tespiti > Acil Saglik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Alerji, kasinti, sisme gibi anahtar kelime ve intent tespiti hazir" },
+          { "text": "ACIL eskalasyon mekanizmasi", "service": "Automation", "page": "Eskalasyon > Acil Durum", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "ACIL flag ile aninda salon sahibine bildirim gonderme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Dun sac boyattim, bu sabah basimda cok kasinti var ve ensemde kizarikliklar cikti. Ne yapmaliyim?" },
+        { "role": "ai", "content": "ACIL Intent: Alerjik Reaksiyon. Anahtar kelimeler: kasinti, kizariklik. Son islem: Dip boyama (dun). Kullanilan urun: [Boya Markasi X]. ACIL flag atandi." },
+        { "role": "bot", "content": "Merhaba! Durumunuzu cok ciddiye aliyoruz ve hemen yardimci olacagiz.\n\nIlk olarak:\n1. Kasintili bolgeyi kasimayin\n2. Soguk kompres uygulayin\n3. Varsa antialerjik (Zyrtec, Aerius) alin\n\nSalon yetkilimiz simdi sizinle iletisime gececek. Eger sisme gogse veya bogaziniza yayilirsa hemen 112'yi arayin.\n\nSizi aramamizi ister misiniz?" },
+        { "role": "system", "content": "ACIL BILDIRIM: Salon sahibi Ayse Hanim'a WhatsApp + SMS gonderildi. Musteri: [Ad], Islem: Dip boyama, Urun: [Marka X, Seri: ABC123]. Reaksiyon: Kasinti + kizariklik." },
+        { "role": "user", "content": "Evet lutfen arayin, biraz endiseleniyorum" },
+        { "role": "bot", "content": "Salon sahibimiz Ayse Hanim sizi 5 dakika icinde arayacak.\n\nBu arada belirti takibi:\n- Sisme artiyorsa → 112\n- Nefes darligi varsa → 112\n- Sadece kizariklik/kasinti ise → antialerjik + soguk kompres\n\nSizin icin buradayiz, merak etmeyin." },
+        { "role": "system", "content": "Salon sahibi musteri ile gorustu. Durum takibe alindi. Kullanilan urun batch'i kaydedildi. Hukuki koruma dosyasi olusturuldu." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Cilt Bakimi Sonrasi Kizariklik",
+      "description": "Musteri cilt bakimi sonrasi normalden fazla kizariklik bildiriyor.",
+      "tags": [
+        { "text": "Dikkat", "color": "amber" },
+        { "text": "Takip", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Islem sonrasi normal reaksiyon bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Islem Sonrasi Bilgi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Her islem tipi icin normal/anormal reaksiyon bilgisi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Reaksiyon siddet analizi", "service": "AgentAI", "page": "Intent Tespiti > Reaksiyon Analiz", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Normal vs anormal reaksiyon ayrimini yapan analiz hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Dun cilt bakimi yaptirdim, yuzum normalden fazla kizardi. Normal mi?" },
+        { "role": "ai", "content": "Intent: Islem Sonrasi Sorgulama. Islem: Cilt bakimi. Belirti: Kizariklik. Siddet: ORTA. Normal reaksiyon sinirinda." },
+        { "role": "bot", "content": "Merhaba! Cilt bakimi sonrasi hafif kizariklik 24-48 saat icinde normal kabul edilir.\n\nAnkak su durumlarda bize hemen yazin:\n- Kizariklik 48 saatten fazla surerse\n- Sisme veya kabarcik olusursa\n- Aci/yanma hissi artarsa\n\nBu arada: Gunes kremi surmeyi ve makyajdan 24 saat kacınmayı unutmayin.\n\nYarin durum nasil, kontrol mesaji gondermemizi ister misiniz?" },
+        { "role": "user", "content": "Evet, lutfen yarin kontrol edin" },
+        { "role": "system", "content": "T+1 gun hatirlatma kuyruge alindi. Salon sahibine bilgi notu gonderildi (ACIL degil, takip)." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "AI alerji/yan etki intent'lerini en yuksek oncelikle tespit eder. ACIL flag mekanizmasi ile salon sahibine aninda coklu kanal (WA + SMS) bildirimi gonderilir.",
+    "backend": [
+      { "title": "Urgent Intent Classifier", "goal": "Acil Tespit", "content": "Alerji, saglik sorunu ve acil durum anahtar kelimelerini en yuksek oncelikle siniflandiran AI modulu." },
+      { "title": "Emergency Notifier", "goal": "Acil Bildirim", "content": "ACIL flag atanan mesajlari salon sahibine WhatsApp + SMS ile aninda ileten bildirim sistemi." }
+    ],
+    "apis": [
+      { "title": "Emergency Notification API", "goal": "Coklu Kanal Bildirim", "content": "WhatsApp, SMS ve e-posta ile esz zamanli acil bildirim gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Alerji Risk Yonetimi Degeri",
+    "description": "Hizli mudahale ile onlenen hukuki risk ve musteri kaybi.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyReactions", "label": "Aylik Reaksiyon Bildirimi", "default": 3, "hint": "Ortalama aylik alerji/sorun bildirimi", "editable": true },
+      { "key": "avgLegalRiskCost", "label": "Ort. Hukuki Risk Maliyeti", "default": 15000, "suffix": "TL", "hint": "Gecikmeli mudahalenin potansiyel maliyeti", "editable": true },
+      { "key": "preventionRate", "label": "Onleme Orani", "default": 80, "prefix": "%", "hint": "Hizli mudahale ile onlenen risk orani", "editable": true }
+    ],
+    "formula": "monthlyReactions * avgLegalRiskCost * (preventionRate / 100)",
+    "formulaDisplay": null
+  }
+}

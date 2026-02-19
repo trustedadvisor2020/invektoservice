@@ -1,0 +1,129 @@
+{
+  "id": "o06",
+  "title": "Yabanci Misafir (EN/DE/RU)",
+  "subtitle": "Multi-Language Guest Support",
+  "phase": "Phase 3",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Yabanci dilde mesaj gonderen misafirler icin AI otomatik dil algilama ve cok dilli destek sunar. Ingilizce, Almanca, Rusca ve diger dillerde akici iletisim kurulur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Uluslararasi Misafir Agırlayan Oteller)" },
+      { "label": "Sorun", "value": "Yabanci misafirler Turkce bilmeden yazıyor — resepsiyon dil bariyeri nedeniyle yavas veya yanlis cevap veriyor" },
+      { "label": "Deger", "value": "Otomatik dil algilama + ana dilde cevap = misafir memnuniyeti + uluslararasi puan artisi" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Human Handoff (C2)", "color": "red" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI gelen mesajin dilini otomatik algilar ve cevabi ayni dilde uretir. Knowledge Base'deki bilgiler tum dillerde sunulabilir. Karmasik konularda cok dilli agent'a yonlendirilir.",
+    "steps": [
+      {
+        "title": "Dil Algilama",
+        "goal": "Mesaj dilini tespit et",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI gelen mesajin dilini otomatik algilar (EN, DE, RU, FR, AR vb.) ve cevap dilini buna gore ayarlar."
+      },
+      {
+        "title": "Bilgi Eslestirme",
+        "goal": "Dogru bilgiyi ilgili dilde sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Cok Dilli Icerik)", "color": "green" }
+        ],
+        "content": "Knowledge Base'deki FAQ ve otel bilgileri AI tarafindan misafirin diline cevrilererek sunulur."
+      },
+      {
+        "title": "Eskalasyon (Gerekirse)",
+        "goal": "Dil bilen agent'a yonlendir",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Ekip Dil Becerisi)", "color": "red" }
+        ],
+        "content": "Karmasik konularda ilgili dili bilen agent'a otomatik yonlendirme yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Ingilizce Misafir — Genel Bilgi Sorusu",
+      "description": "Ingilizce yazan misafir otel hizmetleri hakkinda bilgi istiyor. AI Ingilizce cevap veriyor.",
+      "tags": [
+        { "text": "Multi-Language", "color": "purple" },
+        { "text": "Otomatik", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Otel bilgileri (Turkce ve Ingilizce)", "service": "Knowledge", "page": "Dokuman Bankasi > Otel Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Temel otel bilgilerini Turkce girin, AI otomatik tercume edecektir" },
+          { "text": "Cok dilli cevap sablonlari", "service": "Knowledge", "page": "Sablon Yonetimi > Cok Dilli", "status": "setup", "priority": "required", "effort": "medium", "capability": "C3", "hint": "Sik kullanilan cevaplarin EN/DE/RU versiyonlarini hazirlayabilirsiniz (opsiyonel — AI otomatik cevirir)" }
+        ],
+        "provider": [
+          { "text": "Dil algilama ve cok dilli cevap uretimi", "service": "AgentAI", "page": "Dil Ayarlari > Multi-Language", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI 50+ dilde algilama ve cevap uretme kapasitesine sahiptir" },
+          { "text": "Dil bazli agent yonlendirme", "service": "Backend", "page": "Eskalasyon Kurallari > Dil Routing", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Karmasik konularda dil bilen agent'a otomatik yonlendirme" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Hello! We're arriving tomorrow. Is there a pool and what time does breakfast start?" },
+        { "role": "ai", "content": "Language: English. Intent: Hotel Amenities (Pool + Breakfast). Knowledge Base sorgusu baslatiliyor." },
+        { "role": "bot", "content": "Hello! Welcome to our hotel! Here's the information you need:\n\nPool: Open daily from 08:00 to 20:00 (heated outdoor pool + indoor pool)\nBreakfast: Served from 07:00 to 10:30 at the main restaurant (open buffet)\n\nWe also have a spa center and fitness room available for our guests. Looking forward to welcoming you tomorrow!" },
+        { "role": "user", "content": "Great, thank you! One more thing — do you have airport shuttle service?" },
+        { "role": "bot", "content": "Yes, we do! Our airport shuttle details:\n\nPickup: Istanbul Airport (IST)\nPrice: 350 TL per person (one way)\nDuration: Approximately 45 minutes\nBooking: Please share your flight number and arrival time, and we'll arrange it for you.\n\nWould you like to book a shuttle?" },
+        { "role": "system", "content": "Otomatik cozum: Ingilizce mesaj algilandi, Ingilizce cevap verildi. Knowledge Base'den bilgi cekildi. Agent mudahalesi gerekmedi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Almanca Misafir — Sikayet ve Eskalasyon",
+      "description": "Almanca yazan misafir sikayet bildiriyor. AI empati gosteriyor, karmasik konu nedeniyle Almanca bilen agent'a yonlendiriyor.",
+      "tags": [
+        { "text": "Multi-Language", "color": "purple" },
+        { "text": "Agent Handoff", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Dil becerili agent listesi", "service": "Backend", "page": "Ekip Yonetimi > Dil Becerileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Hangi agent'larin hangi dilleri bildigini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Dil bazli eskalasyon", "service": "Backend", "page": "Eskalasyon > Dil Routing", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Dil algilama sonucuna gore uygun agent'a yonlendirme" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Guten Tag, unser Zimmer wurde noch nicht gereinigt. Wir warten seit 2 Stunden!" },
+        { "role": "ai", "content": "Language: German. Intent: Sikayet — Temizlik. Oncelik: YUKSEK. Almanca bilen agent aranıyor." },
+        { "role": "bot", "content": "Es tut uns sehr leid! Wir entschuldigen uns fur die Unannehmlichkeiten. Unser Housekeeping-Team wurde sofort informiert.\n\nEin deutschsprachiger Mitarbeiter wird sich in Kurze bei Ihnen melden, um das Problem personlich zu losen." },
+        { "role": "system", "content": "Almanca sikayet algilandi. Empati mesaji gonderildi. Almanca bilen agent'a (Agent: Mehmet) eskalasyon yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "AI gelen mesajin dilini 50+ dilde otomatik algilar. Knowledge Base icerigi AI tarafindan aninda tercume edilir. Karmasik konularda dil bazli agent routing yapilir.",
+    "backend": [
+      { "title": "Language Detection Service", "goal": "Dil Algilama", "content": "Gelen mesajin dilini AI modeli ile tespit eder. Sonraki tum cevaplar ayni dilde uretilir." },
+      { "title": "Multilingual Response Engine", "goal": "Cok Dilli Cevap", "content": "Knowledge Base'deki bilgileri hedef dile cevirir ve dogal dilde cevap olusturur." }
+    ],
+    "apis": [
+      { "title": "AI Translation API", "goal": "Aninda Tercume", "content": "Otel bilgileri, politikalar ve FAQ iceriklerini misafirin diline gercek zamanli cevirir." },
+      { "title": "Agent Routing API", "goal": "Dil Bazli Yonlendirme", "content": "Misafirin diline gore uygun dil becerisine sahip agent'a eskalasyon yapar." }
+    ]
+  },
+  "impact": {
+    "title": "Uluslararasi Misafir Memnuniyeti",
+    "description": "Dil bariyerinin kaldirilmasiyla yabanci misafir memnuniyetinde artis ve olumlu uluslararasi yorum kazanimi.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyForeignGuests", "label": "Aylik Yabanci Misafir", "default": 120, "hint": "WhatsApp uzerinden iletisim kuran aylik yabanci misafir", "editable": true },
+      { "key": "satisfactionLift", "label": "Memnuniyet Artisi (%)", "default": 25, "hint": "Ana dilde hizmetle saglanan memnuniyet artisi", "editable": true },
+      { "key": "avgGuestSpend", "label": "Ortalama Misafir Harcamasi", "default": 12000, "suffix": "TL", "hint": "Yabanci misafir basina ortalama konaklama geliri", "editable": true }
+    ],
+    "formula": "monthlyForeignGuests * (satisfactionLift / 100) * avgGuestSpend * 0.1",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "id": "o04",
+  "title": "Misafir Sikayeti (Oda, Gurultu, Ariza)",
+  "subtitle": "Guest Complaint Management",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir oda arizasi, temizlik eksikligi veya gurultu sikayeti bildiriyor. AI empati ile karsilik verir, ilgili departmana aninda yonlendirir ve cozum sonrasi memnuniyet anketi gonderir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Tum Otel Tipleri)" },
+      { "label": "Sorun", "value": "Misafir sikayetleri gec cevaplandiginda kotu yorum riski artiyor — aninda mudahale kritik" },
+      { "label": "Deger", "value": "Hizli empati + departman yonlendirmesi = sikayet cozum suresi kisaliyor, kotu yorum onleniyor" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Human Handoff (C2)", "color": "red" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI sikayet icerigini analiz ederek kategori ve oncelik belirler. Acil durumlar aninda ilgili departmana yonlendirilir. Cozum sonrasi memnuniyet anketi otomatik gonderilir.",
+    "steps": [
+      {
+        "title": "Sikayet Algilama",
+        "goal": "Sikayet kategorisi ve oncelik",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI mesajdaki negatif duyguyu ve sikayet konusunu (ariza, temizlik, gurultu, servis) otomatik tespit eder ve oncelik seviyesi belirler."
+      },
+      {
+        "title": "Empati ve Bilgilendirme",
+        "goal": "Misafiri sakinlestir",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Ton)", "color": "blue" }
+        ],
+        "content": "Empati iceren sablon mesaj ile misafir bilgilendirilir. Sorunun ne kadar surede cozulecegi iletilir."
+      },
+      {
+        "title": "Departman Yonlendirmesi",
+        "goal": "Dogru ekibi bilgilendir",
+        "badges": [
+          { "text": "Sistem (Eskalasyon)", "color": "purple" },
+          { "text": "Tenant (Organizasyon)", "color": "red" }
+        ],
+        "content": "Sikayet kategorisine gore teknik servis, housekeeping veya on-buro departmanina otomatik bildirim gonderilir."
+      },
+      {
+        "title": "Takip ve Anket",
+        "goal": "Memnuniyet kontrolu",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Anket)", "color": "green" }
+        ],
+        "content": "Cozum sonrasi misafire memnuniyet anketi gonderilir. Dusuk puan gelirse yonetici bilgilendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Oda Arizasi Sikayeti",
+      "description": "Misafir klima arizasi bildiriyor. AI empati gosteriyor, teknik servise yonlendiriyor ve takip ediyor.",
+      "tags": [
+        { "text": "Acil", "color": "red" },
+        { "text": "Teknik Servis", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Departman iletisim bilgileri", "service": "Backend", "page": "Ekip Yonetimi > Departmanlar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Teknik servis, housekeeping ve on-buro departman sorumlu bilgilerini tanimlayin" },
+          { "text": "Sikayet kategorileri ve SLA sureleri", "service": "Knowledge", "page": "Dokuman Bankasi > Sikayet Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sikayet tiplerine gore mudahale suresi kurallarini belirleyin (ornek: ariza = 30 dk)" }
+        ],
+        "provider": [
+          { "text": "Sikayet analiz ve kategorizasyon", "service": "AgentAI", "page": "Sentiment Analiz > Sikayet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI sikayet mesajlarindan kategori (ariza/temizlik/gurultu) ve aciliyet seviyesi cikarir" },
+          { "text": "Departman eskalasyon akisi", "service": "Backend", "page": "Eskalasyon Kurallari > Otel", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayet kategorisine gore otomatik departman yonlendirmesi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Odanin klimasi calismiyor, cok sicak! Hemen bir seyler yapin lutfen." },
+        { "role": "ai", "content": "Intent: Sikayet — Oda Arizasi (Klima). Oncelik: YUKSEK. Departman: Teknik Servis. Empati modu." },
+        { "role": "bot", "content": "Cok uzgunuz, bu durumdan dolayi ozur dileriz! Teknik ekibimize aninda bildirdim, en gec 15 dakika icinde odaniza gelecekler.\n\nBu surece kadar lobimizde serin bir icecek ikram etmemizi ister misiniz?" },
+        { "role": "user", "content": "Tamam, bekliyorum. Ama bir an once cozulsin." },
+        { "role": "bot", "content": "Kesinlikle, en kisa surede cozulecek. Teknik ekibimiz yola cikti. Sizi bilgilendirmeye devam edecegim." },
+        { "role": "system", "content": "Teknik servis bildirimi gonderildi. SLA: 15 dakika. Eskalasyon: Aktif." },
+        { "role": "bot", "content": "Merhaba, klimanizin onarildigini ogrendim. Her sey yolunda mi simdi? Yasadiginiz rahatsizlik icin tekrar ozur dileriz.\n\nDeneyiminizi degerlendirmeniz icin kucuk bir anketimiz var: [Anket Linki]" },
+        { "role": "system", "content": "Sikayet cozuldu. Memnuniyet anketi gonderildi. Cozum suresi: 12 dakika (SLA icinde)." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "AI sikayet mesajlarindan duygu analizi ve kategorizasyon yapar. Eskalasyon sistemi ile ilgili departmana otomatik bildirim gonderilir. Cozum sonrasi anket ile memnuniyet olculur.",
+    "backend": [
+      { "title": "Complaint Classifier", "goal": "Sikayet Siniflandirma", "content": "AI mesajdaki sikayet turunu (ariza, temizlik, gurultu, servis) ve aciliyet seviyesini (dusuk/orta/yuksek/kritik) belirler." },
+      { "title": "Escalation Router", "goal": "Departman Yonlendirme", "content": "Sikayet kategorisine gore dogru departmana (teknik servis, housekeeping, F&B, on-buro) otomatik bildirim gonderir." }
+    ],
+    "apis": [
+      { "title": "Notification API", "goal": "Departman Bildirimi", "content": "Ilgili departman sorumlularina SMS, e-posta veya uygulama icinden anlık bildirim gonderir." },
+      { "title": "Survey API", "goal": "Memnuniyet Anketi", "content": "Cozum sonrasi otomatik anket gonderimi ve sonuc takibi." }
+    ]
+  },
+  "impact": {
+    "title": "Onlenen Kotu Yorum Kaybi",
+    "description": "Hizli sikayet cozumu ile onlenen kotu yorumlarin potansiyel gelir etkisi hesaplamasi.",
+    "resultLabel": "Korunan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyComplaints", "label": "Aylik Sikayet Sayisi", "default": 40, "hint": "WhatsApp/mesaj uzerinden gelen aylik sikayet", "editable": true },
+      { "key": "badReviewPreventionRate", "label": "Onlenen Kotu Yorum (%)", "default": 60, "hint": "Hizli cozumle onlenen kotu yorum orani", "editable": true },
+      { "key": "revenuePerReview", "label": "Kotu Yorum Basina Kayip", "default": 8000, "suffix": "TL", "hint": "1 kotu yorumun kacirdigi potansiyel gelir", "editable": true }
+    ],
+    "formula": "monthlyComplaints * (badReviewPreventionRate / 100) * revenuePerReview",
+    "formulaDisplay": null
+  }
+}

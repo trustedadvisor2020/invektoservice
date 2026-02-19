@@ -1,0 +1,102 @@
+{
+  "id": "o02",
+  "title": "Check-in Bilgilendirme",
+  "subtitle": "Check-in Information",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir check-in saati, otel adresi ve ulasim bilgilerini soruyor. Chatbot %100 otomatik olarak adres, harita linki ve shuttle bilgisiyle cevap verir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Tum Otel Tipleri)" },
+      { "label": "Sorun", "value": "Check-in saati, adres ve ulasim sorulari en sik gelen mesajlarin %25'ini olusturuyor — resepsiyon surekli ayni bilgiyi tekrarliyor" },
+      { "label": "Deger", "value": "Tamamen otomatik cevap = resepsiyon yukunun azalmasi + misafir deneyiminde iyilesme" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Bu senaryo tamamen Knowledge Base ve Template tabanlidir. PMS entegrasyonu gerektirmez, chatbot otomatik cevap verir.",
+    "steps": [
+      {
+        "title": "Mesaj Algilama",
+        "goal": "Check-in intent tespiti",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'check-in saati', 'otele nasil gelirim', 'adres nedir', 'shuttle var mi' gibi intent'leri otomatik tespit eder."
+      },
+      {
+        "title": "Bilgi Eslestirme",
+        "goal": "Dogru bilgiyi sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Otel Bilgileri)", "color": "green" }
+        ],
+        "content": "Knowledge Base'den check-in/check-out saatleri, adres, harita linki, shuttle programi ve ulasim alternatifleri cekilir."
+      },
+      {
+        "title": "Otomatik Cevap",
+        "goal": "Template ile yanit",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Icerik)", "color": "blue" }
+        ],
+        "content": "Hazir sablonlar ile check-in bilgisi, harita linki ve shuttle detaylari tek mesajda gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Check-in Saati ve Adres Sorusu",
+      "description": "Misafir check-in saati ve otel adresini soruyor. Chatbot otomatik bilgi veriyor.",
+      "tags": [
+        { "text": "Tam Otomatik", "color": "green" },
+        { "text": "FAQ", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Otel adres ve iletisim bilgileri", "service": "Knowledge", "page": "Dokuman Bankasi > Otel Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Adres, telefon, Google Maps linki ve check-in/check-out saatlerini Knowledge Base'e girin" },
+          { "text": "Check-in / Check-out saatleri", "service": "Knowledge", "page": "Dokuman Bankasi > Otel Politikalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Standart ve erken check-in saatlerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Check-in intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Otel FAQ", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Check-in/adres/ulasim intent'leri varsayilan olarak tanimli" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, yarin check-in yapacagiz. Saat kacta gelebiliriz? Otelin adresi nedir?" },
+        { "role": "ai", "content": "Intent: Check-in Bilgi. Knowledge Base sorgusu: Check-in saati + adres + harita." },
+        { "role": "bot", "content": "Hos geldiniz! Iste check-in bilgileriniz:\n\nCheck-in: 14:00'den itibaren\nCheck-out: 12:00'ye kadar\n\nAdresimiz: Barbaros Bulvari No:45, Besiktas/Istanbul\nGoogle Maps: [Harita Linki]\n\nSorulariniz icin 7/24 buradayiz!" },
+        { "role": "user", "content": "Havaalanidan shuttle var mi?" },
+        { "role": "bot", "content": "Evet! Istanbul Havalimani'ndan shuttle hizmetimiz mevcuttur:\n\nUcret: 350 TL/kisi (tek yon)\nSure: Yaklasik 45 dakika\nRezarvasyon: En az 24 saat onceden\n\nShuttle rezervasyonu icin ucus bilgilerinizi (tarih, saat, ucus no) paylasin, hemen ayarlayalim." },
+        { "role": "system", "content": "Otomatik cozum: Knowledge Base ile check-in bilgisi ve shuttle detaylari verildi. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo tamamen Knowledge Base ve Template tabanlidir. PMS entegrasyonu gerektirmez. Chatbot FAQ yapisindan bilgileri cekerek otomatik cevap verir.",
+    "backend": [
+      { "title": "Knowledge FAQ Engine", "goal": "Bilgi Eslestirme", "content": "Misafir sorusundan intent cikarilir ve Knowledge Base'deki ilgili FAQ kartiyla eslestirilir." },
+      { "title": "Template Engine", "goal": "Sablonlu Cevap", "content": "Otel bilgileri, harita linkleri ve shuttle detaylari dinamik template ile birlestirilerek gonderilir." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "FAQ Verisi", "content": "Otel adresi, check-in saatleri, ulasim bilgileri ve shuttle programi gibi statik bilgileri sunar." }
+    ]
+  },
+  "impact": {
+    "title": "Resepsiyon Zaman Tasarrufu",
+    "description": "Check-in, adres ve ulasim sorularinin otomatik cevaplanmasiyla resepsiyon ekibinin tasarruf ettigi sure.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyCheckinQueries", "label": "Gunluk Check-in Sorusu", "default": 25, "hint": "Ortalama gunluk check-in/adres/ulasim sorusu", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 4, "hint": "Resepsiyon personelinin harcadigi sure", "editable": true },
+      { "key": "staffHourlyCost", "label": "Personel Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Resepsiyon personeli saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyCheckinQueries * minutesPerQuery * (staffHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

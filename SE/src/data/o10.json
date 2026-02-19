@@ -1,0 +1,143 @@
+{
+  "id": "o10",
+  "title": "Sezonluk Kampanya / Early Bird",
+  "subtitle": "Seasonal Campaign Outbound",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Otel yaz sezonu kampanyasini gecmis misafirlere WhatsApp uzerinden segment bazli duyuran proaktif outbound sistemi. Erken rezervasyon indirimi, sadakat segmenti ve OTA yerine direkt kanal tesvik edilerek komisyon tasarrufu saglanir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Resort & Sehir Otelleri)" },
+      { "label": "Sorun", "value": "Sezon oncesi doluluk dusuk, OTA komisyonlari yuksek, eski misafirlere ulasim yetersiz" },
+      { "label": "Deger", "value": "Direkt rezervasyon artisi, OTA komisyon tasarrufu, misafir sadakati guclendirilir" }
+    ],
+    "services": [
+      { "name": "WhatsApp Business API (C1)", "color": "green" },
+      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
+      { "name": "Raporlama & Analitik (C4)", "color": "amber" },
+      { "name": "AI Karar Motoru (C8)", "color": "red" }
+    ],
+    "servicesNote": "Outbound Engine segment bazli template mesaj gonderir; misafir yanit verirse AI sohbet moduna gecer ve rezervasyon surecini tamamlar.",
+    "steps": [
+      {
+        "title": "Segmentasyon (Targeting)",
+        "goal": "Dogru kitleyi sec",
+        "badges": [
+          { "text": "Sistem (Otomatik)", "color": "purple" },
+          { "text": "Tenant (Misafir Verisi)", "color": "blue" }
+        ],
+        "content": "Son 2 yilin misafir veritabani analiz edilir. Tekrar gelen misafirler, aileler, ciftler ve kurumsal gruplar ayri segmentlere ayrilir."
+      },
+      {
+        "title": "Kampanya Tasarimi (Content)",
+        "goal": "Segment bazli teklif olustur",
+        "badges": [
+          { "text": "Tenant (Kampanya Bilgisi)", "color": "amber" },
+          { "text": "Sistem (Template)", "color": "purple" }
+        ],
+        "content": "Her segment icin farkli teklif hazirlanir: Aileler icin cocuk ucretsiz paketi, ciftler icin spa dahil romantik paket, sadik misafirler icin %20 early bird indirimi."
+      },
+      {
+        "title": "Gonderim (Outbound)",
+        "goal": "WhatsApp template ile kampanya duyur",
+        "badges": [
+          { "text": "Sistem (Outbound Engine)", "color": "purple" },
+          { "text": "Tenant (WhatsApp Hatti)", "color": "green" }
+        ],
+        "content": "Meta onayindan gecmis WhatsApp template mesajlari Outbound Engine ile zamanlanmis olarak gonderilir. Acilis ve tiklanma oranlari izlenir."
+      },
+      {
+        "title": "Donusum (Conversion)",
+        "goal": "Yanit verenleri rezervasyona cevir",
+        "badges": [
+          { "text": "Sistem (AI Sohbet)", "color": "blue" },
+          { "text": "Tenant (Fiyat Politikasi)", "color": "amber" }
+        ],
+        "content": "Misafir yanit verdiginde AI sohbet moduna gecer. Tarih tercihi, oda tipi ve ozel istekler toplanarak rezervasyon linki veya direkt onay verilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sadik Misafir Early Bird Kampanyasi",
+      "description": "2+ kez konaklayan misafire ozel erken rezervasyon indirimi.",
+      "tags": [
+        { "text": "Outbound", "color": "purple" },
+        { "text": "Proaktif", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Misafir segmentasyon verisi (son 2 yil)", "service": "Knowledge", "page": "Misafir Veritabani > Segment Tanimlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C4", "hint": "PMS'den gecmis konaklama verisini export edip segment kurallari tanimlayin" },
+          { "text": "Kampanya fiyat listesi ve kosullari", "service": "Knowledge", "page": "Kampanya Yonetimi > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Early bird indirim oranlari ve gecerlilik tarihlerini girin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine template gonderim altyapisi", "service": "Outbound", "page": "Kampanya Gonderim > Template Yonetimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayindan gecmis kampanya template'leri sistemde hazir" },
+          { "text": "AI sohbet modu (yanit donusum akisi)", "service": "AgentAI", "page": "Sohbet Modulleri > Kampanya Donusum", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kampanya yanitlarini rezervasyona cevirme promptu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Outbound Engine: 'Sadik Misafir' segmenti secildi — 342 misafir. Template: Yaz Early Bird %20." },
+        { "role": "bot", "content": "Merhaba Ahmet Bey, gecen yaz bizimle gecirdiginiz guzel gunleri hatirliyoruz! Bu yaz icin size ozel %20 erken rezervasyon indirimimiz var. 15 Haziran - 15 Eylul arasi tum oda tipleri icin gecerli. Detaylar icin yanit verin!" },
+        { "role": "user", "content": "Merhaba, temmuz basi icin deniz manzarali oda musait mi?" },
+        { "role": "ai", "content": "Intent: Rezervasyon Sorgusu. Segment: Sadik Misafir. Aksiyon: Musaitlik kontrolu + fiyat teklifi." },
+        { "role": "bot", "content": "Temmuz 1-7 arasi deniz manzarali Superior odamiz musait! Early bird fiyatimiz: gecelik 4.800 TL yerine 3.840 TL (7 gece toplam 26.880 TL). Rezervasyonu simdi olusturmami ister misiniz?" },
+        { "role": "user", "content": "Harika, kesinlestirelim. Kahvalti dahil mi?" },
+        { "role": "bot", "content": "Evet, acik bufe kahvalti dahildir! Rezervasyonunuz olusturuldu: 1-7 Temmuz, Superior Deniz Manzarali, 2 kisi. Onay ve odeme linkiniz: [link]. Sizleri yeniden agirlayacagimiz icin cok heyecanliyiz!" },
+        { "role": "system", "content": "Rezervasyon tamamlandi. CRM'de misafir profili guncellendi. Kampanya donusum orani: %12.8." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Aile Segmenti Yaz Paketi",
+      "description": "Aileli misafirlere cocuk ucretsiz paket kampanyasi.",
+      "tags": [
+        { "text": "Outbound", "color": "purple" },
+        { "text": "Aile Paketi", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Aile segmenti tanimlamasi (cocuklu misafir verisi)", "service": "Knowledge", "page": "Misafir Veritabani > Aile Segmenti", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Gecmis konaklamalarda cocuklu kayit olan misafirleri filtreleyin" }
+        ],
+        "provider": [
+          { "text": "Aile paketi kampanya template'i", "service": "Outbound", "page": "Template Kutuphanesi > Otel Kampanyalari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Cocuk ucretsiz paket template'i Meta onayinda" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Outbound Engine: 'Aile' segmenti — 187 misafir. Template: Yaz Aile Paketi." },
+        { "role": "bot", "content": "Merhaba Zeynep Hanim, bu yaz cocuklarla birlikte unutulmaz bir tatil icin ozel paketimiz var! 0-6 yas ucretsiz konaklama + cocuk kulubu + aquapark erisimi dahil. 1 Haziran'dan itibaren gecerli. Bilgi almak ister misiniz?" },
+        { "role": "user", "content": "Ne kadar fiyat? 2 cocugumuz var, 4 ve 8 yasinda." },
+        { "role": "bot", "content": "4 yasindaki cocugunuz icin konaklama tamamen ucretsiz! 8 yasindaki icin %50 indirimli cocuk yatagi eklenebilir. Aile Suite odamiz: gecelik 5.200 TL (4 kisi). Tarih tercihiniz var mi?" },
+        { "role": "user", "content": "Agustos ilk hafta bakalim." },
+        { "role": "bot", "content": "1-8 Agustos Aile Suite musait! 7 gece toplam: 36.400 TL (0-6 yas ucretsiz, 8 yas %50 indirimli). Aquapark ve cocuk kulubu dahil. Onay icin odeme linkini gondereyim mi?" },
+        { "role": "system", "content": "Kampanya donusum: Aile segmenti acilis orani %34, donusum %8.2." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Outbound Engine zamanlanmis kampanya gonderimi yapar. Misafir yanit verdiginde AI sohbet moduna gecilir ve tum surec asenkron islenir.",
+    "backend": [
+      { "title": "Segment Engine", "goal": "Misafir Segmentasyonu", "content": "PMS verisinden otomatik segment olusturma: sadik misafir, aile, cift, kurumsal. RFM analizi ile onceliklendirme." },
+      { "title": "Campaign Scheduler", "goal": "Zamanlanmis Gonderim", "content": "Kampanya baslangic tarihi, gonderim saati ve throttling ayarlari ile bulk mesaj yonetimi." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Template Gonderim", "content": "Meta onayindan gecmis marketing template'leri ile segment bazli toplu mesaj gonderimi." },
+      { "title": "PMS Entegrasyonu", "goal": "Musaitlik & Fiyat", "content": "Gercek zamanli oda musaitligi ve dinamik fiyat bilgisi icin PMS API baglantisi." }
+    ]
+  },
+  "impact": {
+    "title": "Kampanya Gelir Etkisi",
+    "description": "Outbound kampanya ile OTA komisyonu tasarrufu ve direkt rezervasyon geliri hesaplanir.",
+    "resultLabel": "Direkt Rezervasyon Geliri",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "totalGuests", "label": "Kampanya Hedef Kitlesi", "default": 500, "hint": "Kampanya gonderilecek misafir sayisi", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 8, "hint": "Yanit verip rezervasyon yapan oran (%)", "editable": true },
+      { "key": "avgNightlyRate", "label": "Ortalama Gecelik Ucret", "default": 4000, "hint": "TL cinsinden gecelik oda fiyati", "editable": true },
+      { "key": "avgStayNights", "label": "Ortalama Konaklama", "default": 5, "hint": "Gece sayisi", "editable": true }
+    ],
+    "formula": "Math.round(totalGuests * (conversionRate / 100)) * avgNightlyRate * avgStayNights",
+    "formulaDisplay": null
+  }
+}

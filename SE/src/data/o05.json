@@ -1,0 +1,131 @@
+{
+  "id": "o05",
+  "title": "Rezervasyon Iptal / Degisiklik",
+  "subtitle": "Reservation Change & Cancellation",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir rezervasyon tarihini ertelemek veya iptal etmek istiyor. AI iptal politikasini Knowledge Base'den cekerek kurallar dahilinde islem yapar veya agent'a yonlendirir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Tum Otel Tipleri)" },
+      { "label": "Sorun", "value": "Iptal ve degisiklik talepleri resepsiyonu mesgul ediyor — politika bilgisi her seferinde manuel aktariliyor" },
+      { "label": "Deger", "value": "Otomatik politika bilgisi + PMS kontrolu = hizli islem + misafir memnuniyeti" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Human Handoff (C2)", "color": "red" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Knowledge Base'deki iptal/degisiklik politikasi ile kurallar otomatik uygulanir. PMS uzerinden tarih degisikligi veya iptal islemi gerceklestirilir.",
+    "steps": [
+      {
+        "title": "Talep Algilama",
+        "goal": "Iptal/degisiklik intent tespiti",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'iptal etmek istiyorum', 'tarih degistirmek istiyorum', 'ertelemek istiyorum' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Politika Kontrolu",
+        "goal": "Iptal kurallari",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "green" }
+        ],
+        "content": "Knowledge Base'den iptal politikasi cekilir: ucretsiz iptal suresi, ceza oranlari, degisiklik kosullari."
+      },
+      {
+        "title": "Islem veya Eskalasyon",
+        "goal": "Sonuclandir",
+        "badges": [
+          { "text": "Sistem (PMS/Agent)", "color": "purple" },
+          { "text": "Tenant (Yetki)", "color": "red" }
+        ],
+        "content": "Politika dahilinde otomatik islem yapilir veya ozel durumlar icin agent'a yonlendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Tarih Degisikligi Talebi",
+      "description": "Misafir rezervasyon tarihini ertelemek istiyor. AI politika kontrolu yaparak uygun tarih buluyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Tarih Degisikligi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Iptal ve degisiklik politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Iptal Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Ucretsiz iptal suresi, ceza oranlari ve degisiklik kurallarini Knowledge Base'e yukleyin" },
+          { "text": "PMS API erisim bilgileri", "service": "Integrations", "page": "Otel Entegrasyonlari > PMS Baglantisi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Rezervasyon degisikligi icin PMS yazma yetkisi gereklidir" }
+        ],
+        "provider": [
+          { "text": "Iptal/degisiklik intent ve politika eslestirmesi", "service": "AgentAI", "page": "Dialog Akislari > Rezervasyon Degisiklik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI tarih degisikligi talebini algilar ve politikayla karsilastirir" },
+          { "text": "PMS rezervasyon guncelleme", "service": "Backend", "page": "Rezervasyon Islemleri > Guncelleme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "PMS uzerinden tarih degisikligi otomatik yapilabilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, 20-23 Mart rezervasyonum var ama 27-30 Mart'a ertelemek istiyorum. Mumkun mu?" },
+        { "role": "ai", "content": "Intent: Tarih Degisikligi. Mevcut: 20-23 Mart. Yeni: 27-30 Mart. Politika kontrolu: 48 saat oncesi — ucretsiz degisiklik." },
+        { "role": "bot", "content": "Tabii ki! Rezervasyonunuzu kontrol ettim:\n\nMevcut: 20-23 Mart (3 gece, Deluxe Oda)\nYeni tarih: 27-30 Mart\n\nPolitikamiza gore 48 saatten fazla suresi oldugu icin degisiklik UCRETSIZ!\n\n27-30 Mart'ta Deluxe odamiz musait. Degisikligi onaylamamizi ister misiniz?" },
+        { "role": "user", "content": "Evet, lutfen onaylayin." },
+        { "role": "bot", "content": "Rezervasyonunuz guncellendi!\n\nYeni tarih: 27-30 Mart (3 gece)\nOda: Deluxe Oda\nToplam: 10.800 TL (degisiklik yok)\n\nOnay e-postaniz gonderildi. Keyifli tatiller dileriz!" },
+        { "role": "system", "content": "Tarih degisikligi basarili. PMS guncellendi. Ucretsiz degisiklik — politika dahilinde otomatik islem." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Iptal Talebi — Cezali Donem",
+      "description": "Misafir son dakika iptal istiyor. Iptal politikasi geregi ceza uygulanacak — agent onay gerektiriyor.",
+      "tags": [
+        { "text": "Agent Onay", "color": "red" },
+        { "text": "Iptal", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Iptal ceza oranlari", "service": "Knowledge", "page": "Dokuman Bankasi > Iptal Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Son dakika iptal ceza oranlarini net tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Iptal islemi agent onay akisi", "service": "Backend", "page": "Eskalasyon Kurallari > Iptal Onay", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Cezali iptal islemleri agent onayina yonlendirilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Yarin girisli rezervasyonum var ama iptal etmem lazim. Ne kadar odeme yaparim?" },
+        { "role": "ai", "content": "Intent: Iptal. Giris: Yarin. Politika: 24 saat icinde — %50 ceza. Agent onay gerekli." },
+        { "role": "bot", "content": "Anliyorum, iptal talebinizi aldim. Iptal politikamiza gore:\n\n24 saatten az kala iptal: Toplam tutarin %50'si ceza olarak uygulanir.\nRezervasyon tutari: 10.800 TL\nIptal cezasi: 5.400 TL\n\nAlternatif olarak tarihi ucretsiz erteleyebiliriz. Ne yapmak istersiniz?" },
+        { "role": "user", "content": "Baska secenegim yok, iptal edin lutfen." },
+        { "role": "bot", "content": "Talebinizi aldim. Iptal isleminiz icin bir temsilcimiz sizinle kisa surede iletisime gececek. Baska yardimci olabilecegim bir konu var mi?" },
+        { "role": "system", "content": "Cezali iptal talebi. Agent'a eskalasyon yapildi. Agent onay bekleniyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Knowledge Base'den iptal politikasi dinamik olarak cekilir. Ucretsiz islemler otomatik yapilir, cezali islemler agent onayina yonlendirilir.",
+    "backend": [
+      { "title": "Policy Engine", "goal": "Politika Kontrolu", "content": "Rezervasyon tarihi ile iptal/degisiklik tarihini karsilastirarak hangi politika kuralinin gecerli oldugunu hesaplar." },
+      { "title": "PMS Reservation Manager", "goal": "Rezervasyon Islemleri", "content": "PMS uzerinden tarih degisikligi, oda degisikligi ve iptal islemlerini gerceklestirir." }
+    ],
+    "apis": [
+      { "title": "PMS Booking API", "goal": "Rezervasyon Yonetimi", "content": "Rezervasyon sorgulama, guncelleme ve iptal islemleri icin PMS sistemiyle entegrasyon." },
+      { "title": "Knowledge Base API", "goal": "Politika Bilgisi", "content": "Iptal/degisiklik kurallarini, ceza oranlarini ve istisnalari AI'a sunar." }
+    ]
+  },
+  "impact": {
+    "title": "Kurtarilan Rezervasyon Geliri",
+    "description": "AI'in alternatif tarih onermesiyle iptalden kurtarilan rezervasyonlarin gelir etkisi.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyCancellations", "label": "Aylik Iptal Talebi", "default": 50, "hint": "Aylik gelen iptal/degisiklik talebi", "editable": true },
+      { "key": "rescueRate", "label": "Kurtarma Orani (%)", "default": 30, "hint": "Alternatif oneriyle iptalden dondurulen oran", "editable": true },
+      { "key": "avgReservationValue", "label": "Ortalama Rez. Tutari", "default": 9000, "suffix": "TL", "hint": "Ortalama rezervasyon geliri", "editable": true }
+    ],
+    "formula": "monthlyCancellations * (rescueRate / 100) * avgReservationValue",
+    "formulaDisplay": null
+  }
+}

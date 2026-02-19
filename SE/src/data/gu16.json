@@ -1,0 +1,130 @@
+{
+  "id": "gu16",
+  "title": "Personel Mesai / Calisma Gunleri",
+  "subtitle": "Staff Schedule Inquiry",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Musteri belirli bir kuaforun hangi gunler calistigini soruyor ama bu bilgi her seferinde manuel cevaplanmak zorunda. Knowledge base'e personel mesai bilgisi tanimlanarak AI otomatik cevap verir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Personel Yonetimi)" },
+      { "label": "Sorun", "value": "Musteriler 'Selin Hanim hangi gun calisiyor?' diye soruyor — her seferinde manuel cevap veriliyor" },
+      { "label": "Deger", "value": "Knowledge base ile aninda otomatik cevap + randevu yonlendirmesi" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Knowledge Base'de personel mesai bilgileri tanimlanir. AI musteri sorusundaki personel adini tespit ederek uygun calisma gunlerini otomatik sunar.",
+    "steps": [
+      {
+        "title": "Bilgi Tanimlama",
+        "goal": "Personel mesai bilgisini kaydet",
+        "badges": [
+          { "text": "Tenant (Salon)", "color": "amber" },
+          { "text": "Sistem (Knowledge)", "color": "purple" }
+        ],
+        "content": "Salon sahibi her personelin calisma gunlerini, saat araligini ve uzmanlik alanlarini Knowledge Base'e girer."
+      },
+      {
+        "title": "Soru Tespiti",
+        "goal": "Personel sorgusunu algilama",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Personel Listesi)", "color": "blue" }
+        ],
+        "content": "AI mesajdaki personel adini ve 'hangi gun', 'ne zaman calisiyor', 'musait mi' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Otomatik Cevap",
+        "goal": "Aninda bilgi ver + randevu oner",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Sistem (Template)", "color": "green" }
+        ],
+        "content": "Personel mesai bilgisi Knowledge Base'den cekilir ve musait slotlarla birlikte sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Belirli Kuafor Calisma Gunu Sorgusu",
+      "description": "Musteri favori kuaforunun hangi gunler calistigini soruyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Bilgi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Personel mesai cizelgesi", "service": "Knowledge", "page": "Dokuman Bankasi > Personel Mesai", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her personel icin calisma gunleri ve saatlerini Knowledge Base'e girin" },
+          { "text": "Personel uzmanlik alanlari", "service": "Knowledge", "page": "Dokuman Bankasi > Personel Profilleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her personelin uzmanlik alanlarini (sac, makyaj, cilt) tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Personel isim eslestirme", "service": "AgentAI", "page": "Intent Tespiti > Personel Sorgusu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI mesajdaki personel adini Knowledge Base ile eslestirme hazir" },
+          { "text": "Mesai bilgisi sorgulama", "service": "Knowledge", "page": "Bilgi Sorgulama > Mesai", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Knowledge Base uzerinden personel mesai bilgisi cekme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Selin Hanim hangi gunler calisiyor? Onunla randevu almak istiyorum." },
+        { "role": "ai", "content": "Intent: Personel Mesai Sorgusu. Personel: Selin. Knowledge Base eslestirme yapiliyor." },
+        { "role": "bot", "content": "Merhaba! Selin Hanim'in calisma programi:\n\nSali: 09:00 - 18:00\nCarsamba: 09:00 - 18:00\nPersembe: 09:00 - 18:00\nCuma: 09:00 - 20:00\nCumartesi: 09:00 - 17:00\n\nUzmanlik Alanlari: Sac Kesim, Dip Boyama, Keratin\n\nSelin Hanim ile randevu almak ister misiniz? Musait slotlari gorebilirim." },
+        { "role": "user", "content": "Cuma aksama dogru olabilir mi?" },
+        { "role": "bot", "content": "Selin Hanim'in bu Cuma musait saatleri:\n\n17:00 - Sac Kesim (45 dk)\n17:30 - Dip Boyama (1.5 saat)\n18:00 - Kesim (45 dk)\n\nHangi hizmeti ve saati tercih edersiniz?" },
+        { "role": "user", "content": "17:30 dip boyama" },
+        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nKuafor: Selin Hanim\nTarih: Cuma, 17:30\nHizmet: Dip Boyama (1.5 saat)\n\nRandevunuzdan 1 gun once hatirlatma gonderecegiz!" },
+        { "role": "system", "content": "Otomatik cozum: Knowledge Base ile personel mesai bilgisi verildi, randevu olusturuldu. Agent mudahalesi gerekmedi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Uzmanlik Alanina Gore Personel Onerisi",
+      "description": "Musteri hizmet istiyor ama hangi personeli secegini bilmiyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Oneri", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Personel uzmanlik eslestirmesi", "service": "Knowledge", "page": "Dokuman Bankasi > Personel Profilleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her personelin uzmanlik alanlarini detayli tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Hizmet-personel eslestirme mantigi", "service": "AgentAI", "page": "Eslestirme > Personel Oneri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Hizmet turune gore uygun personel onerme mantigi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Gelismis sac bakimi yaptirmak istiyorum, kimi onerirsiniz?" },
+        { "role": "ai", "content": "Intent: Personel Onerisi. Hizmet: Gelismis Sac Bakimi. Knowledge Base taranıyor." },
+        { "role": "bot", "content": "Gelismis sac bakimi icin iki uzman personelimiz var:\n\nSelin Hanim — 8 yil deneyim, keratin ve botoks uzmani\nMerve Hanim — 5 yil deneyim, organik bakim uzmani\n\nSelin Hanim: Sali-Cumartesi\nMerve Hanim: Pazartesi, Carsamba, Cuma\n\nHangi personeli tercih edersiniz?" },
+        { "role": "user", "content": "Merve Hanim olsun" },
+        { "role": "system", "content": "Personel eslestirme tamamlandi. Merve Hanim secildi. Randevu akisina yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Knowledge Base uzerinde personel profilleri ve mesai bilgileri tutulur. AI musteri mesajindaki personel adini veya hizmet turunu eslestirerek ilgili bilgiyi otomatik sunar.",
+    "backend": [
+      { "title": "Staff Schedule Manager", "goal": "Mesai Yonetimi", "content": "Personel mesai cizelgelerini haftalik olarak yonetir ve Knowledge Base'e senkronize eder." },
+      { "title": "Expertise Matcher", "goal": "Uzmanlik Eslestirme", "content": "Musteri istegine gore uzmanlik alanina uygun personeli onerme mantigi." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Bilgi Sorgulama", "content": "Personel mesai ve uzmanlik bilgilerini sorgulayan API endpoint'i." }
+    ]
+  },
+  "impact": {
+    "title": "Personel Sorgusu Otomasyon Tasarrufu",
+    "description": "Personel mesai sorularinin otomatik cevaplanmasi ile kazanilan zaman ve azalan musteri kaybi.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyStaffQueries", "label": "Gunluk Personel Sorusu", "default": 15, "hint": "Gunluk gelen personel mesai sorusu", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 4, "hint": "Manuel cevapta harcanan sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyStaffQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

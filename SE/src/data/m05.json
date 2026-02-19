@@ -1,0 +1,131 @@
+{
+  "id": "m05",
+  "title": "Satici Hareket Halinde Siparis Yonetimi",
+  "subtitle": "Sales Mobile Order Management",
+  "phase": "Phase 7",
+  "category": "MOBIL UYGULAMA",
+  "niche": "mobile",
+  "description": "Depo, fuar veya saha ziyaretinde dizustu bilgisayar acamayan satici temsilci icin mobil siparis yonetimi. Konusma listesi, AI siparis onerisi, tek dokunusla cevaplama ve siparis karti olusturma tek ekranda.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Toptan Ticaret, Perakende, Gida Dagitim, Fuar/Etkinlik Saticilari" },
+      { "label": "Sorun", "value": "Satici sahada iken musteriler WhatsApp'tan siparis gonderiyor ama dizustu bilgisayar acamadigi icin cevap veremiyor" },
+      { "label": "Deger", "value": "Sifir siparis kaybi + sahadan aninda siparis girisi + musteri memnuniyeti" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Smart Routing (C2)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "green" },
+      { "name": "E-com Integration (C11)", "color": "amber" }
+    ],
+    "servicesNote": "Mobil uygulama uzerinden tum konusma listesi gorunur. AI, gelen siparis mesajlarindan otomatik urun ve miktar cikarir. Satici tek dokunusla onaylayip siparis karti olusturur.",
+    "steps": [
+      {
+        "title": "Mobil Konusma Listesi",
+        "goal": "Tum mesajlari sahadan gor",
+        "badges": [
+          { "text": "Sistem (Mobil UI)", "color": "purple" },
+          { "text": "Tenant (Inbox)", "color": "blue" }
+        ],
+        "content": "Unified Inbox'taki tum konusmalar mobil ekranda listelenir. Filtreleme: bekleyen, acil, siparis talebi. Okunmamis mesajlar vurgulanir."
+      },
+      {
+        "title": "AI Siparis Cikarimi",
+        "goal": "Mesajdan siparis detayini oku",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Urun Katalogu)", "color": "amber" }
+        ],
+        "content": "AI, musteri mesajindan urun adlari, miktarlari ve teslimat tercihlerini otomatik cikarir. 'Bana 50 kasa kola ve 30 kasa su gonder' → otomatik siparis karti taslagi."
+      },
+      {
+        "title": "Tek Dokunusla Siparis",
+        "goal": "Hizlica siparis olustur ve onayla",
+        "badges": [
+          { "text": "Sistem (Siparis Karti)", "color": "purple" },
+          { "text": "Tenant (Stok/Fiyat)", "color": "green" }
+        ],
+        "content": "AI'nin olusturdugu siparis kartini satici tek dokunusla onaylar. Stok kontrolu, fiyat hesabi ve teslimat zamani otomatik eklenir. Musteri onay mesaji alir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Fuar Sirasinda Siparis Alma",
+      "description": "Satici fuarda standda iken musteri WhatsApp'tan toplu siparis gonderiyor.",
+      "tags": [
+        { "text": "Mobil Siparis", "color": "blue" },
+        { "text": "AI Cikarim", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun katalogu ve fiyat listesi", "service": "Backend", "page": "Urun Yonetimi > Katalog", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Guncel urun adi, SKU, fiyat ve stok bilgilerini sisteme girin" },
+          { "text": "Stok bilgisi entegrasyonu", "service": "Backend", "page": "Stok Yonetimi > Canli Stok", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "ERP veya depo sisteminizden gercek zamanli stok verisi cekilmeli" }
+        ],
+        "provider": [
+          { "text": "AI siparis cikarim motoru", "service": "AgentAI", "page": "Siparis Analizi > Metin Cikarim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Dogal dildeki siparis mesajlarindan urun ve miktar cikarir" },
+          { "text": "Mobil siparis karti API", "service": "Backend", "page": "Siparis Modulu > Mobil Olusturma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Mobil uzerinden siparis karti olusturma ve onaylama API'si hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Selam, bize acil 50 kasa Coca-Cola 330ml, 30 kasa Erikli Su 1.5L ve 20 kasa Lay's Klasik gonder. Yarin sabaha lazim." },
+        { "role": "ai", "content": "Siparis Cikarimi: 3 kalem. 1) Coca-Cola 330ml x50 kasa 2) Erikli Su 1.5L x30 kasa 3) Lay's Klasik x20 kasa. Teslimat: Yarin sabah. Stok kontrolu yapiliyor..." },
+        { "role": "system", "content": "Stok Durumu: Coca-Cola ✓ (120 kasa), Erikli Su ✓ (85 kasa), Lay's ✓ (45 kasa). Tum urunler mevcut." },
+        { "role": "bot", "content": "[Satici mobil ekranda AI'nin hazirladigi siparis kartini gorur → kontrol eder → tek dokunusla onaylar]\n\nMerhaba! Siparisini aldim:\n\n- Coca-Cola 330ml x50 kasa — 7.500 TL\n- Erikli Su 1.5L x30 kasa — 2.700 TL\n- Lay's Klasik x20 kasa — 4.000 TL\n\nToplam: 14.200 TL (KDV dahil)\nTeslimat: Yarin sabah 08:00-10:00\n\nOnayliyor musunuz?" },
+        { "role": "user", "content": "Tamam onayliyorum." },
+        { "role": "bot", "content": "Siparisiz onaylandi! Takip numaraniz: SP-2024-4582. Yarin sabah 08:00-10:00 arasinda teslimat yapilacak. Tesekkurler!" },
+        { "role": "system", "content": "Siparis karti olusturuldu. Depo'ya otomatik bildirim gonderildi. Satici fuardan ayrilmadan siparis tamamlandi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Depoda Stok Kontrol + Siparis",
+      "description": "Satici depoda gezerken musteriden siparis talebi geliyor.",
+      "tags": [
+        { "text": "Stok Kontrol", "color": "amber" },
+        { "text": "Aninda Cevap", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Musteri bazli fiyat listesi", "service": "Backend", "page": "Fiyat Yonetimi > Musteri Ozel Fiyat", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C11", "hint": "Musteriye ozel iskonto oranlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Musteri fiyat eslestirme", "service": "Backend", "page": "Fiyat Motoru > Musteri Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Musteri bazli ozel fiyat/iskonto otomatik uygulanir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Gecen ay aldigim urunlerden tekrar gonder. Aynilari istiyorum." },
+        { "role": "ai", "content": "Musteri Gecmisi: Son siparis 15 Ocak — 40 kasa kola, 20 kasa su, 10 kasa cips. Tekrar siparis taslagi olusturuldu." },
+        { "role": "bot", "content": "[Satici depoda → push alir → mobil ekrandan gecmis siparisi gorur → stok teyidi yapar → gonderir]\n\nMerhaba! Son siparisiz:\n- Coca-Cola 330ml x40 kasa\n- Erikli Su 1.5L x20 kasa\n- Lay's Klasik x10 kasa\n\nAyni sekilde gonderelim mi? Fiyat guncellenmis: Toplam 9.800 TL." },
+        { "role": "user", "content": "Evet ayni olsun." },
+        { "role": "bot", "content": "Siparisiz olusturuldu! Teslimat 2 is gunu icinde yapilacak. Takip: SP-2024-4583. Iyi gunler!" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Mobil uygulama REST API uzerinden inbox, siparis ve stok verilerine erisir. AI dogal dil isleme ile siparis cikarimi yapar. Siparis karti ERP entegrasyonu ile depo'ya otomatik iletilir.",
+    "backend": [
+      { "title": "Order Extraction Engine", "goal": "Mesajdan Siparis Cikarimi", "content": "AI, musteri mesajindaki urun adlari, miktarlari ve teslimat bilgilerini otomatik cikarir. Urun kataloguyla eslestirme yapar." },
+      { "title": "Mobile Order API", "goal": "Mobil Siparis Olusturma", "content": "Satici mobil uzerinden siparis karti olusturma, stok kontrolu, fiyat hesabi ve onaylama islemlerini tek API uzerinden yapar." }
+    ],
+    "apis": [
+      { "title": "Product Catalog API", "goal": "Urun ve Stok Bilgisi", "content": "Gercek zamanli urun katalogu, stok durumu ve fiyat bilgisi. ERP entegrasyonu ile canli veri." },
+      { "title": "Order Management API", "goal": "Siparis Yasamdongusu", "content": "Siparis olusturma, onaylama, depo bildirimi ve teslimat takibi. Tum sureci tek API uzerinden yonetir." }
+    ]
+  },
+  "impact": {
+    "title": "Sahadan Alinan Siparis Degeri",
+    "description": "Dizustu bilgisayar acilamayan durumlarda mobil uzerinden alinan siparislerle kazanilan gelir.",
+    "resultLabel": "Kurtarilan Siparis Geliri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyMissedOrders", "label": "Gunluk Kacirilan Siparis", "default": 3, "hint": "Sahada iken cevaplanamayan siparis mesaji", "editable": true },
+      { "key": "avgOrderValue", "label": "Ortalama Siparis Degeri", "default": 8000, "suffix": "TL", "hint": "Toptan siparis ortalama tutari", "editable": true },
+      { "key": "captureRate", "label": "Yakalama Orani", "default": 80, "suffix": "%", "hint": "Mobil ile yakalanan siparis yuzdesi", "editable": true }
+    ],
+    "formula": "dailyMissedOrders * avgOrderValue * (captureRate / 100) * 30",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "id": "e17",
+  "title": "Iade Sureci Takibi & Bilgilendirme",
+  "subtitle": "Return Process Tracking",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Iade baslatildi ama surec ne kadar surecek sorusuna AI platform ve kargo firmasina gore tahmini sure verir, sureci takip eder.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Iade suresi belirsizligi musteri anksiyetesi yaratir — tekrar tekrar soruyor" },
+      { "label": "Deger", "value": "Proaktif bilgilendirme ile tekrar sorulari onlenir, musteri guveni korunur" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI iade durumunu API'den cekerr, platform bazli tahmini sureyi Knowledge Base'den alir ve musteriye sunar.",
+    "steps": [
+      {
+        "title": "Iade Durumu Sorgulama",
+        "goal": "Guncel durumu getir",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "Platform API'sinden iade durumu cekilir: Beklemede / Kargoda / Teslim Edildi / Onaylandi / Iade Edildi."
+      },
+      {
+        "title": "Tahmini Sure Bilgisi",
+        "goal": "Beklentiyi yonet",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "green" }
+        ],
+        "content": "Platform ve kargo firmasina gore tahmini iade tamamlanma suresi verilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Iade Sureci Takibi",
+      "description": "Musteri iade surecinin ne kadar sureceginii soruyor.",
+      "tags": [
+        { "text": "Iade Takip", "color": "amber" },
+        { "text": "Sure Bilgisi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Iade surec sureleri", "service": "Knowledge", "page": "Dokuman Bankasi > Iade Sureleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Platform bazli iade surec surelerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Iade durumu API", "service": "Integrations", "page": "E-ticaret > Iade Durumu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform API'sinden iade durumu cekim hazir" },
+          { "text": "Sure tahmini", "service": "AgentAI", "page": "Hesaplama > Iade Suresi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Platform ve kargo bazli tahmini sure hesaplama hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Iadem kac gunde tamamlanir?" },
+        { "role": "ai", "content": "Intent: Iade Surec Takibi. Platform: Hepsiburada. Iade Durumu: Kargo teslim edildi, kontrol bekliyor." },
+        { "role": "bot", "content": "Iade durumunuz:\n\n📦 Kargo: Teslim edildi ✅\n🔍 Durum: Kontrol bekliyor\n⏰ Tahmini kontrol suresi: 2-3 is gunu\n💰 Onay sonrasi iade: 3-5 is gunu (kartiniza)\n\nToplam tahmini sure: 5-8 is gunu\n\nDurum degistiginde size bilgi verecegim!" },
+        { "role": "system", "content": "Iade surec bilgisi verildi. Proaktif bildirim ayarlandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Platform API + Knowledge RAG birlesiminde calisir. Gercek zamanli iade durumu + tahmini sure bilgisi sunulur.",
+    "backend": [
+      { "title": "Return Tracker", "goal": "Iade Takibi", "content": "Platform API'sinden iade durumunu cekerr ve adim adim takip eder." },
+      { "title": "ETA Calculator", "goal": "Sure Tahmini", "content": "Platform, kargo firmasi ve kontrol surelerine gore tahmini tamamlanma suresi." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Iade Durumu", "content": "Iade asamalari: Basllatildi → Kargoda → Teslim → Kontrol → Onay → Iade." },
+      { "title": "Notification API", "goal": "Proaktif Bildirim", "content": "Iade durumu degistiginde musteri otomatik bilgilendirilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Tekrar Sorular",
+    "description": "Proaktif bilgilendirme ile azalan tekrar soru sayisi ve agent zamani tasarrufu.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyReturnStatusQueries", "label": "Aylik Iade Takip Sorusu", "default": 25, "hint": "Iade sureci takip sorusu", "editable": true },
+      { "key": "repeatRate", "label": "Tekrar Soru Orani", "default": 60, "prefix": "%", "hint": "Ayni musteri tekrar soruyor", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 5, "hint": "Agent'in harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyReturnStatusQueries * (repeatRate / 100) * minutesPerQuery * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "id": "d35",
+  "title": "Sikayet: Dolgu Dustu, Tekrar Randevu",
+  "subtitle": "Filling Complaint & Rebooking",
+  "phase": "Phase 2",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Dolgusu dusen hastanin sikayetini AI ile de-eskalasyon mesajiyla yoneten, acil randevu olusturan ve doktoru bilgilendiren sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Hasta dolgu dustugunde sinirli — yanlis muamele marka itibarini zedeler" },
+      { "label": "Deger", "value": "Empati + hizli randevu ile hasta memnuniyeti korunur" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI sikayet intent'ini tespit eder, de-eskalasyon cevabi sunar ve acil randevu olusturur.",
+    "steps": [
+      {
+        "title": "Sikayet Tespiti",
+        "goal": "De-eskalasyon baslat",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "AI dolgu/kaplama dusme sikayetini tespit eder ve empati mesaji onerisi sunar."
+      },
+      {
+        "title": "Acil Randevu",
+        "goal": "Hizli cozum sun",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Doktor)", "color": "green" }
+        ],
+        "content": "Acil randevu slotu ayrilir, doktor bilgilendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Dolgu Dustu — Acil Randevu",
+      "description": "Hasta dolgusu dustugunu bildiriyor, acil randevu olusturuluyor.",
+      "tags": [
+        { "text": "Sikayet", "color": "rose" },
+        { "text": "Acil Randevu", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Acil randevu slotu", "service": "Backend", "page": "Randevu Yonetimi > Acil Slot", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Gun icinde acil vakalara ayrilmis slot tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Sikayet intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Sikayet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Dolgu/kaplama sikayet intent'i ve de-eskalasyon hazir" },
+          { "text": "Doktor alert sistemi", "service": "Backend", "page": "Bildirim > Doktor Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayet vakasinda doktora otomatik bildirim hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Dolgum dustu, tekrar gelmem lazim!" },
+        { "role": "ai", "content": "Intent: Sikayet — Dolgu Dusme. De-eskalasyon + Acil randevu akisi baslatiliyor." },
+        { "role": "bot", "content": "Cok uzgunuz! Bu durumu hemen cozelim.\n\n🦷 Dolgunuzun dusme sebebini doktorumuz inceleyecek.\n📅 Yarin icin acil randevu ayarliyorum.\n\nMusait zamaniniz:\n🕐 09:30 — Dr. Mehmet\n🕐 11:00 — Dr. Mehmet\n\nHangisi uygun?" },
+        { "role": "user", "content": "09:30 olsun." },
+        { "role": "bot", "content": "Randevunuz olusturuldu! ✅\n\n📅 Yarin 09:30\n👨‍⚕️ Dr. Mehmet\n🦷 Dolgu yenileme\n\n💡 Garanti kapsamindaysa ucretsiz yenilenecektir.\n\nGecmis olsun!" },
+        { "role": "system", "content": "Acil randevu olusturuldu. Dr. Mehmet bilgilendirildi. Hasta garanti durumu kontrol edilecek." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI de-eskalasyon + Acil Randevu birlesimiyle calisir. Sikayet yonetimi ve hizli cozum.",
+    "backend": [
+      { "title": "Complaint Handler", "goal": "Sikayet Yonetimi", "content": "Dolgu/kaplama sikayet intent'ini tespit eder ve de-eskalasyon cevabi onerisi sunar." },
+      { "title": "Emergency Scheduler", "goal": "Acil Randevu", "content": "Acil randevu slotu bulur ve doktoru bilgilendirir." }
+    ],
+    "apis": [
+      { "title": "Calendar API", "goal": "Randevu Yonetimi", "content": "Acil slot kontrolu ve randevu olusturma." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Korunan Hasta Sadakati",
+    "description": "Hizli sikayet cozumu ile kaybedilmeyen hasta iliskisi.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyComplaints", "label": "Aylik Sikayet", "default": 10, "hint": "Dolgu/kaplama sikayet vakasi", "editable": true },
+      { "key": "retentionRate", "label": "Tutma Orani", "default": 80, "prefix": "%", "hint": "Hizli cozumle tutulan hasta", "editable": true },
+      { "key": "avgPatientLTV", "label": "Hasta LTV", "default": 8000, "suffix": "TL", "hint": "Yillik hasta degeri", "editable": true }
+    ],
+    "formula": "monthlyComplaints * (retentionRate / 100) * (avgPatientLTV / 12)",
+    "formulaDisplay": null
+  }
+}

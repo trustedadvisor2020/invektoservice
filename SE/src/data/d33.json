@@ -1,0 +1,91 @@
+{
+  "id": "d33",
+  "title": "Hasta Kimlik/Rapor — KVKK Riski",
+  "subtitle": "Patient Data KVKK Protection",
+  "phase": "Phase 4",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "WhatsApp uzerinden kimlik veya saglik raporu gonderen hastalarin verilerini KVKK uyumlu sekilde yoneten, guvenli depolama protokolune yonlendiren sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Hasta WA'dan kimlik/rapor gonderiyor — veriler telefonda kaliyor, KVKK ihlali riski" },
+      { "label": "Deger", "value": "Otomatik KVKK uyarisi ve guvenli depolama protokolu ile yasal risk onlenir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Security (C5)", "color": "red" },
+      { "name": "Enterprise Security (C6)", "color": "red" }
+    ],
+    "servicesNote": "AI hassas veri tespiti yapar, KVKK uyarisi verir ve veriyi guvenli depolama protokolune yonlendirir.",
+    "steps": [
+      {
+        "title": "Hassas Veri Tespiti",
+        "goal": "KVKK riski belirle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Guvenlik)", "color": "red" }
+        ],
+        "content": "AI gonderilen icerikten TC kimlik, saglik raporu veya kisisel veri tespiti yapar."
+      },
+      {
+        "title": "Guvenli Depolama",
+        "goal": "Veriyi koru",
+        "badges": [
+          { "text": "Sistem (Security)", "color": "red" },
+          { "text": "Tenant (KVKK)", "color": "rose" }
+        ],
+        "content": "Hassas veri guvenli depolama alanina yonlendirilir, WhatsApp'taki kopya silinir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kimlik Fotografi — KVKK Yonetimi",
+      "description": "Hasta kimlik fotografini WhatsApp'tan gonderiyor.",
+      "tags": [
+        { "text": "KVKK", "color": "red" },
+        { "text": "Hassas Veri", "color": "rose" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "KVKK veri isleme politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > KVKK Politikasi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C5", "hint": "Saglik verisi isleme ve saklama politikanizi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Hassas veri tespit motoru", "service": "Backend", "page": "Guvenlik > Veri Tespiti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "TC kimlik, saglik raporu vb. hassas veri otomatik tespit edilir" },
+          { "text": "Guvenli depolama altyapisi", "service": "Backend", "page": "Guvenlik > Sifrelenmis Depolama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "AES-256 sifrelenmis depolama altyapisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "[Kimlik fotografi gonderiyor]" },
+        { "role": "ai", "content": "KVKK ALERT: Hassas veri tespiti — TC Kimlik fotografi. Guvenli depolama protokolu baslatiliyor." },
+        { "role": "bot", "content": "Kimlik bilginiZi aldim, tesekkurler!\n\n🔒 Veriniiz KVKK uyumlu guvenli alanda saklanacak.\n\nBilgilendirme:\n• Veriniiz sifrelenmis depolama alaninda tutulur\n• Sadece yetkili saglik personeli erisebilir\n• Tedavi sonrasi silinmesini talep edebilirsiniz\n\nBaska bir sey gondermeniz gerekiyor mu?" },
+        { "role": "system", "content": "Hassas veri guvenli depolamaya aktarildi. KVKK log kaydedildi. WhatsApp gecici kopya temizlendi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo KVKK Compliance + Guvenli Depolama birlesimiyle calisir. Hassas saglik verisi korunmasi.",
+    "backend": [
+      { "title": "Sensitive Data Detector", "goal": "Hassas Veri Tespiti", "content": "Gonderilen dosya ve gorsellerden TC kimlik, saglik raporu vb. hassas veri tespit eder." },
+      { "title": "Secure Storage Manager", "goal": "Guvenli Depolama", "content": "AES-256 sifreleme ile hassas verileri guvenli alanda depolar ve erisim loglar." }
+    ],
+    "apis": [
+      { "title": "KVKK Compliance API", "goal": "Uyumluluk", "content": "Onam kaydi, veri isleme logu ve silme talebi yonetimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik KVKK Risk Azaltma",
+    "description": "Otomatik hassas veri korunmasi ile onlenen KVKK ihlal riski.",
+    "resultLabel": "Onlenen Risk Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlySensitiveData", "label": "Aylik Hassas Veri", "default": 30, "hint": "WA uzerinden gelen hassas veri sayisi", "editable": true },
+      { "key": "kvkkFineRisk", "label": "KVKK Ceza Riski", "default": 500, "suffix": "TL", "hint": "Vaka basina potansiyel ceza riski", "editable": true }
+    ],
+    "formula": "monthlySensitiveData * kvkkFineRisk",
+    "formulaDisplay": null
+  }
+}

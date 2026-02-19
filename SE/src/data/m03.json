@@ -1,0 +1,124 @@
+{
+  "id": "m03",
+  "title": "Supervisor Sahada Ekip Izleme",
+  "subtitle": "Mobile Team Monitoring",
+  "phase": "Phase 7",
+  "category": "MOBIL UYGULAMA",
+  "niche": "mobile",
+  "description": "Disaridayken ekip performansini goremeyen supervisor icin mobil dashboard. Bekleyen mesaj sayisi, ortalama yanit suresi, aktif agent durumu tek ekranda. Proaktif uyarilarla sorunlar buyumeden mudahale.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Tum Sektorler — Cagri merkezi, musteri hizmetleri, satis ekipleri yoneten supervisorlar" },
+      { "label": "Sorun", "value": "Supervisor ofis disindayken ekip performansini goremez, sorunlar ancak ofise donunce fark edilir" },
+      { "label": "Deger", "value": "7/24 ekip gozetimi + aninda mudahale + SLA uyumlulugu" }
+    ],
+    "services": [
+      { "name": "Analytics Dashboard (C4)", "color": "green" }
+    ],
+    "servicesNote": "Mobil dashboard gercek zamanli ekip metriklerini sunar. Proaktif push bildirimleriyle anomaliler aninda supervisor'a iletilir.",
+    "steps": [
+      {
+        "title": "Canli Metrikler",
+        "goal": "Anlık ekip durumunu gor",
+        "badges": [
+          { "text": "Sistem (Dashboard)", "color": "purple" },
+          { "text": "Tenant (Ekip)", "color": "blue" }
+        ],
+        "content": "Bekleyen mesaj sayisi, ortalama yanit suresi, aktif/pasif agent sayisi ve SLA uyum yuzdesi tek bir mobil ekranda gosterilir."
+      },
+      {
+        "title": "Anomali Uyarisi",
+        "goal": "Sorunlari erken tespit et",
+        "badges": [
+          { "text": "Sistem (Alert)", "color": "purple" },
+          { "text": "Tenant (Esik Degeri)", "color": "amber" }
+        ],
+        "content": "Kuyruk 10'u astiginda, ortalama yanit suresi SLA'nin %80'ine ulastiginda veya agent aniden cevrimdisi oldugunda supervisor'a push uyari gonderilir."
+      },
+      {
+        "title": "Uzaktan Mudahale",
+        "goal": "Aninda aksiyon al",
+        "badges": [
+          { "text": "Sistem (Mobil Aksiyon)", "color": "purple" },
+          { "text": "Tenant (Yetki)", "color": "green" }
+        ],
+        "content": "Supervisor mobil uzerinden agent atama degisikligi, kuyruk yeniden dagitimi veya ekip mesaji gonderebilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kuyruk Birikiyor — Supervisor Disarida",
+      "description": "Supervisor toplantida iken mesaj kuyrugu kritik seviyeye ulasti.",
+      "tags": [
+        { "text": "Mobil Dashboard", "color": "green" },
+        { "text": "Anomali Uyarisi", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ekip ve agent tanimlari", "service": "Backend", "page": "Ekip Yonetimi > Agent Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Tum agentlarin ekip atamalarini ve rollerini tanimlayin" },
+          { "text": "Anomali esik degerleri", "service": "Backend", "page": "Supervisor Ayarlari > Uyari Esikleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Kuyruk uzunlugu, yanit suresi ve agent durumu icin esik degerleri belirleyin" }
+        ],
+        "provider": [
+          { "text": "Gercek zamanli metrik hesaplama", "service": "Backend", "page": "Analytics Motoru > Canli Metrikler", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Kuyruk, yanit suresi ve agent metrikleri gercek zamanli hesaplanir" },
+          { "text": "Mobil dashboard API", "service": "Backend", "page": "Mobil API > Dashboard Endpoint", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Mobil uyumlu dashboard verileri REST API uzerinden sunulur" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Saat 14:00 — Kuyruk: 15 mesaj (esik: 10). Ort. Yanit: 12 dk (SLA: 15 dk). Aktif Agent: 2/5." },
+        { "role": "system", "content": "PUSH → Supervisor Murat: 'UYARI — Kuyruk 15 mesaja ulasti! 3 agent cevrimdisi. Hemen kontrol edin.'" },
+        { "role": "system", "content": "[Supervisor mobil dashboard'u acar → Canli metrikleri gorur]" },
+        { "role": "system", "content": "Supervisor Aksiyonu: Agent Zeynep ve Can'i mobil uzerinden aktif duruma cekti. Kuyruk dagitimi yeniden yapildi." },
+        { "role": "system", "content": "15 dakika sonra — Kuyruk: 3 mesaj. Ort. Yanit: 8 dk. Aktif Agent: 4/5. Durum: Normal." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Gunluk Performans Ozeti",
+      "description": "Supervisor aksam mobil uzerinden ekip ozetini inceliyor.",
+      "tags": [
+        { "text": "Performans Ozeti", "color": "blue" },
+        { "text": "Mobil Rapor", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Raporlama periyodu tercihi", "service": "Backend", "page": "Supervisor Ayarlari > Rapor Zamani", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C4", "hint": "Gunluk ozet push saatini ayarlayin (ornegin 18:00)" }
+        ],
+        "provider": [
+          { "text": "Gunluk performans ozet hesaplama", "service": "Backend", "page": "Analytics Motoru > Gunluk Ozet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Gun sonu metrikleri otomatik hesaplanir ve push ile gonderilir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Saat 18:00 — Gunluk Ozet Push gonderiliyor." },
+        { "role": "system", "content": "PUSH → Supervisor: 'Gun Ozeti — 127 mesaj, %94 SLA, Ort. 7.2 dk yanit. En iyi: Ayse (98%). Dikkat: Mehmet (78%).'" },
+        { "role": "system", "content": "[Supervisor detaya dokunur → Mobil dashboard'da agent bazli kirilim gorur]" },
+        { "role": "system", "content": "Supervisor Notu: Mehmet icin yarin egitim planlandi, ekip mesaji gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Mobil dashboard, backend analytics motorundan gercek zamanli veri ceker. WebSocket ile canli guncelleme, FCM ile push uyarilar gonderilir.",
+    "backend": [
+      { "title": "Real-time Analytics Engine", "goal": "Canli Metrik", "content": "Kuyruk uzunlugu, ortalama yanit suresi, agent durumlari ve SLA uyum oranini gercek zamanli hesaplar." },
+      { "title": "Anomaly Detection Service", "goal": "Erken Uyari", "content": "Tenant bazli esik degerlerine gore anomali tespit eder ve supervisor'a push bildirim tetikler." }
+    ],
+    "apis": [
+      { "title": "Dashboard WebSocket API", "goal": "Canli Guncelleme", "content": "Mobil dashboard'a gercek zamanli metrik akisi saglar. Yenileme gerektirmez." },
+      { "title": "Team Management API", "goal": "Uzaktan Yonetim", "content": "Supervisor'in mobil uzerinden agent atama, kuyruk dagitimi ve ekip mesaji gondermesini saglar." }
+    ]
+  },
+  "impact": {
+    "title": "Erken Mudahale ile Korunan SLA",
+    "description": "Supervisor'in sahadan ekip sorunlarina aninda mudahale etmesiyle onlenen SLA ihlalleri ve korunan musteri memnuniyeti.",
+    "resultLabel": "Onlenen Kayip (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyAnomalies", "label": "Gunluk Anomali Sayisi", "default": 3, "hint": "Kuyruk tasmalari, agent dususleri gibi gunluk olay sayisi", "editable": true },
+      { "key": "avgMessagesAffected", "label": "Anomali Basina Etkilenen Mesaj", "default": 10, "hint": "Her anomalide risk altindaki mesaj sayisi", "editable": true },
+      { "key": "lostRevenuePerBreach", "label": "Ihlal Basina Kayip", "default": 200, "suffix": "TL", "hint": "Geciken cevap basina tahmini gelir kaybi", "editable": true }
+    ],
+    "formula": "dailyAnomalies * avgMessagesAffected * lostRevenuePerBreach * 30 * 0.7",
+    "formulaDisplay": null
+  }
+}

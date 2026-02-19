@@ -1,0 +1,141 @@
+{
+  "id": "o14",
+  "title": "Late Check-out / Early Check-in",
+  "subtitle": "Late Checkout & Early Checkin",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir gec cikis veya erken giris talep ediyor. AI template ile oda musaitligini kontrol eder, ucretli ve ucretsiz secenek sunar. Sadik misafirlere otomatik complimentary late check-out onerisi yapilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Her Olcek)" },
+      { "label": "Sorun", "value": "Late check-out talepleri resepsiyonu yogunlastiriyor, karar sureci yavas, misafir belirsizlik yasiyor" },
+      { "label": "Deger", "value": "Anlik musaitlik kontrolu, gelir artisi (ucretli late check-out), misafir memnuniyeti" }
+    ],
+    "services": [
+      { "name": "WhatsApp Business API (C1)", "color": "green" },
+      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "purple" },
+      { "name": "AI Karar Motoru (C8)", "color": "red" }
+    ],
+    "servicesNote": "AI misafir talebini alir, PMS'den oda musaitligini kontrol eder ve ucretli/ucretsiz secenekleri sunar. Sadik misafirler icin complimentary politikasi otomatik uygulanir.",
+    "steps": [
+      {
+        "title": "Talep Algilama (Request)",
+        "goal": "Late/early check tespiti",
+        "badges": [
+          { "text": "Sistem (AI Intent)", "color": "purple" },
+          { "text": "Tenant (Misafir Bilgisi)", "color": "blue" }
+        ],
+        "content": "Misafirin mesajindan late check-out veya early check-in talebi tespit edilir. Oda numarasi ve mevcut rezervasyon bilgisi dogrulanir."
+      },
+      {
+        "title": "Musaitlik Kontrolu (Availability)",
+        "goal": "Oda durumunu kontrol et",
+        "badges": [
+          { "text": "Sistem (PMS Sorgu)", "color": "purple" },
+          { "text": "Tenant (Doluluk)", "color": "amber" }
+        ],
+        "content": "PMS'den odanin bir sonraki rezervasyon durumu kontrol edilir. Musait ise saat secenekleri sunulur."
+      },
+      {
+        "title": "Secenek Sunumu (Options)",
+        "goal": "Ucretli/ucretsiz secenekleri goster",
+        "badges": [
+          { "text": "Sistem (Fiyatlama)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "green" }
+        ],
+        "content": "Sadik misafir veya VIP ise complimentary, standart misafir icin ucretli late check-out secenekleri sunulur: 14:00'e kadar %50, 18:00'e kadar tam gun."
+      },
+      {
+        "title": "Onay ve Islem (Confirmation)",
+        "goal": "Secimi onayla ve PMS'i guncelle",
+        "badges": [
+          { "text": "Sistem (Otomatik)", "color": "purple" },
+          { "text": "Tenant (Operasyon)", "color": "amber" }
+        ],
+        "content": "Misafir secim yaptiktan sonra PMS guncellenir. Housekeeping takvimi otomatik ayarlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Late Check-out Talebi",
+      "description": "Misafir aksamki ucusu icin gec cikis talep ediyor.",
+      "tags": [
+        { "text": "Check-out", "color": "amber" },
+        { "text": "Ucretli Secenek", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Late check-out fiyat politikasi", "service": "Knowledge", "page": "Politikalar > Check-in/Check-out", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Saatlik ucretlendirme veya yarim gun/tam gun seceneklerini tanimlayin" },
+          { "text": "Sadik misafir complimentary kurallari", "service": "Knowledge", "page": "Politikalar > VIP & Sadakat", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kac kez konaklayan misafire ucretsiz late check-out verilecegini belirleyin" }
+        ],
+        "provider": [
+          { "text": "PMS musaitlik sorgu entegrasyonu", "service": "Backend", "page": "PMS Entegrasyonu > Oda Durumu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Odanin sonraki rezervasyon durumu otomatik kontrol edilir" },
+          { "text": "Late check-out karar akisi promptu", "service": "AgentAI", "page": "Prompt Sablonlari > Check-out", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Misafir segmenti + musaitlik + politikaya gore secenekleri sunar" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, ucusumuz aksam 20:00'de. Gec cikis yapabilir miyiz? Oda 415." },
+        { "role": "ai", "content": "Intent: Late Check-out. Oda: 415. Mevcut check-out: 12:00. PMS kontrolu: Sonraki giris 16:00 — 14:00'e kadar musait. Misafir durumu: Ilk konaklama." },
+        { "role": "bot", "content": "Merhaba! Oda 415 icin gec cikis seceneklerimiz:\n\n1. 14:00'e kadar — 600 TL (yarim gun ucreti)\n2. 18:00'e kadar — 1.200 TL (tam gun ucreti)\n\nMaalesef bugun icin 18:00 sonrasi musait degiliz. Hangisini tercih edersiniz?" },
+        { "role": "user", "content": "14:00 yeterli olur. Onaylayalim." },
+        { "role": "bot", "content": "Onaylandi! Check-out saatiniz 14:00 olarak guncellendi. Ucret (600 TL) oda hesabiniza eklendi. Havaalani transferi icin de yardimci olabilir miyiz?" },
+        { "role": "user", "content": "Transfer ne kadar?" },
+        { "role": "bot", "content": "Otel - Havalimani VIP transfer: 800 TL (sedan) veya 1.200 TL (minivan). Saat 16:30 civarinda ayarlayalim mi?" },
+        { "role": "system", "content": "Late check-out onaylandi: Oda 415, 14:00. PMS guncellendi. Housekeeping: 14:30 olarak yeniden zamanlandı. Upsell firsati: Transfer." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Early Check-in Talebi (Sadik Misafir)",
+      "description": "Sadik misafir erken varis icin early check-in istiyor.",
+      "tags": [
+        { "text": "Check-in", "color": "green" },
+        { "text": "Complimentary", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Early check-in musaitlik kurallari", "service": "Knowledge", "page": "Politikalar > Check-in/Check-out", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Erken giris icin en erken kabul edilen saati tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Misafir sadakat segmenti kontrolu", "service": "AgentAI", "page": "Misafir Profili > Sadakat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Gecmis konaklama sayisina gore complimentary karar verilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Yarin sabah 09:00'da varacagiz. Early check-in mumkun mu?" },
+        { "role": "ai", "content": "Intent: Early Check-in. Misafir: 4. konaklama (Sadik). Politika: 3+ konaklama = Complimentary early check-in. PMS: Oda 10:00'da hazir olabilir." },
+        { "role": "bot", "content": "Merhaba! Sizi tekrar agirlayacagimiz icin cok mutluyuz! Sadik misafirimiz olarak erken giris hakkinda guzel bir haberimiz var: Odaniz saat 10:00'da sizin icin hazir olacak — ucretsiz! \n\n09:00'da gelirseniz bavullarinizi bell boy'a birakabilir ve kahvalti salonumuzdan yararlanabilirsiniz." },
+        { "role": "user", "content": "Harika! Cok tesekkurler, gorusmek uzere." },
+        { "role": "bot", "content": "Biz de sizi bekliyoruz! Iyi yolculuklar, yarin gorusmek uzere." },
+        { "role": "system", "content": "Early check-in onaylandi: Complimentary (sadik misafir). Housekeeping oncelik: 09:30'da oda hazir. Resepsiyon bilgilendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Late check-out ve early check-in talepleri PMS musaitlik kontrolu ile islenır. Misafir segmentine gore complimentary veya ucretli secenekler AI tarafindan sunulur.",
+    "backend": [
+      { "title": "Availability Checker", "goal": "Musaitlik Kontrolu", "content": "PMS'den odanin onceki/sonraki rezervasyon durumu sorgulanarak musait saat araligi belirlenir." },
+      { "title": "Pricing Engine", "goal": "Ucretlendirme", "content": "Late check-out: Saatlik, yarim gun veya tam gun ucretlendirme. Sadik misafir complimentary politikasi otomatik uygulanir." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Misafir Iletisimi", "content": "Talep alma, secenek sunma ve onay mesajlari WhatsApp uzerinden." },
+      { "title": "PMS API", "goal": "Check-in/out Guncelleme", "content": "Onaylanan check-in/out saati degisikligi PMS'de otomatik guncellenir. Housekeeping takvimi yeniden planlanir." }
+    ]
+  },
+  "impact": {
+    "title": "Late Check-out Gelir Etkisi",
+    "description": "Ucretli late check-out hizmetinden elde edilen ek geliri hesaplayin.",
+    "resultLabel": "Aylik Late Check-out Geliri",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyCheckouts", "label": "Aylik Check-out Sayisi", "default": 600, "hint": "Aylik toplam check-out yapan misafir", "editable": true },
+      { "key": "lateRequestRate", "label": "Late Check-out Talep Orani", "default": 12, "hint": "Gec cikis talep eden misafir orani (%)", "editable": true },
+      { "key": "avgLateCharge", "label": "Ortalama Late Ucreti", "default": 800, "hint": "TL cinsinden ortalama gec cikis ucreti", "editable": true }
+    ],
+    "formula": "Math.round(monthlyCheckouts * (lateRequestRate / 100)) * avgLateCharge",
+    "formulaDisplay": null
+  }
+}

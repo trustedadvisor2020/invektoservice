@@ -1,0 +1,94 @@
+{
+  "id": "eb04",
+  "title": "Cross-Platform Siparis Eslestirme",
+  "subtitle": "Cross-Platform Order Matching",
+  "phase": "Phase 2",
+  "category": "E-TICARET EK",
+  "niche": "ecommerce",
+  "description": "Trendyol, Hepsiburada gibi farkli platformlardan satin alan musterinin WhatsApp'tan yazdginda telefon numarasindan siparisini otomatik bulan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Coklu Platform Saticilar)" },
+      { "label": "Sorun", "value": "Musteri WA'dan yaziyor ama satici hangi platformdan siparis verdigini bilmiyor — farkli panellere bakmak zorunda" },
+      { "label": "Deger", "value": "Telefon numarasindan otomatik siparis eslestirme ile aninda cevap" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" }
+    ],
+    "servicesNote": "AI musterin telefon numarasindan tum platformlardaki siparislerini otomatik eslestirir ve son siparisi sunar.",
+    "steps": [
+      {
+        "title": "Siparis Eslestirme",
+        "goal": "Dogru siparisi bul",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "Telefon numarasi ile tum entegre platformlarda siparis aranir ve eslestirilir."
+      },
+      {
+        "title": "Bilgi Sunumu",
+        "goal": "Sonucu goster",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Agent)", "color": "blue" }
+        ],
+        "content": "AI bulunan siparisleri listeler ve musteri ile dogrulama yapar."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Coklu Platform Siparis Tespiti",
+      "description": "Musteri WA'dan yazdi, AI birden fazla platformdaki siparislerini buldu.",
+      "tags": [
+        { "text": "Cross-Platform", "color": "purple" },
+        { "text": "Eslestirme", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Platform API entegrasyonlari", "service": "Integrations", "page": "E-ticaret > Platform Baglantilari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Trendyol, Hepsiburada, Shopify vb. API entegrasyonlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Telefon bazli siparis arama", "service": "Integrations", "page": "E-ticaret > Siparis Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Telefon numarasindan tum platformlarda siparis arama hazir" },
+          { "text": "Siparis intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Siparis Sorgu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Siparis sorgulama intent'i ve platform tespiti hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Siparisim hakkinda bilgi almak istiyorum." },
+        { "role": "ai", "content": "Intent: Siparis Sorgusu. Telefon: +90 555 XXX. Platformlar taranıyor... Trendyol: 1 siparis, Hepsiburada: 1 siparis." },
+        { "role": "bot", "content": "Merhaba! 2 aktif siparisiniiz buldum:\n\n1️⃣ Trendyol #TR-445566 — Spor Ayakkabi (Kargoda)\n2️⃣ Hepsiburada #HB-778899 — Bluetooth Kulaklik (Hazirlaniyor)\n\nHangisi hakkinda bilgi almak istiyorsunuz?" },
+        { "role": "user", "content": "1 numara, Trendyol siparisi." },
+        { "role": "bot", "content": "Trendyol siparisiniiz:\n\n📦 #TR-445566 — Spor Ayakkabi\n🚚 Durum: Dagitimda\n📍 Tahmini teslim: Bugun 14:00-18:00\n\nBaska bir sorunuz var mi?" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Multi-Platform API entegrasyonu ile calisir. Telefon numarasi bazli cross-platform siparis eslestirme.",
+    "backend": [
+      { "title": "Order Aggregator", "goal": "Siparis Birlestirme", "content": "Tum entegre platformlardan telefon numarasi ile siparis arar ve birlestirir." },
+      { "title": "Platform Resolver", "goal": "Platform Tespiti", "content": "Bulunan siparislerin hangi platformdan geldigini belirler ve ilgili detaylari cekar." }
+    ],
+    "apis": [
+      { "title": "Trendyol API", "goal": "Siparis Sorgulama", "content": "Trendyol siparis arama ve detay cekme." },
+      { "title": "Hepsiburada API", "goal": "Siparis Sorgulama", "content": "Hepsiburada siparis arama ve detay cekme." },
+      { "title": "Shopify API", "goal": "Siparis Sorgulama", "content": "Shopify siparis arama ve detay cekme." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik siparis eslestirme ile kazanilan verimlilik.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyOrderQueries", "label": "Aylik Siparis Sorgusu", "default": 50, "hint": "Cross-platform siparis sorusu", "editable": true },
+      { "key": "minutesSavedPerQuery", "label": "Kazanilan Dakika", "default": 4, "hint": "Agent'in platform arasinda gecirdigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyOrderQueries * minutesSavedPerQuery * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

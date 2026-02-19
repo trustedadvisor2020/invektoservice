@@ -1,0 +1,118 @@
+{
+  "id": "e12",
+  "title": "Stok Durumu & Bildirim Sistemi",
+  "subtitle": "Stock Status & Notification",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Urunun stokta olup olmadigini gercek zamanli sorgulayan, yoksa ne zaman gelecegini bildiren ve stok bildirimi icin kayit alan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Stok sorusu cevaplanamazsa musteri rakibe gidiyor — kaybedilen satis" },
+      { "label": "Deger", "value": "Aninda stok bilgisi + bildirim kaydi ile potansiyel satisi koru" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Outbound Engine (C10)", "color": "green" }
+    ],
+    "servicesNote": "AI stok API'den gercek zamanli bilgi cekerr. Stokta yoksa back-in-stock bildirimi icin kayit alir.",
+    "steps": [
+      {
+        "title": "Stok Sorgulama",
+        "goal": "Gercek zamanli stok bilgisi",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "Urun kodu veya adi ile stok API'sinden gercek zamanli durum cekilir."
+      },
+      {
+        "title": "Bildirim Kaydi",
+        "goal": "Stok gelince haber ver",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Kampanya)", "color": "green" }
+        ],
+        "content": "Stokta yoksa musteri bildirim listesine eklenir. Stok girisi olunca otomatik mesaj gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Stokta Var — Aninda Bilgi",
+      "description": "Urun stokta, musteri aninda bilgilendirilir.",
+      "tags": [
+        { "text": "Stok Var", "color": "green" },
+        { "text": "Aninda Cevap", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Stok API erisimi", "service": "Integrations", "page": "E-ticaret > Stok API", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform stok API'sine erisim gerekir" }
+        ],
+        "provider": [
+          { "text": "Gercek zamanli stok sorgulama", "service": "Integrations", "page": "E-ticaret > Stok Sorgu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Urun kodu/adi ile stok sorgulama hazir" },
+          { "text": "Stok intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Stok", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Stok durumu intent'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu urun stokta var mi? Ne zaman gelir?" },
+        { "role": "ai", "content": "Intent: Stok Sorgulama. Urun tespiti: Son gorulen/link bazli. Stok: MEVCUT (12 adet)." },
+        { "role": "bot", "content": "Evet, urun stokta! 📦\n\nMevcut stok: 12 adet\nKargo suresi: 1-2 is gunu\n\nHemen siparis vermek ister misiniz?" },
+        { "role": "system", "content": "Stok bilgisi verildi. Musteri satin almaya yonlendirildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Stokta Yok — Bildirim Kaydi",
+      "description": "Urun stokta degil, musteri haber ver listesine ekleniyor.",
+      "tags": [
+        { "text": "Stok Yok", "color": "amber" },
+        { "text": "Bildirim", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Stok tahmini suresi", "service": "Backend", "page": "Urun Yonetimi > Stok Tahmin", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C11", "hint": "Urun bazli tahmini stok giris suresini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Back-in-stock bildirim", "service": "Outbound", "page": "Bildirim Zinciri > Stok", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Stok girisi oldugunda otomatik WA bildirim hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu urun ne zaman gelir?" },
+        { "role": "ai", "content": "Stok: YOK. Tahmini stok girisi: 1 hafta." },
+        { "role": "bot", "content": "Maalesef su an stokta yok. Tahmini stok girisi: ~1 hafta.\n\nStok geldiginde size haber verelim mi? Otomatik bildirim alirsiniz!" },
+        { "role": "user", "content": "Evet, haber verin." },
+        { "role": "bot", "content": "Kaydettim! Urun stoga girdiginde size WhatsApp'tan bildirim gelecek. Beklemenize gerek yok!" },
+        { "role": "system", "content": "Musteri back-in-stock listesine eklendi. Stok girisi webhook'u aktif." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo stok API + Outbound Engine birlesimiyle calisir. Gercek zamanli stok sorgusu + stok bildirimi ile potansiyel satis korunur.",
+    "backend": [
+      { "title": "Stock Checker", "goal": "Stok Sorgulama", "content": "Platform API'sinden gercek zamanli stok durumu, varyant bazli (beden/renk) stok bilgisi." },
+      { "title": "Back-in-Stock Notifier", "goal": "Stok Bildirimi", "content": "Stok girisi webhook'u tetiklendiginde bildirim listesindeki musterilere otomatik mesaj." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Stok API", "goal": "Stok Durumu", "content": "Urun bazli stok miktari, varyant bilgisi ve tahmini stok girisi." },
+      { "title": "Outbound Engine", "goal": "Bildirim", "content": "Stok geldiginde otomatik WhatsApp bildirim mesaji gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Satis",
+    "description": "Stok bildirimi ile geri dondurulen potansiyel satislar.",
+    "resultLabel": "Kurtarilan Satis (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyStockQueries", "label": "Aylik Stok Sorusu", "default": 40, "hint": "Stok durumu sorusu", "editable": true },
+      { "key": "outOfStockRate", "label": "Stokta Yok Orani", "default": 30, "prefix": "%", "hint": "Stokta olmayan oran", "editable": true },
+      { "key": "returnRate", "label": "Geri Donus Orani", "default": 40, "prefix": "%", "hint": "Bildirimle geri donme orani", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 350, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlyStockQueries * (outOfStockRate / 100) * (returnRate / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

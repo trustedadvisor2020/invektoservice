@@ -1,0 +1,102 @@
+{
+  "id": "eg16",
+  "title": "Referral / Arkadas Getir Indirimi",
+  "subtitle": "Friend Referral Program",
+  "phase": "Phase 2",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Mevcut ogrencilerden arkadas yonlendirmesi ile yeni kayit kazanma. Donem sonu Outbound ile referans teklifi gonderilerek sozlu tavsiyeyi olculebilir hale getiren proaktif senaryo.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Hobi Kursu, Mesleki Egitim)" },
+      { "label": "Sorun", "value": "Ogrenci arkadasina tavsiye ediyor ama takip edilemiyor — referans kaybi" },
+      { "label": "Deger", "value": "Sistematik referans programi ile organik buyumeyi olculebilir hale getir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Donem sonu Outbound Engine memnun ogrencilere referans teklifi gonderir. Referans kodu ile takip ve indirim otomatik uygulanir.",
+    "steps": [
+      {
+        "title": "Referans Teklifi Gonderimi",
+        "goal": "Mevcut ogrenciye referans teklifi sun",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Kampanya)", "color": "green" }
+        ],
+        "content": "Donem sonu memnuniyet skoru yuksek ogrencilere ozel referans kodu ve indirim teklifi gonderilir."
+      },
+      {
+        "title": "Referans Kodu Kullanimi",
+        "goal": "Yeni ogrenci kaydini takip et",
+        "badges": [
+          { "text": "Sistem (CRM)", "color": "purple" },
+          { "text": "Tenant (Kayit)", "color": "blue" }
+        ],
+        "content": "Yeni ogrenci kayit sirasinda referans kodunu kullanir. Hem yonlendiren hem yeni ogrenci indirim kazanir."
+      },
+      {
+        "title": "Indirim Uygulama ve Bildirim",
+        "goal": "Her iki tarafa bildirim gonder",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Muhasebe)", "color": "amber" }
+        ],
+        "content": "Referans basarili oldugunda her iki ogrenciye bildirim gonderilir, indirimler otomatik uygulanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Donem Sonu Referans Kampanyasi",
+      "description": "Memnun ogrenciye referans kodu gonderimi ve yeni kayit takibi.",
+      "tags": [
+        { "text": "Proaktif", "color": "green" },
+        { "text": "Referral", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Referans kodu sistemi", "service": "Backend", "page": "Kampanya > Referans Kodlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C3", "hint": "Her ogrenciye ozel referans kodu olusturma yapisini kurun" },
+          { "text": "Indirim politikasi tanimlama", "service": "Backend", "page": "Kampanya > Referans Indirimleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Yonlendiren ve yeni ogrenci icin indirim oranlarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Outbound referans mesaji", "service": "Outbound", "page": "Kampanya > Referans", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Referans teklifi sablon mesaji hazir" },
+          { "text": "Referans kodu takip sistemi", "service": "Backend", "page": "CRM > Referans Takibi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Kod kullanimi ve donusum takibi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Donem sonu referans kampanyasi tetiklendi: Memnuniyet skoru 4+ olan 85 ogrenci segmenti." },
+        { "role": "bot", "content": "Merhaba Zeynep Hanim! Bu donem Grafik Tasarim kursunu basariyla tamamladiniz, tebrikler!\n\nBir arkadasinizi yonlendirin, her ikiniz %10 indirim kazanin!\n\nSizin referans kodunuz: ZEYNEP2026\nBu kodu arkadasinizla paylasin, kayit sirasinda kullansin yeter." },
+        { "role": "user", "content": "Harika, arkdasima soyleyecegim! Indirim gelecek donem mi gecerli?" },
+        { "role": "bot", "content": "Evet! Arkadasiniz ZEYNEP2026 koduyla kayit olursa:\n\nArkadasiniz: Kayit ucretinde %10 indirim\nSiz: Gelecek donem ucretinizde %10 indirim\n\nKod 30 gun gecerlidir. Birden fazla arkadasinizi da yonlendirebilirsiniz — her biri icin ayri indirim kazanirsiniz!" },
+        { "role": "system", "content": "Referans kodu: ZEYNEP2026 aktif. 30 gun gecerlilik. Takip baslatildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Outbound Engine + CRM referans kodu takip sistemi ile calisir. Memnuniyet skoru bazli segment ve otomatik indirim uygulama.",
+    "backend": [
+      { "title": "Referral Code Generator", "goal": "Kod Olusturma", "content": "Her ogrenciye ozel, takip edilebilir referans kodu olusturur. Gecerlilik suresi ve kullanim limiti yonetilebilir." },
+      { "title": "Referral Tracker", "goal": "Donusum Takibi", "content": "Referans kodu kullanimini izler, donusum olursa her iki tarafa indirim uygular ve bildirim gonderir." }
+    ],
+    "apis": [
+      { "title": "Outbound Campaign API", "goal": "Kampanya Gonderimi", "content": "Memnuniyet skoru bazli segmentli referans kampanyasi gonderimi." },
+      { "title": "Discount Application API", "goal": "Indirim Uygulama", "content": "Referans kodu dogrulandiginda otomatik indirim uygulama ve muhasebe entegrasyonu." }
+    ]
+  },
+  "impact": {
+    "title": "Referans Programi ile Kazanilan Yeni Ogrenci Geliri",
+    "description": "Arkadas yonlendirme programi ile organik olarak kazanilan yeni ogrenci kayitlari.",
+    "resultLabel": "Referans Geliri (Donem Basi)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "referralSent", "label": "Referans Gonderilen", "default": 80, "hint": "Referans teklifi gonderilen ogrenci sayisi", "editable": true },
+      { "key": "referralConversion", "label": "Donusum Orani", "default": 8, "suffix": "%", "hint": "Referans koduyla kayit olan yeni ogrenci orani", "editable": true },
+      { "key": "avgCourseRevenue", "label": "Ort. Kurs Geliri", "default": 7000, "suffix": "TL", "hint": "Yeni ogrenci basina ortalama kurs geliri", "editable": true }
+    ],
+    "formula": "referralSent * (referralConversion / 100) * avgCourseRevenue",
+    "formulaDisplay": null
+  }
+}

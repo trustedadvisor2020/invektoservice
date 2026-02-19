@@ -1,0 +1,93 @@
+{
+  "id": "d28",
+  "title": "Randevu Alma: Saat ve Doktor Secimi",
+  "subtitle": "Appointment Booking with Slot Selection",
+  "phase": "Phase 1",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "WhatsApp'tan randevu almak isteyen hastaya AI ile musait slotlari sunan, doktor tercihini alan ve randevu olusturan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Resepsiyonist yogun — telefon ve WA ayni anda yonetilemiyor, hasta bekliyor" },
+      { "label": "Deger", "value": "7/24 otomatik randevu alma ile hasta memnuniyeti ve slot dolulugu artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI randevu intent'ini tespit eder, musait slotlari sunar ve hasta onayiyla randevu olusturur.",
+    "steps": [
+      {
+        "title": "Slot Sunumu",
+        "goal": "Musait zamanlari goster",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "blue" }
+        ],
+        "content": "AI randevu takviminden musait slotlari cekar ve hastaya sunar."
+      },
+      {
+        "title": "Randevu Olusturma",
+        "goal": "Randevuyu kesinlestir",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "green" }
+        ],
+        "content": "Hasta slot ve doktor secimi yaptiktan sonra randevu otomatik olusturulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "WhatsApp'tan Randevu Alma",
+      "description": "Hasta WhatsApp'tan randevu almak istiyor, AI musait slotlari sunuyor.",
+      "tags": [
+        { "text": "Randevu", "color": "blue" },
+        { "text": "Otomatik", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Randevu takvimi erisimi", "service": "Backend", "page": "Randevu Yonetimi > Takvim", "status": "setup", "priority": "required", "effort": "medium", "capability": "C8", "hint": "Doktor bazli musait slot bilgisine erisim tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Randevu intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Randevu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Randevu alma intent'i ve slot sunumu hazir" },
+          { "text": "Otomatik randevu olusturma", "service": "Automation", "page": "Is Akislari > Randevu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Hasta onayiyla otomatik randevu olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Randevu almak istiyorum, bu hafta musait misiniz?" },
+        { "role": "ai", "content": "Intent: Randevu Alma. Tercih: Bu hafta. Musait slotlar kontrol ediliyor." },
+        { "role": "bot", "content": "Tabii! Bu haftaki musait slotlarimiz:\n\n🗓️ Carsamba 14:00 — Dr. Ayse (Genel)\n🗓️ Persembe 10:00 — Dr. Mehmet (Ortodonti)\n🗓️ Cuma 16:00 — Dr. Ayse (Genel)\n\nHangisi size uygun?" },
+        { "role": "user", "content": "Carsamba 14:00 olsun." },
+        { "role": "bot", "content": "Randevunuz olusturuldu! ✅\n\n📅 Carsamba, 14:00\n👩‍⚕️ Dr. Ayse\n📍 [Klinik Adresi]\n\n⏰ Randevunuzdan 1 gun once hatirlatma mesaji gonderecegiz.\n\nGelmeden once: Kimlik ve varsa onceki röntgenlerinizi getirin." },
+        { "role": "system", "content": "Randevu olusturuldu. Hatirlatma zamanlayicisi kuruldu (R-1 gun)." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Randevu Takvimi + AI intent tespiti ile calisir. Otomatik slot sunumu ve randevu olusturma.",
+    "backend": [
+      { "title": "Slot Finder", "goal": "Musait Slot Bulma", "content": "Doktor bazli randevu takviminden musait slotlari getirir." },
+      { "title": "Appointment Creator", "goal": "Randevu Olusturma", "content": "Hasta secimi sonrasi randevuyu takvime kaydeder ve hatirlatma zamanlayicisi kurar." }
+    ],
+    "apis": [
+      { "title": "Calendar API", "goal": "Takvim Yonetimi", "content": "Musait slot sorgulama ve randevu olusturma." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kazanilan Randevu",
+    "description": "7/24 otomatik randevu alma ile kazanilan ek randevular.",
+    "resultLabel": "Ek Randevu Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAutoAppointments", "label": "Aylik Otomatik Randevu", "default": 30, "hint": "AI ile alinan randevu sayisi", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Tedavi Degeri", "default": 3000, "suffix": "TL", "hint": "Ortalama tedavi tutari", "editable": true }
+    ],
+    "formula": "monthlyAutoAppointments * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "id": "m04",
+  "title": "Doktor Mesai Disi Acil Triage",
+  "subtitle": "Doctor After-Hours Mobile Triage",
+  "phase": "Phase 7",
+  "category": "MOBIL UYGULAMA",
+  "niche": "mobile",
+  "description": "Hasta gece veya mesai disi saatlerde sorunuyla yaziyor; doktor kisisel telefonundan cevap vermek zorunda. AI on cevap ile hasta rahatlatilir, sadece gercekten acil etiketli vakalar doktorun telefonuna push notification olarak iletilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik — Klinikler, ozel hastaneler, poliklinikler, dis hekimleri" },
+      { "label": "Sorun", "value": "Mesai disi gelen her mesaj doktoru rahatsiz ediyor; acil olan ile olmayan ayirt edilemiyor" },
+      { "label": "Deger", "value": "Doktor is-yasam dengesi + hastalara 7/24 destek + gercek acillerde hizli mudahale" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Smart Routing (C2)", "color": "amber" },
+      { "name": "AI Agent Assist (C8)", "color": "green" },
+      { "name": "Automation Engine (C5)", "color": "red" }
+    ],
+    "servicesNote": "AI hasta mesajini analiz eder, aciliyet seviyesini belirler. Acil olmayan vakalar AI on cevapla yatistirilir. Sadece acil etiketli vakalar doktorun telefonuna push bildirim olarak iletilir.",
+    "steps": [
+      {
+        "title": "AI Triage",
+        "goal": "Aciliyet seviyesini belirle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Triage Kurali)", "color": "amber" }
+        ],
+        "content": "AI, hasta mesajini medikal triage protokolune gore analiz eder: ACIL (kirmizi), YARI-ACIL (sari), RUTIN (yesil). Anahtar semptomlar ve baska medikal bilgi iceren mesajlar otomatik siniflanir."
+      },
+      {
+        "title": "AI On Cevap",
+        "goal": "Hastayi bilgilendir ve rahatla",
+        "badges": [
+          { "text": "Sistem (AI Cevap)", "color": "purple" },
+          { "text": "Tenant (Medikal KB)", "color": "blue" }
+        ],
+        "content": "Acil olmayan vakalar icin AI, hasta bilgilendirme mesaji gonderir: genel tavsiyeler, yarin sabah randevu onerisi, acil durumda 112 yonlendirmesi."
+      },
+      {
+        "title": "Acil Push",
+        "goal": "Gercek acili doktora ilet",
+        "badges": [
+          { "text": "Sistem (Push)", "color": "purple" },
+          { "text": "Tenant (Doktor Mobil)", "color": "red" }
+        ],
+        "content": "Sadece ACIL (kirmizi) etiketli vakalar doktorun kisisel telefonuna push bildirim olarak gonderilir. Doktor mobil uzerinden hasta ile iletisime gecebilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Gece Rutin Sikayet — AI Yatistirma",
+      "description": "Hasta gece hafif bir sikayetle yaziyor, acil degil.",
+      "tags": [
+        { "text": "AI Triage", "color": "green" },
+        { "text": "Otomatik Cevap", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Mesai disi saatleri tanimi", "service": "Backend", "page": "Klinik Ayarlari > Calisma Saatleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Mesai saatleri ve mesai disi periyodlarini tanimlayin" },
+          { "text": "Medikal bilgi bankasi", "service": "Knowledge", "page": "Dokuman Bankasi > Hasta Bilgilendirme", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Sik sorulan saglik sorulari ve genel tavsiyeleri Knowledge Base'e yukleyin" }
+        ],
+        "provider": [
+          { "text": "Medikal triage AI modeli", "service": "AgentAI", "page": "Triage Kurallari > Aciliyet Siniflandirma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Semptom bazli aciliyet siniflandirma modeli hazir (kirmizi/sari/yesil)" },
+          { "text": "Mesai disi otomasyon akisi", "service": "Automation", "page": "Mesai Disi > Otomatik Cevap", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Mesai disi AI cevaplama akisi yapilandirmaya hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Doktor bey, birkac gundur basim agriyor. Ibuprofen aliyorum ama gecmiyor. Ne yapmaliyim?" },
+        { "role": "ai", "content": "Triage Analizi: Bas agrisi (kronik, 3+ gun). Aciliyet: YESIL (Rutin). Kirmizi bayrak yok (ani baslangiç, kusma, gorme kaybi). AI on cevap olusturuluyor." },
+        { "role": "bot", "content": "Merhaba, mesajiniz icin tesekkurler. Doktorumuz su an mesai disinda. Bas agrinizin birkac gundur surmesi doktorumuzun sizi detayli degerlendirmesini gerektirir. Yarin sabah 09:00'da randevu olusturabilir miyim? Bu arada bol su icin ve ekran suresini azaltin. Ani siddetli agri, kusma veya gorme bulanikligi olursa HEMEN 112'yi arayin." },
+        { "role": "user", "content": "Tamam, yarin randevu alalim." },
+        { "role": "bot", "content": "Randevunuz olusturuldu: Yarin 09:00 — Dr. Mehmet Kaya. Gecmis olsun, iyi geceler." },
+        { "role": "system", "content": "Doktor rahatsiz edilmedi. AI triage basarili: rutin vaka yatistirildi, randevu olusturuldu." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Gece Acil Vaka — Doktora Push",
+      "description": "Hasta gece ciddi semptomlarla yaziyor, gercek acil.",
+      "tags": [
+        { "text": "ACIL Triage", "color": "red" },
+        { "text": "Doktor Push", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Doktor mobil uygulama kaydi", "service": "Backend", "page": "Doktor Profili > Mobil Cihaz", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Doktorun kisisel telefonunu mobil push icin kaydedin" }
+        ],
+        "provider": [
+          { "text": "Acil push tetikleme mekanizmasi", "service": "Backend", "page": "Bildirim Motoru > Acil Push", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Kirmizi etiketli vakalarda aninda doktor push bildirimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Doktor yardim edin! Gogsum cok agriyor ve nefes alamiyorum. Sol kolum uyusuyor." },
+        { "role": "ai", "content": "ACIL Triage: Gogus agrisi + nefes darligi + sol kol uyusmasi. Aciliyet: KIRMIZI. Potansiyel kardiyak olay. HEMEN doktora ilet + 112 yonlendirmesi." },
+        { "role": "bot", "content": "Bu belirtiler cok onemli! HEMEN 112'yi arayin veya en yakin acil servise gidin. Doktorumuza da ayni anda haber veriyorum. Asla beklemeyin!" },
+        { "role": "system", "content": "ACIL PUSH → Dr. Mehmet Kaya: 'ACIL HASTA — Gogus agrisi + nefes darligi + sol kol uyusmasi. Hasta: Fatma Demir. Hemen kontrol edin!'" },
+        { "role": "bot", "content": "[Doktor push'a dokunur, mobil uygulamadan hasta ile iletisime gecer]\n\nFatma Hanim, ben Dr. Kaya. Lutfen 112'yi aradiniz mi? Sizi en yakin acil servise yonlendiriyorum. Hangi bolgede kaliyorsunuz?" },
+        { "role": "user", "content": "Evet aradim, ambulans geliyor. Kadikoy'deyim." },
+        { "role": "bot", "content": "Cok iyi, ambulans gelene kadar hareketsiz kalin ve sakin olun. Memorial Kadikoy Acil'e yonlendirecegim, bilgilerinizi onceden iletiyorum. Gecmis olsun." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "AI triage modeli medikal semptom veritabanindan egitilmistir. Mesai disi saatlerde otomasyon motoru devreye girer. Acil vakalarda FCM ile doktora aninda push gonderilir.",
+    "backend": [
+      { "title": "Medical Triage Engine", "goal": "Aciliyet Siniflandirma", "content": "Hasta mesajlarindaki semptomlari analiz ederek kirmizi/sari/yesil aciliyet seviyesi belirler. Medikal anahtar kelime ve semptom kombinasyonlari kullanir." },
+      { "title": "After-Hours Automation", "goal": "Mesai Disi Yonetim", "content": "Mesai saatleri disinda gelen mesajlari AI triage'dan gecirir. Rutin vakalari otomatik cevaplayip randevu olusturur, acilleri doktora push ile iletir." }
+    ],
+    "apis": [
+      { "title": "Triage Classification API", "goal": "Semptom Analizi", "content": "Hasta mesajindan aciliyet seviyesini belirleyen AI endpoint'i. Kirmizi bayrak semptomlari aninda tetikler." },
+      { "title": "Emergency Push API", "goal": "Acil Bildirim", "content": "Kirmizi etiketli vakalarda doktorun kisisel telefonuna high-priority FCM push gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Doktor Is-Yasam Dengesi + Hasta Guvenlik Degeri",
+    "description": "AI triage sayesinde doktor sadece gercek acillerde aranir, rutin vakalar otomatik yonetilir. Hasta her zaman bilgilendirilir.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "nightlyMessages", "label": "Gece Gelen Mesaj", "default": 10, "hint": "Mesai disinda gelen ortalama gunluk hasta mesaji", "editable": true },
+      { "key": "urgentRate", "label": "Gercek Acil Orani", "default": 15, "suffix": "%", "hint": "Mesajlarin yuzde kaci gercek acil", "editable": true },
+      { "key": "doctorHourlyValue", "label": "Doktor Saat Degeri", "default": 800, "suffix": "TL", "hint": "Doktorun saatlik konsultasyon ucreti", "editable": true }
+    ],
+    "formula": "nightlyMessages * (1 - urgentRate / 100) * 0.25 * doctorHourlyValue * 30",
+    "formulaDisplay": null
+  }
+}

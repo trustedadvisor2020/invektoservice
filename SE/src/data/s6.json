@@ -1,0 +1,167 @@
+{
+  "id": "s6",
+  "title": "Fiyat → Randevu Donusumu",
+  "subtitle": "Price-to-Appointment Conversion",
+  "phase": "Phase 1-2",
+  "category": "SAGLIK OTOMASYONU",
+  "niche": "health",
+  "description": "Dis kliniklerine gelen fiyat sorularini direkt fiyat vermek yerine ucretsiz muayene randevusuna yonlendiren AI sistemi. Klinige gelen hastanin %70'i tedavi olur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik (Dis Klinikleri, Estetik)" },
+      { "label": "Sorun", "value": "Gunde 30+ fiyat sorusu, fiyat verince hasta kayboluyor" },
+      { "label": "Gercek", "value": "Klinige gelen hastanin %70'i tedavi olur, gelmeyenin %5'i" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "blue" },
+      { "name": "WhatsApp Business API", "color": "green" },
+      { "name": "Randevu Motoru", "color": "purple" },
+      { "name": "Knowledge RAG (C7)", "color": "amber" }
+    ],
+    "servicesNote": "AI fiyat sorusunu yakalar ama DIREKT FIYAT VERMEZ. Bunun yerine ucretsiz muayene randevusu onerir.",
+    "steps": [
+      {
+        "title": "Fiyat Sorusu Tespiti",
+        "goal": "Intent'i yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (WhatsApp Hatti)", "color": "green" }
+        ],
+        "content": "AI 'implant kac para', 'zirkonyum fiyat', 'ne kadar' gibi fiyat intent'lerini tespit eder."
+      },
+      {
+        "title": "Randevu Yonlendirme",
+        "goal": "Fiyat yerine randevu sun",
+        "badges": [
+          { "text": "Sistem (Strateji)", "color": "purple" },
+          { "text": "Tenant (Slot Bilgisi)", "color": "blue" }
+        ],
+        "content": "Direkt fiyat vermek yerine: 'Tedavi hastaya gore degisir. Size dogru bilgi verebilmemiz icin ucretsiz muayene randevusu oneriyoruz.'"
+      },
+      {
+        "title": "Slot Onerisi",
+        "goal": "Hemen randevu ver",
+        "badges": [
+          { "text": "Sistem (Randevu)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "amber" }
+        ],
+        "content": "Musait slotlar sunulur: 'Bu hafta Carsamba 14:00 veya Cuma 10:00 uygun mu?' Hasta secerse randevu kayit."
+      },
+      {
+        "title": "Follow-Up",
+        "goal": "Cevapsizi takip et",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Kurallar)", "color": "green" }
+        ],
+        "content": "48 saat cevap yoksa follow-up: 'Randevunuzu ayirmamizi ister misiniz?' Israr ederse fiyat araligi ver."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Implant Fiyat Sorusu",
+      "description": "Hasta implant fiyati soruyor, randevuya yonlendirilir.",
+      "tags": [
+        { "text": "Fiyat → Randevu", "color": "blue" },
+        { "text": "Dis Klinigi", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Musait randevu slotlari", "service": "Backend", "page": "Randevu Takvimi > Slot Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Doktor musaitlik takvimini guncel tutun" },
+          { "text": "Fiyat araligi bilgisi (fallback)", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Araliklari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Tedavi bazli min-max fiyat araligini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Fiyat intent tespiti", "service": "AgentAI", "page": "Intent Detection > Fiyat Sorusu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fiyat sorusu intent tespiti hazir" },
+          { "text": "Randevu motoru entegrasyonu", "service": "Backend", "page": "Randevu Motoru", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Slot onerisi ve randevu olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, dis implant kac lira?" },
+        { "role": "ai", "content": "Intent: Fiyat Sorusu (Implant). Strateji: Randevu Yonlendirme." },
+        { "role": "bot", "content": "Merhaba! Implant tedavisi hastaya gore farklilik gosterir. Size dogru bilgi verebilmemiz icin ucretsiz muayene randevusu oneriyoruz. Bu hafta Carsamba 14:00 veya Cuma 10:00 uygun mu?" },
+        { "role": "user", "content": "Carsamba olur." },
+        { "role": "system", "content": "Randevu Olusturuldu: Carsamba 14:00. Hatirlatma zinciri aktif." },
+        { "role": "bot", "content": "Harika! Carsamba 14:00'te sizi bekliyoruz. Adresimiz: [Klinik Adresi]. Hatirlatma mesaji gonderecegiz." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Fiyat Israri → Aralik Ver",
+      "description": "Hasta fiyat almadan randevuya gelmek istemiyor.",
+      "tags": [
+        { "text": "Fallback", "color": "amber" },
+        { "text": "Fiyat Araligi", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Tedavi bazli fiyat araliklari (min-max)", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Araliklari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tedavi tipine gore min-max fiyat araligini tanimlayin" },
+          { "text": "Doktor onayi", "service": "Backend", "page": "Ayarlar > Fiyat Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Fiyat araligi paylasim onayi ve kosullarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Fallback mantigi", "service": "AgentAI", "page": "Strateji Kurallari > Fiyat Fallback", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fiyat israr tespit ve fallback stratejisi hazir" },
+          { "text": "Knowledge RAG (C7)", "service": "Knowledge", "page": "RAG Pipeline", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tedavi bilgisi RAG pipeline'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Fiyat bilmeden gelemem, en azindan aralik soyleyin." },
+        { "role": "ai", "content": "Intent: Fiyat Israri. Fallback: Fiyat araligi ver + randevu vurgula." },
+        { "role": "bot", "content": "Anliyorum! Implant tedavisi 25.000-45.000 TL araliginda degisir. Tam fiyat agiz icindeki duruma bagli. Ucretsiz muayenede doktorumuz kesin fiyat verecek. Yarin 11:00 randevu olusturalim mi?" },
+        { "role": "user", "content": "Tamam, yarin gelebilirim." },
+        { "role": "system", "content": "Randevu Olusturuldu: Yarin 11:00. Fiyat araligi verildi ama randevuya yonlendirildi." }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Instagram DM → WhatsApp",
+      "description": "Instagram reklamından gelen fiyat sorusu, WhatsApp'a yonlendirilir.",
+      "tags": [
+        { "text": "Instagram DM", "color": "purple" },
+        { "text": "Lead Capture", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Instagram Business hesabi", "service": "Integrations", "page": "Sosyal Medya > Instagram", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram Business hesabinizi Invekto'ya baglayın" },
+          { "text": "WhatsApp numarasi", "service": "Integrations", "page": "WhatsApp > Hat Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp Business API hattinizi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "IG DM API entegrasyonu", "service": "Integrations", "page": "Instagram Graph API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram DM API entegrasyonu hazir" },
+          { "text": "Kanal gecis modulu", "service": "Backend", "page": "Kanal Yonetimi > Handoff", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "IG DM → WhatsApp kanal gecis modulu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Kanal: Instagram DM. Kaynak: Reklam Tiklamasi." },
+        { "role": "user", "content": "Zirkonyum kaplama ne kadar?" },
+        { "role": "ai", "content": "Intent: Fiyat (IG DM). Strateji: WhatsApp'a yonlendir + randevu." },
+        { "role": "bot", "content": "Merhaba! Zirkonyum kaplama tedavisi icin detayli bilgiyi WhatsApp hattimizdan verelim: wa.me/905xxxxxxxxx. Ucretsiz muayene randevusu da olusturabiliriz!" },
+        { "role": "user", "content": "WhatsApp'tan yaziyorum." },
+        { "role": "system", "content": "Lead Kaynagi: Instagram Reklami. Kanal Gecisi: IG DM → WhatsApp." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo senkron calisir. Fiyat sorusu geldigi anda AI strateji belirler (randevu yonlendirme veya fiyat araligi fallback). Ortalama yanit suresi 3-5 saniye.",
+    "backend": [
+      { "title": "Price Intent Detector", "goal": "Fiyat Sorusu Tespiti", "content": "NLP ile 'ne kadar', 'fiyat', 'ucret' gibi kaliplari tespit eder. Tedavi tipini cikarir (implant, zirkonyum, vb)." },
+      { "title": "Appointment Scheduler", "goal": "Randevu Olusturma", "content": "Musait slotlari sunar, hasta onaylarsa randevu olusturur. Hatirlatma zinciri otomatik baslar." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Cloud API", "goal": "Mesajlasma", "content": "Fiyat sorusu ve randevu bilgilendirmesi WhatsApp uzerinden yapilir." },
+      { "title": "Calendar API", "goal": "Slot Yonetimi", "content": "Klinik takviminden musait slotlar cekilir ve randevu yazilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Ek Gelir Potansiyeli",
+    "description": "Degerlerinizi duzenleyin — fiyat sorusunu randevuya cevirmenin gelir etkisi.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 10000,
+    "inputs": [
+      { "key": "dailyPriceQuestions", "label": "Gunluk Fiyat Sorusu", "default": 30, "hint": "WhatsApp + IG DM", "editable": true },
+      { "key": "conversionIncrease", "label": "Donusum Artisi", "default": 13, "prefix": "%", "hint": "%12 → %25 (sektör benchmark)", "editable": true },
+      { "key": "avgTreatment", "label": "Ort. Tedavi", "default": 25000, "suffix": "TL", "hint": "Tedavi degeri", "editable": true }
+    ],
+    "formula": "dailyPriceQuestions * (conversionIncrease / 100) * 0.7 * avgTreatment * 0.04",
+    "formulaDisplay": null
+  }
+}

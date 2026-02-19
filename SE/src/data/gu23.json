@@ -1,0 +1,132 @@
+{
+  "id": "gu23",
+  "title": "Grup Randevusu (Kina Gecesi, Dogum Gunu)",
+  "subtitle": "Group Appointment Management",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Kina gecesi, dogum gunu veya mezuniyet icin buyuk grup randevusu koordinasyonu zor. AI grup randevusu intent'ini tespit eder, kisi sayisi ve hizmetleri sorar, kapasite kontrolu yapar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Etkinlik/Grup Hizmetleri)" },
+      { "label": "Sorun", "value": "5-10 kisilik grup randevulari koordinasyonu zor — kapasite, personel ve zaman planlamasi karisik" },
+      { "label": "Deger", "value": "AI ile otomatik kapasite kontrolu + grup fiyatlandirma = buyuk grup satislari kolaylasir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI grup randevusu intent'ini tespit eder, kisi sayisi ve hizmet detaylarini sorar, kapasite kontrolu yaparak uygun gun ve saati onerır.",
+    "steps": [
+      {
+        "title": "Grup Intent Tespiti",
+        "goal": "Grup randevusu talebini yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kapasite)", "color": "amber" }
+        ],
+        "content": "AI 'kina gecesi', 'dogum gunu', 'grup randevu', '8 kisi' gibi ifadeleri tespit eder ve grup akisini baslatir."
+      },
+      {
+        "title": "Detay Toplama",
+        "goal": "Kisi sayisi ve hizmetleri belirle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Hizmet Listesi)", "color": "blue" }
+        ],
+        "content": "AI kisi sayisini, istenen hizmetleri ve tarih tercihini sorar. Ozel gun turu de (kina, dugun, mezuniyet) belirlenir."
+      },
+      {
+        "title": "Kapasite Kontrolu",
+        "goal": "Uygun slot bul",
+        "badges": [
+          { "text": "Sistem (Takvim)", "color": "purple" },
+          { "text": "Tenant (Personel)", "color": "green" }
+        ],
+        "content": "Istenen tarihte yeterli personel ve koltuk kapasitesi kontrol edilir. Gerekirse alternatif tarihler sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kina Gecesi Grup Randevusu",
+      "description": "8 kisilik kina gecesi grubu icin sac + makyaj randevusu.",
+      "tags": [
+        { "text": "Grup", "color": "purple" },
+        { "text": "Kina", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Salon kapasite bilgisi", "service": "Backend", "page": "Salon Ayarlari > Kapasite", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Salon koltuk sayisi ve ayni anda hizmet verebilecek personel sayisini tanimlayin" },
+          { "text": "Grup fiyatlandirma kurallari", "service": "Knowledge", "page": "Dokuman Bankasi > Grup Paketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "5+ kisi icin grup indirim kurallarini ve ozel paketleri tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Grup randevusu intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Grup Randevu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Grup, kina, dogum gunu gibi etkinlik intent'leri hazir" },
+          { "text": "Kapasite kontrolu", "service": "Backend", "page": "Randevu > Kapasite Kontrolu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ayni anda kac kisi hizmet alabilecegini kontrol eden sistem hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhabalar, kina gecemiz icin 8 kisilik randevu almak istiyoruz. Sac ve makyaj yaptirmak istiyoruz." },
+        { "role": "ai", "content": "Intent: Grup Randevusu. Etkinlik: Kina Gecesi. Kisi: 8. Hizmetler: Sac + Makyaj. Kapasite kontrolu baslatiliyor." },
+        { "role": "bot", "content": "Tebrikler, kina geceniz kutlu olsun!\n\n8 kisi icin sac + makyaj — cok guzel bir plan!\n\nBirkaс bilgi alabilir miyim?\n1. Hangi tarihi dusunuyorsunuz?\n2. Kina gecesi saat kacta baslayacak? (Hazirligin bitmesi gereken saat)\n3. Gelin adayi icin ozel bir stil tercihiniz var mi?" },
+        { "role": "user", "content": "15 Mart Cumartesi. Aksam 19:00'da basliyor, o saate hazir olmaliyiz. Gelin adayimiz icin ozel bir sey istiyoruz." },
+        { "role": "ai", "content": "Kapasite kontrolu: 15 Mart Cumartesi. 8 kisi x sac + makyaj = ~16 islem. Gerekli personel: 4 (2'ser kisi halinde). Baslangic: 13:00. Salon kapasitesi: Uygun." },
+        { "role": "bot", "content": "15 Mart Cumartesi icin kapasite uygun!\n\nKina Gecesi Paket Plani (8 kisi):\n\nGelin Adayi (Ozel):\nOzel Kina Saci + Ozel Makyaj: 2.000 TL\n\n7 Davetli:\nSac + Makyaj: 1.200 TL/kisi x 7 = 8.400 TL\n\nToplam: 10.400 TL\nGrup Indirimi (%15): -1.560 TL\nPaket Fiyati: 8.840 TL\n\nZaman Plani:\n13:00 — Baslangic (4 personel ayni anda)\n17:30 — Tum islemler tamamlanir\n18:00 — Son kontroller\n19:00 — Kina gecesine hazir!\n\nOnaylamak ister misiniz?" },
+        { "role": "user", "content": "Harika, onayliyoruz!" },
+        { "role": "bot", "content": "Grup randevunuz olusturuldu!\n\nEtkinlik: Kina Gecesi\nTarih: 15 Mart Cumartesi, 13:00-18:00\nKisi: 8 (1 gelin adayi + 7 davetli)\nToplam: 8.840 TL\n\n1 hafta once detay mesaji gonderecegiz: kisi isim listesi ve ozel isteklerinizi alacagiz.\n\nMuhtesem bir gece olacak!" },
+        { "role": "system", "content": "Grup randevusu olusturuldu. 4 personel bloklandi. Kapasite guncellendi. T-7 hatirlatma kuyruge alindi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Dogum Gunu Parti Hazirlik",
+      "description": "5 kisilik dogum gunu partisi icin makyaj ve tirnak randevusu.",
+      "tags": [
+        { "text": "Grup", "color": "purple" },
+        { "text": "Dogum Gunu", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Grup minimum kisi kurali", "service": "Backend", "page": "Salon Ayarlari > Grup Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Grup indirimi icin minimum kisi sayisini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Etkinlik turu eslestirme", "service": "AgentAI", "page": "Intent Tespiti > Etkinlik Turu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Dogum gunu, kina, mezuniyet gibi etkinlik turlerini ayirt etme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Arkadasimin dogum gunu icin 5 kisi makyaj ve tirnak yaptirmak istiyoruz" },
+        { "role": "ai", "content": "Intent: Grup Randevusu. Etkinlik: Dogum Gunu. Kisi: 5. Hizmetler: Makyaj + Tirnak (manikur). Kapasite kontrolu baslatiliyor." },
+        { "role": "bot", "content": "Ne guzel bir surpriz plan!\n\n5 kisi icin Dogum Gunu Paketi:\n\nMakyaj: 600 TL/kisi\nManikur: 300 TL/kisi\nKisi basina: 900 TL\n\n5 Kisi Toplam: 4.500 TL\nGrup Indirimi (%10): -450 TL\nPaket Fiyati: 4.050 TL\n\nBonus: Dogum gunu kisisine ozel tirnak art hediye!\n\nHangi gun uygun olur?" },
+        { "role": "user", "content": "Bu Cumartesi olabilir mi?" },
+        { "role": "bot", "content": "Bu Cumartesi musait slotlar:\n\n10:00-13:00 (sabah slotu)\n14:00-17:00 (ogle slotu)\n\nHangi saat araligi uygun?" },
+        { "role": "user", "content": "14:00 olsun" },
+        { "role": "system", "content": "Grup randevusu olusturuldu. 5 kisi, Cumartesi 14:00-17:00. Dogum gunu kisisi icin tirnak art hediye notu eklendi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Grup randevusu sistemi salon kapasitesini, personel muesaitligini ve zaman planlamasini otomatik hesaplar. AI etkinlik turunu ve kisi sayisini tespit ederek uygun paketler sunar.",
+    "backend": [
+      { "title": "Group Capacity Checker", "goal": "Kapasite Kontrolu", "content": "Istenen tarihte salon koltuk kapasitesi ve personel muesaitligini kontrol eder." },
+      { "title": "Group Pricing Engine", "goal": "Grup Fiyatlandirma", "content": "Kisi sayisi ve hizmet kombinasyonuna gore grup indirim kurallarini uygular." }
+    ],
+    "apis": [
+      { "title": "Calendar API", "goal": "Takvim Yonetimi", "content": "Grup randevusu icin birden fazla personel slotunu ayni anda bloklayan takvim API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Grup Randevulari ile Ek Gelir",
+    "description": "Grup etkinlikleri ile tek seferde yuksek hacimli satis ve salon dolulugunun artmasi.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyGroupEvents", "label": "Aylik Grup Etkinligi", "default": 4, "hint": "Ayda alinan grup randevu sayisi", "editable": true },
+      { "key": "avgGroupSize", "label": "Ort. Grup Buyuklugu", "default": 6, "hint": "Ortalama kisi sayisi", "editable": true },
+      { "key": "avgPerPersonSpend", "label": "Kisi Basina Harcama", "default": 900, "suffix": "TL", "hint": "Kisi basina ortalama hizmet tutari", "editable": true }
+    ],
+    "formula": "monthlyGroupEvents * avgGroupSize * avgPerPersonSpend",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "id": "gu22",
+  "title": "Online Urun Magazasi",
+  "subtitle": "Online Product Store via WhatsApp",
+  "phase": "Phase 2",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Musteri salonda kullanilan bakim urununu online siparis etmek istiyor ama salon fiziksel satis yapiyor. WhatsApp uzerinden urun katalogu, siparis ve odeme linki ile dijital satis kanali.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Urun Satisi)" },
+      { "label": "Sorun", "value": "Musteriler bakim urunlerini tekrar almak istiyor ama salona gelmek zorunda — online satis kanali yok" },
+      { "label": "Deger", "value": "WhatsApp uzerinden siparis = ek gelir kanali + musteri kolayligi" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI urun talebini tespit eder, Knowledge Base'den urun katalogu ve fiyat bilgisini sunar, odeme linki ile siparis tamamlanir.",
+    "steps": [
+      {
+        "title": "Urun Talebi Tespiti",
+        "goal": "Siparis intent'ini yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Urun Listesi)", "color": "amber" }
+        ],
+        "content": "AI 'urun almak istiyorum', 'sampuan bitti', 'sac maskesi nereden bulabilirim' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Urun Katalog Sunumu",
+        "goal": "Dogru urunu bul ve oner",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Stok)", "color": "blue" }
+        ],
+        "content": "Knowledge Base'den urun detayi, fiyati ve stok durumu cekilir. Musteriye fotografli ve aciklamali sunum yapilir."
+      },
+      {
+        "title": "Siparis ve Odeme",
+        "goal": "Satis tamamla",
+        "badges": [
+          { "text": "Sistem (Odeme)", "color": "purple" },
+          { "text": "Tenant (Kargo)", "color": "green" }
+        ],
+        "content": "Musteri urunu onayladiktan sonra odeme linki gonderilir. Odeme sonrasi kargo takip bilgisi paylasilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Bakim Urunu Tekrar Siparisi",
+      "description": "Musteri daha once salonda kullandigi sac maskesini tekrar almak istiyor.",
+      "tags": [
+        { "text": "Siparis", "color": "blue" },
+        { "text": "Urun", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun katalogu ve fiyat listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Urun Katalogu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sattığiniz urunlerin adi, fiyati, aciklamasi ve gorsellerini ekleyin" },
+          { "text": "Odeme entegrasyonu (iyzico/PayTR)", "service": "Backend", "page": "Entegrasyonlar > Odeme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Odeme saglayicisi API anahtarlarini tanimlayin" },
+          { "text": "Kargo/teslimat secenekleri", "service": "Backend", "page": "Siparis > Teslimat Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Kargo firmasi veya elden teslim seceneklerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Urun siparis intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Urun Siparis", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Urun adi, siparis ve satin alma intent'leri hazir" },
+          { "text": "Odeme linki olusturma", "service": "Backend", "page": "Odeme > Link Olusturma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Tek tikla odeme linki olusturma altyapisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Gecen sefer sac maskesi almistim, cok begendim. Ayni urunden tekrar siparis verebilir miyim?" },
+        { "role": "ai", "content": "Intent: Urun Siparisi. Musteri gecmis islemi: Sac Maskesi. Knowledge Base urun eslestirme yapiliyor." },
+        { "role": "bot", "content": "Merhaba! Gecen seferkindeki urun:\n\nKeratin Repair Sac Maskesi — 500ml\nMarka: Olaplex No.3\nFiyat: 850 TL\n\nStok: Mevcut\nKargo: Ucretsiz (aynı gun gonderim)\n\nSiparis vermek ister misiniz?" },
+        { "role": "user", "content": "Evet, siparis vermek istiyorum" },
+        { "role": "bot", "content": "Siparisiniz hazirlaniyor!\n\nOlaplex No.3 Sac Maskesi 500ml: 850 TL\nKargo: Ucretsiz\nToplam: 850 TL\n\nAsagidaki linkten odemenizi tamamlayabilirsiniz:\n[Odeme Linki]\n\nOdeme sonrasi kargo takip numaranizi gonderecegiz." },
+        { "role": "user", "content": "Odemeyi yaptim" },
+        { "role": "bot", "content": "Odemeniz onaylandi, tesekkurler!\n\nSiparis No: #GU-2026-0142\nUrun: Olaplex No.3 Sac Maskesi 500ml\nKargo: Yurtici Kargo\nTahmini Teslimat: 2-3 is gunu\n\nKargoya verildliginde takip numaranizi gonderecegiz!" },
+        { "role": "system", "content": "Siparis tamamlandi. Odeme onaylandi. Kargo hazirlik bildirimi salon sahibine gonderildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Urun Danismanligi ve Oneri",
+      "description": "Musteri hangi urunu almasi gerektigini bilmiyor, AI oneri yapiyor.",
+      "tags": [
+        { "text": "Danismanlik", "color": "purple" },
+        { "text": "Urun", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun-sac tipi eslestirme bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Urun Rehberi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sac tipine gore uygun urun esleştirmelerini tanimlayın" }
+        ],
+        "provider": [
+          { "text": "Urun oneri motoru", "service": "AgentAI", "page": "Oneri Sistemi > Urun", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Musteri profili ve sac tipine gore urun oneri hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Saclarim cok kuru ve kirilgan, evde ne kullanmaliyim?" },
+        { "role": "ai", "content": "Intent: Urun Danismanligi. Sorun: Kuru + kirilgan sac. Musteri profili: Son islem keratin (2 ay once). AI urun onerisi hazirlaniyor." },
+        { "role": "bot", "content": "Kuru ve kirilgan saclar icin su bakim rutinini oneriyoruz:\n\n1. Moroccanoil Nemlendirici Sampuan — 650 TL\n2. Olaplex No.3 Onarici Maske — 850 TL\n3. Argan Yagi Sac Serumu — 420 TL\n\n3'lu Set: 1.920 TL yerine 1.630 TL (%15 set indirimi)\n\nHangisini veya hepsini almak ister misiniz?" },
+        { "role": "user", "content": "Seti alayim" },
+        { "role": "system", "content": "Set siparisi olusturuldu. Odeme linki gonderildi. Set indirimi uygulandi: 1.630 TL." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "WhatsApp uzerinden urun katalogu, siparis alma ve odeme linki ile dijital satis kanali. AI urun eslestirme ve oneri motoru ile desteklenir.",
+    "backend": [
+      { "title": "Product Catalog Manager", "goal": "Urun Katalogu", "content": "Urun bilgileri, gorselleri, stok durumu ve fiyatlarini yoneten katalog sistemi." },
+      { "title": "Payment Link Generator", "goal": "Odeme Linki", "content": "iyzico/PayTR entegrasyonu ile tek tikla odeme linki olusturma." }
+    ],
+    "apis": [
+      { "title": "Payment Gateway API", "goal": "Odeme Islemleri", "content": "iyzico/PayTR API ile odeme linki olusturma ve odeme durumu sorgulama." }
+    ]
+  },
+  "impact": {
+    "title": "Online Urun Satisi ile Ek Gelir",
+    "description": "WhatsApp uzerinden urun satisi ile salonda hizmet disi kazanilan ek gelir.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyProductOrders", "label": "Aylik Urun Siparisi", "default": 25, "hint": "WA uzerinden alinan siparis sayisi", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis Tutari", "default": 700, "suffix": "TL", "hint": "Ortalama urun siparis degeri", "editable": true },
+      { "key": "profitMargin", "label": "Kar Marji", "default": 40, "prefix": "%", "hint": "Urun satis kar marji", "editable": true }
+    ],
+    "formula": "monthlyProductOrders * avgOrderValue * (profitMargin / 100)",
+    "formulaDisplay": null
+  }
+}

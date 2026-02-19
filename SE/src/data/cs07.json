@@ -1,0 +1,131 @@
+{
+  "id": "cs07",
+  "title": "Revenue Attribution",
+  "subtitle": "Sales Channel Attribution",
+  "phase": "Phase 2",
+  "category": "CROSS-SECTOR KRITIK",
+  "niche": "crossSector",
+  "description": "Satisin hangi kanaldan geldigini ve AI mi insan temsilci mi kapattigini bilmek mumkun degil. Conversion tracking, AI vs Human flag ve kanal bazli ROI raporlamasi ile her satisin kaynaGi net olarak izlenir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Tum Sektorler — Coklu kanal uzerinden satis yapan, AI chatbot kullanan isletmeler" },
+      { "label": "Sorun", "value": "Hangi kanalin ne kadar satis getirdigini ve AI'nin satis kapatma basarisini olcememe" },
+      { "label": "Deger", "value": "Veri odakli kanal yatirimi + AI ROI olcumu + butce optimizasyonu" }
+    ],
+    "services": [
+      { "name": "Analytics Dashboard (C4)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "green" },
+      { "name": "Marketing Analytics (C12)", "color": "amber" }
+    ],
+    "servicesNote": "Her musteri etkileşiminde kanal ve temsilci bilgisi (AI/insan) islenir. Satis kapatildiginda attribution bilgisi otomatik kaydedilir. Dashboard uzerinden kanal ve temsilci bazli ROI raporu sunulur.",
+    "steps": [
+      {
+        "title": "Etkilesim Izleme",
+        "goal": "Her temas noktasini kaydet",
+        "badges": [
+          { "text": "Sistem (Tracking)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "Her musteri etkileşiminde kanal (WhatsApp, web, telefon, sosyal), temsilci tipi (AI/insan) ve etkileşim icerigi otomatik kaydedilir."
+      },
+      {
+        "title": "Conversion Flag",
+        "goal": "Satisi kaydet ve iliskilendir",
+        "badges": [
+          { "text": "Sistem (Attribution)", "color": "purple" },
+          { "text": "Tenant (Satis Tetikleme)", "color": "amber" }
+        ],
+        "content": "Satis kapatildiginda son temas (last touch), ilk temas (first touch) ve coklu temas (multi-touch) attribution modelleriyle kaynak belirlenir. AI vs insan flagi otomatik eklenir."
+      },
+      {
+        "title": "ROI Raporlama",
+        "goal": "Kanal ve temsilci bazli getiri goster",
+        "badges": [
+          { "text": "Sistem (Dashboard)", "color": "purple" },
+          { "text": "Tenant (Rapor)", "color": "green" }
+        ],
+        "content": "Dashboard uzerinde kanal bazli satis tutari, conversion orani, ortalama sepet degeri ve AI vs insan karsilastirmasi raporlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "AI Satisi — Attribution Kaydı",
+      "description": "Musteri WhatsApp'tan AI chatbot ile alisveris yapiyor, satis AI'ya atfediliyor.",
+      "tags": [
+        { "text": "AI Satis", "color": "green" },
+        { "text": "Attribution", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Satis kapatma tetikleme kurali", "service": "Backend", "page": "Satis Ayarlari > Conversion Tanimlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Siparis onay, odeme tamamlama gibi satis kapatma olaylarini tanimlayin" },
+          { "text": "Kanal bazli maliyet bilgisi", "service": "Backend", "page": "Kanal Yonetimi > Maliyet Girisi", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C12", "hint": "Her kanal icin aylik harcama/maliyet bilgisini girin (ROI hesabi icin)" }
+        ],
+        "provider": [
+          { "text": "Attribution tracking motoru", "service": "Backend", "page": "Attribution > Tracking Engine", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "First/last/multi-touch attribution modelleri hazir" },
+          { "text": "ROI dashboard gorunumu", "service": "Backend", "page": "Analytics > Revenue Attribution", "status": "ready", "priority": "required", "effort": "easy", "capability": "C12", "hint": "Kanal ve temsilci bazli gelir raporlama paneli hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, su altin kolye kac TL?" },
+        { "role": "ai", "content": "Tracking: Kanal=WhatsApp, Temsilci=AI, Etkileşim=Urun Sorusu." },
+        { "role": "bot", "content": "Merhaba! 14 Ayar Altin Kolye su an 12.500 TL. Bu hafta sonu ozel %10 indirimle 11.250 TL. Sepete ekleyeyim mi?" },
+        { "role": "user", "content": "Evet, satin almak istiyorum." },
+        { "role": "bot", "content": "Harika secim! Odeme linkiniz: [Link]. Odeme tamamlaninca kargo bilgisini hemen paylasacagim." },
+        { "role": "user", "content": "[Odeme tamamlandi]" },
+        { "role": "system", "content": "CONVERSION KAYDEDILDI:\n- Satis Tutari: 11.250 TL\n- Kanal: WhatsApp\n- Temsilci: AI (otonom satis)\n- Attribution: Last Touch = AI/WhatsApp\n- Musteri: Ilk satis" },
+        { "role": "system", "content": "Revenue Dashboard guncellendi: AI WhatsApp satislari +11.250 TL." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Multi-Touch Attribution — AI + Insan",
+      "description": "Musteri once AI ile gorusup sonra insanla satisi kapatiyor.",
+      "tags": [
+        { "text": "Multi-Touch", "color": "purple" },
+        { "text": "AI + Insan", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Multi-touch attribution model secimi", "service": "Backend", "page": "Attribution > Model Ayarlari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C12", "hint": "First-touch, last-touch veya multi-touch (50/50) modellerden birini secin" }
+        ],
+        "provider": [
+          { "text": "Coklu temas noktasi takibi", "service": "Backend", "page": "Attribution > Multi-Touch Tracking", "status": "ready", "priority": "required", "effort": "easy", "capability": "C12", "hint": "Bir satis oncesindeki tum temas noktalarini izleme ve attribution dagitimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Temas 1 (5 Sub): Musteri Instagram reklamiyla siteye geldi. Kanal: Instagram Ads." },
+        { "role": "system", "content": "Temas 2 (7 Sub): Musteri WhatsApp'tan AI'ya soru sordu. Kanal: WhatsApp, Temsilci: AI." },
+        { "role": "system", "content": "Temas 3 (10 Sub): Musteri magazayi arayip insan temsilciyle gorustu. Kanal: Telefon, Temsilci: Insan." },
+        { "role": "system", "content": "Temas 4 (10 Sub): Musteri telefonda siparis verdi. CONVERSION: 25.000 TL." },
+        { "role": "system", "content": "MULTI-TOUCH ATTRIBUTION:\n- First Touch: Instagram Ads (%25 = 6.250 TL)\n- AI Assist: WhatsApp AI (%25 = 6.250 TL)\n- Last Touch: Telefon/Insan (%50 = 12.500 TL)\n\nAI katki orani: %25\nInsan katki orani: %75" },
+        { "role": "system", "content": "Dashboard Raporu:\n- Instagram Ads ROI: 6.250 TL gelir / 500 TL reklam maliyeti = 12.5x\n- WhatsApp AI: 6.250 TL gelir / 100 TL API maliyeti = 62.5x\n- Telefon: 12.500 TL gelir / 200 TL agent maliyeti = 62.5x" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Attribution sistemi her musteri etkileşimini event bazli kaydeder. Satis kapatildiginda tum temas noktalarini geriye donuk analiz ederek geliri dagitir. 3 attribution modeli desteklenir.",
+    "backend": [
+      { "title": "Attribution Engine", "goal": "Gelir Dagitimi", "content": "First-touch, last-touch ve multi-touch (ozel agirlik) attribution modelleri. Her satisin kanal ve temsilci bazli kaynak dagilimini hesaplar." },
+      { "title": "Revenue Dashboard Service", "goal": "ROI Raporlama", "content": "Kanal bazli gelir, maliyet, ROI ve AI vs insan karsilastirmasi. Zaman serisi ve trend analizi." }
+    ],
+    "apis": [
+      { "title": "Touchpoint Tracking API", "goal": "Temas Kaydi", "content": "Her musteri etkileşimini kanal, temsilci tipi ve zaman bilgisiyle kaydeder." },
+      { "title": "Attribution Report API", "goal": "Rapor Sorgulama", "content": "Donem, kanal, temsilci tipi ve musteri segmenti bazli attribution raporu olusturma." }
+    ]
+  },
+  "impact": {
+    "title": "Veri Odakli Kanal Optimizasyonu",
+    "description": "Revenue attribution sayesinde yuksek getirili kanallara yatirim artirma ve dusuk performansli kanallardan tasarruf etme.",
+    "resultLabel": "Optimizasyon Kazanci (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAdSpend", "label": "Aylik Kanal Butcesi", "default": 50000, "suffix": "TL", "hint": "Tum kanallara (reklam + operasyon) aylik harcama", "editable": true },
+      { "key": "wasteRate", "label": "Attribution Olmadan Israf Orani", "default": 20, "suffix": "%", "hint": "Veri olmadan yanlis kanala yatirilan butce yuzdesi", "editable": true },
+      { "key": "optimizationCapture", "label": "Optimizasyon Kazanim Orani", "default": 60, "suffix": "%", "hint": "Attribution ile kurtarilan israfin yuzdesi", "editable": true }
+    ],
+    "formula": "monthlyAdSpend * (wasteRate / 100) * (optimizationCapture / 100)",
+    "formulaDisplay": null
+  }
+}

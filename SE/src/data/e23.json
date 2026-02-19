@@ -1,0 +1,90 @@
+{
+  "id": "e23",
+  "title": "Coklu Agent Cakisma Onleme",
+  "subtitle": "Agent Collision Prevention",
+  "phase": "Phase 1-2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Ayni WhatsApp hattindan birden fazla musteriye cevap veren agent'lerin cakismasini C2 Routing ile onleyen, musteri bazli agent atamasi yapan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Coklu Agent Kullanan Isletmeler)" },
+      { "label": "Sorun", "value": "Birden fazla agent ayni musteriye farkli cevap veriyor — musteri kafa karisiyor" },
+      { "label": "Deger", "value": "Agent cakisma onleme ile tutarli musteri deneyimi ve verimli ekip calismasi" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "C2 Routing ile her musteri tek bir agent'e atanir. Cakisma tespit edildiginde uyari verilir.",
+    "steps": [
+      {
+        "title": "Agent Atama",
+        "goal": "Musteriye tek agent ata",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Kurallar)", "color": "blue" }
+        ],
+        "content": "Her musteri ilk mesajda bir agent'e atanir. Sonraki mesajlar ayni agent'e yonlendirilir."
+      },
+      {
+        "title": "Cakisma Tespiti",
+        "goal": "Cakismayi onle",
+        "badges": [
+          { "text": "Sistem (Alert)", "color": "purple" },
+          { "text": "Tenant (Ekip)", "color": "amber" }
+        ],
+        "content": "Baska bir agent ayni musteriye yazmaya calisirsa uyari gosterilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Agent Cakisma Onleme",
+      "description": "Iki agent ayni musteriye cevap yazmaya calisiyor.",
+      "tags": [
+        { "text": "Cakisma", "color": "rose" },
+        { "text": "Routing", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Agent tanimi ve roller", "service": "Backend", "page": "Ekip Yonetimi > Agent Rolleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Agent'leri ve rollerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Routing engine", "service": "Backend", "page": "Routing > Musteri Atama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Musteri bazli agent atama ve cakisma onleme hazir" },
+          { "text": "Cakisma alert sistemi", "service": "Backend", "page": "Bildirim > Agent Cakisma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Cakisma tespit edildiginde agent'e uyari gosterilir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Musteri [Ad] — Agent Ayse'ye atanmis. Agent Mehmet de yazmaya calisiyor." },
+        { "role": "system", "content": "CAKISMA UYARISI: Agent Mehmet'e bildirim: 'Bu musteri Agent Ayse'ye atanmis. Devam etmek icin Agent Ayse'den devralma yapmaniz gerekir.'" },
+        { "role": "bot", "content": "Merhaba [Ad]! Ben Ayse, size yardimci oluyorum. Sorunuzu dinliyorum." },
+        { "role": "system", "content": "Cakisma onlendi. Musteri tek agent ile gorusmeye devam ediyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo C2 Routing ile calisir. Musteri bazli agent atamasi ve cakisma onleme mekanizmasi saglar.",
+    "backend": [
+      { "title": "Routing Engine", "goal": "Agent Atama", "content": "Musteri ilk mesajda atanir. Round-robin, skill-based veya load-balanced atama." },
+      { "title": "Collision Detector", "goal": "Cakisma Onleme", "content": "Ayni anda birden fazla agent ayni musteriye yazmayi denediginde uyari gosterir." }
+    ],
+    "apis": [
+      { "title": "Assignment API", "goal": "Atama Yonetimi", "content": "Agent atama, devralma ve bosaltma islemleri." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Musteri Karisikligi",
+    "description": "Agent cakisma onleme ile saglanan tutarli deneyim ve artan verimlilik.",
+    "resultLabel": "Verimlilik Artisi (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyCollisions", "label": "Aylik Cakisma", "default": 15, "hint": "Agent cakisma vakasi", "editable": true },
+      { "key": "confusionCost", "label": "Cakisma Maliyeti", "default": 200, "suffix": "TL", "hint": "Karisiklik ve duzeltme maliyeti", "editable": true }
+    ],
+    "formula": "monthlyCollisions * confusionCost",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "id": "eg10",
+  "title": "Sinav / Degerlendirme Sonuclari",
+  "subtitle": "Exam Results Notification",
+  "phase": "Phase 2",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Sinav sonuclari yayinlandiginda Outbound bildirim ile ogrencilere proaktif olarak iletilir. Ogrenciler sonuclarini sormak zorunda kalmaz, sistem otomatik bilgilendirir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Sinav Merkezi, Akademi)" },
+      { "label": "Sorun", "value": "Sinav sonrasi ogrenciler surekli sonuc soruyor — agent henuz aciklanmamis sonuclari kontrol etmek zorunda" },
+      { "label": "Deger", "value": "Proaktif bildirim = soru yuku sifira iner, ogrenci memnuniyeti artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Sinav sonuclari sisteme girildiginde Outbound trigger devreye girer ve her ogrenciye kisisel sonuc bildirimi WhatsApp uzerinden gonderilir.",
+    "steps": [
+      {
+        "title": "Sonuc Yayinlama Tetikleme",
+        "goal": "Sonuc girildikten sonra bildirim baslat",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Egitmen)", "color": "blue" }
+        ],
+        "content": "Egitmen sinav sonuclarini sisteme girdikten sonra Outbound bildirim otomatik tetiklenir."
+      },
+      {
+        "title": "Kisisel Sonuc Mesaji",
+        "goal": "Her ogrenciye ozel sonuc gonder",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Sonuc)", "color": "amber" }
+        ],
+        "content": "Her ogrenciye kendi sinav sonucu, sinif ortalamasi ve degerlendiremesi iceren kisisel mesaj gonderilir."
+      },
+      {
+        "title": "Takip Onerisi",
+        "goal": "Gelisim onerisi sun",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Degerlendirme)", "color": "green" }
+        ],
+        "content": "Dusuk notlu ogrencilere ek calisma materyali, yuksek notlulara tebrik mesaji gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Proaktif Sinav Sonuc Bildirimi",
+      "description": "Sinav sonuclari yayinlandiginda ogrencilere otomatik bildirim gonderilir.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Sinav Sonucu", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sinav sonuc giris sistemi", "service": "Backend", "page": "Ogrenci Yonetimi > Sinav Sonuclari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Egitmenler sinav sonuclarini sisteme girdiginde bildirim tetiklenir" }
+        ],
+        "provider": [
+          { "text": "Outbound sinav sonucu sablonu", "service": "Backend", "page": "Sablonlar > Sinav Sonucu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Kisisel sinav sonucu mesaj sablonu hazir" },
+          { "text": "Toplu bildirim gonderimi", "service": "Backend", "page": "Outbound > Toplu Gonderim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Sinif bazli toplu bildirim gonderimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Tetikleme: Egitmen Ingilizce B1 ara sinav sonuclarini sisteme girdi. Outbound bildirim baslatiliyor." },
+        { "role": "bot", "content": "Merhaba Zeynep! Ingilizce B1 ara sinav sonucunuz aciklandi:\n\nSinav: Ara Sinav (Subat 2026)\nNotunuz: 82/100\nSinif Ortalamasi: 74/100\nSiralamaniz: 3/15\n\nTebrikler! Ortalamanin uzerinde basarili bir performans gosterdiniz.\n\nDetayli degerlendirme icin egitmeninizle gorusebilirsiniz.\nSorunuz varsa bize yazin!" },
+        { "role": "user", "content": "Tesekkurler! Hangi konulardan eksigim var?" },
+        { "role": "bot", "content": "Detayli analiz:\n\n- Gramer: 20/25 (Guclu)\n- Kelime Bilgisi: 18/25 (Guclu)\n- Okuma Anlama: 22/25 (Cok Iyi)\n- Dinleme: 22/25 (Cok Iyi)\n\nOneriler:\n- Gramer parcasinda Conditional Sentences konusunu tekrar edin\n- Ek calisma materyali: [Conditional Calisma PDF]\n\nBasarilarinizin devamini diliyoruz!" },
+        { "role": "system", "content": "Proaktif bildirim: Sinav sonucu + detayli analiz + calisma onerisi iletildi. Ogrenci sorma ihtiyaci duymadan bilgilendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Sinav sonuclari sisteme girildiginde Outbound bildirim otomatik tetiklenir. Her ogrenciye kisisel sonuc ve analiz gonderilir.",
+    "backend": [
+      { "title": "Exam Result Publisher", "goal": "Sonuc Yayinlama", "content": "Egitmenin girdigi sinav sonuclarini isler, sinif istatistiklerini hesaplar ve Outbound bildirim tetikler." },
+      { "title": "Performance Analyzer", "goal": "Performans Analizi", "content": "Ogrenci bazli detayli performans analizi yapar. Zayif konulari belirler ve calisma onerisi uretir." }
+    ],
+    "apis": [
+      { "title": "Exam Results API", "goal": "Sonuc Sorgulama", "content": "Ogrenci bazli sinav sonucu, sinif ortalamasi, siralama ve konu bazli analiz doner." },
+      { "title": "Outbound Notification API", "goal": "Bildirim Gonderimi", "content": "Sinav sonucu bildirimi sinif bazli toplu gonderim. Kisisel sonuc ve oneriler iceren sablon kullanir." }
+    ]
+  },
+  "impact": {
+    "title": "Sinav Sonucu Sorularinda Tasarruf",
+    "description": "Proaktif sinav sonucu bildirimi ile ogrenci soru yukunu sifira indirme ve agent zamanini kurtarma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyExams", "label": "Aylik Sinav Sayisi", "default": 4, "hint": "Ayda yapilan sinav sayisi", "editable": true },
+      { "key": "studentsPerExam", "label": "Sinav Basina Ogrenci", "default": 50, "hint": "Her sinavda sonuc soran ogrenci sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 3, "hint": "Agent'in sonuc bilgisi vermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyExams * studentsPerExam * minutesPerQuery * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

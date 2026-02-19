@@ -1,0 +1,91 @@
+{
+  "id": "eb07",
+  "title": "Fraud / Dolandiricilik Suphesi",
+  "subtitle": "Fraud Suspicion Emergency Routing",
+  "phase": "Phase 2",
+  "category": "E-TICARET EK",
+  "niche": "ecommerce",
+  "description": "Yetkisiz siparis veya hesap ele gecirme suphesiyle panik halinde yazan musteriyi normal kuyrugu bypass ederek acil agent routing'e yonlendiren sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Fraud suphesinde musteri panik halinde — normal kuyrukta bekletilmesi itibar felaketi" },
+      { "label": "Deger", "value": "Acil routing ile fraud vakasi aninda mudahale edilir, musteri guveni korunur" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI fraud intent'ini tespit eder ve normal kuyrugu bypass ederek acil agent routing yapar.",
+    "steps": [
+      {
+        "title": "Fraud Tespiti",
+        "goal": "Acil intent yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Guvenlik)", "color": "rose" }
+        ],
+        "content": "AI fraud / dolandiricilik intent'ini tespit eder ve acil oncelik atar."
+      },
+      {
+        "title": "Acil Routing",
+        "goal": "Kuyruk bypass",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Agent)", "color": "blue" }
+        ],
+        "content": "Normal kuyruk bypass edilir, musteri dogrudan yetkili agent'e yonlendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Hesap Ele Gecirme — Acil Mudahale",
+      "description": "Musteri hesabinin ele gecirdigini bildiriyor, acil mudahale gerekli.",
+      "tags": [
+        { "text": "Fraud", "color": "rose" },
+        { "text": "Acil", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Fraud mudahale proseduru", "service": "Knowledge", "page": "Dokuman Bankasi > Fraud Proseduru", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Fraud vakasi mudahale adimlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Fraud intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Fraud", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fraud/dolandiricilik intent'i ve acil onceliklendirme hazir" },
+          { "text": "Acil agent routing", "service": "Backend", "page": "Routing > Acil Kuyruk", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Normal kuyruk bypass eden acil routing hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu siparisi ben vermedim! Hesabim calindi!" },
+        { "role": "ai", "content": "ACIL — Intent: Fraud Suphesi. Hesap ele gecirme. Oncelik: KRITIK. Normal kuyruk bypass." },
+        { "role": "bot", "content": "Bu durumu cok ciddiye aliyoruz! Sizi hemen guvenlik ekibimize yonlendiriyorum.\n\n🔒 Hesabiniiz gecici olarak donduruluyor\n👤 Yetkili temsilci saniyeler icinde size donecek\n\nLutfen hazirda bekleyin." },
+        { "role": "system", "content": "Fraud alert tetiklendi. Hesap donduruuldu. Acil agent atandi. Kuyruk bypass yapildi." },
+        { "role": "bot", "content": "Merhaba [Ad], ben guvenlik ekibinden Mehmet. Hesabiniizi inceliyorum.\n\nSu adimda ilerliyoruz:\n1️⃣ Son 24 saat islemleri kontrol ediliyor\n2️⃣ Yetkisiz siparis(ler) iptal ediliyor\n3️⃣ Sifre sifirlama linki gonderecegim\n\nSu an guvendesiniz, endiselenmeyin!" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI fraud tespiti + Acil Routing birlesimiyle calisir. Fraud vakasinda normal kuyruk bypass edilir.",
+    "backend": [
+      { "title": "Fraud Detector", "goal": "Fraud Tespiti", "content": "AI mesaj analizi ile fraud/dolandiricilik intent'ini tespit eder ve KRITIK oncelik atar." },
+      { "title": "Emergency Router", "goal": "Acil Yonlendirme", "content": "Fraud vakasinda normal kuyrugu bypass ederek yetkili agent'e dogrudan yonlendirir." }
+    ],
+    "apis": [
+      { "title": "Account Security API", "goal": "Hesap Guvenligi", "content": "Hesap dondurma, islem gecmisi kontrolu ve sifre sifirlama." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Fraud Zarari",
+    "description": "Hizli fraud mudahalesi ile onlenen finansal zarar ve korunan musteri guveni.",
+    "resultLabel": "Onlenen Zarar (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyFraudCases", "label": "Aylik Fraud Vakasi", "default": 3, "hint": "Fraud/dolandiricilik suphesi", "editable": true },
+      { "key": "avgFraudDamage", "label": "Ort. Zarar Miktari", "default": 3000, "suffix": "TL", "hint": "Onlenebilir fraud zarari", "editable": true }
+    ],
+    "formula": "monthlyFraudCases * avgFraudDamage",
+    "formulaDisplay": null
+  }
+}

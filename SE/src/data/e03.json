@@ -1,0 +1,132 @@
+{
+  "id": "e03",
+  "title": "Iade Red Yonetimi & De-Eskalasyon",
+  "subtitle": "Return Rejection Recovery",
+  "phase": "Phase 2-3",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Iade reddi ile kizgin musteri geldiginde AI de-eskalasyon cevap onerisi sunar, dogru surec metni verir ve kriz akisini standartlastirir. Platform bazli iade politikasi bilgisi ile donatilmistir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Iade reddi en yuksek eskalasyon riski tasiyan konu — %60 olumsuz yorum buradan geliyor" },
+      { "label": "Deger", "value": "De-eskalasyon ile 1-yildiz yorum onlenir, musteri geri kazanilir" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Sentiment Analysis (C13)", "color": "gray" },
+      { "name": "E-com Integration (C11)", "color": "amber" }
+    ],
+    "servicesNote": "AI kizginlik seviyesini tespit eder, platform bazli iade politikasini Knowledge Base'den cekar ve de-eskalasyon cevap onerisi sunar.",
+    "steps": [
+      {
+        "title": "Kizginlik Tespiti",
+        "goal": "Eskalasyon riskini ol",
+        "badges": [
+          { "text": "Sistem (Sentiment)", "color": "purple" },
+          { "text": "Tenant (Kurallar)", "color": "amber" }
+        ],
+        "content": "AI mesaj tonunu analiz eder. Yuksek kizginlik → supervisor alert + oncelikli kuyruk."
+      },
+      {
+        "title": "Politika Eslestirme",
+        "goal": "Dogru bilgi ver",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "green" }
+        ],
+        "content": "Platform bazli iade red sebepleri ve itiraz sureci Knowledge Base'den cekilir."
+      },
+      {
+        "title": "De-Eskalasyon Cevabi",
+        "goal": "Musteriyi sakinlestir",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Ton)", "color": "blue" }
+        ],
+        "content": "Empati + aciklama + cozum onerisi formulu ile de-eskalasyon mesaji olusturulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Iade Reddi — Urun Acilmis",
+      "description": "Musteri urunu acmadim diyor ama platform iade reddetti.",
+      "tags": [
+        { "text": "Eskalasyon", "color": "rose" },
+        { "text": "De-Eskalasyon", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Platform iade red sebepleri", "service": "Knowledge", "page": "Dokuman Bankasi > Iade Red Sebepleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her platform icin iade red sebeplerini ve itiraz prosedurunu yukleyin" },
+          { "text": "Eskalasyon yetkilisi", "service": "Backend", "page": "Ekip Yonetimi > Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Iade eskalasyonlarini yonetecek yetkili kisiyi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Sentiment analizi", "service": "ChatAnalysis", "page": "Sentiment > Kizginlik Tespiti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Mesaj tonu analizi ve kizginlik seviyesi tespiti hazir" },
+          { "text": "De-eskalasyon cevap motoru", "service": "AgentAI", "page": "Cevap Sablonlari > De-Eskalasyon", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Empati + aciklama + cozum formulu ile otomatik cevap hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Iadem reddedildi, urunu hic acmadim! Parami vermiyorsunuz. Sikayetvar'a yazacagim!" },
+        { "role": "ai", "content": "Sentiment: KIZGIN (9/10). Eskalasyon Riski: YUKSEK. Anahtar: 'Sikayetvar'. De-eskalasyon aktif." },
+        { "role": "bot", "content": "Cok uzgunuz! Iade reddi sizi hayal kiriklgina ugrattiysa haklisiniz. Hemen durumu inceliyoruz.\n\nSiparis numaranizi paylasir misiniz? Red sebebini beraber inceleyelim ve en hizli cozumu bulalim." },
+        { "role": "user", "content": "Siparis 456789. Urun aynen kutusunda, acmadim bile." },
+        { "role": "ai", "content": "Siparis: 456789. Platform: Trendyol. Red Sebebi: 'Kullanim izi'. Itiraz hakki: MEVCUT." },
+        { "role": "bot", "content": "Inceledim! Red sebebi 'kullanim izi' olarak belirtilmis. Ama endiselenmeyin — itiraz hakkiniz var:\n\n1️⃣ Urunu fotograflayin (etiket + kutu)\n2️⃣ Fotograflari bana gonderin\n3️⃣ Itiraz basvurusunu sizin adniza yapayim\n\nGenelde 3-5 is gununde sonuclanir. Baslayalim mi?" },
+        { "role": "user", "content": "Tamam, fotograflari gonderiyorum." },
+        { "role": "system", "content": "De-eskalasyon basarili. Musteri sakinlestirildi. Itiraz sureci baslatildi. Sikayetvar riski onlendi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Iade Reddi — Sure Asilmis",
+      "description": "15 gunluk iade suresi dolmus, musteri farkinda degil.",
+      "tags": [
+        { "text": "Sure Asimi", "color": "amber" },
+        { "text": "Politika", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Iade suresi politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Iade Sureleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Platform bazli iade surelerini ve istisnalari tanimlayin" },
+          { "text": "Telafi/goodwill yetkisi", "service": "Backend", "page": "Kampanya Yonetimi > Telafi Yetkileri", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C10", "hint": "Iade suresi gecen musterilere sunulacak telafi seceneklerini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Iade suresi kontrol", "service": "Integrations", "page": "E-ticaret > Iade Suresi Kontrolu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Siparis tarihinden iade suresi kontrolu otomatik yapilir" },
+          { "text": "Goodwill teklif motoru", "service": "AgentAI", "page": "Cevap Sablonlari > Telafi", "status": "ready", "priority": "recommended", "effort": "easy", "capability": "C8", "hint": "Musteri degerine gore telafi teklifi onerisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Urunu iade etmek istiyorum ama reddedildi!" },
+        { "role": "ai", "content": "Siparis: 789012. Teslim: 22 gun once. 15 gun iade suresi dolmus. Red sebebi: Sure asimi." },
+        { "role": "bot", "content": "Anliyorum, hayal kirikligi yasamissinizdir. Iade reddi sebebi, 15 gunluk yasal iade suresinin dolmus olmasi.\n\nTeslim: 22 gun once\nSon iade tarihi: 15. gun\n\nAncak size ozel bir cozum sunabiliriz: Bir sonraki alisverisiniizde %15 indirim kodu tanmlayabiliriz. Ne dersiniz?" },
+        { "role": "system", "content": "Sure asimi iade. Goodwill teklif sunuldu. Musteri memnuniyeti korundu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Sentiment Analysis + Knowledge RAG birlesimiyle calisir. Kizginlik tespiti eskalasyon onceliklendirmesini, Knowledge Base ise dogru politika bilgisini saglar.",
+    "backend": [
+      { "title": "Sentiment Analyzer", "goal": "Ton Tespiti", "content": "Mesaj tonunu 1-10 olceğinde analiz eder. 7+ kizginlik → supervisor alert + oncelikli kuyruk." },
+      { "title": "Return Policy Engine", "goal": "Politika Eslestirme", "content": "Platform, urun kategorisi ve iade suresine gore uygulanacak politikayi belirler." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Iade Durumu", "content": "Iade red sebebi, itiraz hakki ve surec durumu cekilir." },
+      { "title": "Knowledge RAG", "goal": "Politika Bilgisi", "content": "Platform bazli iade politikasi, itiraz proseduru ve musteri haklari." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Olumsuz Yorum Degeri",
+    "description": "De-eskalasyon ile onlenen olumsuz yorumlar ve korunan satis geliri.",
+    "resultLabel": "Korunan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyReturnRejections", "label": "Aylik Iade Reddi", "default": 30, "hint": "Reddedilen iade sayisi", "editable": true },
+      { "key": "escalationRate", "label": "Eskalasyon Orani", "default": 40, "prefix": "%", "hint": "Olumsuz yoruma donusme orani", "editable": true },
+      { "key": "reviewCost", "label": "Yorum Basina Kayip", "default": 500, "suffix": "TL", "hint": "1 olumsuz yorumun satis etkisi", "editable": true }
+    ],
+    "formula": "monthlyReturnRejections * (escalationRate / 100) * reviewCost * 0.6",
+    "formulaDisplay": null
+  }
+}

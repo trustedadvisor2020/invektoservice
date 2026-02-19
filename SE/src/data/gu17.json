@@ -1,0 +1,128 @@
+{
+  "id": "gu17",
+  "title": "Coklu Hizmet Paketi",
+  "subtitle": "Multi-Service Package",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Musteri sac + makyaj + cilt bakimi gibi birden fazla hizmet istiyor ama paket fiyat ve uygun kombinasyon bilgisi manuel veriliyor. AI paket onerisi + indirimli kombinasyon hesaplama ile hizli cozum.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Paket Hizmetler)" },
+      { "label": "Sorun", "value": "Musteri birden fazla hizmet istiyor ama kombine fiyat ve sure bilgisi aninda verilemiyor" },
+      { "label": "Deger", "value": "AI ile otomatik paket onerisi + indirimli fiyat = sepet buyumesi + musteri memnuniyeti" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI musteri istegindeki coklu hizmet talebini tespit eder, Knowledge Base'den fiyat ve sure bilgilerini cekerek indirimli paket onerisi sunar.",
+    "steps": [
+      {
+        "title": "Coklu Hizmet Tespiti",
+        "goal": "Birden fazla hizmet intent'ini yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Hizmet Listesi)", "color": "amber" }
+        ],
+        "content": "AI mesajdaki birden fazla hizmet talebini tespit eder: 'sac + makyaj', 'her seyi yaptirmak istiyorum' gibi ifadeleri analiz eder."
+      },
+      {
+        "title": "Paket Hesaplama",
+        "goal": "Kombine fiyat ve sure hesapla",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Fiyat Listesi)", "color": "blue" }
+        ],
+        "content": "Knowledge Base'den tekil fiyatlar cekilir, paket indirim kurali uygulanir ve toplam sure hesaplanir."
+      },
+      {
+        "title": "Paket Onerisi",
+        "goal": "Indirimli teklif sun",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Indirim Kurali)", "color": "green" }
+        ],
+        "content": "Musteriye paket fiyati, tasarruf miktari ve toplam islem suresi ile birlikte ozel teklif sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Dugune Hazirlık Paketi",
+      "description": "Musteri dugun icin sac + makyaj + cilt bakimi istiyor.",
+      "tags": [
+        { "text": "Paket", "color": "purple" },
+        { "text": "Ozel Gun", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Hizmet fiyat listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tum hizmetlerin guncel fiyatlarini ve surelerini girin" },
+          { "text": "Paket indirim kurallari", "service": "Backend", "page": "Fiyatlandirma > Paket Indirim Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "2 hizmet = %10, 3+ hizmet = %15 gibi indirim kurallarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Coklu hizmet intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Paket Talep", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Birden fazla hizmet intent'i tespiti hazir" },
+          { "text": "Paket fiyat hesaplama motoru", "service": "AgentAI", "page": "Fiyat Hesaplama > Paket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tekil fiyatlari toplayip paket indirimi uygulayan hesaplama hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "2 hafta sonra dugunum var. Sac, makyaj ve cilt bakimi hepsini yaptirmak istiyorum. Paket fiyatiniz var mi?" },
+        { "role": "ai", "content": "Intent: Coklu Hizmet Talebi. Hizmetler: Sac (gelin saci), Makyaj (gelin makyaji), Cilt Bakimi. Ozel gun: Dugun. Paket indirim kurali uygulanacak." },
+        { "role": "bot", "content": "Tebrikler, ne guzel bir haber! Dugun hazirlik paketimiz tam size gore:\n\nGelin Paketi:\nGelin Saci: 2.500 TL\nGelin Makyaji: 1.800 TL\nCilt Bakimi (Deep Clean): 800 TL\n\nTekil toplam: 5.100 TL\nPaket fiyati: 4.335 TL (%15 paket indirimi)\nTasarruf: 765 TL\n\nToplam sure: ~4 saat\nOneri: Dugun gunu sabah 07:00'de baslamak\n\nRandevu ayarlamak ister misiniz?" },
+        { "role": "user", "content": "Evet, 8 Mart Cumartesi olabilir mi?" },
+        { "role": "bot", "content": "8 Mart Cumartesi icin gelin paketi randevunuz:\n\nBaslangic: 07:00\nCilt Bakimi: 07:00 - 08:00\nSac: 08:00 - 10:00\nMakyaj: 10:00 - 11:30\n\nToplam: 4.335 TL (Gelin Paketi)\n\nOnemli: Bir gun once prova makyaj oneriyoruz (ucretsiz). Cuma 7 Mart 15:00 uygun mu?" },
+        { "role": "user", "content": "Super, prova da olsun" },
+        { "role": "system", "content": "Paket randevusu olusturuldu. Prova + dugun gunu. Toplam: 4.335 TL. Musteri sepet buyumesi: %70 (tekil hizmete kiyasla)." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Haftalik Bakim Paketi",
+      "description": "Duzensiz musteri duzenli paket sorgusu yapiyor.",
+      "tags": [
+        { "text": "Paket", "color": "purple" },
+        { "text": "Duzensiz Musteri", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Abonelik paket tanimlari", "service": "Knowledge", "page": "Dokuman Bankasi > Paketler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Haftalik/aylik abonelik paketlerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Paket oneri motoru", "service": "AgentAI", "page": "Oneri Sistemi > Paket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Musteri profiline gore uygun paket onerme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Her hafta fon + oje yaptiriyorum. Paket indiriminiz var mi?" },
+        { "role": "ai", "content": "Intent: Tekrarli Hizmet Paketi. Hizmetler: Fon, Manikur (oje). Frekans: Haftalik." },
+        { "role": "bot", "content": "Duzenli musterilerimize ozel paketlerimiz var!\n\nHaftalik Bakim Paketi:\nFon: 400 TL/hafta\nManikur (Oje): 250 TL/hafta\nTekil haftalik: 650 TL\n\nAylik Paket (4 hafta): 2.200 TL (%15 indirim)\nAylik tasarruf: 400 TL\n\nAylik pakete gecmek ister misiniz?" },
+        { "role": "user", "content": "Aylik paket uygun, baslayalim" },
+        { "role": "system", "content": "Aylik paket olusturuldu. 4 haftalik randevular kuyruklandi. Duzensiz musteri aboneye dondu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "AI coklu hizmet intent'ini tespit eder ve Knowledge Base'deki fiyat + sure bilgileriyle otomatik paket hesaplamasi yapar. Paket indirim kurallari tenant bazli yapilandirilir.",
+    "backend": [
+      { "title": "Package Calculator", "goal": "Paket Hesaplama", "content": "Tekil hizmet fiyatlarini toplayip paket indirim kurallarini uygulayan hesaplama motoru." },
+      { "title": "Bundle Scheduler", "goal": "Paket Zamanlama", "content": "Birden fazla hizmeti sirasiyla planlaip toplam sure ve baslangic saatini hesaplar." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Fiyat ve Sure", "content": "Hizmet bazli fiyat, sure ve uzman bilgisini sorgulayan API." }
+    ]
+  },
+  "impact": {
+    "title": "Paket Satis ile Sepet Buyumesi",
+    "description": "Tekil hizmet yerine paket satisiyla elde edilen ek gelir ve musteri basina artan harcama.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPackageCustomers", "label": "Aylik Paket Satan Musteri", "default": 20, "hint": "Paket alan musteri sayisi", "editable": true },
+      { "key": "avgPackageUplift", "label": "Paket Ek Gelir Farki", "default": 600, "suffix": "TL", "hint": "Tekil hizmete gore paket farki", "editable": true }
+    ],
+    "formula": "monthlyPackageCustomers * avgPackageUplift",
+    "formulaDisplay": null
+  }
+}

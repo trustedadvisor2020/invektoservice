@@ -1,0 +1,103 @@
+{
+  "id": "eg21",
+  "title": "Mezun Takibi / Alumni",
+  "subtitle": "Alumni Engagement",
+  "phase": "Phase 2",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Mezunlarla iletisimin kopmasini onleyen proaktif senaryo. Outbound Engine ile periyodik iletisim, yeni kurs davetleri ve etkinlik bilgilendirmesi gonderilerek mezun sadakati korunur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Akademi, Mesleki Egitim, Dil Okulu)" },
+      { "label": "Sorun", "value": "Mezunlarla iletisim kopuyor — tekrar kayit, referans ve topluluk potansiyeli kaybediliyor" },
+      { "label": "Deger", "value": "Periyodik mezun iletisimi ile tekrar kayit orani artir, referans agi kur" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Outbound Engine mezun segmentine periyodik olarak yeni kurs davetleri, etkinlik bilgilendirmeleri ve kariyer guncellemeleri gonderir.",
+    "steps": [
+      {
+        "title": "Mezun Segmenti Olusturma",
+        "goal": "Mezun listesini hazirla",
+        "badges": [
+          { "text": "Sistem (CRM)", "color": "purple" },
+          { "text": "Tenant (Mezun Listesi)", "color": "blue" }
+        ],
+        "content": "Mezun ogrenciler tamamladiklari kurs, mezuniyet tarihi ve ilgi alanina gore segmentlere ayrilir."
+      },
+      {
+        "title": "Periyodik Iletisim Gonderimi",
+        "goal": "Baglantida kal",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Icerik)", "color": "green" }
+        ],
+        "content": "Aylik veya ceyreklik yeni kurs davetleri, etkinlik duyurulari ve kariyer firsatlari gonderilir."
+      },
+      {
+        "title": "Geri Donus ve Tekrar Kayit",
+        "goal": "Tekrar kayit sagla",
+        "badges": [
+          { "text": "Sistem (Inbox)", "color": "purple" },
+          { "text": "Tenant (Kayit)", "color": "amber" }
+        ],
+        "content": "Ilgilenen mezunlar kayit surecine yonlendirilir, ozel alumni indirim kodu sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Mezun Yeni Kurs Davet Akisi",
+      "description": "Gecmis mezunlara yeni donem kurs davetiyesi ve ozel indirim sunumu.",
+      "tags": [
+        { "text": "Proaktif", "color": "green" },
+        { "text": "Alumni", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Mezun veritabani", "service": "Backend", "page": "CRM > Mezun Segmenti", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tamamlanan kurs, mezuniyet tarihi ve iletisim bilgileri kayitli olmali" },
+          { "text": "Alumni kampanya sablonu", "service": "Backend", "page": "Sablonlar > Mezun Iletisimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "WhatsApp Business onaylu mezun iletisim sablonunu hazirlayin" }
+        ],
+        "provider": [
+          { "text": "Periyodik Outbound zamanlama", "service": "Outbound", "page": "Kampanya > Periyodik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ceyreklik otomatik mezun iletisimi zamanlamasi hazir" },
+          { "text": "Alumni indirim kodu sistemi", "service": "Backend", "page": "Kampanya > Alumni Indirim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Mezunlara ozel indirim kodu olusturma ve takip hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Alumni iletisim zamanlayicisi tetiklendi: Q1 2026 — 210 mezuna yeni donem bilgilendirme gonderilecek." },
+        { "role": "bot", "content": "Merhaba Deniz Bey! Sizinle gorusmeyeli uzun oldu. Dijital Pazarlama kursumuzun mezunu olarak haberimiz var:\n\nYeni Kurslarimiz:\n- Ileri SEO Stratejileri (Mart 2026)\n- Performance Marketing (Nisan 2026)\n\nMezun Ozel Indirim: %20\nKod: ALUMNI2026\n\nDetayli bilgi icin 'BILGI' yazin." },
+        { "role": "user", "content": "BILGI" },
+        { "role": "bot", "content": "Ileri SEO Stratejileri Kursu:\n\nSure: 8 hafta (Mart-Nisan)\nGunler: Carsamba 19:00-21:00\nUcret: 6.500 TL (Alumni fiyat: 5.200 TL)\nEgitmen: Fatih Y. (10 yil deneyim, Google Certified)\nOnkosul: Dijital Pazarlama Temelleri (sizde mevcut)\n\nKayit: [Kayit Linki]\nAlumni kodunuz: ALUMNI2026\n\nSorulariniz icin bu mesaja yanit verin!" },
+        { "role": "user", "content": "Dusunecegim, tesekkurler." },
+        { "role": "system", "content": "Alumni iletisim: Deniz A. — Ileri SEO ilgi gosterdi. Follow-up: 7 gun sonra hatirlatma." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Outbound Engine periyodik zamanlama + CRM mezun segmentasyon ile calisir. Mezuniyet sonrasi periyodik iletisim zinciri.",
+    "backend": [
+      { "title": "Alumni Segment Manager", "goal": "Mezun Yonetimi", "content": "Mezun veritabanini kurs, tarih ve ilgi alanina gore segmente eder. Periyodik iletisim takvimini yonetir." },
+      { "title": "Alumni Campaign Engine", "goal": "Periyodik Iletisim", "content": "Ceyreklik mezun iletisimi zamanlar, kisisellestirmis mesajlar olusturur ve geri donus takibi yapar." }
+    ],
+    "apis": [
+      { "title": "Outbound Scheduled API", "goal": "Zamanli Gonderim", "content": "Periyodik kampanya zamanlama ve segmentli broadcast gonderimi." },
+      { "title": "Alumni Discount API", "goal": "Ozel Indirim", "content": "Mezunlara ozel indirim kodu olusturma, dogrulama ve kullanim takibi." }
+    ]
+  },
+  "impact": {
+    "title": "Alumni Programi ile Tekrar Kayit Geliri",
+    "description": "Mezun iletisimi ile sagalanan tekrar kayit ve referans geliri.",
+    "resultLabel": "Alumni Geliri (Ceyreklik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "alumniReached", "label": "Ulasilan Mezun", "default": 200, "hint": "Periyodik iletisim gonderilen mezun sayisi", "editable": true },
+      { "key": "reEnrollRate", "label": "Tekrar Kayit Orani", "default": 5, "suffix": "%", "hint": "Yeni kursa kayit olan mezun orani", "editable": true },
+      { "key": "avgCoursePrice", "label": "Ort. Kurs Ucreti", "default": 8000, "suffix": "TL", "hint": "Yeni kurs ortalama ucreti", "editable": true }
+    ],
+    "formula": "alumniReached * (reEnrollRate / 100) * avgCoursePrice",
+    "formulaDisplay": null
+  }
+}

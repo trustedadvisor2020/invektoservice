@@ -1,0 +1,114 @@
+{
+  "id": "eb06",
+  "title": "Garanti ve Teknik Servis Yonlendirme",
+  "subtitle": "Warranty & Service Routing",
+  "phase": "Phase 3",
+  "category": "E-TICARET EK",
+  "niche": "ecommerce",
+  "description": "Urun arizasinda garanti kapsamini kontrol eden, teknik servis bilgisini Knowledge Base'den ceken ve musteriyi dogru surece yonlendiren sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Elektronik, Beyaz Esya, Teknoloji)" },
+      { "label": "Sorun", "value": "Musteri garanti kapsamini ve teknik servis surecini bilmiyor — uzun bekleme ve yanlis yonlendirme" },
+      { "label": "Deger", "value": "Knowledge Base'den aninda garanti bilgisi ve dogru teknik servis yonlendirmesi" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI garanti intent'ini tespit eder, Knowledge Base'den garanti kosullarini ve teknik servis bilgisini cekar.",
+    "steps": [
+      {
+        "title": "Garanti Kontrolu",
+        "goal": "Kapsamı belirle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Garanti)", "color": "amber" }
+        ],
+        "content": "AI urun ve satin alma tarihinden garanti kapsamini kontrol eder."
+      },
+      {
+        "title": "Servis Yonlendirme",
+        "goal": "Dogru servise yonlendir",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "green" },
+          { "text": "Tenant (Servis)", "color": "blue" }
+        ],
+        "content": "Knowledge Base'den en yakin yetkili servis bilgisi cekilir ve musteri yonlendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Garanti Kapsaminda — Servis Yonlendirme",
+      "description": "Urun garanti kapsaminda, teknik servise yonlendiriliyor.",
+      "tags": [
+        { "text": "Garanti", "color": "green" },
+        { "text": "Servis", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Garanti politikasi ve servis listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Garanti & Servis", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun bazli garanti kosullari ve yetkili servis listesini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Garanti intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Garanti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Garanti ve teknik servis intent'i hazir" },
+          { "text": "Knowledge RAG sorgu", "service": "Knowledge", "page": "RAG > Garanti Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Garanti kosullari ve servis bilgisi RAG ile cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Urun bozuldu, garanti kapsaminda mi?" },
+        { "role": "ai", "content": "Intent: Garanti Sorgusu. Siparis: #112233. Urun: Kablosuz Kulaklik. Satin alma: 4 ay once. Garanti: 2 yil. Kapsam: EVET." },
+        { "role": "bot", "content": "Kontrol ettim! Uruniniiz garanti kapsaminda:\n\n🔧 Urun: Kablosuz Kulaklik\n📅 Garanti: 2 yil (4/24 ay)\n✅ Kapsam: AKTIF\n\nEn yakin yetkili servis:\n📍 [Marka] Servis Kadikoy\n📞 0216 XXX XX XX\n📍 Adres: Bagdat Cad. No: 45\n\nFatura ve urunle birlikte basvurabilirsiniz!" },
+        { "role": "system", "content": "Garanti bilgisi verildi. Musteri yetkili servise yonlendirildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Garanti Disi — Alternatif Cozum",
+      "description": "Garanti suresi dolmus, alternatif cozumler sunuluyor.",
+      "tags": [
+        { "text": "Garanti Disi", "color": "rose" },
+        { "text": "Alternatif", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ucretli tamir secenekleri", "service": "Knowledge", "page": "Dokuman Bankasi > Ucretli Servis", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Garanti disi onarim seceneklerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Garanti suresi hesaplama", "service": "AgentAI", "page": "AI > Garanti Hesaplama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Satin alma tarihi ve garanti suresi otomatik hesaplanir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Telefonum bozuldu, garanti var mi?" },
+        { "role": "ai", "content": "Siparis: #334455. Satin alma: 30 ay once. Garanti: 24 ay. Kapsam: HAYIR — suresi dolmus." },
+        { "role": "bot", "content": "Kontrol ettim:\n\n📱 Urun: Akilli Telefon\n📅 Garanti suresi: 24 ay (30 ay olmus)\n❌ Kapsam: Suresi dolmus\n\nAlternatifler:\n1️⃣ Ucretli onarim: En yakin yetkili servis\n2️⃣ Yeni urun: Mevcut kampanyalar\n3️⃣ Takas: Eski urunle indirim\n\nHangisi hakkinda bilgi istersiniz?" },
+        { "role": "system", "content": "Garanti disi bilgilendirme yapildi. Alternatif secenekler sunuldu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge RAG + AI intent tespiti birlesimiyle calisir. Garanti kontrolu ve teknik servis yonlendirme.",
+    "backend": [
+      { "title": "Warranty Checker", "goal": "Garanti Kontrolu", "content": "Satin alma tarihi ve urun garanti suresiyle kapsam kontrolu yapar." },
+      { "title": "Service Locator", "goal": "Servis Bulma", "content": "Knowledge Base'den en yakin yetkili servis bilgisini cekar." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Garanti kosullari ve servis listesi RAG ile cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik garanti kontrolu ve servis yonlendirme ile kazanilan verimlilik.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyWarrantyQueries", "label": "Aylik Garanti Sorusu", "default": 20, "hint": "Garanti ve teknik servis sorgusu", "editable": true },
+      { "key": "minutesPerQuery", "label": "Sorgu Basina Dakika", "default": 8, "hint": "Agent'in harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyWarrantyQueries * minutesPerQuery * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

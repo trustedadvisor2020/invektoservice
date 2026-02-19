@@ -1,0 +1,89 @@
+{
+  "id": "eb02",
+  "title": "Influencer / Affiliate Attribution",
+  "subtitle": "Influencer Campaign Tracking",
+  "phase": "Phase 3",
+  "category": "E-TICARET EK",
+  "niche": "ecommerce",
+  "description": "WhatsApp uzerinden paylasilan influencer kampanya kodlarinin takibini yapan, hangi influencer'in ne kadar satis yaptigi olcumleyen attribution sistemi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Influencer Kampanya Kullanan)" },
+      { "label": "Sorun", "value": "Influencer kodlari WA'ta paylasiliyor ama hangi kodun ne kadar sattigi olculemiyor" },
+      { "label": "Deger", "value": "UTM + influencer kodu bazli tam attribution ile kampanya ROI olcumu" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Ads Attribution (C12)", "color": "amber" }
+    ],
+    "servicesNote": "AI influencer kod kullanim intent'ini tespit eder, C12 Attribution ile kampanya performansini izler.",
+    "steps": [
+      {
+        "title": "Kod Tespiti",
+        "goal": "Influencer kodunu yakala",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kampanya)", "color": "amber" }
+        ],
+        "content": "AI mesajdaki influencer/affiliate kodunu tespit eder ve kampanya ile eslestirir."
+      },
+      {
+        "title": "Attribution",
+        "goal": "Satis kaynagini izle",
+        "badges": [
+          { "text": "Sistem (Tracking)", "color": "purple" },
+          { "text": "Tenant (Raporlama)", "color": "blue" }
+        ],
+        "content": "Kod bazli satis attribution kaydedilir, influencer performans dashboardu guncellenir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Influencer Kod Kullanimi",
+      "description": "Musteri influencer'dan aldigi indirim kodunu kullaniyor.",
+      "tags": [
+        { "text": "Influencer", "color": "purple" },
+        { "text": "Kod", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Influencer kod tanimlari", "service": "Backend", "page": "Kampanya Yonetimi > Influencer Kodlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C12", "hint": "Her influencer icin unique indirim kodlari tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Kod tespit intent'i", "service": "AgentAI", "page": "Intent Tespiti > Indirim Kodu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Influencer kodu kullanim intent'i hazir" },
+          { "text": "Attribution tracking", "service": "Backend", "page": "Analytics > Influencer Attribution", "status": "ready", "priority": "required", "effort": "easy", "capability": "C12", "hint": "Kod bazli satis kaynagi izleme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kod neydi? X influencer'in kodunu kullanmak istiyorum." },
+        { "role": "ai", "content": "Intent: Influencer Kod Kullanimi. Influencer: @GulStyle. Kod: GULSTYLE20. Indirim: %20." },
+        { "role": "bot", "content": "Tabii! @GulStyle'in indirim kodu:\n\n🏷️ Kod: GULSTYLE20\n💰 Indirim: %20\n📅 Gecerlilik: 28 Subat'a kadar\n\nSiparis verirken kupon alanina GULSTYLE20 yazmaniz yeterli!" },
+        { "role": "system", "content": "Influencer attribution kaydedildi: @GulStyle -> Musteri [Ad]. Kampanya tracking aktif." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI kod tespiti + Attribution tracking birlesimiyle calisir. Influencer bazli ROI olcumu saglar.",
+    "backend": [
+      { "title": "Influencer Code Matcher", "goal": "Kod Eslestirme", "content": "Mesajdaki indirim kodunu influencer veritabaniyla eslestirir." },
+      { "title": "Attribution Engine", "goal": "Kaynak Izleme", "content": "Satis kaynagi olarak influencer/affiliate'i kaydeder ve performans metrikleri uretir." }
+    ],
+    "apis": [
+      { "title": "Campaign Tracking API", "goal": "Kampanya Takibi", "content": "Influencer kod kullanimi, donusum ve gelir attribution verileri." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Influencer Kampanya Degeri",
+    "description": "Dogru attribution ile optimize edilen influencer kampanyalarinin getirisi.",
+    "resultLabel": "Olculen Kampanya Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyInfluencerOrders", "label": "Aylik Influencer Siparisi", "default": 30, "hint": "Influencer kodu ile gelen siparis", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis Degeri", "default": 600, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlyInfluencerOrders * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

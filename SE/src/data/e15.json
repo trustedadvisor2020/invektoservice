@@ -1,0 +1,95 @@
+{
+  "id": "e15",
+  "title": "Urun Aciklama Uyumsuzlugu Yonetimi",
+  "subtitle": "Product Mismatch Resolution",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Gelen urun ile aciklama/gorsel uyusmayinca AI de-eskalasyon yapar, kanit toplar ve musteri lehine cozum akisi baslatir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Urun-aciklama uyumsuzlugu yuksek sikayete donusme riski tasir" },
+      { "label": "Deger", "value": "Hizli de-eskalasyon ile olumsuz yorum onlenir, musteri tutulur" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Sentiment Analysis (C13)", "color": "gray" },
+      { "name": "Knowledge RAG (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI musteri sikayetinin ciddiyetini degerlendirr, kanit toplar ve uyumsuzluk dogrulanirsa cozum sunar.",
+    "steps": [
+      {
+        "title": "Uyumsuzluk Tespiti",
+        "goal": "Sorunu anla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Urun)", "color": "amber" }
+        ],
+        "content": "AI musteri mesajindan uyumsuzluk tipini anlar: renk farki, malzeme farki, gorsel farki."
+      },
+      {
+        "title": "Kanit & Cozum",
+        "goal": "Fotograf al, cozum sun",
+        "badges": [
+          { "text": "Sistem (De-eskalasyon)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "green" }
+        ],
+        "content": "Fotograf kanitı toplandiktan sonra iade, degisim veya kismi iade secenekleri sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Gorsel Uyumsuzlugu",
+      "description": "Urun fotografi ile gelen urun farkli gorunuyor.",
+      "tags": [
+        { "text": "Uyumsuzluk", "color": "rose" },
+        { "text": "Kanit Toplama", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Uyumsuzluk cozum politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Uyumsuzluk Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun-aciklama uyumsuzlugunda iade/degisim/telafi kosullarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "De-eskalasyon cevap motoru", "service": "AgentAI", "page": "Cevap Sablonlari > Uyumsuzluk", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Empati + kanit toplama + cozum akisi hazir" },
+          { "text": "Sentiment analizi", "service": "ChatAnalysis", "page": "Sentiment > Risk", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Sikayet ciddiyeti ve eskalasyon riski tespiti hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Urun aciklamasiyla gelen farkli, gorsel uyusmuyor! Siyah deri diye aldim, plastik geldi!" },
+        { "role": "ai", "content": "Intent: Urun Uyumsuzlugu. Tip: Malzeme farki. Sentiment: KIZGIN (8/10). De-eskalasyon aktif." },
+        { "role": "bot", "content": "Cok uzgunuz! Urun aciklamasiyla gelen urunun farkli olmasi kabul edilemez. Hemen cozelim.\n\nGelen urunun bir fotografini ceker misiniz? Ozellikle malzeme farki gorulen kismi net cekerseniz sureci hizlandiririz." },
+        { "role": "user", "content": "[Fotograf gonderiyor]" },
+        { "role": "bot", "content": "Tesekkurler! Farki net goruyoruz. Size seceneklr:\n\n1️⃣ Tam iade (3-5 is gunu)\n2️⃣ Kismi iade (%30 fark iadesi + urun sizde kalsin)\n3️⃣ Farkli urunle degisim\n\nHangisini tercih edersiniz?" },
+        { "role": "user", "content": "2 numara olsun, urun isime yariyor aslinda." },
+        { "role": "system", "content": "Kismi iade secildi. %30 fark iadesi baslatildi. Musteri memnun ayrildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Sentiment + AI de-eskalasyon birlesiminde calisir. Kizgin musteri hizla sakinlestirilir ve cozum sunulur.",
+    "backend": [
+      { "title": "Mismatch Detector", "goal": "Uyumsuzluk Tespiti", "content": "Musteri bildirimi ile urun aciklamasini karsilastirir. Fotograf kaniti ile dogrular." },
+      { "title": "Resolution Engine", "goal": "Cozum Yonetimi", "content": "Tam iade, kismi iade veya degisim seceneklerini musteri tercihine gore isler." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Urun + Iade", "content": "Urun aciklama verisi ve iade sureci baslatma." },
+      { "title": "Payment API", "goal": "Kismi Iade", "content": "Fark iadesi islemi ve onay." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Olumsuz Yorum",
+    "description": "Hizli uyumsuzluk cozumu ile onlenen sikayetler ve korunan itibar.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyMismatches", "label": "Aylik Uyumsuzluk", "default": 10, "hint": "Urun-aciklama uyumsuzlugu", "editable": true },
+      { "key": "reviewPreventionRate", "label": "Yorum Onleme", "default": 60, "prefix": "%", "hint": "Onlenen olumsuz yorum orani", "editable": true },
+      { "key": "avgReviewCost", "label": "Yorum Basina Kayip", "default": 500, "suffix": "TL", "hint": "1 olumsuz yorumun satis etkisi", "editable": true }
+    ],
+    "formula": "monthlyMismatches * (reviewPreventionRate / 100) * avgReviewCost",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "id": "sb03",
+  "title": "Coklu Klinik / Sube Yonetimi",
+  "subtitle": "Multi-Branch Management",
+  "phase": "Phase 2",
+  "category": "SAGLIK EK",
+  "niche": "health",
+  "description": "Hasta hangi subede hangi doktorun calistigini veya en yakin subeyi soruyor. Knowledge Base'deki doktor-sube eslestirmesi ile AI konuma gore dogru yonlendirme yapar ve randevu akisina baglar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik Kurulusu (Coklu Subeli Klinik Zincirleri, Hastane Gruplari)" },
+      { "label": "Sorun", "value": "Hasta yanlis subeye gidiyor veya doktorun calisma gunlerini ogrenemiyor — tekrar randevu, zaman kaybi" },
+      { "label": "Deger", "value": "Doktor-sube eslestirmesi ile hasta dogru yonlendirilir, no-show azalir, hasta memnuniyeti artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "amber" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Knowledge Base doktor calisma programlari, sube adresleri ve uzmanlik alanlarini icerir. AI hasta sorusundaki konum ve doktor tercihini eslestirir.",
+    "steps": [
+      {
+        "title": "Sube/Doktor Sorgusu",
+        "goal": "Hastanin ihtiyacini anla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI 'en yakin sube', 'doktor hangi gun', 'Kadikoy sube' gibi intent'leri tespit eder ve Knowledge Base'den ilgili bilgiyi ceker."
+      },
+      {
+        "title": "Eslestirme ve Bilgilendirme",
+        "goal": "Dogru sube/doktor bilgisi sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Sube Bilgisi)", "color": "green" }
+        ],
+        "content": "Doktor calisma programi, sube adresi, ulasim bilgisi ve musait saatler hastaya sunulur."
+      },
+      {
+        "title": "Randevu Yonlendirme",
+        "goal": "Dogru subeye randevu olustur",
+        "badges": [
+          { "text": "Sistem (Randevu)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "amber" }
+        ],
+        "content": "Hasta isterse secilen sube ve doktor icin direkt randevu olusturma akisina yonlendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Doktor Hangi Subede Calisyor?",
+      "description": "Hasta belirli bir doktorun hangi subede ve hangi gunlerde calistigini soruyor.",
+      "tags": [
+        { "text": "Doktor Arama", "color": "blue" },
+        { "text": "Sube Bilgisi", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Doktor-sube eslestirme tablosu", "service": "Knowledge", "page": "Knowledge Base > Doktor Programlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her doktorun hangi subede hangi gunlerde calistigini Knowledge Base'e ekleyin" },
+          { "text": "Sube adres ve iletisim bilgileri", "service": "Knowledge", "page": "Knowledge Base > Sube Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tum subelerin adres, telefon ve calisma saatlerini girin" }
+        ],
+        "provider": [
+          { "text": "Doktor/sube sorgu intent'i", "service": "AgentAI", "page": "Intent Tespiti > Sube Sorgu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Doktor ve sube sorgulama intent'leri tanimli" },
+          { "text": "Knowledge Base arama motoru", "service": "Knowledge", "page": "Arama > Doktor Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Doktor adi, uzmanlik veya konum bazli arama hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kadikoy subenizde Dr. Mehmet hangi gunler calisiyor?" },
+        { "role": "ai", "content": "Intent: Doktor Program Sorgusu. Doktor: Dr. Mehmet. Sube: Kadikoy. Knowledge Base sorgulanyor." },
+        { "role": "bot", "content": "Dr. Mehmet Yilmaz'in Kadikoy subemizdeki calisma programi:\n\nPazartesi: 09:00 - 17:00\nCarsamba: 09:00 - 17:00\nCuma: 09:00 - 13:00\n\nAdres: Kadikoy Mah. Bagdat Cad. No:45, Kadikoy/Istanbul\nTelefon: 0216 345 67 89\n\nDr. Mehmet'ten randevu almak ister misiniz?" },
+        { "role": "user", "content": "Carsamba icin randevu alabilir miyim?" },
+        { "role": "bot", "content": "Tabii! Dr. Mehmet Yilmaz - Kadikoy Subesi\nCarsamba gunluk musait saatler:\n\n1. 10:00\n2. 11:30\n3. 14:00\n4. 15:30\n\nHangisi size uygun?" },
+        { "role": "system", "content": "Knowledge Base eslestirmesi basarili. Hasta Kadikoy subesi, Carsamba gunu icin randevu akisina yonlendirildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "En Yakin Sube Sorgusu",
+      "description": "Hasta konumuna en yakin subeyi soruyor. AI konum bilgisinden en uygun subeyi onerir.",
+      "tags": [
+        { "text": "Konum Bazli", "color": "purple" },
+        { "text": "Sube Oneri", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sube konum bilgileri", "service": "Knowledge", "page": "Knowledge Base > Sube Konumlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Subelerin ilce/semt bazli konum bilgilerini girin" }
+        ],
+        "provider": [
+          { "text": "Konum bazli sube eslestirme", "service": "AgentAI", "page": "Dialog Akislari > Sube Oneri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Hasta konumundan en yakin sube onerisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Besiktas'a en yakin subeniz neresi?" },
+        { "role": "ai", "content": "Intent: En Yakin Sube Sorgusu. Konum: Besiktas. Knowledge Base'den sube mesafeleri hesaplaniyor." },
+        { "role": "bot", "content": "Besiktas'a en yakin subelerimiz:\n\n1. Sisli Subesi (1.5 km)\n   Adres: Halaskargazi Cad. No:120, Sisli\n   Calisma: Hafta ici 08:30 - 19:00\n\n2. Besiktas Subesi (2 km)\n   Adres: Barbaros Blv. No:85, Besiktas\n   Calisma: Hafta ici 09:00 - 18:00\n\nHangi subeden randevu almak istersiniz?" },
+        { "role": "user", "content": "Sisli olsun, dis doktoru var mi?" },
+        { "role": "bot", "content": "Sisli subemizdeki dis doktorlari:\n\nDr. Ayse Kaya - Implantoloji\n  Pazartesi, Carsamba, Cuma\n\nDr. Can Demir - Ortodonti\n  Sali, Persembe\n\nDr. Elif Ozturk - Genel Dis Hekimligi\n  Hafta ici her gun\n\nHangi doktordan randevu almak istersiniz?" },
+        { "role": "system", "content": "Konum bazli sube eslestirmesi tamamlandi. Hasta Sisli subesi icin doktor secimi yapiyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge Base'in yapisal veri saklama ozelligini kullanir. Doktor-sube-program eslestirmesi ile hasta dogru yonlendirilir. Konum bazli filtreleme desteklenir.",
+    "backend": [
+      { "title": "Branch-Doctor Matcher", "goal": "Sube-Doktor Eslestirme", "content": "Knowledge Base'deki doktor programlarini sube bazli filtreler. Uzmanlik alani ve musaitlik kontrolu yapar." },
+      { "title": "Location Resolver", "goal": "Konum Eslestirme", "content": "Hasta konumundan (ilce/semt) en yakin subeleri siralar. Mesafe ve calisma saati bazli onceliklendirme." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Doktor/Sube Bilgisi", "content": "Doktor programlari, sube adresleri ve uzmanlik alanlari sorgulama. Sube ve gun bazli filtreleme." },
+      { "title": "Randevu API", "goal": "Musaitlik Kontrolu", "content": "Secilen doktor ve subedeki musait randevu saatlerini listeler." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Azaltilan Yanlis Sube Ziyareti",
+    "description": "Dogru yonlendirme ile yanlis subeye giden hasta sayisi azalir, no-show ve tekrar randevu maliyeti duser.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyBranchQueries", "label": "Aylik Sube Sorgusu", "default": 80, "hint": "Sube ve doktor bilgisi soran hasta sayisi", "editable": true },
+      { "key": "wrongBranchRate", "label": "Yanlis Sube Orani", "default": 15, "prefix": "%", "hint": "Yanlis subeye giden hasta yuzdesi", "editable": true },
+      { "key": "costPerWrongVisit", "label": "Yanlis Ziyaret Maliyeti", "default": 200, "suffix": "TL", "hint": "Tekrar randevu + hasta kaybi maliyeti", "editable": true }
+    ],
+    "formula": "monthlyBranchQueries * (wrongBranchRate / 100) * costPerWrongVisit",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "id": "eg22",
+  "title": "Ozel Ders Talebi",
+  "subtitle": "Private Tutoring Request",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Birebir ozel ders isteyen musteriye AI ile musait egitmen, saat ve fiyat bilgisi sunarak hizli teklif olusturan senaryo. Knowledge Base egitmen musaitlik verisi saglar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Muzik Okulu, Ozel Ders Platformu)" },
+      { "label": "Sorun", "value": "Ozel ders talebi geliyor ama musait egitmen ve fiyat bilgisi hemen verilemiyor — musteri beklerken baska yere gidiyor" },
+      { "label": "Deger", "value": "AI aninda egitmen musaitlik + fiyat bilgisi ile donusumu hizlandir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI ozel ders intent'ini yakalar, Knowledge Base'den musait egitmen, saat ve fiyat bilgisini ceker, aninda teklif sunar.",
+    "steps": [
+      {
+        "title": "Ozel Ders Talebi Algilama",
+        "goal": "Talep intent'ini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'birebir ders', 'ozel ders', 'private lesson' gibi intent'leri tespit eder ve konu/seviye bilgisi toplar."
+      },
+      {
+        "title": "Egitmen Musaitlik Sorgulama",
+        "goal": "Uygun egitmenleri bul",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "green" }
+        ],
+        "content": "Knowledge Base'den konu ve seviyeye uygun musait egitmenler, bos saatler ve saatlik ucretler sorgulanir."
+      },
+      {
+        "title": "Teklif Sunma ve Randevu",
+        "goal": "Hizli donus yap",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Fiyat)", "color": "amber" }
+        ],
+        "content": "Musait egitmen secenekleri, saat dilimleri ve fiyat bilgisiyle birlikte teklif sunulur. Musteri secimini yapar."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Birebir Ozel Ders Talebi",
+      "description": "Musteri birebir Ingilizce dersi istiyor, AI musait egitmen ve fiyat bilgisi sunuyor.",
+      "tags": [
+        { "text": "Ozel Ders", "color": "amber" },
+        { "text": "Aninda Teklif", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Egitmen musaitlik takvimi", "service": "Knowledge", "page": "Egitim > Egitmen Takvimi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her egitmenin musait gun/saat bilgisini ve uzmanlik alanini girin" },
+          { "text": "Ozel ders fiyat listesi", "service": "Knowledge", "page": "Egitim > Ozel Ders Ucretleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Konu ve seviyeye gore saatlik ozel ders ucretlerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Ozel ders intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Ozel Ders", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Birebir ders talebi intent'i varsayilan olarak tanimli" },
+          { "text": "Egitmen musaitlik sorgulama", "service": "Knowledge", "page": "Knowledge Base > Egitmen", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Konu ve seviyeye gore musait egitmen filtreleme hazir" },
+          { "text": "Teklif sablon motoru", "service": "Backend", "page": "Sablonlar > Ozel Ders Teklifi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Egitmen, saat ve fiyat bilgisiyle otomatik teklif olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, birebir Ingilizce dersi almak istiyorum. Intermediate seviyedeyim, haftada 2 gun olabilir mi?" },
+        { "role": "ai", "content": "Intent: Ozel Ders Talebi. Konu: Ingilizce. Seviye: Intermediate (B1-B2). Siklik: Hafta 2. Musait egitmenler sorgulanacak." },
+        { "role": "bot", "content": "Merhaba! Birebir Ingilizce dersi icin harika bir secim. Intermediate seviyede musait egitmenlerimiz:\n\n1. Sarah T. (Native Speaker, 5 yil deneyim)\n   Musait: Pazartesi 18:00, Carsamba 18:00\n   Ucret: 800 TL/ders (60 dk)\n\n2. Emre K. (CELTA Sertifikali, 8 yil deneyim)\n   Musait: Sali 19:00, Persembe 19:00\n   Ucret: 650 TL/ders (60 dk)\n\nHangi egitmen ve saatler size uygun?" },
+        { "role": "user", "content": "Emre Hoca ile Sali ve Persembe 19:00 olsun." },
+        { "role": "bot", "content": "Harika secim! Emre K. ile programiniz:\n\nPlan: Haftada 2 ders (Sali + Persembe, 19:00-20:00)\nUcret: 650 TL/ders x 8 ders/ay = 5.200 TL/ay\nBaslangic: Gelecek Sali\n\nIlk dersi onaylamak ister misiniz? Odeme bilgilerini paylasayim." },
+        { "role": "user", "content": "Onayliyorum, baslayalim." },
+        { "role": "system", "content": "Ozel ders kaydi olusturuldu: Ogrenci -> Emre K. ile B1-B2 Ingilizce. Sali-Persembe 19:00. 650 TL/ders. Egitmene bildirim gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI intent tespiti + Knowledge Base egitmen musaitlik verisi ile calisir. Aninda teklif olusturma ve randevu kaydi.",
+    "backend": [
+      { "title": "Tutor Availability Engine", "goal": "Musaitlik Sorgulama", "content": "Egitmen takvimlerini, uzmanlik alanlarini ve musait saat dilimlerini sorgular. Cakisma kontrolu yapar." },
+      { "title": "Private Lesson Booking", "goal": "Kayit ve Randevu", "content": "Ozel ders kaydini olusturur, egitmene bildirim gonderir ve odeme surecini baslatir." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Egitmen Verisi", "content": "Konu ve seviyeye gore egitmen musaitlik, fiyat ve profil bilgisi sorgulama." },
+      { "title": "Booking API", "goal": "Randevu Olusturma", "content": "Ozel ders randevusu olusturma, takvim guncelleme ve egitmen/ogrenci bildirim gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Ozel Ders Aninda Teklif ile Donusum Artisi",
+    "description": "Hizli teklif ile ozel ders taleplerinden elde edilen ek gelir.",
+    "resultLabel": "Ozel Ders Geliri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPrivateRequests", "label": "Aylik Ozel Ders Talebi", "default": 20, "hint": "Aylik gelen birebir ders talebi sayisi", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 40, "suffix": "%", "hint": "Aninda teklif ile kayit yapan orani", "editable": true },
+      { "key": "avgMonthlyRevenue", "label": "Ort. Aylik Gelir", "default": 4500, "suffix": "TL", "hint": "Ogrenci basina aylik ozel ders geliri", "editable": true }
+    ],
+    "formula": "monthlyPrivateRequests * (conversionRate / 100) * avgMonthlyRevenue",
+    "formulaDisplay": null
+  }
+}

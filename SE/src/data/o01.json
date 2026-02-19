@@ -1,0 +1,142 @@
+{
+  "id": "o01",
+  "title": "Oda Fiyati ve Musaitlik Sorusu",
+  "subtitle": "Room Availability & Pricing",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir belirli tarihler icin oda musaitligi ve fiyat soruyor. AI sezonluk fiyatlandirma ve PMS entegrasyonu ile gercek zamanli musaitlik bilgisi sunarak aninda cevap verir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Butik Oteller, Tatil Koyleri, Sehir Otelleri)" },
+      { "label": "Sorun", "value": "Misafirler WhatsApp'tan fiyat ve musaitlik soruyor — resepsiyon her seferinde PMS'e bakip manuel cevap veriyor" },
+      { "label": "Deger", "value": "7/24 aninda fiyat ve musaitlik bilgisi = rezervasyon donusum oraninda artis + resepsiyon yukunu azaltma" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Human Handoff (C2)", "color": "red" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "PMS entegrasyonu ile gercek zamanli oda durumu cekilir. AI sezonluk fiyat tablolarini Knowledge Base'den okuyarak misafire ozel fiyat bilgisi sunar.",
+    "steps": [
+      {
+        "title": "Mesaj Algilama",
+        "goal": "Fiyat/musaitlik intent tespiti",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'bos odaniz var mi', 'fiyat ne kadar', 'su tarihte musait mi' gibi intent'leri otomatik tespit eder ve tarih bilgisini cikarir."
+      },
+      {
+        "title": "PMS Kontrolu",
+        "goal": "Gercek zamanli musaitlik",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (PMS)", "color": "amber" }
+        ],
+        "content": "Otel PMS sistemi uzerinden belirtilen tarihlerde bos oda tipi ve musaitlik durumu sorgulanir."
+      },
+      {
+        "title": "Fiyat Hesaplama",
+        "goal": "Sezonluk fiyat sunumu",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Fiyat Politikasi)", "color": "green" }
+        ],
+        "content": "Knowledge Base'deki sezonluk fiyat tablosu ile oda tipine gore gecelik ve toplam fiyat hesaplanir."
+      },
+      {
+        "title": "Cevap ve Yonlendirme",
+        "goal": "Rezervasyon adimina yonlendir",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Booking Link)", "color": "blue" }
+        ],
+        "content": "Musaitlik ve fiyat bilgisi ile birlikte online rezervasyon linki veya agent'a yonlendirme secenegi sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Standart Fiyat ve Musaitlik Sorusu",
+      "description": "Misafir belirli tarihler icin oda fiyati ve musaitlik soruyor, AI aninda cevap veriyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "PMS Entegrasyon", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "PMS API erisim bilgileri", "service": "Integrations", "page": "Otel Entegrasyonlari > PMS Baglantisi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "PMS sisteminizden API anahtarini alin ve entegrasyon sayfasindan tanimlayin" },
+          { "text": "Sezonluk fiyat tablosu (PDF/Excel)", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Listeleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Oda tipleri ve sezonluk fiyatlari iceren tabloyu Knowledge Base'e yukleyin" },
+          { "text": "Oda tipi ve kapasite bilgileri", "service": "Knowledge", "page": "Dokuman Bankasi > Oda Tipleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Standart, Deluxe, Suite gibi oda tiplerini ve ozelliklerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Fiyat/musaitlik intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Otel", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Oda musaitligi ve fiyat sorgulama intent'leri varsayilan olarak tanimli" },
+          { "text": "Tarih cikarma (NER)", "service": "AgentAI", "page": "NER > Tarih Algilama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesajdan giris-cikis tarihlerini otomatik cikarir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, 15-18 Temmuz arasi 2 kisilik odaniz musait mi? Gecelik fiyat ne kadar?" },
+        { "role": "ai", "content": "Intent: Oda Musaitlik + Fiyat. Tarih: 15-18 Temmuz (3 gece). Kisi: 2. Oda Tipi: Standart/Deluxe. PMS sorgusu baslatiliyor." },
+        { "role": "bot", "content": "Merhaba! 15-18 Temmuz tarihleri icin musaitlik durumumuz:\n\nStandart Oda (2 kisi): 2.800 TL/gece — Musait\nDeluxe Oda (2 kisi): 3.600 TL/gece — Musait\nSuite (2 kisi): 5.200 TL/gece — Son 1 oda\n\n3 gece toplam: 8.400 TL'den baslayan fiyatlarla.\n\nKahvalti dahildir. Hemen rezervasyon yapmak ister misiniz?" },
+        { "role": "user", "content": "Deluxe Oda guzel gorunuyor. Deniz manzarali mi?" },
+        { "role": "bot", "content": "Evet, Deluxe odalarimiz deniz manzaralidir. 28 m2, king-size yatak, balkon ve minibar mevcuttur.\n\n3 gece Deluxe Oda toplam: 10.800 TL (kahvalti dahil).\n\nRezervasyon icin su linkten ilerleyebilirsiniz: [Rezervasyon Linki]\nYa da size yardimci olmami ister misiniz?" },
+        { "role": "system", "content": "Otomatik cozum: PMS musaitlik + Knowledge fiyat tablosu ile misafir bilgilendirildi. Rezervasyon linkine yonlendirildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Musait Olmayan Tarih — Alternatif Onerisi",
+      "description": "Misafir dolu tarih soruyor, AI alternatif tarih ve oda tipi oneriyor.",
+      "tags": [
+        { "text": "Akilli Oneri", "color": "purple" },
+        { "text": "Upsell", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "PMS API erisim bilgileri", "service": "Integrations", "page": "Otel Entegrasyonlari > PMS Baglantisi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "PMS API baglantisi gerekli" }
+        ],
+        "provider": [
+          { "text": "Alternatif tarih onerme mantigi", "service": "AgentAI", "page": "Dialog Akislari > Alternatif Oneri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Dolu tarih durumunda en yakin musait tarihleri otomatik sunar" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "23-25 Agustos icin standart oda var mi?" },
+        { "role": "ai", "content": "Intent: Musaitlik. Tarih: 23-25 Agustos (2 gece). PMS sorgusu: Standart — DOLU." },
+        { "role": "bot", "content": "Maalesef 23-25 Agustos tarihlerinde Standart odalarimiz dolu.\n\nAncak size iki alternatif sunabilirim:\n\n1. Ayni tarihte Deluxe Oda: 3.600 TL/gece (musait)\n2. 26-28 Agustos Standart Oda: 2.500 TL/gece (musait)\n\nHangisini tercih edersiniz?" },
+        { "role": "user", "content": "26-28 Agustos olabilir, lutfen ayirtin." },
+        { "role": "bot", "content": "Harika secim! 26-28 Agustos, 2 gece Standart Oda — toplam 5.000 TL (kahvalti dahil).\n\nRezervasyon islemini baslatmak icin ad-soyad ve e-posta adresinizi paylasir misiniz?" },
+        { "role": "system", "content": "Alternatif oneri ile rezervasyon donusumu saglandi. Misafir bilgileri aliniyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "PMS entegrasyonu ile gercek zamanli musaitlik, Knowledge Base ile sezonluk fiyatlandirma birlestirilir. AI misafirin tarih ve kisi bilgisini mesajdan otomatik cikarir.",
+    "backend": [
+      { "title": "PMS Integration Service", "goal": "Musaitlik Sorgulama", "content": "Otel PMS sistemine API baglantisi ile belirli tarih araliginda oda tipi bazinda musaitlik ve fiyat bilgisi cekilir." },
+      { "title": "Price Calculator", "goal": "Dinamik Fiyatlama", "content": "Sezon, oda tipi, konaklama suresi ve kisi sayisina gore toplam fiyat hesaplanir. Erken rezervasyon indirimleri dahil edilir." }
+    ],
+    "apis": [
+      { "title": "PMS Availability API", "goal": "Oda Durumu", "content": "Opera, Protel, HotelRunner gibi PMS sistemleriyle entegrasyon ile gercek zamanli oda durumu." },
+      { "title": "Knowledge Base API", "goal": "Fiyat Tablosu", "content": "Sezonluk fiyat, oda ozellikleri ve otel politikalarini AI'a sunar." }
+    ]
+  },
+  "impact": {
+    "title": "Artan Rezervasyon Donusum Orani",
+    "description": "7/24 aninda fiyat ve musaitlik bilgisi ile kacirilan rezervasyonlarin azaltilmasi ve donusum oraninda artis.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyInquiries", "label": "Aylik Fiyat Sorusu", "default": 300, "hint": "WhatsApp uzerinden gelen aylik fiyat/musaitlik sorusu", "editable": true },
+      { "key": "conversionLift", "label": "Donusum Artisi (%)", "default": 15, "hint": "Aninda cevap ile ek donusum orani", "editable": true },
+      { "key": "avgNightlyRate", "label": "Ortalama Gecelik Fiyat", "default": 3000, "suffix": "TL", "hint": "Ortalama oda fiyati", "editable": true },
+      { "key": "avgStayNights", "label": "Ortalama Konaklama", "default": 3, "hint": "Ortalama gece sayisi", "editable": true }
+    ],
+    "formula": "monthlyInquiries * (conversionLift / 100) * avgNightlyRate * avgStayNights",
+    "formulaDisplay": null
+  }
+}

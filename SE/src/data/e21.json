@@ -1,0 +1,93 @@
+{
+  "id": "e21",
+  "title": "Odeme Basarisiz & Link Yenileme",
+  "subtitle": "Payment Failure Recovery",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Shopify veya diger platformlarda odeme gecmeyen musteriye AI yeni odeme linki olusturur veya alternatif odeme yontemi sunar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (D2C — Shopify, WooCommerce)" },
+      { "label": "Sorun", "value": "Odeme basarisizligi sonrasi musteri vazgeciyor — kayip satis" },
+      { "label": "Deger", "value": "Hizli link yenileme ile potansiyel satis kurtarilir" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI odeme basarisizligi intent'ini tespit eder, yeni odeme linki olusturur veya alternatif yontem sunar.",
+    "steps": [
+      {
+        "title": "Odeme Sorunu Tespiti",
+        "goal": "Basarisizlik sebebini bul",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Payment)", "color": "amber" }
+        ],
+        "content": "Odeme hata kodu cekilir: limit, kart reddi, teknik hata vb."
+      },
+      {
+        "title": "Yeni Link / Alternatif",
+        "goal": "Odemeyi tamamla",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Odeme)", "color": "green" }
+        ],
+        "content": "Yeni odeme linki olusturulur veya alternatif yontem (havale, kapida) sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Odeme Linki Yenileme",
+      "description": "Musteri odeme linkinin calismadigini bildiriyor.",
+      "tags": [
+        { "text": "Odeme", "color": "rose" },
+        { "text": "Link Yenileme", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Payment gateway entegrasyonu", "service": "Integrations", "page": "Odeme > Payment Gateway", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Iyzico/PayTR/Stripe entegrasyonu ile odeme linki olusturma" }
+        ],
+        "provider": [
+          { "text": "Odeme linki olusturma", "service": "Integrations", "page": "Odeme > Link Olustur", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Yeni odeme linki otomatik olusturma hazir" },
+          { "text": "Odeme intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Odeme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Odeme basarisizligi intent'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Odeme gecmedi, link tekrar atar misiniz?" },
+        { "role": "ai", "content": "Intent: Odeme Basarisiz. Siparis: #112233. Hata: Link suresi dolmus. Yeni link olusturuluyor." },
+        { "role": "bot", "content": "Tabii! Yeni odeme linkiniz hazir:\n\n💳 Tutar: 599 TL\n🔗 [Odeme Linki] (30 dk gecerli)\n\nKredi karti ile sorun yasarsaniz alternatif olarak havale/EFT de yapabilirsiniz." },
+        { "role": "user", "content": "Odeme yaptim!" },
+        { "role": "system", "content": "Odeme basarili. Siparis onaylandi. Kurtarilan satis: 599 TL." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Payment Gateway API ile calisir. Odeme basarisizligi durumunda yeni link olusturma veya alternatif yontem sunma.",
+    "backend": [
+      { "title": "Payment Link Generator", "goal": "Link Olusturma", "content": "Siparis bilgisiyle yeni odeme linki olusturur. Sureli link (30dk) guvenligi." },
+      { "title": "Payment Error Handler", "goal": "Hata Yonetimi", "content": "Odeme hata kodlarini analiz eder ve uygun cozum onerisi sunar." }
+    ],
+    "apis": [
+      { "title": "Payment Gateway API", "goal": "Odeme Islemi", "content": "Iyzico/PayTR/Stripe uzerinden odeme linki olusturma ve durum takibi." },
+      { "title": "E-ticaret Platform API", "goal": "Siparis Guncelleme", "content": "Odeme basarili oldugunda siparis durumunu guncelleme." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Satis",
+    "description": "Odeme linki yenileme ile tamamlanan satislar.",
+    "resultLabel": "Kurtarilan Satis (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPaymentFailures", "label": "Aylik Odeme Hatasi", "default": 15, "hint": "Basarisiz odeme sayisi", "editable": true },
+      { "key": "recoveryRate", "label": "Kurtarma Orani", "default": 60, "prefix": "%", "hint": "Yeni linkle tamamlanan", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 500, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlyPaymentFailures * (recoveryRate / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

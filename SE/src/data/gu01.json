@@ -1,0 +1,130 @@
+{
+  "id": "gu01",
+  "title": "Randevu Alma / Degistirme / Iptal",
+  "subtitle": "Appointment Booking / Rescheduling / Cancellation",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Resepsiyon yogun saatlerde telefonlara yetisemiyor, randevu cakismalari olusuyor ve musteriler bekletiliyor. AI musait slotlari aninda sunar, Automation ile randevu onay mesaji gonderir ve takvimi gunceller.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Resepsiyon yogun saatlerde telefonlara yetisemiyor — musteri kaybi ve cakisan randevular" },
+      { "label": "Deger", "value": "7/24 otomatik randevu yonetimi = sifir cakisma + musteri memnuniyeti" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "AI Intent & Slot (C2)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI musteri mesajindan randevu intent'ini tespit eder, musait slotlari listeler. Automation onay ve hatirlatma mesajlarini otomatik gonderir.",
+    "steps": [
+      {
+        "title": "Intent Algilama",
+        "goal": "Randevu talebini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'randevu almak istiyorum', 'saat degistirebilir miyim', 'iptal etmek istiyorum' gibi niyetleri otomatik tespit eder."
+      },
+      {
+        "title": "Musait Slot Sunumu",
+        "goal": "Uygun saatleri goster",
+        "badges": [
+          { "text": "Sistem (Takvim)", "color": "purple" },
+          { "text": "Tenant (Stilist)", "color": "amber" }
+        ],
+        "content": "Stilist musaitlik durumuna gore bos slotlari listeler, musteri tercihine en yakin secenekleri one cikarir."
+      },
+      {
+        "title": "Onay ve Bildirim",
+        "goal": "Randevuyu kesinlestir",
+        "badges": [
+          { "text": "Sistem (Automation)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "green" }
+        ],
+        "content": "Randevu onaylaninca musteri ve stiliste bildirim gonderilir. Takvim otomatik guncellenir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Yeni Randevu Alma",
+      "description": "Musteri WhatsApp uzerinden yeni randevu almak istiyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Randevu", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Stilist musaitlik takvimi", "service": "Backend", "page": "Randevu Yonetimi > Takvim Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Her stilistin calisma saatlerini ve mola araliklarini tanimlayin" },
+          { "text": "Islem suresi tanimlari", "service": "Knowledge", "page": "Hizmet Katalogu > Islem Sureleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her islem icin ortalama sure tanimlanmali (ornegin sac kesimi 30dk, boya 90dk)" }
+        ],
+        "provider": [
+          { "text": "Randevu intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Randevu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Randevu alma/degistirme/iptal intent'leri tanimli" },
+          { "text": "Slot musaitlik motoru", "service": "Backend", "page": "Randevu Motoru > Musaitlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Gercek zamanli musaitlik hesaplama ve cakisma kontrolu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, yarin icin sac kesimi randevusu almak istiyorum." },
+        { "role": "ai", "content": "Intent: Randevu Alma. Islem: Sac Kesimi. Tarih: Yarin. Musait slotlar kontrol ediliyor." },
+        { "role": "bot", "content": "Merhaba! Yarin icin sac kesimi musait saatlerimiz:\n\n1. 10:00 — Ayse Stilist\n2. 11:30 — Mehmet Stilist\n3. 14:00 — Ayse Stilist\n4. 16:00 — Zeynep Stilist\n\nHangi saati tercih edersiniz?" },
+        { "role": "user", "content": "14:00 olsun lutfen" },
+        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nSac Kesimi\nTarih: Yarin, 14:00\nStilist: Ayse\nSure: ~30 dakika\n\nRandevunuzdan 2 saat once hatirlatma mesaji gonderecegiz. Degisiklik icin buradan yazabilirsiniz." },
+        { "role": "system", "content": "Randevu takvime islendi. R-2 saat hatirlatma zamanlandi. Stiliste bildirim gonderildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Randevu Degistirme",
+      "description": "Musteri mevcut randevusunu baska bir saate almak istiyor.",
+      "tags": [
+        { "text": "Degisiklik", "color": "amber" },
+        { "text": "Randevu", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Degisiklik politikasi", "service": "Knowledge", "page": "Salon Politikalari > Degisiklik Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Randevu degisikligi icin minimum sure siniri belirleyin (ornegin 2 saat oncesine kadar)" }
+        ],
+        "provider": [
+          { "text": "Randevu guncelleme API", "service": "Backend", "page": "Randevu Motoru > Guncelleme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Mevcut randevuyu iptal edip yeni slot atama islemi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bugunku randevumu yarina alabilir miyim?" },
+        { "role": "ai", "content": "Intent: Randevu Degistirme. Mevcut: Bugun 14:00. Yeni tarih istegi: Yarin. Musaitlik kontrol." },
+        { "role": "bot", "content": "Tabii! Bugunki 14:00 randevunuzu degistirelim. Yarin icin musait saatler:\n\n1. 10:30 — Ayse Stilist\n2. 15:00 — Ayse Stilist\n3. 16:30 — Zeynep Stilist\n\nHangisini tercih edersiniz?" },
+        { "role": "user", "content": "15:00 uygun" },
+        { "role": "bot", "content": "Randevunuz guncellendi!\n\nEski: Bugun 14:00\nYeni: Yarin 15:00, Ayse Stilist\n\nIyi gunler dileriz!" },
+        { "role": "system", "content": "Eski slot serbest birakildi. Yeni randevu olusturuldu. Hatirlatma zamanlayicisi guncellendi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Randevu motoru gercek zamanli musaitlik hesaplar, cakisma engeller. AI intent tespiti ile resepsiyon yukunu %70 azaltir.",
+    "backend": [
+      { "title": "Appointment Engine", "goal": "Randevu Yonetimi", "content": "Stilist bazli takvim yonetimi, cakisma kontrolu, slot hesaplama ve otomatik guncelleme." },
+      { "title": "Reminder Scheduler", "goal": "Hatirlatma Zamanlama", "content": "R-1 gun ve R-2 saat hatirlatma mesajlarini otomatik zamanlar ve gonderir." }
+    ],
+    "apis": [
+      { "title": "Availability API", "goal": "Musait Slot Sorgulama", "content": "Tarih, islem turu ve stilist bazinda musait slotlari dondurur. Cakisma ve mola kontrolu dahil." },
+      { "title": "Booking API", "goal": "Randevu Islemleri", "content": "Randevu olusturma, guncelleme ve iptal islemlerini yoneten REST API." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Resepsiyon Suresi",
+    "description": "Otomatik randevu yonetimi ile resepsiyonun telefon yukunu azaltma ve musteri kaybi onleme.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyAppointmentCalls", "label": "Gunluk Randevu Aramasi", "default": 30, "hint": "Resepsiyona gelen gunluk randevu cagrisi", "editable": true },
+      { "key": "minutesPerCall", "label": "Arama Basina Dakika", "default": 4, "hint": "Ortalama gorusme suresi", "editable": true },
+      { "key": "staffHourlyCost", "label": "Resepsiyon Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Resepsiyon personeli saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyAppointmentCalls * minutesPerCall * (staffHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

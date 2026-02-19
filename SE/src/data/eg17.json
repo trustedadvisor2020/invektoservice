@@ -1,0 +1,106 @@
+{
+  "id": "eg17",
+  "title": "Sikayet / Memnuniyetsizlik",
+  "subtitle": "Student Complaint Handling",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Ogrenci veya veli egitmen, icerik veya hizmetten memnuniyetsiz. AI sikayet intent'ini tespit edip empatiyle karsilik verir, gerektiginde koordinatore yonlendirir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Ders)" },
+      { "label": "Sorun", "value": "Sikayetler gecikiyor veya gozden kaciyor — ogrenci kaybi ve olumsuz yorum riski" },
+      { "label": "Deger", "value": "AI aninda empati + hizli eskalasyon ile memnuniyetsizligi firsata cevir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Chat Analysis (C2)", "color": "red" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI sikayet intent'ini ve duygu tonunu analiz eder. Kritik sikayetler aninda koordinatore eskalasyon edilir. Chat Analysis memnuniyet trendi izler.",
+    "steps": [
+      {
+        "title": "Sikayet Algilama",
+        "goal": "Memnuniyetsizlik intent'ini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'memnun degilim', 'hoca cok kotu', 'paramın karsiligi degil' gibi ifadeleri tespit eder ve duygu analizi yapar."
+      },
+      {
+        "title": "Empati ve Bilgi Toplama",
+        "goal": "Sorunu anla, ogrenciyi dinle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "green" }
+        ],
+        "content": "AI empati mesaji gonderir ve sorunun detaylarini toplar. Chat Analysis negatif duygu skoru kaydeder."
+      },
+      {
+        "title": "Eskalasyon ve Cozum",
+        "goal": "Koordinatore yonlendir",
+        "badges": [
+          { "text": "Sistem (Eskalasyon)", "color": "purple" },
+          { "text": "Tenant (Koordinator)", "color": "amber" }
+        ],
+        "content": "Kritik sikayetler koordinatore aninda iletilir. Cozum sureci baslatilir ve ogrenciye bildirim yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Egitmen Memnuniyetsizligi Sikayeti",
+      "description": "Ogrenci egitmeninden memnun degil, dersler verimli gecmiyor.",
+      "tags": [
+        { "text": "Sikayet", "color": "red" },
+        { "text": "Eskalasyon", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sikayet kategorileri tanimlama", "service": "Knowledge", "page": "Egitim > Sikayet Kategorileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Egitmen, icerik, hizmet, tesis gibi sikayet kategorilerini tanimlayin" },
+          { "text": "Eskalasyon kurallari", "service": "Backend", "page": "Eskalasyon > Sikayet Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Hangi sikayetlerin koordinatore iletilecegini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Sikayet intent ve duygu analizi", "service": "AgentAI", "page": "Intent Tespiti > Sikayet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Memnuniyetsizlik intent'i ve negatif duygu analizi hazir" },
+          { "text": "Chat Analysis sentiment tracking", "service": "Backend", "page": "Chat Analysis > Duygu Takibi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Konusma bazli duygu skoru ve trend analizi hazir" },
+          { "text": "Koordinator eskalasyon bildirimi", "service": "Backend", "page": "Bildirimler > Eskalasyon", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Kritik sikayet tespit edildiginde koordinatore aninda bildirim" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Hocadan hic memnun degilim, derslerde sadece kitaptan okuyor, hicbir sey anlayamiyorum. Bu paraya degmiyor." },
+        { "role": "ai", "content": "Intent: Sikayet (Egitmen). Duygu: Negatif (skor: -0.8). Kategori: Egitmen performansi. Eskalasyon: EVET." },
+        { "role": "bot", "content": "Merhaba Burak Bey, derslerden memnun olmamaniz bizi cok uzdu. Geri bildiriminiz bizim icin cok degerli.\n\nSorunuzu daha iyi anlayabilmem icin:\n- Hangi kurs ve egitmenden bahsediyorsunuz?\n- Ne zamandir bu sorunu yasiyorsunuz?\n\nDetaylari paylasirseniz en kisa surede cozum uretecegiz." },
+        { "role": "user", "content": "B1 Ingilizce, Mehmet Hoca. 3 haftadir boyle, siniftaki herkes ayni fikirdee." },
+        { "role": "bot", "content": "Anliyorum Burak Bey, 3 haftadir suregelen bir sorun bu. Geri bildiriminizi egitim koordinatorumuze ilettim.\n\nKoordinatorumuz en gec yarin sizi arayarak cozum onerileri sunacak. Grup degisikligi veya egitmen degisikligi gibi secenekleri birlikte degerlendireceksiniz.\n\nMemnuniyetiniz bizim icin onceliklidir." },
+        { "role": "system", "content": "Eskalasyon olusturuldu: Sikayet #4412. Ogrenci: Burak M. — B1 Ingilizce, Egitmen Mehmet. Koordinore bildirim gonderildi. SLA: 24 saat." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI duygu analizi + Chat Analysis + eskalasyon motoru ile calisir. Negatif duygu skoru esik degerini astiginda otomatik eskalasyon tetiklenir.",
+    "backend": [
+      { "title": "Complaint Handler", "goal": "Sikayet Yonetimi", "content": "Sikayeti kategorize eder, duygu skoruna gore oncelik atar, koordinatore iletir ve SLA takibi baslatir." },
+      { "title": "Sentiment Analyzer", "goal": "Duygu Analizi", "content": "Chat Analysis ile konusma bazli duygu skoru hesaplar. Negatif trend tespit edildiginde uyari olusturur." }
+    ],
+    "apis": [
+      { "title": "Escalation API", "goal": "Eskalasyon Bildirimi", "content": "Kritik sikayet tespit edildiginde koordinatore aninda WhatsApp/email bildirim gonderimi." },
+      { "title": "Chat Analysis API", "goal": "Sentiment Tracking", "content": "Konusma bazli duygu analizi, kategori tespiti ve trend raporlama." }
+    ]
+  },
+  "impact": {
+    "title": "Sikayet Yonetimi ile Onlenen Ogrenci Kaybi",
+    "description": "Hizli sikayet cozumu ile tutulan ogrenci geliri.",
+    "resultLabel": "Onlenen Kayip (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyComplaints", "label": "Aylik Sikayet", "default": 10, "hint": "Aylik gelen sikayet sayisi", "editable": true },
+      { "key": "churnPreventionRate", "label": "Kayip Onleme Orani", "default": 60, "suffix": "%", "hint": "Hizli cozum ile tutulan ogrenci orani", "editable": true },
+      { "key": "avgStudentValue", "label": "Ort. Ogrenci Degeri", "default": 6000, "suffix": "TL", "hint": "Kaybedilecek ogrenci basina ortalama gelir", "editable": true }
+    ],
+    "formula": "monthlyComplaints * (churnPreventionRate / 100) * avgStudentValue",
+    "formulaDisplay": null
+  }
+}

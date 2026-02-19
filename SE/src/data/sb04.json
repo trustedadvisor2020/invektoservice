@@ -1,0 +1,128 @@
+{
+  "id": "sb04",
+  "title": "Tedavi Oncesi Hazirlik Talimatlari",
+  "subtitle": "Pre-Treatment Instructions",
+  "phase": "Phase 2",
+  "category": "SAGLIK EK",
+  "niche": "health",
+  "description": "Ameliyat veya islem oncesi aclik, ilac kesme ve refakatci talimatlari sozlu veriliyor, hasta unutuyor veya yanlis anlyor. T-3, T-1 gun ve tedavi sabahi otomatik mesaj zinciri ile hastanin hazirlik sureci garanti altina alinir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik Kurulusu (Hastane, Ameliyathane, Estetik Cerrahi Merkez)" },
+      { "label": "Sorun", "value": "Hasta ameliyat oncesi talimatlari unutuyor veya yanlis uyguluyor — operasyon erteleniyor, yatak bos kaliyor" },
+      { "label": "Deger", "value": "Otomatik hatirlatma zinciri ile operasyon iptal/erteleme orani %20'den %5'e duser" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "amber" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Randevu olusturuldugunda tedavi tipine gore Knowledge Base'den hazirlik talimatlari cekilir. Outbound Engine T-3, T-1 ve T-0 zamanlariyla otomatik mesaj gonderir.",
+    "steps": [
+      {
+        "title": "Randevu Tetikleme",
+        "goal": "Tedavi tipini belirle",
+        "badges": [
+          { "text": "Sistem (CRM)", "color": "purple" },
+          { "text": "Tenant (Randevu)", "color": "blue" }
+        ],
+        "content": "Ameliyat/islem randevusu olusturuldugunda tedavi tipi belirlenir ve ilgili hazirlik talimatlari Knowledge Base'den cekilir."
+      },
+      {
+        "title": "Kademeli Bilgilendirme",
+        "goal": "Zamanlama ile hatirlatma gonder",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Hazirlik)", "color": "green" }
+        ],
+        "content": "T-3: Genel hazirlik talimatlari, T-1: Son kontrol listesi ve refakatci hatirlatmasi, T-0 sabahi: Son hatirlatma ve adres bilgisi."
+      },
+      {
+        "title": "Onay ve Takip",
+        "goal": "Hastanin hazir oldugunu teyit et",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Hemsirelk)", "color": "amber" }
+        ],
+        "content": "Hasta talimatlari okudugunun teyidini verir. Soru veya endise varsa AI cevaplar veya hemsireye yonlendirir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "T-3 Hazirlik Talimatlari Gonderimi",
+      "description": "Ameliyattan 3 gun once genel hazirlik talimatlari otomatik gonderiliyor.",
+      "tags": [
+        { "text": "T-3 Hatirlatma", "color": "blue" },
+        { "text": "Hazirlik", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Tedavi tipi bazli talimat sablonlari", "service": "Knowledge", "page": "Knowledge Base > Hazirlik Talimatlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her tedavi tipi icin ayri hazirlik talimati Knowledge Base'e ekleyin" },
+          { "text": "Ameliyat hatirlatma template'leri", "service": "Backend", "page": "Mesaj Sablonlari > Ameliyat Hazirlik", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "T-3, T-1 ve T-0 icin ayri Meta onayli template'ler olusturun" }
+        ],
+        "provider": [
+          { "text": "Randevu bazli outbound zamanlama", "service": "Outbound", "page": "Zamanlama > Ameliyat Oncesi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Randevu tarihine gore T-3, T-1, T-0 tetikleyiciler hazir" },
+          { "text": "Hazirlik sorusu intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Hazirlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Hasta hazirlik sorularini AI otomatik cevaplayabilir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Randevu #R-5521 (Dis Implant Ameliyati, Dr. Ahmet Kara, 25 Subat Sali 10:00). T-3 tetiklendi." },
+        { "role": "bot", "content": "Merhaba Fatma Hanim, 25 Subat Sali gunku dis implant operasyonunuz icin hazirlik bilgileri:\n\nBeslenme:\n- Ameliyattan 8 saat once yeme-icmeyi kesin\n- Son yemek: 24 Subat Pazartesi 02:00'ye kadar\n\nIlaclar:\n- Kan sulandrci kullaniyorsaniz doktorunuza dansin\n- Ameliyat sabahi ilaclarinizi almayin (doktor onaylamazsa)\n\nGenel:\n- Refakatci getirmeniz zorunludur\n- Rahat kiyafet giyin\n- Degerli esya getirmeyin\n\nBu bilgileri okuduysaniz 'TAMAM' yazin." },
+        { "role": "user", "content": "TAMAM. Peki kan sulandirici kullaniyorum, ne yapmaliyim?" },
+        { "role": "ai", "content": "Intent: Hazirlik Sorusu (Ilac). Konu: Kan sulandirici. Tibbi karar gerektiriyor — doktora yonlendir." },
+        { "role": "bot", "content": "Kan sulandirici kullanimi ameliyat oncesi onemli bir konudur. Bu karari doktorunuz vermesi gerekir.\n\nDr. Ahmet Kara'nin asistanini sizinle iletisime gecirecegiz. En kisa surede donec yapilacaktir.\n\nLutfen ilaci doktor talimati olmadan kesmeyin." },
+        { "role": "system", "content": "Talimatlar okundu. Ilac sorusu doktor asistanina eskalasyon yapildi. T-1 hatirlatma planlanmis." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "T-0 Sabahi Son Hatirlatma",
+      "description": "Ameliyat sabahi son hatirlatma ve kontrol listesi gonderiliyor.",
+      "tags": [
+        { "text": "T-0 Sabahi", "color": "red" },
+        { "text": "Son Kontrol", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ameliyat sabahi template'i", "service": "Backend", "page": "Mesaj Sablonlari > Ameliyat Sabahi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ameliyat sabahi adres, saat ve son kontrol bilgilerini iceren template" }
+        ],
+        "provider": [
+          { "text": "Sabah erken gonderim zamanlayici", "service": "Outbound", "page": "Zamanlama > Sabah Gonderimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ameliyat gunu sabah 07:00'de otomatik gonderim" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Ameliyat gunu: 25 Subat Sali. Saat 07:00. T-0 sabah hatirlatmasi tetiklendi." },
+        { "role": "bot", "content": "Gunaydin Fatma Hanim! Bugun ameliyat gununuz.\n\nSon kontrol listesi:\n- Aclik: 8 saattir bir sey yemediniz mi?\n- Refakatci: Yaninda biri var mi?\n- Kimlik: TC kimlik ve sigorta kartiniz yaninda mi?\n\nRandevunuz: 10:00\nDoktor: Dr. Ahmet Kara\nAdres: Mecidiyekoy Subesi, 3. Kat Ameliyathane\n\nLutfen 09:30'da resepsiyonda olun. Gecmis olsun!" },
+        { "role": "user", "content": "Tesekkurler, hazrim. Yoldasim." },
+        { "role": "system", "content": "Hasta hazirligini teyit etti. Ameliyat programi aktif. Tum T-3/T-1/T-0 mesajlari basariyla tamamlandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Outbound Engine zamanlama + Knowledge Base talimat birlesimiyle calisir. Tedavi tipine gore farkli talimatlar otomatik seciir ve kademeli olarak gonderilir.",
+    "backend": [
+      { "title": "Pre-Treatment Scheduler", "goal": "Talimat Zamanlayici", "content": "Randevu tarihine gore T-3, T-1, T-0 zamanlayicilarini kurar. Tedavi tipi bazli talimat seti secer." },
+      { "title": "Instruction Template Engine", "goal": "Talimat Motoru", "content": "Knowledge Base'den tedavi tipine uygun hazirlik talimatlarini ceeker ve kisisellestirilmis mesaj olusturur." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Talimat Bilgisi", "content": "Tedavi tipine gore hazirlik talimatlari, yasakli ilaclar ve genel kurallari sorgulama." },
+      { "title": "WhatsApp Business API", "goal": "Zamanli Gonderim", "content": "T-3, T-1, T-0 zamanlamali template mesaj gonderimi. Okundu bilgisi takibi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Ameliyat Ertelemesi",
+    "description": "Otomatik hazirlik talimatlari ile ameliyat erteleme/iptal orani azalir, ameliyathane dolulugu artar.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyOperations", "label": "Aylik Ameliyat Sayisi", "default": 40, "hint": "Planlanan ameliyat / islem sayisi", "editable": true },
+      { "key": "postponeRateReduction", "label": "Erteleme Azalma Orani", "default": 15, "prefix": "%", "hint": "Otomatik talimat ile azalan erteleme yuzdesi", "editable": true },
+      { "key": "avgOperationRevenue", "label": "Ort. Ameliyat Geliri", "default": 20000, "suffix": "TL", "hint": "Ortalama ameliyat cirosu", "editable": true }
+    ],
+    "formula": "monthlyOperations * (postponeRateReduction / 100) * avgOperationRevenue",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "id": "gu05",
+  "title": "Son Dakika Bosluk Bildirimi",
+  "subtitle": "Last-Minute Slot Notification",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Randevu iptali olunca acilan slot bos kaliyor ve gelir kaybi yasiyor. Outbound Engine ile bekleme listesindeki musterilere aninda bildirim gonderilerek bos slot doldurulur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Iptal edilen randevunun slotu bos kaliyor — gunluk %10-15 gelir kaybi" },
+      { "label": "Deger", "value": "Otomatik bosluk bildirimi ile iptal edilen slotlarin %50'si doldurulur" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Randevu iptali aninda Outbound Engine tetiklenir. Bekleme listesindeki veya yakin tarihli randevu arayan musterilere otomatik WhatsApp bildirimi gonderilir.",
+    "steps": [
+      {
+        "title": "Iptal Algilama",
+        "goal": "Bos slotu tespit et",
+        "badges": [
+          { "text": "Sistem (Trigger)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "blue" }
+        ],
+        "content": "Randevu iptal edildiginde veya no-show oldugunda sistem bos slotu otomatik tespit eder."
+      },
+      {
+        "title": "Bekleme Listesi Bildirimi",
+        "goal": "Musterileri bilgilendir",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "green" }
+        ],
+        "content": "Bekleme listesindeki veya son 30 gunde randevu almis musterilere acilan slot bildirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Iptal Sonrasi Otomatik Bildirim",
+      "description": "Musteri randevusunu iptal etti, acilan slot bekleme listesine bildirildi.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Outbound", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "WhatsApp bosluk bildirim template'i", "service": "Backend", "page": "Mesaj Sablonlari > Son Dakika Slotu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli son dakika slot bildirimi template'i olusturun" },
+          { "text": "Bekleme listesi aktif", "service": "Backend", "page": "Randevu Yonetimi > Bekleme Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Randevu bekleyen musterilerin kayit edilmesi gerekir" }
+        ],
+        "provider": [
+          { "text": "Iptal tetikleme motoru", "service": "Automation", "page": "Trigger > Randevu Iptali", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Randevu iptali aninda Outbound tetikleme hazir" },
+          { "text": "Outbound mesaj gonderimi", "service": "Outbound", "page": "Kampanya > Slot Bildirimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Hedefli musteri grubuna WhatsApp template gonderimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Randevu iptali algilandi: Bugun 14:00 — Sac Boyama slotu (Selin Stilist). Bekleme listesi: 3 musteri, son 30 gun randevusu: 12 musteri." },
+        { "role": "bot", "content": "[Outbound Template — 3 bekleme listesi musterisine]\n\nMerhaba [Ad]! Bugun 14:00'te Selin Stilist ile bos bir slot acildi.\n\nIslem: Sac Boyama\nTarih: Bugun, 14:00\nStilist: Selin\n\nRandevu almak icin 'EVET' yazin!" },
+        { "role": "user", "content": "EVET" },
+        { "role": "bot", "content": "Harika! Randevunuz kesinlesti:\n\nSac Boyama — Selin Stilist\nBugun, 14:00\n\nSalonumuza bekleriz!" },
+        { "role": "system", "content": "Bos slot dolduruldu. 3 musteriden 1'i kabul etti. Gelir kaybi onlendi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "No-Show Sonrasi Slot Degerlendirme",
+      "description": "Musteri gelmedi, acilan slot sonraki saat dilimine kaydiriliyor.",
+      "tags": [
+        { "text": "No-Show", "color": "red" },
+        { "text": "Kurtarma", "color": "green" }
+      ],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "No-show tespit suresi", "service": "Backend", "page": "Salon Ayarlari > No-Show Suresi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Randevu saatinden 15 dakika sonra gelmezse no-show olarak isaretlenir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "No-show tespit edildi: 15:00 randevusu — musteri gelmedi. Slot serbest birakildi. Bildirim tetikleniyor." },
+        { "role": "bot", "content": "[Outbound — Yakin mesafedeki musterilere]\n\nMerhaba [Ad]! Su an salonumuzda bos slot mevcut.\n\nHemen gelebilirseniz beklemeden islem yaptirabilirsiniz!\n\nMusait misiniz?" },
+        { "role": "user", "content": "Evet 20 dakikaya oradayim" },
+        { "role": "bot", "content": "Super! Sizi bekliyoruz. Geldiginizde resepsiyona adinizi soyleyin, hemen baslayacagiz." },
+        { "role": "system", "content": "No-show slotu dolduruldu. Gelir kaybi minimize edildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Randevu iptali ve no-show event'leri Outbound Engine'i tetikler. Bekleme listesi ve son ziyaretci segmenti hedeflenir.",
+    "backend": [
+      { "title": "Cancellation Event Handler", "goal": "Iptal Tetikleme", "content": "Randevu iptali veya no-show algilandiginda Outbound kampanyasini otomatik tetikler." },
+      { "title": "Waitlist Manager", "goal": "Bekleme Listesi", "content": "Islem ve stilist bazli bekleme listesi yonetimi. Oncelik sirasi ve bildirim tercihleri." }
+    ],
+    "apis": [
+      { "title": "Slot Notification API", "goal": "Bosluk Bildirimi", "content": "Acilan slot bilgisini alip hedef musteri listesine bildirim gonderim API'si." },
+      { "title": "Waitlist API", "goal": "Bekleme Listesi Yonetimi", "content": "Musteri bekleme listesine ekleme, cikarma ve bildirim tercihi yonetim API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Bos Slot Geliri",
+    "description": "Iptal ve no-show sonrasi bos kalan slotlarin doldurulmasi ile kurtarilan gelir.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyCancellations", "label": "Aylik Iptal/No-Show", "default": 25, "hint": "Ortalama aylik iptal ve no-show sayisi", "editable": true },
+      { "key": "fillRate", "label": "Doldurma Orani", "default": 50, "suffix": "%", "hint": "Bildirim sonrasi doldurulan slot orani", "editable": true },
+      { "key": "avgSlotValue", "label": "Ort. Slot Degeri", "default": 700, "suffix": "TL", "hint": "Ortalama islem ucreti", "editable": true }
+    ],
+    "formula": "monthlyCancellations * (fillRate / 100) * avgSlotValue",
+    "formulaDisplay": null
+  }
+}

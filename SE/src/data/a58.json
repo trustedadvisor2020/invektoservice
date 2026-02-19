@@ -1,0 +1,96 @@
+{
+  "id": "a58",
+  "title": "Paket Satis: Lazer 6 Seans",
+  "subtitle": "Laser Package Sales",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Hasta seans paketi hakkinda bilgi istiyor. AI paket detaylari + taksit bilgisi + randevu yonlendirmesi yapar, paket satisini mesajlasma uzerinden tamamlar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Lazer Epilasyon)" },
+      { "label": "Sorun", "value": "Paket fiyat ve taksit bilgisi telefonda uzun suruyor — lead beklemek istemiyor" },
+      { "label": "Deger", "value": "AI aninda paket detayi + taksit secenegi sunarak hizli karar aldirir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Revenue Agent (C10)", "color": "green" }
+    ],
+    "servicesNote": "AI paket intent'ini tespit eder, Knowledge Base'den paket detaylarini cekar, C10 ile taksit secenegi ve odeme linki sunar.",
+    "steps": [
+      {
+        "title": "Paket Bilgi Sunumu",
+        "goal": "Paket detayini aktar",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Fiyat)", "color": "blue" }
+        ],
+        "content": "AI lazer paket cesitlerini, seans sayilarini ve fiyat araliklarini sunar."
+      },
+      {
+        "title": "Taksit + Randevu",
+        "goal": "Satisi kapat",
+        "badges": [
+          { "text": "Sistem (Odeme)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "green" }
+        ],
+        "content": "Taksit secenekleri sunulur, odeme linki gonderilir ve ilk seans randevusu ayarlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Lazer Epilasyon 6 Seans Paketi",
+      "description": "Hasta lazer epilasyon paketi hakkinda bilgi ve fiyat soruyor.",
+      "tags": [
+        { "text": "Paket Satis", "color": "green" },
+        { "text": "Lazer", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Paket fiyat ve taksit bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Paket Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Lazer paket cesitlerini, seans sayilarini ve taksit seceneklerini tanimlayin" },
+          { "text": "Online odeme entegrasyonu", "service": "Backend", "page": "Odeme > Online Odeme", "status": "setup", "priority": "required", "effort": "medium", "capability": "C10", "hint": "Kredi karti ve taksit destekli odeme saglayici tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Paket satis intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Paket Satis", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Lazer paket talebi intent'i hazir" },
+          { "text": "Taksit hesaplama + odeme linki", "service": "Backend", "page": "Odeme > Taksit Hesaplama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Taksit secenekleri ve odeme linki olusturma hazir" },
+          { "text": "Ilk seans randevu ayarlama", "service": "Automation", "page": "Is Akislari > Paket Randevu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Odeme sonrasi otomatik ilk seans randevusu olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Lazer epilasyon paket fiyatlariniz nedir? Taksit var mi?" },
+        { "role": "ai", "content": "Intent: Paket Satis Talebi — Lazer Epilasyon. Paket + taksit bilgisi sunulacak." },
+        { "role": "bot", "content": "Lazer epilasyon paketlerimiz:\n\n\u2728 6 Seans Full Body: 18.000 TL\n\u2728 6 Seans Yuz + Bikini: 9.000 TL\n\u2728 6 Seans Tek Bolge: 4.500 TL\n\n\ud83d\udcb3 Taksit Secenekleri:\n\u2022 3 taksit: %0 faiz\n\u2022 6 taksit: %0 faiz\n\u2022 9 taksit: kucuk fark\n\nHangi paket ilginizi cekti?" },
+        { "role": "user", "content": "Full body 6 seans, 6 taksit olur mu?" },
+        { "role": "bot", "content": "Harika secim! Full Body 6 Seans detaylari:\n\n\ud83d\udcb0 Toplam: 18.000 TL\n\ud83d\udcb3 6 Taksit: 3.000 TL/ay (%0 faiz)\n\ud83d\udcc5 Seanslar: 4-6 hafta arayla\n\u2705 Alexandrite + Nd:YAG cift dalga boyu\n\nOdeme linkiniz:\n\ud83d\udd17 [Guvenli Odeme — 18.000 TL / 6 Taksit]\n\nOdeme sonrasi ilk seans randevunuzu hemen ayarlayalim!" },
+        { "role": "system", "content": "Odeme alindi. Paket aktif edildi. Ilk seans randevusu olusturuldu: Persembe 11:00." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge Base paket bilgisi + Revenue Agent odeme + Otomasyon randevu birlesimiyle calisir.",
+    "backend": [
+      { "title": "Package Catalog", "goal": "Paket Bilgisi", "content": "Lazer paket cesitlerini, seans sayilarini ve bolge bazli fiyatlari getirir." },
+      { "title": "Installment Calculator", "goal": "Taksit Hesaplama", "content": "Banka bazli taksit seceneklerini hesaplar ve odeme linki olusturur." }
+    ],
+    "apis": [
+      { "title": "Payment Gateway API", "goal": "Odeme + Taksit", "content": "Taksitli odeme linki olusturma ve odeme callback yonetimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Paket Satis Geliri",
+    "description": "AI destekli paket satisi ile artan lazer epilasyon geliri.",
+    "resultLabel": "Paket Geliri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPackageLeads", "label": "Aylik Paket Sorusu", "default": 40, "hint": "Lazer paket fiyat sorusu gelen lead", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 30, "prefix": "%", "hint": "Paket satin alan lead orani", "editable": true },
+      { "key": "avgPackageValue", "label": "Ort. Paket Degeri", "default": 12000, "suffix": "TL", "hint": "Ortalama lazer paket tutari", "editable": true }
+    ],
+    "formula": "monthlyPackageLeads * (conversionRate / 100) * avgPackageValue",
+    "formulaDisplay": null
+  }
+}

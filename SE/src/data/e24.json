@@ -1,0 +1,90 @@
+{
+  "id": "e24",
+  "title": "Kayip Iade Paketi Arastirma",
+  "subtitle": "Lost Return Package Investigation",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Iade kargo kodu okunmadi veya paket kayboldu durumlarinda AI kargo arastirma surecini baslatir ve musteriye takip bilgisi verir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Kayip iade paketi en stresli musteri deneyimlerinden biri — para + urun ikiside yok" },
+      { "label": "Deger", "value": "Hizli arastirma basllatma ile musteri guveni korunur" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Routing (C2)", "color": "blue" }
+    ],
+    "servicesNote": "AI iade kargo durumunu sorgular, kayip tespit ederse kargo arastirma talebi olusturur.",
+    "steps": [
+      {
+        "title": "Durum Kontrolu",
+        "goal": "Iade kargosunu takip et",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Kargo)", "color": "amber" }
+        ],
+        "content": "Iade kargo takip numarasindan durum kontrol edilir."
+      },
+      {
+        "title": "Arastirma Basllatma",
+        "goal": "Kargo firmasina bildir",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Prosedur)", "color": "blue" }
+        ],
+        "content": "Kayip tespit edilirse kargo firmasina arastirma talebi gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Iade Paketi Kayip",
+      "description": "Musteri iade paketini kargoya verdi ama takipte gorünmuyor.",
+      "tags": [
+        { "text": "Kayip Paket", "color": "rose" },
+        { "text": "Arastirma", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kargo arastirma proseduru", "service": "Knowledge", "page": "Dokuman Bankasi > Kargo Arastirma", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kayip paket arastirma adimlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Kargo durum sorgulama", "service": "Integrations", "page": "Kargo > Iade Takibi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Iade kargo takip numarasi ile durum sorgulama hazir" },
+          { "text": "Arastirma talep olusturma", "service": "Automation", "page": "Is Akislari > Kargo Arastirma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Kargo arastirma talebi otomatik olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Iade paketim kayboldu, kargo kodu okunmadi!" },
+        { "role": "ai", "content": "Intent: Kayip Iade Paketi. Iade: #556677. Son kargo durumu: 'Kabul edildi' — 10 gun once. Sonrasi YOK." },
+        { "role": "bot", "content": "Kontrol ettim! Iade paketinizin durumu:\n\n📦 Iade: #556677\n📍 Son durum: Kargoya kabul (10 gun once)\n⚠️ Sonraki hareket kaydedilmemis\n\nHemen kargo firmasina arastirma talebi aciyorum. Sonuc: 3-5 is gunu.\n\nPaket bulunamazsa tam iade yapilacak, endiselenmeyin!" },
+        { "role": "system", "content": "Kargo arastirma talebi acildi. Musteri bilgilendirildi. Takip notu ayarlandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Kargo API + Automation birlesimiyle calisir. Kayip iade paketi tespiti ve otomatik arastirma basllatma.",
+    "backend": [
+      { "title": "Return Shipment Tracker", "goal": "Iade Kargo Takibi", "content": "Iade kargo takip numarasi ile durum kontrolu. Hareket kesintisi tespiti." },
+      { "title": "Investigation Manager", "goal": "Arastirma Yonetimi", "content": "Kargo firmasina arastirma talebi olusturma ve sonuc takibi." }
+    ],
+    "apis": [
+      { "title": "Kargo API", "goal": "Takip", "content": "Iade kargo hareket gecmisi ve arastirma talebi gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Korunan Musteri Guveni",
+    "description": "Kayip iade paketi arastirmasi ile korunan musteri iliskisi.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyLostReturns", "label": "Aylik Kayip Iade", "default": 5, "hint": "Kayip iade paketi", "editable": true },
+      { "key": "avgReturnValue", "label": "Ort. Iade Degeri", "default": 500, "suffix": "TL", "hint": "Iade urun degeri", "editable": true }
+    ],
+    "formula": "monthlyLostReturns * avgReturnValue",
+    "formulaDisplay": null
+  }
+}

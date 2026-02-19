@@ -1,0 +1,93 @@
+{
+  "id": "a65",
+  "title": "Coklu Personel: Cakisan Cevaplar",
+  "subtitle": "Staff Collision Prevention",
+  "phase": "Phase 1",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Birden fazla personel ayni lead'e farkli cevap veriyor. C2 Routing ile lead bazli agent atamasi yapilarak cakisma onlenir, tek elden iletisim saglanir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Coklu Personel)" },
+      { "label": "Sorun", "value": "2-3 kisi ayni hastaya farkli bilgi veriyor — hasta kafasi karisiyor, guven kayboluyor" },
+      { "label": "Deger", "value": "Lead bazli agent atamasi ile tek muhatap, tutarli iletisim ve profesyonel deneyim" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" }
+    ],
+    "servicesNote": "C2 Routing ile her lead'e tek agent atanir, cakisan cevaplar onlenir ve iletisim tutarliligi saglanir.",
+    "steps": [
+      {
+        "title": "Lead Atamasi",
+        "goal": "Tek muhatap belirle",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Ekip)", "color": "blue" }
+        ],
+        "content": "Yeni lead geldiginde C2 otomatik olarak musait ve uygun agent'a atar."
+      },
+      {
+        "title": "Cakisma Korumasi",
+        "goal": "Diger personeli engelle",
+        "badges": [
+          { "text": "Sistem (Lock)", "color": "purple" },
+          { "text": "Tenant (Kural)", "color": "amber" }
+        ],
+        "content": "Atanmis lead'e baska personelin mudahale etmesi engellenir, gerektiginde devir yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Ayni Lead'e Iki Farkli Cevap Sorunu",
+      "description": "Iki personel ayni lead'e farkli fiyat bilgisi veriyor, C2 ile cozum.",
+      "tags": [
+        { "text": "Cakisma", "color": "red" },
+        { "text": "Routing", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Personel listesi ve rolleri", "service": "Backend", "page": "Ekip > Personel Tanimlama", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Satis personelini ve uzmanlik alanlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Otomatik lead atama motoru", "service": "Backend", "page": "Routing > Lead Atama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Round-robin veya uzmanlik bazli otomatik lead atama hazir" },
+          { "text": "Lead kilit mekanizmasi", "service": "Backend", "page": "Routing > Lead Lock", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Atanmis lead'e baska agent'in mudahalesini engelleyen kilit sistemi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, burun estetigi fiyati nedir?" },
+        { "role": "system", "content": "C2 Routing: Lead atandi — Agent: Melis (Satis). Lock aktif. Diger personel salt-okunur." },
+        { "role": "bot", "content": "[Melis cevapliyor]\n\nMerhaba! Burun estetigi hakkinda bilgi vereyim:\n\n\ud83d\udc43 Burun Estetigi: 45.000 - 75.000 TL\n\ud83d\udc68\u200d\u2695\ufe0f Doktor: Prof. Dr. Ahmet Yilmaz\n\ud83d\udcc5 Konsultasyon: Ucretsiz\n\nDetayli bilgi icin randevu ayarlayalim mi?" },
+        { "role": "system", "content": "NOT: Personel 'Seda' bu lead'e cevap yazmaya calisti — C2 tarafindan engellendi. Bildirim: 'Bu lead Melis'e atanmis.'" },
+        { "role": "user", "content": "Konsultasyona gelmek istiyorum." },
+        { "role": "bot", "content": "[Melis devam ediyor]\n\nHarika! Prof. Dr. Ahmet Yilmaz icin konsultasyon slotlari:\n\n\ud83d\udcc5 Sali 14:00\n\ud83d\udcc5 Persembe 10:00\n\nHangisi size uygun?" },
+        { "role": "system", "content": "Tek muhatap (Melis) ile tutarli iletisim saglandi. Cakisma onlendi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo C2 Routing lead atama + lead lock mekanizmasi ile calisir.",
+    "backend": [
+      { "title": "Lead Assignment Engine", "goal": "Otomatik Atama", "content": "Round-robin, uzmanlik veya yukleme bazli lead atama motoru." },
+      { "title": "Collision Guard", "goal": "Cakisma Onleme", "content": "Atanmis lead'e baska personelin mudahalesini engeller, gerektiginde devir sureci baslatir." }
+    ],
+    "apis": [
+      { "title": "Routing API", "goal": "Atama Yonetimi", "content": "Lead atama, devir ve lock durumu yonetimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Verimlilik Artisi",
+    "description": "Cakisan cevaplarin onlenmesi ile artan musteri guveni ve personel verimliligi.",
+    "resultLabel": "Verimlilik Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyLeads", "label": "Aylik Toplam Lead", "default": 50, "hint": "Birden fazla personelin erisebilecegi lead", "editable": true },
+      { "key": "collisionPreventionRate", "label": "Onlenen Cakisma", "default": 40, "prefix": "%", "hint": "Routing ile onlenen cakisma orani", "editable": true },
+      { "key": "avgSavedValue", "label": "Cakisma Basina Kayip", "default": 3000, "suffix": "TL", "hint": "Her cakismanin neden olacagi tahmini kayip", "editable": true }
+    ],
+    "formula": "monthlyLeads * (collisionPreventionRate / 100) * avgSavedValue",
+    "formulaDisplay": null
+  }
+}

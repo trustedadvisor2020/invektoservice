@@ -1,0 +1,94 @@
+{
+  "id": "d40",
+  "title": "Randevu Iptal/Erteleme Yogunlugu",
+  "subtitle": "Appointment Cancellation Management",
+  "phase": "Phase 2",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Yogun iptal ve erteleme taleplerini AI ile yoneten, alternatif slot sunan ve bosluk olusan slotlari bekleme listesinden dolduran sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Iptal edilen randevular bos kaliyor — gelir kaybi ve doktor bos zamani" },
+      { "label": "Deger", "value": "Bekleme listesinden otomatik slot doldurma ile gelir kaybi minimize edilir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI iptal/erteleme intent'ini tespit eder, alternatif slot sunar ve bos kalan slotu bekleme listesinden doldurur.",
+    "steps": [
+      {
+        "title": "Iptal Yonetimi",
+        "goal": "Alternatif sun",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "blue" }
+        ],
+        "content": "AI iptal talebini alir ve hastaya alternatif slot teklifi sunar."
+      },
+      {
+        "title": "Bosluk Doldurma",
+        "goal": "Bekleyeni ara",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Liste)", "color": "green" }
+        ],
+        "content": "Iptal edilen slota bekleme listesindeki hastalar otomatik bilgilendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Randevu Erteleme + Bos Slot Doldurma",
+      "description": "Hasta erteleme istiyor, bos kalan slot bekleme listesinden dolduruluyor.",
+      "tags": [
+        { "text": "Erteleme", "color": "amber" },
+        { "text": "Bekleme Listesi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Bekleme listesi yonetimi", "service": "Backend", "page": "Randevu Yonetimi > Bekleme Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Randevu bekleyen hastalarin listesini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Iptal intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Iptal/Erteleme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Randevu iptal/erteleme intent'i hazir" },
+          { "text": "Otomatik slot doldurma", "service": "Outbound", "page": "Trigger > Bos Slot Bildirimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Bos kalan slota bekleme listesinden otomatik bildirim hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Randevumu erteleyebilir miyim?" },
+        { "role": "ai", "content": "Intent: Randevu Erteleme. Mevcut randevu: Yarin 10:00. Alternatif slotlar kontrol ediliyor." },
+        { "role": "bot", "content": "Tabii! Mevcut randevunuz: Yarin 10:00\n\nAlternatif slotlar:\n🗓️ Persembe 14:00\n🗓️ Cuma 11:00\n🗓️ Gelecek Pazartesi 09:30\n\nHangisi uygun?" },
+        { "role": "user", "content": "Cuma 11:00 olsun." },
+        { "role": "bot", "content": "Randevunuz guncellendi! ✅\n\n📅 Cuma 11:00\n👩‍⚕️ Dr. Ayse\n\nGorulmek uzere!" },
+        { "role": "system", "content": "Randevu ertelendi. Yarin 10:00 slotu bos kaldi. Bekleme listesinden 2 hastaya bildirim gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Randevu Yonetimi + Bekleme Listesi + Outbound birlesimiyle calisir.",
+    "backend": [
+      { "title": "Cancellation Manager", "goal": "Iptal Yonetimi", "content": "Iptal/erteleme taleplerini yonetir ve alternatif slot onerisi sunar." },
+      { "title": "Waitlist Filler", "goal": "Bosluk Doldurma", "content": "Bos kalan slota bekleme listesindeki hastalara otomatik bildirim gonderir." }
+    ],
+    "apis": [
+      { "title": "Calendar API", "goal": "Takvim Yonetimi", "content": "Randevu iptali, erteleme ve bos slot tespiti." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Randevu Geliri",
+    "description": "Bekleme listesinden doldurulan iptal slotlari ile korunan gelir.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyCancellations", "label": "Aylik Iptal", "default": 15, "hint": "Iptal/erteleme talebi", "editable": true },
+      { "key": "fillRate", "label": "Doldurma Orani", "default": 40, "prefix": "%", "hint": "Bekleme listesinden doldurulan slot", "editable": true },
+      { "key": "avgSlotValue", "label": "Slot Degeri", "default": 1500, "suffix": "TL", "hint": "Ortalama randevu geliri", "editable": true }
+    ],
+    "formula": "monthlyCancellations * (fillRate / 100) * avgSlotValue",
+    "formulaDisplay": null
+  }
+}

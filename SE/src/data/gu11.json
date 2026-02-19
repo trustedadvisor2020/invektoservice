@@ -1,0 +1,105 @@
+{
+  "id": "gu11",
+  "title": "Abonelik / Uyelik Paketi",
+  "subtitle": "Subscription / Membership Package",
+  "phase": "Phase 2",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Duzenli gelen musteri sadakat hissetmiyor ve rakip salona gecebiliyor. AI tekrarlayan ziyaret patterini tespit eder ve kisisellestirilmis uyelik teklifi gonderir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Duzenli gelen musteriler fiyat avantaji hissetmiyor — rakip salona gecme riski yuksek" },
+      { "label": "Deger", "value": "Kisisellestirilmis uyelik teklifi = musteri bagliligi + garanti gelir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI musteri ziyaret gecmisini analiz ederek tekrarlayan musterileri tespit eder. Outbound ile kisisellestirilmis uyelik teklifi gonderilir.",
+    "steps": [
+      {
+        "title": "Tekrar Musteri Tespiti",
+        "goal": "Sadik musteriyi bul",
+        "badges": [
+          { "text": "Sistem (Analiz)", "color": "purple" },
+          { "text": "Tenant (CRM)", "color": "blue" }
+        ],
+        "content": "Son 3 ayda 3+ ziyaret yapan musteriler otomatik olarak sadakat adayi olarak isaretlenir."
+      },
+      {
+        "title": "Kisisel Teklif Olusturma",
+        "goal": "Uygun paketi sec",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Paket)", "color": "amber" }
+        ],
+        "content": "Musterinin sik yaptirdigi islemlere gore en uygun uyelik paketi belirlenir."
+      },
+      {
+        "title": "Outbound Teklif",
+        "goal": "Uyelik teklifi gonder",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "green" }
+        ],
+        "content": "Kisisellestirilmis uyelik teklifi WhatsApp uzerinden gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Proaktif Uyelik Teklifi",
+      "description": "Duzenli gelen musteri tespit edilerek uyelik paketi teklif ediliyor.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Sadakat", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Uyelik paket tanimlari", "service": "Knowledge", "page": "Sadakat > Uyelik Paketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Farkli uyelik paketlerini (aylik sac bakimi, aylik cilt bakimi, karma) tanimlayin" },
+          { "text": "WhatsApp uyelik template'i", "service": "Backend", "page": "Mesaj Sablonlari > Uyelik Teklifi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli kisisel uyelik teklifi template'i olusturun" }
+        ],
+        "provider": [
+          { "text": "Musteri ziyaret analizi", "service": "AgentAI", "page": "Analiz > Tekrar Musteri Tespiti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Son 90 gun ziyaret analizi ve tekrar musteri skorlama hazir" },
+          { "text": "Outbound kisisel teklif", "service": "Outbound", "page": "Kampanya > Uyelik Teklifi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Segment bazli kisisellestirilmis outbound mesaj gonderimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Tekrar musteri tespiti: Zeynep Demir — Son 3 ayda 5 ziyaret (3x sac kesimi, 2x fon). Aylik ortalama harcama: 1.400 TL. Uyelik adayi olarak isaretlendi." },
+        { "role": "bot", "content": "[Outbound Template — Kisisel Uyelik Teklifi]\n\nMerhaba Zeynep! Sizi sik sik gorunce cok mutlu oluyoruz.\n\nSize ozel bir teklifimiz var:\n\nAylik Sac Bakim Uyeligi — 1.100 TL/ay\n(Normal harcamaniz: ~1.400 TL/ay)\n\nDahil olan islemler:\n- 1x Sac Kesimi\n- 1x Fon\n- %15 diger islemlerde indirim\n- Oncelikli randevu hakki\n\nAylik 300 TL tasarruf edin!\n\nIlgileniyorum demek icin 'EVET' yazin." },
+        { "role": "user", "content": "EVET, ilgileniyorum! Detay verir misiniz?" },
+        { "role": "bot", "content": "Harika! Aylik Sac Bakim Uyeligi detaylari:\n\nAylik ucret: 1.100 TL\nTaahhut: Minimum 3 ay\nBaslangic: Hemen veya gelecek ayin basi\n\nDahil hizmetler:\n- Her ay 1 sac kesimi (istediginiz stilist)\n- Her ay 1 fon (kisa/orta/uzun)\n- Tum diger islemlerde %15 indirim\n- Oncelikli randevu (bekleme yok)\n- Ucretsiz bakim danismanligi\n\nBaslamak ister misiniz?" },
+        { "role": "user", "content": "Gelecek ayin basindan baslayalim" },
+        { "role": "bot", "content": "Uyeliginiz 1 Mart'tan itibaren aktif olacak!\n\nIlk randevunuzu simdi alalim mi? Mart ayi icin sac kesimi ve fon?" },
+        { "role": "system", "content": "Uyelik olusturuldu: Zeynep Demir, Aylik Sac Bakim, 1.100 TL/ay, 3 ay taahhut. Garanti gelir: 3.300 TL." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Musteri ziyaret analizi ile tekrar musteri tespiti. Kisisellestirilmis uyelik teklifi ve otomatik outbound kampanya.",
+    "backend": [
+      { "title": "Loyalty Analyzer", "goal": "Sadakat Analizi", "content": "Musteri ziyaret sikligi, harcama tutari ve islem tercihi analizi. Tekrar musteri skorlama." },
+      { "title": "Membership Manager", "goal": "Uyelik Yonetimi", "content": "Uyelik olusturma, yenileme, fatura ve dahil hizmet takibi." }
+    ],
+    "apis": [
+      { "title": "Loyalty Score API", "goal": "Sadakat Skoru", "content": "Musteri bazli sadakat skoru ve uyelik uygunluk degerlendirmesi API'si." },
+      { "title": "Membership API", "goal": "Uyelik Islemleri", "content": "Uyelik olusturma, guncelleme, iptal ve fatura yonetimi API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Garanti Uyelik Geliri",
+    "description": "Uyelik sistemi ile musteri bagliligi ve tahmin edilebilir gelir olusturma.",
+    "resultLabel": "Garanti Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "eligibleCustomers", "label": "Uygun Musteri Sayisi", "default": 50, "hint": "Son 3 ayda 3+ ziyaret yapan musteri", "editable": true },
+      { "key": "membershipConversion", "label": "Uyelik Donusumu", "default": 15, "suffix": "%", "hint": "Teklif gonderilenlerin uye olma orani", "editable": true },
+      { "key": "avgMembershipFee", "label": "Ort. Uyelik Ucreti", "default": 1200, "suffix": "TL", "hint": "Ortalama aylik uyelik ucreti", "editable": true }
+    ],
+    "formula": "eligibleCustomers * (membershipConversion / 100) * avgMembershipFee",
+    "formulaDisplay": null
+  }
+}

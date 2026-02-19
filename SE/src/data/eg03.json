@@ -1,0 +1,105 @@
+{
+  "id": "eg03",
+  "title": "Ders Programi / Saat Sorgulama",
+  "subtitle": "Schedule & Timetable",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Hafta sonu veya aksam dersi olup olmadigi, ders saatleri ve program degisiklikleri sorularina AI aninda yanit verir. Knowledge Base'den guncel program ve kontenjan bilgisi cekilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Hobi Kursu, Mesleki Egitim)" },
+      { "label": "Sorun", "value": "Calisan ogrenciler aksam/hafta sonu programi soruyor — agent her seferinde takvime bakip cevap veriyor" },
+      { "label": "Deger", "value": "Aninda program bilgisi + kontenjan durumu = ogrenci kendi programina uygun sinifi secer" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI ders programi intent'ini algilar, Knowledge Base'den haftalik program, saat dilimleri ve kontenjan bilgisini ceker.",
+    "steps": [
+      {
+        "title": "Program Intent Tespiti",
+        "goal": "Hangi gun/saat soruldugunu anla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'aksam dersi var mi', 'hafta sonu program', 'saat kacta' gibi intent'leri tespit eder ve kurs/gun/saat tercihini cikarir."
+      },
+      {
+        "title": "Program Bilgisi Cekme",
+        "goal": "Uygun programlari listele",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den ilgili kursun haftalik programi, saat dilimleri ve sinif kontenjanlari cekilir."
+      },
+      {
+        "title": "Sinif Onerisi",
+        "goal": "Uygun sinifi oner",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Kontenjan)", "color": "green" }
+        ],
+        "content": "Ogrencinin tercihine en uygun sinif ve alternatifler kontenjan durumuyla birlikte sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Aksam / Hafta Sonu Program Sorgusu",
+      "description": "Calisan bir ogrenci aksam veya hafta sonu ders programini soruyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Program Bilgisi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Haftalik ders programi", "service": "Knowledge", "page": "Bilgi Bankasi > Ders Programi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tum kurslarin haftalik ders programlarini ve saatlerini girin" },
+          { "text": "Sinif kontenjan bilgisi", "service": "Knowledge", "page": "Bilgi Bankasi > Kontenjan", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her sinifin mevcut ve kalan kontenjan bilgisini guncelleyin" }
+        ],
+        "provider": [
+          { "text": "Program intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Program", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Ders programi sorgulama intent'i varsayilan olarak tanimli" },
+          { "text": "Program listesi sablonu", "service": "Backend", "page": "Sablonlar > Ders Programi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Haftalik program goruntuleme sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Is cikisi ders almak istiyorum. Aksam gruplari var mi? Saat kacta basliyor?" },
+        { "role": "ai", "content": "Intent: Ders Programi. Tercih: Aksam saatleri. Knowledge Base sorgusu baslatiliyor." },
+        { "role": "bot", "content": "Tabii! Aksam gruplarimiz calisan ogrenciler icin cok uygun:\n\nIngilizce Aksam Gruplari:\n- Grup A: Pazartesi-Carsamba-Cuma 19:00-21:00 (3 kisi kaldi)\n- Grup B: Sali-Persembe 18:30-21:00 (5 kisi kaldi)\n\nAlmanca Aksam Grubu:\n- Pazartesi-Carsamba 19:30-21:30 (7 kisi kaldi)\n\nHafta Sonu Gruplari:\n- Cumartesi 10:00-13:00 (Ingilizce, 4 kisi kaldi)\n- Pazar 14:00-17:00 (Ingilizce, 8 kisi kaldi)\n\nHangi program size uygun? Detay vereyim." },
+        { "role": "user", "content": "Sali-Persembe aksam grubu uygun. Kayit nasil yapilir?" },
+        { "role": "bot", "content": "Harika secim! Sali-Persembe 18:30-21:00 Ingilizce Aksam Grubu B:\n\n- Kontenjan: 5 kisi kaldi\n- Baslangic: 5 Mart 2026\n- Egitmen: Deniz Hoca (Cambridge sertifikali)\n- Ucret: 10.500 TL (3 taksit mumkun)\n\nOnline kayit: [Kayit Formu]\nYer ayirtmak icin on-kayit: [On-Kayit]" },
+        { "role": "system", "content": "Otomatik cozum: Aksam programi + kontenjan + kayit yonlendirmesi yapildi. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Ders programi ve kontenjan bilgileri Knowledge Base uzerinden dinamik olarak yonetilir. Kontenjan degisiklikleri anlik yansir.",
+    "backend": [
+      { "title": "Schedule Query Service", "goal": "Program Sorgulama", "content": "Kurs, gun, saat dilimi ve kontenjan bazli filtreleme ile uygun siniflari listeler." },
+      { "title": "Capacity Tracker", "goal": "Kontenjan Takibi", "content": "Her sinifin anlık kontenjan durumunu takip eder. Doluluk orani yuksek siniflarda uyari verir." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base Schedule API", "goal": "Program Bilgisi", "content": "Kurs adi, gun tercihi veya saat dilimi bazli program sorgusu. Kontenjan bilgisi ile birlikte doner." },
+      { "title": "Class Availability API", "goal": "Musaitlik Kontrolu", "content": "Belirli bir sinifin kontenjan durumunu ve alternatif siniflari listeler." }
+    ]
+  },
+  "impact": {
+    "title": "Program Sorgulamada Tasarruf",
+    "description": "Ders programi ve kontenjan sorularinin otomatik cevaplanmasi ile agent yukunu azaltma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyScheduleQueries", "label": "Gunluk Program Sorusu", "default": 20, "hint": "Gunluk ortalama program sorgulama sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 4, "hint": "Agent'in program bilgisi vermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyScheduleQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "id": "eg02",
+  "title": "Fiyat / Ucret Sorgulama",
+  "subtitle": "Course Pricing",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Kurs fiyati, taksit secenekleri ve erken kayit indirimi sorulari AI tarafindan aninda cevaplanir. Kurs+seviye intent tespiti ile dogru fiyat bilgisi ve aktif kampanyalar sunulur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Mesleki Egitim, Sanat Kursu)" },
+      { "label": "Sorun", "value": "Fiyat sorusu gelen mesajlarin %35'i — her kursa farkli fiyat, taksit ve kampanya bilgisi vermek zaman aliyor" },
+      { "label": "Deger", "value": "Dogru fiyat + kampanya bilgisi = hizli karar + kayit donusumu artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "AI Intent Detection (C2)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI kurs ve seviye bazli fiyat intent'ini algilar, Knowledge Base'den guncel fiyat listesi, taksit secenekleri ve aktif kampanyalari ceker.",
+    "steps": [
+      {
+        "title": "Fiyat Intent Tespiti",
+        "goal": "Kurs ve seviye belirle",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'ne kadar', 'fiyati nedir', 'taksit var mi', 'kampanya' gibi intent'leri algilar ve hangi kurs/seviye soruldugunu cikarir."
+      },
+      {
+        "title": "Fiyat Bilgisi Cekme",
+        "goal": "Guncel fiyat + kampanya sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Fiyat Listesi)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den kurs bazli fiyat, taksit secenekleri, erken kayit indirimi ve ozel kampanya bilgileri cekilir."
+      },
+      {
+        "title": "Teklif Sunumu",
+        "goal": "Karsilastirmali fiyat bilgisi ver",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Kampanya)", "color": "green" }
+        ],
+        "content": "Farkli kurs paketleri ve odeme secenekleri karsilastirmali olarak sunulur. Erken kayit tarihi vurgulanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kurs Fiyat ve Taksit Sorgusu",
+      "description": "Ogrenci belirli bir kursun fiyatini ve taksit seceneklerini soruyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Fiyat Bilgisi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Guncel fiyat listesi", "service": "Knowledge", "page": "Bilgi Bankasi > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tum kurslarin guncel fiyatlarini ve taksit seceneklerini girin" },
+          { "text": "Kampanya bilgileri", "service": "Knowledge", "page": "Bilgi Bankasi > Kampanyalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Aktif kampanya ve indirim bilgilerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Fiyat intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Fiyat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fiyat sorgulama intent'i varsayilan olarak tanimli" },
+          { "text": "Fiyat karsilastirma sablonu", "service": "Backend", "page": "Sablonlar > Fiyat Bilgi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Karsilastirmali fiyat tablosu sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Almanca kursu ne kadar? Taksit yapiliyor mu?" },
+        { "role": "ai", "content": "Intent: Fiyat Sorgulama. Kurs: Almanca. Taksit bilgisi isteniyor. Knowledge Base sorgusu." },
+        { "role": "bot", "content": "Almanca kurslarimizin guncel fiyatlari:\n\nAlmanca A1 Baslangic:\n- Pesinat: 9.800 TL\n- 3 Taksit: 3 x 3.500 TL = 10.500 TL\n- 6 Taksit: 6 x 1.850 TL = 11.100 TL\n\nAlmanca A2 Orta:\n- Pesinat: 10.500 TL\n- 3 Taksit: 3 x 3.800 TL = 11.400 TL\n\nErken kayit indirimi (28 Subat'a kadar): %15 indirim!\nA1 pesinat: 8.330 TL\n\nDetayli bilgi veya kayit icin: [Kayit Formu]" },
+        { "role": "user", "content": "Erken kayit ile 3 taksit birlikte olur mu?" },
+        { "role": "bot", "content": "Evet! Erken kayit indirimi ile taksit secenegi birlikte kullanilabilir:\n\nAlmanca A1 + Erken Kayit + 3 Taksit:\n- 3 x 2.975 TL = 8.925 TL (toplam)\n- Normal 3 taksit: 10.500 TL\n- Tasarrufunuz: 1.575 TL\n\nSon gun: 28 Subat 2026\nKayit icin: [Online Kayit] veya 0212 555 12 34" },
+        { "role": "system", "content": "Otomatik cozum: Fiyat listesi + taksit secenekleri + erken kayit kombinasyonu sunuldu. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Fiyat bilgileri Knowledge Base uzerinden yonetilir. Kampanya tarihleri ve taksit hesaplamalari otomatik yapilir.",
+    "backend": [
+      { "title": "Pricing Engine", "goal": "Fiyat Hesaplama", "content": "Kurs bazli fiyat, taksit hesaplama ve kampanya indirim oranlarini uygular. Birden fazla indirim kuralini kombine edebilir." },
+      { "title": "Campaign Manager", "goal": "Kampanya Yonetimi", "content": "Erken kayit, grup indirimi, ogrenci indirimi gibi kampanya kurallarini yonetir. Gecerlilik tarihlerini kontrol eder." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base Pricing API", "goal": "Fiyat Sorgulama", "content": "Kurs adi ve seviye bazli fiyat, taksit ve kampanya bilgisi doner. Tenant bazli farkli fiyat listeleri destekler." },
+      { "title": "Installment Calculator API", "goal": "Taksit Hesaplama", "content": "Taksit sayisina gore aylik odeme tutarini hesaplar. Kampanya indirimi ile kombinasyonu destekler." }
+    ]
+  },
+  "impact": {
+    "title": "Fiyat Sorgulamada Tasarruf ve Donusum",
+    "description": "Aninda fiyat bilgisi sunarak agent yukunu azaltma ve hizli karar verdirerek kayit donusumunu artirma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyPricingQueries", "label": "Gunluk Fiyat Sorusu", "default": 25, "hint": "Gunluk ortalama fiyat sorgulama sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 4, "hint": "Agent'in fiyat bilgisi vermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyPricingQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

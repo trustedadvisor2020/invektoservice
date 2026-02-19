@@ -1,0 +1,104 @@
+{
+  "id": "e14",
+  "title": "Sepet Terk Follow-Up Otomasyonu",
+  "subtitle": "Cart Abandonment Recovery",
+  "phase": "Phase 3",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Sepeti doldurup tamamlamayan musteriye Outbound Engine ile otomatik hatirlatma mesaji + indirim teklifi gonderekr sepet kurtarma oranini artiran sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar — ozellikle D2C / Shopify)" },
+      { "label": "Sorun", "value": "Ortalama sepet terk orani %70 — her 10 potansiyel satistan 7'si kayboluyor" },
+      { "label": "Deger", "value": "Sepet kurtarma mesaji ile %10-15 geri donus — buyuk gelir etkisi" }
+    ],
+    "services": [
+      { "name": "Outbound Engine (C10)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" }
+    ],
+    "servicesNote": "Sepet terk webhook'u tetiklendiginde T+1 saat, T+24 saat ve T+72 saat otomatik mesaj zinciri baslar.",
+    "steps": [
+      {
+        "title": "Sepet Terk Tespiti",
+        "goal": "Terk edilen sepeti yakala",
+        "badges": [
+          { "text": "Sistem (Webhook)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "E-ticaret platformundan sepet terk webhook'u alinir. Sepet icerigi ve musteri bilgisi kaydedilir."
+      },
+      {
+        "title": "Hatirlatma Mesaji",
+        "goal": "Musteriyi geri getir",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Sablon)", "color": "green" }
+        ],
+        "content": "T+1h: Basit hatirlatma. T+24h: Indirim teklifi. T+72h: Son deneme + urgency."
+      },
+      {
+        "title": "Siparis Tamamlama",
+        "goal": "Satisi kapat",
+        "badges": [
+          { "text": "Sistem (Link)", "color": "purple" },
+          { "text": "Tenant (Odeme)", "color": "blue" }
+        ],
+        "content": "Tek tikla sepete don linki + opsiyonel indirim kodu ile siparis tamamlama kolaylastirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Standart Sepet Hatirlatma",
+      "description": "T+1 saat basit hatirlatma, T+24 saat indirim teklifi.",
+      "tags": [
+        { "text": "Sepet Terk", "color": "amber" },
+        { "text": "Follow-Up", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sepet terk webhook", "service": "Integrations", "page": "E-ticaret > Webhook Ayarlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Shopify/WooCommerce sepet terk webhook'unu yapilandirin" },
+          { "text": "Indirim kodu yetkisi", "service": "Backend", "page": "Kampanya Yonetimi > Sepet Kurtarma", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Sepet kurtarma indirim oranini ve kosullarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Outbound mesaj zinciri", "service": "Outbound", "page": "Follow-Up Zinciri > Sepet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+1h / T+24h / T+72h otomatik mesaj zinciri hazir" },
+          { "text": "Sepet linki olusturma", "service": "Integrations", "page": "E-ticaret > Sepet Linki", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Tek tikla sepete don linki olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Sepet Terk: Musteri [Ad] — 1 saat once sepeti terk etti. Sepet: 2 urun, 650 TL." },
+        { "role": "bot", "content": "Merhaba [Ad]! Sepetinizde 2 urun bekliyoor:\n\n🛒 Nike Ayakkabi — 450 TL\n🛒 Adidas Corap — 200 TL\n\nSiparisi tamamlamak ister misiniz? [Sepete Don Linki]" },
+        { "role": "system", "content": "T+24 Saat: Musteri henuz tamamlamamis." },
+        { "role": "bot", "content": "Sepetinizdeki urunler hala sizi bekliyor! Size ozel %10 indirim kodunuz:\n\n🎁 SEPET10 — Bugun gecerli\n🛒 Toplam: 650 TL → 585 TL\n\n[Sepete Don + Indirim Uygula]" },
+        { "role": "user", "content": "Tamam, siparis veriyorum!" },
+        { "role": "system", "content": "Sepet Kurtarildi! Siparis: #998877. Tutar: 585 TL. Sepet kurtarma basarili." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo E-ticaret webhook + Outbound Engine birlesimiyle calisir. Sepet terk tetiklendiginde zamanli mesaj zinciri otomatik baslar.",
+    "backend": [
+      { "title": "Cart Abandonment Tracker", "goal": "Sepet Takibi", "content": "Sepet terk webhook'larini alir, sepet icerigini kaydeder ve mesaj zamanlamasini tetikler." },
+      { "title": "Outbound Engine", "goal": "Mesaj Zinciri", "content": "T+1h, T+24h, T+72h zamanli mesaj gonderimi. Musteri cevap verirse zincir durur." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Sepet Verisi", "content": "Sepet icerigi, urun detaylari ve musteri bilgisi. Sepete don linki olusturma." },
+      { "title": "WhatsApp Template API", "goal": "Mesaj Gonderimi", "content": "WhatsApp Business API ile template mesaj gonderimi (24 saat kuralina uyumlu)." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Sepet Geliri",
+    "description": "Sepet terk follow-up ile geri kazanilan satislar.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAbandonedCarts", "label": "Aylik Terk Sepet", "default": 200, "hint": "Terk edilen sepet sayisi", "editable": true },
+      { "key": "recoveryRate", "label": "Kurtarma Orani", "default": 12, "prefix": "%", "hint": "Geri donen musteri orani", "editable": true },
+      { "key": "avgCartValue", "label": "Ort. Sepet Degeri", "default": 400, "suffix": "TL", "hint": "Ortalama sepet tutari", "editable": true }
+    ],
+    "formula": "monthlyAbandonedCarts * (recoveryRate / 100) * avgCartValue",
+    "formulaDisplay": null
+  }
+}

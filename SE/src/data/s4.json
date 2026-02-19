@@ -1,0 +1,166 @@
+{
+  "id": "s4",
+  "title": "Siparis Sonrasi Proaktif Satis",
+  "subtitle": "Post-Purchase Outbound",
+  "phase": "Phase 5",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Teslimattan sonra cross-sell/upsell onerileri ile musteri yasam boyu degerini artiran proaktif satis sistemi. Outbound Engine ile calisir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Pazaryeri + D2C)" },
+      { "label": "Sorun", "value": "Siparis tesliminden sonra musteri ile iletisim kopuyor" },
+      { "label": "Firsat", "value": "Mevcut musteriye satmak, yeni musteri bulmaktan 5x ucuz" }
+    ],
+    "services": [
+      { "name": "Outbound Engine", "color": "blue" },
+      { "name": "WhatsApp Business API", "color": "green" },
+      { "name": "Bundle Rules Engine", "color": "purple" },
+      { "name": "Conversion Tracker", "color": "amber" }
+    ],
+    "servicesNote": "Outbound Engine, siparis tesliminden sonra zamanlayici ile otomatik cross-sell mesaji gonderir.",
+    "steps": [
+      {
+        "title": "Tetikleme (Trigger)",
+        "goal": "Dogru zamanda ulasim",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Kargo API)", "color": "amber" }
+        ],
+        "content": "Kargo teslim edildikten 2-3 gun sonra Outbound Engine otomatik tetiklenir."
+      },
+      {
+        "title": "Oneri Secimi (Matching)",
+        "goal": "Dogru urunu oner",
+        "badges": [
+          { "text": "Sistem (Bundle Rules)", "color": "purple" },
+          { "text": "Tenant (Urun Kurallar)", "color": "blue" }
+        ],
+        "content": "Tenant-tanimli bundle kurallari: 'kilif alan → ekran koruyucu oner', 'sac bakimi alan → serum oner'. AI kisisellestirir."
+      },
+      {
+        "title": "Mesaj Gonderimi",
+        "goal": "Dogal satis mesaji",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Ton Ayari)", "color": "green" }
+        ],
+        "content": "WhatsApp template mesaji ile gonderilir. Opt-out secenegi sunulur. 24 saat penceresi kuralina uyulur."
+      },
+      {
+        "title": "Donusum Takibi",
+        "goal": "Satisi raporla",
+        "badges": [
+          { "text": "Sistem (Analytics)", "color": "purple" },
+          { "text": "Tenant (Dashboard)", "color": "amber" }
+        ],
+        "content": "Mesaj → tiklanma → satin alma zinciri izlenir. Dashboard'da kampanya ROI raporlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Cross-Sell: Tamamlayici Urun",
+      "description": "Telefon kilifi alan musteriye ekran koruyucu onerisi.",
+      "tags": [
+        { "text": "Cross-Sell", "color": "blue" },
+        { "text": "Bundle", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Bundle kural tanimlari (urun eslesmeleri)", "service": "Backend", "page": "Urun Katalogu > Bundle Kurallari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C10", "hint": "Hangi urun alindiginda hangi urunu onerecegini tanimlayin" },
+          { "text": "Indirim/kampanya onayi", "service": "Backend", "page": "Kampanya Yonetimi > Indirimler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Cross-sell icin indirim oranlarini ve kampanya kosullarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine", "service": "Outbound", "page": "Kampanya Yonetimi > Cross-Sell", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Outbound Engine ile otomatik mesaj gonderimi hazir" },
+          { "text": "Kargo teslim webhook", "service": "Integrations", "page": "Kargo Entegrasyonlari > Webhook", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Kargo teslim webhook altyapisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Teslimattan 2 gun sonra. Urun: Telefon Kilifi. Bundle Kural: kilif → ekran koruyucu." },
+        { "role": "bot", "content": "Merhaba [Ad]! Telefon kilifiniz ulasti mi? Bu kilirla en cok tercih edilen ekran koruyucumuz su an %15 indirimli. Ilgilenir misiniz?" },
+        { "role": "user", "content": "Evet, gorsel atar misiniz?" },
+        { "role": "bot", "content": "[Urun gorseli] Temperli cam, parmak izi birakmayan kaplama. Normal fiyat 199 TL, size ozel 169 TL. Siparis vermek ister misiniz?" },
+        { "role": "user", "content": "Olur, siparis veriyorum." },
+        { "role": "system", "content": "Cross-Sell Basarili — EK GELIR: 169 TL. Kaynak: Post-Purchase Outbound." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Memnuniyet Kontrolu + Yorum Rica",
+      "description": "Teslimat sonrasi memnuniyet sorulmasi ve olumlu ise yorum ricasi.",
+      "tags": [
+        { "text": "Memnuniyet", "color": "green" },
+        { "text": "Yorum", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Google/Trendyol yorum linki", "service": "Backend", "page": "Ayarlar > Yorum Linkleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Google Business ve Trendyol yorum linklerinizi tanimlayin" },
+          { "text": "Memnuniyet anketi", "service": "Backend", "page": "Anket Sablonlari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C3", "hint": "Memnuniyet anketi sablonunu ozellestirin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine", "service": "Outbound", "page": "Kampanya Yonetimi > Anket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Zamanli anket gonderimi hazir" },
+          { "text": "Sentiment analizi", "service": "ChatAnalysis", "page": "Sentiment > Analiz", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Musteri cevabi sentiment analizi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Teslimattan 3 gun sonra. Memnuniyet anketi tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Siparisininiz ilgili hersey yolunda mi? (1-5 arasi puan verir misiniz?)" },
+        { "role": "user", "content": "5! Cok memnunum." },
+        { "role": "bot", "content": "Harika! Deneyiminizi paylasmak ister misiniz? Yorumunuz bize cok degerli: [Yorum Linki]" },
+        { "role": "system", "content": "Yorum Ricasi Gonderildi. Memnuniyet: 5/5." }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Opt-Out Yonetimi",
+      "description": "Musteri mesaj almak istemiyor.",
+      "tags": [
+        { "text": "Opt-Out", "color": "gray" },
+        { "text": "Compliance", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "KVKK/GDPR uyumluluk", "service": "Backend", "page": "Ayarlar > Gizlilik Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "KVKK/GDPR uyumlu izin yonetimi ayarlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Opt-out yonetim sistemi", "service": "Backend", "page": "Izin Yonetimi > Opt-Out", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Opt-out yonetimi ve listeleme hazir" },
+          { "text": "Unsubscribe tracking", "service": "Backend", "page": "Izin Yonetimi > Takip", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Abonelikten cikma takibi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Teslimattan 2 gun sonra. Cross-sell mesaji tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Yeni sezon urunlerimize goz atmak ister misiniz? Mesaj almak istemiyorsaniz 'STOP' yazabilirsiniz." },
+        { "role": "user", "content": "STOP" },
+        { "role": "system", "content": "Opt-Out Islendi. Musteri listedan cikarildi. Bir daha mesaj gonderilmeyecek." },
+        { "role": "bot", "content": "Anlasildı, bir daha promosyon mesaji gondermeyecegiz. Ihtiyaciniz olursa her zaman yazabilirsiniz!" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo tamamen Outbound Engine uzerinden calisir. Proaktif mesaj gonderimi icin WhatsApp template mesajlari kullanilir. 24 saat penceresi disinda yalnizca onaylanmis template'ler gonderilebilir.",
+    "backend": [
+      { "title": "Outbound Engine", "goal": "Zamanli Mesaj Gonderimi", "content": "Event-based trigger (teslim webhook) + time-based delay (T+2 gun) + condition-based filter (bundle kural eslesmesi)." },
+      { "title": "Bundle Rules Engine", "goal": "Urun Eslestirme", "content": "Tenant-tanimli urun iliski kurallari. 'A alan → B oner' mantigi. AI ile kisisellestirilmis mesaj." }
+    ],
+    "apis": [
+      { "title": "Kargo Tracking API", "goal": "Teslim Tespiti", "content": "Kargo firmasından teslim webhook'u alinir ve Outbound Engine tetiklenir." },
+      { "title": "WhatsApp Template API", "goal": "Proaktif Mesaj", "content": "Meta-onaylanmis template mesajlari ile 24 saat penceresi disinda mesaj gonderilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik EK Gelir",
+    "description": "Degerlerinizi duzenleyin — mevcut musterilere cross-sell ile sifirdan olusturulan ek gelir.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 5000,
+    "inputs": [
+      { "key": "dailyDeliveries", "label": "Gunluk Teslimat", "default": 200, "hint": "Teslim edilen siparis", "editable": true },
+      { "key": "targetRate", "label": "Hedefleme", "default": 25, "prefix": "%", "hint": "Bundle eslesen oran", "editable": true },
+      { "key": "conversionRate", "label": "Donusum", "default": 10, "prefix": "%", "hint": "Mesaj → satin alma", "editable": true },
+      { "key": "avgCrossSell", "label": "Ort. Satis", "default": 150, "suffix": "TL", "hint": "Cross-sell urun degeri", "editable": true }
+    ],
+    "formula": "dailyDeliveries * (targetRate / 100) * (conversionRate / 100) * avgCrossSell * 30",
+    "formulaDisplay": null
+  }
+}

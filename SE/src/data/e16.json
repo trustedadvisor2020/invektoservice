@@ -1,0 +1,91 @@
+{
+  "id": "e16",
+  "title": "Iade Suresi & 15 Gun Kurali Bilgilendirme",
+  "subtitle": "Return Policy Guide",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Iade suresi hakkinda bilgi isteyen musteriye AI platform bazli iade politikasini Knowledge Base'den cekerr ve aninda sunar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Her platformun farkli iade politikasi var — agent her seferinde kontrol etmek zorunda" },
+      { "label": "Deger", "value": "Otomatik politika bilgisi ile agent zamani tasarrufu + musteri memnuniyeti" }
+    ],
+    "services": [
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI platform, urun kategorisi ve satin alma tarihine gore gecerli iade politikasini Knowledge Base'den cekerr.",
+    "steps": [
+      {
+        "title": "Politika Tespiti",
+        "goal": "Dogru politikayi bul",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "Platform, urun kategorisi ve satin alma tarihine gore iade suresi ve kosullari belirlenir."
+      },
+      {
+        "title": "Bilgilendirme",
+        "goal": "Musteriye acikla",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "green" }
+        ],
+        "content": "Kalan iade suresi, kosullar ve adim adim iade sureci anlatilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Standart Iade Suresi Sorusu",
+      "description": "Musteri iade suresi hakkinda bilgi istiyor.",
+      "tags": [
+        { "text": "Iade Suresi", "color": "blue" },
+        { "text": "Bilgilendirme", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Platform iade politikalari", "service": "Knowledge", "page": "Dokuman Bankasi > Iade Politikalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her platform ve urun kategorisi icin iade surelerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Iade suresi hesaplama", "service": "AgentAI", "page": "Hesaplama > Iade Suresi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Satin alma tarihinden kalan iade gunu hesaplama hazir" },
+          { "text": "Platform politika RAG", "service": "Knowledge", "page": "RAG Engine > Iade", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Platform bazli iade politikasi Knowledge Base'den sunulur" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Iade suresi kac gun? 15 gun kurali ne?" },
+        { "role": "ai", "content": "Intent: Iade Suresi. Platform: Trendyol. Satin Alma: 8 gun once. Kalan: 7 gun." },
+        { "role": "bot", "content": "Iade sureniz hakkinda bilgi:\n\n📋 Platform: Trendyol\n⏰ Yasal iade suresi: 14 gun (cayma hakki)\n📅 Satin alma: 8 gun once\n⏳ Kalan sure: 6 gun\n\n📌 Iade kosullari:\n- Urun kullanilmamis olmali\n- Etiketler cikmamis olmali\n- Orijinal paketinde olmali\n\nIade baslatmak ister misiniz?" },
+        { "role": "system", "content": "Iade suresi bilgisi verildi. Musteri bilgilendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge RAG ile platform bazli iade politikasini sunar. Satin alma tarihinden kalan sure otomatik hesaplanir.",
+    "backend": [
+      { "title": "Return Policy Engine", "goal": "Politika Eslestirme", "content": "Platform, kategori ve tarih bazli iade suresi hesaplama ve kosul belirleme." },
+      { "title": "Knowledge RAG", "goal": "Politika Bilgisi", "content": "Detayli iade kosullari, istisnalar ve adim adim iade sureci." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Siparis Tarihi", "content": "Satin alma ve teslim tarihi bilgisi ile iade suresi hesaplama." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik iade suresi bilgilendirme ile kazanilan verimlilik.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyReturnPolicyQueries", "label": "Aylik Sure Sorusu", "default": 30, "hint": "Iade suresi sorusu sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 4, "hint": "Agent'in harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyReturnPolicyQueries * minutesPerQuery * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

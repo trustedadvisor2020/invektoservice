@@ -1,0 +1,129 @@
+{
+  "id": "gu14",
+  "title": "Kampanya / Indirim Bildirimi",
+  "subtitle": "Campaign & Discount Notification",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Kampanyalar sadece Instagram'da paylasiliyor, mevcut musterilere ulasamiyor. Outbound broadcast ile segment bazli kampanya mesaji gonderimi — dogru kampanyayi dogru musteriye ulastiran proaktif sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kampanya Yonetimi)" },
+      { "label": "Sorun", "value": "Kampanyalar sadece IG'de paylasiliyor — mevcut musteri tabanina ulasamiyor, firsatlar kaciriliyor" },
+      { "label": "Deger", "value": "Segment bazli hedefli kampanya mesajlari ile donus oranini 3x artirma" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Outbound broadcast modulu ile musteri segmentlerine ozel kampanya mesajlari WhatsApp uzerinden toplu gonderilir. AI hedef kitle secimini optimize eder.",
+    "steps": [
+      {
+        "title": "Kampanya Tanimlama",
+        "goal": "Kampanya icerigini olustur",
+        "badges": [
+          { "text": "Tenant (Salon)", "color": "amber" },
+          { "text": "Sistem (Template)", "color": "purple" }
+        ],
+        "content": "Salon sahibi kampanya detaylarini girer: indirim orani, gecerlilik tarihi, hedef hizmet kategorisi. Sistem onaylanmis WhatsApp sablonu ile mesaj olusturur."
+      },
+      {
+        "title": "Segment Secimi",
+        "goal": "Dogru musterilere ulastir",
+        "badges": [
+          { "text": "Sistem (CRM)", "color": "purple" },
+          { "text": "Tenant (Musteri Verisi)", "color": "blue" }
+        ],
+        "content": "CRM verisinden hedef segment belirlenir: son 3 ayda sac boyama yaptiran, 2+ ay gelmemiş musteriler gibi filtreler uygulanir."
+      },
+      {
+        "title": "Toplu Gonderim",
+        "goal": "Proaktif bildirim",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (WA Hatti)", "color": "green" }
+        ],
+        "content": "Onaylanmis WhatsApp template mesaji segment bazli toplu gonderilir. Acilma ve randevu donusum oranlari takip edilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sac Bakimi Kampanyasi Broadcast",
+      "description": "Sac bakimi hizmetlerinde %30 indirim kampanyasinin hedefli musterilere gonderimi.",
+      "tags": [
+        { "text": "Proaktif", "color": "green" },
+        { "text": "Kampanya", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kampanya detaylari (indirim orani, tarih araligi)", "service": "Backend", "page": "Kampanya Yonetimi > Yeni Kampanya", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Kampanya baslangic/bitis tarihi, indirim orani ve hedef hizmet kategorisini tanimlayin" },
+          { "text": "Musteri segmentasyon verisi", "service": "Backend", "page": "CRM > Musteri Segmentleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Hizmet gecmisine gore musteri segmentleri olusturun" }
+        ],
+        "provider": [
+          { "text": "WhatsApp onaylanmis template", "service": "Outbound", "page": "Template Yonetimi > Kampanya Sablonlari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta tarafindan onaylanmis kampanya mesaj sablonu hazir" },
+          { "text": "Broadcast gonderim motoru", "service": "Outbound", "page": "Toplu Mesaj > Broadcast", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Segment bazli toplu mesaj gonderim altyapisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Salon sahibi yeni kampanya olusturdu: Sac Bakimi %30 indirim, 15-28 Subat arasi gecerli. Hedef: Son 3 ayda sac bakimi yaptiran musteriler." },
+        { "role": "system", "content": "Segment filtrelendi: 186 musteri eslesti. Broadcast kuyruklandi." },
+        { "role": "bot", "content": "Merhaba Ayse Hanim! Size ozel bir haberimiz var:\n\nSac Bakimi Haftasi basliyor! Tum sac bakim islemlerinde %30 indirim.\n\nGecerlilik: 15-28 Subat\nKeratin, Botoks, Bakim Maskesi dahil!\n\nRandevu icin hemen yazin veya 'RANDEVU' yazip gonderin." },
+        { "role": "user", "content": "RANDEVU" },
+        { "role": "bot", "content": "Harika! Sac bakimi icin musait gunlerimiz:\n\nSali 18 Subat — 14:00, 16:00\nCarsamba 19 Subat — 10:00, 11:30\n\nHangi gun ve saat uygun olur?" },
+        { "role": "user", "content": "Sali 14:00 olsun" },
+        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nTarih: Sali 18 Subat, 14:00\nHizmet: Sac Bakimi (%30 indirimli)\nSalon: Guzellik Merkezi\n\nGorulmek uzere!" },
+        { "role": "system", "content": "Kampanya sonucu: 186 mesaj gonderildi. 42 cevap (%22.6). 28 randevu (%15.1 donusum)." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Dogum Gunu Ozel Indirimi",
+      "description": "Dogum gunu yaklasan musterilere kisisel indirim kuponu gonderimi.",
+      "tags": [
+        { "text": "Proaktif", "color": "green" },
+        { "text": "Kisisel", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Musteri dogum tarihi bilgisi", "service": "Backend", "page": "CRM > Musteri Profili", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Musteri kayit formunda dogum tarihi alani aktif olmali" }
+        ],
+        "provider": [
+          { "text": "Otomatik dogum gunu tetikleyicisi", "service": "Automation", "page": "Otomasyon > Tetikleyiciler", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Dogum gunundan 3 gun once otomatik mesaj tetiklenir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Otomasyon tetiklendi: Fatma Demir'in dogum gunu 3 gun sonra. Kisisel kampanya gonderiliyor." },
+        { "role": "bot", "content": "Sevgili Fatma Hanim, dogum gununuz yaklasıyor! Size ozel bir surprizimiz var:\n\nDogum gununuze ozel tum hizmetlerimizde %25 indirim kuponu hediye!\n\nKupon kodu: DGUNU-FATMA\nGecerlilik: 7 gun\n\nKendinize ozel bir gun gecirmek icin randevu almak ister misiniz?" },
+        { "role": "user", "content": "Cok tesekkurler! Sac + makyaj yaptirmak istiyorum" },
+        { "role": "bot", "content": "Ne guzel bir plan! Sac + makyaj icin 2 saatlik slot ayiralim.\n\nMusait gunler:\nCuma 22 Subat — 10:00, 14:00\nCumartesi 23 Subat — 09:00\n\nHangi tarih uygun?" },
+        { "role": "system", "content": "Kupon kullanildi. Randevu olusturuldu. Musteri memnuniyet skoru guncellendi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Outbound broadcast modulu WhatsApp Business API uzerinden segment bazli toplu mesaj gonderir. CRM verisi ile musteri segmentasyonu otomatik yapilir.",
+    "backend": [
+      { "title": "Segment Engine", "goal": "Musteri Segmentasyonu", "content": "CRM veritabanindaki hizmet gecmisi, ziyaret frekansi ve harcama verilerinden otomatik segment olusturur." },
+      { "title": "Broadcast Scheduler", "goal": "Zamanlama", "content": "Kampanya mesajlarini belirlenen zamanda, Meta rate limit'lerine uygun sekilde kademeli gonderir." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Toplu Mesaj", "content": "Meta onaylanmis template mesajlari ile toplu gonderim. Teslim, okunma ve cevap metrikleri takip edilir." }
+    ]
+  },
+  "impact": {
+    "title": "Kampanya Kaynaklı Aylik Ek Gelir",
+    "description": "Hedefli kampanya mesajlariyla kazanilan ek randevu ve gelir.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "campaignsPerMonth", "label": "Aylik Kampanya Sayisi", "default": 2, "hint": "Ayda kac kampanya gonderilecek", "editable": true },
+      { "key": "avgRecipientsPerCampaign", "label": "Kampanya Basina Alici", "default": 150, "hint": "Ortalama musteri sayisi", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 15, "prefix": "%", "hint": "Randevuya donusen oran", "editable": true },
+      { "key": "avgServiceValue", "label": "Ort. Hizmet Bedeli", "default": 800, "suffix": "TL", "hint": "Ortalama islem tutari", "editable": true }
+    ],
+    "formula": "campaignsPerMonth * avgRecipientsPerCampaign * (conversionRate / 100) * avgServiceValue",
+    "formulaDisplay": null
+  }
+}

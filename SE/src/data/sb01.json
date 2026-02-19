@@ -1,0 +1,130 @@
+{
+  "id": "sb01",
+  "title": "Tedavi Plani Onay Akisi",
+  "subtitle": "Treatment Plan Approval Flow",
+  "phase": "Phase 2",
+  "category": "SAGLIK EK",
+  "niche": "health",
+  "description": "Doktor tedavi planini hastaya gonderdikten sonra hasta onay vermediginde takip yapilmiyor. T+1, T+3, T+7 outbound follow-up zinciri ile tedavi planinin onayi sistematik olarak takip edilir ve onay orani arttirilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik Kurulusu (Dis Klinigi, Hastane, Estetik Merkez)" },
+      { "label": "Sorun", "value": "Doktor tedavi plani hazirladi ama hasta onay vermeden kayboluyor — takip sistemi yok, ciro kaybi" },
+      { "label": "Deger", "value": "Otomatik takip zinciri ile onay orani %40'tan %65'e cikar, doktor zamani korunur" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Outbound Engine (C10)", "color": "purple" }
+    ],
+    "servicesNote": "Tedavi plani onaylanmadiginda Outbound Engine T+1, T+3 ve T+7 gunlerinde kademeli takip mesajlari gonderir. AI hasta yanitlarindaki tereddut veya red sinyallerini tespit eder.",
+    "steps": [
+      {
+        "title": "Plan Gonderimi",
+        "goal": "Tedavi planini hastaya ilet",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Doktor)", "color": "blue" }
+        ],
+        "content": "Doktor tedavi planini onayladiktan sonra hastaya WhatsApp uzerinden detayli tedavi plani ve maliyet bilgisi gonderilir."
+      },
+      {
+        "title": "Takip Zinciri",
+        "goal": "Kademeli hatirlatma gonder",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Takip)", "color": "amber" }
+        ],
+        "content": "T+1 nazik hatirlatma, T+3 sorulari cevaplayalim mesaji, T+7 son firsat/kampanya mesaji otomatik gonderilir."
+      },
+      {
+        "title": "Onay veya Eskalasyon",
+        "goal": "Sonucu kaydet ve yonlendir",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (CRM)", "color": "green" }
+        ],
+        "content": "Hasta onaylarsa randevu akisina yonlendirilir. Red veya sessizlik durumunda hasta koordinatorune eskalasyon yapilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "T+1 Hatirlatma — Hasta Tereddutlu",
+      "description": "Tedavi plani gonderildikten 1 gun sonra hasta hala onay vermedi. Outbound nazik hatirlatma gonderiyor.",
+      "tags": [
+        { "text": "Outbound T+1", "color": "purple" },
+        { "text": "Tedavi Plani", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Tedavi plani sablon mesaji", "service": "Backend", "page": "Mesaj Sablonlari > Tedavi Plani", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli tedavi plani hatirlatma template'i olusturun" },
+          { "text": "Doktor-hasta tedavi plani eslestirmesi", "service": "Backend", "page": "CRM > Tedavi Planlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "Doktor panelinden tedavi planinin hastaya atanmasi gerekir" }
+        ],
+        "provider": [
+          { "text": "Outbound zamanlama motoru", "service": "Outbound", "page": "Kampanya > Tedavi Takip", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+1, T+3, T+7 kademeli gonderim hazir" },
+          { "text": "Tedavi plani intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Tedavi Onay", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Onay, red ve tereddut intent'leri tanimli" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Tedavi plani #TP-2841 (Implant + Zirkonyum Kaplama) hastaya gonderildi. 24 saat gecti, onay yok. Outbound T+1 tetiklendi." },
+        { "role": "bot", "content": "Merhaba Ayse Hanim, Dr. Mehmet Yilmaz'in hazirladi tedavi planinizi aldniz mi?\n\nTedavi Plani: Implant (2 adet) + Zirkonyum Kaplama (6 adet)\nToplam: 42.000 TL\nTaksit: 12 ay x 3.500 TL\n\nSorulariniz varsa size yardimci olalim." },
+        { "role": "user", "content": "Evet aldim ama biraz dusunmem lazim. Fiyat yuksek gibi geldi." },
+        { "role": "ai", "content": "Intent: Tereddut (Fiyat Endisesi). Sentiment: Negatif-Notr. Eskalasyon: Hasta koordinatoru bilgilendirilsin." },
+        { "role": "bot", "content": "Anliyorum Ayse Hanim, bu onemli bir karar. Tedavi planinizdaki implant ve kaplamalar icin farkli odeme secenekleri mevcut.\n\nIsterseniz hasta koordinatorumuz sizi arayip detayli bilgi versin. Size uygun bir zaman var mi?" },
+        { "role": "user", "content": "Yarin ogleden sonra musait olurum." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "T+7 Son Hatirlatma — Hasta Sessiz",
+      "description": "7 gun boyunca hasta yanit vermedi. Son hatirlatma ve kampanya firsati sunuluyor.",
+      "tags": [
+        { "text": "Outbound T+7", "color": "amber" },
+        { "text": "Son Firsat", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kampanya/indirim yetkisi", "service": "Backend", "page": "Kampanya Yonetimi > Tedavi Indirimleri", "status": "setup", "priority": "optional", "effort": "easy", "capability": "C3", "hint": "Tedavi plani icin ozel indirim tanimlama yetkisi gerekir" }
+        ],
+        "provider": [
+          { "text": "Son hatirlatma template'i", "service": "Outbound", "page": "Kampanya > Son Firsat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+7 son hatirlatma ve kampanya mesaji hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Tedavi plani #TP-2841 icin 7 gun gecti. T+1 ve T+3 mesajlarina yanit yok. T+7 son hatirlatma tetiklendi." },
+        { "role": "bot", "content": "Merhaba Ayse Hanim, tedavi planiniz hala sizi bekliyor.\n\nBu hafta icin gecerli ozel firsatimiz var:\n%10 erken baslama indirimi + ucretsiz kontrol muayenesi\n\nTedavi plani: Implant + Zirkonyum Kaplama\nIndirimli fiyat: 37.800 TL\n\nRandevu almak icin 'EVET' yazmaniz yeterli." },
+        { "role": "user", "content": "EVET" },
+        { "role": "ai", "content": "Intent: Tedavi Onay. Randevu akisina yonlendiriliyor." },
+        { "role": "bot", "content": "Harika! Randevunuzu hemen olusturalim.\n\nUygun gunleriniz:\n1. Pazartesi 10:00\n2. Carsamba 14:00\n3. Cuma 11:00\n\nHangisi size uygun?" },
+        { "role": "system", "content": "Hasta tedavi planini onayladi. Randevu akisi baslatildi. Tedavi plani durumu: ONAYLANDI." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Outbound Engine'in zamanlama ozelligini kullanir. Tedavi plani CRM'de olusturuldugunda otomatik takip zinciri baslar. Hasta yaniti AI tarafindan analiz edilir.",
+    "backend": [
+      { "title": "Treatment Plan Tracker", "goal": "Plan Takibi", "content": "Tedavi plani durumlarini (gonderildi, okundu, onaylandi, reddedildi) takip eder. Outbound Engine icin trigger olaylari uretir." },
+      { "title": "Escalation Router", "goal": "Eskalasyon Yonetimi", "content": "Hasta tereddut veya red sinyali verdiginde hasta koordinatorune otomatik bildirim ve gorev atamasi yapar." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Template Gonderim", "content": "Tedavi plani detay mesaji, hatirlatma ve kampanya template'leri ile kademeli outbound gonderimi." },
+      { "title": "CRM Tedavi Plani API", "goal": "Plan Yonetimi", "content": "Tedavi plani olusturma, guncelleme ve onay durumu takibi icin dahili API." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kazanilan Tedavi Onayi",
+    "description": "Otomatik takip zinciri ile onaylanmayan tedavi planlarinin kurtarilmasi ve ciro artisi.",
+    "resultLabel": "Ek Ciro (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyUnapprovedPlans", "label": "Aylik Onaysiz Plan", "default": 30, "hint": "Onay bekleyen tedavi plani sayisi", "editable": true },
+      { "key": "recoveryRate", "label": "Kurtarma Orani", "default": 25, "prefix": "%", "hint": "Takip ile onay veren hasta orani", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Tedavi Bedeli", "default": 15000, "suffix": "TL", "hint": "Ortalama tedavi plani tutari", "editable": true }
+    ],
+    "formula": "monthlyUnapprovedPlans * (recoveryRate / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

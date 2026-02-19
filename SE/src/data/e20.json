@@ -1,0 +1,93 @@
+{
+  "id": "e20",
+  "title": "Coklu Kanal Esitleme (Trendyol Express + WA)",
+  "subtitle": "Cross-Channel Sync",
+  "phase": "Phase 1-2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Trendyol Express, WhatsApp ve diger kanallardan gelen mesajlari eslestirip musteri tekrar bilgi vermek zorunda kalmadan tek noktadan yoneten sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Coklu Kanal Yoneten Saticilar)" },
+      { "label": "Sorun", "value": "Musteri farkli kanallardan yaziyor — agent her seferinde sifirdan basliyor" },
+      { "label": "Deger", "value": "Kanal esitleme ile musteri deneyimi kesintisiz, agent verimli" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Tum kanallar tek inbox'ta birlesir. Musteri profili telefon numarasi bazli eslestirilerek gecmis gorusmeler context olarak sunulur.",
+    "steps": [
+      {
+        "title": "Kanal Birlestirme",
+        "goal": "Tek noktada yonet",
+        "badges": [
+          { "text": "Sistem (Unified Inbox)", "color": "purple" },
+          { "text": "Tenant (Kanallar)", "color": "blue" }
+        ],
+        "content": "WhatsApp, Instagram DM, Trendyol mesajlari ve telefon kayitlari tek inbox'ta goruntulenir."
+      },
+      {
+        "title": "Musteri Eslestirme",
+        "goal": "Gecmisi bildir",
+        "badges": [
+          { "text": "Sistem (CRM)", "color": "purple" },
+          { "text": "Tenant (Profil)", "color": "green" }
+        ],
+        "content": "Telefon numarasi bazli musteri profili eslestirilerek onceki gorusmeler agent'e sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Trendyol'dan Arandi + WA'dan Yazdi",
+      "description": "Musteri once Trendyol'dan arandi, sonra WhatsApp'tan yazdi.",
+      "tags": [
+        { "text": "Coklu Kanal", "color": "purple" },
+        { "text": "Esitleme", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kanal entegrasyonlari", "service": "Integrations", "page": "Kanal Yonetimi > Entegrasyonlar", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "WhatsApp, Instagram, Trendyol mesaj kanallarini entegre edin" }
+        ],
+        "provider": [
+          { "text": "Unified Inbox", "service": "Backend", "page": "Unified Inbox > Kanal Birlestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tum kanallar tek inbox'ta birlesiir" },
+          { "text": "Musteri profil eslestirme", "service": "Backend", "page": "CRM > Profil Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Telefon numarasi bazli musteri eslestirme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Musteri [Ad] — dun Trendyol'dan aranmis, bugun WhatsApp'tan yazdi. Gecmis: Kargo sorunu." },
+        { "role": "user", "content": "Trendyol'dan aramisllar, WhatsApp'tan da yazdim. Kargo sorunum hala cozulmedi." },
+        { "role": "ai", "content": "Musteri eslestirme: BASARILI. Gecmis: Dun Trendyol aramasi — kargo gecikme sikayeti. Context aktarildi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Dunku gorussmenizi goruyorum — kargo gecikme sorununuz icin uzgunuz. Durumu tekrar kontrol ediyorum...\n\nGuncel durum: Kargonuz bugun dagitima cikti! Tahmini teslimat: Bugun 14:00-18:00.\n\nTekrar bilgi vermenize gerek kalmasin diye tum gorusme gecmisiniz burada." },
+        { "role": "system", "content": "Kanal esitleme basarili. Musteri tekrar bilgi vermek zorunda kalmadi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Unified Inbox ile tum kanallari birlestirir. Musteri profili telefon numarasi bazli eslestirilerek context aktarilir.",
+    "backend": [
+      { "title": "Channel Aggregator", "goal": "Kanal Birlestirme", "content": "WhatsApp, IG DM, Trendyol, telefon kanallarini tek inbox'ta toplar." },
+      { "title": "Customer Matcher", "goal": "Musteri Eslestirme", "content": "Telefon numarasi bazli musteri profil eslestirme ve gorusme gecmisi birlestirme." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "WA Mesajlari", "content": "WhatsApp mesajlari ve sablonlari." },
+      { "title": "Platform Mesaj API", "goal": "Marketplace Mesajlari", "content": "Trendyol, Hepsiburada mesaj entegrasyonu." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Verimlilik Artisi",
+    "description": "Kanal esitleme ile azalan tekrar bilgi alma suresi ve artan agent verimliligi.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyMultiChannelCases", "label": "Aylik Coklu Kanal", "default": 30, "hint": "Coklu kanal musteri vakasi", "editable": true },
+      { "key": "savedMinutesPerCase", "label": "Kazanilan Dakika", "default": 8, "hint": "Tekrar bilgi alma suresi", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyMultiChannelCases * savedMinutesPerCase * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

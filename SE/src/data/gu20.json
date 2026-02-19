@@ -1,0 +1,126 @@
+{
+  "id": "gu20",
+  "title": "KVKK: Fotograf Cekimi / Before-After",
+  "subtitle": "KVKK Photo Consent Management",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Before/after fotograflarini sosyal medyada paylasirken KVKK onam eksik. Islem oncesi otomatik onam mesaji gondererek hukuki koruma saglayan ve dijital onay kaydı tutan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Hukuki Uyumluluk)" },
+      { "label": "Sorun", "value": "Before/after fotograflari paylasiliyor ama yazili onam alinmiyor — KVKK ihlal riski" },
+      { "label": "Deger", "value": "Otomatik dijital onam = hukuki koruma + profesyonel goruntu + daha fazla icerik" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Automation (C5)", "color": "red" },
+      { "name": "Knowledge Base (C6)", "color": "green" }
+    ],
+    "servicesNote": "Randevu oncesi otomatik KVKK onam mesaji gonderilir. Musteri onayini dijital olarak verir ve kayit tutulur. Onaysiz fotograf paylasilmasi engellenir.",
+    "steps": [
+      {
+        "title": "Otomatik Onam Gonderimi",
+        "goal": "Islem oncesi onam al",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (KVKK)", "color": "red" }
+        ],
+        "content": "Randevudan 1 gun once otomatik KVKK onam mesaji gonderilir: fotograf cekimi ve sosyal medya paylasimi icin izin talebi."
+      },
+      {
+        "title": "Dijital Onay Kaydi",
+        "goal": "Hukuki belge olustur",
+        "badges": [
+          { "text": "Sistem (Backend)", "color": "purple" },
+          { "text": "Tenant (Kayit)", "color": "blue" }
+        ],
+        "content": "Musterinin 'ONAY' yaniti tarih, saat ve telefon numarasi ile birlikte dijital onam kaydı olarak saklanir."
+      },
+      {
+        "title": "Icerik Yonetimi",
+        "goal": "Onaylilar paylasim listesine ekle",
+        "badges": [
+          { "text": "Sistem (CRM)", "color": "purple" },
+          { "text": "Tenant (Sosyal Medya)", "color": "green" }
+        ],
+        "content": "Onay veren musterilerin fotograflari 'paylasima uygun' olarak etiketlenir. Onay vermeyenlerin icerigi engellenir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Randevu Oncesi KVKK Onam Mesaji",
+      "description": "Yarin randevusu olan musteriye otomatik fotograf onam mesaji gonderimi.",
+      "tags": [
+        { "text": "KVKK", "color": "red" },
+        { "text": "Otomatik", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "KVKK fotograf onam metni", "service": "Knowledge", "page": "Dokuman Bankasi > KVKK Metinleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Hukuk danismaninizdan onaylanmis KVKK fotograf onam metnini yukleyin" },
+          { "text": "Sosyal medya paylasim politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Paylasim Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Fotograflarin hangi platformlarda ve nasil paylasılaacagini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Randevu oncesi otomasyon tetikleyicisi", "service": "Automation", "page": "Otomasyon > Randevu Oncesi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Randevudan 1 gun once otomatik mesaj gonderme hazir" },
+          { "text": "Dijital onam kayit sistemi", "service": "Backend", "page": "KVKK > Onam Kayitlari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Dijital onay kaydi tutma ve raporlama sistemi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Otomasyon tetiklendi: Yarin saat 14:00 randevusu olan Melis Celik icin KVKK onam mesaji gonderiliyor." },
+        { "role": "bot", "content": "Merhaba Melis Hanim!\n\nYarınki randevunuz icin heyecanlaniyoruz!\n\nIslem oncesi ve sonrasi sonuclari fotograf ile kayit altina almak istiyoruz. Bu fotograflari sosyal medyamizda (Instagram, Facebook) paylasabilmemiz icin onayiniz gerekli.\n\nKVKK Aydinlatma Metni: [Link]\n\nOnay veriyorsaniz 'ONAY' yazin.\nOnay vermiyorsaniz 'HAYIR' yazin.\n\nFotograf cekimi istege baglidir, onay vermemeniz hizmet kalitenizi etkilemez." },
+        { "role": "user", "content": "ONAY" },
+        { "role": "bot", "content": "Tesekkurler Melis Hanim! Onayiniz kayit altina alindi.\n\nOnay Tarihi: 19.02.2026 14:32\nKapsam: Before/After fotograf cekimi ve sosyal medya paylasimi\n\nIstediginiz zaman onayinizi geri cekmek icin 'IPTAL' yazabilirsiniz.\n\nYarin gorusmek uzere!" },
+        { "role": "system", "content": "Dijital onam kaydedildi: Melis Celik, +90 5xx xxx xxxx, 19.02.2026 14:32. Paylasim etiketi: ONAY." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Onam Reddi ve Geri Cekme",
+      "description": "Musteri onam vermiyor veya daha once verdigi onami geri cekiyor.",
+      "tags": [
+        { "text": "KVKK", "color": "red" },
+        { "text": "Red/Iptal", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Onam geri cekme proseduru", "service": "Knowledge", "page": "Dokuman Bankasi > KVKK Prosedur", "status": "setup", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Onam geri cekme sureci ve mevcut icerik kaldirilmasi prosedurunu tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Onam durumu takip sistemi", "service": "Backend", "page": "KVKK > Onam Durumu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Musteri bazli onam durumunu gercek zamanli takip etme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "IPTAL — onceki fotograflarimi da kaldirin lutfen" },
+        { "role": "ai", "content": "Intent: KVKK Onam Geri Cekme. Musteri: Melis Celik. Mevcut onay durumu: AKTIF. Geri cekme islemi baslatiliyor." },
+        { "role": "bot", "content": "Melis Hanim, onayiniz geri cekildi.\n\nIslem detayi:\nOnam durumu: IPTAL EDILDI\nTarih: 20.02.2026 09:15\n\nDaha once paylasilan fotograflariniz 48 saat icinde tum sosyal medya hesaplarimizdan kaldirilacaktir.\n\nBu konuda baska bir talebiniz var mi?" },
+        { "role": "system", "content": "Onam geri cekildi. Paylasim etiketi: RED. Salon sahibine bildirim: Mevcut icerik kaldirilmali. 48 saat timer basladi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "KVKK uyumlu dijital onam sistemi. Randevu oncesi otomatik gonderim, dijital kayit tutma ve onam durumu takibi ile tam hukuki koruma saglar.",
+    "backend": [
+      { "title": "Consent Manager", "goal": "Onam Yonetimi", "content": "Musteri bazli dijital onam kaydi olusturma, geri cekme ve durum takibi." },
+      { "title": "Content Tag Manager", "goal": "Icerik Etiketleme", "content": "Fotograflari onam durumuna gore etiketler. Onaysiz icerik paylasimini engeller." }
+    ],
+    "apis": [
+      { "title": "KVKK Consent API", "goal": "Onam Kaydi", "content": "Dijital onam olusturma, sorgulama ve geri cekme islemlerini yoneten API." }
+    ]
+  },
+  "impact": {
+    "title": "KVKK Uyumluluk ve Icerik Kazanimi",
+    "description": "Otomatik onam sistemi ile onlenen hukuki risk ve kazanilan sosyal medya icerigi.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPhotoCustomers", "label": "Aylik Fotograf Cekilen Musteri", "default": 40, "hint": "Before/after fotograf cekilen musteri sayisi", "editable": true },
+      { "key": "consentRate", "label": "Onam Verme Orani", "default": 70, "prefix": "%", "hint": "Onam veren musteri orani", "editable": true },
+      { "key": "contentValuePerPhoto", "label": "Fotograf Basina Icerik Degeri", "default": 200, "suffix": "TL", "hint": "Sosyal medya icerigi olarak fotograf degeri", "editable": true }
+    ],
+    "formula": "monthlyPhotoCustomers * (consentRate / 100) * contentValuePerPhoto",
+    "formulaDisplay": null
+  }
+}

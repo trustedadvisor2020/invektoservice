@@ -1,0 +1,115 @@
+{
+  "id": "a74",
+  "title": "Spam / Yanlis Tetik: IG Limitleri",
+  "subtitle": "Instagram Rate Limiting",
+  "phase": "Phase 1",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Instagram otomasyon limitelerine takilmayi onleyen, rate limiting kurallari ile IG API limitlerini asmadan verimli DM otomasyonu saglayan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Instagram Otomasyon)" },
+      { "label": "Sorun", "value": "Agresif IG DM otomasyonu API limitine takiliyor — hesap geici olarak engelleniyor" },
+      { "label": "Deger", "value": "Akilli rate limiting ile hesap guvenligini koruyarak %100 uptime saglaniyor" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" }
+    ],
+    "servicesNote": "Rate limiting kurallari ile IG API limitlerini asma riski ortadan kaldirilir.",
+    "steps": [
+      {
+        "title": "Rate Limit Izleme",
+        "goal": "API kullanim limitlerini izle",
+        "badges": [
+          { "text": "Sistem (Monitoring)", "color": "purple" },
+          { "text": "Tenant (IG Hesap)", "color": "pink" }
+        ],
+        "content": "Sistem IG API cagri sayisini gercek zamanli izler, limite yaklasinca otomasyonu yavaslatir."
+      },
+      {
+        "title": "Akilli Kuyruk Yonetimi",
+        "goal": "Mesaj gonderimini optimize et",
+        "badges": [
+          { "text": "Sistem (Queue)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Mesajlar oncelik sirasina gore kuyruge alinir, limit asilmadan gondegonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Rate Limit Uyarisi ve Kuyruk Yonetimi",
+      "description": "IG API limiti %80'e ulastiginda sistem otomatik yavaslatma yapiyor.",
+      "tags": [
+        { "text": "Rate Limit", "color": "red" },
+        { "text": "Instagram", "color": "pink" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Instagram Business hesap baglantisi", "service": "Backend", "page": "Kanal Yonetimi > Instagram", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram Business hesabinizi baglayarak DM otomasyonunu aktif edin" }
+        ],
+        "provider": [
+          { "text": "Rate limit izleme modulu", "service": "Backend", "page": "Sistem > Rate Limiter", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "IG API rate limit sayacini takip eden modul hazir" },
+          { "text": "Oncelikli kuyruk sistemi", "service": "Backend", "page": "Sistem > Mesaj Kuyrugu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Mesaj onceliklendirme ve kuyruk yonetimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "IG API Kullanim: %80 (192/240 cagri/saat). Rate limit uyarisi tetiklendi. Yavaslatma modu aktif." },
+        { "role": "ai", "content": "Rate limit esigi asildi. Otomasyon hizi dusurulecek. Oncelik: Aktif konusmalara yanit > Yeni lead DM > Toplu gonderim." },
+        { "role": "system", "content": "Mesaj kuyrugu yeniden siraldi:\n1. Aktif 3 konusmaya yanit (yuksek oncelik)\n2. 5 yeni lead DM'i (orta oncelik, 30sn aralikla)\n3. 12 toplu bildirim (dusuk oncelik, sonraki saat dilimine ertelendi)" },
+        { "role": "system", "content": "IG API Kullanim: %65 (156/240 cagri/saat). Yavaslatma basarili. Normal hiza donuluyor." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Yanlis Tetik Onleme",
+      "description": "Spam veya yanlis tetiklenen otomasyon mesajlarini filtreleme.",
+      "tags": [
+        { "text": "Spam Filtre", "color": "amber" },
+        { "text": "Tetik Kurali", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Otomasyon tetik kurallari tanimlama", "service": "Automation", "page": "Tetikleyiciler > IG DM Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Hangi anahtar kelimelerin otomasyonu tetikleyecegini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Spam dedektoru", "service": "AgentAI", "page": "Filtreler > Spam Tespit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Spam, bot ve irrelevant mesaj tespiti hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "hahaha cok guzel foto" },
+        { "role": "ai", "content": "Mesaj analizi: Sosyal yorum, ticari intent YOK. Spam skoru: 0.15 (esik: 0.4). Sonuc: Otomasyon tetiklenmeyecek." },
+        { "role": "system", "content": "Mesaj filtrelendi. Otomasyon tetiklenmedi. Gereksiz API cagrisi onlendi." },
+        { "role": "user", "content": "Fiyatlariniz nedir?" },
+        { "role": "ai", "content": "Mesaj analizi: Ticari intent YUKSEK. Intent: fiyat_sorusu. Spam skoru: 0.02. Sonuc: Otomasyon tetiklenecek." },
+        { "role": "bot", "content": "Merhaba! Hangi islem icin fiyat bilgisi almak istersiniz?\n\n💉 Botox\n💋 Dolgu\n✨ Lazer\n\nDetayli bilgi icin yazabilirsiniz!" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo IG API Rate Limiter + Akilli Kuyruk + Spam Filtre ile calisir.",
+    "backend": [
+      { "title": "Rate Limiter Module", "goal": "API Limit Yonetimi", "content": "IG API cagri sayisini izler, esik degerlerine gore otomasyonu yavaslatir veya durdurur." },
+      { "title": "Priority Queue Manager", "goal": "Kuyruk Yonetimi", "content": "Mesajlari oncelik sirasina gore kuyrugea alir ve limit dahilinde gonderir." }
+    ],
+    "apis": [
+      { "title": "Instagram Graph API", "goal": "DM Yonetimi", "content": "IG DM mesajlarinin alinmasi ve gonderilmesi, rate limit header takibi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen Hesap Engeli",
+    "description": "Rate limiting ile onlenen hesap engeli ve korunan lead akisi.",
+    "resultLabel": "Korunan Lead Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyIGLeads", "label": "Aylik IG Lead", "default": 50, "hint": "Instagram'dan gelen lead sayisi", "editable": true },
+      { "key": "blockageLossRate", "label": "Engel Kayip Orani", "default": 30, "prefix": "%", "hint": "Hesap engeli sirasinda kaybedilen lead orani", "editable": true },
+      { "key": "avgLeadValue", "label": "Ort. Lead Degeri", "default": 3000, "suffix": "TL", "hint": "Ortalama lead'in klinige getirdigi deger", "editable": true }
+    ],
+    "formula": "monthlyIGLeads * (blockageLossRate / 100) * avgLeadValue",
+    "formulaDisplay": null
+  }
+}

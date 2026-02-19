@@ -1,0 +1,103 @@
+{
+  "id": "eg06",
+  "title": "Devamsizlik Bildirimi",
+  "subtitle": "Absence Notification",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Ogrenci derse gelemeyecegini WhatsApp uzerinden bildiriyor. AI devamsizlik intent'ini algilar, kaydeder ve telafi dersi teklif eder. Devamsizlik takibi otomatiklesir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Ders)" },
+      { "label": "Sorun", "value": "Ogrenciler telefon veya mesajla devamsizlik bildiriyor — agent kayit yapiyor, telafi ayarliyor, egitmeni bilgilendiriyor" },
+      { "label": "Deger", "value": "Otomatik devamsizlik kaydı + telafi teklifi = agent suresi kazanilir, ogrenci memnuniyeti artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI devamsizlik bildirimini algilar, sisteme kaydeder ve telafi dersi seceneklerini otomatik sunar. Egitmen ayrica bilgilendirilir.",
+    "steps": [
+      {
+        "title": "Devamsizlik Intent Tespiti",
+        "goal": "Devamsizlik bildirimini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'bugun gelemiyorum', 'derse katilmiyorum', 'hastayim' gibi intent'leri tespit eder ve devamsizlik olarak isler."
+      },
+      {
+        "title": "Devamsizlik Kaydi",
+        "goal": "Sisteme otomatik kaydet",
+        "badges": [
+          { "text": "Sistem (Backend)", "color": "purple" },
+          { "text": "Tenant (Ogrenci)", "color": "amber" }
+        ],
+        "content": "Devamsizlik sisteme otomatik kaydedilir. Ogrencinin toplam devamsizlik sayisi guncellenir."
+      },
+      {
+        "title": "Telafi Teklifi",
+        "goal": "Telafi secenegi sun",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "green" }
+        ],
+        "content": "Kacirilan ders icin musait telafi saatleri sunulur. Ogrenci uygun zamani secer."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Devamsizlik Bildirimi ve Telafi",
+      "description": "Ogrenci derse gelemeyecegini bildiriyor, AI kayit yapip telafi teklif ediyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Devamsizlik", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ogrenci-sinif eslestirmesi", "service": "Backend", "page": "Ogrenci Yonetimi > Sinif Atama", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Her ogrencinin hangi sinifa kayitli oldugunu tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Devamsizlik intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Devamsizlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Devamsizlik bildirimi intent'i varsayilan olarak tanimli" },
+          { "text": "Telafi planlama sablonu", "service": "Backend", "page": "Sablonlar > Telafi Teklifi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Telafi ders secenekleri sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Hocam bugun aksam derse gelemiyorum, is toplantim var. Kayit yapar misiniz?" },
+        { "role": "ai", "content": "Intent: Devamsizlik Bildirimi. Ogrenci: Telefon eslestirme. Tarih: Bugun aksam. Kayit isleniyor." },
+        { "role": "bot", "content": "Bildiriminiz alindi! Bugunun devamsizligi kaydedildi.\n\nBilgileriniz:\n- Ders: Ingilizce B1 Aksam Grubu\n- Tarih: 20 Subat 2026 (Persembe)\n- Kalan devamsizlik hakkiniz: 3/5\n\nTelafi icin musait saatler:\n- Cumartesi 14:00-16:00 (Ayni konu)\n- Pazartesi 17:00-19:00 (Farkli grup ile)\n\nHangi zamani tercih edersiniz?" },
+        { "role": "user", "content": "Cumartesi uygun olur." },
+        { "role": "bot", "content": "Cumartesi 14:00-16:00 telafi dersiniz kaydedildi!\n\nHatirlatma: Cumartesi 13:30'da mesaj gonderecegiz.\nKonu: Unit 7 — Present Perfect\nYer: Sinif 3B\n\nGecmis olsun, gorusuruz!" },
+        { "role": "system", "content": "Otomatik cozum: Devamsizlik kaydedildi + telafi zamani secildi + hatirlatma planlandi. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Devamsizlik bildirimleri AI tarafindan otomatik islenir. Telafi planlama ve egitmen bilgilendirmesi backend uzerinden yonetilir.",
+    "backend": [
+      { "title": "Attendance Tracker", "goal": "Devamsizlik Takibi", "content": "Ogrenci devamsizlik kayitlari, kalan devamsizlik hakki ve toplam devamsizlik orani takip edilir." },
+      { "title": "Makeup Class Scheduler", "goal": "Telafi Planlama", "content": "Musait telafi saatlerini listeler, ogrenci secimini kaydeder ve hatirlatma zamanlar." }
+    ],
+    "apis": [
+      { "title": "Attendance API", "goal": "Devamsizlik Kaydi", "content": "Ogrenci devamsizlik kaydini olusturur, kalan devamsizlik hakkini sorgular." },
+      { "title": "Makeup Availability API", "goal": "Telafi Musaitlik", "content": "Kacirilan dersin konusuna uygun telafi saatlerini listeler." }
+    ]
+  },
+  "impact": {
+    "title": "Devamsizlik Yonetiminde Tasarruf",
+    "description": "Devamsizlik bildirimlerinin otomatik kaydedilmesi ve telafi planlamasinin otomatiklesmesi ile agent yukunu azaltma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyAbsenceNotifications", "label": "Gunluk Devamsizlik Bildirimi", "default": 8, "hint": "Gunluk ortalama devamsizlik bildirimi sayisi", "editable": true },
+      { "key": "minutesPerNotification", "label": "Bildirim Basina Dakika", "default": 7, "hint": "Agent'in devamsizlik kaydı + telafi ayarlamak icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyAbsenceNotifications * minutesPerNotification * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "id": "eg01",
+  "title": "Kayit / Basvuru Sureci",
+  "subtitle": "Course Registration",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Kayit doneminde gunluk 30-50 arasi gelen tekrar eden sorulari AI otomatik karsilar. Kurs kaydi, gerekli belgeler, fiyat bilgisi ve donem tarihleri aninda iletilir. Agent yuku minimuma iner.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Ogretim)" },
+      { "label": "Sorun", "value": "Kayit doneminde gunluk 30-50 tekrar eden soru — agent'ler ayni bilgiyi defalarca veriyor" },
+      { "label": "Deger", "value": "7/24 aninda kayit bilgisi + belge listesi + fiyat = kayip ogrenci orani duser" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "AI Intent Detection (C2)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI gelen mesajdan kayit niyetini algilar, Knowledge Base'den kurs bilgisi + belge listesi + fiyat + donem tarihlerini ceker ve ogrenciye aninda iletir.",
+    "steps": [
+      {
+        "title": "Kayit Intent Tespiti",
+        "goal": "Kayit niyetini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'kayit olmak istiyorum', 'nasil basvurabilirim', 'hangi belgeler gerekli' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Bilgi Paylasimi",
+        "goal": "Kurs + belge + fiyat bilgisi sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Kurs Bilgisi)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den ilgili kursun fiyati, gerekli belgeler, donem baslangic tarihi ve kontenjan durumu cekilir."
+      },
+      {
+        "title": "Kayit Yonlendirmesi",
+        "goal": "Online kayit veya randevu",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Form)", "color": "green" }
+        ],
+        "content": "Ogrenciye online kayit formu linki veya yuz yuze kayit icin randevu secenegi sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Yeni Kayit Basvurusu",
+      "description": "Ogrenci ilk kez kurs kaydina basvuruyor, AI tum bilgileri aninda iletiyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Kayit", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kurs katalog bilgileri", "service": "Knowledge", "page": "Bilgi Bankasi > Kurs Katalogu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tum kurslarin fiyat, donem, kontenjan bilgilerini Knowledge Base'e girin" },
+          { "text": "Gerekli belge listesi", "service": "Knowledge", "page": "Bilgi Bankasi > Kayit Belgeleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her kurs tipi icin gerekli belgeleri tanimlayim" }
+        ],
+        "provider": [
+          { "text": "Kayit intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Kayit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kayit niyeti intent'i varsayilan olarak tanimli" },
+          { "text": "Kurs bilgi sablonu", "service": "Backend", "page": "Sablonlar > Kurs Bilgi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Kurs detay sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, Ingilizce kursunuza kayit olmak istiyorum. Nasil basvurabilirim?" },
+        { "role": "ai", "content": "Intent: Kurs Kaydi. Kurs: Ingilizce. Knowledge Base sorgusu baslatiliyor." },
+        { "role": "bot", "content": "Merhaba! Ingilizce kurslarimiza hos geldiniz. Size hemen bilgi vereyim:\n\nIngilizce Genel Kurs (A1-C1):\n- Donem Baslangici: 3 Mart 2026\n- Sure: 4 ay (haftada 3 gun)\n- Ucret: 12.500 TL (erken kayit: 10.500 TL)\n- Kontenjan: 8 kisi kaldi\n\nGerekli Belgeler:\n- Kimlik fotokopisi\n- 1 adet vesikalik fotograf\n- Seviye belirleme testi sonucu\n\nOnline kayit formu: [Kayit Linki]\nDetayli bilgi icin bizi arayin: 0212 555 12 34" },
+        { "role": "user", "content": "Erken kayit ne zamana kadar gecerli?" },
+        { "role": "bot", "content": "Erken kayit indirimi 20 Subat 2026 tarihine kadar gecerlidir. Bu tarihe kadar kayit yaptirmaniz halinde 2.000 TL indirimden faydalanirsiniz.\n\nHemen kayit formunu doldurmak ister misiniz? [Online Kayit Formu]" },
+        { "role": "system", "content": "Otomatik cozum: Kayit bilgisi + belge listesi + erken kayit detayi iletildi. Agent mudahalesi gerekmedi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Belge Eksikligi ile Kayit",
+      "description": "Ogrenci eksik belge ile kayit sormasi durumunda AI yonlendirme yapar.",
+      "tags": [
+        { "text": "Rehberlik", "color": "purple" },
+        { "text": "Kayit", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Belge kontrol listesi", "service": "Knowledge", "page": "Bilgi Bankasi > Belge Kontrol", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Eksik belge durumunda ne yapilacagini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Kosullu kayit akisi", "service": "AgentAI", "page": "Dialog Akislari > Kosullu Kayit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Eksik belge durumunda gecici kayit akisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kayit yaptirmak istiyorum ama seviye belirleme testine giremedim henuz." },
+        { "role": "ai", "content": "Intent: Kayit + Eksik Belge (Seviye Testi). Kosullu kayit akisi baslatiliyor." },
+        { "role": "bot", "content": "Seviye belirleme testi olmadan da on-kayit yapabilirsiniz! Surecimiz su sekilde:\n\n1. Online on-kayit formunu doldurun\n2. Seviye testini online olarak 10 dakikada tamamlayin: [Online Test Linki]\n3. Sonucunuz otomatik olarak kaydiniza islenir\n\nOn-kayit icin: [On-Kayit Formu]\nTest hakkinda sorunuz var mi?" },
+        { "role": "user", "content": "Tamam, on-kayit yapacagim. Tesekkurler!" },
+        { "role": "system", "content": "Otomatik cozum: Eksik belge durumunda alternatif kayit yolu sunuldu. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Kayit sureci Knowledge Base uzerinden otomatik calisir. Kurs bilgileri, donem tarihleri ve belge gereksinimleri merkezi olarak yonetilir.",
+    "backend": [
+      { "title": "Course Catalog Service", "goal": "Kurs Bilgi Yonetimi", "content": "Kurs katalogu, fiyatlar, donemler ve kontenjan bilgisi Knowledge Base'den cekilir. Tenant bazli kurs tanimlari desteklenir." },
+      { "title": "Registration Flow Manager", "goal": "Kayit Akisi", "content": "On-kayit, tam kayit ve kosullu kayit akislari yonetilir. Eksik belge durumunda alternatif yollar sunulur." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base Query API", "goal": "Kurs Bilgisi Sorgulama", "content": "Kurs adi, seviye veya donem bazli Knowledge Base sorgusu. Fiyat, kontenjan, belge gereksinimleri doner." },
+      { "title": "Registration Link Generator", "goal": "Kayit Linki Olusturma", "content": "Tenant bazli online kayit formu linki olusturur. UTM parametreleri ile WhatsApp kaynaklarini takip eder." }
+    ]
+  },
+  "impact": {
+    "title": "Kayit Doneminde Tasarruf Edilen Agent Suresi",
+    "description": "Kayit doneminde tekrar eden sorularin otomatik cevaplanmasi ile agent yukunun azaltilmasi ve kayip ogrenci oraninin dusmesi.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyRegistrationQueries", "label": "Gunluk Kayit Sorusu", "default": 40, "hint": "Kayit doneminde gunluk ortalama soru sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 5, "hint": "Agent'in kayit bilgisi vermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyRegistrationQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

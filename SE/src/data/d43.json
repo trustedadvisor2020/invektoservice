@@ -1,0 +1,91 @@
+{
+  "id": "d43",
+  "title": "Yanlis Bilgi: Fiyat/Plan Tutarsizligi",
+  "subtitle": "Inconsistent Information Prevention",
+  "phase": "Phase 3",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Farkli temsilcilerin farkli fiyat veya plan bildirmesi sorununu Knowledge Base ile tek kaynak cevap vererek cözen sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Coklu Personel)" },
+      { "label": "Sorun", "value": "Her personel farkli fiyat soyluyor — hasta guvensizlik hissediyor" },
+      { "label": "Deger", "value": "Tek kaynak (Knowledge Base) ile tutarli bilgi sunulur, guven artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI tum fiyat ve tedavi bilgisini Knowledge Base'den cekar. Personel kendi bilgisinden degil, tek kaynaktan cevap verir.",
+    "steps": [
+      {
+        "title": "Tek Kaynak Bilgi",
+        "goal": "Tutarli cevap ver",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "green" },
+          { "text": "Tenant (Fiyat)", "color": "blue" }
+        ],
+        "content": "Tum fiyat ve plan bilgileri Knowledge Base'den cekilir — personel kendi yorumunu katmaz."
+      },
+      {
+        "title": "Tutarsizlik Onleme",
+        "goal": "Farkliligi tespit et",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kalite)", "color": "amber" }
+        ],
+        "content": "AI onceki mesajlarla tutarsizlik tespit ederse uyari verir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Fiyat Tutarsizligi — Tek Kaynak Cozum",
+      "description": "Hasta farkli fiyat soyledigini bildiriyor, AI Knowledge Base'den dogru fiyati sunar.",
+      "tags": [
+        { "text": "Tutarsizlik", "color": "rose" },
+        { "text": "Tek Kaynak", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Guncel fiyat listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tedavi bazli guncel fiyat listesini yukleyin ve duzenli guncelleyin" }
+        ],
+        "provider": [
+          { "text": "Knowledge bazli cevap motoru", "service": "Knowledge", "page": "RAG > Fiyat Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Fiyat sorularinda Knowledge Base tek kaynak olarak kullanilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Baska biri farkli fiyat soyledi!" },
+        { "role": "ai", "content": "Intent: Fiyat Tutarsizligi Sikayeti. Knowledge Base'den guncel fiyat cekilecek." },
+        { "role": "bot", "content": "Ozur dileriz, karisilik olmus olabilir. Guncel fiyat listemiz:\n\n💰 Zirkonyum kaplama: 4.500-6.000 TL/dis\n💰 Implant: 12.000-18.000 TL\n💰 Kanal tedavisi: 2.500-4.000 TL\n\n📋 Kesin fiyat muayene sonrasi belirlenir.\n\nMuayene randevusu ayarlayalim mi?" },
+        { "role": "system", "content": "Fiyat bilgisi Knowledge Base'den cekildi. Tutarsizlik giderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge Base tek kaynak prensibi ile calisir. Fiyat ve plan tutarsizligi onleme.",
+    "backend": [
+      { "title": "Single Source Enforcer", "goal": "Tek Kaynak", "content": "Tum bilgi sorularinda Knowledge Base tek kaynak olarak kullanilmasini zorlar." },
+      { "title": "Consistency Checker", "goal": "Tutarlilik Kontrolu", "content": "Onceki mesajlarla tutarsizlik tespit eder ve uyari verir." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Guncel fiyat ve tedavi bilgileri tek kaynaktan cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Korunan Hasta Guveni",
+    "description": "Tutarli bilgi ile korunan hasta guveni ve kaybedilmeyen tedavi.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyInconsistencies", "label": "Aylik Tutarsizlik", "default": 8, "hint": "Farkli bilgi soylenen vaka", "editable": true },
+      { "key": "lostPatientRate", "label": "Kayip Orani", "default": 30, "prefix": "%", "hint": "Tutarsizlik nedeniyle kaybedilen hasta", "editable": true },
+      { "key": "avgPatientValue", "label": "Hasta Degeri", "default": 5000, "suffix": "TL", "hint": "Kaybedilen hasta degeri", "editable": true }
+    ],
+    "formula": "monthlyInconsistencies * (lostPatientRate / 100) * avgPatientValue",
+    "formulaDisplay": null
+  }
+}

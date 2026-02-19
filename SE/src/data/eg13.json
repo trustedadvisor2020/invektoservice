@@ -1,0 +1,127 @@
+{
+  "id": "eg13",
+  "title": "Sertifika / Diploma Sorgulama",
+  "subtitle": "Certificate & Diploma Inquiry",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Sertifika tipi, MEB onay durumu, uluslararasi gecerlilik ve teslim sureci hakkinda gelen sorulara AI aninda yanit verir. Knowledge Base'den sertifika bilgileri cekilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Mesleki Egitim, Sertifika Programi)" },
+      { "label": "Sorun", "value": "Ogrenciler sertifika tipi, MEB onayi ve uluslararasi gecerlilik soruyor — agent her seferinde resmi bilgileri kontrol ediyor" },
+      { "label": "Deger", "value": "Dogru sertifika bilgisi = guvene dayali kayit karari + hukuki uyum" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI sertifika intent'ini algilar, Knowledge Base'den sertifika tipleri, onay durumu ve teslim sureci bilgilerini ceker.",
+    "steps": [
+      {
+        "title": "Sertifika Intent Tespiti",
+        "goal": "Sertifika sorusunu tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'sertifika veriliyor mu', 'MEB onayli mi', 'diploma gecerli mi', 'ne zaman teslim edilir' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Sertifika Bilgisi Cekme",
+        "goal": "Detayli sertifika bilgisi sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Sertifika)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den sertifika tipi, MEB onay durumu, uluslararasi gecerlilik ve teslim sureci bilgileri cekilir."
+      },
+      {
+        "title": "Sertifika Detay Sunumu",
+        "goal": "Karsilastirmali bilgi ver",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Onay)", "color": "green" }
+        ],
+        "content": "Farkli sertifika tipleri, onay durumlari ve ek sinav gereksinimleri karsilastirmali olarak sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sertifika Tipi ve MEB Onay Sorgusu",
+      "description": "Ogrenci sertifika tipi ve MEB onayi hakkinda bilgi soruyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Sertifika Bilgisi", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sertifika program bilgileri", "service": "Knowledge", "page": "Bilgi Bankasi > Sertifika Programlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Sertifika tipleri, MEB onay durumu ve teslim suresini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Sertifika intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Sertifika", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sertifika sorgulama intent'i varsayilan olarak tanimli" },
+          { "text": "Sertifika bilgi sablonu", "service": "Backend", "page": "Sablonlar > Sertifika Bilgi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Sertifika karsilastirma sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kurs bitince sertifika veriliyor mu? MEB onayli mi?" },
+        { "role": "ai", "content": "Intent: Sertifika Sorgulama. MEB onay durumu isteniyor. Knowledge Base sertifika bilgisi sorgusu." },
+        { "role": "bot", "content": "Evet! Kurs sonunda sertifika verilir. Sertifika tiplerimiz:\n\nKurum Sertifikasi:\n- Tum kurslarda verilir\n- Devam orani %80+ ve basari notu 60+ gerekli\n- Teslim: Kurs bitiminden 1 hafta sonra\n- Dijital + basili kopya\n\nMEB Onayli Sertifika:\n- Sadece MEB onayli programlarda (Ingilizce, Almanca, Bilgisayar)\n- MEB sinavi basari sarti var\n- Teslim: MEB islemlerinden sonra 2-3 hafta\n- Resmi gecerlilik: Devlet kurumlari, is basvurulari\n\nUluslararasi Gecerlilik:\n- Cambridge, Goethe gibi uluslararasi sinavlara hazirlık yapilir\n- Uluslararasi sertifika icin ayrica sinava girilmesi gerekir\n\nHangi sertifika tipi hakkinda detay istersiniz?" },
+        { "role": "user", "content": "MEB onayli sertifika icin ne yapmam gerekiyor?" },
+        { "role": "bot", "content": "MEB Onayli Sertifika Sureci:\n\n1. Devam Sarti: Kursa %80 devam etmis olmaniz gerekir\n2. Kurum Sinavi: Kurs sonu sinavinda en az 70/100 almanız gerekir\n3. MEB Sinavi: MEB tarafindan yapilan yazili sinava girmeniz gerekir\n4. Basari: MEB sinavini da gecmeniz halinde sertifika duzenlenir\n\nMEB Sinav Tarihi: Donem sonunda (Haziran 2026)\nSinav Ucreti: Ucretsiz (kurs ucretine dahil)\nSertifika Teslim: MEB islemleri sonrasi 2-3 hafta\n\nKurs kaydinda MEB onayli programa kayit secenegini isaretlemeniz yeterli.\nKayit: [Kayit Formu]" },
+        { "role": "system", "content": "Otomatik cozum: Sertifika tipleri + MEB onay sureci + detayli kosullar iletildi. Agent mudahalesi gerekmedi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Sertifika Teslim Sureci",
+      "description": "Mezun ogrenci sertifikasinin ne zaman teslim edilecegini soruyor.",
+      "tags": [
+        { "text": "Otomatik", "color": "green" },
+        { "text": "Teslim Sureci", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sertifika teslim takvimi", "service": "Knowledge", "page": "Bilgi Bankasi > Teslim Takvimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Sertifika hazirlama ve teslim surelerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Teslim durumu sorgulama", "service": "AgentAI", "page": "Intent Tespiti > Sertifika Teslim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sertifika teslim sorgulama intent'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kursumu bitirdim, sertifikam ne zaman hazir olur?" },
+        { "role": "ai", "content": "Intent: Sertifika Teslim Sorgusu. Ogrenci: Telefon eslestirme. Mezuniyet durumu kontrol ediliyor." },
+        { "role": "bot", "content": "Tebrikler, kursunuzu basariyla tamamladiniz!\n\nSertifika durumunuz:\n- Kurum Sertifikasi: Hazirlaniyor (tahmini 3 gun)\n- Teslim Yontemi: Dijital kopya WhatsApp + e-posta ile gonderilecek\n- Basili kopya: Subemizden teslim alinabilir\n\nHazir oldugunda size otomatik bildirim gonderecegiz.\nBaska sorunuz var mi?" },
+        { "role": "system", "content": "Otomatik cozum: Sertifika teslim durumu ve tahmini sure iletildi. Agent mudahalesi gerekmedi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Sertifika bilgileri ve teslim surecleri Knowledge Base uzerinden yonetilir. MEB onayli programlar icin ek kosullar tanimlanir.",
+    "backend": [
+      { "title": "Certificate Info Service", "goal": "Sertifika Bilgi Yonetimi", "content": "Sertifika tipleri, onay durumlari, kosullar ve teslim sureleri Knowledge Base'den cekilir. Kurs-sertifika eslestirmesi yapilir." },
+      { "title": "Certificate Delivery Tracker", "goal": "Sertifika Teslim Takibi", "content": "Sertifika hazirlama durumunu takip eder, hazir oldugunda ogrenciye bildirim gonderir." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base Certificate API", "goal": "Sertifika Sorgulama", "content": "Kurs ve sertifika tipi bazli bilgi sorgusu. MEB onay durumu, kosullar ve teslim suresi doner." },
+      { "title": "Certificate Status API", "goal": "Teslim Durumu", "content": "Ogrenci bazli sertifika hazirlama durumunu sorgular. Hazirlaniyor, hazir, teslim edildi durumlari." }
+    ]
+  },
+  "impact": {
+    "title": "Sertifika Sorularinda Tasarruf",
+    "description": "Sertifika tipi ve teslim sureci sorularinin otomatik cevaplanmasi ile agent yukunu azaltma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyCertificateQueries", "label": "Gunluk Sertifika Sorusu", "default": 8, "hint": "Gunluk ortalama sertifika sorgulama sayisi", "editable": true },
+      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 6, "hint": "Agent'in sertifika bilgisi vermek icin harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "dailyCertificateQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
+    "formulaDisplay": null
+  }
+}

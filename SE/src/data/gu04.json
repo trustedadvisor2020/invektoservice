@@ -1,0 +1,126 @@
+{
+  "id": "gu04",
+  "title": "Bekleme Suresi Sorgulama",
+  "subtitle": "Wait Time Inquiry",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Randevusuz gelen veya erken gelen musteri bekleme suresini soruyor. Sistem mevcut randevu takviminden tahmini bekleme suresini hesaplar ve randevu almaya yonlendirir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Randevusuz gelen musteri ne kadar bekleyecegini bilmiyor — salon kapisinda belirsizlik" },
+      { "label": "Deger", "value": "Tahmini bekleme suresi + randevu yonlendirmesi = daha iyi musteri deneyimi" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Mevcut randevu takvimi ve islem surelerine bakilarak tahmini bekleme hesaplanir. Template ile bilgi verilir ve gelecek ziyaretler icin randevu almasi tesvik edilir.",
+    "steps": [
+      {
+        "title": "Bekleme Intent Tespiti",
+        "goal": "Soruyu tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'ne kadar beklerim', 'siram ne zaman gelir', 'musait misiniz' gibi sorgulari bekleme intent'i olarak tespit eder."
+      },
+      {
+        "title": "Tahmini Sure Hesaplama",
+        "goal": "Bekleme suresini hesapla",
+        "badges": [
+          { "text": "Sistem (Takvim)", "color": "purple" },
+          { "text": "Tenant (Islem)", "color": "amber" }
+        ],
+        "content": "Mevcut aktif islemler ve siradaki randevulara bakilarak tahmini bos slot hesaplanir."
+      },
+      {
+        "title": "Bilgilendirme ve Yonlendirme",
+        "goal": "Sure bildir ve randevu oner",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Randevu)", "color": "green" }
+        ],
+        "content": "Tahmini bekleme suresi verilir, beklemek istemiyorsa en yakin musait randevu slot'u onerilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Walk-in Bekleme Sorusu",
+      "description": "Randevusuz musteri salona gelmeden bekleme suresini soruyor.",
+      "tags": [
+        { "text": "Walk-in", "color": "amber" },
+        { "text": "Bekleme", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Guncellenen randevu takvimi", "service": "Backend", "page": "Randevu Yonetimi > Canli Takvim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Aktif islemler ve randevularin gercek zamanli takibi gerekir" }
+        ],
+        "provider": [
+          { "text": "Bekleme suresi hesaplama", "service": "Backend", "page": "Randevu Motoru > Bekleme Hesaplama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Mevcut yogunluk ve islem surelerine gore tahmini bekleme hesaplama hazir" },
+          { "text": "Bekleme intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Bekleme Suresi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Bekleme suresi sorgulama intent'i tanimli" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, randevum yok ama sac kesimi yaptirmak istiyorum. Ne kadar beklerim?" },
+        { "role": "ai", "content": "Intent: Bekleme Suresi. Islem: Sac Kesimi. Randevu durumu: Walk-in. Takvim kontrol ediliyor." },
+        { "role": "bot", "content": "Merhaba! Su an salon yogunlugumuz orta seviyede.\n\nSac kesimi icin tahmini bekleme: ~25 dakika\n\nHemen gelirseniz sizi siraniza alabiliriz. Ya da beklemeden islem yaptirmak icin su saatlere randevu alabilirsiniz:\n\n14:30 — Mehmet Stilist\n15:00 — Zeynep Stilist\n\nHangisini tercih edersiniz?" },
+        { "role": "user", "content": "Geleyim o zaman, 25 dk beklerim" },
+        { "role": "bot", "content": "Harika! Sizi bekliyoruz. Geldiginizde resepsiyona adinizi soyleyip bekleyebilirsiniz.\n\nBir dahaki sefere randevu alarak bekleme olmadan islem yaptirabilirsiniz." },
+        { "role": "system", "content": "Walk-in musteri bilgilendirildi. Randevu yonlendirmesi yapildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Yogun Saat Bekleme",
+      "description": "Yogun saatte randevusuz gelen musteri — bekleme suresi yuksek.",
+      "tags": [
+        { "text": "Yogun", "color": "red" },
+        { "text": "Yonlendirme", "color": "green" }
+      ],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Yogunluk seviye gosterimi", "service": "Backend", "page": "Randevu Motoru > Yogunluk Durumu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Salon yogunluk seviyesini dusuk/orta/yuksek olarak gosterme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Simdi gelsem ne kadar beklerim? Manikur yaptirmak istiyorum." },
+        { "role": "ai", "content": "Intent: Bekleme Suresi. Islem: Manikur. Salon yogunlugu kontrol ediliyor — yogun saat." },
+        { "role": "bot", "content": "Su an salonumuz oldukca yogun.\n\nManikur icin tahmini bekleme: ~50 dakika\n\nBeklemek yerine randevu almanizi oneririz:\n\nBugun 17:00 — musait\nYarin 10:00 — musait\n\nRandevu olusturayin mi?" },
+        { "role": "user", "content": "Bugun 17'ye alalim" },
+        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nManikur — Bugun 17:00\n\nBeklemeden direkt islem baslar. Gorusmek uzere!" },
+        { "role": "system", "content": "Yogun saatte walk-in musteri randevuya yonlendirildi. Daha iyi musteri deneyimi saglandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Canli takvim verisi ve islem surelerine gore tahmini bekleme hesaplanir. Walk-in musteriler randevuya yonlendirilir.",
+    "backend": [
+      { "title": "Wait Time Calculator", "goal": "Bekleme Hesaplama", "content": "Aktif islemler, siradaki randevular ve islem surelerine gore tahmini bekleme suresi hesaplar." },
+      { "title": "Occupancy Monitor", "goal": "Yogunluk Izleme", "content": "Salon yogunluk seviyesini gercek zamanli takip eder ve dusuk/orta/yuksek olarak siniflar." }
+    ],
+    "apis": [
+      { "title": "Wait Time API", "goal": "Bekleme Suresi", "content": "Islem turune gore tahmini bekleme suresi ve en yakin musait slotlari donduren API." },
+      { "title": "Salon Status API", "goal": "Salon Durumu", "content": "Salon yogunluk seviyesi, aktif islem sayisi ve musait stilist bilgisi." }
+    ]
+  },
+  "impact": {
+    "title": "Walk-in Donusum ve Musteri Kazanimi",
+    "description": "Bekleme suresi bilgisi ile walk-in musterileri randevuya cevirme ve kaybetmeme.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyWalkIns", "label": "Gunluk Walk-in Musteri", "default": 8, "hint": "Randevusuz gelen gunluk musteri sayisi", "editable": true },
+      { "key": "lostRate", "label": "Kaybedilen Oran (Oncesi)", "default": 40, "suffix": "%", "hint": "Bilgi verilmeden giden musteri orani", "editable": true },
+      { "key": "avgServiceValue", "label": "Ort. Islem Tutari", "default": 500, "suffix": "TL", "hint": "Ortalama islem ucreti", "editable": true }
+    ],
+    "formula": "dailyWalkIns * (lostRate / 100) * avgServiceValue * 0.6 * 30",
+    "formulaDisplay": null
+  }
+}

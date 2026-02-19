@@ -1,0 +1,130 @@
+{
+  "id": "gu09",
+  "title": "Urun Satisi (Bakim Urunleri)",
+  "subtitle": "Product Sales (Care Products)",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Musteri salonda kullanilan sampuan, bakim yagi veya cilt bakimi urunlerini satin almak istiyor. Knowledge base uzerinden urun katalogu sunulur ve siparis yonlendirmesi yapilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Musteriler salonda kullanilan urunleri sormak icin aramiyor ama resepsiyon mesgul — satis firsati kaybediliyor" },
+      { "label": "Deger", "value": "AI urun katalogu + aninda bilgi = ek gelir kanali" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI urun sorusunu tespit eder, Knowledge base'den urun detaylarini cekar. Fiyat, stok durumu ve siparis yonlendirmesi yapar.",
+    "steps": [
+      {
+        "title": "Urun Intent Tespiti",
+        "goal": "Urun sorusunu tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'sampuani nereden alabilirim', 'sac yagi fiyati', 'urun satiyorsunuz' gibi sorgulari tespit eder."
+      },
+      {
+        "title": "Urun Bilgi Sunumu",
+        "goal": "Detayli bilgi ver",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Katalog)", "color": "amber" }
+        ],
+        "content": "Knowledge base'den urun adi, aciklamasi, fiyati ve stok durumu cekilir."
+      },
+      {
+        "title": "Siparis Yonlendirmesi",
+        "goal": "Satisi tamamla",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Satis)", "color": "green" }
+        ],
+        "content": "Musteri ilgileniyorsa salona geldiginde hazir edilmesi veya kargo secenegi sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Spesifik Urun Sorusu",
+      "description": "Musteri salonda kullanilan belirli bir urunu sormak istiyor.",
+      "tags": [
+        { "text": "Urun", "color": "blue" },
+        { "text": "Satis", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun katalogu", "service": "Knowledge", "page": "Urun Yonetimi > Bakim Urunleri Katalogu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Satistaki tum urunleri adi, aciklamasi, fiyati ve stok durumu ile Knowledge base'e girin" },
+          { "text": "Urun gorselleri", "service": "Knowledge", "page": "Urun Yonetimi > Gorsel Yukleme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun gorselleri ekleyerek musteri deneyimini iyilestirin" }
+        ],
+        "provider": [
+          { "text": "Urun sorgulama intent'i", "service": "AgentAI", "page": "Intent Tespiti > Urun Sorusu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Urun sorgusu ve satin alma intent'leri tanimli" },
+          { "text": "Knowledge base urun cekim", "service": "Knowledge", "page": "RAG > Urun Katalogu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun bilgisi RAG ile otomatik cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Gecen geldigimde saclarima surdugunuz o sampuani almak istiyorum, adi neydi?" },
+        { "role": "ai", "content": "Intent: Urun Satisi. Musteri son ziyaret: 15 Subat. Kullanilan urunler kontrol ediliyor." },
+        { "role": "bot", "content": "Merhaba! Son ziyaretinizde kullanilan sampuan:\n\nOlaplex No.4 Bond Maintenance Sampuan\nHacim: 250ml\nFiyat: 850 TL\nStok: Mevcut\n\nAyrica tavsiye edilen tamamlayici urunler:\n- Olaplex No.5 Sac Kremi — 750 TL\n- Olaplex No.7 Sac Yagi — 650 TL\n\nSiparis vermek ister misiniz? Sonraki randevunuzda hazir eder veya kargo ile gonderebiliriz." },
+        { "role": "user", "content": "Sampuan ve sac yagini alayim, randevumda hazirlayın" },
+        { "role": "bot", "content": "Siparisniniz alindi!\n\nOlaplex No.4 Sampuan — 850 TL\nOlaplex No.7 Sac Yagi — 650 TL\nToplam: 1.500 TL\n\nSonraki randevunuzda hazir olacak. Odeme salonda yapilacaktir.\n\nBaska bir sey ister misiniz?" },
+        { "role": "system", "content": "Urun siparisi olusturuldu. Sonraki randevuda teslim edilecek. Ek gelir: 1.500 TL." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Genel Urun Tavsiyesi",
+      "description": "Musteri sac tipine uygun urun tavsiyesi istiyor.",
+      "tags": [
+        { "text": "Tavsiye", "color": "purple" },
+        { "text": "Urun", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sac tipi bazli urun eslestirme", "service": "Knowledge", "page": "Urun Yonetimi > Tip Eslestirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kuru, yagli, boyali, kivircikcik gibi sac tiplerine gore urun onerileri tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Kisisellestirilmis oneri", "service": "AgentAI", "page": "Dialog Akislari > Urun Tavsiye", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sac tipi ve sorun bazli kisisel urun tavsiye akisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Saclarim cok kuru ve kirilgan, ne kullanmaliyim?" },
+        { "role": "ai", "content": "Intent: Urun Tavsiyesi. Sac Tipi: Kuru, kirilgan. Knowledge base'den uygun urunler aranıyor." },
+        { "role": "bot", "content": "Kuru ve kirilgan saclar icin onerilerimiz:\n\n1. Moroccanoil Nemlendirici Sampuan — 720 TL\n   Argan yagi bazli, yogun nemlendirme\n\n2. Kerastase Resistance Sac Maskesi — 980 TL\n   Kirilma onleyici, haftalik bakim\n\n3. Olaplex No.3 Onarici Bakim — 850 TL\n   Ev bakimi, haftalik kullanim\n\nHangisi ilginizi cekti?" },
+        { "role": "user", "content": "Moroccanoil sampuani alayim" },
+        { "role": "bot", "content": "Moroccanoil Nemlendirici Sampuan — 720 TL\n\nSalona geldiginizde teslim edebiliriz veya kargo ile gonderebiliriz (kargo ucreti: 50 TL).\n\nHangisini tercih edersiniz?" },
+        { "role": "system", "content": "Tavsiye bazli satis. Musteri sac tipine uygun urun yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Knowledge base urun katalogu ile RAG eslestirme. Sac tipi bazli kisisellestirilmis urun tavsiyesi ve siparis yonetimi.",
+    "backend": [
+      { "title": "Product Catalog Service", "goal": "Urun Katalogu", "content": "Urun bilgileri, stok durumu, fiyat ve gorsel yonetimi. Sac tipi bazli eslestirme." },
+      { "title": "Order Manager", "goal": "Siparis Yonetimi", "content": "Urun siparisi olusturma, randevu ile eslestirme ve kargo secenegi yonetimi." }
+    ],
+    "apis": [
+      { "title": "Product Search API", "goal": "Urun Arama", "content": "Anahtar kelime, sac tipi ve kategori bazli urun arama ve detay dondurme API'si." },
+      { "title": "Product Order API", "goal": "Siparis Olusturma", "content": "Urun siparisi olusturma, teslim yontemi secimi ve odeme durumu takip API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Urun Satisi Ek Geliri",
+    "description": "WhatsApp uzerinden urun katalogu ile ek gelir kanali olusturma.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyProductInquiries", "label": "Aylik Urun Sorusu", "default": 30, "hint": "Urun sormak icin yazan musteri sayisi", "editable": true },
+      { "key": "conversionRate", "label": "Satis Donusumu", "default": 40, "suffix": "%", "hint": "Soran musterilerden satin alan orani", "editable": true },
+      { "key": "avgProductValue", "label": "Ort. Urun Tutari", "default": 750, "suffix": "TL", "hint": "Ortalama urun satis tutari", "editable": true }
+    ],
+    "formula": "monthlyProductInquiries * (conversionRate / 100) * avgProductValue",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "id": "a64",
+  "title": "Mesaj Penceresi Kapandi — Follow-up",
+  "subtitle": "24h Window Follow-up Template",
+  "phase": "Phase 1",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "24 saat WhatsApp mesaj penceresi kapandiktan sonra follow-up gerekli. AI uygun template secer ve onaylanmis mesaj sablonuyla iletisimi devam ettirir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (WhatsApp Kullanan)" },
+      { "label": "Sorun", "value": "24 saat penceresi kapaninca hastaya mesaj atamiyor — lead soguyup kayboluyor" },
+      { "label": "Deger", "value": "Otomatik follow-up template ile pencere kapansa bile iletisim devam eder" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "C3 onayli template havuzundan uygun follow-up mesajini secer, C8 ile kisisellestirir ve gonderir.",
+    "steps": [
+      {
+        "title": "Pencere Kontrolu",
+        "goal": "24 saat durumunu tespit et",
+        "badges": [
+          { "text": "Sistem (Kanal)", "color": "purple" },
+          { "text": "Tenant (WA)", "color": "green" }
+        ],
+        "content": "Sistem 24 saat mesaj penceresinin kapandigini tespit eder."
+      },
+      {
+        "title": "Template Follow-up",
+        "goal": "Iletisimi devam ettir",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Onayli template havuzundan lead durumuna uygun follow-up mesaji secilip gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Randevu Almadan Sessizlesen Lead",
+      "description": "Lead fiyat bilgisi aldi ama randevu almadan 24 saat gecti.",
+      "tags": [
+        { "text": "Follow-up", "color": "amber" },
+        { "text": "24h Pencere", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Meta onayli WA template'leri", "service": "Backend", "page": "Template > WA Onayli Sablonlar", "status": "setup", "priority": "required", "effort": "medium", "capability": "C3", "hint": "Meta'dan onaylanmis follow-up mesaj sablonlarini olusturun" }
+        ],
+        "provider": [
+          { "text": "24h pencere takibi", "service": "Backend", "page": "Kanal > Pencere Takibi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp 24 saat mesaj penceresi takip sistemi hazir" },
+          { "text": "Akilli template secimi", "service": "AgentAI", "page": "Template > Akilli Secim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Lead durumuna gore en uygun template secim motoru hazir" },
+          { "text": "Otomatik follow-up zamanlama", "service": "Automation", "page": "Is Akislari > Follow-up", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Pencere kapaninca otomatik template gonderim zamanlayicisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "24h pencere kapandi. Lead: Ayse K. Son mesaj: Botox fiyat bilgisi verildi, randevu alinmadi." },
+        { "role": "ai", "content": "Lead durumu: Fiyat aldi, randevu almadi. Uygun template: 'Randevu Hatirlatma + Kampanya'. Kisisellestirilecek." },
+        { "role": "bot", "content": "[WA Template Mesaji]\n\nMerhaba Ayse Hanim! \ud83d\ude0a\n\nBotox hakkinda bilgi almistiniz. Size ozel kampanyamiz hala gecerli:\n\n\ud83c\udf81 Bu hafta randevu alin, %10 indirim kazanin!\n\nRandevunuzu hemen ayarlamak icin yaziN:\n\ud83d\udc49 'RANDEVU' yazin" },
+        { "role": "user", "content": "RANDEVU" },
+        { "role": "bot", "content": "Harika! Botox icin musait slotlarimiz:\n\n\ud83d\udcc5 Persembe 15:00 — Dr. Selin\n\ud83d\udcc5 Cuma 11:00 — Dr. Selin\n\nHangisi uygun?" },
+        { "role": "system", "content": "Template follow-up basarili. Lead yeniden aktif. Randevu surecine yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo WA 24h pencere takibi + onayli template yonetimi + AI kisiselllestirme ile calisir.",
+    "backend": [
+      { "title": "Window Tracker", "goal": "Pencere Takibi", "content": "Her lead icin 24 saat mesaj penceresi durumunu takip eder." },
+      { "title": "Template Selector", "goal": "Sablon Secimi", "content": "Lead durumuna, son etkilesime ve kampanya durumuna gore en uygun onayli template'i secer." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Template Gonderim", "content": "Meta onayli template mesajlarinin 24h pencere disi gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Devam Eden Iletisim",
+    "description": "24h pencere kapandiktan sonra template ile kurtarilan lead'lerin donusum degeri.",
+    "resultLabel": "Kurtarilan Lead Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyExpiredWindows", "label": "Aylik Kapanan Pencere", "default": 35, "hint": "24 saat penceresi kapanan lead sayisi", "editable": true },
+      { "key": "reactivationRate", "label": "Yeniden Aktivasyon", "default": 30, "prefix": "%", "hint": "Template ile yeniden aktif olan lead orani", "editable": true },
+      { "key": "avgLeadValue", "label": "Lead Degeri", "default": 5000, "suffix": "TL", "hint": "Kurtarilan lead'in ortalama islem degeri", "editable": true }
+    ],
+    "formula": "monthlyExpiredWindows * (reactivationRate / 100) * avgLeadValue",
+    "formulaDisplay": null
+  }
+}

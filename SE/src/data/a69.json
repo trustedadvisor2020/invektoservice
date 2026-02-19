@@ -1,0 +1,95 @@
+{
+  "id": "a69",
+  "title": "Islem Takvimi: Yogun Gunlerde Slot",
+  "subtitle": "Busy Day Slot Management",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Yogun gunlerde randevu slotu bulamayan hastalara AI ile alternatif slotlar sunan, bekleme listesi olusturan ve iptal durumunda otomatik bildirim gonderen sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Yogun Takvim)" },
+      { "label": "Sorun", "value": "Yogun gunlerde slot bulunamiyor — hasta baska klinige gidiyor" },
+      { "label": "Deger", "value": "Bekleme listesi + otomatik slot bildirimi ile kaybedilen hasta %70 azalir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI musait slotlari kontrol eder, alternatif saatler sunar ve bekleme listesine ekleme yapar.",
+    "steps": [
+      {
+        "title": "Slot Arama",
+        "goal": "Musait slotlari bul ve sun",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "blue" }
+        ],
+        "content": "AI hastanin istedigi gun ve saatte musaitlik kontrol eder, yoksa en yakin alternatifleri sunar."
+      },
+      {
+        "title": "Bekleme Listesi",
+        "goal": "Hastanin tercih ettigi slotu beklemesini sagla",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Hasta alternatifleri uygun bulmazsa bekleme listesine eklenir, iptal olursa otomatik bildirim gider."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Cumartesi Dolu — Alternatif Slot Sunumu",
+      "description": "Hasta cumartesi randevu istiyor ama tum slotlar dolu. AI alternatif gunler sunuyor.",
+      "tags": [
+        { "text": "Randevu", "color": "blue" },
+        { "text": "Yogun Gun", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Doktor calisma takvimi", "service": "Appointments", "page": "Takvim > Doktor Musaitligi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Doktorlarin haftalik calisma saatlerini tanimlayin" },
+          { "text": "Bekleme listesi aktivasyonu", "service": "Appointments", "page": "Takvim > Bekleme Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Bekleme listesi ozelligini aktif edin" }
+        ],
+        "provider": [
+          { "text": "Slot musaitlik kontrolu", "service": "Appointments", "page": "API > Slot Kontrol", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Gercek zamanli slot musaitlik sorgusu hazir" },
+          { "text": "Bekleme listesi bildirimi", "service": "Automation", "page": "Is Akislari > Slot Acildi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Slot acildiginda otomatik WhatsApp bildirimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu cumartesi lazer epilasyon icin randevu alabilir miyim?" },
+        { "role": "ai", "content": "Intent: Randevu Talebi. Gun: Cumartesi. Islem: Lazer Epilasyon. Slot kontrolu yapiliyor..." },
+        { "role": "bot", "content": "Malesef bu cumartesi tum lazer epilasyon slotlari dolu.\n\nEn yakin musait zamanlar:\n🗓️ Pazar 11:00 — Dr. Ayse\n🗓️ Pazartesi 15:00 — Dr. Ayse\n🗓️ Gelecek Cumartesi 09:00 — Dr. Ayse\n\nBu saatlerden biri uygun mu? Ya da bu cumartesi icin bekleme listesine ekleyeyim mi?" },
+        { "role": "user", "content": "Cumartesi icin bekleme listesine ekleyin." },
+        { "role": "bot", "content": "Sizi bu cumartesi lazer epilasyon icin bekleme listesine ekledim.\n\n📋 Bekleme Listesi Siraniz: #3\n🔔 Slot acildiginda aninda WhatsApp'tan bilgilendirileceksiniz.\n\nAyrica gelecek cumartesi 09:00'u simdilik rezerve etmek ister misiniz?" },
+        { "role": "system", "content": "Hasta bekleme listesine eklendi. Slot: Cumartesi, Lazer Epilasyon, Dr. Ayse. Bildirim tetikleyici aktif." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Randevu Takvimi + Bekleme Listesi + Otomatik Bildirim ile calisir.",
+    "backend": [
+      { "title": "Slot Availability Engine", "goal": "Slot Kontrolu", "content": "Doktor, islem tipi ve gun bazli musaitlik sorgusu yapar, alternatif slotlari siralar." },
+      { "title": "Waitlist Manager", "goal": "Bekleme Listesi", "content": "Bekleme listesi yonetimi, iptal tetikleyici ve otomatik bildirim gonderimi." }
+    ],
+    "apis": [
+      { "title": "Calendar Sync API", "goal": "Takvim Senkronizasyonu", "content": "Doktor takvimleri ile gercek zamanli slot musaitligi senkronizasyonu." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Randevu",
+    "description": "Yogun gunlerde bekleme listesi ve alternatif slot ile kurtarilan randevular.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyFullDayRequests", "label": "Aylik Dolu Gun Talebi", "default": 25, "hint": "Slot bulunamayan hasta sayisi", "editable": true },
+      { "key": "recoveryRate", "label": "Kurtarma Orani", "default": 45, "prefix": "%", "hint": "Alternatif slot veya bekleme ile kurtarilan", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Islem Degeri", "default": 4000, "suffix": "TL", "hint": "Ortalama estetik islem tutari", "editable": true }
+    ],
+    "formula": "monthlyFullDayRequests * (recoveryRate / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

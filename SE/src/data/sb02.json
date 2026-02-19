@@ -1,0 +1,130 @@
+{
+  "id": "sb02",
+  "title": "Sigorta Provizyon On Kontrol",
+  "subtitle": "Insurance Pre-Authorization",
+  "phase": "Phase 3",
+  "category": "SAGLIK EK",
+  "niche": "health",
+  "description": "Hasta sigortasinin tedaviyi karsilayip karsilamdigini WhatsApp uzerinden soruyor. AI police numarasi ve TC kimlik bilgilerini toplayarak provizyon sorgusuna hazir hale getiriyor ve hasta koordinatorune iletiyor.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik Kurulusu (Hastane, Poliklinik, Dis Klinigi)" },
+      { "label": "Sorun", "value": "Hasta sigorta karsilama sorusuyla ariyor, sekreter provizyon sorgulayamiyor — hasta bekleme suresi uzuyor" },
+      { "label": "Deger", "value": "Gerekli bilgiler onceden toplanir, provizyon sureci hizlanir, hasta memnuniyeti artar" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Form Builder (C5)", "color": "green" },
+      { "name": "Knowledge Base (C7)", "color": "amber" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI sigorta sorgulama intent'ini tespit eder, Form Builder ile gerekli bilgileri toplar, Knowledge Base'den sigorta kapsamini bilgilendirir. Provizyon sorgusu icin hasta koordinatorune yonlendirir.",
+    "steps": [
+      {
+        "title": "Intent Tespiti",
+        "goal": "Sigorta sorusunu tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI 'sigortam karsilyor mu', 'provizyon', 'sigorta kapsami' gibi intent'leri otomatik tespit eder."
+      },
+      {
+        "title": "Bilgi Toplama",
+        "goal": "Police ve kimlik bilgilerini al",
+        "badges": [
+          { "text": "Sistem (Form)", "color": "purple" },
+          { "text": "Tenant (Sigorta)", "color": "green" }
+        ],
+        "content": "Form Builder ile TC kimlik, sigorta sirket adi, police numarasi ve planlanan tedavi bilgileri toplanir."
+      },
+      {
+        "title": "Provizyon Hazirligi",
+        "goal": "Koordinatore ilet",
+        "badges": [
+          { "text": "Sistem (Routing)", "color": "purple" },
+          { "text": "Tenant (Koordinator)", "color": "amber" }
+        ],
+        "content": "Toplanan bilgiler hasta koordinatorune iletilir. Knowledge Base'den genel sigorta kapsam bilgisi hastaya sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sigorta Kapsam Sorgusu",
+      "description": "Hasta tedavinin sigorta kapsaminda olup olmadigini soruyor. AI bilgi toplayip koordinatore yonlendiriyor.",
+      "tags": [
+        { "text": "Sigorta", "color": "green" },
+        { "text": "Provizyon", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sigorta bilgi toplama formu", "service": "Backend", "page": "Form Builder > Sigorta Provizyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "TC kimlik, police no, sigorta sirketi ve tedavi turu alanlariyla form olusturun" },
+          { "text": "Sigorta kapsam bilgi bankasi", "service": "Knowledge", "page": "Knowledge Base > Sigorta Kapsam", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Anlasmali sigorta sirketleri ve genel kapsam bilgilerini Knowledge Base'e ekleyin" }
+        ],
+        "provider": [
+          { "text": "Sigorta intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Sigorta", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sigorta kapsami ve provizyon intent'leri tanimli" },
+          { "text": "Hasta koordinatoru routing", "service": "Backend", "page": "Routing > Koordinator", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Provizyon talepleri otomatik olarak hasta koordinatorune yonlendirilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, implant tedavisi yaptirmak istiyorum. Sigortam bunu karsiliyor mu?" },
+        { "role": "ai", "content": "Intent: Sigorta Kapsam Sorgusu. Tedavi: Implant. Sigorta bilgileri eksik — form tetikleniyor." },
+        { "role": "bot", "content": "Merhaba! Sigorta kapsamini kontrol edebilmemiz icin birkac bilgiye ihtiyacimiz var:\n\n1. TC Kimlik Numaraniz?\n2. Sigorta sirketiniz?\n3. Police numaraniz?" },
+        { "role": "user", "content": "TC: 12345678901, Anadolu Sigorta, police no: ANS-2025-789456" },
+        { "role": "ai", "content": "Form tamamlandi. TC: 12345678901, Sirket: Anadolu Sigorta, Police: ANS-2025-789456, Tedavi: Implant." },
+        { "role": "bot", "content": "Tesekkurler! Bilgilerinizi aldik.\n\nAnadolu Sigorta ile anlasmamiz bulunmaktadir. Implant tedavileri genellikle belirli limitler dahilinde karsilanmaktadir.\n\nKesin kapsam ve katilim payi bilgisi icin provizyon sorgusu yapilmasi gerekiyor. Hasta koordinatorumuz en kisa surede size donecektir.\n\nTahmini donuc suresi: 1-2 is gunu." },
+        { "role": "system", "content": "Sigorta provizyon talebi olusturuldu. Hasta koordinatoru Zeynep'e atandi. Bilgiler CRM'e kaydedildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Anlasmali Olmayan Sigorta",
+      "description": "Hastanin sigortasi anlasmali degil. Knowledge Base'den bilgilendirme ve alternatif sunuluyor.",
+      "tags": [
+        { "text": "Anlasmasiz", "color": "red" },
+        { "text": "Alternatif", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Anlasmali sigorta listesi", "service": "Knowledge", "page": "Knowledge Base > Anlasmali Sigortalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Guncel anlasmali sigorta sirketi listesini Knowledge Base'e yukleyin" }
+        ],
+        "provider": [
+          { "text": "Anlasmasiz sigorta akisi", "service": "AgentAI", "page": "Dialog Akislari > Sigorta Yok", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Anlasmasiz sigorta durumunda alternatif odeme secenekleri sunma akisi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Guven Sigorta'm var, implant icin karsiliyor musunuz?" },
+        { "role": "ai", "content": "Intent: Sigorta Kapsam Sorgusu. Sirket: Guven Sigorta. Knowledge Base kontrolu: Anlasmasiz." },
+        { "role": "bot", "content": "Merhaba! Ne yazik ki Guven Sigorta ile su an anlasmamiz bulunmamaktadir.\n\nAncak size yardimci olabilecek seceneklerimiz var:\n\nTaksitli odeme: 12 aya kadar faizsiz taksit\nSGK kapsaminda: Bazi tedaviler SGK uzerinden yapilabilir\nOzel indirim: Sigortasiz hastalara %15 indirim\n\nDetayli bilgi icin randevu almak ister misiniz?" },
+        { "role": "user", "content": "Taksitli secenegi ilgimi cekti, randevu alirim." },
+        { "role": "system", "content": "Anlasmasiz sigorta akisi tamamlandi. Hasta taksitli odeme secti. Randevu akisina yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Form Builder + Knowledge Base + AI kombinasyonuyla calisir. Sigorta bilgileri toplanir, Knowledge Base'den anlasmali sigorta kontrolu yapilir ve provizyon talebi koordinatore iletilir.",
+    "backend": [
+      { "title": "Insurance Inquiry Handler", "goal": "Sigorta Sorgu Yonetimi", "content": "Sigorta provizyon taleplerini toplar, anlasmali sigorta kontrolu yapar ve hasta koordinatorune atar." },
+      { "title": "Form Data Collector", "goal": "Bilgi Toplama", "content": "WhatsApp uzerinden TC kimlik, police no ve sigorta sirketi bilgilerini yapisal formatta toplar." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Kapsam Bilgisi", "content": "Anlasmali sigorta listesi ve genel kapsam bilgisi sorgulama. Sigorta sirketi bazli filtre." },
+      { "title": "CRM Hasta Profil API", "goal": "Bilgi Kaydi", "content": "Toplanan sigorta bilgilerini hasta profiline kaydetme ve provizyon talebi olusturma." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kazanilan Koordinator Suresi",
+    "description": "Sigorta bilgilerinin onceden toplanmasi ile koordinator iletisim suresi kisalir ve provizyon sureci hizlanir.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyInsuranceQueries", "label": "Aylik Sigorta Sorgusu", "default": 60, "hint": "Sigorta kapsamiyla ilgili gelen mesaj sayisi", "editable": true },
+      { "key": "minutesSavedPerQuery", "label": "Sorgu Basina Tasarruf", "default": 8, "suffix": "dk", "hint": "Bilgi toplama + arama suresi tasarrufu", "editable": true },
+      { "key": "coordinatorHourlyCost", "label": "Koordinator Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Hasta koordinatoru saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyInsuranceQueries * minutesSavedPerQuery * (coordinatorHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

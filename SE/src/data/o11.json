@@ -1,0 +1,142 @@
+{
+  "id": "o11",
+  "title": "Oda Servisi Siparisi (In-Stay)",
+  "subtitle": "Room Service Order",
+  "phase": "Phase 1",
+  "category": "OTEL / TURIZM",
+  "niche": "hotel",
+  "description": "Misafir konaklama sirasinda WhatsApp uzerinden yiyecek/icecek siparisi verir. AI menuyu gonderir, siparis detaylarini toplar, onay alir ve tahmini teslimat suresini bildirir. Mutfak departmanina otomatik is emri olusturulur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Otel / Turizm (Resort, Sehir Oteli, Boutique)" },
+      { "label": "Sorun", "value": "Oda servisi telefon hatti surekli mesgul, siparis hatali iletiliyor, bekleme suresi bilinmiyor" },
+      { "label": "Deger", "value": "7/24 siparis kabul, hata oraninda dusus, misafir memnuniyetinde artis" }
+    ],
+    "services": [
+      { "name": "WhatsApp Business API (C1)", "color": "green" },
+      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
+      { "name": "AI Karar Motoru (C8)", "color": "red" }
+    ],
+    "servicesNote": "Misafir WhatsApp'tan siparis verir, AI menuyu sunar ve siparisi onaylar. Is emri otomatik olarak mutfak departmanina iletilir.",
+    "steps": [
+      {
+        "title": "Menu Gonderim (Presentation)",
+        "goal": "Menuyu misafire ilet",
+        "badges": [
+          { "text": "Sistem (Otomatik)", "color": "purple" },
+          { "text": "Tenant (Menu Verisi)", "color": "amber" }
+        ],
+        "content": "Misafir oda servisi talep ettiginde AI guncel menuyu (PDF veya interaktif liste) WhatsApp uzerinden gonderir. Saat bazli menu filtreleme (kahvalti/aksam) uygulanir."
+      },
+      {
+        "title": "Siparis Toplama (Collection)",
+        "goal": "Detaylari eksiksiz al",
+        "badges": [
+          { "text": "Sistem (AI Parsing)", "color": "purple" },
+          { "text": "Tenant (Oda Bilgisi)", "color": "blue" }
+        ],
+        "content": "AI misafirin mesajlarindan siparis kalemlerini cikarir. Oda numarasi, kisi sayisi ve ozel istekler (alerji, diyet) kontrol edilir."
+      },
+      {
+        "title": "Onay & Tahmini Sure (Confirmation)",
+        "goal": "Siparisi onayla ve sure bildir",
+        "badges": [
+          { "text": "Sistem (Siparis Motoru)", "color": "purple" },
+          { "text": "Tenant (Operasyon)", "color": "green" }
+        ],
+        "content": "Siparis ozeti misafire gonderilir. Onay sonrasi tahmini teslimat suresi (25-40 dk) bildirilir. Is emri mutfaga otomatik iletilir."
+      },
+      {
+        "title": "Takip & Geri Bildirim (Follow-up)",
+        "goal": "Memnuniyeti olc",
+        "badges": [
+          { "text": "Sistem (Otomatik)", "color": "purple" },
+          { "text": "Tenant (Kalite Kontrol)", "color": "amber" }
+        ],
+        "content": "Teslimat sonrasi 15 dakika icinde kisa memnuniyet sorusu gonderilir. Dusuk puanda housekeeping veya F&B yoneticisine alert gider."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Gece Oda Servisi Siparisi",
+      "description": "Misafir gece geç saatte oda servisi siparisi veriyor.",
+      "tags": [
+        { "text": "In-Stay", "color": "blue" },
+        { "text": "Oda Servisi", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Guncel oda servisi menusu (saat bazli)", "service": "Knowledge", "page": "Dokuman Bankasi > Menu Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kahvalti, ogle, aksam ve gece menulerini ayri ayri yukleyin" },
+          { "text": "Alerjen ve diyet bilgileri", "service": "Knowledge", "page": "Dokuman Bankasi > Gida Bilgileri", "status": "setup", "priority": "required", "effort": "medium", "capability": "C8", "hint": "Her menu ogesine alerjen etiketi ekleyin (gluten, laktozsuz vb.)" }
+        ],
+        "provider": [
+          { "text": "Siparis is emri olusturma modulu", "service": "Automation", "page": "Is Emri Yonetimi > Oda Servisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Siparis onaylandiginda mutfak paneline otomatik is emri duser" },
+          { "text": "AI menu anlama ve siparis parsing promptu", "service": "AgentAI", "page": "Prompt Sablonlari > Oda Servisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Serbest metin siparisleri yapilandirilmis formata cevirir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, oda servisi menusu var mi? 312 numarali odadayiz." },
+        { "role": "ai", "content": "Intent: Oda Servisi Talebi. Oda: 312. Saat: 23:15 — Gece menusu aktif." },
+        { "role": "bot", "content": "Merhaba! Oda 312 icin gece oda servisi menumuz: \n\n1. Kulup Sandvic — 320 TL\n2. Sezar Salata — 280 TL\n3. Margherita Pizza — 350 TL\n4. Burger & Patates — 380 TL\n5. Meyve Tabagi — 220 TL\n\nIcecekler: Su, Kola, Meyve Suyu, Bira, Sarap\n\nSiparisini almaya hazirim!" },
+        { "role": "user", "content": "1 kulup sandvic, 1 pizza ve 2 kola lutfen. Mayonez alerjim var." },
+        { "role": "ai", "content": "Parsing: 1x Kulup Sandvic, 1x Margherita Pizza, 2x Kola. Alerji notu: Mayonez. Toplam: 990 TL." },
+        { "role": "bot", "content": "Siparisiniz:\n- 1x Kulup Sandvic (mayonezsiz) — 320 TL\n- 1x Margherita Pizza — 350 TL\n- 2x Kola — 2x 40 TL\n\nToplam: 750 TL (oda hesabina eklenecek)\nTahmini teslimat: 25-30 dakika\n\nOnayliyor musunuz?" },
+        { "role": "user", "content": "Onay, tesekkurler!" },
+        { "role": "bot", "content": "Siparisiz onaylandi! Oda 312'ye yaklasik 25 dakika icinde teslim edilecek. Afiyet olsun!" },
+        { "role": "system", "content": "Is emri olusturuldu: #RS-2024-0847. Mutfak departmanina iletildi. Alerji notu: MAYONEZ YOK." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Kahvalti Siparisi (Ertesi Gun)",
+      "description": "Misafir ertesi gun icin kahvalti siparisi veriyor.",
+      "tags": [
+        { "text": "In-Stay", "color": "blue" },
+        { "text": "Ertesi Gun", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kahvalti menusu ve saat dilimi", "service": "Knowledge", "page": "Dokuman Bankasi > Kahvalti Menu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kahvalti servisi saatlerini ve menu seceneklerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Zamanlanmis siparis modulu", "service": "Automation", "page": "Is Emri Yonetimi > Zamanlanmis", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Ertesi gune siparis zamanlama destegi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Yarin sabah 08:00'de odaya kahvalti gelebilir mi?" },
+        { "role": "bot", "content": "Tabii! Kahvalti seceneklerimiz:\n1. Turk Kahvaltisi (Serpme) — 450 TL\n2. Continental Kahvalti — 320 TL\n3. Saglikli Kahvalti (Vegan opsiyonlu) — 380 TL\n\nHangi kahvaltiyi tercih edersiniz?" },
+        { "role": "user", "content": "Turk kahvaltisi olsun, 2 kisilik." },
+        { "role": "bot", "content": "2 kisilik Turk Kahvaltisi — 900 TL. Yarin sabah 08:00'de odaniza teslim edilecek. Ozel bir istginiz var mi? (Cayi demli/acik, yumurta pisirilme tercihi vb.)" },
+        { "role": "user", "content": "Caylar demli, yumurtalar kayisi olsun." },
+        { "role": "bot", "content": "Notunuz alindi! Yarin 08:00 — Oda 312 — 2 kisilik Serpme Kahvalti (demli cay, kayisi yumurta). Gunaydina haziriz! Afiyet olsun." },
+        { "role": "system", "content": "Zamanlanmis is emri: #RS-2024-0848. Teslimat: Yarin 08:00. Mutfak bildirimi: 07:15'te tetiklenecek." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Oda servisi siparisleri AI tarafindan parse edilir ve Automation modulu ile mutfak departmanina is emri olarak iletilir.",
+    "backend": [
+      { "title": "Order Parser", "goal": "Siparis Ayristirma", "content": "Serbest metin mesajlarindan menu kalemleri, adet ve ozel notlar cikarilir. Alerjen kontrol otomatik yapilir." },
+      { "title": "Work Order Engine", "goal": "Is Emri Yonetimi", "content": "Siparis onaylandiginda mutfak paneline anlik is emri duser. Oncelik ve sure bilgisi dahil edilir." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Misafir Iletisimi", "content": "Menu gonderimi, siparis toplama ve onay mesajlari WhatsApp uzerinden gerceklesir." },
+      { "title": "POS Entegrasyonu", "goal": "Oda Hesabi", "content": "Siparis tutari otomatik olarak misafir oda hesabina islenir." }
+    ]
+  },
+  "impact": {
+    "title": "Oda Servisi Gelir Artisi",
+    "description": "WhatsApp uzerinden kolay siparis ile oda servisi kullanim oranini ve misafir basi harcamayi artirin.",
+    "resultLabel": "Ek Aylik Oda Servisi Geliri",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyGuests", "label": "Aylik Misafir Sayisi", "default": 800, "hint": "Aylik toplam konaklayan misafir", "editable": true },
+      { "key": "orderRate", "label": "Siparis Veren Oran", "default": 15, "hint": "WhatsApp'tan siparis veren misafir orani (%)", "editable": true },
+      { "key": "avgOrderValue", "label": "Ortalama Siparis Tutari", "default": 450, "hint": "TL cinsinden ortalama siparis", "editable": true }
+    ],
+    "formula": "Math.round(monthlyGuests * (orderRate / 100)) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

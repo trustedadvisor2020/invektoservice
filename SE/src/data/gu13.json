@@ -1,0 +1,123 @@
+{
+  "id": "gu13",
+  "title": "Yorum / Review Isteme",
+  "subtitle": "Review & Feedback Request",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Sistematik yorum toplama yapilmiyor ve Google'da yeterli puan yok. Islem sonrasi T+1 gun memnuniyet anketi ve Google yorum linki gonderilerek online itibar guclendirilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Google'da az yorum var — potansiyel musteriler yorumlara bakarak karar veriyor" },
+      { "label": "Deger", "value": "Otomatik yorum isteme = Google puani yukseltme + yeni musteri cekme" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Islem tamamlanmasinin ertesi gunu (T+1) Outbound ile memnuniyet anketi gonderilir. Yuksek puan veren musterilere Google yorum linki sunulur.",
+    "steps": [
+      {
+        "title": "T+1 Anket Gonderimi",
+        "goal": "Memnuniyeti ol",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "blue" }
+        ],
+        "content": "Islem tamamlanmasinin ertesi gunu otomatik memnuniyet anketi gonderilir."
+      },
+      {
+        "title": "Yorum Yonlendirmesi",
+        "goal": "Google yorum aldir",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Google)", "color": "green" }
+        ],
+        "content": "Memnun musteri (4-5 puan) Google yorum sayfasina yonlendirilir. Dusuk puan veren ile ozel ilgilenilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Memnun Musteri — Google Yorum",
+      "description": "Musteri yuksek puan veriyor ve Google yorumuna yonlendiriliyor.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Review", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Google Business profil linki", "service": "Knowledge", "page": "Salon Bilgileri > Google Business", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Google Maps isletme profilinizin yorum linki gerekli" },
+          { "text": "WhatsApp anket template'i", "service": "Backend", "page": "Mesaj Sablonlari > Memnuniyet Anketi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli memnuniyet anketi template'i (1-5 puan) olusturun" }
+        ],
+        "provider": [
+          { "text": "Zamanlanmis anket gonderimi", "service": "Outbound", "page": "Zamanlayici > T+1 Anket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Islem tamamlamasindan 1 gun sonra otomatik anket gonderimi hazir" },
+          { "text": "Puan bazli yonlendirme", "service": "Automation", "page": "Akis > Anket Sonrasi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "4-5 puan = Google yorum linki, 1-3 puan = ozel ilgi tetikleme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+1 anket tetiklendi: Sinem Aksoy — Dunku islem: Sac Kesimi + Fon, Stilist: Ayse. Anket gonderiliyor." },
+        { "role": "bot", "content": "[Outbound Template — T+1 gun]\n\nMerhaba Sinem! Dun salonumuza geldiginiz icin tesekkurler.\n\nDeneyiminizi puanlar misiniz?\n\n[1] [2] [3] [4] [5]\n\n(5 = Mukemmel)" },
+        { "role": "user", "content": "5" },
+        { "role": "bot", "content": "Cok tesekkurler! Mukemmel puaniniz bizi cok mutlu etti!\n\nDeneyiminizi Google'da da paylasir misiniz? Yeni musterilerimizin karar vermesinde cok yardimci oluyor.\n\nGoogle Yorum: [Google Review Linki]\n\n30 saniyenizi alir ve bize cok deger katar!" },
+        { "role": "user", "content": "Yazdim! Cok memnunum gercekten." },
+        { "role": "bot", "content": "Cok tesekkur ederiz Sinem! Yorumunuz bize buyuk destek.\n\nSizi tekrar gorunce mutlu olacagiz. Iyi gunler!" },
+        { "role": "system", "content": "Memnuniyet: 5/5. Google yorum linki gonderildi. Musteri yorum yazdigini bildirdi. Online itibar guclendirildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Dusuk Puan — Ozel Ilgi",
+      "description": "Musteri dusuk puan veriyor — yonetici devreye aliyor.",
+      "tags": [
+        { "text": "Dusuk Puan", "color": "red" },
+        { "text": "Kurtarma", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Dusuk puan eskalasyon kurali", "service": "Automation", "page": "Otomasyon > Anket Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "1-3 puan geldiginde salon yoneticisine bildirim gitmesi gerekir" }
+        ],
+        "provider": [
+          { "text": "Dusuk puan kurtarma akisi", "service": "Automation", "page": "Akis > Dusuk Puan Kurtarma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Dusuk puan aldiginda empati mesaji + yonetici eskalasyonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+1 anket gonderildi: Canan Korkmaz — Dunku islem: Sac Boyama, Stilist: Derya." },
+        { "role": "bot", "content": "[Outbound Template — T+1 gun]\n\nMerhaba Canan! Dun salonumuza geldiginiz icin tesekkurler.\n\nDeneyiminizi puanlar misiniz?\n\n[1] [2] [3] [4] [5]" },
+        { "role": "user", "content": "2" },
+        { "role": "bot", "content": "Cok uzgunum, beklentinizi karsilayamadik. Bunu duzeltmek istiyoruz.\n\nBize ne oldugundan bahseder misiniz? Salon yoneticimiz sizinle ozel olarak ilgilenecek." },
+        { "role": "user", "content": "Boya rengi bekledigim gibi cikmadi, cok koyu oldu." },
+        { "role": "bot", "content": "Anliyorum, bu sizi hayal kiriklgina ugratmis olmali. Bunu telafi etmek istiyoruz.\n\nSalon yoneticimiz Berna Hanim en kisa surede sizi arayacak. Duzeltme islemi tamamen ucretsiz olacak.\n\nBize geri bildiriminiz icin tesekkurler." },
+        { "role": "system", "content": "Dusuk puan: 2/5. Google yorum linki GONDERILMEDI (dusuk puan oldugu icin). Salon yoneticisi Berna'ya acil eskalasyon. Sikayet akisi (gu08) basladi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "T+1 gun zamanlamali anket + puan bazli dallanma. Yuksek puan = Google yorum, dusuk puan = ozel ilgi ve eskalasyon.",
+    "backend": [
+      { "title": "Survey Engine", "goal": "Anket Motoru", "content": "Islem sonrasi T+1 gun zamanlamali memnuniyet anketi gonderimi ve puan toplama." },
+      { "title": "Review Router", "goal": "Yorum Yonlendirme", "content": "Puan bazli dallanma: 4-5 = Google yorum linki, 1-3 = empati + eskalasyon." }
+    ],
+    "apis": [
+      { "title": "Survey API", "goal": "Anket Yonetimi", "content": "Anket olusturma, gonderim, puan kaydi ve istatistik API'si." },
+      { "title": "Review Link API", "goal": "Yorum Linki", "content": "Google Business yorum linkini musteri bazli kisa link olarak uretme API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Yeni Google Yorum ve Musteri Cekimi",
+    "description": "Sistematik yorum toplama ile Google puani yukseltme ve organik musteri kazanimi.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlySurveysSent", "label": "Aylik Anket Gonderimi", "default": 120, "hint": "Her ay gonderilen memnuniyet anketi sayisi", "editable": true },
+      { "key": "responseRate", "label": "Cevap Orani", "default": 40, "suffix": "%", "hint": "Anketi cevaplayan musteri orani", "editable": true },
+      { "key": "googleReviewRate", "label": "Google Yorum Orani", "default": 30, "suffix": "%", "hint": "Yuksek puan verenlerden Google'a yorum yazma orani", "editable": true },
+      { "key": "newCustomerPerReview", "label": "Yorum Basina Yeni Musteri", "default": 0.5, "hint": "Her Google yorumunun getirdigi ortalama yeni musteri", "editable": true },
+      { "key": "avgFirstVisitValue", "label": "Ilk Ziyaret Degeri", "default": 500, "suffix": "TL", "hint": "Yeni musterinin ilk ziyaret harcamasi", "editable": true }
+    ],
+    "formula": "monthlySurveysSent * (responseRate / 100) * (googleReviewRate / 100) * newCustomerPerReview * avgFirstVisitValue",
+    "formulaDisplay": null
+  }
+}

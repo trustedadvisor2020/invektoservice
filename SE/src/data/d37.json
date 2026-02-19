@@ -1,0 +1,94 @@
+{
+  "id": "d37",
+  "title": "Sigorta / Ozel Saglik Anlasmasi",
+  "subtitle": "Insurance & Health Agreement Check",
+  "phase": "Phase 2",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Ozel saglik sigortasi veya anlasmali kurum sorusunu AI ile yanitlayan, anlasma listesinden uygunluk kontrolu yapan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Sigorta Anlasmalari Olan)" },
+      { "label": "Sorun", "value": "Hasta sigortasinin gecerli olup olmadigini bilmiyor — resepsiyonist her seferinde listeyi kontrol etmek zorunda" },
+      { "label": "Deger", "value": "AI aninda sigorta uygunlugu kontrolu yapar, hasta hizla bilgilendirilir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI sigorta sorusunu tespit eder, Knowledge Base'den anlasmali sigorta listesini cekar ve uygunlugu kontrol eder.",
+    "steps": [
+      {
+        "title": "Sigorta Kontrolu",
+        "goal": "Anlasmali mi?",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "green" },
+          { "text": "Tenant (Sigorta)", "color": "blue" }
+        ],
+        "content": "Knowledge Base'den anlasmali sigorta listesi cekilir ve hastanin sigortasi kontrol edilir."
+      },
+      {
+        "title": "Bilgilendirme",
+        "goal": "Hastaya bilgi ver",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Anlasmali ise kapsam bilgisi, degilse alternatif secenekler sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sigorta Sorgusu — Anlasmali",
+      "description": "Hasta sigortasini soruyor, anlasmali oldugu tespit ediliyor.",
+      "tags": [
+        { "text": "Sigorta", "color": "blue" },
+        { "text": "Anlasmali", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Anlasmali sigorta listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Sigorta Anlasmalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Anlasmali sigorta firmalari ve kapsam bilgisini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Sigorta intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Sigorta", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sigorta sorgusu intent'i hazir" },
+          { "text": "Knowledge RAG sorgu", "service": "Knowledge", "page": "RAG > Sigorta Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Anlasmali sigorta listesi ve kapsam RAG ile cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Ozel saglik sigortam var, anlasmali misiniz?" },
+        { "role": "ai", "content": "Intent: Sigorta Sorgusu. Hangi sigorta oldugu sorulacak." },
+        { "role": "bot", "content": "Tabii, kontrol edelim! Hangi sigorta firmasiniz?" },
+        { "role": "user", "content": "Allianz ozel saglik." },
+        { "role": "ai", "content": "Sigorta: Allianz. Kontrol: ANLASMALI. Kapsam: Dis tedavisi (limit dahilinde)." },
+        { "role": "bot", "content": "Harika haber! Allianz ile anlasmaliyiz ✅\n\n🏥 Kapsam: Dis tedavileri (yillik limit dahilinde)\n📋 Gerekli evrak: Sigorta karti + Kimlik\n💡 Provizyon kontrolu randevu gununde yapilir\n\nRandevu ayarlayalim mi?" },
+        { "role": "system", "content": "Sigorta uygunlugu dogrulandi. Randevu teklifi yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge RAG + AI intent tespiti birlesimiyle calisir. Sigorta uygunluk kontrolu.",
+    "backend": [
+      { "title": "Insurance Matcher", "goal": "Sigorta Eslestirme", "content": "Hasta sigortasini anlasmali liste ile eslestirir ve kapsam bilgisini getirir." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Anlasmali sigorta listesi ve kapsam bilgisi RAG ile cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik sigorta kontrolu ile kazanilan verimlilik.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyInsuranceQueries", "label": "Aylik Sigorta Sorusu", "default": 20, "hint": "Sigorta uygunluk sorgusu", "editable": true },
+      { "key": "minutesPerQuery", "label": "Sorgu Basina Dakika", "default": 4, "hint": "Resepsiyonistin kontrol suresi", "editable": true },
+      { "key": "staffHourlyCost", "label": "Personel Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Resepsiyonist saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyInsuranceQueries * minutesPerQuery * (staffHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

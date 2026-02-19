@@ -1,0 +1,119 @@
+{
+  "id": "a71",
+  "title": "On Degerlendirme Formu",
+  "subtitle": "Pre-Assessment Form",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Estetik islem oncesi hasta bilgi ve on degerlendirme formunun AI tarafindan gonderilmesi, doldurulan formun doktora otomatik iletilmesi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Islem Oncesi Hazirlik)" },
+      { "label": "Sorun", "value": "On degerlendirme formu klinikte doldurulunca randevu suresi uzuyor ve doktor hazirliksiz kaliyor" },
+      { "label": "Deger", "value": "Form onceden dijital doldurulunca doktor hazirlikli, randevu %30 daha verimli" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI randevu oncesi on degerlendirme formunu hastaya gonderir, doldurulan formu doktor dosyasina ekler.",
+    "steps": [
+      {
+        "title": "Form Gonderimi",
+        "goal": "Hastaya dijital on degerlendirme formu gonder",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Randevu kesinlestikten sonra AI hastaya islem tipine uygun on degerlendirme formunu gonderir."
+      },
+      {
+        "title": "Form Iletimi",
+        "goal": "Doldurulan formu doktora ilet",
+        "badges": [
+          { "text": "Sistem (Bildirim)", "color": "purple" },
+          { "text": "Tenant (Doktor)", "color": "amber" }
+        ],
+        "content": "Hasta formu doldurdugunda doktora bildirim gider ve randevu dosyasina eklenir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Rinoplasti On Degerlendirme Formu",
+      "description": "Rinoplasti randevusu kesinlesen hastaya on degerlendirme formu gonderiliyor.",
+      "tags": [
+        { "text": "On Degerlendirme", "color": "blue" },
+        { "text": "Form", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Islem bazli on degerlendirme formlari", "service": "Knowledge", "page": "Dokuman Bankasi > On Degerlendirme Formlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her islem tipi icin ayri on degerlendirme formu olusturun" },
+          { "text": "Randevu sonrasi tetikleyici", "service": "Automation", "page": "Is Akislari > Randevu Kesinlesme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Randevu kesinlestikten sonra form gonderim tetikleyicisi" }
+        ],
+        "provider": [
+          { "text": "Dijital form altyapisi", "service": "Backend", "page": "Formlar > On Degerlendirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp uzerinden dijital form gonderme hazir" },
+          { "text": "Doktor bildirim sistemi", "service": "Automation", "page": "Bildirimler > Doktor Panel", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Form doldurulunca doktora otomatik bildirim hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Randevu kesinlesti: Carsamba 14:00, Rinoplasti Konsultasyon, Dr. Mehmet. On degerlendirme formu tetikleniyor." },
+        { "role": "bot", "content": "Merhaba! Carsamba gunu saat 14:00'teki rinoplasti konsultasyon randevunuz kesinlesti.\n\n📋 Randevunuzdan en iyi verimi almak icin asagidaki on degerlendirme formunu doldurmanizi rica ederiz:\n\n🔗 [On Degerlendirme Formu — Rinoplasti]\n\nForm icerigi:\n• Saglik gecmisiniz\n• Kullandiginiz ilaclar\n• Alerji bilgileri\n• Beklentileriniz\n\nFormu randevudan en gec 24 saat once doldurmaniz yeterli." },
+        { "role": "user", "content": "Formu doldurdum." },
+        { "role": "bot", "content": "Formunuzu aldik, tesekkur ederiz!\n\n✅ On degerlendirme formunuz Dr. Mehmet'e iletildi.\n📅 Randevunuz: Carsamba 14:00\n\nDoktorumuz formunuzu inceleyerek randevunuza hazirlikli gelecek. Randevu oncesi herhangi bir sorunuz olursa yazabilirsiniz." },
+        { "role": "system", "content": "On degerlendirme formu dolduruldu. Doktor bilgilendirildi. Form hasta dosyasina eklendi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Form Hatirlatmasi — Doldurmayan Hasta",
+      "description": "Hasta formu zamaninda doldurmadi, AI hatirlatma gonderiyor.",
+      "tags": [
+        { "text": "Hatirlatma", "color": "amber" },
+        { "text": "Takip", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Hatirlatma zamanlama kurali", "service": "Automation", "page": "Is Akislari > Form Hatirlatma", "status": "setup", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Randevudan 48 saat once hatirlatma gonderin" }
+        ],
+        "provider": [
+          { "text": "Form tamamlanma takibi", "service": "Backend", "page": "Formlar > Durum Takibi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Form doldurulup doldurulmadiginin takibi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Randevuya 48 saat kaldi. On degerlendirme formu henuz doldurulmadi. Hatirlatma tetikleniyor." },
+        { "role": "bot", "content": "Merhaba! Carsamba saat 14:00'teki randevunuza 2 gun kaldi.\n\n⚠️ On degerlendirme formunuz henuz doldurulmadi.\n\nFormun doldurulmasi randevunuzun verimli gecmesi icin cok onemli:\n🔗 [On Degerlendirme Formu — Rinoplasti]\n\nSadece 3-4 dakikanizi alacak." },
+        { "role": "user", "content": "Simdi dolduruyorum, tesekkurler." },
+        { "role": "bot", "content": "Rica ederiz! Formu tamamladiginizda otomatik olarak doktorunuza iletilecek. Carsamba gunu gorusmek uzere!" },
+        { "role": "system", "content": "Hatirlatma gonderildi. Hasta formu doldurmaya basladi. Takip devam ediyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Dijital Form + Randevu Tetikleyici + Doktor Bildirim ile calisir.",
+    "backend": [
+      { "title": "Pre-Assessment Form Engine", "goal": "Form Yonetimi", "content": "Islem tipine gore dogru on degerlendirme formunu secer ve WhatsApp uzerinden gonderir." },
+      { "title": "Form Completion Tracker", "goal": "Dolum Takibi", "content": "Formun doldurulup doldurulmadigini takip eder, hatirlatma tetikler." }
+    ],
+    "apis": [
+      { "title": "Form Submission API", "goal": "Form Alimi", "content": "Dijital form yanitlarini toplar ve hasta dosyasina ekler." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Randevu Verimliligi",
+    "description": "On degerlendirme formu ile artan randevu verimliligi ve hasta memnuniyeti.",
+    "resultLabel": "Kazanilan Verimlilik Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAppointments", "label": "Aylik Randevu", "default": 40, "hint": "Estetik islem randevusu sayisi", "editable": true },
+      { "key": "formCompletionRate", "label": "Form Doldurma Orani", "default": 75, "prefix": "%", "hint": "On degerlendirme formunu dolduran hasta orani", "editable": true },
+      { "key": "timeSavedMinutes", "label": "Kazanilan Sure (dk)", "default": 15, "hint": "Randevu basina kazanilan dakika", "editable": true },
+      { "key": "doctorMinuteValue", "label": "Doktor Dakika Degeri", "default": 35, "suffix": "TL", "hint": "Doktorun dakika basina ekonomik degeri", "editable": true }
+    ],
+    "formula": "monthlyAppointments * (formCompletionRate / 100) * timeSavedMinutes * doctorMinuteValue",
+    "formulaDisplay": null
+  }
+}

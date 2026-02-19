@@ -1,0 +1,96 @@
+{
+  "id": "a54",
+  "title": "Randevu Planlama + Kapora",
+  "subtitle": "Appointment Booking with Deposit",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Estetik islem icin randevu almak ve kapora odemek isteyen lead'e AI ile slot sunan, odeme linki gonderen ve randevuyu kesinlestiren sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Odemeli Randevu)" },
+      { "label": "Sorun", "value": "Kapora alinmadan alinan randevularda no-show orani %25+ — klinik zaman kaybediyor" },
+      { "label": "Deger", "value": "Kapora ile kesinlesen randevularda no-show %5'e dusuyor" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Revenue Agent (C10)", "color": "green" }
+    ],
+    "servicesNote": "AI randevu intent'ini tespit eder, slot sunar, C10 ile odeme linki olusturur ve randevuyu kesinlestirir.",
+    "steps": [
+      {
+        "title": "Slot Sunumu",
+        "goal": "Musait zamani goster",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "blue" }
+        ],
+        "content": "AI islem tipi ve doktor tercihine gore musait slotlari sunar."
+      },
+      {
+        "title": "Kapora + Kesinlestirme",
+        "goal": "Odeme al, randevuyu onayla",
+        "badges": [
+          { "text": "Sistem (Odeme)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "green" }
+        ],
+        "content": "Odeme linki gonderilir, odeme alindiktan sonra randevu otomatik kesinlestirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Botox Randevu + Kapora",
+      "description": "Lead botox icin randevu almak ve kapora odemek istiyor.",
+      "tags": [
+        { "text": "Randevu", "color": "blue" },
+        { "text": "Kapora", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Online odeme entegrasyonu", "service": "Backend", "page": "Odeme > Online Odeme", "status": "setup", "priority": "required", "effort": "medium", "capability": "C10", "hint": "Odeme saglayici entegrasyonunu tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Odeme linki olusturma", "service": "Backend", "page": "Odeme > Link Olustur", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "WA uzerinden odeme linki olusturma hazir" },
+          { "text": "Randevu kesinlestirme", "service": "Automation", "page": "Is Akislari > Odeme Onay", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Odeme sonrasi otomatik randevu kesinlestirme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Randevu almak istiyorum, kapora odeyebilir miyim?" },
+        { "role": "ai", "content": "Intent: Randevu + Kapora. Islem tipi sorulacak." },
+        { "role": "bot", "content": "Tabii! Hangi islem icin randevu almak istiyorsunuz?" },
+        { "role": "user", "content": "Botox." },
+        { "role": "bot", "content": "Botox icin musait slotlarimiz:\n\n🗓️ Carsamba 14:00 — Dr. Selin\n🗓️ Cuma 10:00 — Dr. Selin\n🗓️ Gelecek Salı 16:00 — Dr. Selin\n\n💰 Kapora: 1.000 TL (islemden dusulecek)\n\nHangisi uygun?" },
+        { "role": "user", "content": "Cuma 10:00 olsun." },
+        { "role": "bot", "content": "Odeme linkiniz:\n🔗 [Guvenli Odeme Linki — 1.000 TL]\n\nOdeme sonrasi randevunuz otomatik kesinlesecek!" },
+        { "role": "system", "content": "Odeme alindi. Randevu kesinlestirildi: Cuma 10:00, Dr. Selin, Botox." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Randevu Yonetimi + Online Odeme birlesimiyle calisir.",
+    "backend": [
+      { "title": "Slot Finder", "goal": "Musait Slot", "content": "Islem ve doktor bazli musait slotlari getirir." },
+      { "title": "Payment + Booking", "goal": "Odeme + Randevu", "content": "Odeme linki olusturur, callback ile randevuyu kesinlestirir." }
+    ],
+    "apis": [
+      { "title": "Payment Gateway API", "goal": "Odeme", "content": "Kapora odeme linki olusturma ve callback yonetimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Azaltilan No-Show",
+    "description": "Kapora ile azaltilan no-show ve korunan klinik geliri.",
+    "resultLabel": "Korunan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAppointments", "label": "Aylik Randevu", "default": 30, "hint": "Kapora ile alinan randevu", "editable": true },
+      { "key": "noShowReduction", "label": "No-Show Azalma", "default": 20, "prefix": "%", "hint": "Kapora ile onlenen no-show", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Islem Degeri", "default": 5000, "suffix": "TL", "hint": "Ortalama islem tutari", "editable": true }
+    ],
+    "formula": "monthlyAppointments * (noShowReduction / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

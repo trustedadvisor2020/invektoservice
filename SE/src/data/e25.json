@@ -1,0 +1,94 @@
+{
+  "id": "e25",
+  "title": "WhatsApp 24h Pencere Yonetimi",
+  "subtitle": "24h Window Template Management",
+  "phase": "Phase 1",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "WhatsApp Business 24 saat mesaj penceresi kapandiginda AI uygun utility template secerr ve musteriye bilgi gonderir. Pencere kurali ihlalini onler.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (WhatsApp Kullanan Tum Isletmeler)" },
+      { "label": "Sorun", "value": "24 saat penceresi kapandiktan sonra serbest mesaj gonderilemez — musteri cevapsiz kalir" },
+      { "label": "Deger", "value": "Template mesaj ile iletisim devam eder, musteri kaybedilmez" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI 24 saat penceresi durumunu kontrol eder. Kapandiysa uygun template kategori secer ve gonderir.",
+    "steps": [
+      {
+        "title": "Pencere Kontrolu",
+        "goal": "24h durumunu kontrol et",
+        "badges": [
+          { "text": "Sistem (WhatsApp)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "green" }
+        ],
+        "content": "Son musteri mesajindan itibaren 24 saat gecip gecmedigini kontrol eder."
+      },
+      {
+        "title": "Template Secimi",
+        "goal": "Uygun template gonder",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Sablonlar)", "color": "blue" }
+        ],
+        "content": "Konusma baglamina gore uygun utility/marketing template seciilir ve gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Pencere Kapandi — Template Gonderim",
+      "description": "24 saat penceresi kapanmis, agent template ile devam etmek istiyor.",
+      "tags": [
+        { "text": "24h Pencere", "color": "amber" },
+        { "text": "Template", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Onaylanmis WA template'ler", "service": "Backend", "page": "Mesaj Sablonlari > WhatsApp", "status": "setup", "priority": "required", "effort": "medium", "capability": "C3", "hint": "Meta onaylanmis utility ve marketing template'leri olusturun" }
+        ],
+        "provider": [
+          { "text": "Pencere durumu kontrolu", "service": "Backend", "page": "WhatsApp > Pencere Yonetimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "24 saat pencere durumu otomatik kontrol edilir" },
+          { "text": "Akilli template secimi", "service": "AgentAI", "page": "Template > Otomatik Secim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Konusma baglamina gore uygun template otomatik seciilir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "24h Pencere KAPANDI: Musteri [Ad] — son mesaj 26 saat once." },
+        { "role": "ai", "content": "Pencere: KAPALI. Konusma baglami: Siparis durum sorgusu. Uygun template: 'Siparis Guncelleme' (utility)." },
+        { "role": "bot", "content": "[Template Mesaj]\nMerhaba [Ad]! Siparisiniiz hakkinda guncelleme:\n\n📦 Siparis #112233 kargoya verildi!\n🚚 Takip: [link]\n\nSorulariniz icin bu mesaji yanritlayabilirsiniz." },
+        { "role": "user", "content": "Tesekkurler, ne zaman gelir?" },
+        { "role": "system", "content": "Pencere ACILDI (musteri yanit verdi). Serbest mesaj aktif — 24 saat gecerli." },
+        { "role": "bot", "content": "Tahmini teslimat: Yarin 10:00-14:00 arasi. Iyi gunler!" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo WhatsApp Business API 24 saat kurali ile calisir. Template mesajlar pencere kapandiginda iletisimi devam ettirir.",
+    "backend": [
+      { "title": "Window Manager", "goal": "Pencere Yonetimi", "content": "Her musteri icin 24 saat pencere durumunu takip eder. Kapandiginda agent'i uyarir." },
+      { "title": "Template Selector", "goal": "Sablon Secimi", "content": "Konusma baglami ve intent'e gore en uygun template'i otomatik secer." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Business API", "goal": "Mesaj Gonderimi", "content": "Template mesaj gonderimi, pencere durumu kontrolu." },
+      { "title": "Template Management API", "goal": "Sablon Yonetimi", "content": "Meta onaylanmis template listesi ve durum takibi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Devam Ettirilen Gorusme",
+    "description": "Template mesaj ile devam ettirilen gorusmeler ve korunan musteri iliskisi.",
+    "resultLabel": "Devam Eden Gorusme (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyClosedWindows", "label": "Aylik Kapanan Pencere", "default": 40, "hint": "24h penceresi kapanan gorusme", "editable": true },
+      { "key": "templateSuccessRate", "label": "Template Basari", "default": 50, "prefix": "%", "hint": "Template ile yeniden acilan gorusme", "editable": true },
+      { "key": "avgConversationValue", "label": "Gorusme Degeri", "default": 200, "suffix": "TL", "hint": "Ortalama gorusme satis degeri", "editable": true }
+    ],
+    "formula": "monthlyClosedWindows * (templateSuccessRate / 100) * avgConversationValue",
+    "formulaDisplay": null
+  }
+}

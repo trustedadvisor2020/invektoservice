@@ -1,0 +1,90 @@
+{
+  "id": "a53",
+  "title": "DM → WhatsApp Gecis Kaybi",
+  "subtitle": "DM to WhatsApp Lead Loss Prevention",
+  "phase": "Phase 1",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Instagram DM'den WhatsApp'a geciste kaybolan lead'leri tek tikla gecis linki ile onleyen, lead surekliligi saglayan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (IG + WA Kullanan)" },
+      { "label": "Sorun", "value": "IG DM'den WA'ya geciste lead kayboluyor — numara yazma zahmetinden vazgeciyor" },
+      { "label": "Deger", "value": "Tek tikla WA gecis linki ile lead kaybi onlenir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI WA gecis niyetini tespit eder ve tek tikla gecis linki gonderir. Lead context korunur.",
+    "steps": [
+      {
+        "title": "Gecis Tespiti",
+        "goal": "WA gecis intent'i bul",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "pink" }
+        ],
+        "content": "AI WA gecis niyetini tespit eder veya uygun zamanda gecis teklifi yapar."
+      },
+      {
+        "title": "Tek Tik Gecis",
+        "goal": "Lead'i kaybet me",
+        "badges": [
+          { "text": "Sistem (Link)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Pre-filled WA linki ile lead tek tikla WA konusmasina baslar."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "IG DM → WA Tek Tik Gecis",
+      "description": "Lead IG DM'den WA'ya gecmek istiyor.",
+      "tags": [
+        { "text": "Kanal Gecis", "color": "blue" },
+        { "text": "Lead Koruma", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "WA Business numarasi", "service": "Backend", "page": "Kanal Yonetimi > WhatsApp", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp Business API numaranizi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Pre-filled WA link olusturma", "service": "Backend", "page": "Kanal Yonetimi > Gecis Linki", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "IG DM'den WA'ya pre-filled link olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Numaranizi atin, WhatsApp'tan yazayim." },
+        { "role": "ai", "content": "Intent: WA Gecis Talebi. Pre-filled link olusturulacak." },
+        { "role": "bot", "content": "Hemen! Tek tikla WhatsApp'tan bize ulasin:\n\n👉 [wa.me/905XXXXXXXX?text=Merhaba,%20IG%20uzerinden%20geliyorum]\n\nLinke tikladiginizda direkt bizimle konusmaya baslayabilirsiniz 💬" },
+        { "role": "system", "content": "WA gecis linki gonderildi. Lead kaybi onlendi. IG → WA context aktarildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo IG-WA Kopru entegrasyonu ile calisir. Pre-filled link ile lead context korunur.",
+    "backend": [
+      { "title": "Channel Bridge", "goal": "Kanal Gecisi", "content": "IG DM'den WA'ya pre-filled gecis linki olusturur ve lead context'ini aktarir." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Click-to-Chat API", "goal": "Gecis Linki", "content": "Pre-filled mesaj ile WA konusmasi baslatma linki." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Lead",
+    "description": "Tek tikla gecis ile kaybedilmeyen IG lead'leri.",
+    "resultLabel": "Kurtarilan Lead Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyChannelTransfers", "label": "Aylik Kanal Gecisi", "default": 20, "hint": "IG → WA gecis talebi", "editable": true },
+      { "key": "lossPreventionRate", "label": "Kurtarma Orani", "default": 60, "prefix": "%", "hint": "Tek tik ile kurtarilan lead", "editable": true },
+      { "key": "avgLeadValue", "label": "Lead Degeri", "default": 5000, "suffix": "TL", "hint": "Ortalama estetik islem degeri", "editable": true }
+    ],
+    "formula": "monthlyChannelTransfers * (lossPreventionRate / 100) * avgLeadValue",
+    "formulaDisplay": null
+  }
+}

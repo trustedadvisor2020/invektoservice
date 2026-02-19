@@ -1,0 +1,88 @@
+{
+  "id": "d39",
+  "title": "Mesaj Kayit / Raporlama",
+  "subtitle": "Message Archiving & Reporting",
+  "phase": "Phase 4",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "WhatsApp mesajlarini merkezi olarak kaydeden, agent performansi ve hasta iletisim raporlari ureten mesaj arsivleme sistemi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "WA mesajlari kisisel telefonlarda kaliyor — arsiv, raporlama ve denetim imkani yok" },
+      { "label": "Deger", "value": "Merkezi arsiv + rapor ile ekip performansi izlenir, hasta iletisim gecmisi korunur" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Reporting (C4)", "color": "blue" }
+    ],
+    "servicesNote": "C1 Unified Inbox tum mesajlari merkezi olarak kaydeder. C4 Reporting agent ve hasta iletisim raporlari uretir.",
+    "steps": [
+      {
+        "title": "Mesaj Arsivleme",
+        "goal": "Tum mesajlari kaydet",
+        "badges": [
+          { "text": "Sistem (Arsiv)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Tum gelen/giden mesajlar merkezi veritabaninda kaydedilir ve aranabilir hale gelir."
+      },
+      {
+        "title": "Performans Raporu",
+        "goal": "Ekip izle",
+        "badges": [
+          { "text": "Sistem (Reporting)", "color": "purple" },
+          { "text": "Tenant (Yonetim)", "color": "green" }
+        ],
+        "content": "Agent bazli yanit suresi, mesaj hacmi ve hasta memnuniyet metrikleri raporlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Mesaj Arsivi ve Rapor",
+      "description": "Klinik yoneticisi haftalik iletisim raporunu inceliyor.",
+      "tags": [
+        { "text": "Raporlama", "color": "blue" },
+        { "text": "Arsiv", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Rapor periyodu ve metrikleri", "service": "Backend", "page": "Raporlama > Ayarlar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Haftalik/aylik rapor periyodu ve izlenecek metrikleri tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Merkezi mesaj arsivleme", "service": "Backend", "page": "Unified Inbox > Arsiv", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tum mesajlar otomatik olarak merkezi arsivde saklanir" },
+          { "text": "Performans rapor motoru", "service": "Backend", "page": "Raporlama > Dashboard", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Agent bazli performans metrikleri ve dashboard hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Haftalik rapor olusturuldu. Agent: 3, Toplam mesaj: 245, Ort. yanit suresi: 3.2 dk." },
+        { "role": "system", "content": "Rapor detaylari:\n- Agent Ayse: 120 mesaj, 2.8 dk ort.\n- Agent Fatma: 85 mesaj, 3.5 dk ort.\n- Agent Ali: 40 mesaj, 4.1 dk ort.\n\nHasta memnuniyet: %92" },
+        { "role": "system", "content": "Rapor yoneticiye e-posta ve dashboard uzerinden sunuldu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Unified Inbox + Reporting birlesimiyle calisir. Mesaj arsivleme ve performans raporlama.",
+    "backend": [
+      { "title": "Message Archiver", "goal": "Mesaj Arsivi", "content": "Tum gelen/giden mesajlari merkezi veritabaninda saklar ve aranabilir indeksler." },
+      { "title": "Performance Reporter", "goal": "Performans Raporu", "content": "Agent bazli yanit suresi, hacim ve memnuniyet metrikleri raporlar." }
+    ],
+    "apis": [
+      { "title": "Reporting API", "goal": "Rapor Erisimi", "content": "Dashboard ve e-posta ile rapor ulastirma." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Yonetim Verimliligi",
+    "description": "Merkezi raporlama ile kazanilan yonetim verimliligi.",
+    "resultLabel": "Verimlilik Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyReportHours", "label": "Manuel Rapor Suresi", "default": 8, "suffix": "saat", "hint": "Manuel raporlama icin harcanan sure", "editable": true },
+      { "key": "managerHourlyCost", "label": "Yonetici Saatlik Maliyet", "default": 200, "suffix": "TL", "hint": "Yonetici saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyReportHours * managerHourlyCost",
+    "formulaDisplay": null
+  }
+}

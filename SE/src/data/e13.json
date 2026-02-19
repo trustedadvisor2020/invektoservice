@@ -1,0 +1,95 @@
+{
+  "id": "e13",
+  "title": "Odeme Secenekleri & IBAN Bilgilendirme",
+  "subtitle": "Payment Options Guide",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Kapida odeme, havale/EFT, taksit gibi odeme seceneklerini AI Knowledge Base'den cekerr ve musteriye aninda sunar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Ozellikle kucuk magazalar, D2C)" },
+      { "label": "Sorun", "value": "Odeme sorusu basit ama sik — agent surekli ayni bilgiyi tekrarliyor" },
+      { "label": "Deger", "value": "Aninda odeme bilgisi ile siparis tamamlama orani artar" }
+    ],
+    "services": [
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI odeme intent'ini tespit eder, Knowledge Base'den odeme seceneklerini cekerr ve musteriye sunar.",
+    "steps": [
+      {
+        "title": "Odeme Intent Tespiti",
+        "goal": "Odeme sorusunu tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI 'odeme', 'IBAN', 'kapida odeme', 'taksit' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Bilgi Sunumu",
+        "goal": "Odeme detaylarini ver",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Odeme)", "color": "green" }
+        ],
+        "content": "Knowledge Base'den odeme secenekleri, IBAN bilgisi ve taksit detaylari cekilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kapida Odeme & IBAN Sorusu",
+      "description": "Musteri odeme seceneklerini soruyor.",
+      "tags": [
+        { "text": "Odeme", "color": "green" },
+        { "text": "Bilgilendirme", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Odeme secenekleri bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Odeme Secenekleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kapida odeme, havale/EFT, kredi karti, taksit seceneklerini tanimlayin" },
+          { "text": "IBAN bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Banka Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Havale/EFT icin banka hesap bilgilerini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Odeme intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Odeme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Odeme secenekleri intent'i hazir" },
+          { "text": "Knowledge RAG odeme bilgisi", "service": "Knowledge", "page": "RAG Engine > Odeme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Odeme secenekleri Knowledge Base'den otomatik sunulur" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kapida odeme var mi? IBAN atin." },
+        { "role": "ai", "content": "Intent: Odeme Secenekleri. Alt-intent: Kapida odeme + IBAN." },
+        { "role": "bot", "content": "Odeme seceneklerimiz:\n\n💳 Kredi Karti: 2, 3, 6 taksit\n🏦 Havale/EFT:\n   Banka: Garanti BBVA\n   IBAN: TR12 3456 7890 1234 5678 9012 34\n   Hesap Sahibi: ABC Ticaret Ltd.\n🚚 Kapida Odeme: +15 TL (sadece nakit)\n\nHangi yontemi tercih edersiniz?" },
+        { "role": "user", "content": "Havale yapacagim." },
+        { "role": "bot", "content": "Havale yaptiktan sonra dekont fotografini bana gonderir misiniz? Siparisinizi hemen onaylayalim!" },
+        { "role": "system", "content": "Odeme bilgisi verildi. Musteri havale secti. Dekont bekleniyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo tamamen Knowledge RAG ile calisir. Odeme secenekleri, taksit bilgisi ve banka hesap detaylari Knowledge Base'den cekilir.",
+    "backend": [
+      { "title": "Knowledge RAG", "goal": "Odeme Bilgisi", "content": "Odeme secenekleri, IBAN, taksit detaylari ve kargo ucreti bilgisi." },
+      { "title": "Payment Tracker", "goal": "Odeme Takibi", "content": "Havale/EFT odemelerinin dekont ile dogrulanmasi ve siparis onaylama." }
+    ],
+    "apis": [
+      { "title": "Payment Gateway API", "goal": "Taksit Bilgisi", "content": "Kredi karti taksit secenekleri ve odeme linki olusturma (opsiyonel)." },
+      { "title": "Knowledge RAG", "goal": "Odeme Rehberi", "content": "Musteri sorusuna gore uygun odeme bilgisini cekerr." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Tamamlanan Siparis Artisi",
+    "description": "Aninda odeme bilgisi ile siparis tamamlama oranindaki artis.",
+    "resultLabel": "Ek Satis (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPaymentQueries", "label": "Aylik Odeme Sorusu", "default": 35, "hint": "Odeme bilgisi istegi", "editable": true },
+      { "key": "completionRate", "label": "Tamamlama Orani", "default": 50, "prefix": "%", "hint": "Sorudan siparise gecis", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 300, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlyPaymentQueries * (completionRate / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

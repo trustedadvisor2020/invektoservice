@@ -1,0 +1,114 @@
+{
+  "id": "gu07",
+  "title": "Islem Sonrasi Bakim Talimatlari",
+  "subtitle": "Post-Treatment Care Instructions",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Sac boyama, keratin veya kimyasal islem sonrasi bakim talimatlari sozlu veriliyor ve musteri unutuyor. Islem tamamlaninca otomatik olarak detayli bakim talimati mesaji gonderilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "Bakim talimatlari sozlu veriliyor — musteri unutuyor, hatali bakim sonucu sikayetler artiyor" },
+      { "label": "Deger", "value": "Otomatik yazili talimat = daha az sikayet + profesyonel imaj" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Islem tamamlandiginda tetiklenen Outbound mesaji ile islem turune ozel bakim talimati template'i gonderilir.",
+    "steps": [
+      {
+        "title": "Islem Tamamlama Tetikleme",
+        "goal": "Islemi kaydet",
+        "badges": [
+          { "text": "Sistem (Trigger)", "color": "purple" },
+          { "text": "Tenant (Islem)", "color": "blue" }
+        ],
+        "content": "Stilist islem tamamlandi olarak isaretlediginde otomatik bakim talimati mesaji tetiklenir."
+      },
+      {
+        "title": "Bakim Talimati Gonderimi",
+        "goal": "Yazili talimat ver",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "green" }
+        ],
+        "content": "Islem turune ozel hazirlanan bakim talimati template'i WhatsApp uzerinden musteri gonderilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sac Boyama Sonrasi Bakim",
+      "description": "Sac boyama islemi tamamlandi — otomatik bakim talimati gonderiliyor.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Bakim", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Islem bazli bakim talimati template'leri", "service": "Backend", "page": "Mesaj Sablonlari > Bakim Talimatlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Her islem turu icin ayri bakim talimati template'i olusturun (boya, keratin, roflaj vb.)" },
+          { "text": "Islem tamamlama tetiklemesi", "service": "Automation", "page": "Otomasyon > Islem Tamamlama Trigger", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Stilist islem tamamladi olarak isaretlediginde mesaj tetiklenir" }
+        ],
+        "provider": [
+          { "text": "Islem bazli template eslestirme", "service": "Outbound", "page": "Template Motoru > Islem Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Islem turune gore dogru bakim talimati template'i secilir ve gonderilir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Islem tamamlandi: Sac Boyama (Profesyonel). Musteri: Defne Arslan. Stilist: Selin. Bakim talimati tetikleniyor." },
+        { "role": "bot", "content": "[Outbound Template — Sac Boyama Bakim Talimati]\n\nMerhaba Defne! Islem tamamlandi, renginiz harika gorunuyor!\n\nSac boyama sonrasi bakim rehberiniz:\n\nIlk 48 saat: Saclarinizi yikamaktan kacinin\nSampuan: Sulfatsiz sampuan kullanin\nSicaklik: Sicak su yerine ilik su tercih edin\nSac kurutma: Dusuk isida kullanin\nGuneş: Uzun sureli gunes isigindan koruyun\n\nBoya ömrü icin ayda 1 parlatma islemi oneriyoruz.\n\nSorulariniz icin bize yazabilirsiniz!" },
+        { "role": "user", "content": "Tesekkurler, cok faydali oldu!" },
+        { "role": "system", "content": "Bakim talimati gonderildi. Musteri memnun. Sonraki randevu yonlendirmesi icin T+30 gun hatirlatma zamanlandi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Keratin Bakim Sonrasi Talimat",
+      "description": "Keratin bakim islemi tamamlandi — ozel talimatlar gonderiliyor.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Keratin", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Keratin bakim template'i", "service": "Backend", "page": "Mesaj Sablonlari > Keratin Bakim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Keratin islemi icin ozel bakim talimati template'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Islem tamamlandi: Keratin Bakim. Musteri: Merve Ozturk. Stilist: Derya. Bakim talimati tetikleniyor." },
+        { "role": "bot", "content": "[Outbound Template — Keratin Bakim Talimati]\n\nMerhaba Merve! Keratin bakiminiz tamamlandi!\n\nOnemli bakim kurallari:\n\nIlk 72 saat: Saclarinizi KESINLIKLE islatmayin\nToka/lastik: 72 saat toka ve lastik kullanmayin\nSampuan: Keratine uyumlu (sodyum klorur icermeyen) sampuan kullanin\nYuzme: Havuz ve denize 1 hafta girmeyin\nDuz tutma: Ilk 3 gun saclarinizi duz tutun, arkaya baglamayin\n\nKeratin etkisi 3-4 ay surer. Yenileme randevusu icin 3 ay sonra hatirlatalim mi?" },
+        { "role": "user", "content": "Evet hatirlatın lutfen" },
+        { "role": "bot", "content": "Tamam! 3 ay sonra keratin yenileme hatirlatmasi gonderecegiz. Saclarinizin tadini cikarin!" },
+        { "role": "system", "content": "Bakim talimati gonderildi. T+90 gun yenileme hatirlatmasi zamanlandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Islem tamamlama event'i ile tetiklenen template mesaj sistemi. Islem turune gore otomatik dogru template secimi.",
+    "backend": [
+      { "title": "Treatment Completion Handler", "goal": "Islem Tamamlama", "content": "Stilistin islem tamamladi isaretlemesiyle bakim talimati mesajini tetikler." },
+      { "title": "Care Template Matcher", "goal": "Template Eslestirme", "content": "Islem turune gore dogru bakim talimati template'ini secer ve Outbound'a iletir." }
+    ],
+    "apis": [
+      { "title": "Treatment Complete API", "goal": "Islem Kapatma", "content": "Islemi tamamlandi olarak isaretleyen ve bakim talimati tetikleyen API." },
+      { "title": "Care Instructions API", "goal": "Bakim Talimati", "content": "Islem turune gore bakim talimati icerigini donduren API." }
+    ]
+  },
+  "impact": {
+    "title": "Azalan Sikayet ve Artan Sadakat",
+    "description": "Yazili bakim talimatlari ile sikayet azaltma ve profesyonel imaj olusturma.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyChemicalTreatments", "label": "Aylik Kimyasal Islem", "default": 60, "hint": "Boya, keratin gibi bakim gerektiren islem sayisi", "editable": true },
+      { "key": "complaintRateBefore", "label": "Sikayet Orani (Oncesi)", "default": 12, "suffix": "%", "hint": "Bakim hatasi kaynakli sikayet orani", "editable": true },
+      { "key": "complaintRateAfter", "label": "Sikayet Orani (Sonrasi)", "default": 3, "suffix": "%", "hint": "Talimat sonrasi hedef sikayet orani", "editable": true },
+      { "key": "complaintCost", "label": "Sikayet Basina Maliyet", "default": 500, "suffix": "TL", "hint": "Duzeltme islemi + zaman kaybi maliyeti", "editable": true }
+    ],
+    "formula": "monthlyChemicalTreatments * ((complaintRateBefore - complaintRateAfter) / 100) * complaintCost",
+    "formulaDisplay": null
+  }
+}

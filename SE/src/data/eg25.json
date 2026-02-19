@@ -1,0 +1,108 @@
+{
+  "id": "eg25",
+  "title": "Coklu Kurs / Paket Secenekleri",
+  "subtitle": "Multi-Course Package",
+  "phase": "Phase 1",
+  "category": "EGITIM",
+  "niche": "education",
+  "description": "Birden fazla kurs almak isteyen musteriye AI ile paket onerisi ve indirimli kombinasyon sunan senaryo. Knowledge Base kurs katalogu ve paket fiyat bilgisi saglar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Mesleki Egitim, Hobi Merkezi)" },
+      { "label": "Sorun", "value": "Birden fazla kurs almak isteyen musteriye paket fiyat hemen verilemiyor — musteri kendi hesabiyor ve pahaliya kaciyor" },
+      { "label": "Deger", "value": "AI aninda paket onerisi + indirimli fiyat ile ortalama siparis degerini artir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge Base (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI coklu kurs intent'ini yakalar, Knowledge Base'den uyumlu kurs kombinasyonlari ve paket indirim oranlarini sorgulayarak ozel teklif sunar.",
+    "steps": [
+      {
+        "title": "Coklu Kurs Talebi Algilama",
+        "goal": "Paket intent'ini tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'birden fazla kurs', 'paket var mi', '2 kurs birden' gibi intent'leri tespit eder ve ilgi alanlarini belirler."
+      },
+      {
+        "title": "Paket Onerisi Olusturma",
+        "goal": "Uyumlu kombinasyon sun",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Katalog)", "color": "green" }
+        ],
+        "content": "Knowledge Base'den ogrencinin ilgisine uygun kurs kombinasyonlari ve paket indirim oranlari cekilir."
+      },
+      {
+        "title": "Teklif ve Kayit",
+        "goal": "Paket satisini tamamla",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Tenant (Fiyat)", "color": "amber" }
+        ],
+        "content": "Indirimli paket fiyat teklifi sunulur, musteri secimini yapar ve kayit surecine yonlendirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Coklu Kurs Paket Talebi",
+      "description": "Musteri 2 kurs birden almak istiyor, AI paket indirim onerisi sunuyor.",
+      "tags": [
+        { "text": "Paket", "color": "amber" },
+        { "text": "Cross-Sell", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kurs katalogu ve fiyat listesi", "service": "Knowledge", "page": "Egitim > Kurs Katalogu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tum kurslarin icerik, sure ve birim fiyat bilgisini girin" },
+          { "text": "Paket indirim oranlari", "service": "Knowledge", "page": "Egitim > Paket Indirimler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "2'li, 3'lu ve 4'lu paketler icin indirim oranlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Coklu kurs intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Paket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Coklu kurs / paket intent'i varsayilan olarak tanimli" },
+          { "text": "Knowledge Base paket modulu", "service": "Knowledge", "page": "Knowledge Base > Paketler", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kurs kombinasyonlari ve paket indirim hesaplama hazir" },
+          { "text": "Paket teklif sablonu", "service": "Backend", "page": "Sablonlar > Paket Teklifi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Indirimli paket fiyat teklif sablonu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, hem Ingilizce hem de Almanca kursu almak istiyorum. Paket indirim var mi?" },
+        { "role": "ai", "content": "Intent: Coklu Kurs / Paket Talebi. Kurslar: Ingilizce + Almanca. Knowledge Base sorgusu: paket kombinasyonu + indirim orani." },
+        { "role": "bot", "content": "Merhaba! Birden fazla dil kursu almak harika bir karar. Size ozel paket seceenklerimiz:\n\nPaket A: Ingilizce + Almanca (Standart)\nIngilizce B1: 7.500 TL\nAlmanca A1: 6.500 TL\nToplam: 14.000 TL\nPaket Indirim: %15\nPaket Fiyat: 11.900 TL (2.100 TL tasarruf)\n\nPaket B: Ingilizce + Almanca + Ispanyolca\nToplam: 20.500 TL\nPaket Indirim: %20\nPaket Fiyat: 16.400 TL (4.100 TL tasarruf)\n\nHangi paket ilginizi cekiyor?" },
+        { "role": "user", "content": "Paket A guzel gorunuyor. Ayni donemde mi basliyor ikisi?" },
+        { "role": "bot", "content": "Evet! Paket A detaylari:\n\nIngilizce B1: Sali-Persembe 18:00-19:30 (Mart-Mayis)\nAlmanca A1: Carsamba-Cuma 18:00-19:30 (Mart-Mayis)\n\nGunler cakismiyor, rahatca iki kursa birden devam edebilirsiniz.\n\nPaket A Ozet:\n2 kurs, 3 ay, 11.900 TL (2.100 TL tasarruf)\nOdeme: Tek seferde veya 3 taksit\n\nKayit icin devam etmek ister misiniz?" },
+        { "role": "user", "content": "3 taksitle kayit olmak istiyorum." },
+        { "role": "bot", "content": "Harika! Paket kaydiniz olusturuluyor:\n\nIngilizce B1 + Almanca A1 Paketi\nToplam: 11.900 TL\nOdeme: 3 taksit x 3.967 TL\nBaslangic: Mart 2026\n\nKayit linki ve odeme bilgilerini gonderiyorum: [Kayit Linki]\n\nSorulariniz icin her zaman yazabilirsiniz!" },
+        { "role": "system", "content": "Paket kayit olusturuldu: Ingilizce B1 + Almanca A1. Toplam: 11.900 TL (3 taksit). Ogrenci kayit surecine yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI intent tespiti + Knowledge Base kurs katalogu ve paket indirim modulu ile calisir. Dinamik paket onerisi ve indirim hesaplama.",
+    "backend": [
+      { "title": "Package Builder Engine", "goal": "Paket Olusturma", "content": "Kurs kombinasyonlarina gore otomatik paket onerisi olusturur, takvim cakisma kontrolu yapar ve indirimli fiyat hesaplar." },
+      { "title": "Cross-Sell Recommendation", "goal": "Oneri Motoru", "content": "Ogrencinin ilgisine gore tamamlayici kurs onerileri sunar, paket degerini artirma amacli up-sell yapar." }
+    ],
+    "apis": [
+      { "title": "Knowledge Base API", "goal": "Kurs Katalogu", "content": "Kurs detaylari, takvim, fiyat ve paket indirim oranlari sorgulama." },
+      { "title": "Package Pricing API", "goal": "Paket Fiyat Hesaplama", "content": "Dinamik paket indirim orani hesaplama, taksit secenekleri ve toplam fiyat." }
+    ]
+  },
+  "impact": {
+    "title": "Paket Satisi ile Artirilan Ortalama Gelir",
+    "description": "Coklu kurs paketi ile ogrenci basina artan ortalama gelir.",
+    "resultLabel": "Paket Ek Geliri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPackageInquiries", "label": "Aylik Paket Talebi", "default": 15, "hint": "Coklu kurs soran musteri sayisi", "editable": true },
+      { "key": "packageConversion", "label": "Paket Donusum Orani", "default": 50, "suffix": "%", "hint": "Paket teklif sonrasi kayit orani", "editable": true },
+      { "key": "avgPackageUplift", "label": "Ort. Paket Ek Gelir", "default": 4000, "suffix": "TL", "hint": "Tekli kurs yerine paket ile kazanilan ek gelir", "editable": true }
+    ],
+    "formula": "monthlyPackageInquiries * (packageConversion / 100) * avgPackageUplift",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "id": "s7",
+  "title": "No-Show Onleme",
+  "subtitle": "No-Show Prevention",
+  "phase": "Phase 1-2",
+  "category": "SAGLIK OTOMASYONU",
+  "niche": "health",
+  "description": "Randevu hatirlatma zinciri ile no-show oranini %25'ten %12'ye dusuren, bos koltukları bekleme listesinden dolduran otonom sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik (Dis, Estetik, Genel Klinik)" },
+      { "label": "Sorun", "value": "%25 no-show = gunde 3 bos koltuk = 9.000 TL/gun kayip" },
+      { "label": "Neden", "value": "Unuttum (%40), Vazgectim (%30), Baska klinik (%20), Gercek engel (%10)" }
+    ],
+    "services": [
+      { "name": "Outbound Engine", "color": "blue" },
+      { "name": "WhatsApp Business API", "color": "green" },
+      { "name": "Randevu Motoru", "color": "purple" },
+      { "name": "Bekleme Listesi", "color": "amber" }
+    ],
+    "servicesNote": "Otomatik hatirlatma zinciri (R-3, R-1, R-2h) ile no-show oranini dramatik sekilde dusurur.",
+    "steps": [
+      {
+        "title": "Hatirlatma Zinciri",
+        "goal": "Unuttum'u onle",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "amber" }
+        ],
+        "content": "R-3 gun: takvim linki, R-1 gun: onay isteme, R-2 saat: adres ve hatirlatma. Otomatik zincir."
+      },
+      {
+        "title": "Onay Toplama",
+        "goal": "Kesin gelecek mi?",
+        "badges": [
+          { "text": "Sistem (Interaktif)", "color": "purple" },
+          { "text": "Tenant (Kurallar)", "color": "blue" }
+        ],
+        "content": "Hasta 'onayliyorum' veya 'gelemiyorum' secenegi ile cevap verir. Tek mesajla kolay onay."
+      },
+      {
+        "title": "Iptal Yonetimi",
+        "goal": "Bos kolugu doldur",
+        "badges": [
+          { "text": "Sistem (Recovery)", "color": "purple" },
+          { "text": "Tenant (Bekleme Listesi)", "color": "green" }
+        ],
+        "content": "Hasta 'gelemiyorum' derse hemen alternatif tarih oner + bekleme listesinden hasta cagir."
+      },
+      {
+        "title": "Risk Takibi",
+        "goal": "Cevapsizlari izle",
+        "badges": [
+          { "text": "Sistem (Alert)", "color": "purple" },
+          { "text": "Tenant (Resepsiyonist)", "color": "amber" }
+        ],
+        "content": "Cevap vermeyen hasta → 'iptal riski' olarak isaretlenir, resepsiyonist aramasi icin alert."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Normal Hatirlatma → Onay",
+      "description": "Hasta hatirlatma alir ve onaylar.",
+      "tags": [
+        { "text": "Hatirlatma", "color": "blue" },
+        { "text": "Basarili Onay", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Randevu takvim sistemi", "service": "Backend", "page": "Randevu Takvimi > Ayarlar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Klinik randevu takvimini aktif edin ve doktor musaitligini tanimlayin" },
+          { "text": "WhatsApp hatti", "service": "Integrations", "page": "WhatsApp > Hat Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp Business API hattinizi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine", "service": "Outbound", "page": "Hatirlatma Zinciri > Randevu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "R-3, R-1, R-2h otomatik hatirlatma zinciri hazir" },
+          { "text": "Template mesajlar", "service": "Backend", "page": "Mesaj Sablonlari > Hatirlatma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Randevu hatirlatma template'leri hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "R-1 Gun: Randevu hatirlatma tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Yarin saat 14:00'te randevunuz var. Onayliyor musunuz? Evet / Hayir" },
+        { "role": "user", "content": "Evet, gelecegim." },
+        { "role": "system", "content": "Onay alindi. R-2 Saat hatirlatma planlandiı." },
+        { "role": "bot", "content": "Harika! 2 saat once bir hatirlatma daha gonderecegiz. Adresimiz: [Klinik Adresi]. Gorusmek uzere!" }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Iptal → Yeniden Planlama",
+      "description": "Hasta gelemeyecegini bildiriyor, alternatif tarih sunuluyor.",
+      "tags": [
+        { "text": "Iptal", "color": "amber" },
+        { "text": "Yeniden Planlama", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Esnek randevu politikasi", "service": "Backend", "page": "Randevu Takvimi > Iptal Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Iptal ve yeniden planlama kosullarini tanimlayin" },
+          { "text": "Alternatif slot bilgisi", "service": "Backend", "page": "Randevu Takvimi > Slot Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Alternatif slot onerileri icin musait zaman dilimlerini guncel tutun" }
+        ],
+        "provider": [
+          { "text": "Slot onerisi algoritmasi", "service": "Backend", "page": "Randevu Motoru > Slot Onerisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "En uygun alternatif slot onerisi hazir" },
+          { "text": "Bekleme listesi yonetimi", "service": "Backend", "page": "Randevu Takvimi > Bekleme Listesi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Bekleme listesi ve otomatik eslestirme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "R-1 Gun: Randevu hatirlatma tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Yarin saat 14:00'te randevunuz var. Onayliyor musunuz? Evet / Hayir" },
+        { "role": "user", "content": "Gelemeyecegim, erteleyebilir miyim?" },
+        { "role": "bot", "content": "Tabii! Su alternatif tarihlerimiz mevcut: Persembe 10:00, Cuma 15:00. Hangisi uygun?" },
+        { "role": "user", "content": "Cuma olsun." },
+        { "role": "system", "content": "Randevu guncellendi: Cuma 15:00. Eski slot bekleme listesine acildi." },
+        { "role": "bot", "content": "Cuma 15:00'te sizi bekliyoruz! Hatirlatma mesaji gonderecegiz." }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Cevapsiz → Risk Alarmi",
+      "description": "Hasta hatirlatmaya cevap vermiyor.",
+      "tags": [
+        { "text": "Risk", "color": "rose" },
+        { "text": "Manuel Takip", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Resepsiyonist iletisim", "service": "Backend", "page": "Ekip Yonetimi > Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Cevapsiz hastalari arayacak resepsiyonist bilgisini tanimlayin" },
+          { "text": "Telefon arama yetkisi", "service": "Backend", "page": "Ayarlar > Arama Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Hasta arama yetki ve zamanlamalarini belirleyin" }
+        ],
+        "provider": [
+          { "text": "Cevapsizlik tespit algoritmasi", "service": "AgentAI", "page": "Risk Tespiti > Cevapsizlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Hatirlatma cevapsizlik suresi ve risk skorlamasi hazir" },
+          { "text": "Supervisor alert", "service": "Backend", "page": "Bildirim Sistemi > Eskalasyon Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Supervisor/resepsiyonist alert sistemi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "R-1 Gun: Hatirlatma gonderildi. 6 saat gecti, cevap yok." },
+        { "role": "system", "content": "ALERT: Iptal riski! Hasta [Ad] hatirlatmaya cevap vermedi. Resepsiyonist aramasi oneriliyor." },
+        { "role": "agent", "content": "Resepsiyonist aradiı: Hasta musait degilmis, yeni tarih istedi. Randevu guncelleniyor." },
+        { "role": "system", "content": "Slot kurtarildi — bekleme listesinden hasta cagrilacak." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo tamamen Outbound Engine uzerinden calisir. Time-based trigger'lar ile R-3, R-1, R-2h otomatik mesaj zinciri olusturulur.",
+    "backend": [
+      { "title": "Outbound Engine", "goal": "Zamanli Hatirlatma", "content": "Randevu tarihine gore R-3 gun, R-1 gun, R-2 saat otomatik template mesajlari gonderir." },
+      { "title": "Waitlist Manager", "goal": "Bos Slot Doldurma", "content": "Iptal edilen slota bekleme listesinden en uygun hastayi eslestirir ve bildirim gonderir." }
+    ],
+    "apis": [
+      { "title": "Calendar API", "goal": "Randevu Yonetimi", "content": "Klinik takviminden randevu bilgileri cekilir, guncellenir. Iptal/degisiklik anlık yansir." },
+      { "title": "WhatsApp Template API", "goal": "Hatirlatma Mesajlari", "content": "Pre-approved utility template'ler ile hatirlatma gonderilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Gelir",
+    "description": "Degerlerinizi duzenleyin — no-show oraninin dusurulmesiyle kurtarilan bos koltuk geliri.",
+    "resultLabel": "Kurtarilan (Aylik)",
+    "subscriptionCost": 10000,
+    "inputs": [
+      { "key": "dailyAppointments", "label": "Gunluk Randevu", "default": 12, "hint": "Ortalama randevu sayisi", "editable": true },
+      { "key": "noShowReduction", "label": "No-Show Azalma", "default": 13, "prefix": "%", "hint": "%25 → %12 (hedef)", "editable": true },
+      { "key": "revenuePerSlot", "label": "Koltuk Geliri", "default": 3000, "suffix": "TL", "hint": "Ortalama randevu degeri", "editable": true }
+    ],
+    "formula": "dailyAppointments * (noShowReduction / 100) * revenuePerSlot * 30",
+    "formulaDisplay": null
+  }
+}

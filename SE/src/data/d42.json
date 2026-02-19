@@ -1,0 +1,92 @@
+{
+  "id": "d42",
+  "title": "Doktor Mesgul: On Buro Cevap Veremiyor",
+  "subtitle": "Front Desk Overflow Automation",
+  "phase": "Phase 1",
+  "category": "DIS KLINIGI",
+  "niche": "dental",
+  "description": "Resepsiyonist yogun veya mesgulken biriken mesajlara AI ile otomatik ilk cevap veren ve sikca sorulan sorulari aninda yanitlayan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Resepsiyonist yogunken mesajlar birikiyor — hasta 'cevap gelmiyor' diye baska klinige gidiyor" },
+      { "label": "Deger", "value": "AI ile aninda ilk cevap + FAQ yanitlama — hasta kaybedilmez" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI otomatik ilk cevap verir ve sikca sorulan sorulari aninda yanit lar. Karmasik sorular resepsiyoniste yonlendirilir.",
+    "steps": [
+      {
+        "title": "Otomatik Ilk Cevap",
+        "goal": "Hastayi karşıla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "blue" }
+        ],
+        "content": "Mesaj geldiginde AI aninda karsilama mesaji gonderir ve intent tespit eder."
+      },
+      {
+        "title": "FAQ Yanitlama",
+        "goal": "Basit sorulari coz",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "green" },
+          { "text": "Tenant (SSS)", "color": "blue" }
+        ],
+        "content": "Fiyat, adres, calisma saatleri gibi basit sorular aninda yanitlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Yogun Saatler — AI Ilk Cevap",
+      "description": "Resepsiyonist yogun, AI mesajlari otomatik yanitliyor.",
+      "tags": [
+        { "text": "Yogunluk", "color": "amber" },
+        { "text": "Otomatik", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Klinik FAQ bilgileri", "service": "Knowledge", "page": "Dokuman Bankasi > SSS", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Fiyat, adres, calisma saatleri gibi SSS bilgilerini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Otomatik ilk cevap", "service": "AgentAI", "page": "AI > Otomatik Karsilama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesaj geldiginde otomatik karsilama ve intent tespiti hazir" },
+          { "text": "FAQ yanit motoru", "service": "Knowledge", "page": "RAG > SSS Yanitlama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Sikca sorulan sorulari Knowledge Base'den otomatik yanitlama hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhabalar, calisma saatleriniz nedir?" },
+        { "role": "ai", "content": "Intent: FAQ — Calisma Saatleri. Knowledge Base'den cekilecek. Resepsiyonist yogun — AI cevap verecek." },
+        { "role": "bot", "content": "Merhaba! Klinigimize hosgeldiniz 🙏\n\nCalisma saatlerimiz:\n🕐 Hafta ici: 09:00 - 19:00\n🕐 Cumartesi: 10:00 - 16:00\n🚫 Pazar: Kapali\n\nRandevu almak ister misiniz?" },
+        { "role": "system", "content": "FAQ otomatik yanitlandi. Resepsiyonist devreye girmeden cozuldu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI Otomatik Cevap + FAQ Knowledge Base birlesimiyle calisir.",
+    "backend": [
+      { "title": "Auto Responder", "goal": "Otomatik Cevap", "content": "Mesaj geldiginde intent tespit eder ve uygun cevabi olusturur." },
+      { "title": "FAQ Engine", "goal": "SSS Yanitlama", "content": "Knowledge Base'den sikca sorulan sorulari aninda cevaplandirir." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Klinik SSS bilgileri RAG ile cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Lead",
+    "description": "Otomatik cevap ile kaybedilmeyen hastalar.",
+    "resultLabel": "Kurtarilan Lead Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyMissedMessages", "label": "Aylik Cevapsiz Mesaj", "default": 20, "hint": "Yogunlukta cevapsiz kalan mesaj", "editable": true },
+      { "key": "leadSaveRate", "label": "Kurtarma Orani", "default": 50, "prefix": "%", "hint": "AI ile kurtarilan lead", "editable": true },
+      { "key": "avgLeadValue", "label": "Lead Degeri", "default": 3000, "suffix": "TL", "hint": "Ortalama hasta degeri", "editable": true }
+    ],
+    "formula": "monthlyMissedMessages * (leadSaveRate / 100) * avgLeadValue",
+    "formulaDisplay": null
+  }
+}

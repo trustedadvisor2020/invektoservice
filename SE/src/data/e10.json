@@ -1,0 +1,118 @@
+{
+  "id": "e10",
+  "title": "Kampanya Fiyat Farki & Kupon Cozumu",
+  "subtitle": "Price Dispute Resolution",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Kampanya fiyati yansimadi veya kupon calismadi diyen musteri icin AI siparis ve kampanya verisini karsilastirir, fark varsa cozum sunar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Fiyat farki sikayetleri agent'i en cok zorlayan konulardan — her seferinde hesap yapmak gerekiyor" },
+      { "label": "Deger", "value": "Otomatik fiyat karsilastirma ile aninda dogrulama — musteri guveni korunur" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" }
+    ],
+    "servicesNote": "AI siparis tutarini ve kampanya kosullarini karsilastirir. Fark varsa sebebini acikar, hakli ise fark iadesi sunar.",
+    "steps": [
+      {
+        "title": "Fiyat Kontrolu",
+        "goal": "Kampanya uygulanmis mi?",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Kampanya)", "color": "amber" }
+        ],
+        "content": "Siparis tutari, kampanya kosullari ve uygulanan indirimler karsilastirilir."
+      },
+      {
+        "title": "Aciklama & Cozum",
+        "goal": "Musteriye bilgi ver",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Politika)", "color": "green" }
+        ],
+        "content": "Kampanya uygulanmadiysa sebebi aciklanir (min. tutar, kategori kisiti vb.). Hakli ise fark iadesi sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kampanya Fiyati Yansimaadi",
+      "description": "Musteri kampanyali fiyat beklerken normal fiyat odedi.",
+      "tags": [
+        { "text": "Fiyat Farki", "color": "rose" },
+        { "text": "Kampanya", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kampanya kosullari", "service": "Knowledge", "page": "Dokuman Bankasi > Kampanya Kosullari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Aktif kampanya kosullarini (min tutar, kategori, tarih) tanimlayin" },
+          { "text": "Fark iadesi yetkisi", "service": "Backend", "page": "Kampanya Yonetimi > Iade Yetkileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Fiyat farki iadesi icin onay mekanizmasini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Siparis-kampanya karsilastirma", "service": "AgentAI", "page": "Siparis Analizi > Fiyat Kontrolu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Siparis tutari ile kampanya kosullari otomatik karsilastirilir" },
+          { "text": "Kampanya veri cekim", "service": "Integrations", "page": "E-ticaret > Kampanya API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform kampanya verileri gercek zamanli cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Kampanyali aldim ama fiyat farki yansimadi! 299 TL yerine 399 TL odedim." },
+        { "role": "ai", "content": "Intent: Fiyat Farki. Siparis: #556677. Odenen: 399 TL. Kampanya: Min 500 TL sepet. Kampanya UYGULANMADI (min tutar altinda)." },
+        { "role": "bot", "content": "Kontrol ettim! Kampanya koosullari:\n\n🏷️ Kampanya: %25 Indirim\n📋 Kosul: Minimum 500 TL sepet tutari\n🛒 Sepetiniz: 399 TL (kosul altinda)\n\nMaalesef sepet tutari minimum kosulun altinda kaldigi icin indirim uygulanamamis. Sepetinize bir urun daha eklerseniz indirim otomatik uygulanir." },
+        { "role": "user", "content": "Anladim, tesekkurler." },
+        { "role": "system", "content": "Fiyat farki aciklandi. Kampanya kosulu karslanmamis. Musteri bilgilendirildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Kupon Kodu Calismadi",
+      "description": "Musteri kupon kodu girdi ama indirim uygulanmadi.",
+      "tags": [
+        { "text": "Kupon", "color": "purple" },
+        { "text": "Teknik Sorun", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kupon kodu veritabani", "service": "Backend", "page": "Kampanya Yonetimi > Kupon Kodlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Aktif kupon kodlari ve kosullarini yonetin" }
+        ],
+        "provider": [
+          { "text": "Kupon dogrulama", "service": "Integrations", "page": "E-ticaret > Kupon API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Kupon kodunun gecerliligi ve kosullari otomatik kontrol edilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "YENI20 kupon kodunu girdim ama calismadi!" },
+        { "role": "ai", "content": "Kupon: YENI20. Durum: SURESI DOLMUS (son kullanim: 15 Subat). Alternatif: BAHAR25 aktif." },
+        { "role": "bot", "content": "Kontrol ettim! YENI20 kodunun suresi 15 Subat'ta dolmus.\n\nAnca size ozel bir alternatif var:\n🎁 BAHAR25 — %25 indirim (31 Mart'a kadar gecerli)\n\nBu kodu kullanmak ister misiniz?" },
+        { "role": "user", "content": "Super, tesekkurler!" },
+        { "role": "system", "content": "Kupon sorunu cozuldu. Alternatif kupon onerildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo siparis verisi + kampanya/kupon verisi karsilastirmasi ile calisir. AI otomatik kontrol yapar ve sebebi acikar.",
+    "backend": [
+      { "title": "Price Validator", "goal": "Fiyat Dogrulama", "content": "Siparis tutari, kampanya kosullari ve uygulanan indirimler karsilastirilir. Tutarsizlik sebebi belirlenir." },
+      { "title": "Coupon Checker", "goal": "Kupon Kontrolu", "content": "Kupon gecerliligi, kullanim limiti, kategori kisitlamasi kontrolu." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Siparis + Kampanya", "content": "Siparis detayi, uygulanan indirimler ve kampanya kosullari." },
+      { "title": "Promotion API", "goal": "Kupon Yonetimi", "content": "Kupon kodu dogrulama, alternatif kupon onerileri." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik fiyat/kupon kontrolu ile kazanilan verimlilik ve musteri memnuniyeti.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPriceDisputes", "label": "Aylik Fiyat Sorunu", "default": 25, "hint": "Kampanya/kupon sikayeti", "editable": true },
+      { "key": "minutesPerCase", "label": "Vaka Basina Dakika", "default": 8, "hint": "Agent'in harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyPriceDisputes * minutesPerCase * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

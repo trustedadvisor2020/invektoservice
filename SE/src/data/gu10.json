@@ -1,0 +1,107 @@
+{
+  "id": "gu10",
+  "title": "Gelin Paketi / Ozel Gun",
+  "subtitle": "Bridal Package / Special Occasion",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "Gelin adayi veya ozel gun icin paket icerigi, fiyat ve musaitlik soruyor. Knowledge base'den gelin paketi detaylari sunulur, kisisellestirilmis teklif olusturulur.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Makyaj)" },
+      { "label": "Sorun", "value": "Gelin paketi sorusu detayli ve uzun — telefonda anlatmak zor, resepsiyon aciklayamiyor" },
+      { "label": "Deger", "value": "Detayli paket bilgisi + kisisellestirme = yuksek degerli satis donusumu" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge Base (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI gelin paketi sorusunu tespit eder. Knowledge base'den paket detaylarini cekar, kisisellestirilmis teklif hazirlar ve deneme randevusu onerir.",
+    "steps": [
+      {
+        "title": "Paket Sorusu Tespiti",
+        "goal": "Gelin talebi tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kanal)", "color": "blue" }
+        ],
+        "content": "AI, 'gelin paketi', 'dugun hazirligi', 'nisan makyaji' gibi sorgulari ozel gun intent'i olarak tespit eder."
+      },
+      {
+        "title": "Paket Detay Sunumu",
+        "goal": "Icerik ve fiyat bildir",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Paket)", "color": "amber" }
+        ],
+        "content": "Knowledge base'den gelin paketi icerigi, dahil olan islemler, fiyat araligi ve suresi sunulur."
+      },
+      {
+        "title": "Deneme Randevusu",
+        "goal": "On gorusme planla",
+        "badges": [
+          { "text": "Sistem (Randevu)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "green" }
+        ],
+        "content": "Gelin adayina sac ve makyaj denemesi icin randevu onerilir. Kapora bilgisi verilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Gelin Paketi Sorgulama",
+      "description": "Gelin adayi dugun icin paket bilgisi istiyor.",
+      "tags": [
+        { "text": "Gelin", "color": "purple" },
+        { "text": "Paket", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Gelin paketi tanimlari", "service": "Knowledge", "page": "Hizmet Katalogu > Gelin Paketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Farkli gelin paketlerini (standart, premium, VIP) icerik ve fiyatlari ile tanimlayin" },
+          { "text": "Portfolyo gorselleri", "service": "Knowledge", "page": "Galeri > Gelin Portfolyosu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Onceki gelin calismalari fotograflarini paylasim icin yukleyin" }
+        ],
+        "provider": [
+          { "text": "Gelin paketi intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Ozel Gun", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Gelin paketi ve ozel gun sorgulari intent'i tanimli" },
+          { "text": "Paket bilgi cekim", "service": "Knowledge", "page": "RAG > Gelin Paketleri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Gelin paketi detaylari RAG ile otomatik cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, haziran ayinda dugunum var. Gelin paketi hakkinda bilgi alabilir miyim?" },
+        { "role": "ai", "content": "Intent: Gelin Paketi Sorgulama. Dugun tarihi: Haziran. Paket bilgileri cekilecek." },
+        { "role": "bot", "content": "Tebrikler! Dugun hazirliklariniz icin size yardimci olalim.\n\nGelin paketlerimiz:\n\nStandart Paket — 8.000 TL\n- Gelin saci + makyaj (dugun gunu)\n- 1 deneme randevusu\n- Sure: ~3 saat\n\nPremium Paket — 12.000 TL\n- Gelin saci + makyaj (dugun gunu)\n- Kina gecesi saci + makyaj\n- 2 deneme randevusu\n- Cilt bakimi (dugundan 1 hafta once)\n- Sure: ~5 saat (dugun gunu)\n\nVIP Paket — 18.000 TL\n- Tum Premium icerik\n- Nisan saci + makyaj\n- 3 deneme randevusu\n- 3 seans cilt bakimi\n- Ozel stil danismanligi\n\nHangi paket ilginizi cekti? Detayli bilgi ve portfolyomuzu paylasabilirim." },
+        { "role": "user", "content": "Premium paket guzel gorunuyor. Portfolyonuzu gorebilir miyim?" },
+        { "role": "bot", "content": "Premium paket cok tercih edilen secenegimiz!\n\nIsle portfolyomuzdan ornekler:\n[Gorsel 1: Sac modeli ornegi]\n[Gorsel 2: Makyaj ornegi]\n[Gorsel 3: Genel gorunum]\n\nDeneme randevusu almak ister misiniz? Boylece sac ve makyaj stilinizi birlikte belirleyelim.\n\nMusait tarihlerimiz:\nCumartesi 10:00\nPazar 11:00\n\nKapora: 2.000 TL (toplam ucrete dahil)" },
+        { "role": "user", "content": "Cumartesi 10 uygun" },
+        { "role": "bot", "content": "Gelin deneme randevunuz olusturuldu!\n\nPremium Gelin Paketi — Deneme Randevusu\nCumartesi, 10:00\nSure: ~2 saat\nKapora: 2.000 TL (salonda odenecek)\n\nIlham verici bir gorusme olacak! Begendiginiz sac ve makyaj orneklerini getirirseniz harika olur." },
+        { "role": "system", "content": "Gelin paketi deneme randevusu olusturuldu. Yuksek degerli lead: 12.000 TL potansiyel. Salon yoneticisine bildirim gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Knowledge base gelin paketleri ile detayli bilgi sunumu. Portfolyo paylasimi ve deneme randevusu yonetimi.",
+    "backend": [
+      { "title": "Package Catalog Service", "goal": "Paket Katalogu", "content": "Gelin ve ozel gun paketlerinin icerik, fiyat ve surelerini yoneten servis." },
+      { "title": "Portfolio Gallery", "goal": "Portfolyo Yonetimi", "content": "Stilist portfolyo gorsellerini saklama ve paylasim. Kategori bazli filtreleme." }
+    ],
+    "apis": [
+      { "title": "Package Detail API", "goal": "Paket Detay", "content": "Paket turune gore icerik, fiyat, sure ve dahil olan hizmetleri donduren API." },
+      { "title": "Trial Booking API", "goal": "Deneme Randevusu", "content": "Gelin deneme randevusu olusturma ve kapora yonetimi API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Gelin Paketi Satisi",
+    "description": "Detayli bilgi ve hizli yanit ile gelin paketi donusum orani artisi.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyBridalInquiries", "label": "Aylik Gelin Sorusu", "default": 8, "hint": "Gelin paketi soran aylik musteri", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 35, "suffix": "%", "hint": "Sorgulayan gelin adaylarindan satis orani", "editable": true },
+      { "key": "avgPackageValue", "label": "Ort. Paket Degeri", "default": 12000, "suffix": "TL", "hint": "Ortalama gelin paketi ucreti", "editable": true }
+    ],
+    "formula": "monthlyBridalInquiries * (conversionRate / 100) * avgPackageValue",
+    "formulaDisplay": null
+  }
+}

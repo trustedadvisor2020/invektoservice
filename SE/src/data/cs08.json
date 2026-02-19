@@ -1,0 +1,132 @@
+{
+  "id": "cs08",
+  "title": "Compliance Otomasyonu (KVKK/GDPR)",
+  "subtitle": "KVKK/GDPR Compliance Automation",
+  "phase": "Phase 1",
+  "category": "CROSS-SECTOR KRITIK",
+  "niche": "crossSector",
+  "description": "Kisisel veri isleme sureclerinde sistematik compliance eksikligi: onam kayitlari tutulmuyor, veri silme/erisim talepleri takip edilmiyor, audit trail yok. Consent flow, opt-in log, audit trail ve veri silme/erisim otomasyonu ile tam KVKK/GDPR uyumu.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Tum Sektorler — Kisisel veri isleyen her isletme (KVKK 6698 / GDPR kapsaminda)" },
+      { "label": "Sorun", "value": "KVKK/GDPR gereksinimleri karsilanmiyor: onam kaydi yok, veri silme sureci yok, denetim izi eksik" },
+      { "label": "Deger", "value": "Yasal uyum + ceza riski sifirlama + musteri guveni + otomasyon ile operasyonel yuk azaltma" }
+    ],
+    "services": [
+      { "name": "Automation Engine (C5)", "color": "red" },
+      { "name": "Campaign Scheduler (C6)", "color": "blue" }
+    ],
+    "servicesNote": "Consent flow otomasyonu ile onam toplama, saklama ve iptal surecleri yonetilir. Veri silme/erisim talepleri otomatik akisla islenr. Tum islemler immutable audit trail ile kayit altina alinir.",
+    "steps": [
+      {
+        "title": "Consent Flow",
+        "goal": "Onam toplama ve yonetme",
+        "badges": [
+          { "text": "Sistem (Consent Manager)", "color": "purple" },
+          { "text": "Tenant (Aydinlatma Metni)", "color": "blue" }
+        ],
+        "content": "Ilk iletisimde KVKK aydinlatma metni sunulur, acik riza alinir. Onam kaydi: tarih, kanal, gosterilen metin, musteri yaniti. Farkli isleme amacları icin ayri onam destegi."
+      },
+      {
+        "title": "Veri Erisim / Silme",
+        "goal": "Talepleri otomatik isle",
+        "badges": [
+          { "text": "Sistem (DSAR Handler)", "color": "purple" },
+          { "text": "Tenant (Sure Tanimi)", "color": "amber" }
+        ],
+        "content": "Musteri 'verilerimi sil' veya 'verilerimi gormek istiyorum' dediginde otomatik talep olusturulur. KVKK: 30 gun, GDPR: 30 gun icinde islem tamamlanir."
+      },
+      {
+        "title": "Audit Trail",
+        "goal": "Tum islemleri kayit altina al",
+        "badges": [
+          { "text": "Sistem (Immutable Log)", "color": "purple" },
+          { "text": "Tenant (Denetim)", "color": "red" }
+        ],
+        "content": "Onam toplama, guncelleme, iptal, veri erisim ve silme islemlerinin tamami tarih, islem yapan, etkilenen veri ve sonuc bilgisiyle kaydedilir. Degistirilemez log."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Veri Silme Talebi (Unutulma Hakki)",
+      "description": "Musteri kisisel verilerinin silinmesini talep ediyor.",
+      "tags": [
+        { "text": "KVKK", "color": "blue" },
+        { "text": "Veri Silme", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Veri isleme envanter", "service": "Backend", "page": "Compliance > Veri Envanteri", "status": "setup", "priority": "required", "effort": "medium", "capability": "C5", "hint": "Hangi sistemlerde hangi kisisel verilerin tutuldugunu envantere kaydedin" },
+          { "text": "Veri silme onay sureci", "service": "Backend", "page": "Compliance > Silme Onay Akisi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Veri silme talebinin kim tarafindan onaylanacagini tanimlayin (DPO veya yetkili)" }
+        ],
+        "provider": [
+          { "text": "DSAR talep isleyici", "service": "Automation", "page": "Compliance > DSAR Handler", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Veri silme/erisim taleplerini otomatik olusturma ve takip sistemi hazir" },
+          { "text": "Coklu sistem veri silme", "service": "Backend", "page": "Compliance > Data Purge", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Tum sistemlerdeki kisisel veriyi koordineli silme mekanizmasi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "KVKK kapsaminda tum kisisel verilerimin silinmesini talep ediyorum." },
+        { "role": "ai", "content": "Intent: Veri Silme Talebi (DSAR). KVKK Madde 7: Unutulma Hakki. Otomatik DSAR akisi baslatiliyor." },
+        { "role": "bot", "content": "Talebiniz alinmistir. KVKK kapsaminda veri silme talebinizi isleme aliyoruz.\n\nTalep No: DSAR-2026-0089\nBasvuru Tarihi: 20 Subat 2026\nYasal Sure: 30 gun\n\nKimlik dogrulama icin TC kimlik numaranizin son 4 hanesini paylasir misiniz?" },
+        { "role": "user", "content": "3456" },
+        { "role": "system", "content": "Kimlik dogrulamasi basarili. DSAR-2026-0089 isleme alindi. DPO'ya onay bildirimi gonderildi." },
+        { "role": "bot", "content": "Kimliginiz dogrulandi. Talebiniz isleme alindi ve yasal sure icinde (en gec 22 Mart 2026) tamamlanacaktir. Islem tamamlandiginda size bildirim gonderecegiz.\n\nSilinecek veri kategorileri: iletisim bilgileri, konusma gecmisi, siparis gecmisi." },
+        { "role": "system", "content": "AUDIT TRAIL: DSAR-2026-0089 | Talep: Veri Silme | Musteri: +905xxxxxxxxx | Dogrulama: Basarili | DPO Onay: Bekliyor | Yasal Sure: 30 gun" }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Veri Erisim Talebi (Bilgi Edinme)",
+      "description": "Musteri hangi verilerinin islendigini ogrenmek istiyor.",
+      "tags": [
+        { "text": "KVKK", "color": "blue" },
+        { "text": "Veri Erisim", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Veri kategorileri tanimi", "service": "Backend", "page": "Compliance > Veri Kategorileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Islenen kisisel veri kategorilerini tanimlayin (iletisim, finansal, saglik vb.)" }
+        ],
+        "provider": [
+          { "text": "Veri erisim raporu olusturma", "service": "Backend", "page": "Compliance > Erisim Raporu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Musteri bazinda tum islenen verileri PDF rapor olarak cikaran sistem hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Hakkimda hangi verileri tutuyorsunuz gormek istiyorum." },
+        { "role": "ai", "content": "Intent: Veri Erisim Talebi (DSAR). KVKK Madde 11: Bilgi Edinme Hakki." },
+        { "role": "bot", "content": "Veri erisim talebiniz alinmistir. Kimlik dogrulama icin TC kimlik numaranizin son 4 hanesini paylasir misiniz?" },
+        { "role": "user", "content": "7890" },
+        { "role": "system", "content": "Kimlik dogrulandi. Veri erisim raporu olusturuluyor." },
+        { "role": "bot", "content": "Kimliginiz dogrulandi. Hakkinizdaki islenen veriler:\n\nIletisim: Ad, soyad, telefon, e-posta\nKonusma Gecmisi: 47 mesaj (son 1 yil)\nSiparis: 3 siparis kaydi\nOnam: 1 opt-in kaydi (12 Ocak 2026)\n\nDetayli raporu PDF olarak gondereyim mi?" },
+        { "role": "user", "content": "Evet lutfen." },
+        { "role": "bot", "content": "Veri erisim raporunuz hazir: [PDF Linki]. Bu rapor 30 gun erisilebilir olacaktir. Baska bir talebiniz var mi?" },
+        { "role": "system", "content": "AUDIT TRAIL: DSAR-2026-0090 | Talep: Veri Erisim | Musteri: +905xxxxxxxxx | Dogrulama: Basarili | Rapor: Gonderildi | Sure: 3 dakika" }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Compliance otomasyonu KVKK 6698 ve GDPR gereksinimlerini karsilayacak sekilde tasarlanmistir. Onam yonetimi, DSAR isleme ve audit trail uc ana bilesen olarak calisir.",
+    "backend": [
+      { "title": "Consent Management System", "goal": "Onam Yonetimi", "content": "Coklu amac bazli onam toplama, saklama, guncelleme ve iptal. Her onam kaydi immutable audit trail ile saklanir." },
+      { "title": "DSAR Processing Engine", "goal": "Talep Isleme", "content": "Veri silme ve erisim taleplerini otomatik olusturur, kimlik dogrulamasindan sonra isleme alir, yasal sure takibi yapar." }
+    ],
+    "apis": [
+      { "title": "Consent API", "goal": "Onam Sorgulama", "content": "Musteri bazinda onam durumu sorgulama, guncelleme ve gecmis listeleme. Amac bazli granular onam destegi." },
+      { "title": "DSAR API", "goal": "Talep Yonetimi", "content": "Veri erisim ve silme taleplerini olusturma, durum takibi ve rapor indirme. Yasal sure uyarisi." }
+    ]
+  },
+  "impact": {
+    "title": "KVKK/GDPR Ceza Riski Azaltma",
+    "description": "Compliance otomasyonu ile onlenen KVKK/GDPR cezalari ve uyum maliyeti tasarrufu.",
+    "resultLabel": "Korunan Risk Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "annualFineRisk", "label": "Yillik Ceza Riski", "default": 500000, "suffix": "TL", "hint": "KVKK'da 2.9M TL'ye kadar ceza uygulanabilir, tahmini risk tutarini girin", "editable": true },
+      { "key": "complianceGapRate", "label": "Otomasyon Olmadan Acik Orani", "default": 30, "suffix": "%", "hint": "Manuel sureclerle compliance acigi yuzdesi", "editable": true },
+      { "key": "manualProcessCost", "label": "Manuel Islem Maliyeti", "default": 5000, "suffix": "TL/ay", "hint": "DSAR taleplerini manuel isleme aylik maliyeti", "editable": true }
+    ],
+    "formula": "(annualFineRisk * (complianceGapRate / 100) / 12) + manualProcessCost",
+    "formulaDisplay": null
+  }
+}

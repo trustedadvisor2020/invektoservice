@@ -1,0 +1,93 @@
+{
+  "id": "eb05",
+  "title": "Sikayetvar / BTK Eskalasyon Yonetimi",
+  "subtitle": "Complaint Platform Escalation Management",
+  "phase": "Phase 3",
+  "category": "E-TICARET EK",
+  "niche": "ecommerce",
+  "description": "Musteri Sikayetvar'a sikayet dustugunde veya BTK'ya basvurdugunda gec fark edilmesini onleyen, proaktif WA cozum mesaji gonderen eskalasyon yonetim sistemi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Sikayetvar case'i gec fark ediliyor — marka itibar zarari ve yasal risk" },
+      { "label": "Deger", "value": "Erken tespit ve proaktif cozum ile itibar korunur, eskalasyon onlenir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Routing (C2)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Sikayetvar/BTK case tespitinde AI eskalasyon seviyesini belirler ve proaktif cozum mesaji gonderir.",
+    "steps": [
+      {
+        "title": "Case Tespiti",
+        "goal": "Eskalasyonu yakala",
+        "badges": [
+          { "text": "Sistem (Monitor)", "color": "purple" },
+          { "text": "Tenant (Alert)", "color": "rose" }
+        ],
+        "content": "Sikayetvar/BTK case'i tespit edildiginde acil alert tetiklenir."
+      },
+      {
+        "title": "Proaktif Cozum",
+        "goal": "Musteriyle iletisim",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Cozum)", "color": "green" }
+        ],
+        "content": "Musteri WA uzerinden proaktif olarak aranir ve cozum teklifi sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Sikayetvar Case — Proaktif Cozum",
+      "description": "Musteri Sikayetvar'a sikayet yazmis, ekip proaktif cozum sunuyor.",
+      "tags": [
+        { "text": "Sikayetvar", "color": "rose" },
+        { "text": "Eskalasyon", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sikayetvar izleme proseduru", "service": "Knowledge", "page": "Dokuman Bankasi > Eskalasyon Proseduru", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Sikayetvar case tespit ve cozum prosedurunu tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Eskalasyon alert sistemi", "service": "Backend", "page": "Bildirim > Eskalasyon Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayetvar/BTK case tespitinde anlik alert gonderimi hazir" },
+          { "text": "Proaktif cozum mesaji", "service": "Outbound", "page": "Kampanya > Eskalasyon Cozum", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Eskalasyon tespitinde proaktif WA mesaji gonderimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "ESKALASYON ALERT: Musteri [Ad] Sikayetvar'a sikayet yazdi. Konu: Iade islenmedi (15 gun). Oncelik: YUKSEK." },
+        { "role": "bot", "content": "Merhaba [Ad]! Ben [Firma] musteri iliskileri yoneticisiyim.\n\nSikayetiniizi gorduk ve cok uzgunuz. Iade talebiniiz hakkinda hemen cozum sunmak istiyoruz.\n\n💰 Iadeniz: 1.250 TL\n⏰ Hemen isleme aliyoruz — 2 is gunu icinde kartiniZa yansiyacak.\n\nBu konuda baska bir endiseniiz var mi?" },
+        { "role": "user", "content": "Evet en kisa surede paramı istiyorum." },
+        { "role": "bot", "content": "Anliyorum! Iadenizi oncelikli isleme aldim:\n\n✅ Iade onaylandi: 1.250 TL\n💳 Kartiniza yansiM: 1-2 is gunu\n🎁 Ozur hediyesi: Sonraki alisveris icin %10 indirim kodu\n\nHer adimda sizi bilgilendirecegiz." },
+        { "role": "system", "content": "Iade hizlandirildi. Musteri memnun. Sikayetvar case kapanma surecinde." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Eskalasyon izleme + Proaktif Outbound birlesimiyle calisir. Sikayetvar/BTK case tespiti ve hizli cozum.",
+    "backend": [
+      { "title": "Escalation Monitor", "goal": "Case Izleme", "content": "Sikayetvar ve BTK platformlarini izler, yeni case'leri tespit eder." },
+      { "title": "Priority Resolver", "goal": "Oncelik Belirleme", "content": "Case icerigine gore oncelik seviyesi belirler ve uygun agent'e yonlendirir." }
+    ],
+    "apis": [
+      { "title": "Sikayetvar API", "goal": "Case Izleme", "content": "Yeni sikayet tespiti ve case durumu takibi." },
+      { "title": "WhatsApp Business API", "goal": "Proaktif Mesaj", "content": "Template mesaj ile proaktif cozum teklifi gonderimi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Korunan Marka Degeri",
+    "description": "Erken tespit ve proaktif cozum ile onlenen itibar zarari.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyEscalations", "label": "Aylik Eskalasyon", "default": 5, "hint": "Sikayetvar/BTK case sayisi", "editable": true },
+      { "key": "reputationCostPerCase", "label": "Case Basina Maliyet", "default": 2000, "suffix": "TL", "hint": "Itibar zarari + hukuki maliyet", "editable": true }
+    ],
+    "formula": "monthlyEscalations * reputationCostPerCase",
+    "formulaDisplay": null
+  }
+}

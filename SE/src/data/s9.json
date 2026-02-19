@@ -1,0 +1,171 @@
+{
+  "id": "s9",
+  "title": "Medikal Turizm Lead Yonetimi",
+  "subtitle": "Medical Tourism Pipeline",
+  "phase": "Phase 5",
+  "category": "SAGLIK OTOMASYONU",
+  "niche": "health",
+  "description": "Istanbul'daki kliniklere Ingilizce/Arapca/Rusca gelen yuksek degerli medikal turizm lead'lerini 7/24 AI ile karsilayan, on degerlendirme yapan ve follow-up zinciri ile randevuya donusturen sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Medikal Turizm (Dis, Estetik, Sac Ekimi)" },
+      { "label": "Lead Degeri", "value": "2.000-10.000 USD (50K-250K TL) / hasta" },
+      { "label": "Kritik Kural", "value": "ILK CEVAPLAYAN KAZANIYOR — 30sn vs 8 saat" }
+    ],
+    "services": [
+      { "name": "Multi-Language AI", "color": "blue" },
+      { "name": "WhatsApp Business API", "color": "green" },
+      { "name": "Lead Scoring Engine", "color": "purple" },
+      { "name": "Follow-Up Chain", "color": "amber" }
+    ],
+    "servicesNote": "7/24 otomatik cevap (EN/AR/RU). AI on degerlendirme + lead scoring + otomatik follow-up zinciri.",
+    "steps": [
+      {
+        "title": "7/24 Ilk Cevap (30sn)",
+        "goal": "Rakipten once cevap ver",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Dil Secenekleri)", "color": "blue" }
+        ],
+        "content": "Gece 3'te Suudi'den mesaj gelse bile 30 saniyede otomatik cevap. Multi-language NLP ile dil tespit + cevap."
+      },
+      {
+        "title": "On Degerlendirme",
+        "goal": "Bilgi topla",
+        "badges": [
+          { "text": "Sistem (Form)", "color": "purple" },
+          { "text": "Tenant (Sorular)", "color": "amber" }
+        ],
+        "content": "Hastadan fotograf, saglik durumu ve ziyaret plani istenir. AI on degerlendirme yapar."
+      },
+      {
+        "title": "Lead Scoring",
+        "goal": "Oncelik belirle",
+        "badges": [
+          { "text": "Sistem (Scoring)", "color": "purple" },
+          { "text": "Tenant (Kurallar)", "color": "green" }
+        ],
+        "content": "Budget, timeline, readiness bazli lead score hesaplanir. Sicak lead → doktora/koordinatore bildirim."
+      },
+      {
+        "title": "Follow-Up Zinciri",
+        "goal": "Lead'i kaybetme",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Sablonlar)", "color": "amber" }
+        ],
+        "content": "T+0: Ilk cevap (30sn). T+1: 'Fotograflari gonderdiniz mi?' T+3: 'Size ozel paket hazirladik.' T+7: 'Gecen hafta 3 hasta geldi [before/after].'"
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Ingilizce Lead — Sac Ekimi",
+      "description": "Ingiltere'den gelen sac ekimi sorusu.",
+      "tags": [
+        { "text": "English", "color": "blue" },
+        { "text": "Hair Transplant", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Ingilizce paket fiyatlari", "service": "Knowledge", "page": "Dokuman Bankasi > Paket Fiyatlari (EN)", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Ingilizce tedavi paketlerini ve fiyatlarini Knowledge Base'e yukleyin" },
+          { "text": "Before/after gorselleri", "service": "Knowledge", "page": "Medya Kutuphanesi > Before-After", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Tedavi oncesi/sonrasi gorsellerini yukleyin" },
+          { "text": "Konaklama bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Konaklama Detaylari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Otel, transfer ve paket detaylarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Multi-language AI (EN)", "service": "AgentAI", "page": "Dil Ayarlari > Ingilizce", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Ingilizce NLP ve cevap uretimi hazir" },
+          { "text": "Fotograf degerlendirme", "service": "AgentAI", "page": "Gorsel Analiz > Medikal", "status": "ready", "priority": "required", "effort": "technical", "capability": "C8", "hint": "AI fotograf on degerlendirme (opsiyonel, Phase 5)" },
+          { "text": "Lead scoring", "service": "ChatAnalysis", "page": "Lead Scoring > Medikal Turizm", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Budget/timeline/readiness bazli lead skorlamasi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Hi, how much for hair transplant? FUE 3000 grafts." },
+        { "role": "ai", "content": "Language: English. Intent: Price + Hair Transplant. Lead Score: HIGH." },
+        { "role": "bot", "content": "Thank you for your interest! To give you an accurate quote, we need:\n1. A photo of your current hair situation\n2. Your general health condition\n3. When are you planning to visit Istanbul?" },
+        { "role": "user", "content": "Here's my photo [image]. I'm healthy. Planning for March." },
+        { "role": "ai", "content": "Photo received. Pre-assessment: Norwood 3-4. Estimated: 3000-3500 grafts. Lead READY." },
+        { "role": "bot", "content": "Based on your photo, we recommend FUE 3000-3500 grafts. Our all-inclusive package: $2,500 (hotel 3 nights + airport transfer + PRP). Shall I schedule a video consultation with our doctor?" },
+        { "role": "system", "content": "Hot Lead: UK patient, March timeline, $2,500 package. Doctor notified." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Arapca Lead — Dis Tedavisi",
+      "description": "Suudi Arabistan'dan gelen dis tedavisi sorusu (gece mesaj).",
+      "tags": [
+        { "text": "Arabic", "color": "purple" },
+        { "text": "Dental", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Arapca paket bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Paket Fiyatlari (AR)", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Arapca tedavi paketlerini Knowledge Base'e yukleyin" },
+          { "text": "Konaklama + transfer detaylari", "service": "Knowledge", "page": "Dokuman Bankasi > Konaklama Detaylari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Otel ve transfer bilgilerini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Multi-language AI (AR)", "service": "AgentAI", "page": "Dil Ayarlari > Arapca", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Arapca NLP ve cevap uretimi hazir" },
+          { "text": "7/24 otomatik cevap", "service": "AgentAI", "page": "Zamanlama > 7/24 Mod", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "7/24 otomatik cevap sistemi hazir — gece/gunduz farketmez" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Saat: 03:15 (Turkiye). Kaynak: Instagram Reklami (Suudi Arabistan)." },
+        { "role": "user", "content": "مرحبا، كم سعر زراعة الأسنان؟" },
+        { "role": "ai", "content": "Language: Arabic. Intent: Dental Implant Price. Time: 03:15 AM. Auto-response activated." },
+        { "role": "bot", "content": "مرحباً! شكراً لتواصلك معنا. لتقديم عرض دقيق، نحتاج:\n1. صورة أشعة بانوراما\n2. حالتك الصحية العامة\n3. متى تخطط لزيارة إسطنبول؟" },
+        { "role": "system", "content": "Lead created: Saudi Arabia, Dental Implant, Night inquiry. Follow-up chain: T+1 activated." }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Follow-Up Zinciri",
+      "description": "Lead cevap vermedi, otomatik takip mesajlari.",
+      "tags": [
+        { "text": "Follow-Up", "color": "amber" },
+        { "text": "Nurturing", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Before/after gorselleri", "service": "Knowledge", "page": "Medya Kutuphanesi > Before-After", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Tedavi oncesi/sonrasi gorsellerini ve hasta referanslarini yukleyin" },
+          { "text": "Hasta referanslari", "service": "Knowledge", "page": "Dokuman Bankasi > Hasta Referanslari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Hasta basari hikayeleri ve referanslari yukleyin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine", "service": "Outbound", "page": "Follow-Up Zinciri > Medikal Turizm", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+1/T+3/T+7 otomatik follow-up zinciri hazir" },
+          { "text": "Template mesajlar (EN/AR)", "service": "Backend", "page": "Mesaj Sablonlari > Cok Dilli", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ingilizce ve Arapca template mesajlar hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+1 Gun: Lead henuz fotograf gondermedi." },
+        { "role": "bot", "content": "Hi [Name]! Did you have a chance to send the photos? We're ready to prepare your personalized treatment plan." },
+        { "role": "system", "content": "T+3 Gun: Hala cevap yok." },
+        { "role": "bot", "content": "We prepared a special package for you! All-inclusive dental treatment + 5 nights hotel + VIP transfer. Limited spots for March. Interested?" },
+        { "role": "system", "content": "T+7 Gun: Son deneme." },
+        { "role": "bot", "content": "Last week, 3 patients from the UK visited us. Here are their results: [Before/After photos]. We'd love to help you too!" },
+        { "role": "system", "content": "Follow-up zinciri tamamlandi. Lead durumu: SOGUK → pasife alindi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo 7/24 aktif olmalidır. Multi-language NLP ile dil tespiti ve cevap uretimi yapilir. Lead scoring budget + timeline + readiness faktorlerine gore hesaplanir.",
+    "backend": [
+      { "title": "Multi-Language NLP", "goal": "Dil Tespiti + Cevap", "content": "Ingilizce, Arapca, Rusca, Almanca dillerinde otomatik tespit ve dogal dilde cevap uretimi." },
+      { "title": "Lead Scoring Engine", "goal": "Onceliklendirme", "content": "Budget (ne kadar harcayabilir), Timeline (ne zaman gelecek), Readiness (ne kadar kararlı) bazli scoring." }
+    ],
+    "apis": [
+      { "title": "WhatsApp Cloud API", "goal": "7/24 Mesajlasma", "content": "Gece/gunduz farketmeksizin otomatik cevap. Template mesajlar ile follow-up." },
+      { "title": "Image Analysis API", "goal": "Fotograf Degerlendirme", "content": "Hasta fotograflarindan on degerlendirme (opsiyonel, Phase 5)." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Ek Gelir Potansiyeli",
+    "description": "Medikal turizm lead donusum artisi ile elde edilen ek gelir. Her lead 50K-250K TL degeri tasir.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 25000,
+    "inputs": [
+      { "key": "monthlyLeads", "label": "Aylik Lead", "default": 20, "hint": "Uluslararasi lead sayisi", "editable": true },
+      { "key": "conversionIncrease", "label": "Donusum Artisi", "default": 8, "prefix": "%", "hint": "%12 → %20 hedef", "editable": true },
+      { "key": "avgTreatmentValue", "label": "Ort. Tedavi", "default": 80000, "suffix": "TL", "hint": "~3.000 USD", "editable": true }
+    ],
+    "formula": "monthlyLeads * (conversionIncrease / 100) * avgTreatmentValue",
+    "formulaDisplay": null
+  }
+}

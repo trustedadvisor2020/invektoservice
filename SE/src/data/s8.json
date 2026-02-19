@@ -1,0 +1,165 @@
+{
+  "id": "s8",
+  "title": "Tedavi Sonrasi Takip",
+  "subtitle": "Post-Treatment Care",
+  "phase": "Phase 2",
+  "category": "SAGLIK OTOMASYONU",
+  "niche": "health",
+  "description": "Ameliyat/tedavi sonrasi standart sorulari AI ile otomatik yanitlayan, acil durumlarda doktora alert gonderen ve kontrol randevusu planlayan takip sistemi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Saglik (Dis, Estetik, Genel Cerrahi)" },
+      { "label": "Sorun", "value": "Doktor gunde 1 saat mesaj yaziyor (burnout), standart sorularin %90'i tekrar" },
+      { "label": "Deger", "value": "Doktor zamanini tedaviye cevirmek = 3.000 TL/gun ek gelir" }
+    ],
+    "services": [
+      { "name": "Outbound Engine", "color": "blue" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "purple" },
+      { "name": "Escalation System", "color": "amber" }
+    ],
+    "servicesNote": "Tedavi tipi bazli otomatik takip zinciri: T+0, T+1, T+7, T+30 gun. Standart sorulari AI cevaplayar, acil durumlarda doktora alert gonderir.",
+    "steps": [
+      {
+        "title": "Otomatik Rehber (T+0)",
+        "goal": "Ilk gun bilgilendirme",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Tedavi Tipi)", "color": "amber" }
+        ],
+        "content": "Ameliyat gunu aksam otomatik rehber mesaji: kompres, ilac dozu, yasak gidalar, acil telefon."
+      },
+      {
+        "title": "Durum Kontrolu (T+1)",
+        "goal": "Standart sorulari cevapla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Rehber)", "color": "blue" }
+        ],
+        "content": "Ertesi gun: 'Kendinizi nasil hissediyorsunuz?' Cevaba gore: 'sislik normal' veya 'doktoru arayin' yonlendirmesi."
+      },
+      {
+        "title": "Kontrol Randevusu (T+7)",
+        "goal": "Takip randevusu olustur",
+        "badges": [
+          { "text": "Sistem (Randevu)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "green" }
+        ],
+        "content": "1 hafta sonra kontrol randevusu hatirlatma ve planlama."
+      },
+      {
+        "title": "Iyilesme Kontrolu (T+30)",
+        "goal": "Memnuniyet ve referans",
+        "badges": [
+          { "text": "Sistem (Memnuniyet)", "color": "purple" },
+          { "text": "Tenant (Yorum)", "color": "green" }
+        ],
+        "content": "1 ay sonra: iyilesme kontrolu + memnuniyet anketi + Google yorum ricasi."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Implant Sonrasi Takip",
+      "description": "Implant ameliyati sonrasi otomatik rehber ve takip.",
+      "tags": [
+        { "text": "Implant", "color": "blue" },
+        { "text": "Post-Op", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Tedavi tipi bazli talimat sablonlari", "service": "Knowledge", "page": "Dokuman Bankasi > Tedavi Talimatlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Tedavi tipine gore post-op talimatlarini Knowledge Base'e yukleyin" },
+          { "text": "Doktor acil telefonu", "service": "Backend", "page": "Ekip Yonetimi > Acil Iletisim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Doktor acil iletisim bilgisini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine", "service": "Outbound", "page": "Takip Zinciri > Post-Op", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+0/T+1/T+7/T+30 otomatik takip zinciri hazir" },
+          { "text": "Tedavi tipi eslestirme", "service": "AgentAI", "page": "Eslestirme Kurallari > Tedavi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tedavi tipine gore sablon eslestirme hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+0: Implant ameliyati tamamlandi. Post-op rehber tetiklendi." },
+        { "role": "bot", "content": "Ameliyatiniz basariyla tamamlandi! Ilk 24 saat rehberiniz:\n- Hafif sislik normaldir\n- Soguk kompres uygulayin\n- [Ilac adi] 8 saatte bir alin\n- Sert gida yemeyin\n- Acil durumda: [telefon]" },
+        { "role": "system", "content": "T+1 Gun: Durum kontrolu tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad], bugun kendinizi nasil hissediyorsunuz?" },
+        { "role": "user", "content": "Sislik var, normal mi?" },
+        { "role": "ai", "content": "Standart Soru: Sislik (T+1). Cevap: Normal. Kaynak: Implant Post-Op Rehberi." },
+        { "role": "bot", "content": "48 saate kadar hafif sislik normaldir. Soguk kompres uygulamaya devam edin. Sislik artarsa veya ates cikarsa hemen bizi arayin." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Acil Eskalasyon",
+      "description": "Hasta ciddi sikayet bildiriyor, doktora alert gonderiliyor.",
+      "tags": [
+        { "text": "Acil", "color": "rose" },
+        { "text": "Doktor Alert", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Doktor acil iletisim", "service": "Backend", "page": "Ekip Yonetimi > Acil Iletisim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Doktor acil telefon/WhatsApp bilgisini tanimlayin" },
+          { "text": "Eskalasyon protokolu", "service": "Knowledge", "page": "Dokuman Bankasi > Eskalasyon Proseduru", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Acil durum eskalasyon adimlarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Severity tespit algoritmasi", "service": "AgentAI", "page": "Risk Tespiti > Severity", "status": "ready", "priority": "required", "effort": "technical", "capability": "C8", "hint": "AI severity (ciddiyet) tespiti hazir — agri, kanama, ates keyword'leri" },
+          { "text": "Doktor alert sistemi", "service": "Backend", "page": "Bildirim Sistemi > Acil Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "WhatsApp/SMS ile acil doktor bildirimi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Cok agri var, kanama durmuyor!" },
+        { "role": "ai", "content": "SEVERITY: YUKSEK. Anahtar kelimeler: 'cok agri', 'kanama durmuyor'. Aksiyon: DOKTOR ALERT." },
+        { "role": "system", "content": "ACIL ALERT: Doktora bildirim gonderildi. Hasta [Ad], implant sonrasi yogun agri + kanama." },
+        { "role": "bot", "content": "Endiselenmeyin, hemen doktorumuza bilgi verdik. Size donecek. Bu arada: temiz bez ile hafif baskinc uygulayin ve bas kismi yukari tutun. Acil hat: [telefon]" }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "T+30 Memnuniyet + Yorum",
+      "description": "1 ay sonra iyilesme kontrolu ve Google yorum ricasi.",
+      "tags": [
+        { "text": "Memnuniyet", "color": "green" },
+        { "text": "Google Yorum", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Google yorum linki", "service": "Backend", "page": "Ayarlar > Yorum Linkleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Google Business yorum linkini tanimlayin" },
+          { "text": "Referans programi (opsiyonel)", "service": "Backend", "page": "Kampanya Yonetimi > Referans", "status": "optional", "priority": "optional", "effort": "easy", "capability": "C10", "hint": "Referans kodu ve indirim oranini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Outbound Engine (T+30)", "service": "Outbound", "page": "Takip Zinciri > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+30 memnuniyet anketi ve yorum ricasi hazir" },
+          { "text": "Memnuniyet anketi", "service": "Backend", "page": "Anket Sablonlari > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "1-5 puan memnuniyet anketi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "T+30 Gun: Iyilesme kontrolu tetiklendi." },
+        { "role": "bot", "content": "Merhaba [Ad]! Tedavinizin uzerinden 1 ay gecti. Iyilesme nasil gidiyor?" },
+        { "role": "user", "content": "Cok iyi, memnunum!" },
+        { "role": "bot", "content": "Cok mutlu olduk! Deneyiminizi Google'da paylasmak ister misiniz? Yorumunuz bize cok degerli: [Google Yorum Linki]" },
+        { "role": "system", "content": "Memnuniyet: 5/5. Google yorum linki gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Outbound Engine ile asenkron calisir. Tedavi tipi bazli talimat sablonlari Knowledge Base'den cekilir. Acil durum tespiti AI severity algoritmasi ile yapilir.",
+    "backend": [
+      { "title": "Outbound Engine", "goal": "Zamanli Takip Zinciri", "content": "T+0, T+1, T+7, T+30 otomatik mesaj zinciri. Tedavi tipine gore farkli sablonlar." },
+      { "title": "Severity Detector", "goal": "Acil Durum Tespiti", "content": "AI, hasta mesajindaki severity (ciddiyet) seviyesini tespit eder. Yuksek severity → doktor alert." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG (C7)", "goal": "Tedavi Bilgisi", "content": "Tedavi tipi bazli post-op talimatlar, sık sorulan sorular ve normal/anormal belirtiler." },
+      { "title": "Notification API", "goal": "Doktor Alert", "content": "Acil durumlarda doktora WhatsApp/SMS/Push bildirim gonderilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Kurtarilan Deger",
+    "description": "Doktor zamanini tedaviye cevirmenin + hasta memnuniyetinin gelir etkisi.",
+    "resultLabel": "Kurtarilan (Aylik)",
+    "subscriptionCost": 10000,
+    "inputs": [
+      { "key": "dailySavedMinutes", "label": "Kazanilan Dakika/Gun", "default": 45, "hint": "Doktor mesaj zamanindan", "editable": true },
+      { "key": "revenuePerHour", "label": "Saatlik Gelir", "default": 4000, "suffix": "TL", "hint": "Doktor tedavi geliri", "editable": true }
+    ],
+    "formula": "(dailySavedMinutes / 60) * revenuePerHour * 30",
+    "formulaDisplay": null
+  }
+}

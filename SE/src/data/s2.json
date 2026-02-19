@@ -1,0 +1,242 @@
+{
+  "id": "s2",
+  "title": "Satis Oncesi Urun Sorulari",
+  "subtitle": "Pre-Sale Conversion",
+  "phase": "Phase 3",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "WhatsApp ve Instagram DM'den gelen urun sorularini AI Knowledge Base ile aninda yanitlayarak cevap suresini dakikalardan saniyelere dusuren ve donusum oranini artiran akilli satis asistani.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Pazaryeri + D2C Saticilari)" },
+      { "label": "Kanallar", "value": "WhatsApp Business, Instagram DM" },
+      { "label": "Hacim", "value": "Gunde 50+ urun sorusu alan saticilar" }
+    ],
+    "services": [
+      { "name": "Knowledge RAG (C7)", "color": "blue" },
+      { "name": "WhatsApp Business API", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "purple" },
+      { "name": "Trendyol / Shopify API", "color": "amber" }
+    ],
+    "servicesNote": "Urun katalogu Knowledge Base'e yuklenir. AI, gelen soruyu anlayarak katalogdan dogru cevabi bulur ve aninda yanitlar.",
+    "steps": [
+      {
+        "title": "Soru Alimi (Intake)",
+        "goal": "Urun sorusunu yakala",
+        "badges": [
+          { "text": "Sistem (Otomatik)", "color": "purple" },
+          { "text": "Tenant (WhatsApp/IG Hatti)", "color": "green" }
+        ],
+        "content": "WhatsApp veya Instagram DM'den gelen mesaj Unified Inbox'a duser. AI, mesajin bir urun sorusu oldugunu tespit eder (beden, renk, stok, uyumluluk, fiyat)."
+      },
+      {
+        "title": "Bilgi Cekme (Retrieval)",
+        "goal": "Dogru urun bilgisini bul",
+        "badges": [
+          { "text": "Sistem (Knowledge RAG)", "color": "purple" },
+          { "text": "Tenant (Urun Katalogu)", "color": "amber" }
+        ],
+        "content": "Knowledge Base'den ilgili urun karti, beden tablosu, stok durumu ve teknik ozellikler cekilir. Kaynakli ve dogrulanmis bilgi kullanilir."
+      },
+      {
+        "title": "Yanit Uretimi (Generation)",
+        "goal": "Kisisellestirilmis cevap",
+        "badges": [
+          { "text": "Sistem (AI Model)", "color": "purple" },
+          { "text": "Tenant (Yanit Tonu Ayarlari)", "color": "blue" }
+        ],
+        "content": "AI, urun bilgisini musterinin sorusuna ozel sekilde formatlar. Beden onerisi, renk karsilastirmasi veya stok durumu bilgisi dogal bir dille sunulur."
+      },
+      {
+        "title": "Satisa Yonlendirme (Conversion)",
+        "goal": "Soruyu satisa cevir",
+        "badges": [
+          { "text": "Sistem (Otonom)", "color": "purple" },
+          { "text": "Tenant (Siparis Linki)", "color": "green" }
+        ],
+        "content": "Musteri bilgiyi aldiktan sonra, AI siparis baglantisi veya capraz satis onerisi sunar. Donusum takibi Dashboard'da raporlanir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Beden / Olcu Sorusu",
+      "description": "Musteri urunun bedeninin kendisine uyup uymayacagini soruyor.",
+      "assistantName": "Satis Asistani",
+      "assistantIcon": "Search",
+      "tags": [
+        { "text": "AI Yanit", "color": "blue" },
+        { "text": "Knowledge RAG", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun katalogu (beden tablosu dahil)", "service": "Knowledge", "page": "Dokuman Bankasi > Urun Kataloglari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "CSV veya PDF formatinda urun katalogunuzu beden tablosu dahil yukleyin" },
+          { "text": "Knowledge Base'e yuklenmis urun verileri (CSV/PDF)", "service": "Knowledge", "page": "Urun Verileri > Import", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Toplu yukleme destegi mevcut — CSV/PDF/API secenekleri var" }
+        ],
+        "provider": [
+          { "text": "Beden eslestirme algoritmasi", "service": "AgentAI", "page": "Eslestirme Kurallari > Beden", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI beden eslestirme mantigi sistemde hazir, tenant bazli ozellestirilir" },
+          { "text": "Knowledge RAG altyapisi (C7)", "service": "Knowledge", "page": "RAG Pipeline", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "pgvector + embedding altyapisi hazir, urun yuklendikce otomatik indekslenir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Merhaba, bu ceket XL bedene uyar mi? Boy 1.82, kilo 90." },
+        { "role": "ai", "content": "Intent: Beden Sorusu. Knowledge Base sorgulanıyor → Urun #4521 Beden Tablosu." },
+        { "role": "bot", "content": "Merhaba! Bu ceket XL bedene uygundur. Olculer: Gogus: 112cm, Boy: 74cm, Kol: 65cm. 1.82 boy ve 90 kilo icin XL tam olacaktir." },
+        { "role": "user", "content": "Kumasi nasil, kaliteli mi?" },
+        { "role": "ai", "content": "Intent: Urun Ozellik. Knowledge Base → Urun karti detaylari." },
+        { "role": "bot", "content": "%100 polyester, su itici kaplama. Ruzgar gecirmez. Musterilerimizden 4.6/5 puan almis. Siparis vermek ister misiniz? Bugun kargolayabiliriz!" },
+        { "role": "user", "content": "Tamam, siparis veriyorum." },
+        { "role": "system", "content": "Donusum Basarili — Yanit Suresi: 28 saniye" }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Renk / Varyant Sorusu",
+      "description": "Musteri ayni urunden farkli renk veya model olup olmadigini soruyor.",
+      "assistantName": "Satis Asistani",
+      "assistantIcon": "Search",
+      "tags": [
+        { "text": "AI Yanit", "color": "blue" },
+        { "text": "Knowledge RAG", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Guncel stok/varyant bilgisi", "service": "Integrations", "page": "E-Ticaret > Stok Senkronizasyonu", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Trendyol/Shopify stok API entegrasyonunu aktif edin" },
+          { "text": "Urun gorselleri (renk bazli)", "service": "Knowledge", "page": "Medya Kutuphanesi > Urun Gorselleri", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Renk bazli urun gorsellerini medya kutuphanesine yukleyin" }
+        ],
+        "provider": [
+          { "text": "Stok sorgulama entegrasyonu (C11)", "service": "Integrations", "page": "E-Ticaret > Stok API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Marketplace stok sorgulama altyapisi hazir" },
+          { "text": "Gorsel eslestirme", "service": "AgentAI", "page": "Gorsel Analiz > Urun Eslestirme", "status": "ready", "priority": "recommended", "effort": "easy", "capability": "C8", "hint": "AI gorsel eslestirme ve karsilastirma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu cantanin siyah rengi var mi?" },
+        { "role": "ai", "content": "Intent: Varyant Sorusu. Knowledge Base → Urun #7823 Renk Secenekleri." },
+        { "role": "bot", "content": "Evet! Bu cantanin Siyah, Lacivert ve Haki renk secenekleri mevcut. Ucu de su an stokta. Hangi rengi tercih edersiniz?" },
+        { "role": "user", "content": "Siyah olsun. Peki lacivert ile siyah arasinda ton farki nasil?" },
+        { "role": "bot", "content": "Siyah mat bir gorunume sahipken, lacivert daha koyu bir mavi tonundadir. Size her iki rengin fotografini gondereyim mi?" },
+        { "role": "user", "content": "Evet lutfen." },
+        { "role": "bot", "content": "[Siyah gorsel] [Lacivert gorsel] Iste karsilastirmali gorseller. Hangisini begendiysenis hemen siparis olusturabilirim!" }
+      ]
+    },
+    {
+      "id": "flow-3",
+      "title": "Stok / Teslimat Sorusu",
+      "description": "Musteri urunun stokta olup olmadigini ve ne zaman ulasacagini soruyor.",
+      "assistantName": "Satis Asistani",
+      "assistantIcon": "Search",
+      "tags": [
+        { "text": "AI Yanit", "color": "blue" },
+        { "text": "Stok API", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Gercek zamanli stok verisi", "service": "Integrations", "page": "E-Ticaret > Stok Senkronizasyonu", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Stok verisinin periyodik senkronizasyonu icin API ayarlarini yapin" },
+          { "text": "Kargo SLA bilgisi (ortalama teslimat sureleri)", "service": "Knowledge", "page": "Dokuman Bankasi > Kargo Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Bolge bazli teslimat surelerini Knowledge Base'e ekleyin" }
+        ],
+        "provider": [
+          { "text": "Stok API entegrasyonu (C11)", "service": "Integrations", "page": "E-Ticaret > Stok API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Stok sorgulama API hazir, periyodik senkronizasyon destegi var" },
+          { "text": "Kargo tahmini modulu", "service": "AgentAI", "page": "Kargo Tahmin > SLA Hesaplama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Bolge bazli kargo suresi tahmini hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu urun stokta var mi? Ne zaman gelir?" },
+        { "role": "ai", "content": "Intent: Stok Sorusu. Stok API sorgulanıyor → Urun #3312." },
+        { "role": "bot", "content": "Evet, stokta mevcut! Bugun siparis verirseniz tahmini teslimat: 2-3 is gunu (Istanbul icin). Hangi adrese gondermemi istersiniz?" },
+        { "role": "user", "content": "Ankara'ya gonderilecek." },
+        { "role": "bot", "content": "Ankara icin teslimat suresi 3-4 is gunu. Hemen siparis olusturmak ister misiniz?" },
+        { "role": "user", "content": "Olur, olustur." },
+        { "role": "system", "content": "Donusum Basarili — Stok sorusu → Satis. Yanit Suresi: 45 saniye" }
+      ]
+    },
+    {
+      "id": "flow-4",
+      "title": "Uyumluluk Sorusu",
+      "description": "Musteri bir urunun baska bir urunle uyumlu olup olmadigini soruyor.",
+      "assistantName": "Satis Asistani",
+      "assistantIcon": "Search",
+      "tags": [
+        { "text": "AI Yanit", "color": "blue" },
+        { "text": "Capraz Satis", "color": "purple" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun uyumluluk matrisi", "service": "Knowledge", "page": "Dokuman Bankasi > Uyumluluk Matrisleri", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Urun uyumluluk tablosunu CSV/PDF olarak yukleyin" },
+          { "text": "Teknik spesifikasyon dokumanlari", "service": "Knowledge", "page": "Dokuman Bankasi > Teknik Ozellikler", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Urun teknik ozelliklerini Knowledge Base'e ekleyin" }
+        ],
+        "provider": [
+          { "text": "Capraz urun eslestirme mantigi", "service": "AgentAI", "page": "Cross-Sell Kurallari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "AI capraz urun eslestirme ve oneri sistemi hazir" },
+          { "text": "Knowledge RAG (C7)", "service": "Knowledge", "page": "RAG Pipeline", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun bilgisi RAG pipeline'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Bu kilif iPhone 15 Pro Max'e uyar mi?" },
+        { "role": "ai", "content": "Intent: Uyumluluk Sorusu. Knowledge Base → Urun #9102 Uyumluluk Listesi." },
+        { "role": "bot", "content": "Evet, bu kilif iPhone 15 Pro Max ile %100 uyumludur. Kamera cikintisi ve tum tus yerlesimleri birebir oturur." },
+        { "role": "user", "content": "MagSafe destekliyor mu?" },
+        { "role": "bot", "content": "Evet! Dahili MagSafe miknatisi var, kablosuz sarj ve MagSafe aksesuarlariyla sorunsuz calisir. Siparis vermek ister misiniz?" },
+        { "role": "user", "content": "Bir de ekran koruyucu var mi buna uygun?" },
+        { "role": "ai", "content": "Intent: Capraz Satis Firsati. Ilgili urunler sorgulanıyor." },
+        { "role": "bot", "content": "Tabii! iPhone 15 Pro Max tam kaplama temperli cam ekran koruyucumuz var, kilirla birlikte seti 499 TL yerine 399 TL'ye alabilirsiniz." }
+      ]
+    },
+    {
+      "id": "flow-5",
+      "title": "IG DM'den Gelen Soru",
+      "description": "Instagram DM uzerinden gelen urun sorusu ve WhatsApp'a yonlendirme.",
+      "assistantName": "Satis Asistani",
+      "assistantIcon": "Search",
+      "tags": [
+        { "text": "Instagram DM", "color": "purple" },
+        { "text": "Kanal Gecisi", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Instagram Business hesabi", "service": "Integrations", "page": "Sosyal Medya > Instagram", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram Business hesabinizi Invekto'ya baglayın" },
+          { "text": "WhatsApp numarasi (yonlendirme icin)", "service": "Integrations", "page": "WhatsApp > Hat Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp Business API hattinizi tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Instagram DM API entegrasyonu", "service": "Integrations", "page": "Instagram Graph API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram DM API entegrasyonu hazir" },
+          { "text": "Kanal gecis (handoff) modulu", "service": "Backend", "page": "Kanal Yonetimi > Handoff", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "IG DM → WhatsApp kanal gecis modulu hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Kanal: Instagram DM — 24 saat yanit penceresi aktif" },
+        { "role": "user", "content": "Story'deki elbise kac TL? S beden var mi?" },
+        { "role": "ai", "content": "Intent: Fiyat + Beden Sorusu (IG DM). Knowledge Base → Kampanya urunu #6650." },
+        { "role": "bot", "content": "Merhaba! Story'deki elbise 899 TL ve S beden stokta mevcut. Detayli bilgi ve siparis icin WhatsApp hattimizdan devam edelim mi? wa.me/905xxxxxxxxx" },
+        { "role": "user", "content": "Tamam WhatsApp'tan yaziyorum." },
+        { "role": "system", "content": "Kanal Gecisi: IG DM → WhatsApp. Lead kaynagi: Instagram Story." },
+        { "role": "bot", "content": "WhatsApp'ta bekliyoruz! Elbiseyle ilgili tum sorulari orada cevaplayalim." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo senkron calisir. Musteri mesaji geldigi anda Knowledge RAG pipeline'i tetiklenir, ortalama yanit suresi 2-5 saniyedir. Urun katalogu degisikliklerinde Knowledge Base otomatik guncellenir.",
+    "backend": [
+      { "title": "Knowledge RAG Service", "goal": "Urun Bilgi Cekme", "content": "Urun katalogu (CSV/PDF/API) vektor veritabanina (pgvector) indekslenir. Gelen soru embedding'e donusturulur ve en yakin urun bilgisi cekilir." },
+      { "title": "Agent Assist (C8)", "goal": "Yanit Uretimi", "content": "RAG sonucu + musteri konteksti AI modeline gonderilir. Kaynakli, dogal dilde yanit uretilir. Guven skoru dusukse insan temsilciye yonlendirilir." },
+      { "title": "Conversion Tracker", "goal": "Donusum Takibi", "content": "Urun sorusu → yanit → siparis zinciri izlenir. Dashboard'da 'soru-satis donusum orani' raporlanir." }
+    ],
+    "apis": [
+      { "title": "Trendyol / Shopify Catalog API", "goal": "Urun Verisi", "content": "Urun karti, beden tablosu, stok durumu ve fiyat bilgisi periyodik olarak senkronize edilir." },
+      { "title": "WhatsApp Cloud API", "goal": "Mesajlasma", "content": "Gelen mesajlar webhook ile alinir, yanitlar 24 saat penceresi icinde gonderilir." },
+      { "title": "Instagram Graph API", "goal": "DM Entegrasyonu", "content": "Instagram DM mesajlari Unified Inbox'a akar. 24 saat yanit penceresi kuralina uyulur." }
+    ],
+    "config": "{\n  \"scenario\": \"S2_PreSaleConversion\",\n  \"knowledge_sources\": [\n    { \"type\": \"csv\", \"path\": \"catalog/products.csv\", \"refresh\": \"6h\" },\n    { \"type\": \"api\", \"endpoint\": \"trendyol/v2/products\", \"refresh\": \"1h\" }\n  ],\n  \"response_config\": {\n    \"max_tokens\": 250,\n    \"confidence_threshold\": 0.75,\n    \"fallback_to_human\": true,\n    \"tone\": \"friendly_sales\"\n  },\n  \"channels\": [\"whatsapp\", \"instagram_dm\"],\n  \"cross_sell\": {\n    \"enabled\": true,\n    \"max_suggestions\": 2\n  }\n}"
+  },
+  "impact": {
+    "title": "Potansiyel Aylik Etki",
+    "description": "Asagidaki degerleri kendi isletmenize gore duzenleyin — sonuc aninda guncellenir.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 5000,
+    "inputs": [
+      { "key": "dailyQuestions", "label": "Gunluk Urun Sorusu", "default": 50, "hint": "WhatsApp + IG DM", "editable": true },
+      { "key": "lateAnswered", "label": "Gec Cevaplanan", "default": 30, "hint": ">30dk yanit suresi", "editable": true },
+      { "key": "avgBasket", "label": "Sepet Ortalamasi", "default": 300, "suffix": "TL", "editable": true, "hint": "Donusum farki: %35 (sabit)" }
+    ],
+    "formula": "lateAnswered * 0.35 * avgBasket * 30",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "id": "m07",
+  "title": "Cevrimdisi Mod (Offline Drafting)",
+  "subtitle": "Offline Mode",
+  "phase": "Phase 7",
+  "category": "MOBIL UYGULAMA",
+  "niche": "mobile",
+  "description": "Saha calisani internet erisimi olmayan bolgelerde calisiyor. Invekto Mobil ile onceki mesajlar cevrimdisi okunabilir, cevap taslaklari kaydedilir ve internet baglantisi geldiginde otomatik olarak gonderilir. Proaktif senkronizasyon sistemi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Insaat, Tarim, Enerji, Madencilik — Saha/kirsal alan calisanlari, dagitim surucileri" },
+      { "label": "Sorun", "value": "Internet erisimi olmayan bolgelerde musteri mesajlarini okuyamama ve cevaplayamama" },
+      { "label": "Deger", "value": "Kesintisiz iletisim + sifir mesaj kaybi + sahadan donus beklemeden uretkenlik" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Mobil uygulama son senkronizasyondaki mesajlari yerel depolamada saklar. Cevrimdisi ortamda mesajlar okunabilir ve cevap taslaklari kaydedilir. Internet geldiginde otomatik gonderim. Proaktif senkronizasyon.",
+    "steps": [
+      {
+        "title": "Onceden Senkronizasyon",
+        "goal": "Mesajlari yerel depolamaya al",
+        "badges": [
+          { "text": "Sistem (Sync Engine)", "color": "purple" },
+          { "text": "Tenant (Inbox)", "color": "blue" }
+        ],
+        "content": "Internet varken tum aktif konusmalarin son 50 mesaji, musteri bilgileri ve sablonlar yerel depolamaya senkronize edilir. WiFi'da otomatik, mobil veride manuel tetikleme."
+      },
+      {
+        "title": "Cevrimdisi Calisma",
+        "goal": "Internet olmadan mesaj oku ve taslak yaz",
+        "badges": [
+          { "text": "Sistem (Offline Mode)", "color": "purple" },
+          { "text": "Tenant (Sablon)", "color": "amber" }
+        ],
+        "content": "Saha calisani internet olmadan onceki mesajlari okur, cevap taslaklari yazar, sablonlardan secer. Tum taslaklar yerel depolamada kuyruge alinir."
+      },
+      {
+        "title": "Otomatik Gonderim",
+        "goal": "Internet gelince taslaklari gonder",
+        "badges": [
+          { "text": "Sistem (Auto-Send)", "color": "purple" },
+          { "text": "Tenant (Kuyruk)", "color": "green" }
+        ],
+        "content": "Internet baglantisi tespit edildiginde kuyrukdaki tum taslaklar sirayla gonderilir. Gonderim durumu kullaniciya bildirilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Saha Ziyaretinde Offline Cevaplama",
+      "description": "Teknisyen kirsal alanda internet olmadan musteri mesajlarini cevaplayiyor.",
+      "tags": [
+        { "text": "Cevrimdisi", "color": "gray" },
+        { "text": "Otomatik Senkronizasyon", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Mobil uygulama kurulumu", "service": "Backend", "page": "Mobil Ayarlar > Uygulama Kurulumu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Saha calisanlarinin mobil cihazlarina Invekto uygulamasini yukleyin" },
+          { "text": "Cevrimdisi mod aktivasyonu", "service": "Backend", "page": "Mobil Ayarlar > Offline Mode", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Cevrimdisi mod ozelligini tenant ayarlarindan aktif edin" }
+        ],
+        "provider": [
+          { "text": "Yerel depolama senkronizasyonu", "service": "Backend", "page": "Sync Engine > Offline Storage", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "IndexedDB/SQLite bazli yerel depolama ve senkronizasyon motoru hazir" },
+          { "text": "Kuyruk yonetimi ve otomatik gonderim", "service": "Backend", "page": "Message Queue > Offline Queue", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Cevrimdisi kuyruk ve internet geldiginde otomatik gonderim sistemi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Saat 08:00 — Teknisyen ofisten cikmadan once senkronizasyon: 45 aktif konusma, 12 sablon yerel depolamaya alindi." },
+        { "role": "system", "content": "Saat 10:30 — Kirsal alan, internet yok. Offline Mode aktif." },
+        { "role": "system", "content": "[Teknisyen mobil uygulamada onceki mesajlari okur → 3 musteriye cevap taslagi yazar]" },
+        { "role": "system", "content": "Taslak 1: 'Mehmet Bey, ariza kontrolunu tamamladik. Parca degisimi gerekiyor, yarin gelecegiz.'" },
+        { "role": "system", "content": "Taslak 2: 'Ayse Hanim, bakim tamamlandi. Faturanizi mail adresinize gonderdik.'" },
+        { "role": "system", "content": "Taslak 3: 'Ali Bey, saha incelemesi icin persembe gunu 14:00 uygun mu?'" },
+        { "role": "system", "content": "Saat 13:00 — Sehre donus, internet baglantisi tespit edildi. Otomatik gonderim basliyor..." },
+        { "role": "system", "content": "3/3 mesaj basariyla gonderildi. Kuyruk bos. Yeni gelen 7 mesaj senkronize ediliyor." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Dagitim Surucusu Rota Uzerinde",
+      "description": "Dagitim surucusu rota uzerinde bazi bolgelerde internet yok.",
+      "tags": [
+        { "text": "Rota Offline", "color": "gray" },
+        { "text": "Otomatik Kuyruk", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Sablon kutuphanesi", "service": "Knowledge", "page": "Sablon Yonetimi > Dagitim Sablonlari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C3", "hint": "Teslimat onay, gecikme ve adres dogrulama sablonlari olusturun" }
+        ],
+        "provider": [
+          { "text": "Sablon offline caching", "service": "Backend", "page": "Sync Engine > Template Cache", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Sablonlar offline erisilebilir sekilde cache'lenir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Surucu rota basinda tum sablonlari ve musteri mesajlarini senkronize etti." },
+        { "role": "system", "content": "Teslimat 3 — Internet yok. Surucu offline modda teslimat onay mesajini sablondan secer." },
+        { "role": "system", "content": "Taslak: 'Sayın müşterimiz, siparisiz teslim edilmistir. Iyi gunler dileriz.' → Kuyruge eklendi." },
+        { "role": "system", "content": "Teslimat 4 — Internet var. Kuyrukdeki mesaj otomatik gonderildi + yeni mesajlar senkronize." },
+        { "role": "system", "content": "Teslimat 5 — Internet yok. Yine offline taslak → kuyruk. Rota bitene kadar bu dongu devam eder." },
+        { "role": "system", "content": "Rota sonu — Toplam 8 offline taslak, tumu basariyla gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Offline mod, Service Worker ve IndexedDB/SQLite tabanli yerel depolama uzerine kuruludur. Background Sync API ile internet tespit edildiginde otomatik gonderim yapilir.",
+    "backend": [
+      { "title": "Sync Engine", "goal": "Veri Senkronizasyonu", "content": "Internet varken konusmalari, musteri bilgilerini ve sablonlari yerel depolamaya alir. Delta sync ile sadece degisiklikleri aktarir." },
+      { "title": "Offline Queue Manager", "goal": "Taslak Kuyruk Yonetimi", "content": "Cevrimdisi yazilan taslaklari sirayla kuyruge alir. Internet geldiginde FIFO siralamayla gonderir. Basarili/basarisiz durum takibi." }
+    ],
+    "apis": [
+      { "title": "Background Sync API", "goal": "Otomatik Gonderim", "content": "Service Worker uzerinden internet baglantisi tespit edildiginde kuyrukdaki mesajlari otomatik gonderir." },
+      { "title": "Delta Sync API", "goal": "Verimli Senkronizasyon", "content": "Son senkronizasyondan bu yana degisen verileri minimal veri transferiyle gunceller." }
+    ]
+  },
+  "impact": {
+    "title": "Cevrimdisi Verimlilik Kazanimi",
+    "description": "Internet olmayan bolgelerde gecen surede de mesaj okuma ve cevap yazabilme ile kazanilan uretkenlik.",
+    "resultLabel": "Kazanilan Verimlilik (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "dailyOfflineHours", "label": "Gunluk Cevrimdisi Saat", "default": 3, "hint": "Gunluk ortalama internet erisimi olmayan calisma saati", "editable": true },
+      { "key": "messagesPerHour", "label": "Saatte Cevaplanacak Mesaj", "default": 5, "hint": "Cevrimdisi surede yazilabilecek cevap sayisi", "editable": true },
+      { "key": "valuePerMessage", "label": "Mesaj Basina Deger", "default": 150, "suffix": "TL", "hint": "Zamaninda cevaplanan mesajin isletmeye katkisi", "editable": true }
+    ],
+    "formula": "dailyOfflineHours * messagesPerHour * valuePerMessage * 30",
+    "formulaDisplay": null
+  }
+}

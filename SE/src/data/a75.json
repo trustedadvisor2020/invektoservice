@@ -1,0 +1,122 @@
+{
+  "id": "a75",
+  "title": "Hasta Verisi Saklama/Silme",
+  "subtitle": "KVKK Data Retention & Deletion",
+  "phase": "Phase 4",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "KVKK kapsaminda hasta verisi saklama sureleri ve silme taleplerinin AI tarafindan yonetilmesi, otomatik veri silme prosedurlerinin baslatilmasi.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (KVKK Uyumluluk)" },
+      { "label": "Sorun", "value": "KVKK veri silme talepleri manuel islenince gecikiyor ve cezai risk olusturuyor" },
+      { "label": "Deger", "value": "Otomatik KVKK silme proseduru ile yasal uyumluluk %100 saglanir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "KVKK & Compliance (C5)", "color": "red" },
+      { "name": "Consent Manager (C6)", "color": "red" }
+    ],
+    "servicesNote": "AI KVKK silme talebini tespit eder, C5 ile proseduru baslatir, C6 ile rizalari yonetir.",
+    "steps": [
+      {
+        "title": "Talep Tespiti",
+        "goal": "KVKK silme talebini tespit et",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (KVKK)", "color": "red" }
+        ],
+        "content": "AI hastanin veri silme veya saklama sorgusunu KVKK talebi olarak siniflandirir."
+      },
+      {
+        "title": "Silme Proseduru",
+        "goal": "Otomatik veri silme akisini baslat",
+        "badges": [
+          { "text": "Sistem (Compliance)", "color": "purple" },
+          { "text": "Tenant (Klinik)", "color": "red" }
+        ],
+        "content": "KVKK silme proseduru baslatilir: kimlik dogrulama, kapsam belirleme, silme islemi, bilgilendirme."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "KVKK Veri Silme Talebi",
+      "description": "Hasta KVKK kapsaminda tum kisisel verilerinin silinmesini talep ediyor.",
+      "tags": [
+        { "text": "KVKK", "color": "red" },
+        { "text": "Veri Silme", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "KVKK veri envanteri", "service": "Backend", "page": "KVKK > Veri Envanteri", "status": "setup", "priority": "required", "effort": "medium", "capability": "C5", "hint": "Hasta verilerinin hangi sistemlerde tutuldugunu tanimlayin" },
+          { "text": "Kimlik dogrulama proseduru", "service": "Backend", "page": "KVKK > Kimlik Dogrulama", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Silme talebi icin kimlik dogrulama adimlarini belirleyin" },
+          { "text": "Riza kayit sistemi", "service": "Backend", "page": "KVKK > Riza Yonetimi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C6", "hint": "Hasta riza kayitlarini dijital olarak tutun" }
+        ],
+        "provider": [
+          { "text": "KVKK silme motoru", "service": "Backend", "page": "KVKK > Silme Motoru", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Otomatik veri silme ve loglama altyapisi hazir" },
+          { "text": "Riza iptali isleyicisi", "service": "Backend", "page": "KVKK > Riza Iptal", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Tum rizalarin toplu iptali ve kaydi hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "KVKK kapsaminda tum kisisel verilerimin silinmesini talep ediyorum." },
+        { "role": "ai", "content": "Intent: KVKK Veri Silme Talebi. Oncelik: YUKSEK. Yasal sure: 30 gun. Kimlik dogrulama gerekli." },
+        { "role": "bot", "content": "KVKK kapsamindaki veri silme talebinizi aldik.\n\n🔒 Guvenliginiz icin kimlik dogrulama gereklidir:\n\n1. Ad-Soyad\n2. TC Kimlik No (son 4 hane)\n3. Kayitli telefon numarasi\n\nBu bilgileri paylasir misiniz?" },
+        { "role": "user", "content": "Ayse Yilmaz, TC son 4: 7842, telefon: 0532 XXX XX XX" },
+        { "role": "bot", "content": "Kimliginiz dogrulandi. Ayse Hanim, veri silme talebiniz isleme alindi.\n\n📋 Silme Kapsami:\n• Kisisel bilgiler (ad, TC, iletisim)\n• Randevu gecmisi\n• Tedavi kayitlari\n• WhatsApp sohbet gecmisi\n• Riza kayitlari\n\n⚠️ Yasal saklama zorunlulugu olan tibbi kayitlar (Saglik Bakanligi duzenlenmesi) 20 yil boyunca saklanmak zorundadir.\n\n⏳ Talebiniz en gec 30 gun icerisinde tamamlanacaktir.\n📧 Islem tamamlandiginda bilgilendirileceksiniz.\n\nOnayliyor musunuz?" },
+        { "role": "user", "content": "Evet, onayliyorum." },
+        { "role": "system", "content": "KVKK silme proseduru baslatildi. Talep ID: KVKK-2026-0342. Kimlik dogrulandi. Kapsam belirlendi. Yasal saklama istisnalari uygulanacak. Hedef tamamlanma: 30 gun." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Veri Saklama Sorgulama",
+      "description": "Hasta hangi verilerinin saklandigini ogrenmek istiyor.",
+      "tags": [
+        { "text": "KVKK", "color": "red" },
+        { "text": "Bilgi Edinme", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Veri kategorileri tanimlama", "service": "Backend", "page": "KVKK > Veri Kategorileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Hangi kategorilerde veri saklandigini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Veri raporu olusturma", "service": "Backend", "page": "KVKK > Veri Raporu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Hasta bazli veri raporu olusturma hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Benim hangi bilgilerim sizde kayitli?" },
+        { "role": "ai", "content": "Intent: KVKK Bilgi Edinme Hakki. Kimlik dogrulama sonrasi veri raporu olusturulacak." },
+        { "role": "bot", "content": "KVKK kapsaminda bilgi edinme hakkinizi kullanmak istediginizi anliyorum.\n\nKimlik dogrulamaniz sonrasi size kayitli verilerinizin raporunu hazirlayabilirim.\n\nAd-Soyad ve kayitli telefon numaranizi paylasir misiniz?" },
+        { "role": "user", "content": "Fatma Demir, 0544 XXX XX XX" },
+        { "role": "bot", "content": "Fatma Hanim, kimliginiz dogrulandi. Kayitli verileriniz:\n\n📊 Veri Kategorileri:\n• Kimlik: Ad, soyad, TC, dogum tarihi\n• Iletisim: Telefon, e-posta\n• Saglik: 2 tedavi kaydi (Botox, Dolgu)\n• Randevu: 4 gecmis randevu\n• Riza: 2 aktif riza kaydi\n\n📧 Detayli raporu e-posta adresinize gondermemi ister misiniz?" },
+        { "role": "system", "content": "KVKK bilgi edinme talebi karsilandi. Kimlik dogrulandi. Ozet rapor sunuldu. Detayli rapor bekleniyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo KVKK Compliance Engine + Riza Yonetimi + Veri Envanter ile calisir.",
+    "backend": [
+      { "title": "KVKK Deletion Engine", "goal": "Veri Silme", "content": "Tum sistemlerdeki hasta verisini KVKK kuralina uygun olarak siler, yasal istisnalari uygular ve log tutar." },
+      { "title": "Data Inventory Reporter", "goal": "Veri Raporu", "content": "Hasta bazli veri envanteri cikarir, kategorize eder ve rapor olusturur." }
+    ],
+    "apis": [
+      { "title": "KVKK Compliance API", "goal": "Uyumluluk", "content": "Veri silme, bilgi edinme, riza yonetimi ve denetim logu islemleri." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik KVKK Uyumluluk Tasarrufu",
+    "description": "Otomatik KVKK yonetimi ile onlenen cezai risk ve operasyonel tasarruf.",
+    "resultLabel": "Onlenen Risk + Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyKVKKRequests", "label": "Aylik KVKK Talebi", "default": 8, "hint": "Silme/sorgulama talebi sayisi", "editable": true },
+      { "key": "manualProcessingMinutes", "label": "Manuel Islem Suresi (dk)", "default": 90, "hint": "KVKK talebini elle isleme suresi", "editable": true },
+      { "key": "staffHourlyCost", "label": "Personel Saat Maliyeti", "default": 300, "suffix": "TL", "hint": "KVKK sorumlusunun saatlik maliyeti", "editable": true },
+      { "key": "penaltyRiskReduction", "label": "Ceza Riski Azaltma", "default": 5000, "suffix": "TL", "hint": "Zamaninda uyumluluk ile onlenen ortalama ceza riski", "editable": true }
+    ],
+    "formula": "(monthlyKVKKRequests * (manualProcessingMinutes / 60) * staffHourlyCost) + penaltyRiskReduction",
+    "formulaDisplay": null
+  }
+}

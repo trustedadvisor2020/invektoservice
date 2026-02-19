@@ -1,0 +1,127 @@
+{
+  "id": "gu06",
+  "title": "No-Show / Iptal Yonetimi",
+  "subtitle": "No-Show & Cancellation Management",
+  "phase": "Phase 1",
+  "category": "GUZELLIK SALONU",
+  "niche": "beauty",
+  "description": "No-show orani %15-20 arasinda seyrediyor ve salon gelir kaybi yasiyor. R-1 gun ve R-2 saat hatirlatma mesajlari ile onay istenerek no-show orani minimuma indirilir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
+      { "label": "Sorun", "value": "No-show orani %15-20 — salon hem gelir hem zaman kaybediyor" },
+      { "label": "Deger", "value": "2 katmanli hatirlatma ile no-show orani %5'in altina duser" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Automation R-1 gun ve R-2 saat hatirlatma mesajlari gonderir. Musteri onay vermezse veya iptal ederse slot serbest birakilir ve bekleme listesine bildirim yapilir.",
+    "steps": [
+      {
+        "title": "R-1 Gun Hatirlatma",
+        "goal": "Onayini al",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Template)", "color": "blue" }
+        ],
+        "content": "Randevudan 1 gun once musteri bilgilendirilir ve 'Onayliyorum' / 'Iptal ediyorum' secenekleri sunulur."
+      },
+      {
+        "title": "R-2 Saat Hatirlatma",
+        "goal": "Son kontrol",
+        "badges": [
+          { "text": "Sistem (Outbound)", "color": "purple" },
+          { "text": "Tenant (Randevu)", "color": "amber" }
+        ],
+        "content": "Randevudan 2 saat once son hatirlatma gonderilir. Cevap gelmezse salon bilgilendirilir."
+      },
+      {
+        "title": "Iptal Islemi",
+        "goal": "Slot serbest birak",
+        "badges": [
+          { "text": "Sistem (Automation)", "color": "purple" },
+          { "text": "Tenant (Takvim)", "color": "green" }
+        ],
+        "content": "Musteri iptal ederse veya cevap vermezse slot serbest birakilir, bekleme listesine bildirim tetiklenir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Basarili Hatirlatma — Onay",
+      "description": "Musteri hatirlatma mesajina 'Onayliyorum' diyor.",
+      "tags": [
+        { "text": "Proaktif", "color": "purple" },
+        { "text": "Hatirlatma", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "WhatsApp hatirlatma template'i", "service": "Backend", "page": "Mesaj Sablonlari > Randevu Hatirlatma", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli randevu hatirlatma template'i olusturun — 'Onayliyorum' ve 'Iptal' butonlari eklenmeli" },
+          { "text": "Hatirlatma zamanlama ayarlari", "service": "Automation", "page": "Otomasyon > Hatirlatma Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "R-1 gun ve R-2 saat zamanlamalarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Zamanlanmis mesaj gonderimi", "service": "Outbound", "page": "Zamanlayici > Randevu Hatirlatma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Cron bazli zamanlanmis template mesaj gonderimi hazir" },
+          { "text": "Onay/iptal intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Randevu Onay", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Onayliyorum/Iptal intent'leri buton ve metin bazli tanimli" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "R-1 gun hatirlatma tetiklendi: Yarin 14:00 — Sac Kesimi, Ayse Stilist. Musteri: Elif Yilmaz." },
+        { "role": "bot", "content": "[Outbound Template]\n\nMerhaba Elif! Randevunuzu hatirlatalim:\n\nSac Kesimi\nYarin, 14:00\nStilist: Ayse\n\nOnaylıyor musunuz?\n[Onayliyorum] [Degistirmek Istiyorum]" },
+        { "role": "user", "content": "Onayliyorum" },
+        { "role": "bot", "content": "Randevunuz onaylandi! Yarin 14:00'te sizi bekliyoruz.\n\n2 saat once tekrar hatirlatacagiz. Iyi gunler!" },
+        { "role": "system", "content": "Randevu onaylandi. R-2 saat hatirlatma zamanlandi. No-show riski dusuk." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Hatirlatma Sonrasi Iptal",
+      "description": "Musteri hatirlatma mesajina iptal cevabi veriyor — slot serbest birakilir.",
+      "tags": [
+        { "text": "Iptal", "color": "red" },
+        { "text": "Slot Kurtarma", "color": "green" }
+      ],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Otomatik slot serbest birakma", "service": "Backend", "page": "Randevu Motoru > Iptal Islemi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Iptal edilince slot otomatik serbest birakilir ve bekleme listesi tetiklenir" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "R-1 gun hatirlatma gonderildi: Yarin 16:00 — Manikur. Musteri: Sema Kaya." },
+        { "role": "bot", "content": "[Outbound Template]\n\nMerhaba Sema! Randevunuzu hatirlatalim:\n\nManikur\nYarin, 16:00\n\n[Onayliyorum] [Degistirmek Istiyorum]" },
+        { "role": "user", "content": "Malesef gelemeyecegim, iptal edebilir misiniz?" },
+        { "role": "ai", "content": "Intent: Randevu Iptali. Musteri: Sema Kaya. Randevu: Yarin 16:00 Manikur." },
+        { "role": "bot", "content": "Anliyorum, randevunuz iptal edildi.\n\nYeni bir randevu almak isterseniz buradan yazabilirsiniz. Iyi gunler!" },
+        { "role": "system", "content": "Randevu iptal edildi. Slot serbest birakildi. Son Dakika Bosluk Bildirimi (gu05) tetiklendi — bekleme listesine mesaj gonderiliyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "2 katmanli hatirlatma sistemi (R-1 gun, R-2 saat) ile no-show orani minimuma indirilir. Iptal durumunda slot kurtarma akisi baslar.",
+    "backend": [
+      { "title": "Reminder Engine", "goal": "Hatirlatma Motoru", "content": "R-1 gun ve R-2 saat zamanlamalarini yonetir. Onay/iptal cevaplarini isler." },
+      { "title": "No-Show Tracker", "goal": "No-Show Takibi", "content": "Musteri bazli no-show gecmisini takip eder. Tekrarlayan no-show musterileri isaretler." }
+    ],
+    "apis": [
+      { "title": "Reminder API", "goal": "Hatirlatma Gonderimi", "content": "Zamanlanmis hatirlatma mesaji gonderimi ve musteri cevap isleme API'si." },
+      { "title": "Confirmation API", "goal": "Onay Isleme", "content": "Musteri onay/iptal cevabini alip randevu durumunu guncelleme API'si." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Onlenen No-Show Kaybi",
+    "description": "Hatirlatma sistemi ile no-show oranini dusurme ve gelir kaybi onleme.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAppointments", "label": "Aylik Toplam Randevu", "default": 300, "hint": "Salon aylık toplam randevu sayisi", "editable": true },
+      { "key": "noShowRateBefore", "label": "No-Show Orani (Oncesi)", "default": 18, "suffix": "%", "hint": "Hatirlatma olmadan no-show orani", "editable": true },
+      { "key": "noShowRateAfter", "label": "No-Show Orani (Sonrasi)", "default": 4, "suffix": "%", "hint": "Hatirlatma ile hedef no-show orani", "editable": true },
+      { "key": "avgSlotValue", "label": "Ort. Slot Degeri", "default": 600, "suffix": "TL", "hint": "Ortalama randevu ucreti", "editable": true }
+    ],
+    "formula": "monthlyAppointments * ((noShowRateBefore - noShowRateAfter) / 100) * avgSlotValue",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "id": "e09",
+  "title": "Adres Degisikligi & Teslimat Yonetimi",
+  "subtitle": "Address Change Management",
+  "phase": "Phase 1",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Siparis adresini veya teslimat saatini degistirmek isteyen musterinin talebini AI ile yoneten, kargoya verilip verilmedigini kontrol eden ve uygun aksiyonu alan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Adres degisikligi talebi kargoya verildikten sonra gelirse karmasiklasir" },
+      { "label": "Deger", "value": "Otomatik uygunluk kontrolu ile aninda cevap — musteri beklemez" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI siparis durumunu kontrol eder. Henuz kargoya verilmediyse adres gunceller, verildiyse alternatifleri sunar.",
+    "steps": [
+      {
+        "title": "Durum Kontrolu",
+        "goal": "Degisiklik mumkun mu?",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Platform)", "color": "amber" }
+        ],
+        "content": "Siparis durumu kontrol edilir: Hazirlaniyor → degisiklik mumkun. Kargoda → alternatif sunulur."
+      },
+      {
+        "title": "Adres Guncelleme",
+        "goal": "Yeni adresi kaydet",
+        "badges": [
+          { "text": "Sistem (Otomasyon)", "color": "purple" },
+          { "text": "Tenant (Depo)", "color": "green" }
+        ],
+        "content": "Uygunsa adres guncellenir. Degilse kargo firmasina yonlendirme veya teslim noktasi degisikligi onerilir."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kargoya Verilmeden Adres Degisikligi",
+      "description": "Siparis henuz hazirlaniyor, adres guncellenebilir.",
+      "tags": [
+        { "text": "Adres Degisikligi", "color": "blue" },
+        { "text": "Basarili", "color": "green" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Siparis durumu API erisimi", "service": "Integrations", "page": "E-ticaret > Siparis Durumu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform API'sinden siparis durumu kontrolu gerekir" }
+        ],
+        "provider": [
+          { "text": "Adres degisikligi is akisi", "service": "Automation", "page": "Is Akislari > Adres Guncelleme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Siparis durumuna gore otomatik adres guncelleme hazir" },
+          { "text": "Intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Adres", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Adres degisikligi intent'i hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Adresimi degistirmek istiyorum, mumkun mu?" },
+        { "role": "ai", "content": "Intent: Adres Degisikligi. Siparis: #445566. Durum: Hazirlaniyor. Degisiklik: MUMKUN." },
+        { "role": "bot", "content": "Tabii! Siparisiniiz henuz hazirlaniyor, adres degisikligi yapabiliriz. Yeni teslimat adresinizi yazabilir misiniz?" },
+        { "role": "user", "content": "Kadikoy, Bagdat Caddesi No: 123, Daire 4" },
+        { "role": "bot", "content": "Adresiniz guncellendi!\n\n📍 Yeni adres: Kadikoy, Bagdat Caddesi No: 123, Daire 4\n📦 Siparis: #445566\n\nTeslimat plana gore devam edecek." },
+        { "role": "system", "content": "Adres guncellendi. Siparis normal akisinda devam ediyor." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Kargoya Verildikten Sonra Talep",
+      "description": "Siparis zaten kargoda, adres degisikligi yapilamiyor.",
+      "tags": [
+        { "text": "Kargoda", "color": "amber" },
+        { "text": "Alternatif", "color": "gray" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kargo firma iletisim bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Kargo Iletisim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kargo firmasi musteri hizmetleri numaralarini tanimlayin" }
+        ],
+        "provider": [
+          { "text": "Kargo durumu sorgulama", "service": "Integrations", "page": "Kargo > Durum Kontrolu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Kargo durumu gercek zamanli sorgulanir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Siparisimin adresini degistirmek istiyorum." },
+        { "role": "ai", "content": "Siparis: #778899. Durum: Kargoda (Yurtici). Degisiklik: MUMKUN DEGIL." },
+        { "role": "bot", "content": "Siparisiniiz zaten kargoya verilmis, maalesef bizim tarafimizdan adres degisikligi yapilamiyor.\n\nAlternatifler:\n1️⃣ Kargo firmasini arayin: 444 0 123 (Yurtici)\n2️⃣ Teslim aninda kargo gorevlisine soyleyin\n3️⃣ Komsu/is yeri adresi olarak yonlendirin\n\nBaska yardimci olabilecegim bir sey var mi?" },
+        { "role": "system", "content": "Adres degisikligi yapilamadi (kargoda). Musteri kargo firmasina yonlendirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo siparis durumu kontrolu ile calisir. Kargoya verilmeden once adres guncellenebilir, sonra alternatifler sunulur.",
+    "backend": [
+      { "title": "Order Status Checker", "goal": "Durum Kontrolu", "content": "Siparis durumunu kontrol eder: Hazirlaniyor/Kargoda/Teslim Edildi. Degisiklik uygunlugunu belirler." },
+      { "title": "Address Updater", "goal": "Adres Guncelleme", "content": "Uygun durumdaki siparislerin adresini platform API uzerinden gunceller." }
+    ],
+    "apis": [
+      { "title": "E-ticaret Platform API", "goal": "Siparis Guncelleme", "content": "Siparis durumu kontrolu ve adres guncelleme." },
+      { "title": "Kargo API", "goal": "Yonlendirme", "content": "Kargodaki siparis icin firma iletisim bilgisi ve yonlendirme." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Agent Zamani Tasarrufu",
+    "description": "Otomatik adres degisikligi kontrolu ile kazanilan verimlilik.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyAddressChanges", "label": "Aylik Adres Talebi", "default": 15, "hint": "Adres degisikligi istegi", "editable": true },
+      { "key": "minutesPerCase", "label": "Vaka Basina Dakika", "default": 5, "hint": "Agent'in harcadigi sure", "editable": true },
+      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+    ],
+    "formula": "monthlyAddressChanges * minutesPerCase * (agentHourlyCost / 60)",
+    "formulaDisplay": null
+  }
+}

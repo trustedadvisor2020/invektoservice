@@ -1,0 +1,89 @@
+{
+  "id": "e18",
+  "title": "Gel-Al Noktasi Kapali Yonlendirme",
+  "subtitle": "Pickup Point Resolution",
+  "phase": "Phase 2",
+  "category": "E-TICARET OTOMASYONU",
+  "niche": "ecommerce",
+  "description": "Iade teslim noktasina ulasamayan musteriye AI en yakin alternatif teslim noktasini bulur ve yonlendirir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
+      { "label": "Sorun", "value": "Gel-Al/teslim noktasi kapali veya tasinmissa musteri ne yapacagini bilemiyor" },
+      { "label": "Deger", "value": "Alternatif nokta yonlendirmesi ile iade sureci akssamaz" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI kargo firmasi teslim noktalarini sorgular ve musteri konumuna en yakin alternatifi onerir.",
+    "steps": [
+      {
+        "title": "Sorun Tespiti",
+        "goal": "Teslim noktasi sorununu anla",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Kargo)", "color": "amber" }
+        ],
+        "content": "AI 'nokta kapali', 'bulamadim', 'tasinmis' gibi intent'leri tespit eder."
+      },
+      {
+        "title": "Alternatif Nokta",
+        "goal": "En yakin alternatifi bul",
+        "badges": [
+          { "text": "Sistem (API)", "color": "purple" },
+          { "text": "Tenant (Konum)", "color": "green" }
+        ],
+        "content": "Kargo firmasi API veya Knowledge Base'den en yakin alternatif teslim noktasi bulunur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Teslim Noktasi Kapali",
+      "description": "Musteri iade teslim noktasina gittiginde kapali buldu.",
+      "tags": [
+        { "text": "Gel-Al", "color": "amber" },
+        { "text": "Alternatif", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kargo teslim noktasi listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Teslim Noktalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kargo firmasi bazli teslim noktasi listesini guncel tutun" }
+        ],
+        "provider": [
+          { "text": "Konum bazli nokta arama", "service": "AgentAI", "page": "Konum > Teslim Noktasi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Musteri konumuna en yakin teslim noktasi arama hazir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Gel-Al noktasi kapali, iade urunu teslim edemiyorum!" },
+        { "role": "ai", "content": "Intent: Teslim Noktasi Kapali. Kargo: Aras. Bolge: Kadikoy. Alternatif aranıyor." },
+        { "role": "bot", "content": "Uzgunuz! En yakin alternatif teslim noktalari:\n\n📍 Aras Kargo — Bagdat Cad. Subesi (1.2 km)\n   Saat: 09:00-18:00\n📍 Aras Kargo — Fenerbahce Subesi (2.1 km)\n   Saat: 09:00-19:00\n\nIade kodunuz her iki subede de gecerlidir. Baska yardimci olabilir miyim?" },
+        { "role": "system", "content": "Alternatif teslim noktasi yonlendirmesi yapildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge Base + konum bazli arama ile calisir. Kargo firmasi teslim noktasi bilgileri duzenlii guncellenir.",
+    "backend": [
+      { "title": "Pickup Point Finder", "goal": "Nokta Arama", "content": "Kargo firmasi ve konum bazli en yakin teslim noktasi arama. Calisma saatleri ve durum bilgisi." }
+    ],
+    "apis": [
+      { "title": "Kargo Nokta API", "goal": "Teslim Noktalari", "content": "Kargo firmasi teslim/gel-al noktasi listesi ve durum bilgisi." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Basarili Iade Artisi",
+    "description": "Alternatif nokta yonlendirmesi ile tamamlanan iadeler.",
+    "resultLabel": "Tamamlanan Iade (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPickupIssues", "label": "Aylik Nokta Sorunu", "default": 5, "hint": "Teslim noktasi sorunu", "editable": true },
+      { "key": "resolutionRate", "label": "Cozum Orani", "default": 90, "prefix": "%", "hint": "Alternatifle cozulen", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 400, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlyPickupIssues * (resolutionRate / 100) * avgOrderValue * 0.3",
+    "formulaDisplay": null
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "id": "a56",
+  "title": "Uygunluk / Kontrendikasyon",
+  "subtitle": "Eligibility & Contraindication Check",
+  "phase": "Phase 2",
+  "category": "ESTETIK KLINIK",
+  "niche": "aesthetic",
+  "description": "Estetik islem icin uygun olup olmadigini soran hastaya AI ile Knowledge Base'den kontrendikasyon bilgisi cekerek guvenli yonlendirme yapan sistem.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Estetik Klinik (Tum Klinikler)" },
+      { "label": "Sorun", "value": "Hasta kontrendikasyon bilmiyor — yanlis bilgi saglik riski olusturur" },
+      { "label": "Deger", "value": "AI ile guvenli on bilgilendirme — hasta guveni artar, risk azalir" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "AI kontrendikasyon sorusunu tespit eder, Knowledge Base'den guvenli bilgi cekar ve hastayı yonlendirir.",
+    "steps": [
+      {
+        "title": "Kontrendikasyon Tespiti",
+        "goal": "Risk durumunu belirle",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "green" },
+          { "text": "Tenant (Saglik)", "color": "rose" }
+        ],
+        "content": "Knowledge Base'den islem bazli kontrendikasyon bilgisi cekilir."
+      },
+      {
+        "title": "Guvenli Yonlendirme",
+        "goal": "Doğru bilgi ver",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Tenant (Doktor)", "color": "blue" }
+        ],
+        "content": "Kontrendikasyon varsa uyari verilir, yoksa randevu teklifi yapilir. Kesin karar icin doktor yonlendirmesi."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Hamilelikte Botox Sorusu",
+      "description": "Hasta hamile olsa botox yaptirip yaptiramayacagini soruyor.",
+      "tags": [
+        { "text": "Kontrendikasyon", "color": "rose" },
+        { "text": "Guvenlik", "color": "red" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Kontrendikasyon bilgi bankasi", "service": "Knowledge", "page": "Dokuman Bankasi > Kontrendikasyonlar", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Islem bazli kontrendikasyon listesini ve saglik uyarilarini yukleyin" }
+        ],
+        "provider": [
+          { "text": "Kontrendikasyon intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Uygunluk", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Uygunluk/kontrendikasyon sorgulama intent'i hazir" },
+          { "text": "Knowledge RAG sorgu", "service": "Knowledge", "page": "RAG > Kontrendikasyon", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kontrendikasyon bilgisi RAG ile cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Hamile olsam botox yaptirabilir miyim?" },
+        { "role": "ai", "content": "Intent: Kontrendikasyon Sorgusu — Hamilelik + Botox. Knowledge Base'den bilgi cekilecek." },
+        { "role": "bot", "content": "Onemli soru, cevapliyorum!\n\n⚠️ Hamilelik doneminde botox ONERILMEZ.\n\nNeden:\n• Botulinum toksini bebeğe etkileri yeterince arastirilmamistir\n• Emzirme doneminde de tavsiye edilmez\n• Dogum sonrasi 6 ay beklemek onerilir\n\n💡 Kesin karar icin doktorumuzla gorusmeniZi oneririz.\n📅 Ucretsiz konsultasyon randevusu ayarlayalim mi?" },
+        { "role": "system", "content": "Kontrendikasyon bilgisi sunuldu. Doktor konsultasyon randevusu teklif edildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo Knowledge RAG + AI intent tespiti ile calisir. Saglik guvenligi on planda.",
+    "backend": [
+      { "title": "Contraindication Checker", "goal": "Kontrendikasyon Kontrolu", "content": "Islem ve durum kombinasyonuna gore kontrendikasyon bilgisini cekar." }
+    ],
+    "apis": [
+      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Kontrendikasyon listesi ve saglik uyarilari RAG ile cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Guvenli Yonlendirme",
+    "description": "Kontrendikasyon bilgilendirmesi ile onlenen saglik riski ve artan guven.",
+    "resultLabel": "Korunan Deger (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyEligibilityQueries", "label": "Aylik Uygunluk Sorusu", "default": 15, "hint": "Kontrendikasyon/uygunluk sorgusu", "editable": true },
+      { "key": "conversionRate", "label": "Donusum Orani", "default": 50, "prefix": "%", "hint": "Bilgilendirme sonrasi randevuya donusen", "editable": true },
+      { "key": "avgConsultValue", "label": "Konsultasyon Degeri", "default": 5000, "suffix": "TL", "hint": "Konsultasyona donusen islem degeri", "editable": true }
+    ],
+    "formula": "monthlyEligibilityQueries * (conversionRate / 100) * avgConsultValue",
+    "formulaDisplay": null
+  }
+}
