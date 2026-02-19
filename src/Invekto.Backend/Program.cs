@@ -217,7 +217,9 @@ if (!string.IsNullOrEmpty(inmaSecretKey))
         SecretKey = inmaSecretKey,
         LoginUrl = builder.Configuration["InmaAuth:LoginUrl"] ?? string.Empty,
         ClockSkewSeconds = builder.Configuration.GetValue<int>("InmaAuth:ClockSkewSeconds", 60),
-        LoginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000)
+        LoginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000),
+        RefreshUrl = builder.Configuration["InmaAuth:RefreshUrl"],
+        ApiBaseUrl = builder.Configuration["InmaAuth:ApiBaseUrl"]
     };
     inmaJwtValidator = new InmaJwtValidator(inmaJwtSettings);
 }
@@ -313,15 +315,39 @@ bool ValidateOpsAuth(HttpContext ctx)
         catch { return false; }
     }
 
-    // Bearer JWT (inse superadmin token — role=admin erişim)
-    if (jwtValidator != null && authHeader.StartsWith("Bearer "))
+    // Bearer JWT — try inse first, then inma
+    if (authHeader.StartsWith("Bearer "))
     {
         var token = authHeader["Bearer ".Length..];
-        var (context, _) = jwtValidator.ValidateToken(token);
-        return context?.Role == "admin";
+
+        // inse internal JWT
+        if (jwtValidator != null)
+        {
+            var (context, _) = jwtValidator.ValidateToken(token);
+            if (context?.Role == "admin") return true;
+        }
+
+        // inma JWT fallback (direct token from main app)
+        if (inmaJwtValidator != null)
+        {
+            var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
+            if (inmaCtx?.Role == "admin") return true;
+        }
+
+        return false;
     }
 
     return false;
+}
+
+// Ops 401 response: only trigger browser Basic popup for direct navigation (not SPA fetch)
+IResult OpsUnauthorized(HttpContext ctx)
+{
+    if (!ctx.Request.Headers.ContainsKey("X-Requested-With"))
+    {
+        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
+    }
+    return Results.Unauthorized();
 }
 
 // OPS endpoint - Stage-0 troubleshooting dashboard
@@ -329,8 +355,7 @@ app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, Automa
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var chatHealthy = await chatClient.CheckHealthAsync();
@@ -367,8 +392,7 @@ app.MapGet("/ops/debug", (HttpContext ctx) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var backendLogExists = Directory.Exists(logPath);
@@ -403,8 +427,7 @@ app.MapGet("/ops/debug2", async (HttpContext ctx, LogReader logReader) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     // Read first file manually with FileShare.ReadWrite
@@ -467,8 +490,7 @@ app.MapGet("/ops/errors", async (HttpContext ctx, LogReader logReader) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var errors = await logReader.GetLastErrorsAsync(100);
@@ -480,8 +502,7 @@ app.MapGet("/ops/slow", async (HttpContext ctx, LogReader logReader) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var slow = await logReader.GetLastSlowRequestsAsync(100);
@@ -493,8 +514,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (string.IsNullOrWhiteSpace(requestId))
@@ -515,8 +535,7 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var services = new List<object>();
@@ -693,8 +712,7 @@ app.MapGet("/api/ops/logs/stream", async (
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var options = new LogQueryOptions
@@ -728,8 +746,7 @@ app.MapGet("/api/ops/logs/grouped", async (
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     // Category filter: default = no filter (backward compatible), explicit values filter
@@ -765,8 +782,7 @@ app.MapGet("/api/ops/logs/context", async (
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (string.IsNullOrWhiteSpace(file) || !line.HasValue)
@@ -788,8 +804,7 @@ app.MapDelete("/api/ops/logs/clear", (HttpContext ctx, LogReader logReader, stri
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     int deleted;
@@ -810,8 +825,7 @@ app.MapGet("/api/ops/stats/errors", async (HttpContext ctx, LogReader logReader,
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var result = await logReader.GetErrorStatsAsync(hours ?? 24);
@@ -827,30 +841,32 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     // Map service name to Windows Service name
     var windowsServiceName = serviceName switch
     {
-        "Invekto.Backend" => "Invekto.Backend",
-        "Invekto.ChatAnalysis" => "Invekto.Microservice.Chat",
+        "Invekto.Backend" => "InvektoBackend",
+        "Invekto.ChatAnalysis" => "InvektoChatAnalysis",
         "Invekto.Automation" => "InvektoAutomation",
         "Invekto.AgentAI" => "InvektoAgentAI",
         "Invekto.Outbound" => "InvektoOutbound",
         "Invekto.Knowledge" => "InvektoKnowledge",
         "Invekto.Appointments" => "InvektoAppointments",
+        "Invekto.Integrations" => "InvektoIntegrations",
+        "Invekto.WhatsAppAnalytics" => "InvektoWhatsAppAnalytics",
+        "Invekto.Marketing" => "InvektoMarketing",
         _ => null
     };
 
     if (windowsServiceName == null)
     {
-        return Results.BadRequest(new
+        return Results.Ok(new
         {
             success = false,
             service = serviceName,
-            message = "Unknown service or restart not supported"
+            message = "Bilinmeyen servis veya yeniden baslatma desteklenmiyor"
         });
     }
 
@@ -870,7 +886,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         {
             success = true,
             service = serviceName,
-            message = "Service restarted successfully"
+            message = "Servis basariyla yeniden baslatildi"
         });
     }
     catch (InvalidOperationException ex)
@@ -879,7 +895,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         {
             success = false,
             service = serviceName,
-            message = $"Service not found or not installed: {ex.Message}"
+            message = $"Servis bulunamadi veya kurulu degil: {ex.Message}"
         });
     }
     catch (Exception ex)
@@ -888,7 +904,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         {
             success = false,
             service = serviceName,
-            message = $"Restart failed: {ex.Message}"
+            message = $"Yeniden baslatma hatasi: {ex.Message}"
         });
     }
 });
@@ -898,8 +914,7 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     try
@@ -1291,8 +1306,7 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     var backendEndpoints = new EndpointDiscoveryResponse
@@ -1485,8 +1499,7 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     // Fetch all service endpoints
@@ -2085,8 +2098,7 @@ async Task<IResult> KnProxyGet(HttpContext ctx, KnowledgeClient knClient, JsonLi
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (jwtGenerator == null)
@@ -2107,8 +2119,7 @@ async Task<IResult> KnProxyPost(HttpContext ctx, KnowledgeClient knClient, JsonL
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (jwtGenerator == null)
@@ -2131,8 +2142,7 @@ async Task<IResult> KnProxyPut(HttpContext ctx, KnowledgeClient knClient, JsonLi
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (jwtGenerator == null)
@@ -2155,8 +2165,7 @@ async Task<IResult> KnProxyDelete(HttpContext ctx, KnowledgeClient knClient, Jso
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (jwtGenerator == null)
@@ -2178,8 +2187,7 @@ app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/upload", async (
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     if (jwtGenerator == null)
@@ -3080,8 +3088,7 @@ app.MapGet("/api/ops/analytics/tenants", async (HttpContext ctx, AnalyticsReposi
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     try
@@ -3101,8 +3108,7 @@ app.MapGet("/api/ops/analytics/automation/summary", async (HttpContext ctx, Anal
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue)
@@ -3143,8 +3149,7 @@ app.MapGet("/api/ops/analytics/automation/trends", async (HttpContext ctx, Analy
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue)
@@ -3185,8 +3190,7 @@ app.MapGet("/api/ops/analytics/automation/intents", async (HttpContext ctx, Anal
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue)
@@ -3227,8 +3231,7 @@ app.MapGet("/api/ops/analytics/wa/analyses", async (HttpContext ctx, AnalyticsRe
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue)
@@ -3253,8 +3256,7 @@ app.MapGet("/api/ops/analytics/wa/summary", async (HttpContext ctx, AnalyticsRep
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue || !analysis_id.HasValue)
@@ -3279,8 +3281,7 @@ app.MapGet("/api/ops/analytics/wa/agents", async (HttpContext ctx, AnalyticsRepo
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue || !analysis_id.HasValue)
@@ -3305,8 +3306,7 @@ app.MapGet("/api/ops/analytics/wa/trends", async (HttpContext ctx, AnalyticsRepo
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
 
     if (!tenant_id.HasValue || !analysis_id.HasValue)
@@ -3335,8 +3335,7 @@ app.MapGet("/api/ops/analytics/wa/intents-nlp", async (HttpContext ctx, WhatsApp
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue || !analysis_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
@@ -3354,8 +3353,7 @@ app.MapGet("/api/ops/analytics/wa/sentiments", async (HttpContext ctx, WhatsAppA
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue || !analysis_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
@@ -3373,8 +3371,7 @@ app.MapGet("/api/ops/analytics/wa/products", async (HttpContext ctx, WhatsAppAna
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue || !analysis_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
@@ -3393,8 +3390,7 @@ app.MapGet("/api/ops/analytics/wa/prices", async (HttpContext ctx, WhatsAppAnaly
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue || !analysis_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
@@ -3413,8 +3409,7 @@ app.MapGet("/api/ops/analytics/wa/faq-clusters", async (HttpContext ctx, WhatsAp
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue || !analysis_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
@@ -3433,8 +3428,7 @@ app.MapGet("/api/ops/analytics/wa/nlp-summary", async (HttpContext ctx, WhatsApp
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue || !analysis_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id and analysis_id query parameters required" });
@@ -3455,8 +3449,7 @@ app.MapGet("/api/ops/analytics/attribution/summary", async (HttpContext ctx, Att
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
@@ -3488,8 +3481,7 @@ app.MapGet("/api/ops/analytics/attribution/cost-per-lead", async (HttpContext ct
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
@@ -3521,8 +3513,7 @@ app.MapGet("/api/ops/analytics/campaigns", async (HttpContext ctx, AnalyticsRepo
 {
     if (!ValidateOpsAuth(ctx))
     {
-        ctx.Response.Headers.WWWAuthenticate = "Basic realm=\"Ops\"";
-        return Results.Unauthorized();
+        return OpsUnauthorized(ctx);
     }
     if (!tenant_id.HasValue)
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "tenant_id query parameter required" });
@@ -3673,14 +3664,19 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
         }
 
         var inmaBody = await inmaResponse.Content.ReadAsStringAsync();
-        // inma returns the JWT token in the response body — extract accesstoken
+        // inma returns accesstoken + refreshtoken in response body
         string? inmaToken = null;
+        string? inmaRefreshToken = null;
         try
         {
             using var respDoc = JsonDocument.Parse(inmaBody);
             inmaToken = respDoc.RootElement.TryGetProperty("accesstoken", out var at) ? at.GetString()
+                      : respDoc.RootElement.TryGetProperty("accessToken", out var at2) ? at2.GetString()
                       : respDoc.RootElement.TryGetProperty("token", out var tk) ? tk.GetString()
                       : null;
+            inmaRefreshToken = respDoc.RootElement.TryGetProperty("refreshtoken", out var rt) ? rt.GetString()
+                             : respDoc.RootElement.TryGetProperty("refreshToken", out var rt2) ? rt2.GetString()
+                             : null;
         }
         catch (JsonException)
         {
@@ -3705,21 +3701,18 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
                 statusCode: 401);
         }
 
-        var tokenExpiry = TimeSpan.FromHours(8);
-        var inseToken = jwtGenerator.GenerateToken(
-            inmaCtx.TenantId, inmaCtx.Role, "inma_login", tokenExpiry, inmaCtx.UserId.ToString());
-
         jsonLogger.StepInfo($"inma login success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
         return Results.Ok(new
         {
-            token = inseToken,
+            token = inmaToken,
+            refresh_token = inmaRefreshToken ?? string.Empty,
             tenant_id = inmaCtx.TenantId,
             user_id = inmaCtx.UserId,
             role = inmaCtx.Role,
             full_name = inmaCtx.FullName,
             lang = inmaCtx.Lang,
             inse_features = inmaCtx.InseFeatures,
-            expires_in = (int)tokenExpiry.TotalSeconds,
+            expires_in = 28800,
             token_type = "Bearer"
         });
     }
@@ -3818,6 +3811,182 @@ app.MapPost("/api/v1/ops/auth/quicklogin", (HttpContext ctx, JsonLinesLogger jso
         expires_in = (int)tokenExpiry.TotalSeconds,
         token_type = "Bearer"
     });
+});
+
+// Akis 5: Token refresh proxy — INMA refresh endpoint'ine proxy yapar
+app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (inmaJwtSettings == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
+            statusCode: 503);
+
+    var refreshUrl = inmaJwtSettings.RefreshUrl;
+    if (string.IsNullOrEmpty(refreshUrl))
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma refresh URL not configured", requestId),
+            statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var accessToken = root.TryGetProperty("accessToken", out var at) ? at.GetString() : null;
+        var refreshToken = root.TryGetProperty("refreshToken", out var rt) ? rt.GetString() : null;
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralValidation, "refreshToken is required", requestId),
+                statusCode: 400);
+
+        var inmaClient = httpClientFactory.CreateClient("inma_login");
+        var refreshPayload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            refreshToken,
+            accessToken = accessToken ?? string.Empty
+        });
+
+        using var inmaRequest = new HttpRequestMessage(HttpMethod.Post, refreshUrl)
+        {
+            Content = new StringContent(refreshPayload, Encoding.UTF8, "application/json")
+        };
+
+        HttpResponseMessage inmaResponse;
+        try
+        {
+            inmaResponse = await inmaClient.SendAsync(inmaRequest);
+        }
+        catch (HttpRequestException ex)
+        {
+            jsonLogger.StepWarn($"inma refresh proxy failed (network): {ex.Message}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma servisine erisim saglanamadi", requestId),
+                statusCode: 503);
+        }
+        catch (TaskCanceledException)
+        {
+            jsonLogger.StepWarn("inma refresh proxy timed out", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma servisine erisim zaman asimina ugradi", requestId),
+                statusCode: 503);
+        }
+
+        if (!inmaResponse.IsSuccessStatusCode)
+        {
+            jsonLogger.StepWarn($"inma refresh rejected: HTTP {(int)inmaResponse.StatusCode}", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Refresh token gecersiz veya suresi dolmus", requestId),
+                statusCode: 401);
+        }
+
+        var inmaBody = await inmaResponse.Content.ReadAsStringAsync();
+        // Parse new tokens from inma response
+        string? newAccessToken = null;
+        string? newRefreshToken = null;
+        try
+        {
+            using var respDoc = JsonDocument.Parse(inmaBody);
+            newAccessToken = respDoc.RootElement.TryGetProperty("accesstoken", out var a1) ? a1.GetString()
+                           : respDoc.RootElement.TryGetProperty("accessToken", out var a2) ? a2.GetString()
+                           : respDoc.RootElement.TryGetProperty("token", out var tk) ? tk.GetString()
+                           : null;
+            newRefreshToken = respDoc.RootElement.TryGetProperty("refreshtoken", out var r1) ? r1.GetString()
+                            : respDoc.RootElement.TryGetProperty("refreshToken", out var r2) ? r2.GetString()
+                            : null;
+        }
+        catch (JsonException)
+        {
+            jsonLogger.StepWarn("inma refresh response parse failed", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma refresh cevabi okunamadi", requestId),
+                statusCode: 500);
+        }
+
+        if (string.IsNullOrWhiteSpace(newAccessToken))
+        {
+            jsonLogger.StepWarn("inma refresh succeeded but new token missing", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma yeni token donmedi", requestId),
+                statusCode: 500);
+        }
+
+        jsonLogger.StepInfo("inma token refresh success", requestId);
+        return Results.Ok(new
+        {
+            accessToken = newAccessToken,
+            refreshToken = newRefreshToken ?? string.Empty
+        });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", requestId),
+            statusCode: 400);
+    }
+});
+
+// Akis 6: Welcome proxy — INMA welcome endpoint'ine proxy yapar
+app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (inmaJwtSettings == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
+            statusCode: 503);
+
+    var apiBaseUrl = inmaJwtSettings.ApiBaseUrl;
+    if (string.IsNullOrEmpty(apiBaseUrl))
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma API base URL not configured", requestId),
+            statusCode: 503);
+
+    // Forward the Bearer token from the incoming request to inma
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", requestId),
+            statusCode: 401);
+
+    var inmaClient = httpClientFactory.CreateClient("inma_login");
+    var welcomeUrl = $"{apiBaseUrl.TrimEnd('/')}/api/invekto/welcome";
+
+    using var inmaRequest = new HttpRequestMessage(HttpMethod.Get, welcomeUrl);
+    inmaRequest.Headers.TryAddWithoutValidation("Authorization", authHeader);
+
+    HttpResponseMessage inmaResponse;
+    try
+    {
+        inmaResponse = await inmaClient.SendAsync(inmaRequest);
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLogger.StepWarn($"inma welcome proxy failed (network): {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma servisine erisim saglanamadi", requestId),
+            statusCode: 503);
+    }
+    catch (TaskCanceledException)
+    {
+        jsonLogger.StepWarn("inma welcome proxy timed out", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma zaman asimi", requestId),
+            statusCode: 503);
+    }
+
+    var body = await inmaResponse.Content.ReadAsStringAsync();
+    var contentType = inmaResponse.Content.Headers.ContentType?.MediaType ?? "application/json";
+
+    if (!inmaResponse.IsSuccessStatusCode)
+    {
+        jsonLogger.StepWarn($"inma welcome failed: HTTP {(int)inmaResponse.StatusCode}", requestId);
+        return Results.Text(body, contentType, statusCode: (int)inmaResponse.StatusCode);
+    }
+
+    return Results.Text(body, contentType);
 });
 
 // ============================================

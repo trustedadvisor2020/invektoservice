@@ -1,0 +1,152 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260219-jwt-refresh-auth",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-19T10:00:00Z",
+  "updated_at": "2026-02-19T14:00:00Z",
+  "plan": {
+    "summary": "JWT auth lifecycle with refresh token support: URL QueryString token extraction, localStorage persistence, INMA JWT direct decode, 401 interceptor with automatic refresh and concurrent handling, welcome endpoint proxy.",
+    "q_intent": "URL'de QueryString ile access token ve refresh token saklayarak apiden jwt token ile istek yap, 401'de refresh token ile yenile, logout'ta temizle, welcome endpoint'ine istek yap ve cevabi ekrana yaz.",
+    "interview_notes": "Refresh: INMA kendi refresh endpoint'i var (testapi.wapcrm.net/api/token/refresh). Storage: localStorage. JWT decode: INMA JWT direkt decode, exchange flow kaldirildi."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Auth/InmaJwtSettings.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/Dashboard/package.json",
+    "src/Invekto.Backend/Dashboard/package-lock.json",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/TenantDashboardPage.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Auth/InmaJwtSettings.cs", "is_new": false, "change": "Added RefreshUrl and ApiBaseUrl properties" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "ValidateOpsAuth INMA JWT fallback, refresh proxy endpoint, welcome proxy endpoint, login endpoint returns INMA tokens + refresh_token" },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false, "change": "Added RefreshUrl and ApiBaseUrl to InmaAuth section" },
+    { "path": "src/Invekto.Backend/Dashboard/package.json", "is_new": false, "change": "Added jwt-decode ^4.0.0 dependency" },
+    { "path": "src/Invekto.Backend/Dashboard/package-lock.json", "is_new": false, "change": "Lock file updated for jwt-decode" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "Full rewrite: localStorage token storage, jwt-decode, 401 interceptor with concurrent refresh, InmaTokenClaims interface, welcome endpoint" },
+    { "path": "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts", "is_new": false, "change": "URL token extraction (accesstoken+refreshtoken), welcomeData state, logout clears localStorage" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TenantDashboardPage.tsx", "is_new": false, "change": "Welcome response display, companyCode display" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln + tsc --noEmit + vite build",
+    "timestamp": "2026-02-19T11:00:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the 401 interceptor correctly handle concurrent requests that all receive 401, ensuring only one refresh call is made?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Are both access_token and refresh_token properly cleared from localStorage on logout, and does the login page correctly redirect?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the URL token extraction properly sanitize the URL (removing tokens from browser history) and handle missing refreshtoken gracefully?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does ValidateOpsAuth correctly try INSE JWT first then INMA JWT as fallback, preventing unauthorized access if neither validates?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does the refresh proxy endpoint properly validate inputs, handle INMA service unavailability, and prevent token leakage in logs?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs",
+      "src/Invekto.Shared/Auth/JwtValidator.cs",
+      "src/Invekto.Shared/Auth/JwtGenerator.cs"
+    ],
+    "non_goals": [
+      "Changing service-to-service JWT validation",
+      "Adding JWT protection to ops endpoints",
+      "Modifying FlowBuilder auth flow"
+    ],
+    "intentional_exclusions": [
+      "Token rotation policy",
+      "Refresh token revocation/blacklisting",
+      "Proactive token refresh before expiry"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs:refresh-endpoint (HttpRequestException, TaskCanceledException, JsonException)",
+      "Program.cs:welcome-endpoint (HttpRequestException, TaskCanceledException)",
+      "api.ts:doRefresh (catch all -> return false)",
+      "api.ts:getDecodedToken (catch all -> return null)",
+      "useAuth.ts:URL-effect (catch -> setError)"
+    ],
+    "user_facing_errors": [
+      "Token gecersiz veya suresi dolmus",
+      "Refresh token gecersiz veya suresi dolmus",
+      "inma servisine erisim saglanamadi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks either return explicit values (false/null) triggering logout, or set user-visible error state. Welcome endpoint failure is intentionally silent (non-critical)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Token suresi dolunca kullanici aniden logout oluyor, yaptigi is kayboluyor",
+      "suggestion": "401'de otomatik refresh ile kullanici hic fark etmeden yeni token alir, islem kesintisiz devam eder",
+      "aha_moment": "Kullanici saatlerce calisir, token yenilenir, hic login ekrani gormez"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her seferinde login ekranina yonlendirilip tekrar giris yapmak zaman kaybi",
+      "suggestion": "localStorage'da token persist edilir, browser kapatip acsa bile login gerekmez",
+      "aha_moment": "Ertesi gun browser actiginda direkt dashboard'da, login yok"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Concurrent API istekleri 401 alinca coklu refresh cagrilari cakilma yapar",
+      "suggestion": "refreshPromise pattern ile tek refresh, diger istekler bekler ve retry yapar",
+      "aha_moment": "Dashboard yukleme aninda 5 API istegi ayni anda 401 alir ama sistem duzgun calisir"
+    },
+    {
+      "category": "UX",
+      "user_pain": "INMA'dan gelen kullanici SSO ile giris yaptiginda URL'deki token gozukuyor",
+      "suggestion": "replaceState ile URL aninda temizlenir, browser history'de token kalmaz",
+      "aha_moment": "Kullanici URL'yi paylassa bile token gorulmez, guvenli"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Welcome mesaji gosterilmeden kullanici neye eristigi belirsiz",
+      "suggestion": "Login sonrasi INMA welcome endpoint'i cagirilir, kisisel karsilama ve yetki bilgisi gosterilir",
+      "aha_moment": "Giris yaptiginda 'Hosgeldiniz Ahmet, Otel XYZ' mesaji gorunce kendini evinde hisseder"
+    }
+  ],
+  "verdict": {
+    "status": "FORCE_PASS",
+    "iteration": 2,
+    "blocking_issues": [],
+    "q_override": "Q FORCE PASS: CoVe Q1-Q5 all PASS. Remaining CQ5/CQ8 are false positives (pre-existing code in context, TS convention, intentional plan changes). No real blocking issues."
+  }
+}

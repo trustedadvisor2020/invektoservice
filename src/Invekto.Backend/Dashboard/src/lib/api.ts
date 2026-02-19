@@ -1,3 +1,5 @@
+import { jwtDecode } from 'jwt-decode';
+
 // API types
 export interface ServiceHealth {
   name: string;
@@ -254,7 +256,36 @@ export interface CampaignStat {
   created_at: string;
 }
 
-// inma SSO session info stored after successful auth
+// INMA JWT decoded claims
+export interface InmaTokenClaims {
+  exp: number;
+  iat?: number;
+  FullName?: string;
+  CompanyCode?: string;
+  CompanyId?: string;
+  IconText?: string;
+  ChatRole?: string;
+  SignalRKey?: string;
+  ApiServerUrl?: string;
+  ChatServerUrl?: string;
+  AuthorizedInstances?: string;
+  AuthorizedAreas?: string;
+  Permissions?: string;
+  PhoneViewPermission?: string;
+  ChannelManagementPermission?: string;
+  CustomerMergePermission?: string;
+  InseFeatures?: string;
+  Lang?: string;
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'?: string;
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'?: string;
+  // INSE JWT claims (mock/quicklogin tokens)
+  tenant_id?: string;
+  user_id?: string;
+  role?: string;
+  source?: string;
+}
+
+// Session info derived from decoded JWT (backward compatible with old InseSession)
 export interface InseSession {
   token: string;
   tenantId: number;
@@ -264,11 +295,13 @@ export interface InseSession {
   lang: string;
   inseFeatures: string[];
   expiresAt: number; // Unix timestamp ms
+  companyCode: string;
 }
 
 // inma auth response from backend
 export interface InmaAuthResponse {
   token: string;
+  refresh_token?: string;
   tenant_id: number;
   user_id: number;
   role: string;
@@ -279,31 +312,28 @@ export interface InmaAuthResponse {
   token_type: string;
 }
 
+// Refresh token response
+interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// localStorage keys
+const TOKEN_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
+} as const;
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
-  private session: InseSession | null = null;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
   public readonly baseUrl: string = '';
 
   constructor() {
     // Restore Basic Auth credentials (ops admin)
     this.credentials = sessionStorage.getItem('ops_auth');
-    // Restore inma SSO session
-    const raw = sessionStorage.getItem('inse_session');
-    if (raw) {
-      try {
-        const parsed: InseSession = JSON.parse(raw);
-        if (parsed.expiresAt > Date.now()) {
-          this.session = parsed;
-        } else {
-          sessionStorage.removeItem('inse_session');
-        }
-      } catch (_e: unknown) {
-        // Corrupted JSON in sessionStorage — clear silently, user will re-login
-        console.error('[api] Failed to parse inse_session, clearing.', _e);
-        sessionStorage.removeItem('inse_session');
-      }
-    }
   }
 
   // --- Basic Auth (ops admin) ---
@@ -318,70 +348,132 @@ class OpsApiClient {
     sessionStorage.removeItem('ops_auth');
   }
 
-  // --- inma SSO session ---
+  // --- Token storage (localStorage) ---
 
-  setSession(resp: InmaAuthResponse): void {
-    this.session = {
-      token: resp.token,
-      tenantId: resp.tenant_id,
-      userId: resp.user_id,
-      role: resp.role,
-      fullName: resp.full_name,
-      lang: resp.lang,
-      inseFeatures: resp.inse_features ?? [],
-      expiresAt: Date.now() + resp.expires_in * 1000,
-    };
-    sessionStorage.setItem('inse_session', JSON.stringify(this.session));
+  getAccessToken(): string | null {
+    return localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN);
   }
 
-  clearSession(): void {
-    this.session = null;
+  getRefreshToken(): string | null {
+    return localStorage.getItem(TOKEN_KEYS.REFRESH_TOKEN);
+  }
+
+  storeTokens(accessToken: string, refreshToken: string): void {
+    localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, accessToken);
+    if (refreshToken) {
+      localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, refreshToken);
+    }
+    // Sync FlowBuilder iframe session (same origin, shared localStorage)
+    const session = this.getSession();
+    if (session) {
+      localStorage.setItem('fb_session', JSON.stringify({
+        token: accessToken,
+        tenant_id: session.tenantId,
+        expires_at: session.expiresAt,
+      }));
+    }
+  }
+
+  removeTokens(): void {
+    localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem('fb_session');
+    // Clean up legacy sessionStorage keys
     sessionStorage.removeItem('inse_session');
+    sessionStorage.removeItem('fb_session');
+  }
+
+  // --- JWT decode ---
+
+  getDecodedToken(): InmaTokenClaims | null {
+    const token = this.getAccessToken();
+    if (!token) return null;
+    try {
+      const decoded = jwtDecode<InmaTokenClaims>(token);
+      // Check expiry
+      if (decoded.exp && decoded.exp * 1000 <= Date.now()) {
+        return null;
+      }
+      return decoded;
+    } catch (err) {
+      console.warn('[api] JWT decode failed:', err);
+      return null;
+    }
+  }
+
+  // --- Session info (backward compatible) ---
+
+  setSession(resp: InmaAuthResponse): void {
+    this.storeTokens(resp.token, resp.refresh_token ?? '');
   }
 
   getSession(): InseSession | null {
-    return this.session;
+    const token = this.getAccessToken();
+    if (!token) return null;
+
+    const decoded = this.getDecodedToken();
+    if (!decoded) return null;
+
+    // Handle both INMA JWT claims and INSE JWT claims (mock/quicklogin)
+    const isInmaToken = !!decoded.CompanyId || !!decoded.FullName;
+
+    let features: string[] = [];
+    if (decoded.InseFeatures) {
+      try { features = JSON.parse(decoded.InseFeatures); } catch (err) { console.warn('[api] InseFeatures parse failed:', err); }
+    }
+
+    if (isInmaToken) {
+      // INMA JWT: decode INMA-specific claims
+      const nameId = decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+      return {
+        token,
+        tenantId: parseInt(decoded.CompanyId ?? '0') || 0,
+        userId: parseInt(nameId ?? '0') || 0,
+        role: decoded.ChatRole === '2' ? 'admin' : 'agent',
+        fullName: decoded.FullName ?? '',
+        lang: decoded.Lang ?? 'tr',
+        inseFeatures: features,
+        expiresAt: decoded.exp * 1000,
+        companyCode: decoded.CompanyCode ?? '',
+      };
+    }
+
+    // INSE JWT (mock/quicklogin): use inse claim names
+    return {
+      token,
+      tenantId: parseInt(decoded.tenant_id ?? '0') || 0,
+      userId: parseInt(decoded.user_id ?? '0') || 0,
+      role: decoded.role ?? 'agent',
+      fullName: decoded.source === 'ops_quicklogin' ? 'Super Admin' : 'Demo User',
+      lang: 'tr',
+      inseFeatures: features,
+      expiresAt: decoded.exp * 1000,
+      companyCode: '',
+    };
+  }
+
+  clearSession(): void {
+    this.removeTokens();
   }
 
   hasFeature(feature: string): boolean {
-    return this.session?.inseFeatures?.includes(feature) ?? false;
+    return this.getSession()?.inseFeatures?.includes(feature) ?? false;
   }
 
   isAuthenticated(): boolean {
-    if (this.session && this.session.expiresAt > Date.now()) return true;
+    if (this.getAccessToken() && this.getDecodedToken()) return true;
     return this.credentials !== null;
   }
 
   isInmaSession(): boolean {
-    return this.session !== null && this.session.expiresAt > Date.now();
+    return this.getAccessToken() !== null && this.getDecodedToken() !== null;
   }
 
   getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (this.session) {
-      headers['Authorization'] = `Bearer ${this.session.token}`;
-    } else if (this.credentials) {
-      headers['Authorization'] = `Basic ${this.credentials}`;
-    }
-    return headers;
+    return this.buildHeaders();
   }
 
   // --- inma auth calls ---
-
-  async exchangeInmaToken(inmaToken: string): Promise<InmaAuthResponse> {
-    const response = await fetch('/api/v1/inma/auth/exchange', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: inmaToken }),
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(err || `HTTP ${response.status}`);
-    }
-    return response.json();
-  }
 
   async loginWithInmaCredentials(
     companyName: string,
@@ -425,38 +517,145 @@ class OpsApiClient {
     return response.json();
   }
 
-  // --- internal request helper ---
+  // --- Welcome endpoint ---
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  async getWelcome(): Promise<unknown> {
+    return this.request<unknown>('/api/v1/inma/welcome');
+  }
+
+  // --- 401 refresh logic ---
+
+  private async handleRefresh(): Promise<boolean> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken || refreshToken.length < 10) return false;
+
+    // If already refreshing, wait for the existing promise
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.doRefresh(refreshToken);
+
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
+  }
+
+  private async doRefresh(refreshToken: string): Promise<boolean> {
+    try {
+      const response = await fetch('/api/v1/inma/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: this.getAccessToken() ?? '',
+          refreshToken,
+        }),
+      });
+
+      if (!response.ok) return false;
+
+      const tokens: RefreshResponse = await response.json();
+      if (!tokens.accessToken) return false;
+
+      this.storeTokens(tokens.accessToken, tokens.refreshToken);
+      return true;
+    } catch (err) {
+      console.warn('[api] token refresh failed:', err);
+      return false;
+    }
+  }
+
+  // --- Auth header builder ---
+
+  private buildHeaders(extra?: HeadersInit): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'X-Requested-With': 'fetch',
     };
 
-    if (this.session && this.session.expiresAt > Date.now()) {
-      headers['Authorization'] = `Bearer ${this.session.token}`;
+    const accessToken = this.getAccessToken();
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     } else if (this.credentials) {
       headers['Authorization'] = `Basic ${this.credentials}`;
     }
 
-    const response = await fetch(endpoint, {
-      ...options,
-      headers: {
-        ...headers,
-        ...options?.headers,
-      },
-    });
+    // Merge extra headers
+    if (extra) {
+      const extraObj = extra instanceof Headers
+        ? Object.fromEntries(extra.entries())
+        : Array.isArray(extra) ? Object.fromEntries(extra) : extra;
+      Object.assign(headers, extraObj);
+    }
+
+    return headers;
+  }
+
+  // --- 401 interceptor: shared retry-with-refresh wrapper ---
+
+  private async executeWithRefresh(doFetch: () => Promise<Response>): Promise<Response> {
+    let response = await doFetch();
+
+    if (response.status === 401 && this.getRefreshToken()) {
+      const refreshed = await this.handleRefresh();
+      if (refreshed) {
+        response = await doFetch();
+      } else {
+        this.removeTokens();
+        this.clearCredentials();
+        throw new Error('Unauthorized');
+      }
+    }
 
     if (response.status === 401) {
+      this.removeTokens();
       this.clearCredentials();
-      this.clearSession();
       throw new Error('Unauthorized');
     }
+
+    return response;
+  }
+
+  // --- internal request helpers ---
+
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const response = await this.executeWithRefresh(() =>
+      fetch(endpoint, { ...options, headers: this.buildHeaders(options?.headers) })
+    );
 
     if (!response.ok) {
       const error = await response.text();
       throw new Error(error || `HTTP ${response.status}`);
     }
 
+    return response.json();
+  }
+
+  private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (title) formData.append('title', title);
+
+    const buildUploadHeaders = (): Record<string, string> => {
+      const headers: Record<string, string> = { 'X-Requested-With': 'fetch' };
+      const accessToken = this.getAccessToken();
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      } else if (this.credentials) {
+        headers['Authorization'] = `Basic ${this.credentials}`;
+      }
+      return headers;
+    };
+
+    const response = await this.executeWithRefresh(() =>
+      fetch(endpoint, { method: 'POST', headers: buildUploadHeaders(), body: formData })
+    );
+
+    if (!response.ok) { const error = await response.text(); throw new Error(error || `HTTP ${response.status}`); }
     return response.json();
   }
 
@@ -669,28 +868,6 @@ class OpsApiClient {
 
   async getCampaignStats(tenantId: number): Promise<{ campaigns: CampaignStat[] }> {
     return this.request<{ campaigns: CampaignStat[] }>(`/api/ops/analytics/campaigns?tenant_id=${tenantId}`);
-  }
-
-  private async requestUpload<T>(endpoint: string, file: File, title?: string): Promise<T> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (title) formData.append('title', title);
-
-    const headers: Record<string, string> = {};
-    if (this.session && this.session.expiresAt > Date.now()) {
-      headers['Authorization'] = `Bearer ${this.session.token}`;
-    } else if (this.credentials) {
-      headers['Authorization'] = `Basic ${this.credentials}`;
-    }
-
-    const response = await fetch(endpoint, { method: 'POST', headers, body: formData });
-    if (response.status === 401) {
-      this.clearCredentials();
-      this.clearSession();
-      throw new Error('Unauthorized');
-    }
-    if (!response.ok) { const error = await response.text(); throw new Error(error || `HTTP ${response.status}`); }
-    return response.json();
   }
 }
 

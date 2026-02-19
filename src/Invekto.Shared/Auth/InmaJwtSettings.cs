@@ -17,4 +17,10 @@ public sealed class InmaJwtSettings
 
     /// <summary>HTTP timeout for inma login proxy requests in milliseconds (default: 10000)</summary>
     public int LoginTimeoutMs { get; init; } = 10000;
+
+    /// <summary>inma token refresh API URL. e.g. https://testapi.wapcrm.net/api/token/refresh</summary>
+    public string? RefreshUrl { get; init; }
+
+    /// <summary>inma API base URL for proxy requests. e.g. https://testapi.wapcrm.net</summary>
+    public string? ApiBaseUrl { get; init; }
 }

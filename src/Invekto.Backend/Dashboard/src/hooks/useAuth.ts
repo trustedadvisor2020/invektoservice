@@ -8,36 +8,43 @@ export function useAuth() {
   const [session, setSession] = useState<InseSession | null>(api.getSession());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [welcomeData, setWelcomeData] = useState<unknown>(null);
 
-  // URL token detection: ?accesstoken= parametresi varsa otomatik exchange yap
+  // URL token detection: ?accesstoken=xxx&refreshtoken=yyy
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const inmaToken = params.get('accesstoken');
-    if (!inmaToken) return;
+    const accessToken = params.get('accesstoken');
+    const refreshToken = params.get('refreshtoken');
 
-    // URL'den token'i temizle (browser history'de kalmasin)
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState(null, '', cleanUrl);
+    if (!accessToken) return;
 
-    setIsLoading(true);
-    setError(null);
+    // URL'den token'lari temizle (browser history'de kalmasin)
+    window.history.replaceState(null, '', window.location.pathname);
 
-    api.exchangeInmaToken(inmaToken)
-      .then(resp => {
-        api.setSession(resp);
-        setSession(api.getSession());
-        setIsAuthenticated(true);
-        navigate('/', { replace: true });
-      })
-      .catch(err => {
-        setError(err instanceof Error ? err.message : 'Token dogrulanamadi');
-        setIsAuthenticated(false);
-      })
-      .finally(() => setIsLoading(false));
+    // Token'lari localStorage'a kaydet
+    api.storeTokens(accessToken, refreshToken ?? '');
+
+    // Decode et ve session olustur
+    const newSession = api.getSession();
+    if (newSession) {
+      setSession(newSession);
+      setIsAuthenticated(true);
+
+      // Welcome endpoint'ini cagir (non-critical — log and continue)
+      api.getWelcome()
+        .then(data => setWelcomeData(data))
+        .catch(err => console.warn('[useAuth] welcome fetch failed:', err));
+
+      navigate('/', { replace: true });
+    } else {
+      api.removeTokens();
+      setError('Token gecersiz veya suresi dolmus');
+      setIsAuthenticated(false);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Ops Basic Auth login (mevcut, degismiyor)
+  // Ops Basic Auth login (degismiyor)
   const loginWithOps = useCallback(async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -57,7 +64,7 @@ export function useAuth() {
     }
   }, []);
 
-  // Ops superadmin hizli giris (MockEnabled gate) — sifre gerekmez
+  // Ops superadmin hizli giris (MockEnabled gate)
   const loginWithQuickAdmin = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -77,7 +84,7 @@ export function useAuth() {
     }
   }, []);
 
-  // inma mock login (DEV only — InmaAuth:MockEnabled=true)
+  // inma mock login (DEV only)
   const loginWithMock = useCallback(async (
     scenario: 'full' | 'klinik' | 'otel'
   ): Promise<boolean> => {
@@ -112,6 +119,12 @@ export function useAuth() {
       api.setSession(resp);
       setSession(api.getSession());
       setIsAuthenticated(true);
+
+      // Welcome endpoint'ini cagir (non-critical — log and continue)
+      api.getWelcome()
+        .then(data => setWelcomeData(data))
+        .catch(err => console.warn('[useAuth] welcome fetch failed:', err));
+
       return true;
     } catch (err: unknown) {
       api.clearSession();
@@ -124,11 +137,13 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
+    api.removeTokens();
     api.clearCredentials();
-    api.clearSession();
     setIsAuthenticated(false);
     setSession(null);
-  }, []);
+    setWelcomeData(null);
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   return {
     isAuthenticated,
@@ -136,11 +151,11 @@ export function useAuth() {
     isInmaSession: api.isInmaSession(),
     isLoading,
     error,
+    welcomeData,
     loginWithOps,
     loginWithQuickAdmin,
     loginWithInma,
     loginWithMock,
-    // legacy alias — LoginPage'deki ops login icin backward compat
     login: loginWithOps,
     logout,
   };
