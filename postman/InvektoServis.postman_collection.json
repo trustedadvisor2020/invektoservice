@@ -1,14 +1,20 @@
 {
   "info": {
     "name": "InvektoServis API",
-    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice\n- **AgentAI** (port 7105): AI agent assist microservice\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token",
+    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Appointments** (port 7102): Appointment/slot management (internal)\n- **Knowledge** (port 7104): RAG knowledge base + FAQ (internal)\n- **AgentAI** (port 7105): AI agent assist microservice (internal)\n- **Integrations** (port 7106): HepsiB, Kargo, external APIs (internal)\n- **Outbound** (port 7107): Broadcast/trigger engine (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice\n- **WhatsAppAnalytics** (port 7109): WA NLP pipeline (internal)\n- **Marketing** (port 7112): Review/referral/tourism engine (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `appointments_url`: Appointments URL (default: http://localhost:7102)\n- `knowledge_url`: Knowledge URL (default: http://localhost:7104)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `integrations_url`: Integrations URL (default: http://localhost:7106)\n- `outbound_url`: Outbound URL (default: http://localhost:7107)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `whatsappanalytics_url`: WhatsAppAnalytics URL (default: http://localhost:7109)\n- `marketing_url`: Marketing URL (default: http://localhost:7112)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "base_url", "value": "http://localhost:5000" },
     { "key": "chatanalysis_url", "value": "http://localhost:7101" },
-    { "key": "automation_url", "value": "http://localhost:7108" },
+    { "key": "appointments_url", "value": "http://localhost:7102" },
+    { "key": "knowledge_url", "value": "http://localhost:7104" },
     { "key": "agentai_url", "value": "http://localhost:7105" },
+    { "key": "integrations_url", "value": "http://localhost:7106" },
+    { "key": "outbound_url", "value": "http://localhost:7107" },
+    { "key": "automation_url", "value": "http://localhost:7108" },
+    { "key": "whatsappanalytics_url", "value": "http://localhost:7109" },
+    { "key": "marketing_url", "value": "http://localhost:7112" },
     { "key": "ops_username", "value": "admin" },
     { "key": "ops_password", "value": "admin123" },
     { "key": "jwt_token", "value": "" }
@@ -105,10 +111,16 @@
         { "name": "Log Stream (Grouped)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/logs/grouped?limit=20", "host": ["{{base_url}}"], "path": ["api","ops","logs","grouped"], "query": [{ "key": "level", "value": "ERROR", "disabled": true }, { "key": "service", "value": "", "disabled": true }, { "key": "limit", "value": "20" }] } } },
         { "name": "Log Context", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/logs/context?file=2026-02-11.jsonl&line=10&range=10", "host": ["{{base_url}}"], "path": ["api","ops","logs","context"], "query": [{ "key": "file", "value": "2026-02-11.jsonl" }, { "key": "line", "value": "10" }, { "key": "range", "value": "10" }] } } },
         { "name": "Error Statistics", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/stats/errors?hours=24", "host": ["{{base_url}}"], "path": ["api","ops","stats","errors"], "query": [{ "key": "hours", "value": "24" }] } } },
-        { "name": "Restart Service", "request": { "method": "POST", "url": { "raw": "{{base_url}}/api/ops/services/Invekto.AgentAI/restart", "host": ["{{base_url}}"], "path": ["api","ops","services","Invekto.AgentAI","restart"] }, "description": "Valid names: Invekto.Backend, Invekto.ChatAnalysis, Invekto.Automation, Invekto.AgentAI" } },
+        { "name": "Restart Service", "request": { "method": "POST", "url": { "raw": "{{base_url}}/api/ops/services/Invekto.AgentAI/restart", "host": ["{{base_url}}"], "path": ["api","ops","services","Invekto.AgentAI","restart"] }, "description": "Valid names: Invekto.Backend, Invekto.ChatAnalysis, Invekto.Automation, Invekto.AgentAI, Invekto.Outbound, Invekto.Knowledge, Invekto.Appointments, Invekto.Integrations, Invekto.WhatsAppAnalytics, Invekto.Marketing" } },
         { "name": "Test Proxy - ChatAnalysis Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/chatanalysis/health", "host": ["{{base_url}}"], "path": ["api","ops","test","chatanalysis","health"] } } },
         { "name": "Test Proxy - Automation Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/automation/health", "host": ["{{base_url}}"], "path": ["api","ops","test","automation","health"] } } },
-        { "name": "Test Proxy - AgentAI Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/agentai/health", "host": ["{{base_url}}"], "path": ["api","ops","test","agentai","health"] } } }
+        { "name": "Test Proxy - AgentAI Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/agentai/health", "host": ["{{base_url}}"], "path": ["api","ops","test","agentai","health"] } } },
+        { "name": "Test Proxy - Outbound Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/outbound/health", "host": ["{{base_url}}"], "path": ["api","ops","test","outbound","health"] } } },
+        { "name": "Test Proxy - Knowledge Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/knowledge/health", "host": ["{{base_url}}"], "path": ["api","ops","test","knowledge","health"] } } },
+        { "name": "Test Proxy - Appointments Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/appointments/health", "host": ["{{base_url}}"], "path": ["api","ops","test","appointments","health"] } } },
+        { "name": "Test Proxy - Integrations Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/integrations/health", "host": ["{{base_url}}"], "path": ["api","ops","test","integrations","health"] } } },
+        { "name": "Test Proxy - WA Analytics Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/whatsappanalytics/health", "host": ["{{base_url}}"], "path": ["api","ops","test","whatsappanalytics","health"] } } },
+        { "name": "Test Proxy - Marketing Health", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/ops/test/marketing/health", "host": ["{{base_url}}"], "path": ["api","ops","test","marketing","health"] } } }
       ]
     },
     {

@@ -1,12 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const buildTime = new Date().toLocaleString('tr-TR', {
-  day: '2-digit',
+const now = new Date();
+const buildTime = now.toLocaleString('tr-TR', {
+  year: 'numeric',
   month: '2-digit',
+  day: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
-  hour12: false
+  hour12: false,
 }).replace(',', '');
 
 export default defineConfig({

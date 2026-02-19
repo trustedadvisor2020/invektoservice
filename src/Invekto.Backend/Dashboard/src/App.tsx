@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { TenantDashboardPage } from './pages/TenantDashboardPage';
 import { LogsPage } from './pages/LogsPage';
 import { KnowledgePage } from './pages/KnowledgePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
@@ -27,16 +28,21 @@ function ProtectedRoute() {
   );
 }
 
+function HomeDashboard() {
+  const { session } = useAuth();
+  return session ? <TenantDashboardPage /> : <DashboardPage />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="/" element={<HomeDashboard />} />
+        <Route path="/flow-builder-ui" element={<FlowBuilderPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/flow-builder-ui" element={<FlowBuilderPage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />

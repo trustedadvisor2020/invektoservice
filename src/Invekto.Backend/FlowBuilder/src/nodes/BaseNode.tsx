@@ -3,7 +3,10 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '../lib/utils';
 import { useFlowStore } from '../store/flow-store';
 import { useSimulationStore } from '../store/simulation-store';
-import { getValidationRingColor, getValidationTooltip } from '../lib/graph-validator';
+import { getValidationRingColor, getValidationTooltip, type ValidationError } from '../lib/graph-validator';
+
+// Stable reference to prevent Zustand re-renders when node has no errors
+const EMPTY_ERRORS: ValidationError[] = [];
 
 interface BaseNodeProps {
   nodeProps: NodeProps;
@@ -26,7 +29,7 @@ function BaseNodeComponent({
 }: BaseNodeProps) {
   const { id, data, selected } = nodeProps;
   const selectNode = useFlowStore((s) => s.selectNode);
-  const validationErrors = useFlowStore((s) => s.validationErrors.get(id) ?? []);
+  const validationErrors = useFlowStore((s) => s.validationErrors.get(id)) ?? EMPTY_ERRORS;
   const label = (data as { label?: string }).label ?? '';
 
   // Simulation active node highlight

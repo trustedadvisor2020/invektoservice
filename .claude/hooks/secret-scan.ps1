@@ -27,6 +27,9 @@ if ($cmd -match 'git\s+add') {
 foreach ($f in $allFiles) {
     # Skip hook files themselves (they contain the word "secret" in filename)
     if ($f -match '\.claude/hooks/') { continue }
+    # Skip files being DELETED (git rm --cached) — no content risk
+    $status = git diff --cached --diff-filter=D --name-only -- $f 2>$null
+    if ($status) { continue }
     if ($f -match '\.(env|pem|key)$' -or $f -match 'credentials|secret' -or $f -match '^deploy_output/') {
         Write-Error "[SECRET-SCAN BLOCKED] High-risk file: $f"
         exit 2

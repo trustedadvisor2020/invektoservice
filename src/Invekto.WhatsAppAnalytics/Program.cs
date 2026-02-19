@@ -35,11 +35,23 @@ if (string.IsNullOrEmpty(pgConnStr))
 if (string.IsNullOrEmpty(jwtSecretKey))
     throw new InvalidOperationException("FATAL: Jwt:SecretKey is not configured");
 
-// Configure Kestrel
+// Configure Kestrel + HTTPS if certificate is configured
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(listenPort);
     options.Limits.MaxRequestBodySize = maxFileSizeMb * 1024L * 1024L;
+
+    var certPath = builder.Configuration["Kestrel:Certificate:Path"];
+    var certPassword = builder.Configuration["Kestrel:Certificate:Password"];
+    var httpsPort = builder.Configuration.GetValue("Kestrel:HttpsPort", 0);
+
+    if (!string.IsNullOrEmpty(certPath) && File.Exists(certPath) && httpsPort > 0)
+    {
+        options.ListenAnyIP(httpsPort, listenOptions =>
+        {
+            listenOptions.UseHttps(certPath, certPassword);
+        });
+    }
 });
 
 // Register logger

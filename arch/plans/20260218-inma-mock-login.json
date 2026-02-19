@@ -1,0 +1,55 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "slug": "20260218-inma-mock-login",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-02-18T00:00:00Z",
+  "updated_at": "2026-02-18T00:00:00Z",
+  "plan": {
+    "summary": "inma tarafı henüz hazır olmadığı için LoginPage'e 3 test butonu ekleniyor (Tam Yetkili, Demo Klinik, Demo Otel). Backend'de InmaAuth:MockEnabled=true gated POST /api/v1/inma/auth/mock-login endpoint'i eklendi — inma proxy'si bypass edilerek doğrudan inse JWT üretir. Frontend: api.ts mockLogin(), useAuth.ts loginWithMock(), LoginPage.tsx test butonları.",
+    "q_intent": "iki üç tane login düğmesi ekle test için. bunlara basında sanki inma tarafından firma adı, kullanıcı adı ve tüm InseFeatures izinli gelsin.",
+    "interview_notes": "inma side not ready. Need mock endpoint gated by InmaAuth:MockEnabled. 3 scenarios: full (all features), klinik (Appointments/Knowledge/Analytics), otel (FlowBuilder/Knowledge/Outbound/Marketing). All use tenant_id=1."
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx"
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Is the mock endpoint properly gated by InmaAuth:MockEnabled flag and returns 503 when disabled?",
+      "category": "security"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the mock endpoint handle malformed/empty JSON body gracefully (JsonException catch)?",
+      "category": "error_handling"
+    },
+    {
+      "id": "Q3",
+      "question": "Does loginWithMock in useAuth.ts follow the same error handling pattern as loginWithInma (typed catch, clearSession on failure)?",
+      "category": "correctness"
+    },
+    {
+      "id": "Q4",
+      "question": "Are the 3 test buttons only visible in 'inma' mode and disabled during loading?",
+      "category": "ui"
+    },
+    {
+      "id": "Q5",
+      "question": "Does the mock endpoint response shape exactly match InmaAuthResponse so api.setSession() works unchanged?",
+      "category": "correctness"
+    }
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx", "is_new": false }
+  ]
+}

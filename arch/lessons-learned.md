@@ -17,6 +17,8 @@
 | 2026-02-11 | Multi-step senaryoda hardcoded placeholder kullanildi | `{{step_N.field}}` template + `resolveStepRefs()` | **Adimlar arasi veri aktarimi OTOMATIK olmali** |
 | 2026-02-11 | Plan JSON `files_changed` unstage sonrasi senkronize edilmedi | `git diff --cached` ile esitle | **Stage/unstage sonrasi files_changed + files_count GUNCELLE** |
 | 2026-02-11 | Yorum "All traffic via Backend" ama kod direct erisimi de destekliyordu | Yorum guncellendi | **Mimari yorumlar kodun gercek davranisiyla eslessin** |
+| 2026-02-18 | Codex MCP'ye condensed/kisaltilmis git_diff gonderildi → false positive CQ fail (namespace eksik, Layout children yok gibi) | Full diff file okunup tam icerik git_diff'e gonderilmeli | **Codex'e ASLA condensed diff gonderme — diff_file_path fallback ancak git_diff <50 char ise calisir, inline condensed diff kullanilirsa dosyayi gormez** |
+| 2026-02-18 | Chunked review'da backend sorusu (Q1/Q2/Q3) frontend chunk'ta, frontend sorusu (Q4/Q5) backend chunk'ta UNKNOWN cikiyor | Yapısal sinir — cross-chunk UNKNOWN FAIL sayılır | **HIGH risk chunked diff'te CoVe sorulari chunk bazli tasarla: her chunk sadece kendi sorusunu cevaplayacak sorular icermeli** |
 | 2026-02-13 | FlowSummaryBar localStorage catch bos birakildi | console.warn eklendi | **catch yazdigi AN "Empty catch YASAK" kuralini hatirla** |
 | 2026-02-13 | Error code semantic reuse: farkli failure mode ayni code | Yeni INV-AT-021 eklendi | **Her failure mode icin AYRI error code** |
 | 2026-02-13 | Tenant isolation null = 403 dondu, session yok durumunu mismatch gibi handle etti | Guard `sessionTenant != null &&` | **Auth guard null = 403 verme, null = "yok" olabilir** |

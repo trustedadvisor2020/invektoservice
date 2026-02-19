@@ -32,9 +32,10 @@ Runs after build PASS. Updates plan JSON + calls Codex via MCP.
 {
   "status": "REVIEW",
   "git_diff": {
-    "patch_truncated": "First 51200 bytes",
     "sha256": "Hash of full diff",
     "full_path": "arch/plans/diffs/{slug}.diff",
+    "total_bytes": 125000,
+    "chunks": 3,
     "stats": { "insertions": 42, "deletions": 10, "files_count": 3 }
   },
   "files_changed": [{ "path": "src/Invekto.AgentAI/Services/ReplyGenerator.cs", "is_new": false }],
@@ -73,16 +74,44 @@ Args:
   build_status: "PASS"
 ```
 
-**CRITICAL - Diff Resolution (3-tier fallback):**
+**CRITICAL - Diff ASLA Truncate Edilmez:**
+
+Diff truncate edilirse Codex eksik kod üzerinde review yapar → false PASS riski.
+Bunun yerine büyük diff'ler parçalanır ve her parça ayrı review alır.
+
+**Diff Chunking Stratejisi:**
+
+1. **Boyut kontrolü:** `git diff --cached` çıktısının byte boyutunu ölç
+2. **Eşik:** 40KB (40960 byte) altı = tek review, üstü = chunk'la
+3. **Chunking yöntemi (dosya bazlı):**
+   - Her dosyanın diff'ini ayrı al: `git diff --cached -- {file_path}`
+   - Her dosya diff'i bir chunk olur
+   - Tek dosya > 40KB ise hunk bazlı böl (her `@@` bloğu ayrı chunk)
+4. **Her chunk için ayrı MCP çağrısı:**
+   ```
+   Chunk 1/N: slug = "{slug}--chunk-1of3"
+   Chunk 2/N: slug = "{slug}--chunk-2of3"
+   ...
+   ```
+5. **Verdict birleştirme:**
+   - TÜM chunk'lar PASS = genel PASS
+   - HERHANGİ bir chunk FAIL = genel FAIL (blocking issues birleştirilir)
+   - HERHANGİ bir chunk UNKNOWN = Q escalation
+6. **Summary:** Tüm chunk verdict'leri Q'ya tek özet olarak gösterilir
+
+**Diff Resolution (3-tier fallback):**
 1. `git_diff` inline string (en az 50 char) -> kullan
 2. `git_diff` boş/kısa -> `diff_file_path` dosyasını diskten oku
 3. `diff_file_path` de yoksa -> `arch/plans/diffs/{slug}.diff` otomatik dene
 4. Hiçbiri yoksa -> HATA (API çağrısı yapılmaz, token israfı önlenir)
 
 **DevAgent MUST:**
-- `git diff --cached` çıktısını `git_diff` parametresine string olarak gönder
+- `git diff --cached` çıktısının boyutunu kontrol et
+- 40KB üstü ise chunking stratejisini uygula, **ASLA truncate etme**
+- Her chunk için `git_diff` parametresine o chunk'ın tam diff'ini gönder
 - AYRICA `diff_file_path` parametresini her zaman ekle (güvenlik ağı)
 - Diff boşsa MCP tool HATA döner (UNKNOWN yerine açık hata mesajı)
+- Chunk'lı review'da tüm verdict'leri birleştirip Q'ya tek sonuç sun
 
 **Result Processing:**
 
@@ -154,15 +183,18 @@ During review, challenge the code - don't rubber-stamp:
 ```
 DevAgent /rev -> JSON updated, diff written, secret scan
     |
-DevAgent calls mcp__codex-review__codex_review (AUTOMATED)
+Diff boyut kontrolü: <= 40KB?
     |
-Codex API returns structured JSON (CQ1-8 + CoVe + verdict)
+  EVET -> Tek MCP çağrısı (git_diff inline)
+  HAYIR -> Dosya bazlı chunk'la -> Her chunk için ayrı MCP çağrısı
     |
-DevAgent parses result, shows Q summary
+Codex API returns structured JSON (CQ1-8 + CoVe + verdict) [per chunk]
     |
-PASS -> commit -> DONE
-FAIL -> show blocking issues -> fix -> /rev (max 3 iterations)
-UNKNOWN -> Q escalation
+DevAgent verdict'leri birleştirir, Q'ya tek özet sunar
+    |
+ALL PASS -> commit -> DONE
+ANY FAIL -> show blocking issues -> fix -> /rev (max 3 iterations)
+ANY UNKNOWN -> Q escalation
 ```
 
 **No more copy-paste!** The entire review flow is automated via MCP.
@@ -180,7 +212,7 @@ UNKNOWN -> Q escalation
 7. **MCP error handling:** If MCP tool returns `error: true`, categorize by `error_type`:
    - `AUTH_ERROR` -> Check OPENAI_API_KEY in .mcp.json
    - `RATE_LIMIT` -> Wait and retry
-   - `TIMEOUT` -> Try smaller diff or check network
+   - `TIMEOUT` -> Diff chunking stratejisini uygula (dosya bazlı böl, ayrı review al)
    - `MODEL_ERROR` -> Check CODEX_MODEL env var
 
 ---

@@ -168,7 +168,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
         <div className="flex items-center justify-between mb-4">
           <CardTitle className="flex items-center gap-2">
             <Filter className="w-4 h-4 flex-shrink-0" />
-            <span>Log Stream</span>
+            <span>Log Akisi</span>
           </CardTitle>
           <div className="flex items-center gap-2">
             {/* Business / All toggle */}
@@ -183,7 +183,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
                 onClick={() => setViewMode('business')}
               >
                 <Activity className="w-3 h-3" />
-                Business
+                Is Sureci
               </button>
               <button
                 className={cn(
@@ -195,7 +195,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
                 onClick={() => setViewMode('all')}
               >
                 <List className="w-3 h-3" />
-                All
+                Tumu
               </button>
             </div>
             <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={isLoading}>
@@ -258,13 +258,17 @@ export function LogStream({ initialFilter }: LogStreamProps) {
             value={service}
             onChange={e => setService(e.target.value)}
             options={[
-              { value: '', label: 'All Services' },
+              { value: '', label: 'Tum Servisler' },
               { value: 'Invekto.Backend', label: 'Backend' },
               { value: 'Invekto.ChatAnalysis', label: 'ChatAnalysis' },
               { value: 'Invekto.Automation', label: 'Automation' },
               { value: 'Invekto.AgentAI', label: 'AgentAI' },
               { value: 'Invekto.Outbound', label: 'Outbound' },
               { value: 'Invekto.Knowledge', label: 'Knowledge' },
+              { value: 'Invekto.Appointments', label: 'Appointments' },
+              { value: 'Invekto.Integrations', label: 'Integrations' },
+              { value: 'Invekto.WhatsAppAnalytics', label: 'WA Analytics' },
+              { value: 'Invekto.Marketing', label: 'Marketing' },
             ]}
             className="w-36"
           />
@@ -273,7 +277,7 @@ export function LogStream({ initialFilter }: LogStreamProps) {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search logs..."
+              placeholder="Log ara..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-9"
@@ -285,11 +289,11 @@ export function LogStream({ initialFilter }: LogStreamProps) {
       <CardContent className="flex-1 overflow-auto">
         {isLoading && groups.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-gray-500">
-            Loading...
+            Yukleniyor...
           </div>
         ) : groups.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-gray-500">
-            No logs found
+            Log bulunamadi
           </div>
         ) : (
           <div className="space-y-2">

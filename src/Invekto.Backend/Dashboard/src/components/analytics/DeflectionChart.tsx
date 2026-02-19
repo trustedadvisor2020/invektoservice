@@ -18,7 +18,7 @@ export function DeflectionChart({ trends }: DeflectionChartProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle>Deflection Trendi</CardTitle>
+        <CardTitle>Oto. Cozum Trendi</CardTitle>
         {trends.length > 0 && (
           <span className="text-xs text-gray-400">{trends.length} gun</span>
         )}
@@ -65,10 +65,10 @@ export function DeflectionChart({ trends }: DeflectionChartProps) {
                   }}
                   formatter={(value: number, name: string) => {
                     const labels: Record<string, string> = {
-                      deflection_rate: 'Deflection Rate',
+                      deflection_rate: 'Cozum Orani',
                       total: 'Toplam',
-                      deflected: 'Deflected',
-                      handoff: 'Handoff',
+                      deflected: 'Oto. Cozulen',
+                      handoff: 'Insan Destek',
                     };
                     return [name === 'deflection_rate' ? `${value}%` : value, labels[name] ?? name];
                   }}

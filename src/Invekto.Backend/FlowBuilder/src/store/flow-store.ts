@@ -121,7 +121,12 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       nodes: applyNodeChanges(changes, state.nodes),
       isDirty: true,
     }));
-    queueMicrotask(() => get().revalidate());
+    // Only revalidate on structural changes (node removal).
+    // Position/dimension/select changes don't affect graph validation
+    // and triggering revalidate here causes infinite re-render loops (React #185).
+    if (changes.some((c) => c.type === 'remove')) {
+      queueMicrotask(() => get().revalidate());
+    }
   },
 
   onEdgesChange: (changes) => {

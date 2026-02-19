@@ -10,8 +10,8 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
   if (!summary) {
     return (
       <Card>
-        <CardHeader><CardTitle>Lead Attribution</CardTitle></CardHeader>
-        <CardContent><p className="text-sm text-gray-500">Attribution verisi yukleniyor...</p></CardContent>
+        <CardHeader><CardTitle>Lead Kaynak Analizi</CardTitle></CardHeader>
+        <CardContent><p className="text-sm text-gray-500">Kaynak verisi yukleniyor...</p></CardContent>
       </Card>
     );
   }

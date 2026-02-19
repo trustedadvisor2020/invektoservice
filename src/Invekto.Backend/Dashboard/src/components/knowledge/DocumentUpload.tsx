@@ -17,8 +17,8 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
   const MAX_SIZE_MB = 10;
 
   const validateFile = (f: File): string | null => {
-    if (!f.name.toLowerCase().endsWith('.pdf')) return 'Only PDF files are supported';
-    if (f.size > MAX_SIZE_MB * 1024 * 1024) return `File exceeds ${MAX_SIZE_MB}MB limit`;
+    if (!f.name.toLowerCase().endsWith('.pdf')) return 'Sadece PDF dosyalari desteklenir';
+    if (f.size > MAX_SIZE_MB * 1024 * 1024) return `Dosya ${MAX_SIZE_MB}MB limitini asiyor`;
     return null;
   };
 
@@ -47,7 +47,7 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
       setTitle('');
       onUploadComplete();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : 'Yukleme basarisiz');
     } finally {
       setUploading(false);
     }
@@ -55,7 +55,7 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-4">
-      <h3 className="text-sm font-medium text-slate-700 mb-3">Upload Document</h3>
+      <h3 className="text-sm font-medium text-slate-700 mb-3">Dokuman Yukle</h3>
 
       {/* Drop zone */}
       <div
@@ -78,8 +78,8 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
         ) : (
           <div>
             <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">Drag & drop a PDF here, or click to browse</p>
-            <p className="text-xs text-slate-400 mt-1">Max {MAX_SIZE_MB}MB, PDF only</p>
+            <p className="text-sm text-slate-500">PDF dosyasini surukleyip birakin veya tiklayip secin</p>
+            <p className="text-xs text-slate-400 mt-1">Maks {MAX_SIZE_MB}MB, sadece PDF</p>
             <input
               type="file"
               accept=".pdf"
@@ -98,7 +98,7 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
             type="text"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            placeholder="Document title"
+            placeholder="Dokuman basligi"
             className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-md"
           />
           <button
@@ -106,7 +106,7 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
             disabled={uploading}
             className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {uploading ? 'Uploading...' : 'Upload'}
+            {uploading ? 'Yukleniyor...' : 'Yukle'}
           </button>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Power, Globe, Link2, Server, MessageSquare, Bot, Sparkles, X, ExternalLink, List, Loader2 } from 'lucide-react';
+import { RefreshCw, Power, Server, MessageSquare, Bot, Sparkles, Send, BookOpen, Calendar, Plug, BarChart3, Megaphone, X, ExternalLink, List, Loader2 } from 'lucide-react';
 import type { ServiceHealth, EndpointInfo } from '../lib/api';
 import { api } from '../lib/api';
 import { Card, CardContent } from './ui/Card';
@@ -42,6 +42,42 @@ const serviceConfig: Record<string, {
     host: 'localhost',
     healthEndpoint: '/health',
     icon: Sparkles,
+  },
+  'Invekto.Outbound': {
+    port: 7107,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: Send,
+  },
+  'Invekto.Knowledge': {
+    port: 7104,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: BookOpen,
+  },
+  'Invekto.Appointments': {
+    port: 7102,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: Calendar,
+  },
+  'Invekto.Integrations': {
+    port: 7106,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: Plug,
+  },
+  'Invekto.WhatsAppAnalytics': {
+    port: 7109,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: BarChart3,
+  },
+  'Invekto.Marketing': {
+    port: 7112,
+    host: 'localhost',
+    healthEndpoint: '/health',
+    icon: Megaphone,
   },
 };
 
@@ -152,23 +188,23 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
   return (
     <>
       <Card>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-2">
           {/* Header with Icon */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                 service.status === 'ok' ? 'bg-emerald-100 text-emerald-600' :
                 service.status === 'degraded' ? 'bg-amber-100 text-amber-600' :
                 'bg-red-100 text-red-600'
               }`}>
-                <ServiceIcon className="w-5 h-5" />
+                <ServiceIcon className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900">{service.name.replace('Invekto.', '')}</span>
-                  <div className={`w-2 h-2 rounded-full ${statusDot}`} style={{ boxShadow: `0 0 6px ${service.status === 'ok' ? '#10b981' : service.status === 'degraded' ? '#f59e0b' : '#ef4444'}` }} />
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-sm text-gray-900">{service.name.replace('Invekto.', '')}</span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${statusDot}`} style={{ boxShadow: `0 0 4px ${service.status === 'ok' ? '#10b981' : service.status === 'degraded' ? '#f59e0b' : '#ef4444'}` }} />
                 </div>
-                <span className="text-xs text-gray-500">Port {port}</span>
+                <span className="text-[10px] text-gray-500">:{port}</span>
               </div>
             </div>
             <Badge variant={statusVariant}>
@@ -176,82 +212,48 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
             </Badge>
           </div>
 
-          {/* Connection Details */}
-          <div className="p-3 bg-slate-50 rounded-lg space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Globe className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-slate-500">URL:</span>
-              <a
-                href={baseUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                {baseUrl}
-              </a>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Link2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-slate-500">Health:</span>
-              <a
-                href={`${baseUrl}${config.healthEndpoint}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                {config.healthEndpoint}
-              </a>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <span className="text-xs text-slate-500 uppercase tracking-wide">Response</span>
-              <p className="text-lg font-semibold text-slate-900">
-                {service.responseTimeMs !== null ? `${service.responseTimeMs}ms` : '--'}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-xs text-slate-500 uppercase tracking-wide">Endpoints</span>
-              <p className="text-lg font-semibold text-slate-900">
-                {endpoints.length || '--'}
-              </p>
-            </div>
+          {/* Compact Stats */}
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>{service.responseTimeMs !== null ? `${service.responseTimeMs}ms` : '--'}</span>
+            <span className="text-slate-300">|</span>
+            <span className="flex items-center gap-0.5">
+              <List className="w-3 h-3" />
+              {endpoints.length || '--'}
+            </span>
           </div>
 
           {/* Error message */}
           {service.error && (
-            <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700">
+            <div className="p-1.5 bg-red-50 border border-red-100 rounded text-[10px] text-red-700 truncate">
               {service.error}
             </div>
           )}
 
           {/* Action buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1"
+              className="flex-1 text-xs py-1"
               onClick={() => setShowEndpoints(true)}
             >
-              <List className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Endpoints</span>
+              <List className="w-3 h-3 flex-shrink-0" />
+              <span>API</span>
             </Button>
             {onRestart && (
               <Button
                 variant="secondary"
                 size="sm"
-                className="flex-1"
+                className="flex-1 text-xs py-1"
                 onClick={onRestart}
                 disabled={isRestarting}
               >
                 {isRestarting ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+                  <RefreshCw className="w-3 h-3 animate-spin flex-shrink-0" />
                 ) : (
-                  <Power className="w-3.5 h-3.5 flex-shrink-0" />
+                  <Power className="w-3 h-3 flex-shrink-0" />
                 )}
-                <span>{isRestarting ? 'Restarting...' : 'Restart'}</span>
+                <span>{isRestarting ? '...' : 'Restart'}</span>
               </Button>
             )}
           </div>
@@ -286,11 +288,11 @@ export function HealthCard({ service, onRestart, isRestarting }: HealthCardProps
               {loading ? (
                 <div className="flex items-center justify-center py-8 text-slate-400">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  <span>Loading endpoints...</span>
+                  <span>Yuklen iyor...</span>
                 </div>
               ) : endpoints.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 text-sm">
-                  No endpoints discovered
+                  Endpoint bulunamadi
                 </div>
               ) : (
                 <div className="space-y-4">

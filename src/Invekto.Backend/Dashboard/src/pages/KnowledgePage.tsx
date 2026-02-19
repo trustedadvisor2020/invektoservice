@@ -17,28 +17,28 @@ export function KnowledgePage() {
   const handleUploadComplete = () => setRefreshKey(k => k + 1);
 
   const handleGenerateEmbeddings = async () => {
-    setEmbedMsg('Generating...');
+    setEmbedMsg('Uretiliyor...');
     try {
       const result = await api.generateEmbeddings(tenantId);
-      setEmbedMsg(`${result.generated} generated${result.failed ? `, ${result.failed} failed` : ''}`);
+      setEmbedMsg(`${result.generated} uretildi${result.failed ? `, ${result.failed} basarisiz` : ''}`);
       setTimeout(() => setEmbedMsg(null), 5000);
     } catch (err) {
-      setEmbedMsg(`Error: ${err instanceof Error ? err.message : 'Unknown'}`);
+      setEmbedMsg(`Hata: ${err instanceof Error ? err.message : 'Bilinmeyen'}`);
       setTimeout(() => setEmbedMsg(null), 5000);
     }
   };
 
   const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
-    { key: 'documents', label: 'Documents', icon: FileText },
-    { key: 'faqs', label: 'FAQs', icon: MessageSquare },
+    { key: 'documents', label: 'Dokumanlar', icon: FileText },
+    { key: 'faqs', label: 'SSS', icon: MessageSquare },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Knowledge Base</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Bilgi Bankasi</h1>
         <div className="flex items-center gap-3">
-          <label className="text-sm text-slate-500">Tenant:</label>
+          <label className="text-sm text-slate-500">Firma:</label>
           <input
             type="number"
             value={tenantId}

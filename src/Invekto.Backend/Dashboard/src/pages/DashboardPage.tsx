@@ -1,11 +1,8 @@
 import { useState, useCallback } from 'react';
 import { RefreshCw, AlertTriangle, Download } from 'lucide-react';
-import { api, type HealthResponse, type ErrorStatsResponse, type ServiceHealth } from '../lib/api';
+import { api, type HealthResponse, type ServiceHealth } from '../lib/api';
 import { usePolling } from '../hooks/usePolling';
 import { HealthCard } from '../components/HealthCard';
-import { ErrorTimeline } from '../components/ErrorTimeline';
-import { DependencyMap } from '../components/DependencyMap';
-import { TestPanel } from '../components/TestPanel';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 
@@ -16,12 +13,6 @@ export function DashboardPage() {
   const { data: healthData, isLoading: healthLoading, refresh: refreshHealth } = usePolling<HealthResponse>({
     fetcher: () => api.getHealth(),
     interval: 30000,
-  });
-
-  // Fetch error stats every 60 seconds (reduced from 30s)
-  const { data: errorStats } = usePolling<ErrorStatsResponse>({
-    fetcher: () => api.getErrorStats(24),
-    interval: 60000,
   });
 
   const handleRestart = useCallback(async (service: ServiceHealth) => {
@@ -36,10 +27,10 @@ export function DashboardPage() {
         alert(`${service.name} yeniden başlatıldı.`);
         setTimeout(refreshHealth, 5000);
       } else {
-        alert(`Restart başarısız: ${result.message}`);
+        alert(`Yeniden baslatma basarisiz: ${result.message}`);
       }
     } catch (error) {
-      alert(`Restart hatası: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Yeniden baslatma hatasi: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
     } finally {
       setRestartingService(null);
     }
@@ -53,7 +44,7 @@ export function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Kontrol Paneli</h1>
           <p className="text-sm text-gray-500 mt-0.5">Servis durumu ve metrikler</p>
         </div>
         <div className="flex gap-2">
@@ -96,7 +87,7 @@ export function DashboardPage() {
       )}
 
       {/* Health Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {services.length > 0 ? (
           services.map(service => (
             <HealthCard
@@ -109,57 +100,12 @@ export function DashboardPage() {
         ) : (
           <Card className="col-span-full">
             <CardContent className="py-8 text-center text-gray-500">
-              {healthLoading ? 'Loading services...' : 'No services found'}
+              {healthLoading ? 'Servisler yukleniyor...' : 'Servis bulunamadi'}
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Error Timeline */}
-        {errorStats && (
-          <ErrorTimeline
-            buckets={errorStats.buckets}
-            total={errorStats.total}
-            onBucketClick={(hour) => {
-              window.location.href = `/logs?after=${hour}`;
-            }}
-          />
-        )}
-
-        {/* Dependency Map */}
-        <DependencyMap services={services} />
-      </div>
-
-      {/* Test Panel */}
-      <TestPanel />
-
-      {/* System Info */}
-      {healthData?.info && (
-        <Card>
-          <CardContent className="py-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="space-y-1">
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Stage</span>
-                <p className="text-sm font-semibold text-gray-900">{healthData.info.stage}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Timeout</span>
-                <p className="text-sm font-semibold text-gray-900">{healthData.info.timeout_ms}ms</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Retry Count</span>
-                <p className="text-sm font-semibold text-gray-900">{healthData.info.retry_count}</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Slow Threshold</span>
-                <p className="text-sm font-semibold text-gray-900">{healthData.info.slow_threshold_ms}ms</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

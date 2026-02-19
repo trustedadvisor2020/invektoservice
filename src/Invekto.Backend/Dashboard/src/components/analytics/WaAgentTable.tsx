@@ -26,7 +26,7 @@ export function WaAgentTable({ agents }: WaAgentTableProps) {
                   <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Konusma</th>
                   <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Satis</th>
                   <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Teklif</th>
-                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Conv %</th>
+                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Dnm %</th>
                   <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Ort. FRT</th>
                 </tr>
               </thead>

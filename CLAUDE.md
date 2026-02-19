@@ -1,4 +1,4 @@
-<!-- VERSION: 5.2 | UPDATED: 2026-02-17 | Persist After Compact | Auto Workflow Active | Hooks Active -->
+<!-- VERSION: 5.3 | UPDATED: 2026-02-18 | Persist After Compact | Auto Workflow Active | Hooks Active -->
 <!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> MCP Codex -> Commit -->
 <!-- HARITA YAKLAŞIMI: Bu dosya kisa tutuluyor, detaylar INVEKTO_BASE.prompt.md + arch/ dosyalarinda. -->
 # InvektoServis
@@ -12,7 +12,7 @@ Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 1. **Auto Workflow Aktif:** Ne istenirse istensin, auto.md kurallari gecerli
 2. **Kritik Dosyalari Oku:**
    - `arch/session-memory.md` -> Son durumu anla
-   - `arch/active-work.md` -> Devam eden isler
+   - `tracking/README.md` -> Paket tracking durumu
    - `arch/lessons-learned.md` -> Tekrarlanan hatalar
    - `.claude/agents/INVEKTO_BASE.prompt.md` -> Global kurallar
 3. **Interview ile Basla:** Q ne isterse, once AskUserQuestion ile gri noktalari coz
@@ -76,6 +76,7 @@ Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 
 | Yazacagin Kod | Once Oku |
 |---------------|----------|
+| Paket durumu | `tracking/README.md` + per-paket dosya |
 | DB degisikligi | `arch/db/` + servis semasi |
 | Error handling | `arch/errors.md` |
 | API contract | `arch/contracts/` |

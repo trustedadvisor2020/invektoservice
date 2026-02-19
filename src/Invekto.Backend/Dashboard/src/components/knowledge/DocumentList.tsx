@@ -9,10 +9,10 @@ interface Props {
 }
 
 const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; label: string }> = {
-  pending: { icon: Clock, color: 'text-yellow-600 bg-yellow-50', label: 'Pending' },
-  processing: { icon: Loader2, color: 'text-blue-600 bg-blue-50', label: 'Processing' },
-  ready: { icon: CheckCircle, color: 'text-green-600 bg-green-50', label: 'Ready' },
-  error: { icon: AlertCircle, color: 'text-red-600 bg-red-50', label: 'Error' },
+  pending: { icon: Clock, color: 'text-yellow-600 bg-yellow-50', label: 'Bekliyor' },
+  processing: { icon: Loader2, color: 'text-blue-600 bg-blue-50', label: 'Isleniyor' },
+  ready: { icon: CheckCircle, color: 'text-green-600 bg-green-50', label: 'Hazir' },
+  error: { icon: AlertCircle, color: 'text-red-600 bg-red-50', label: 'Hata' },
 };
 
 export function DocumentList({ tenantId, refreshKey }: Props) {
@@ -31,7 +31,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
       setTotal(result.total);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load documents');
+      setError(err instanceof Error ? err.message : 'Dokumanlar yuklenemedi');
     } finally {
       setLoading(false);
     }
@@ -48,13 +48,13 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
   }, [documents, fetchDocuments]);
 
   const handleDelete = async (docId: number) => {
-    if (!confirm('Delete this document and all its chunks?')) return;
+    if (!confirm('Bu dokuman ve tum parcalari silinsin mi?')) return;
     setDeleting(docId);
     try {
       await api.deleteDocument(tenantId, docId);
       fetchDocuments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete document');
+      setError(err instanceof Error ? err.message : 'Dokuman silinemedi');
     } finally {
       setDeleting(null);
     }
@@ -66,7 +66,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
     <div className="bg-white rounded-lg border border-slate-200">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <h3 className="text-sm font-medium text-slate-700">
-          Documents {total > 0 && <span className="text-slate-400">({total})</span>}
+          Dokumanlar {total > 0 && <span className="text-slate-400">({total})</span>}
         </h3>
         <button onClick={fetchDocuments} className="text-slate-400 hover:text-slate-600">
           <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -78,7 +78,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
       {documents.length === 0 && !error ? (
         <div className="p-8 text-center text-sm text-slate-400">
           <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          No documents uploaded yet
+          Henuz dokuman yuklenmemis
         </div>
       ) : (
         <div className="divide-y divide-slate-100">
@@ -97,7 +97,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
                     <span>{doc.sourceType.toUpperCase()}</span>
-                    {doc.chunkCount > 0 && <span>{doc.chunkCount} chunks</span>}
+                    {doc.chunkCount > 0 && <span>{doc.chunkCount} parca</span>}
                     <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -122,7 +122,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
             disabled={page === 1}
             className="px-3 py-1 text-xs text-slate-600 bg-slate-100 rounded disabled:opacity-50"
           >
-            Prev
+            Onceki
           </button>
           <span className="text-xs text-slate-500">{page} / {totalPages}</span>
           <button
@@ -130,7 +130,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
             disabled={page === totalPages}
             className="px-3 py-1 text-xs text-slate-600 bg-slate-100 rounded disabled:opacity-50"
           >
-            Next
+            Sonraki
           </button>
         </div>
       )}

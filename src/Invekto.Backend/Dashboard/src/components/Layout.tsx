@@ -24,34 +24,41 @@ interface LayoutProps {
 interface NavItem {
   path: string;
   label: string;
+  tenantLabel?: string;
   icon: React.ComponentType<{ className?: string }>;
   feature?: string; // InseFeatures key — undefined = always visible
+  opsOnly?: boolean;
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { path: '/',                label: 'Dashboard',      icon: LayoutDashboard },
-  { path: '/flow-builder-ui', label: 'Flow Builder',   icon: GitBranch,    feature: 'FlowBuilder' },
-  { path: '/knowledge',       label: 'Bilgi Bankasi',  icon: BookOpen,     feature: 'Knowledge' },
-  { path: '/campaigns',       label: 'Kampanyalar',    icon: Megaphone,    feature: 'Outbound' },
-  { path: '/appointments',    label: 'Randevular',     icon: CalendarDays, feature: 'Appointments' },
-  { path: '/analytics',       label: 'Analizler',      icon: BarChart3,    feature: 'Analytics' },
-  { path: '/integrations',    label: 'Entegrasyonlar', icon: Link2,        feature: 'Integrations' },
-  { path: '/marketing',       label: 'Pazarlama',      icon: Star,         feature: 'Marketing' },
-  { path: '/logs',            label: 'Logs',           icon: FileText },
-  { path: '/settings',        label: 'Ayarlar',        icon: Settings },
+  { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard },
+  { path: '/flow-builder-ui', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
+  { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
+  { path: '/campaigns',       label: 'Kampanyalar',      icon: Megaphone,    feature: 'Outbound' },
+  { path: '/appointments',    label: 'Randevular',       icon: CalendarDays, feature: 'Appointments' },
+  { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics' },
+  { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations' },
+  { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
+  { path: '/logs',            label: 'Kayitlar',         icon: FileText,     opsOnly: true },
+  { path: '/settings',        label: 'Ayarlar',          icon: Settings },
 ];
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { logout, session } = useAuth();
+  const isFullscreen = location.pathname === '/flow-builder-ui';
 
   // Ops mode (no session): tum nav items gorunur.
-  // inma mode (session var): feature flag'e gore filtrele.
+  // Tenant mode (session var): feature flag'e gore filtrele, opsOnly gizle, Turkce label.
   const navItems = ALL_NAV_ITEMS.filter(item => {
+    if (item.opsOnly && session) return false;
     if (!item.feature) return true;
     if (!session) return true;
     return api.hasFeature(item.feature);
-  });
+  }).map(item => ({
+    ...item,
+    label: session && item.tenantLabel ? item.tenantLabel : item.label,
+  }));
 
   return (
     <div className="min-h-screen flex bg-slate-100">
@@ -100,9 +107,9 @@ export function Layout({ children }: LayoutProps) {
           })}
         </nav>
 
-        {/* Build time */}
+        {/* Version */}
         <div className="px-4 py-2 text-xs text-slate-500">
-          Build: {__BUILD_TIME__}
+          v{__BUILD_TIME__}
         </div>
 
         {/* Logout */}
@@ -119,9 +126,11 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-6 max-w-7xl mx-auto">
-          {children}
-        </div>
+        {isFullscreen ? children : (
+          <div className="p-6 max-w-7xl mx-auto">
+            {children}
+          </div>
+        )}
       </main>
     </div>
   );

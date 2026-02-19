@@ -15,30 +15,34 @@ export function DependencyMap({ services }: DependencyMapProps) {
   };
 
   const backend = services.find(s => s.name.includes('Backend'));
-  const chatAnalysis = services.find(s => s.name.includes('ChatAnalysis'));
-  const automation = services.find(s => s.name.includes('Automation'));
-  const agentAI = services.find(s => s.name.includes('AgentAI'));
-  const outbound = services.find(s => s.name.includes('Outbound'));
-  const knowledge = services.find(s => s.name.includes('Knowledge'));
+  const deps = services.filter(s => !s.name.includes('Backend'));
 
   const backendColor = backend ? getStatusColor(backend.status) : getStatusColor('unavailable');
-  const chatColor = chatAnalysis ? getStatusColor(chatAnalysis.status) : getStatusColor('unavailable');
-  const autoColor = automation ? getStatusColor(automation.status) : getStatusColor('unavailable');
-  const agentAIColor = agentAI ? getStatusColor(agentAI.status) : getStatusColor('unavailable');
-  const outboundColor = outbound ? getStatusColor(outbound.status) : getStatusColor('unavailable');
-  const knowledgeColor = knowledge ? getStatusColor(knowledge.status) : getStatusColor('unavailable');
+
+  // Layout: Backend on left, deps in 3-column grid on right
+  const cols = 3;
+  const nodeW = 140;
+  const nodeH = 56;
+  const gapX = 16;
+  const gapY = 14;
+  const gridStartX = 220;
+  const gridStartY = 16;
+  const backendX = 10;
+  const backendY = Math.max(40, (deps.length / cols) * (nodeH + gapY) / 2 - 20);
+
+  const svgW = gridStartX + cols * (nodeW + gapX);
+  const svgH = Math.max(180, gridStartY + Math.ceil(deps.length / cols) * (nodeH + gapY) + 40);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Service Dependencies</CardTitle>
+        <CardTitle>Servis Bagimliliklari</CardTitle>
       </CardHeader>
       <CardContent>
-        <svg viewBox="0 0 500 560" className="w-full h-96">
-          {/* Glow filters */}
+        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ maxHeight: '420px' }}>
           <defs>
-            <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -46,251 +50,83 @@ export function DependencyMap({ services }: DependencyMapProps) {
             </filter>
           </defs>
 
-          {/* Backend Node (center-left) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '100px 100px' }}>
-            <rect
-              x="20"
-              y="60"
-              width="160"
-              height="80"
-              rx="12"
-              fill="white"
-              stroke={backendColor.stroke}
-              strokeWidth="2.5"
-              style={{ filter: `drop-shadow(0 0 8px ${backendColor.glow})` }}
-            />
-            <circle cx="44" cy="92" r="6" fill={backendColor.fill} />
-            <text x="60" y="96" fill="#111827" fontSize="16" fontWeight="600">
-              Backend
-            </text>
-            <text x="44" y="120" fill="#6b7280" fontSize="13">
-              localhost:5000
-            </text>
-          </g>
-
-          {/* Arrow to ChatAnalysis (top-right) */}
+          {/* Backend Node */}
           <g>
-            <line
-              x1="180"
-              y1="85"
-              x2="310"
-              y2="55"
-              stroke="#d1d5db"
-              strokeWidth="2.5"
-              strokeDasharray="8,5"
-            />
-            <polygon
-              points="310,55 296,52 300,64"
-              fill="#9ca3af"
-            />
-            <rect x="218" y="54" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="243" y="71" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
-              HTTP
-            </text>
-          </g>
-
-          {/* ChatAnalysis Node (top-right) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 45px' }}>
             <rect
-              x="320"
-              y="15"
-              width="160"
-              height="80"
-              rx="12"
-              fill="white"
-              stroke={chatColor.stroke}
-              strokeWidth="2.5"
-              style={{ filter: `drop-shadow(0 0 8px ${chatColor.glow})` }}
+              x={backendX} y={backendY}
+              width="170" height="60" rx="10"
+              fill="white" stroke={backendColor.stroke} strokeWidth="2.5"
+              style={{ filter: `drop-shadow(0 0 6px ${backendColor.glow})` }}
             />
-            <circle cx="344" cy="47" r="6" fill={chatColor.fill} />
-            <text x="360" y="51" fill="#111827" fontSize="16" fontWeight="600">
-              ChatAnalysis
-            </text>
-            <text x="344" y="75" fill="#6b7280" fontSize="13">
-              localhost:7101
-            </text>
+            <circle cx={backendX + 18} cy={backendY + 24} r="5" fill={backendColor.fill} />
+            <text x={backendX + 30} y={backendY + 28} fill="#111827" fontSize="14" fontWeight="600">Backend</text>
+            <text x={backendX + 18} y={backendY + 46} fill="#6b7280" fontSize="11">localhost:5000</text>
           </g>
 
-          {/* Arrow to Automation (mid-right) */}
-          <g>
-            <line
-              x1="180"
-              y1="105"
-              x2="310"
-              y2="145"
-              stroke="#d1d5db"
-              strokeWidth="2.5"
-              strokeDasharray="8,5"
-            />
-            <polygon
-              points="310,145 296,138 300,150"
-              fill="#9ca3af"
-            />
-            <rect x="218" y="110" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="243" y="127" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
-              HTTP
-            </text>
-          </g>
+          {/* Dependency Nodes + Arrows */}
+          {deps.map((svc, i) => {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const x = gridStartX + col * (nodeW + gapX);
+            const y = gridStartY + row * (nodeH + gapY);
+            const color = getStatusColor(svc.status);
+            const shortName = svc.name.replace('Invekto.', '');
+            const port = svc.name.includes('ChatAnalysis') ? 7101
+              : svc.name.includes('Appointments') ? 7102
+              : svc.name.includes('Knowledge') ? 7104
+              : svc.name.includes('AgentAI') ? 7105
+              : svc.name.includes('Integrations') ? 7106
+              : svc.name.includes('Outbound') ? 7107
+              : svc.name.includes('Automation') ? 7108
+              : svc.name.includes('WhatsAppAnalytics') ? 7109
+              : svc.name.includes('Marketing') ? 7112
+              : 0;
 
-          {/* Automation Node (mid-right) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 155px' }}>
-            <rect
-              x="320"
-              y="115"
-              width="160"
-              height="80"
-              rx="12"
-              fill="white"
-              stroke={autoColor.stroke}
-              strokeWidth="2.5"
-              style={{ filter: `drop-shadow(0 0 8px ${autoColor.glow})` }}
-            />
-            <circle cx="344" cy="147" r="6" fill={autoColor.fill} />
-            <text x="360" y="151" fill="#111827" fontSize="16" fontWeight="600">
-              Automation
-            </text>
-            <text x="344" y="175" fill="#6b7280" fontSize="13">
-              localhost:7108
-            </text>
-          </g>
+            // Arrow from backend right edge to node left edge
+            const arrowStartX = backendX + 170;
+            const arrowStartY = backendY + 30;
+            const arrowEndX = x;
+            const arrowEndY = y + nodeH / 2;
 
-          {/* Arrow to AgentAI (bottom-right) */}
-          <g>
-            <line
-              x1="180"
-              y1="125"
-              x2="310"
-              y2="245"
-              stroke="#d1d5db"
-              strokeWidth="2.5"
-              strokeDasharray="8,5"
-            />
-            <polygon
-              points="310,245 296,238 300,250"
-              fill="#9ca3af"
-            />
-            <rect x="218" y="170" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="243" y="187" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
-              HTTP
-            </text>
-          </g>
+            return (
+              <g key={svc.name}>
+                {/* Arrow line */}
+                <line
+                  x1={arrowStartX} y1={arrowStartY}
+                  x2={arrowEndX} y2={arrowEndY}
+                  stroke="#e5e7eb" strokeWidth="1.5" strokeDasharray="6,4"
+                />
+                <polygon
+                  points={`${arrowEndX},${arrowEndY} ${arrowEndX - 8},${arrowEndY - 4} ${arrowEndX - 8},${arrowEndY + 4}`}
+                  fill="#d1d5db"
+                />
 
-          {/* AgentAI Node (bottom-right) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 255px' }}>
-            <rect
-              x="320"
-              y="215"
-              width="160"
-              height="80"
-              rx="12"
-              fill="white"
-              stroke={agentAIColor.stroke}
-              strokeWidth="2.5"
-              style={{ filter: `drop-shadow(0 0 8px ${agentAIColor.glow})` }}
-            />
-            <circle cx="344" cy="247" r="6" fill={agentAIColor.fill} />
-            <text x="360" y="251" fill="#111827" fontSize="16" fontWeight="600">
-              AgentAI
-            </text>
-            <text x="344" y="275" fill="#6b7280" fontSize="13">
-              localhost:7105
-            </text>
-          </g>
-
-          {/* Arrow to Outbound (bottom-left) */}
-          <g>
-            <line
-              x1="60"
-              y1="140"
-              x2="60"
-              y2="335"
-              stroke="#d1d5db"
-              strokeWidth="2.5"
-              strokeDasharray="8,5"
-            />
-            <polygon
-              points="60,335 54,321 66,321"
-              fill="#9ca3af"
-            />
-            <rect x="35" y="225" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="60" y="242" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
-              HTTP
-            </text>
-          </g>
-
-          {/* Outbound Node (bottom-left) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '80px 375px' }}>
-            <rect
-              x="0"
-              y="340"
-              width="160"
-              height="80"
-              rx="12"
-              fill="white"
-              stroke={outboundColor.stroke}
-              strokeWidth="2.5"
-              style={{ filter: `drop-shadow(0 0 8px ${outboundColor.glow})` }}
-            />
-            <circle cx="24" cy="372" r="6" fill={outboundColor.fill} />
-            <text x="40" y="376" fill="#111827" fontSize="16" fontWeight="600">
-              Outbound
-            </text>
-            <text x="24" y="400" fill="#6b7280" fontSize="13">
-              localhost:7107
-            </text>
-          </g>
-
-          {/* Arrow to Knowledge (bottom-right-far) */}
-          <g>
-            <line
-              x1="140"
-              y1="140"
-              x2="310"
-              y2="355"
-              stroke="#d1d5db"
-              strokeWidth="2.5"
-              strokeDasharray="8,5"
-            />
-            <polygon
-              points="310,355 296,348 300,360"
-              fill="#9ca3af"
-            />
-            <rect x="200" y="238" width="50" height="24" rx="6" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
-            <text x="225" y="255" textAnchor="middle" fill="#6b7280" fontSize="12" fontWeight="500">
-              HTTP
-            </text>
-          </g>
-
-          {/* Knowledge Node (bottom-right) */}
-          <g className="transition-transform duration-200 hover:scale-105" style={{ transformOrigin: '400px 375px' }}>
-            <rect
-              x="320"
-              y="340"
-              width="160"
-              height="80"
-              rx="12"
-              fill="white"
-              stroke={knowledgeColor.stroke}
-              strokeWidth="2.5"
-              style={{ filter: `drop-shadow(0 0 8px ${knowledgeColor.glow})` }}
-            />
-            <circle cx="344" cy="372" r="6" fill={knowledgeColor.fill} />
-            <text x="360" y="376" fill="#111827" fontSize="16" fontWeight="600">
-              Knowledge
-            </text>
-            <text x="344" y="400" fill="#6b7280" fontSize="13">
-              localhost:7104
-            </text>
-          </g>
+                {/* Service Node */}
+                <rect
+                  x={x} y={y}
+                  width={nodeW} height={nodeH} rx="8"
+                  fill="white" stroke={color.stroke} strokeWidth="2"
+                  style={{ filter: `drop-shadow(0 0 5px ${color.glow})` }}
+                />
+                <circle cx={x + 14} cy={y + 20} r="4" fill={color.fill} />
+                <text x={x + 24} y={y + 23} fill="#111827" fontSize="12" fontWeight="600">
+                  {shortName.length > 14 ? shortName.slice(0, 13) + '…' : shortName}
+                </text>
+                <text x={x + 14} y={y + 42} fill="#6b7280" fontSize="10">
+                  :{port}
+                </text>
+              </g>
+            );
+          })}
 
           {/* Legend */}
-          <g transform="translate(20, 525)">
-            <circle cx="8" cy="8" r="5" fill="#10b981" />
-            <text x="20" y="13" fill="#6b7280" fontSize="13">OK</text>
-            <circle cx="70" cy="8" r="5" fill="#f59e0b" />
-            <text x="82" y="13" fill="#6b7280" fontSize="13">Degraded</text>
-            <circle cx="170" cy="8" r="5" fill="#ef4444" />
-            <text x="182" y="13" fill="#6b7280" fontSize="13">Down</text>
+          <g transform={`translate(10, ${svgH - 24})`}>
+            <circle cx="6" cy="6" r="4" fill="#10b981" />
+            <text x="16" y="10" fill="#6b7280" fontSize="11">OK</text>
+            <circle cx="52" cy="6" r="4" fill="#f59e0b" />
+            <text x="62" y="10" fill="#6b7280" fontSize="11">Dusuk</text>
+            <circle cx="120" cy="6" r="4" fill="#ef4444" />
+            <text x="130" y="10" fill="#6b7280" fontSize="11">Kapali</text>
           </g>
         </svg>
       </CardContent>

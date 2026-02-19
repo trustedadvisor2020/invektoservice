@@ -9,8 +9,8 @@ export function IntentTable({ intents }: IntentTableProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle>Intent Performansi</CardTitle>
-        <span className="text-xs text-gray-400">{intents.length} intent</span>
+        <CardTitle>Niyet Performansi</CardTitle>
+        <span className="text-xs text-gray-400">{intents.length} niyet</span>
       </CardHeader>
       <CardContent>
         {intents.length === 0 ? (
@@ -22,11 +22,11 @@ export function IntentTable({ intents }: IntentTableProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Intent</th>
+                  <th className="text-left py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Niyet</th>
                   <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Toplam</th>
-                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Handoff</th>
-                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Handoff %</th>
-                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Confidence</th>
+                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Insan</th>
+                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Insan %</th>
+                  <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Guven</th>
                   <th className="text-right py-2 px-2 text-xs text-gray-500 uppercase tracking-wide font-medium">Ort. ms</th>
                 </tr>
               </thead>

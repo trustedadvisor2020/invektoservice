@@ -1,0 +1,11 @@
+{
+  "name": "invekto-server-ops",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Invekto Server Ops MCP - SSH/SFTP tools for production server management",
+  "main": "index.mjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ssh2": "^1.16.0"
+  }
+}

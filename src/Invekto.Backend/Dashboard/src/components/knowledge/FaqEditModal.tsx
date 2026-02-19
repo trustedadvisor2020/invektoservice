@@ -21,7 +21,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
 
   const handleSave = async () => {
     if (!question.trim() || !answer.trim()) {
-      setError('Question and answer are required');
+      setError('Soru ve cevap zorunludur');
       return;
     }
 
@@ -50,7 +50,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
       }
       onSave();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      setError(err instanceof Error ? err.message : 'Kayit basarisiz');
     } finally {
       setSaving(false);
     }
@@ -62,7 +62,7 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
           <h3 className="text-sm font-medium text-slate-800">
-            {isEdit ? 'Edit FAQ' : 'Create FAQ'}
+            {isEdit ? 'SSS Duzenle' : 'SSS Olustur'}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-4 h-4" />
@@ -72,59 +72,59 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
         {/* Form */}
         <div className="p-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Question *</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Soru *</label>
             <input
               type="text"
               value={question}
               onChange={e => setQuestion(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="What is the return policy?"
+              placeholder="Iade politikasi nedir?"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Answer *</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Cevap *</label>
             <textarea
               value={answer}
               onChange={e => setAnswer(e.target.value)}
               rows={4}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-              placeholder="Our return policy allows..."
+              placeholder="Iade politikamiz..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Kategori</label>
               <input
                 type="text"
                 value={category}
                 onChange={e => setCategory(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
-                placeholder="general"
+                placeholder="genel"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Language</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Dil</label>
               <select
                 value={lang}
                 onChange={e => setLang(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
               >
-                <option value="tr">Turkish</option>
-                <option value="en">English</option>
+                <option value="tr">Turkce</option>
+                <option value="en">Ingilizce</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Keywords (comma separated)</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Anahtar Kelimeler (virgul ile ayirin)</label>
             <input
               type="text"
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
-              placeholder="return, refund, policy"
+              placeholder="iade, geri odeme, politika"
             />
           </div>
 
@@ -137,14 +137,14 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
             onClick={onClose}
             className="px-4 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
           >
-            Cancel
+            Iptal
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+            {saving ? 'Kaydediliyor...' : isEdit ? 'Guncelle' : 'Olustur'}
           </button>
         </div>
       </div>

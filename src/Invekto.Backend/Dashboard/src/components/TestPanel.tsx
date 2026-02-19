@@ -63,6 +63,34 @@ const serviceTestConfigs: Record<string, { name: string; tests: { name: string; 
       { name: 'Ready Check', endpoint: '/api/ops/test/knowledge/ready', method: 'GET', expectedStatus: 200, useProxy: true },
     ],
   },
+  'Invekto.Appointments': {
+    name: 'Appointments',
+    tests: [
+      { name: 'Health Check', endpoint: '/api/ops/test/appointments/health', method: 'GET', expectedStatus: 200, useProxy: true },
+      { name: 'Ready Check', endpoint: '/api/ops/test/appointments/ready', method: 'GET', expectedStatus: 200, useProxy: true },
+    ],
+  },
+  'Invekto.Integrations': {
+    name: 'Integrations',
+    tests: [
+      { name: 'Health Check', endpoint: '/api/ops/test/integrations/health', method: 'GET', expectedStatus: 200, useProxy: true },
+      { name: 'Ready Check', endpoint: '/api/ops/test/integrations/ready', method: 'GET', expectedStatus: 200, useProxy: true },
+    ],
+  },
+  'Invekto.WhatsAppAnalytics': {
+    name: 'WA Analytics',
+    tests: [
+      { name: 'Health Check', endpoint: '/api/ops/test/whatsappanalytics/health', method: 'GET', expectedStatus: 200, useProxy: true },
+      { name: 'Ready Check', endpoint: '/api/ops/test/whatsappanalytics/ready', method: 'GET', expectedStatus: 200, useProxy: true },
+    ],
+  },
+  'Invekto.Marketing': {
+    name: 'Marketing',
+    tests: [
+      { name: 'Health Check', endpoint: '/api/ops/test/marketing/health', method: 'GET', expectedStatus: 200, useProxy: true },
+      { name: 'Ready Check', endpoint: '/api/ops/test/marketing/ready', method: 'GET', expectedStatus: 200, useProxy: true },
+    ],
+  },
 };
 
 export function TestPanel() {
@@ -131,7 +159,7 @@ export function TestPanel() {
         return {
           name: testName,
           status: 'warning',
-          message: 'Auth required (401)',
+          message: 'Yetki gerekli (401)',
           duration,
         };
       } else {
@@ -147,7 +175,7 @@ export function TestPanel() {
       return {
         name: testName,
         status: 'failed',
-        message: error instanceof Error ? error.message : 'Connection failed',
+        message: error instanceof Error ? error.message : 'Baglanti hatasi',
         duration,
       };
     }
@@ -256,7 +284,7 @@ export function TestPanel() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Quick Tests</CardTitle>
+          <CardTitle>Hizli Testler</CardTitle>
           <Button
             size="sm"
             onClick={runAllTests}
@@ -267,7 +295,7 @@ export function TestPanel() {
             ) : (
               <Play className="w-4 h-4" />
             )}
-            <span>Run All</span>
+            <span>Tumu Calistir</span>
           </Button>
         </div>
       </CardHeader>
@@ -282,13 +310,13 @@ export function TestPanel() {
                   {summary.passed + summary.failed + summary.warning > 0 && (
                     <div className="flex gap-1">
                       {summary.passed > 0 && (
-                        <Badge variant="success">{summary.passed} passed</Badge>
+                        <Badge variant="success">{summary.passed} basarili</Badge>
                       )}
                       {summary.failed > 0 && (
-                        <Badge variant="error">{summary.failed} failed</Badge>
+                        <Badge variant="error">{summary.failed} basarisiz</Badge>
                       )}
                       {summary.warning > 0 && (
-                        <Badge variant="warning">{summary.warning} warning</Badge>
+                        <Badge variant="warning">{summary.warning} uyari</Badge>
                       )}
                     </div>
                   )}
@@ -304,7 +332,7 @@ export function TestPanel() {
                   ) : (
                     <Play className="w-3.5 h-3.5" />
                   )}
-                  <span>Run</span>
+                  <span>Calistir</span>
                 </Button>
               </div>
 

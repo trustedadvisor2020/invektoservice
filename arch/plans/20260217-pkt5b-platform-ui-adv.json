@@ -1,0 +1,228 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-5B",
+  "gr_list": [
+    {
+      "id": "GR-3.14",
+      "description": "Ads Attribution: UTM capture, Meta click id, lead source tracking, pipeline auto-tagging, CPL dashboard, full attribution",
+      "services_affected": ["Invekto.Backend", "Invekto.Shared"]
+    },
+    {
+      "id": "GR-3.18",
+      "description": "Dashboard Genisleme: Campaign panel (gercek data), attribution panel, iade/yorum placeholder panelleri",
+      "services_affected": ["Invekto.Backend"]
+    },
+    {
+      "id": "GR-3.19",
+      "description": "Randevu Advanced: Waitlist, no-show tracking, service pricing, doctor slot filtering, ICalendarSync mock",
+      "services_affected": ["Invekto.Appointments", "Invekto.Backend", "Invekto.Shared"]
+    }
+  ],
+  "slug": "20260217-pkt5b-platform-ui-adv",
+  "risk": "HIGH",
+  "status": "REVIEW",
+  "created_at": "2026-02-17T22:00:00Z",
+  "updated_at": "2026-02-17T22:00:00Z",
+  "plan": {
+    "summary": "PKT-5B: Ads Attribution end-to-end (UTM/Meta click webhook capture + lead tracking + CPL dashboard), Dashboard genisleme (campaign stats + attribution panel + iade/yorum placeholder), Randevu Advanced (waitlist + no-show + pricing + doctor slot + mock calendar sync). 3 GR, 3 servis, ~26 dosya.",
+    "q_intent": "5b ile basla",
+    "interview_notes": "Q kararlari: (1) GR-3.14 full end-to-end (Main App webhook dahil), (2) GR-3.18 campaign+attribution gercek data + iade/yorum placeholder, (3) GR-3.19 Google Calendar mock (ICalendarSyncService + MockCalendarSyncService), (4) Waitlist + no-show + pricing hepsi Appointments :7102 servisine (domain butunlugu). No-show basit kural tabanlı (threshold, ML yok)."
+  },
+  "allowed_files": [
+    "arch/db/attribution.sql",
+    "arch/db/appointments-v2.sql",
+    "arch/contracts/attribution.json",
+    "arch/contracts/integration-webhook.json",
+    "arch/errors.md",
+    "src/Invekto.Shared/DTOs/Attribution/AttributionDtos.cs",
+    "src/Invekto.Shared/DTOs/Appointments/WaitlistDtos.cs",
+    "src/Invekto.Shared/DTOs/Appointments/PricingDtos.cs",
+    "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/AttributionRepository.cs",
+    "src/Invekto.Backend/Services/AttributionService.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Appointments/Data/AppointmentsRepository.cs",
+    "src/Invekto.Appointments/Services/ReminderSchedulerService.cs",
+    "src/Invekto.Appointments/Services/WaitlistService.cs",
+    "src/Invekto.Appointments/Services/ICalendarSyncService.cs",
+    "src/Invekto.Appointments/Services/MockCalendarSyncService.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/AnalyticsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/CampaignPanel.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/AttributionPanel.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/analytics/PlaceholderPanel.tsx"
+  ],
+  "files_changed": [
+    {"path": "arch/db/appointments-v2.sql", "is_new": true},
+    {"path": "arch/db/attribution.sql", "is_new": true},
+    {"path": "arch/errors.md", "is_new": false},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Analytics/AnalyticsDtos.cs", "is_new": false},
+    {"path": "src/Invekto.Shared/DTOs/Appointments/PricingDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Appointments/WaitlistDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Attribution/AttributionDtos.cs", "is_new": true},
+    {"path": "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs", "is_new": false},
+    {"path": "src/Invekto.Backend/Services/AttributionRepository.cs", "is_new": true},
+    {"path": "src/Invekto.Backend/Services/AttributionService.cs", "is_new": true},
+    {"path": "src/Invekto.Backend/Services/AnalyticsRepository.cs", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/analytics/AttributionPanel.tsx", "is_new": true},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/analytics/CampaignPanel.tsx", "is_new": true},
+    {"path": "src/Invekto.Backend/Dashboard/src/components/analytics/PlaceholderPanel.tsx", "is_new": true},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/AnalyticsPage.tsx", "is_new": false},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false},
+    {"path": "src/Invekto.Appointments/Data/AppointmentsRepository.cs", "is_new": false},
+    {"path": "src/Invekto.Appointments/Program.cs", "is_new": false},
+    {"path": "src/Invekto.Appointments/Services/ICalendarSyncService.cs", "is_new": true},
+    {"path": "src/Invekto.Appointments/Services/WaitlistService.cs", "is_new": true}
+  ],
+  "git_diff": {
+    "sha256": "pending",
+    "full_path": "arch/plans/diffs/20260217-pkt5b-platform-ui-adv.diff",
+    "total_bytes": 148636,
+    "chunks": 4,
+    "stats": {
+      "insertions": 2970,
+      "deletions": 48,
+      "files_count": 23
+    }
+  },
+  "build": {
+    "status": "PASS"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do all new lead_attributions and ad_costs repository queries include tenant_id in WHERE clauses to enforce multi-tenant isolation?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the webhook UTM extraction gracefully handle missing or null UTM fields without breaking the 202 Accepted response or throwing unhandled exceptions?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the waitlist notification trigger only for waitlist entries with status=waiting when an appointment transitions to cancelled, preventing duplicate or stale notifications?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Is the no-show threshold configurable per tenant via tenant_registry.settings_json rather than hardcoded, and does extra reminder trigger only for patients exceeding the threshold?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Do all new Appointments endpoints (waitlist, pricing, calendar sync, no-show) enforce JWT authentication and tenant_id claim validation with 403 on mismatch?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q6",
+      "question": "Are new Dashboard API calls for campaign stats and attribution data independently error-bounded so a single failed fetch does not break the entire AnalyticsPage rendering?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Knowledge/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.Integrations/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.Backend/FlowBuilder/",
+      "temp/",
+      "deploy_output/"
+    ],
+    "non_goals": [
+      "Gercek Google Calendar API entegrasyonu (sadece ICalendarSyncService interface + MockCalendarSyncService)",
+      "Iade cevirme orani dashboard (PKT-6B, simdilik placeholder)",
+      "Yorum kurtarma orani dashboard (PKT-6B, simdilik placeholder)",
+      "ML tabanli no-show prediction (basit kural tabanlı threshold)",
+      "Niche bazli dashboard panelleri (PKT-6A+ scope)",
+      "AI-generated personalization (GR-3.15.2 defer)",
+      "A/B testing UI (backend GR-3.15.4 zaten var, UI sonra)"
+    ],
+    "intentional_exclusions": [
+      "Outbound campaign A/B test UI (backend altyapisi PKT-5A'da var, UI PKT-6+ scope)",
+      "Conversion tracking UI (backend endpoint PKT-5A'da var, dashboard panelde gosterilir ama tracking form yok)",
+      "Real Google OAuth flow (mock implementation, gercek entegrasyon sonraki paket)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "AttributionRepository: typed PostgreSQL catches (NpgsqlException)",
+      "AttributionService: auto-detect source fallback (unknown_source degraded)",
+      "WaitlistService: Outbound notification failure -> log + continue (non-blocking)",
+      "ReminderSchedulerService: no-show check failure -> log + skip patient (non-blocking)",
+      "Backend webhook handler: UTM extraction failure -> log warning + continue normal 202",
+      "MockCalendarSyncService: all methods return success (mock)",
+      "Dashboard API calls: independent try-catch per section, console.warn on failure"
+    ],
+    "user_facing_errors": [
+      "INV-AD-001: Gecersiz attribution istegi",
+      "INV-AD-002: Attribution kaydi bulunamadi",
+      "INV-AD-003: Gecersiz reklam maliyeti girisi",
+      "INV-AD-004: Reklam maliyeti kaydi bulunamadi",
+      "INV-AD-005: Gecersiz lead durum guncellemesi",
+      "INV-AP-011: Gecersiz bekleme listesi istegi",
+      "INV-AP-012: Bekleme listesi kaydi bulunamadi",
+      "INV-AP-013: Gecersiz fiyat tanimlama istegi",
+      "INV-AP-014: Fiyat kaydi bulunamadi",
+      "INV-AP-015: Takvim senkronizasyon hatasi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks have typed exceptions with SystemWarn logging. UTM extraction failure degrades gracefully (logs warning, returns normal 202). Waitlist notification failure is non-blocking but logged. No-show check failure logs and skips. Dashboard sections are independently error-bounded."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Isletme sahibi hangi reklamin ise yaradigini bilemiyor, para bos yere gidiyor",
+      "suggestion": "Campaign -> Lead -> Conversion pipeline goruntulemesi: Her lead hangi kampanyadan geldi, ne kadar maliyetle, donusum oldu mu?",
+      "aha_moment": "Ilk lead geldiginde dashboard'da 'Meta Ads - Yaz Kampanyasi -> 3 lead -> 1 satis' gorulunce reklam butcesi kararlarini veriye dayali almaya baslar"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Randevu iptal olunca bekleme listesindeki hasta haber almiyor, slot bos kaliyor",
+      "suggestion": "Randevu iptali -> waitlist'teki ilk hastaya < 2dk WhatsApp bildirimi: 'Dr. Ayse'nin 14:00 slotu musait oldu, randevu almak ister misiniz?'",
+      "aha_moment": "Iptalden 2 dakika sonra bekleme listesindeki hastanin telefonuna bildirim geldigini goren klinik yoneticisi 'slot artik bos kalmiyor' der"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "No-show hastalar surekli randevu aliyor ama gelmiyor, diger hastalarin slotlari dolduruyor",
+      "suggestion": "2+ kez gelmeme yapan hastalara otomatik ekstra hatirlatma (T-24h, T-4h, T-1h) + dashboard'da no-show oranlari",
+      "aha_moment": "No-show orani %15'ten %5'e dustugunde klinik yoneticisi 'sistem kendisi cozuyor' der"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Reklam butcesi dagitimi his/deneyime dayanıyor, hangi platformun CPL'si dusuk bilinmiyor",
+      "suggestion": "Platform bazli Cost-per-Lead dashboard: Meta 45 TL/lead, Google 72 TL/lead, Organik 0 TL/lead. En ucuz kanala butce kaydir",
+      "aha_moment": "CPL tablosunu goren isletme sahibi 'Meta'ya 2x butce artir, Google'i kes' kararini 5 saniyede veriyor"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Hasta 'Dr. Mehmet'e randevu istiyorum' deyince agent tum slotlari tek tek kontrol ediyor",
+      "suggestion": "Doktor bazli slot filtreleme: available-slots?doctor_id=5 -> sadece o doktorun musait slotlari. Chatbot'a entegre edilebilir",
+      "aha_moment": "Agent '14:00 ve 16:30 slotlari musait' diye 2 saniyede yanit verdiginde hasta deneyimi premium seviyeye cikar"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}

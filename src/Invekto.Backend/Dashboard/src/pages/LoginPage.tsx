@@ -43,7 +43,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
@@ -175,6 +175,7 @@ export function LoginPage() {
           )}
         </CardContent>
       </Card>
+      <p className="mt-3 text-xs text-slate-400">v{__BUILD_TIME__}</p>
     </div>
   );
 }

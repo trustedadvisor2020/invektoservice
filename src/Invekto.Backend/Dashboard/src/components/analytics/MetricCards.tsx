@@ -20,7 +20,7 @@ export function MetricCards({ summary }: MetricCardsProps) {
               <TrendingUp className={`w-5 h-5 ${deflectionColor}`} />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Deflection</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Oto. Cozum</p>
               <p className={`text-2xl font-bold ${deflectionColor}`}>{summary.deflection_rate}%</p>
             </div>
           </div>
@@ -35,7 +35,7 @@ export function MetricCards({ summary }: MetricCardsProps) {
               <TrendingDown className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Handoff</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Insan Destek</p>
               <p className="text-2xl font-bold text-orange-600">{summary.handoff_rate}%</p>
             </div>
           </div>
