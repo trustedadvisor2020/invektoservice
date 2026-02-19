@@ -457,7 +457,11 @@ class OpsApiClient {
   }
 
   hasFeature(feature: string): boolean {
-    return this.getSession()?.inseFeatures?.includes(feature) ?? false;
+    const session = this.getSession();
+    if (!session) return false;
+    // INMA SSO users: all features enabled (no InseFeatures claim in INMA JWT)
+    if (session.inseFeatures.length === 0 && this.isInmaSession()) return true;
+    return session.inseFeatures.includes(feature);
   }
 
   isAuthenticated(): boolean {
