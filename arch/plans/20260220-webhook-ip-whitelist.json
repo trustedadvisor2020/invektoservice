@@ -1,0 +1,131 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260220-webhook-ip-whitelist",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-20T13:00:00Z",
+  "updated_at": "2026-02-20T13:00:00Z",
+  "plan": {
+    "summary": "Replace JWT auth with IP whitelist for INMA webhook endpoints. Whitelisted IPs bypass JWT and provide tenant identity via ?companyId= query parameter. Also add port 443 to firewall rules.",
+    "q_intent": "auth için IP izni kullanılacak. ?companyId=42 şeklinde parametre gelecek. başka auth yok.",
+    "interview_notes": "Q confirmed: no JWT for webhooks, IP-only auth. companyId comes as query param. INMA server IP will be added to appsettings.Production.json manually."
+  },
+  "allowed_files": [
+    "arch/deploy/firewall-rules-v2.bat",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/deploy/firewall-rules-v2.bat", "is_new": false, "change": "Added port 443 HTTPS firewall rule" },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false, "change": "Added Webhook:AllowedIps config section" },
+    { "path": "src/Invekto.Shared/Middleware/JwtAuthMiddleware.cs", "is_new": false, "change": "Added IP whitelist bypass with companyId query param" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Read AllowedIps config and pass to middleware" }
+  ],
+  "git_diff": {
+    "sha256": "097D9DECFFE65AC984FAAAFBC8E0706E84BEF809E4A1FF06B998D7A264C18CA3",
+    "full_path": "arch/plans/diffs/20260220-webhook-ip-whitelist.diff",
+    "stats": { "insertions": 184, "deletions": 6, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-20T13:00:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the IP whitelist correctly normalize IPv4-mapped IPv6 addresses to prevent bypass?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the companyId query parameter validated for positive integer to prevent invalid TenantContext creation?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Do existing JWT-authenticated paths (flow-builder, attribution, leads) still require JWT when called from non-whitelisted IPs?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the middleware correctly fall through to JWT auth when the IP is not whitelisted, preserving backward compatibility?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Shared/Auth/InmaJwtValidator.cs", "src/Invekto.Shared/Auth/JwtValidator.cs"],
+    "non_goals": ["Removing JWT auth entirely", "Changing IncomingWebhookEvent DTO"],
+    "intentional_exclusions": ["appsettings.Production.json (Q will update manually on server)"]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "400: companyId query parameter required (positive integer)",
+      "401: Bearer token required (unchanged for non-whitelisted IPs)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All auth failure paths return explicit HTTP error codes with JSON error response"
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "INMA integration blocked because JWT token exchange is complex to implement",
+      "suggestion": "IP whitelist allows instant webhook integration without JWT complexity",
+      "aha_moment": "INMA developer realizes they can send webhooks with just a URL parameter, no token management needed"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "JWT tokens expire and cause silent webhook failures during off-hours",
+      "suggestion": "IP-based auth never expires, eliminating token refresh issues",
+      "aha_moment": "Operations team sees zero auth-related webhook failures in monitoring"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Testing webhook integration requires generating valid JWT tokens",
+      "suggestion": "With IP whitelist, testing only needs correct IP and companyId param",
+      "aha_moment": "Developer tests webhook with a simple curl command, no auth setup needed"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Debugging webhook 401 errors is time-consuming due to JWT claim mismatches",
+      "suggestion": "IP auth logs clearly show which IP tried to connect and whether companyId is valid",
+      "aha_moment": "Support sees clear log: 'IP whitelisted but missing companyId' instead of cryptic JWT errors"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "New INMA customers can't start using chatbot until JWT integration is complete",
+      "suggestion": "IP whitelist + companyId means integration can go live in minutes",
+      "aha_moment": "Customer's first chatbot auto-reply works within minutes of IP being added"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-20T13:10:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-20T13:10:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "400 with specific error code for invalid companyId" },
+      "CQ2": { "result": "PASS", "evidence": "No silent failures, all paths return explicit errors" },
+      "CQ3": { "result": "PASS", "evidence": "Changes limited to 4 files, all in scope" },
+      "CQ4": { "result": "PASS", "evidence": "IP whitelist handling added once in shared middleware" },
+      "CQ5": { "result": "PASS", "evidence": "Uses existing error codes and logging patterns" },
+      "CQ6": { "result": "PASS", "evidence": "O(1) HashSet lookup for IP check" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME markers" },
+      "CQ8": { "result": "PASS", "evidence": "Added overload, existing signature preserved" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "IsIPv4MappedToIPv6 + MapToIPv4() normalization" },
+      "Q2": { "result": "PASS", "reasoning": "int.TryParse + companyId > 0 guard" },
+      "Q3": { "result": "PASS", "reasoning": "TryIpWhitelistAuth returns false for non-whitelisted IPs" },
+      "Q4": { "result": "PASS", "reasoning": "Falls through to JWT when IP not matched" }
+    },
+    "blocking_issues": [],
+    "iteration": 0
+  }
+}

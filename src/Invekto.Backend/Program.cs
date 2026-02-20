@@ -275,10 +275,13 @@ app.UseTrafficLogging(
     new[] { ".js", ".css", ".svg", ".png", ".ico", ".woff", ".woff2", ".map" });
 
 // GR-1.9: JWT auth middleware for protected API paths
+// Webhook:AllowedIps — trusted IPs bypass JWT and use ?companyId= query param
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/attribution/", "/api/v1/leads/");
+    var webhookIps = builder.Configuration.GetSection("Webhook:AllowedIps").Get<string[]>() ?? [];
+    var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreCase);
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/attribution/", "/api/v1/leads/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)

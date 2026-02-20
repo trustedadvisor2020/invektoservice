@@ -1,3 +1,4 @@
+using System.Net;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
@@ -9,6 +10,8 @@ namespace Invekto.Shared.Middleware;
 
 /// <summary>
 /// JWT authentication middleware for Invekto API endpoints.
+/// Supports optional IP whitelist bypass: whitelisted IPs skip JWT and provide
+/// tenant identity via ?companyId= query parameter instead.
 /// Shared across all Invekto microservices.
 /// </summary>
 public sealed class JwtAuthMiddleware
@@ -17,17 +20,20 @@ public sealed class JwtAuthMiddleware
     private readonly JwtValidator _jwtValidator;
     private readonly JsonLinesLogger _logger;
     private readonly HashSet<string> _authRequiredPrefixes;
+    private readonly HashSet<string> _allowedIps;
 
     public JwtAuthMiddleware(
         RequestDelegate next,
         JwtValidator jwtValidator,
         JsonLinesLogger logger,
-        IEnumerable<string> authRequiredPrefixes)
+        IEnumerable<string> authRequiredPrefixes,
+        HashSet<string> allowedIps)
     {
         _next = next;
         _jwtValidator = jwtValidator;
         _logger = logger;
         _authRequiredPrefixes = new HashSet<string>(authRequiredPrefixes, StringComparer.OrdinalIgnoreCase);
+        _allowedIps = allowedIps;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -35,6 +41,13 @@ public sealed class JwtAuthMiddleware
         var path = context.Request.Path.Value ?? "";
 
         if (!RequiresAuth(path))
+        {
+            await _next(context);
+            return;
+        }
+
+        // IP whitelist bypass: trusted IPs authenticate via ?companyId= query param
+        if (_allowedIps.Count > 0 && TryIpWhitelistAuth(context, path))
         {
             await _next(context);
             return;
@@ -87,6 +100,47 @@ public sealed class JwtAuthMiddleware
         await _next(context);
     }
 
+    /// <summary>
+    /// Checks if the remote IP is whitelisted and extracts companyId from query string.
+    /// Returns true if auth succeeded (TenantContext set), false to fall through to JWT.
+    /// On invalid companyId from a whitelisted IP, writes 400 and returns true (request handled).
+    /// </summary>
+    private bool TryIpWhitelistAuth(HttpContext context, string path)
+    {
+        var remoteIp = context.Connection.RemoteIpAddress;
+        if (remoteIp == null) return false;
+
+        // Normalize IPv4-mapped IPv6 (e.g. ::ffff:91.151.84.79 -> 91.151.84.79)
+        var ipString = remoteIp.IsIPv4MappedToIPv6
+            ? remoteIp.MapToIPv4().ToString()
+            : remoteIp.ToString();
+
+        if (!_allowedIps.Contains(ipString)) return false;
+
+        // IP is whitelisted — require companyId query param
+        if (!context.Request.Query.TryGetValue("companyId", out var companyIdValues)
+            || !int.TryParse(companyIdValues.FirstOrDefault(), out var companyId)
+            || companyId <= 0)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.IntegrationWebhookInvalidPayload}] IP whitelisted but missing/invalid companyId: ip={ipString}, path={path}");
+            context.Response.StatusCode = 400;
+            context.Response.WriteAsJsonAsync(
+                ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "companyId query parameter required (positive integer)", "-")).GetAwaiter().GetResult();
+            return true; // handled — do not fall through to JWT
+        }
+
+        context.Items["TenantContext"] = new TenantContext
+        {
+            TenantId = companyId,
+            UserId = 0,
+            Role = "service"
+        };
+        context.Request.Headers[HeaderNames.TenantId] = companyId.ToString();
+
+        _logger.SystemInfo($"Webhook IP auth: ip={ipString}, companyId={companyId}, path={path}");
+        return true;
+    }
+
     private bool RequiresAuth(string path)
     {
         foreach (var prefix in _authRequiredPrefixes)
@@ -106,6 +160,16 @@ public static class JwtAuthMiddlewareExtensions
         JsonLinesLogger logger,
         params string[] authRequiredPrefixes)
     {
-        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes);
+        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes, new HashSet<string>());
+    }
+
+    public static IApplicationBuilder UseJwtAuth(
+        this IApplicationBuilder app,
+        JwtValidator jwtValidator,
+        JsonLinesLogger logger,
+        HashSet<string> webhookAllowedIps,
+        params string[] authRequiredPrefixes)
+    {
+        return app.UseMiddleware<JwtAuthMiddleware>(jwtValidator, logger, (IEnumerable<string>)authRequiredPrefixes, webhookAllowedIps);
     }
 }
