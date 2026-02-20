@@ -21,7 +21,7 @@ public sealed class FlowValidator
 
     private static readonly HashSet<string> WaitTypes = new(StringComparer.Ordinal)
     {
-        "message_menu", "ai_intent", "ai_faq"
+        "message_menu", "ai_intent", "ai_faq", "ai_sentiment"
     };
 
     private static readonly Dictionary<string, string[]> RequiredFields = new(StringComparer.Ordinal)
@@ -37,7 +37,11 @@ public sealed class FlowValidator
         ["ai_faq"] = new[] { "label" },
         ["action_api_call"] = new[] { "label", "method", "url" },
         ["action_delay"] = new[] { "label", "seconds" },
-        ["utility_set_variable"] = new[] { "label", "variable_name", "value_expression" }
+        ["utility_set_variable"] = new[] { "label", "variable_name", "value_expression" },
+        ["ai_sentiment"] = new[] { "label" },
+        ["webhook_trigger"] = new[] { "label" },
+        ["outbound_trigger"] = new[] { "label" },
+        ["schedule_trigger"] = new[] { "label", "cron_expression" }
     };
 
     /// <summary>
@@ -56,17 +60,17 @@ public sealed class FlowValidator
             return new FlowValidationResult { IsValid = false, Errors = errors, Warnings = warnings };
         }
 
-        // 1. Must have exactly one trigger_start
-        var triggerStarts = graph.AllNodes.Where(n => n.Type == "trigger_start").ToList();
-        if (triggerStarts.Count == 0)
-            errors.Add("trigger_start node'u bulunamadi — her akis bir baslangic noktasi olmali");
-        else if (triggerStarts.Count > 1)
-            errors.Add($"Birden fazla trigger_start node'u var ({triggerStarts.Count}) — sadece 1 olmali");
+        // 1. Must have exactly one trigger node (any type in TriggerTypes)
+        var triggerNodes = graph.AllNodes.Where(n => FlowGraphV2.TriggerTypes.Contains(n.Type)).ToList();
+        if (triggerNodes.Count == 0)
+            errors.Add("Trigger node bulunamadi — her akis bir baslangic noktasi olmali");
+        else if (triggerNodes.Count > 1)
+            errors.Add($"Birden fazla trigger node var ({triggerNodes.Count}) — sadece 1 olmali");
 
-        // 2. Orphan detection (no incoming edges, not trigger_start)
+        // 2. Orphan detection (no incoming edges, not a trigger type)
         foreach (var node in graph.AllNodes)
         {
-            if (node.Type == "trigger_start") continue;
+            if (FlowGraphV2.TriggerTypes.Contains(node.Type)) continue;
 
             if (!graph.HasIncomingEdges(node.Id))
                 warnings.Add($"Orphan node: '{node.GetData("label", node.Id)}' ({node.Id}) — bu adima ulasilamiyor");
@@ -228,6 +232,20 @@ public sealed class FlowValidator
                 {
                     var handleLabel = handle == "matched" ? "Eslesti" : "Eslesmedi";
                     warnings.Add($"FAQ dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 10b. ai_sentiment handle consistency (positive / negative)
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "ai_sentiment"))
+        {
+            foreach (var handle in new[] { "positive", "negative" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "positive" ? "Pozitif" : "Negatif";
+                    warnings.Add($"Sentiment dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
                 }
             }
         }

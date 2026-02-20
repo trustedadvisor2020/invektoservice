@@ -10,6 +10,7 @@ import type {
   LogicConditionData,
   LogicSwitchData,
   AiIntentData,
+  ScheduleTriggerData,
   ActionApiCallData,
   ActionDelayData,
   UtilitySetVariableData,
@@ -31,9 +32,12 @@ export type ValidationMap = Map<string, ValidationError[]>;
 
 // --- Terminal / Source node types ---
 
-/** Node types that are NOT expected to have input edges */
+/** Node types that are NOT expected to have input edges (all trigger types) */
 const SOURCE_NODE_TYPES: Set<FlowNodeType> = new Set([
   'trigger_start',
+  'webhook_trigger',
+  'outbound_trigger',
+  'schedule_trigger',
 ]);
 
 /** Node types that are NOT expected to have output edges (terminal nodes) */
@@ -140,6 +144,13 @@ function checkEmptyField(node: Node): ValidationError | null {
       const ai = data as AiIntentData;
       if (!ai.intents || ai.intents.length === 0) {
         return { type: 'empty_field', severity: 'warning', message: 'Intent listesi bos' };
+      }
+      break;
+    }
+    case 'schedule_trigger': {
+      const sched = data as ScheduleTriggerData;
+      if (!sched.cron_expression || sched.cron_expression.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Cron ifadesi bos' };
       }
       break;
     }

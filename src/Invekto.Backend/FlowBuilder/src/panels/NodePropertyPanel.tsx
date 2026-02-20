@@ -7,6 +7,9 @@ import type {
   LogicSwitchData,
   AiIntentData,
   AiFaqData,
+  AiSentimentData,
+  WebhookTriggerData,
+  ScheduleTriggerData,
   ActionApiCallData,
   ActionDelayData,
   ActionHandoffData,
@@ -105,9 +108,21 @@ export function NodePropertyPanel() {
         {nodeType === 'utility_note' && (
           <UtilityNoteProps data={selectedNode.data as UtilityNoteData} onChange={update} />
         )}
+        {nodeType === 'ai_sentiment' && (
+          <AiSentimentProps data={selectedNode.data as AiSentimentData} onChange={update} />
+        )}
+        {nodeType === 'webhook_trigger' && (
+          <WebhookTriggerProps data={selectedNode.data as WebhookTriggerData} onChange={update} />
+        )}
+        {nodeType === 'outbound_trigger' && (
+          <OutboundTriggerProps />
+        )}
+        {nodeType === 'schedule_trigger' && (
+          <ScheduleTriggerProps data={selectedNode.data as ScheduleTriggerData} onChange={update} />
+        )}
 
-        {/* Delete button (not for trigger_start) */}
-        {nodeType !== 'trigger_start' && (
+        {/* Delete button (not for trigger types) */}
+        {nodeType !== 'trigger_start' && nodeType !== 'webhook_trigger' && nodeType !== 'outbound_trigger' && nodeType !== 'schedule_trigger' && (
           <div className="pt-3 border-t border-slate-200">
             <button
               onClick={() => deleteNode(selectedNode.id)}
@@ -647,6 +662,132 @@ function ActionApiCallProps({
           <span className="text-slate-400">30s</span>
         </div>
       </FieldGroup>
+    </>
+  );
+}
+
+function AiSentimentProps({
+  data,
+  onChange,
+}: {
+  data: AiSentimentData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const threshold = data.threshold ?? 0.5;
+
+  return (
+    <>
+      <FieldGroup label={`Duygu Esigi (${(threshold * 100).toFixed(0)}%)`}>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(threshold * 100)}
+          onChange={(e) => onChange({ threshold: Number(e.target.value) / 100 })}
+          className="w-full accent-purple-500"
+        />
+        <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
+      </FieldGroup>
+
+      <p className="text-xs text-slate-400">
+        Musteri mesaji Claude AI ile analiz edilir. Skor esik uzerindeyse <strong>POZITIF</strong>, altindaysa <strong>NEGATIF</strong> dalina yonlenir.
+      </p>
+    </>
+  );
+}
+
+function WebhookTriggerProps({
+  data,
+  onChange,
+}: {
+  data: WebhookTriggerData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  return (
+    <>
+      <FieldGroup label="Secret Key (Opsiyonel)">
+        <input
+          type="text"
+          value={data.secret_key ?? ''}
+          onChange={(e) => onChange({ secret_key: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 font-mono"
+          placeholder="HMAC-SHA256 dogrulama anahtari"
+        />
+      </FieldGroup>
+
+      <FieldGroup label="Payload Degiskeni">
+        <input
+          type="text"
+          value={data.payload_variable ?? 'webhook_payload'}
+          onChange={(e) => onChange({ payload_variable: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500 font-mono"
+          placeholder="webhook_payload"
+        />
+      </FieldGroup>
+
+      <p className="text-xs text-slate-400">
+        Dis sistemlerden gelen HTTP POST istekleriyle tetiklenir. Payload belirtilen degiskene atanir.
+      </p>
+    </>
+  );
+}
+
+function OutboundTriggerProps() {
+  return (
+    <p className="text-xs text-slate-400">
+      Outbound kampanyasi bu flow'u tetiklediginde akis baslar. Kampanya bilgileri <code className="bg-slate-100 px-1 rounded">campaign_id</code> degiskenine atanir.
+    </p>
+  );
+}
+
+function ScheduleTriggerProps({
+  data,
+  onChange,
+}: {
+  data: ScheduleTriggerData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const timezones = [
+    { value: 'Europe/Istanbul', label: 'Turkiye (UTC+3)' },
+    { value: 'UTC', label: 'UTC' },
+    { value: 'Europe/London', label: 'Londra (UTC+0/+1)' },
+    { value: 'Europe/Berlin', label: 'Berlin (UTC+1/+2)' },
+  ];
+
+  return (
+    <>
+      <FieldGroup label="Cron Ifadesi">
+        <input
+          type="text"
+          value={data.cron_expression ?? ''}
+          onChange={(e) => onChange({ cron_expression: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 font-mono"
+          placeholder="0 9 * * *"
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          Format: dakika saat gun ay haftanin_gunu
+        </p>
+      </FieldGroup>
+
+      <FieldGroup label="Saat Dilimi">
+        <select
+          value={data.timezone ?? 'Europe/Istanbul'}
+          onChange={(e) => onChange({ timezone: e.target.value })}
+          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+        >
+          {timezones.map((tz) => (
+            <option key={tz.value} value={tz.value}>{tz.label}</option>
+          ))}
+        </select>
+      </FieldGroup>
+
+      <p className="text-xs text-slate-400">
+        Belirtilen cron zamanlamasina gore otomatik tetiklenir.
+      </p>
     </>
   );
 }

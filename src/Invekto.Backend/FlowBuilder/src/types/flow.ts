@@ -41,12 +41,16 @@ export interface FlowSettings {
 
 export type FlowNodeType =
   | 'trigger_start'
+  | 'webhook_trigger'
+  | 'outbound_trigger'
+  | 'schedule_trigger'
   | 'message_text'
   | 'message_menu'
   | 'logic_condition'
   | 'logic_switch'
   | 'ai_intent'
   | 'ai_faq'
+  | 'ai_sentiment'
   | 'action_handoff'
   | 'action_api_call'
   | 'action_delay'
@@ -56,12 +60,16 @@ export type FlowNodeType =
 // Union type for all node data shapes
 export type NodeData =
   | TriggerStartData
+  | WebhookTriggerData
+  | OutboundTriggerData
+  | ScheduleTriggerData
   | MessageTextData
   | MessageMenuData
   | LogicConditionData
   | LogicSwitchData
   | AiIntentData
   | AiFaqData
+  | AiSentimentData
   | ActionHandoffData
   | ActionApiCallData
   | ActionDelayData
@@ -76,6 +84,28 @@ interface BaseNodeData {
 
 export interface TriggerStartData extends BaseNodeData {
   label: string;
+}
+
+export interface WebhookTriggerData extends BaseNodeData {
+  label: string;
+  secret_key?: string;
+  payload_variable?: string;
+}
+
+export interface OutboundTriggerData extends BaseNodeData {
+  label: string;
+  campaign_variable?: string;
+}
+
+export interface ScheduleTriggerData extends BaseNodeData {
+  label: string;
+  cron_expression: string;
+  timezone?: string;
+}
+
+export interface AiSentimentData extends BaseNodeData {
+  label: string;
+  threshold?: number;
 }
 
 export interface MessageTextData extends BaseNodeData {
@@ -177,6 +207,33 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     defaultData: { label: 'Baslangic' } as TriggerStartData,
   },
   {
+    type: 'webhook_trigger',
+    category: 'trigger',
+    label: 'Webhook',
+    description: 'Dis sistemden gelen event tetikleyici',
+    color: '#10b981',
+    maxInstances: 1,
+    defaultData: { label: 'Webhook' } as WebhookTriggerData,
+  },
+  {
+    type: 'outbound_trigger',
+    category: 'trigger',
+    label: 'Outbound',
+    description: 'Outbound kampanya tetikleyici',
+    color: '#10b981',
+    maxInstances: 1,
+    defaultData: { label: 'Outbound' } as OutboundTriggerData,
+  },
+  {
+    type: 'schedule_trigger',
+    category: 'trigger',
+    label: 'Zamanlayici',
+    description: 'Cron tabanli zamanlanmis tetikleyici',
+    color: '#10b981',
+    maxInstances: 1,
+    defaultData: { label: 'Zamanlayici', cron_expression: '0 9 * * *' } as ScheduleTriggerData,
+  },
+  {
     type: 'message_text',
     category: 'message',
     label: 'Mesaj',
@@ -234,6 +291,14 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     description: 'SSS veritabaninda ara',
     color: '#8b5cf6',
     defaultData: { label: 'FAQ', min_confidence: 0.3 } as AiFaqData,
+  },
+  {
+    type: 'ai_sentiment',
+    category: 'ai',
+    label: 'Duygu Analizi',
+    description: 'Claude AI ile musteri duygu tespiti',
+    color: '#8b5cf6',
+    defaultData: { label: 'Duygu Analizi', threshold: 0.5 } as AiSentimentData,
   },
   {
     type: 'action_handoff',

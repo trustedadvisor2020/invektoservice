@@ -1,0 +1,41 @@
+{
+  "slug": "20260220-4-new-node-types",
+  "title": "4 Yeni Automation Node Tipi (ai_sentiment, webhook_trigger, outbound_trigger, schedule_trigger)",
+  "status": "DONE",
+  "risk_level": "MEDIUM",
+  "summary": "Automation v2 flow engine'e 4 yeni node tipi eklendi: ai_sentiment (Claude Haiku sentiment analizi, positive/negative routing), webhook_trigger (dis sistem event tetikleyici), outbound_trigger (outbound kampanya tetikleyici), schedule_trigger (cron-based zamanli tetikleyici). TriggerTypes HashSet altyapisi olusturuldu, FlowGraphV2 ve FlowValidator genisletildi. Frontend'de ReactFlow node bileşenleri, NODE_TYPE_REGISTRY, NodePropertyPanel config panelleri, graph-validator SOURCE_NODE_TYPES guncellendi.",
+  "verification_questions": [
+    {"id": "Q1", "question": "TriggerTypes HashSet FlowGraphV2 ve FlowValidator'da tutarli mi? Yeni trigger tipleri her iki yerde de tanimli mi?", "category": "consistency"},
+    {"id": "Q2", "question": "AiSentimentHandler WaitForInput/Continue pattern'i AiIntentHandler ile tutarli mi? PendingInput ve __last_input kullanimi dogru mu?", "category": "pattern"},
+    {"id": "Q3", "question": "FlowNodeType union, NODE_TYPE_REGISTRY ve nodeTypes map senkron mu? Eksik veya fazla tip var mi?", "category": "sync"},
+    {"id": "Q4", "question": "Frontend graph-validator SOURCE_NODE_TYPES backend FlowValidator trigger kontrolleri ile eslesiyor mu?", "category": "backend-frontend"},
+    {"id": "Q5", "question": "Yeni handler'larin Program.cs DI kayitlari eksiksiz mi? Her handler icin gerekli servisler (SentimentAnalyzer, MockSentimentAnalyzer) kayitli mi?", "category": "di"},
+    {"id": "Q6", "question": "NodePropertyPanel'da trigger tipleri icin delete butonu gizlenmis mi? Trigger tiplerini silmeye calismak bug olusturur mu?", "category": "ui-safety"}
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Automation/Services/FlowGraphV2.cs", "is_new": false, "change": "TriggerTypes set + line 91 trigger detection"},
+    {"path": "src/Invekto.Automation/Services/FlowValidator.cs", "is_new": false, "change": "TriggerTypes, RequiredFields, WaitTypes, sentiment handle check"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "4 handler DI + SentimentAnalyzer + MockSentimentAnalyzer"},
+    {"path": "src/Invekto.Automation/Services/SentimentAnalyzer.cs", "is_new": true, "change": "Claude Haiku sentiment API client"},
+    {"path": "src/Invekto.Automation/Services/MockSentimentAnalyzer.cs", "is_new": true, "change": "Keyword-based mock for simulation"},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/AiSentimentHandler.cs", "is_new": true, "change": "WaitForInput -> Claude Haiku -> positive/negative routing"},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/WebhookTriggerHandler.cs", "is_new": true, "change": "Webhook payload injection, Continue"},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/OutboundTriggerHandler.cs", "is_new": true, "change": "Campaign variable injection, Continue"},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/ScheduleTriggerHandler.cs", "is_new": true, "change": "schedule_fired_at timestamp, Continue"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/types/flow.ts", "is_new": false, "change": "FlowNodeType union + 4 data interfaces + NODE_TYPE_REGISTRY"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/lib/graph-validator.ts", "is_new": false, "change": "SOURCE_NODE_TYPES + schedule_trigger empty check"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/nodes/index.ts", "is_new": false, "change": "4 new node imports + registration"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/nodes/AiSentimentNode.tsx", "is_new": true, "change": "POZITIF/NEGATIF output handles"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/nodes/WebhookTriggerNode.tsx", "is_new": true, "change": "hasInput: false, POST webhook display"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/nodes/OutboundTriggerNode.tsx", "is_new": true, "change": "hasInput: false, outbound label"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/nodes/ScheduleTriggerNode.tsx", "is_new": true, "change": "hasInput: false, cron expression display"},
+    {"path": "src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx", "is_new": false, "change": "4 new config panels + trigger delete protection"},
+    {"path": "SE/src/lib/scenarioAnalysis.js", "is_new": true, "change": "proposed: false for 4 implemented node types"}
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260220-4-new-node-types.diff",
+    "stats": {"insertions": 1329, "deletions": 14, "files_count": 18}
+  },
+  "iteration": 1,
+  "updated_at": "2026-02-20T01:00:00Z"
+}

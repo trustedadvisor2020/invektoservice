@@ -9,9 +9,16 @@ namespace Invekto.Automation.Services;
 /// </summary>
 public sealed class FlowGraphV2
 {
+    /// <summary>All trigger types recognized as flow entry points.</summary>
+    internal static readonly HashSet<string> TriggerTypes = new(StringComparer.Ordinal)
+    {
+        "trigger_start", "webhook_trigger", "outbound_trigger", "schedule_trigger"
+    };
+
     public IReadOnlyDictionary<string, FlowNodeV2> NodesById { get; }
     public IReadOnlyDictionary<string, List<FlowEdgeV2>> OutgoingByNode { get; }
     public IReadOnlySet<string> NodesWithIncoming { get; }
+    /// <summary>The entry-point node (any trigger type). Null if no trigger found.</summary>
     public FlowNodeV2? TriggerStart { get; }
     public FlowSettingsV2 Settings { get; }
     public IReadOnlyList<FlowNodeV2> AllNodes { get; }
@@ -88,7 +95,7 @@ public sealed class FlowGraphV2
                 allNodes.Add(node);
                 nodesById[node.Id] = node;
 
-                if (node.Type == "trigger_start")
+                if (TriggerTypes.Contains(node.Type))
                     triggerStart = node;
             }
         }

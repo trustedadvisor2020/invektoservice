@@ -101,6 +101,10 @@ builder.Services.AddSingleton<INodeHandler, UtilityNoteHandler>();
 builder.Services.AddSingleton<INodeHandler, AiIntentHandler>();
 builder.Services.AddSingleton<INodeHandler, AiFaqHandler>();
 builder.Services.AddSingleton<INodeHandler, ApiCallHandler>();
+builder.Services.AddSingleton<INodeHandler, AiSentimentHandler>();
+builder.Services.AddSingleton<INodeHandler, WebhookTriggerHandler>();
+builder.Services.AddSingleton<INodeHandler, OutboundTriggerHandler>();
+builder.Services.AddSingleton<INodeHandler, ScheduleTriggerHandler>();
 
 // Register HttpClientFactory for ApiCallHandler
 builder.Services.AddHttpClient("ApiCallHandler");
@@ -120,11 +124,20 @@ builder.Services.AddHttpClient<IntentDetector>((sp, client) =>
     return new IntentDetector(httpClient, claudeApiKey, sp.GetRequiredService<JsonLinesLogger>());
 });
 
+// Register SentimentAnalyzer with HttpClient (same pattern as IntentDetector)
+builder.Services.AddHttpClient<SentimentAnalyzer>((sp, client) =>
+{
+}).AddTypedClient((httpClient, sp) =>
+{
+    return new SentimentAnalyzer(httpClient, claudeApiKey, sp.GetRequiredService<JsonLinesLogger>());
+});
+
 // Register simulation engine (Phase 3b) + mock services
 builder.Services.AddSingleton<SimulationEngine>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<SimulationEngine>());
 builder.Services.AddSingleton<MockFaqMatcher>();
 builder.Services.AddSingleton<MockIntentDetector>();
+builder.Services.AddSingleton<MockSentimentAnalyzer>();
 
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
