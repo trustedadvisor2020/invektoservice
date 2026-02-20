@@ -11,6 +11,7 @@ import { CampaignsPage } from './pages/CampaignsPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { MarketingPage } from './pages/MarketingPage';
+import { MessagesPage } from './pages/MessagesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { Layout } from './components/Layout';
 
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/marketing" element={<MarketingPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

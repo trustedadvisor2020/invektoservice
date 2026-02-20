@@ -55,6 +55,7 @@ INV-{SERVICE}-{NUMBER}
 | INV-BE-003 | Microservice error (5xx) | Servis hatası. Lütfen tekrar deneyin. |
 | INV-BE-004 | Microservice invalid response | Servis geçersiz yanıt döndü. |
 | INV-BE-005 | Microservice client error (4xx) | İstek hatası. Lütfen parametreleri kontrol edin. |
+| INV-BE-010 | Message log query failed | Mesaj kayitlari yuklenemedi. |
 
 ---
 

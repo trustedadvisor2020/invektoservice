@@ -128,6 +128,20 @@ export interface FaqDto {
   updatedAt: string;
 }
 
+// Message log types (SuperAdmin)
+export interface MessageLogEntry {
+  id: number;
+  tenantId: number;
+  direction: string;
+  phone: string;
+  senderName: string | null;
+  messageText: string | null;
+  messageType: string | null;
+  chatId: string | null;
+  externalMessageId: string | null;
+  createdAt: string;
+}
+
 // Analytics types (PKT-3)
 export interface TenantMetricsInfo {
   tenant_id: number;
@@ -883,6 +897,27 @@ class OpsApiClient {
 
   async getCampaignStats(tenantId: number): Promise<{ campaigns: CampaignStat[] }> {
     return this.request<{ campaigns: CampaignStat[] }>(`/api/ops/analytics/campaigns?tenant_id=${tenantId}`);
+  }
+
+  // SuperAdmin: Message log
+  async getOpsMessages(params: {
+    tenantId?: number;
+    phone?: string;
+    direction?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ messages: MessageLogEntry[]; total: number }> {
+    const sp = new URLSearchParams();
+    if (params.tenantId) sp.set('tenant_id', params.tenantId.toString());
+    if (params.phone) sp.set('phone', params.phone);
+    if (params.direction) sp.set('direction', params.direction);
+    if (params.from) sp.set('from', params.from);
+    if (params.to) sp.set('to', params.to);
+    if (params.limit) sp.set('limit', params.limit.toString());
+    if (params.offset) sp.set('offset', params.offset.toString());
+    return this.request<{ messages: MessageLogEntry[]; total: number }>(`/api/ops/messages?${sp}`);
   }
 }
 

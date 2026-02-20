@@ -14,6 +14,7 @@ import {
   Link2,
   Star,
   Settings,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -39,6 +40,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics' },
   { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations' },
   { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
+  { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
   { path: '/logs',            label: 'Kayitlar',         icon: FileText,     opsOnly: true },
   { path: '/settings',        label: 'Ayarlar',          icon: Settings },
 ];
@@ -51,7 +53,8 @@ export function Layout({ children }: LayoutProps) {
   // Ops mode (no session): tum nav items gorunur.
   // Tenant mode (session var): feature flag'e gore filtrele, opsOnly gizle, Turkce label.
   const navItems = ALL_NAV_ITEMS.filter(item => {
-    if (item.opsOnly && session) return false;
+    // opsOnly: ops mode (no session) veya superadmin (tenant_id=0) gorebilir
+    if (item.opsOnly && session && session.tenantId !== 0) return false;
     if (!item.feature) return true;
     if (!session) return true;
     return api.hasFeature(item.feature);

@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-20
-- **Status:** 11/12 paket tamamlandi. Webhook endpoint + CronSchedulerService tamamlandi (Codex iter 2, Q FORCE PASS).
-- **Last Task:** feat(automation): webhook endpoint (POST /api/v1/webhooks/{tenantId}/{flowId}) + CronSchedulerService (IHostedService, 60s timer, Cronos cron). 5 error code (INV-AT-030~034), ScheduleFlowInfo DTO, synthetic sessions.
-- **Next Task:** PKT-7 Visual AI veya Backend deploy (wwwroot updated) veya Automation deploy (webhook+cron aktif etmek icin)
+- **Status:** 11/12 paket tamamlandi. SuperAdmin mesaj izleme sayfasi eklendi ve deploy edildi.
+- **Last Task:** feat(backend): SuperAdmin message log — yeni message_log tablosu, webhook'ta fire-and-forget loglama, GET /api/ops/messages endpoint, React MessagesPage + opsOnly nav, tenant_id=0 superadmin fix. Backend deploy edildi.
+- **Next Task:** PKT-7 Visual AI veya Automation deploy (webhook+cron aktif etmek icin)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -77,6 +77,7 @@ src/
 | 2026-02-20 | 4 yeni node tipi (16 toplam) | SE 170 senaryo analizi ~80 senaryoda ihtiyac gosterdi |
 | 2026-02-20 | INMA SSO hotfix | FB iframe localStorage/sessionStorage mismatch + 401 token wipe guard |
 | 2026-02-20 | Webhook + CronScheduler | POST /api/v1/webhooks/ (no auth, Q karar), CronSchedulerService (Cronos, 60s timer) |
+| 2026-02-20 | SuperAdmin message_log | Yeni PG tablo, webhook hook, ops endpoint, React sayfa. tenant_id=0 = superadmin |
 
 ## Q Pending Operational Tasks
 

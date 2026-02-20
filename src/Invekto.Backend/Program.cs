@@ -250,6 +250,9 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 
     // PKT-6B1: Lead Management v2 (GR-3.13)
     builder.Services.AddSingleton<LeadRepository>();
+
+    // SuperAdmin: Message log (fire-and-forget insert at webhook, paginated select for ops)
+    builder.Services.AddSingleton<MessageLogRepository>();
 }
 
 // Callback client for async results to Main App
@@ -1086,14 +1089,14 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
 // GR-1.9: INTEGRATION WEBHOOK ENDPOINTS
 // ============================================
 
-// Webhook event receiver (Main App -> InvektoServis)
-// JWT auth enforced by middleware for /api/v1/webhook/ prefix
-app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent, AttributionService? attrService) =>
+// Webhook event receiver (INMA -> InvektoServis)
+// Auth: JWT or IP whitelist with ?companyId= query param
+app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jsonLogger, IncomingWebhookEvent? webhookEvent) =>
 {
     var sw = System.Diagnostics.Stopwatch.StartNew();
     var requestId = ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    // Extract TenantContext (set by JWT middleware)
+    // Extract TenantContext (set by JWT middleware or IP whitelist)
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
     {
@@ -1104,69 +1107,67 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
     }
 
     // Validate payload
-    if (webhookEvent == null)
+    if (webhookEvent?.Messages == null || webhookEvent.Messages.Count == 0)
     {
         sw.Stop();
         var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), "-");
-        jsonLogger.RequestError("Webhook: null payload", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationWebhookInvalidPayload);
+        jsonLogger.RequestError("Webhook: empty or null payload", reqCtx, "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationWebhookInvalidPayload);
         return Results.Json(
-            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "Request body is required", requestId),
+            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "messages array is required and must not be empty", requestId),
             statusCode: 400);
-    }
-
-    if (!WebhookEventTypes.IsValid(webhookEvent.EventType))
-    {
-        sw.Stop();
-        var reqCtx = RequestContext.Create(tenantContext.TenantId.ToString(), webhookEvent.ChatId.ToString());
-        jsonLogger.RequestError(
-            $"Webhook: unknown event_type={webhookEvent.EventType}", reqCtx,
-            "/api/v1/webhook/event", sw.ElapsedMilliseconds, ErrorCodes.IntegrationUnknownEventType);
-        return Results.Json(
-            ErrorResponse.Create(ErrorCodes.IntegrationUnknownEventType,
-                $"Unknown event_type: {webhookEvent.EventType}. Valid: new_message, conversation_closed, tag_changed, conversation_started, agent_assigned",
-                requestId),
-            statusCode: 400);
-    }
-
-    // GR-3.14: Track attribution on conversation_started (fire-and-forget with error logging)
-    if (webhookEvent.EventType == "conversation_started" && attrService != null)
-    {
-        _ = attrService.TrackFromWebhookAsync(tenantContext.TenantId, webhookEvent, ctx.RequestAborted)
-            .ContinueWith(t =>
-            {
-                if (t.IsFaulted)
-                    jsonLogger.SystemWarn($"Attribution tracking failed for tenant {tenantContext.TenantId}: {t.Exception?.GetBaseException().Message}");
-            }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
     sw.Stop();
-    var context = RequestContext.CreateWithPassThrough(
-        requestId,
-        tenantContext.TenantId.ToString(),
-        webhookEvent.ChatId.ToString());
+    var msgCount = webhookEvent.Messages.Count;
+    var firstChatId = webhookEvent.Messages[0].ChatId ?? "-";
+    var context = RequestContext.CreateWithPassThrough(requestId, tenantContext.TenantId.ToString(), firstChatId);
 
     // Log the accepted event
     jsonLogger.RequestInfo(
-        $"Webhook accepted: event={webhookEvent.EventType}, chat_id={webhookEvent.ChatId}, seq={webhookEvent.SequenceId}",
+        $"Webhook accepted: msg_count={msgCount}, instance={webhookEvent.InstanceId}, chat_id={firstChatId}",
         context, "/api/v1/webhook/event", sw.ElapsedMilliseconds);
 
     // Latency monitoring
     if (sw.ElapsedMilliseconds > ServiceConstants.IntegrationLatencyThresholdMs)
     {
         jsonLogger.SystemWarn(
-            $"Webhook acceptance exceeded {ServiceConstants.IntegrationLatencyThresholdMs}ms threshold: {sw.ElapsedMilliseconds}ms, event={webhookEvent.EventType}");
+            $"Webhook acceptance exceeded {ServiceConstants.IntegrationLatencyThresholdMs}ms threshold: {sw.ElapsedMilliseconds}ms");
     }
 
     // Add processing time header
     ctx.Response.Headers[HeaderNames.ProcessingTimeMs] = sw.ElapsedMilliseconds.ToString();
 
-    // Return 202 Accepted -- async processing will happen in future GR-1.1/1.2/1.3 services
+    // SuperAdmin: fire-and-forget message logging
+    var msgLogRepo = ctx.RequestServices.GetService<MessageLogRepository>();
+    if (msgLogRepo != null)
+    {
+        foreach (var msg in webhookEvent.Messages)
+        {
+            var phone = (msg.ChatId ?? "").Replace("@c.us", "").Replace("@g.us", "");
+            _ = msgLogRepo.InsertAsync(
+                tenantContext.TenantId,
+                msg.FromMe ? "out" : "in",
+                phone,
+                msg.SenderName,
+                msg.Body,
+                msg.Type ?? "text",
+                msg.ChatId,
+                msg.Id
+            ).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    jsonLogger.SystemWarn($"MessageLog insert failed: {t.Exception?.InnerException?.Message}");
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+    }
+
+    // Return 202 Accepted
     return Results.Json(new
     {
         status = "accepted",
         request_id = context.RequestId,
-        event_type = webhookEvent.EventType,
-        sequence_id = webhookEvent.SequenceId,
+        message_count = msgCount,
+        instance_id = webhookEvent.InstanceId,
         message = "Event accepted for processing"
     }, statusCode: 202);
 });
@@ -3529,6 +3530,55 @@ app.MapGet("/api/ops/analytics/campaigns", async (HttpContext ctx, AnalyticsRepo
     {
         logger.SystemWarn($"Campaign stats failed ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
         return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Kampanya sorgusu basarisiz." }, statusCode: 500);
+    }
+});
+
+// ============================================
+// SUPERADMIN: MESSAGE LOG
+// ============================================
+
+app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
+    int? tenant_id, string? phone, string? direction,
+    string? from, string? to, int? limit, int? offset) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var msgLogRepo = ctx.RequestServices.GetService<MessageLogRepository>();
+    if (msgLogRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendMessageLogQueryFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    DateTime? fromDt = null;
+    DateTime? toDt = null;
+
+    if (!string.IsNullOrEmpty(from))
+    {
+        if (!DateTime.TryParse(from, out var parsedFrom))
+            return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid 'from' date format" });
+        fromDt = DateTime.SpecifyKind(parsedFrom, DateTimeKind.Utc);
+    }
+    if (!string.IsNullOrEmpty(to))
+    {
+        if (!DateTime.TryParse(to, out var parsedTo))
+            return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid 'to' date format" });
+        toDt = DateTime.SpecifyKind(parsedTo, DateTimeKind.Utc);
+    }
+
+    if (!string.IsNullOrEmpty(direction) && direction != "in" && direction != "out")
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "direction must be 'in' or 'out'" });
+
+    try
+    {
+        var (messages, total) = await msgLogRepo.GetMessagesAsync(
+            tenant_id, phone, direction, fromDt, toDt,
+            limit ?? 50, offset ?? 0);
+
+        return Results.Ok(new { messages, total });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Message log query failed ({ErrorCodes.BackendMessageLogQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendMessageLogQueryFailed, message = "Mesaj kayitlari yuklenemedi." }, statusCode: 500);
     }
 });
 

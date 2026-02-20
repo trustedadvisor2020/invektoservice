@@ -75,6 +75,7 @@
 | 2026-02-20 | Chunked review her 2 iteration'da ayni Q2/Q4 UNKNOWN — AiIntentHandler ve FlowValidator karsi chunk'ta | CoVe sorularini chunk bazli tasarladik ama cross-chunk artifact devam etti | **Ayni UNKNOWN 2 iter tekrar ediyorsa Q FORCE PASS — chunking limitation, fix mumkun degil** |
 | 2026-02-20 | Codex CQ5: IHostedService cross-tenant query + no-auth webhook 3 iter FAIL — her ikisi de Q'nun interview'da explicit karari | Q FORCE PASS (iter 2) | **Q interview kararlari (no auth, cross-tenant scheduler) Codex'e architectural decision olarak belirtilse bile CQ5 tekrar edebilir — 3 iter'de Q FORCE PASS** |
 | 2026-02-20 | CQ2: secondary EndSessionAsync catch bloklari `/* swallow */` loglama yok — iter 1'de yakalandi | Tum 6 catch blokuna SystemWarn/StepWarn + session ID + ex.Message eklendi | **Cleanup catch bloklari bile loglamali — `/* swallow */` ASLA yazma, en az SystemWarn** |
+| 2026-02-20 | Layout.tsx opsOnly filter tenant_id=0 superadmin'i de gizliyordu — quicklogin session varsa opsOnly sayfalar gorunmuyordu | `session && session.tenantId !== 0` guard eklendi | **opsOnly filter'da tenant_id=0 (superadmin) icin bypass ekle — session var ama tenant_id=0 = superadmin** |
 
 ### Deploy & Config
 
