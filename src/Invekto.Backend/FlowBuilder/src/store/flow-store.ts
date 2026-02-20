@@ -214,7 +214,9 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const nodes: Node[] = (config.nodes ?? []).map((n) => ({
       id: n.id,
       type: n.type,
-      position: n.position,
+      position: n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number'
+        ? n.position
+        : { x: 0, y: 0 },
       data: n.data as Record<string, unknown>,
     }));
 
