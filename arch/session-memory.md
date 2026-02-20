@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-20
-- **Status:** INMA SSO → FlowBuilder auth hotfix tamamlandi ve deploy edildi.
-- **Last Task:** fix(auth): INMA SSO → FlowBuilder 401 — exchange endpoint decode-only fallback (InmaAuth:SecretKey olmadan), Dashboard exchangeInmaToken() metodu, useAuth URL token flow sonrasi exchange cagrisi. Backend + Dashboard deploy edildi.
-- **Next Task:** PKT-7 Visual AI veya Automation deploy (webhook+cron aktif etmek icin)
+- **Status:** Tenant isolation altyapisi + SuperAdmin impersonate + Firmalar sayfasi tamamlandi. Arch dokumanlari eklendi.
+- **Last Task:** feat(tenant): TenantRepositoryBase, TenantRegistryRepository, SuperAdmin impersonate endpoint, TenantsPage, impersonation banner. 3 arch dokumani (tenant-isolation, auth-architecture, ops-dashboard-convention).
+- **Next Task:** Backend deploy (tenant list + impersonate), mevcut repo'larin TenantRepositoryBase migration (ayri paket)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -79,6 +79,8 @@ src/
 | 2026-02-20 | Webhook + CronScheduler | POST /api/v1/webhooks/ (no auth, Q karar), CronSchedulerService (Cronos, 60s timer) |
 | 2026-02-20 | SuperAdmin message_log | Yeni PG tablo, webhook hook, ops endpoint, React sayfa. tenant_id=0 = superadmin |
 | 2026-02-20 | INMA SSO exchange hotfix | InmaAuth:SecretKey olmadan exchange decode-only fallback, Dashboard token exchange |
+| 2026-02-20 | Tenant isolation altyapisi | TenantRepositoryBase, SuperAdmin impersonate (Option C), Firmalar sayfasi |
+| 2026-02-20 | 3 arch dokumani | tenant-isolation.md, auth-architecture.md, ops-dashboard-convention.md |
 
 ## Q Pending Operational Tasks
 

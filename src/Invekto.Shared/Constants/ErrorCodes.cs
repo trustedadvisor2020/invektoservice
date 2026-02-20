@@ -17,6 +17,8 @@ public static class ErrorCodes
     public const string BackendMicroserviceInvalidResponse = "INV-BE-004"; // Invalid/null JSON body
     public const string BackendMicroserviceClientError = "INV-BE-005";     // 4xx from microservice (client error)
     public const string BackendMessageLogQueryFailed = "INV-BE-010";      // SuperAdmin message log query failed
+    public const string BackendTenantListQueryFailed = "INV-BE-011";     // Tenant list query failed
+    public const string BackendTenantImpersonateFailed = "INV-BE-012";   // Tenant impersonate failed
 
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";

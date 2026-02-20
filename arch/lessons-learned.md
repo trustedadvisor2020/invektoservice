@@ -227,6 +227,9 @@
 | JwtGenerator shared token factory | Invekto.Shared | JWT signing tek yerde |
 | Auth guard null-safe (exists && mismatch) | Tenant isolation | null = yok, 403 sadece gercek mismatch |
 | File cleanup on upload failure | Knowledge upload | Orphan dosya birakma |
+| Impersonate via existing JWT infra | SuperAdmin tenant switch | Yeni middleware gereksiz — GenerateToken + setSession + removeTokens mevcut altyapiyi yeniden kullaniyor |
+| Basic Auth in-memory + JWT localStorage | Impersonate exit flow | removeTokens JWT siler ama credentials (in-memory) kalir — ops mode'a donus icin login gereksiz |
+| window.location.href (navigate degil) | Impersonate giris/cikis | Full page reload tum hook'lari yeni session ile baslatir — React Router navigate stale state birakir |
 
 ### Workflow & Review
 
@@ -257,6 +260,8 @@
 | Popup header'da entity adi | UI Modal | Kullanici neye baktigini hemen anlar |
 | {*path:nonfile} SPA fallback | MapFallbackToFile | Static dosyalar fallback'e dusmez |
 | Mevcut proxy pattern yeniden kullanma | FbProxyGet | Yeni endpoint 3 satir ile tamamlandi |
+| Impersonation banner fixed + pt-10 | Layout.tsx | Fixed banner sidebar sticky'yi bozmaz, pt-10 icerik kaymasi onler |
+| opsOnly filter tenant_id=0 bypass | Layout.tsx sidebar | SuperAdmin (tenant_id=0) opsOnly sayfalari gorebilir, impersonate (tenant_id≠0) goremez |
 | Token + response null check | API calls | Auth yoksa sessiz cik, crash olmaz |
 
 ### Concurrency & Performance

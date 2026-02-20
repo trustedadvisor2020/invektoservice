@@ -143,6 +143,30 @@ export interface MessageLogEntry {
   createdAt: string;
 }
 
+// Message story types (SuperAdmin)
+export interface TimelineItem {
+  time: string;
+  icon: string;
+  title: string;
+  detail: string;
+}
+
+export interface MessageStorySummary {
+  flow_name: string | null;
+  flow_id: number | null;
+  intent: string | null;
+  confidence: number | null;
+  reply_type: string | null;
+  processing_time_ms: number | null;
+  auto_reply_count: number;
+  outgoing_count: number;
+}
+
+export interface MessageStoryResponse {
+  timeline: TimelineItem[];
+  summary: MessageStorySummary;
+}
+
 // Tenant registry types (SuperAdmin)
 export interface TenantEntry {
   tenantId: number;
@@ -975,6 +999,11 @@ class OpsApiClient {
     if (params.limit) sp.set('limit', params.limit.toString());
     if (params.offset) sp.set('offset', params.offset.toString());
     return this.request<{ messages: MessageLogEntry[]; total: number }>(`/api/ops/messages?${sp}`);
+  }
+
+  // SuperAdmin: Message story
+  async getMessageStory(messageId: number): Promise<MessageStoryResponse> {
+    return this.request<MessageStoryResponse>(`/api/ops/messages/${messageId}/story`);
   }
 
   // SuperAdmin: Tenant list

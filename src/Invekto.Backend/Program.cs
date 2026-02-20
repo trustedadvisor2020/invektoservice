@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Invekto.Shared.Middleware;
 using Invekto.Backend.Data;
 using Invekto.Backend.Services;
@@ -359,6 +360,8 @@ IResult OpsUnauthorized(HttpContext ctx)
     }
     return Results.Unauthorized();
 }
+
+string Truncate(string? s, int maxLen) => s == null ? "" : s.Length <= maxLen ? s : s[..maxLen] + "...";
 
 // OPS endpoint - Stage-0 troubleshooting dashboard
 app.MapGet("/ops", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, LogReader logReader) =>
@@ -3589,6 +3592,103 @@ app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
 });
 
 // ============================================
+// SUPERADMIN: MESSAGE STORY
+// ============================================
+
+app.MapGet("/api/ops/messages/{id}/story", async (HttpContext ctx, long id, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var msgLogRepo = ctx.RequestServices.GetService<MessageLogRepository>();
+    if (msgLogRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendMessageLogQueryFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        var story = await msgLogRepo.GetMessageStoryAsync(id);
+        if (story == null)
+            return Results.NotFound(new { error = "NOT_FOUND", message = $"Message {id} not found" });
+
+        // Build timeline
+        var timeline = new List<object>();
+
+        // 1. Incoming message
+        timeline.Add(new
+        {
+            time = story.CreatedAt.ToString("HH:mm:ss"),
+            icon = "incoming",
+            title = "Müşteri Mesajı",
+            detail = $"{story.Phone}: '{Truncate(story.MessageText, 120)}'"
+        });
+
+        // 2. Flow triggered (if active flow exists)
+        if (story.FlowId.HasValue)
+        {
+            timeline.Add(new
+            {
+                time = story.CreatedAt.ToString("HH:mm:ss"),
+                icon = "flow",
+                title = "Flow Tetiklendi",
+                detail = $"{story.FlowName ?? "Adsız Flow"} (flow #{story.FlowId})"
+            });
+        }
+
+        // 3. Auto-reply entries (intent + FAQ)
+        foreach (var ar in story.AutoReplies)
+        {
+            timeline.Add(new
+            {
+                time = ar.CreatedAt.ToString("HH:mm:ss"),
+                icon = "ai",
+                title = "AI İşleme",
+                detail = $"Intent: {ar.Intent} (confidence: {ar.Confidence:F2}), Tip: {ar.ReplyType ?? "auto"}"
+            });
+            timeline.Add(new
+            {
+                time = ar.CreatedAt.ToString("HH:mm:ss"),
+                icon = "reply",
+                title = "Otomatik Yanıt",
+                detail = Truncate(ar.ReplyText, 200)
+            });
+        }
+
+        // 4. Outgoing messages (WapCRM callback results)
+        foreach (var om in story.OutgoingMessages)
+        {
+            timeline.Add(new
+            {
+                time = om.CreatedAt.ToString("HH:mm:ss"),
+                icon = "callback",
+                title = om.SenderName == "bot" ? "WapCRM Callback" : "Giden Mesaj",
+                detail = Truncate(om.MessageText, 200)
+            });
+        }
+
+        // Summary
+        var firstReply = story.AutoReplies.FirstOrDefault();
+        var summary = new
+        {
+            flow_name = story.FlowName,
+            flow_id = story.FlowId,
+            intent = firstReply?.Intent,
+            confidence = firstReply?.Confidence,
+            reply_type = firstReply?.ReplyType,
+            processing_time_ms = firstReply?.ProcessingTimeMs,
+            auto_reply_count = story.AutoReplies.Count,
+            outgoing_count = story.OutgoingMessages.Count
+        };
+
+        return Results.Ok(new { timeline, summary });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Message story query failed: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendMessageLogQueryFailed, message = "Mesaj hikayesi yuklenemedi." }, statusCode: 500);
+    }
+});
+
+// ============================================
 // SUPERADMIN: TENANT LIST + IMPERSONATE
 // ============================================
 
@@ -4195,6 +4295,136 @@ app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory ht
     }
 
     return Results.Text(body, contentType);
+});
+
+// ============================================
+// WAPCRM CALLBACK BRIDGE
+// ============================================
+// Automation sends OutgoingCallback → this endpoint transforms to WapCRM chatoperation format.
+// No auth — internal service-to-service (localhost only).
+
+app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+
+    OutgoingCallback? callback;
+    try
+    {
+        callback = await ctx.Request.ReadFromJsonAsync<OutgoingCallback>();
+    }
+    catch (JsonException ex)
+    {
+        jsonLog.StepWarn($"WapCRM bridge: invalid JSON body: {ex.Message}", requestId);
+        return Results.BadRequest(new { error = "INVALID_JSON", message = "Invalid callback JSON" });
+    }
+
+    if (callback == null)
+        return Results.BadRequest(new { error = "EMPTY_BODY", message = "Callback body is null" });
+
+    requestId = callback.RequestId ?? requestId;
+
+    // Only handle send_message and handoff_to_human
+    if (callback.Action != CallbackActions.SendMessage && callback.Action != CallbackActions.HandoffToHuman)
+    {
+        jsonLog.StepInfo($"WapCRM bridge: skipping action '{callback.Action}' for tenant {callback.TenantId}", requestId);
+        return Results.Ok(new { status = "skipped", action = callback.Action });
+    }
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    var msgLogRepo = ctx.RequestServices.GetService<MessageLogRepository>();
+    if (tenantRepo == null || msgLogRepo == null)
+        return Results.Json(new { error = "DB_NOT_CONFIGURED", message = "PostgreSQL not configured" }, statusCode: 503);
+
+    // Get WapCRM settings for this tenant
+    var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(callback.TenantId);
+    if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey) || string.IsNullOrWhiteSpace(wapcrm.ApiUrl))
+    {
+        jsonLog.StepWarn($"WapCRM bridge: no WapCRM settings for tenant {callback.TenantId}", requestId);
+        return Results.Json(new { error = "WAPCRM_NOT_CONFIGURED", message = $"Tenant {callback.TenantId} has no WapCRM settings" }, statusCode: 422);
+    }
+
+    // Extract phone from chat_id ("905xxx@c.us" → "905xxx")
+    var phoneMatch = Regex.Match(callback.ChatId ?? "", @"(\d+)@");
+    var phone = phoneMatch.Success ? phoneMatch.Groups[1].Value : callback.Data?.Phone ?? "";
+    if (string.IsNullOrWhiteSpace(phone))
+    {
+        jsonLog.StepWarn($"WapCRM bridge: cannot extract phone from chat_id '{callback.ChatId}'", requestId);
+        return Results.BadRequest(new { error = "INVALID_PHONE", message = "Cannot extract phone from chat_id" });
+    }
+
+    // Get instanceId from last incoming message for this tenant+phone
+    var instanceId = await msgLogRepo.GetLastInstanceIdAsync(callback.TenantId, phone);
+    if (string.IsNullOrWhiteSpace(instanceId) || !int.TryParse(instanceId, out var instanceIdInt))
+    {
+        jsonLog.StepWarn($"WapCRM bridge: no instanceId found for tenant {callback.TenantId}, phone {phone}", requestId);
+        return Results.Json(new { error = "NO_INSTANCE_ID", message = "No incoming message found for this phone" }, statusCode: 422);
+    }
+
+    // Determine message text
+    var messageText = callback.Action == CallbackActions.HandoffToHuman
+        ? "Sizi müşteri temsilcimize yönlendiriyorum. En kısa sürede size dönüş yapılacaktır."
+        : callback.Data?.MessageText ?? "";
+
+    if (string.IsNullOrWhiteSpace(messageText))
+    {
+        jsonLog.StepWarn($"WapCRM bridge: empty message_text for tenant {callback.TenantId}", requestId);
+        return Results.BadRequest(new { error = "EMPTY_MESSAGE", message = "message_text is empty" });
+    }
+
+    // Build WapCRM chatoperation payload
+    var wapPayload = new
+    {
+        instanceID = instanceIdInt,
+        userKey = wapcrm.UserKey ?? "",
+        chatPhoneNumber = phone,
+        messageType = 1,
+        messageText,
+        Incom = wapcrm.Incom
+    };
+
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-CIB-SecretKey", wapcrm.SecretKey);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var response = await client.PostAsJsonAsync(wapcrm.ApiUrl, wapPayload);
+        sw.Stop();
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        jsonLog.StepInfo(
+            $"WapCRM bridge: tenant={callback.TenantId}, phone={phone}, instanceId={instanceIdInt}, " +
+            $"action={callback.Action}, status={response.StatusCode}, elapsed={sw.ElapsedMilliseconds}ms",
+            requestId);
+
+        // Log outgoing message to message_log
+        _ = msgLogRepo.InsertAsync(
+            callback.TenantId, "out", phone,
+            senderName: "bot",
+            messageText: messageText,
+            messageType: "text",
+            chatId: callback.ChatId,
+            externalMessageId: null,
+            instanceId: instanceId
+        ).ContinueWith(t =>
+        {
+            if (t.IsFaulted) jsonLog.SystemWarn($"WapCRM bridge: message_log insert failed: {t.Exception?.GetBaseException().Message}");
+        });
+
+        return Results.Ok(new
+        {
+            status = response.IsSuccessStatusCode ? "sent" : "failed",
+            wapcrm_status = (int)response.StatusCode,
+            elapsed_ms = sw.ElapsedMilliseconds,
+            response = responseBody
+        });
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLog.SystemWarn($"WapCRM bridge: HTTP error sending to {wapcrm.ApiUrl}: {ex.Message}");
+        return Results.Json(new { error = "WAPCRM_HTTP_ERROR", message = ex.Message }, statusCode: 502);
+    }
 });
 
 // ============================================

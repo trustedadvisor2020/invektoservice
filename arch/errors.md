@@ -56,6 +56,8 @@ INV-{SERVICE}-{NUMBER}
 | INV-BE-004 | Microservice invalid response | Servis geçersiz yanıt döndü. |
 | INV-BE-005 | Microservice client error (4xx) | İstek hatası. Lütfen parametreleri kontrol edin. |
 | INV-BE-010 | Message log query failed | Mesaj kayitlari yuklenemedi. |
+| INV-BE-011 | Tenant list query failed | Firma listesi yuklenemedi. |
+| INV-BE-012 | Tenant impersonate failed | Firma girisi basarisiz oldu. |
 
 ---
 
