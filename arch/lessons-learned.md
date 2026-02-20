@@ -69,6 +69,8 @@
 | 2026-02-18 | GenerateResponseAsync'te catch(Exception ex) + ParseResponse'ta catch(Exception ex) — 2 iter gerekti | iter 0: GenerateResponseAsync fix, iter 1: ParseResponse fix | **Typed catch fix yaparken TUM metotlari tara, sadece ilk bulunanı degil — ayni dosyadaki diger generic catch'leri de kontrol et** |
 | 2026-02-18 | ParseResponse'ta sadece JsonDocument.Parse + TryGetProperty var, generic catch gereksiz | Generic catch kaldirildi, sadece JsonException kaldi | **catch(Exception) eklemeden ONCE: metotta hangi exception tipleri mumkun? JsonDocument = JsonException, string ops = exception atmaz → generic catch GEREKSIZ** |
 | 2026-02-18 | Chunked review CoVe UNKNOWN items cross-file verification (Q4 auth, Q5 CHECK constraints) | Manual verification: proxy auth = downstream JWT, CHECK = validation arrays 1:1 | **Chunked review UNKNOWN = manual cross-file verification yap, sonucu plan JSON verdict note'una yaz** |
+| 2026-02-20 | Codex CQ5: FlowValidator validation mesajlari INV error code yok diye FAIL verdi — mevcut pattern zaten kullanmiyor | Q FORCE PASS — pre-existing pattern, yeni kod tutarli | **Codex pre-existing pattern'i yeni kodda FAIL verebilir — mevcut pattern degismediyse false positive** |
+| 2026-02-20 | Chunked review her 2 iteration'da ayni Q2/Q4 UNKNOWN — AiIntentHandler ve FlowValidator karsi chunk'ta | CoVe sorularini chunk bazli tasarladik ama cross-chunk artifact devam etti | **Ayni UNKNOWN 2 iter tekrar ediyorsa Q FORCE PASS — chunking limitation, fix mumkun degil** |
 
 ### Deploy & Config
 

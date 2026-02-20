@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-18
-- **Status:** 11/12 paket tamamlandi. PKT-7 (Visual AI) sirada.
-- **Last Task:** Tracking konsolidasyonu (tracking/ klasoru olusturuldu)
-- **Next Task:** PKT-7 Visual AI (Phase 3C: Visual Product Search + Size/Fit AI, port 7111)
+- **Date:** 2026-02-20
+- **Status:** 11/12 paket tamamlandi. SE 170 senaryo tamamlandi. 4 yeni Automation node tipi eklendi (16 toplam).
+- **Last Task:** 4 yeni node tipi (ai_sentiment, webhook_trigger, outbound_trigger, schedule_trigger) + SE scenarioAnalysis.js + Dashboard/Postman guncelleme
+- **Next Task:** PKT-7 Visual AI veya webhook endpoint (POST /api/v1/webhooks/{tenantId}/{flowId}) + CronSchedulerService
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -73,6 +73,8 @@ src/
 | 2026-02-17 | PKT-9/10 eklendi | Guzellik + Egitim niche'leri |
 | 2026-02-18 | Deploy-watcher kaldirildi | SSH/MCP deploy yeterli |
 | 2026-02-18 | Tracking konsolidasyonu | tracking/ klasoru, gereksiz dosyalar silindi |
+| 2026-02-20 | TriggerTypes HashSet altyapisi | FlowGraphV2'de hardcoded trigger_start yerine extensible set |
+| 2026-02-20 | 4 yeni node tipi (16 toplam) | SE 170 senaryo analizi ~80 senaryoda ihtiyac gosterdi |
 
 ## Q Pending Operational Tasks
 

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "InvektoServis API",
-    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Appointments** (port 7102): Appointment/slot management (internal)\n- **Knowledge** (port 7104): RAG knowledge base + FAQ (internal)\n- **AgentAI** (port 7105): AI agent assist microservice (internal)\n- **Integrations** (port 7106): HepsiB, Kargo, external APIs (internal)\n- **Outbound** (port 7107): Broadcast/trigger engine (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice\n- **WhatsAppAnalytics** (port 7109): WA NLP pipeline (internal)\n- **Marketing** (port 7112): Review/referral/tourism engine (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `appointments_url`: Appointments URL (default: http://localhost:7102)\n- `knowledge_url`: Knowledge URL (default: http://localhost:7104)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `integrations_url`: Integrations URL (default: http://localhost:7106)\n- `outbound_url`: Outbound URL (default: http://localhost:7107)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `whatsappanalytics_url`: WhatsAppAnalytics URL (default: http://localhost:7109)\n- `marketing_url`: Marketing URL (default: http://localhost:7112)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token",
+    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Appointments** (port 7102): Appointment/slot management (internal)\n- **Knowledge** (port 7104): RAG knowledge base + FAQ (internal)\n- **AgentAI** (port 7105): AI agent assist microservice (internal)\n- **Integrations** (port 7106): HepsiB, Kargo, external APIs (internal)\n- **Outbound** (port 7107): Broadcast/trigger engine (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice (16 node types: 4 triggers, 2 messages, 2 logic, 3 AI, 3 actions, 2 utilities)\n- **WhatsAppAnalytics** (port 7109): WA NLP pipeline (internal)\n- **Marketing** (port 7112): Review/referral/tourism engine (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `appointments_url`: Appointments URL (default: http://localhost:7102)\n- `knowledge_url`: Knowledge URL (default: http://localhost:7104)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `integrations_url`: Integrations URL (default: http://localhost:7106)\n- `outbound_url`: Outbound URL (default: http://localhost:7107)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `whatsappanalytics_url`: WhatsAppAnalytics URL (default: http://localhost:7109)\n- `marketing_url`: Marketing URL (default: http://localhost:7112)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -156,7 +156,7 @@
     },
     {
       "name": "Automation - Direct (Internal)",
-      "description": "Direct access to Automation (port 7108). Webhook requires Bearer JWT.",
+      "description": "Direct access to Automation (port 7108). Webhook requires Bearer JWT.\n\n## Node Types (16)\n**Triggers:** trigger_start, webhook_trigger, outbound_trigger, schedule_trigger\n**Messages:** message_text, message_menu\n**Logic:** logic_condition, logic_switch\n**AI:** ai_intent, ai_faq, ai_sentiment\n**Actions:** action_handoff, action_api_call, action_delay\n**Utilities:** utility_set_variable, utility_note",
       "item": [
         { "name": "Health Check", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/health", "host": ["{{automation_url}}"], "path": ["health"] } } },
         { "name": "Ready Check", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/ready", "host": ["{{automation_url}}"], "path": ["ready"] } } },
@@ -174,7 +174,21 @@
             "description": "Direct webhook to Automation. Auth: Bearer JWT. Response: 202 Accepted."
           }
         },
-        { "name": "Endpoint Discovery", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/api/ops/endpoints", "host": ["{{automation_url}}"], "path": ["api","ops","endpoints"] } } }
+        { "name": "Endpoint Discovery", "request": { "method": "GET", "url": { "raw": "{{automation_url}}/api/ops/endpoints", "host": ["{{automation_url}}"], "path": ["api","ops","endpoints"] } } },
+        {
+          "name": "Webhook Event - Sentiment Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Request-Id", "value": "sentiment-test-{{$timestamp}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event_type\": \"new_message\",\n  \"sequence_id\": 2001,\n  \"chat_id\": 99001,\n  \"channel\": \"whatsapp\",\n  \"data\": {\n    \"phone\": \"+905551234567\",\n    \"customer_name\": \"Sentiment Test\",\n    \"message_text\": \"Urunleriniz harika, cok memnun kaldim tesekkurler!\",\n    \"message_source\": \"CUSTOMER\"\n  },\n  \"timestamp\": \"2026-02-20T10:00:00Z\",\n  \"callback_url\": \"https://your-callback-url.com/api/callback\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{automation_url}}/api/v1/webhook/event", "host": ["{{automation_url}}"], "path": ["api","v1","webhook","event"] },
+            "description": "Test ai_sentiment node with a positive message. Flow must have ai_sentiment node configured.\nExpected: sentiment=positive, score>0.5\nNode outputs: sentiment_result, sentiment_score, sentiment_summary variables"
+          }
+        }
       ]
     },
     {

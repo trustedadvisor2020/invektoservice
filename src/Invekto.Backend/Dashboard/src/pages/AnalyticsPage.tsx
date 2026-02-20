@@ -157,7 +157,7 @@ export function AnalyticsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Analizler</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Otomasyon metrikleri ve WA analiz raporlari</p>
+          <p className="text-sm text-gray-500 mt-0.5">Otomasyon metrikleri, duygu analizi ve WA analiz raporlari</p>
         </div>
         <Button variant="secondary" size="sm" onClick={fetchAutomationData} disabled={loading}>
           <RefreshCw className={`w-4 h-4 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
@@ -286,7 +286,7 @@ export function AnalyticsPage() {
       {selectedTenant && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <PlaceholderPanel title="Iade Takibi" description="Iade surecleri ve istatistikleri bu alanda goruntulenecek." />
-          <PlaceholderPanel title="Yorum Analizi" description="Musteri yorumlari ve sentiment analizi bu alanda goruntulenecek." />
+          <PlaceholderPanel title="Duygu Analizi" description="AI sentiment node aktif — musteri duygu skorlari ve pozitif/negatif dagilimi biriktikce burada goruntulenecek." />
         </div>
       )}
     </div>
