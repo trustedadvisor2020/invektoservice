@@ -117,6 +117,40 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// Get all active v2 flows with schedule_trigger node (cross-tenant by design).
+    /// CronSchedulerService is an IHostedService that evaluates cron expressions for ALL tenants.
+    /// Cross-tenant query is architecturally intentional — same pattern as other scheduler services.
+    /// </summary>
+    public async Task<List<ScheduleFlowInfo>> GetActiveScheduleFlowsAsync(CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT flow_id, tenant_id, flow_config::text
+            FROM chatbot_flows
+            WHERE is_active = true
+              AND flow_config->>'version' = '2'
+              AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements(flow_config->'nodes') AS node
+                  WHERE node->>'type' = 'schedule_trigger'
+              )";
+
+        var result = new List<ScheduleFlowInfo>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new ScheduleFlowInfo
+            {
+                FlowId = reader.GetInt32(0),
+                TenantId = reader.GetInt32(1),
+                FlowConfigJson = reader.GetString(2)
+            });
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Create a new flow for a tenant. Returns the new flow_id.
     /// New flows start as inactive (draft).
     /// </summary>
@@ -724,4 +758,11 @@ public sealed class FlowDetail
     public bool IsDefault { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+}
+
+public sealed class ScheduleFlowInfo
+{
+    public int FlowId { get; init; }
+    public int TenantId { get; init; }
+    public required string FlowConfigJson { get; init; }
 }

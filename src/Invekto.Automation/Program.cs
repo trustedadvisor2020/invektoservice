@@ -139,6 +139,10 @@ builder.Services.AddSingleton<MockFaqMatcher>();
 builder.Services.AddSingleton<MockIntentDetector>();
 builder.Services.AddSingleton<MockSentimentAnalyzer>();
 
+// Register CronSchedulerService (fires schedule_trigger flows on cron schedule)
+builder.Services.AddSingleton<CronSchedulerService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CronSchedulerService>());
+
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
 builder.Services.AddSingleton(jwtGenerator);
@@ -1034,6 +1038,177 @@ app.MapPost("/api/v1/returns/{tenantId:int}/{deflectionId:int}/deflected", async
 });
 
 // ============================================================
+// Webhook trigger endpoint (external systems -> Automation)
+// /api/v1/webhooks/ (plural) — intentionally outside JWT middleware prefix (/api/v1/webhook/ singular)
+// No auth — security through URL obscurity (Q's decision)
+// ============================================================
+
+app.MapPost("/api/v1/webhooks/{tenantId:int}/{flowId:int}", async (
+    int tenantId, int flowId,
+    HttpContext ctx,
+    AutomationRepository repo,
+    FlowEngineV2 engineV2,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    // Read raw JSON body
+    string payloadJson;
+    try
+    {
+        using var reader = new StreamReader(ctx.Request.Body);
+        payloadJson = await reader.ReadToEndAsync(ctx.RequestAborted);
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralTimeout, "Request cancelled", requestId),
+            statusCode: 408);
+    }
+
+    if (string.IsNullOrWhiteSpace(payloadJson))
+    {
+        jsonLogger.StepWarn($"Webhook: empty payload for tenant={tenantId}, flow={flowId}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Request body is required", requestId),
+            statusCode: 400);
+    }
+
+    // Validate JSON syntax
+    try { using var _ = JsonDocument.Parse(payloadJson); }
+    catch (JsonException)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralValidation, "Request body must be valid JSON", requestId),
+            statusCode: 400);
+    }
+
+    // Load flow (tenant-scoped)
+    FlowDetail? flowDetail;
+    try
+    {
+        flowDetail = await repo.GetFlowByIdAsync(tenantId, flowId, ctx.RequestAborted);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"Webhook: DB error loading flow {flowId}: {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Database error", requestId),
+            statusCode: 500);
+    }
+
+    if (flowDetail == null || !flowDetail.IsActive)
+    {
+        jsonLogger.StepWarn($"Webhook: flow not found or inactive tenant={tenantId}, flow={flowId}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AutomationWebhookFlowNotFound, "Webhook flow not found or inactive", requestId),
+            statusCode: 404);
+    }
+
+    // Build immutable graph
+    var graph = FlowGraphV2.Build(flowDetail.FlowConfigJson);
+    if (graph == null)
+    {
+        jsonLogger.StepError($"Webhook: invalid flow config for flow={flowId}, tenant={tenantId}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Flow config is invalid", requestId),
+            statusCode: 400);
+    }
+
+    // Verify trigger type is webhook_trigger
+    if (graph.TriggerStart == null || graph.TriggerStart.Type != "webhook_trigger")
+    {
+        jsonLogger.StepWarn(
+            $"Webhook: flow {flowId} trigger is '{graph.TriggerStart?.Type ?? "null"}', not webhook_trigger", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AutomationWebhookNotTriggerType, "Flow trigger type is not webhook_trigger", requestId),
+            statusCode: 400);
+    }
+
+    // Synthetic negative chat_id (never collides with real positive chat_ids)
+    var syntheticChatId = (int)Interlocked.Decrement(ref WebhookState.ChatIdCounter);
+    var sessionId = -1;
+
+    try
+    {
+        sessionId = await repo.CreateSessionAsync(
+            tenantId, syntheticChatId, phone: null, currentNode: "v2_active", ctx.RequestAborted);
+
+        // Initial state with __webhook_payload injected
+        var state = new SessionStateV2
+        {
+            CurrentNodeId = graph.TriggerStart.Id,
+            Status = "active",
+            Variables = { ["__webhook_payload"] = payloadJson }
+        };
+
+        var result = await engineV2.ExecuteAsync(graph, state, ctx.RequestAborted, tenantId: tenantId);
+
+        var finalStatus = result.IsTerminal
+            ? (result.NeedsHandoff ? "handed_off" : (result.ErrorCode != null ? "error" : "completed"))
+            : "completed"; // Webhook flows don't wait for input
+
+        await repo.EndSessionAsync(sessionId, finalStatus, ctx.RequestAborted);
+
+        jsonLogger.StepInfo(
+            $"Webhook executed: tenant={tenantId}, flow={flowId}, status={finalStatus}, messages={result.Messages.Count}",
+            requestId);
+
+        return Results.Ok(new
+        {
+            success = result.ErrorCode == null,
+            messages = result.Messages,
+            status = finalStatus,
+            execution_path = state.ExecutionPath,
+            error_code = result.ErrorCode
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError(
+            $"[{ErrorCodes.AutomationWebhookExecutionFailed}] Webhook DB error: tenant={tenantId}, flow={flowId}: {ex.Message}",
+            requestId);
+
+        if (sessionId > 0)
+        {
+            try { await repo.EndSessionAsync(sessionId, "error", CancellationToken.None); }
+            catch (Npgsql.NpgsqlException ex2) { jsonLogger.StepWarn($"Webhook: secondary EndSession failed for session {sessionId}: {ex2.Message}", requestId); }
+        }
+
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AutomationWebhookExecutionFailed, "Webhook execution failed", requestId),
+            statusCode: 500);
+    }
+    catch (OperationCanceledException)
+    {
+        if (sessionId > 0)
+        {
+            try { await repo.EndSessionAsync(sessionId, "error", CancellationToken.None); }
+            catch (Npgsql.NpgsqlException ex2) { jsonLogger.StepWarn($"Webhook: secondary EndSession failed for session {sessionId}: {ex2.Message}", requestId); }
+        }
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralTimeout, "Request cancelled", requestId),
+            statusCode: 408);
+    }
+    catch (InvalidOperationException ex)
+    {
+        jsonLogger.StepError(
+            $"[{ErrorCodes.AutomationWebhookExecutionFailed}] Webhook execution error: tenant={tenantId}, flow={flowId}: {ex.Message}",
+            requestId);
+
+        if (sessionId > 0)
+        {
+            try { await repo.EndSessionAsync(sessionId, "error", CancellationToken.None); }
+            catch (Npgsql.NpgsqlException ex2) { jsonLogger.StepWarn($"Webhook: secondary EndSession failed for session {sessionId}: {ex2.Message}", requestId); }
+        }
+
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AutomationWebhookExecutionFailed, "Webhook execution failed", requestId),
+            statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1061,6 +1236,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/onboarding/{tenantId}/seed-intents", Description = "Seed tenant intents from sector templates (PKT-6A)", Auth = "Bearer JWT", Category = "Onboarding" },
         new() { Method = "GET", Path = "/api/v1/returns/{tenantId}/stats", Description = "Return deflection stats (PKT-6B1)", Auth = "Bearer JWT", Category = "Returns" },
         new() { Method = "POST", Path = "/api/v1/returns/{tenantId}/{deflectionId}/deflected", Description = "Mark deflection as successful (PKT-6B1)", Auth = "Bearer JWT", Category = "Returns" },
+        new() { Method = "POST", Path = "/api/v1/webhooks/{tenantId}/{flowId}", Description = "Fire webhook_trigger flow (no auth)", Auth = "none", Category = "Webhook" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
@@ -1079,3 +1255,12 @@ app.Run();
 
 // Required for integration tests
 public partial class Program { }
+
+/// <summary>
+/// Static state for webhook endpoint — atomic counter for synthetic chat_ids.
+/// Separate from CronSchedulerService counter to avoid collision.
+/// </summary>
+static class WebhookState
+{
+    public static long ChatIdCounter = -1_000_000L;
+}

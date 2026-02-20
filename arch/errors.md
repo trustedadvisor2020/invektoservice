@@ -112,6 +112,14 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-024 | API call HTTP error | API cagrisi HTTP hatasi ({status_code}): {reason} |
 | INV-AT-025 | Knowledge intent fetch failed | Intent bilgileri alinamadi, varsayilan intent seti kullaniliyor. |
 | INV-AT-026 | VIP detection failed | VIP/B2B tespit islemi basarisiz (akis etkilenmez). |
+| INV-AT-027 | Return deflection failed | Iade deflection islemi basarisiz. |
+| INV-AT-028 | Return reason classify failed | Iade nedeni siniflandirma basarisiz. |
+| INV-AT-029 | Coupon assign failed | Kupon atama basarisiz. |
+| INV-AT-030 | Webhook flow not found | Webhook icin akis bulunamadi. |
+| INV-AT-031 | Webhook flow not webhook_trigger type | Bu akis webhook ile tetiklenemez. |
+| INV-AT-032 | Webhook execution failed | Webhook akis yurutmesi basarisiz. |
+| INV-AT-033 | Cron expression invalid | Gecersiz cron ifadesi. |
+| INV-AT-034 | Schedule execution failed | Zamanlama akis yurutmesi basarisiz. |
 
 ---
 

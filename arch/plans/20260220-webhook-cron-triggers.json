@@ -1,0 +1,149 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260220-webhook-cron-triggers",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-02-20T14:00:00Z",
+  "updated_at": "2026-02-20T14:30:00Z",
+  "plan": {
+    "summary": "Add webhook trigger endpoint (POST /api/v1/webhooks/{tenantId}/{flowId}) and CronSchedulerService (IHostedService) to the Automation service. Enables external systems to fire webhook_trigger flows and automatic cron-based execution of schedule_trigger flows.",
+    "q_intent": "Proceed with webhook endpoint (POST /api/v1/webhooks/{tenantId}/{flowId}) + CronSchedulerService",
+    "interview_notes": "Q chose: no auth (URL-only), synthetic DB sessions per webhook call, both webhook+cron in scope, no rate limit."
+  },
+  "allowed_files": [
+    "arch/errors.md",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Invekto.Automation.csproj",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Services/CronSchedulerService.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/errors.md", "is_new": false, "change": "Added INV-AT-027~034 error codes documentation" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "Added ScheduleFlowInfo DTO and GetActiveScheduleFlowsAsync cross-tenant query" },
+    { "path": "src/Invekto.Automation/Invekto.Automation.csproj", "is_new": false, "change": "Added Cronos 0.9.0 NuGet package" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "Added webhook endpoint POST /api/v1/webhooks/{tenantId}/{flowId}, CronSchedulerService DI registration, endpoint discovery entry, WebhookState static counter class" },
+    { "path": "src/Invekto.Automation/Services/CronSchedulerService.cs", "is_new": true, "change": "New IHostedService: 60s timer, Cronos cron evaluation, per-flow error isolation, synthetic sessions" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added 5 new error code constants (INV-AT-030~034)" }
+  ],
+  "git_diff": {
+    "sha256": "5c3e3f93b970dc8f7fb836ab45c8316fdcb57fd3c6301de91d17c34cf66138d5",
+    "full_path": "arch/plans/diffs/20260220-webhook-cron-triggers.diff",
+    "stats": {
+      "insertions": 460,
+      "deletions": 0,
+      "files_count": 6
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln -v q",
+    "timestamp": "2026-02-20T14:25:00Z",
+    "services": ["Invekto.Shared", "Invekto.Automation"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the webhook endpoint correctly inject __webhook_payload into SessionStateV2.Variables before calling FlowEngineV2.ExecuteAsync?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the CronSchedulerService correctly evaluate cron expressions using Cronos and only fire flows when they are due (not double-fire on restart)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "Are synthetic sessions properly cleaned up (EndSessionAsync called) in all code paths including error/cancellation for both webhook and cron?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the webhook endpoint URL /api/v1/webhooks/ (plural) correctly bypass JWT middleware which only covers /api/v1/webhook/ (singular)?",
+      "category": "Auth"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/",
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.Appointments/",
+      "src/Invekto.Knowledge/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.Marketing/"
+    ],
+    "non_goals": [
+      "Authentication for webhook endpoint (Q chose URL-only)",
+      "Rate limiting (Q chose no rate limit)",
+      "outbound_trigger activation mechanism",
+      "Contract JSON update (automation-flow-v2.json is stale but not in scope)"
+    ],
+    "intentional_exclusions": [
+      "No new DB tables (synthetic sessions use existing chat_sessions)",
+      "No webhook secret/token table",
+      "No Frontend changes"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs: webhook endpoint body read (OperationCanceledException)",
+      "Program.cs: webhook endpoint flow load (NpgsqlException)",
+      "Program.cs: webhook endpoint execution (NpgsqlException + OperationCanceledException)",
+      "CronSchedulerService.cs: OnTimerTick top-level (Exception)",
+      "CronSchedulerService.cs: ExecuteScheduledFlowsAsync DB query (NpgsqlException)",
+      "CronSchedulerService.cs: TryExecuteFlowAsync cron parse (CronFormatException)",
+      "CronSchedulerService.cs: TryExecuteFlowAsync timezone (TimeZoneNotFoundException)",
+      "CronSchedulerService.cs: ExecuteSingleFlowAsync execution (NpgsqlException + OperationCanceledException)"
+    ],
+    "user_facing_errors": [
+      "Webhook flow not found or inactive (404, INV-AT-030)",
+      "Flow trigger type is not webhook_trigger (400, INV-AT-031)",
+      "Webhook execution failed (500, INV-AT-032)",
+      "Request body is required (400, INV-GEN-003)",
+      "Request body must be valid JSON (400, INV-GEN-003)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks log via JsonLinesLogger (SystemError/SystemWarn). Secondary EndSessionAsync catch blocks now log via SystemWarn/StepWarn with session ID and error message. No empty catch blocks."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "External systems cannot trigger automation flows without going through WhatsApp/chat pipeline",
+      "suggestion": "Webhook endpoint enables any HTTP client to fire webhook_trigger flows directly",
+      "aha_moment": "When a third-party CRM posts to the webhook URL and the flow fires instantly without any chat dependency"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Scheduled tasks like daily reminders require manual intervention or external cron services",
+      "suggestion": "CronSchedulerService evaluates cron expressions and fires flows automatically every 60 seconds",
+      "aha_moment": "When a salon owner sets up a daily morning reminder flow and it fires at 09:00 without any manual trigger"
+    },
+    {
+      "category": "UX",
+      "user_pain": "No visibility into webhook execution results - external systems fire and forget",
+      "suggestion": "Webhook endpoint returns synchronous 200 with messages, status, and execution_path",
+      "aha_moment": "When the external system receives the flow's output messages in the HTTP response and can react immediately"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Cron service could double-fire flows on restart or during slow execution",
+      "suggestion": "In-memory last-fired tracking with Interlocked overlap prevention ensures at-most-once semantics",
+      "aha_moment": "When the service restarts and correctly skips the already-fired window instead of re-triggering"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Debugging webhook failures requires checking multiple log sources",
+      "suggestion": "Structured logging with requestId, tenantId, flowId, and error codes in every webhook/cron log entry",
+      "aha_moment": "When support searches by requestId and sees the complete execution trail in one place"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 2,
+    "blocking_issues": [],
+    "override": "Q FORCE PASS — CQ5 false positives (cross-tenant by design, no-auth by Q decision) repeated 3 iterations"
+  }
+}

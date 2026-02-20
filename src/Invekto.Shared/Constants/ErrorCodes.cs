@@ -75,6 +75,13 @@ public static class ErrorCodes
     public const string AutomationReturnReasonClassifyFailed = "INV-AT-028";
     public const string AutomationCouponAssignFailed = "INV-AT-029";
 
+    // Automation Webhook + Schedule Triggers (INV-AT-030+)
+    public const string AutomationWebhookFlowNotFound = "INV-AT-030";
+    public const string AutomationWebhookNotTriggerType = "INV-AT-031";
+    public const string AutomationWebhookExecutionFailed = "INV-AT-032";
+    public const string AutomationCronExpressionInvalid = "INV-AT-033";
+    public const string AutomationScheduleExecutionFailed = "INV-AT-034";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";
