@@ -1,0 +1,143 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260220-dashboard-inma-hotfix",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-20T14:00:00Z",
+  "updated_at": "2026-02-20T14:00:00Z",
+  "plan": {
+    "summary": "Fix two INMA SSO integration bugs: (1) Flow Builder iframe shows login instead of inheriting Dashboard session because it reads fb_session from sessionStorage while Dashboard writes to localStorage. (2) Sidebar nav links disappear after navigation because ops-only endpoints return 401 for INMA JWT, triggering aggressive token wipe in executeWithRefresh that clears localStorage while React state still shows authenticated.",
+    "q_intent": "inma dan direk linkle giris yaptim. flow builder a giris yapinca tekrar login istiyor, dogrudan girmesi lazim. diger sayfalar ornegin kampanyalara girince sol navdaki tum servis linkler kayboluyor.",
+    "interview_notes": null
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/FlowBuilder/src/lib/auth.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/wwwroot/index.html",
+    "src/Invekto.Backend/wwwroot/assets/*",
+    "src/Invekto.Backend/wwwroot/flow-builder/index.html",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/*"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/auth.ts", "is_new": false, "change": "loadSession reads localStorage first then sessionStorage" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "executeWithRefresh preserves INMA tokens on 401" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/index.html", "is_new": true, "change": "Flow Builder build output" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-BxoLm0ty.js", "is_new": true, "change": "Flow Builder build output" },
+    { "path": "src/Invekto.Backend/wwwroot/flow-builder/assets/index-RE0VXwy3.css", "is_new": true, "change": "Flow Builder build output" },
+    { "path": "src/Invekto.Backend/wwwroot/assets/index-DVNHCb_I.js", "is_new": false, "change": "Dashboard build output (renamed)" },
+    { "path": "src/Invekto.Backend/wwwroot/index.html", "is_new": false, "change": "Dashboard build output (asset hash update)" }
+  ],
+  "git_diff": {
+    "sha256": "362f381bcc3ff98789105bf6851c47d7b0611dc22e5aff20fb58d5d0e33619a1",
+    "full_path": "arch/plans/diffs/20260220-dashboard-inma-hotfix-source.diff",
+    "stats": { "insertions": 240, "deletions": 18, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build (FlowBuilder + Dashboard)",
+    "timestamp": "2026-02-20T14:00:00Z",
+    "duration_ms": null,
+    "output_tail": "FlowBuilder: built in 2.00s, Dashboard: built in 5.12s",
+    "error_summary": null,
+    "services": []
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does Flow Builder loadSession correctly read from localStorage first (where Dashboard writes fb_session) before falling back to sessionStorage?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the executeWithRefresh method preserve INMA session tokens when ops endpoints return 401, preventing sidebar nav items from disappearing?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Is there any risk of stale tokens remaining in localStorage for INMA sessions that should have been invalidated (e.g. truly expired JWT)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/Controllers/", "src/Invekto.Shared/"],
+    "non_goals": ["Backend auth endpoint changes", "New API endpoints for tenant analytics"],
+    "intentional_exclusions": ["Backend changes - purely frontend fix"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/FlowBuilder/src/lib/auth.ts:loadSession",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts:executeWithRefresh"
+    ],
+    "user_facing_errors": ["Unauthorized error thrown on 401 (caught by callers)"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "loadSession returns null on parse failure (safe fallback to login). executeWithRefresh throws Unauthorized (callers handle via catch)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "INMA users must re-enter credentials for Flow Builder even though they're already logged in",
+      "suggestion": "Share auth session via localStorage between Dashboard and Flow Builder iframe",
+      "aha_moment": "User clicks Flow Builder and is instantly inside the editor without any login screen"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Sidebar navigation links randomly disappear after visiting certain pages",
+      "suggestion": "Prevent token wipe on 401 for INMA sessions since ops endpoints naturally reject INMA JWT",
+      "aha_moment": "User navigates freely between all pages and sidebar always shows full menu"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Users lose trust in the application when UI elements disappear unexpectedly",
+      "suggestion": "Consistent sidebar state regardless of background API failures",
+      "aha_moment": "User feels confident the app is stable and reliable during daily use"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Extra login step for Flow Builder wastes time and breaks workflow",
+      "suggestion": "Zero-click auth propagation from Dashboard to embedded sub-apps",
+      "aha_moment": "User opens Flow Builder and starts designing flows immediately"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support tickets about 'pages not working' or 'menu disappeared' caused by auth state corruption",
+      "suggestion": "Resilient auth that separates INMA session validity from ops endpoint access",
+      "aha_moment": "Zero support tickets related to navigation or login issues after INMA SSO"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-20T14:30:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-20T14:30:00Z",
+    "raw_text": null,
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "INV-AU-001/002 error codes with actionable messages" },
+      "CQ2": { "result": "PASS", "evidence": "Typed catch with console.warn logging" },
+      "CQ3": { "result": "PASS", "evidence": "Changes scoped to auth session loading and ops refresh" },
+      "CQ4": { "result": "PASS", "evidence": "No duplicated blocks" },
+      "CQ5": { "result": "PASS", "evidence": "INV-AU error codes, typed catch (err: unknown)" },
+      "CQ6": { "result": "PASS", "evidence": "2-item loop only, no perf issues" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "No interface removals" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "loadSession iterates [localStorage, sessionStorage] returning first valid" },
+      "Q2": { "result": "PASS", "reasoning": "Token wipe guarded by !isInmaSession()" },
+      "Q3": { "result": "PASS", "reasoning": "Expired JWTs make isInmaSession() false, triggering wipe" }
+    },
+    "blocking_issues": [],
+    "iteration": 2,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

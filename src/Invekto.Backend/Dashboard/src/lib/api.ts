@@ -608,17 +608,28 @@ class OpsApiClient {
       const refreshed = await this.handleRefresh();
       if (refreshed) {
         response = await doFetch();
-      } else {
+      } else if (!this.isInmaSession()) {
+        // Ops/Basic Auth: refresh failed → session truly invalid, wipe everything.
         this.removeTokens();
         this.clearCredentials();
-        throw new Error('Unauthorized');
+        throw new Error('INV-AU-001: Session expired, refresh failed');
+      } else {
+        // INMA session: 401 from ops-only endpoint, NOT a session problem.
+        // Token validity is enforced by getDecodedToken() expiry check —
+        // once JWT expires, isInmaSession() returns false and this branch
+        // is never reached, so stale tokens cannot persist.
+        throw new Error('INV-AU-002: Endpoint requires ops auth');
       }
     }
 
     if (response.status === 401) {
-      this.removeTokens();
-      this.clearCredentials();
-      throw new Error('Unauthorized');
+      if (!this.isInmaSession()) {
+        this.removeTokens();
+        this.clearCredentials();
+        throw new Error('INV-AU-001: Session expired, refresh failed');
+      }
+      // INMA session: endpoint rejected JWT but session is still valid
+      throw new Error('INV-AU-002: Endpoint requires ops auth');
     }
 
     return response;
