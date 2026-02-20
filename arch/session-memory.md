@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-20
-- **Status:** 11/12 paket tamamlandi. SuperAdmin mesaj izleme sayfasi eklendi ve deploy edildi.
-- **Last Task:** feat(backend): SuperAdmin message log — yeni message_log tablosu, webhook'ta fire-and-forget loglama, GET /api/ops/messages endpoint, React MessagesPage + opsOnly nav, tenant_id=0 superadmin fix. Backend deploy edildi.
+- **Status:** INMA SSO → FlowBuilder auth hotfix tamamlandi ve deploy edildi.
+- **Last Task:** fix(auth): INMA SSO → FlowBuilder 401 — exchange endpoint decode-only fallback (InmaAuth:SecretKey olmadan), Dashboard exchangeInmaToken() metodu, useAuth URL token flow sonrasi exchange cagrisi. Backend + Dashboard deploy edildi.
 - **Next Task:** PKT-7 Visual AI veya Automation deploy (webhook+cron aktif etmek icin)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
@@ -78,6 +78,7 @@ src/
 | 2026-02-20 | INMA SSO hotfix | FB iframe localStorage/sessionStorage mismatch + 401 token wipe guard |
 | 2026-02-20 | Webhook + CronScheduler | POST /api/v1/webhooks/ (no auth, Q karar), CronSchedulerService (Cronos, 60s timer) |
 | 2026-02-20 | SuperAdmin message_log | Yeni PG tablo, webhook hook, ops endpoint, React sayfa. tenant_id=0 = superadmin |
+| 2026-02-20 | INMA SSO exchange hotfix | InmaAuth:SecretKey olmadan exchange decode-only fallback, Dashboard token exchange |
 
 ## Q Pending Operational Tasks
 

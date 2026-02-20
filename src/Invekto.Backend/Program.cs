@@ -1,4 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Invekto.Shared.Middleware;
@@ -253,6 +255,9 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 
     // SuperAdmin: Message log (fire-and-forget insert at webhook, paginated select for ops)
     builder.Services.AddSingleton<MessageLogRepository>();
+
+    // SuperAdmin: Tenant registry (list + impersonate)
+    builder.Services.AddSingleton<TenantRegistryRepository>();
 }
 
 // Callback client for async results to Main App
@@ -1152,7 +1157,8 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
                 msg.Body,
                 msg.Type ?? "text",
                 msg.ChatId,
-                msg.Id
+                msg.Id,
+                webhookEvent.InstanceId
             ).ContinueWith(t =>
             {
                 if (t.IsFaulted)
@@ -3583,18 +3589,107 @@ app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
 });
 
 // ============================================
+// SUPERADMIN: TENANT LIST + IMPERSONATE
+// ============================================
+
+app.MapGet("/api/ops/tenants", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (tenantRepo == null)
+        return Results.Json(
+            new { error = ErrorCodes.BackendTenantListQueryFailed, message = "PostgreSQL not configured" },
+            statusCode: 503);
+
+    try
+    {
+        var tenants = await tenantRepo.ListTenantsAsync();
+        return Results.Ok(new { tenants });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Tenant list query failed ({ErrorCodes.BackendTenantListQueryFailed}): {ex.Message}");
+        return Results.Json(
+            new { error = ErrorCodes.BackendTenantListQueryFailed, message = "Firma listesi yuklenemedi." },
+            statusCode: 500);
+    }
+});
+
+app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (jwtGenerator == null)
+        return Results.Json(
+            new { error = ErrorCodes.BackendTenantImpersonateFailed, message = "JWT not configured" },
+            statusCode: 503);
+
+    if (id <= 0)
+        return Results.BadRequest(
+            new { error = ErrorCodes.GeneralValidation, message = "Gecersiz tenant_id." });
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (tenantRepo == null)
+        return Results.Json(
+            new { error = ErrorCodes.BackendTenantImpersonateFailed, message = "PostgreSQL not configured" },
+            statusCode: 503);
+
+    try
+    {
+        var tenant = await tenantRepo.GetTenantAsync(id);
+        if (tenant == null)
+            return Results.NotFound(
+                new { error = ErrorCodes.IntegrationTenantNotFound, message = $"Tenant {id} bulunamadi." });
+
+        if (!tenant.IsActive)
+            return Results.Json(
+                new { error = ErrorCodes.BackendTenantImpersonateFailed, message = $"Tenant {id} aktif degil." },
+                statusCode: 403);
+
+        var tokenExpiry = TimeSpan.FromHours(8);
+        var token = jwtGenerator.GenerateToken(id, "admin", "ops_impersonate", tokenExpiry, "0");
+
+        jsonLog.StepInfo($"ops impersonate: superadmin entered tenant {id} ({tenant.TenantName})", Guid.NewGuid().ToString("N"));
+
+        return Results.Ok(new
+        {
+            token,
+            tenant_id = id,
+            user_id = 0,
+            role = "admin",
+            full_name = $"SuperAdmin @ {tenant.TenantName}",
+            lang = "tr",
+            inse_features = new[] { "FlowBuilder", "Knowledge", "Outbound", "Appointments", "Analytics", "Integrations", "Marketing" },
+            expires_in = (int)tokenExpiry.TotalSeconds,
+            token_type = "Bearer",
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Tenant impersonate failed ({ErrorCodes.BackendTenantImpersonateFailed}): tenantId={id}, {ex.Message}");
+        return Results.Json(
+            new { error = ErrorCodes.BackendTenantImpersonateFailed, message = "Firma girisi basarisiz oldu." },
+            statusCode: 500);
+    }
+});
+
+// ============================================
 // INMA SSO AUTH ENDPOINTS
 // ============================================
 
 // Akis 1: inma JWT -> inse JWT exchange (URL token flow)
 // inma'dan gelen ?accesstoken= parametresi bu endpoint'e gonderilir.
+// InmaAuth:SecretKey yoksa signature validation atlanir (decode-only fallback).
 app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    if (inmaJwtValidator == null || jwtGenerator == null)
+    if (jwtGenerator == null)
         return Results.Json(
-            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT generator not configured", requestId),
             statusCode: 503);
 
     try
@@ -3608,13 +3703,84 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
                 ErrorResponse.Create(ErrorCodes.GeneralValidation, "token field required", requestId),
                 statusCode: 400);
 
-        var (inmaCtx, error) = inmaJwtValidator.ValidateToken(inmaToken);
-        if (inmaCtx == null)
+        InmaTokenContext? inmaCtx = null;
+
+        // Path A: inmaJwtValidator configured → full signature validation
+        if (inmaJwtValidator != null)
         {
-            jsonLogger.StepWarn($"inma token exchange failed: {error}", requestId);
-            return Results.Json(
-                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Invalid token", requestId),
-                statusCode: 401);
+            var (ctx2, error) = inmaJwtValidator.ValidateToken(inmaToken);
+            if (ctx2 == null)
+            {
+                jsonLogger.StepWarn($"inma token exchange failed: {error}", requestId);
+                return Results.Json(
+                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Invalid token", requestId),
+                    statusCode: 401);
+            }
+            inmaCtx = ctx2;
+        }
+        else
+        {
+            // Path B: InmaAuth:SecretKey not configured → decode-only (no signature verification)
+            // INMA JWT claim'lerini okuyup InmaTokenContext olustur
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                if (!handler.CanReadToken(inmaToken))
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Not a valid JWT format", requestId),
+                        statusCode: 401);
+
+                var jwt = handler.ReadJwtToken(inmaToken);
+
+                // Expiry check (manual — no signature validation means no automatic lifetime check)
+                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthTokenExpired, "Token expired", requestId),
+                        statusCode: 401);
+
+                var companyIdStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyId")?.Value;
+                var userIdStr = jwt.Claims.FirstOrDefault(c =>
+                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+                    || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
+                var fullName = jwt.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "";
+                var lang = jwt.Claims.FirstOrDefault(c => c.Type == "Lang")?.Value ?? "tr";
+
+                if (!int.TryParse(companyIdStr, out var tenantId) || tenantId <= 0)
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Missing or invalid CompanyId claim", requestId),
+                        statusCode: 401);
+                if (!int.TryParse(userIdStr, out var userId))
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Missing or invalid nameidentifier claim", requestId),
+                        statusCode: 401);
+
+                var role = chatRole switch { "2" => "admin", _ => "agent" };
+
+                string[] inseFeatures = [];
+                var featuresRaw = jwt.Claims.FirstOrDefault(c => c.Type == "InseFeatures")?.Value;
+                if (!string.IsNullOrWhiteSpace(featuresRaw))
+                    try { inseFeatures = System.Text.Json.JsonSerializer.Deserialize<string[]>(featuresRaw) ?? []; } catch { }
+
+                inmaCtx = new InmaTokenContext
+                {
+                    TenantId = tenantId,
+                    UserId = userId,
+                    Role = role,
+                    FullName = fullName,
+                    Lang = lang,
+                    InseFeatures = inseFeatures
+                };
+
+                jsonLogger.StepInfo($"inma token exchange (decode-only): tenant={tenantId} user={userId}", requestId);
+            }
+            catch (Exception ex)
+            {
+                jsonLogger.StepWarn($"inma token decode failed: {ex.Message}", requestId);
+                return Results.Json(
+                    ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Failed to decode INMA token", requestId),
+                    statusCode: 401);
+            }
         }
 
         var tokenExpiry = TimeSpan.FromHours(8);

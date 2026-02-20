@@ -139,6 +139,17 @@ export interface MessageLogEntry {
   messageType: string | null;
   chatId: string | null;
   externalMessageId: string | null;
+  instanceId: string | null;
+  createdAt: string;
+}
+
+// Tenant registry types (SuperAdmin)
+export interface TenantEntry {
+  tenantId: number;
+  tenantName: string;
+  isActive: boolean;
+  sector: string | null;
+  planTier: string;
   createdAt: string;
 }
 
@@ -458,7 +469,9 @@ class OpsApiClient {
       tenantId: parseInt(decoded.tenant_id ?? '0') || 0,
       userId: parseInt(decoded.user_id ?? '0') || 0,
       role: decoded.role ?? 'agent',
-      fullName: decoded.source === 'ops_quicklogin' ? 'Super Admin' : 'Demo User',
+      fullName: decoded.source === 'ops_quicklogin' ? 'Super Admin'
+        : decoded.source === 'ops_impersonate' ? 'SuperAdmin'
+        : 'Demo User',
       lang: 'tr',
       inseFeatures: features,
       expiresAt: decoded.exp * 1000,
@@ -487,8 +500,52 @@ class OpsApiClient {
     return this.getAccessToken() !== null && this.getDecodedToken() !== null;
   }
 
+  isImpersonating(): boolean {
+    return this.getDecodedToken()?.source === 'ops_impersonate';
+  }
+
   getAuthHeaders(): Record<string, string> {
     return this.buildHeaders();
+  }
+
+  // --- INMA token exchange for FlowBuilder ---
+
+  /**
+   * Exchanges raw INMA JWT for an INSE JWT and updates fb_session.
+   * FlowBuilder backend validates with INSE JwtValidator, so INMA JWTs fail 401.
+   * This method is fire-and-forget — called after URL token SSO flow.
+   */
+  async exchangeInmaToken(): Promise<void> {
+    const token = this.getAccessToken();
+    if (!token) return;
+
+    // Only exchange INMA tokens (have CompanyId claim, not INSE tokens)
+    const decoded = this.getDecodedToken();
+    if (!decoded?.CompanyId) return;
+
+    try {
+      const response = await fetch('/api/v1/inma/auth/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        console.warn('[api] INMA token exchange failed:', response.status);
+        return;
+      }
+
+      const data: InmaAuthResponse = await response.json();
+
+      // Update fb_session with INSE JWT (FlowBuilder can validate this)
+      localStorage.setItem('fb_session', JSON.stringify({
+        token: data.token,
+        tenant_id: data.tenant_id,
+        expires_at: Date.now() + data.expires_in * 1000,
+      }));
+    } catch (err) {
+      console.warn('[api] INMA token exchange for FlowBuilder failed:', err);
+    }
   }
 
   // --- inma auth calls ---
@@ -918,6 +975,18 @@ class OpsApiClient {
     if (params.limit) sp.set('limit', params.limit.toString());
     if (params.offset) sp.set('offset', params.offset.toString());
     return this.request<{ messages: MessageLogEntry[]; total: number }>(`/api/ops/messages?${sp}`);
+  }
+
+  // SuperAdmin: Tenant list
+  async getOpsTenants(): Promise<{ tenants: TenantEntry[] }> {
+    return this.request<{ tenants: TenantEntry[] }>('/api/ops/tenants');
+  }
+
+  // SuperAdmin: Impersonate tenant
+  async impersonateTenant(tenantId: number): Promise<InmaAuthResponse> {
+    return this.request<InmaAuthResponse>(`/api/ops/tenants/${tenantId}/impersonate`, {
+      method: 'POST',
+    });
   }
 }
 

@@ -27,11 +27,14 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
   const [welcomeData, setWelcomeData] = useState<unknown>(null);
 
-  // Post-mount: navigate + welcome fetch (effects can't run during init)
+  // Post-mount: navigate + welcome fetch + INMA token exchange for FlowBuilder
   useEffect(() => {
     if (!urlTokenHandled) return;
 
     if (session) {
+      // Exchange INMA JWT for INSE JWT so FlowBuilder backend can validate fb_session
+      api.exchangeInmaToken();
+
       api.getWelcome()
         .then(data => setWelcomeData(data))
         .catch(err => console.warn('[useAuth] welcome fetch failed:', err));
