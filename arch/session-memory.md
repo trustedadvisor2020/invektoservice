@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-20
-- **Status:** 11/12 paket tamamlandi. SE 170 senaryo tamamlandi. 4 yeni Automation node tipi eklendi (16 toplam).
-- **Last Task:** 4 yeni node tipi (ai_sentiment, webhook_trigger, outbound_trigger, schedule_trigger) + SE scenarioAnalysis.js + Dashboard/Postman guncelleme
-- **Next Task:** PKT-7 Visual AI veya webhook endpoint (POST /api/v1/webhooks/{tenantId}/{flowId}) + CronSchedulerService
+- **Status:** 11/12 paket tamamlandi. INMA SSO hotfix tamamlandi (Flow Builder iframe auth + sidebar token wipe).
+- **Last Task:** fix(dashboard): INMA SSO auth hotfix — Flow Builder localStorage/sessionStorage mismatch + executeWithRefresh token wipe guard
+- **Next Task:** PKT-7 Visual AI veya webhook endpoint (POST /api/v1/webhooks/{tenantId}/{flowId}) + CronSchedulerService + Backend deploy (wwwroot updated)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -75,6 +75,7 @@ src/
 | 2026-02-18 | Tracking konsolidasyonu | tracking/ klasoru, gereksiz dosyalar silindi |
 | 2026-02-20 | TriggerTypes HashSet altyapisi | FlowGraphV2'de hardcoded trigger_start yerine extensible set |
 | 2026-02-20 | 4 yeni node tipi (16 toplam) | SE 170 senaryo analizi ~80 senaryoda ihtiyac gosterdi |
+| 2026-02-20 | INMA SSO hotfix | FB iframe localStorage/sessionStorage mismatch + 401 token wipe guard |
 
 ## Q Pending Operational Tasks
 

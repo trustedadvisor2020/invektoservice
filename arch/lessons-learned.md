@@ -13,6 +13,8 @@
 
 | Date | Mistake | Solution | Prevention |
 |------|---------|----------|------------|
+| 2026-02-20 | Dashboard localStorage'a fb_session yazdi ama FlowBuilder sessionStorage'dan okudu — iframe icinde paylasilmadi | FlowBuilder loadSession: once localStorage sonra sessionStorage dene | **iframe ile session paylasiminda HER ZAMAN localStorage kullan (sessionStorage browsing context'e ozel, iframe icinde paylasILMAZ)** |
+| 2026-02-20 | executeWithRefresh 401'de tum token'lari sildi — INMA session'da ops endpoint 401 donunce sidebar kayboldu | isInmaSession() guard ile INMA token'lari koru, sadece ops/Basic Auth session'larinda wipe | **401 handler'da auth type kontrol et: her 401 "session gecersiz" demek DEGIL, endpoint auth mismatch de olabilir** |
 | 2026-02-11 | Yeni step type (api_call) eklendi ama mevcut webhook-only kodu guncellenmedi | `step.type === 'api_call'` guard + optional chaining | **Yeni variant/type eklerken TUM mevcut erisim noktalarini tara** |
 | 2026-02-11 | Multi-step senaryoda hardcoded placeholder kullanildi | `{{step_N.field}}` template + `resolveStepRefs()` | **Adimlar arasi veri aktarimi OTOMATIK olmali** |
 | 2026-02-11 | Plan JSON `files_changed` unstage sonrasi senkronize edilmedi | `git diff --cached` ile esitle | **Stage/unstage sonrasi files_changed + files_count GUNCELLE** |
@@ -71,6 +73,8 @@
 | 2026-02-18 | Chunked review CoVe UNKNOWN items cross-file verification (Q4 auth, Q5 CHECK constraints) | Manual verification: proxy auth = downstream JWT, CHECK = validation arrays 1:1 | **Chunked review UNKNOWN = manual cross-file verification yap, sonucu plan JSON verdict note'una yaz** |
 | 2026-02-20 | Codex CQ5: FlowValidator validation mesajlari INV error code yok diye FAIL verdi — mevcut pattern zaten kullanmiyor | Q FORCE PASS — pre-existing pattern, yeni kod tutarli | **Codex pre-existing pattern'i yeni kodda FAIL verebilir — mevcut pattern degismediyse false positive** |
 | 2026-02-20 | Chunked review her 2 iteration'da ayni Q2/Q4 UNKNOWN — AiIntentHandler ve FlowValidator karsi chunk'ta | CoVe sorularini chunk bazli tasarladik ama cross-chunk artifact devam etti | **Ayni UNKNOWN 2 iter tekrar ediyorsa Q FORCE PASS — chunking limitation, fix mumkun degil** |
+| 2026-02-20 | Codex CQ5: IHostedService cross-tenant query + no-auth webhook 3 iter FAIL — her ikisi de Q'nun interview'da explicit karari | Q FORCE PASS (iter 2) | **Q interview kararlari (no auth, cross-tenant scheduler) Codex'e architectural decision olarak belirtilse bile CQ5 tekrar edebilir — 3 iter'de Q FORCE PASS** |
+| 2026-02-20 | CQ2: secondary EndSessionAsync catch bloklari `/* swallow */` loglama yok — iter 1'de yakalandi | Tum 6 catch blokuna SystemWarn/StepWarn + session ID + ex.Message eklendi | **Cleanup catch bloklari bile loglamali — `/* swallow */` ASLA yazma, en az SystemWarn** |
 
 ### Deploy & Config
 
