@@ -7,8 +7,8 @@ interface MetricCardsProps {
 }
 
 export function MetricCards({ summary }: MetricCardsProps) {
-  const deflectionColor = summary.deflection_rate >= 80 ? 'text-green-600' : summary.deflection_rate >= 50 ? 'text-yellow-600' : 'text-red-600';
-  const deflectionBg = summary.deflection_rate >= 80 ? 'bg-green-50' : summary.deflection_rate >= 50 ? 'bg-yellow-50' : 'bg-red-50';
+  const deflectionColor = summary.deflection_rate >= 80 ? 'text-emerald-600' : summary.deflection_rate >= 50 ? 'text-amber-600' : 'text-red-500';
+  const deflectionBg = summary.deflection_rate >= 80 ? 'bg-emerald-50' : summary.deflection_rate >= 50 ? 'bg-amber-50' : 'bg-red-50';
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -20,7 +20,7 @@ export function MetricCards({ summary }: MetricCardsProps) {
               <TrendingUp className={`w-5 h-5 ${deflectionColor}`} />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Oto. Cozum</p>
+              <p className="text-xs text-navy-300 uppercase tracking-wide">Oto. Cozum</p>
               <p className={`text-2xl font-bold ${deflectionColor}`}>{summary.deflection_rate}%</p>
             </div>
           </div>
@@ -35,7 +35,7 @@ export function MetricCards({ summary }: MetricCardsProps) {
               <TrendingDown className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Insan Destek</p>
+              <p className="text-xs text-navy-300 uppercase tracking-wide">Insan Destek</p>
               <p className="text-2xl font-bold text-orange-600">{summary.handoff_rate}%</p>
             </div>
           </div>
@@ -46,12 +46,12 @@ export function MetricCards({ summary }: MetricCardsProps) {
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-5 h-5 text-brand-500" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Toplam</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.total_replies.toLocaleString()}</p>
+              <p className="text-xs text-navy-300 uppercase tracking-wide">Toplam</p>
+              <p className="text-2xl font-bold text-navy-900">{summary.total_replies.toLocaleString()}</p>
             </div>
           </div>
         </CardContent>
@@ -65,8 +65,8 @@ export function MetricCards({ summary }: MetricCardsProps) {
               <Clock className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Ort. Sure</p>
-              <p className="text-2xl font-bold text-gray-900">{Math.round(summary.avg_processing_time_ms)}ms</p>
+              <p className="text-xs text-navy-300 uppercase tracking-wide">Ort. Sure</p>
+              <p className="text-2xl font-bold text-navy-900">{Math.round(summary.avg_processing_time_ms)}ms</p>
             </div>
           </div>
         </CardContent>

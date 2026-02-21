@@ -1,62 +1,70 @@
 /* React Flow base styles - must be first */
 @import '@xyflow/react/dist/style.css';
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #F7F9FC;
+  color: #0A2540;
+  letter-spacing: -0.011em;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* Minimal scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C1C9D2; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #8898AA; }
+
+/* Selection */
+::selection {
+  background: rgba(99, 91, 255, 0.12);
+}
 
 /* React Flow canvas customization */
 .react-flow__background {
-  background-color: #f1f5f9 !important;
+  background-color: #F7F9FC !important;
 }
 
 .react-flow__minimap {
   background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid #E3E8EE !important;
   border-radius: 8px !important;
 }
 
 .react-flow__controls {
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid #E3E8EE !important;
   border-radius: 8px !important;
   overflow: hidden;
 }
 
 .react-flow__controls-button {
   background: #ffffff !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  color: #64748b !important;
-  fill: #64748b !important;
+  border-bottom: 1px solid #E3E8EE !important;
+  color: #6B7C93 !important;
+  fill: #6B7C93 !important;
 }
 
 .react-flow__controls-button:hover {
-  background: #f1f5f9 !important;
+  background: #F7F9FC !important;
 }
 
 .react-flow__edge-path {
-  stroke: #94a3b8;
+  stroke: #8898AA;
   stroke-width: 2;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #3b82f6;
+  stroke: #635BFF;
   stroke-width: 3;
 }
 
 .react-flow__connection-line {
-  stroke: #3b82f6;
+  stroke: #635BFF;
   stroke-width: 2;
   stroke-dasharray: 5;
 }

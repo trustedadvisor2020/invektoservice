@@ -32,8 +32,8 @@ function StatCard({ label, value, icon: Icon, color, bgColor }: StatCardProps) {
       <CardContent className="py-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-slate-500">{label}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{value ?? '\u2014'}</p>
+            <p className="text-xs font-medium text-navy-300 uppercase tracking-wider">{label}</p>
+            <p className="text-2xl font-semibold text-navy-900 mt-1">{value ?? '\u2014'}</p>
           </div>
           <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center`}>
             <Icon className={`w-5 h-5 ${color}`} />
@@ -57,7 +57,7 @@ interface FeatureCardDef {
 }
 
 const FEATURE_CARDS: FeatureCardDef[] = [
-  { feature: 'FlowBuilder', path: '/flow-builder-ui', label: 'Flow Builder', desc: 'Akis tasarimi', icon: GitBranch, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+  { feature: 'FlowBuilder', path: '/flow-builder-ui', label: 'Flow Builder', desc: 'Akis tasarimi', icon: GitBranch, color: 'text-brand-500', bgColor: 'bg-brand-50' },
   { feature: 'Knowledge', path: '/knowledge', label: 'Bilgi Bankasi', desc: 'Dokuman ve SSS', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   { feature: 'Outbound', path: '/campaigns', label: 'Kampanyalar', desc: 'Toplu mesaj gonderin', icon: Megaphone, color: 'text-violet-600', bgColor: 'bg-violet-50' },
   { feature: 'Appointments', path: '/appointments', label: 'Randevular', desc: 'Randevu yonetimi', icon: CalendarDays, color: 'text-amber-600', bgColor: 'bg-amber-50' },
@@ -84,10 +84,10 @@ export function TenantDashboardPage() {
     <div className="space-y-8">
       {/* Hosgeldiniz */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-xl font-semibold text-navy-900">
           Hosgeldiniz{session?.fullName ? `, ${session.fullName}` : ''}!
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-navy-400 mt-1">
           {session?.companyCode ? `${session.companyCode} — ` : ''}Firma #{session?.tenantId}
         </p>
       </div>
@@ -96,8 +96,8 @@ export function TenantDashboardPage() {
       {welcomeData != null && (
         <Card>
           <CardContent className="py-4">
-            <h3 className="text-sm font-semibold text-slate-600 mb-2">INMA Welcome</h3>
-            <pre className="text-xs text-slate-700 bg-slate-50 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap">
+            <h3 className="text-sm font-medium text-navy-500 mb-2">INMA Welcome</h3>
+            <pre className="text-xs text-navy-600 bg-navy-50 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap">
               {String(typeof welcomeData === 'string' ? welcomeData : JSON.stringify(welcomeData, null, 2))}
             </pre>
           </CardContent>
@@ -106,14 +106,14 @@ export function TenantDashboardPage() {
 
       {/* Istatistikler */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Genel Bakis</h2>
+        <h2 className="text-xs font-semibold text-navy-300 uppercase tracking-wider mb-3">Genel Bakis</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
             label="Toplam Gorusme"
             value={stats?.total_replies}
             icon={MessageSquare}
-            color="text-blue-600"
-            bgColor="bg-blue-50"
+            color="text-brand-500"
+            bgColor="bg-brand-50"
           />
           <StatCard
             label="Otomatik Cozulen"
@@ -142,20 +142,20 @@ export function TenantDashboardPage() {
       {/* Hizli Erisim */}
       {features.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Hizli Erisim</h2>
+          <h2 className="text-xs font-semibold text-navy-300 uppercase tracking-wider mb-3">Hizli Erisim</h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {features.map(f => {
               const Icon = f.icon;
               return (
-                <Link key={f.path} to={f.path} className="block">
-                  <Card className="hover:shadow-md hover:border-slate-300 transition-all cursor-pointer h-full">
+                <Link key={f.path} to={f.path} className="block group">
+                  <Card className="hover:border-navy-200 hover:shadow-elevated transition-all cursor-pointer h-full">
                     <CardContent className="py-5 flex items-center gap-4">
-                      <div className={`w-11 h-11 rounded-xl ${f.bgColor} flex items-center justify-center flex-shrink-0`}>
+                      <div className={`w-10 h-10 rounded-xl ${f.bgColor} flex items-center justify-center flex-shrink-0`}>
                         <Icon className={`w-5 h-5 ${f.color}`} />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 text-sm">{f.label}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{f.desc}</p>
+                        <p className="font-medium text-navy-900 text-sm group-hover:text-brand-600 transition-colors">{f.label}</p>
+                        <p className="text-xs text-navy-300 mt-0.5">{f.desc}</p>
                       </div>
                     </CardContent>
                   </Card>

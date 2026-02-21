@@ -24,7 +24,7 @@ function ActionHandoffNodeComponent(props: NodeProps) {
       <div className="space-y-1">
         <span className="text-red-400/70">Terminal - session biter</span>
         {data.summary_template && (
-          <div className="text-slate-400 text-[10px] mt-1 truncate">
+          <div className="text-slate-600 text-[10px] mt-1 truncate">
             Ozet: {data.summary_template}
           </div>
         )}

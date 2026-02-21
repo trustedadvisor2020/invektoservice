@@ -151,13 +151,15 @@ export function AnalyticsPage() {
 
   const currentTenant = tenants.find(t => t.tenant_id === selectedTenant);
 
+  const inputClasses = 'block rounded-lg border border-navy-100 px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500 focus:shadow-focus hover:border-navy-200 transition-all';
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analizler</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Otomasyon metrikleri, duygu analizi ve WA analiz raporlari</p>
+          <h1 className="text-xl font-semibold text-navy-900">Analizler</h1>
+          <p className="text-sm text-navy-400 mt-0.5">Otomasyon metrikleri, duygu analizi ve WA analiz raporlari</p>
         </div>
         <Button variant="secondary" size="sm" onClick={fetchAutomationData} disabled={loading}>
           <RefreshCw className={`w-4 h-4 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
@@ -169,10 +171,10 @@ export function AnalyticsPage() {
       <Card>
         <CardContent className="py-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="space-y-1">
-              <label className="text-xs text-gray-500 uppercase tracking-wide">Tenant</label>
+            <div className="space-y-1.5">
+              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Tenant</label>
               <select
-                className="block w-48 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`${inputClasses} w-48`}
                 value={selectedTenant ?? ''}
                 onChange={e => setSelectedTenant(Number(e.target.value))}
               >
@@ -183,20 +185,20 @@ export function AnalyticsPage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-gray-500 uppercase tracking-wide">Baslangic</label>
+            <div className="space-y-1.5">
+              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Baslangic</label>
               <input
                 type="date"
-                className="block rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClasses}
                 value={fromDate}
                 onChange={e => setFromDate(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-gray-500 uppercase tracking-wide">Bitis</label>
+            <div className="space-y-1.5">
+              <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Bitis</label>
               <input
                 type="date"
-                className="block rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClasses}
                 value={toDate}
                 onChange={e => setToDate(e.target.value)}
               />
@@ -218,7 +220,7 @@ export function AnalyticsPage() {
 
       {!currentTenant?.has_automation_data && selectedTenant && (
         <Card>
-          <CardContent className="py-8 text-center text-gray-500">
+          <CardContent className="py-8 text-center text-navy-300">
             Bu tenant icin otomasyon verisi bulunamadi.
           </CardContent>
         </Card>
@@ -233,10 +235,10 @@ export function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-500 uppercase tracking-wide">Analiz</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-navy-300 uppercase tracking-wider font-medium">Analiz</label>
                   <select
-                    className="block w-72 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`${inputClasses} w-72`}
                     value={selectedAnalysis ?? ''}
                     onChange={e => setSelectedAnalysis(Number(e.target.value))}
                   >
@@ -250,16 +252,16 @@ export function AnalyticsPage() {
                 {waSummary && (
                   <div className="flex gap-6 ml-auto text-sm">
                     <div>
-                      <span className="text-gray-500">Mesaj: </span>
-                      <span className="font-semibold">{waSummary.total_messages.toLocaleString()}</span>
+                      <span className="text-navy-300">Mesaj: </span>
+                      <span className="font-semibold text-navy-900">{waSummary.total_messages.toLocaleString()}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Konusma: </span>
-                      <span className="font-semibold">{waSummary.total_conversations.toLocaleString()}</span>
+                      <span className="text-navy-300">Konusma: </span>
+                      <span className="font-semibold text-navy-900">{waSummary.total_conversations.toLocaleString()}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Ort. FRT: </span>
-                      <span className="font-semibold">{waSummary.avg_first_response_minutes}dk</span>
+                      <span className="text-navy-300">Ort. FRT: </span>
+                      <span className="font-semibold text-navy-900">{waSummary.avg_first_response_minutes}dk</span>
                     </div>
                   </div>
                 )}

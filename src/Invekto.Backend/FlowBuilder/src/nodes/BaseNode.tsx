@@ -13,7 +13,7 @@ interface BaseNodeProps {
   color: string;
   icon: ReactNode;
   children?: ReactNode;
-  outputs?: Array<{ id: string; label?: string }>;
+  outputs?: Array<{ id: string; label?: ReactNode }>;
   hasInput?: boolean;
   hasDefaultOutput?: boolean;
 }
@@ -83,47 +83,49 @@ function BaseNodeComponent({
 
       {/* Body */}
       {children && (
-        <div className="px-3 py-2 text-sm text-slate-500">
+        <div className="px-3 py-2 text-sm text-slate-600">
           {children}
         </div>
       )}
 
-      {/* Input handle - BLUE */}
+      {/* Input handle - GREEN */}
       {hasInput && (
         <Handle
           type="target"
           position={Position.Top}
-          className="!w-3 !h-3 !border-2 !bg-blue-500 !border-blue-300 hover:!bg-blue-300 hover:!border-blue-100 transition-colors"
+          className="!w-4 !h-4 !border-2 !bg-emerald-500 !border-emerald-300 hover:!bg-emerald-400 hover:!border-emerald-200 transition-colors"
         />
       )}
 
-      {/* Default output handle - GREEN */}
+      {/* Default output handle - RED */}
       {hasDefaultOutput && !outputs && (
         <Handle
           type="source"
           position={Position.Bottom}
-          className="!w-3 !h-3 !border-2 !bg-emerald-500 !border-emerald-300 hover:!bg-emerald-300 hover:!border-emerald-100 transition-colors"
+          className="!w-4 !h-4 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
         />
       )}
 
-      {/* Multiple output handles - GREEN */}
+      {/* Multiple output handles - RED */}
       {outputs && outputs.length > 0 && (
         <div className="relative pb-3">
           {outputs.map((output, idx) => {
             const total = outputs.length;
-            const offset = total === 1 ? 50 : (idx / (total - 1)) * 80 + 10;
+            const spread = total === 2 ? 50 : 80;
+            const margin = total === 2 ? 25 : 10;
+            const offset = total === 1 ? 50 : (idx / (total - 1)) * spread + margin;
             return (
               <div key={output.id}>
                 <Handle
                   type="source"
                   position={Position.Bottom}
                   id={output.id}
-                  className="!w-3 !h-3 !border-2 !bg-emerald-500 !border-emerald-300 hover:!bg-emerald-300 hover:!border-emerald-100 transition-colors"
+                  className="!w-4 !h-4 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
                   style={{ left: `${offset}%` }}
                 />
                 {output.label && (
                   <span
-                    className="absolute text-[11px] text-slate-400 whitespace-nowrap"
+                    className="absolute text-[11px] text-slate-600 whitespace-nowrap"
                     style={{
                       left: `${offset}%`,
                       bottom: '2px',

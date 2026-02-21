@@ -7,11 +7,11 @@ interface Props {
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
-  completed: 'bg-blue-100 text-blue-800',
-  draft: 'bg-gray-100 text-gray-800',
+  completed: 'bg-brand-50 text-brand-700',
+  draft: 'bg-navy-50 text-navy-700',
   paused: 'bg-yellow-100 text-yellow-800',
   scheduled: 'bg-purple-100 text-purple-800',
-  archived: 'bg-slate-100 text-slate-600',
+  archived: 'bg-navy-50 text-navy-500',
 };
 
 function parseStats(json: string): Record<string, number> {
@@ -23,7 +23,7 @@ export default function CampaignPanel({ campaigns }: Props) {
     return (
       <Card>
         <CardHeader><CardTitle>Kampanya Istatistikleri</CardTitle></CardHeader>
-        <CardContent><p className="text-sm text-gray-500">Henuz kampanya verisi yok.</p></CardContent>
+        <CardContent><p className="text-sm text-navy-300">Henuz kampanya verisi yok.</p></CardContent>
       </Card>
     );
   }
@@ -35,7 +35,7 @@ export default function CampaignPanel({ campaigns }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
+              <tr className="text-left text-navy-300 border-b">
                 <th className="pb-2 font-medium">Kampanya</th>
                 <th className="pb-2 font-medium">Tip</th>
                 <th className="pb-2 font-medium">Durum</th>
@@ -50,10 +50,10 @@ export default function CampaignPanel({ campaigns }: Props) {
               {campaigns.map(c => {
                 const stats = parseStats(c.stats_json);
                 return (
-                  <tr key={c.id} className="border-b last:border-0 hover:bg-slate-50">
+                  <tr key={c.id} className="border-b last:border-0 hover:bg-navy-50/50">
                     <td className="py-2">
                       <div className="font-medium">{c.name}</div>
-                      {c.template_name && <div className="text-xs text-gray-400">{c.template_name}</div>}
+                      {c.template_name && <div className="text-xs text-navy-300">{c.template_name}</div>}
                     </td>
                     <td className="py-2 text-xs">{c.trigger_type}</td>
                     <td className="py-2">
@@ -65,7 +65,7 @@ export default function CampaignPanel({ campaigns }: Props) {
                     <td className="py-2 text-right">{stats.delivered || 0}</td>
                     <td className="py-2 text-right">{stats.read || 0}</td>
                     <td className="py-2 text-right font-medium">{stats.converted || 0}</td>
-                    <td className="py-2 text-xs text-gray-500">{c.created_at}</td>
+                    <td className="py-2 text-xs text-navy-300">{c.created_at}</td>
                   </tr>
                 );
               })}

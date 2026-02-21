@@ -20,12 +20,12 @@ export function DeflectionChart({ trends }: DeflectionChartProps) {
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle>Oto. Cozum Trendi</CardTitle>
         {trends.length > 0 && (
-          <span className="text-xs text-gray-400">{trends.length} gun</span>
+          <span className="text-xs text-navy-300">{trends.length} gun</span>
         )}
       </CardHeader>
       <CardContent>
         {trends.length === 0 ? (
-          <div className="h-52 flex items-center justify-center text-gray-400 text-sm">
+          <div className="h-52 flex items-center justify-center text-navy-300 text-sm">
             Bu donem icin veri bulunamadi.
           </div>
         ) : (
@@ -38,16 +38,16 @@ export function DeflectionChart({ trends }: DeflectionChartProps) {
                     <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E3E8EE" />
                 <XAxis
                   dataKey="date"
-                  stroke="#9ca3af"
+                  stroke="#8898AA"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="#9ca3af"
+                  stroke="#8898AA"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
@@ -58,7 +58,7 @@ export function DeflectionChart({ trends }: DeflectionChartProps) {
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #E3E8EE',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     fontSize: '12px',

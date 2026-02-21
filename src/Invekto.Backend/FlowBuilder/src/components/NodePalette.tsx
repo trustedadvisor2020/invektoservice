@@ -34,8 +34,8 @@ function PaletteItem({ info }: { info: NodeTypeInfo }) {
       onDragStart={(e) => onDragStart(e, info.type)}
       className={cn(
         'flex items-center gap-2 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing',
-        'border border-transparent hover:border-slate-300 transition-colors',
-        'bg-slate-50 hover:bg-slate-100'
+        'border border-transparent hover:border-navy-200 transition-colors',
+        'bg-navy-50/60 hover:bg-navy-50'
       )}
     >
       <div
@@ -43,8 +43,8 @@ function PaletteItem({ info }: { info: NodeTypeInfo }) {
         style={{ backgroundColor: info.color }}
       />
       <div className="min-w-0">
-        <div className="text-xs font-medium text-slate-700 truncate">{info.label}</div>
-        <div className="text-[10px] text-slate-400 truncate">{info.description}</div>
+        <div className="text-xs font-medium text-navy-700 truncate">{info.label}</div>
+        <div className="text-[10px] text-navy-300 truncate">{info.description}</div>
       </div>
     </div>
   );
@@ -54,12 +54,12 @@ export function NodePalette() {
   const grouped = groupByCategory(NODE_TYPE_REGISTRY);
 
   return (
-    <div className="w-52 bg-white border-r border-slate-200 overflow-y-auto flex-shrink-0">
-      <div className="p-3 border-b border-slate-200">
-        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+    <div className="w-52 bg-white border-r border-navy-100 overflow-y-auto flex-shrink-0">
+      <div className="p-3 border-b border-navy-100">
+        <h2 className="text-xs font-semibold text-navy-400 uppercase tracking-wider">
           Node'lar
         </h2>
-        <p className="text-[10px] text-slate-400 mt-0.5">Surukle birak</p>
+        <p className="text-[10px] text-navy-300 mt-0.5">Surukle birak</p>
       </div>
 
       <div className="p-2 space-y-3">
@@ -68,7 +68,7 @@ export function NodePalette() {
           if (!items) return null;
           return (
             <div key={cat}>
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1 mb-1">
+              <div className="text-[10px] font-semibold text-navy-300 uppercase tracking-wider px-1 mb-1">
                 {CATEGORY_LABELS[cat]}
               </div>
               <div className="space-y-1">

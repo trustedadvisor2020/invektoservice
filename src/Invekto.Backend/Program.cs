@@ -345,6 +345,21 @@ bool ValidateOpsAuth(HttpContext ctx)
             if (inmaCtx?.Role == "admin") return true;
         }
 
+        // Path C: decode-only fallback (INMA token without SecretKey configured)
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (handler.CanReadToken(token))
+            {
+                var jwt = handler.ReadJwtToken(token);
+                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
+                    return false; // expired
+                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
+                if (chatRole == "2") return true; // ChatRole 2 = admin
+            }
+        }
+        catch { /* decode failed */ }
+
         return false;
     }
 

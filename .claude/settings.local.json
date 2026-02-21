@@ -2,6 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(*)",
+      "Edit",
+      "Write",
       "Read(//c/**)",
       "Read(//c/CRMs/InvektoServis/**)",
       "WebFetch(domain:raw.githubusercontent.com)",

@@ -8,8 +8,8 @@ interface CardProps {
 export function Card({ children, className }: CardProps) {
   return (
     <div className={cn(
-      'bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-5',
-      'shadow-sm hover:shadow transition-shadow duration-200',
+      'bg-white rounded-xl border border-navy-100 p-5',
+      'shadow-card',
       className
     )}>
       {children}
@@ -27,7 +27,7 @@ export function CardHeader({ children, className }: CardProps) {
 
 export function CardTitle({ children, className }: CardProps) {
   return (
-    <h3 className={cn('text-base font-semibold text-slate-800', className)}>
+    <h3 className={cn('text-base font-semibold text-navy-900', className)}>
       {children}
     </h3>
   );

@@ -44,8 +44,8 @@ export function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Kontrol Paneli</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Servis durumu ve metrikler</p>
+          <h1 className="text-xl font-semibold text-navy-900">Kontrol Paneli</h1>
+          <p className="text-sm text-navy-400 mt-0.5">Servis durumu ve metrikler</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -55,7 +55,6 @@ export function DashboardPage() {
               const link = document.createElement('a');
               link.href = '/api/ops/postman';
               link.download = 'InvektoServis.postman_collection.json';
-              // Add basic auth header via fetch, then trigger download
               fetch('/api/ops/postman', { headers: api.getAuthHeaders() })
                 .then(r => r.blob())
                 .then(blob => {
@@ -78,11 +77,11 @@ export function DashboardPage() {
 
       {/* Alert banner */}
       {hasErrors && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 shadow-sm">
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3">
           <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
+            <AlertTriangle className="w-4 h-4 text-red-500" />
           </div>
-          <span className="text-sm text-red-700 font-medium">Bazı servisler çalışmıyor!</span>
+          <span className="text-sm text-red-600 font-medium">Bazi servisler calismiyor!</span>
         </div>
       )}
 
@@ -99,7 +98,7 @@ export function DashboardPage() {
           ))
         ) : (
           <Card className="col-span-full">
-            <CardContent className="py-8 text-center text-gray-500">
+            <CardContent className="py-8 text-center text-navy-300">
               {healthLoading ? 'Servisler yukleniyor...' : 'Servis bulunamadi'}
             </CardContent>
           </Card>

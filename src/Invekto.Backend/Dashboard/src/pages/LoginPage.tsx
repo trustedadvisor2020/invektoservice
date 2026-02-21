@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Zap } from 'lucide-react';
@@ -43,29 +42,29 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-4">
-            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-              <Zap className="w-7 h-7 text-white" />
-            </div>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-navy-50">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-brand-500 rounded-2xl mb-4">
+            <Zap className="w-6 h-6 text-white" />
           </div>
-          <CardTitle className="text-xl">Invekto Servisler</CardTitle>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-xl font-semibold text-navy-900">Invekto Servisler</h1>
+          <p className="text-sm text-navy-300 mt-1">
             {mode === 'inma' ? 'Firma bilgilerinizle giris yapin' : 'Ops paneli girisi'}
           </p>
-        </CardHeader>
+        </div>
 
-        <CardContent>
+        {/* Card */}
+        <div className="bg-white rounded-2xl border border-navy-100 shadow-card p-6">
           {/* Mode toggle */}
-          <div className="flex rounded-lg border border-slate-200 overflow-hidden mb-5 text-sm font-medium">
+          <div className="flex rounded-lg bg-navy-50 p-0.5 mb-6 text-sm font-medium">
             <button
               type="button"
-              className={`flex-1 py-2 transition-colors ${
+              className={`flex-1 py-2 rounded-md transition-all duration-200 ${
                 mode === 'inma'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-slate-500 hover:bg-slate-50'
+                  ? 'bg-white text-navy-900 shadow-soft'
+                  : 'text-navy-400 hover:text-navy-600'
               }`}
               onClick={() => setMode('inma')}
             >
@@ -73,10 +72,10 @@ export function LoginPage() {
             </button>
             <button
               type="button"
-              className={`flex-1 py-2 transition-colors ${
+              className={`flex-1 py-2 rounded-md transition-all duration-200 ${
                 mode === 'ops'
-                  ? 'bg-slate-700 text-white'
-                  : 'bg-white text-slate-500 hover:bg-slate-50'
+                  ? 'bg-white text-navy-900 shadow-soft'
+                  : 'text-navy-400 hover:text-navy-600'
               }`}
               onClick={() => setMode('ops')}
             >
@@ -115,14 +114,14 @@ export function LoginPage() {
             />
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600">
                 {error}
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-10"
               disabled={isLoading}
             >
               {isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
@@ -130,12 +129,12 @@ export function LoginPage() {
           </form>
 
           {mode === 'ops' && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
+            <div className="mt-5 pt-5 border-t border-navy-100/60">
               <button
                 type="button"
                 onClick={handleQuickAdminLogin}
                 disabled={isLoading}
-                className="w-full text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
+                className="w-full text-xs py-2.5 rounded-lg bg-navy-50 hover:bg-navy-100 text-navy-500 font-medium disabled:opacity-40 transition-colors"
               >
                 Super Admin Girisi
               </button>
@@ -143,39 +142,31 @@ export function LoginPage() {
           )}
 
           {mode === 'inma' && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-400 mb-2 text-center">Test Girisleri</p>
+            <div className="mt-5 pt-5 border-t border-navy-100/60">
+              <p className="text-2xs text-navy-300 mb-2 text-center font-medium uppercase tracking-wider">Test Girisleri</p>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleMockLogin('full')}
-                  disabled={isLoading}
-                  className="flex-1 text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
-                >
-                  Tam Yetkili
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMockLogin('klinik')}
-                  disabled={isLoading}
-                  className="flex-1 text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
-                >
-                  Demo Klinik
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMockLogin('otel')}
-                  disabled={isLoading}
-                  className="flex-1 text-xs py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors"
-                >
-                  Demo Otel
-                </button>
+                {[
+                  { label: 'Tam Yetkili', scenario: 'full' as const },
+                  { label: 'Demo Klinik', scenario: 'klinik' as const },
+                  { label: 'Demo Otel', scenario: 'otel' as const },
+                ].map(({ label, scenario }) => (
+                  <button
+                    key={scenario}
+                    type="button"
+                    onClick={() => handleMockLogin(scenario)}
+                    disabled={isLoading}
+                    className="flex-1 text-xs py-2 rounded-lg bg-navy-50 hover:bg-navy-100 text-navy-500 font-medium disabled:opacity-40 transition-colors"
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-      <p className="mt-3 text-xs text-slate-400">v{__BUILD_TIME__}</p>
+        </div>
+
+        <p className="mt-4 text-center text-2xs text-navy-200">v{__BUILD_TIME__}</p>
+      </div>
     </div>
   );
 }

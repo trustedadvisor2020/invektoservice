@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 import { FlowCanvas } from '../components/FlowCanvas';
-import { FlowSummaryBar } from '../components/FlowSummaryBar';
+import { FlowPreviewPanel } from '../components/FlowSummaryBar';
 import { NodePalette } from '../components/NodePalette';
 import { Toolbar } from '../components/Toolbar';
 import { SimulationPanel } from '../components/SimulationPanel';
 import { NodePropertyPanel } from '../panels/NodePropertyPanel';
-import { FlowSettingsPanel } from '../panels/FlowSettingsPanel';
 import { useFlowStore } from '../store/flow-store';
 import { useSimulationStore } from '../store/simulation-store';
 import { useAuth } from '../lib/auth';
 import { getFlow, updateFlow, ApiClientError } from '../lib/api';
 import type { FlowConfigV2 } from '../types/flow';
-
-type RightPanel = 'properties' | 'settings';
 
 export function FlowEditorPage() {
   const { flowId: flowIdParam } = useParams<{ flowId: string }>();
@@ -23,12 +20,14 @@ export function FlowEditorPage() {
   const tenantId = session?.tenant_id ?? 0;
   const flowId = parseInt(flowIdParam ?? '0', 10);
 
-  const [rightPanel, setRightPanel] = useState<RightPanel>('properties');
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
+  const [previewOpen, setPreviewOpen] = useState(() => {
+    try { return localStorage.getItem('invekto_flow_preview_open') !== 'false'; }
+    catch { return true; }
+  });
   const loadFlow = useFlowStore((s) => s.loadFlow);
 
   // Load flow from API on mount
@@ -69,12 +68,13 @@ export function FlowEditorPage() {
     return () => { cancelled = true; };
   }, [flowId, tenantId, loadFlow, navigate]);
 
-  // Auto-switch to properties panel when node is selected
-  useEffect(() => {
-    if (selectedNodeId) {
-      setRightPanel('properties');
-    }
-  }, [selectedNodeId]);
+  const handleTogglePreview = useCallback(() => {
+    setPreviewOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem('invekto_flow_preview_open', String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -153,6 +153,26 @@ export function FlowEditorPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [handleSave]);
 
+  // Auto-save: debounce 1.5s after any change
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const unsub = useFlowStore.subscribe((state, prev) => {
+      if (state.isDirty && !prev.isDirty) {
+        // Fresh dirty → schedule save
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(() => handleSave(), 1500);
+      } else if (state.isDirty && prev.isDirty) {
+        // Still dirty (ongoing edits) → reset timer
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(() => handleSave(), 1500);
+      }
+    });
+    return () => {
+      unsub();
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [handleSave]);
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50 text-slate-500">
@@ -179,7 +199,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-slate-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} />
 
         {/* Save error banner */}
         {saveError && (
@@ -194,45 +214,16 @@ export function FlowEditorPage() {
           {/* Left: Node palette */}
           <NodePalette />
 
-          {/* Center: Canvas + Summary */}
+          {/* Center: Canvas */}
           <div className="flex-1 flex flex-col min-w-0">
             <FlowCanvas />
-            <FlowSummaryBar />
           </div>
 
-          {/* Right: Panel switcher + panel */}
-          <div className="flex flex-col">
-            {/* Panel tabs */}
-            <div className="flex border-b border-slate-200 bg-white">
-              <button
-                onClick={() => setRightPanel('properties')}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  rightPanel === 'properties'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-slate-400 hover:text-slate-700'
-                }`}
-              >
-                Ozellikler
-              </button>
-              <button
-                onClick={() => setRightPanel('settings')}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  rightPanel === 'settings'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-slate-400 hover:text-slate-700'
-                }`}
-              >
-                Ayarlar
-              </button>
-            </div>
+          {/* Right: Preview panel (toggleable) */}
+          <FlowPreviewPanel open={previewOpen} />
 
-            {/* Panel content */}
-            {rightPanel === 'properties' ? (
-              <NodePropertyPanel />
-            ) : (
-              <FlowSettingsPanel />
-            )}
-          </div>
+          {/* Right: Node properties */}
+          <NodePropertyPanel />
 
           {/* Simulation panel (flex shrink — canvas narrows when open) */}
           <SimulationPanel />

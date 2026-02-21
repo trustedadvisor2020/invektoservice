@@ -36,29 +36,29 @@ export function KnowledgePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Bilgi Bankasi</h1>
+        <h1 className="text-xl font-semibold text-navy-900">Bilgi Bankasi</h1>
         <div className="flex items-center gap-3">
-          <label className="text-sm text-slate-500">Firma:</label>
+          <label className="text-sm text-navy-400">Firma:</label>
           <input
             type="number"
             value={tenantId}
             onChange={e => setTenantId(Number(e.target.value) || 1)}
-            className="w-20 px-2 py-1 text-sm border border-slate-300 rounded-md"
+            className="w-20 px-2 py-1.5 text-sm border border-navy-100 rounded-lg focus:outline-none focus:border-brand-500 focus:shadow-focus"
             min={1}
           />
           <button
             onClick={handleGenerateEmbeddings}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium"
           >
             <Sparkles className="w-3.5 h-3.5" />
             Embeddings
           </button>
-          {embedMsg && <span className="text-xs text-slate-500">{embedMsg}</span>}
+          {embedMsg && <span className="text-xs text-navy-400">{embedMsg}</span>}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200">
+      <div className="border-b border-navy-100">
         <div className="flex gap-1">
           {tabs.map(tab => {
             const Icon = tab.icon;
@@ -67,10 +67,10 @@ export function KnowledgePage() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                  'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
                   activeTab === tab.key
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                    ? 'border-brand-500 text-brand-600'
+                    : 'border-transparent text-navy-400 hover:text-navy-600'
                 )}
               >
                 <Icon className="w-4 h-4" />

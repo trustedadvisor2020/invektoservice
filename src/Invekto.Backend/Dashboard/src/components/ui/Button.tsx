@@ -6,10 +6,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: 'bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white shadow-sm',
-  secondary: 'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-300 shadow-sm',
-  danger: 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm',
-  ghost: 'bg-transparent hover:bg-slate-100 active:bg-slate-200 text-slate-600',
+  primary: 'bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white shadow-soft',
+  secondary: 'bg-white hover:bg-navy-50 active:bg-navy-100 text-navy-700 border border-navy-100 shadow-soft',
+  danger: 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white shadow-soft',
+  ghost: 'bg-transparent hover:bg-navy-50 active:bg-navy-100 text-navy-500',
 };
 
 const sizes = {
@@ -31,10 +31,10 @@ export function Button({
       className={cn(
         'inline-flex items-center justify-center rounded-lg font-medium',
         'transition-all duration-150 ease-out',
-        'focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2',
+        'focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-1',
         variants[variant],
         sizes[size],
-        disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
+        disabled && 'opacity-40 cursor-not-allowed pointer-events-none',
         className
       )}
       disabled={disabled}

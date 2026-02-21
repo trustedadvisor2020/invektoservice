@@ -3,16 +3,18 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
+
   BackgroundVariant,
   type ReactFlowInstance,
   type Connection,
   type Edge,
+  type Node,
 } from '@xyflow/react';
 import { useFlowStore } from '../store/flow-store';
 import { nodeTypes } from '../nodes';
 import { DeleteEdge } from './DeleteEdgeButton';
 import type { FlowNodeType } from '../types/flow';
+import { resolveOverlap } from '../lib/auto-layout';
 
 const edgeTypes = {
   deletable: DeleteEdge,
@@ -80,6 +82,19 @@ export function FlowCanvas() {
     return connection.source !== connection.target;
   }, []);
 
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      const allNodes = useFlowStore.getState().nodes;
+      const resolved = resolveOverlap(node.id, node.position, allNodes);
+      if (resolved.x !== node.position.x || resolved.y !== node.position.y) {
+        onNodesChange([
+          { type: 'position', id: node.id, position: resolved },
+        ]);
+      }
+    },
+    [onNodesChange]
+  );
+
   const onPaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
@@ -111,6 +126,7 @@ export function FlowCanvas() {
         onDrop={onDrop}
         onDragOver={onDragOver}
         onPaneClick={onPaneClick}
+        onNodeDragStop={onNodeDragStop}
         isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -136,22 +152,6 @@ export function FlowCanvas() {
         <Controls
           showInteractive={false}
           position="bottom-right"
-        />
-        <MiniMap
-          nodeColor={(node) => {
-            switch (node.type) {
-              case 'trigger_start': return '#10b981';
-              case 'message_text': return '#3b82f6';
-              case 'message_menu': return '#3b82f6';
-              case 'action_handoff': return '#ef4444';
-              case 'logic_condition': return '#f59e0b';
-              case 'ai_intent': return '#8b5cf6';
-              case 'ai_faq': return '#8b5cf6';
-              default: return '#6b7280';
-            }
-          }}
-          maskColor="rgba(241, 245, 249, 0.8)"
-          position="bottom-left"
         />
       </ReactFlow>
     </div>

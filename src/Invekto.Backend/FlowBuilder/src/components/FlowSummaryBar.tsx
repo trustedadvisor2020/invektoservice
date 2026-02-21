@@ -1,8 +1,6 @@
-import { memo, useMemo, useState, useEffect } from 'react';
+import { memo, useMemo } from 'react';
 import { useFlowStore } from '../store/flow-store';
-import { summarizeFlow, truncateSummary, type SummaryLine } from '../lib/flow-summarizer';
-
-const COLLAPSE_KEY = 'invekto_flow_summary_collapsed';
+import { summarizeFlow, type SummaryLine } from '../lib/flow-summarizer';
 
 function getNodeTypeIcon(nodeType: string): string {
   switch (nodeType) {
@@ -10,105 +8,104 @@ function getNodeTypeIcon(nodeType: string): string {
     case 'message_text': return '\uD83D\uDCAC';
     case 'message_menu': return '\uD83D\uDCCB';
     case 'action_handoff': return '\uD83D\uDC64';
+    case 'ai_intent': return '\uD83E\uDDE0';
+    case 'ai_faq': return '\uD83D\uDCD6';
+    case 'logic_condition': return '\u2753';
+    case 'logic_switch': return '\uD83D\uDD00';
+    case 'action_api_call': return '\uD83C\uDF10';
+    case 'action_delay': return '\u23F3';
+    case 'utility_set_variable': return '\uD83D\uDCDD';
     default: return '\u2022';
   }
 }
 
+function getBranchColor(text: string): string {
+  switch (text) {
+    case 'YUKSEK':
+    case 'DOGRU':
+    case 'BASARILI':
+    case 'ESLESTI':
+      return 'text-emerald-600 font-semibold';
+    case 'DUSUK':
+    case 'YANLIS':
+    case 'HATA':
+    case 'ESLESMEDI':
+      return 'text-red-500 font-semibold';
+    case 'VARSAYILAN':
+      return 'text-amber-600 font-semibold';
+    default:
+      return '';
+  }
+}
+
 function SummaryLineItem({ line }: { line: SummaryLine }) {
-  const paddingLeft = line.indent * 16;
+  const paddingLeft = line.indent * 14;
+  const branchColor = getBranchColor(line.text);
+
   return (
     <div
-      className="flex items-center gap-1.5 text-xs text-slate-600 leading-5"
+      className="flex items-start gap-1.5 text-xs leading-5 min-w-0"
       style={{ paddingLeft }}
     >
-      <span className="flex-shrink-0 text-[10px]">
+      <span className="flex-shrink-0 text-[10px] mt-0.5 opacity-60">
         {getNodeTypeIcon(line.nodeType)}
       </span>
-      <span className="truncate">{line.text}</span>
+      <span className={`break-words min-w-0 ${branchColor || 'text-slate-600'}`}>
+        {line.text}
+      </span>
     </div>
   );
 }
 
-function FlowSummaryBarComponent() {
+interface FlowPreviewPanelProps {
+  open: boolean;
+}
+
+function FlowPreviewPanelComponent({ open }: FlowPreviewPanelProps) {
   const nodes = useFlowStore((s) => s.nodes);
   const edges = useFlowStore((s) => s.edges);
-
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem(COLLAPSE_KEY) === 'true';
-    } catch (err) {
-      console.warn('FlowSummaryBar: localStorage okunamadi', err);
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLLAPSE_KEY, String(collapsed));
-    } catch (err) {
-      console.warn('FlowSummaryBar: localStorage yazilamadi', err);
-    }
-  }, [collapsed]);
 
   const summary = useMemo(
     () => summarizeFlow(nodes, edges),
     [nodes, edges]
   );
 
-  const { displayLines, truncatedCount } = useMemo(
-    () => truncateSummary(summary),
-    [summary]
-  );
+  if (!open) return null;
 
   const hasContent = summary.lines.length > 0;
 
   return (
-    <div className="border-t border-slate-200 bg-white flex-shrink-0">
-      {/* Toggle header */}
-      <button
-        onClick={() => setCollapsed((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`w-3 h-3 transition-transform ${collapsed ? '' : 'rotate-180'}`}
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-          <span>Canli Onizleme</span>
-          {hasContent && (
-            <span className="text-slate-400">({summary.totalSteps} adim)</span>
-          )}
-        </div>
-        {summary.hasErrors && (
-          <span className="text-red-500 text-[10px]">Baslangic bulunamadi</span>
+    <div className="w-60 bg-white border-l border-slate-200 flex-shrink-0 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-700">Canli Onizleme</span>
+        {hasContent && (
+          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+            {summary.totalSteps} adim
+          </span>
         )}
-      </button>
+      </div>
 
-      {/* Collapsible content */}
-      {!collapsed && (
-        <div className="px-4 pb-2 space-y-0.5">
-          {!hasContent && !summary.hasErrors && (
-            <div className="text-xs text-slate-400 italic py-1">
-              Henuz adim eklenmedi
-            </div>
-          )}
-          {displayLines.map((line, idx) => (
-            <SummaryLineItem key={idx} line={line} />
-          ))}
-          {truncatedCount > 0 && (
-            <div className="text-xs text-slate-400 italic mt-1">
-              ... ve {truncatedCount} adim daha
-            </div>
-          )}
-        </div>
-      )}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+        {summary.hasErrors && (
+          <div className="text-xs text-red-500 italic py-1">
+            Baslangic adimi bulunamadi
+          </div>
+        )}
+
+        {!hasContent && !summary.hasErrors && (
+          <div className="text-xs text-slate-400 italic py-1">
+            Henuz adim eklenmedi
+          </div>
+        )}
+
+        {summary.lines.map((line, idx) => (
+          <SummaryLineItem key={idx} line={line} />
+        ))}
+      </div>
     </div>
   );
 }
 
-export const FlowSummaryBar = memo(FlowSummaryBarComponent);
+export const FlowPreviewPanel = memo(FlowPreviewPanelComponent);

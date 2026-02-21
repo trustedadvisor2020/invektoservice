@@ -190,13 +190,17 @@ export function FlowListPage() {
     });
   };
 
+  const btnPrimary = 'px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors';
+  const btnGhost = 'px-3 py-2 text-sm text-navy-400 hover:text-navy-900 transition-colors';
+  const inputClasses = 'w-full px-3 py-2.5 bg-white border border-navy-100 rounded-lg text-navy-900 placeholder-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus transition-all';
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-navy-50 text-navy-900">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm">
+      <header className="bg-white border-b border-navy-100 px-6 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Flow Builder</h1>
-          <span className="text-xs text-slate-500">Tenant #{tenantId}</span>
+          <h1 className="text-lg font-semibold text-navy-900">Flow Builder</h1>
+          <span className="text-2xs text-navy-300">Tenant #{tenantId}</span>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -205,14 +209,11 @@ export function FlowListPage() {
               setNewFlowError(null);
               setShowNewDialog(true);
             }}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+            className={btnPrimary}
           >
             + Yeni Flow
           </button>
-          <button
-            onClick={logout}
-            className="px-3 py-2 text-sm text-slate-500 hover:text-slate-900 transition"
-          >
+          <button onClick={logout} className={btnGhost}>
             Cikis
           </button>
         </div>
@@ -221,7 +222,7 @@ export function FlowListPage() {
       {/* Content */}
       <main className="max-w-5xl mx-auto px-6 py-8">
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3 flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4">
               &times;
@@ -230,17 +231,17 @@ export function FlowListPage() {
         )}
 
         {loading ? (
-          <div className="text-center py-20 text-slate-500">Yukleniyor...</div>
+          <div className="text-center py-20 text-navy-300">Yukleniyor...</div>
         ) : flows.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-slate-500 mb-4">Henuz bir flow olusturulmamis.</p>
+            <p className="text-navy-400 mb-4">Henuz bir flow olusturulmamis.</p>
             <button
               onClick={() => {
                 setNewFlowName('');
                 setNewFlowError(null);
                 setShowNewDialog(true);
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+              className={btnPrimary}
             >
               Ilk Flow'u Olustur
             </button>
@@ -250,13 +251,13 @@ export function FlowListPage() {
             {flows.map((flow) => (
               <div
                 key={flow.flow_id}
-                className="bg-white border border-slate-200 rounded-xl px-5 py-4 flex items-center justify-between hover:border-slate-300 hover:shadow-sm transition"
+                className="bg-white border border-navy-100 rounded-xl px-5 py-4 flex items-center justify-between hover:border-navy-200 hover:shadow-elevated transition-all"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-slate-900 truncate">{flow.flow_name}</span>
+                    <span className="font-medium text-navy-900 truncate">{flow.flow_name}</span>
                     {flow.is_active && (
-                      <span className="px-2 py-0.5 text-xs bg-green-50 text-green-700 border border-green-200 rounded-full">
+                      <span className="px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
                         Aktif
                       </span>
                     )}
@@ -264,7 +265,7 @@ export function FlowListPage() {
                       <HealthBadge score={flow.health_score} issues={flow.health_issues} />
                     )}
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                  <div className="flex items-center gap-4 text-xs text-navy-300">
                     <span>v{flow.config_version}</span>
                     <span>{flow.node_count} node / {flow.edge_count} edge</span>
                     <span>Guncelleme: {formatDate(flow.updated_at)}</span>
@@ -274,7 +275,7 @@ export function FlowListPage() {
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                   <button
                     onClick={() => navigate(`/editor/${flow.flow_id}`)}
-                    className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                    className="px-3 py-1.5 text-xs bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium"
                   >
                     Duzenle
                   </button>
@@ -283,7 +284,7 @@ export function FlowListPage() {
                     <button
                       onClick={() => handleDeactivate(flow.flow_id)}
                       disabled={actionLoading === flow.flow_id}
-                      className="px-3 py-1.5 text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-100 rounded-lg transition-colors disabled:opacity-40"
                     >
                       Deaktif Et
                     </button>
@@ -291,7 +292,7 @@ export function FlowListPage() {
                     <button
                       onClick={() => handleActivate(flow.flow_id)}
                       disabled={actionLoading === flow.flow_id}
-                      className="px-3 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg transition disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 rounded-lg transition-colors disabled:opacity-40"
                     >
                       Aktif Et
                     </button>
@@ -300,7 +301,7 @@ export function FlowListPage() {
                   <button
                     onClick={() => handleDuplicate(flow)}
                     disabled={actionLoading === flow.flow_id}
-                    className="px-3 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg transition disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs bg-brand-50 hover:bg-brand-100 text-brand-600 border border-brand-100 rounded-lg transition-colors disabled:opacity-40"
                     title="Flow'un kopyasini olustur"
                   >
                     Kopyala
@@ -309,7 +310,7 @@ export function FlowListPage() {
                   <button
                     onClick={() => handleCopyConfig(flow)}
                     disabled={actionLoading === flow.flow_id}
-                    className="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs bg-navy-50 hover:bg-navy-100 text-navy-500 rounded-lg transition-colors disabled:opacity-40"
                     title="Flow JSON'u panoya kopyala"
                   >
                     JSON
@@ -318,7 +319,7 @@ export function FlowListPage() {
                   <button
                     onClick={() => setDeleteTarget(flow)}
                     disabled={actionLoading === flow.flow_id || flow.is_active}
-                    className="px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     title={flow.is_active ? 'Aktif flow silinemez' : 'Flow sil'}
                   >
                     Sil
@@ -332,34 +333,34 @@ export function FlowListPage() {
 
       {/* New Flow Dialog */}
       {showNewDialog && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white border border-slate-200 rounded-xl w-full max-w-md p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Yeni Flow Olustur</h2>
+        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-md p-6 shadow-elevated">
+            <h2 className="text-lg font-semibold text-navy-900 mb-4">Yeni Flow Olustur</h2>
             <input
               type="text"
               value={newFlowName}
               onChange={(e) => setNewFlowName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="Flow adi (ornek: Satis Chatbot)"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition mb-3"
+              className={`${inputClasses} mb-3`}
               autoFocus
               disabled={creating}
             />
             {newFlowError && (
-              <p className="text-sm text-red-600 mb-3">{newFlowError}</p>
+              <p className="text-sm text-red-500 mb-3">{newFlowError}</p>
             )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowNewDialog(false)}
                 disabled={creating}
-                className="px-4 py-2 text-sm text-slate-500 hover:text-slate-900 transition"
+                className={btnGhost}
               >
                 Iptal
               </button>
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:opacity-50 text-white font-medium rounded-lg transition"
+                className={`${btnPrimary} disabled:opacity-40`}
               >
                 {creating ? 'Olusturuluyor...' : 'Olustur'}
               </button>
@@ -370,22 +371,22 @@ export function FlowListPage() {
 
       {/* Delete Confirm Dialog */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white border border-slate-200 rounded-xl w-full max-w-sm p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Flow'u Sil</h2>
-            <p className="text-sm text-slate-500 mb-4">
-              <strong className="text-slate-900">{deleteTarget.flow_name}</strong> flow'u kalici olarak silinecek. Bu islem geri alinamaz.
+        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated">
+            <h2 className="text-lg font-semibold text-navy-900 mb-2">Flow'u Sil</h2>
+            <p className="text-sm text-navy-400 mb-4">
+              <strong className="text-navy-900">{deleteTarget.flow_name}</strong> flow'u kalici olarak silinecek. Bu islem geri alinamaz.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm text-slate-500 hover:text-slate-900 transition"
+                className={btnGhost}
               >
                 Iptal
               </button>
               <button
                 onClick={() => handleDelete(deleteTarget)}
-                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition"
+                className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
               >
                 Evet, Sil
               </button>
@@ -404,19 +405,19 @@ function HealthBadge({ score, issues }: { score: number; issues: string[] | null
   let label: string;
 
   if (score >= 80) {
-    bg = 'bg-green-50';
-    text = 'text-green-700';
-    border = 'border-green-200';
+    bg = 'bg-emerald-50';
+    text = 'text-emerald-700';
+    border = 'border-emerald-100';
     label = 'Saglikli';
   } else if (score >= 50) {
     bg = 'bg-amber-50';
     text = 'text-amber-700';
-    border = 'border-amber-200';
+    border = 'border-amber-100';
     label = 'Dikkat';
   } else {
     bg = 'bg-red-50';
     text = 'text-red-700';
-    border = 'border-red-200';
+    border = 'border-red-100';
     label = 'Sorunlu';
   }
 

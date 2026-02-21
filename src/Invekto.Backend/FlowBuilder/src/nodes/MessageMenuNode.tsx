@@ -33,7 +33,7 @@ function MessageMenuNodeComponent(props: NodeProps) {
     >
       <div className="space-y-1">
         {options.length === 0 && (
-          <span className="text-slate-400 italic">Secenek eklenmedi</span>
+          <span className="text-slate-600 italic">Secenek eklenmedi</span>
         )}
         {options.map((opt) => (
           <div key={opt.handle_id} className="flex items-center gap-1.5">

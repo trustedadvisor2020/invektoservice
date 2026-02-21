@@ -15,7 +15,7 @@ import { getNodeTypeInfo, createDefaultFlow } from '../types/flow';
 import { generateNodeId, generateEdgeId } from '../lib/utils';
 import { validateGraph, type ValidationError } from '../lib/graph-validator';
 import { enumeratePaths } from '../lib/path-enumerator';
-import { needsAutoLayout, autoLayoutNodes } from '../lib/auto-layout';
+import { needsAutoLayout, autoLayoutNodes, resolveOverlap } from '../lib/auto-layout';
 
 export interface FlowState {
   // State
@@ -169,10 +169,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     get().pushHistory();
 
     const id = generateNodeId(type);
+    const safePosition = resolveOverlap(id, position, state.nodes);
     const newNode: Node = {
       id,
       type,
-      position,
+      position: safePosition,
       data: { ...info.defaultData } as Record<string, unknown>,
     };
 

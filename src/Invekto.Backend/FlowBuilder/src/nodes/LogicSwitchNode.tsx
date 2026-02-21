@@ -38,7 +38,7 @@ function LogicSwitchNodeComponent(props: NodeProps) {
           <span className="text-slate-500 italic">Switch tanimlanmadi</span>
         )}
         {data.variable && (
-          <span className="text-slate-400 text-xs font-mono">{data.variable}</span>
+          <span className="text-slate-600 text-xs font-mono">{data.variable}</span>
         )}
         {cases.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">

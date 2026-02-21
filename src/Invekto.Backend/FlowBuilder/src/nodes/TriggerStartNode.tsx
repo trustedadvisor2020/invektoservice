@@ -16,7 +16,7 @@ function TriggerStartNodeComponent(props: NodeProps) {
       icon={<PlayIcon />}
       hasInput={false}
     >
-      <span className="text-emerald-400/70">Musteri mesaj gonderince baslar</span>
+      <span className="text-emerald-600">Musteri mesaj gonderince baslar</span>
     </BaseNode>
   );
 }

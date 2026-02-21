@@ -1,30 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html {
-  font-size: 17px;
+  font-size: 15px;
 }
 
 body {
-  @apply bg-slate-100 text-slate-800 antialiased;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  @apply bg-navy-50 text-navy-900 antialiased;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.011em;
 }
 
-/* Smooth transitions for all interactive elements */
-* {
+/* Only transition color props - not everything */
+button, a, input, select {
   @apply transition-colors duration-150;
 }
 
-/* Custom scrollbar */
+/* Minimal scrollbar */
 ::-webkit-scrollbar {
-  @apply w-2 h-2;
+  @apply w-1.5 h-1.5;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 rounded;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded hover:bg-gray-400;
+  @apply bg-navy-200 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-navy-300;
+}
+
+/* Selection */
+::selection {
+  background: rgba(99, 91, 255, 0.12);
 }

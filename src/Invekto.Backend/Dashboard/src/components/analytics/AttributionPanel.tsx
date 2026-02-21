@@ -11,7 +11,7 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
     return (
       <Card>
         <CardHeader><CardTitle>Lead Kaynak Analizi</CardTitle></CardHeader>
-        <CardContent><p className="text-sm text-gray-500">Kaynak verisi yukleniyor...</p></CardContent>
+        <CardContent><p className="text-sm text-navy-300">Kaynak verisi yukleniyor...</p></CardContent>
       </Card>
     );
   }
@@ -20,7 +20,7 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
     <div className="space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard label="Toplam Lead" value={summary.total_leads} color="bg-blue-50 text-blue-700" />
+        <MetricCard label="Toplam Lead" value={summary.total_leads} color="bg-brand-50 text-brand-700" />
         <MetricCard label="Donusum" value={summary.converted_leads} color="bg-green-50 text-green-700" />
         <MetricCard label="Donusum Orani" value={`${summary.conversion_rate}%`} color="bg-purple-50 text-purple-700" />
         <MetricCard label="Toplam Gelir" value={`${summary.total_revenue.toLocaleString()} TRY`} color="bg-amber-50 text-amber-700" />
@@ -32,11 +32,11 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
           <CardHeader><CardTitle>Kaynak Bazinda</CardTitle></CardHeader>
           <CardContent>
             {summary.by_source.length === 0 ? (
-              <p className="text-sm text-gray-500">Kaynak verisi yok.</p>
+              <p className="text-sm text-navy-300">Kaynak verisi yok.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b">
+                  <tr className="text-left text-navy-300 border-b">
                     <th className="pb-2 font-medium">Kaynak</th>
                     <th className="pb-2 font-medium text-right">Lead</th>
                     <th className="pb-2 font-medium text-right">Donusum</th>
@@ -63,11 +63,11 @@ export default function AttributionPanel({ summary, costPerLead }: Props) {
           <CardHeader><CardTitle>Maliyet / Lead (Platform)</CardTitle></CardHeader>
           <CardContent>
             {costPerLead.length === 0 ? (
-              <p className="text-sm text-gray-500">Maliyet verisi yok.</p>
+              <p className="text-sm text-navy-300">Maliyet verisi yok.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b">
+                  <tr className="text-left text-navy-300 border-b">
                     <th className="pb-2 font-medium">Platform</th>
                     <th className="pb-2 font-medium text-right">Harcama</th>
                     <th className="pb-2 font-medium text-right">Lead</th>
@@ -97,7 +97,7 @@ function MetricCard({ label, value, color }: { label: string; value: string | nu
   return (
     <Card>
       <CardContent className="py-4">
-        <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+        <p className="text-xs text-navy-300 uppercase tracking-wide">{label}</p>
         <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
       </CardContent>
     </Card>

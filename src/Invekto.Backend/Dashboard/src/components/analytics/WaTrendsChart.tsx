@@ -22,27 +22,27 @@ export function WaTrendsChart({ trends }: WaTrendsChartProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle>WA Konusma Trendi</CardTitle>
-        <span className="text-xs text-gray-400">{trends.length} gun</span>
+        <span className="text-xs text-navy-300">{trends.length} gun</span>
       </CardHeader>
       <CardContent>
         {trends.length === 0 ? (
-          <div className="h-52 flex items-center justify-center text-gray-400 text-sm">
+          <div className="h-52 flex items-center justify-center text-navy-300 text-sm">
             Bu analiz icin trend verisi bulunamadi.
           </div>
         ) : (
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E3E8EE" />
                 <XAxis
                   dataKey="date"
-                  stroke="#9ca3af"
+                  stroke="#8898AA"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="#9ca3af"
+                  stroke="#8898AA"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
@@ -51,14 +51,14 @@ export function WaTrendsChart({ trends }: WaTrendsChartProps) {
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #E3E8EE',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     fontSize: '12px',
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="conversations" name="Konusma" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="conversations" name="Konusma" fill="#635BFF" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="sales" name="Satis" fill="#22c55e" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="offered" name="Teklif" fill="#f59e0b" radius={[2, 2, 0, 0]} />
               </BarChart>

@@ -1,8 +1,11 @@
 import type { Node, Edge } from '@xyflow/react';
 
 const CENTER_X = 400;
-const Y_GAP = 180;
-const X_GAP = 250;
+const Y_GAP = 240;
+const X_GAP = 320;
+/** Estimated node dimensions for overlap detection */
+export const NODE_WIDTH = 260;
+export const NODE_HEIGHT = 160;
 
 /**
  * Detect if nodes need auto-layout.
@@ -99,4 +102,59 @@ export function autoLayoutNodes(nodes: Node[], edges: Edge[]): Node[] {
     ...n,
     position: positions.get(n.id) ?? n.position,
   }));
+}
+
+/**
+ * Check if two node rects overlap (with a small padding).
+ */
+function rectsOverlap(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  pad = 20,
+): boolean {
+  return (
+    a.x < b.x + NODE_WIDTH + pad &&
+    a.x + NODE_WIDTH + pad > b.x &&
+    a.y < b.y + NODE_HEIGHT + pad &&
+    a.y + NODE_HEIGHT + pad > b.y
+  );
+}
+
+/**
+ * Resolve overlap for a dragged node by nudging it to the nearest
+ * non-overlapping position. Returns the corrected position.
+ */
+export function resolveOverlap(
+  draggedId: string,
+  draggedPos: { x: number; y: number },
+  allNodes: Node[],
+): { x: number; y: number } {
+  const others = allNodes.filter((n) => n.id !== draggedId);
+  const hasOverlap = others.some((n) => rectsOverlap(draggedPos, n.position));
+  if (!hasOverlap) return draggedPos;
+
+  // Try nudging in 8 directions with increasing distance
+  const directions = [
+    { dx: 1, dy: 0 },
+    { dx: -1, dy: 0 },
+    { dx: 0, dy: 1 },
+    { dx: 0, dy: -1 },
+    { dx: 1, dy: 1 },
+    { dx: -1, dy: 1 },
+    { dx: 1, dy: -1 },
+    { dx: -1, dy: -1 },
+  ];
+  const step = 20;
+  for (let dist = step; dist <= 600; dist += step) {
+    for (const dir of directions) {
+      const candidate = {
+        x: draggedPos.x + dir.dx * dist,
+        y: draggedPos.y + dir.dy * dist,
+      };
+      if (!others.some((n) => rectsOverlap(candidate, n.position))) {
+        return candidate;
+      }
+    }
+  }
+  return draggedPos;
 }
