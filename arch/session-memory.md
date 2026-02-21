@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-20
-- **Status:** S2 Satis Oncesi Urun Sorulari senaryosu tenant 5050 icin canli. E2E dogrulanmis: WhatsApp mesaj → Automation flow → FAQ eslesme → WapCRM callback → WhatsApp cevap.
-- **Last Task:** S2 senaryo: DB seeding (tenant+FAQ+intent+flow), WapCRM callback bridge, webhook forwarding fix, Message Story endpoint+timeline, userID fix, E2E test PASS.
-- **Next Task:** Gercek WhatsApp test (Q telefondan), FAQ matching iyilestirme (keyword confidence dusuk), diger tenant'lar icin S2 rollout
+- **Date:** 2026-02-21
+- **Status:** Production hotfix deployed — duplicate welcome message + intent not recognized bugs fixed. Automation service healthy.
+- **Last Task:** Hotfix: (1) MainAppCallbackClient timeout retry duplicate mesaj onleme, (2) Yeni session __last_input set + AiIntentHandler ilk mesaj direkt isleme
+- **Next Task:** WhatsApp re-test (Q telefondan), FAQ matching iyilestirme (keyword confidence dusuk), diger tenant'lar icin S2 rollout
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

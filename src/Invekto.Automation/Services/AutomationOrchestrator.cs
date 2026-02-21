@@ -278,6 +278,10 @@ public sealed class AutomationOrchestrator
             }
 
             state = new SessionStateV2 { CurrentNodeId = graph.TriggerStart.Id };
+            // Preserve the user's first message so handlers (ai_intent etc.) can consume it
+            if (!string.IsNullOrWhiteSpace(messageText))
+                state.Variables["__last_input"] = messageText;
+
             await _repo.CreateSessionAsync(tenantId, chatId, phone, "v2_active", ct);
             session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
         }

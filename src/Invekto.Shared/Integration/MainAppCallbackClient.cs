@@ -69,6 +69,16 @@ public sealed class MainAppCallbackClient
                 // Application shutting down, don't retry
                 throw;
             }
+            catch (OperationCanceledException)
+            {
+                // Timeout from linked CTS — request was already sent to the server.
+                // Server may still process it, so DO NOT retry (would cause duplicate messages).
+                _logger.SystemWarn(
+                    $"Callback timeout ({_settings.TimeoutMs}ms) on attempt {attempt + 1}/{_settings.MaxRetries + 1}: " +
+                    $"request_id={callback.RequestId}, action={callback.Action}. " +
+                    "Request was sent — treating as delivered to avoid duplicates.");
+                return true;
+            }
             catch (Exception ex)
             {
                 _logger.SystemWarn(

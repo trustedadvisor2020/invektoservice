@@ -83,6 +83,8 @@
 | 2026-02-20 | WapCRM `/api/users` endpoint'inden user listesi cekilebilir (`X-CIB-SecretKey` header ile) — BotUser (id=91) ACCESS DENIED, gercek user (id=12) calisir | Sadece gercek WapCRM user'i (Q'nun kendi hesabi) ile mesaj gonderilebilir | **WapCRM userID: BotUser/service account ACCESS DENIED olabilir — gercek user ID ile test et** |
 | 2026-02-20 | PostAsJsonAsync `JsonSerializerDefaults.Web` kullanir = camelCase naming policy uygular — `Incom` → `incom`, `InstanceID` → `instanceID` olur | Dictionary + manual JsonSerializer.Serialize (no naming policy) + PostAsync kullan | **PostAsJsonAsync 3rd party API'ye gonderirken camelCase donusumu yapar — exact property name gerekiyorsa Dictionary + manual serialize kullan** |
 | 2026-02-20 | Automation webhook endpoint WapCRM formatinda `messages` array + top-level `InstanceID` bekliyor — kendi DTO formatimiz (event_type/data) farkli | WapCRM formatinda `{messages:[{id,body,type,chatId,senderName,...}], InstanceID: "..."}` gonder | **Automation webhook = WapCRM raw format. Test icin WapCRM formatinda gonder (body=mesaj, chatId=telefon@c.us)** |
+| 2026-02-21 | MainAppCallbackClient TimeoutMs=5000ms < WapCRM API latency (3-9s) — linked CTS OperationCanceledException general catch'e dustu, retry yaptı, duplicate mesaj | Dedicated `catch (OperationCanceledException)` eklendi (non-app-shutdown): `return true` (request sent, delivered say) | **Linked CTS timeout = HTTP request ZATEN gonderilmis — retry = duplicate. Timeout exception'i app-shutdown'dan AYRI yakala ve delivered say** |
+| 2026-02-21 | Yeni session'da `__last_input` set edilmiyor — flow auto-chain trigger→welcome→ai_intent(WaitForInput) ilk mesaji kaybediyor | Orchestrator'da `state.Variables["__last_input"] = messageText` + AiIntentHandler first-visit __last_input check | **Yeni session = kullanicinin ilk mesaji state'e YAZILMALI, yoksa auto-chain sirasinda kaybolur** |
 
 ### Deploy & Config
 
@@ -260,6 +262,8 @@
 | DB-driven intent pattern (seed + runtime) | PKT-6A AiIntentHandler | Hardcoded intent yerine DB'den cek, sektor bazli seed data ile bootstrap, runtime'da CRUD |
 | WapCRM callback bridge (thin proxy) | Backend /api/v1/callback/wapcrm | Automation OutgoingCallback → WapCRM chatoperation format donusumu, instanceID message_log'dan, userID tenant_registry settings'den |
 | Dynamic instanceID from message_log | WapCRM bridge | Gelen mesajin instance_id'si message_log'a yazilir, callback'te ayni phone+tenant icin son instance_id okunur — hangi hattan geldiyse oradan doner |
+| Linked CTS timeout = request already sent | MainAppCallbackClient callback retry | CancellationTokenSource.CreateLinkedTokenSource + CancelAfter(timeout) OperationCanceledException firlatir AMA HTTP request zaten gonderilmistir — retry = duplicate mesaj. Timeout catch'inde `return true` (delivered say) |
+| New session __last_input initialization | AutomationOrchestrator + AiIntentHandler | Yeni session'da `__last_input` set edilmezse flow auto-chain (trigger→welcome→ai_intent) kullanicinin ilk mesajini kaybeder. Orchestrator'da `state.Variables["__last_input"] = messageText` + Handler'da first-visit check |
 
 ### UI & Frontend
 

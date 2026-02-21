@@ -32,7 +32,18 @@ public sealed class AiIntentHandler : INodeHandler
             return await DetectAndRoute(node, ctx, userInput, ct);
         }
 
-        // First visit -- wait for user input
+        // First visit: if __last_input already has the user's message (new session),
+        // process it immediately instead of waiting — avoids losing the first message.
+        if (ctx.State.Variables.TryGetValue("__last_input", out var firstMsg)
+            && !string.IsNullOrWhiteSpace(firstMsg))
+        {
+            ctx.Logger.StepInfo(
+                $"AiIntent '{node.GetData("label", node.Id)}': processing first message directly: '{firstMsg}'",
+                ctx.RequestId);
+            return await DetectAndRoute(node, ctx, firstMsg, ct);
+        }
+
+        // No user input available — wait for next message
         ctx.Logger.StepInfo(
             $"AiIntent '{node.GetData("label", node.Id)}': waiting for user input",
             ctx.RequestId);
