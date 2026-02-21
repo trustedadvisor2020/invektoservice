@@ -1829,6 +1829,117 @@ app.MapPost("/api/v1/automation/webhook", async (HttpContext ctx, AutomationClie
 app.MapGet("/api/v1/automation/flows/{tenantId:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLogger, int tenantId) =>
     await FbProxyGet(ctx, fbClient, jsonLogger, $"/api/v1/flows/{tenantId}"));
 
+// Tenant-level automation analytics summary (manual JWT validation: INSE + INMA fallback)
+app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, JsonLinesLogger jsonLogger, string? from, string? to) =>
+{
+    // Manual JWT validation (not under middleware-protected prefix)
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
+            statusCode: 401);
+    }
+
+    var token = authHeader["Bearer ".Length..].Trim();
+    TenantContext? tenantContext = null;
+
+    // Try INSE JwtValidator first, then INMA fallback
+    if (jwtValidator != null)
+    {
+        var (ctx1, _) = jwtValidator.ValidateToken(token);
+        tenantContext = ctx1;
+    }
+    if (tenantContext == null && inmaJwtValidator != null)
+    {
+        var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
+        if (inmaCtx != null)
+        {
+            tenantContext = new TenantContext
+            {
+                TenantId = inmaCtx.TenantId,
+                UserId = inmaCtx.UserId,
+                Role = inmaCtx.Role
+            };
+        }
+    }
+
+    // Path C: decode-only fallback (INMA token without SecretKey configured)
+    if (tenantContext == null)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (handler.CanReadToken(token))
+            {
+                var jwt = handler.ReadJwtToken(token);
+
+                // Manual expiry check
+                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
+                {
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthTokenExpired, "Token expired", "-"),
+                        statusCode: 401);
+                }
+
+                // CompanyCode = our tenant_id (e.g. "5050"), CompanyId = INMA's internal ID
+                var companyCodeStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value;
+                var userIdStr = jwt.Claims.FirstOrDefault(c =>
+                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+                    || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
+
+                if (int.TryParse(companyCodeStr, out var tenantId) && tenantId > 0
+                    && int.TryParse(userIdStr, out var userId))
+                {
+                    tenantContext = new TenantContext
+                    {
+                        TenantId = tenantId,
+                        UserId = userId,
+                        Role = chatRole switch { "2" => "admin", _ => "agent" }
+                    };
+                    jsonLogger.SystemInfo($"Dashboard analytics (decode-only): tenant={tenantId} user={userId}");
+                }
+            }
+        }
+        catch { /* decode failed — fall through to 401 */ }
+    }
+
+    if (tenantContext == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Invalid or expired token", "-"),
+            statusCode: 401);
+    }
+
+    DateOnly toDate, fromDate;
+    try
+    {
+        toDate = string.IsNullOrEmpty(to) ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(to);
+        fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-7) : DateOnly.Parse(from);
+    }
+    catch (FormatException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid date format (expected yyyy-MM-dd)" });
+    }
+
+    if (fromDate > toDate)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.MetricsInvalidDateRange, message = "Gecersiz tarih araligi (baslangic > bitis)." });
+    }
+
+    try
+    {
+        var summary = await analyticsRepo.GetAutomationSummaryAsync(tenantContext.TenantId, fromDate, toDate);
+        return Results.Ok(summary);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemWarn($"Tenant analytics summary failed for tenant {tenantContext.TenantId} ({ErrorCodes.MetricsQueryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
+    }
+});
+
 // ============================================
 // OUTBOUND PROXY ENDPOINTS (GR-1.3)
 // ============================================
@@ -4348,8 +4459,15 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
 
     requestId = callback.RequestId ?? requestId;
 
-    // Only handle send_message and handoff_to_human
-    if (callback.Action != CallbackActions.SendMessage && callback.Action != CallbackActions.HandoffToHuman)
+    // handoff_to_human: log only, do NOT send WhatsApp message — flow already sent handoff message
+    if (callback.Action == CallbackActions.HandoffToHuman)
+    {
+        jsonLog.StepInfo($"WapCRM bridge: handoff logged for tenant {callback.TenantId}, chat={callback.ChatId}", requestId);
+        return Results.Ok(new { status = "handoff_logged", action = callback.Action });
+    }
+
+    // Only handle send_message
+    if (callback.Action != CallbackActions.SendMessage)
     {
         jsonLog.StepInfo($"WapCRM bridge: skipping action '{callback.Action}' for tenant {callback.TenantId}", requestId);
         return Results.Ok(new { status = "skipped", action = callback.Action });
@@ -4385,10 +4503,8 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         return Results.Json(new { error = "NO_INSTANCE_ID", message = "No incoming message found for this phone" }, statusCode: 422);
     }
 
-    // Determine message text
-    var messageText = callback.Action == CallbackActions.HandoffToHuman
-        ? "Sizi müşteri temsilcimize yönlendiriyorum. En kısa sürede size dönüş yapılacaktır."
-        : callback.Data?.MessageText ?? "";
+    // Determine message text (only send_message reaches here)
+    var messageText = callback.Data?.MessageText ?? "";
 
     if (string.IsNullOrWhiteSpace(messageText))
     {

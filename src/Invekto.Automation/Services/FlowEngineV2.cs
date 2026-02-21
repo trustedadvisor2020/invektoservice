@@ -38,7 +38,8 @@ public sealed class FlowEngineV2
     public async Task<EngineStepResult> ExecuteAsync(
         FlowGraphV2 graph, SessionStateV2 state, CancellationToken ct,
         bool isSimulation = false, int tenantId = 0,
-        string[]? tenantIntents = null, double tenantConfidenceThreshold = 0.5)
+        string[]? tenantIntents = null, double tenantConfidenceThreshold = 0.5,
+        Action<string>? onMessage = null)
     {
         var messages = new List<string>();
         var currentNodeId = state.CurrentNodeId;
@@ -155,9 +156,12 @@ public sealed class FlowEngineV2
             state.ExecutionPath.Add(currentNodeId);
             state.CurrentNodeId = currentNodeId;
 
-            // Collect message
+            // Collect message (and stream immediately if callback provided)
             if (!string.IsNullOrEmpty(result.MessageText))
+            {
                 messages.Add(result.MessageText);
+                onMessage?.Invoke(result.MessageText);
+            }
 
             // Apply variable updates
             if (result.VariableUpdates != null)

@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-21
-- **Status:** Production hotfix deployed — duplicate welcome message + intent not recognized bugs fixed. Automation service healthy.
-- **Last Task:** Hotfix: (1) MainAppCallbackClient timeout retry duplicate mesaj onleme, (2) Yeni session __last_input set + AiIntentHandler ilk mesaj direkt isleme
-- **Next Task:** WhatsApp re-test (Q telefondan), FAQ matching iyilestirme (keyword confidence dusuk), diger tenant'lar icin S2 rollout
+- **Status:** Flow Builder + Dashboard hotfixes deployed. Auto-layout, intent node crash fix, dashboard analytics decode-only JWT fallback, daily_metrics tables created.
+- **Last Task:** (1) Flow Builder auto-layout (BFS), (2) Intent node n.map crash fix, (3) Dashboard analytics 401→decode-only JWT fallback, (4) daily_metrics + daily_intent_metrics tables created in production
+- **Next Task:** WhatsApp re-test (Q telefondan), FAQ matching iyilestirme, dashboard analytics data dogrulama (MetricsAggregationService 5dk sonra doldurur)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -83,6 +83,9 @@ src/
 | 2026-02-20 | 3 arch dokumani | tenant-isolation.md, auth-architecture.md, ops-dashboard-convention.md |
 | 2026-02-20 | S2 Satis Asistani canli | Tenant 5050 (TestEticaret): 9-node v2 flow, WapCRM callback bridge (userID=12), E2E WhatsApp mesaj cevap dogrulandi |
 | 2026-02-20 | INMA JWT CompanyCode fix | CompanyId (INMA internal=11) ≠ CompanyCode (tenant_id=5050). Backend exchange + Dashboard getSession/exchangeInmaToken duzeltildi, deploy edildi |
+| 2026-02-21 | Flow Builder auto-layout | Nodes position olmadan gelince (0,0) stack oluyordu — BFS auto-layout eklendi |
+| 2026-02-21 | Dashboard decode-only JWT fallback | inmaJwtValidator NULL ise exchange gibi decode-only Path C ile CompanyCode claim okunuyor |
+| 2026-02-21 | daily_metrics tables created | backend-metrics.sql production'da calistirildi (daily_metrics + daily_intent_metrics) |
 
 ## Q Pending Operational Tasks
 
@@ -93,7 +96,7 @@ src/
 - [ ] Appointments: appointments-v2.sql + appointments-v3.sql calistir
 - [ ] Attribution: attribution.sql calistir
 - [ ] Outbound: campaign + consent migration calistir
-- [ ] Backend: backend-metrics.sql calistir
+- [x] Backend: backend-metrics.sql calistir (2026-02-21 tamamlandi)
 
 ## Notes
 

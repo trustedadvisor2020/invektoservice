@@ -480,8 +480,15 @@ function AiIntentProps({
   data: AiIntentData;
   onChange: (d: Record<string, unknown>) => void;
 }) {
-  const intents = data.intents ?? [];
-  const threshold = data.confidence_threshold ?? 0.5;
+  const rawIntents = data.intents ?? [];
+  const intents: string[] = Array.isArray(rawIntents)
+    ? rawIntents
+    : typeof rawIntents === 'string'
+      ? (() => { try { const p = JSON.parse(rawIntents); return Array.isArray(p) ? p : []; } catch { return []; } })()
+      : [];
+  const threshold = typeof data.confidence_threshold === 'string'
+    ? parseFloat(data.confidence_threshold) || 0.5
+    : data.confidence_threshold ?? 0.5;
 
   const addIntent = () => {
     onChange({ intents: [...intents, ''] });

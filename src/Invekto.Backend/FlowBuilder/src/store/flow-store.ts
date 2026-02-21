@@ -15,6 +15,7 @@ import { getNodeTypeInfo, createDefaultFlow } from '../types/flow';
 import { generateNodeId, generateEdgeId } from '../lib/utils';
 import { validateGraph, type ValidationError } from '../lib/graph-validator';
 import { enumeratePaths } from '../lib/path-enumerator';
+import { needsAutoLayout, autoLayoutNodes } from '../lib/auto-layout';
 
 export interface FlowState {
   // State
@@ -211,7 +212,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   loadFlow: (config) => {
     const defaults = createDefaultFlow();
 
-    const nodes: Node[] = (config.nodes ?? []).map((n) => ({
+    let nodes: Node[] = (config.nodes ?? []).map((n) => ({
       id: n.id,
       type: n.type,
       position: n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number'
@@ -227,6 +228,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       sourceHandle: e.sourceHandle,
       targetHandle: e.targetHandle,
     }));
+
+    // Auto-layout when all nodes lack valid positions (stacked at origin)
+    if (needsAutoLayout(nodes)) {
+      nodes = autoLayoutNodes(nodes, edges);
+    }
 
     set({
       nodes,

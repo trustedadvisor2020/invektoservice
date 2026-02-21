@@ -278,10 +278,9 @@ public sealed class AutomationOrchestrator
             }
 
             state = new SessionStateV2 { CurrentNodeId = graph.TriggerStart.Id };
-            // Preserve the user's first message so handlers (ai_intent etc.) can consume it
-            if (!string.IsNullOrWhiteSpace(messageText))
-                state.Variables["__last_input"] = messageText;
-
+            // Note: __last_input is NOT set for new sessions — the first message is a
+            // trigger/greeting, not a question. After welcome, ai_intent waits for the
+            // NEXT message (which sets __last_input via the returning-user path).
             await _repo.CreateSessionAsync(tenantId, chatId, phone, "v2_active", ct);
             session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
         }
@@ -318,29 +317,57 @@ public sealed class AutomationOrchestrator
             _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment failed for tenant {tenantId}: {ex.Message}");
         }
 
-        // 4b. Execute pure engine (with tenant intents + threshold)
+        // 4b. Execute pure engine (with streaming: each message sent to WhatsApp immediately)
+        var streamed = false;
         var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
-            tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold);
+            tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
+            onMessage: msg =>
+            {
+                streamed = true;
+                // Fire-and-forget: send each message to WhatsApp immediately, don't wait for WapCRM response
+                _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                    CallbackActions.SendMessage, msg, null, null, 0, callbackUrl, CancellationToken.None)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            _logger.SystemWarn($"Stream callback failed: {t.Exception?.InnerException?.Message}");
+                    }, TaskScheduler.Default);
+            });
 
-        // 5. Side-effects: send messages
+        // 5. Side-effects: log messages (already sent via streaming, don't re-send)
         if (result.Messages.Count > 0)
         {
-            var combinedMessage = string.Join("\n\n", result.Messages);
             sw.Stop();
-            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                CallbackActions.SendMessage, combinedMessage, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
+            if (!streamed)
+            {
+                // Fallback: if streaming didn't fire (shouldn't happen), send combined
+                _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                    CallbackActions.SendMessage, string.Join("\n\n", result.Messages),
+                    null, null, sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            _logger.SystemWarn($"Callback failed: {t.Exception?.InnerException?.Message}");
+                    }, TaskScheduler.Default);
+            }
 
+            var combinedMessage = string.Join("\n\n", result.Messages);
             await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, combinedMessage,
                 "v2_flow", null, null, (int)sw.ElapsedMilliseconds, ct);
         }
 
-        // 6. Side-effects: handle terminal states
+        // 6. Side-effects: handle terminal states (fire-and-forget for handoff callbacks)
         if (result.NeedsHandoff)
         {
             if (!sw.IsRunning) sw.Stop();
             var summary = result.HandoffSummary ?? result.ErrorMessage ?? "v2 flow handoff";
-            await SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
-                summary, sw.ElapsedMilliseconds, callbackUrl, ct);
+            _ = SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
+                summary, sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        _logger.SystemWarn($"Handoff callback failed: {t.Exception?.InnerException?.Message}");
+                }, TaskScheduler.Default);
 
             if (session != null)
                 await _repo.EndSessionAsync(session.Id, "handed_off", ct);
@@ -350,10 +377,15 @@ public sealed class AutomationOrchestrator
 
         if (result.IsTerminal && result.ErrorCode != null)
         {
-            // Error state: send error info + handoff
+            // Error state: send error info + handoff (fire-and-forget)
             if (!sw.IsRunning) sw.Stop();
-            await SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
-                result.ErrorMessage ?? "v2 engine error", sw.ElapsedMilliseconds, callbackUrl, ct);
+            _ = SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
+                result.ErrorMessage ?? "v2 engine error", sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        _logger.SystemWarn($"Error handoff callback failed: {t.Exception?.InnerException?.Message}");
+                }, TaskScheduler.Default);
 
             if (session != null)
                 await _repo.EndSessionAsync(session.Id, "error", ct);

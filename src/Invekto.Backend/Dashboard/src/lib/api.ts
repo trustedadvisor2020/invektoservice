@@ -922,9 +922,14 @@ class OpsApiClient {
 
   async getAutomationSummary(tenantId: number, from?: string, to?: string): Promise<AutomationSummary> {
     const sp = new URLSearchParams();
-    sp.set('tenant_id', tenantId.toString());
     if (from) sp.set('from', from);
     if (to) sp.set('to', to);
+
+    // Use tenant-level endpoint for INMA sessions, ops endpoint for SuperAdmin
+    if (this.isInmaSession() && !this.isImpersonating()) {
+      return this.request<AutomationSummary>(`/api/v1/dashboard/analytics/summary?${sp}`);
+    }
+    sp.set('tenant_id', tenantId.toString());
     return this.request<AutomationSummary>(`/api/ops/analytics/automation/summary?${sp}`);
   }
 

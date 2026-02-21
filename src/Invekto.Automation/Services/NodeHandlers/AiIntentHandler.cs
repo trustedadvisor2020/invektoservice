@@ -25,25 +25,14 @@ public sealed class AiIntentHandler : INodeHandler
     {
         ct.ThrowIfCancellationRequested();
 
-        // Check if we have pending input for this node (user already typed)
+        // Returning user: pending input means user typed while we were waiting
         if (ctx.State.PendingInput != null && ctx.State.PendingInput.NodeId == node.Id)
         {
             var userInput = ctx.State.Variables.TryGetValue("__last_input", out var li) ? li : "";
             return await DetectAndRoute(node, ctx, userInput, ct);
         }
 
-        // First visit: if __last_input already has the user's message (new session),
-        // process it immediately instead of waiting — avoids losing the first message.
-        if (ctx.State.Variables.TryGetValue("__last_input", out var firstMsg)
-            && !string.IsNullOrWhiteSpace(firstMsg))
-        {
-            ctx.Logger.StepInfo(
-                $"AiIntent '{node.GetData("label", node.Id)}': processing first message directly: '{firstMsg}'",
-                ctx.RequestId);
-            return await DetectAndRoute(node, ctx, firstMsg, ct);
-        }
-
-        // No user input available — wait for next message
+        // First visit or loop revisit — wait for next message
         ctx.Logger.StepInfo(
             $"AiIntent '{node.GetData("label", node.Id)}': waiting for user input",
             ctx.RequestId);
