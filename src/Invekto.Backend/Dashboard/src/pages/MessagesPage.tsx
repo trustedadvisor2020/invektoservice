@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api, MessageLogEntry } from '../lib/api';
-import { ArrowDownLeft, ArrowUpRight, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { api, MessageLogEntry, MessageStoryResponse } from '../lib/api';
+import { ArrowDownLeft, ArrowUpRight, Search, RefreshCw, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const PAGE_SIZE = 50;
+
+const ICON_MAP: Record<string, string> = {
+  incoming: '\u{1F4E9}',
+  flow: '\u{26A1}',
+  ai: '\u{1F916}',
+  reply: '\u{1F4AC}',
+  callback: '\u{1F4E4}',
+  faq: '\u{1F4D6}',
+};
 
 export function MessagesPage() {
   const [messages, setMessages] = useState<MessageLogEntry[]>([]);
@@ -16,6 +25,11 @@ export function MessagesPage() {
   const [filterDirection, setFilterDirection] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
+
+  // Expanded story
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [storyLoading, setStoryLoading] = useState(false);
+  const [story, setStory] = useState<MessageStoryResponse | null>(null);
 
   const fetchMessages = useCallback(async () => {
     setLoading(true);
@@ -51,6 +65,29 @@ export function MessagesPage() {
   const handleSearch = () => {
     setPage(0);
     fetchMessages();
+  };
+
+  const handleRowClick = async (msg: MessageLogEntry) => {
+    if (msg.direction !== 'in') return;
+
+    if (expandedId === msg.id) {
+      setExpandedId(null);
+      setStory(null);
+      return;
+    }
+
+    setExpandedId(msg.id);
+    setStory(null);
+    setStoryLoading(true);
+    try {
+      const result = await api.getMessageStory(msg.id);
+      setStory(result);
+    } catch (err) {
+      console.error('Story fetch failed:', err);
+      setStory(null);
+    } finally {
+      setStoryLoading(false);
+    }
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -145,67 +182,92 @@ export function MessagesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="w-8 px-2 py-2.5"></th>
                 <th className="text-left px-4 py-2.5 font-medium text-slate-600">Tarih</th>
                 <th className="text-left px-4 py-2.5 font-medium text-slate-600">Firma</th>
                 <th className="text-left px-4 py-2.5 font-medium text-slate-600">Telefon</th>
                 <th className="text-left px-4 py-2.5 font-medium text-slate-600">Yon</th>
                 <th className="text-left px-4 py-2.5 font-medium text-slate-600">Gonderen</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600 w-[40%]">Mesaj</th>
+                <th className="text-left px-4 py-2.5 font-medium text-slate-600 w-[35%]">Mesaj</th>
                 <th className="text-left px-4 py-2.5 font-medium text-slate-600">Tur</th>
               </tr>
             </thead>
             <tbody>
               {loading && messages.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
                     Yukleniyor...
                   </td>
                 </tr>
               ) : messages.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
                     Mesaj bulunamadi
                   </td>
                 </tr>
               ) : (
                 messages.map(msg => (
-                  <tr key={msg.id} className="border-b border-slate-100 hover:bg-slate-50/50">
-                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap text-xs">
-                      {formatDate(msg.createdAt)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                        #{msg.tenantId}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-600">
-                      {msg.phone}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {msg.direction === 'in' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
-                          <ArrowDownLeft className="w-3 h-3" />
-                          Gelen
+                  <>
+                    <tr
+                      key={msg.id}
+                      onClick={() => handleRowClick(msg)}
+                      className={`border-b border-slate-100 ${
+                        msg.direction === 'in'
+                          ? 'cursor-pointer hover:bg-blue-50/50'
+                          : 'hover:bg-slate-50/50'
+                      } ${expandedId === msg.id ? 'bg-blue-50/30' : ''}`}
+                    >
+                      <td className="px-2 py-2.5 text-center">
+                        {msg.direction === 'in' && (
+                          expandedId === msg.id
+                            ? <ChevronUp className="w-3.5 h-3.5 text-blue-500 mx-auto" />
+                            : <ChevronDown className="w-3.5 h-3.5 text-slate-400 mx-auto" />
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap text-xs">
+                        {formatDate(msg.createdAt)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                          #{msg.tenantId}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
-                          <ArrowUpRight className="w-3 h-3" />
-                          Giden
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-slate-500 max-w-[120px] truncate">
-                      {msg.senderName || '-'}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-700 max-w-[400px]">
-                      <p className="truncate text-xs" title={msg.messageText || ''}>
-                        {msg.messageText || <span className="text-slate-400 italic">[medya]</span>}
-                      </p>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-slate-400">
-                      {msg.messageType || 'text'}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-slate-600">
+                        {msg.phone}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {msg.direction === 'in' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                            <ArrowDownLeft className="w-3 h-3" />
+                            Gelen
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                            <ArrowUpRight className="w-3 h-3" />
+                            Giden
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-slate-500 max-w-[120px] truncate">
+                        {msg.senderName || '-'}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-700 max-w-[400px]">
+                        <p className="truncate text-xs" title={msg.messageText || ''}>
+                          {msg.messageText || <span className="text-slate-400 italic">[medya]</span>}
+                        </p>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-slate-400">
+                        {msg.messageType || 'text'}
+                      </td>
+                    </tr>
+                    {expandedId === msg.id && (
+                      <tr key={`story-${msg.id}`}>
+                        <td colSpan={8} className="px-6 py-4 bg-slate-50/70 border-b border-slate-200">
+                          <StoryTimeline loading={storyLoading} story={story} />
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))
               )}
             </tbody>
@@ -239,6 +301,86 @@ export function MessagesPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Timeline component for message story */
+function StoryTimeline({ loading, story }: { loading: boolean; story: MessageStoryResponse | null }) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-4 text-slate-400 text-sm">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Hikaye yukleniyor...
+      </div>
+    );
+  }
+
+  if (!story || story.timeline.length === 0) {
+    return (
+      <div className="py-4 text-sm text-slate-400">
+        Bu mesaj icin hikaye bulunamadi. (Henuz islem yapilmamis olabilir)
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-8">
+      {/* Timeline */}
+      <div className="flex-1 relative">
+        <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-slate-200" />
+        <div className="space-y-3">
+          {story.timeline.map((item, i) => (
+            <div key={i} className="flex items-start gap-3 relative">
+              <div className="w-9 h-9 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-sm z-10 shrink-0">
+                {ICON_MAP[item.icon] || '\u{2022}'}
+              </div>
+              <div className="pt-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-700">{item.title}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{item.time}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5 break-words">{item.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary card */}
+      {story.summary && (
+        <div className="w-56 shrink-0 bg-white rounded-lg border border-slate-200 p-3 h-fit">
+          <h4 className="text-xs font-semibold text-slate-700 mb-2">Ozet</h4>
+          <dl className="space-y-1.5 text-xs">
+            {story.summary.flow_name && (
+              <>
+                <dt className="text-slate-400">Flow</dt>
+                <dd className="text-slate-600 font-medium">{story.summary.flow_name}</dd>
+              </>
+            )}
+            {story.summary.intent && (
+              <>
+                <dt className="text-slate-400">Intent</dt>
+                <dd className="text-slate-600 font-medium">{story.summary.intent}</dd>
+              </>
+            )}
+            {story.summary.confidence != null && (
+              <>
+                <dt className="text-slate-400">Confidence</dt>
+                <dd className="text-slate-600 font-medium">{(story.summary.confidence * 1).toFixed(2)}</dd>
+              </>
+            )}
+            {story.summary.processing_time_ms != null && (
+              <>
+                <dt className="text-slate-400">Sure</dt>
+                <dd className="text-slate-600 font-medium">{story.summary.processing_time_ms}ms</dd>
+              </>
+            )}
+            <dt className="text-slate-400">Otomatik Yanit</dt>
+            <dd className="text-slate-600 font-medium">{story.summary.auto_reply_count} yanit, {story.summary.outgoing_count} giden</dd>
+          </dl>
+        </div>
+      )}
     </div>
   );
 }

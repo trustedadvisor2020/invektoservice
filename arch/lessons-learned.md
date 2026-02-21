@@ -78,6 +78,11 @@
 | 2026-02-20 | Layout.tsx opsOnly filter tenant_id=0 superadmin'i de gizliyordu — quicklogin session varsa opsOnly sayfalar gorunmuyordu | `session && session.tenantId !== 0` guard eklendi | **opsOnly filter'da tenant_id=0 (superadmin) icin bypass ekle — session var ama tenant_id=0 = superadmin** |
 | 2026-02-20 | INMA SSO URL token flow'da raw INMA JWT `fb_session`'a yazildi — FlowBuilder backend INSE JwtValidator ile dogruladigindan 401 dondu | Dashboard'da `exchangeInmaToken()` metodu: INMA JWT → exchange endpoint → INSE JWT → `fb_session` guncelleme | **Farkli signing key'li JWT'leri localStorage'da paylasirken DAIMA token exchange yap — decode-only != validated** |
 | 2026-02-20 | Exchange endpoint `InmaAuth:SecretKey` olmadan 503 dondu — production config'de key yoktu | Decode-only fallback: signature skip, claim'leri okuyup INSE JWT uret | **Config-dependent endpoint'lerde graceful degradation ekle — hard 503 yerine decode-only fallback, yoksa frontend calismaz** |
+| 2026-02-20 | WapCRM chatoperation API "Invalid Request Model" — `Incom=4` ile `userKey` (email) zorunlu ama bos string gonderildi | `Incom`+`userKey` yerine `userID` (integer) kullan — Incom gonderme, sadece userID yeterli | **WapCRM API: Incom=4 → userKey ZORUNLU. Incom gonderme + userID kullan = daha basit, daha guvenli** |
+| 2026-02-20 | INMA JWT `CompanyId` claim = INMA internal ID (11), `CompanyCode` claim = bizim tenant_id (5050) — Dashboard `CompanyId` kullaniyordu, Flow Builder bos geldi | 3 yerde CompanyId → CompanyCode degistirildi (Backend exchange endpoint, Dashboard getSession, exchangeInmaToken) | **INMA JWT claim mapping: CompanyId ≠ tenant_id! CompanyCode = bizim tenant_id. Webhook URL `?companyId=` parametresi de CompanyCode'a karsilik gelir** |
+| 2026-02-20 | WapCRM `/api/users` endpoint'inden user listesi cekilebilir (`X-CIB-SecretKey` header ile) — BotUser (id=91) ACCESS DENIED, gercek user (id=12) calisir | Sadece gercek WapCRM user'i (Q'nun kendi hesabi) ile mesaj gonderilebilir | **WapCRM userID: BotUser/service account ACCESS DENIED olabilir — gercek user ID ile test et** |
+| 2026-02-20 | PostAsJsonAsync `JsonSerializerDefaults.Web` kullanir = camelCase naming policy uygular — `Incom` → `incom`, `InstanceID` → `instanceID` olur | Dictionary + manual JsonSerializer.Serialize (no naming policy) + PostAsync kullan | **PostAsJsonAsync 3rd party API'ye gonderirken camelCase donusumu yapar — exact property name gerekiyorsa Dictionary + manual serialize kullan** |
+| 2026-02-20 | Automation webhook endpoint WapCRM formatinda `messages` array + top-level `InstanceID` bekliyor — kendi DTO formatimiz (event_type/data) farkli | WapCRM formatinda `{messages:[{id,body,type,chatId,senderName,...}], InstanceID: "..."}` gonder | **Automation webhook = WapCRM raw format. Test icin WapCRM formatinda gonder (body=mesaj, chatId=telefon@c.us)** |
 
 ### Deploy & Config
 
@@ -230,6 +235,7 @@
 | Impersonate via existing JWT infra | SuperAdmin tenant switch | Yeni middleware gereksiz — GenerateToken + setSession + removeTokens mevcut altyapiyi yeniden kullaniyor |
 | Basic Auth in-memory + JWT localStorage | Impersonate exit flow | removeTokens JWT siler ama credentials (in-memory) kalir — ops mode'a donus icin login gereksiz |
 | window.location.href (navigate degil) | Impersonate giris/cikis | Full page reload tum hook'lari yeni session ile baslatir — React Router navigate stale state birakir |
+| INMA JWT CompanyCode = tenant_id mapping | Token exchange + Dashboard session | CompanyId = INMA internal, CompanyCode = bizim tenant_id — webhook `?companyId=` parametresi de CompanyCode'a karsilik gelir |
 
 ### Workflow & Review
 
@@ -252,6 +258,8 @@
 | NpgsqlBatch bulk insert | Audit trail, batch ops | N+1 insert dongusu yerine tek batch = tek roundtrip, atomik |
 | Cross-service client (Service→Service HTTP) | KnowledgeIntentClient (Automation→Knowledge) | Servisler arasi veri cekme icin typed HTTP client + fallback + timeout, DB dogrudan erisim YASAK |
 | DB-driven intent pattern (seed + runtime) | PKT-6A AiIntentHandler | Hardcoded intent yerine DB'den cek, sektor bazli seed data ile bootstrap, runtime'da CRUD |
+| WapCRM callback bridge (thin proxy) | Backend /api/v1/callback/wapcrm | Automation OutgoingCallback → WapCRM chatoperation format donusumu, instanceID message_log'dan, userID tenant_registry settings'den |
+| Dynamic instanceID from message_log | WapCRM bridge | Gelen mesajin instance_id'si message_log'a yazilir, callback'te ayni phone+tenant icin son instance_id okunur — hangi hattan geldiyse oradan doner |
 
 ### UI & Frontend
 

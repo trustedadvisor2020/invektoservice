@@ -1,35 +1,25 @@
 namespace Invekto.Shared.DTOs.Integration;
 
 /// <summary>
-/// Webhook event types that Main App sends to InvektoServis.
-/// GR-1.9: Defines the contract for Main App -> InvektoServis communication.
+/// INMA webhook message types.
+/// type field in WapCRMBasicMessageModel.
 /// </summary>
 public static class WebhookEventTypes
 {
-    /// <summary>New message received from customer</summary>
-    public const string NewMessage = "new_message";
+    public const string Chat = "chat";
+    public const string Image = "image";
+    public const string Video = "video";
+    public const string Audio = "audio";
+    public const string Document = "document";
+    public const string Location = "location";
+    public const string Sticker = "sticker";
 
-    /// <summary>Conversation closed by agent or system</summary>
-    public const string ConversationClosed = "conversation_closed";
-
-    /// <summary>Tag/label changed on a conversation</summary>
-    public const string TagChanged = "tag_changed";
-
-    /// <summary>New conversation started</summary>
-    public const string ConversationStarted = "conversation_started";
-
-    /// <summary>Agent assigned to conversation</summary>
-    public const string AgentAssigned = "agent_assigned";
-
-    private static readonly HashSet<string> ValidTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> TextTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        NewMessage,
-        ConversationClosed,
-        TagChanged,
-        ConversationStarted,
-        AgentAssigned
+        Chat
     };
 
-    public static bool IsValid(string? eventType)
-        => !string.IsNullOrWhiteSpace(eventType) && ValidTypes.Contains(eventType);
+    /// <summary>Returns true if the message type contains processable text.</summary>
+    public static bool IsTextMessage(string? type)
+        => !string.IsNullOrWhiteSpace(type) && TextTypes.Contains(type);
 }

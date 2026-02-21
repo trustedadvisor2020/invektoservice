@@ -209,25 +209,14 @@ app.MapPost("/api/v1/webhook/event", (
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     ctx.Request.Headers["X-Request-Id"] = requestId;
 
-    if (webhookEvent == null)
+    if (webhookEvent?.Messages == null || webhookEvent.Messages.Count == 0)
     {
         return Results.Json(
-            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "Request body is required", requestId),
+            ErrorResponse.Create(ErrorCodes.IntegrationWebhookInvalidPayload, "messages array is required", requestId),
             statusCode: 400);
     }
 
-    // Only process CUSTOMER messages
-    if (webhookEvent.EventType != "new_message" || webhookEvent.Data?.MessageSource != "CUSTOMER")
-    {
-        return Results.Json(new { status = "ignored", request_id = requestId, reason = "Not a customer message" }, statusCode: 200);
-    }
-
-    if (string.IsNullOrWhiteSpace(webhookEvent.Data?.MessageText))
-    {
-        return Results.Json(new { status = "ignored", request_id = requestId, reason = "Empty message text" }, statusCode: 200);
-    }
-
-    // Extract tenant from JWT (stored by middleware)
+    // Extract tenant from JWT or IP whitelist (stored by middleware)
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
     {
@@ -236,35 +225,62 @@ app.MapPost("/api/v1/webhook/event", (
             statusCode: 401);
     }
 
-    jsonLogger.StepInfo($"Processing message for tenant {tenantContext.TenantId}, chat {webhookEvent.ChatId}", requestId);
-
-    // Process async (return 202 immediately)
-    var callbackUrl = webhookEvent.CallbackUrl;
+    var accepted = 0;
+    var ignored = 0;
     var callbackClient = app.Services.GetRequiredService<MainAppCallbackClient>();
-    _ = Task.Run(async () =>
+
+    foreach (var msg in webhookEvent.Messages)
     {
-        try
+        // Only process incoming customer messages (not fromMe), skip group messages
+        if (msg.FromMe || msg.IsGroupMessage)
         {
-            var success = await orchestrator.ProcessMessageAsync(tenantContext, webhookEvent, requestId, callbackUrl, CancellationToken.None);
-            if (!success)
-                jsonLogger.StepError($"Message processing completed with failure for tenant {tenantContext.TenantId}, chat {webhookEvent.ChatId}", requestId);
+            ignored++;
+            continue;
         }
-        catch (Exception ex)
+
+        // Only process text messages
+        if (!WebhookEventTypes.IsTextMessage(msg.Type))
         {
-            // Orchestrator's catch block already sends error callback with detailed message.
-            // This catch handles only unexpected exceptions outside orchestrator scope.
-            jsonLogger.StepError($"Background processing exception: {ex.Message}", requestId);
-            await SendErrorCallbackAsync(callbackClient, requestId, tenantContext.TenantId, webhookEvent.ChatId, webhookEvent.SequenceId,
-                $"Background processing error: {ex.Message}", callbackUrl, jsonLogger);
+            ignored++;
+            continue;
         }
-    });
+
+        if (string.IsNullOrWhiteSpace(msg.Body))
+        {
+            ignored++;
+            continue;
+        }
+
+        accepted++;
+        var chatId = msg.ChatId ?? "-";
+        jsonLogger.StepInfo($"Processing message for tenant {tenantContext.TenantId}, chat {chatId}", requestId);
+
+        // Capture loop variable for async closure
+        var currentMsg = msg;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var success = await orchestrator.ProcessMessageAsync(tenantContext, currentMsg, requestId, null, CancellationToken.None);
+                if (!success)
+                    jsonLogger.StepError($"Message processing failed for tenant {tenantContext.TenantId}, chat {chatId}", requestId);
+            }
+            catch (Exception ex)
+            {
+                jsonLogger.StepError($"Background processing exception: {ex.Message}", requestId);
+                await SendErrorCallbackAsync(callbackClient, requestId, tenantContext.TenantId, chatId, currentMsg.Time,
+                    $"Background processing error: {ex.Message}", null, jsonLogger);
+            }
+        });
+    }
 
     return Results.Json(new
     {
         status = "accepted",
         request_id = requestId,
-        event_type = webhookEvent.EventType,
-        sequence_id = webhookEvent.SequenceId,
+        accepted_count = accepted,
+        ignored_count = ignored,
+        instance_id = webhookEvent.InstanceId,
         message = "Event accepted for processing"
     }, statusCode: 202);
 });
@@ -275,7 +291,7 @@ app.MapPost("/api/v1/webhook/event", (
 
 static async Task SendErrorCallbackAsync(
     MainAppCallbackClient callbackClient,
-    string requestId, int tenantId, int chatId, long sequenceId,
+    string requestId, int tenantId, string chatId, long sequenceId,
     string errorMessage, string? callbackUrl, JsonLinesLogger logger)
 {
     try
@@ -1125,8 +1141,8 @@ app.MapPost("/api/v1/webhooks/{tenantId:int}/{flowId:int}", async (
             statusCode: 400);
     }
 
-    // Synthetic negative chat_id (never collides with real positive chat_ids)
-    var syntheticChatId = (int)Interlocked.Decrement(ref WebhookState.ChatIdCounter);
+    // Synthetic chat_id (never collides with real WhatsApp chat_ids)
+    var syntheticChatId = $"webhook_{Interlocked.Decrement(ref WebhookState.ChatIdCounter)}";
     var sessionId = -1;
 
     try

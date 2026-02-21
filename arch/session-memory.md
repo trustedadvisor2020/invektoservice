@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-20
-- **Status:** Tenant isolation altyapisi + SuperAdmin impersonate + Firmalar sayfasi tamamlandi. Arch dokumanlari eklendi.
-- **Last Task:** feat(tenant): TenantRepositoryBase, TenantRegistryRepository, SuperAdmin impersonate endpoint, TenantsPage, impersonation banner. 3 arch dokumani (tenant-isolation, auth-architecture, ops-dashboard-convention).
-- **Next Task:** Backend deploy (tenant list + impersonate), mevcut repo'larin TenantRepositoryBase migration (ayri paket)
+- **Status:** S2 Satis Oncesi Urun Sorulari senaryosu tenant 5050 icin canli. E2E dogrulanmis: WhatsApp mesaj → Automation flow → FAQ eslesme → WapCRM callback → WhatsApp cevap.
+- **Last Task:** S2 senaryo: DB seeding (tenant+FAQ+intent+flow), WapCRM callback bridge, webhook forwarding fix, Message Story endpoint+timeline, userID fix, E2E test PASS.
+- **Next Task:** Gercek WhatsApp test (Q telefondan), FAQ matching iyilestirme (keyword confidence dusuk), diger tenant'lar icin S2 rollout
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -81,6 +81,8 @@ src/
 | 2026-02-20 | INMA SSO exchange hotfix | InmaAuth:SecretKey olmadan exchange decode-only fallback, Dashboard token exchange |
 | 2026-02-20 | Tenant isolation altyapisi | TenantRepositoryBase, SuperAdmin impersonate (Option C), Firmalar sayfasi |
 | 2026-02-20 | 3 arch dokumani | tenant-isolation.md, auth-architecture.md, ops-dashboard-convention.md |
+| 2026-02-20 | S2 Satis Asistani canli | Tenant 5050 (TestEticaret): 9-node v2 flow, WapCRM callback bridge (userID=12), E2E WhatsApp mesaj cevap dogrulandi |
+| 2026-02-20 | INMA JWT CompanyCode fix | CompanyId (INMA internal=11) ≠ CompanyCode (tenant_id=5050). Backend exchange + Dashboard getSession/exchangeInmaToken duzeltildi, deploy edildi |
 
 ## Q Pending Operational Tasks
 

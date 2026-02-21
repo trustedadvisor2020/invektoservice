@@ -129,7 +129,7 @@ public sealed class MessageSenderService : IHostedService, IDisposable
                 RequestId = Guid.NewGuid().ToString("N"),
                 Action = CallbackActions.SendMessage,
                 TenantId = msg.TenantId,
-                ChatId = 0, // Outbound doesn't have a chat context
+                ChatId = "", // Outbound doesn't have a chat context
                 SequenceId = msg.Id,
                 Data = new CallbackData
                 {

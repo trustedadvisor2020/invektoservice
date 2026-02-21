@@ -20,9 +20,9 @@ public sealed class OutgoingCallback
     [JsonPropertyName("tenant_id")]
     public int TenantId { get; init; }
 
-    /// <summary>Chat/conversation ID this callback relates to</summary>
+    /// <summary>Chat/conversation ID this callback relates to (WhatsApp format: "905xx@c.us")</summary>
     [JsonPropertyName("chat_id")]
-    public int ChatId { get; init; }
+    public string ChatId { get; init; } = "";
 
     /// <summary>Sequence ID from the original webhook event (ordering)</summary>
     [JsonPropertyName("sequence_id")]

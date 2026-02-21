@@ -31,7 +31,17 @@ public sealed class AiFaqHandler : INodeHandler
             return await MatchAndRoute(node, ctx, userInput, ct);
         }
 
-        // First visit -- wait for user input
+        // Reuse __last_input from preceding node (e.g. ai_intent → ai_faq same-message chain)
+        // This prevents forcing the user to send the same question twice.
+        if (ctx.State.Variables.TryGetValue("__last_input", out var prev) && !string.IsNullOrWhiteSpace(prev))
+        {
+            ctx.Logger.StepInfo(
+                $"AiFaq '{node.GetData("label", node.Id)}': reusing __last_input from preceding node",
+                ctx.RequestId);
+            return await MatchAndRoute(node, ctx, prev, ct);
+        }
+
+        // No input available -- wait for user input
         ctx.Logger.StepInfo(
             $"AiFaq '{node.GetData("label", node.Id)}': waiting for user input",
             ctx.RequestId);

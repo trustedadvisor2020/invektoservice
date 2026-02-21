@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, Activity, Globe, ChevronDown, ChevronRight, LayoutGrid, Building2, Sparkles, GraduationCap, Smartphone, Shield } from 'lucide-react';
+import { Home, ShoppingCart, Activity, Globe, ChevronDown, ChevronRight, LayoutGrid, Building2, Sparkles, GraduationCap, Smartphone, Shield, HeartPulse } from 'lucide-react';
 import { sidebarGroups } from '../data';
 
 const iconMap = { ShoppingCart, Activity, Globe, Building2, Sparkles, GraduationCap, Smartphone, Shield };
@@ -24,6 +24,21 @@ const Sidebar = () => {
                     <Home color="white" size={24} />
                 </div>
                 <h2 className="text-2xl font-bold text-t-primary tracking-tight">Invekto</h2>
+            </NavLink>
+
+            {/* Health Check Link */}
+            <NavLink
+                to="/health-check"
+                className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-all mb-2 ${
+                        isActive
+                            ? 'bg-rose-50 text-rose-700 font-semibold shadow-sm ring-1 ring-rose-200'
+                            : 'text-t-secondary hover:bg-gray-50 hover:text-t-primary'
+                    }`
+                }
+            >
+                <HeartPulse size={20} />
+                Saglik Kontrolu
             </NavLink>
 
             {/* Landing Link */}

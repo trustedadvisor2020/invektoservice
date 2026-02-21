@@ -3,97 +3,73 @@ using System.Text.Json.Serialization;
 namespace Invekto.Shared.DTOs.Integration;
 
 /// <summary>
-/// Webhook payload that Main App sends to InvektoServis.
-/// GR-1.9: Standardized event format for all Main App -> InvektoServis communication.
-/// tenant_id comes from JWT token, NOT from payload (security: prevent tenant spoofing).
+/// Webhook payload that INMA (Main App) sends to InvektoServis.
+/// Format matches WapCRMBasicMessageWebHookModel from INMA.
+/// tenant_id comes from JWT or IP whitelist (?companyId=), NOT from payload.
 /// </summary>
 public sealed class IncomingWebhookEvent
 {
-    /// <summary>Event type (see WebhookEventTypes constants)</summary>
-    [JsonPropertyName("event_type")]
-    public required string EventType { get; init; }
+    [JsonPropertyName("messages")]
+    public List<WebhookMessage>? Messages { get; init; }
 
-    /// <summary>Sequence ID for ordering guarantee. Main App increments per tenant.</summary>
-    [JsonPropertyName("sequence_id")]
-    public long SequenceId { get; init; }
-
-    /// <summary>Conversation/chat ID in Main App</summary>
-    [JsonPropertyName("chat_id")]
-    public int ChatId { get; init; }
-
-    /// <summary>Channel type (whatsapp, web, instagram, etc.)</summary>
-    [JsonPropertyName("channel")]
-    public string? Channel { get; init; }
-
-    /// <summary>Event-specific data (structure depends on event_type)</summary>
-    [JsonPropertyName("data")]
-    public WebhookEventData? Data { get; init; }
-
-    /// <summary>Main App timestamp when event occurred</summary>
-    [JsonPropertyName("timestamp")]
-    public DateTime Timestamp { get; init; }
-
-    /// <summary>Callback URL where InvektoServis sends async results. If null, uses tenant default.</summary>
-    [JsonPropertyName("callback_url")]
-    public string? CallbackUrl { get; init; }
+    [JsonPropertyName("InstanceID")]
+    public string? InstanceId { get; init; }
 }
 
 /// <summary>
-/// Event-specific data. Fields are nullable because different events use different fields.
+/// Single message within the webhook payload.
+/// Maps to WapCRMBasicMessageModel from INMA.
 /// </summary>
-public sealed class WebhookEventData
+public sealed class WebhookMessage
 {
-    /// <summary>Customer phone number (for new_message)</summary>
-    [JsonPropertyName("phone")]
-    public string? Phone { get; init; }
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
 
-    /// <summary>Customer name (if known)</summary>
-    [JsonPropertyName("customer_name")]
-    public string? CustomerName { get; init; }
+    [JsonPropertyName("body")]
+    public string? Body { get; init; }
 
-    /// <summary>Message text (for new_message)</summary>
-    [JsonPropertyName("message_text")]
-    public string? MessageText { get; init; }
+    [JsonPropertyName("type")]
+    public string? Type { get; init; }
 
-    /// <summary>Message source: CUSTOMER or AGENT</summary>
-    [JsonPropertyName("message_source")]
-    public string? MessageSource { get; init; }
+    [JsonPropertyName("senderName")]
+    public string? SenderName { get; init; }
 
-    /// <summary>Assigned agent ID (for agent_assigned)</summary>
-    [JsonPropertyName("agent_id")]
-    public int? AgentId { get; init; }
+    [JsonPropertyName("fromMe")]
+    public bool FromMe { get; init; }
 
-    /// <summary>Tag/label name (for tag_changed)</summary>
-    [JsonPropertyName("tag_name")]
-    public string? TagName { get; init; }
+    [JsonPropertyName("author")]
+    public string? Author { get; init; }
 
-    /// <summary>Tag action: added or removed (for tag_changed)</summary>
-    [JsonPropertyName("tag_action")]
-    public string? TagAction { get; init; }
+    [JsonPropertyName("time")]
+    public long Time { get; init; }
 
-    // --- GR-3.14: Ads Attribution fields (for conversation_started) ---
+    [JsonPropertyName("chatId")]
+    public string? ChatId { get; init; }
 
-    /// <summary>UTM source parameter (google, meta, tiktok, etc.)</summary>
-    [JsonPropertyName("utm_source")]
-    public string? UtmSource { get; init; }
+    [JsonPropertyName("caption")]
+    public string? Caption { get; init; }
 
-    /// <summary>UTM medium parameter (cpc, cpm, social, email, etc.)</summary>
-    [JsonPropertyName("utm_medium")]
-    public string? UtmMedium { get; init; }
+    [JsonPropertyName("isforwarded")]
+    public bool IsForwarded { get; init; }
 
-    /// <summary>UTM campaign name</summary>
-    [JsonPropertyName("utm_campaign")]
-    public string? UtmCampaign { get; init; }
+    [JsonPropertyName("hasQuotedMsg")]
+    public bool HasQuotedMsg { get; init; }
 
-    /// <summary>UTM content identifier (ad variant)</summary>
-    [JsonPropertyName("utm_content")]
-    public string? UtmContent { get; init; }
+    [JsonPropertyName("QuotedMsgID")]
+    public string? QuotedMsgId { get; init; }
 
-    /// <summary>UTM term (keyword for search ads)</summary>
-    [JsonPropertyName("utm_term")]
-    public string? UtmTerm { get; init; }
+    [JsonPropertyName("IsGroupMessage")]
+    public bool IsGroupMessage { get; init; }
 
-    /// <summary>Meta click ID (fbclid / ctwa_clid from Click-to-WhatsApp ads)</summary>
-    [JsonPropertyName("meta_click_id")]
-    public string? MetaClickId { get; init; }
+    [JsonPropertyName("productLink")]
+    public string? ProductLink { get; init; }
+
+    [JsonPropertyName("productContent")]
+    public string? ProductContent { get; init; }
+
+    [JsonPropertyName("imageUrl")]
+    public string? ImageUrl { get; init; }
+
+    [JsonPropertyName("fromContact")]
+    public string? FromContact { get; init; }
 }

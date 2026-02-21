@@ -176,7 +176,7 @@ public sealed class CronSchedulerService : IHostedService, IDisposable
 
     private async Task ExecuteSingleFlowAsync(ScheduleFlowInfo flow, FlowGraphV2 graph, CancellationToken ct)
     {
-        var syntheticChatId = (int)Interlocked.Decrement(ref _scheduleCounter);
+        var syntheticChatId = $"cron_{Interlocked.Decrement(ref _scheduleCounter)}";
         var sessionId = -1;
 
         try

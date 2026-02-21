@@ -20,7 +20,8 @@
       "mcp__invekto-ops__server-logs",
       "mcp__invekto-ops__server-deploy",
       "mcp__invekto-ops__server-upload",
-      "WebFetch(domain:services.invekto.com)"
+      "WebFetch(domain:services.invekto.com)",
+      "WebFetch(domain:www.reddit.com)"
     ],
     "additionalDirectories": [
       "c:\\CRMs\\InvektoServis"

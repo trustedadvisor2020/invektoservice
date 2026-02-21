@@ -25,56 +25,13 @@ public sealed class AttributionService
     /// Inline call - must be fast (target < 5ms).
     /// Returns inserted lead ID or 0 if no attribution data present.
     /// </summary>
-    public async Task<int> TrackFromWebhookAsync(
-        int tenantId, IncomingWebhookEvent webhookEvent, CancellationToken ct = default)
+    public Task<int> TrackFromWebhookAsync(
+        int tenantId, WebhookMessage message, CancellationToken ct = default)
     {
-        var data = webhookEvent.Data;
-        if (data == null) return 0;
-
-        // Only track if there's meaningful attribution data
-        var hasUtm = !string.IsNullOrEmpty(data.UtmSource)
-                  || !string.IsNullOrEmpty(data.UtmMedium)
-                  || !string.IsNullOrEmpty(data.UtmCampaign);
-        var hasMeta = !string.IsNullOrEmpty(data.MetaClickId);
-        var hasPhone = !string.IsNullOrEmpty(data.Phone);
-
-        if (!hasPhone || (!hasUtm && !hasMeta))
-            return 0;
-
-        var leadSource = DetectLeadSource(data.UtmSource, data.MetaClickId);
-
-        var req = new AttributionTrackRequest
-        {
-            CustomerPhone = data.Phone ?? "",
-            ChatId = webhookEvent.ChatId > 0 ? (int)webhookEvent.ChatId : null,
-            UtmSource = data.UtmSource,
-            UtmMedium = data.UtmMedium,
-            UtmCampaign = data.UtmCampaign,
-            UtmContent = data.UtmContent,
-            UtmTerm = data.UtmTerm,
-            MetaClickId = data.MetaClickId
-        };
-
-        try
-        {
-            var id = await _repo.InsertLeadAttributionAsync(tenantId, req, leadSource, ct);
-            if (id > 0)
-            {
-                _logger.StepInfo($"Attribution tracked: lead_id={id}, source={leadSource}, tenant={tenantId}", "-");
-            }
-            return id;
-        }
-        catch (Npgsql.NpgsqlException ex)
-        {
-            // Attribution tracking must never break the webhook flow
-            _logger.SystemWarn($"Attribution tracking failed for tenant {tenantId}: {ex.Message}");
-            return 0;
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.SystemWarn($"Attribution tracking configuration error for tenant {tenantId}: {ex.Message}");
-            return 0;
-        }
+        // INMA webhook does not include UTM/attribution data.
+        // Attribution tracking requires UTM parameters or meta click ID.
+        // When INMA starts sending UTM params, this method will be re-enabled.
+        return Task.FromResult(0);
     }
 
     /// <summary>

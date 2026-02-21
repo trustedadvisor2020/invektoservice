@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Smartphone, Info, Zap, BookOpen, ArrowUpRight } from 'lucide-react';
+import { CheckCircle, Smartphone, Info, Zap, BookOpen, ArrowUpRight, AlertTriangle, XCircle, Lightbulb, ShieldCheck } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import Badge from './Badge';
 import Step from './Step';
@@ -8,6 +8,9 @@ import FlatCard from './FlatCard';
 import Callout from './Callout';
 import ChatPreview from './ChatPreview';
 import InteractiveROI from './InteractiveROI';
+import FlowDiagram from './FlowDiagram';
+import { analyzeScenario, deriveAutomationFlow, generateSuggestions } from '../lib/scenarioAnalysis';
+import { getScenarioTier, TIER_META, getAcceptanceCriteria, getExitCriteria, getBusinessMeta } from '../lib/scenarioMeta';
 
 // Resolve icon name string to Lucide component
 const getIcon = (name) => {
@@ -20,6 +23,29 @@ const getIcon = (name) => {
 const statusMap = { ready: { label: 'Hazir', color: 'green' }, setup: { label: 'Kurulum', color: 'amber' }, optional: { label: 'Opsiyonel', color: 'gray' } };
 const priorityMap = { required: { label: 'Zorunlu', color: 'rose' }, recommended: { label: 'Onerilen', color: 'blue' }, optional: { label: 'Opsiyonel', color: 'gray' } };
 const effortMap = { easy: { label: 'Kolay', color: 'green' }, medium: { label: 'Orta', color: 'amber' }, technical: { label: 'Teknik', color: 'purple' } };
+
+const gradeColors = {
+    A: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    B: 'bg-blue-100 text-blue-800 border-blue-300',
+    C: 'bg-amber-100 text-amber-800 border-amber-300',
+    D: 'bg-red-100 text-red-800 border-red-300',
+};
+
+const priorityColors = {
+    critical: 'bg-red-50 border-red-200 text-red-800',
+    high: 'bg-amber-50 border-amber-200 text-amber-800',
+    medium: 'bg-blue-50 border-blue-200 text-blue-800',
+    low: 'bg-gray-50 border-gray-200 text-gray-700',
+};
+
+const priorityLabels = { critical: 'Kritik', high: 'Yuksek', medium: 'Orta', low: 'Dusuk' };
+const categoryLabels = { icerik: 'Icerik', teknik: 'Teknik', otomasyon: 'Otomasyon', roi: 'ROI' };
+
+const FindingIcon = ({ type }) => {
+    if (type === 'pass') return <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />;
+    if (type === 'warn') return <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />;
+    return <XCircle size={14} className="text-red-500 flex-shrink-0" />;
+};
 
 const RequirementItem = ({ req, bulletColor }) => {
     const isObj = typeof req === 'object' && req !== null;
@@ -64,6 +90,20 @@ const RequirementItem = ({ req, bulletColor }) => {
 const ScenarioPage = ({ data }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [activeFlow, setActiveFlow] = useState(0);
+    const [showAnalysis, setShowAnalysis] = useState(true);
+
+    // Run analysis at render time
+    const analysis = useMemo(() => data ? analyzeScenario(data) : null, [data]);
+    const suggestions = useMemo(() => data && analysis ? generateSuggestions(data, analysis) : [], [data, analysis]);
+    const tier = useMemo(() => data ? getScenarioTier(data) : 2, [data]);
+    const tierMeta = TIER_META[tier];
+    const acceptance = useMemo(() => data ? getAcceptanceCriteria(data) : [], [data]);
+    const exitCriteria = useMemo(() => data ? getExitCriteria(data) : null, [data]);
+    const bizMeta = useMemo(() => data ? getBusinessMeta(data) : null, [data]);
+    const flowDiagrams = useMemo(() => {
+        if (!data?.flows) return [];
+        return data.flows.map(flow => deriveAutomationFlow(flow, data.overview));
+    }, [data]);
 
     if (!data) return <div className="p-10 text-t-muted">Senaryo verisi bulunamadi.</div>;
 
@@ -77,11 +117,48 @@ const ScenarioPage = ({ data }) => {
 
     return (
         <div className="max-w-[1700px] mx-auto p-10 font-sans bg-gray-50/50 min-h-screen">
+            {/* Analysis Banner */}
+            {analysis && showAnalysis && (
+                <div className={`mb-6 rounded-xl border-2 p-4 flex items-center gap-4 ${gradeColors[analysis.grade]}`}>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        <ShieldCheck size={24} />
+                        <span className="text-3xl font-extrabold">{analysis.grade}</span>
+                        <span className="text-sm font-bold opacity-75">%{analysis.score}</span>
+                    </div>
+                    <div className="h-8 w-px bg-current opacity-20 flex-shrink-0"></div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 flex-1 min-w-0">
+                        {analysis.findings.map(f => (
+                            <span key={f.key} className="flex items-center gap-1 text-xs font-medium whitespace-nowrap">
+                                <FindingIcon type={f.type} />
+                                {f.label}
+                            </span>
+                        ))}
+                    </div>
+                    {suggestions.length > 0 && (
+                        <span className="flex items-center gap-1 text-xs font-bold flex-shrink-0 bg-white/50 rounded-full px-3 py-1">
+                            <Lightbulb size={14} />
+                            {suggestions.length} oneri
+                        </span>
+                    )}
+                    <button onClick={() => setShowAnalysis(false)} className="text-current opacity-40 hover:opacity-100 transition-opacity flex-shrink-0">
+                        <LucideIcons.X size={18} />
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="mb-12">
                 <div className="flex items-center gap-3 mb-5">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold border ${tierMeta.color}`} title={tierMeta.desc}>
+                        {tierMeta.label}
+                    </span>
                     {phase && <Badge color="blue">{phase.toUpperCase()}</Badge>}
                     {category && <Badge color="green">{category}</Badge>}
+                    {bizMeta && (
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${bizMeta.statusMeta.color}`}>
+                            {bizMeta.statusMeta.label}
+                        </span>
+                    )}
                 </div>
                 <h1 className="text-5xl font-extrabold text-t-primary mb-6 tracking-tight">
                     {id.toUpperCase()}: {title}
@@ -168,7 +245,7 @@ const ScenarioPage = ({ data }) => {
             {activeTab === 'scenarios' && flows.length > 0 && (
                 <div className="animate-fade-in">
                     {/* Flow Selector */}
-                    <div className="flex flex-wrap gap-4 mb-10">
+                    <div className="flex flex-wrap gap-4 mb-6">
                         {flows.map((flow, idx) => (
                             <button
                                 key={flow.id || idx}
@@ -181,6 +258,14 @@ const ScenarioPage = ({ data }) => {
                             </button>
                         ))}
                     </div>
+
+                    {/* Flow Automation Diagram */}
+                    {flowDiagrams[activeFlow] && (
+                        <FlowDiagram
+                            nodes={flowDiagrams[activeFlow].nodes}
+                            edges={flowDiagrams[activeFlow].edges}
+                        />
+                    )}
 
                     {/* Scenario Panel */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -279,6 +364,118 @@ const ScenarioPage = ({ data }) => {
                         </FlatCard>
                     )}
                 </div>
+            )}
+
+            {/* Acceptance Criteria & Business Metadata */}
+            <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left: Tamam Tanımı + Çıkış Kuralı */}
+                <FlatCard title="Kabul Kriterleri (Tamam Tanimi)" icon={ShieldCheck} className="border-l-4 border-brand-500">
+                    <table className="w-full text-sm mt-3">
+                        <thead>
+                            <tr className="border-b border-gray-200">
+                                <th className="text-left py-2 px-2 text-xs font-bold text-t-muted uppercase">Kriter</th>
+                                <th className="text-left py-2 px-2 text-xs font-bold text-t-muted uppercase">Aciklama</th>
+                                <th className="text-center py-2 px-2 text-xs font-bold text-t-muted uppercase">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {acceptance.map(ac => (
+                                <tr key={ac.key} className="border-b border-gray-100">
+                                    <td className="py-2 px-2 font-medium text-t-primary">{ac.label}</td>
+                                    <td className="py-2 px-2 text-t-secondary text-xs">{ac.desc}</td>
+                                    <td className="py-2 px-2 text-center">
+                                        {ac.met === true && <CheckCircle size={16} className="text-emerald-500 inline" />}
+                                        {ac.met === false && <XCircle size={16} className="text-red-500 inline" />}
+                                        {ac.met === null && <AlertTriangle size={16} className="text-amber-400 inline" />}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {exitCriteria && (
+                        <div className="mt-4 flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-200">
+                            <span className="text-xs font-bold text-t-muted uppercase">Cikis Kurali:</span>
+                            <code className="text-sm font-mono font-bold text-t-primary">{exitCriteria.label}</code>
+                        </div>
+                    )}
+                </FlatCard>
+
+                {/* Right: Business Metadata */}
+                {bizMeta && (
+                    <FlatCard title="Is Degeri & Operasyon" icon={LucideIcons.BarChart3} className="border-l-4 border-emerald-500">
+                        <div className="space-y-3 mt-3">
+                            {[
+                                { label: 'Tier', value: tierMeta.label, sub: tierMeta.desc, badgeClass: tierMeta.color },
+                                { label: 'Is Degeri', value: bizMeta.businessValue },
+                                { label: 'Kullanim Sikligi', value: bizMeta.frequency },
+                                { label: 'Bagimlilik', value: `${bizMeta.dependencyCount} servis/API` },
+                                { label: 'Risk', value: bizMeta.risk, badgeClass: bizMeta.riskLevel === 'high' ? 'text-red-700 bg-red-100' : bizMeta.riskLevel === 'medium' ? 'text-amber-700 bg-amber-100' : 'text-emerald-700 bg-emerald-100' },
+                                { label: 'Sorumlu', value: bizMeta.owner },
+                                { label: 'Durum', value: bizMeta.statusMeta.label, badgeClass: bizMeta.statusMeta.color },
+                            ].map(row => (
+                                <div key={row.label} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                                    <span className="text-sm font-bold text-t-muted">{row.label}</span>
+                                    <div className="flex items-center gap-2">
+                                        {row.badgeClass ? (
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${row.badgeClass}`}>{row.value}</span>
+                                        ) : (
+                                            <span className="text-sm font-medium text-t-primary">{row.value}</span>
+                                        )}
+                                        {row.sub && <span className="text-xs text-t-muted hidden lg:inline">({row.sub})</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </FlatCard>
+                )}
+            </div>
+
+            {/* Suggestions Section */}
+            {suggestions.length > 0 && (
+                <div className="mt-12">
+                    <FlatCard title="Gelistirme Onerileri" icon={Lightbulb} className="border-l-4 border-amber-400">
+                        <div className="space-y-3 mt-2">
+                            {suggestions.map((s, i) => (
+                                <div key={i} className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${priorityColors[s.priority]}`}>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white/60 rounded px-2 py-0.5 flex-shrink-0 mt-0.5">
+                                        {priorityLabels[s.priority]}
+                                    </span>
+                                    <span className="text-sm font-medium flex-1">{s.text}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-50 flex-shrink-0 mt-0.5">
+                                        {categoryLabels[s.category] || s.category}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </FlatCard>
+                </div>
+            )}
+
+            {/* Detailed Findings (collapsible) */}
+            {analysis && (
+                <details className="mt-6">
+                    <summary className="text-sm font-bold text-t-muted cursor-pointer hover:text-t-primary transition-colors select-none">
+                        Detayli Saglik Raporu ({analysis.findings.length} kontrol)
+                    </summary>
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {analysis.findings.map(f => (
+                            <div
+                                key={f.key}
+                                className={`rounded-lg border px-3 py-2 text-xs ${
+                                    f.type === 'fail' ? 'bg-red-50 border-red-200 text-red-800' :
+                                    f.type === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                                    'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                }`}
+                            >
+                                <div className="flex items-center gap-1 mb-0.5">
+                                    <FindingIcon type={f.type} />
+                                    <span className="font-bold">{f.label}</span>
+                                </div>
+                                <span className="text-[11px] opacity-80">{f.detail}</span>
+                            </div>
+                        ))}
+                    </div>
+                </details>
             )}
 
             {/* Footer: Interactive ROI */}

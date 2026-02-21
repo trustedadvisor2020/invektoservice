@@ -67,16 +67,16 @@ public sealed class AutomationOrchestrator
     /// </summary>
     public async Task<bool> ProcessMessageAsync(
         TenantContext tenant,
-        IncomingWebhookEvent webhook,
+        WebhookMessage message,
         string requestId,
         string? callbackUrl,
         CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
         var tenantId = tenant.TenantId;
-        var chatId = webhook.ChatId;
-        var phone = webhook.Data?.Phone;
-        var messageText = webhook.Data?.MessageText ?? "";
+        var chatId = message.ChatId ?? "";
+        var phone = message.FromContact;
+        var messageText = message.Body ?? "";
 
         try
         {
@@ -85,7 +85,7 @@ public sealed class AutomationOrchestrator
             if (flowDoc == null || !isActive)
             {
                 _logger.StepWarn($"No active flow for tenant {tenantId}, handing off to human", requestId);
-                await SendHandoffAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                await SendHandoffAsync(requestId, tenantId, chatId, message.Time,
                     "Chatbot akisi tanimlanmamis, mesaj temsilciye yonlendiriliyor", 0, callbackUrl, ct);
                 return true;
             }
@@ -105,7 +105,7 @@ public sealed class AutomationOrchestrator
                     // v2 path: pure engine + orchestrator side-effects
                     return await ProcessV2MessageAsync(
                         flowDoc, tenantId, chatId, phone, messageText,
-                        webhook.SequenceId, requestId, callbackUrl, sw, ct);
+                        message.Time, requestId, callbackUrl, sw, ct);
                 }
             }
 
@@ -114,7 +114,7 @@ public sealed class AutomationOrchestrator
             if (flow == null)
             {
                 _logger.StepWarn($"No active v1 flow for tenant {tenantId}, handing off", requestId);
-                await SendHandoffAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                await SendHandoffAsync(requestId, tenantId, chatId, message.Time,
                     "Chatbot akisi tanimlanmamis", 0, callbackUrl, ct);
                 return true;
             }
@@ -126,7 +126,7 @@ public sealed class AutomationOrchestrator
                 var offReply = offHoursMsg ?? flow.OffHoursMessage ?? "Su anda mesai saatleri disindayiz. En kisa surede size donus yapacagiz.";
                 sw.Stop();
 
-                await SendCallbackAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                await SendCallbackAsync(requestId, tenantId, chatId, message.Time,
                     CallbackActions.SendMessage, offReply, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
 
                 await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, offReply,
@@ -154,7 +154,7 @@ public sealed class AutomationOrchestrator
                 case FlowActionType.StaticReply:
                 case FlowActionType.UnknownInput:
                     sw.Stop();
-                    await SendCallbackAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                    await SendCallbackAsync(requestId, tenantId, chatId, message.Time,
                         CallbackActions.SendMessage, action.ReplyText!, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
 
                     var replyType = action.Type switch
@@ -173,16 +173,16 @@ public sealed class AutomationOrchestrator
                     return true;
 
                 case FlowActionType.FaqSearch:
-                    return await HandleFaqSearchAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                    return await HandleFaqSearchAsync(requestId, tenantId, chatId, message.Time,
                         phone, messageText, flow, session, callbackUrl, sw, ct);
 
                 case FlowActionType.IntentDetection:
-                    return await HandleIntentDetectionAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                    return await HandleIntentDetectionAsync(requestId, tenantId, chatId, message.Time,
                         phone, messageText, flow, session, callbackUrl, sw, ct);
 
                 case FlowActionType.Handoff:
                     sw.Stop();
-                    await SendHandoffAsync(requestId, tenantId, chatId, webhook.SequenceId,
+                    await SendHandoffAsync(requestId, tenantId, chatId, message.Time,
                         "Musteri temsilci ile gorusme talep etti", sw.ElapsedMilliseconds, callbackUrl, ct);
 
                     await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, null,
@@ -212,7 +212,7 @@ public sealed class AutomationOrchestrator
                     Action = CallbackActions.Error,
                     TenantId = tenantId,
                     ChatId = chatId,
-                    SequenceId = webhook.SequenceId,
+                    SequenceId = message.Time,
                     Data = new CallbackData { ErrorMessage = $"Processing error: {ex.Message}" },
                     ProcessingTimeMs = sw.ElapsedMilliseconds
                 };
@@ -232,7 +232,7 @@ public sealed class AutomationOrchestrator
     /// FlowEngineV2 is pure (no DB/HTTP). This method handles all side-effects.
     /// </summary>
     private async Task<bool> ProcessV2MessageAsync(
-        JsonDocument flowDoc, int tenantId, int chatId, string? phone, string messageText,
+        JsonDocument flowDoc, int tenantId, string chatId, string? phone, string messageText,
         long sequenceId, string requestId, string? callbackUrl, Stopwatch sw, CancellationToken ct)
     {
         // 1. Build immutable graph
@@ -419,7 +419,7 @@ public sealed class AutomationOrchestrator
     };
 
     private async Task<bool> HandleFaqSearchAsync(
-        string requestId, int tenantId, int chatId, long sequenceId,
+        string requestId, int tenantId, string chatId, long sequenceId,
         string? phone, string messageText, FlowConfig flow, ChatSession? session,
         string? callbackUrl, Stopwatch sw, CancellationToken ct)
     {
@@ -458,7 +458,7 @@ public sealed class AutomationOrchestrator
     }
 
     private async Task<bool> HandleIntentDetectionAsync(
-        string requestId, int tenantId, int chatId, long sequenceId,
+        string requestId, int tenantId, string chatId, long sequenceId,
         string? phone, string messageText, FlowConfig flow, ChatSession? session,
         string? callbackUrl, Stopwatch sw, CancellationToken ct)
     {
@@ -532,7 +532,7 @@ public sealed class AutomationOrchestrator
     }
 
     private async Task<bool> SendCallbackAsync(
-        string requestId, int tenantId, int chatId, long sequenceId,
+        string requestId, int tenantId, string chatId, long sequenceId,
         string action, string messageText, string? intent, double? confidence,
         long processingTimeMs, string? callbackUrl, CancellationToken ct)
     {
@@ -588,7 +588,7 @@ public sealed class AutomationOrchestrator
     /// Uses existing CallbackActions.ApplyTag + CallbackData.TagName. Fire-and-forget.
     /// </summary>
     private async Task SendAutoTagCallbackAsync(
-        string requestId, int tenantId, int chatId, long sequenceId,
+        string requestId, int tenantId, string chatId, long sequenceId,
         string intentName, string? callbackUrl, CancellationToken ct)
     {
         try
@@ -644,7 +644,7 @@ public sealed class AutomationOrchestrator
     }
 
     private async Task<bool> SendHandoffAsync(
-        string requestId, int tenantId, int chatId, long sequenceId,
+        string requestId, int tenantId, string chatId, long sequenceId,
         string aiSummary, long processingTimeMs, string? callbackUrl, CancellationToken ct)
     {
         var callback = new OutgoingCallback

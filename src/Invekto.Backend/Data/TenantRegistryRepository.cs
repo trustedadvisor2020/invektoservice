@@ -146,9 +146,6 @@ public sealed class WapCrmSettings
     [JsonPropertyName("api_url")]
     public string? ApiUrl { get; init; }
 
-    [JsonPropertyName("user_key")]
-    public string? UserKey { get; init; }
-
-    [JsonPropertyName("incom")]
-    public int Incom { get; init; } = 4;
+    [JsonPropertyName("user_id")]
+    public int UserId { get; init; }
 }

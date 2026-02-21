@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS message_log (
     message_type        VARCHAR(20) DEFAULT 'text',  -- text, image, video, document, audio
     chat_id             VARCHAR(50),
     external_message_id VARCHAR(100),
+    instance_id         VARCHAR(100),                     -- WapCRM instance ID (INMA InstanceID)
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

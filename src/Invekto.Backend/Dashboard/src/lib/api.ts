@@ -464,7 +464,8 @@ class OpsApiClient {
     if (!decoded) return null;
 
     // Handle both INMA JWT claims and INSE JWT claims (mock/quicklogin)
-    const isInmaToken = !!decoded.CompanyId || !!decoded.FullName;
+    // CompanyCode = our tenant_id (e.g. "5050"), CompanyId = INMA's internal ID
+    const isInmaToken = !!decoded.CompanyCode || !!decoded.FullName;
 
     let features: string[] = [];
     if (decoded.InseFeatures) {
@@ -472,11 +473,11 @@ class OpsApiClient {
     }
 
     if (isInmaToken) {
-      // INMA JWT: decode INMA-specific claims
+      // INMA JWT: decode INMA-specific claims (CompanyCode = tenant_id)
       const nameId = decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
       return {
         token,
-        tenantId: parseInt(decoded.CompanyId ?? '0') || 0,
+        tenantId: parseInt(decoded.CompanyCode ?? '0') || 0,
         userId: parseInt(nameId ?? '0') || 0,
         role: decoded.ChatRole === '2' ? 'admin' : 'agent',
         fullName: decoded.FullName ?? '',
@@ -543,9 +544,9 @@ class OpsApiClient {
     const token = this.getAccessToken();
     if (!token) return;
 
-    // Only exchange INMA tokens (have CompanyId claim, not INSE tokens)
+    // Only exchange INMA tokens (have CompanyCode claim, not INSE tokens)
     const decoded = this.getDecodedToken();
-    if (!decoded?.CompanyId) return;
+    if (!decoded?.CompanyCode) return;
 
     try {
       const response = await fetch('/api/v1/inma/auth/exchange', {

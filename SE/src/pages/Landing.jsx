@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, TrendingUp, Filter } from 'lucide-react';
+import { Zap, TrendingUp, Filter, MessageCircle, Send } from 'lucide-react';
 import Badge from '../components/Badge';
 import { allScenarios, sidebarGroups, stats } from '../data';
+import { deriveTriggerSource, TRIGGER_SOURCE_META } from '../lib/scenarioMeta';
 
 const sectorFilters = [
     { key: 'all', label: 'Tumu' },
@@ -26,9 +27,22 @@ const nicheLabels = {
     hotel: 'Otel', beauty: 'Guzellik', education: 'Egitim', mobile: 'Mobil',
 };
 
+const triggerFilters = [
+    { key: 'all', label: 'Tumu', icon: null },
+    { key: 'incoming', label: 'Gelen Mesaj', icon: MessageCircle },
+    { key: 'automatic', label: 'Otomatik', icon: Zap },
+    { key: 'outbound', label: 'Giden Mesaj', icon: Send },
+];
+
+// Pre-compute trigger source for all scenarios (once)
+const scenarioTriggerMap = new Map(
+    allScenarios.map(s => [s.id, deriveTriggerSource(s)])
+);
+
 const Landing = () => {
     const navigate = useNavigate();
     const [activeSector, setActiveSector] = useState('all');
+    const [activeTrigger, setActiveTrigger] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
 
     const filtered = useMemo(() => {
@@ -38,6 +52,9 @@ const Landing = () => {
             if (filter?.niches) {
                 items = items.filter(s => filter.niches.includes(s.niche));
             }
+        }
+        if (activeTrigger !== 'all') {
+            items = items.filter(s => scenarioTriggerMap.get(s.id) === activeTrigger);
         }
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
@@ -49,7 +66,22 @@ const Landing = () => {
             );
         }
         return items;
-    }, [activeSector, searchQuery]);
+    }, [activeSector, activeTrigger, searchQuery]);
+
+    // Trigger counts (respects sector filter)
+    const triggerCounts = useMemo(() => {
+        let base = allScenarios;
+        if (activeSector !== 'all') {
+            const filter = sectorFilters.find(f => f.key === activeSector);
+            if (filter?.niches) base = base.filter(s => filter.niches.includes(s.niche));
+        }
+        return {
+            all: base.length,
+            incoming: base.filter(s => scenarioTriggerMap.get(s.id) === 'incoming').length,
+            automatic: base.filter(s => scenarioTriggerMap.get(s.id) === 'automatic').length,
+            outbound: base.filter(s => scenarioTriggerMap.get(s.id) === 'outbound').length,
+        };
+    }, [activeSector]);
 
     // Calculate total potential TL from all scenarios
     const totalPotentialTL = useMemo(() => {
@@ -107,28 +139,61 @@ const Landing = () => {
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-wrap items-center gap-4 mb-10 pb-6 border-b border-gray-200">
-                <Filter size={20} className="text-t-muted" />
-                {sectorFilters.map(f => (
-                    <button
-                        key={f.key}
-                        onClick={() => setActiveSector(f.key)}
-                        className={`px-5 py-2.5 rounded-lg text-base font-bold transition-all border ${
-                            activeSector === f.key
-                                ? 'bg-brand-600 text-white border-brand-600 shadow-md'
-                                : 'bg-surface text-t-secondary border-brand-100 hover:bg-brand-50 hover:border-brand-300'
-                        }`}
-                    >
-                        {f.label}
-                    </button>
-                ))}
-                <input
-                    type="text"
-                    placeholder="Senaryo ara..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="ml-auto px-4 py-2.5 rounded-lg border border-gray-200 text-base bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 w-72"
-                />
+            <div className="space-y-4 mb-10 pb-6 border-b border-gray-200">
+                {/* Row 1: Sector filters + search */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <Filter size={20} className="text-t-muted" />
+                    {sectorFilters.map(f => (
+                        <button
+                            key={f.key}
+                            onClick={() => setActiveSector(f.key)}
+                            className={`px-5 py-2.5 rounded-lg text-base font-bold transition-all border ${
+                                activeSector === f.key
+                                    ? 'bg-brand-600 text-white border-brand-600 shadow-md'
+                                    : 'bg-surface text-t-secondary border-brand-100 hover:bg-brand-50 hover:border-brand-300'
+                            }`}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                    <input
+                        type="text"
+                        placeholder="Senaryo ara..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="ml-auto px-4 py-2.5 rounded-lg border border-gray-200 text-base bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 w-72"
+                    />
+                </div>
+
+                {/* Row 2: Trigger source filters */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-bold text-t-muted uppercase tracking-wider">Baslatan:</span>
+                    {triggerFilters.map(f => {
+                        const Icon = f.icon;
+                        const count = triggerCounts[f.key];
+                        return (
+                            <button
+                                key={f.key}
+                                onClick={() => setActiveTrigger(f.key)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border ${
+                                    activeTrigger === f.key
+                                        ? 'bg-brand-600 text-white border-brand-600 shadow-md'
+                                        : 'bg-surface text-t-secondary border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                }`}
+                            >
+                                {Icon && <Icon size={16} />}
+                                {f.label}
+                                <span className={`text-xs font-mono rounded-full px-1.5 py-0.5 ${
+                                    activeTrigger === f.key
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-gray-100 text-t-muted'
+                                }`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* Scenarios Grid */}
@@ -155,7 +220,7 @@ const Landing = () => {
                 <div className="text-center py-20 text-t-muted">
                     <p className="text-xl">Aramanizla eslesen senaryo bulunamadi.</p>
                     <button
-                        onClick={() => { setSearchQuery(''); setActiveSector('all'); }}
+                        onClick={() => { setSearchQuery(''); setActiveSector('all'); setActiveTrigger('all'); }}
                         className="mt-4 text-brand-600 font-bold hover:underline"
                     >
                         Filtreleri temizle
@@ -167,8 +232,20 @@ const Landing = () => {
 };
 
 // Scenario card (unified for all 170 scenarios)
+const triggerBadgeColors = {
+    incoming: 'blue',
+    automatic: 'purple',
+    outbound: 'amber',
+};
+const triggerBadgeLabels = {
+    incoming: 'Gelen Mesaj',
+    automatic: 'Otomatik',
+    outbound: 'Giden Mesaj',
+};
+
 const ScenarioCard = ({ scenario, onClick }) => {
     const { id, title, subtitle, phase, niche, description, impact } = scenario;
+    const triggerSource = scenarioTriggerMap.get(id);
 
     let defaultResult = 0;
     if (impact?.formula && impact?.inputs) {
@@ -192,6 +269,9 @@ const ScenarioCard = ({ scenario, onClick }) => {
                 </span>
                 {phase && <Badge color="blue">{phase}</Badge>}
                 {niche && <Badge color={nicheColors[niche] || 'gray'}>{nicheLabels[niche] || niche}</Badge>}
+                {triggerSource && triggerSource !== 'incoming' && (
+                    <Badge color={triggerBadgeColors[triggerSource]}>{triggerBadgeLabels[triggerSource]}</Badge>
+                )}
             </div>
             <h3 className="text-xl font-bold text-t-primary mb-1 group-hover:text-brand-700 transition-colors">
                 {title}

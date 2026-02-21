@@ -1170,6 +1170,30 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         }
     }
 
+    // Forward to Automation for processing (fire-and-forget)
+    var automationClient = ctx.RequestServices.GetService<AutomationClient>();
+    if (automationClient != null)
+    {
+        var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+        // IP whitelist case: no auth header, generate temp JWT for Automation
+        if (string.IsNullOrEmpty(authHeader) && jwtGenerator != null)
+        {
+            var tempToken = jwtGenerator.GenerateToken(
+                tenantContext.TenantId, "system", "webhook_proxy",
+                TimeSpan.FromMinutes(5), tenantContext.UserId.ToString());
+            authHeader = $"Bearer {tempToken}";
+        }
+        var eventJson = JsonSerializer.Serialize(webhookEvent);
+        _ = automationClient.ProxyWebhookEventAsync(eventJson, authHeader, requestId)
+            .ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    jsonLogger.SystemWarn($"Automation proxy failed: {t.Exception?.GetBaseException().Message}");
+                else if (t.Result.StatusCode >= 400)
+                    jsonLogger.StepWarn($"Automation proxy returned {t.Result.StatusCode}: {t.Result.Body}", requestId);
+            });
+    }
+
     // Return 202 Accepted
     return Results.Json(new
     {
@@ -3838,7 +3862,8 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
                         ErrorResponse.Create(ErrorCodes.AuthTokenExpired, "Token expired", requestId),
                         statusCode: 401);
 
-                var companyIdStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyId")?.Value;
+                // CompanyCode = our tenant_id (e.g. "5050"), CompanyId = INMA's internal ID
+                var companyCodeStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value;
                 var userIdStr = jwt.Claims.FirstOrDefault(c =>
                     c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
                     || c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -3846,9 +3871,9 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
                 var fullName = jwt.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "";
                 var lang = jwt.Claims.FirstOrDefault(c => c.Type == "Lang")?.Value ?? "tr";
 
-                if (!int.TryParse(companyIdStr, out var tenantId) || tenantId <= 0)
+                if (!int.TryParse(companyCodeStr, out var tenantId) || tenantId <= 0)
                     return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Missing or invalid CompanyId claim", requestId),
+                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Missing or invalid CompanyCode claim", requestId),
                         statusCode: 401);
                 if (!int.TryParse(userIdStr, out var userId))
                     return Results.Json(
@@ -4371,15 +4396,14 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         return Results.BadRequest(new { error = "EMPTY_MESSAGE", message = "message_text is empty" });
     }
 
-    // Build WapCRM chatoperation payload
-    var wapPayload = new
+    // Build WapCRM chatoperation payload (exact property names — no camelCase)
+    var wapPayload = new Dictionary<string, object>
     {
-        instanceID = instanceIdInt,
-        userKey = wapcrm.UserKey ?? "",
-        chatPhoneNumber = phone,
-        messageType = 1,
-        messageText,
-        Incom = wapcrm.Incom
+        ["instanceID"] = instanceIdInt,
+        ["userID"] = wapcrm.UserId,
+        ["chatPhoneNumber"] = phone,
+        ["messageType"] = 1,
+        ["messageText"] = messageText
     };
 
     try
@@ -4388,7 +4412,9 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
         client.DefaultRequestHeaders.Add("X-CIB-SecretKey", wapcrm.SecretKey);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var response = await client.PostAsJsonAsync(wapcrm.ApiUrl, wapPayload);
+        var jsonPayload = JsonSerializer.Serialize(wapPayload);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync(wapcrm.ApiUrl, content);
         sw.Stop();
 
         var responseBody = await response.Content.ReadAsStringAsync();

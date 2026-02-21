@@ -354,7 +354,7 @@ public sealed class AutomationRepository
     // chat_sessions
     // ============================================================
 
-    public async Task<ChatSession?> GetActiveSessionAsync(int tenantId, int chatId, CancellationToken ct = default)
+    public async Task<ChatSession?> GetActiveSessionAsync(int tenantId, string chatId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -383,7 +383,7 @@ public sealed class AutomationRepository
         };
     }
 
-    public async Task<int> CreateSessionAsync(int tenantId, int chatId, string? phone, string currentNode, CancellationToken ct = default)
+    public async Task<int> CreateSessionAsync(int tenantId, string chatId, string? phone, string currentNode, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
 
@@ -449,7 +449,7 @@ public sealed class AutomationRepository
     // auto_reply_log
     // ============================================================
 
-    public async Task LogAutoReplyAsync(int tenantId, int chatId, string? phone, string? messageText,
+    public async Task LogAutoReplyAsync(int tenantId, string chatId, string? phone, string? messageText,
         string? replyText, string replyType, string? intent, double? confidence, int? processingTimeMs,
         CancellationToken ct = default)
     {
@@ -725,7 +725,7 @@ public sealed class ChatSession
 {
     public int Id { get; init; }
     public int TenantId { get; init; }
-    public int ChatId { get; init; }
+    public string ChatId { get; init; } = "";
     public string? Phone { get; init; }
     public required string CurrentNode { get; init; }
     public required string SessionData { get; init; }
