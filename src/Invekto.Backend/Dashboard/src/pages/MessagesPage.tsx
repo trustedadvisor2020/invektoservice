@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api, MessageLogEntry, MessageStoryResponse } from '../lib/api';
+import { api, MessageLogEntry, MessageStoryResponse, TenantEntry } from '../lib/api';
 import { ArrowDownLeft, ArrowUpRight, Search, RefreshCw, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const PAGE_SIZE = 50;
@@ -25,6 +25,9 @@ export function MessagesPage() {
   const [filterDirection, setFilterDirection] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
+
+  // Tenants for dropdown
+  const [tenants, setTenants] = useState<TenantEntry[]>([]);
 
   // Expanded story
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -55,6 +58,10 @@ export function MessagesPage() {
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
+
+  useEffect(() => {
+    api.getOpsTenants().then(r => setTenants(r.tenants)).catch(() => {});
+  }, []);
 
   // Auto-refresh every 30s
   useEffect(() => {
@@ -117,14 +124,19 @@ export function MessagesPage() {
       <div className="bg-white rounded-lg border border-slate-200 p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Firma ID</label>
-            <input
-              type="number"
+            <label className="block text-xs font-medium text-slate-500 mb-1">Firma</label>
+            <select
               value={filterTenant}
               onChange={e => setFilterTenant(e.target.value)}
-              placeholder="Tum"
-              className="w-24 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+              className="w-44 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tumu</option>
+              {tenants.map(t => (
+                <option key={t.tenantId} value={t.tenantId}>
+                  #{t.tenantId} — {t.tenantName}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Telefon</label>

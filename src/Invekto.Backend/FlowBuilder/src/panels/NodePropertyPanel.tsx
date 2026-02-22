@@ -1,5 +1,9 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { useFlowStore } from '../store/flow-store';
+import { useAuth } from '../lib/auth';
 import { getNodeTypeInfo, type FlowNodeType } from '../types/flow';
+import { getAvailableInstances, type AvailableInstance } from '../lib/api';
 import type {
   MessageTextData,
   MessageMenuData,
@@ -73,7 +77,7 @@ export function NodePropertyPanel() {
 
         {/* Type-specific fields */}
         {nodeType === 'trigger_start' && (
-          <TriggerStartProps />
+          <TriggerStartProps data={selectedNode.data as Record<string, unknown>} onChange={update} />
         )}
         {nodeType === 'message_text' && (
           <MessageTextProps data={selectedNode.data as MessageTextData} onChange={update} />
@@ -150,11 +154,80 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-function TriggerStartProps() {
+const INSTANCE_TYPE_LABELS: Record<number, string> = { 1: 'WhatsApp', 2: 'Web', 5: 'Kanal', 6: 'SMS' };
+
+function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const { session } = useAuth();
+  const { flowId: flowIdParam } = useParams<{ flowId: string }>();
+  const flowId = flowIdParam ? parseInt(flowIdParam, 10) : undefined;
+  const tenantId = session?.tenant_id;
+
+  const [instances, setInstances] = useState<AvailableInstance[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const selectedIds: string[] = Array.isArray(data.allowed_instance_ids) ? data.allowed_instance_ids as string[] : [];
+
+  const fetchInstances = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    try {
+      const result = await getAvailableInstances(tenantId, flowId);
+      setInstances(result.instances);
+    } catch (err: unknown) {
+      console.warn('[TriggerStartProps] Instance fetch failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId, flowId]);
+
+  useEffect(() => {
+    fetchInstances();
+  }, [fetchInstances]);
+
+  const toggleInstance = (instanceId: string) => {
+    const newIds = selectedIds.includes(instanceId)
+      ? selectedIds.filter(id => id !== instanceId)
+      : [...selectedIds, instanceId];
+    onChange({ allowed_instance_ids: newIds });
+  };
+
+  if (instances.length === 0 && !loading) {
+    return (
+      <p className="text-xs text-slate-400">
+        Musteri mesaj gonderdiginde bu node'dan akis baslar.
+        {tenantId && <span className="block mt-1 text-slate-300">Hat secimi icin Ayarlar sayfasindan WapCRM hatlarini yukleyin.</span>}
+      </p>
+    );
+  }
+
   return (
-    <p className="text-xs text-slate-400">
-      Baslangic node'u yapilandirma gerektirmez. Musteri mesaj gonderdiginde bu node'dan akis baslar.
-    </p>
+    <FieldGroup label={`Hatlar (${selectedIds.length}/${instances.length})`}>
+      {loading ? (
+        <p className="text-xs text-slate-400">Yukleniyor...</p>
+      ) : (
+        <div className="space-y-1.5">
+          {instances.map(inst => (
+            <label key={inst.instanceId} className="flex items-center gap-2 cursor-pointer group" title={`ID: ${inst.instanceId}`}>
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(inst.instanceId)}
+                onChange={() => toggleInstance(inst.instanceId)}
+                className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-slate-700 group-hover:text-slate-900 truncate flex-1">
+                {inst.instanceName}
+              </span>
+              <span className="text-[10px] text-slate-400">
+                {INSTANCE_TYPE_LABELS[inst.instanceType] || 'Diger'}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-slate-400 mt-2">
+        Secili hatlardan gelen mesajlar bu akisa yonlendirilir.
+      </p>
+    </FieldGroup>
   );
 }
 

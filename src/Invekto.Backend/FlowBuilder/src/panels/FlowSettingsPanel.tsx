@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useFlowStore } from '../store/flow-store';
-import { validateFlow, type ValidationResult } from '../lib/api';
+import { validateFlow, getWorkingHours, type ValidationResult, type WorkingHoursInfo } from '../lib/api';
 import { cn } from '../lib/utils';
 import { WizardHistoryTab } from '../components/WizardHistoryTab';
 
@@ -15,6 +15,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
   const settings = useFlowStore((s) => s.flowSettings);
   const setSettings = useFlowStore((s) => s.setSettings);
   const toFlowConfig = useFlowStore((s) => s.toFlowConfig);
+  const flowMetadata = useFlowStore((s) => s.flowMetadata);
   const wizardHistory = useFlowStore((s) => s.wizardHistory);
   const hasWizardHistory = wizardHistory != null && wizardHistory.length > 0;
 
@@ -23,27 +24,32 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [jsonCopied, setJsonCopied] = useState(false);
+  const [workingHours, setWorkingHours] = useState<WorkingHoursInfo | null>(null);
 
-  // Reset state when modal opens
+  // Reset state when modal opens + fetch working hours
   useEffect(() => {
     if (open) {
       setValidationResult(null);
       setValidationError(null);
       setJsonCopied(false);
       setActiveTab('settings');
+      getWorkingHours().then(setWorkingHours).catch(() => setWorkingHours(null));
     }
   }, [open]);
 
-  const handleCopyJson = async () => {
-    try {
-      const config = toFlowConfig();
-      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
-      setJsonCopied(true);
-      setTimeout(() => setJsonCopied(false), 2000);
-    } catch (_e) {
-      // Clipboard API may fail in non-secure contexts (http://) or when denied by permissions policy
-      console.warn('Clipboard write failed — non-secure context or permission denied');
-    }
+  const handleDownloadJson = () => {
+    const config = toFlowConfig();
+    const json = JSON.stringify(config, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const slug = (flowMetadata.name || 'flow').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${slug}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setJsonCopied(true);
+    setTimeout(() => setJsonCopied(false), 2000);
   };
 
   // Close on Escape
@@ -148,16 +154,23 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
 
             {/* Copy JSON button */}
             <button
-              onClick={handleCopyJson}
+              onClick={handleDownloadJson}
               className={cn(
-                'px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap',
+                'px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap flex items-center gap-1.5',
                 jsonCopied
                   ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
               )}
-              title="Flow JSON'u panoya kopyala"
+              title="Flow JSON'u dosya olarak indir"
             >
-              {jsonCopied ? 'Kopyalandi!' : 'JSON'}
+              {jsonCopied ? 'Indirildi!' : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  JSON
+                </>
+              )}
             </button>
           </div>
 
@@ -210,7 +223,10 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
             </div>
           )}
 
-          <FieldGroup label="Mesai Disi Mesaji">
+          <FieldGroup
+            label="Mesai Disi Mesaji"
+            tooltip={buildOffHoursTooltip(workingHours)}
+          >
             <textarea
               value={settings.off_hours_message ?? ''}
               onChange={(e) => setSettings({ off_hours_message: e.target.value })}
@@ -220,7 +236,10 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
             />
           </FieldGroup>
 
-          <FieldGroup label="Bilinmeyen Girdi Mesaji">
+          <FieldGroup
+            label="Bilinmeyen Girdi Mesaji"
+            tooltip="Bot'un anlayamadigi veya eslestiremedigi mesajlara verilen yanit. Orn: 'Anlayamadim, lutfen seceneklerden birini secin.' veya 'Bu konuda yardimci olamiyorum, size nasil yardimci olabilirim?'"
+          >
             <textarea
               value={settings.unknown_input_message ?? ''}
               onChange={(e) => setSettings({ unknown_input_message: e.target.value })}
@@ -231,7 +250,10 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
           </FieldGroup>
 
           <div className="grid grid-cols-3 gap-3">
-            <FieldGroup label="Handoff Guven Esigi">
+            <FieldGroup
+              label="Handoff Guven Esigi"
+              tooltip="AI'nin canli temsilciye yonlendirme karari icin gereken minimum guven skoru (0-1 arasi). 0.5 = orta guven, 0.8 = yuksek guven. Dusuk deger daha fazla yonlendirme yapar."
+            >
               <input
                 type="number"
                 min={0}
@@ -243,7 +265,10 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
               />
             </FieldGroup>
 
-            <FieldGroup label="Session Zaman Asimi (dk)">
+            <FieldGroup
+              label="Session Zaman Asimi (dk)"
+              tooltip="Kullanicinin son mesajindan sonra oturumun kapanacagi sure (dakika). Orn: 30 dk = yarim saat sessizlikte oturum sifirlanir. 5 dk = hizli islemler icin kisa oturum."
+            >
               <input
                 type="number"
                 min={1}
@@ -254,7 +279,10 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
               />
             </FieldGroup>
 
-            <FieldGroup label="Maks. Dongu Sayisi">
+            <FieldGroup
+              label="Maks. Dongu Sayisi"
+              tooltip="Bir akis adiminin tekrarlanabilecegi maksimum sayi. Sonsuz donguyu onler. Orn: 10 = kullanici 10 kez yanlis girerse akis durur. 3 = daha katı, hizli cikis."
+            >
               <input
                 type="number"
                 min={1}
@@ -273,13 +301,63 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
   );
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+const DAY_TR: Record<string, string> = {
+  Monday: 'Pazartesi', Tuesday: 'Sali', Wednesday: 'Carsamba',
+  Thursday: 'Persembe', Friday: 'Cuma', Saturday: 'Cumartesi', Sunday: 'Pazar',
+};
+
+function buildOffHoursTooltip(wh: WorkingHoursInfo | null): string {
+  const base = 'Calisma saatleri disinda gelen mesajlara otomatik gonderilen yanit.';
+
+  if (!wh?.configured)
+    return `${base} Henuz mesai saatleri tanimlanmamis — tanimlandiginda burada gorunur.`;
+
+  const parts: string[] = [base];
+
+  if (wh.start && wh.end)
+    parts.push(`Mevcut mesai: ${wh.start} – ${wh.end}`);
+
+  if (wh.days_off && wh.days_off.length > 0) {
+    const trDays = wh.days_off.map((d) => DAY_TR[d] ?? d).join(', ');
+    parts.push(`Tatil gunleri: ${trDays}`);
+  }
+
+  if (wh.timezone)
+    parts.push(`Zaman dilimi: ${wh.timezone}`);
+
+  return parts.join(' | ');
+}
+
+function FieldGroup({ label, tooltip, children }: { label: string; tooltip?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">
+      <label className="flex items-center gap-1 text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">
         {label}
+        {tooltip && <HelpTooltip text={tooltip} />}
       </label>
       {children}
     </div>
+  );
+}
+
+function HelpTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 hover:bg-blue-100 hover:text-blue-600 cursor-help transition-colors text-[9px] font-bold leading-none select-none">
+        ?
+      </span>
+      {show && (
+        <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 px-3 py-2 text-[11px] leading-relaxed font-normal normal-case tracking-normal text-slate-700 bg-white rounded-lg shadow-lg border border-slate-200 pointer-events-none">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-white drop-shadow-sm" />
+        </span>
+      )}
+    </span>
   );
 }

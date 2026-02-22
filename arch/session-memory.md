@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** AI Chat Panel ("AI ile Gelistir") feature committed. Flow editor'de herhangi bir flow uzerinde AI sohbet paneli acilabiliyor, mevcut akis AI ile gelistirilebiliyor.
-- **Last Task:** Flow Editor AI Chat Panel — 8 dosya (ClaudeWizardService edit-mode prompt, Program.cs flow_config param, AiChatPanel.tsx, ai-chat-store.ts, Toolbar AI butonu, FlowEditorPage entegrasyonu, wizard-api flowConfig param, api.ts wizard_history field)
-- **Next Task:** Backend + FlowBuilder deploy (vite build + dotnet publish + server-deploy), WhatsApp re-test, FAQ matching iyilestirme
+- **Status:** WhatsApp Instance Filtering & Multi-Flow Routing tamamlandi (7 GR). tenant_instances tablosu, InstanceRepository, 4 API endpoint, Settings UI, webhook instance filter, multi-flow routing (Automation), Flow Builder start node instance secimi, flow list instance badge.
+- **Last Task:** Instance Routing paketi: GR-1 (DB schema + repo), GR-2 (API endpoints), GR-3 (Settings UI), GR-4 (webhook filter), GR-5 (multi-flow routing), GR-6 (FlowBuilder start node), GR-7 (FlowList badges)
+- **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Backend + Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -87,6 +87,8 @@ src/
 | 2026-02-21 | Dashboard decode-only JWT fallback | inmaJwtValidator NULL ise exchange gibi decode-only Path C ile CompanyCode claim okunuyor |
 | 2026-02-21 | daily_metrics tables created | backend-metrics.sql production'da calistirildi (daily_metrics + daily_intent_metrics) |
 | 2026-02-22 | AI Chat Panel ("AI ile Gelistir") | Flow editor'de AI sohbet paneli. Mevcut wizard altyapisi reuse (edit-mode system prompt + flow_config param). Mutual exclusion with simulation. Codex iter 1, FORCE PASS (CQ1/CQ5 false positive). |
+| 2026-02-22 | Working Hours Settings UI + API | Dashboard Ayarlar'a mesai saatleri section. GET/PUT /api/v1/settings/working-hours, JSONB merge, HH:mm + timezone + days_off validation. Codex FORCE PASS (CQ2/CQ3/CQ5 pre-existing false positive, CoVe 4/4 PASS). |
+| 2026-02-22 | Instance Filtering & Multi-Flow Routing | tenant_instances tablosu, 1 instance = max 1 flow, backward compat (kayit yoksa eski davranis), webhook filter (disabled/unassigned = log+ignore), ActivateFlowAsync artik diger flow'lari kapatmiyor. |
 
 ## Q Pending Operational Tasks
 
@@ -98,6 +100,8 @@ src/
 - [ ] Attribution: attribution.sql calistir
 - [ ] Outbound: campaign + consent migration calistir
 - [x] Backend: backend-metrics.sql calistir (2026-02-21 tamamlandi)
+- [ ] Instance Routing: tenant-instances.sql calistir + uq_chatbot_flows_active DROP INDEX
+- [ ] Instance Routing: Backend + Automation deploy sonrasi E2E test
 
 ## Notes
 

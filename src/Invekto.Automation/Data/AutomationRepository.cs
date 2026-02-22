@@ -22,18 +22,18 @@ public sealed class AutomationRepository
     }
 
     // ============================================================
-    // chatbot_flows (multi-flow: N flows per tenant, max 1 active)
+    // chatbot_flows (multi-flow: N flows per tenant, multiple active)
     // ============================================================
 
     /// <summary>
-    /// Get the ACTIVE flow config for a tenant (v1 engine backward compat).
+    /// Get the ACTIVE flow config for a tenant (backward compat: picks first active flow).
     /// Returns null if no active flow exists.
     /// </summary>
     public async Task<(JsonDocument? FlowConfig, bool IsActive)> GetFlowAsync(int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT flow_config, is_active FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true";
+        cmd.CommandText = "SELECT flow_config, is_active FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true LIMIT 1";
         cmd.Parameters.AddWithValue("tid", tenantId);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -46,6 +46,51 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// Check if tenant has any instance configuration records.
+    /// No records = old behavior (single flow routing).
+    /// </summary>
+    public async Task<bool> HasInstanceRecordsAsync(int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM tenant_instances WHERE tenant_id = @tid)";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is true;
+    }
+
+    /// <summary>
+    /// Get flow config by instance assignment (multi-flow routing).
+    /// Returns the active flow that this instance is assigned to.
+    /// </summary>
+    public async Task<(JsonDocument? FlowConfig, bool IsActive, int FlowId)> GetFlowByInstanceAsync(
+        int tenantId, string instanceId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT cf.flow_config::text, cf.is_active, cf.flow_id
+            FROM tenant_instances ti
+            JOIN chatbot_flows cf ON cf.flow_id = ti.flow_id AND cf.tenant_id = ti.tenant_id
+            WHERE ti.tenant_id = @tid AND ti.instance_id = @iid
+              AND ti.is_enabled = true AND cf.is_active = true
+            LIMIT 1";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("iid", instanceId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return (null, false, 0);
+
+        var json = reader.GetString(0);
+        var isActive = reader.GetBoolean(1);
+        var flowId = reader.GetInt32(2);
+        return (JsonDocument.Parse(json), isActive, flowId);
+    }
+
+    /// <summary>
     /// List all flows for a tenant with summary info (for FlowListPage).
     /// </summary>
     public async Task<List<FlowSummary>> ListFlowsAsync(int tenantId, CancellationToken ct = default)
@@ -53,16 +98,24 @@ public sealed class AutomationRepository
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT flow_id, flow_name, is_active, is_default,
-                   flow_config->>'version' AS config_version,
-                   COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'nodes' THEN flow_config->'nodes' ELSE NULL END), 0) AS node_count,
-                   COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'edges' THEN flow_config->'edges' ELSE NULL END), 0) AS edge_count,
-                   created_at, updated_at,
-                   CASE WHEN flow_config->>'version' = '2' THEN flow_config::text ELSE NULL END AS flow_config_raw,
-                   wizard_status
-            FROM chatbot_flows
-            WHERE tenant_id = @tid
-            ORDER BY is_active DESC, updated_at DESC";
+            SELECT cf.flow_id, cf.flow_name, cf.is_active, cf.is_default,
+                   cf.flow_config->>'version' AS config_version,
+                   COALESCE(jsonb_array_length(CASE WHEN cf.flow_config ? 'nodes' THEN cf.flow_config->'nodes' ELSE NULL END), 0) AS node_count,
+                   COALESCE(jsonb_array_length(CASE WHEN cf.flow_config ? 'edges' THEN cf.flow_config->'edges' ELSE NULL END), 0) AS edge_count,
+                   cf.created_at, cf.updated_at,
+                   CASE WHEN cf.flow_config->>'version' = '2' THEN cf.flow_config::text ELSE NULL END AS flow_config_raw,
+                   cf.wizard_status,
+                   (SELECT COALESCE(json_agg(json_build_object(
+                       'instanceId', ti.instance_id,
+                       'instanceName', ti.instance_name,
+                       'instanceType', ti.instance_type
+                   )), '[]'::json)
+                   FROM tenant_instances ti
+                   WHERE ti.flow_id = cf.flow_id AND ti.tenant_id = cf.tenant_id
+                     AND ti.is_enabled = true) AS assigned_instances
+            FROM chatbot_flows cf
+            WHERE cf.tenant_id = @tid
+            ORDER BY cf.is_active DESC, cf.updated_at DESC";
         cmd.Parameters.AddWithValue("tid", tenantId);
 
         var result = new List<FlowSummary>();
@@ -81,7 +134,8 @@ public sealed class AutomationRepository
                 CreatedAt = reader.GetDateTime(7),
                 UpdatedAt = reader.GetDateTime(8),
                 FlowConfigJson = reader.IsDBNull(9) ? null : reader.GetString(9),
-                WizardStatus = reader.IsDBNull(10) ? null : reader.GetString(10)
+                WizardStatus = reader.IsDBNull(10) ? null : reader.GetString(10),
+                AssignedInstancesJson = reader.IsDBNull(11) ? null : reader.GetString(11)
             });
         }
         return result;
@@ -249,45 +303,18 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
-    /// Activate a flow: set target flow to is_active=true, deactivate all others for this tenant.
-    /// Runs in a single transaction.
+    /// Activate a flow: set target flow to is_active=true.
+    /// Multi-flow: does NOT deactivate other flows (multiple flows can be active).
     /// </summary>
     public async Task<bool> ActivateFlowAsync(int tenantId, int flowId, CancellationToken ct = default)
     {
+        // Multi-flow: activate only the target flow (no longer deactivates others)
         await using var conn = await _db.OpenConnectionAsync(ct);
-        await using var tx = await conn.BeginTransactionAsync(ct);
-
-        try
-        {
-            // Deactivate all flows for this tenant
-            await using var deactivateCmd = conn.CreateCommand();
-            deactivateCmd.Transaction = tx;
-            deactivateCmd.CommandText = "UPDATE chatbot_flows SET is_active = false WHERE tenant_id = @tid AND is_active = true";
-            deactivateCmd.Parameters.AddWithValue("tid", tenantId);
-            await deactivateCmd.ExecuteNonQueryAsync(ct);
-
-            // Activate target flow
-            await using var activateCmd = conn.CreateCommand();
-            activateCmd.Transaction = tx;
-            activateCmd.CommandText = "UPDATE chatbot_flows SET is_active = true WHERE tenant_id = @tid AND flow_id = @fid";
-            activateCmd.Parameters.AddWithValue("tid", tenantId);
-            activateCmd.Parameters.AddWithValue("fid", flowId);
-            var affected = await activateCmd.ExecuteNonQueryAsync(ct);
-
-            if (affected == 0)
-            {
-                await tx.RollbackAsync(ct);
-                return false; // flow not found
-            }
-
-            await tx.CommitAsync(ct);
-            return true;
-        }
-        catch
-        {
-            await tx.RollbackAsync(ct);
-            throw;
-        }
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE chatbot_flows SET is_active = true WHERE tenant_id = @tid AND flow_id = @fid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
     /// <summary>
@@ -301,6 +328,50 @@ public sealed class AutomationRepository
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("fid", flowId);
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Sync flow-instance mapping: clear old assignments for this flow, assign new ones.
+    /// Called when saving a flow with trigger_start instance selection.
+    /// </summary>
+    public async Task SyncFlowInstanceMappingAsync(
+        int tenantId, int flowId, List<string> instanceIds, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Clear old assignments for this flow
+            await using (var clearCmd = new NpgsqlCommand(
+                "UPDATE tenant_instances SET flow_id = NULL WHERE tenant_id = @tid AND flow_id = @fid", conn, tx))
+            {
+                clearCmd.Parameters.AddWithValue("tid", tenantId);
+                clearCmd.Parameters.AddWithValue("fid", flowId);
+                await clearCmd.ExecuteNonQueryAsync(ct);
+            }
+
+            // Assign new instances to this flow
+            if (instanceIds.Count > 0)
+            {
+                await using var assignCmd = new NpgsqlCommand(@"
+                    UPDATE tenant_instances
+                    SET flow_id = @fid
+                    WHERE tenant_id = @tid AND instance_id = ANY(@ids)
+                      AND is_enabled = true", conn, tx);
+                assignCmd.Parameters.AddWithValue("tid", tenantId);
+                assignCmd.Parameters.AddWithValue("fid", flowId);
+                assignCmd.Parameters.AddWithValue("ids", NpgsqlDbType.Array | NpgsqlDbType.Varchar, instanceIds.ToArray());
+                await assignCmd.ExecuteNonQueryAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+        }
+        catch (Exception)
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
     }
 
     // ============================================================
@@ -777,6 +848,7 @@ public sealed class FlowSummary
     public DateTime UpdatedAt { get; init; }
     public string? FlowConfigJson { get; init; }
     public string? WizardStatus { get; init; }
+    public string? AssignedInstancesJson { get; init; }
 }
 
 public sealed class FlowDetail

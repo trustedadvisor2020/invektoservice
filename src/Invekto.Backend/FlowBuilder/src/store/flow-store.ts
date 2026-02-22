@@ -16,7 +16,7 @@ import { getNodeTypeInfo, createDefaultFlow } from '../types/flow';
 import { generateNodeId, generateEdgeId } from '../lib/utils';
 import { validateGraph, type ValidationError } from '../lib/graph-validator';
 import { enumeratePaths } from '../lib/path-enumerator';
-import { needsAutoLayout, autoLayoutNodes, resolveOverlap } from '../lib/auto-layout';
+import { needsAutoLayout, autoLayoutNodes } from '../lib/auto-layout';
 
 export interface FlowState {
   // State
@@ -64,6 +64,9 @@ export interface FlowState {
   setMetadata: (metadata: Partial<FlowMetadata>) => void;
   setSettings: (settings: Partial<FlowSettings>) => void;
   markClean: () => void;
+
+  // Auto-layout
+  applyAutoLayout: () => void;
 
   // Undo/Redo
   pushHistory: () => void;
@@ -174,11 +177,10 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     get().pushHistory();
 
     const id = generateNodeId(type);
-    const safePosition = resolveOverlap(id, position, state.nodes);
     const newNode: Node = {
       id,
       type,
-      position: safePosition,
+      position,
       data: { ...info.defaultData } as Record<string, unknown>,
     };
 
@@ -297,6 +299,15 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   },
 
   markClean: () => set({ isDirty: false }),
+
+  applyAutoLayout: () => {
+    const state = get();
+    if (state.nodes.length <= 1) return;
+    get().pushHistory();
+    const layouted = autoLayoutNodes(state.nodes, state.edges);
+    set({ nodes: layouted, isDirty: true });
+    queueMicrotask(() => get().revalidate());
+  },
 
   pushHistory: () => {
     const state = get();

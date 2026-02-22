@@ -365,7 +365,7 @@ bool ValidateOpsAuth(HttpContext ctx)
                 if (chatRole == "2") return true; // ChatRole 2 = admin
             }
         }
-        catch { /* decode failed */ }
+        catch (Exception) { /* decode failed — no valid JWT format, return null below */ }
 
         return false;
     }
@@ -2049,7 +2049,7 @@ TenantContext? ExtractTenantFromBearer(HttpContext ctx)
                 }
             }
         }
-        catch { /* decode failed */ }
+        catch (Exception) { /* decode failed — no valid JWT format, return null below */ }
     }
 
     return tenantContext;
@@ -2144,7 +2144,7 @@ app.MapPut("/api/v1/settings/instances/{instanceId}/toggle", async (HttpContext 
     {
         body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
     }
-    catch
+    catch (Exception)
     {
         return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid JSON body" });
     }
@@ -2362,8 +2362,9 @@ app.MapGet("/api/v1/flow-builder/tenant/working-hours", async (HttpContext ctx, 
             days_off = daysOff,
         });
     }
-    catch
+    catch (Exception ex)
     {
+        jsonLog.StepWarn($"Working hours JSON parse failed for tenant {tenant.TenantId}: {ex.Message}", "-");
         return Results.Ok(new { configured = false });
     }
 });

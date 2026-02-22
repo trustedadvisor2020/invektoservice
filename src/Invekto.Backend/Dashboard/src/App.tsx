@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { TenantDashboardPage } from './pages/TenantDashboardPage';
 import { LogsPage } from './pages/LogsPage';
 import { KnowledgePage } from './pages/KnowledgePage';
@@ -32,7 +31,8 @@ function ProtectedRoute() {
 
 function HomeDashboard() {
   const { session } = useAuth();
-  return session ? <TenantDashboardPage /> : <DashboardPage />;
+  // Ops mode: /tenants acilis sayfasi. Tenant mode: TenantDashboardPage.
+  return session ? <TenantDashboardPage /> : <Navigate to="/tenants" replace />;
 }
 
 export default function App() {

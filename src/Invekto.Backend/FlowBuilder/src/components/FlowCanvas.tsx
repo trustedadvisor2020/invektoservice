@@ -14,7 +14,6 @@ import { useFlowStore } from '../store/flow-store';
 import { nodeTypes } from '../nodes';
 import { DeleteEdge } from './DeleteEdgeButton';
 import type { FlowNodeType } from '../types/flow';
-import { resolveOverlap } from '../lib/auto-layout';
 
 const edgeTypes = {
   deletable: DeleteEdge,
@@ -83,16 +82,11 @@ export function FlowCanvas() {
   }, []);
 
   const onNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
-      const allNodes = useFlowStore.getState().nodes;
-      const resolved = resolveOverlap(node.id, node.position, allNodes);
-      if (resolved.x !== node.position.x || resolved.y !== node.position.y) {
-        onNodesChange([
-          { type: 'position', id: node.id, position: resolved },
-        ]);
-      }
+    () => {
+      // Push history so drag is undoable (Ctrl+Z)
+      useFlowStore.getState().pushHistory();
     },
-    [onNodesChange]
+    []
   );
 
   const onPaneClick = useCallback(() => {

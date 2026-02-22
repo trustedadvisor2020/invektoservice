@@ -112,6 +112,12 @@ export async function login(tenantId: number, apiKey: string): Promise<LoginResp
 
 // -- Flows CRUD --
 
+export interface AssignedInstance {
+  instanceId: string;
+  instanceName: string;
+  instanceType: number;
+}
+
 export interface FlowSummary {
   flow_id: number;
   flow_name: string;
@@ -124,6 +130,7 @@ export interface FlowSummary {
   updated_at: string;
   health_score: number | null;
   health_issues: string[] | null;
+  assigned_instances: AssignedInstance[];
 }
 
 export interface FlowDetail {
@@ -165,6 +172,34 @@ export function activateFlow(tenantId: number, flowId: number): Promise<void> {
 
 export function deactivateFlow(tenantId: number, flowId: number): Promise<void> {
   return request<void>('POST', `/flows/${tenantId}/${flowId}/deactivate`);
+}
+
+// -- Instances (for Start node assignment) --
+
+export interface AvailableInstance {
+  instanceId: string;
+  instanceName: string;
+  instanceType: number;
+  account: string | null;
+}
+
+export function getAvailableInstances(tenantId: number, flowId?: number): Promise<{ instances: AvailableInstance[] }> {
+  const params = flowId ? `?flow_id=${flowId}` : '';
+  return request<{ instances: AvailableInstance[] }>('GET', `/instances/available${params}`);
+}
+
+// -- Tenant Working Hours --
+
+export interface WorkingHoursInfo {
+  configured: boolean;
+  start?: string;
+  end?: string;
+  timezone?: string;
+  days_off?: string[];
+}
+
+export function getWorkingHours(): Promise<WorkingHoursInfo> {
+  return request<WorkingHoursInfo>('GET', '/tenant/working-hours');
 }
 
 // -- Validation --

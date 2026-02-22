@@ -5,6 +5,7 @@
       "Edit",
       "Write",
       "Read(//c/**)",
+      "Read(//tmp/**)",
       "Read(//c/CRMs/InvektoServis/**)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__codex-review__*",

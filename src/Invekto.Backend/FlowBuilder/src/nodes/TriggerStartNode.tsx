@@ -9,6 +9,10 @@ const PlayIcon = () => (
 );
 
 function TriggerStartNodeComponent(props: NodeProps) {
+  const instanceCount = Array.isArray((props.data as Record<string, unknown>)?.allowed_instance_ids)
+    ? ((props.data as Record<string, unknown>).allowed_instance_ids as string[]).length
+    : 0;
+
   return (
     <BaseNode
       nodeProps={props}
@@ -16,7 +20,11 @@ function TriggerStartNodeComponent(props: NodeProps) {
       icon={<PlayIcon />}
       hasInput={false}
     >
-      <span className="text-emerald-600">Musteri mesaj gonderince baslar</span>
+      <span className="text-emerald-600">
+        {instanceCount > 0
+          ? `${instanceCount} hat secili`
+          : 'Musteri mesaj gonderince baslar'}
+      </span>
     </BaseNode>
   );
 }

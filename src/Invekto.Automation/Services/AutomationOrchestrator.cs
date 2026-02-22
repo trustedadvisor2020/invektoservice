@@ -70,6 +70,7 @@ public sealed class AutomationOrchestrator
         WebhookMessage message,
         string requestId,
         string? callbackUrl,
+        string? instanceId = null,
         CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
@@ -80,8 +81,33 @@ public sealed class AutomationOrchestrator
 
         try
         {
-            // 1. Get active flow config (raw JSON for version detection)
-            var (flowDoc, isActive) = await _repo.GetFlowAsync(tenantId, ct);
+            // 1. Get active flow config: instance-based routing or legacy single-flow
+            JsonDocument? flowDoc;
+            bool isActive;
+
+            var resolvedInstanceId = instanceId ?? string.Empty;
+            var hasInstanceConfig = resolvedInstanceId.Length > 0 && await _repo.HasInstanceRecordsAsync(tenantId, ct);
+            if (hasInstanceConfig)
+            {
+                // Multi-flow routing: get flow assigned to this instance
+                var (instFlowDoc, instIsActive, _) = await _repo.GetFlowByInstanceAsync(tenantId, resolvedInstanceId, ct);
+                flowDoc = instFlowDoc;
+                isActive = instIsActive;
+
+                if (flowDoc == null || !isActive)
+                {
+                    _logger.StepWarn($"No active flow for instance {instanceId} (tenant {tenantId}), handing off", requestId);
+                    await SendHandoffAsync(requestId, tenantId, chatId, message.Time,
+                        "Bu hat icin aktif akis yok", 0, callbackUrl, ct);
+                    return true;
+                }
+            }
+            else
+            {
+                // Legacy: single-flow routing (first active flow)
+                (flowDoc, isActive) = await _repo.GetFlowAsync(tenantId, ct);
+            }
+
             if (flowDoc == null || !isActive)
             {
                 _logger.StepWarn($"No active flow for tenant {tenantId}, handing off to human", requestId);

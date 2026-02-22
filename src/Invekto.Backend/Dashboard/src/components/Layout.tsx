@@ -43,7 +43,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true },
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
-  { path: '/logs',            label: 'Kayitlar',         icon: FileText,     opsOnly: true },
+  { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
   { path: '/settings',        label: 'Ayarlar',          icon: Settings },
 ];
 
@@ -58,13 +58,16 @@ export function Layout({ children }: LayoutProps) {
     window.location.href = '/';
   };
 
-  // Ops mode (no session): tum nav items gorunur.
+  // Ops mode (no session): sadece opsOnly + Ayarlar gorunur (Firmalar, Mesajlar, Loglar, Ayarlar).
   // Tenant mode (session var): feature flag'e gore filtrele, opsOnly gizle, Turkce label.
   const navItems = ALL_NAV_ITEMS.filter(item => {
-    // opsOnly: ops mode (no session) veya superadmin (tenant_id=0) gorebilir
-    if (item.opsOnly && session && session.tenantId !== 0) return false;
+    if (!session) {
+      // Ops mode: sadece opsOnly items + Ayarlar
+      return item.opsOnly || item.path === '/settings';
+    }
+    // Tenant mode
+    if (item.opsOnly && session.tenantId !== 0) return false;
     if (!item.feature) return true;
-    if (!session) return true;
     return api.hasFeature(item.feature);
   }).map(item => ({
     ...item,

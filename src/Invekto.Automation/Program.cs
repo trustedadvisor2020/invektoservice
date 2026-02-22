@@ -257,11 +257,12 @@ app.MapPost("/api/v1/webhook/event", (
 
         // Capture loop variable for async closure
         var currentMsg = msg;
+        var eventInstanceId = webhookEvent.InstanceId;
         _ = Task.Run(async () =>
         {
             try
             {
-                var success = await orchestrator.ProcessMessageAsync(tenantContext, currentMsg, requestId, null, CancellationToken.None);
+                var success = await orchestrator.ProcessMessageAsync(tenantContext, currentMsg, requestId, null, eventInstanceId, CancellationToken.None);
                 if (!success)
                     jsonLogger.StepError($"Message processing failed for tenant {tenantContext.TenantId}, chat {chatId}", requestId);
             }
@@ -378,7 +379,8 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
                 created_at = f.CreatedAt,
                 updated_at = f.UpdatedAt,
                 health_score = healthScore,
-                health_issues = healthIssues
+                health_issues = healthIssues,
+                assigned_instances = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(f.AssignedInstancesJson ?? "[]")
             };
         }));
     }
@@ -507,6 +509,39 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
             return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
 
         jsonLogger.StepInfo($"Flow updated for tenant {tenantId}: flow_id={flowId}", requestId);
+
+        // Sync instance-flow mapping from trigger_start node (non-fatal)
+        try
+        {
+            using var cfgDoc = JsonDocument.Parse(flowConfig!);
+            if (cfgDoc.RootElement.TryGetProperty("nodes", out var nodes) && nodes.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var node in nodes.EnumerateArray())
+                {
+                    var nodeType = node.TryGetProperty("type", out var t) ? t.GetString() : null;
+                    if (nodeType == "trigger_start" && node.TryGetProperty("data", out var data))
+                    {
+                        var instanceIds = new List<string>();
+                        if (data.TryGetProperty("allowed_instance_ids", out var ids) && ids.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var id in ids.EnumerateArray())
+                            {
+                                var val = id.GetString();
+                                if (!string.IsNullOrEmpty(val)) instanceIds.Add(val);
+                            }
+                        }
+                        await repo.SyncFlowInstanceMappingAsync(tenantId, flowId, instanceIds);
+                        jsonLogger.StepInfo($"Instance mapping synced for flow {flowId}: {instanceIds.Count} instance(s)", requestId);
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception syncEx)
+        {
+            jsonLogger.StepError($"Instance mapping sync failed for flow {flowId}: {syncEx.Message}", requestId);
+        }
+
         return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "updated" });
     }
     catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "23505")

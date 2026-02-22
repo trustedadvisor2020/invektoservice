@@ -280,6 +280,22 @@ export function FlowListPage() {
                     <span>{flow.node_count} node / {flow.edge_count} edge</span>
                     <span>Guncelleme: {formatDate(flow.updated_at)}</span>
                   </div>
+                  {flow.assigned_instances && flow.assigned_instances.length > 0 && (
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {flow.assigned_instances.map((inst) => (
+                        <span
+                          key={inst.instanceId}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full"
+                          title={inst.instanceId}
+                        >
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                            <path d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.694.198-.83 1.063-.373 1.574a7.028 7.028 0 004.633 2.368c.703.1 1.202-.466 1.128-1.176l-.11-1.056a1.5 1.5 0 011.21-1.632l2.378-.476A1.5 1.5 0 0115.5 9.5v1.264a3 3 0 01-2.286 2.909 11.054 11.054 0 01-7.863-1.867A11.023 11.023 0 012 5.732V3.5z" />
+                          </svg>
+                          {inst.instanceName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1 ml-4 flex-shrink-0">
