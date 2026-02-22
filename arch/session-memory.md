@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-22
-- **Status:** Onboarding Rehberi sayfasi olusturuldu (SuperAdmin). 7 dikey sekme: Genel Bakis, Onboarding Adimlari, Ozellik Rehberi, Sektor Senaryolari, Musteri Iletisimi (14 sablon), SaaS Stratejisi (11 konu), Aksiyon Listesi (30 madde). Sekmeler arasi cross-link navigasyonu eklendi.
-- **Last Task:** OnboardingGuidePage.tsx — SaaS Stratejisi sekmesi (fiyatlandirma, health score, aha moment, olcekleme, churn, upsell, referral, yapiskan urun, rakip, destek, metrikler) + aksiyon listesi genisletildi (30 madde) + tum sekmeler arasi cross-link'ler eklendi. Vite build PASS.
-- **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
+- **Date:** 2026-02-23
+- **Status:** Template System (Sablon Sistemi) tamamlandi. 7 tablo SQL schema, 12+ Shared DTO, TemplateRepository, 3 servis (Extractor/Resolution/Adoption), Knowledge API endpoints, Backend proxy, 4 Dashboard sayfasi. Codex review 5-chunk stratejisi ile 4 iteration'da PASS. 14 gercek fix (typed catches, INV error codes, IHttpClientFactory, null-forgiving, silent JSON catch logging).
+- **Last Task:** Template System Codex review — 195KB diff, 5 chunk, 4 iteration. Fixes: catch(Exception)→typed catches (NpgsqlException/JsonException/HttpRequestException), INV error codes, IHttpClientFactory pattern, null-forgiving→fallback, static→instance methods for logging. Plan JSON verdict=PASS.
+- **Next Task:** (1) template-catalog.sql production'da calistir, (2) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (3) Knowledge deploy (pgvector + template endpoints), (4) Backend deploy (template proxy + SPA rebuild), (5) Automation deploy, (6) Instance yonetimi E2E test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -90,6 +90,7 @@ src/
 | 2026-02-22 | Working Hours Settings UI + API | Dashboard Ayarlar'a mesai saatleri section. GET/PUT /api/v1/settings/working-hours, JSONB merge, HH:mm + timezone + days_off validation. Codex FORCE PASS (CQ2/CQ3/CQ5 pre-existing false positive, CoVe 4/4 PASS). |
 | 2026-02-22 | Instance Filtering & Multi-Flow Routing | tenant_instances tablosu, 1 instance = max 1 flow, backward compat (kayit yoksa eski davranis), webhook filter (disabled/unassigned = log+ignore), ActivateFlowAsync artik diger flow'lari kapatmiyor. |
 | 2026-02-22 | Platform Evrim Katmanlari (Roadmap) | 6 akilil altyapi katmani roadmap'e eklendi: Musteri Hafizasi, Template Marketplace, Bilesik Olay Motoru, Voice AI, Gateway, Extension API. Phase 2-7 entegrasyonu, bagimllik haritasi, revenue etkisi, 6 yeni teknik risk, 3 yeni revenue driver. |
+| 2026-02-23 | Template System (Sablon Sistemi) | Knowledge 7104 genisletildi: 5 tip (FAQ/Message/Intent/Flow/Scenario), 3 katman (Platform>Sector>Tenant), pgvector cosine similarity, suggestion queue, superadmin review UI, tenant onboarding. 19 dosya, 4243 insertion. Codex 5-chunk, 4 iter, PASS. |
 
 ## Q Pending Operational Tasks
 
@@ -101,6 +102,7 @@ src/
 - [ ] Attribution: attribution.sql calistir
 - [ ] Outbound: campaign + consent migration calistir
 - [x] Backend: backend-metrics.sql calistir (2026-02-21 tamamlandi)
+- [ ] Template System: template-catalog.sql calistir (7 tablo + GRANT)
 - [ ] Instance Routing: tenant-instances.sql calistir + uq_chatbot_flows_active DROP INDEX
 - [ ] Instance Routing: Backend + Automation deploy sonrasi E2E test
 
