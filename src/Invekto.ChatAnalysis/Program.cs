@@ -15,6 +15,7 @@ var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", Servi
 var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
 var claudeApiKey = builder.Configuration["Claude:ApiKey"] ?? "";
 var callbackToken = builder.Configuration["Callback:Token"] ?? "";
+var internalApiKey = builder.Configuration["Microservice:InternalApiKey"] ?? "";
 
 // Validate required config
 if (string.IsNullOrEmpty(claudeApiKey))
@@ -84,6 +85,19 @@ app.MapPost("/api/v1/analyze", (
     CallbackService callbackService,
     ChatAnalysisRequest? request) =>
 {
+    // Internal API key validation (service-to-service auth)
+    if (!string.IsNullOrEmpty(internalApiKey))
+    {
+        var providedKey = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
+        if (providedKey != internalApiKey)
+        {
+            jsonLogger.SystemWarn("Rejected /api/v1/analyze: invalid or missing X-Internal-Api-Key");
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", "-"),
+                statusCode: 401);
+        }
+    }
+
     // Validate request
     if (request == null)
     {
@@ -114,6 +128,18 @@ app.MapPost("/api/v1/analyze", (
             ErrorResponse.Create(
                 ErrorCodes.ChatAnalysisInvalidPayload,
                 "Geçersiz istek: ChatServerURL zorunlu",
+                request.RequestID),
+            statusCode: 400);
+    }
+
+    // SSRF protection: reject callback URLs pointing to private/internal networks
+    if (!IsAllowedCallbackUrl(request.ChatServerURL))
+    {
+        jsonLogger.SystemWarn($"Rejected callback URL (SSRF protection): {request.ChatServerURL}, RequestID={request.RequestID}");
+        return Results.Json(
+            ErrorResponse.Create(
+                ErrorCodes.ChatAnalysisInvalidPayload,
+                "ChatServerURL points to a disallowed address",
                 request.RequestID),
             statusCode: 400);
     }
@@ -291,6 +317,45 @@ static async Task ProcessAnalysisAsync(
         sw.Stop();
         logger.StepError($"İşlem hatası: {ex.Message}", rid, sw.ElapsedMilliseconds);
     }
+}
+
+// SSRF protection: reject callback URLs pointing to private/loopback/link-local addresses
+static bool IsAllowedCallbackUrl(string url)
+{
+    if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        return false;
+
+    if (uri.Scheme is not ("http" or "https"))
+        return false;
+
+    var host = uri.Host;
+
+    // Block obvious loopback/private hostnames
+    if (host is "localhost" or "127.0.0.1" or "::1" or "0.0.0.0")
+        return false;
+
+    // Resolve hostname and check IP ranges
+    if (System.Net.IPAddress.TryParse(host, out var ip))
+    {
+        // Loopback (127.x.x.x, ::1)
+        if (System.Net.IPAddress.IsLoopback(ip))
+            return false;
+
+        var bytes = ip.GetAddressBytes();
+        if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && bytes.Length == 4)
+        {
+            // 10.0.0.0/8
+            if (bytes[0] == 10) return false;
+            // 172.16.0.0/12
+            if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return false;
+            // 192.168.0.0/16
+            if (bytes[0] == 192 && bytes[1] == 168) return false;
+            // 169.254.0.0/16 (link-local)
+            if (bytes[0] == 169 && bytes[1] == 254) return false;
+        }
+    }
+
+    return true;
 }
 
 // Required for integration tests

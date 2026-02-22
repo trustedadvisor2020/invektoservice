@@ -35,6 +35,7 @@ public sealed class ChatAnalysisClient
             request.Headers.Add(HeaderNames.RequestId, context.RequestId);
             request.Headers.Add(HeaderNames.TenantId, context.TenantId);
             request.Headers.Add(HeaderNames.ChatId, context.ChatId);
+            // X-Internal-Api-Key is set via DelegatingHandler at HttpClient registration level
             request.Content = JsonContent.Create(analysisRequest);
 
             var response = await _httpClient.SendAsync(request, ct);

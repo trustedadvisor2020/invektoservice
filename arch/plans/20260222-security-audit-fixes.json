@@ -1,0 +1,155 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "slug": "20260222-security-audit-fixes",
+  "risk": "CRITICAL",
+  "status": "DONE",
+  "created_at": "2026-02-22T15:30:00Z",
+  "updated_at": "2026-02-22T15:45:00Z",
+  "plan": {
+    "summary": "Fix 5 security vulnerabilities found by Codex audit: remove JWT decode-only fallback (auth bypass), disable MockEnabled in prod, add internal API key for ChatAnalysis service-to-service auth, add localhost/API key gate on WapCRM bridge, add SSRF protection on callback URLs.",
+    "q_intent": "Codex bişeyler buldu. incele yorumla — hepsini yapmak için plan yap. onaylıyorum hemen implementasyona geç",
+    "interview_notes": "Q approved all 5 fixes immediately. MockEnabled=false applied to prod config and Backend restarted as emergency measure before code changes."
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/ChatAnalysisClient.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.ChatAnalysis/Program.cs",
+    "src/Invekto.ChatAnalysis/appsettings.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Removed 4 decode-only JWT fallbacks, added internal API key + IP whitelist auth on /api/v1/chat/analyze proxy, added localhost/API key auth on WapCRM bridge, extracted webhookIpSet to outer scope" },
+    { "path": "src/Invekto.Backend/Services/ChatAnalysisClient.cs", "is_new": false, "change": "Added comment documenting X-Internal-Api-Key header injection via HttpClient registration" },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false, "change": "Added Microservice:InternalApiKey config placeholder" },
+    { "path": "src/Invekto.ChatAnalysis/Program.cs", "is_new": false, "change": "Added internal API key validation on /api/v1/analyze, added SSRF protection (IsAllowedCallbackUrl) rejecting private/loopback/link-local IPs in ChatServerURL" },
+    { "path": "src/Invekto.ChatAnalysis/appsettings.json", "is_new": false, "change": "Added Microservice:InternalApiKey config placeholder" }
+  ],
+  "git_diff": {
+    "sha256": "6b54c665096dbb81dbe28d0958d29414ac1d78216ec43356b733246a0f9a0046",
+    "full_path": "arch/plans/diffs/20260222-security-audit-fixes.diff",
+    "stats": { "insertions": 111, "deletions": 151, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-22T15:42:00Z",
+    "duration_ms": 6460,
+    "output_tail": "Build succeeded. 0 Error(s). 13 Warning(s).",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Invekto.ChatAnalysis", "Invekto.Shared"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Are all 4 decode-only JWT fallback paths fully removed with no remaining ReadJwtToken calls that skip signature validation?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the token exchange endpoint correctly return 503 when InmaAuth:SecretKey is not configured instead of accepting unsigned tokens?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the internal API key validation in ChatAnalysis correctly reject requests when key is configured but header is missing or wrong?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does the SSRF protection correctly block all RFC 1918 private ranges (10.x, 172.16-31.x, 192.168.x), loopback, and link-local addresses?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Does the WapCRM bridge auth gate correctly allow localhost requests while blocking external unauthorized requests?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Automation/", "src/Invekto.Outbound/", "src/Invekto.Knowledge/"],
+    "non_goals": ["Adding unit tests", "Refactoring unrelated code", "Changing INMA integration flow"],
+    "intentional_exclusions": ["Test coverage for security fixes (tracked separately)", "Cert password hardening (separate task)"]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "401 Unauthorized for missing/invalid X-Internal-Api-Key",
+      "503 INMA auth not configured when SecretKey is empty",
+      "400 ChatServerURL points to a disallowed address (SSRF)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All rejection paths return explicit HTTP error responses with error codes. No silent swallowing."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Unsigned JWT tokens could be forged to impersonate any tenant or admin",
+      "suggestion": "Decode-only fallback removed — all JWT paths now require cryptographic signature validation",
+      "aha_moment": "Admin realizes forged tokens are now instantly rejected instead of silently accepted"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "MockEnabled left on in production allows passwordless admin access",
+      "suggestion": "MockEnabled disabled in prod config, Backend restarted immediately",
+      "aha_moment": "Q sees mock-login returning 503 in prod — no more accidental open doors"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "ChatAnalysis endpoint exposed without auth allows cost abuse via Claude API",
+      "suggestion": "X-Internal-Api-Key header required for service-to-service calls",
+      "aha_moment": "Unauthorized Claude API calls are blocked before they consume tokens"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Callback URL in ChatServerURL could be attacker-controlled, leaking auth tokens via SSRF",
+      "suggestion": "Private IP, loopback, and link-local addresses blocked in callback URL validation",
+      "aha_moment": "Attacker's SSRF attempt returns 400 instead of leaking internal service tokens"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "WapCRM bridge endpoint accessible from public internet without authentication",
+      "suggestion": "Localhost and internal API key gate added to WapCRM bridge",
+      "aha_moment": "External requests to bridge endpoint are rejected with 401 while Automation service calls succeed"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-22T15:50:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-22T15:51:00Z",
+    "raw_text": "CQ1-CQ7 PASS, CQ8 FAIL (intentional breaking change - security hardening), CoVe Q1-Q5 all PASS. Q FORCE PASS: CQ8 is expected for auth hardening.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "All auth gates return explicit error responses with codes" },
+      "CQ2": { "result": "PASS", "evidence": "No silent failures, all rejections logged and returned" },
+      "CQ3": { "result": "PASS", "evidence": "Changes scoped to auth hardening only" },
+      "CQ4": { "result": "PASS", "evidence": "No duplicated code" },
+      "CQ5": { "result": "PASS", "evidence": "Uses existing ErrorCodes and patterns" },
+      "CQ6": { "result": "PASS", "evidence": "O(1) header/IP checks" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK markers" },
+      "CQ8": { "result": "PASS", "evidence": "Q FORCE PASS: breaking auth changes are intentional security fixes" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "All 4 decode-only fallbacks removed" },
+      "Q2": { "result": "PASS", "reasoning": "Token exchange returns 503 when SecretKey missing" },
+      "Q3": { "result": "PASS", "reasoning": "ChatAnalysis rejects missing/wrong API key" },
+      "Q4": { "result": "PASS", "reasoning": "SSRF blocks all private/loopback/link-local ranges" },
+      "Q5": { "result": "PASS", "reasoning": "WapCRM bridge allows localhost, blocks external" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

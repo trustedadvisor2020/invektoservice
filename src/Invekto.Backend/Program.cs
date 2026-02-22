@@ -60,6 +60,7 @@ var integrationsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:In
 var marketingUrl = builder.Configuration["Microservice:Marketing:Url"]
     ?? $"http://localhost:{ServiceConstants.MarketingPort}";
 var marketingTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Marketing:TimeoutMs", 10000);
+var internalApiKey = builder.Configuration["Microservice:InternalApiKey"] ?? "";
 
 // Register JSON Lines logger
 builder.Services.AddSingleton(new JsonLinesLogger(ServiceConstants.BackendServiceName, logPath));
@@ -122,6 +123,8 @@ builder.Services.AddHttpClient<ChatAnalysisClient>(client =>
 {
     client.BaseAddress = new Uri(microserviceUrl);
     client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
 });
 
 // Configure Automation HTTP client
@@ -292,11 +295,11 @@ app.UseTrafficLogging(
 
 // GR-1.9: JWT auth middleware for protected API paths
 // Webhook:AllowedIps — trusted IPs bypass JWT and use ?companyId= query param
+var webhookIps = builder.Configuration.GetSection("Webhook:AllowedIps").Get<string[]>() ?? [];
+var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreCase);
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    var webhookIps = builder.Configuration.GetSection("Webhook:AllowedIps").Get<string[]>() ?? [];
-    var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreCase);
     app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads/");
 }
 
@@ -352,20 +355,7 @@ bool ValidateOpsAuth(HttpContext ctx)
             if (inmaCtx?.Role == "admin") return true;
         }
 
-        // Path C: decode-only fallback (INMA token without SecretKey configured)
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            if (handler.CanReadToken(token))
-            {
-                var jwt = handler.ReadJwtToken(token);
-                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
-                    return false; // expired
-                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
-                if (chatRole == "2") return true; // ChatRole 2 = admin
-            }
-        }
-        catch (Exception) { /* decode failed — no valid JWT format, return null below */ }
+        // decode-only fallback REMOVED (security: unsigned JWT must never grant access)
 
         return false;
     }
@@ -1313,12 +1303,26 @@ app.MapGet("/api/v1/tenant/verify", (HttpContext ctx, JsonLinesLogger jsonLogger
 // ============================================
 
 // Chat analysis proxy endpoint (V2 - async with callback)
+// Auth: internal API key OR whitelisted IP (INMA calls this endpoint)
 app.MapPost("/api/v1/chat/analyze", async (
     HttpContext ctx,
     ChatAnalysisClient chatClient,
     JsonLinesLogger jsonLogger,
     ChatAnalysisRequest? analysisRequest) =>
 {
+    // Auth gate: require internal API key or whitelisted IP
+    var apiKeyHeader = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
+    var hasValidApiKey = !string.IsNullOrEmpty(internalApiKey) && apiKeyHeader == internalApiKey;
+    var remoteIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "";
+    var isWhitelistedIp = webhookIpSet.Contains(remoteIp) || remoteIp == "127.0.0.1" || remoteIp == "::1";
+    if (!hasValidApiKey && !isWhitelistedIp)
+    {
+        jsonLogger.SystemWarn($"Rejected /api/v1/chat/analyze: unauthorized (ip={remoteIp})");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", "-"),
+            statusCode: 401);
+    }
+
     // Pass-through X-Request-Id if provided, otherwise generate new
     var context = RequestContext.CreateWithPassThrough(
         ctx.Request.Headers[HeaderNames.RequestId].FirstOrDefault(),
@@ -1916,46 +1920,7 @@ app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, Analyt
         }
     }
 
-    // Path C: decode-only fallback (INMA token without SecretKey configured)
-    if (tenantContext == null)
-    {
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            if (handler.CanReadToken(token))
-            {
-                var jwt = handler.ReadJwtToken(token);
-
-                // Manual expiry check
-                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
-                {
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthTokenExpired, "Token expired", "-"),
-                        statusCode: 401);
-                }
-
-                // CompanyCode = our tenant_id (e.g. "5050"), CompanyId = INMA's internal ID
-                var companyCodeStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value;
-                var userIdStr = jwt.Claims.FirstOrDefault(c =>
-                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-                    || c.Type == ClaimTypes.NameIdentifier)?.Value;
-                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
-
-                if (int.TryParse(companyCodeStr, out var tenantId) && tenantId > 0
-                    && int.TryParse(userIdStr, out var userId))
-                {
-                    tenantContext = new TenantContext
-                    {
-                        TenantId = tenantId,
-                        UserId = userId,
-                        Role = chatRole switch { "2" => "admin", _ => "agent" }
-                    };
-                    jsonLogger.SystemInfo($"Dashboard analytics (decode-only): tenant={tenantId} user={userId}");
-                }
-            }
-        }
-        catch { /* decode failed — fall through to 401 */ }
-    }
+    // decode-only fallback REMOVED (security: unsigned JWT must never grant access)
 
     if (tenantContext == null)
     {
@@ -2020,37 +1985,7 @@ TenantContext? ExtractTenantFromBearer(HttpContext ctx)
         if (inmaCtx != null)
             tenantContext = new TenantContext { TenantId = inmaCtx.TenantId, UserId = inmaCtx.UserId, Role = inmaCtx.Role };
     }
-    // Path C: decode-only fallback (INMA token without SecretKey configured)
-    if (tenantContext == null)
-    {
-        try
-        {
-            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            if (handler.CanReadToken(token))
-            {
-                var jwt = handler.ReadJwtToken(token);
-                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
-                    return null;
-
-                var companyCodeStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value;
-                var userIdStr = jwt.Claims.FirstOrDefault(c =>
-                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-                    || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
-
-                if (int.TryParse(companyCodeStr, out var tid) && tid > 0
-                    && int.TryParse(userIdStr, out var uid))
-                {
-                    tenantContext = new TenantContext
-                    {
-                        TenantId = tid, UserId = uid,
-                        Role = chatRole switch { "2" => "admin", _ => "agent" }
-                    };
-                }
-            }
-        }
-        catch (Exception) { /* decode failed — no valid JWT format, return null below */ }
-    }
+    // decode-only fallback REMOVED (security: unsigned JWT must never grant access)
 
     return tenantContext;
 }
@@ -4751,68 +4686,11 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
         }
         else
         {
-            // Path B: InmaAuth:SecretKey not configured → decode-only (no signature verification)
-            // INMA JWT claim'lerini okuyup InmaTokenContext olustur
-            try
-            {
-                var handler = new JwtSecurityTokenHandler();
-                if (!handler.CanReadToken(inmaToken))
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Not a valid JWT format", requestId),
-                        statusCode: 401);
-
-                var jwt = handler.ReadJwtToken(inmaToken);
-
-                // Expiry check (manual — no signature validation means no automatic lifetime check)
-                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthTokenExpired, "Token expired", requestId),
-                        statusCode: 401);
-
-                // CompanyCode = our tenant_id (e.g. "5050"), CompanyId = INMA's internal ID
-                var companyCodeStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value;
-                var userIdStr = jwt.Claims.FirstOrDefault(c =>
-                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-                    || c.Type == ClaimTypes.NameIdentifier)?.Value;
-                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
-                var fullName = jwt.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "";
-                var lang = jwt.Claims.FirstOrDefault(c => c.Type == "Lang")?.Value ?? "tr";
-
-                if (!int.TryParse(companyCodeStr, out var tenantId) || tenantId <= 0)
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Missing or invalid CompanyCode claim", requestId),
-                        statusCode: 401);
-                if (!int.TryParse(userIdStr, out var userId))
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Missing or invalid nameidentifier claim", requestId),
-                        statusCode: 401);
-
-                var role = chatRole switch { "2" => "admin", _ => "agent" };
-
-                string[] inseFeatures = [];
-                var featuresRaw = jwt.Claims.FirstOrDefault(c => c.Type == "InseFeatures")?.Value;
-                if (!string.IsNullOrWhiteSpace(featuresRaw))
-                    try { inseFeatures = System.Text.Json.JsonSerializer.Deserialize<string[]>(featuresRaw) ?? []; } catch { }
-
-                inmaCtx = new InmaTokenContext
-                {
-                    TenantId = tenantId,
-                    UserId = userId,
-                    Role = role,
-                    FullName = fullName,
-                    Lang = lang,
-                    InseFeatures = inseFeatures
-                };
-
-                jsonLogger.StepInfo($"inma token exchange (decode-only): tenant={tenantId} user={userId}", requestId);
-            }
-            catch (Exception ex)
-            {
-                jsonLogger.StepWarn($"inma token decode failed: {ex.Message}", requestId);
-                return Results.Json(
-                    ErrorResponse.Create(ErrorCodes.AuthTokenInvalid, "Failed to decode INMA token", requestId),
-                    statusCode: 401);
-            }
+            // decode-only fallback REMOVED (security: unsigned JWT must never be exchanged for signed INSE token)
+            jsonLogger.StepWarn("inma token exchange rejected: InmaAuth:SecretKey not configured", requestId);
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "INMA auth not configured — token exchange unavailable", requestId),
+                statusCode: 503);
         }
 
         var tokenExpiry = TimeSpan.FromHours(8);
@@ -5233,10 +5111,22 @@ app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory ht
 // WAPCRM CALLBACK BRIDGE
 // ============================================
 // Automation sends OutgoingCallback → this endpoint transforms to WapCRM chatoperation format.
-// No auth — internal service-to-service (localhost only).
-
+// Auth: localhost or internal API key (service-to-service only).
 app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger jsonLog, IHttpClientFactory httpClientFactory) =>
 {
+    // Auth gate: localhost or internal API key
+    var wapRemoteIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "";
+    var wapApiKey = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
+    var wapIsLocal = wapRemoteIp is "127.0.0.1" or "::1";
+    var wapHasKey = !string.IsNullOrEmpty(internalApiKey) && wapApiKey == internalApiKey;
+    if (!wapIsLocal && !wapHasKey)
+    {
+        jsonLog.SystemWarn($"WapCRM bridge: rejected unauthorized request (ip={wapRemoteIp})");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", "-"),
+            statusCode: 401);
+    }
+
     var requestId = Guid.NewGuid().ToString("N");
 
     OutgoingCallback? callback;
