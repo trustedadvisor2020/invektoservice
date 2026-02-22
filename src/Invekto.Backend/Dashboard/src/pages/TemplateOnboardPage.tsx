@@ -17,6 +17,7 @@ export function TemplateOnboardPage() {
         setTenants(data.tenants);
       } catch (err) {
         console.error('Failed to fetch tenants:', err);
+        setError('Tenant listesi yuklenemedi. Sayfayi yenileyin.');
       }
     };
     fetchTenants();
