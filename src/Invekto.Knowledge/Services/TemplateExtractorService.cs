@@ -300,7 +300,7 @@ public sealed class TemplateExtractorService
         {
             items.Add(new FaqClusterData
             {
-                ClusterLabel = r.GetString(0),
+                ClusterLabel = r.GetInt32(0).ToString(),
                 RepresentativeQuestion = r.GetString(1),
                 QuestionCount = r.GetInt32(2),
                 SampleQuestions = r.IsDBNull(3) ? [] : ParseJsonArray(r.GetString(3)),

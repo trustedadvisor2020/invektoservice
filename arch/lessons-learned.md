@@ -159,6 +159,7 @@
 | 2026-02-14 | Soft-delete + unique constraint = ghost duplicate | ON CONFLICT reactivate | **Soft-delete + unique constraint dikkat** |
 | 2026-02-14 | Pgvector NpgsqlDbType.Unknown kullanildi | AddWithValue() kullan | **UseVector() register ettiysen explicit type verme** |
 | 2026-02-15 | deleted_at IS NULL ama kolon yok | deleted_at check kaldirildi | **SQL'de kolon kullanmadan ONCE schema kontrol et** |
+| 2026-02-23 | wa_faq_clusters.cluster_label INT ama GetString(0) okundu | GetInt32(0).ToString() | **Npgsql reader'da kolon tipini DB schema'dan dogrula, INT!=STRING** |
 
 ### API & Auth
 
@@ -171,6 +172,8 @@
 | 2026-02-12 | MapFallbackToFile slug static dosyalari yakaladi | `{*path:nonfile}` constraint | **SPA fallback icin `{*path:nonfile}` kullan** |
 | 2026-02-12 | Root cause yerine workaround - 4+ deploy dongusu | routing pipeline incelendi | **SPA sorunlarinda once routing pipeline incele** |
 | 2026-02-15 | PDF magic bytes check try-catch disinda | try-catch icine tasindi | **File I/O HER ZAMAN try-catch icinde** |
+| 2026-02-23 | Ops credentials yanlis hatirandi (Invekto2024!) | Production config'den okundu (982wz14ndn6qGBYna) | **Ops auth credentials HATIRLAMAYA calisma, her zaman appsettings.Production.json'dan oku** |
+| 2026-02-23 | Server path E:\\ olarak hatirandi ama C:\\Invekto\\ | C:\\Invekto\\Backend\\current\\ | **Production server path: C:\\Invekto\\{Service}\\current\\** |
 
 ### Git & Secrets
 

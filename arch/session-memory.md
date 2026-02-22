@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Demo Bot flow + Switch node UX + MockIntentDetector synonym support. Invekto Demo Bot (flow_id=7, tenant 5050) olusturuldu, WhatsApp'tan test edildi. BaseNode right-side outputs, MockIntentDetector custom intent synonym expansion eklendi.
-- **Last Task:** Demo Bot — (1) 20-node Invekto Demo Bot flow (DB INSERT), (2) BaseNode outputPosition="right" prop, (3) LogicSwitchNode right outputs, (4) MockIntentDetector synonym expansion (sector keywords), (5) AiIntentHandler customIntents pass to mock, (6) 5 Invekto FAQ entry
-- **Next Task:** (1) Template System ingestion E2E test
+- **Status:** Template ingestion E2E test tamamlandi. 4 phase (Extract→Review→Publish→Adopt) basariyla gecti. 1 bug fix (GetInt32 cluster_label type mismatch). Knowledge redeployed.
+- **Last Task:** Template ingestion E2E test — (1) Ebrumoda WA analysis seed data (1 analysis, 8 FAQ cluster, 41 intent), (2) Extract: 16 suggestion (8 FAQ + 8 intent), (3) Review: 14 approved + 1 rejected + 1 pending, (4) Publish: 14/14 published, (5) Adopt: 7 intent adopted (tenant 5050), 7 FAQ skipped, (6) Bug fix: TemplateExtractorService.cs GetInt32 for cluster_label
+- **Next Task:** Bug fix commit (GetInt32) + Codex review
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -33,8 +33,8 @@
 ### Deploy
 
 - **Deploy:** MCP `server-deploy` tool (SSH/SFTP, atomik: stop -> zip -> upload -> extract -> config restore -> start -> health)
-- **Sunucu:** services.invekto.com, `E:\InvektoServices\`
-- **Service Manager:** NSSM (`E:\nssm.exe`)
+- **Sunucu:** services.invekto.com, `C:\Invekto\{Service}\current\`
+- **Service Manager:** NSSM (`C:\Invekto\nssm.exe`)
 - **.NET Runtime:** ASP.NET Core 8.0.23
 
 ### Tech Stack
