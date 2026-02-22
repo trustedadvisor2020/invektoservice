@@ -90,6 +90,51 @@ public sealed class TenantRegistryRepository
     }
 
     /// <summary>
+    /// Get working_hours sub-object from settings_json for a tenant.
+    /// Returns null if tenant not found, inactive, or no working_hours configured.
+    /// </summary>
+    public async Task<string?> GetWorkingHoursJsonAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT settings_json->'working_hours' AS wh
+            FROM tenant_registry
+            WHERE tenant_id = @tid AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        if (result is null or DBNull)
+            return null;
+
+        var json = result.ToString();
+        return string.IsNullOrWhiteSpace(json) ? null : json;
+    }
+
+    /// <summary>
+    /// Update only the working_hours key in settings_json using JSONB merge.
+    /// Initializes settings_json to empty object if currently NULL.
+    /// Does not overwrite other keys (wapcrm, confidence_threshold, etc.).
+    /// </summary>
+    public async Task<bool> UpdateWorkingHoursJsonAsync(int tenantId, string workingHoursJson, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE tenant_registry
+            SET settings_json = COALESCE(settings_json, '{}'::jsonb) || jsonb_build_object('working_hours', @wh::jsonb),
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("wh", workingHoursJson);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        return rows > 0;
+    }
+
+    /// <summary>
     /// Get a single tenant by ID. Returns null if not found.
     /// Used before impersonate to verify tenant exists and check is_active.
     /// </summary>

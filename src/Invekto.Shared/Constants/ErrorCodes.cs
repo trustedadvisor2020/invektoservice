@@ -27,6 +27,14 @@ public static class ErrorCodes
     public const string BackendWizardConfirmFailed = "INV-BE-023";     // Wizard confirm failed
     public const string BackendWizardInvalidPayload = "INV-BE-024";    // Wizard invalid payload
 
+    // Backend Instance Management (INV-BE-030+)
+    public const string BackendInstanceFetchFailed = "INV-BE-030";     // WapCRM instance fetch failed
+    public const string BackendInstanceDisableBlocked = "INV-BE-031";  // Instance in use by flow, cannot disable
+
+    // Backend Working Hours Settings (INV-BE-040+)
+    public const string BackendWorkingHoursFetchFailed = "INV-BE-040";   // Working hours fetch failed
+    public const string BackendWorkingHoursUpdateFailed = "INV-BE-041";  // Working hours update failed
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -91,6 +99,11 @@ public static class ErrorCodes
     public const string AutomationWebhookExecutionFailed = "INV-AT-032";
     public const string AutomationCronExpressionInvalid = "INV-AT-033";
     public const string AutomationScheduleExecutionFailed = "INV-AT-034";
+
+    // Automation Instance Filtering (INV-AT-035+)
+    public const string AutomationInstanceNotFound = "INV-AT-035";
+    public const string AutomationInstanceDisabled = "INV-AT-036";
+    public const string AutomationInstanceUnassigned = "INV-AT-037";
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";

@@ -177,6 +177,28 @@ export interface TenantEntry {
   createdAt: string;
 }
 
+// Instance management types (Settings)
+export interface InstanceDto {
+  id: number;
+  instanceId: string;
+  instanceName: string;
+  account: string | null;
+  instanceType: number;
+  isEnabled: boolean;
+  flowId: number | null;
+  flowName: string | null;
+  fetchedAt: string;
+}
+
+// Working Hours types (Settings)
+export interface WorkingHoursDto {
+  configured: boolean;
+  start: string;
+  end: string;
+  timezone: string;
+  days_off: string[];
+}
+
 // Analytics types (PKT-3)
 export interface TenantMetricsInfo {
   tenant_id: number;
@@ -1021,6 +1043,37 @@ class OpsApiClient {
   async impersonateTenant(tenantId: number): Promise<InmaAuthResponse> {
     return this.request<InmaAuthResponse>(`/api/ops/tenants/${tenantId}/impersonate`, {
       method: 'POST',
+    });
+  }
+
+  // Instance management (Settings page)
+  async getInstances(): Promise<{ instances: InstanceDto[] }> {
+    return this.request<{ instances: InstanceDto[] }>('/api/v1/settings/instances');
+  }
+
+  async refreshInstances(): Promise<{ instances: InstanceDto[]; refreshed: boolean }> {
+    return this.request<{ instances: InstanceDto[]; refreshed: boolean }>('/api/v1/settings/instances/refresh', {
+      method: 'POST',
+    });
+  }
+
+  async toggleInstance(instanceId: string, enabled: boolean): Promise<{ instance_id: string; is_enabled: boolean }> {
+    return this.request<{ instance_id: string; is_enabled: boolean }>(`/api/v1/settings/instances/${instanceId}/toggle`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_enabled: enabled }),
+    });
+  }
+
+  // Working Hours settings
+  async getWorkingHours(): Promise<WorkingHoursDto> {
+    return this.request<WorkingHoursDto>('/api/v1/settings/working-hours');
+  }
+
+  async updateWorkingHours(data: { start: string; end: string; timezone: string; days_off: string[] }): Promise<{ success: boolean; working_hours: WorkingHoursDto }> {
+    return this.request<{ success: boolean; working_hours: WorkingHoursDto }>('/api/v1/settings/working-hours', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 }

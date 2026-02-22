@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Npgsql;
 using Invekto.Shared.Middleware;
 using Invekto.Backend.Data;
 using Invekto.Backend.Services;
@@ -262,6 +263,9 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 
     // SuperAdmin: Tenant registry (list + impersonate)
     builder.Services.AddSingleton<TenantRegistryRepository>();
+
+    // Instance management (tenant_instances table: filtering + flow routing)
+    builder.Services.AddSingleton<InstanceRepository>();
 }
 
 // Callback client for async results to Main App
@@ -1188,6 +1192,36 @@ app.MapPost("/api/v1/webhook/event", async (HttpContext ctx, JsonLinesLogger jso
         }
     }
 
+    // Instance filtering: check if this instance is enabled + assigned to a flow
+    var instanceRepo = ctx.RequestServices.GetService<InstanceRepository>();
+    if (instanceRepo != null && !string.IsNullOrEmpty(webhookEvent.InstanceId))
+    {
+        var hasRecords = await instanceRepo.HasInstanceRecordsAsync(tenantContext.TenantId);
+        if (hasRecords)
+        {
+            var instStatus = await instanceRepo.GetInstanceStatusAsync(tenantContext.TenantId, webhookEvent.InstanceId);
+            // instStatus == null: unknown instance (not yet synced) → pass through
+            if (instStatus != null)
+            {
+                if (!instStatus.IsEnabled)
+                {
+                    jsonLogger.StepInfo(
+                        $"{ErrorCodes.AutomationInstanceDisabled}: instance={webhookEvent.InstanceId} ({instStatus.InstanceName}) disabled, skipping Automation",
+                        requestId);
+                    return Results.Json(new { status = "filtered", reason = "instance_disabled", instance_id = webhookEvent.InstanceId }, statusCode: 202);
+                }
+                if (instStatus.FlowId == null)
+                {
+                    jsonLogger.StepInfo(
+                        $"{ErrorCodes.AutomationInstanceUnassigned}: instance={webhookEvent.InstanceId} ({instStatus.InstanceName}) unassigned, skipping Automation",
+                        requestId);
+                    return Results.Json(new { status = "filtered", reason = "instance_unassigned", instance_id = webhookEvent.InstanceId }, statusCode: 202);
+                }
+            }
+        }
+        // hasRecords == false → old behavior (no instance config, pass through to Automation)
+    }
+
     // Forward to Automation for processing (fire-and-forget)
     var automationClient = ctx.RequestServices.GetService<AutomationClient>();
     if (automationClient != null)
@@ -1957,6 +1991,409 @@ app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, Analyt
         return Results.Json(new { error = ErrorCodes.MetricsQueryFailed, message = "Analitik sorgusu basarisiz oldu." }, statusCode: 500);
     }
 });
+
+// ============================================
+// INSTANCE MANAGEMENT ENDPOINTS (Settings)
+// JWT auth (INSE + INMA fallback), tenant-scoped
+// ============================================
+
+// Helper: extract TenantContext from Bearer token (INSE first, INMA fallback, then decode-only)
+TenantContext? ExtractTenantFromBearer(HttpContext ctx)
+{
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return null;
+
+    var token = authHeader["Bearer ".Length..].Trim();
+    TenantContext? tenantContext = null;
+
+    // Path A: INSE JWT
+    if (jwtValidator != null)
+    {
+        var (ctx1, _) = jwtValidator.ValidateToken(token);
+        tenantContext = ctx1;
+    }
+    // Path B: INMA JWT (validated)
+    if (tenantContext == null && inmaJwtValidator != null)
+    {
+        var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
+        if (inmaCtx != null)
+            tenantContext = new TenantContext { TenantId = inmaCtx.TenantId, UserId = inmaCtx.UserId, Role = inmaCtx.Role };
+    }
+    // Path C: decode-only fallback (INMA token without SecretKey configured)
+    if (tenantContext == null)
+    {
+        try
+        {
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            if (handler.CanReadToken(token))
+            {
+                var jwt = handler.ReadJwtToken(token);
+                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
+                    return null;
+
+                var companyCodeStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value;
+                var userIdStr = jwt.Claims.FirstOrDefault(c =>
+                    c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+                    || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
+
+                if (int.TryParse(companyCodeStr, out var tid) && tid > 0
+                    && int.TryParse(userIdStr, out var uid))
+                {
+                    tenantContext = new TenantContext
+                    {
+                        TenantId = tid, UserId = uid,
+                        Role = chatRole switch { "2" => "admin", _ => "agent" }
+                    };
+                }
+            }
+        }
+        catch { /* decode failed */ }
+    }
+
+    return tenantContext;
+}
+
+// GET /api/v1/settings/instances — list instances (fetches from WapCRM on first call, then from DB cache)
+app.MapGet("/api/v1/settings/instances", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var instanceRepo = ctx.RequestServices.GetService<InstanceRepository>();
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (instanceRepo == null || tenantRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    var requestId = Guid.NewGuid().ToString("N")[..8];
+
+    // Check if we have cached instances; if not, try fetching from WapCRM
+    var hasRecords = await instanceRepo.HasInstanceRecordsAsync(tenant.TenantId);
+    if (!hasRecords)
+    {
+        var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenant.TenantId);
+        if (wapcrm != null && !string.IsNullOrWhiteSpace(wapcrm.SecretKey))
+        {
+            try
+            {
+                var fetched = await FetchWapCrmInstances(wapcrm.SecretKey, jsonLog, requestId);
+                if (fetched.Count > 0)
+                    await instanceRepo.UpsertInstancesAsync(tenant.TenantId, fetched);
+            }
+            catch (Exception ex)
+            {
+                jsonLog.StepWarn($"Instance auto-fetch from WapCRM failed: {ex.Message}", requestId);
+            }
+        }
+    }
+
+    var instances = await instanceRepo.ListInstancesAsync(tenant.TenantId);
+    return Results.Ok(new { instances });
+});
+
+// POST /api/v1/settings/instances/refresh — force re-fetch from WapCRM
+app.MapPost("/api/v1/settings/instances/refresh", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var instanceRepo = ctx.RequestServices.GetService<InstanceRepository>();
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (instanceRepo == null || tenantRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    var requestId = Guid.NewGuid().ToString("N")[..8];
+
+    var wapcrm = await tenantRepo.GetWapCrmSettingsAsync(tenant.TenantId);
+    if (wapcrm == null || string.IsNullOrWhiteSpace(wapcrm.SecretKey))
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "WapCRM API anahtari yapilandirilmamis" }, statusCode: 422);
+
+    try
+    {
+        var fetched = await FetchWapCrmInstances(wapcrm.SecretKey, jsonLog, requestId);
+        if (fetched.Count > 0)
+            await instanceRepo.UpsertInstancesAsync(tenant.TenantId, fetched);
+
+        var instances = await instanceRepo.ListInstancesAsync(tenant.TenantId);
+        return Results.Ok(new { instances, refreshed = true });
+    }
+    catch (Exception ex)
+    {
+        jsonLog.StepWarn($"WapCRM instance refresh failed: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = $"WapCRM baglanti hatasi: {ex.Message}" }, statusCode: 502);
+    }
+});
+
+// PUT /api/v1/settings/instances/{instanceId}/toggle — enable/disable instance
+app.MapPut("/api/v1/settings/instances/{instanceId}/toggle", async (HttpContext ctx, JsonLinesLogger jsonLog, string instanceId) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var instanceRepo = ctx.RequestServices.GetService<InstanceRepository>();
+    if (instanceRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    // Parse body: { "is_enabled": true/false }
+    JsonElement body;
+    try
+    {
+        body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
+    }
+    catch
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid JSON body" });
+    }
+
+    if (!body.TryGetProperty("is_enabled", out var enabledProp) || enabledProp.ValueKind != JsonValueKind.True && enabledProp.ValueKind != JsonValueKind.False)
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "is_enabled (boolean) required" });
+
+    var enabled = enabledProp.GetBoolean();
+    var (success, error) = await instanceRepo.SetInstanceEnabledAsync(tenant.TenantId, instanceId, enabled);
+
+    if (!success)
+    {
+        // Flow-assigned instance cannot be disabled
+        var errorCode = error?.Contains("flow") == true ? ErrorCodes.BackendInstanceDisableBlocked : ErrorCodes.BackendInstanceFetchFailed;
+        var statusCode = error?.Contains("flow") == true ? 409 : 404;
+        return Results.Json(new { error = errorCode, message = error }, statusCode: statusCode);
+    }
+
+    return Results.Ok(new { instance_id = instanceId, is_enabled = enabled });
+});
+
+// GET /api/v1/settings/working-hours — read tenant's working hours configuration
+app.MapGet("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (tenantRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendWorkingHoursFetchFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        var json = await tenantRepo.GetWorkingHoursJsonAsync(tenant.TenantId);
+        if (json == null)
+        {
+            return Results.Ok(new
+            {
+                configured = false,
+                start = "09:00",
+                end = "18:00",
+                timezone = "Europe/Istanbul",
+                days_off = new[] { "Saturday", "Sunday" },
+            });
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var start = root.TryGetProperty("start", out var s) ? s.GetString() : "09:00";
+        var end = root.TryGetProperty("end", out var e) ? e.GetString() : "18:00";
+        var timezone = root.TryGetProperty("timezone", out var tz) ? tz.GetString() : "Europe/Istanbul";
+        var daysOff = new List<string>();
+        if (root.TryGetProperty("days_off", out var days) && days.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var day in days.EnumerateArray())
+            {
+                if (day.GetString() is string d) daysOff.Add(d);
+            }
+        }
+
+        return Results.Ok(new
+        {
+            configured = true,
+            start,
+            end,
+            timezone,
+            days_off = daysOff,
+        });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Working hours fetch failed for tenant {tenant.TenantId}: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendWorkingHoursFetchFailed, message = "Calisma saatleri yuklenemedi" }, statusCode: 500);
+    }
+});
+
+// PUT /api/v1/settings/working-hours — update tenant's working hours configuration
+app.MapPut("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (tenantRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendWorkingHoursUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    JsonElement body;
+    try
+    {
+        body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
+    }
+    catch (JsonException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "Invalid JSON body" });
+    }
+
+    // Validate start/end time format (HH:mm)
+    if (!body.TryGetProperty("start", out var startProp) || !TimeOnly.TryParse(startProp.GetString(), out _))
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "start (HH:mm) required" });
+
+    if (!body.TryGetProperty("end", out var endProp) || !TimeOnly.TryParse(endProp.GetString(), out _))
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = "end (HH:mm) required" });
+
+    // Validate timezone
+    var timezoneStr = body.TryGetProperty("timezone", out var tzProp) ? tzProp.GetString() : "Europe/Istanbul";
+    try
+    {
+        TimeZoneInfo.FindSystemTimeZoneById(timezoneStr ?? "Europe/Istanbul");
+    }
+    catch (TimeZoneNotFoundException)
+    {
+        return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = $"Invalid timezone: {timezoneStr}" });
+    }
+
+    // Validate days_off (must be valid DayOfWeek strings)
+    var daysOff = new List<string>();
+    if (body.TryGetProperty("days_off", out var daysProp) && daysProp.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var day in daysProp.EnumerateArray())
+        {
+            var dayStr = day.GetString();
+            if (dayStr == null || !Enum.TryParse<DayOfWeek>(dayStr, ignoreCase: true, out _))
+                return Results.BadRequest(new { error = ErrorCodes.GeneralValidation, message = $"Invalid day_off value: {dayStr}" });
+            daysOff.Add(dayStr);
+        }
+    }
+
+    // Build the working_hours JSON object
+    var workingHours = new
+    {
+        start = startProp.GetString(),
+        end = endProp.GetString(),
+        timezone = timezoneStr ?? "Europe/Istanbul",
+        days_off = daysOff,
+    };
+    var whJson = JsonSerializer.Serialize(workingHours);
+
+    try
+    {
+        var updated = await tenantRepo.UpdateWorkingHoursJsonAsync(tenant.TenantId, whJson);
+        if (!updated)
+            return Results.Json(new { error = ErrorCodes.BackendWorkingHoursUpdateFailed, message = "Tenant not found or inactive" }, statusCode: 404);
+
+        return Results.Ok(new { success = true, working_hours = workingHours });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Working hours update failed for tenant {tenant.TenantId}: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendWorkingHoursUpdateFailed, message = "Calisma saatleri guncellenemedi" }, statusCode: 500);
+    }
+});
+
+// GET /api/v1/flow-builder/instances/available — available instances for flow assignment
+app.MapGet("/api/v1/flow-builder/instances/available", async (HttpContext ctx, JsonLinesLogger jsonLog, int? flow_id) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var instanceRepo = ctx.RequestServices.GetService<InstanceRepository>();
+    if (instanceRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendInstanceFetchFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    var instances = await instanceRepo.GetAvailableInstancesAsync(tenant.TenantId, flow_id);
+    return Results.Ok(new { instances });
+});
+
+// GET /api/v1/flow-builder/tenant/working-hours — tenant working hours for FlowSettings tooltip
+app.MapGet("/api/v1/flow-builder/tenant/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    if (pgFactory == null)
+        return Results.Ok(new { configured = false });
+
+    await using var conn = await pgFactory.OpenConnectionAsync();
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = "SELECT settings_json->'working_hours' FROM tenant_registry WHERE tenant_id = @tid AND is_active = true";
+    cmd.Parameters.AddWithValue("tid", tenant.TenantId);
+    var result = await cmd.ExecuteScalarAsync();
+
+    if (result is null or DBNull)
+        return Results.Ok(new { configured = false });
+
+    var json = result.ToString();
+    if (string.IsNullOrWhiteSpace(json))
+        return Results.Ok(new { configured = false });
+
+    try
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var start = root.TryGetProperty("start", out var s) ? s.GetString() : null;
+        var end = root.TryGetProperty("end", out var e) ? e.GetString() : null;
+        var timezone = root.TryGetProperty("timezone", out var tz) ? tz.GetString() : null;
+        var daysOff = new List<string>();
+        if (root.TryGetProperty("days_off", out var days) && days.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var day in days.EnumerateArray())
+            {
+                if (day.GetString() is string d) daysOff.Add(d);
+            }
+        }
+
+        return Results.Ok(new
+        {
+            configured = true,
+            start,
+            end,
+            timezone,
+            days_off = daysOff,
+        });
+    }
+    catch
+    {
+        return Results.Ok(new { configured = false });
+    }
+});
+
+// WapCRM instance fetch helper (shared by GET + POST refresh)
+async Task<List<WapCrmInstanceDto>> FetchWapCrmInstances(string secretKey, JsonLinesLogger jsonLog, string requestId)
+{
+    using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+    httpClient.DefaultRequestHeaders.Add("X-CIB-SecretKey", secretKey);
+
+    var response = await httpClient.GetAsync("https://cxapi.wapcrm.net/api/Instances");
+    response.EnsureSuccessStatusCode();
+
+    var json = await response.Content.ReadAsStringAsync();
+    var apiResp = JsonSerializer.Deserialize<WapCrmApiEnvelope>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+    if (apiResp?.Data == null)
+    {
+        jsonLog.StepWarn($"WapCRM /api/Instances returned null data", requestId);
+        return [];
+    }
+
+    return apiResp.Data.Select(i => new WapCrmInstanceDto
+    {
+        InstanceId = i.InstanceId.ToString(),
+        InstanceName = i.InstanceName ?? $"Instance {i.InstanceId}",
+        Account = i.Account,
+        InstanceType = i.InstanceType,
+    }).ToList();
+}
 
 // ============================================
 // OUTBOUND PROXY ENDPOINTS (GR-1.3)

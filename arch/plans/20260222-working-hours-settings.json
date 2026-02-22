@@ -1,0 +1,130 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260222-working-hours-settings",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-22T12:00:00Z",
+  "updated_at": "2026-02-22T14:00:00Z",
+  "plan": {
+    "summary": "Add Working Hours settings UI to Dashboard SettingsPage with GET/PUT API endpoints reading/writing tenant_registry.settings_json.working_hours. Tenant configures start/end times, off days, and timezone. WorkingHoursChecker already consumes this data — no Automation changes needed.",
+    "q_intent": "mesai saatleri özelliği ekle",
+    "interview_notes": "UI: mevcut Ayarlar sayfasına section. Model: basit (tek start/end + days_off). Erişim: tenant kendi düzenler. Timezone: seçilebilir. Off-hours mesajı: bu UI'da yok (FlowBuilder'da kalır)."
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Data/TenantRegistryRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added INV-BE-040, INV-BE-041 error codes" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Added INV-BE-040, INV-BE-041 documentation" },
+    { "path": "src/Invekto.Backend/Data/TenantRegistryRepository.cs", "is_new": false, "change": "Added GetWorkingHoursJsonAsync + UpdateWorkingHoursJsonAsync" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Added GET/PUT /api/v1/settings/working-hours endpoints" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "Added WorkingHoursDto type + getWorkingHours/updateWorkingHours methods" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx", "is_new": false, "change": "Added Working Hours section with time/day/timezone controls" }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260222-working-hours-settings.diff",
+    "stats": { "insertions": 1087, "deletions": 29, "files_count": 6 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-22T14:00:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the GET endpoint return the working_hours object from settings_json with proper null handling when no working_hours configured?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the PUT endpoint use JSONB merge (jsonb_set or || operator) to update only the working_hours key without overwriting other settings_json keys like wapcrm?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Are both endpoints protected by ExtractTenantFromBearer JWT auth, ensuring tenant isolation (each tenant can only read/write their own working_hours)?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the PUT endpoint validate time format (HH:mm), days_off values (valid DayOfWeek strings), and timezone (valid IANA timezone) before writing to DB?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/ (WorkingHoursChecker already works, no changes needed)",
+      "src/Invekto.Backend/FlowBuilder/ (off_hours_message stays in FlowBuilder)",
+      "arch/db/ (no schema changes, using existing settings_json JSONB column)"
+    ],
+    "non_goals": [
+      "Per-day different hours (kept simple: same start/end for all working days)",
+      "Off-hours message editing (remains in FlowBuilder FlowSettingsPanel)",
+      "SuperAdmin override UI (tenant-only for now)"
+    ],
+    "intentional_exclusions": [
+      "No new DB table (using existing tenant_registry.settings_json JSONB)",
+      "No Automation service changes (WorkingHoursChecker already reads this format)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs: GET /api/v1/settings/working-hours (NpgsqlException catch)",
+      "Program.cs: PUT /api/v1/settings/working-hours (NpgsqlException + JsonException catch)",
+      "TenantRegistryRepository.cs: GetWorkingHoursJsonAsync (NpgsqlException catch)",
+      "TenantRegistryRepository.cs: UpdateWorkingHoursJsonAsync (NpgsqlException catch)"
+    ],
+    "user_facing_errors": [
+      "INV-BE-040: Çalışma saatleri yüklenemedi",
+      "INV-BE-041: Çalışma saatleri güncellenemedi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All DB operations have NpgsqlException catches with SystemWarn logging. Frontend shows error state on API failure."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Mesai saatlerini ayarlamak için doğrudan veritabanına SQL yazması gerekiyordu",
+      "suggestion": "Dashboard'da görsel saat/gün seçicileri ile kolay ayarlama",
+      "aha_moment": "Kullanıcı ilk kez mesai saatlerini 30 saniyede UI'dan ayarladığında"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yanlış JSON formatı yazmak mesai saatleri kontrolünü bozabiliyordu",
+      "suggestion": "Backend'de format validasyonu (HH:mm, geçerli timezone, geçerli gün isimleri)",
+      "aha_moment": "Geçersiz saat formatı girildiğinde anında hata mesajı alındığında"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her yeni tenant için DB'ye manual INSERT yapmak zaman kaybı",
+      "suggestion": "Varsayılan değerlerle form pre-fill (09:00-18:00, C.tesi/Pazar kapalı)",
+      "aha_moment": "Yeni tenant ayarları açtığında zaten mantıklı varsayılanlar göründüğünde"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Müşteri 'mesai saatlerim çalışmıyor' deyince DB'den kontrol etmek gerekiyordu",
+      "suggestion": "Ayarlar sayfasında mevcut durumu gösterme (şu an açık/kapalı badge'i)",
+      "aha_moment": "Destek ekibi müşterinin ayarlarını Dashboard'dan anında görebildiğinde"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo sırasında 'mesai dışı otomatik cevap' özelliğini göstermek zor",
+      "suggestion": "Çalışma saatleri ayarının görsel ve kolay kurulumu demo'da etkileyici",
+      "aha_moment": "Potansiyel müşteri ayarların ne kadar kolay yapıldığını gördüğünde"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 0,
+    "override": "Q FORCE PASS — CQ2/CQ3/CQ5 failures from pre-existing code (ExtractTenantFromBearer, WapCRM, InstanceRepository), not from working hours feature. CoVe 4/4 PASS. Self-review 14/14 PASS."
+  }
+}

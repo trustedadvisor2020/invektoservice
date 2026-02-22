@@ -63,6 +63,10 @@ INV-{SERVICE}-{NUMBER}
 | INV-BE-022 | Wizard AI communication failed | AI iletisim hatasi. |
 | INV-BE-023 | Wizard confirm failed | Akis olusturulamadi. |
 | INV-BE-024 | Wizard invalid payload | Gecersiz wizard istegi. |
+| INV-BE-030 | WapCRM instance fetch failed | WapCRM hat listesi alinamadi. |
+| INV-BE-031 | Instance disable blocked (in use by flow) | Hat bir akis tarafindan kullaniliyor, devre disi birakilamaz. |
+| INV-BE-040 | Working hours fetch failed | Calisma saatleri yuklenemedi. |
+| INV-BE-041 | Working hours update failed | Calisma saatleri guncellenemedi. |
 
 ---
 
@@ -128,6 +132,9 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-032 | Webhook execution failed | Webhook akis yurutmesi basarisiz. |
 | INV-AT-033 | Cron expression invalid | Gecersiz cron ifadesi. |
 | INV-AT-034 | Schedule execution failed | Zamanlama akis yurutmesi basarisiz. |
+| INV-AT-035 | Instance not found in tenant cache | Hat tenant cache'inde bulunamadi. |
+| INV-AT-036 | Instance disabled, message ignored | Hat devre disi, mesaj yoksayildi. |
+| INV-AT-037 | Instance unassigned, message ignored | Hat bir akisa atanmamis, mesaj yoksayildi. |
 
 ---
 
