@@ -29,7 +29,7 @@ function AiSentimentNodeComponent(props: NodeProps) {
       hasDefaultOutput={false}
       outputs={outputs}
     >
-      <span className="text-slate-600 text-xs">
+      <span className="text-navy-500 text-xs">
         Duygu esigi: {(threshold * 100).toFixed(0)}%
       </span>
     </BaseNode>

@@ -2720,11 +2720,19 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
             {
                 foreach (var item in whProp.EnumerateArray())
                 {
+                    // Support both PascalCase (legacy) and camelCase property names
+                    var role = (item.TryGetProperty("role", out var r) ? r.GetString()
+                             : item.TryGetProperty("Role", out r) ? r.GetString() : null) ?? "user";
+                    var content = (item.TryGetProperty("content", out var c) ? c.GetString()
+                                : item.TryGetProperty("Content", out c) ? c.GetString() : null) ?? "";
+                    var timestamp = item.TryGetProperty("timestamp", out var ts) ? ts.GetString()
+                                 : item.TryGetProperty("Timestamp", out ts) ? ts.GetString() : null;
+
                     history.Add(new WizardMessage
                     {
-                        Role = item.GetProperty("role").GetString() ?? "user",
-                        Content = item.GetProperty("content").GetString() ?? "",
-                        Timestamp = item.TryGetProperty("timestamp", out var ts) ? ts.GetString() : null
+                        Role = role,
+                        Content = content,
+                        Timestamp = timestamp
                     });
                 }
             }

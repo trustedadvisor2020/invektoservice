@@ -33,14 +33,14 @@ function MessageMenuNodeComponent(props: NodeProps) {
     >
       <div className="space-y-1">
         {options.length === 0 && (
-          <span className="text-slate-600 italic">Secenek eklenmedi</span>
+          <span className="text-navy-500 italic">Secenek eklenmedi</span>
         )}
         {options.map((opt) => (
           <div key={opt.handle_id} className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
               {opt.key}
             </span>
-            <span className="text-slate-600 truncate">{opt.label}</span>
+            <span className="text-navy-500 truncate">{opt.label}</span>
           </div>
         ))}
       </div>

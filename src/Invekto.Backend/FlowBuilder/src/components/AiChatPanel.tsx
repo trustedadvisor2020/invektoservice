@@ -62,7 +62,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="w-[280px] flex-shrink-0 border-l border-slate-200 bg-slate-50 flex flex-col">
+    <div className="w-[280px] flex-shrink-0 border-r border-navy-100 bg-navy-50 flex flex-col">
       {/* Header */}
       <div className="h-10 bg-purple-600 flex items-center px-3 gap-2 flex-shrink-0">
         <div className="w-6 h-6 rounded-full bg-purple-400 flex items-center justify-center">
@@ -194,7 +194,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
             </button>
             <button
               onClick={rejectChanges}
-              className="px-2 py-1 text-[10px] font-medium rounded border border-slate-300 text-slate-500 bg-white hover:bg-slate-50 transition-colors"
+              className="px-2 py-1 text-[10px] font-medium rounded border border-navy-200 text-navy-400 bg-white hover:bg-navy-50 transition-colors"
             >
               Reddet
             </button>
@@ -222,7 +222,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
               'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 self-end transition-colors',
               input.trim() && !isStreaming
                 ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-navy-100 text-navy-200 cursor-not-allowed'
             )}
           >
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
@@ -292,7 +292,7 @@ function DiffSummary({ pending }: { pending: FlowConfigV2 }) {
         <div className="text-red-600">- {removed.length} silinen dugum: {removed.map(n => (n.data as Record<string, string>)?.label || n.type).join(', ')}</div>
       )}
       {kept.length > 0 && (
-        <div className="text-slate-500">{kept.length} mevcut dugum korunuyor</div>
+        <div className="text-navy-400">{kept.length} mevcut dugum korunuyor</div>
       )}
       {edgeDiff !== 0 && (
         <div className={edgeDiff > 0 ? 'text-green-700' : 'text-red-600'}>

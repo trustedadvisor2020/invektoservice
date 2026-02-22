@@ -33,8 +33,8 @@ export function NodePropertyPanel() {
 
   if (!selectedNode) {
     return (
-      <div className="w-64 bg-white border-l border-slate-200 flex-shrink-0 flex items-center justify-center">
-        <p className="text-sm text-slate-400 text-center px-4">
+      <div className="w-64 bg-white border-l border-navy-100 flex-shrink-0 flex items-center justify-center">
+        <p className="text-sm text-navy-300 text-center px-4">
           Ozelliklerini duzenlemek icin bir node secin
         </p>
       </div>
@@ -49,19 +49,19 @@ export function NodePropertyPanel() {
   };
 
   return (
-    <div className="w-64 bg-white border-l border-slate-200 flex-shrink-0 overflow-y-auto">
+    <div className="w-64 bg-white border-l border-navy-100 flex-shrink-0 overflow-y-auto">
       {/* Header */}
-      <div className="p-3 border-b border-slate-200">
+      <div className="p-3 border-b border-navy-100">
         <div className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-sm flex-shrink-0"
             style={{ backgroundColor: info?.color ?? '#6b7280' }}
           />
-          <span className="text-base font-medium text-slate-700">
+          <span className="text-base font-medium text-navy-700">
             {info?.label ?? nodeType}
           </span>
         </div>
-        <p className="text-xs text-slate-400 mt-0.5">{info?.description}</p>
+        <p className="text-xs text-navy-300 mt-0.5">{info?.description}</p>
       </div>
 
       {/* Common: Label */}
@@ -71,7 +71,7 @@ export function NodePropertyPanel() {
             type="text"
             value={(selectedNode.data as { label: string }).label ?? ''}
             onChange={(e) => update({ label: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           />
         </FieldGroup>
 
@@ -127,7 +127,7 @@ export function NodePropertyPanel() {
 
         {/* Delete button (not for trigger types) */}
         {nodeType !== 'trigger_start' && nodeType !== 'webhook_trigger' && nodeType !== 'outbound_trigger' && nodeType !== 'schedule_trigger' && (
-          <div className="pt-3 border-t border-slate-200">
+          <div className="pt-3 border-t border-navy-100">
             <button
               onClick={() => deleteNode(selectedNode.id)}
               className="w-full px-3 py-1.5 rounded-md text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
@@ -146,7 +146,7 @@ export function NodePropertyPanel() {
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+      <label className="block text-xs font-medium text-navy-400 uppercase tracking-wider mb-1">
         {label}
       </label>
       {children}
@@ -193,9 +193,9 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
 
   if (instances.length === 0 && !loading) {
     return (
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Musteri mesaj gonderdiginde bu node'dan akis baslar.
-        {tenantId && <span className="block mt-1 text-slate-300">Hat secimi icin Ayarlar sayfasindan WapCRM hatlarini yukleyin.</span>}
+        {tenantId && <span className="block mt-1 text-navy-200">Hat secimi icin Ayarlar sayfasindan WapCRM hatlarini yukleyin.</span>}
       </p>
     );
   }
@@ -203,7 +203,7 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
   return (
     <FieldGroup label={`Hatlar (${selectedIds.length}/${instances.length})`}>
       {loading ? (
-        <p className="text-xs text-slate-400">Yukleniyor...</p>
+        <p className="text-xs text-navy-300">Yukleniyor...</p>
       ) : (
         <div className="space-y-1.5">
           {instances.map(inst => (
@@ -212,19 +212,19 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
                 type="checkbox"
                 checked={selectedIds.includes(inst.instanceId)}
                 onChange={() => toggleInstance(inst.instanceId)}
-                className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                className="w-3.5 h-3.5 rounded border-navy-200 text-emerald-600 focus:ring-emerald-500"
               />
-              <span className="text-xs text-slate-700 group-hover:text-slate-900 truncate flex-1">
+              <span className="text-xs text-navy-700 group-hover:text-navy-900 truncate flex-1">
                 {inst.instanceName}
               </span>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-navy-300">
                 {INSTANCE_TYPE_LABELS[inst.instanceType] || 'Diger'}
               </span>
             </label>
           ))}
         </div>
       )}
-      <p className="text-xs text-slate-400 mt-2">
+      <p className="text-xs text-navy-300 mt-2">
         Secili hatlardan gelen mesajlar bu akisa yonlendirilir.
       </p>
     </FieldGroup>
@@ -244,7 +244,7 @@ function MessageTextProps({
         value={data.text ?? ''}
         onChange={(e) => onChange({ text: e.target.value })}
         rows={4}
-        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none"
+        className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
         placeholder="Gonderilecek mesaj..."
       />
     </FieldGroup>
@@ -287,7 +287,7 @@ function MessageMenuProps({
           type="text"
           value={data.text ?? ''}
           onChange={(e) => onChange({ text: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           placeholder="Secim yapin:"
         />
       </FieldGroup>
@@ -300,17 +300,17 @@ function MessageMenuProps({
                 type="text"
                 value={opt.key}
                 onChange={(e) => updateOption(idx, 'key', e.target.value)}
-                className="w-8 bg-slate-50 border border-slate-300 rounded px-1 py-1 text-xs text-slate-700 outline-none focus:border-blue-500 text-center"
+                className="w-8 bg-navy-50 border border-navy-200 rounded px-1 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 text-center"
               />
               <input
                 type="text"
                 value={opt.label}
                 onChange={(e) => updateOption(idx, 'label', e.target.value)}
-                className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 outline-none focus:border-blue-500"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-sm text-navy-700 outline-none focus:border-brand-500"
               />
               <button
                 onClick={() => removeOption(idx)}
-                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                className="p-0.5 text-navy-300 hover:text-red-500 transition-colors"
                 title="Kaldir"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
@@ -323,7 +323,7 @@ function MessageMenuProps({
         </div>
         <button
           onClick={addOption}
-          className="mt-2 w-full px-2 py-1 rounded border border-dashed border-slate-300 text-sm text-slate-500 hover:border-blue-500 hover:text-blue-600 transition-colors"
+          className="mt-2 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-sm text-navy-400 hover:border-brand-500 hover:text-brand-600 transition-colors"
         >
           + Secenek Ekle
         </button>
@@ -345,7 +345,7 @@ function ActionHandoffProps({
         value={data.summary_template ?? ''}
         onChange={(e) => onChange({ summary_template: e.target.value })}
         rows={3}
-        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none"
+        className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
         placeholder="Temsilciye aktarilacak ozet..."
       />
     </FieldGroup>
@@ -376,7 +376,7 @@ function LogicConditionProps({
           type="text"
           value={data.variable ?? ''}
           onChange={(e) => onChange({ variable: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           placeholder="ornek: __last_input"
         />
       </FieldGroup>
@@ -384,7 +384,7 @@ function LogicConditionProps({
         <select
           value={data.operator ?? 'equals'}
           onChange={(e) => onChange({ operator: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
         >
           {operators.map((op) => (
             <option key={op.value} value={op.value}>{op.label}</option>
@@ -397,7 +397,7 @@ function LogicConditionProps({
             type="text"
             value={data.value ?? ''}
             onChange={(e) => onChange({ value: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
             placeholder="Karsilastirilacak deger"
           />
         </FieldGroup>
@@ -440,7 +440,7 @@ function LogicSwitchProps({
           type="text"
           value={data.variable ?? ''}
           onChange={(e) => onChange({ variable: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           placeholder="ornek: musteri_tipi"
         />
       </FieldGroup>
@@ -449,17 +449,17 @@ function LogicSwitchProps({
         <div className="space-y-2">
           {cases.map((c, idx) => (
             <div key={c.handle_id} className="flex items-center gap-1">
-              <span className="text-xs text-slate-400 w-4 flex-shrink-0">{idx + 1}</span>
+              <span className="text-xs text-navy-300 w-4 flex-shrink-0">{idx + 1}</span>
               <input
                 type="text"
                 value={c.value}
                 onChange={(e) => updateCase(idx, e.target.value)}
-                className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 outline-none focus:border-blue-500"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-sm text-navy-700 outline-none focus:border-brand-500"
                 placeholder="Deger..."
               />
               <button
                 onClick={() => removeCase(idx)}
-                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                className="p-0.5 text-navy-300 hover:text-red-500 transition-colors"
                 title="Kaldir"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
@@ -473,14 +473,14 @@ function LogicSwitchProps({
         {cases.length < MAX_CASES && (
           <button
             onClick={addCase}
-            className="mt-2 w-full px-2 py-1 rounded border border-dashed border-slate-300 text-sm text-slate-500 hover:border-amber-500 hover:text-amber-600 transition-colors"
+            className="mt-2 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-sm text-navy-400 hover:border-amber-500 hover:text-amber-600 transition-colors"
           >
             + Durum Ekle
           </button>
         )}
       </FieldGroup>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Hicbir durum eslesmediyse <strong>VARSAYILAN</strong> dala gider.
       </p>
     </>
@@ -505,9 +505,9 @@ function ActionDelayProps({
           const val = Math.max(1, Math.min(300, Number(e.target.value) || 1));
           onChange({ seconds: val });
         }}
-        className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+        className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
       />
-      <p className="text-xs text-slate-400 mt-1">Min: 1sn, Maks: 300sn (5dk)</p>
+      <p className="text-xs text-navy-300 mt-1">Min: 1sn, Maks: 300sn (5dk)</p>
     </FieldGroup>
   );
 }
@@ -526,7 +526,7 @@ function UtilitySetVariableProps({
           type="text"
           value={data.variable_name ?? ''}
           onChange={(e) => onChange({ variable_name: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           placeholder="ornek: musteri_tipi"
         />
       </FieldGroup>
@@ -535,10 +535,10 @@ function UtilitySetVariableProps({
           value={data.value_expression ?? ''}
           onChange={(e) => onChange({ value_expression: e.target.value })}
           rows={3}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
           placeholder="ornek: {{__last_input}}"
         />
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-navy-300 mt-1">
           {"{{degisken}}"} ile mevcut degiskenlere referans verebilirsiniz.
         </p>
       </FieldGroup>
@@ -586,11 +586,11 @@ function AiIntentProps({
             type="checkbox"
             checked={askName}
             onChange={(e) => onChange({ ask_name: e.target.checked })}
-            className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 accent-purple-500"
+            className="w-4 h-4 rounded border-navy-200 text-purple-600 focus:ring-purple-500 accent-purple-500"
           />
-          <span className="text-xs text-slate-600">Musteri ismini sor</span>
+          <span className="text-xs text-navy-500">Musteri ismini sor</span>
         </label>
-        <p className="text-[10px] text-slate-400 mt-1">
+        <p className="text-[10px] text-navy-300 mt-1">
           Acikken musteri ismini sorar, dogrular ve isimle hitap eder. Anlayamadigi mesajlarda sohbete devam eder.
         </p>
         {askName && (
@@ -599,10 +599,10 @@ function AiIntentProps({
               type="text"
               value={data.greeting_message ?? ''}
               onChange={(e) => onChange({ greeting_message: e.target.value || undefined })}
-              className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-purple-500"
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-purple-500"
               placeholder="Merhaba! Isminizi ogrenebilir miyim?"
             />
-            <p className="text-[10px] text-slate-400 mt-0.5">Karsilama mesaji (bos = varsayilan)</p>
+            <p className="text-[10px] text-navy-300 mt-0.5">Karsilama mesaji (bos = varsayilan)</p>
           </div>
         )}
       </FieldGroup>
@@ -615,12 +615,12 @@ function AiIntentProps({
                 type="text"
                 value={intent}
                 onChange={(e) => updateIntent(idx, e.target.value)}
-                className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs text-slate-700 outline-none focus:border-purple-500 font-mono"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-xs text-navy-700 outline-none focus:border-purple-500 font-mono"
                 placeholder="ornek: satin_alma"
               />
               <button
                 onClick={() => removeIntent(idx)}
-                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                className="p-0.5 text-navy-300 hover:text-red-500 transition-colors"
                 title="Kaldir"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
@@ -633,7 +633,7 @@ function AiIntentProps({
         </div>
         <button
           onClick={addIntent}
-          className="mt-2 w-full px-2 py-1 rounded border border-dashed border-slate-300 text-sm text-slate-500 hover:border-purple-500 hover:text-purple-600 transition-colors"
+          className="mt-2 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-sm text-navy-400 hover:border-purple-500 hover:text-purple-600 transition-colors"
         >
           + Intent Ekle
         </button>
@@ -648,14 +648,14 @@ function AiIntentProps({
           onChange={(e) => onChange({ confidence_threshold: Number(e.target.value) / 100 })}
           className="w-full accent-purple-500"
         />
-        <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+        <div className="flex justify-between text-xs text-navy-300 mt-0.5">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
       </FieldGroup>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Musteri mesaji Claude AI ile analiz edilir. Orta guvendeki intent'ler icin &quot;bunu mu demek istiyorsunuz?&quot; onay sorusu sorulur. Dusuk guvende sohbet devam eder.
       </p>
     </>
@@ -682,14 +682,14 @@ function AiFaqProps({
           onChange={(e) => onChange({ min_confidence: Number(e.target.value) / 100 })}
           className="w-full accent-purple-500"
         />
-        <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+        <div className="flex justify-between text-xs text-navy-300 mt-0.5">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
       </FieldGroup>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Musteri mesaji FAQ veritabaninda aranir. Esik uzerindeki eslesmeler <strong>ESLESTI</strong> dalina yonlenir ve cevap otomatik gonderilir.
       </p>
     </>
@@ -713,7 +713,7 @@ function ActionApiCallProps({
         <select
           value={data.method ?? 'GET'}
           onChange={(e) => onChange({ method: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
         >
           {methods.map((m) => (
             <option key={m} value={m}>{m}</option>
@@ -726,10 +726,10 @@ function ActionApiCallProps({
           type="text"
           value={data.url ?? ''}
           onChange={(e) => onChange({ url: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="https://api.example.com/endpoint"
         />
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-navy-300 mt-0.5">
           {"{{degisken}}"} destekler
         </p>
       </FieldGroup>
@@ -739,7 +739,7 @@ function ActionApiCallProps({
           value={data.body_template ?? ''}
           onChange={(e) => onChange({ body_template: e.target.value })}
           rows={3}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
           placeholder='{"key": "{{degisken}}"}'
         />
       </FieldGroup>
@@ -749,7 +749,7 @@ function ActionApiCallProps({
           type="text"
           value={data.response_variable ?? 'api_response'}
           onChange={(e) => onChange({ response_variable: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="api_response"
         />
       </FieldGroup>
@@ -765,9 +765,9 @@ function ActionApiCallProps({
           className="w-full accent-red-500"
         />
         <div className="flex justify-between text-xs mt-0.5">
-          <span className="text-slate-400">100ms</span>
+          <span className="text-navy-300">100ms</span>
           <span className={timeoutColor}>{(timeoutMs / 1000).toFixed(1)}s</span>
-          <span className="text-slate-400">30s</span>
+          <span className="text-navy-300">30s</span>
         </div>
       </FieldGroup>
     </>
@@ -794,14 +794,14 @@ function AiSentimentProps({
           onChange={(e) => onChange({ threshold: Number(e.target.value) / 100 })}
           className="w-full accent-purple-500"
         />
-        <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+        <div className="flex justify-between text-xs text-navy-300 mt-0.5">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
       </FieldGroup>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Musteri mesaji Claude AI ile analiz edilir. Skor esik uzerindeyse <strong>POZITIF</strong>, altindaysa <strong>NEGATIF</strong> dalina yonlenir.
       </p>
     </>
@@ -822,7 +822,7 @@ function WebhookTriggerProps({
           type="text"
           value={data.secret_key ?? ''}
           onChange={(e) => onChange({ secret_key: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="HMAC-SHA256 dogrulama anahtari"
         />
       </FieldGroup>
@@ -832,12 +832,12 @@ function WebhookTriggerProps({
           type="text"
           value={data.payload_variable ?? 'webhook_payload'}
           onChange={(e) => onChange({ payload_variable: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="webhook_payload"
         />
       </FieldGroup>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Dis sistemlerden gelen HTTP POST istekleriyle tetiklenir. Payload belirtilen degiskene atanir.
       </p>
     </>
@@ -846,8 +846,8 @@ function WebhookTriggerProps({
 
 function OutboundTriggerProps() {
   return (
-    <p className="text-xs text-slate-400">
-      Outbound kampanyasi bu flow'u tetiklediginde akis baslar. Kampanya bilgileri <code className="bg-slate-100 px-1 rounded">campaign_id</code> degiskenine atanir.
+    <p className="text-xs text-navy-300">
+      Outbound kampanyasi bu flow'u tetiklediginde akis baslar. Kampanya bilgileri <code className="bg-navy-100 px-1 rounded">campaign_id</code> degiskenine atanir.
     </p>
   );
 }
@@ -873,10 +873,10 @@ function ScheduleTriggerProps({
           type="text"
           value={data.cron_expression ?? ''}
           onChange={(e) => onChange({ cron_expression: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="0 9 * * *"
         />
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-navy-300 mt-1">
           Format: dakika saat gun ay haftanin_gunu
         </p>
       </FieldGroup>
@@ -885,7 +885,7 @@ function ScheduleTriggerProps({
         <select
           value={data.timezone ?? 'Europe/Istanbul'}
           onChange={(e) => onChange({ timezone: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
         >
           {timezones.map((tz) => (
             <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -893,7 +893,7 @@ function ScheduleTriggerProps({
         </select>
       </FieldGroup>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-navy-300">
         Belirtilen cron zamanlamasina gore otomatik tetiklenir.
       </p>
     </>
@@ -922,7 +922,7 @@ function UtilityNoteProps({
           value={data.text ?? ''}
           onChange={(e) => onChange({ text: e.target.value })}
           rows={5}
-          className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 resize-none"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
           placeholder="Notunuz..."
         />
       </FieldGroup>

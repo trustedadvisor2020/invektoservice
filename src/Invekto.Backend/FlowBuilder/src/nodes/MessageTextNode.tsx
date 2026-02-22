@@ -21,7 +21,7 @@ function MessageTextNodeComponent(props: NodeProps) {
       color="#3b82f6"
       icon={<MessageIcon />}
     >
-      <span className={data.text ? 'text-slate-600' : 'text-slate-500 italic'}>
+      <span className={data.text ? 'text-navy-500' : 'text-navy-400 italic'}>
         {preview}
       </span>
     </BaseNode>

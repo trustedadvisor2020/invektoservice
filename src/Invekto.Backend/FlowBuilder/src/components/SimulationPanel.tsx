@@ -61,7 +61,7 @@ export function SimulationPanel() {
   const variableEntries = Object.entries(variables);
 
   return (
-    <div className="w-[280px] flex-shrink-0 border-l border-slate-200 bg-slate-50 flex flex-col">
+    <div className="w-[280px] flex-shrink-0 border-l border-navy-100 bg-navy-50 flex flex-col">
       {/* Header */}
       <div className="h-10 bg-emerald-600 flex items-center px-3 gap-2 flex-shrink-0">
         <div className="w-6 h-6 rounded-full bg-emerald-400 flex items-center justify-center">
@@ -97,14 +97,14 @@ export function SimulationPanel() {
       </div>
 
       {/* Tab switcher */}
-      <div className="flex border-b border-slate-200 bg-white flex-shrink-0">
+      <div className="flex border-b border-navy-100 bg-white flex-shrink-0">
         <button
           onClick={() => setActiveTab('chat')}
           className={cn(
             'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
             activeTab === 'chat'
               ? 'text-emerald-700 border-b-2 border-emerald-500'
-              : 'text-slate-500 hover:text-slate-700'
+              : 'text-navy-400 hover:text-navy-700'
           )}
         >
           Sohbet
@@ -115,7 +115,7 @@ export function SimulationPanel() {
             'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
             activeTab === 'variables'
               ? 'text-emerald-700 border-b-2 border-emerald-500'
-              : 'text-slate-500 hover:text-slate-700'
+              : 'text-navy-400 hover:text-navy-700'
           )}
         >
           Degiskenler
@@ -128,7 +128,7 @@ export function SimulationPanel() {
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
             {messages.length === 0 && !isLoading && (
-              <div className="text-xs text-slate-400 text-center mt-8">
+              <div className="text-xs text-navy-300 text-center mt-8">
                 Simulasyon baslatiliyor...
               </div>
             )}
@@ -139,11 +139,11 @@ export function SimulationPanel() {
 
             {isLoading && (
               <div className="flex justify-start mb-2">
-                <div className="bg-white border border-slate-200 rounded-lg rounded-tl-none px-3 py-2">
+                <div className="bg-white border border-navy-100 rounded-lg rounded-tl-none px-3 py-2">
                   <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1.5 h-1.5 bg-navy-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-navy-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-navy-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -161,13 +161,13 @@ export function SimulationPanel() {
 
           {/* Terminal state banner */}
           {isTerminal && (
-            <div className="px-3 py-2 bg-slate-100 border-t border-slate-200 text-xs text-slate-500 text-center">
+            <div className="px-3 py-2 bg-navy-100 border-t border-navy-100 text-xs text-navy-400 text-center">
               {status === 'completed' && 'Akis tamamlandi.'}
               {status === 'error' && 'Akis hata ile sonlandi.'}
               {status === 'handed_off' && 'Musteri temsilcisine yonlendirildi.'}
               <button
                 onClick={reset}
-                className="ml-2 text-blue-600 hover:text-blue-500 underline"
+                className="ml-2 text-brand-600 hover:text-brand-500 underline"
               >
                 Yeniden Baslat
               </button>
@@ -176,7 +176,7 @@ export function SimulationPanel() {
 
           {/* Menu options */}
           {showMenuButtons && (
-            <div className="px-3 py-2 border-t border-slate-200 bg-white flex flex-wrap gap-1.5">
+            <div className="px-3 py-2 border-t border-navy-100 bg-white flex flex-wrap gap-1.5">
               {pendingInput!.options!.map((opt) => (
                 <button
                   key={opt}
@@ -185,7 +185,7 @@ export function SimulationPanel() {
                   className={cn(
                     'px-2.5 py-1 text-xs rounded-full border transition-colors',
                     isLoading
-                      ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                      ? 'border-navy-100 text-navy-200 cursor-not-allowed'
                       : 'border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
                   )}
                 >
@@ -197,7 +197,7 @@ export function SimulationPanel() {
 
           {/* Input area */}
           {!isTerminal && (
-            <div className="px-3 py-2 border-t border-slate-200 bg-white flex gap-2 flex-shrink-0">
+            <div className="px-3 py-2 border-t border-navy-100 bg-white flex gap-2 flex-shrink-0">
               <input
                 ref={inputRef}
                 type="text"
@@ -206,7 +206,7 @@ export function SimulationPanel() {
                 onKeyDown={handleKeyDown}
                 placeholder={pendingInput?.type === 'menu' ? 'Secenek secin veya yazin...' : 'Mesaj yazin...'}
                 disabled={isLoading}
-                className="flex-1 text-xs border border-slate-200 rounded-full px-3 py-1.5 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 disabled:bg-slate-50"
+                className="flex-1 text-xs border border-navy-100 rounded-full px-3 py-1.5 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 disabled:bg-navy-50"
               />
               <button
                 onClick={handleSend}
@@ -215,7 +215,7 @@ export function SimulationPanel() {
                   'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors',
                   input.trim() && !isLoading
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-white'
-                    : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'bg-navy-100 text-navy-200 cursor-not-allowed'
                 )}
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
@@ -232,16 +232,16 @@ export function SimulationPanel() {
         <div className="flex-1 overflow-y-auto min-h-0">
           {/* Execution path breadcrumb */}
           {executionPath.length > 0 && (
-            <div className="px-3 py-2 border-b border-slate-200 bg-white">
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Yol</span>
+            <div className="px-3 py-2 border-b border-navy-100 bg-white">
+              <span className="text-[10px] font-medium text-navy-300 uppercase tracking-wider">Yol</span>
               <div className="mt-1 flex flex-wrap gap-0.5">
                 {executionPath.map((nodeId, idx) => (
                   <span key={idx} className="inline-flex items-center">
-                    <span className="text-[10px] text-slate-500 bg-slate-100 rounded px-1 py-0.5 font-mono">
+                    <span className="text-[10px] text-navy-400 bg-navy-100 rounded px-1 py-0.5 font-mono">
                       {nodeId.length > 16 ? `${nodeId.slice(0, 16)}..` : nodeId}
                     </span>
                     {idx < executionPath.length - 1 && (
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-300 mx-0.5">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-navy-200 mx-0.5">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -253,22 +253,22 @@ export function SimulationPanel() {
 
           {/* Variable inspector table */}
           <div className="px-3 py-2">
-            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Degiskenler</span>
+            <span className="text-[10px] font-medium text-navy-300 uppercase tracking-wider">Degiskenler</span>
             {variableEntries.length === 0 ? (
-              <div className="text-xs text-slate-400 mt-2">Henuz degisken yok.</div>
+              <div className="text-xs text-navy-300 mt-2">Henuz degisken yok.</div>
             ) : (
               <table className="w-full mt-1.5 text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-1 font-medium text-slate-500 pr-2">Anahtar</th>
-                    <th className="text-left py-1 font-medium text-slate-500">Deger</th>
+                  <tr className="border-b border-navy-100">
+                    <th className="text-left py-1 font-medium text-navy-400 pr-2">Anahtar</th>
+                    <th className="text-left py-1 font-medium text-navy-400">Deger</th>
                   </tr>
                 </thead>
                 <tbody>
                   {variableEntries.map(([key, value]) => (
-                    <tr key={key} className="border-b border-slate-100">
+                    <tr key={key} className="border-b border-navy-100">
                       <td className="py-1 pr-2 font-mono text-purple-600 break-all">{key}</td>
-                      <td className="py-1 text-slate-700 break-all">{value}</td>
+                      <td className="py-1 text-navy-700 break-all">{value}</td>
                     </tr>
                   ))}
                 </tbody>

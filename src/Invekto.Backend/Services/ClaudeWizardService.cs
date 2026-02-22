@@ -25,7 +25,7 @@ public sealed class ClaudeWizardService
     {
         _httpClient = httpClient;
         _apiKey = config["Claude:ApiKey"] ?? "";
-        _model = config["Claude:WizardModel"] ?? "claude-sonnet-4-6-20250514";
+        _model = config["Claude:WizardModel"] ?? "claude-sonnet-4-6";
         _maxTokens = int.TryParse(config["Claude:WizardMaxTokens"], out var mt) ? mt : 4096;
         _timeoutSeconds = int.TryParse(config["Claude:WizardTimeoutSeconds"], out var ts) ? ts : 60;
         _logger = logger;
@@ -313,79 +313,41 @@ public sealed class ClaudeWizardService
             sb.AppendLine("Sen InvektoServices platformunda deneyimli bir chatbot akis tasarimcisisin. Gorevin, kullanicinin WhatsApp chatbot akisi tasarlamasina yardimci olmak.");
         }
         sb.AppendLine();
-        sb.AppendLine("## Kurallar");
-        sb.AppendLine("- Turkce konusursun.");
-        sb.AppendLine("- Once kullanicinin amacini anla. Belirsiz noktalar varsa SORU SOR.");
-        sb.AppendLine("- Flow'u en verimli, en az node ile tasarla. Gereksiz karmasikliktan kacin.");
-        sb.AppendLine("- Kullanici 'olustur' veya 'tamam' diyene kadar flow_config JSON URETME.");
-        sb.AppendLine("- Kullanici onayi alindiktan sonra once FAILURE-PATH analizi yap:");
-        sb.AppendLine("  * Kosul dugumlerinin false dalinda ne olacak?");
-        sb.AppendLine("  * Intent algilinamayan durumda ne olacak?");
-        sb.AppendLine("  * Beklenmeyen girdi geldiginde ne olacak?");
-        sb.AppendLine("  * Eksik path varsa kullaniciya sor.");
-        sb.AppendLine("- Tum path'ler kapandiktan sonra flow_config JSON'i ```flowconfig blogu icinde uret.");
-        sb.AppendLine("- Her zaman gecerli FlowConfigV2 JSON uret (asagidaki schema'ya uygun).");
+
+        // Response style
+        sb.AppendLine("<response_style>");
+        sb.AppendLine("Turkce konusursun. Kisa, sohbet tarzi yanitlar ver. Bullet listeler yerine akici cumleler kullan.");
+        sb.AppendLine("Sadece ```flowconfig blogu icinde JSON uret, baska yerde JSON kullanma.");
+        sb.AppendLine("Preamble ekleme, direkt konuya gir.");
+        sb.AppendLine("</response_style>");
         sb.AppendLine();
 
-        // Node registry
-        sb.AppendLine("## Kullanilabilir Node Tipleri");
-        sb.AppendLine();
-        sb.AppendLine("### Tetikleyiciler (Trigger) - Akisin baslangic noktasi");
-        sb.AppendLine("- `trigger_start`: Standart baslangic. Musteri mesaj gonderdiginde tetiklenir. Her akista EN AZ 1 tane olmali.");
-        sb.AppendLine("- `webhook_trigger`: Dis sistemden gelen HTTP POST ile tetiklenir. payload_variable degiskeni ayarlanabilir.");
-        sb.AppendLine("- `outbound_trigger`: Toplu mesaj kampanyasi tetikleyicisi. campaign_variable ayarlanabilir.");
-        sb.AppendLine("- `schedule_trigger`: Cron ifadesi ile zamanlanmis tetikleyici (ornek: '0 9 * * 1' = her Pazartesi 09:00).");
-        sb.AppendLine();
-        sb.AppendLine("### Mesaj Dugumleri");
-        sb.AppendLine("- `message_text`: Kullaniciya metin mesaj gonderir. data.text alanina mesaj yazilir. {{degisken}} kullanilabilir.");
-        sb.AppendLine("- `message_menu`: Kullaniciya secenekli menu gosterir. data.options = [{key, label, handle_id}]. Her secenek icin ayri cikis.");
-        sb.AppendLine();
-        sb.AppendLine("### Mantik Dugumleri");
-        sb.AppendLine("- `logic_condition`: If/else dallanma. data.variable, data.operator (equals/contains/starts_with/greater_than/less_than/is_empty/regex), data.value. Cikislar: true_handle, false_handle.");
-        sb.AppendLine("- `logic_switch`: Coklu dallanma. data.variable, data.cases = [{value, handle_id}], data.default_handle_id.");
-        sb.AppendLine();
-        sb.AppendLine("### AI Dugumleri (Claude destekli)");
-        sb.AppendLine("- `ai_intent`: Musteri mesajini analiz eder, niyet tespit eder. data.intents = ['randevu', 'fiyat', 'iptal', ...], data.confidence_threshold (0-1). Cikislar: high_confidence (esik ustu), low_confidence (esik alti). Degiskenler: detected_intent, intent_confidence.");
-        sb.AppendLine("- `ai_faq`: FAQ veritabaninda arama yapar. Eslesme bulunursa otomatik cevap gonderir. data.min_confidence (0-1). Cikislar: matched, no_match. NOT: FAQ verileri onceden yuklenmelidir!");
-        sb.AppendLine("- `ai_sentiment`: Musteri duygusunu analiz eder (pozitif/negatif). data.threshold (0-1). Cikislar: positive, negative. Degiskenler: sentiment_result, sentiment_score.");
-        sb.AppendLine();
-        sb.AppendLine("### Eylem Dugumleri");
-        sb.AppendLine("- `action_handoff`: Gorusmeyi insan temsilciye aktarir. Terminal dugum (akis burada biter). data.summary_template ile ozet olusturulabilir.");
-        sb.AppendLine("- `action_api_call`: Harici API cagrisi yapar. data.method (GET/POST/PUT/DELETE), data.url, data.headers, data.body_template, data.response_variable, data.timeout_ms. Cikislar: success, error.");
-        sb.AppendLine("- `action_delay`: Belirli sure bekler. data.seconds. Kullanim: kullaniciya dusunme suresi vermek.");
-        sb.AppendLine();
-        sb.AppendLine("### Yardimci Dugumler");
-        sb.AppendLine("- `utility_set_variable`: Degisken ata. data.variable_name, data.value_expression. Ornek: '{{detected_intent}}_processed'.");
-        sb.AppendLine("- `utility_note`: Gorsel yorum dugumu. Calistirilmaz, sadece tasarimcinin notlari icin.");
+        // Rules
+        sb.AppendLine("<rules>");
+        sb.AppendLine("Once kullanicinin amacini anla. Belirsiz noktalar varsa soru sor.");
+        sb.AppendLine("Flow'u en az node ile tasarla, cunku her ek node WhatsApp kullanici deneyimini yavaslatir ve bakim maliyetini artirir.");
+        sb.AppendLine("Kullanici 'olustur' veya 'tamam' diyene kadar flowconfig JSON uretme, once tasarimi konusarak netles.");
+        sb.AppendLine("Kullanici onayi alindiktan sonra once failure-path analizi yap: kosullarin false dali, intent algilanamama durumu, beklenmeyen girdi. Eksik path varsa kullaniciya sor.");
+        sb.AppendLine("Tum path'ler kapandiktan sonra ```flowconfig blogu icinde gecerli FlowConfigV2 JSON uret.");
+        sb.AppendLine("</rules>");
         sb.AppendLine();
 
-        // FlowConfigV2 schema
-        sb.AppendLine("## FlowConfigV2 JSON Schema");
-        sb.AppendLine("```json");
-        sb.AppendLine("{");
-        sb.AppendLine("  \"version\": 2,");
-        sb.AppendLine("  \"metadata\": { \"name\": \"Akis Adi\" },");
-        sb.AppendLine("  \"nodes\": [");
-        sb.AppendLine("    { \"id\": \"unique_id\", \"type\": \"node_type\", \"position\": {\"x\": 0, \"y\": 0}, \"data\": { \"label\": \"...\", ...config_fields } }");
-        sb.AppendLine("  ],");
-        sb.AppendLine("  \"edges\": [");
-        sb.AppendLine("    { \"id\": \"edge_id\", \"source\": \"node_id\", \"target\": \"node_id\", \"sourceHandle\": \"handle_name_or_null\" }");
-        sb.AppendLine("  ],");
-        sb.AppendLine("  \"settings\": {");
-        sb.AppendLine("    \"off_hours_message\": \"Su anda mesai saatleri disindayiz.\",");
-        sb.AppendLine("    \"unknown_input_message\": \"Anlayamadim. Lutfen gecerli bir secenek girin.\",");
-        sb.AppendLine("    \"handoff_confidence_threshold\": 0.5,");
-        sb.AppendLine("    \"session_timeout_minutes\": 30,");
-        sb.AppendLine("    \"max_loop_count\": 10");
-        sb.AppendLine("  }");
-        sb.AppendLine("}");
-        sb.AppendLine("```");
+        // Node registry (compact)
+        sb.AppendLine("<node_registry>");
+        sb.AppendLine("Tetikleyiciler: trigger_start (standart, her akista en az 1), webhook_trigger (HTTP POST), outbound_trigger (kampanya), schedule_trigger (cron).");
+        sb.AppendLine("Mesaj: message_text (metin, {{degisken}} destekli), message_menu (secenekli menu, her secenek ayri cikis).");
+        sb.AppendLine("Mantik: logic_condition (if/else, operator: equals/contains/starts_with/greater_than/less_than/is_empty/regex), logic_switch (coklu dallanma, cases + default).");
+        sb.AppendLine("AI: ai_intent (niyet tespiti, intents listesi, confidence_threshold, cikis: high/low_confidence), ai_faq (FAQ arama, cikis: matched/no_match, FAQ onceden yuklenmeli), ai_sentiment (duygu analizi, cikis: positive/negative).");
+        sb.AppendLine("Eylem: action_handoff (insan temsilciye aktar, terminal), action_api_call (HTTP cagrisi, method/url/headers/body_template, cikis: success/error), action_delay (bekleme, seconds).");
+        sb.AppendLine("Yardimci: utility_set_variable (degisken ata), utility_note (tasarimci notu, calistirilmaz).");
+        sb.AppendLine("</node_registry>");
         sb.AppendLine();
-        sb.AppendLine("## Edge Kurallari");
-        sb.AppendLine("- Her edge'de source ve target node ID'si olmali.");
-        sb.AppendLine("- Birden fazla cikisi olan dugumler (logic_condition, ai_intent, ai_faq, ai_sentiment, action_api_call) icin sourceHandle belirtilmeli.");
-        sb.AppendLine("- Tek cikisli dugumler icin sourceHandle null olabilir.");
-        sb.AppendLine("- Node ID'leri benzersiz olmali: genelde '{type}_{sayi}' formati kullanilir.");
+
+        // FlowConfigV2 schema (compact)
+        sb.AppendLine("<output_schema>");
+        sb.AppendLine("FlowConfigV2: { version: 2, metadata: { name }, nodes: [{ id, type, position: {x,y}, data: { label, ...config } }], edges: [{ id, source, target, sourceHandle }], settings: { off_hours_message, unknown_input_message, handoff_confidence_threshold, session_timeout_minutes, max_loop_count } }");
+        sb.AppendLine("Node ID format: {type}_{sayi}. Coklu cikisli dugumler (logic_condition, ai_intent, ai_faq, ai_sentiment, action_api_call) icin sourceHandle zorunlu, tek cikisli icin null.");
+        sb.AppendLine("</output_schema>");
         sb.AppendLine();
 
         // Existing flows context
@@ -416,9 +378,16 @@ public sealed class ClaudeWizardService
 
 public sealed class WizardMessage
 {
+    [System.Text.Json.Serialization.JsonPropertyName("role")]
     public string Role { get; set; } = "";
+
+    [System.Text.Json.Serialization.JsonPropertyName("content")]
     public string Content { get; set; } = "";
+
+    [System.Text.Json.Serialization.JsonPropertyName("timestamp")]
     public string? Timestamp { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("flow_config_snapshot")]
     public string? FlowConfigSnapshot { get; set; }
 }
 

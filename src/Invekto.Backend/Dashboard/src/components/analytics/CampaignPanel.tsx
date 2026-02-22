@@ -57,7 +57,7 @@ export default function CampaignPanel({ campaigns }: Props) {
                     </td>
                     <td className="py-2 text-xs">{c.trigger_type}</td>
                     <td className="py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[c.status] || 'bg-gray-100'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[c.status] || 'bg-navy-100'}`}>
                         {c.status}
                       </span>
                     </td>

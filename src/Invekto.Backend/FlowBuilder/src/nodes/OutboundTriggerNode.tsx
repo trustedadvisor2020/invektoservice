@@ -17,7 +17,7 @@ function OutboundTriggerNodeComponent(props: NodeProps) {
       icon={<OutboundIcon />}
       hasInput={false}
     >
-      <span className="text-slate-500 text-xs">Outbound kampanya tetikleyici</span>
+      <span className="text-navy-400 text-xs">Outbound kampanya tetikleyici</span>
     </BaseNode>
   );
 }

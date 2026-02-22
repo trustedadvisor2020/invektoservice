@@ -25,7 +25,7 @@ var maxFileSizeMb = builder.Configuration.GetValue<int>("Storage:MaxFileSizeMb",
 
 // Claude API configuration (NLP stages 4 & 6)
 var claudeApiKey = builder.Configuration["Claude:ApiKey"];
-var claudeModel = builder.Configuration["Claude:Model"] ?? "claude-3-5-haiku-20241022";
+var claudeModel = builder.Configuration["Claude:Model"] ?? "claude-haiku-4-5-20251001";
 var claudeMaxTokens = builder.Configuration.GetValue<int>("Claude:MaxTokens", 4096);
 var claudeTimeoutSeconds = builder.Configuration.GetValue<int>("Claude:TimeoutSeconds", 30);
 

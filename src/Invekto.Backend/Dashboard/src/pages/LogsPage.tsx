@@ -15,7 +15,7 @@ export function LogsPage() {
     <div className="h-[calc(100vh-theme(spacing.24))]">
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Kayitlar</h1>
-        <p className="text-gray-400">Log izleme ve arama</p>
+        <p className="text-navy-300">Log izleme ve arama</p>
       </div>
       <LogStream initialFilter={initialFilter} />
     </div>

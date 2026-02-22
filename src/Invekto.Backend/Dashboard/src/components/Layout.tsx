@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
@@ -16,8 +17,16 @@ import {
   Settings,
   MessageSquare,
   Building2,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+const FONT_SIZE_KEY = 'inse-font-size';
+const FONT_MIN = 13;
+const FONT_MAX = 20;
+const FONT_DEFAULT = 16;
+const FONT_STEP = 1;
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -52,6 +61,20 @@ export function Layout({ children }: LayoutProps) {
   const { logout, session } = useAuth();
   const isFullscreen = location.pathname === '/flow-builder-ui';
   const isImpersonating = session && api.isImpersonating();
+
+  const [fontSize, setFontSize] = useState(() => {
+    const stored = localStorage.getItem(FONT_SIZE_KEY);
+    return stored ? Math.min(FONT_MAX, Math.max(FONT_MIN, Number(stored))) : FONT_DEFAULT;
+  });
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${fontSize}px`;
+    localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
+  }, [fontSize]);
+
+  const adjustFont = useCallback((delta: number) => {
+    setFontSize(prev => Math.min(FONT_MAX, Math.max(FONT_MIN, prev + delta)));
+  }, []);
 
   const exitImpersonation = () => {
     api.removeTokens();
@@ -135,6 +158,29 @@ export function Layout({ children }: LayoutProps) {
               );
             })}
           </nav>
+
+          {/* Font Size */}
+          <div className="px-3 py-1.5 flex items-center gap-1.5">
+            <button
+              onClick={() => adjustFont(-FONT_STEP)}
+              disabled={fontSize <= FONT_MIN}
+              className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Yazı küçült"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="text-2xs text-navy-300 min-w-[2.5rem] text-center select-none">
+              {fontSize}px
+            </span>
+            <button
+              onClick={() => adjustFont(FONT_STEP)}
+              disabled={fontSize >= FONT_MAX}
+              className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Yazı büyüt"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
 
           {/* Version */}
           <div className="px-4 py-1.5 text-2xs text-navy-200">

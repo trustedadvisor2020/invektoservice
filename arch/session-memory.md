@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** WhatsApp Instance Filtering & Multi-Flow Routing tamamlandi (7 GR). tenant_instances tablosu, InstanceRepository, 4 API endpoint, Settings UI, webhook instance filter, multi-flow routing (Automation), Flow Builder start node instance secimi, flow list instance badge.
-- **Last Task:** Instance Routing paketi: GR-1 (DB schema + repo), GR-2 (API endpoints), GR-3 (Settings UI), GR-4 (webhook filter), GR-5 (multi-flow routing), GR-6 (FlowBuilder start node), GR-7 (FlowList badges)
-- **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Backend + Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
+- **Status:** Claude API model upgrade + prompt optimization tamamlandi. 4 servis guncellendi: Backend (Sonnet 4.6 + XML prompt), ChatAnalysis (Haiku 4.5 upgrade), WhatsAppAnalytics (Haiku 4.5 upgrade), AgentAI (XML prompt optimize). Tum servisler deploy edildi, health OK.
+- **Last Task:** Claude API model ID fix (claude-sonnet-4-6), prompt best practices (XML tags, compact node registry, response style), deprecated model upgrade (3-5-haiku → haiku-4-5)
+- **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

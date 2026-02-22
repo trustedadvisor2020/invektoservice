@@ -3,7 +3,7 @@ import { useState } from 'react';
 /** Shared node-type → color mapping. Used by NodeChip and WizardPreview. */
 export const NODE_COLORS: Record<string, string> = {
   trigger_start: '#10b981', webhook_trigger: '#10b981', outbound_trigger: '#10b981', schedule_trigger: '#10b981',
-  message_text: '#3b82f6', message_menu: '#3b82f6',
+  message_text: '#635BFF', message_menu: '#635BFF',
   logic_condition: '#f59e0b', logic_switch: '#f59e0b',
   ai_intent: '#8b5cf6', ai_faq: '#8b5cf6', ai_sentiment: '#8b5cf6',
   action_handoff: '#ef4444', action_api_call: '#ef4444', action_delay: '#ef4444',
@@ -60,7 +60,8 @@ export function NodeChip({ type }: { type: string }) {
 }
 
 /** Parse text and replace node type references with NodeChip components */
-export function renderWithNodeChips(text: string): (string | JSX.Element)[] {
+export function renderWithNodeChips(text: string | undefined | null): (string | JSX.Element)[] {
+  if (!text) return [];
   const parts: (string | JSX.Element)[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;

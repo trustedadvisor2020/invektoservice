@@ -134,83 +134,57 @@ public sealed class ReplyGenerator
     {
         var sb = new StringBuilder();
 
-        // Base instruction - language-aware
+        // Base instruction - language-aware with XML tags
         if (language == "en")
         {
-            sb.AppendLine("You are a customer service assistant. You generate reply suggestions for agents.");
-            sb.AppendLine();
-            sb.AppendLine("RULES:");
-            sb.AppendLine("- Be polite, professional, and helpful");
-            sb.AppendLine("- Give short, clear answers (1-3 sentences)");
-            sb.AppendLine("- Use customer's name if known");
-            sb.AppendLine("- Do not give medical or legal advice");
+            sb.AppendLine("<role>Customer service assistant generating reply suggestions for agents.</role>");
+            sb.AppendLine("<rules>Be polite and professional. Give short, clear answers (1-3 sentences). Use customer's name if known. Never give medical or legal advice.</rules>");
         }
         else
         {
-            sb.AppendLine("Sen bir musteri hizmetleri asistanisin. Agent'a cevap onerisi uretiyorsun.");
-            sb.AppendLine();
-            sb.AppendLine("KURALLAR:");
-            sb.AppendLine("- Kibbar, profesyonel ve yardimci ol");
-            sb.AppendLine("- Kisa ve net cevap ver (1-3 cumle)");
-            sb.AppendLine("- Musteri adini biliyorsan kullan");
-            sb.AppendLine("- Tibbi tavsiye verme, hukuki tavsiye verme");
+            sb.AppendLine("<role>Musteri hizmetleri asistani. Agent'a WhatsApp uzerinden cevap onerisi uretiyorsun.</role>");
+            sb.AppendLine("<rules>Kibbar ve profesyonel ol. Kisa ve net cevap ver (1-3 cumle), cunku WhatsApp'ta uzun mesajlar okunmuyor. Musteri adini biliyorsan kullan. Tibbi veya hukuki tavsiye verme.</rules>");
         }
 
-        // GR-2.3: Language detection instruction
-        sb.AppendLine();
-        sb.AppendLine("DIL: Musterinin mesaj dilini algilap ayni dilde yanit ver. Algilanan dili 'detected_language' alanina ISO 639-1 koduyla yaz (ornegin: tr, en, de, ar).");
+        // GR-2.3: Language detection
+        sb.AppendLine("<language_detection>Musterinin mesaj dilini algilayip ayni dilde yanit ver. Algilanan dili detected_language alanina ISO 639-1 koduyla yaz.</language_detection>");
 
         // GR-2.2: Tone preset
         if (!string.IsNullOrEmpty(tone))
         {
-            sb.AppendLine();
             var toneInstruction = tone.ToLowerInvariant() switch
             {
-                "formal" => "TON: Resmi ve profesyonel dil kullan. 'Siz' hitabi, kurumsal ifadeler.",
-                "casual" => "TON: Samimi ve sicak dil kullan. Dogal, sohbet havasi. Emoji kullanabilirsin.",
-                "concise" => "TON: Cok kisa ve oze odakli cevap ver. Maksimum 1-2 cumle. Gereksiz laf yok.",
-                _ => $"TON: {tone}"
+                "formal" => "Resmi ve profesyonel dil kullan. 'Siz' hitabi, kurumsal ifadeler.",
+                "casual" => "Samimi ve sicak dil kullan. Dogal, sohbet havasi. Emoji kullanabilirsin.",
+                "concise" => "Cok kisa ve oze odakli cevap ver. Maksimum 1-2 cumle.",
+                _ => tone
             };
-            sb.AppendLine(toneInstruction);
+            sb.AppendLine($"<tone>{toneInstruction}</tone>");
         }
 
         // GR-2.2: Knowledge context
         if (!string.IsNullOrEmpty(knowledgeContext))
         {
-            sb.AppendLine();
-            sb.AppendLine("BILGI BANKASI (bu bilgileri referans alarak cevap ver):");
+            sb.AppendLine("<knowledge_base>");
             sb.AppendLine(knowledgeContext);
-            sb.AppendLine();
-            sb.AppendLine("Bilgi bankasindaki bilgileri kullan ama dogrudan kopyalama, dogal bir sekilde cevaba entegre et.");
+            sb.AppendLine("Bu bilgileri dogal bir sekilde cevaba entegre et, dogrudan kopyalama.");
+            sb.AppendLine("</knowledge_base>");
         }
 
         // Agent profile (feedback learning)
         if (!string.IsNullOrEmpty(agentProfile))
-        {
-            sb.AppendLine();
-            sb.AppendLine(agentProfile);
-        }
+            sb.AppendLine($"<agent_profile>{agentProfile}</agent_profile>");
 
         // Template suggestion
         if (!string.IsNullOrEmpty(templateSuggestion))
-        {
-            sb.AppendLine();
-            sb.AppendLine($"Mevcut sablon onerisi: \"{templateSuggestion}\"");
-            sb.AppendLine("Bu sablonu referans al ama gerekiyorsa duzelt veya genislet.");
-        }
+            sb.AppendLine($"<template>Referans sablon: \"{templateSuggestion}\". Gerekiyorsa duzelt veya genislet.</template>");
 
         // GR-2.2: Conversation summary context
         if (!string.IsNullOrEmpty(conversationSummary))
-        {
-            sb.AppendLine();
-            sb.AppendLine($"ONCEKI KONUSMA OZETI: {conversationSummary}");
-            sb.AppendLine("Bu ozeti dikkate al ama tekrarlama. Son mesajlara odaklan.");
-        }
+            sb.AppendLine($"<conversation_summary>{conversationSummary} — Bu ozeti dikkate al ama tekrarlama, son mesajlara odaklan.</conversation_summary>");
 
-        // Output format - extended with follow-up and language
-        sb.AppendLine();
-        sb.AppendLine("JSON olarak cevap ver (baska metin yazma):");
-        sb.Append("{\"suggested_reply\": \"<oneri>\", \"intent\": \"<intent>\", \"confidence\": <0.0-1.0>, \"suggested_followup\": \"<takip_sorusu_veya_null>\", \"detected_language\": \"<iso_639_1>\"}");
+        // Output format
+        sb.AppendLine("<output_format>JSON olarak cevap ver, baska metin yazma: {\"suggested_reply\": \"...\", \"intent\": \"...\", \"confidence\": 0.0-1.0, \"suggested_followup\": \"...veya null\", \"detected_language\": \"iso_639_1\"}</output_format>");
 
         return sb.ToString();
     }

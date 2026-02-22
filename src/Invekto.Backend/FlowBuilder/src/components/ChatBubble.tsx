@@ -10,7 +10,7 @@ function ChatBubbleComponent({ role, text }: ChatBubbleProps) {
   if (role === 'system') {
     return (
       <div className="flex justify-center my-1">
-        <span className="text-[11px] text-slate-400 bg-slate-100 rounded-full px-3 py-1 max-w-[90%] text-center">
+        <span className="text-[11px] text-navy-300 bg-navy-100 rounded-full px-3 py-1 max-w-[90%] text-center">
           {text}
         </span>
       </div>
@@ -25,7 +25,7 @@ function ChatBubbleComponent({ role, text }: ChatBubbleProps) {
         className={cn(
           'max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words',
           isBot
-            ? 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
+            ? 'bg-white text-navy-900 border border-navy-100 rounded-tl-none'
             : 'bg-emerald-500 text-white rounded-tr-none'
         )}
       >

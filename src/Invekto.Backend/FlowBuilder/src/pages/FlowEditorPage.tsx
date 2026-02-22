@@ -200,7 +200,7 @@ export function FlowEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 text-slate-500">
+      <div className="h-screen flex items-center justify-center bg-navy-50 text-navy-400">
         Flow yukleniyor...
       </div>
     );
@@ -208,11 +208,11 @@ export function FlowEditorPage() {
 
   if (loadError) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+      <div className="h-screen flex flex-col items-center justify-center bg-navy-50 gap-4">
         <p className="text-red-600">{loadError}</p>
         <button
           onClick={() => navigate('/')}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg"
+          className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-lg"
         >
           Flow Listesine Don
         </button>
@@ -222,7 +222,7 @@ export function FlowEditorPage() {
 
   return (
     <ReactFlowProvider>
-      <div className="h-screen flex flex-col bg-slate-50">
+      <div className="h-screen flex flex-col bg-navy-50">
         {/* Toolbar */}
         <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} />
 
@@ -239,6 +239,9 @@ export function FlowEditorPage() {
           {/* Left: Node palette */}
           <NodePalette />
 
+          {/* Left: AI Chat panel (next to palette) */}
+          <AiChatPanel onApply={handleAiApply} />
+
           {/* Center: Canvas */}
           <div className="flex-1 flex flex-col min-w-0">
             <FlowCanvas />
@@ -252,9 +255,6 @@ export function FlowEditorPage() {
 
           {/* Simulation panel (flex shrink — canvas narrows when open) */}
           <SimulationPanel />
-
-          {/* AI Chat panel (mutual exclusive with simulation) */}
-          <AiChatPanel onApply={handleAiApply} />
         </div>
       </div>
     </ReactFlowProvider>

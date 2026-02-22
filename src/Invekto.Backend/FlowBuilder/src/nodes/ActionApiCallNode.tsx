@@ -30,11 +30,11 @@ function ActionApiCallNodeComponent(props: NodeProps) {
       outputs={outputs}
     >
       {url ? (
-        <span className="text-slate-600 font-mono text-xs">
+        <span className="text-navy-500 font-mono text-xs">
           {method} {truncatedUrl}
         </span>
       ) : (
-        <span className="text-slate-500 italic text-xs">URL girilmedi</span>
+        <span className="text-navy-400 italic text-xs">URL girilmedi</span>
       )}
     </BaseNode>
   );

@@ -40,11 +40,11 @@ function LogicConditionNodeComponent(props: NodeProps) {
       outputs={outputs}
     >
       {hasCondition ? (
-        <span className="text-slate-600 font-mono text-xs">
+        <span className="text-navy-500 font-mono text-xs">
           {data.variable} {opLabel} {data.operator === 'is_empty' ? '' : data.value || '?'}
         </span>
       ) : (
-        <span className="text-slate-500 italic">Kosul tanimlanmadi</span>
+        <span className="text-navy-400 italic">Kosul tanimlanmadi</span>
       )}
     </BaseNode>
   );

@@ -21,13 +21,13 @@ function UtilitySetVariableNodeComponent(props: NodeProps) {
       icon={<VariableIcon />}
     >
       {hasAssignment ? (
-        <span className="text-slate-600 font-mono text-xs">
+        <span className="text-navy-500 font-mono text-xs">
           {data.variable_name} = {data.value_expression.length > 30
             ? data.value_expression.substring(0, 30) + '...'
             : data.value_expression}
         </span>
       ) : (
-        <span className="text-slate-500 italic">Degisken atamasi tanimlanmadi</span>
+        <span className="text-navy-400 italic">Degisken atamasi tanimlanmadi</span>
       )}
     </BaseNode>
   );

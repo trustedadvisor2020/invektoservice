@@ -60,11 +60,11 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-          <h3 className="text-sm font-medium text-slate-800">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-navy-100">
+          <h3 className="text-sm font-medium text-navy-900">
             {isEdit ? 'SSS Duzenle' : 'SSS Olustur'}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-navy-300 hover:text-navy-500">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -72,44 +72,44 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
         {/* Form */}
         <div className="p-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Soru *</label>
+            <label className="block text-xs font-medium text-navy-500 mb-1">Soru *</label>
             <input
               type="text"
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500"
               placeholder="Iade politikasi nedir?"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Cevap *</label>
+            <label className="block text-xs font-medium text-navy-500 mb-1">Cevap *</label>
             <textarea
               value={answer}
               onChange={e => setAnswer(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+              className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 resize-y"
               placeholder="Iade politikamiz..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Kategori</label>
+              <label className="block text-xs font-medium text-navy-500 mb-1">Kategori</label>
               <input
                 type="text"
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
+                className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md"
                 placeholder="genel"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Dil</label>
+              <label className="block text-xs font-medium text-navy-500 mb-1">Dil</label>
               <select
                 value={lang}
                 onChange={e => setLang(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
+                className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md"
               >
                 <option value="tr">Turkce</option>
                 <option value="en">Ingilizce</option>
@@ -118,12 +118,12 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Anahtar Kelimeler (virgul ile ayirin)</label>
+            <label className="block text-xs font-medium text-navy-500 mb-1">Anahtar Kelimeler (virgul ile ayirin)</label>
             <input
               type="text"
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-navy-200 rounded-md"
               placeholder="iade, geri odeme, politika"
             />
           </div>
@@ -132,17 +132,17 @@ export function FaqEditModal({ tenantId, faq, onClose, onSave }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-navy-100">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-sm text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
+            className="px-4 py-1.5 text-sm text-navy-500 bg-navy-100 rounded-md hover:bg-navy-100 transition-colors"
           >
             Iptal
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-1.5 text-sm bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
             {saving ? 'Kaydediliyor...' : isEdit ? 'Guncelle' : 'Olustur'}
           </button>

@@ -21,7 +21,7 @@ function ScheduleTriggerNodeComponent(props: NodeProps) {
       icon={<ScheduleIcon />}
       hasInput={false}
     >
-      <span className="text-slate-500 text-xs font-mono">{cron}</span>
+      <span className="text-navy-400 text-xs font-mono">{cron}</span>
     </BaseNode>
   );
 }

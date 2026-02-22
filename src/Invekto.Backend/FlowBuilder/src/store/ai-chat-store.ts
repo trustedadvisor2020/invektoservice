@@ -44,7 +44,14 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     // Load existing wizard_history if any
     try {
       const data = await getWizardState(tenantId, flowId);
-      const history: WizardMessage[] = Array.isArray(data.wizard_history) ? data.wizard_history : [];
+      const raw = Array.isArray(data.wizard_history) ? data.wizard_history : [];
+      // Normalize: handle both PascalCase (legacy DB) and camelCase property names
+      const history: WizardMessage[] = raw.map((m: Record<string, unknown>) => ({
+        role: (m.role ?? m.Role ?? 'user') as WizardMessage['role'],
+        content: (m.content ?? m.Content ?? '') as string,
+        timestamp: (m.timestamp ?? m.Timestamp ?? '') as string,
+        flow_config_snapshot: (m.flow_config_snapshot ?? m.FlowConfigSnapshot) as WizardMessage['flow_config_snapshot'],
+      }));
       set({ messages: history });
     } catch (err: unknown) {
       // 404 = no history yet (normal for non-wizard flows), other errors surface to user

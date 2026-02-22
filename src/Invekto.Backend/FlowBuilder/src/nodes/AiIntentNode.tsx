@@ -31,8 +31,8 @@ function AiIntentNodeComponent(props: NodeProps) {
       hasDefaultOutput={false}
       outputs={outputs}
     >
-      <span className="text-slate-600 text-xs">
-        {intentCount > 0 ? `${intentCount} intent` : <i className="text-slate-400">varsayilan</i>}
+      <span className="text-navy-500 text-xs">
+        {intentCount > 0 ? `${intentCount} intent` : <i className="text-navy-300">varsayilan</i>}
         {' '}&middot; esik: {(threshold * 100).toFixed(0)}%
       </span>
       {data.ask_name !== false && (

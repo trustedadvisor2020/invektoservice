@@ -17,8 +17,8 @@ public sealed class ClaudeAnalyzer : IDisposable
     private readonly JsonSerializerOptions _jsonOptions;
 
     private const string ApiUrl = "https://api.anthropic.com/v1/messages";
-    private const string Model = "claude-3-5-haiku-20241022";
-    private const int MaxTokens = 8192; // claude-3-5-haiku max output token limit
+    private const string Model = "claude-haiku-4-5-20251001";
+    private const int MaxTokens = 8192;
     private const int ParallelMaxTokens = 4096; // per-call limit for parallel mode (5-7 criteria per call)
     private const int TimeoutMs = 120000; // 120 second timeout
 

@@ -20,7 +20,7 @@ function ActionDelayNodeComponent(props: NodeProps) {
       color="#ef4444"
       icon={<ClockIcon />}
     >
-      <span className="text-slate-600">
+      <span className="text-navy-500">
         {seconds} saniye
       </span>
     </BaseNode>

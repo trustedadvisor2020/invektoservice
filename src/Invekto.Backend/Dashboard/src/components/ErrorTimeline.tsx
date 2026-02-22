@@ -26,7 +26,7 @@ export function ErrorTimeline({ buckets, total, onBucketClick }: ErrorTimelinePr
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle>Error Timeline (24h)</CardTitle>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Total</span>
+          <span className="text-xs text-navy-400">Total</span>
           <span className="text-xl font-bold text-red-600">{total}</span>
         </div>
       </CardHeader>
@@ -77,7 +77,7 @@ export function ErrorTimeline({ buckets, total, onBucketClick }: ErrorTimelinePr
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-xs text-gray-400 mt-3 text-center">
+        <p className="text-xs text-navy-300 mt-3 text-center">
           Click on a point to filter logs for that hour
         </p>
       </CardContent>

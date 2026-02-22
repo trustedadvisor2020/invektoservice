@@ -54,8 +54,8 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4">
-      <h3 className="text-sm font-medium text-slate-700 mb-3">Dokuman Yukle</h3>
+    <div className="bg-white rounded-lg border border-navy-100 p-4">
+      <h3 className="text-sm font-medium text-navy-700 mb-3">Dokuman Yukle</h3>
 
       {/* Drop zone */}
       <div
@@ -63,23 +63,23 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          dragOver ? 'border-blue-400 bg-blue-50' : 'border-slate-300 hover:border-slate-400'
+          dragOver ? 'border-blue-400 bg-blue-50' : 'border-navy-200 hover:border-navy-300'
         }`}
       >
         {file ? (
           <div className="flex items-center justify-center gap-3">
             <FileUp className="w-5 h-5 text-blue-600" />
-            <span className="text-sm text-slate-700">{file.name}</span>
-            <span className="text-xs text-slate-400">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
-            <button onClick={() => { setFile(null); setTitle(''); }} className="text-slate-400 hover:text-slate-600">
+            <span className="text-sm text-navy-700">{file.name}</span>
+            <span className="text-xs text-navy-300">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+            <button onClick={() => { setFile(null); setTitle(''); }} className="text-navy-300 hover:text-navy-600">
               <X className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <div>
-            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">PDF dosyasini surukleyip birakin veya tiklayip secin</p>
-            <p className="text-xs text-slate-400 mt-1">Maks {MAX_SIZE_MB}MB, sadece PDF</p>
+            <Upload className="w-8 h-8 text-navy-300 mx-auto mb-2" />
+            <p className="text-sm text-navy-400">PDF dosyasini surukleyip birakin veya tiklayip secin</p>
+            <p className="text-xs text-navy-300 mt-1">Maks {MAX_SIZE_MB}MB, sadece PDF</p>
             <input
               type="file"
               accept=".pdf"
@@ -99,12 +99,12 @@ export function DocumentUpload({ tenantId, onUploadComplete }: Props) {
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="Dokuman basligi"
-            className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+            className="flex-1 px-3 py-1.5 text-sm border border-navy-200 rounded-md"
           />
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-1.5 text-sm bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
             {uploading ? 'Yukleniyor...' : 'Yukle'}
           </button>

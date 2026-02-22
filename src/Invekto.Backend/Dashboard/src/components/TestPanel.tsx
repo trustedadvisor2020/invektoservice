@@ -251,7 +251,7 @@ export function TestPanel() {
       case 'running':
         return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
       default:
-        return <div className="w-4 h-4 rounded-full bg-slate-200" />;
+        return <div className="w-4 h-4 rounded-full bg-navy-100" />;
     }
   };
 
@@ -303,10 +303,10 @@ export function TestPanel() {
         {Object.entries(serviceTests).map(([serviceName, service]) => {
           const summary = getTestSummary(service.tests);
           return (
-            <div key={serviceName} className="p-4 bg-slate-50 rounded-lg">
+            <div key={serviceName} className="p-4 bg-navy-50 rounded-lg">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-900">{service.serviceName}</span>
+                  <span className="font-medium text-navy-900">{service.serviceName}</span>
                   {summary.passed + summary.failed + summary.warning > 0 && (
                     <div className="flex gap-1">
                       {summary.passed > 0 && (
@@ -340,15 +340,15 @@ export function TestPanel() {
                 {service.tests.map((test, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100"
+                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-navy-100"
                   >
                     <div className="flex items-center gap-2">
                       {getStatusIcon(test.status)}
-                      <span className="text-sm text-slate-700">{test.name}</span>
+                      <span className="text-sm text-navy-700">{test.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {test.duration !== undefined && (
-                        <span className="text-xs text-slate-400">{test.duration}ms</span>
+                        <span className="text-xs text-navy-300">{test.duration}ms</span>
                       )}
                       {test.message && test.status !== 'pending' && test.status !== 'running' && (
                         <Badge variant={getStatusVariant(test.status)}>

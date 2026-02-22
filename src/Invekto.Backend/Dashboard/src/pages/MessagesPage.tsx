@@ -104,16 +104,16 @@ export function MessagesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Tum Mesajlar</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-navy-900">Tum Mesajlar</h1>
+          <p className="text-sm text-navy-400">
             Tum firmalara gelen ve giden WhatsApp mesajlari
-            {total > 0 && <span className="ml-2 text-slate-400">({total} kayit)</span>}
+            {total > 0 && <span className="ml-2 text-navy-300">({total} kayit)</span>}
           </p>
         </div>
         <button
           onClick={fetchMessages}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-navy-100 rounded-lg hover:bg-navy-50 disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Yenile
@@ -121,14 +121,14 @@ export function MessagesPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-navy-100 p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Firma</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Firma</label>
             <select
               value={filterTenant}
               onChange={e => setFilterTenant(e.target.value)}
-              className="w-44 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              className="w-44 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
             >
               <option value="">Tumu</option>
               {tenants.map(t => (
@@ -139,21 +139,21 @@ export function MessagesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Telefon</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Telefon</label>
             <input
               type="text"
               value={filterPhone}
               onChange={e => setFilterPhone(e.target.value)}
               placeholder="905..."
-              className="w-36 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-36 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Yon</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Yon</label>
             <select
               value={filterDirection}
               onChange={e => setFilterDirection(e.target.value)}
-              className="w-28 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              className="w-28 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
             >
               <option value="">Tumu</option>
               <option value="in">Gelen</option>
@@ -161,26 +161,26 @@ export function MessagesPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Baslangic</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Baslangic</label>
             <input
               type="date"
               value={filterFrom}
               onChange={e => setFilterFrom(e.target.value)}
-              className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Bitis</label>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Bitis</label>
             <input
               type="date"
               value={filterTo}
               onChange={e => setFilterTo(e.target.value)}
-              className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <button
             onClick={handleSearch}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-brand-500 text-white rounded-md hover:bg-brand-600"
           >
             <Search className="w-3.5 h-3.5" />
             Ara
@@ -189,31 +189,31 @@ export function MessagesPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-navy-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-navy-50 border-b border-navy-100">
                 <th className="w-8 px-2 py-2.5"></th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600">Tarih</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600">Firma</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600">Telefon</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600">Yon</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600">Gonderen</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600 w-[35%]">Mesaj</th>
-                <th className="text-left px-4 py-2.5 font-medium text-slate-600">Tur</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Tarih</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Firma</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Telefon</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Yon</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Gonderen</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500 w-[35%]">Mesaj</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Tur</th>
               </tr>
             </thead>
             <tbody>
               {loading && messages.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-navy-300">
                     Yukleniyor...
                   </td>
                 </tr>
               ) : messages.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-navy-300">
                     Mesaj bulunamadi
                   </td>
                 </tr>
@@ -223,28 +223,28 @@ export function MessagesPage() {
                     <tr
                       key={msg.id}
                       onClick={() => handleRowClick(msg)}
-                      className={`border-b border-slate-100 ${
+                      className={`border-b border-navy-100 ${
                         msg.direction === 'in'
                           ? 'cursor-pointer hover:bg-blue-50/50'
-                          : 'hover:bg-slate-50/50'
+                          : 'hover:bg-navy-50/50'
                       } ${expandedId === msg.id ? 'bg-blue-50/30' : ''}`}
                     >
                       <td className="px-2 py-2.5 text-center">
                         {msg.direction === 'in' && (
                           expandedId === msg.id
                             ? <ChevronUp className="w-3.5 h-3.5 text-blue-500 mx-auto" />
-                            : <ChevronDown className="w-3.5 h-3.5 text-slate-400 mx-auto" />
+                            : <ChevronDown className="w-3.5 h-3.5 text-navy-300 mx-auto" />
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap text-xs">
+                      <td className="px-4 py-2.5 text-navy-400 whitespace-nowrap text-xs">
                         {formatDate(msg.createdAt)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-100 text-navy-700">
                           #{msg.tenantId}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-slate-600">
+                      <td className="px-4 py-2.5 font-mono text-xs text-navy-500">
                         {msg.phone}
                       </td>
                       <td className="px-4 py-2.5">
@@ -260,21 +260,21 @@ export function MessagesPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-slate-500 max-w-[120px] truncate">
+                      <td className="px-4 py-2.5 text-xs text-navy-400 max-w-[120px] truncate">
                         {msg.senderName || '-'}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-700 max-w-[400px]">
+                      <td className="px-4 py-2.5 text-navy-700 max-w-[400px]">
                         <p className="truncate text-xs" title={msg.messageText || ''}>
-                          {msg.messageText || <span className="text-slate-400 italic">[medya]</span>}
+                          {msg.messageText || <span className="text-navy-300 italic">[medya]</span>}
                         </p>
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-slate-400">
+                      <td className="px-4 py-2.5 text-xs text-navy-300">
                         {msg.messageType || 'text'}
                       </td>
                     </tr>
                     {expandedId === msg.id && (
                       <tr key={`story-${msg.id}`}>
-                        <td colSpan={8} className="px-6 py-4 bg-slate-50/70 border-b border-slate-200">
+                        <td colSpan={8} className="px-6 py-4 bg-navy-50/70 border-b border-navy-100">
                           <StoryTimeline loading={storyLoading} story={story} />
                         </td>
                       </tr>
@@ -288,15 +288,15 @@ export function MessagesPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50">
-            <span className="text-xs text-slate-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-navy-100 bg-navy-50">
+            <span className="text-xs text-navy-400">
               Sayfa {page + 1} / {totalPages}
             </span>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="flex items-center gap-1 px-3 py-1 text-xs border border-slate-200 rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 px-3 py-1 text-xs border border-navy-100 rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 Onceki
@@ -304,7 +304,7 @@ export function MessagesPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
-                className="flex items-center gap-1 px-3 py-1 text-xs border border-slate-200 rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 px-3 py-1 text-xs border border-navy-100 rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Sonraki
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -321,7 +321,7 @@ export function MessagesPage() {
 function StoryTimeline({ loading, story }: { loading: boolean; story: MessageStoryResponse | null }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-4 text-slate-400 text-sm">
+      <div className="flex items-center gap-2 py-4 text-navy-300 text-sm">
         <Loader2 className="w-4 h-4 animate-spin" />
         Hikaye yukleniyor...
       </div>
@@ -330,7 +330,7 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
 
   if (!story || story.timeline.length === 0) {
     return (
-      <div className="py-4 text-sm text-slate-400">
+      <div className="py-4 text-sm text-navy-300">
         Bu mesaj icin hikaye bulunamadi. (Henuz islem yapilmamis olabilir)
       </div>
     );
@@ -340,19 +340,19 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
     <div className="flex gap-8">
       {/* Timeline */}
       <div className="flex-1 relative">
-        <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-slate-200" />
+        <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-navy-100" />
         <div className="space-y-3">
           {story.timeline.map((item, i) => (
             <div key={i} className="flex items-start gap-3 relative">
-              <div className="w-9 h-9 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-sm z-10 shrink-0">
+              <div className="w-9 h-9 rounded-full bg-white border-2 border-navy-100 flex items-center justify-center text-sm z-10 shrink-0">
                 {ICON_MAP[item.icon] || '\u{2022}'}
               </div>
               <div className="pt-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-700">{item.title}</span>
-                  <span className="text-[10px] text-slate-400 font-mono">{item.time}</span>
+                  <span className="text-xs font-semibold text-navy-700">{item.title}</span>
+                  <span className="text-[10px] text-navy-300 font-mono">{item.time}</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5 break-words">{item.detail}</p>
+                <p className="text-xs text-navy-400 mt-0.5 break-words">{item.detail}</p>
               </div>
             </div>
           ))}
@@ -361,35 +361,35 @@ function StoryTimeline({ loading, story }: { loading: boolean; story: MessageSto
 
       {/* Summary card */}
       {story.summary && (
-        <div className="w-56 shrink-0 bg-white rounded-lg border border-slate-200 p-3 h-fit">
-          <h4 className="text-xs font-semibold text-slate-700 mb-2">Ozet</h4>
+        <div className="w-56 shrink-0 bg-white rounded-lg border border-navy-100 p-3 h-fit">
+          <h4 className="text-xs font-semibold text-navy-700 mb-2">Ozet</h4>
           <dl className="space-y-1.5 text-xs">
             {story.summary.flow_name && (
               <>
-                <dt className="text-slate-400">Flow</dt>
-                <dd className="text-slate-600 font-medium">{story.summary.flow_name}</dd>
+                <dt className="text-navy-300">Flow</dt>
+                <dd className="text-navy-500 font-medium">{story.summary.flow_name}</dd>
               </>
             )}
             {story.summary.intent && (
               <>
-                <dt className="text-slate-400">Intent</dt>
-                <dd className="text-slate-600 font-medium">{story.summary.intent}</dd>
+                <dt className="text-navy-300">Intent</dt>
+                <dd className="text-navy-500 font-medium">{story.summary.intent}</dd>
               </>
             )}
             {story.summary.confidence != null && (
               <>
-                <dt className="text-slate-400">Confidence</dt>
-                <dd className="text-slate-600 font-medium">{(story.summary.confidence * 1).toFixed(2)}</dd>
+                <dt className="text-navy-300">Confidence</dt>
+                <dd className="text-navy-500 font-medium">{(story.summary.confidence * 1).toFixed(2)}</dd>
               </>
             )}
             {story.summary.processing_time_ms != null && (
               <>
-                <dt className="text-slate-400">Sure</dt>
-                <dd className="text-slate-600 font-medium">{story.summary.processing_time_ms}ms</dd>
+                <dt className="text-navy-300">Sure</dt>
+                <dd className="text-navy-500 font-medium">{story.summary.processing_time_ms}ms</dd>
               </>
             )}
-            <dt className="text-slate-400">Otomatik Yanit</dt>
-            <dd className="text-slate-600 font-medium">{story.summary.auto_reply_count} yanit, {story.summary.outgoing_count} giden</dd>
+            <dt className="text-navy-300">Otomatik Yanit</dt>
+            <dd className="text-navy-500 font-medium">{story.summary.auto_reply_count} yanit, {story.summary.outgoing_count} giden</dd>
           </dl>
         </div>
       )}

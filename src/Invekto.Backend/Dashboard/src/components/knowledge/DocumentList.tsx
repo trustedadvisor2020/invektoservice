@@ -63,12 +63,12 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
   const totalPages = Math.ceil(total / 20);
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-        <h3 className="text-sm font-medium text-slate-700">
-          Dokumanlar {total > 0 && <span className="text-slate-400">({total})</span>}
+    <div className="bg-white rounded-lg border border-navy-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-navy-100">
+        <h3 className="text-sm font-medium text-navy-700">
+          Dokumanlar {total > 0 && <span className="text-navy-300">({total})</span>}
         </h3>
-        <button onClick={fetchDocuments} className="text-slate-400 hover:text-slate-600">
+        <button onClick={fetchDocuments} className="text-navy-300 hover:text-navy-500">
           <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
         </button>
       </div>
@@ -76,26 +76,26 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
       {error && <p className="px-4 py-2 text-sm text-red-600 bg-red-50">{error}</p>}
 
       {documents.length === 0 && !error ? (
-        <div className="p-8 text-center text-sm text-slate-400">
+        <div className="p-8 text-center text-sm text-navy-300">
           <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
           Henuz dokuman yuklenmemis
         </div>
       ) : (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-navy-100">
           {documents.map(doc => {
             const cfg = STATUS_CONFIG[doc.status] || STATUS_CONFIG.error;
             const Icon = cfg.icon;
             return (
-              <div key={doc.id} className="flex items-center px-4 py-3 hover:bg-slate-50">
+              <div key={doc.id} className="flex items-center px-4 py-3 hover:bg-navy-50">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-800 truncate">{doc.title}</span>
+                    <span className="text-sm font-medium text-navy-900 truncate">{doc.title}</span>
                     <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cfg.color)}>
                       <Icon className={cn('w-3 h-3', doc.status === 'processing' && 'animate-spin')} />
                       {cfg.label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-navy-300">
                     <span>{doc.sourceType.toUpperCase()}</span>
                     {doc.chunkCount > 0 && <span>{doc.chunkCount} parca</span>}
                     <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
@@ -104,7 +104,7 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
                 <button
                   onClick={() => handleDelete(doc.id)}
                   disabled={deleting === doc.id}
-                  className="ml-2 p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                  className="ml-2 p-1.5 text-navy-300 hover:text-red-600 transition-colors"
                 >
                   <Trash2 className={cn('w-4 h-4', deleting === doc.id && 'animate-pulse')} />
                 </button>
@@ -116,19 +116,19 @@ export function DocumentList({ tenantId, refreshKey }: Props) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 px-4 py-3 border-t border-slate-200">
+        <div className="flex items-center justify-center gap-2 px-4 py-3 border-t border-navy-100">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1 text-xs text-slate-600 bg-slate-100 rounded disabled:opacity-50"
+            className="px-3 py-1 text-xs text-navy-500 bg-navy-100 rounded disabled:opacity-50"
           >
             Onceki
           </button>
-          <span className="text-xs text-slate-500">{page} / {totalPages}</span>
+          <span className="text-xs text-navy-400">{page} / {totalPages}</span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1 text-xs text-slate-600 bg-slate-100 rounded disabled:opacity-50"
+            className="px-3 py-1 text-xs text-navy-500 bg-navy-100 rounded disabled:opacity-50"
           >
             Sonraki
           </button>

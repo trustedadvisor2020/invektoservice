@@ -56,7 +56,7 @@ function BaseNodeComponent({
     <div
       className={cn(
         'min-w-[180px] max-w-[260px] rounded-lg border-2 shadow-lg transition-all',
-        selected ? 'shadow-xl ring-2 ring-blue-400/50' : 'shadow-md',
+        selected ? 'shadow-xl ring-2 ring-brand-400/50' : 'shadow-md',
         isSimActive && 'ring-2 ring-emerald-400/60'
       )}
       style={{
@@ -76,14 +76,14 @@ function BaseNodeComponent({
         <span className="flex-shrink-0 w-5 h-5" style={{ color }}>
           {icon}
         </span>
-        <span className="text-base font-medium truncate text-slate-700">
+        <span className="text-base font-medium truncate text-navy-700">
           {label}
         </span>
       </div>
 
       {/* Body */}
       {children && (
-        <div className="px-3 py-2 text-sm text-slate-600">
+        <div className="px-3 py-2 text-sm text-navy-500">
           {children}
         </div>
       )}

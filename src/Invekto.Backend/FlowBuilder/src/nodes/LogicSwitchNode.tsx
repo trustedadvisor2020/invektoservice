@@ -35,10 +35,10 @@ function LogicSwitchNodeComponent(props: NodeProps) {
     >
       <div className="space-y-1">
         {!data.variable && cases.length === 0 && (
-          <span className="text-slate-500 italic">Switch tanimlanmadi</span>
+          <span className="text-navy-400 italic">Switch tanimlanmadi</span>
         )}
         {data.variable && (
-          <span className="text-slate-600 text-xs font-mono">{data.variable}</span>
+          <span className="text-navy-500 text-xs font-mono">{data.variable}</span>
         )}
         {cases.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
