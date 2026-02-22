@@ -186,8 +186,8 @@ public sealed class AiIntentHandler : INodeHandler
 
         if (ctx.IsSimulation)
         {
-            // Simulation: keyword-based detection
-            var mockResult = _mockIntentDetector.Detect(userInput);
+            // Simulation: keyword-based detection with custom intent support
+            var mockResult = _mockIntentDetector.Detect(userInput, customIntents);
             if (mockResult != null)
             {
                 detectedIntent = mockResult.Intent;

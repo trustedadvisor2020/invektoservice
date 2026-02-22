@@ -32,27 +32,13 @@ function LogicSwitchNodeComponent(props: NodeProps) {
       icon={<SwitchIcon />}
       hasDefaultOutput={false}
       outputs={outputs}
+      outputPosition="right"
     >
-      <div className="space-y-1">
-        {!data.variable && cases.length === 0 && (
-          <span className="text-navy-400 italic">Switch tanimlanmadi</span>
-        )}
-        {data.variable && (
-          <span className="text-navy-500 text-xs font-mono">{data.variable}</span>
-        )}
-        {cases.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {cases.map((c) => (
-              <span
-                key={c.handle_id}
-                className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs"
-              >
-                {c.value || '?'}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      {!data.variable && cases.length === 0 ? (
+        <span className="text-navy-400 italic">Switch tanimlanmadi</span>
+      ) : data.variable ? (
+        <span className="text-navy-500 text-xs font-mono">{data.variable}</span>
+      ) : null}
     </BaseNode>
   );
 }

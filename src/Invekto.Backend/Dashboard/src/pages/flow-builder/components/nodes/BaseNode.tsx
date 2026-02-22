@@ -16,6 +16,7 @@ interface BaseNodeProps {
   outputs?: Array<{ id: string; label?: ReactNode }>;
   hasInput?: boolean;
   hasDefaultOutput?: boolean;
+  outputPosition?: 'bottom' | 'right';
 }
 
 function BaseNodeComponent({
@@ -26,6 +27,7 @@ function BaseNodeComponent({
   outputs,
   hasInput = true,
   hasDefaultOutput = true,
+  outputPosition = 'bottom',
 }: BaseNodeProps) {
   const { id, data, selected } = nodeProps;
   const selectNode = useFlowStore((s) => s.selectNode);
@@ -106,8 +108,8 @@ function BaseNodeComponent({
         />
       )}
 
-      {/* Multiple output handles - RED */}
-      {outputs && outputs.length > 0 && (
+      {/* Multiple output handles - BOTTOM */}
+      {outputs && outputs.length > 0 && outputPosition === 'bottom' && (
         <div className="relative pb-6">
           {outputs.map((output, idx) => {
             const total = outputs.length;
@@ -138,6 +140,24 @@ function BaseNodeComponent({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Multiple output handles - RIGHT */}
+      {outputs && outputs.length > 0 && outputPosition === 'right' && (
+        <div className="border-t py-1" style={{ borderColor: `${color}30` }}>
+          {outputs.map((output) => (
+            <div key={output.id} className="relative h-7 flex items-center px-3">
+              <span className="text-xs text-navy-600 font-medium">{output.label}</span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={output.id}
+                className="!w-5 !h-5 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
+                style={{ right: '-10px' }}
+              />
+            </div>
+          ))}
         </div>
       )}
     </div>

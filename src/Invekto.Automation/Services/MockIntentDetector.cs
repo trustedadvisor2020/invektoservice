@@ -3,7 +3,7 @@ namespace Invekto.Automation.Services;
 /// <summary>
 /// Mock intent detector for simulation — rule-based keyword matching.
 /// No Claude API call. Deterministic, instant response.
-/// Phase 4 replaces with real IntentDetector (Claude Haiku-based).
+/// Supports custom intents with automatic synonym expansion.
 /// Register as singleton.
 /// </summary>
 public sealed class MockIntentDetector
@@ -18,10 +18,31 @@ public sealed class MockIntentDetector
     };
 
     /// <summary>
+    /// Synonyms for common Turkish sector/domain keywords.
+    /// Used to expand custom intent names into matchable keywords.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> _synonyms = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["restoran"] = new[] { "yemek", "cafe", "kafe", "lokanta", "pizza", "kebap", "menu", "mutfak", "garson", "masa" },
+        ["klinik"] = new[] { "dis", "doktor", "hastane", "hekim", "tedavi", "hasta", "muayene", "ameliyat", "implant", "ortodonti" },
+        ["saglik"] = new[] { "dis", "doktor", "hastane", "hekim", "tedavi", "hasta", "klinik", "muayene", "ilac", "recete" },
+        ["eticaret"] = new[] { "magaza", "online", "shop", "urun", "sepet", "alisveris" },
+        ["hizmet"] = new[] { "servis", "temizlik", "tamir", "bakim", "danismanlik", "ajans", "kurye" },
+        ["bilgi"] = new[] { "ogrenmek", "merak", "sormak", "nedir", "nasil" },
+    };
+
+    /// <summary>
     /// Detect intent from user input via keyword matching.
     /// Returns best matching intent with confidence, or null if no match.
     /// </summary>
-    public MockIntentResult? Detect(string userInput)
+    public MockIntentResult? Detect(string userInput) => Detect(userInput, null);
+
+    /// <summary>
+    /// Detect intent with custom intent support.
+    /// First checks built-in rules, then expands custom intent names
+    /// using synonym map to match user input.
+    /// </summary>
+    public MockIntentResult? Detect(string userInput, string[]? customIntents)
     {
         if (string.IsNullOrWhiteSpace(userInput))
             return null;
@@ -29,6 +50,8 @@ public sealed class MockIntentDetector
         var input = userInput.Trim().ToLowerInvariant();
 
         MockIntentResult? bestMatch = null;
+
+        // Built-in rules
         foreach (var rule in _rules)
         {
             foreach (var keyword in rule.Keywords)
@@ -44,12 +67,61 @@ public sealed class MockIntentDetector
                             MatchedKeyword = keyword
                         };
                     }
-                    break; // One keyword match per rule is enough
+                    break;
+                }
+            }
+        }
+
+        // Custom intents with synonym expansion
+        if (customIntents is { Length: > 0 })
+        {
+            foreach (var intent in customIntents)
+            {
+                var keywords = ExpandIntentKeywords(intent);
+                foreach (var keyword in keywords)
+                {
+                    if (input.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    {
+                        const double customConfidence = 0.80;
+                        if (bestMatch == null || customConfidence > bestMatch.Confidence)
+                        {
+                            bestMatch = new MockIntentResult
+                            {
+                                Intent = intent,
+                                Confidence = customConfidence,
+                                MatchedKeyword = keyword
+                            };
+                        }
+                        break;
+                    }
                 }
             }
         }
 
         return bestMatch;
+    }
+
+    /// <summary>
+    /// Expand an intent name into matchable keywords.
+    /// Splits on '_' and adds synonyms from the built-in map.
+    /// E.g. "klinik_saglik" → ["klinik", "saglik", "dis", "doktor", "hastane", ...]
+    /// </summary>
+    private static HashSet<string> ExpandIntentKeywords(string intent)
+    {
+        var parts = intent.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var part in parts)
+        {
+            var lower = part.ToLowerInvariant();
+            keywords.Add(lower);
+
+            if (_synonyms.TryGetValue(lower, out var syns))
+                foreach (var syn in syns)
+                    keywords.Add(syn);
+        }
+
+        return keywords;
     }
 
     private sealed record IntentRule(string Intent, string[] Keywords, double Confidence);

@@ -15,6 +15,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-02-23 | Demo Bot — Invekto Demo Bot flow (20 node, 31 edge), BaseNode right outputs, MockIntentDetector synonym expansion, 5 FAQ entry |
 | 2026-02-23 | Flow editor fix — welcome endpoint parse + double-JSON node data + DB migration |
 | 2026-02-23 | INMA SSO hotfix — 7 fix, full deploy, tenant 5050 calisiyor |
 | 2026-02-23 | Full deploy — Backend + Knowledge + Automation, 10/10 HEALTHY |

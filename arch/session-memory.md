@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Flow editor fix + Backend deploy. Welcome endpoint JSON parse hatasi cozuldu, flow node data double-JSON-encoded array'ler (options/cases/intents) DB'de duzeltildi + frontend defensive parsing eklendi.
-- **Last Task:** Flow editor bugfix — (1) Welcome endpoint plain text→JSON parse fix (api.ts getWelcome), (2) loadFlow normalizeNodeData: string-encoded array'leri parse (flow-store.ts), (3) DB fix: 5 node'daki double-encoded options/cases/intents → gerçek JSONB array
+- **Status:** Demo Bot flow + Switch node UX + MockIntentDetector synonym support. Invekto Demo Bot (flow_id=7, tenant 5050) olusturuldu, WhatsApp'tan test edildi. BaseNode right-side outputs, MockIntentDetector custom intent synonym expansion eklendi.
+- **Last Task:** Demo Bot — (1) 20-node Invekto Demo Bot flow (DB INSERT), (2) BaseNode outputPosition="right" prop, (3) LogicSwitchNode right outputs, (4) MockIntentDetector synonym expansion (sector keywords), (5) AiIntentHandler customIntents pass to mock, (6) 5 Invekto FAQ entry
 - **Next Task:** (1) InmaJwtValidator CompanyCode alignment (validated path also uses CompanyId, should use CompanyCode), (2) Template System ingestion E2E test, (3) Instance routing E2E test
 - **Strateji:** 12 Paket Stratejisi v5.2
 

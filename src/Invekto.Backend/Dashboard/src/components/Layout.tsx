@@ -30,7 +30,7 @@ const SIDEBAR_KEY = 'inse-sidebar-collapsed';
 const FONT_SIZE_KEY = 'inse-font-size';
 const FONT_MIN = 12;
 const FONT_MAX = 25;
-const FONT_DEFAULT = 16;
+const FONT_DEFAULT = 14;
 const FONT_STEP = 1;
 
 interface LayoutProps {
@@ -140,10 +140,10 @@ export function Layout({ children }: LayoutProps) {
             {collapsed ? (
               <button
                 onClick={toggleSidebar}
-                className="w-10 h-10 mx-auto flex items-center justify-center rounded-lg text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors"
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-lg hover:bg-navy-50 transition-colors"
                 title="Menüyü aç"
               >
-                <InvektoMark className="text-xl" />
+                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Invekto" className="w-7 h-7 rounded-lg" />
               </button>
             ) : (
               <>
