@@ -386,14 +386,33 @@ public sealed class ClaudeWizardService
         sb.AppendLine("</options_format>");
         sb.AppendLine();
 
-        // Node registry (compact)
+        // Node registry with REQUIRED data fields
         sb.AppendLine("<node_registry>");
-        sb.AppendLine("Tetikleyiciler: trigger_start (standart, her akista en az 1), webhook_trigger (HTTP POST), outbound_trigger (kampanya), schedule_trigger (cron).");
-        sb.AppendLine("Mesaj: message_text (metin, {{degisken}} destekli), message_menu (secenekli menu, her secenek ayri cikis).");
-        sb.AppendLine("Mantik: logic_condition (if/else, operator: equals/contains/starts_with/greater_than/less_than/is_empty/regex), logic_switch (coklu dallanma, cases + default).");
-        sb.AppendLine("AI: ai_intent (niyet tespiti, intents listesi, confidence_threshold, cikis: high/low_confidence), ai_faq (FAQ arama, cikis: matched/no_match, FAQ onceden yuklenmeli), ai_sentiment (duygu analizi, cikis: positive/negative).");
-        sb.AppendLine("Eylem: action_handoff (insan temsilciye aktar, terminal), action_api_call (HTTP cagrisi, method/url/headers/body_template, cikis: success/error), action_delay (bekleme, seconds).");
-        sb.AppendLine("Yardimci: utility_set_variable (degisken ata), utility_note (tasarimci notu, calistirilmaz).");
+        sb.AppendLine("Her node'un data objesi asagidaki ZORUNLU alanlari icermeli. label her zaman zorunlu.");
+        sb.AppendLine();
+        sb.AppendLine("trigger_start: data: { label }. Her akista en az 1 tane olmali.");
+        sb.AppendLine("webhook_trigger: data: { label, secret_key, payload_variable }.");
+        sb.AppendLine("outbound_trigger: data: { label, campaign_variable }.");
+        sb.AppendLine("schedule_trigger: data: { label, cron_expression, timezone }.");
+        sb.AppendLine();
+        sb.AppendLine("message_text: data: { label, text }. text ZORUNLU — gonderilecek mesaj metni. {{degisken}} destekli. ASLA bos birakma!");
+        sb.AppendLine("message_menu: data: { label, text, options }. text = baslik metni. options = [{key:\"1\",label:\"Secenek 1\",handle_id:\"opt_1\"}, ...]. Her secenek icin ayri edge cikisi.");
+        sb.AppendLine();
+        sb.AppendLine("logic_condition: data: { label, variable, operator, value }. operator: equals|contains|starts_with|greater_than|less_than|is_empty|regex. Cikis: sourceHandle=\"true_handle\" veya \"false_handle\".");
+        sb.AppendLine("logic_switch: data: { label, variable, cases, default_handle_id }. cases = [{value:\"x\",handle_id:\"case_1\"}, ...]. Her case icin ayri edge.");
+        sb.AppendLine();
+        sb.AppendLine("ai_intent: data: { label, confidence_threshold, ask_name, greeting_message }. confidence_threshold: 0.0-1.0. Cikis: \"high_confidence\"/\"low_confidence\".");
+        sb.AppendLine("ai_faq: data: { label, min_confidence }. Cikis: \"matched\"/\"no_match\".");
+        sb.AppendLine("ai_sentiment: data: { label, threshold }. Cikis: \"positive\"/\"negative\".");
+        sb.AppendLine();
+        sb.AppendLine("action_handoff: data: { label, summary_template }. Terminal node — baska node'a baglanmaz.");
+        sb.AppendLine("action_api_call: data: { label, method, url, headers, body_template, response_variable, timeout_ms }. method: GET|POST|PUT|DELETE. Cikis: \"success\"/\"error\".");
+        sb.AppendLine("action_delay: data: { label, seconds }. seconds: 1-300.");
+        sb.AppendLine();
+        sb.AppendLine("utility_set_variable: data: { label, variable_name, value_expression }. {{degisken}} destekli.");
+        sb.AppendLine("utility_note: data: { label, text }. Sadece tasarimci notu, calistirilmaz.");
+        sb.AppendLine();
+        sb.AppendLine("KRITIK: message_text icin text alani ASLA bos olamaz! Kullaniciyla konusarak belirlenen mesaj metnini data.text'e yaz.");
         sb.AppendLine("</node_registry>");
         sb.AppendLine();
 
@@ -456,7 +475,10 @@ public sealed class WizardStreamChunk
 
 public sealed class WizardOption
 {
+    [System.Text.Json.Serialization.JsonPropertyName("label")]
     public string Label { get; set; } = "";
+
+    [System.Text.Json.Serialization.JsonPropertyName("description")]
     public string? Description { get; set; }
 }
 

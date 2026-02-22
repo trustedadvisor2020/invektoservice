@@ -19,9 +19,9 @@ import {
   Minus,
   Plus,
   PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { InvektoLogo, InvektoMark } from './ui/InvektoLogo';
 
 const FONT_SIZE_KEY = 'inse-font-size';
 const SIDEBAR_KEY = 'inse-sidebar-collapsed';
@@ -126,7 +126,7 @@ export function Layout({ children }: LayoutProps) {
       <div className={cn('min-h-screen flex bg-navy-50', isImpersonating && 'pt-10')}>
         {/* Sidebar — collapsible, light, Stripe-inspired */}
         <aside className={cn(
-          'h-screen sticky top-0 bg-white border-r border-navy-100 flex flex-col transition-[width] duration-200',
+          'h-screen sticky top-0 bg-[#f8f9fb] shadow-[3px_0_16px_-4px_rgba(0,0,0,0.10)] z-10 flex flex-col transition-[width] duration-200',
           collapsed ? 'w-[3.5rem]' : 'w-56'
         )}>
           {/* Logo + Toggle */}
@@ -137,18 +137,15 @@ export function Layout({ children }: LayoutProps) {
                 className="w-10 h-10 mx-auto flex items-center justify-center rounded-lg text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors"
                 title="Menüyü aç"
               >
-                <PanelLeftOpen className="w-4 h-4" />
+                <InvektoMark className="text-xl" />
               </button>
             ) : (
               <>
-                <img src="/logo.png" alt="Invekto" className="w-7 h-7 flex-shrink-0 rounded-lg ml-2" />
                 <div className="min-w-0 ml-2.5 flex-1">
-                  <span className="font-semibold text-navy-900 text-sm block truncate leading-tight">
-                    {session?.fullName ? session.fullName : 'Invekto'}
-                  </span>
-                  {session && (
-                    <span className="text-2xs text-navy-300 truncate block leading-tight">
-                      Firma #{session.tenantId}
+                  <InvektoLogo size="sm" className="block leading-tight" />
+                  {session?.companyCode && (
+                    <span className="text-2xs text-navy-300 truncate block leading-tight mt-0.5">
+                      {session.companyCode}
                     </span>
                   )}
                 </div>

@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** Dashboard sidebar collapsible yapildi. Collapsed durumda sadece ikonlar, expanded durumda tam menu. localStorage ile persist. Onceki session: Stripe UI redesign, AI Chat Panel, Working Hours, Instance Routing.
-- **Last Task:** Dashboard sidebar collapse/expand toggle (Layout.tsx). PanelLeftClose/PanelLeftOpen ikonlari, localStorage persist, smooth transition.
+- **Status:** UI polish: sidebar hafif gri bg + golge, InvektoLogo/InvektoMark bileşenleri, FlowBuilder node output ikon pozisyonu duzeltildi, Neon font + tailwind config + login sayfasi guncellemeleri. Backend deploy edildi (HEALTHY).
+- **Last Task:** Sidebar bg (#f8f9fb) + shadow ekleme, BaseNode output label bottom 4px→12px, InvektoLogo componenti, font/CSS/tailwind polish.
 - **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 

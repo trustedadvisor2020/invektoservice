@@ -3,6 +3,25 @@ import type { FlowConfigV2 } from '../types/flow';
 import type { WizardMessage, WizardOption } from '../types/wizard';
 import { streamMessage, getWizardState } from '../lib/wizard-api';
 
+/** Strip ```options and ```flowconfig blocks from text for display */
+function stripCodeBlocks(text: string): string {
+  return text
+    .replace(/```options\s*\n[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*\n[\s\S]*?```/g, '')
+    .trimEnd();
+}
+
+/** Strip only incomplete (unterminated) code blocks from streaming text */
+function stripStreamingBlocks(text: string): string {
+  // Strip complete blocks
+  let clean = text
+    .replace(/```options\s*\n[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*\n[\s\S]*?```/g, '');
+  // Strip incomplete block at the end (started but not closed)
+  clean = clean.replace(/```(?:options|flowconfig)\s*\n[\s\S]*$/g, '');
+  return clean.trimEnd();
+}
+
 interface AiChatStore {
   isOpen: boolean;
   flowId: number | null;
@@ -89,14 +108,17 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
       for await (const event of streamMessage(flowId, tenantId, message, undefined, currentFlowConfig)) {
         if (event.type === 'text') {
           fullText += event.content || '';
-          set({ streamingText: fullText });
+          // Strip options/flowconfig blocks from live streaming display
+          set({ streamingText: stripStreamingBlocks(fullText) });
         } else if (event.type === 'error') {
           set({ error: event.content || 'AI servisi yanit veremedi. Lutfen tekrar deneyin.', isStreaming: false });
           return;
         } else if (event.type === 'done') {
+          // Prefer clean content from backend (options block already stripped)
+          const cleanContent = event.content || stripCodeBlocks(fullText);
           const assistantMsg: WizardMessage = {
             role: 'assistant',
-            content: fullText || event.content || '',
+            content: cleanContent,
             timestamp: new Date().toISOString(),
             flow_config_snapshot: event.flow_config,
             options: event.options,

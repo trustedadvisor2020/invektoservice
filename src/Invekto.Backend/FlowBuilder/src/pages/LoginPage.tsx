@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { InvektoLogo } from '../components/ui/InvektoLogo';
 
 export function LoginPage() {
   const [tenantId, setTenantId] = useState('');
@@ -97,7 +98,7 @@ export function LoginPage() {
         </div>
 
         <p className="text-center text-2xs text-navy-200 mt-4">
-          Invekto Flow Builder v2
+          <InvektoLogo size="sm" subtitle="flow" /> v2
         </p>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Zap } from 'lucide-react';
+import { InvektoLogo } from '../components/ui/InvektoLogo';
 
 type LoginMode = 'inma' | 'ops';
 
@@ -46,10 +46,7 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-brand-500 rounded-2xl mb-4">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-xl font-semibold text-navy-900">Invekto Servisler</h1>
+          <InvektoLogo size="lg" className="mb-2" />
           <p className="text-sm text-navy-300 mt-1">
             {mode === 'inma' ? 'Firma bilgilerinizle giris yapin' : 'Ops paneli girisi'}
           </p>

@@ -14,7 +14,7 @@ import {
 import { createDefaultFlow, type FlowConfigV2 } from '../types/flow';
 
 export function FlowListPage() {
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const tenantId = session?.tenant_id ?? 0;
 
@@ -200,10 +200,7 @@ export function FlowListPage() {
     <div className="min-h-screen bg-navy-50 text-navy-900">
       {/* Header */}
       <header className="bg-white border-b border-navy-100 px-6 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-navy-900">Flow Builder</h1>
-          <span className="text-2xs text-navy-300">Tenant #{tenantId}</span>
-        </div>
+        <h1 className="text-lg font-semibold text-navy-900">Flow Builder</h1>
         <div className="flex items-center gap-3">
           <button
             onClick={handleStartWizard}
@@ -221,9 +218,6 @@ export function FlowListPage() {
             className={btnPrimary}
           >
             + Yeni Flow
-          </button>
-          <button onClick={logout} className={btnGhost}>
-            Cikis
           </button>
         </div>
       </header>

@@ -128,7 +128,7 @@ function BaseNodeComponent({
                     className="absolute whitespace-nowrap"
                     style={{
                       left: `${offset}%`,
-                      bottom: '4px',
+                      bottom: '12px',
                       transform: 'translateX(-50%)',
                     }}
                   >

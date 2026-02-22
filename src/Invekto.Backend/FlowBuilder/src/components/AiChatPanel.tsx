@@ -11,6 +11,14 @@ const MAX_WIDTH = 520;
 const DEFAULT_WIDTH = 320;
 const STORAGE_KEY = 'invekto_ai_chat_width';
 
+/** Strip ```options and ```flowconfig blocks from assistant text for display */
+function cleanAssistantText(text: string): string {
+  return text
+    .replace(/```options\s*\n[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*\n[\s\S]*?```/g, '')
+    .trimEnd();
+}
+
 function getStoredWidth(): number {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
@@ -235,11 +243,11 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
               <button
                 key={i}
                 onClick={() => handleOptionClick(opt)}
-                className="w-full text-left px-3 py-2 bg-white border border-purple-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group"
+                className="w-full text-left px-3 py-2.5 bg-white border border-navy-100 rounded-lg shadow-soft hover:border-brand-500 hover:shadow-focus transition-all duration-150 group"
               >
-                <div className="text-xs font-medium text-purple-700 group-hover:text-purple-800">{opt.label}</div>
+                <div className="text-xs font-medium text-navy-900 group-hover:text-brand-600">{opt.label}</div>
                 {opt.description && (
-                  <div className="text-[10px] text-navy-400 mt-0.5">{opt.description}</div>
+                  <div className="text-[10px] text-navy-400 mt-0.5 leading-relaxed">{opt.description}</div>
                 )}
               </button>
             ))}
@@ -338,7 +346,7 @@ function ChatBubble({ message }: { message: WizardMessage }) {
         </svg>
       </div>
       <div className="bg-white border border-navy-100 rounded-lg px-3 py-2 max-w-[85%] text-xs text-navy-800 whitespace-pre-wrap">
-        {renderWithNodeChips(message.content)}
+        {renderWithNodeChips(cleanAssistantText(message.content))}
         {message.flow_config_snapshot && (
           <div className="mt-1.5 pt-1.5 border-t border-navy-100 text-[10px] text-green-600 font-medium flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
