@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-21
-- **Status:** Flow Builder + Dashboard hotfixes deployed. Auto-layout, intent node crash fix, dashboard analytics decode-only JWT fallback, daily_metrics tables created.
-- **Last Task:** (1) Flow Builder auto-layout (BFS), (2) Intent node n.map crash fix, (3) Dashboard analytics 401→decode-only JWT fallback, (4) daily_metrics + daily_intent_metrics tables created in production
-- **Next Task:** WhatsApp re-test (Q telefondan), FAQ matching iyilestirme, dashboard analytics data dogrulama (MetricsAggregationService 5dk sonra doldurur)
+- **Date:** 2026-02-22
+- **Status:** AI Chat Panel ("AI ile Gelistir") feature committed. Flow editor'de herhangi bir flow uzerinde AI sohbet paneli acilabiliyor, mevcut akis AI ile gelistirilebiliyor.
+- **Last Task:** Flow Editor AI Chat Panel — 8 dosya (ClaudeWizardService edit-mode prompt, Program.cs flow_config param, AiChatPanel.tsx, ai-chat-store.ts, Toolbar AI butonu, FlowEditorPage entegrasyonu, wizard-api flowConfig param, api.ts wizard_history field)
+- **Next Task:** Backend + FlowBuilder deploy (vite build + dotnet publish + server-deploy), WhatsApp re-test, FAQ matching iyilestirme
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -86,6 +86,7 @@ src/
 | 2026-02-21 | Flow Builder auto-layout | Nodes position olmadan gelince (0,0) stack oluyordu — BFS auto-layout eklendi |
 | 2026-02-21 | Dashboard decode-only JWT fallback | inmaJwtValidator NULL ise exchange gibi decode-only Path C ile CompanyCode claim okunuyor |
 | 2026-02-21 | daily_metrics tables created | backend-metrics.sql production'da calistirildi (daily_metrics + daily_intent_metrics) |
+| 2026-02-22 | AI Chat Panel ("AI ile Gelistir") | Flow editor'de AI sohbet paneli. Mevcut wizard altyapisi reuse (edit-mode system prompt + flow_config param). Mutual exclusion with simulation. Codex iter 1, FORCE PASS (CQ1/CQ5 false positive). |
 
 ## Q Pending Operational Tasks
 

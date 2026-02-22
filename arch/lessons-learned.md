@@ -95,6 +95,8 @@
 | 2026-02-21 | Endpoint 500 "relation daily_metrics does not exist" — feature deploy edildi ama DB tablosu olusturulmadi | Production'da `backend-metrics.sql` calistirildi | **Feature deploy = DB migration BIRLIKTE. Endpoint kodu deploy etmeden ONCE gerekli tablolarin varligini dogrula** |
 | 2026-02-21 | Flow Builder nodes (0,0) uzerinde yigildi — DB'deki flow_config node'larinda position alani yok | `needsAutoLayout()` + BFS `autoLayoutNodes()` eklendi | **DB'den gelen node verisi position icermeyebilir — loadFlow'da auto-layout fallback ZORUNLU** |
 | 2026-02-21 | Intent node `n.map is not a function` — intents DB'de JSON string olarak sakli, array degil | Defensive parsing: `typeof === 'string' ? JSON.parse : direct` | **DB'den gelen JSONB icindeki nested array'ler string olabilir — HER ZAMAN type check + parse fallback** |
+| 2026-02-22 | Codex CQ1/CQ5: Frontend store'da INV-XX-NNN error code yok diye FAIL — mevcut wizard-store.ts ayni pattern kullanıyor (user-friendly mesaj, error code yok) | Q FORCE PASS (iter 1) — false positive | **Frontend Zustand store'larda user-facing error mesajlari INV error code GEREKTIRMEZ — error code backend ErrorResponse pattern'i, frontend icin false positive** |
+| 2026-02-22 | Mevcut wizard SSE altyapisi edit-mode icin yeniden kullanildi — yeni endpoint GEREKMEDI, sadece opsiyonel `flow_config` body parametresi eklendi | streamMessage'a optional param, backend'de BuildSystemPrompt dallanmasi | **Yeni feature icin ONCE mevcut altyapiyi incele — wizard endpoint zaten wizard_status kontrolu YAPMIYOR, her flow icin calisiyor** |
 
 ### Deploy & Config
 
