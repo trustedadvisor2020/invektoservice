@@ -295,6 +295,9 @@
 | Impersonation banner fixed + pt-10 | Layout.tsx | Fixed banner sidebar sticky'yi bozmaz, pt-10 icerik kaymasi onler |
 | opsOnly filter tenant_id=0 bypass | Layout.tsx sidebar | SuperAdmin (tenant_id=0) opsOnly sayfalari gorebilir, impersonate (tenant_id≠0) goremez |
 | Token + response null check | API calls | Auth yoksa sessiz cik, crash olmaz |
+| Task agent ile paralel mass-replace | Stripe palette migration (40+ dosya) | Ana context korunur, dosya okuma/edit paralel isler, context bloat onlenir |
+| Final grep dogrulama | Mass CSS class replacement | replace_all sonrasi kalan referanslari yakalar — ozellikle inline hex (#94a3b8) vs Tailwind class (slate-300) ayri pattern gerektirir |
+| Style guide + kod tandem guncelleme | INSE-STYLE-GUIDE.md + Dashboard/FlowBuilder | Kod degistirip guide guncellenmezse drift olusur — her palette degisikliginde IKISI BIRDEN guncelle |
 
 ### Concurrency & Performance
 
