@@ -31,6 +31,18 @@ export default {
           800: '#0D1F30',
           900: '#0A2540',
         },
+        canvas: {
+          bg: '#1a1a2e',
+          grid: '#252542',
+        },
+        node: {
+          trigger: '#10b981',
+          message: '#635BFF',
+          logic: '#f59e0b',
+          ai: '#8b5cf6',
+          action: '#ef4444',
+          utility: '#6b7280',
+        },
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

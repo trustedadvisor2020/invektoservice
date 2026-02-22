@@ -45,7 +45,7 @@ interface NavItem {
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard },
-  { path: '/flow-builder-ui', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
+  { path: '/flow-builder', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
   { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
   { path: '/campaigns',       label: 'Kampanyalar',      icon: Megaphone,    feature: 'Outbound' },
   { path: '/appointments',    label: 'Randevular',       icon: CalendarDays, feature: 'Appointments' },
@@ -61,7 +61,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { logout, session } = useAuth();
-  const isFullscreen = location.pathname === '/flow-builder-ui';
+  const isFullscreen = location.pathname.startsWith('/flow-builder');
   const isImpersonating = session && api.isImpersonating();
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
@@ -89,7 +89,7 @@ export function Layout({ children }: LayoutProps) {
 
   const exitImpersonation = () => {
     api.removeTokens();
-    window.location.href = '/';
+    window.location.href = '/app/';
   };
 
   // Ops mode (no session): sadece opsOnly + Ayarlar gorunur (Firmalar, Mesajlar, Loglar, Ayarlar).
@@ -141,7 +141,7 @@ export function Layout({ children }: LayoutProps) {
               </button>
             ) : (
               <>
-                <img src="/logo.png" alt="" className="w-7 h-7 flex-shrink-0 rounded-lg ml-2" />
+                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="w-7 h-7 flex-shrink-0 rounded-lg ml-2" />
                 <div className="min-w-0 ml-2 flex-1">
                   <InvektoLogo size="sm" className="block leading-tight" />
                   {session?.companyCode && (
@@ -158,7 +158,7 @@ export function Layout({ children }: LayoutProps) {
           <nav className={cn('flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden', collapsed ? 'px-1.5' : 'px-2')}>
             {navItems.map(item => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
               return (
                 <Link
                   key={item.path}

@@ -395,6 +395,111 @@ const TOKEN_KEYS = {
   REFRESH_TOKEN: 'refresh_token',
 } as const;
 
+// FlowBuilder API types
+export interface ApiError {
+  error_code: string;
+  message: string;
+  request_id?: string;
+}
+
+export class ApiClientError extends Error {
+  constructor(
+    public status: number,
+    public errorCode: string,
+    message: string,
+    public requestId?: string,
+  ) {
+    super(message);
+    this.name = 'ApiClientError';
+  }
+}
+
+export interface AssignedInstance {
+  instanceId: string;
+  instanceName: string;
+  instanceType: number;
+}
+
+export interface FlowSummary {
+  flow_id: number;
+  flow_name: string;
+  flow_description: string | null;
+  is_active: boolean;
+  is_default: boolean;
+  config_version: number;
+  node_count: number;
+  edge_count: number;
+  created_at: string;
+  updated_at: string;
+  health_score: number | null;
+  health_issues: string[] | null;
+  assigned_instances: AssignedInstance[];
+}
+
+export interface FlowDetail {
+  flow_id: number;
+  tenant_id: number;
+  flow_name: string;
+  flow_config: unknown;
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+  wizard_history?: unknown[] | null;
+  wizard_status?: 'drafting' | 'completed' | null;
+}
+
+export interface FbAvailableInstance {
+  instanceId: string;
+  instanceName: string;
+  instanceType: number;
+  account: string | null;
+}
+
+export interface FbWorkingHoursInfo {
+  configured: boolean;
+  start?: string;
+  end?: string;
+  timezone?: string;
+  days_off?: string[];
+}
+
+export interface FbValidationResult {
+  is_valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface SimulationMessage {
+  role: 'bot' | 'user' | 'system';
+  text: string;
+}
+
+export interface SimulationPendingInput {
+  type: 'menu' | 'text';
+  options?: string[];
+}
+
+export interface SimulationStartResponse {
+  session_id: string;
+  messages: SimulationMessage[];
+  current_node_id: string;
+  variables: Record<string, string>;
+  execution_path: string[];
+  status: string;
+  pending_input: SimulationPendingInput | null;
+}
+
+export interface SimulationStepResponse {
+  messages: SimulationMessage[];
+  current_node_id: string;
+  variables: Record<string, string>;
+  execution_path: string[];
+  status: string;
+  is_terminal: boolean;
+  pending_input: SimulationPendingInput | null;
+}
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
@@ -434,24 +539,12 @@ class OpsApiClient {
     if (refreshToken) {
       localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, refreshToken);
     }
-    // Sync FlowBuilder iframe session (same origin, shared localStorage)
-    const session = this.getSession();
-    if (session) {
-      localStorage.setItem('fb_session', JSON.stringify({
-        token: accessToken,
-        tenant_id: session.tenantId,
-        expires_at: session.expiresAt,
-      }));
-    }
   }
 
   removeTokens(): void {
     localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN);
     localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN);
-    localStorage.removeItem('fb_session');
-    // Clean up legacy sessionStorage keys
     sessionStorage.removeItem('inse_session');
-    sessionStorage.removeItem('fb_session');
   }
 
   // --- JWT decode ---
@@ -558,7 +651,7 @@ class OpsApiClient {
   // --- INMA token exchange for FlowBuilder ---
 
   /**
-   * Exchanges raw INMA JWT for an INSE JWT and updates fb_session.
+   * Exchanges raw INMA JWT for an INSE JWT and replaces the primary token.
    * FlowBuilder backend validates with INSE JwtValidator, so INMA JWTs fail 401.
    * This method is fire-and-forget — called after URL token SSO flow.
    */
@@ -584,14 +677,11 @@ class OpsApiClient {
 
       const data: InmaAuthResponse = await response.json();
 
-      // Update fb_session with INSE JWT (FlowBuilder can validate this)
-      localStorage.setItem('fb_session', JSON.stringify({
-        token: data.token,
-        tenant_id: data.tenant_id,
-        expires_at: Date.now() + data.expires_in * 1000,
-      }));
+      // Replace primary token with INSE JWT so all API calls (including
+      // FlowBuilder endpoints protected by JwtAuthMiddleware) work correctly.
+      this.storeTokens(data.token, data.refresh_token ?? '');
     } catch (err) {
-      console.warn('[api] INMA token exchange for FlowBuilder failed:', err);
+      console.warn('[api] INMA token exchange failed:', err);
     }
   }
 
@@ -761,9 +851,18 @@ class OpsApiClient {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || `HTTP ${response.status}`);
+      let errBody: { error_code?: string; message?: string; request_id?: string } | null = null;
+      try { errBody = await response.json(); } catch (_e) { /* non-JSON error body */ }
+      throw new ApiClientError(
+        response.status,
+        errBody?.error_code ?? 'UNKNOWN',
+        errBody?.message ?? `HTTP ${response.status}`,
+        errBody?.request_id,
+      );
     }
+
+    // 204 No Content (e.g. DELETE operations)
+    if (response.status === 204) return undefined as T;
 
     return response.json();
   }
@@ -1075,6 +1174,71 @@ class OpsApiClient {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  // --- FlowBuilder API methods ---
+
+  async listFlows(tenantId: number): Promise<FlowSummary[]> {
+    return this.request<FlowSummary[]>(`/api/v1/flow-builder/flows/${tenantId}`);
+  }
+
+  async getFlow(tenantId: number, flowId: number): Promise<FlowDetail> {
+    return this.request<FlowDetail>(`/api/v1/flow-builder/flows/${tenantId}/${flowId}`);
+  }
+
+  async createFlow(tenantId: number, body: { flow_name: string; flow_config: unknown }): Promise<FlowDetail> {
+    return this.request<FlowDetail>(`/api/v1/flow-builder/flows/${tenantId}`, {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  }
+
+  async updateFlow(tenantId: number, flowId: number, body: { flow_name?: string; flow_config?: unknown }): Promise<FlowDetail> {
+    return this.request<FlowDetail>(`/api/v1/flow-builder/flows/${tenantId}/${flowId}`, {
+      method: 'PUT', body: JSON.stringify(body),
+    });
+  }
+
+  async deleteFlow(tenantId: number, flowId: number): Promise<void> {
+    return this.request<void>(`/api/v1/flow-builder/flows/${tenantId}/${flowId}`, { method: 'DELETE' });
+  }
+
+  async activateFlow(tenantId: number, flowId: number): Promise<void> {
+    return this.request<void>(`/api/v1/flow-builder/flows/${tenantId}/${flowId}/activate`, { method: 'POST' });
+  }
+
+  async deactivateFlow(tenantId: number, flowId: number): Promise<void> {
+    return this.request<void>(`/api/v1/flow-builder/flows/${tenantId}/${flowId}/deactivate`, { method: 'POST' });
+  }
+
+  async validateFlow(flowConfig: unknown): Promise<FbValidationResult> {
+    return this.request<FbValidationResult>('/api/v1/flow-builder/flows/validate', {
+      method: 'POST', body: JSON.stringify({ flow_config: flowConfig }),
+    });
+  }
+
+  async simulationStart(tenantId: number, flowId: number): Promise<SimulationStartResponse> {
+    return this.request<SimulationStartResponse>('/api/v1/flow-builder/simulation/start', {
+      method: 'POST', body: JSON.stringify({ tenant_id: tenantId, flow_id: flowId }),
+    });
+  }
+
+  async simulationStep(sessionId: string, message: string): Promise<SimulationStepResponse> {
+    return this.request<SimulationStepResponse>('/api/v1/flow-builder/simulation/step', {
+      method: 'POST', body: JSON.stringify({ session_id: sessionId, message }),
+    });
+  }
+
+  async simulationCleanup(sessionId: string): Promise<void> {
+    return this.request<void>(`/api/v1/flow-builder/simulation/${sessionId}`, { method: 'DELETE' });
+  }
+
+  async getFlowBuilderInstances(flowId?: number): Promise<{ instances: FbAvailableInstance[] }> {
+    const params = flowId ? `?flow_id=${flowId}` : '';
+    return this.request<{ instances: FbAvailableInstance[] }>(`/api/v1/flow-builder/instances/available${params}`);
+  }
+
+  async getFlowBuilderWorkingHours(): Promise<FbWorkingHoursInfo> {
+    return this.request<FbWorkingHoursInfo>('/api/v1/flow-builder/tenant/working-hours');
   }
 }
 

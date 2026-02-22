@@ -57,7 +57,7 @@ interface FeatureCardDef {
 }
 
 const FEATURE_CARDS: FeatureCardDef[] = [
-  { feature: 'FlowBuilder', path: '/flow-builder-ui', label: 'Flow Builder', desc: 'Akis tasarimi', icon: GitBranch, color: 'text-brand-500', bgColor: 'bg-brand-50' },
+  { feature: 'FlowBuilder', path: '/flow-builder', label: 'Flow Builder', desc: 'Akis tasarimi', icon: GitBranch, color: 'text-brand-500', bgColor: 'bg-brand-50' },
   { feature: 'Knowledge', path: '/knowledge', label: 'Bilgi Bankasi', desc: 'Dokuman ve SSS', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   { feature: 'Outbound', path: '/campaigns', label: 'Kampanyalar', desc: 'Toplu mesaj gonderin', icon: Megaphone, color: 'text-violet-600', bgColor: 'bg-violet-50' },
   { feature: 'Appointments', path: '/appointments', label: 'Randevular', desc: 'Randevu yonetimi', icon: CalendarDays, color: 'text-amber-600', bgColor: 'bg-amber-50' },

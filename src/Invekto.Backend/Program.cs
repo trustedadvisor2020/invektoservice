@@ -5260,11 +5260,11 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
 // SPA FALLBACK ROUTES
 // ============================================
 
-// Flow Builder SPA fallback: /flow-builder/* -> wwwroot/flow-builder/index.html
-app.MapFallbackToFile("flow-builder/{*path:nonfile}", "flow-builder/index.html");
+// Unified SPA fallback: /app/* -> wwwroot/app/index.html
+app.MapFallbackToFile("app/{*path:nonfile}", "app/index.html");
 
-// Dashboard SPA fallback - serve index.html for non-API routes (Dashboard routing)
-app.MapFallbackToFile("index.html");
+// Root redirect -> /app/
+app.MapGet("/", () => Results.Redirect("/app/"));
 
 logger.SystemInfo($"Backend starting on port {ServiceConstants.BackendPort}");
 app.Run();

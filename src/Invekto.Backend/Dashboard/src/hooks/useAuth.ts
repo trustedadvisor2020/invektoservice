@@ -32,7 +32,7 @@ export function useAuth() {
     if (!urlTokenHandled) return;
 
     if (session) {
-      // Exchange INMA JWT for INSE JWT so FlowBuilder backend can validate fb_session
+      // Exchange INMA JWT for INSE JWT so FlowBuilder endpoints can validate token
       api.exchangeInmaToken();
 
       api.getWelcome()
