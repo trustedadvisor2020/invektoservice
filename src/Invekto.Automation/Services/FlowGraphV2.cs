@@ -294,6 +294,25 @@ public sealed class SessionStateV2
     public Dictionary<string, int> LoopCounters { get; set; } = new();
     public PendingInputState? PendingInput { get; set; }
     public string Status { get; set; } = "active"; // active, completed, error, handed_off
+
+    /// <summary>Sub-flow call stack. Empty = executing root flow.</summary>
+    public List<FlowCallFrame> CallStack { get; set; } = new();
+    /// <summary>Currently executing flow ID. Null = root flow (loaded by instance/tenant routing).</summary>
+    public int? ActiveFlowId { get; set; }
+}
+
+/// <summary>
+/// Saved parent flow context when entering a sub-flow.
+/// Pushed to CallStack on sub-flow entry, popped on sub-flow completion.
+/// </summary>
+public sealed class FlowCallFrame
+{
+    public required int FlowId { get; init; }
+    public required string ReturnNodeId { get; init; }
+    public required Dictionary<string, string> Variables { get; init; }
+    public required List<string> ExecutionPath { get; init; }
+    public required Dictionary<string, int> LoopCounters { get; init; }
+    public Dictionary<string, string>? OutputMap { get; init; }
 }
 
 public sealed class PendingInputState

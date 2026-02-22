@@ -41,7 +41,8 @@ public sealed class FlowValidator
         ["ai_sentiment"] = new[] { "label" },
         ["webhook_trigger"] = new[] { "label" },
         ["outbound_trigger"] = new[] { "label" },
-        ["schedule_trigger"] = new[] { "label", "cron_expression" }
+        ["schedule_trigger"] = new[] { "label", "cron_expression" },
+        ["action_call_flow"] = new[] { "label", "flow_id" }
     };
 
     /// <summary>
@@ -260,6 +261,20 @@ public sealed class FlowValidator
                 {
                     var handleLabel = handle == "success" ? "Basarili" : "Hata";
                     warnings.Add($"API dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
+                }
+            }
+        }
+
+        // 11b. action_call_flow handle consistency (completed / error)
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "action_call_flow"))
+        {
+            foreach (var handle in new[] { "completed", "error" })
+            {
+                var edges = graph.GetOutgoingEdges(node.Id, handle);
+                if (edges.Count == 0)
+                {
+                    var handleLabel = handle == "completed" ? "Tamamlandi" : "Hata";
+                    warnings.Add($"Alt flow dali '{handleLabel}' ({handle}) baglantisiz — node '{node.GetData("label", node.Id)}' ({node.Id})");
                 }
             }
         }

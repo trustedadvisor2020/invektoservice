@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { FlowConfigV2 } from '../types/flow';
-import type { WizardMessage } from '../types/wizard';
+import type { WizardMessage, WizardOption } from '../types/wizard';
 import { streamMessage, getWizardState } from '../lib/wizard-api';
 
 interface AiChatStore {
@@ -11,6 +11,7 @@ interface AiChatStore {
   isStreaming: boolean;
   streamingText: string;
   pendingFlowConfig: FlowConfigV2 | null;
+  pendingOptions: WizardOption[] | null;
   error: string | null;
 
   open: (flowId: number, tenantId: number) => Promise<void>;
@@ -29,6 +30,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
   isStreaming: false,
   streamingText: '',
   pendingFlowConfig: null,
+  pendingOptions: null,
   error: null,
 
   open: async (flowId: number, tenantId: number) => {
@@ -39,7 +41,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
       return;
     }
 
-    set({ isOpen: true, flowId, tenantId, messages: [], error: null, pendingFlowConfig: null });
+    set({ isOpen: true, flowId, tenantId, messages: [], error: null, pendingFlowConfig: null, pendingOptions: null });
 
     // Load existing wizard_history if any
     try {
@@ -78,6 +80,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
       messages: [...messages, userMsg],
       isStreaming: true,
       streamingText: '',
+      pendingOptions: null,
       error: null,
     });
 
@@ -96,6 +99,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
             content: fullText || event.content || '',
             timestamp: new Date().toISOString(),
             flow_config_snapshot: event.flow_config,
+            options: event.options,
           };
 
           set(state => ({
@@ -103,6 +107,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
             isStreaming: false,
             streamingText: '',
             pendingFlowConfig: event.flow_config || state.pendingFlowConfig,
+            pendingOptions: event.options ?? null,
           }));
         }
       }
@@ -126,6 +131,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     isStreaming: false,
     streamingText: '',
     pendingFlowConfig: null,
+    pendingOptions: null,
     error: null,
   }),
 }));

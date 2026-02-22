@@ -13,6 +13,8 @@ export interface SimulationState {
   isOpen: boolean;
   isLoading: boolean;
   sessionId: string | null;
+  tenantId: number | null;
+  flowId: number | null;
   messages: SimulationMessage[];
   currentNodeId: string | null;
   variables: Record<string, string>;
@@ -26,13 +28,15 @@ export interface SimulationState {
   close: () => void;
   start: (tenantId: number, flowId: number) => Promise<void>;
   sendMessage: (message: string) => Promise<void>;
-  reset: () => void;
+  reset: () => Promise<void>;
 }
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   isOpen: false,
   isLoading: false,
   sessionId: null,
+  tenantId: null,
+  flowId: null,
   messages: [],
   currentNodeId: null,
   variables: {},
@@ -66,7 +70,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   start: async (tenantId, flowId) => {
-    set({ isLoading: true, error: null, messages: [] });
+    set({ isLoading: true, error: null, messages: [], tenantId, flowId });
 
     try {
       const res = await simulationStart(tenantId, flowId);
@@ -117,8 +121,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     }
   },
 
-  reset: () => {
-    const { sessionId } = get();
+  reset: async () => {
+    const { sessionId, tenantId, flowId } = get();
     if (sessionId) {
       simulationCleanup(sessionId).catch((err) => {
         console.warn('[SimulationStore] reset cleanup failed (session will expire via TTL):', err);
@@ -135,5 +139,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       error: null,
       isLoading: false,
     });
+    // Restart with saved tenantId/flowId
+    if (tenantId && flowId) {
+      await get().start(tenantId, flowId);
+    }
   },
 }));

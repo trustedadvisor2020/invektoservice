@@ -123,6 +123,14 @@ const NODE_ICONS: Record<FlowNodeType, (color: string) => ReactNode> = {
       <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
+  action_call_flow: (c) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="2" y="3" width="8" height="8" rx="1.5" />
+      <rect x="14" y="13" width="8" height="8" rx="1.5" />
+      <path d="M10 7h4v6h-4" />
+      <path d="M14 17h-4v-6h4" />
+    </svg>
+  ),
 
   // Utility
   utility_note: (c) => (

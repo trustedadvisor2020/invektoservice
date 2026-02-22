@@ -55,7 +55,8 @@ export type FlowNodeType =
   | 'action_api_call'
   | 'action_delay'
   | 'utility_set_variable'
-  | 'utility_note';
+  | 'utility_note'
+  | 'action_call_flow';
 
 // Union type for all node data shapes
 export type NodeData =
@@ -74,7 +75,8 @@ export type NodeData =
   | ActionApiCallData
   | ActionDelayData
   | UtilitySetVariableData
-  | UtilityNoteData;
+  | UtilityNoteData
+  | ActionCallFlowData;
 
 /** Base interface with index signature for React Flow compatibility */
 interface BaseNodeData {
@@ -182,6 +184,13 @@ export interface UtilityNoteData extends BaseNodeData {
   label: string;
   text: string;
   color?: string;
+}
+
+export interface ActionCallFlowData extends BaseNodeData {
+  label: string;
+  flow_id: string;
+  input_map: string; // JSON: { "parent_var": "child_var" }
+  output_map: string; // JSON: { "child_var": "parent_var" }
 }
 
 // -- Node Category Metadata --
@@ -325,6 +334,14 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     description: 'N saniye bekle',
     color: '#ef4444',
     defaultData: { label: 'Bekle', seconds: 5 } as ActionDelayData,
+  },
+  {
+    type: 'action_call_flow',
+    category: 'action',
+    label: 'Alt Flow',
+    description: 'Baska bir flow cagir ve tamamlanmasini bekle',
+    color: '#ef4444',
+    defaultData: { label: 'Alt Flow', flow_id: '', input_map: '{}', output_map: '{}' } as ActionCallFlowData,
   },
   {
     type: 'utility_set_variable',

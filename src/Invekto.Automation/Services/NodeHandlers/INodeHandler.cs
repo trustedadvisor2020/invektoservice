@@ -77,7 +77,9 @@ public enum NodeAction
     /// <summary>Pause execution, wait for user input (menu selection, text).</summary>
     WaitForInput,
     /// <summary>End session (handoff, error, or explicit end).</summary>
-    Terminal
+    Terminal,
+    /// <summary>Call a sub-flow. Engine returns to orchestrator for dispatch.</summary>
+    CallSubFlow
 }
 
 /// <summary>

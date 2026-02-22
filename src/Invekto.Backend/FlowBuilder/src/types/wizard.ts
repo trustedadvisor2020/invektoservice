@@ -5,6 +5,12 @@ export interface WizardMessage {
   content: string;
   timestamp: string;
   flow_config_snapshot?: FlowConfigV2;
+  options?: WizardOption[];
+}
+
+export interface WizardOption {
+  label: string;
+  description?: string;
 }
 
 export interface WizardStreamEvent {
@@ -12,6 +18,7 @@ export interface WizardStreamEvent {
   content?: string;
   flow_config?: FlowConfigV2;
   prerequisites?: FlowPrerequisite[];
+  options?: WizardOption[];
 }
 
 export interface FlowPrerequisite {

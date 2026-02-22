@@ -161,17 +161,22 @@ public sealed class ClaudeWizardService
             yield break;
         }
 
-        // Check if the full response contains a flow config
+        // Check if the full response contains a flow config and/or options
         var fullResponse = fullText.ToString();
         var flowConfig = ExtractFlowConfig(fullResponse);
         var prerequisites = flowConfig != null ? ExtractPrerequisites(flowConfig) : null;
+        var options = ExtractOptions(fullResponse);
+
+        // Strip options block from content so user sees clean text
+        var cleanContent = options != null ? StripOptionsBlock(fullResponse) : fullResponse;
 
         yield return new WizardStreamChunk
         {
             Type = "done",
-            Content = fullResponse,
+            Content = cleanContent,
             FlowConfig = flowConfig,
-            Prerequisites = prerequisites
+            Prerequisites = prerequisites,
+            Options = options
         };
     }
 
@@ -286,6 +291,39 @@ public sealed class ClaudeWizardService
         }
     }
 
+    /// <summary>
+    /// Extract structured options from ```options JSON blocks in the response.
+    /// Returns null if no options block is found.
+    /// </summary>
+    public List<WizardOption>? ExtractOptions(string response)
+    {
+        var match = Regex.Match(response, @"```options\s*\n([\s\S]*?)```", RegexOptions.Multiline);
+        if (!match.Success) return null;
+
+        var json = match.Groups[1].Value.Trim();
+        try
+        {
+            var options = JsonSerializer.Deserialize<List<WizardOption>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            return options is { Count: > 0 } ? options : null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogDebug("ExtractOptions: invalid JSON in options block: {Error}", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Strip ```options blocks from the text so the user sees clean prose.
+    /// </summary>
+    private static string StripOptionsBlock(string text)
+    {
+        return Regex.Replace(text, @"```options\s*\n[\s\S]*?```", "", RegexOptions.Multiline).TrimEnd();
+    }
+
     private static string BuildSystemPrompt(List<FlowSummaryContext>? existingFlows, string? currentFlowConfig = null)
     {
         var sb = new StringBuilder();
@@ -330,6 +368,22 @@ public sealed class ClaudeWizardService
         sb.AppendLine("Kullanici onayi alindiktan sonra once failure-path analizi yap: kosullarin false dali, intent algilanamama durumu, beklenmeyen girdi. Eksik path varsa kullaniciya sor.");
         sb.AppendLine("Tum path'ler kapandiktan sonra ```flowconfig blogu icinde gecerli FlowConfigV2 JSON uret.");
         sb.AppendLine("</rules>");
+        sb.AppendLine();
+
+        // Structured options (AskUserQuestion-like UX)
+        sb.AppendLine("<options_format>");
+        sb.AppendLine("Kullaniciya soru sorarken HER ZAMAN secenekler sun. Serbest metin cevap BEKLEME.");
+        sb.AppendLine("Soruyu normal metin olarak yaz, ardindan ```options blogu icinde JSON dizisi olarak secenekleri belirt.");
+        sb.AppendLine("Her secenek { \"label\": \"Kisa baslik\", \"description\": \"Aciklama\" } formatinda olmali.");
+        sb.AppendLine("2-4 secenek sun. description opsiyonel ama tavsiye edilir.");
+        sb.AppendLine("Ornek:");
+        sb.AppendLine("Siparis numarasini nasil alayim?");
+        sb.AppendLine("```options");
+        sb.AppendLine("[{\"label\":\"Telefon numarasindan otomatik\",\"description\":\"Musteri telefon numarasiyla otomatik eslestirilir\"},{\"label\":\"Kullanici kendisi yazacak\",\"description\":\"Musteriden siparis numarasini girmesini isteriz\"}]");
+        sb.AppendLine("```");
+        sb.AppendLine("Kullanici bir secenek tikladiginda, o secenegin label'i mesaj olarak gelir. Ona gore devam et.");
+        sb.AppendLine("ONEMLI: Soru sordugun HER yerde options blogu ZORUNLU. Seceneksiz soru SORMA.");
+        sb.AppendLine("</options_format>");
         sb.AppendLine();
 
         // Node registry (compact)
@@ -397,6 +451,13 @@ public sealed class WizardStreamChunk
     public string Content { get; set; } = "";
     public string? FlowConfig { get; set; }
     public List<FlowPrerequisite>? Prerequisites { get; set; }
+    public List<WizardOption>? Options { get; set; }
+}
+
+public sealed class WizardOption
+{
+    public string Label { get; set; } = "";
+    public string? Description { get; set; }
 }
 
 public sealed class FlowSummaryContext

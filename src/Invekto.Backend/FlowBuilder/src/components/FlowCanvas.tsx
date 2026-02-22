@@ -147,7 +147,33 @@ export function FlowCanvas() {
           showInteractive={false}
           position="bottom-right"
         />
+        <AutoLayoutButton />
       </ReactFlow>
+    </div>
+  );
+}
+
+function AutoLayoutButton() {
+  const applyAutoLayout = useFlowStore((s) => s.applyAutoLayout);
+  const nodeCount = useFlowStore((s) => s.nodes.length);
+
+  if (nodeCount <= 1) return null;
+
+  return (
+    <div className="absolute bottom-[120px] right-2 z-10">
+      <button
+        onClick={applyAutoLayout}
+        className="p-2 bg-white border border-navy-200 rounded-lg shadow-sm hover:bg-navy-50 transition-colors text-navy-500"
+        title="Otomatik Yerlesim (Ctrl+Z ile geri alinabilir)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="8" y="14" width="7" height="7" rx="1" />
+          <line x1="6.5" y1="10" x2="6.5" y2="14" />
+          <line x1="17.5" y1="10" x2="17.5" y2="14" />
+        </svg>
+      </button>
     </div>
   );
 }

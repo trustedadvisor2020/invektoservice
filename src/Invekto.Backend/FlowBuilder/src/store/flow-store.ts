@@ -85,7 +85,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   flowSettings: { ...DEFAULT_FLOW.settings },
   wizardHistory: null,
   validationErrors: new Map(),
-  ghostPathEnabled: false,
+  ghostPathEnabled: true,
   ghostPathNodeIds: new Set(),
   ghostPathEdgeIds: new Set(),
   history: [],
@@ -96,33 +96,16 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const errors = validateGraph(state.nodes, state.edges);
     const updates: Partial<FlowState> = { validationErrors: errors };
 
-    // Recompute ghost paths if enabled
-    if (state.ghostPathEnabled) {
-      const result = enumeratePaths(state.nodes, state.edges);
-      updates.ghostPathNodeIds = result.reachableNodeIds;
-      updates.ghostPathEdgeIds = result.reachableEdgeIds;
-    }
+    // Always compute ghost paths (reachable from start)
+    const result = enumeratePaths(state.nodes, state.edges);
+    updates.ghostPathNodeIds = result.reachableNodeIds;
+    updates.ghostPathEdgeIds = result.reachableEdgeIds;
 
     set(updates);
   },
 
   toggleGhostPath: () => {
-    const state = get();
-    const newEnabled = !state.ghostPathEnabled;
-    if (newEnabled) {
-      const result = enumeratePaths(state.nodes, state.edges);
-      set({
-        ghostPathEnabled: true,
-        ghostPathNodeIds: result.reachableNodeIds,
-        ghostPathEdgeIds: result.reachableEdgeIds,
-      });
-    } else {
-      set({
-        ghostPathEnabled: false,
-        ghostPathNodeIds: new Set(),
-        ghostPathEdgeIds: new Set(),
-      });
-    }
+    // Ghost path is always enabled — no-op
   },
 
   onNodesChange: (changes) => {

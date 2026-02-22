@@ -264,7 +264,7 @@ export function FlowListPage() {
                 className="bg-white border border-navy-100 rounded-xl px-5 py-4 flex items-center justify-between hover:border-navy-200 hover:shadow-elevated transition-all cursor-pointer select-none"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-medium text-navy-900 truncate">{flow.flow_name}</span>
                     {flow.is_active && (
                       <span className="px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
@@ -275,6 +275,9 @@ export function FlowListPage() {
                       <HealthBadge score={flow.health_score} issues={flow.health_issues} />
                     )}
                   </div>
+                  {flow.flow_description && (
+                    <p className="text-xs text-navy-400 truncate mb-1">{flow.flow_description}</p>
+                  )}
                   <div className="flex items-center gap-4 text-xs text-navy-300">
                     <span>v{flow.config_version}</span>
                     <span>{flow.node_count} node / {flow.edge_count} edge</span>

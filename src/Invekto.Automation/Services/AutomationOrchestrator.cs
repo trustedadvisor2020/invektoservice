@@ -85,14 +85,16 @@ public sealed class AutomationOrchestrator
             JsonDocument? flowDoc;
             bool isActive;
 
+            int rootFlowId = 0;
             var resolvedInstanceId = instanceId ?? string.Empty;
             var hasInstanceConfig = resolvedInstanceId.Length > 0 && await _repo.HasInstanceRecordsAsync(tenantId, ct);
             if (hasInstanceConfig)
             {
                 // Multi-flow routing: get flow assigned to this instance
-                var (instFlowDoc, instIsActive, _) = await _repo.GetFlowByInstanceAsync(tenantId, resolvedInstanceId, ct);
+                var (instFlowDoc, instIsActive, instFlowId) = await _repo.GetFlowByInstanceAsync(tenantId, resolvedInstanceId, ct);
                 flowDoc = instFlowDoc;
                 isActive = instIsActive;
+                rootFlowId = instFlowId;
 
                 if (flowDoc == null || !isActive)
                 {
@@ -105,7 +107,10 @@ public sealed class AutomationOrchestrator
             else
             {
                 // Legacy: single-flow routing (first active flow)
-                (flowDoc, isActive) = await _repo.GetFlowAsync(tenantId, ct);
+                var (legacyDoc, legacyActive, legacyFlowId) = await _repo.GetFlowAsync(tenantId, ct);
+                flowDoc = legacyDoc;
+                isActive = legacyActive;
+                rootFlowId = legacyFlowId;
             }
 
             if (flowDoc == null || !isActive)
@@ -130,7 +135,7 @@ public sealed class AutomationOrchestrator
                 {
                     // v2 path: pure engine + orchestrator side-effects
                     return await ProcessV2MessageAsync(
-                        flowDoc, tenantId, chatId, phone, messageText,
+                        flowDoc, rootFlowId, tenantId, chatId, phone, messageText,
                         message.Time, requestId, callbackUrl, sw, ct);
                 }
             }
@@ -256,12 +261,13 @@ public sealed class AutomationOrchestrator
     /// <summary>
     /// Process a message through the v2 pure engine + side-effect layer.
     /// FlowEngineV2 is pure (no DB/HTTP). This method handles all side-effects.
+    /// Supports sub-flow dispatch via CallStack in SessionStateV2.
     /// </summary>
     private async Task<bool> ProcessV2MessageAsync(
-        JsonDocument flowDoc, int tenantId, string chatId, string? phone, string messageText,
+        JsonDocument flowDoc, int rootFlowId, int tenantId, string chatId, string? phone, string messageText,
         long sequenceId, string requestId, string? callbackUrl, Stopwatch sw, CancellationToken ct)
     {
-        // 1. Build immutable graph
+        // 1. Build immutable graph (root flow)
         var graph = FlowGraphV2.Build(flowDoc);
         if (graph == null)
         {
@@ -291,6 +297,7 @@ public sealed class AutomationOrchestrator
         // 3. Get or create session + restore v2 state
         var session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
         SessionStateV2 state;
+        var currentFlowId = rootFlowId;
 
         if (session == null)
         {
@@ -304,9 +311,6 @@ public sealed class AutomationOrchestrator
             }
 
             state = new SessionStateV2 { CurrentNodeId = graph.TriggerStart.Id };
-            // Note: __last_input is NOT set for new sessions — the first message is a
-            // trigger/greeting, not a question. After welcome, ai_intent waits for the
-            // NEXT message (which sets __last_input via the returning-user path).
             await _repo.CreateSessionAsync(tenantId, chatId, phone, "v2_active", ct);
             session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
         }
@@ -316,14 +320,41 @@ public sealed class AutomationOrchestrator
             state = DeserializeV2State(session.SessionData);
             if (state == null)
             {
-                // Corrupted session — start fresh
                 state = new SessionStateV2
                 {
                     CurrentNodeId = graph.TriggerStart?.Id ?? ""
                 };
             }
 
-            // Set last user input for handlers to consume
+            // Sub-flow resume: if session was paused inside a sub-flow, load that flow's graph
+            if (state.ActiveFlowId.HasValue)
+            {
+                var subFlowDetail = await _repo.GetFlowByIdAsync(tenantId, state.ActiveFlowId.Value, ct);
+                if (subFlowDetail != null)
+                {
+                    var subGraph = FlowGraphV2.Build(subFlowDetail.FlowConfigJson);
+                    if (subGraph != null)
+                    {
+                        graph = subGraph;
+                        currentFlowId = state.ActiveFlowId.Value;
+                    }
+                    else
+                    {
+                        _logger.SystemWarn($"Sub-flow {state.ActiveFlowId.Value} graph build failed, resetting to root");
+                        state.CallStack.Clear();
+                        state.ActiveFlowId = null;
+                        state.CurrentNodeId = graph.TriggerStart?.Id ?? "";
+                    }
+                }
+                else
+                {
+                    _logger.SystemWarn($"Sub-flow {state.ActiveFlowId.Value} not found, resetting to root");
+                    state.CallStack.Clear();
+                    state.ActiveFlowId = null;
+                    state.CurrentNodeId = graph.TriggerStart?.Id ?? "";
+                }
+            }
+
             state.Variables["__last_input"] = messageText;
         }
 
@@ -343,22 +374,207 @@ public sealed class AutomationOrchestrator
             _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment failed for tenant {tenantId}: {ex.Message}");
         }
 
-        // 4b. Execute pure engine (with streaming: each message sent to WhatsApp immediately)
+        // 4b. Execute pure engine (with streaming) + sub-flow dispatch loop
         var streamed = false;
+        Action<string> onMessage = msg =>
+        {
+            streamed = true;
+            _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                CallbackActions.SendMessage, msg, null, null, 0, callbackUrl, CancellationToken.None)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        _logger.SystemWarn($"Stream callback failed: {t.Exception?.InnerException?.Message}");
+                }, TaskScheduler.Default);
+        };
+
         var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
             tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-            onMessage: msg =>
+            onMessage: onMessage);
+
+        // Sub-flow dispatch loop: handle CallSubFlow and sub-flow completion
+        const int maxSubFlowDepth = 5;
+        var subFlowLoopGuard = 0;
+        const int maxSubFlowLoopIterations = 20; // prevent runaway loops (depth * 2 round-trips)
+
+        while (subFlowLoopGuard++ < maxSubFlowLoopIterations)
+        {
+            // Case 1: Engine requests a sub-flow call
+            if (result.SubFlowRequest != null)
             {
-                streamed = true;
-                // Fire-and-forget: send each message to WhatsApp immediately, don't wait for WapCRM response
-                _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                    CallbackActions.SendMessage, msg, null, null, 0, callbackUrl, CancellationToken.None)
-                    .ContinueWith(t =>
+                if (state.CallStack.Count >= maxSubFlowDepth)
+                {
+                    _logger.SystemWarn($"Sub-flow call depth exceeded {maxSubFlowDepth} at node {result.SubFlowRequest.NodeId}");
+                    state.Status = "error";
+                    result = new EngineStepResult
                     {
-                        if (t.IsFaulted)
-                            _logger.SystemWarn($"Stream callback failed: {t.Exception?.InnerException?.Message}");
-                    }, TaskScheduler.Default);
-            });
+                        Messages = result.Messages,
+                        State = state,
+                        IsTerminal = true,
+                        NeedsHandoff = true,
+                        ErrorCode = ErrorCodes.AutomationMaxLoopExceeded,
+                        ErrorMessage = "Alt akis cagri derinligi limiti asildi"
+                    };
+                    break;
+                }
+
+                var callNode = graph.NodesById[result.SubFlowRequest.NodeId];
+                var targetFlowIdStr = callNode.GetData("flow_id");
+                if (!int.TryParse(targetFlowIdStr, out var targetFlowId))
+                {
+                    _logger.SystemWarn($"Invalid flow_id '{targetFlowIdStr}' in call_flow node {result.SubFlowRequest.NodeId}");
+                    state.Variables["__sub_flow_error"] = "true";
+                    state.Variables["__sub_flow_completed"] = "true";
+                    result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
+                        tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
+                        onMessage: onMessage);
+                    continue;
+                }
+
+                // Load target sub-flow
+                var subFlowDetail = await _repo.GetFlowByIdAsync(tenantId, targetFlowId, ct);
+                if (subFlowDetail == null)
+                {
+                    _logger.SystemWarn($"Sub-flow {targetFlowId} not found for tenant {tenantId}");
+                    state.Variables["__sub_flow_error"] = "true";
+                    state.Variables["__sub_flow_completed"] = "true";
+                    result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
+                        tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
+                        onMessage: onMessage);
+                    continue;
+                }
+
+                var subGraph = FlowGraphV2.Build(subFlowDetail.FlowConfigJson);
+                if (subGraph == null || subGraph.TriggerStart == null)
+                {
+                    _logger.SystemWarn($"Sub-flow {targetFlowId} has invalid config or no trigger");
+                    state.Variables["__sub_flow_error"] = "true";
+                    state.Variables["__sub_flow_completed"] = "true";
+                    result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
+                        tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
+                        onMessage: onMessage);
+                    continue;
+                }
+
+                // Parse input/output mapping from call_flow node data
+                var inputMap = ParseVariableMap(callNode.GetData("input_map"));
+                var outputMap = ParseVariableMap(callNode.GetData("output_map"));
+
+                // Push parent context to call stack
+                state.CallStack.Add(new FlowCallFrame
+                {
+                    FlowId = currentFlowId,
+                    ReturnNodeId = result.SubFlowRequest.NodeId,
+                    Variables = new Dictionary<string, string>(state.Variables),
+                    ExecutionPath = new List<string>(state.ExecutionPath),
+                    LoopCounters = new Dictionary<string, int>(state.LoopCounters),
+                    OutputMap = outputMap
+                });
+
+                // Create sub-flow state with input mapping
+                var subFlowVars = new Dictionary<string, string>();
+                if (inputMap != null)
+                {
+                    foreach (var (parentVar, childVar) in inputMap)
+                    {
+                        if (state.Variables.TryGetValue(parentVar, out var val))
+                            subFlowVars[childVar] = val;
+                    }
+                }
+
+                state.CurrentNodeId = subGraph.TriggerStart.Id;
+                state.Variables = subFlowVars;
+                state.ExecutionPath = new List<string>();
+                state.LoopCounters = new Dictionary<string, int>();
+                state.PendingInput = null;
+                state.ActiveFlowId = targetFlowId;
+                state.Status = "active";
+
+                graph = subGraph;
+                currentFlowId = targetFlowId;
+
+                _logger.StepInfo($"Entering sub-flow {targetFlowId} (depth {state.CallStack.Count})", requestId);
+
+                result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
+                    tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
+                    onMessage: onMessage);
+                continue;
+            }
+
+            // Case 2: Sub-flow completed — pop call stack and resume parent
+            if (result.IsTerminal && state.CallStack.Count > 0 && !result.NeedsHandoff)
+            {
+                var frame = state.CallStack[^1];
+                state.CallStack.RemoveAt(state.CallStack.Count - 1);
+
+                // Restore parent variables + apply output mapping
+                var parentVars = new Dictionary<string, string>(frame.Variables);
+                if (frame.OutputMap != null)
+                {
+                    foreach (var (childVar, parentVar) in frame.OutputMap)
+                    {
+                        if (state.Variables.TryGetValue(childVar, out var val))
+                            parentVars[parentVar] = val;
+                    }
+                }
+
+                // Check if sub-flow ended with error
+                var subFlowHadError = result.ErrorCode != null;
+
+                state.Variables = parentVars;
+                state.ExecutionPath = frame.ExecutionPath;
+                state.LoopCounters = frame.LoopCounters;
+                state.CurrentNodeId = frame.ReturnNodeId;
+                state.ActiveFlowId = state.CallStack.Count > 0 ? state.CallStack[^1].FlowId : (int?)null;
+                state.PendingInput = null;
+                state.Status = "active";
+
+                if (subFlowHadError)
+                    state.Variables["__sub_flow_error"] = "true";
+                state.Variables["__sub_flow_completed"] = "true";
+
+                // Load parent flow graph
+                FlowGraphV2? parentGraph;
+                if (state.CallStack.Count == 0 && frame.FlowId == rootFlowId)
+                {
+                    // Root flow — reuse the original flowDoc
+                    parentGraph = FlowGraphV2.Build(flowDoc);
+                }
+                else
+                {
+                    var parentDetail = await _repo.GetFlowByIdAsync(tenantId, frame.FlowId, ct);
+                    parentGraph = parentDetail != null ? FlowGraphV2.Build(parentDetail.FlowConfigJson) : null;
+                }
+
+                if (parentGraph == null)
+                {
+                    _logger.SystemWarn($"Parent flow {frame.FlowId} graph build failed after sub-flow return");
+                    state.Status = "error";
+                    result = new EngineStepResult
+                    {
+                        Messages = result.Messages,
+                        State = state,
+                        IsTerminal = true,
+                        NeedsHandoff = true,
+                        ErrorMessage = "Ust akis yuklenemedi"
+                    };
+                    break;
+                }
+
+                graph = parentGraph;
+                currentFlowId = frame.FlowId;
+
+                _logger.StepInfo($"Returning to parent flow {frame.FlowId} from sub-flow (depth {state.CallStack.Count})", requestId);
+
+                result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
+                    tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
+                    onMessage: onMessage);
+                continue;
+            }
+
+            // No sub-flow action — exit loop
+            break;
+        }
 
         // 5. Side-effects: log messages (already sent via streaming, don't re-send)
         if (result.Messages.Count > 0)
@@ -366,7 +582,6 @@ public sealed class AutomationOrchestrator
             sw.Stop();
             if (!streamed)
             {
-                // Fallback: if streaming didn't fire (shouldn't happen), send combined
                 _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
                     CallbackActions.SendMessage, string.Join("\n\n", result.Messages),
                     null, null, sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
@@ -403,7 +618,6 @@ public sealed class AutomationOrchestrator
 
         if (result.IsTerminal && result.ErrorCode != null)
         {
-            // Error state: send error info + handoff (fire-and-forget)
             if (!sw.IsRunning) sw.Stop();
             _ = SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
                 result.ErrorMessage ?? "v2 engine error", sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
@@ -421,7 +635,6 @@ public sealed class AutomationOrchestrator
 
         if (result.IsTerminal)
         {
-            // Normal completion
             if (session != null)
                 await _repo.EndSessionAsync(session.Id, "completed", ct);
 
@@ -436,7 +649,6 @@ public sealed class AutomationOrchestrator
         }
 
         // 8. PKT-6A: Post-flow side-effects (fire-and-forget, non-blocking)
-        //    a) Auto-tag: if detected_intent present, send apply_tag callback
         if (result.State.Variables.TryGetValue("detected_intent", out var detectedIntent)
             && !string.IsNullOrWhiteSpace(detectedIntent) && detectedIntent != "unknown")
         {
@@ -444,13 +656,32 @@ public sealed class AutomationOrchestrator
                 detectedIntent, callbackUrl, ct);
         }
 
-        //    b) VIP/B2B detection on every user message
         if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(messageText))
         {
             _ = _vipDetection.CheckAndRecordAsync(tenantId, phone, messageText, settingsJson, CancellationToken.None);
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Parse a JSON variable map from node data. Format: {"sourceVar": "targetVar", ...}
+    /// Returns null if empty/invalid.
+    /// </summary>
+    private static Dictionary<string, string>? ParseVariableMap(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "{}")
+            return null;
+
+        try
+        {
+            var map = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            return map?.Count > 0 ? map : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private SessionStateV2? DeserializeV2State(string? sessionDataJson)

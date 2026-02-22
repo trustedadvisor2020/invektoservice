@@ -1,10 +1,26 @@
-import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from 'react';
+import { useRef, useEffect, useState, useCallback, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { useAiChatStore } from '../store/ai-chat-store';
 import { useFlowStore } from '../store/flow-store';
 import { renderWithNodeChips } from './NodeChip';
 import { cn } from '../lib/utils';
-import type { WizardMessage } from '../types/wizard';
+import type { WizardMessage, WizardOption } from '../types/wizard';
 import type { FlowConfigV2 } from '../types/flow';
+
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 520;
+const DEFAULT_WIDTH = 320;
+const STORAGE_KEY = 'invekto_ai_chat_width';
+
+function getStoredWidth(): number {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v) {
+      const n = parseInt(v, 10);
+      if (n >= MIN_WIDTH && n <= MAX_WIDTH) return n;
+    }
+  } catch {}
+  return DEFAULT_WIDTH;
+}
 
 interface AiChatPanelProps {
   onApply: (config: FlowConfigV2) => void;
@@ -16,6 +32,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const isStreaming = useAiChatStore(s => s.isStreaming);
   const streamingText = useAiChatStore(s => s.streamingText);
   const pendingFlowConfig = useAiChatStore(s => s.pendingFlowConfig);
+  const pendingOptions = useAiChatStore(s => s.pendingOptions);
   const error = useAiChatStore(s => s.error);
   const sendMessage = useAiChatStore(s => s.sendMessage);
   const close = useAiChatStore(s => s.close);
@@ -25,8 +42,44 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
 
   const [input, setInput] = useState('');
   const [showDiff, setShowDiff] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(getStoredWidth);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isDragging = useRef(false);
+  const latestWidth = useRef(panelWidth);
+
+  // Keep ref in sync
+  useEffect(() => { latestWidth.current = panelWidth; }, [panelWidth]);
+
+  // --- Resize handlers ---
+  const handleResizeStart = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const startX = e.clientX;
+    const startW = latestWidth.current;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (ev: globalThis.MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = ev.clientX - startX;
+      const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startW + delta));
+      latestWidth.current = w;
+      setPanelWidth(w);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      try { localStorage.setItem(STORAGE_KEY, String(latestWidth.current)); } catch {}
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -59,10 +112,21 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
     }
   }, [acceptChanges, onApply]);
 
+  const handleOptionClick = useCallback((option: WizardOption) => {
+    if (isStreaming) return;
+    const flowConfig = useFlowStore.getState().toFlowConfig();
+    sendMessage(option.label, flowConfig);
+  }, [isStreaming, sendMessage]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="w-[280px] flex-shrink-0 border-r border-navy-100 bg-navy-50 flex flex-col">
+    <div className="flex-shrink-0 border-r border-navy-100 bg-navy-50 flex flex-col relative" style={{ width: panelWidth }}>
+      {/* Resize handle */}
+      <div
+        onMouseDown={handleResizeStart}
+        className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-purple-300 active:bg-purple-400 transition-colors"
+      />
       {/* Header */}
       <div className="h-10 bg-purple-600 flex items-center px-3 gap-2 flex-shrink-0">
         <div className="w-6 h-6 rounded-full bg-purple-400 flex items-center justify-center">
@@ -161,6 +225,24 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
             {error}
+          </div>
+        )}
+
+        {/* Option buttons (AskUserQuestion style) */}
+        {!isStreaming && pendingOptions && pendingOptions.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            {pendingOptions.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => handleOptionClick(opt)}
+                className="w-full text-left px-3 py-2 bg-white border border-purple-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group"
+              >
+                <div className="text-xs font-medium text-purple-700 group-hover:text-purple-800">{opt.label}</div>
+                {opt.description && (
+                  <div className="text-[10px] text-navy-400 mt-0.5">{opt.description}</div>
+                )}
+              </button>
+            ))}
           </div>
         )}
       </div>

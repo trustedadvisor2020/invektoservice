@@ -129,7 +129,7 @@ export function SimulationPanel() {
           <div className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
             {messages.length === 0 && !isLoading && (
               <div className="text-xs text-navy-300 text-center mt-8">
-                Simulasyon baslatiliyor...
+                Bir mesaj gondererek simulasyonu baslatın
               </div>
             )}
 

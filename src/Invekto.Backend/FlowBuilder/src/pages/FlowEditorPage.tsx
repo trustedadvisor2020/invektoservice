@@ -26,6 +26,7 @@ export function FlowEditorPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(() => {
     try { return localStorage.getItem('invekto_flow_preview_open') !== 'false'; }
     catch { return true; }
@@ -98,11 +99,22 @@ export function FlowEditorPage() {
   const handleBack = useCallback(() => {
     const isDirty = useFlowStore.getState().isDirty;
     if (isDirty) {
-      if (!window.confirm('Kaydedilmemis degisiklikler var. Yine de cikis yapilsin mi?')) {
-        return;
-      }
+      setShowExitDialog(true);
+      return;
     }
-    // Close simulation if open
+    useSimulationStore.getState().close();
+    navigate('/');
+  }, [navigate]);
+
+  const handleExitSave = useCallback(async () => {
+    setShowExitDialog(false);
+    await handleSave();
+    useSimulationStore.getState().close();
+    navigate('/');
+  }, [handleSave, navigate]);
+
+  const handleExitDiscard = useCallback(() => {
+    setShowExitDialog(false);
     useSimulationStore.getState().close();
     navigate('/');
   }, [navigate]);
@@ -256,6 +268,41 @@ export function FlowEditorPage() {
           {/* Simulation panel (flex shrink — canvas narrows when open) */}
           <SimulationPanel />
         </div>
+
+        {/* Unsaved changes exit dialog */}
+        {showExitDialog && (
+          <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated relative">
+              <button
+                onClick={() => setShowExitDialog(false)}
+                className="absolute top-4 right-4 p-1 rounded hover:bg-navy-100 text-navy-300 hover:text-navy-600 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+              <h2 className="text-lg font-semibold text-navy-900 mb-2">Kaydedilmemis Degisiklikler</h2>
+              <p className="text-sm text-navy-400 mb-5">
+                Yaptiginiz degisiklikler henuz kaydedilmedi. Ne yapmak istersiniz?
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleExitDiscard}
+                  className="px-4 py-2 text-sm bg-navy-100 hover:bg-navy-200 text-navy-700 font-medium rounded-lg transition-colors"
+                >
+                  Kaydetme
+                </button>
+                <button
+                  onClick={handleExitSave}
+                  className="px-4 py-2 text-sm bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Kaydet ve Cik
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ReactFlowProvider>
   );

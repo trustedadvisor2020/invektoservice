@@ -121,6 +121,7 @@ export interface AssignedInstance {
 export interface FlowSummary {
   flow_id: number;
   flow_name: string;
+  flow_description: string | null;
   is_active: boolean;
   is_default: boolean;
   config_version: number;

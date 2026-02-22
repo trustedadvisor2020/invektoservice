@@ -105,6 +105,7 @@ builder.Services.AddSingleton<INodeHandler, AiSentimentHandler>();
 builder.Services.AddSingleton<INodeHandler, WebhookTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, OutboundTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, ScheduleTriggerHandler>();
+builder.Services.AddSingleton<INodeHandler, CallFlowHandler>();
 
 // Register HttpClientFactory for ApiCallHandler
 builder.Services.AddHttpClient("ApiCallHandler");
@@ -367,10 +368,28 @@ app.MapGet("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx,
                 }
             }
 
+            // Extract description from flow_config metadata
+            string? flowDescription = null;
+            if (!string.IsNullOrEmpty(f.FlowConfigJson))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(f.FlowConfigJson);
+                    if (doc.RootElement.TryGetProperty("metadata", out var meta) &&
+                        meta.TryGetProperty("description", out var desc) &&
+                        desc.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        flowDescription = desc.GetString();
+                    }
+                }
+                catch { /* ignore parse errors for description extraction */ }
+            }
+
             return new
             {
                 flow_id = f.FlowId,
                 flow_name = f.FlowName,
+                flow_description = flowDescription,
                 is_active = f.IsActive,
                 is_default = f.IsDefault,
                 config_version = f.ConfigVersion,

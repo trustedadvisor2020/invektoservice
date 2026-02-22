@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useFlowStore } from '../store/flow-store';
 import { useAuth } from '../lib/auth';
 import { getNodeTypeInfo, type FlowNodeType } from '../types/flow';
-import { getAvailableInstances, type AvailableInstance } from '../lib/api';
+import { getAvailableInstances, listFlows, type AvailableInstance, type FlowSummary } from '../lib/api';
 import type {
   MessageTextData,
   MessageMenuData,
@@ -17,6 +17,7 @@ import type {
   ActionApiCallData,
   ActionDelayData,
   ActionHandoffData,
+  ActionCallFlowData,
   UtilitySetVariableData,
   UtilityNoteData,
 } from '../types/flow';
@@ -123,6 +124,9 @@ export function NodePropertyPanel() {
         )}
         {nodeType === 'schedule_trigger' && (
           <ScheduleTriggerProps data={selectedNode.data as ScheduleTriggerData} onChange={update} />
+        )}
+        {nodeType === 'action_call_flow' && (
+          <CallFlowProps data={selectedNode.data as ActionCallFlowData} onChange={update} />
         )}
 
         {/* Delete button (not for trigger types) */}

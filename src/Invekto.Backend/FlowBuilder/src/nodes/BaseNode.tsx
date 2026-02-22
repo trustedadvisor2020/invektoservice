@@ -108,7 +108,7 @@ function BaseNodeComponent({
 
       {/* Multiple output handles - RED */}
       {outputs && outputs.length > 0 && (
-        <div className="relative pb-1">
+        <div className="relative pb-6">
           {outputs.map((output, idx) => {
             const total = outputs.length;
             const spread = total === 2 ? 50 : 80;
@@ -121,14 +121,14 @@ function BaseNodeComponent({
                   position={Position.Bottom}
                   id={output.id}
                   className="!w-5 !h-5 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
-                  style={{ left: `${offset}%` }}
+                  style={{ left: `${offset}%`, bottom: '-2px' }}
                 />
                 {output.label && (
                   <span
                     className="absolute whitespace-nowrap"
                     style={{
                       left: `${offset}%`,
-                      bottom: '0px',
+                      bottom: '4px',
                       transform: 'translateX(-50%)',
                     }}
                   >

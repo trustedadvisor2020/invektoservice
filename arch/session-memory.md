@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** Stripe-inspired UI redesign tamamlandi ve deploy edildi. Dashboard + FlowBuilder tum slate/gray referanslari navy/brand paletine geciridi (40+ dosya). INSE-STYLE-GUIDE.md guncellendi. Claude API model upgrade (onceki session) dahil.
-- **Last Task:** Stripe UI redesign: slate→navy, gray→navy, blue→brand palette migration (Dashboard + FlowBuilder). INSE-STYLE-GUIDE.md tutarlilik guncelleme. Claude API model upgrade (Sonnet 4.6, Haiku 4.5, XML prompt).
+- **Status:** Dashboard sidebar collapsible yapildi. Collapsed durumda sadece ikonlar, expanded durumda tam menu. localStorage ile persist. Onceki session: Stripe UI redesign, AI Chat Panel, Working Hours, Instance Routing.
+- **Last Task:** Dashboard sidebar collapse/expand toggle (Layout.tsx). PanelLeftClose/PanelLeftOpen ikonlari, localStorage persist, smooth transition.
 - **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 

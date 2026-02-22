@@ -2706,7 +2706,8 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
                     flow_config = extractedFlowConfig != null
                         ? System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(extractedFlowConfig)
                         : (System.Text.Json.JsonElement?)null,
-                    prerequisites
+                    prerequisites,
+                    options = chunk.Options
                 });
                 await ctx.Response.WriteAsync($"data: {doneEvent}\n\n");
                 await ctx.Response.Body.FlushAsync();

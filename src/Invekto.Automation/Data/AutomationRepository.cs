@@ -29,20 +29,21 @@ public sealed class AutomationRepository
     /// Get the ACTIVE flow config for a tenant (backward compat: picks first active flow).
     /// Returns null if no active flow exists.
     /// </summary>
-    public async Task<(JsonDocument? FlowConfig, bool IsActive)> GetFlowAsync(int tenantId, CancellationToken ct = default)
+    public async Task<(JsonDocument? FlowConfig, bool IsActive, int FlowId)> GetFlowAsync(int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT flow_config, is_active FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true LIMIT 1";
+        cmd.CommandText = "SELECT flow_config, is_active, flow_id FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true LIMIT 1";
         cmd.Parameters.AddWithValue("tid", tenantId);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct))
-            return (null, false);
+            return (null, false, 0);
 
         var json = reader.GetString(0);
         var isActive = reader.GetBoolean(1);
-        return (JsonDocument.Parse(json), isActive);
+        var flowId = reader.GetInt32(2);
+        return (JsonDocument.Parse(json), isActive, flowId);
     }
 
     /// <summary>

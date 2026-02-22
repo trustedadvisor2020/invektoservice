@@ -14,6 +14,7 @@ import type {
   ActionApiCallData,
   ActionDelayData,
   UtilitySetVariableData,
+  ActionCallFlowData,
 } from '../types/flow';
 
 // --- Types ---
@@ -161,6 +162,13 @@ function checkEmptyField(node: Node): ValidationError | null {
       }
       if (!api.method) {
         return { type: 'empty_field', severity: 'warning', message: 'HTTP metodu secilmedi' };
+      }
+      break;
+    }
+    case 'action_call_flow': {
+      const cf = data as ActionCallFlowData;
+      if (!cf.flow_id || cf.flow_id.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Hedef flow secilmedi' };
       }
       break;
     }

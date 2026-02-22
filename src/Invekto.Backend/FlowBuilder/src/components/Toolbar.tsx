@@ -47,24 +47,14 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
           </button>
         )}
 
-        {/* Flow name + description */}
-        <div className="flex items-center gap-2 min-w-0">
-          <input
-            type="text"
-            value={flowMetadata.name}
-            onChange={(e) => setMetadata({ name: e.target.value })}
-            className="bg-transparent text-sm font-medium text-navy-900 border-none outline-none w-40 focus:ring-1 focus:ring-brand-500/30 rounded px-2 py-1"
-            placeholder="Flow Adi"
-          />
-          <span className="text-navy-200">|</span>
-          <input
-            type="text"
-            value={flowMetadata.description ?? ''}
-            onChange={(e) => setMetadata({ description: e.target.value })}
-            className="bg-transparent text-xs text-navy-400 border-none outline-none w-56 focus:ring-1 focus:ring-brand-500/30 rounded px-2 py-1"
-            placeholder="Flow aciklamasi..."
-          />
-        </div>
+        {/* Flow name */}
+        <input
+          type="text"
+          value={flowMetadata.name}
+          onChange={(e) => setMetadata({ name: e.target.value })}
+          className="bg-transparent text-sm font-medium text-navy-900 border-none outline-none w-40 focus:ring-1 focus:ring-brand-500/30 rounded px-2 py-1 min-w-0"
+          placeholder="Flow Adi"
+        />
 
         {/* Dirty indicator */}
         {isDirty && (
@@ -108,32 +98,25 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
         {/* Divider */}
         <div className="w-px h-6 bg-navy-100" />
 
-        {/* Auto Layout */}
-        <AutoLayoutButton />
-
-        {/* Ghost Path Toggle (AHA #3) */}
-        <GhostPathButton />
-
         {/* Preview Toggle */}
         {onTogglePreview && (
           <button
             onClick={onTogglePreview}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+              'p-2 rounded-md transition-colors',
               previewOpen
                 ? 'bg-sky-500 text-white'
                 : 'bg-navy-50 hover:bg-navy-100 text-navy-500'
             )}
-            title="Canli Onizleme panelini ac/kapat"
+            title="Onizleme"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <line x1="16" y1="13" x2="8" y2="13" />
               <line x1="16" y1="17" x2="8" y2="17" />
               <polyline points="10 9 9 9 8 9" />
             </svg>
-            Onizleme
           </button>
         )}
 
@@ -142,17 +125,16 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
           <button
             onClick={onToggleAiChat}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+              'p-2 rounded-md transition-colors',
               aiChatOpen
                 ? 'bg-purple-500 text-white'
                 : 'bg-navy-50 hover:bg-navy-100 text-navy-500'
             )}
-            title="AI ile akisi gelistir"
+            title="AI"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
             </svg>
-            AI
           </button>
         )}
 
@@ -160,18 +142,17 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
         <button
           onClick={() => setSettingsOpen(true)}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+            'p-2 rounded-md transition-colors',
             settingsOpen
               ? 'bg-navy-100 text-navy-700'
               : 'bg-navy-50 hover:bg-navy-100 text-navy-500'
           )}
-          title="Flow Ayarlari"
+          title="Ayarlar"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
-          Ayarlar
         </button>
 
         {/* Test Et (AHA #4) */}
@@ -179,19 +160,18 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
           onClick={onTest}
           disabled={simIsLoading || isSaving}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+            'p-2 rounded-md transition-colors',
             simIsOpen
               ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
               : simIsLoading || isSaving
                 ? 'bg-navy-50 text-navy-300 cursor-not-allowed'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white'
           )}
-          title={isDirty ? 'Once flow\'u kaydedin' : 'Tek Tikla Test'}
+          title={isDirty ? 'Once flow\'u kaydedin' : 'Test Et'}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
-          {simIsLoading ? 'Baslatiliyor...' : 'Test Et'}
         </button>
 
         {/* Save */}
@@ -199,75 +179,23 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
           onClick={onSave}
           disabled={isSaving || !isDirty}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+            'p-2 rounded-md transition-colors',
             isDirty && !isSaving
               ? 'bg-brand-500 hover:bg-brand-600 text-white'
               : 'bg-navy-50 text-navy-300 cursor-not-allowed'
           )}
+          title={isSaving ? 'Kaydediliyor...' : 'Kaydet'}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
             <polyline points="17 21 17 13 7 13 7 21" />
             <polyline points="7 3 7 8 15 8" />
           </svg>
-          {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </div>
 
       {/* Settings Modal */}
       <FlowSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
-  );
-}
-
-function AutoLayoutButton() {
-  const applyAutoLayout = useFlowStore((s) => s.applyAutoLayout);
-  const nodeCount = useFlowStore((s) => s.nodes.length);
-
-  return (
-    <button
-      onClick={applyAutoLayout}
-      disabled={nodeCount <= 1}
-      className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-        nodeCount > 1
-          ? 'bg-navy-50 hover:bg-navy-100 text-navy-500'
-          : 'bg-navy-50 text-navy-200 cursor-not-allowed'
-      )}
-      title="Nodlari otomatik yerlesir (Ctrl+Z ile geri alinabilir)"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="8" y="14" width="7" height="7" rx="1" />
-        <line x1="6.5" y1="10" x2="6.5" y2="14" />
-        <line x1="17.5" y1="10" x2="17.5" y2="14" />
-      </svg>
-      Otomatik Yerlesim
-    </button>
-  );
-}
-
-function GhostPathButton() {
-  const ghostPathEnabled = useFlowStore((s) => s.ghostPathEnabled);
-  const toggleGhostPath = useFlowStore((s) => s.toggleGhostPath);
-
-  return (
-    <button
-      onClick={toggleGhostPath}
-      className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-        ghostPathEnabled
-          ? 'bg-purple-500 text-white'
-          : 'bg-navy-50 hover:bg-navy-100 text-navy-500'
-      )}
-      title="Baslangictan ulasilan yollari goster/gizle"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-      Yollari Goster
-    </button>
   );
 }

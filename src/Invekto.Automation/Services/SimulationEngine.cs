@@ -117,31 +117,19 @@ public sealed class SimulationEngine : IHostedService, IDisposable
                 "Oturum olusturulamadi, tekrar deneyin");
         }
 
-        // Execute from trigger_start (auto-chain until WaitForInput or terminal)
-        var result = await _engine.ExecuteAsync(graph, state, ct, isSimulation: true, tenantId: tenantId);
-
-        session.LastActivityAt = DateTime.UtcNow;
-        session.ExpiresAt = DateTime.UtcNow.Add(SessionTtl);
-
-        _logger.StepInfo($"Simulation started: session={sessionId}, tenant={tenantId}, flow={flowId}, " +
-            $"messages={result.Messages.Count}, currentNode={state.CurrentNodeId}, status={state.Status}", sessionId);
+        // Don't execute yet — wait for the user's first message (trigger_start = "customer sends a message")
+        _logger.StepInfo($"Simulation created (awaiting first message): session={sessionId}, tenant={tenantId}, flow={flowId}", sessionId);
 
         return new SimulationStartResult
         {
             Success = true,
             SessionId = sessionId,
-            Messages = result.Messages.Select(m => new SimulationMessage("bot", m)).ToList(),
+            Messages = new List<SimulationMessage>(),
             CurrentNodeId = state.CurrentNodeId,
             Variables = new Dictionary<string, string>(state.Variables),
-            ExecutionPath = new List<string>(state.ExecutionPath),
+            ExecutionPath = new List<string>(),
             Status = state.Status,
-            PendingInput = state.PendingInput != null
-                ? new SimulationPendingInput
-                {
-                    Type = state.PendingInput.Type,
-                    Options = state.PendingInput.Options
-                }
-                : null
+            PendingInput = new SimulationPendingInput { Type = "text" }
         };
     }
 

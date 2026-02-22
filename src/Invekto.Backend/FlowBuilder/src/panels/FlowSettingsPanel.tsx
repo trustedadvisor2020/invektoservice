@@ -4,6 +4,7 @@ import { validateFlow, getWorkingHours, type ValidationResult, type WorkingHours
 import { cn } from '../lib/utils';
 import { WizardHistoryTab } from '../components/WizardHistoryTab';
 
+
 type SettingsTab = 'settings' | 'ai_history';
 
 interface FlowSettingsModalProps {
@@ -16,6 +17,7 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
   const setSettings = useFlowStore((s) => s.setSettings);
   const toFlowConfig = useFlowStore((s) => s.toFlowConfig);
   const flowMetadata = useFlowStore((s) => s.flowMetadata);
+  const setMetadata = useFlowStore((s) => s.setMetadata);
   const wizardHistory = useFlowStore((s) => s.wizardHistory);
   const hasWizardHistory = wizardHistory != null && wizardHistory.length > 0;
 
@@ -137,6 +139,16 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
           <WizardHistoryTab />
         ) : (
           <>
+          <FieldGroup label="Flow Aciklamasi" tooltip="Flow'un ne is yaptigini kisa bir cumleyle aciklayin. Bu aciklama flow listesinde de gorunur.">
+            <textarea
+              value={flowMetadata.description ?? ''}
+              onChange={(e) => setMetadata({ description: e.target.value })}
+              rows={2}
+              className="w-full bg-navy-50 border border-navy-200 rounded-lg px-3 py-2 text-sm text-navy-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 resize-none"
+              placeholder="Flow aciklamasi..."
+            />
+          </FieldGroup>
+
           <div className="flex gap-2">
             {/* Validate button */}
             <button

@@ -7,24 +7,17 @@
       "Read(//c/**)",
       "Read(//tmp/**)",
       "Read(//c/CRMs/InvektoServis/**)",
-      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch",
       "mcp__codex-review__*",
       "mcp__invekto-postgres__query",
       "mcp__invekto-postgres__pg-schema",
-      "WebFetch(domain:www.npmjs.com)",
-      "WebFetch(domain:openai.com)",
-      "WebFetch(domain:app.daily.dev)",
-      "WebFetch(domain:docs.anthropic.com)",
-      "WebFetch(domain:medium.com)",
       "mcp__invekto-ops__server-exec",
       "mcp__invekto-ops__server-status",
       "mcp__invekto-ops__server-health",
       "mcp__invekto-ops__server-download",
       "mcp__invekto-ops__server-logs",
       "mcp__invekto-ops__server-deploy",
-      "mcp__invekto-ops__server-upload",
-      "WebFetch(domain:services.invekto.com)",
-      "WebFetch(domain:www.reddit.com)"
+      "mcp__invekto-ops__server-upload"
     ],
     "additionalDirectories": [
       "c:\\CRMs\\InvektoServis"

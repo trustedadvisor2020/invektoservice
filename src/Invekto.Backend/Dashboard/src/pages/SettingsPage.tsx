@@ -171,8 +171,8 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-navy-900 flex items-center gap-2">
+    <div>
+      <h1 className="-mx-8 -mt-8 px-8 py-5 mb-6 text-xl font-semibold text-navy-900 flex items-center gap-2 border-b border-navy-100">
         <Settings className="w-5 h-5 text-navy-400" />
         Ayarlar
       </h1>
@@ -257,35 +257,37 @@ function GeneralTab({ session }: { session: ReturnType<typeof useAuth>['session'
   ];
 
   return (
-    <Card>
-      <CardContent className="py-5">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-navy-400" />
-            Temel Bilgiler
-          </h2>
-          <p className="text-xs text-navy-400 mt-0.5">Firma ve oturum bilgileri.</p>
-        </div>
-        <div className="space-y-4">
-          {fields.map(f => (
-            <div key={f.label} className="flex items-center">
-              <span className="w-32 text-sm text-navy-400">{f.label}</span>
-              <span className="text-sm font-medium text-navy-800 capitalize">{f.value}</span>
-            </div>
-          ))}
-          {session.inseFeatures.length > 0 && (
-            <div className="flex items-center">
-              <span className="w-32 text-sm text-navy-400">Moduller</span>
-              <div className="flex gap-1.5">
-                {session.inseFeatures.map(f => (
-                  <Badge key={f} variant="info">{f}</Badge>
-                ))}
+    <div>
+      <div className="mb-3">
+        <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-navy-400" />
+          Temel Bilgiler
+        </h2>
+        <p className="text-xs text-navy-400 mt-0.5">Firma ve oturum bilgileri.</p>
+      </div>
+      <Card>
+        <CardContent className="py-5">
+          <div className="space-y-4">
+            {fields.map(f => (
+              <div key={f.label} className="flex items-center">
+                <span className="w-32 text-sm text-navy-400">{f.label}</span>
+                <span className="text-sm font-medium text-navy-800 capitalize">{f.value}</span>
               </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+            {session.inseFeatures.length > 0 && (
+              <div className="flex items-center">
+                <span className="w-32 text-sm text-navy-400">Moduller</span>
+                <div className="flex gap-1.5">
+                  {session.inseFeatures.map(f => (
+                    <Badge key={f} variant="info">{f}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -314,23 +316,23 @@ function WorkingHoursTab({
   setWhStart, setWhEnd, setWhTimezone, toggleDayOff, onSave,
 }: WorkingHoursTabProps) {
   return (
-    <Card>
-      <CardContent className="py-5">
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-navy-400" />
-              Calisma Saatleri
-            </h2>
-            {whConfigured && <Badge variant="success">Aktif</Badge>}
-            {!whConfigured && !whLoading && <Badge variant="default">Yapilandirilmamis</Badge>}
-          </div>
-          <p className="text-xs text-navy-400 mt-0.5">
-            Mesai saatlerini belirleyin. Mesai disinda gelen mesajlara otomatik cevap gonderilir.
-          </p>
+    <div>
+      <div className="mb-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-navy-400" />
+            Calisma Saatleri
+          </h2>
+          {whConfigured && <Badge variant="success">Aktif</Badge>}
+          {!whConfigured && !whLoading && <Badge variant="default">Yapilandirilmamis</Badge>}
         </div>
-
-        {whError && (
+        <p className="text-xs text-navy-400 mt-0.5">
+          Mesai saatlerini belirleyin. Mesai disinda gelen mesajlara otomatik cevap gonderilir.
+        </p>
+      </div>
+      <Card>
+        <CardContent className="py-5">
+          {whError && (
           <div className="p-3 mb-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
             {whError}
           </div>
@@ -426,8 +428,9 @@ function WorkingHoursTab({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -445,31 +448,31 @@ interface LinesTabProps {
 
 function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh, onToggle }: LinesTabProps) {
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="py-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-navy-400" />
-              Hatlar
-            </h2>
-            <p className="text-xs text-navy-400 mt-0.5">
-              Mesaj alinacak hatlari yonetin. Kapali hatlardan gelen mesajlar yoksayilir.
-              {instances.length > 0 && <span className="ml-1">({instances.length} hat)</span>}
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onRefresh}
-            disabled={refreshing || loading}
-          >
-            <RefreshCw className={`w-4 h-4 flex-shrink-0 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>WapCRM&apos;den Yenile</span>
-          </Button>
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+            <Phone className="w-4 h-4 text-navy-400" />
+            Hatlar
+          </h2>
+          <p className="text-xs text-navy-400 mt-0.5">
+            Mesaj alinacak hatlari yonetin. Kapali hatlardan gelen mesajlar yoksayilir.
+            {instances.length > 0 && <span className="ml-1">({instances.length} hat)</span>}
+          </p>
         </div>
-
-        {error && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onRefresh}
+          disabled={refreshing || loading}
+        >
+          <RefreshCw className={`w-4 h-4 flex-shrink-0 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>WapCRM&apos;den Yenile</span>
+        </Button>
+      </div>
+      <Card className="overflow-hidden">
+        <CardContent className="py-5">
+          {error && (
           <div className="p-3 mb-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-700">
             {error}
           </div>
@@ -561,7 +564,8 @@ function LinesTab({ instances, loading, refreshing, togglingId, error, onRefresh
             </tbody>
           </table>
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

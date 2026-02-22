@@ -262,6 +262,16 @@ public sealed class FlowEngineV2
                         NeedsHandoff = needsHandoff,
                         HandoffSummary = state.Variables.TryGetValue("__handoff_summary", out var hs) ? hs : null
                     };
+
+                case NodeAction.CallSubFlow:
+                    // Signal orchestrator to dispatch sub-flow
+                    return new EngineStepResult
+                    {
+                        Messages = messages,
+                        State = state,
+                        IsTerminal = false,
+                        SubFlowRequest = new SubFlowRequest { NodeId = currentNodeId }
+                    };
             }
         }
 
@@ -295,4 +305,16 @@ public sealed class EngineStepResult
     public string? ErrorCode { get; init; }
     /// <summary>Error message for logging.</summary>
     public string? ErrorMessage { get; init; }
+    /// <summary>Non-null when engine hit a CallSubFlow node. Orchestrator should dispatch sub-flow.</summary>
+    public SubFlowRequest? SubFlowRequest { get; init; }
+}
+
+/// <summary>
+/// Request from engine to orchestrator: call a sub-flow.
+/// Orchestrator reads node data (flow_id, input_map, output_map) from the referenced node.
+/// </summary>
+public sealed class SubFlowRequest
+{
+    /// <summary>The action_call_flow node ID that triggered the sub-flow request.</summary>
+    public required string NodeId { get; init; }
 }

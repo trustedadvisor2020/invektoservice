@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import {
-  Zap,
   FileText,
   LogOut,
   LayoutDashboard,
@@ -19,10 +18,13 @@ import {
   Building2,
   Minus,
   Plus,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const FONT_SIZE_KEY = 'inse-font-size';
+const SIDEBAR_KEY = 'inse-sidebar-collapsed';
 const FONT_MIN = 13;
 const FONT_MAX = 20;
 const FONT_DEFAULT = 16;
@@ -62,6 +64,8 @@ export function Layout({ children }: LayoutProps) {
   const isFullscreen = location.pathname === '/flow-builder-ui';
   const isImpersonating = session && api.isImpersonating();
 
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
+
   const [fontSize, setFontSize] = useState(() => {
     const stored = localStorage.getItem(FONT_SIZE_KEY);
     return stored ? Math.min(FONT_MAX, Math.max(FONT_MIN, Number(stored))) : FONT_DEFAULT;
@@ -74,6 +78,13 @@ export function Layout({ children }: LayoutProps) {
 
   const adjustFont = useCallback((delta: number) => {
     setFontSize(prev => Math.min(FONT_MAX, Math.max(FONT_MIN, prev + delta)));
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setCollapsed(prev => {
+      localStorage.setItem(SIDEBAR_KEY, String(!prev));
+      return !prev;
+    });
   }, []);
 
   const exitImpersonation = () => {
@@ -113,27 +124,47 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <div className={cn('min-h-screen flex bg-navy-50', isImpersonating && 'pt-10')}>
-        {/* Sidebar — light, clean, Stripe-inspired */}
-        <aside className="w-56 h-screen sticky top-0 bg-white border-r border-navy-100 flex flex-col">
-          {/* Logo */}
-          <div className="h-14 px-4 flex items-center gap-2.5 border-b border-navy-100/60">
-            <div className="w-7 h-7 flex-shrink-0 bg-brand-500 rounded-lg flex items-center justify-center">
-              <Zap className="w-3.5 h-3.5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-navy-900 text-sm block truncate leading-tight">
-                {session?.fullName ? session.fullName : 'Invekto'}
-              </span>
-              {session && (
-                <span className="text-2xs text-navy-300 truncate block leading-tight">
-                  Firma #{session.tenantId}
-                </span>
-              )}
-            </div>
+        {/* Sidebar — collapsible, light, Stripe-inspired */}
+        <aside className={cn(
+          'h-screen sticky top-0 bg-white border-r border-navy-100 flex flex-col transition-[width] duration-200',
+          collapsed ? 'w-[3.5rem]' : 'w-56'
+        )}>
+          {/* Logo + Toggle */}
+          <div className="h-14 px-2 flex items-center border-b border-navy-100/60">
+            {collapsed ? (
+              <button
+                onClick={toggleSidebar}
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-lg text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors"
+                title="Menüyü aç"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+            ) : (
+              <>
+                <img src="/logo.png" alt="Invekto" className="w-7 h-7 flex-shrink-0 rounded-lg ml-2" />
+                <div className="min-w-0 ml-2.5 flex-1">
+                  <span className="font-semibold text-navy-900 text-sm block truncate leading-tight">
+                    {session?.fullName ? session.fullName : 'Invekto'}
+                  </span>
+                  {session && (
+                    <span className="text-2xs text-navy-300 truncate block leading-tight">
+                      Firma #{session.tenantId}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={toggleSidebar}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-navy-300 hover:bg-navy-50 hover:text-navy-600 transition-colors flex-shrink-0 mr-1"
+                  title="Menüyü kapat"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+          <nav className={cn('flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden', collapsed ? 'px-1.5' : 'px-2')}>
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -141,9 +172,10 @@ export function Layout({ children }: LayoutProps) {
                 <Link
                   key={item.path}
                   to={item.path}
+                  title={collapsed ? item.label : undefined}
                   className={cn(
-                    'flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium',
-                    'transition-colors duration-150',
+                    'flex items-center h-9 rounded-lg text-[13px] font-medium transition-colors duration-150',
+                    collapsed ? 'justify-center px-0' : 'gap-2.5 px-3',
                     isActive
                       ? 'bg-brand-50 text-brand-600'
                       : 'text-navy-400 hover:bg-navy-50 hover:text-navy-700'
@@ -153,48 +185,56 @@ export function Layout({ children }: LayoutProps) {
                     'w-4 h-4 flex-shrink-0',
                     isActive ? 'text-brand-500' : 'text-navy-300'
                   )} />
-                  <span>{item.label}</span>
+                  {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Font Size */}
-          <div className="px-3 py-1.5 flex items-center gap-1.5">
-            <button
-              onClick={() => adjustFont(-FONT_STEP)}
-              disabled={fontSize <= FONT_MIN}
-              className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Yazı küçült"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-            <span className="text-2xs text-navy-300 min-w-[2.5rem] text-center select-none">
-              {fontSize}px
-            </span>
-            <button
-              onClick={() => adjustFont(FONT_STEP)}
-              disabled={fontSize >= FONT_MAX}
-              className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Yazı büyüt"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-          </div>
+          {/* Font Size — hidden when collapsed */}
+          {!collapsed && (
+            <div className="px-3 py-1.5 flex items-center gap-1.5">
+              <button
+                onClick={() => adjustFont(-FONT_STEP)}
+                disabled={fontSize <= FONT_MIN}
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Yazı küçült"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="text-2xs text-navy-300 min-w-[2.5rem] text-center select-none">
+                {fontSize}px
+              </span>
+              <button
+                onClick={() => adjustFont(FONT_STEP)}
+                disabled={fontSize >= FONT_MAX}
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Yazı büyüt"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          )}
 
           {/* Version */}
-          <div className="px-4 py-1.5 text-2xs text-navy-200">
-            v{__BUILD_TIME__}
-          </div>
+          {!collapsed && (
+            <div className="px-4 py-1.5 text-2xs text-navy-200">
+              v{__BUILD_TIME__}
+            </div>
+          )}
 
           {/* Logout */}
-          <div className="px-2 py-2 border-t border-navy-100/60">
+          <div className={cn('py-2 border-t border-navy-100/60', collapsed ? 'px-1.5' : 'px-2')}>
             <button
-              className="w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors duration-150"
+              className={cn(
+                'w-full flex items-center h-9 rounded-lg text-[13px] font-medium text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors duration-150',
+                collapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
+              )}
               onClick={logout}
+              title={collapsed ? 'Çıkış Yap' : undefined}
             >
               <LogOut className="w-4 h-4 flex-shrink-0 text-navy-300" />
-              <span>Cikis Yap</span>
+              {!collapsed && <span>Cikis Yap</span>}
             </button>
           </div>
         </aside>

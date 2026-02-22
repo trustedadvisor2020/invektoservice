@@ -15,6 +15,7 @@ import { ActionHandoffNode } from './ActionHandoffNode';
 import { ActionApiCallNode } from './ActionApiCallNode';
 import { UtilitySetVariableNode } from './UtilitySetVariableNode';
 import { UtilityNoteNode } from './UtilityNoteNode';
+import { CallFlowNode } from './CallFlowNode';
 
 export const nodeTypes: NodeTypes = {
   trigger_start: TriggerStartNode,
@@ -33,4 +34,5 @@ export const nodeTypes: NodeTypes = {
   action_api_call: ActionApiCallNode,
   utility_set_variable: UtilitySetVariableNode,
   utility_note: UtilityNoteNode,
+  action_call_flow: CallFlowNode,
 };
