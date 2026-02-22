@@ -9,7 +9,7 @@ namespace Invekto.Shared.Auth;
 /// <summary>
 /// Validates JWT tokens issued by inma (Invekto Main App).
 /// inma uses different claim names than inse internal tokens:
-///   CompanyId       → TenantId
+///   CompanyCode     → TenantId (CompanyId is inma internal, CompanyCode is our tenant_id)
 ///   nameidentifier  → UserId
 ///   ChatRole        → Role (1=agent, 2=admin)
 ///   InseFeatures    → licensed inse modules (JSON array)
@@ -54,10 +54,11 @@ public sealed class InmaJwtValidator
             if (validatedToken is not JwtSecurityToken)
                 return (null, "Token is not a valid JWT");
 
-            // TenantId: inma 'CompanyId' claim
-            var companyIdClaim = principal.FindFirst("CompanyId")?.Value;
-            if (string.IsNullOrEmpty(companyIdClaim) || !int.TryParse(companyIdClaim, out var tenantId) || tenantId <= 0)
-                return (null, "Missing or invalid 'CompanyId' claim");
+            // TenantId: inma 'CompanyCode' claim (= our tenant_id). Fallback to 'CompanyId' for backward compat.
+            var tenantClaim = principal.FindFirst("CompanyCode")?.Value
+                              ?? principal.FindFirst("CompanyId")?.Value;
+            if (string.IsNullOrEmpty(tenantClaim) || !int.TryParse(tenantClaim, out var tenantId) || tenantId <= 0)
+                return (null, "INV-AUTH-004: Missing or invalid 'CompanyCode'/'CompanyId' claim");
 
             // UserId: inma nameidentifier claim
             var userIdClaim = principal.FindFirst(NameIdentifierClaim)?.Value

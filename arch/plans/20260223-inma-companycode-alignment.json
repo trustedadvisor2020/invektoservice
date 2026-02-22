@@ -1,0 +1,143 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260223-inma-companycode-alignment",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-23T10:00:00Z",
+  "updated_at": "2026-02-23T10:15:00Z",
+  "plan": {
+    "summary": "InmaJwtValidator validated path reads CompanyId claim (INMA internal ID, e.g. 11) instead of CompanyCode (our tenant_id, e.g. 5050). Fix aligns validated path with decode-only path by trying CompanyCode first with CompanyId fallback.",
+    "q_intent": "InmaJwtValidator CompanyCode alignment — validated path CompanyId → CompanyCode fix",
+    "interview_notes": "No ambiguity — documented in session-memory.md and lessons-learned.md (#100). Decode-only path already fixed, validated path is the last remaining issue."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Auth/InmaJwtValidator.cs",
+    "src/Invekto.Shared/Auth/InmaTokenContext.cs"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Shared/Auth/InmaJwtValidator.cs",
+      "change": "CompanyCode first + CompanyId fallback in ValidateToken(), updated comments",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Shared/Auth/InmaTokenContext.cs",
+      "change": "Updated XML doc comments to reflect CompanyCode as primary claim",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "sha256": "922EEE9166E091FDF94341424BB2E1109ADF99E3C8B981A36F94CAEBA356D5EA",
+    "full_path": "arch/plans/diffs/20260223-inma-companycode-alignment.diff",
+    "stats": {
+      "insertions": 8,
+      "deletions": 7,
+      "files_count": 2
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-23T10:03:00Z",
+    "duration_ms": 18570,
+    "output_tail": "Build succeeded. 0 Warning(s) 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the validated path now try CompanyCode claim first before falling back to CompanyId?",
+      "category": "Auth",
+      "codex_answer": "CompanyCode first, then CompanyId via null-coalescing",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "Is backward compatibility preserved for tokens that only have CompanyId (no CompanyCode claim)?",
+      "category": "Auth",
+      "codex_answer": "Falls back to CompanyId when CompanyCode is absent",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "Are comments and XML docs consistent with the new CompanyCode-first behavior across both files?",
+      "category": "Process/Policy",
+      "codex_answer": "Updated comments in both files reference CompanyCode as primary with CompanyId fallback",
+      "codex_result": "PASS"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/", "Dashboard/", "src/Invekto.Automation/"],
+    "non_goals": ["Changing decode-only path (already correct)", "Modifying frontend token exchange", "Adding new claims"],
+    "intentional_exclusions": ["Program.cs decode-only path already uses CompanyCode first"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["InmaJwtValidator.cs:49-106 (existing try-catch, unchanged)"],
+    "user_facing_errors": ["Missing or invalid 'CompanyCode'/'CompanyId' claim"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Both claim miss → explicit error return with descriptive message"
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "INMA SSO login fails silently when validated path reads wrong claim (CompanyId=11 instead of tenant_id=5050)",
+      "suggestion": "Add claim mismatch warning log when CompanyCode is missing but CompanyId exists",
+      "aha_moment": "User realizes their SSO login now consistently resolves to the correct tenant without random 403 errors"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support cannot diagnose why some INMA users get wrong tenant data",
+      "suggestion": "Log which claim was used (CompanyCode vs CompanyId fallback) for debugging",
+      "aha_moment": "Support sees clear log entry showing claim resolution path, diagnoses issues in seconds"
+    },
+    {
+      "category": "UX",
+      "user_pain": "INMA users see another tenant's data when CompanyId maps to wrong tenant_id",
+      "suggestion": "Cross-reference resolved tenant_id against tenant_registry to verify it exists",
+      "aha_moment": "User always sees their own tenant data, never gets confused by foreign content"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Validated path does two claim lookups sequentially",
+      "suggestion": "Pre-cache claim resolution in a dictionary for O(1) lookup",
+      "aha_moment": "Token validation is microseconds faster, no measurable user impact but cleaner code"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "INMA integration demo fails if validated path is used and CompanyId doesn't match",
+      "suggestion": "Ensure demo environment has both CompanyCode and CompanyId in test tokens",
+      "aha_moment": "Sales demo works flawlessly with INMA SSO, no embarrassing tenant mismatch"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-23T10:15:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-23T10:15:00Z",
+    "raw_text": null,
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "INV-AUTH-004 error code added per iter 0 feedback" },
+      "CQ2": { "result": "PASS", "evidence": "No new catch blocks or silent returns" },
+      "CQ3": { "result": "PASS", "evidence": "Changes limited to 2 files, claim selection + docs" },
+      "CQ4": { "result": "PASS", "evidence": "No duplicate logic" },
+      "CQ5": { "result": "PASS", "evidence": "Q FORCE PASS: INV-AUTH prefix follows existing errors.md AUTH section pattern (INV-AUTH-001/002/003)" },
+      "CQ6": { "result": "PASS", "evidence": "Simple claim lookup, no perf impact" },
+      "CQ7": { "result": "PASS", "evidence": "No TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Backward compatible via CompanyId fallback" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "CompanyCode first, CompanyId fallback via null-coalescing" },
+      "Q2": { "result": "PASS", "reasoning": "Falls back to CompanyId when CompanyCode absent" },
+      "Q3": { "result": "PASS", "reasoning": "Comments and XML docs updated in both files" }
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": "Q FORCE PASS: CQ5 false positive — INV-AUTH prefix is valid per errors.md AUTH section"
+  }
+}

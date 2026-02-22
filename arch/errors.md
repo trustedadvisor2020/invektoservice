@@ -91,6 +91,7 @@ INV-{SERVICE}-{NUMBER}
 | INV-AUTH-001 | Token expired | Oturumunuz sona erdi. Lütfen tekrar giriş yapın. |
 | INV-AUTH-002 | Invalid token | Geçersiz oturum. |
 | INV-AUTH-003 | Unauthorized | Bu işlem için yetkiniz bulunmuyor. |
+| INV-AUTH-004 | Missing or invalid tenant claim | INMA token'ında CompanyCode/CompanyId claim'i eksik veya geçersiz. |
 
 ---
 

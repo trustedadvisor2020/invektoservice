@@ -3,11 +3,11 @@ namespace Invekto.Shared.Auth;
 /// <summary>
 /// Extracted identity info from a validated inma (Main App) JWT token.
 /// inma JWT uses different claim names than inse internal tokens.
-/// CompanyId → TenantId, nameidentifier → UserId, ChatRole → Role.
+/// CompanyCode → TenantId (CompanyId is inma internal), nameidentifier → UserId, ChatRole → Role.
 /// </summary>
 public sealed class InmaTokenContext
 {
-    /// <summary>inse tenant_id — mapped from inma 'CompanyId' claim (int)</summary>
+    /// <summary>inse tenant_id — mapped from inma 'CompanyCode' claim (fallback: 'CompanyId')</summary>
     public required int TenantId { get; init; }
 
     /// <summary>inma user id — from 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'</summary>
