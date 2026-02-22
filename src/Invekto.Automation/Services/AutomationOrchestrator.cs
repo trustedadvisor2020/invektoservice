@@ -317,7 +317,7 @@ public sealed class AutomationOrchestrator
         else
         {
             // Returning user: deserialize v2 state from session_data
-            state = DeserializeV2State(session.SessionData);
+            state = DeserializeV2State(session?.SessionData);
             if (state == null)
             {
                 state = new SessionStateV2

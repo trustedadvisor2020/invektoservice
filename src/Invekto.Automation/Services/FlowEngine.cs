@@ -29,7 +29,7 @@ public sealed class FlowEngine
     /// </summary>
     public async Task<FlowConfig?> GetActiveFlowAsync(int tenantId, CancellationToken ct = default)
     {
-        var (flowDoc, isActive) = await _repo.GetFlowAsync(tenantId, ct);
+        var (flowDoc, isActive, _) = await _repo.GetFlowAsync(tenantId, ct);
         if (flowDoc == null || !isActive)
             return null;
 

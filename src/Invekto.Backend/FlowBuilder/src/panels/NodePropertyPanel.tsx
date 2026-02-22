@@ -949,3 +949,204 @@ function UtilityNoteProps({
     </>
   );
 }
+
+function CallFlowProps({
+  data,
+  onChange,
+}: {
+  data: ActionCallFlowData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const { session } = useAuth();
+  const { flowId: flowIdParam } = useParams<{ flowId: string }>();
+  const currentFlowId = flowIdParam ? parseInt(flowIdParam, 10) : undefined;
+  const tenantId = session?.tenant_id;
+
+  const [flows, setFlows] = useState<FlowSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchFlows = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    try {
+      const result = await listFlows(tenantId);
+      // Exclude current flow to prevent self-call
+      setFlows(result.filter((f) => f.flow_id !== currentFlowId));
+    } catch (err: unknown) {
+      console.warn('[CallFlowProps] Flow list fetch failed:', err instanceof Error ? err.message : err);
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId, currentFlowId]);
+
+  useEffect(() => {
+    fetchFlows();
+  }, [fetchFlows]);
+
+  // Parse input/output maps safely — preserves original on invalid JSON
+  const parseMap = (json: string): Array<[string, string]> => {
+    if (!json || json === '{}') return [];
+    try {
+      const obj = JSON.parse(json);
+      return Object.entries(obj) as Array<[string, string]>;
+    } catch (err) {
+      console.warn('[CallFlowProps] Invalid variable map JSON:', json, err);
+      return [];
+    }
+  };
+
+  const serializeMap = (entries: Array<[string, string]>): string => {
+    const obj: Record<string, string> = {};
+    for (const [k, v] of entries) {
+      const key = k.trim();
+      if (key) obj[key] = v;
+    }
+    return JSON.stringify(obj);
+  };
+
+  const inputEntries = parseMap(data.input_map);
+  const outputEntries = parseMap(data.output_map);
+
+  const updateMapEntry = (
+    mapType: 'input_map' | 'output_map',
+    entries: Array<[string, string]>,
+    idx: number,
+    pos: 0 | 1,
+    value: string,
+  ) => {
+    const newEntries = [...entries];
+    const pair = [...newEntries[idx]] as [string, string];
+    pair[pos] = value;
+    newEntries[idx] = pair;
+    onChange({ [mapType]: serializeMap(newEntries) });
+  };
+
+  const addMapEntry = (mapType: 'input_map' | 'output_map', entries: Array<[string, string]>) => {
+    const newEntries = [...entries, ['', ''] as [string, string]];
+    onChange({ [mapType]: serializeMap(newEntries) });
+  };
+
+  const removeMapEntry = (mapType: 'input_map' | 'output_map', entries: Array<[string, string]>, idx: number) => {
+    onChange({ [mapType]: serializeMap(entries.filter((_, i) => i !== idx)) });
+  };
+
+  const selectedFlow = flows.find((f) => String(f.flow_id) === data.flow_id);
+
+  return (
+    <>
+      <FieldGroup label="Hedef Flow">
+        {loading ? (
+          <p className="text-xs text-navy-300">Yukleniyor...</p>
+        ) : (
+          <select
+            value={data.flow_id ?? ''}
+            onChange={(e) => onChange({ flow_id: e.target.value })}
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+          >
+            <option value="">Flow seciniz...</option>
+            {flows.map((f) => (
+              <option key={f.flow_id} value={String(f.flow_id)}>
+                {f.flow_name} {!f.is_active ? '(pasif)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
+        {selectedFlow && (
+          <p className="text-[10px] text-navy-300 mt-0.5">
+            {selectedFlow.node_count} node, {selectedFlow.is_active ? 'aktif' : 'pasif'}
+          </p>
+        )}
+      </FieldGroup>
+
+      <FieldGroup label={`Girdi Esleme (${inputEntries.length})`}>
+        <div className="space-y-1.5">
+          {inputEntries.map(([parentVar, childVar], idx) => (
+            <div key={idx} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={parentVar}
+                onChange={(e) => updateMapEntry('input_map', inputEntries, idx, 0, e.target.value)}
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                placeholder="parent_var"
+              />
+              <span className="text-navy-300 text-xs flex-shrink-0">&rarr;</span>
+              <input
+                type="text"
+                value={childVar}
+                onChange={(e) => updateMapEntry('input_map', inputEntries, idx, 1, e.target.value)}
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                placeholder="child_var"
+              />
+              <button
+                onClick={() => removeMapEntry('input_map', inputEntries, idx)}
+                className="p-0.5 text-navy-300 hover:text-red-500 transition-colors"
+                title="Kaldir"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => addMapEntry('input_map', inputEntries)}
+          className="mt-1.5 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-xs text-navy-400 hover:border-red-400 hover:text-red-500 transition-colors"
+        >
+          + Girdi Ekle
+        </button>
+        <p className="text-[10px] text-navy-300 mt-0.5">
+          Parent degisken &rarr; Alt flow degisken
+        </p>
+      </FieldGroup>
+
+      <FieldGroup label={`Cikti Esleme (${outputEntries.length})`}>
+        <div className="space-y-1.5">
+          {outputEntries.map(([childVar, parentVar], idx) => (
+            <div key={idx} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={childVar}
+                onChange={(e) => updateMapEntry('output_map', outputEntries, idx, 0, e.target.value)}
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                placeholder="child_var"
+              />
+              <span className="text-navy-300 text-xs flex-shrink-0">&rarr;</span>
+              <input
+                type="text"
+                value={parentVar}
+                onChange={(e) => updateMapEntry('output_map', outputEntries, idx, 1, e.target.value)}
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                placeholder="parent_var"
+              />
+              <button
+                onClick={() => removeMapEntry('output_map', outputEntries, idx)}
+                className="p-0.5 text-navy-300 hover:text-red-500 transition-colors"
+                title="Kaldir"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => addMapEntry('output_map', outputEntries)}
+          className="mt-1.5 w-full px-2 py-1 rounded border border-dashed border-navy-200 text-xs text-navy-400 hover:border-red-400 hover:text-red-500 transition-colors"
+        >
+          + Cikti Ekle
+        </button>
+        <p className="text-[10px] text-navy-300 mt-0.5">
+          Alt flow degisken &rarr; Parent degisken
+        </p>
+      </FieldGroup>
+
+      <p className="text-xs text-navy-300">
+        Alt flow tamamlandiginda <strong>completed</strong>, hata olursa <strong>error</strong> dalina yonlenir.
+      </p>
+    </>
+  );
+}
