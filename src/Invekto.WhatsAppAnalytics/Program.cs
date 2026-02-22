@@ -35,6 +35,12 @@ if (string.IsNullOrEmpty(pgConnStr))
 if (string.IsNullOrEmpty(jwtSecretKey))
     throw new InvalidOperationException("FATAL: Jwt:SecretKey is not configured");
 
+// Configure form options to match max file size
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = maxFileSizeMb * 1024L * 1024L;
+});
+
 // Configure Kestrel + HTTPS if certificate is configured
 builder.WebHost.ConfigureKestrel(options =>
 {

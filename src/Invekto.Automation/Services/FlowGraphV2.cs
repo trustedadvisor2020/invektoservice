@@ -184,6 +184,15 @@ public sealed class FlowGraphV2
             settings.SessionTimeoutMinutes = stm.GetInt32();
         if (s.TryGetProperty("max_loop_count", out var mlc))
             settings.MaxLoopCount = mlc.GetInt32();
+        if (s.TryGetProperty("reset_keywords", out var rk) && rk.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var kw in rk.EnumerateArray())
+            {
+                var word = kw.GetString();
+                if (!string.IsNullOrWhiteSpace(word))
+                    settings.ResetKeywords.Add(word);
+            }
+        }
 
         return settings;
     }
@@ -280,6 +289,7 @@ public sealed class FlowSettingsV2
     public double HandoffConfidenceThreshold { get; set; } = 0.5;
     public int SessionTimeoutMinutes { get; set; } = 30;
     public int MaxLoopCount { get; set; } = 10;
+    public HashSet<string> ResetKeywords { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -1,0 +1,71 @@
+{
+  "slug": "20260222-template-system",
+  "title": "Template System (Sablon Sistemi) — Knowledge Extension",
+  "status": "REVIEW",
+  "risk_level": "HIGH",
+  "created_at": "2026-02-22T10:00:00Z",
+  "updated_at": "2026-02-22T20:00:00Z",
+  "summary": "Knowledge servisini (7104) genisletip 5 tipli (FAQ/Message/Intent/Flow/Scenario), 3 katmanli (Platform>Sector>Tenant) sablon sistemi kuruldu. WA analiz sonuclarindan pgvector cosine similarity ile mevcut katalog karsilastirmasi, suggestion queue, superadmin review UI, tenant onboarding destegi eklendi.",
+  "verification_questions": [
+    { "id": "V1", "question": "TemplateRepository SQL injection riski var mi? Tum parametre kullanimi @param ile mi?", "category": "security" },
+    { "id": "V2", "question": "TemplateExtractorService pgvector similarity hesabi dogru mu? Threshold sinirlari (0.85/0.50) tutarli mi?", "category": "correctness" },
+    { "id": "V3", "question": "TemplateAdoptionService HTTP cagrilarinda hata yonetimi yeterli mi?", "category": "error-handling" },
+    { "id": "V4", "question": "Knowledge Program.cs superadmin auth kontrolu (tenantId==0) tum template endpoint'lerinde var mi?", "category": "security" },
+    { "id": "V5", "question": "Backend proxy route'lari Knowledge endpoint'leriyle uyumlu mu?", "category": "integration" },
+    { "id": "V6", "question": "Dashboard sayfalarinda api.ts public method'lari dogru kullaniliyor mu? Private request() sizmasi var mi?", "category": "correctness" },
+    { "id": "V7", "question": "SQL schema FK/constraint tutarliligi saglanmis mi? scope+sector+tenant_id CHECK constraint'i dogru mu?", "category": "data-integrity" },
+    { "id": "V8", "question": "TemplateResolutionService cache invalidation eksik olabilecek durumlar var mi?", "category": "correctness" }
+  ],
+  "files_changed": [
+    { "path": "arch/db/template-catalog.sql", "is_new": true },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/Templates/TemplateCatalogDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Templates/TemplateSuggestionDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/DTOs/Templates/TemplateAdoptionDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Data/TemplateRepository.cs", "is_new": true },
+    { "path": "src/Invekto.Knowledge/Services/TemplateExtractorService.cs", "is_new": true },
+    { "path": "src/Invekto.Knowledge/Services/TemplateResolutionService.cs", "is_new": true },
+    { "path": "src/Invekto.Knowledge/Services/TemplateAdoptionService.cs", "is_new": true },
+    { "path": "src/Invekto.Knowledge/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateDetailPage.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateIngestionPage.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateOnboardPage.tsx", "is_new": true }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260222-template-system.diff",
+    "total_bytes": 193547,
+    "chunks": 3,
+    "stats": { "insertions": 4243, "deletions": 25, "files_count": 19 }
+  },
+  "review": {
+    "iteration": 2,
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "codex_cq_gate": "ALL_8_PASS",
+    "codex_cove": "ALL_UNKNOWN_expected_incremental_fix",
+    "override_reason": "CQ gate unanimous PASS. CoVe UNKNOWN because V1-V8 verify files not in this incremental diff (already committed in ffa938a after iter0+iter1 fixes)",
+    "codex_raw": null,
+    "iteration_0_fixes": [
+      "CQ5: null-forgiving contentForVersion! -> ?? fallback",
+      "CQ5: null-forgiving item.GetString()! -> null check",
+      "CQ5: GRANT ALL statements added for all 7 tables + 7 sequences",
+      "CQ2: bare catch blocks replaced with typed catches + logging (ExtractorService, AdoptionService, Program.cs)",
+      "CQ1: generic error messages replaced with specific messages",
+      "CQ7: TODO markers removed from App.tsx",
+      "CQ8: template routes uncommented in App.tsx",
+      "CQ1: user-facing error states added to TemplateLibraryPage + TemplateDetailPage"
+    ],
+    "iteration_1_fixes": [
+      "V8: TemplateResolutionService dependency injected into ExtractorService for cache invalidation after extraction",
+      "V3: TaskCanceledException catch added to AdoptionService HTTP methods (AdoptMessageAsync, AdoptFlowAsync)",
+      "CQ2: suggestionsError state + user-facing error banners added to TemplateIngestionPage",
+      "CQ2: setError() added to TemplateOnboardPage tenant fetch catch block"
+    ]
+  }
+}

@@ -85,9 +85,10 @@ public sealed class AiIntentHandler : INodeHandler
 
         // Skip name phase → go to intent detection
         var name = existingName ?? "";
-        var askMsg = string.IsNullOrEmpty(name)
-            ? "Size nasıl yardımcı olabilirim?"
-            : $"{name}, size nasıl yardımcı olabilirim?";
+        var intentQuestion = node.GetData("intent_question");
+        var defaultQ = "size nasıl yardımcı olabilirim?";
+        var q = string.IsNullOrWhiteSpace(intentQuestion) ? defaultQ : intentQuestion;
+        var askMsg = string.IsNullOrEmpty(name) ? q : $"{name}, {q}";
 
         ctx.Logger.StepInfo(
             $"AiIntent '{node.GetData("label", node.Id)}': skipping name, asking intent",
@@ -140,9 +141,14 @@ public sealed class AiIntentHandler : INodeHandler
             $"AiIntent '{node.GetData("label", node.Id)}': name accepted: '{name}'",
             ctx.RequestId);
 
+        var intentQuestion = node.GetData("intent_question");
+        var intentMsg = string.IsNullOrWhiteSpace(intentQuestion)
+            ? $"{name}, size nasıl yardımcı olabilirim?"
+            : $"{name}, {intentQuestion}";
+
         return new NodeResult
         {
-            MessageText = $"{name}, size nasıl yardımcı olabilirim?",
+            MessageText = intentMsg,
             Action = NodeAction.WaitForInput,
             PendingInput = new PendingInput { Type = "text" },
             VariableUpdates = new Dictionary<string, string>

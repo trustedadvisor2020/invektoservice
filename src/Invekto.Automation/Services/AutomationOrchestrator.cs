@@ -356,6 +356,13 @@ public sealed class AutomationOrchestrator
             }
 
             state.Variables["__last_input"] = messageText;
+
+            // Reset keyword: restart flow from beginning
+            if (graph.Settings.ResetKeywords.Contains(messageText.Trim()))
+            {
+                _logger.StepInfo($"User triggered flow reset via keyword '{messageText.Trim()}'", requestId);
+                state = new SessionStateV2 { CurrentNodeId = graph.TriggerStart?.Id ?? "" };
+            }
         }
 
         // 4a. PKT-6A: Fetch tenant intents from Knowledge (graceful degradation: null = defaults)
