@@ -1,0 +1,52 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260222-ai-chat-panel",
+  "title": "Flow Editor AI Chat Panel (AI ile Gelistir)",
+  "summary": "Flow editor ekranina AI ile Gelistir butonu ve sag panel sohbet arayuzu eklendi. Kullanici mevcut flow'u AI ile konusarak gelistirebilir. Backend edit-mode system prompt, frontend AiChatPanel ve mutual exclusion (Simulation/AI Chat) mekanizmasi.",
+  "risk_level": "MEDIUM",
+  "status": "PASS",
+  "gr_list": [
+    { "id": "GR-1", "description": "Backend: ClaudeWizardService edit-mode system prompt + Program.cs flow_config param", "services_affected": ["Backend"] },
+    { "id": "GR-2", "description": "Frontend: AiChatPanel + ai-chat-store + Toolbar AI button + FlowEditorPage entegrasyonu", "services_affected": ["Backend"] }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Services/ClaudeWizardService.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/FlowBuilder/src/components/AiChatPanel.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/lib/api.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/wizard-api.ts",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/store/ai-chat-store.ts"
+  ],
+  "verification_questions": [
+    { "id": "VQ-1", "question": "Edit-mode system prompt mevcut node'lari koruma talimati veriyor mu?", "category": "correctness" },
+    { "id": "VQ-2", "question": "AI Chat ve Simulation paneli mutual exclusive calisiyor mu?", "category": "correctness" },
+    { "id": "VQ-3", "question": "pendingFlowConfig accept edildiginde canvas dogru guncelleniyor mu?", "category": "correctness" },
+    { "id": "VQ-4", "question": "Sohbet gecmisi flow bazli persist ediliyor mu (wizard_history uzerinden)?", "category": "correctness" },
+    { "id": "VQ-5", "question": "streamMessage'a eklenen flowConfig parametresi mevcut wizard akisini bozmuyor mu?", "category": "regression" }
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Services/ClaudeWizardService.cs", "is_new": false, "change": "Edit-mode system prompt + currentFlowConfig param" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "flow_config body param reading + forwarding" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/AiChatPanel.tsx", "is_new": true, "change": "New AI chat panel component (304 lines)" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/Toolbar.tsx", "is_new": false, "change": "AI button added with sparkle icon" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/api.ts", "is_new": false, "change": "FlowDetail interface wizard_history field" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/wizard-api.ts", "is_new": false, "change": "streamMessage flowConfig optional param" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx", "is_new": false, "change": "AiChatPanel integration + mutual exclusion" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/store/ai-chat-store.ts", "is_new": true, "change": "New Zustand store for AI chat (120 lines)" }
+  ],
+  "git_diff": {
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260222-ai-chat-panel.diff",
+    "total_bytes": 30330,
+    "chunks": 1,
+    "stats": { "insertions": 515, "deletions": 9, "files_count": 8 }
+  },
+  "iteration": 1,
+  "verdict": "FORCE_PASS",
+  "verdict_reason": "CQ1/CQ5 false positive: INV-XX-NNN error codes are backend ErrorResponse pattern, not frontend store pattern. Existing wizard-store.ts uses identical user-friendly message pattern without error codes. All CoVe verification questions PASS.",
+  "updated_at": "2026-02-22T13:00:00Z"
+}

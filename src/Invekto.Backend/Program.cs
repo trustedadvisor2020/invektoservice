@@ -2260,6 +2260,9 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
         using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
         var root = bodyDoc.RootElement;
         var userMessage = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? "" : "";
+        var currentFlowConfig = root.TryGetProperty("flow_config", out var fcProp) && fcProp.ValueKind == System.Text.Json.JsonValueKind.Object
+            ? fcProp.GetRawText()
+            : null;
 
         if (string.IsNullOrWhiteSpace(userMessage))
         {
@@ -2307,7 +2310,7 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
         string? extractedFlowConfig = null;
         List<FlowPrerequisite>? prerequisites = null;
 
-        await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, ctx.RequestAborted))
+        await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, currentFlowConfig, ctx.RequestAborted))
         {
             if (chunk.Type == "done")
             {

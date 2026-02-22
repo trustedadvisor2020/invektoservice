@@ -41,9 +41,10 @@ public sealed class ClaudeWizardService
         string userMessage,
         List<WizardMessage> history,
         List<FlowSummaryContext>? existingFlows,
+        string? currentFlowConfig = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var systemPrompt = BuildSystemPrompt(existingFlows);
+        var systemPrompt = BuildSystemPrompt(existingFlows, currentFlowConfig);
 
         var messages = new List<object>();
         foreach (var msg in history)
@@ -285,10 +286,32 @@ public sealed class ClaudeWizardService
         }
     }
 
-    private static string BuildSystemPrompt(List<FlowSummaryContext>? existingFlows)
+    private static string BuildSystemPrompt(List<FlowSummaryContext>? existingFlows, string? currentFlowConfig = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Sen InvektoServices platformunda deneyimli bir chatbot akis tasarimcisisin. Gorevin, kullanicinin WhatsApp chatbot akisi tasarlamasina yardimci olmak.");
+
+        if (!string.IsNullOrEmpty(currentFlowConfig))
+        {
+            sb.AppendLine("Sen InvektoServices platformunda deneyimli bir chatbot akis tasarimcisisin. Su anda MEVCUT BIR AKISI DUZENLEME modundasin. Kullanici bu akisi AI yardimiyla gelistirmek istiyor.");
+            sb.AppendLine();
+            sb.AppendLine("## EDIT MODE KURALLARI");
+            sb.AppendLine("- Mevcut akisin yapisini asagida goreceksin. Bu akisi TEMEL AL.");
+            sb.AppendLine("- Kullanici degisiklik istediginde, mevcut node'lari KORU. Sadece istenen degisiklikleri yap.");
+            sb.AppendLine("- Kullanici acikca 'sil', 'kaldir' veya 'cikar' demedikce mevcut node'lari SILME.");
+            sb.AppendLine("- Degisiklik yaparken TUM flow_config JSON'unu uret (sadece diff degil, tam JSON).");
+            sb.AppendLine("- Mevcut node ID'lerini ve edge'lerini koru, yeni eklemeler icin yeni ID'ler kullan.");
+            sb.AppendLine("- Kullanici 'uygula', 'yap', 'degistir' diyene kadar once ne yapacagini ACIKLA, sonra flow_config JSON uret.");
+            sb.AppendLine();
+            sb.AppendLine("## Mevcut Akis Yapisi");
+            sb.AppendLine("```json");
+            sb.AppendLine(currentFlowConfig);
+            sb.AppendLine("```");
+            sb.AppendLine();
+        }
+        else
+        {
+            sb.AppendLine("Sen InvektoServices platformunda deneyimli bir chatbot akis tasarimcisisin. Gorevin, kullanicinin WhatsApp chatbot akisi tasarlamasina yardimci olmak.");
+        }
         sb.AppendLine();
         sb.AppendLine("## Kurallar");
         sb.AppendLine("- Turkce konusursun.");

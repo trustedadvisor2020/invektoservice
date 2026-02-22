@@ -11,9 +11,11 @@ interface ToolbarProps {
   onTest?: () => void;
   previewOpen?: boolean;
   onTogglePreview?: () => void;
+  aiChatOpen?: boolean;
+  onToggleAiChat?: () => void;
 }
 
-export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onTogglePreview }: ToolbarProps) {
+export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onTogglePreview, aiChatOpen, onToggleAiChat }: ToolbarProps) {
   const isDirty = useFlowStore((s) => s.isDirty);
   const simIsOpen = useSimulationStore((s) => s.isOpen);
   const simIsLoading = useSimulationStore((s) => s.isLoading);
@@ -129,6 +131,25 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
               <polyline points="10 9 9 9 8 9" />
             </svg>
             Onizleme
+          </button>
+        )}
+
+        {/* AI ile Gelistir */}
+        {onToggleAiChat && (
+          <button
+            onClick={onToggleAiChat}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+              aiChatOpen
+                ? 'bg-purple-500 text-white'
+                : 'bg-navy-50 hover:bg-navy-100 text-navy-500'
+            )}
+            title="AI ile akisi gelistir"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+            </svg>
+            AI
           </button>
         )}
 

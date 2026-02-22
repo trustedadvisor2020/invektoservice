@@ -6,9 +6,11 @@ import { FlowPreviewPanel } from '../components/FlowSummaryBar';
 import { NodePalette } from '../components/NodePalette';
 import { Toolbar } from '../components/Toolbar';
 import { SimulationPanel } from '../components/SimulationPanel';
+import { AiChatPanel } from '../components/AiChatPanel';
 import { NodePropertyPanel } from '../panels/NodePropertyPanel';
 import { useFlowStore } from '../store/flow-store';
 import { useSimulationStore } from '../store/simulation-store';
+import { useAiChatStore } from '../store/ai-chat-store';
 import { useAuth } from '../lib/auth';
 import { getFlow, updateFlow, ApiClientError } from '../lib/api';
 import type { FlowConfigV2 } from '../types/flow';
@@ -105,6 +107,25 @@ export function FlowEditorPage() {
     navigate('/');
   }, [navigate]);
 
+  // AI Chat toggle — mutual exclusion with simulation
+  const aiChatOpen = useAiChatStore((s) => s.isOpen);
+
+  const handleToggleAiChat = useCallback(async () => {
+    const aiChat = useAiChatStore.getState();
+    if (aiChat.isOpen) {
+      aiChat.close();
+      return;
+    }
+    // Close simulation when opening AI chat
+    useSimulationStore.getState().close();
+    await aiChat.open(flowId, tenantId);
+  }, [flowId, tenantId]);
+
+  const handleAiApply = useCallback((config: FlowConfigV2) => {
+    const wizardHistory = useFlowStore.getState().wizardHistory;
+    loadFlow(config, wizardHistory);
+  }, [loadFlow]);
+
   // AHA #4: Tek Tikla Test — save first if dirty, then start simulation
   const handleTest = useCallback(async () => {
     const store = useFlowStore.getState();
@@ -116,6 +137,9 @@ export function FlowEditorPage() {
       return;
     }
 
+    // Close AI chat when opening simulation
+    useAiChatStore.getState().close();
+
     // If dirty, warn user to save first
     if (store.isDirty) {
       setSaveError('Once flow\'u kaydedin, sonra test edin.');
@@ -126,10 +150,11 @@ export function FlowEditorPage() {
     await sim.start(tenantId, flowId);
   }, [tenantId, flowId]);
 
-  // Cleanup simulation on unmount
+  // Cleanup simulation and AI chat on unmount
   useEffect(() => {
     return () => {
       useSimulationStore.getState().close();
+      useAiChatStore.getState().close();
     };
   }, []);
 
@@ -199,7 +224,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-slate-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} />
 
         {/* Save error banner */}
         {saveError && (
@@ -227,6 +252,9 @@ export function FlowEditorPage() {
 
           {/* Simulation panel (flex shrink — canvas narrows when open) */}
           <SimulationPanel />
+
+          {/* AI Chat panel (mutual exclusive with simulation) */}
+          <AiChatPanel onApply={handleAiApply} />
         </div>
       </div>
     </ReactFlowProvider>

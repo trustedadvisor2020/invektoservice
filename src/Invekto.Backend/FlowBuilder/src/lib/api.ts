@@ -1,4 +1,5 @@
 import { loadSession, clearSession } from './auth';
+import type { WizardMessage } from '../types/wizard';
 
 const API_BASE = '/api/v1/flow-builder';
 
@@ -134,6 +135,8 @@ export interface FlowDetail {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  wizard_history?: WizardMessage[] | null;
+  wizard_status?: 'drafting' | 'completed' | null;
 }
 
 export function listFlows(tenantId: number): Promise<FlowSummary[]> {
