@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** Rebranding: "Invekto One" — Neon font (local @font-face), SVG logo componenti, sidebar layout yeniden dizayn (collapse altta, zoom kaldirildi, font reset ikonu). Deploy edildi (HEALTHY).
-- **Last Task:** Invekto One rebranding (logo SVG, Neon font, sidebar UX: zoom kaldirildi, collapse version satirina tasinidi, font reset eklendi), HTML title'lar guncellendi, tum SPA'lar + Backend deploy.
+- **Status:** Roadmap v4.0 genisleme: "Platform Evrim Katmanlari" segmenti eklendi (6 katman, phase entegrasyonu, bagimllik haritasi, revenue etkisi). Tech stack hatasi duzeltildi. Kod degisikligi YOK, sadece docs.
+- **Last Task:** Roadmap'e 6 akilil altyapi katmani eklendi (Müsteri Hafizasi, Flow Template Marketplace, Bilesik Olay Motoru, Voice AI, Gateway, Extension API). Expansion Model + Teknik Tuzaklar + DB strateji + Phase tablolari guncellendi. Tech stack hatasi (Node.js -> .NET 8) duzeltildi.
 - **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
@@ -89,6 +89,7 @@ src/
 | 2026-02-22 | AI Chat Panel ("AI ile Gelistir") | Flow editor'de AI sohbet paneli. Mevcut wizard altyapisi reuse (edit-mode system prompt + flow_config param). Mutual exclusion with simulation. Codex iter 1, FORCE PASS (CQ1/CQ5 false positive). |
 | 2026-02-22 | Working Hours Settings UI + API | Dashboard Ayarlar'a mesai saatleri section. GET/PUT /api/v1/settings/working-hours, JSONB merge, HH:mm + timezone + days_off validation. Codex FORCE PASS (CQ2/CQ3/CQ5 pre-existing false positive, CoVe 4/4 PASS). |
 | 2026-02-22 | Instance Filtering & Multi-Flow Routing | tenant_instances tablosu, 1 instance = max 1 flow, backward compat (kayit yoksa eski davranis), webhook filter (disabled/unassigned = log+ignore), ActivateFlowAsync artik diger flow'lari kapatmiyor. |
+| 2026-02-22 | Platform Evrim Katmanlari (Roadmap) | 6 akilil altyapi katmani roadmap'e eklendi: Musteri Hafizasi, Template Marketplace, Bilesik Olay Motoru, Voice AI, Gateway, Extension API. Phase 2-7 entegrasyonu, bagimllik haritasi, revenue etkisi, 6 yeni teknik risk, 3 yeni revenue driver. |
 
 ## Q Pending Operational Tasks
 

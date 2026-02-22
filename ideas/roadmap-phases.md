@@ -45,6 +45,7 @@ Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn seb
 - Otomasyon Dashboard + Log iyileştirme + metadata logging + basit FRT (v4.2)
 - KVKK Minimum Koruma (sağlık niche zorunlu)
 - **Yeni servis:** `Invekto.Knowledge` (port 7104)
+- **🔷 Altyapı katmanları:** Müşteri Hafızası (customer_memory tablo + sohbet özeti pipeline), Flow Template import/export + 5-10 sektör tarifi, Event bus tasarımı + basit AND/OR koşulları — bkz [roadmap.md#platform-evrim-katmanları](roadmap.md)
 → **Etki:** AI doğruluğu artar (RAG), tüm sektörlere fayda. Mevcut klinik müşterileri memnun.
 
 **Phase 3A (Hafta 17-20): Platform Enablers (v4.3)**
@@ -53,6 +54,7 @@ Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn seb
 - Randevu Motoru v2 (Advanced) — Google Calendar, bekleme listesi, no-show prediction
 - Dashboard genişletme + Ads Attribution (basit + full birleşik)
 - **Yeni servis:** `Invekto.Integrations` (port 7106)
+- **🔷 Altyapı katmanları:** Flow Template kataloğu UI + tek tıkla kurulum, AgentAI'a customer memory context injection, Bileşik olay motoru (time window + cross-channel), Webhook builder + temel REST API, Gateway adaptör PoC — bkz [roadmap.md#platform-evrim-katmanları](roadmap.md)
 → **Etki:** 3B'deki niche GR'ların temelini kurar. 6 GR.
 
 **Phase 3B (Hafta 21-24): Niche Derinleştirme (v4.3)**
@@ -60,6 +62,7 @@ Eksik: Otomasyon, AI, chatbot, broadcast — **#1 satış engeli ve #1 churn seb
 - Diş: intent pipeline, onboarding, klinik outbound
 - Estetik: lead pipeline, lead mgmt v2
 - **Sağlık genişleme (v4.2):** Tedavi takip, yorum/referans, medikal turizm (AR hariç)
+- **🔷 Altyapı katmanları:** Niche-özel customer memory (tedavi/sipariş/prosedür geçmişi), Niche tarif paketleri (10+/niche), Voice AI PoC (STT → AgentAI intent), Bileşik olay kuralları (niche-özel) — bkz [roadmap.md#platform-evrim-katmanları](roadmap.md)
 → **Etki:** Niche-özel differentiator'lar, sağlık niche'e erken değer. 16 GR.
 
 **Phase 4 (Hafta 25-32): Enterprise**

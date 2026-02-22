@@ -14,7 +14,7 @@
 |-------|--------|
 | **roadmap.md** *(bu dosya)* | Navigator — strateji, mimari, özet |
 | [whatisinvekto.md](whatisinvekto.md) | **Invekto mevcut ürün envanteri** — 50+ müşterili çalışan ürünün tam analizi |
-| [roadmap-phases.md](roadmap-phases.md) | Phase 0-6 detaylı plan, DB tabloları, başarı kriterleri |
+| [roadmap-phases.md](roadmap-phases.md) | Phase 0-7 detaylı plan, DB tabloları, başarı kriterleri |
 | [roadmap-scenarios.md](roadmap-scenarios.md) | 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + Outbound Engine gereksinimleri |
 | [roadmap-reviews.md](roadmap-reviews.md) | 4 uzman review (Dunford, Lemkin, Lenny, Hormozi) + aksiyonlar |
 
@@ -42,7 +42,7 @@ Her phase'in 3 soruya cevabı olmalı:
 
 ## Mevcut Durum
 
-> **ÖNEMLİ:** Invekto 2 parçadan oluşur. Ana uygulama (.NET) ve eklenti servisler (InvektoServis/Node.js).
+> **ÖNEMLİ:** Invekto 2 parçadan oluşur. Ana uygulama (.NET/Angular/SQL Server) ve eklenti servisler (InvektoServis/.NET 8/PostgreSQL).
 > Bu roadmap her iki tarafı da kapsıyor.
 
 ### Invekto Ana Uygulama (Çalışan Ürün — .NET/Angular/SQL Server)
@@ -383,9 +383,9 @@ Her phase'in detaylı adımları, DB tabloları, başarı kriterleri ve geçiş 
 |-------|-------|----------------------|-------------------------|--------------------------|----------------------|
 | **0** | 1-2 | Mevcut müşteri ihtiyaç analizi | Klinik müşterileri dinle | E-ticaret pazar araştırması | Otel müşterileri dinle |
 | **1** | 3-8 | Chatbot, AI Assist, Broadcast, Trigger | Tüm klinikler hemen faydalanır | Tüm potansiyel müşteriler faydalanır | Tüm oteller hemen faydalanır |
-| **2** | 9-16 | Knowledge/RAG, Dashboard, Multi-lang | Randevu motoru + no-show + KVKK | RAG ile ürün bilgisi | RAG ile otel bilgisi |
-| **3A** | 17-20 | Integrations, Outbound v2, Dashboard, Ads | Randevu Advanced | HB API + kargo | PMS entegrasyonu |
-| **3B** | 21-24 | Niche intent, sağlık genişleme | Tedavi takip + yorum + medikal turizm | İade v1/v2, B2B, full attribution | Niche template |
+| **2** | 9-16 | Knowledge/RAG, Dashboard, Multi-lang + **🔷 Müşteri Hafızası, Flow Tarifleri, Event Bus** | Randevu motoru + no-show + KVKK | RAG ile ürün bilgisi | RAG ile otel bilgisi |
+| **3A** | 17-20 | Integrations, Outbound v2, Dashboard, Ads + **🔷 Tarif Kataloğu UI, Webhook Builder, Gateway PoC** | Randevu Advanced | HB API + kargo | PMS entegrasyonu |
+| **3B** | 21-24 | Niche intent, sağlık genişleme + **🔷 Voice AI PoC, Niche Tarifler, Bileşik Kurallar** | Tedavi takip + yorum + medikal turizm | İade v1/v2, B2B, full attribution | Niche template |
 | **4** | 25-32 | SSO, Audit, SLA, Analytics | Tam KVKK compliance | Enterprise security | Enterprise |
 | **5** | 33-40 | Revenue Agent, Cart recovery | AR dil desteği | Cart recovery, cross-sell | Booking engine |
 | **6** | 41-48 | SLA, QA Scoring (C13), Mining | Operasyonel mükemmellik | Operasyonel mükemmellik | Operasyonel mükemmellik |
@@ -450,6 +450,9 @@ Toplam:  50+          60+           75+          100+         130+        170+  
 | Outbound | PostgreSQL | Phase 1 | Broadcast kampanyalar, gönderim kuyruğu |
 | Knowledge | PostgreSQL + pgvector | **Phase 2** | RAG embeddings, bilgi tabanı |
 | Integrations | PostgreSQL | **Phase 3** | Trendyol/HB sipariş cache, randevu slotları |
+| Knowledge (customer_memory) | PostgreSQL | **Phase 2** | Müşteri hafızası — sohbet özetleri, tercihler, etkileşim geçmişi |
+| Automation (event_log) | PostgreSQL | **Phase 2** | Event bus olayları, bileşik kural state, time window tracking |
+| Automation (flow_templates) | PostgreSQL | **Phase 2** | Sektörel tarif kataloğu, import/export meta, kurulum sayacı |
 | Audit | PostgreSQL | Phase 4 | İşlem logları |
 
 > Phase 1'de tek bir PostgreSQL instance yeterli. Servis başına ayrı DB, Phase 4'ten sonra.
@@ -532,7 +535,7 @@ Phase 3C-3D eklentisi (GÖRSEL AI — v4.5):
 ## Teknik Tuzaklar
 
 ### Core (v4.0 ile eklenen)
-1. **Ana uygulama (.NET) ile InvektoServis (Node.js) entegrasyonu** — İki farklı tech stack. API contract'ları net olmalı. Latency, hata yönetimi, retry mekanizması kritik.
+1. **Ana uygulama (.NET/SQL Server) ile InvektoServis (.NET 8/PostgreSQL) entegrasyonu** — İki farklı DB. API contract'ları net olmalı. Latency, hata yönetimi, retry mekanizması kritik.
 2. **Mevcut müşteri verisiyle çalışma** — 50+ müşterinin mevcut verisi SQL Server'da. InvektoServis PostgreSQL kullanıyor. Veri senkronizasyonu veya çift okuma stratejisi gerekli.
 3. **Chatbot/otomasyon mevcut akışları bozmamalı** — Mevcut routing, welcome mesajı, template sistemi çalışıyor. Yeni otomasyon bunların üstüne binmeli, değiştirmemeli.
 4. **Broadcast WhatsApp policy riski** — Toplu mesaj = WhatsApp Business API kurallarına %100 uyumlu olmalı. Template approval, opt-out, 24h window, rate limiting zorunlu. İhlal → numara ban.
@@ -547,6 +550,14 @@ Phase 3C-3D eklentisi (GÖRSEL AI — v4.5):
 11. **Sağlık sektörü compliance** — AI tıbbi tavsiye vermemeli. Disclaimer zorunlu.
 12. **Multi-language kalite** — Makine çevirisi yerine ayrı dil şablonları kullan.
 13. **İade çevirme agresifliği** — Müşteriyi çok zorlama, 1 teklif + 1 follow-up + iade başlat.
+
+### Platform Katmanları (Akıllı Altyapı Riskleri)
+14. **Event Bus karmaşıklığı** — Bileşik Olay Motoru basit başlamalı (in-process queue). RabbitMQ/Redis Streams'e erken geçiş overengineering. Phase 2'de in-process, Phase 3A'da gerekirse external queue.
+15. **Müşteri hafızası KVKK riski** — Customer memory = kişisel veri deposu. Sağlık verisi (tedavi geçmişi) hassas veri kategorisi. Tenant izolasyonu + retention policy + silme hakkı zorunlu. Phase 2'de KVKK uyumlu tasarla.
+16. **Voice AI maliyet kontrolü** — STT (Whisper/Deepgram) + TTS (ElevenLabs/Azure) dakika başına maliyet. Sınırsız kullanım = maliyet patlar. Dakika bazlı kotalar + fallback (insan agent) zorunlu.
+17. **Template marketplace kalite kontrolü** — Community tarifler yanlış çalışabilir, müşteriyi kızdırabilir. Review/onay mekanizması şart. İlk aşamada sadece Invekto built-in tarifler, community Phase 4+'te.
+18. **Gateway refactoring riski** — Mevcut 7 kanal çalışıyor. Adaptör mimarisine geçiş sırasında mevcut entegrasyonları bozmama kritik. Kanalları teker teker migrate et, big-bang değil.
+19. **Self-service API güvenliği** — Müşteri webhook'ları dış dünyaya data gönderir. Tenant izolasyonu, rate limiting, payload size limiti, secret scan zorunlu. PII (kişisel veri) sızdırma riski.
 
 ---
 
@@ -580,6 +591,9 @@ Phase 3C-3D eklentisi (GÖRSEL AI — v4.5):
 | Broadcast Volume | Toplu mesaj gönderim limiti + aşım | Phase 1+ | ❌ YENİ |
 | Conversation Volume | Aylık konuşma limiti + aşım ücreti | Phase 3+ | ❌ YENİ |
 | Integration Count | Entegrasyon sayısına göre tier | Phase 2+ | ❌ YENİ |
+| Template Marketplace | Premium otomasyon tarif paketleri (sektöre özel) | Phase 2+ | ❌ YENİ |
+| API Call Tier | Self-service extension API kullanım bazlı fiyatlama | Phase 3A+ | ❌ YENİ |
+| Voice AI Minutes | AI sesli karşılama dakika paketi | Phase 5+ | ❌ YENİ |
 
 **Upsell Fırsatı (Mevcut Müşteriler):**
 - Phase 1 çıktığında mevcut 50+ müşteriye AI/otomasyon paketi sunulabilir
@@ -608,6 +622,333 @@ Odak:   ANALİZ     OTOMASYON     AI+KRİTİK     NİCHE+SAĞLIK  ENTERPRISE   R
                    +AI ASSIST    NİCHE(v4.1)   GENİŞLEME    +SSO+AUDIT   +ÖDEME    +SLA/QA    +MOBİL
                    +BROADCAST    +KNOWLEDGE    +OUTBOUND v2  +SLA         +CART     +ANALYTICS +GLOBAL
                    +TRIGGER      +RANDEVU+RAG  +TEDAVİ+ADS  +ANALYTICS   +AR DİL   +MINING    +YENİ CH.
+```
+
+---
+
+## Platform Evrim Katmanları (Akıllı Altyapı)
+
+> **Kaynak:** Pazar araştırması — multi-channel AI asistan ekosistemi analizi (Şubat 2026)
+> **Prensip:** Bu katmanlar bağımsız "feature" değil, mevcut servislerin üzerine binen **çarpan etkili altyapılardır.**
+> Her biri mevcut roadmap phase'lerine entegre edilir, ayrı phase açmaz.
+
+### Neden Önemli?
+
+Invekto'nun mevcut gücü: 7 kanal, 50+ müşteri, routing, CRM.
+Eksik olan: Bu güçleri **katlanarak büyüten** altyapı katmanları.
+Aşağıdaki 6 katman, mevcut phase planına entegre edildiğinde **müşteri başına değeri 3-5x artırır.**
+
+---
+
+### Katman 1: Unified Message Gateway (Kanal Adaptör Mimarisi)
+
+**Ne:** Tüm mesajlaşma kanallarını tek bir soyutlama katmanı arkasına alan gateway.
+Yeni kanal ekleme = sadece bir "adaptör" yazmak. Core iş mantığı kanaldan bağımsız.
+
+**Mevcut durum:** 7 kanal var ama her birinin entegrasyonu ayrı. Yeni kanal = büyük efor.
+
+**Hedef mimari:**
+```
+Kanallar (WhatsApp, IG, Telegram, ...)
+    │
+    ▼
+┌────────────────────────────┐
+│  Unified Message Gateway   │  ← WebSocket control plane
+│  - Kanal adaptörleri       │  ← Her kanal bir adapter
+│  - Normalize mesaj format  │  ← Tek DTO: InvektoMessage
+│  - Routing + delivery      │  ← Mevcut 4 algoritma korunur
+│  - Health + retry          │  ← Kanal bazlı circuit breaker
+└────────────────────────────┘
+    │
+    ▼
+Core (Automation, AgentAI, CRM, ...)
+```
+
+**Fayda:**
+- Yeni kanal ekleme: haftalarca → **1-2 gün** (sadece adaptör yaz)
+- Tüm otomasyon/AI logic'i kanaldan bağımsız çalışır → bir kez yaz, 7+ kanalda çalışsın
+- Kanal bazlı health monitoring → hangi kanal sorunlu anında görülür
+
+**Phase entegrasyonu:**
+| Phase | Ne yapılır |
+|-------|-----------|
+| **3A** | Gateway soyutlamasının tasarımı + mevcut 2-3 kanalı adaptöre çevir (PoC) |
+| **7** | Tüm kanalları adaptöre geçir + yeni kanal ekleme API'si aç |
+
+**Revenue etkisi:** Yeni kanal = yeni müşteri segmenti. Line (Japonya), Zalo (Vietnam) gibi bölgesel kanallar ucuza eklenir → global pazara giriş kolaylaşır.
+
+---
+
+### Katman 2: Otomasyon Tarifi Pazaryeri (Flow Template Marketplace)
+
+**Ne:** Sektöre özel hazır otomasyon flow'ları. Müşteri browse eder, kurar, özelleştirir.
+"App Store ama otomasyon tariflerinin" modeli.
+
+**Mevcut durum:** Flow Builder var ama her müşteri sıfırdan flow oluşturuyor. Bilgi paylaşımı yok.
+
+**Hedef:**
+```
+┌──────────────────────────────────┐
+│     Otomasyon Tarifi Kataloğu     │
+├──────────────────────────────────┤
+│ 📋 Diş Kliniği Paketi           │
+│   ├── Randevu hatırlatma flow    │
+│   ├── No-show takip flow         │
+│   └── Tedavi sonrası mesaj flow  │
+│                                  │
+│ 📋 E-ticaret Paketi             │
+│   ├── Kargo durumu flow          │
+│   ├── İade yönetimi flow         │
+│   └── Sepet hatırlatma flow      │
+│                                  │
+│ 📋 Estetik Klinik Paketi        │
+│   ├── Lead qualification flow    │
+│   ├── Konsültasyon takip flow    │
+│   └── Medikal turizm flow        │
+│                                  │
+│ 📋 Otel / Turizm Paketi         │
+│   ├── Rezervasyon onay flow      │
+│   ├── Check-in hatırlatma flow   │
+│   └── Misafir memnuniyet flow    │
+└──────────────────────────────────┘
+```
+
+**Fayda:**
+- Müşteri onboarding süresi: günlerce → **dakikalar** (tarif seç, özelleştir, aktifleştir)
+- Sektör deneyimi birikir → en iyi flow'lar ortaya çıkar
+- **Revenue driver:** Premium tarif paketleri satılabilir (aylık veya tek seferlik)
+- Churn düşer → müşteri "sıfırdan kurdum" yerine "hazır aldım" hisseder
+
+**Phase entegrasyonu:**
+| Phase | Ne yapılır |
+|-------|-----------|
+| **2** | Flow import/export (JSON) + 5-10 built-in sektör tarifi (diş, e-ticaret, estetik) |
+| **3A** | Tarif kataloğu UI + sektör filtresi + tek tıkla kurulum |
+| **3B** | Niche bazlı tarif paketleri (her niche'e 10+ tarif) |
+| **4+** | Community marketplace (müşteriler kendi tariflerini paylaşır/satar) |
+
+**Revenue etkisi:** Expansion revenue driver. Mevcut $25/agent fiyatının üstüne "Premium Otomasyon Paketi" tier'ı eklenir. Tahmini: müşteri başına +%30-50 ARPU artışı.
+
+---
+
+### Katman 3: Müşteri Hafızası (Persistent Customer Context)
+
+**Ne:** AI'ın müşteriyi **konuşmalar arası hatırlaması.** Her yeni sohbet önceki bağlamı taşır.
+Müşteri her aradığında "tekrar anlatma" zorunda kalmaz.
+
+**Mevcut durum:** Her sohbet bağımsız. AgentAI cevap önerisi veriyor ama geçmiş bağlamı kullanmıyor.
+
+**Hedef:**
+```
+Müşteri Ali → WhatsApp mesajı: "Kargom ne oldu?"
+
+Invekto AI (hafızasız):          Invekto AI (hafızalı):
+"Sipariş numaranızı              "Ali Bey, 15 Şubat'taki
+ alabilir miyim?"                 #TR-4521 siparişiniz
+                                  Yurtiçi Kargo'da, yarın
+                                  teslim edilecek. Geçen
+                                  seferki adresinize mi?"
+```
+
+**Bileşenler:**
+- **Customer Profile Store:** Her müşteri için tercihler, geçmiş etkileşimler, satın alma özeti
+- **Conversation Summary Pipeline:** Her kapanan sohbet → özet çıkar → profile eklenir
+- **Context Injection:** Yeni sohbet açıldığında AI'a son 3-5 etkileşim özeti verilir
+- **Preference Learning:** "Akşam mesaj göndermeyin" gibi tercihler otomatik öğrenilir
+
+**Phase entegrasyonu:**
+| Phase | Ne yapılır |
+|-------|-----------|
+| **2** | Knowledge servisi içinde `customer_memory` tablosu + sohbet özeti pipeline |
+| **3A** | AgentAI'a context injection + tercih öğrenme |
+| **3B** | Niche-özel memory (diş: tedavi geçmişi, e-ticaret: sipariş geçmişi, estetik: prosedür tercihleri) |
+
+**Revenue etkisi:** Churn killer. "Bizi tanıyan AI" = müşteri bağlılığı. Rakipten ayrıştıran #1 feature. Demo'da "WOW" anı yaratır.
+
+---
+
+### Katman 4: Bileşik Olay Motoru (Complex Event Processing)
+
+**Ne:** Basit trigger'ların ötesinde — **"X oldu VE Y 24 saat içinde olduysa Z yap"** mantığı.
+Zincirleme, zamanlı, koşullu otomasyon kuralları.
+
+**Mevcut durum:** Automation servisi basit trigger destekliyor. Ama gerçek iş senaryoları bileşik.
+
+**Örnekler:**
+```
+KURAL: Sepet terk + 2 saat geçti + daha önce satın almış → Kişiselleştirilmiş WhatsApp mesajı
+KURAL: Randevu iptal + 3. kez iptal + VIP hasta → Doktora bildirim + özel arama talebi
+KURAL: Fiyat sorusu + 24 saat cevap yok + lead score >70 → Supervisor'a eskalasyon
+KURAL: Mesaj gönderildi + okunmadı + 48 saat → Farklı kanaldan (SMS) tekrar dene
+```
+
+**Bileşenler:**
+- **Event Bus:** Tüm servislerden event akışı (mesaj geldi, sohbet kapandı, etiket eklendi, randevu oluştu...)
+- **Rule Engine:** AND/OR/NOT/TIMEOUT koşulları + aksiyon zincirleme
+- **Time Window:** "Son X saat/gün içinde" koşulları
+- **Cross-Channel Action:** Bir kanaldan gelen event → başka kanalda aksiyon
+
+**Phase entegrasyonu:**
+| Phase | Ne yapılır |
+|-------|-----------|
+| **2** | Event bus tasarımı + Automation servisine basit AND/OR koşulları |
+| **3A** | Time window + cross-channel aksiyon + Outbound v2 ile entegrasyon |
+| **3B** | Niche-özel bileşik kurallar (sağlık: tedavi takip zinciri, e-ticaret: satın alma yolculuğu) |
+| **4** | Görsel rule builder (FlowBuilder'a "koşul düğümü" olarak entegre) |
+
+**Revenue etkisi:** "Akıllı otomasyon" = premium tier. Basit trigger ücretsiz, bileşik kurallar ücretli. Upsell fırsatı.
+
+---
+
+### Katman 5: Voice AI (VOIP + Yapay Zeka Birleşimi)
+
+**Ne:** Mevcut VOIP altyapısının üzerine AI katmanı. Sesli aramayı otomatik karşılama,
+sesten intent tespiti, metin dönüşümü.
+
+**Mevcut durum:** VOIP çağrı merkezi çalışıyor ama tamamen insan operasyonlu.
+
+**Hedef senaryolar:**
+```
+Hasta aradı → AI karşıladı → "Randevu almak istiyorum"
+  → AI: "Hangi gün uygun, Dr. Burak'ın Çarşamba 14:00'ü müsait?"
+  → Hasta: "Olur"
+  → AI randevuyu oluşturdu, WhatsApp'tan onay gönderdi
+
+Müşteri aradı → AI karşıladı → "Kargom nerede?"
+  → AI: Sipariş no sordu → sisteme baktı → kargo durumunu söyledi
+  → 45 saniyede çözüldü, agent'a gerek kalmadı
+```
+
+**Bileşenler:**
+- **Speech-to-Text:** Gelen aramayı metne çevir (Whisper/Deepgram)
+- **Intent Detection:** AgentAI servisi ile aynı intent modeli → sesli + yazılı tek model
+- **Text-to-Speech:** AI cevabını sese çevir (ElevenLabs/Azure)
+- **Hybrid Handoff:** AI çözemezse → canlı agent'a sesli sohbet özeti ile devret
+
+**Phase entegrasyonu:**
+| Phase | Ne yapılır |
+|-------|-----------|
+| **3B** | PoC: Gelen aramaları STT ile metne çevir → AgentAI'a gönder → öneri üret (agent ekranda görür) |
+| **5** | TTS ekleme → tam otomatik sesli karşılama (basit senaryolar: randevu, kargo) |
+| **7** | Gelişmiş: çok dilli sesli asistan (EN/AR/TR), duygu analizi sesli |
+
+**Revenue etkisi:** VOIP zaten var → üzerine AI eklemek düşük maliyet, yüksek değer. "AI'lı çağrı merkezi" = enterprise müşteri çekici. Rakiplerden çok öndeki bir feature. Agent seat tasarrufu direkt ölçülebilir ROI.
+
+---
+
+### Katman 6: Self-Service Extension API (Müşteri Entegrasyon Platformu)
+
+**Ne:** Müşterilerin kendi entegrasyonlarını yapabildiği açık API + webhook builder.
+FlowBuilder'da custom node tipi oluşturma imkanı.
+
+**Mevcut durum:** Entegrasyonlar Invekto ekibinin yazmasını gerektiriyor. Ölçeklenmiyor.
+
+**Hedef:**
+```
+┌─────────────────────────────────────┐
+│  Invekto Developer Platform          │
+├─────────────────────────────────────┤
+│ 🔌 Webhook Builder                  │
+│   → Müşteri kendi sistemine         │
+│     event gönderebilir              │
+│                                     │
+│ 🧩 Custom Node SDK                  │
+│   → FlowBuilder'da kendi           │
+│     node'unu oluştur                │
+│   → Örn: "ERP'ye sipariş yaz"      │
+│                                     │
+│ 📡 Open API                         │
+│   → REST API ile mesaj gönder,      │
+│     sohbet oku, contact yönet       │
+│                                     │
+│ 📚 Developer Docs                   │
+│   → Swagger + örnek kod + sandbox   │
+└─────────────────────────────────────┘
+```
+
+**Fayda:**
+- Entegrasyon talebi darboğazı kalkar → müşteri beklemez
+- Ecosystem etkisi: ne kadar çok entegrasyon → platform o kadar yapışkan
+- Partner/ajans ekosistemi doğar → "Invekto partner" sertifikasyonu
+
+**Phase entegrasyonu:**
+| Phase | Ne yapılır |
+|-------|-----------|
+| **3A** | Webhook builder (event seç → URL'e POST at) + temel REST API (mesaj, contact) |
+| **4** | API key yönetimi + rate limiting + developer docs (Swagger) |
+| **7** | Custom Node SDK + marketplace (partner'lar node yazar, müşteriler kullanır) |
+
+**Revenue etkisi:** Platform stickiness. Müşteri kendi entegrasyonunu yaptığında churn maliyeti çok yükselir → doğal lock-in. API kullanımına göre fiyatlama (API call bazlı tier).
+
+---
+
+### Katmanlar Arası Bağımlılık
+
+```
+                    ┌─────────────────────┐
+                    │  Event Bus (K4 core) │  ← Paylaşılan altyapı, Phase 2'de tasarlanır
+                    └──────┬──────────────┘
+            ┌──────────────┼──────────────────────┐
+            │              │                      │
+            ▼              ▼                      ▼
+   ┌────────────┐  ┌──────────────┐     ┌────────────────┐
+   │ K3: Müşteri│  │ K4: Bileşik  │     │ K6: Extension  │
+   │ Hafızası   │  │ Olay Motoru  │     │ API (webhooks) │
+   │ (Phase 2)  │  │ (Phase 2-3A) │     │ (Phase 3A)     │
+   └──────┬─────┘  └──────┬───────┘     └────────────────┘
+          │               │
+          ▼               ▼
+   ┌──────────────────────────┐         ┌────────────────┐
+   │ K2: Template Marketplace │         │ K1: Gateway    │
+   │ (Phase 2-3A)             │         │ (Phase 3A-7)   │
+   │ Tarifler K3+K4 kullanır  │         │ Event Bus gerek│
+   └──────────────────────────┘         └────────────────┘
+
+                                        ┌────────────────┐
+                                        │ K5: Voice AI   │
+                                        │ (Phase 3B-7)   │
+                                        │ K3 + AgentAI   │
+                                        │ bağımlı        │
+                                        └────────────────┘
+
+Kritik yol: Event Bus (K4 core) → K3 + K4 full + K6 → K2 (template'ler event'leri kullanır)
+Bağımsız: K1 (Gateway) ve K5 (Voice AI) diğerlerinden bağımsız başlayabilir
+```
+
+> **Karar noktası:** Event Bus Phase 2'de in-process (Channel/Queue pattern) olarak başlar.
+> Phase 3A'da external queue'ya (Redis Streams veya RabbitMQ) geçiş kararı verilir — yük profiline göre.
+
+---
+
+### Katman Öncelik Matrisi
+
+| # | Katman | Etki | Efor | Phase | Öncelik |
+|---|--------|------|------|-------|---------|
+| 3 | **Müşteri Hafızası** | 🔴 Çok Yüksek | 🟢 Düşük-Orta | 2-3 | **#1 — Demo WOW + Churn killer** |
+| 2 | **Flow Template Marketplace** | 🔴 Çok Yüksek | 🟢 Düşük | 2-3A | **#2 — Onboarding hızı + Revenue** |
+| 4 | **Bileşik Olay Motoru** | 🟠 Yüksek | 🟡 Orta | 2-3A | **#3 — Premium otomasyon tier** |
+| 6 | **Self-Service Extension API** | 🟠 Yüksek | 🟡 Orta | 3A-4 | **#4 — Platform stickiness** |
+| 1 | **Unified Message Gateway** | 🟡 Orta-Yüksek | 🔴 Yüksek | 3A-7 | **#5 — Uzun vadeli mimari yatırım** |
+| 5 | **Voice AI** | 🟡 Orta-Yüksek | 🔴 Yüksek | 3B-7 | **#6 — Differentiator ama yüksek efor** |
+
+> **Kural:** Önce düşük efor + yüksek etki (Katman 2, 3). Sonra orta efor (Katman 4, 6). En son yüksek efor (Katman 1, 5).
+> Phase 2'de başlayan katmanlar mevcut servislere (Knowledge, AgentAI) doğal entegre olur — yeni servis gerektirmez.
+
+---
+
+### Toplam Revenue Etkisi (Tahmini)
+
+```
+Katman                          Etki Türü                    ARPU Artışı
+─────────────────────────────────────────────────────────────────────────
+Müşteri Hafızası                Churn ↓, Demo WOW            +%10-15
+Flow Template Marketplace       Onboarding ↑, Upsell          +%30-50
+Bileşik Olay Motoru            Premium tier                   +%20-30
+Self-Service Extension API      Lock-in, API tier             +%10-20
+Unified Message Gateway         Yeni kanal = yeni segment     +%15-25 (uzun vade)
+Voice AI                        Agent seat tasarrufu           +%20-40 (enterprise)
+─────────────────────────────────────────────────────────────────────────
+Toplam (kümülatif):             ARPU 2-3x artış potansiyeli   Phase 4 sonunda
 ```
 
 ---
