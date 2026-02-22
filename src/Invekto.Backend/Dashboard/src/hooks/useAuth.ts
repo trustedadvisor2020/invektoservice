@@ -6,11 +6,12 @@ export function useAuth() {
   const navigate = useNavigate();
 
   // Synchronous URL token extraction — runs BEFORE first render
-  // so ProtectedRoute sees isAuthenticated=true immediately
+  // so ProtectedRoute sees isAuthenticated=true immediately.
+  // INMA may send camelCase or lowercase param names — check both.
   const [urlTokenHandled] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get('accesstoken');
-    const refreshToken = params.get('refreshtoken');
+    const accessToken = params.get('accesstoken') || params.get('accessToken');
+    const refreshToken = params.get('refreshtoken') || params.get('refreshToken');
     if (!accessToken) return false;
 
     // URL'den token'lari temizle (browser history'de kalmasin)
@@ -27,13 +28,13 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
   const [welcomeData, setWelcomeData] = useState<unknown>(null);
 
-  // Post-mount: navigate + welcome fetch + INMA token exchange for FlowBuilder
+  // Post-mount: navigate + welcome fetch + INMA token exchange for URL SSO flow
   useEffect(() => {
     if (!urlTokenHandled) return;
 
     if (session) {
       // Exchange INMA JWT for INSE JWT so FlowBuilder endpoints can validate token
-      api.exchangeInmaToken();
+      api.exchangeInmaToken().then(() => setSession(api.getSession()));
 
       api.getWelcome()
         .then(data => setWelcomeData(data))
@@ -44,6 +45,19 @@ export function useAuth() {
       setError('Token gecersiz veya suresi dolmus');
       setIsAuthenticated(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-exchange on mount: existing sessions may hold raw INMA JWT.
+  // exchangeInmaToken is a no-op when token is already INSE (no CompanyCode claim).
+  useEffect(() => {
+    if (urlTokenHandled) return; // URL SSO effect handles this separately
+    if (!isAuthenticated || !session) return;
+
+    api.exchangeInmaToken().then(() => {
+      const updated = api.getSession();
+      if (updated) setSession(updated);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -120,6 +134,10 @@ export function useAuth() {
     try {
       const resp = await api.loginWithInmaCredentials(companyName, username, password);
       api.setSession(resp);
+
+      // Exchange raw INMA JWT → INSE JWT so FlowBuilder + other JWT endpoints work
+      await api.exchangeInmaToken();
+
       setSession(api.getSession());
       setIsAuthenticated(true);
 

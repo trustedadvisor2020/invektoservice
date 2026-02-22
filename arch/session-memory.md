@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Template System (Sablon Sistemi) tamamlandi. 7 tablo SQL schema, 12+ Shared DTO, TemplateRepository, 3 servis (Extractor/Resolution/Adoption), Knowledge API endpoints, Backend proxy, 4 Dashboard sayfasi. Codex review 5-chunk stratejisi ile 4 iteration'da PASS. 14 gercek fix (typed catches, INV error codes, IHttpClientFactory, null-forgiving, silent JSON catch logging).
-- **Last Task:** Template System Codex review — 195KB diff, 5 chunk, 4 iteration. Fixes: catch(Exception)→typed catches (NpgsqlException/JsonException/HttpRequestException), INV error codes, IHttpClientFactory pattern, null-forgiving→fallback, static→instance methods for logging. Plan JSON verdict=PASS.
-- **Next Task:** (1) template-catalog.sql production'da calistir, (2) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (3) Knowledge deploy (pgvector + template endpoints), (4) Backend deploy (template proxy + SPA rebuild), (5) Automation deploy, (6) Instance yonetimi E2E test
+- **Status:** Full deploy + INMA SSO hotfix tamamlandi. Backend, Knowledge, Automation deploy edildi (10/10 HEALTHY). INMA SSO auth chain tamamen duzeltildi: nested Router fix, URL param casing, root redirect query param koruma, exchange decode-only fallback, CompanyCode→tenant_id mapping, DashboardPage tenant view, doRefresh re-exchange.
+- **Last Task:** INMA SSO auth chain hotfix — 7 fix: (1) nested Router crash, (2) loginWithInma exchange, (3) doRefresh re-exchange, (4) DashboardPage tenant/ops split, (5) URL param casing, (6) root redirect query preserve, (7) exchange decode-only CompanyCode priority
+- **Next Task:** (1) Welcome endpoint JSON format fix (plain text→JSON), (2) InmaJwtValidator CompanyCode alignment (validated path also uses CompanyId, should use CompanyCode), (3) Template System ingestion E2E test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -102,9 +102,11 @@ src/
 - [ ] Attribution: attribution.sql calistir
 - [ ] Outbound: campaign + consent migration calistir
 - [x] Backend: backend-metrics.sql calistir (2026-02-21 tamamlandi)
-- [ ] Template System: template-catalog.sql calistir (7 tablo + GRANT)
-- [ ] Instance Routing: tenant-instances.sql calistir + uq_chatbot_flows_active DROP INDEX
-- [ ] Instance Routing: Backend + Automation deploy sonrasi E2E test
+- [x] Template System: template-catalog.sql calistir (2026-02-23 — 7 tablo zaten mevcut)
+- [x] Instance Routing: tenant-instances.sql calistir (2026-02-23 — tablo + index zaten mevcut)
+- [x] Backend + Knowledge + Automation deploy (2026-02-23 — 10/10 HEALTHY)
+- [ ] Instance Routing: E2E test (instance yonetimi + multi-flow routing)
+- [ ] Welcome endpoint: JSON format fix (plain text "Merhaba 5050" → JSON)
 
 ## Notes
 

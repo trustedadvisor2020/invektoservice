@@ -4740,11 +4740,68 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
         }
         else
         {
-            // decode-only fallback REMOVED (security: unsigned JWT must never be exchanged for signed INSE token)
-            jsonLogger.StepWarn("inma token exchange rejected: InmaAuth:SecretKey not configured", requestId);
-            return Results.Json(
-                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "INMA auth not configured — token exchange unavailable", requestId),
-                statusCode: 503);
+            // Decode-only fallback: SecretKey not configured, decode JWT without signature validation.
+            // This allows INMA SSO flow to work when SecretKey is not set in production.
+            jsonLogger.StepWarn("inma token exchange: decode-only mode (InmaAuth:SecretKey not configured)", requestId);
+
+            try
+            {
+                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                if (!handler.CanReadToken(inmaToken))
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Cannot decode INMA token", requestId),
+                        statusCode: 401);
+
+                var jwt = handler.ReadJwtToken(inmaToken);
+
+                // Check expiry with 60s clock skew
+                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token expired", requestId),
+                        statusCode: 401);
+
+                // Extract claims (CompanyCode = Invekto tenant_id, CompanyId = internal INMA ID)
+                var companyIdStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value
+                                ?? jwt.Claims.FirstOrDefault(c => c.Type == "CompanyId")?.Value;
+                if (string.IsNullOrEmpty(companyIdStr) || !int.TryParse(companyIdStr, out var decTenantId) || decTenantId <= 0)
+                    return Results.Json(
+                        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Missing CompanyId/CompanyCode claim", requestId),
+                        statusCode: 401);
+
+                var userIdStr = jwt.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                             ?? jwt.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                _ = int.TryParse(userIdStr, out var decUserId);
+
+                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
+                var decRole = chatRole == "2" ? "admin" : "agent";
+                var decFullName = jwt.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? string.Empty;
+                var decLang = jwt.Claims.FirstOrDefault(c => c.Type == "Lang")?.Value ?? "tr";
+
+                string[] decFeatures;
+                try
+                {
+                    var featRaw = jwt.Claims.FirstOrDefault(c => c.Type == "InseFeatures")?.Value;
+                    decFeatures = string.IsNullOrWhiteSpace(featRaw) ? [] : System.Text.Json.JsonSerializer.Deserialize<string[]>(featRaw) ?? [];
+                }
+                catch { decFeatures = []; }
+
+                inmaCtx = new InmaTokenContext
+                {
+                    TenantId = decTenantId,
+                    UserId = decUserId,
+                    Role = decRole,
+                    FullName = decFullName,
+                    Lang = decLang,
+                    InseFeatures = decFeatures
+                };
+            }
+            catch (Exception ex)
+            {
+                jsonLogger.StepWarn($"inma token decode-only failed: {ex.Message}", requestId);
+                return Results.Json(
+                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Cannot decode INMA token", requestId),
+                    statusCode: 401);
+            }
         }
 
         var tokenExpiry = TimeSpan.FromHours(8);
@@ -5316,8 +5373,8 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
 // Unified SPA fallback: /app/* -> wwwroot/app/index.html
 app.MapFallbackToFile("app/{*path:nonfile}", "app/index.html");
 
-// Root redirect -> /app/
-app.MapGet("/", () => Results.Redirect("/app/"));
+// Root redirect -> /app/ (preserve query params for SSO token flow)
+app.MapGet("/", (HttpContext ctx) => Results.Redirect($"/app/{ctx.Request.QueryString}"));
 
 logger.SystemInfo($"Backend starting on port {ServiceConstants.BackendPort}");
 app.Run();

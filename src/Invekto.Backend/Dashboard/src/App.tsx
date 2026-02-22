@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/Layout';
@@ -51,32 +51,30 @@ function TenantDashboardPage() {
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<HomeDashboard />} />
-          <Route path="/flow-builder" element={<Suspense><FlowListPage /></Suspense>} />
-          <Route path="/flow-builder/editor/:flowId" element={<Suspense><FlowEditorPage /></Suspense>} />
-          <Route path="/flow-builder/wizard/:flowId" element={<Suspense><WizardPage /></Suspense>} />
-          <Route path="/logs" element={<LogsPage />} />
-          <Route path="/knowledge" element={<KnowledgePage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/campaigns" element={<CampaignsPage />} />
-          <Route path="/appointments" element={<AppointmentsPage />} />
-          <Route path="/integrations" element={<IntegrationsPage />} />
-          <Route path="/marketing" element={<MarketingPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/tenants" element={<TenantsPage />} />
-          <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
-          <Route path="/templates/ingestion" element={<Suspense><TemplateIngestionPage /></Suspense>} />
-          <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
-          <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />
-          <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<HomeDashboard />} />
+        <Route path="/flow-builder" element={<Suspense><FlowListPage /></Suspense>} />
+        <Route path="/flow-builder/editor/:flowId" element={<Suspense><FlowEditorPage /></Suspense>} />
+        <Route path="/flow-builder/wizard/:flowId" element={<Suspense><WizardPage /></Suspense>} />
+        <Route path="/logs" element={<LogsPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/campaigns" element={<CampaignsPage />} />
+        <Route path="/appointments" element={<AppointmentsPage />} />
+        <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/marketing" element={<MarketingPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/tenants" element={<TenantsPage />} />
+        <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
+        <Route path="/templates/ingestion" element={<Suspense><TemplateIngestionPage /></Suspense>} />
+        <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
+        <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />
+        <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

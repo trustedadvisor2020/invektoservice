@@ -1,18 +1,22 @@
 import { useState, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, Download } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Download, LayoutDashboard } from 'lucide-react';
 import { api, type HealthResponse, type ServiceHealth } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import { usePolling } from '../hooks/usePolling';
 import { HealthCard } from '../components/HealthCard';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 
 export function DashboardPage() {
+  const { session, isInmaSession } = useAuth();
+  const isOpsView = !isInmaSession;
   const [restartingService, setRestartingService] = useState<string | null>(null);
 
-  // Fetch health data every 30 seconds (reduced from 10s to prevent connection exhaustion)
+  // Health polling — only for ops sessions (ops-only endpoint: /api/ops/health)
   const { data: healthData, isLoading: healthLoading, refresh: refreshHealth } = usePolling<HealthResponse>({
     fetcher: () => api.getHealth(),
     interval: 30000,
+    enabled: isOpsView,
   });
 
   const handleRestart = useCallback(async (service: ServiceHealth) => {
@@ -36,6 +40,63 @@ export function DashboardPage() {
     }
   }, [refreshHealth]);
 
+  // --- Tenant Dashboard View ---
+  if (!isOpsView && session) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold text-navy-900">Kontrol Paneli</h1>
+          <p className="text-sm text-navy-400 mt-0.5">
+            Hosgeldiniz, {session.fullName}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="py-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-navy-100 rounded-lg flex items-center justify-center">
+                  <LayoutDashboard className="w-5 h-5 text-navy-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-navy-400">Tenant ID</p>
+                  <p className="text-lg font-semibold text-navy-900">{session.tenantId}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-navy-400">Durum</p>
+                  <p className="text-lg font-semibold text-green-600">Aktif</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <LayoutDashboard className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-navy-400">Rol</p>
+                  <p className="text-lg font-semibold text-navy-900">{session.role}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Ops Health Dashboard View ---
   const services = healthData?.services || [];
   const hasErrors = services.some(s => s.status !== 'ok');
 

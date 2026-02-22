@@ -860,6 +860,11 @@ class OpsApiClient {
       if (!tokens.accessToken) return false;
 
       this.storeTokens(tokens.accessToken, tokens.refreshToken);
+
+      // Refresh returns raw INMA JWT — re-exchange to INSE JWT
+      // so JwtAuthMiddleware-protected endpoints keep working.
+      await this.exchangeInmaToken();
+
       return true;
     } catch (err) {
       console.warn('[api] token refresh failed:', err);
