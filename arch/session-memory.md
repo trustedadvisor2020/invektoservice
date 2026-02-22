@@ -8,7 +8,7 @@
 - **Date:** 2026-02-23
 - **Status:** Demo Bot flow + Switch node UX + MockIntentDetector synonym support. Invekto Demo Bot (flow_id=7, tenant 5050) olusturuldu, WhatsApp'tan test edildi. BaseNode right-side outputs, MockIntentDetector custom intent synonym expansion eklendi.
 - **Last Task:** Demo Bot — (1) 20-node Invekto Demo Bot flow (DB INSERT), (2) BaseNode outputPosition="right" prop, (3) LogicSwitchNode right outputs, (4) MockIntentDetector synonym expansion (sector keywords), (5) AiIntentHandler customIntents pass to mock, (6) 5 Invekto FAQ entry
-- **Next Task:** (1) InmaJwtValidator CompanyCode alignment (validated path also uses CompanyId, should use CompanyCode), (2) Template System ingestion E2E test, (3) Instance routing E2E test
+- **Next Task:** (1) Instance routing E2E test, (2) Multi-flow routing test, (3) Template System ingestion E2E test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

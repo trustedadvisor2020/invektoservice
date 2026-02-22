@@ -8,14 +8,14 @@
 |---|------|--------|-------|
 | 1 | Instance yonetimi E2E test | PENDING | SQL + deploy tamamlandi, test kalir |
 | 2 | Multi-flow routing test | PENDING | #1 ile birlikte |
-| 3 | InmaJwtValidator CompanyCode alignment | PENDING | Validated path CompanyId→CompanyCode |
-| 4 | Template ingestion E2E test | PENDING | Ebrumoda verisi ile extraction |
+| 3 | Template ingestion E2E test | PENDING | Ebrumoda verisi ile extraction |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
 | 2026-02-23 | Demo Bot — Invekto Demo Bot flow (20 node, 31 edge), BaseNode right outputs, MockIntentDetector synonym expansion, 5 FAQ entry |
+| 2026-02-23 | InmaJwtValidator CompanyCode alignment — validated path CompanyCode first + CompanyId fallback, INV-AUTH-004 |
 | 2026-02-23 | Flow editor fix — welcome endpoint parse + double-JSON node data + DB migration |
 | 2026-02-23 | INMA SSO hotfix — 7 fix, full deploy, tenant 5050 calisiyor |
 | 2026-02-23 | Full deploy — Backend + Knowledge + Automation, 10/10 HEALTHY |
