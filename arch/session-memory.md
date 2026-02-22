@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Full deploy + INMA SSO hotfix tamamlandi. Backend, Knowledge, Automation deploy edildi (10/10 HEALTHY). INMA SSO auth chain tamamen duzeltildi: nested Router fix, URL param casing, root redirect query param koruma, exchange decode-only fallback, CompanyCode→tenant_id mapping, DashboardPage tenant view, doRefresh re-exchange.
-- **Last Task:** INMA SSO auth chain hotfix — 7 fix: (1) nested Router crash, (2) loginWithInma exchange, (3) doRefresh re-exchange, (4) DashboardPage tenant/ops split, (5) URL param casing, (6) root redirect query preserve, (7) exchange decode-only CompanyCode priority
-- **Next Task:** (1) Welcome endpoint JSON format fix (plain text→JSON), (2) InmaJwtValidator CompanyCode alignment (validated path also uses CompanyId, should use CompanyCode), (3) Template System ingestion E2E test
+- **Status:** Flow editor fix + Backend deploy. Welcome endpoint JSON parse hatasi cozuldu, flow node data double-JSON-encoded array'ler (options/cases/intents) DB'de duzeltildi + frontend defensive parsing eklendi.
+- **Last Task:** Flow editor bugfix — (1) Welcome endpoint plain text→JSON parse fix (api.ts getWelcome), (2) loadFlow normalizeNodeData: string-encoded array'leri parse (flow-store.ts), (3) DB fix: 5 node'daki double-encoded options/cases/intents → gerçek JSONB array
+- **Next Task:** (1) InmaJwtValidator CompanyCode alignment (validated path also uses CompanyId, should use CompanyCode), (2) Template System ingestion E2E test, (3) Instance routing E2E test
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -106,7 +106,8 @@ src/
 - [x] Instance Routing: tenant-instances.sql calistir (2026-02-23 — tablo + index zaten mevcut)
 - [x] Backend + Knowledge + Automation deploy (2026-02-23 — 10/10 HEALTHY)
 - [ ] Instance Routing: E2E test (instance yonetimi + multi-flow routing)
-- [ ] Welcome endpoint: JSON format fix (plain text "Merhaba 5050" → JSON)
+- [x] Welcome endpoint: JSON format fix (plain text → defensive parse, 2026-02-23)
+- [x] Flow editor: double-JSON-encoded node data fix (options/cases/intents, 2026-02-23)
 
 ## Notes
 

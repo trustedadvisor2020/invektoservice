@@ -203,13 +203,26 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   loadFlow: (config, wizardHistory) => {
     const defaults = createDefaultFlow();
 
+    // Fix double-JSON-encoded fields in node data (DB may store arrays as strings)
+    const ARRAY_FIELDS = ['options', 'cases', 'intents'];
+    function normalizeNodeData(data: Record<string, unknown>): Record<string, unknown> {
+      const result = { ...data };
+      for (const field of ARRAY_FIELDS) {
+        const val = result[field];
+        if (typeof val === 'string') {
+          try { result[field] = JSON.parse(val); } catch { result[field] = []; }
+        }
+      }
+      return result;
+    }
+
     let nodes: Node[] = (config.nodes ?? []).map((n) => ({
       id: n.id,
       type: n.type,
       position: n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number'
         ? n.position
         : { x: 0, y: 0 },
-      data: n.data as Record<string, unknown>,
+      data: normalizeNodeData(n.data as Record<string, unknown>),
     }));
 
     const edges: Edge[] = (config.edges ?? []).map((e) => ({

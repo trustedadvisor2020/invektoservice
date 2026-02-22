@@ -818,7 +818,13 @@ class OpsApiClient {
   // --- Welcome endpoint ---
 
   async getWelcome(): Promise<unknown> {
-    return this.request<unknown>('/api/v1/inma/welcome');
+    // Welcome endpoint may return plain text — bypass default JSON parse
+    const response = await this.executeWithRefresh(() =>
+      fetch('/api/v1/inma/welcome', { headers: this.buildHeaders() })
+    );
+    if (!response.ok) return null;
+    const text = await response.text();
+    try { return JSON.parse(text); } catch { return text; }
   }
 
   // --- 401 refresh logic ---
