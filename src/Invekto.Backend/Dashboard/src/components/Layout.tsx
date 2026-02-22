@@ -16,17 +16,17 @@ import {
   Settings,
   MessageSquare,
   Building2,
-  Minus,
-  Plus,
   PanelLeftClose,
+  Type,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo, InvektoMark } from './ui/InvektoLogo';
 
-const FONT_SIZE_KEY = 'inse-font-size';
 const SIDEBAR_KEY = 'inse-sidebar-collapsed';
-const FONT_MIN = 13;
-const FONT_MAX = 20;
+const FONT_SIZE_KEY = 'inse-font-size';
+const FONT_MIN = 12;
+const FONT_MAX = 25;
 const FONT_DEFAULT = 16;
 const FONT_STEP = 1;
 
@@ -76,7 +76,7 @@ export function Layout({ children }: LayoutProps) {
     localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
   }, [fontSize]);
 
-  const adjustFont = useCallback((delta: number) => {
+  const adjustFontSize = useCallback((delta: number) => {
     setFontSize(prev => Math.min(FONT_MAX, Math.max(FONT_MIN, prev + delta)));
   }, []);
 
@@ -141,7 +141,8 @@ export function Layout({ children }: LayoutProps) {
               </button>
             ) : (
               <>
-                <div className="min-w-0 ml-2.5 flex-1">
+                <img src="/logo.png" alt="" className="w-7 h-7 flex-shrink-0 rounded-lg ml-2" />
+                <div className="min-w-0 ml-2 flex-1">
                   <InvektoLogo size="sm" className="block leading-tight" />
                   {session?.companyCode && (
                     <span className="text-2xs text-navy-300 truncate block leading-tight mt-0.5">
@@ -149,13 +150,6 @@ export function Layout({ children }: LayoutProps) {
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={toggleSidebar}
-                  className="w-7 h-7 flex items-center justify-center rounded-md text-navy-300 hover:bg-navy-50 hover:text-navy-600 transition-colors flex-shrink-0 mr-1"
-                  title="Menüyü kapat"
-                >
-                  <PanelLeftClose className="w-4 h-4" />
-                </button>
               </>
             )}
           </div>
@@ -190,33 +184,51 @@ export function Layout({ children }: LayoutProps) {
 
           {/* Font Size — hidden when collapsed */}
           {!collapsed && (
-            <div className="px-3 py-1.5 flex items-center gap-1.5">
-              <button
-                onClick={() => adjustFont(-FONT_STEP)}
-                disabled={fontSize <= FONT_MIN}
-                className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Yazı küçült"
-              >
-                <Minus className="w-3 h-3" />
-              </button>
-              <span className="text-2xs text-navy-300 min-w-[2.5rem] text-center select-none">
-                {fontSize}px
-              </span>
-              <button
-                onClick={() => adjustFont(FONT_STEP)}
-                disabled={fontSize >= FONT_MAX}
-                className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Yazı büyüt"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
+            <div className="px-3 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => adjustFontSize(-FONT_STEP)}
+                  disabled={fontSize <= FONT_MIN}
+                  className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Yazı küçült"
+                >
+                  <Type className="w-3 h-3" />
+                </button>
+                <span className="text-2xs text-navy-300 min-w-[2.5rem] text-center select-none">
+                  {fontSize}px
+                </span>
+                <button
+                  onClick={() => adjustFontSize(FONT_STEP)}
+                  disabled={fontSize >= FONT_MAX}
+                  className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Yazı büyüt"
+                >
+                  <Type className="w-3.5 h-3.5" />
+                </button>
+                {fontSize !== FONT_DEFAULT && (
+                  <button
+                    onClick={() => setFontSize(FONT_DEFAULT)}
+                    className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors ml-1"
+                    title={`Sıfırla (${FONT_DEFAULT}px)`}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Version */}
+          {/* Version + Collapse */}
           {!collapsed && (
-            <div className="px-4 py-1.5 text-2xs text-navy-200">
-              v{__BUILD_TIME__}
+            <div className="px-4 py-1.5 flex items-center justify-between">
+              <span className="text-2xs text-navy-200">v{__BUILD_TIME__}</span>
+              <button
+                onClick={toggleSidebar}
+                className="w-5 h-5 flex items-center justify-center rounded text-navy-200 hover:bg-navy-50 hover:text-navy-500 transition-colors"
+                title="Menüyü kapat"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 

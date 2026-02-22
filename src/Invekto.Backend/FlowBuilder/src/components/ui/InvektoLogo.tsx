@@ -7,15 +7,14 @@ interface InvektoLogoProps {
 }
 
 const sizes = {
-  sm: { width: 120, height: 28, fontSize: 22, subSize: 22, dotR: 2.8, dotCy: 5 },
-  md: { width: 150, height: 34, fontSize: 27, subSize: 27, dotR: 3.2, dotCy: 5.5 },
-  lg: { width: 200, height: 44, fontSize: 36, subSize: 36, dotR: 4.2, dotCy: 6.5 },
+  sm: { width: 161, height: 35, fontSize: 28, subX: 92 },
+  md: { width: 201, height: 44, fontSize: 35, subX: 115 },
+  lg: { width: 264, height: 55, fontSize: 44, subX: 147 },
 };
 
 export function InvektoLogo({ size = 'md', subtitle, className }: InvektoLogoProps) {
   const s = sizes[size];
   const baseline = s.height * 0.78;
-  const dotCx = s.fontSize * 0.17;
   const label = subtitle || 'one';
 
   return (
@@ -38,13 +37,12 @@ export function InvektoLogo({ size = 'md', subtitle, className }: InvektoLogoPro
       >
         invekto
       </text>
-      <circle cx={dotCx} cy={s.dotCy} r={s.dotR} fill="#EF4444" />
       <text
-        x={s.fontSize * 3.05}
+        x={s.subX}
         y={baseline}
         fontFamily="Neon, Inter, sans-serif"
         fontWeight={600}
-        fontSize={s.subSize}
+        fontSize={s.fontSize}
         fill="#8898AA"
         letterSpacing="-0.02em"
       >

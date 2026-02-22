@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** UI polish: sidebar hafif gri bg + golge, InvektoLogo/InvektoMark bileşenleri, FlowBuilder node output ikon pozisyonu duzeltildi, Neon font + tailwind config + login sayfasi guncellemeleri. Backend deploy edildi (HEALTHY).
-- **Last Task:** Sidebar bg (#f8f9fb) + shadow ekleme, BaseNode output label bottom 4px→12px, InvektoLogo componenti, font/CSS/tailwind polish.
+- **Status:** Rebranding: "Invekto One" — Neon font (local @font-face), SVG logo componenti, sidebar layout yeniden dizayn (collapse altta, zoom kaldirildi, font reset ikonu). Deploy edildi (HEALTHY).
+- **Last Task:** Invekto One rebranding (logo SVG, Neon font, sidebar UX: zoom kaldirildi, collapse version satirina tasinidi, font reset eklendi), HTML title'lar guncellendi, tum SPA'lar + Backend deploy.
 - **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 

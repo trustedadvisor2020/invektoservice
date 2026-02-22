@@ -7,17 +7,14 @@ interface InvektoLogoProps {
 }
 
 const sizes = {
-  sm: { width: 120, height: 28, fontSize: 22, oneSize: 22, dotR: 2.8, dotCy: 5 },
-  md: { width: 150, height: 34, fontSize: 27, oneSize: 27, dotR: 3.2, dotCy: 5.5 },
-  lg: { width: 200, height: 44, fontSize: 36, oneSize: 36, dotR: 4.2, dotCy: 6.5 },
+  sm: { width: 161, height: 35, fontSize: 28, oneX: 92 },
+  md: { width: 201, height: 44, fontSize: 35, oneX: 115 },
+  lg: { width: 264, height: 55, fontSize: 44, oneX: 147 },
 };
 
 export function InvektoLogo({ size = 'md', showOne = true, className }: InvektoLogoProps) {
   const s = sizes[size];
   const baseline = s.height * 0.78;
-  // "i" without dot: we render the full word, then overlay a red dot
-  // The dot sits roughly at the center-x of the first character
-  const dotCx = s.fontSize * 0.17;
 
   return (
     <svg
@@ -39,15 +36,13 @@ export function InvektoLogo({ size = 'md', showOne = true, className }: InvektoL
       >
         invekto
       </text>
-      {/* Red dot over the "i" — covers the original dot */}
-      <circle cx={dotCx} cy={s.dotCy} r={s.dotR} fill="#EF4444" />
       {showOne && (
         <text
-          x={s.fontSize * 3.05}
+          x={s.oneX}
           y={baseline}
           fontFamily="Neon, Inter, sans-serif"
           fontWeight={600}
-          fontSize={s.oneSize}
+          fontSize={s.fontSize}
           fill="#8898AA"
           letterSpacing="-0.02em"
         >
@@ -61,8 +56,8 @@ export function InvektoLogo({ size = 'md', showOne = true, className }: InvektoL
 export function InvektoMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 16 28"
-      width={16}
+      viewBox="0 0 14 28"
+      width={14}
       height={28}
       className={cn('inline-block select-none', className)}
       role="img"
@@ -78,7 +73,6 @@ export function InvektoMark({ className }: { className?: string }) {
       >
         i
       </text>
-      <circle cx={3.7} cy={5} r={2.8} fill="#EF4444" />
     </svg>
   );
 }
