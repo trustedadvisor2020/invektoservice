@@ -1,0 +1,63 @@
+---
+title: Akıllı Mesaj Analizi
+description: Gelen her mesajı yapay zeka otomatik olarak analiz eder — niyet, duygu ve dil tespiti yapar.
+---
+
+<HeaderBanner src="/images/one/mesaj-analizi.svg" alt="Akıllı Mesaj Analizi" />
+
+## Mesajlarınızı Yapay Zeka Okusun
+
+Müşteriniz WhatsApp'tan yazdığında, Invekto One mesajı anında analiz eder ve şunları tespit eder:
+
+- **Ne istiyor?** — Randevu mu, fiyat mı, şikayet mi?
+- **Nasıl hissediyor?** — Memnun mu, kızgın mı, nötr mü?
+- **Hangi dilde yazıyor?** — Türkçe, İngilizce, Almanca...
+- **Ne kadar acil?** — Hemen mi ilgilenmeli, bekleyebilir mi?
+
+<Callout type="info" title="Siz bir şey yapmanıza gerek yok">
+  Mesaj analizi tamamen otomatiktir. Her gelen mesaj arka planda analiz edilir ve sonuca göre doğru chatbot akışı tetiklenir. Siz sadece akışlarınızı bir kez tasarlarsınız.
+</Callout>
+
+## Bu Size Ne Kazandırır?
+
+### Doğru Yönlendirme
+"Randevu almak istiyorum" yazan müşteri direkt randevu akışına yönlendirilir. "Şikayetim var" yazan müşteri destek ekibine aktarılır. Manuel yönlendirme yapmanız gerekmez.
+
+### Öncelik Belirleme
+Acil mesajlar otomatik olarak öne alınır. "Acil yardım lazım" yazan müşteri, "Bilgi almak istiyorum" yazanın önüne geçer.
+
+### Duygu Takibi
+Olumsuz duygu tespit edildiğinde sistem sizi uyarır. Kızgın bir müşteriye bot yanıt vermek yerine, doğrudan temsilciye aktarılır.
+
+### Çok Dilli Destek
+Müşteriniz hangi dilde yazarsa yazsın, sistem dili otomatik algılar ve doğru akışı tetikler.
+
+## Nasıl Kullanılır?
+
+Mesaj analizi chatbot akışlarınızla birlikte çalışır:
+
+<Step number={1} title="Akış Tasarlayın">
+  Flow Builder'da chatbot akışınızı oluştururken "Niyet Analizi" adımını ekleyin.
+</Step>
+
+<Step number={2} title="Dallanmalar Oluşturun">
+  Mesajın niyetine göre farklı yollar belirleyin. Örneğin: randevu talebi ayrı, fiyat sorusu ayrı bir yola gitsin.
+</Step>
+
+<Step number={3} title="Otomatik Çalışsın">
+  Akışı yayınladığınızda, gelen her mesaj otomatik analiz edilir ve doğru yola yönlendirilir.
+</Step>
+
+## Örnek Senaryolar
+
+| Müşteri Mesajı | Tespit Edilen Niyet | Akış |
+|----------------|---------------------|------|
+| "Yarın randevu alabilir miyim?" | Randevu talebi | Takvim göster, slot seç |
+| "Fiyatlarınız ne kadar?" | Fiyat bilgisi | Bilgi bankasından yanıtla |
+| "Siparişim nerede kaldı?" | Sipariş takibi | Kargo durumu sorgula |
+| "Çok kötü hizmet aldım!" | Şikayet | Temsilciye aktar |
+| "Merhaba" | Selamlama | Karşılama menüsü göster |
+
+<Callout type="tip" title="İpucu">
+  Chatbot akışlarınızda ne kadar çok senaryo tanımlarsanız, mesaj analizi o kadar etkili çalışır. Sık gelen soru tiplerini mutlaka akışlarınıza ekleyin.
+</Callout>

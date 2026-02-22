@@ -1,0 +1,68 @@
+---
+title: Flow Builder Nedir?
+description: Kod yazmadan sürükle-bırak ile chatbot akışları oluşturun — görsel editör rehberi.
+---
+
+<HeaderBanner src="/images/one/flow-builder-genel.svg" alt="Flow Builder Nedir?" />
+
+## Chatbotunuzu Görsel Olarak Tasarlayın
+
+Flow Builder, Invekto One'ın görsel chatbot editörüdür. Kod yazmadan, blokları sürükleyip bırakarak müşterilerinizle olan sohbet akışlarını tasarlarsınız.
+
+<Callout type="info" title="Basit ve Görsel">
+  Flow Builder'da her adım bir bloktur. Blokları bağlayarak akışınızı oluşturursunuz. Sol taraftan blok seçin, ortaya sürükleyin, sağ panelden ayarlarını yapın.
+</Callout>
+
+## Arayüz
+
+### Çalışma Alanı
+Akışınızı tasarladığınız ana ekran. Blokları buraya sürükleyin ve birbirine bağlayın.
+
+### Blok Paleti (Sol Panel)
+Kullanabileceğiniz tüm blok türlerinin listesi. Mesaj gönderme, menü gösterme, koşul ekleme gibi blokları buradan seçersiniz.
+
+### Ayarlar Paneli (Sağ Panel)
+Bir bloğa tıkladığınızda ayarları burada görünür. Mesaj metni, menü seçenekleri, koşul kuralları gibi ayarları buradan yaparsınız.
+
+### Araç Çubuğu
+Kaydet, test et, yayınla ve diğer araçlar burada bulunur.
+
+## İlk Akışınızı Oluşturun
+
+<Step number={1} title="Yeni Akış Oluşturun">
+  Flow Builder'ı açın ve "Yeni Akış" butonuna tıklayın. Akışınıza bir isim verin, örneğin "Karşılama Akışı".
+</Step>
+
+<Step number={2} title="Başlangıç Bloğu">
+  Her akış bir başlangıç bloğuyla başlar. Bu blok müşteriden ilk mesaj geldiğinde otomatik tetiklenir.
+</Step>
+
+<Step number={3} title="Karşılama Mesajı Ekleyin">
+  "Mesaj Gönder" bloğunu sürükleyin. "Merhaba! Size nasıl yardımcı olabilirim?" gibi bir karşılama yazın.
+</Step>
+
+<Step number={4} title="Menü Ekleyin">
+  "Menü Göster" bloğunu ekleyin ve seçenekler oluşturun: "Randevu Al", "Fiyat Bilgisi", "Destek".
+</Step>
+
+<Step number={5} title="Dallanmalar Oluşturun">
+  Her menü seçeneği için farklı bir yol belirleyin.
+</Step>
+
+<Step number={6} title="Test Edin ve Yayınlayın">
+  "Simüle Et" butonuna tıklayarak test edin. Her şey doğruysa "Yayınla" ile aktif edin.
+</Step>
+
+## Örnek Akışlar
+
+| Akış | Ne Yapar? |
+|------|-----------|
+| **Karşılama** | Müşteri ilk yazdığında selamlama ve menü gösterme |
+| **Randevu** | Hizmet seçimi, tarih, saat, onay ve hatırlatma |
+| **FAQ** | Soruyu analiz et, bilgi bankasında ara, cevap gönder |
+| **Şikayet** | Duygu analizi yap, negatifse temsilciye aktar |
+| **Sipariş Takibi** | Sipariş numarası iste, durumu sorgula, bilgilendir |
+
+<Callout type="tip" title="AI Wizard">
+  Akış tasarlamak yerine AI Wizard'a ne istediğinizi yazabilirsiniz. "Müşteri randevu istediğinde takvim göster" gibi bir komutla otomatik akış oluşturulur.
+</Callout>

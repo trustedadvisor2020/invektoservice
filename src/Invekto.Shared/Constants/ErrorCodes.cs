@@ -169,6 +169,22 @@ public static class ErrorCodes
     public const string KnowledgeIntentPatternsNotFound = "INV-KN-017";
     public const string KnowledgeIntentReadFailed = "INV-KN-018";
 
+    // Knowledge Template System (INV-KN-019+)
+    public const string TemplateNotFound = "INV-KN-019";
+    public const string TemplateInvalidType = "INV-KN-020";
+    public const string TemplateSlugConflict = "INV-KN-021";
+    public const string TemplateScopeMismatch = "INV-KN-022";
+    public const string TemplateNotPublished = "INV-KN-023";
+    public const string TemplateAdoptionExists = "INV-KN-024";
+    public const string TemplateAbTestInvalid = "INV-KN-025";
+    public const string TemplateVersionNotFound = "INV-KN-026";
+    public const string TemplateCannotDeleteAdopted = "INV-KN-027";
+    public const string TemplateOnboardingFailed = "INV-KN-028";
+    public const string TemplateSeedFailed = "INV-KN-029";
+    public const string TemplateSuggestionNotFound = "INV-KN-030";
+    public const string TemplateComparisonFailed = "INV-KN-031";
+    public const string TemplateSuggestionInvalidStatus = "INV-KN-032";
+
     // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
     public const string WAAnalysisNotFound = "INV-WA-001";
     public const string WAAnalysisInProgress = "INV-WA-002";

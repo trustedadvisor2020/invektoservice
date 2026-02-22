@@ -1,0 +1,68 @@
+---
+title: Test Etme ve Yayınlama
+description: Akışınızı yayınlamadan önce test edin, hataları düzeltin ve güvenle yayınlayın.
+---
+
+<HeaderBanner src="/images/one/test-yayinlama.svg" alt="Test Etme ve Yayınlama" />
+
+## Yayınlamadan Önce Test Edin
+
+Flow Builder'ın simülasyon özelliği, akışınızı gerçek müşterilere açmadan önce test etmenizi sağlar. Bir müşteri gibi mesaj yazarak akışın doğru çalıştığını kontrol edersiniz.
+
+## Nasıl Test Edilir?
+
+<Step number={1} title="Simülasyonu Başlatın">
+  Araç çubuğundaki "Simüle Et" butonuna tıklayın. Sağ tarafta bir sohbet penceresi açılır.
+</Step>
+
+<Step number={2} title="Müşteri Gibi Yazın">
+  Test penceresine bir müşteri gibi mesaj yazın. Örneğin: "Merhaba, randevu almak istiyorum."
+</Step>
+
+<Step number={3} title="Akışı İzleyin">
+  Mesajınız akışın hangi bloklarından geçtiğini gerçek zamanlı izleyin. Hangi yolun seçildiği yeşil renkle gösterilir.
+</Step>
+
+<Step number={4} title="Sonuçları Kontrol Edin">
+  Botun verdiği yanıtları kontrol edin. Beklediğiniz gibi mi çalışıyor?
+</Step>
+
+## Ne Kontrol Etmelisiniz?
+
+| Kontrol | Nasıl Test Edilir? |
+|---------|-------------------|
+| **Mesajlar doğru mu?** | Yazım hatası, yanlış bilgi var mı? |
+| **Yönlendirmeler çalışıyor mu?** | Menü seçenekleri doğru yola götürüyor mu? |
+| **Beklenmedik mesajlar** | "asdfgh" gibi anlamsız mesaja ne oluyor? |
+| **Temsilciye aktarma** | Gerektiğinde temsilciye aktarılıyor mu? |
+
+## Otomatik Doğrulama
+
+Akışınızı kaydettiğinizde sistem şunları kontrol eder:
+
+- **Bağlantı Kontrolü** — Her bloğun bir giriş veya çıkışı var mı?
+- **Kopuk Bloklar** — Hiçbir yere bağlı olmayan bloklar var mı?
+- **Eksik Ayarlar** — Mesaj metni yazılmamış bloklar var mı?
+- **Sonsuz Döngü** — Akış sonsuz döngüye girebilir mi?
+
+<Callout type="warning" title="Hata Varsa Yayınlanamaz">
+  Doğrulama hataları düzeltilmeden akış yayınlanamaz. Sistem hatalı blokları kırmızıyla işaretler.
+</Callout>
+
+## Yayınlama
+
+<Step number={1} title="Yayınla Butonuna Tıklayın">
+  Araç çubuğundaki "Yayınla" butonuna tıklayın.
+</Step>
+
+<Step number={2} title="Onaylayın">
+  Akış özetini gözden geçirin ve onaylayın.
+</Step>
+
+<Step number={3} title="Canlıda Deneyin">
+  Kendi telefonunuzdan test mesajı göndererek gerçek ortamda da çalıştığını doğrulayın.
+</Step>
+
+<Callout type="tip" title="Öneri">
+  Her değişiklikten sonra en az 3 farklı senaryo ile test edin: olumlu bir istek, olumsuz bir durum ve belirsiz bir mesaj.
+</Callout>

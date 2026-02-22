@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-22
-- **Status:** Roadmap v4.0 genisleme: "Platform Evrim Katmanlari" segmenti eklendi (6 katman, phase entegrasyonu, bagimllik haritasi, revenue etkisi). Tech stack hatasi duzeltildi. Kod degisikligi YOK, sadece docs.
-- **Last Task:** Roadmap'e 6 akilil altyapi katmani eklendi (Müsteri Hafizasi, Flow Template Marketplace, Bilesik Olay Motoru, Voice AI, Gateway, Extension API). Expansion Model + Teknik Tuzaklar + DB strateji + Phase tablolari guncellendi. Tech stack hatasi (Node.js -> .NET 8) duzeltildi.
+- **Status:** Onboarding Rehberi sayfasi olusturuldu (SuperAdmin). 7 dikey sekme: Genel Bakis, Onboarding Adimlari, Ozellik Rehberi, Sektor Senaryolari, Musteri Iletisimi (14 sablon), SaaS Stratejisi (11 konu), Aksiyon Listesi (30 madde). Sekmeler arasi cross-link navigasyonu eklendi.
+- **Last Task:** OnboardingGuidePage.tsx — SaaS Stratejisi sekmesi (fiyatlandirma, health score, aha moment, olcekleme, churn, upsell, referral, yapiskan urun, rakip, destek, metrikler) + aksiyon listesi genisletildi (30 madde) + tum sekmeler arasi cross-link'ler eklendi. Vite build PASS.
 - **Next Task:** (1) tenant-instances.sql production'da calistir + uq_chatbot_flows_active DROP, (2) Automation deploy, (3) Instance yonetimi E2E test, (4) Multi-flow routing test
 - **Strateji:** 12 Paket Stratejisi v5.2
 

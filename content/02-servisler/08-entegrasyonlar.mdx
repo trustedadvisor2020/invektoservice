@@ -1,0 +1,64 @@
+---
+title: Entegrasyonlar
+description: Invekto One'ı mevcut iş araçlarınızla ve sistemlerinizle bağlayın.
+---
+
+<HeaderBanner src="/images/one/entegrasyonlar.svg" alt="Entegrasyonlar" />
+
+## Sistemlerinizi Birbirine Bağlayın
+
+Entegrasyonlar, Invekto One'ı halihazırda kullandığınız diğer yazılım ve sistemlerle bağlamanızı sağlar. Veriler otomatik olarak senkronize olur, manuel veri girişi ortadan kalkar.
+
+## Desteklenen Entegrasyonlar
+
+### CRM Entegrasyonu
+Müşteri bilgileri, sohbet geçmişi ve randevu verileri CRM sisteminizle otomatik senkronize olur.
+
+**Faydası:** Müşteri WhatsApp'tan randevu aldığında, CRM'de otomatik kayıt oluşur. Temsilci ayrıca veri girmek zorunda kalmaz.
+
+### E-Ticaret Bağlantısı
+Sipariş durumu, kargo takibi ve stok bilgisi gibi verileri chatbot'a bağlayın.
+
+**Faydası:** Müşteri "Siparişim nerede?" diye sorduğunda, bot e-ticaret sisteminizden kargo bilgisini çekip anında yanıtlar.
+
+### Ödeme Sistemleri
+Ödeme bildirimleri otomatik olarak Invekto One'a düşer.
+
+**Faydası:** Müşteri ödeme yaptığında otomatik onay mesajı gider. Ödeme geciktiğinde hatırlatma gönderilir.
+
+### Özel Bağlantılar (Webhook)
+API'si olan herhangi bir sistemi Invekto One'a bağlayabilirsiniz.
+
+## Entegrasyon Nasıl Kurulur?
+
+<Step number={1} title="Entegrasyon Paneline Gidin">
+  Dashboard'dan Entegrasyonlar sayfasını açın.
+</Step>
+
+<Step number={2} title="Bağlantı Türünü Seçin">
+  Hazır entegrasyonlardan birini seçin veya özel webhook tanımlayın.
+</Step>
+
+<Step number={3} title="Bağlantı Bilgilerini Girin">
+  Bağlanmak istediğiniz sistemin bilgilerini girin.
+</Step>
+
+<Step number={4} title="Test Edin">
+  Bağlantıyı test ederek verilerin doğru aktığını doğrulayın.
+</Step>
+
+## Otomatik Bildirimler
+
+Invekto One'da gerçekleşen olayları dış sistemlere otomatik bildirebilirsiniz:
+
+| Olay | Bildirim |
+|------|----------|
+| Yeni mesaj geldi | CRM'de aktivite oluştur |
+| Randevu alındı | Takvime etkinlik ekle |
+| Randevu iptal edildi | Takvimden kaldır |
+| Kampanya tamamlandı | Rapor gönder |
+| Müşteri bilgisi güncellendi | CRM'de güncelle |
+
+<Callout type="tip" title="İpucu">
+  En çok kullandığınız sistemi önce bağlayın. CRM kullanıyorsanız CRM'i, e-ticaret yapıyorsanız sipariş sisteminizi bağlayarak başlayın.
+</Callout>

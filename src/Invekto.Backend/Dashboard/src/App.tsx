@@ -1,9 +1,9 @@
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
-import { TenantDashboardPage } from './pages/TenantDashboardPage';
-import { LogsPage } from './pages/LogsPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { KnowledgePage } from './pages/KnowledgePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CampaignsPage } from './pages/CampaignsPage';
@@ -13,11 +13,17 @@ import { MarketingPage } from './pages/MarketingPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { TenantsPage } from './pages/TenantsPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { Layout } from './components/Layout';
+import { OnboardingGuidePage } from './pages/OnboardingGuidePage';
+import { LogsPage } from './pages/LogsPage';
 
 const FlowListPage = lazy(() => import('./pages/flow-builder/FlowListPage').then(m => ({ default: m.FlowListPage })));
 const FlowEditorPage = lazy(() => import('./pages/flow-builder/FlowEditorPage').then(m => ({ default: m.FlowEditorPage })));
 const WizardPage = lazy(() => import('./pages/flow-builder/WizardPage').then(m => ({ default: m.WizardPage })));
+
+const TemplateLibraryPage = lazy(() => import('./pages/TemplateLibraryPage').then(m => ({ default: m.TemplateLibraryPage })));
+const TemplateDetailPage = lazy(() => import('./pages/TemplateDetailPage').then(m => ({ default: m.TemplateDetailPage })));
+const TemplateIngestionPage = lazy(() => import('./pages/TemplateIngestionPage').then(m => ({ default: m.TemplateIngestionPage })));
+const TemplateOnboardPage = lazy(() => import('./pages/TemplateOnboardPage').then(m => ({ default: m.TemplateOnboardPage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -39,27 +45,38 @@ function HomeDashboard() {
   return session ? <TenantDashboardPage /> : <Navigate to="/tenants" replace />;
 }
 
+function TenantDashboardPage() {
+  return <DashboardPage />;
+}
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<HomeDashboard />} />
-        <Route path="/flow-builder" element={<Suspense><FlowListPage /></Suspense>} />
-        <Route path="/flow-builder/editor/:flowId" element={<Suspense><FlowEditorPage /></Suspense>} />
-        <Route path="/flow-builder/wizard/:flowId" element={<Suspense><WizardPage /></Suspense>} />
-        <Route path="/logs" element={<LogsPage />} />
-        <Route path="/knowledge" element={<KnowledgePage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/campaigns" element={<CampaignsPage />} />
-        <Route path="/appointments" element={<AppointmentsPage />} />
-        <Route path="/integrations" element={<IntegrationsPage />} />
-        <Route path="/marketing" element={<MarketingPage />} />
-        <Route path="/messages" element={<MessagesPage />} />
-        <Route path="/tenants" element={<TenantsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<HomeDashboard />} />
+          <Route path="/flow-builder" element={<Suspense><FlowListPage /></Suspense>} />
+          <Route path="/flow-builder/editor/:flowId" element={<Suspense><FlowEditorPage /></Suspense>} />
+          <Route path="/flow-builder/wizard/:flowId" element={<Suspense><WizardPage /></Suspense>} />
+          <Route path="/logs" element={<LogsPage />} />
+          <Route path="/knowledge" element={<KnowledgePage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/campaigns" element={<CampaignsPage />} />
+          <Route path="/appointments" element={<AppointmentsPage />} />
+          <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/marketing" element={<MarketingPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/tenants" element={<TenantsPage />} />
+          <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
+          <Route path="/templates/ingestion" element={<Suspense><TemplateIngestionPage /></Suspense>} />
+          <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
+          <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />
+          <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }

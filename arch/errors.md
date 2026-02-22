@@ -317,6 +317,20 @@ INV-{SERVICE}-{NUMBER}
 | INV-KN-016 | Photo blocked (health tenant) | Saglik tenant'lari icin hasta fotografi yuklemesi engellendi (KVKK). |
 | INV-KN-017 | Intent patterns not found | Bu tenant icin intent tanimlari bulunamadi. |
 | INV-KN-018 | Intent read failed | Intent tanimlari okunurken hata olustu. |
+| INV-KN-019 | Template not found | Belirtilen sablon bulunamadi. |
+| INV-KN-020 | Invalid template type | Gecersiz sablon tipi (faq/message/intent/flow/scenario). |
+| INV-KN-021 | Template slug conflict | Bu slug zaten kullaniliyor. |
+| INV-KN-022 | Template scope mismatch | Scope/sector/tenant_id tutarsizligi. |
+| INV-KN-023 | Template not published | Sablon henuz yayinlanmamis. |
+| INV-KN-024 | Adoption already exists | Bu tenant zaten bu sablonu benimsemis. |
+| INV-KN-025 | AB test invalid state | Gecersiz A/B test durum gecisi. |
+| INV-KN-026 | Template version not found | Belirtilen versiyon bulunamadi. |
+| INV-KN-027 | Cannot delete adopted template | Benimsenmis sablon silinemez. |
+| INV-KN-028 | Onboarding failed | Sablon dagitimi sirasinda hata olustu (kismi basari). |
+| INV-KN-029 | Seed from analysis failed | Analiz verisinden sablon cikarma hatasi. |
+| INV-KN-030 | Suggestion not found | Belirtilen oneri bulunamadi. |
+| INV-KN-031 | Comparison failed | Sablon karsilastirma sirasinda hata olustu. |
+| INV-KN-032 | Invalid suggestion status | Gecersiz oneri durum gecisi. |
 
 ---
 

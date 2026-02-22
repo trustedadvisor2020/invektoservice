@@ -1,0 +1,77 @@
+---
+title: Randevu Yönetimi
+description: Müşterileriniz WhatsApp üzerinden randevu alsın, hatırlatma alsın ve yönetsin.
+---
+
+<HeaderBanner src="/images/one/randevu-yonetimi.svg" alt="Randevu Yönetimi" />
+
+## WhatsApp'tan Online Randevu
+
+Randevu Yönetimi ile müşterileriniz WhatsApp üzerinden kolayca randevu alabilir. Siz çalışma saatlerinizi ve hizmet sürelerinizi belirleyin, gerisini sistem otomatik yönetsin.
+
+<Callout type="info" title="Telefon trafiğini azaltın">
+  "Randevu almak istiyorum" diyen müşteri telefon etmek zorunda kalmaz. WhatsApp üzerinden uygun slotları görür, seçer ve onay alır. Otomatik hatırlatma bile gider.
+</Callout>
+
+## Randevu Süreci
+
+Müşterinin randevu alma süreci şöyle işler:
+
+<Step number={1} title="Müşteri Randevu İster">
+  WhatsApp'tan "Randevu almak istiyorum" yazan müşteri, chatbot akışına yönlendirilir.
+</Step>
+
+<Step number={2} title="Hizmet Seçimi">
+  Müşteri sunulan hizmetler arasından seçim yapar. Her hizmetin süresi ve fiyatı gösterilir.
+</Step>
+
+<Step number={3} title="Tarih ve Saat Seçimi">
+  Uygun tarih ve saatler listelenir. Müşteri tercihini seçer.
+</Step>
+
+<Step number={4} title="Onay">
+  Randevu detayları özetlenir ve müşteriden onay alınır.
+</Step>
+
+<Step number={5} title="Hatırlatma">
+  Randevu gününden önce otomatik hatırlatma mesajı gönderilir.
+</Step>
+
+## Randevu Durumları
+
+Bir randevu şu aşamalardan geçer:
+
+| Durum | Açıklama |
+|-------|----------|
+| **Talep Edildi** | Müşteri randevu talep etti, onay bekleniyor |
+| **Onaylandı** | Randevu kesinleşti |
+| **Hatırlatıldı** | Otomatik hatırlatma gönderildi |
+| **Tamamlandı** | Randevu gerçekleşti |
+| **İptal Edildi** | Müşteri veya işletme tarafından iptal edildi |
+| **Gelmedi** | Müşteri randevuya gelmedi |
+
+## Ayarlar
+
+### Çalışma Saatleri
+Hangi günlerde, hangi saatlerde randevu alınabilir belirleyin.
+
+### Hizmet Süreleri
+Her hizmet türü için süre belirleyin: 30 dakika, 45 dakika, 1 saat gibi.
+
+### Slot Aralıkları
+Randevular arası boşluk bırakın. Örneğin her randevu arasında 15 dakika mola.
+
+### Fiyat Bilgisi
+Her hizmet için fiyat gösterin. Müşteri seçim yaparken fiyatı görsün.
+
+## Bekleme Listesi
+
+Tüm slotlar doluysa müşteri bekleme listesine eklenir. Bir iptal gerçekleştiğinde:
+
+1. Bekleme listesindeki ilk müşteriye otomatik bildirim gönderilir
+2. Müşteri kabul ederse randevu otomatik oluşturulur
+3. Kabul etmezse sıradaki müşteriye geçilir
+
+<Callout type="tip" title="İpucu">
+  Randevu hatırlatmalarını 24 saat ve 1 saat öncesine kurun. Bu, gelmeme oranını önemli ölçüde düşürür.
+</Callout>

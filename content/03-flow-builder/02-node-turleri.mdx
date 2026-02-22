@@ -1,0 +1,69 @@
+---
+title: Blok Türleri
+description: Flow Builder'da kullanabileceğiniz tüm blok türleri ve ne işe yaradıkları.
+---
+
+<HeaderBanner src="/images/one/blok-turleri.svg" alt="Blok Türleri" />
+
+## Başlatıcı Bloklar
+
+Her akış bir başlatıcı blokla başlar. Akışın ne zaman tetikleneceğini belirler.
+
+| Başlatıcı | Ne Zaman Tetiklenir? |
+|-----------|---------------------|
+| **Mesaj Geldiğinde** | Müşteriden yeni mesaj geldiğinde (en yaygın) |
+| **Zamanlı** | Belirlediğiniz saatte otomatik (hatırlatmalar için) |
+| **Kampanya** | Toplu mesaj gönderdiğinizde |
+
+## Mesaj Blokları
+
+### Mesaj Gönder
+Müşteriye metin mesajı gönderir. Kişiselleştirme için müşteri adını kullanabilirsiniz.
+
+**Örnek:** "Merhaba Ayşe Hanım, size nasıl yardımcı olabilirim?"
+
+### Menü Göster
+Müşteriye seçenekler sunar.
+
+| Tür | Görünüm | Ne Zaman Kullanılır? |
+|-----|---------|---------------------|
+| **Butonlar** | Mesaj altında 1-3 buton | Az seçenek olduğunda |
+| **Liste** | Açılır menü, 10'a kadar seçenek | Çok seçenek olduğunda |
+
+## Akıllı Bloklar
+
+### Niyet Analizi
+Müşterinin mesajını yapay zeka ile analiz eder ve ne istediğini anlar. Sonuca göre farklı yollara yönlendirir.
+
+**Örnek:** "Fiyat listesi var mı?" → Fiyat bilgisi yoluna. "Şikayetim var" → Temsilciye aktarma yoluna.
+
+### FAQ Arama
+Bilgi bankasında müşterinin sorusuna uygun cevap arar. Eşleşme bulursa otomatik yanıtlar.
+
+### Duygu Analizi
+Mesajdaki duygusal tonu analiz eder. Kızgın müşterileri otomatik olarak temsilciye yönlendirir.
+
+## Yönlendirme Blokları
+
+### Koşul (Evet/Hayır)
+Bir sorunun cevabına göre iki yola dallanır.
+
+**Örnek:** "Mevcut müşterimiz misiniz?" → Evet/Hayır
+
+### Çoklu Dallanma
+Birden fazla seçeneğe göre farklı yollara yönlendirir.
+
+**Örnek:** Randevu talebi → Randevu akışı / Fiyat sorusu → Fiyat bilgisi / Şikayet → Temsilciye aktar
+
+## Eylem Blokları
+
+| Blok | Ne Yapar? | Ne Zaman Kullanılır? |
+|------|-----------|---------------------|
+| **Bekleme** | Bir süre bekler | Doğal sohbet akışı oluşturmak |
+| **Temsilciye Aktar** | Sohbeti insana devreder | Bot çözemediğinde |
+| **Değişken Kaydet** | Bilgi saklar (ad, tercih vb.) | Kişiselleştirme için |
+| **Başka Akışı Çağır** | Farklı akışa geçiş yapar | Tekrar eden adımlarda |
+
+<Callout type="tip" title="Başlangıç Önerisi">
+  İlk akışınızda sadece 3 blok kullanın: Başlat → Karşılama Mesajı → Menü. Çalıştığını gördükten sonra dallanmalar ve akıllı bloklar ekleyin.
+</Callout>

@@ -327,6 +327,92 @@ export interface CampaignStat {
   created_at: string;
 }
 
+// Template System types (SuperAdmin)
+export interface TemplateCatalogItem {
+  id: number;
+  template_type: string;
+  scope: string;
+  sector?: string;
+  slug: string;
+  name: string;
+  description?: string;
+  lang: string;
+  tags: string[];
+  version: number;
+  is_published: boolean;
+  usage_count: number;
+  confidence_score: number;
+  source_count: number;
+  created_by: string;
+  created_at: string;
+}
+
+export interface TemplateCatalogDetail extends TemplateCatalogItem {
+  tenant_id?: number;
+  parent_template_id?: number;
+  content_json: Record<string, unknown>;
+  is_active: boolean;
+  updated_at: string;
+  sources?: TemplateSourceItem[];
+}
+
+export interface TemplateSourceItem {
+  id: number;
+  template_id: number;
+  analysis_id: number;
+  tenant_name: string;
+  contribution_type: string;
+  sample_count: number;
+  contributed_at: string;
+}
+
+export interface TemplateVersionItem {
+  id: number;
+  template_id: number;
+  version: number;
+  content_json: Record<string, unknown>;
+  change_summary?: string;
+  changed_by: string;
+  created_at: string;
+}
+
+export interface TemplateSuggestionItem {
+  id: number;
+  analysis_id: number;
+  suggestion_type: string;
+  existing_template_id?: number;
+  existing_template_name?: string;
+  similarity_score?: number;
+  suggested_content_json: Record<string, unknown>;
+  suggested_slug: string;
+  suggested_name: string;
+  suggested_type: string;
+  source_data_json?: Record<string, unknown>;
+  status: string;
+  created_at: string;
+}
+
+export interface TemplateCompareResult {
+  analysis_id: number;
+  tenant_name: string;
+  new_count: number;
+  update_count: number;
+  confirm_count: number;
+  total_clusters_processed: number;
+  total_intents_processed: number;
+  suggestions: TemplateSuggestionItem[];
+  duration_ms: number;
+}
+
+export interface TemplateOnboardResult {
+  tenant_id: number;
+  sector: string;
+  adopted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  duration_ms: number;
+}
+
 // INMA JWT decoded claims
 export interface InmaTokenClaims {
   exp: number;
@@ -1239,6 +1325,78 @@ class OpsApiClient {
 
   async getFlowBuilderWorkingHours(): Promise<FbWorkingHoursInfo> {
     return this.request<FbWorkingHoursInfo>('/api/v1/flow-builder/tenant/working-hours');
+  }
+
+  // --- Template System (SuperAdmin) ---
+
+  async getTemplateCatalog(params?: {
+    type?: string; scope?: string; search?: string; page?: number; limit?: number;
+  }): Promise<{ items: TemplateCatalogItem[]; total: number }> {
+    const sp = new URLSearchParams();
+    if (params?.type) sp.set('type', params.type);
+    if (params?.scope) sp.set('scope', params.scope);
+    if (params?.search) sp.set('search', params.search);
+    if (params?.page) sp.set('page', params.page.toString());
+    if (params?.limit) sp.set('limit', (params.limit ?? 20).toString());
+    return this.request<{ items: TemplateCatalogItem[]; total: number }>(
+      `/api/ops/templates/catalog?${sp}`);
+  }
+
+  async getTemplateCatalogItem(id: number): Promise<TemplateCatalogDetail> {
+    return this.request<TemplateCatalogDetail>(`/api/ops/templates/catalog/${id}`);
+  }
+
+  async publishTemplate(id: number): Promise<void> {
+    return this.request<void>(`/api/ops/templates/catalog/${id}/publish`, { method: 'POST' });
+  }
+
+  async deleteTemplate(id: number): Promise<void> {
+    return this.request<void>(`/api/ops/templates/catalog/${id}`, { method: 'DELETE' });
+  }
+
+  async getTemplateVersions(id: number): Promise<{ versions: TemplateVersionItem[] }> {
+    return this.request<{ versions: TemplateVersionItem[] }>(
+      `/api/ops/templates/catalog/${id}/versions`);
+  }
+
+  async getTemplateSuggestions(params?: {
+    status?: string; analysisId?: number; page?: number; limit?: number;
+  }): Promise<{ items: TemplateSuggestionItem[]; total: number }> {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set('status', params.status);
+    if (params?.analysisId) sp.set('analysis_id', params.analysisId.toString());
+    if (params?.page) sp.set('page', params.page.toString());
+    if (params?.limit) sp.set('limit', (params.limit ?? 20).toString());
+    return this.request<{ items: TemplateSuggestionItem[]; total: number }>(
+      `/api/ops/templates/suggestions?${sp}`);
+  }
+
+  async extractFromAnalysis(analysisId: number, body: {
+    tenant_name: string; sector?: string; auto_confirm_threshold?: number;
+  }): Promise<TemplateCompareResult> {
+    return this.request<TemplateCompareResult>(
+      `/api/ops/templates/extract-from-analysis/${analysisId}`, {
+        method: 'POST', body: JSON.stringify(body),
+      });
+  }
+
+  async reviewTemplateSuggestion(id: number, body: { status: string }): Promise<void> {
+    return this.request<void>(`/api/ops/templates/suggestions/${id}/review`, {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  }
+
+  async bulkReviewSuggestions(body: { ids: number[]; status: string }): Promise<void> {
+    return this.request<void>('/api/ops/templates/suggestions/bulk-review', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+  }
+
+  async onboardTemplates(tenantId: number, body: { sector: string }): Promise<TemplateOnboardResult> {
+    return this.request<TemplateOnboardResult>(
+      `/api/ops/templates/${tenantId}/onboard`, {
+        method: 'POST', body: JSON.stringify(body),
+      });
   }
 }
 

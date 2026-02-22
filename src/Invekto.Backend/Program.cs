@@ -3149,6 +3149,59 @@ app.MapPost("/api/ops/knowledge/{tenantId:int}/generate-embeddings", async (Http
     await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/generate-embeddings"));
 
 // ============================================
+// TEMPLATE SYSTEM PROXY ENDPOINTS (superadmin)
+// ============================================
+
+// Catalog CRUD
+app.MapGet("/api/ops/templates/catalog", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog"));
+
+app.MapGet("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
+
+app.MapPost("/api/ops/templates/catalog", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/catalog"));
+
+app.MapPut("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyPut(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
+
+app.MapDelete("/api/ops/templates/catalog/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyDelete(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}"));
+
+app.MapPost("/api/ops/templates/catalog/{id:int}/publish", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}/publish"));
+
+app.MapGet("/api/ops/templates/catalog/{id:int}/versions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/catalog/{id}/versions"));
+
+// Suggestions
+app.MapGet("/api/ops/templates/suggestions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, "/api/v1/templates/suggestions"));
+
+app.MapGet("/api/ops/templates/suggestions/{id:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/suggestions/{id}"));
+
+app.MapPost("/api/ops/templates/suggestions/{id:int}/review", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int id) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/suggestions/{id}/review"));
+
+app.MapPost("/api/ops/templates/suggestions/bulk-review", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, "/api/v1/templates/suggestions/bulk-review"));
+
+// Extraction
+app.MapPost("/api/ops/templates/extract-from-analysis/{analysisId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int analysisId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/extract-from-analysis/{analysisId}"));
+
+// Adoption (superadmin on behalf of tenant)
+app.MapPost("/api/ops/templates/{tenantId:int}/adopt/{templateId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId, int templateId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/adopt/{templateId}"));
+
+app.MapPost("/api/ops/templates/{tenantId:int}/onboard", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/onboard"));
+
+app.MapGet("/api/ops/templates/{tenantId:int}/adoptions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/adoptions"));
+
+// ============================================
 // APPOINTMENTS PROXY ENDPOINTS (GR-2.4)
 // ============================================
 

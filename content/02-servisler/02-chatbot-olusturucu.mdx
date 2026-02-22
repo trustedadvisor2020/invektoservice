@@ -1,0 +1,79 @@
+---
+title: Chatbot Oluşturucu
+description: Kod yazmadan sürükle-bırak ile kendi chatbot akışlarınızı oluşturun.
+---
+
+<HeaderBanner src="/images/one/chatbot-olusturucu.svg" alt="Chatbot Oluşturucu" />
+
+## Kendi Botunuzu Tasarlayın
+
+Invekto One'ın Flow Builder özelliği ile kod yazmadan, görsel olarak chatbot akışları oluşturabilirsiniz. Müşterinize ne zaman, ne söyleyeceğinizi siz belirlersiniz.
+
+<Callout type="info" title="Teknik bilgi gerekmez">
+  Flow Builder tamamen görseldir. Blokları sürükleyin, birbirine bağlayın, mesajları yazın — botunuz hazır.
+</Callout>
+
+## Neler Yapabilirsiniz?
+
+### Karşılama Mesajı
+Müşteri ilk yazdığında onu karşılayın ve menü sunun: "Randevu", "Fiyat Bilgisi", "Destek" gibi butonlar gösterin.
+
+### Soru-Cevap Akışları
+Sık sorulan soruları botun otomatik cevaplamasını sağlayın. Bilgi bankasına eklediğiniz cevaplar otomatik olarak kullanılır.
+
+### Randevu Akışı
+Müşteriden tarih ve saat tercihi alın, uygun slotları gösterin, randevuyu onaylayın — hepsi otomatik.
+
+### Koşullu Yönlendirme
+Müşterinin yanıtına göre farklı yollara yönlendirin. "Mevcut müşteri misiniz?" sorusuna "Evet" diyenle "Hayır" diyeni farklı akışlara gönderin.
+
+### Temsilciye Aktarma
+Bot çözemediği durumda sohbeti bir insan temsilciye aktarın. Müşteri bekletilmez, sohbet kesintisiz devam eder.
+
+## Hızlı Başlangıç
+
+<Step number={1} title="Flow Builder'ı Açın">
+  Invekto One panelinden Flow Builder'a girin. "Yeni Akış" butonuna tıklayın.
+</Step>
+
+<Step number={2} title="Başlangıç Bloğunu Ekleyin">
+  Her akış bir başlangıç bloğuyla başlar. Bu blok müşteriden ilk mesaj geldiğinde akışı tetikler.
+</Step>
+
+<Step number={3} title="Mesaj Bloğu Ekleyin">
+  Müşteriye göndermek istediğiniz karşılama mesajını yazın. Butonlar veya liste menüsü ekleyebilirsiniz.
+</Step>
+
+<Step number={4} title="Dallanmalar Oluşturun">
+  Müşterinin seçimine göre farklı yollar belirleyin. Her buton farklı bir akış yoluna yönlendirebilir.
+</Step>
+
+<Step number={5} title="Test Edin ve Yayınlayın">
+  Simülasyon ile akışınızı test edin. Her şey doğru çalışıyorsa "Yayınla" butonuna tıklayın.
+</Step>
+
+## Blok Türleri
+
+| Blok | Ne Yapar? | Ne Zaman Kullanılır? |
+|------|-----------|---------------------|
+| **Mesaj Gönder** | Müşteriye metin mesajı gönderir | Bilgi vermek, yönlendirmek |
+| **Menü Göster** | Butonlu veya listeli seçenekler sunar | Müşteriden seçim almak |
+| **Niyet Analizi** | Mesajı AI ile analiz eder | Müşterinin ne istediğini anlamak |
+| **FAQ Ara** | Bilgi bankasında cevap arar | Sık sorulan sorulara yanıt |
+| **Koşul** | Evet/Hayır dallanması | Farklı senaryolara yönlendirmek |
+| **Bekleme** | Belirli süre bekler | Zaman aralığı koymak |
+| **Temsilciye Aktar** | Sohbeti insana devreder | Bot çözemediğinde |
+| **Değişken Ata** | Bilgi kaydeder | Müşteri adı, tercih gibi verileri saklamak |
+
+## AI Wizard ile Akış Oluşturma
+
+Akış tasarlamak istemiyorsanız, AI Wizard'a ne istediğinizi yazarak otomatik akış oluşturabilirsiniz.
+
+**Örnek komutlar:**
+- "Müşteri randevu istediğinde uygun slotları göster"
+- "Çalışma saatlerini soran müşteriye otomatik yanıt ver"
+- "Şikayet eden müşterileri destek ekibine yönlendir"
+
+<Callout type="tip" title="En İyi Uygulama">
+  Basit bir karşılama akışıyla başlayın. Müşterilerinizden gelen en sık 5 soruyu belirleyin ve bunlar için dallanmalar oluşturun. Zamanla daha karmaşık akışlar ekleyin.
+</Callout>

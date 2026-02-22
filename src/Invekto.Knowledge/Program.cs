@@ -5,6 +5,7 @@ using Invekto.Shared.Middleware;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
+using Invekto.Shared.DTOs.Templates;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Services;
 
@@ -91,6 +92,27 @@ builder.Services.AddSingleton<EmbeddingService>(sp =>
 // Register retrieval service
 builder.Services.AddSingleton<RetrievalService>();
 
+// Register template services
+builder.Services.AddSingleton<TemplateRepository>();
+builder.Services.AddSingleton<TemplateResolutionService>();
+builder.Services.AddSingleton<TemplateExtractorService>(sp =>
+    new TemplateExtractorService(
+        sp.GetRequiredService<TemplateRepository>(),
+        sp.GetRequiredService<KnowledgeConnectionFactory>(),
+        sp.GetRequiredService<EmbeddingService>(),
+        sp.GetRequiredService<TemplateResolutionService>(),
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddSingleton<TemplateAdoptionService>(sp =>
+{
+    var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs * 10) };
+    return new TemplateAdoptionService(
+        sp.GetRequiredService<TemplateRepository>(),
+        sp.GetRequiredService<KnowledgeRepository>(),
+        sp.GetRequiredService<KnowledgeConnectionFactory>(),
+        httpClient,
+        sp.GetRequiredService<JsonLinesLogger>());
+});
+
 // Phase B: Processing config
 var chunkSize = builder.Configuration.GetValue<int>("Processing:ChunkSize", 512);
 var chunkOverlap = builder.Configuration.GetValue<int>("Processing:ChunkOverlap", 50);
@@ -111,7 +133,7 @@ var app = builder.Build();
 app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
-app.UseJwtAuth(jwtValidator, logger, "/api/v1/knowledge/");
+app.UseJwtAuth(jwtValidator, logger, "/api/v1/knowledge/", "/api/v1/templates/");
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -124,6 +146,13 @@ static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
 {
     var tenant = ctx.Items["TenantContext"] as TenantContext;
     if (tenant == null || tenant.TenantId != routeTenantId) return null;
+    return tenant;
+}
+
+static TenantContext? GetSuperadmin(HttpContext ctx)
+{
+    var tenant = ctx.Items["TenantContext"] as TenantContext;
+    if (tenant == null || tenant.TenantId != 0) return null;
     return tenant;
 }
 
@@ -700,6 +729,502 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/generate-embeddings", async (
 });
 
 // ============================================================
+// Template Catalog CRUD (superadmin — opsOnly)
+// ============================================================
+
+// List templates
+app.MapGet("/api/v1/templates/catalog", async (
+    HttpContext ctx,
+    TemplateRepository repo,
+    string? scope, string? type, string? sector, string? lang,
+    string? search, string? tags, int? page, int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var filter = new TemplateCatalogFilter
+    {
+        Scope = scope,
+        TemplateType = type,
+        Sector = sector,
+        Lang = lang,
+        Search = search,
+        Tags = tags?.Split(',', StringSplitOptions.RemoveEmptyEntries),
+        Page = Math.Max(page ?? 1, 1),
+        Limit = Math.Clamp(limit ?? 20, 1, 200)
+    };
+
+    var (items, total) = await repo.ListAsync(filter);
+    return Results.Ok(new { items, total, page = filter.Page, limit = filter.Limit });
+});
+
+// Get template by ID
+app.MapGet("/api/v1/templates/catalog/{id:int}", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var template = await repo.GetByIdAsync(id);
+    if (template == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
+
+    template.Sources = await repo.GetSourcesAsync(id);
+    return Results.Ok(template);
+});
+
+// Create template
+app.MapPost("/api/v1/templates/catalog", async (
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    TemplateCreateRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateCreateRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || string.IsNullOrWhiteSpace(body.Slug) || string.IsNullOrWhiteSpace(body.Name))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "slug and name are required", requestId), statusCode: 400);
+
+    try
+    {
+        var id = await repo.InsertAsync(body);
+        resolution.InvalidateCache();
+        var created = await repo.GetByIdAsync(id);
+        return Results.Json(created, statusCode: 201);
+    }
+    catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSlugConflict, "Slug already exists", requestId), statusCode: 409);
+    }
+});
+
+// Update template
+app.MapPut("/api/v1/templates/catalog/{id:int}", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    TemplateUpdateRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateUpdateRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Request body required", requestId), statusCode: 400);
+
+    var success = await repo.UpdateAsync(id, body);
+    if (!success)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
+
+    resolution.InvalidateCache();
+    var result = await repo.GetByIdAsync(id);
+    return Results.Ok(result);
+});
+
+// Delete template (soft)
+app.MapDelete("/api/v1/templates/catalog/{id:int}", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var deleted = await repo.SoftDeleteAsync(id);
+    if (!deleted)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found", requestId), statusCode: 404);
+
+    resolution.InvalidateCache();
+    return Results.Ok(new { message = "Template deactivated", id });
+});
+
+// Publish template
+app.MapPost("/api/v1/templates/catalog/{id:int}/publish", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var published = await repo.PublishAsync(id);
+    if (!published)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template {id} not found or already published", requestId), statusCode: 404);
+
+    resolution.InvalidateCache();
+    return Results.Ok(new { message = "Template published", id });
+});
+
+// Get version history
+app.MapGet("/api/v1/templates/catalog/{id:int}/versions", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var versions = await repo.GetVersionHistoryAsync(id);
+    return Results.Ok(new { versions, count = versions.Count });
+});
+
+// ============================================================
+// Template Suggestions (superadmin review queue)
+// ============================================================
+
+// List suggestions
+app.MapGet("/api/v1/templates/suggestions", async (
+    HttpContext ctx,
+    TemplateRepository repo,
+    int? analysis_id, string? status, int? page, int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var p = Math.Max(page ?? 1, 1);
+    var l = Math.Clamp(limit ?? 20, 1, 200);
+
+    var (items, total) = await repo.ListSuggestionsAsync(analysis_id, status, p, l);
+    return Results.Ok(new { items, total, page = p, limit = l });
+});
+
+// Get suggestion by ID
+app.MapGet("/api/v1/templates/suggestions/{id:int}", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var suggestion = await repo.GetSuggestionByIdAsync(id);
+    if (suggestion == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSuggestionNotFound, $"Suggestion {id} not found", requestId), statusCode: 404);
+
+    return Results.Ok(suggestion);
+});
+
+// Review suggestion (approve/reject)
+app.MapPost("/api/v1/templates/suggestions/{id:int}/review", async (
+    int id,
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var admin = GetSuperadmin(ctx);
+    if (admin == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    TemplateSuggestionReviewRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateSuggestionReviewRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || string.IsNullOrWhiteSpace(body.Status))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "status is required", requestId), statusCode: 400);
+
+    if (body.Status != "approved" && body.Status != "rejected" && body.Status != "merged")
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSuggestionInvalidStatus, "Status must be approved, rejected, or merged", requestId), statusCode: 400);
+
+    var suggestion = await repo.GetSuggestionByIdAsync(id);
+    if (suggestion == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSuggestionNotFound, $"Suggestion {id} not found", requestId), statusCode: 404);
+
+    int? resultTemplateId = null;
+
+    if (body.Status == "approved")
+    {
+        // Create or update template from suggestion
+        var content = body.EditedContentJson ?? suggestion.SuggestedContentJson;
+        if (suggestion.SuggestionType == "new")
+        {
+            var createReq = new TemplateCreateRequest
+            {
+                TemplateType = suggestion.SuggestedType,
+                Scope = "sector",
+                Sector = "eticaret",
+                Slug = suggestion.SuggestedSlug,
+                Name = suggestion.SuggestedName,
+                ContentJson = content!,
+                CreatedBy = "wa_import"
+            };
+            resultTemplateId = await repo.InsertAsync(createReq);
+        }
+        else if (suggestion.ExistingTemplateId.HasValue)
+        {
+            var updateReq = new TemplateUpdateRequest
+            {
+                ContentJson = content,
+                ChangeSummary = $"Updated from suggestion #{id}"
+            };
+            await repo.UpdateAsync(suggestion.ExistingTemplateId.Value, updateReq);
+            resultTemplateId = suggestion.ExistingTemplateId.Value;
+        }
+    }
+
+    await repo.UpdateSuggestionStatusAsync(id, body.Status, "superadmin", resultTemplateId);
+    resolution.InvalidateCache();
+
+    jsonLogger.StepInfo($"[TemplateSuggestion] Reviewed: id={id}, status={body.Status}, resultTemplate={resultTemplateId}", requestId);
+    return Results.Ok(new { id, status = body.Status, result_template_id = resultTemplateId });
+});
+
+// Bulk review suggestions
+app.MapPost("/api/v1/templates/suggestions/bulk-review", async (
+    HttpContext ctx,
+    TemplateRepository repo,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    TemplateBulkReviewRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateBulkReviewRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || body.Ids == null || body.Ids.Length == 0 || string.IsNullOrWhiteSpace(body.Status))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "ids[] and status are required", requestId), statusCode: 400);
+
+    var processed = 0;
+    var failed = 0;
+
+    foreach (var suggestionId in body.Ids)
+    {
+        try
+        {
+            var suggestion = await repo.GetSuggestionByIdAsync(suggestionId);
+            if (suggestion == null || suggestion.Status != "pending") { failed++; continue; }
+
+            int? resultTemplateId = null;
+            if (body.Status == "approved" && suggestion.SuggestionType == "new")
+            {
+                var createReq = new TemplateCreateRequest
+                {
+                    TemplateType = suggestion.SuggestedType,
+                    Scope = "sector",
+                    Sector = "eticaret",
+                    Slug = suggestion.SuggestedSlug,
+                    Name = suggestion.SuggestedName,
+                    ContentJson = suggestion.SuggestedContentJson!,
+                    CreatedBy = "wa_import"
+                };
+                resultTemplateId = await repo.InsertAsync(createReq);
+            }
+            else if (body.Status == "approved" && suggestion.ExistingTemplateId.HasValue)
+            {
+                var updateReq = new TemplateUpdateRequest
+                {
+                    ContentJson = suggestion.SuggestedContentJson,
+                    ChangeSummary = $"Bulk-approved from suggestion #{suggestionId}"
+                };
+                await repo.UpdateAsync(suggestion.ExistingTemplateId.Value, updateReq);
+                resultTemplateId = suggestion.ExistingTemplateId.Value;
+            }
+
+            await repo.UpdateSuggestionStatusAsync(suggestionId, body.Status, "superadmin", resultTemplateId);
+            processed++;
+        }
+        catch (Exception ex)
+        {
+            failed++;
+            jsonLogger.SystemWarn($"[{ErrorCodes.TemplateSuggestionInvalidStatus}] Bulk review item failed: suggestion={suggestionId}: {ex.Message}");
+        }
+    }
+
+    resolution.InvalidateCache();
+    jsonLogger.StepInfo($"[TemplateSuggestion] Bulk review: status={body.Status}, processed={processed}, failed={failed}", requestId);
+    return Results.Ok(new { status = body.Status, processed, failed, total = body.Ids.Length });
+});
+
+// ============================================================
+// Template Extraction (superadmin — trigger comparison)
+// ============================================================
+
+app.MapPost("/api/v1/templates/extract-from-analysis/{analysisId:int}", async (
+    int analysisId,
+    HttpContext ctx,
+    TemplateExtractorService extractor,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    TemplateExtractionRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateExtractionRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || string.IsNullOrWhiteSpace(body.TenantName))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "tenant_name is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await extractor.ExtractAndCompareAsync(
+            analysisId, body.TenantName, body.Sector,
+            body.AutoConfirmThreshold);
+
+        jsonLogger.StepInfo($"[TemplateExtraction] Analysis {analysisId}: " +
+            $"new={result.NewCount}, update={result.UpdateCount}, confirm={result.ConfirmCount}, " +
+            $"duration={result.DurationMs}ms", requestId);
+
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.TemplateComparisonFailed}] Extraction failed for analysis {analysisId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateComparisonFailed, $"Extraction failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Template Resolution (tenant-facing)
+// ============================================================
+
+app.MapGet("/api/v1/templates/{tenantId:int}/resolve/{slug}", async (
+    int tenantId, string slug,
+    HttpContext ctx,
+    TemplateResolutionService resolution,
+    string? lang) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant mismatch", requestId), statusCode: 403);
+
+    var result = await resolution.ResolveAsync(tenantId, slug, lang ?? "tr");
+    if (!result.Resolved)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateNotFound, $"Template '{slug}' not found", requestId), statusCode: 404);
+
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/v1/templates/{tenantId:int}/available", async (
+    int tenantId,
+    HttpContext ctx,
+    TemplateResolutionService resolution,
+    string? type, string? lang) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant mismatch", requestId), statusCode: 403);
+
+    var items = await resolution.GetAvailableAsync(tenantId, type, lang);
+    return Results.Ok(new { items, count = items.Count });
+});
+
+// ============================================================
+// Template Adoption (superadmin or tenant)
+// ============================================================
+
+app.MapPost("/api/v1/templates/{tenantId:int}/adopt/{templateId:int}", async (
+    int tenantId, int templateId,
+    HttpContext ctx,
+    TemplateAdoptionService adoption,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    // Allow superadmin (tid=0) or the tenant itself
+    var tenant = ctx.Items["TenantContext"] as TenantContext;
+    if (tenant == null || (tenant.TenantId != 0 && tenant.TenantId != tenantId))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", requestId), statusCode: 403);
+
+    try
+    {
+        var result = await adoption.AdoptAsync(tenantId, templateId);
+        if (result == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateAdoptionExists, "Template not found, not published, or already adopted", requestId), statusCode: 409);
+
+        resolution.InvalidateTenantCache(tenantId);
+        return Results.Json(result, statusCode: 201);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Adopt failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Template adoption failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+app.MapPost("/api/v1/templates/{tenantId:int}/onboard", async (
+    int tenantId,
+    HttpContext ctx,
+    TemplateAdoptionService adoption,
+    TemplateResolutionService resolution,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = ctx.Items["TenantContext"] as TenantContext;
+    if (tenant == null || (tenant.TenantId != 0 && tenant.TenantId != tenantId))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", requestId), statusCode: 403);
+
+    TemplateOnboardRequest? body;
+    try { body = await request.ReadFromJsonAsync<TemplateOnboardRequest>(); }
+    catch (JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || string.IsNullOrWhiteSpace(body.Sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "sector is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await adoption.OnboardAsync(tenantId, body.Sector, body.TemplateTypes);
+        resolution.InvalidateTenantCache(tenantId);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Onboard failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Template onboarding failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+app.MapGet("/api/v1/templates/{tenantId:int}/adoptions", async (
+    int tenantId,
+    HttpContext ctx,
+    TemplateRepository repo) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = ctx.Items["TenantContext"] as TenantContext;
+    if (tenant == null || (tenant.TenantId != 0 && tenant.TenantId != tenantId))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Unauthorized", requestId), statusCode: 403);
+
+    var items = await repo.ListAdoptionsAsync(tenantId);
+    return Results.Ok(new { items, count = items.Count });
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -722,6 +1247,24 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/generate-embeddings", Description = "Generate embeddings for FAQs without one", Auth = "Bearer JWT", Category = "Embedding" },
         new() { Method = "GET", Path = "/api/v1/knowledge/{tenantId}/intents", Description = "Get tenant intent names (DB-driven)", Auth = "Bearer JWT", Category = "Intent" },
         new() { Method = "POST", Path = "/api/v1/knowledge/{tenantId}/intents/seed", Description = "Seed intents from sector templates", Auth = "Bearer JWT", Category = "Intent" },
+        // Template System
+        new() { Method = "GET", Path = "/api/v1/templates/catalog", Description = "List templates (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/catalog/{id}", Description = "Get template by ID (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/catalog", Description = "Create template (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "PUT", Path = "/api/v1/templates/catalog/{id}", Description = "Update template (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "DELETE", Path = "/api/v1/templates/catalog/{id}", Description = "Delete template (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/catalog/{id}/publish", Description = "Publish template (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/catalog/{id}/versions", Description = "Template version history", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/suggestions", Description = "List suggestions (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/suggestions/{id}", Description = "Get suggestion by ID", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/suggestions/{id}/review", Description = "Review suggestion", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/suggestions/bulk-review", Description = "Bulk review suggestions", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/extract-from-analysis/{id}", Description = "Extract templates from analysis", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/{tenantId}/resolve/{slug}", Description = "Resolve template (tenant)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/{tenantId}/available", Description = "Available templates (tenant)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/{tenantId}/adopt/{templateId}", Description = "Adopt template", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/{tenantId}/onboard", Description = "Onboard tenant templates", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/templates/{tenantId}/adoptions", Description = "List tenant adoptions", Auth = "Bearer JWT", Category = "Template" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

@@ -7,6 +7,7 @@ import {
   LogOut,
   LayoutDashboard,
   BookOpen,
+  GraduationCap,
   BarChart3,
   GitBranch,
   Megaphone,
@@ -19,6 +20,8 @@ import {
   PanelLeftClose,
   Type,
   RotateCcw,
+  LayoutTemplate,
+  Upload,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo, InvektoMark } from './ui/InvektoLogo';
@@ -55,6 +58,9 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true },
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
   { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
+  { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true },
+  { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },
+  { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
   { path: '/settings',        label: 'Ayarlar',          icon: Settings },
 ];
 
