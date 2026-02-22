@@ -61,10 +61,22 @@ public sealed class TemplateAdoptionService
                 _ => null
             };
         }
-        catch (Exception ex)
+        catch (NpgsqlException ex)
         {
             _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] " +
-                $"Adopt failed: template={templateId}, tenant={tenantId}, type={template.TemplateType}: {ex.Message}");
+                $"Adopt DB error: template={templateId}, tenant={tenantId}, type={template.TemplateType}: {ex.Message}");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] " +
+                $"Adopt parse error: template={templateId}, tenant={tenantId}, type={template.TemplateType}: {ex.Message}");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] " +
+                $"Adopt service error: template={templateId}, tenant={tenantId}, type={template.TemplateType}: {ex.Message}");
             return null;
         }
 
@@ -142,11 +154,23 @@ public sealed class TemplateAdoptionService
                     result.SkippedCount++;
                 }
             }
-            catch (Exception ex)
+            catch (NpgsqlException ex)
             {
                 result.FailedCount++;
                 _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] " +
-                    $"Onboard adopt failed: template={template.Id}, tenant={tenantId}: {ex.Message}");
+                    $"Onboard DB error: template={template.Id}, tenant={tenantId}: {ex.Message}");
+            }
+            catch (HttpRequestException ex)
+            {
+                result.FailedCount++;
+                _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] " +
+                    $"Onboard service error: template={template.Id}, tenant={tenantId}: {ex.Message}");
+            }
+            catch (JsonException ex)
+            {
+                result.FailedCount++;
+                _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] " +
+                    $"Onboard parse error: template={template.Id}, tenant={tenantId}: {ex.Message}");
             }
         }
 
@@ -242,16 +266,16 @@ public sealed class TemplateAdoptionService
             }
             else
             {
-                _logger.SystemWarn($"[TemplateAdoption] Outbound adopt failed: {response.StatusCode} for template={template.Id}");
+                _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] Outbound adopt failed: {response.StatusCode} for template={template.Id}");
             }
         }
         catch (HttpRequestException ex)
         {
-            _logger.SystemWarn($"[TemplateAdoption] Outbound service unavailable: {ex.Message}");
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] Outbound service unavailable: {ex.Message}");
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            _logger.SystemWarn($"[TemplateAdoption] Outbound service timeout: {ex.Message}");
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] Outbound service timeout: {ex.Message}");
         }
 
         return null;
@@ -284,16 +308,16 @@ public sealed class TemplateAdoptionService
             }
             else
             {
-                _logger.SystemWarn($"[TemplateAdoption] Automation adopt failed: {response.StatusCode} for template={template.Id}");
+                _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] Automation adopt failed: {response.StatusCode} for template={template.Id}");
             }
         }
         catch (HttpRequestException ex)
         {
-            _logger.SystemWarn($"[TemplateAdoption] Automation service unavailable: {ex.Message}");
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] Automation service unavailable: {ex.Message}");
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            _logger.SystemWarn($"[TemplateAdoption] Automation service timeout: {ex.Message}");
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] Automation service timeout: {ex.Message}");
         }
 
         return null;
@@ -326,7 +350,7 @@ public sealed class TemplateAdoptionService
         }
         catch (JsonException ex)
         {
-            _logger.SystemWarn($"[TemplateAdoption] DeserializeContent failed: {ex.Message}");
+            _logger.SystemWarn($"[{ErrorCodes.TemplateOnboardingFailed}] DeserializeContent failed: {ex.Message}");
             return null;
         }
     }

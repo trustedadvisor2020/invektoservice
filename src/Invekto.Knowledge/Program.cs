@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Npgsql;
 using Invekto.Knowledge.Data;
 using Invekto.Knowledge.Services;
 using Invekto.Shared.Middleware;
@@ -102,15 +103,9 @@ builder.Services.AddSingleton<TemplateExtractorService>(sp =>
         sp.GetRequiredService<EmbeddingService>(),
         sp.GetRequiredService<TemplateResolutionService>(),
         sp.GetRequiredService<JsonLinesLogger>()));
-builder.Services.AddSingleton<TemplateAdoptionService>(sp =>
+builder.Services.AddHttpClient<TemplateAdoptionService>(client =>
 {
-    var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs * 10) };
-    return new TemplateAdoptionService(
-        sp.GetRequiredService<TemplateRepository>(),
-        sp.GetRequiredService<KnowledgeRepository>(),
-        sp.GetRequiredService<KnowledgeConnectionFactory>(),
-        httpClient,
-        sp.GetRequiredService<JsonLinesLogger>());
+    client.Timeout = TimeSpan.FromMilliseconds(ServiceConstants.BackendToMicroserviceTimeoutMs * 10);
 });
 
 // Phase B: Processing config
@@ -972,7 +967,7 @@ app.MapPost("/api/v1/templates/suggestions/{id:int}/review", async (
                 Sector = "eticaret",
                 Slug = suggestion.SuggestedSlug,
                 Name = suggestion.SuggestedName,
-                ContentJson = content!,
+                ContentJson = content ?? suggestion.SuggestedContentJson ?? new object(),
                 CreatedBy = "wa_import"
             };
             resultTemplateId = await repo.InsertAsync(createReq);
@@ -1035,7 +1030,7 @@ app.MapPost("/api/v1/templates/suggestions/bulk-review", async (
                     Sector = "eticaret",
                     Slug = suggestion.SuggestedSlug,
                     Name = suggestion.SuggestedName,
-                    ContentJson = suggestion.SuggestedContentJson!,
+                    ContentJson = suggestion.SuggestedContentJson ?? new object(),
                     CreatedBy = "wa_import"
                 };
                 resultTemplateId = await repo.InsertAsync(createReq);
@@ -1054,10 +1049,15 @@ app.MapPost("/api/v1/templates/suggestions/bulk-review", async (
             await repo.UpdateSuggestionStatusAsync(suggestionId, body.Status, "superadmin", resultTemplateId);
             processed++;
         }
-        catch (Exception ex)
+        catch (NpgsqlException ex)
         {
             failed++;
-            jsonLogger.SystemWarn($"[{ErrorCodes.TemplateSuggestionInvalidStatus}] Bulk review item failed: suggestion={suggestionId}: {ex.Message}");
+            jsonLogger.SystemWarn($"[{ErrorCodes.TemplateSuggestionInvalidStatus}] Bulk review DB error: suggestion={suggestionId}: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            failed++;
+            jsonLogger.SystemWarn($"[{ErrorCodes.TemplateSuggestionInvalidStatus}] Bulk review logic error: suggestion={suggestionId}: {ex.Message}");
         }
     }
 
@@ -1100,10 +1100,15 @@ app.MapPost("/api/v1/templates/extract-from-analysis/{analysisId:int}", async (
 
         return Results.Ok(result);
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
-        jsonLogger.StepError($"[{ErrorCodes.TemplateComparisonFailed}] Extraction failed for analysis {analysisId}: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateComparisonFailed, $"Extraction failed: {ex.Message}", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.TemplateComparisonFailed}] Extraction DB error for analysis {analysisId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateComparisonFailed, $"Database error during extraction: {ex.Message}", requestId), statusCode: 500);
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.TemplateComparisonFailed}] Extraction service error for analysis {analysisId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateComparisonFailed, $"Service unavailable during extraction: {ex.Message}", requestId), statusCode: 502);
     }
 });
 
@@ -1170,10 +1175,15 @@ app.MapPost("/api/v1/templates/{tenantId:int}/adopt/{templateId:int}", async (
         resolution.InvalidateTenantCache(tenantId);
         return Results.Json(result, statusCode: 201);
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
-        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Adopt failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Template adoption failed: {ex.Message}", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Adopt DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Database error during adoption: {ex.Message}", requestId), statusCode: 500);
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Adopt service error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Service unavailable during adoption: {ex.Message}", requestId), statusCode: 502);
     }
 });
 
@@ -1203,10 +1213,15 @@ app.MapPost("/api/v1/templates/{tenantId:int}/onboard", async (
         resolution.InvalidateTenantCache(tenantId);
         return Results.Ok(result);
     }
-    catch (Exception ex)
+    catch (NpgsqlException ex)
     {
-        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Onboard failed: {ex.Message}", requestId);
-        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Template onboarding failed: {ex.Message}", requestId), statusCode: 500);
+        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Onboard DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Database error during onboarding: {ex.Message}", requestId), statusCode: 500);
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.TemplateOnboardingFailed}] Onboard service error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateOnboardingFailed, $"Service unavailable during onboarding: {ex.Message}", requestId), statusCode: 502);
     }
 });
 

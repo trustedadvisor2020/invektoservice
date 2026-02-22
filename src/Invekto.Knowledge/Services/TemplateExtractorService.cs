@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Npgsql;
 using Invekto.Knowledge.Data;
+using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Templates;
 using Invekto.Shared.Logging;
 
@@ -100,9 +101,14 @@ public sealed class TemplateExtractorService
                 $"new={result.NewCount}, update={result.UpdateCount}, confirm={result.ConfirmCount}, " +
                 $"duration={sw.ElapsedMilliseconds}ms");
         }
-        catch (Exception ex)
+        catch (NpgsqlException ex)
         {
-            _logger.SystemWarn($"[TemplateExtraction] Error: analysis={analysisId}: {ex.Message}");
+            _logger.SystemWarn($"[{ErrorCodes.TemplateComparisonFailed}] Extraction DB error: analysis={analysisId}: {ex.Message}");
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.TemplateComparisonFailed}] Extraction service error: analysis={analysisId}: {ex.Message}");
             throw;
         }
 
@@ -384,7 +390,7 @@ public sealed class TemplateExtractorService
         return $"{sector}.{type}.{slug}";
     }
 
-    private static string? ExtractQuestion(object? contentJson)
+    private string? ExtractQuestion(object? contentJson)
     {
         if (contentJson == null) return null;
         try
@@ -392,10 +398,14 @@ public sealed class TemplateExtractorService
             var json = contentJson is JsonElement el ? el : JsonSerializer.SerializeToElement(contentJson);
             return json.TryGetProperty("question", out var q) ? q.GetString() : null;
         }
-        catch (JsonException) { return null; }
+        catch (JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.TemplateComparisonFailed}] ExtractQuestion parse error: {ex.Message}");
+            return null;
+        }
     }
 
-    private static string? ExtractIntentName(object? contentJson)
+    private string? ExtractIntentName(object? contentJson)
     {
         if (contentJson == null) return null;
         try
@@ -403,7 +413,11 @@ public sealed class TemplateExtractorService
             var json = contentJson is JsonElement el ? el : JsonSerializer.SerializeToElement(contentJson);
             return json.TryGetProperty("intent_name", out var n) ? n.GetString() : null;
         }
-        catch (JsonException) { return null; }
+        catch (JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.TemplateComparisonFailed}] ExtractIntentName parse error: {ex.Message}");
+            return null;
+        }
     }
 
     private static string InferCategory(string question)
@@ -450,14 +464,15 @@ public sealed class TemplateExtractorService
     private static string TruncateText(string text, int maxLen)
         => text.Length <= maxLen ? text : text[..maxLen] + "...";
 
-    private static string[] ParseJsonArray(string json)
+    private string[] ParseJsonArray(string json)
     {
         try
         {
             return JsonSerializer.Deserialize<string[]>(json) ?? [];
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
+            _logger.SystemWarn($"[{ErrorCodes.TemplateComparisonFailed}] ParseJsonArray error: {ex.Message}");
             return [];
         }
     }
