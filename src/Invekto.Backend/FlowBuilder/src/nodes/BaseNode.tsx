@@ -93,7 +93,7 @@ function BaseNodeComponent({
         <Handle
           type="target"
           position={Position.Top}
-          className="!w-4 !h-4 !border-2 !bg-emerald-500 !border-emerald-300 hover:!bg-emerald-400 hover:!border-emerald-200 transition-colors"
+          className="!w-5 !h-5 !border-2 !bg-emerald-500 !border-emerald-300 hover:!bg-emerald-400 hover:!border-emerald-200 transition-colors"
         />
       )}
 
@@ -102,13 +102,13 @@ function BaseNodeComponent({
         <Handle
           type="source"
           position={Position.Bottom}
-          className="!w-4 !h-4 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
+          className="!w-5 !h-5 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
         />
       )}
 
       {/* Multiple output handles - RED */}
       {outputs && outputs.length > 0 && (
-        <div className="relative pb-3">
+        <div className="relative pb-1">
           {outputs.map((output, idx) => {
             const total = outputs.length;
             const spread = total === 2 ? 50 : 80;
@@ -120,15 +120,15 @@ function BaseNodeComponent({
                   type="source"
                   position={Position.Bottom}
                   id={output.id}
-                  className="!w-4 !h-4 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
+                  className="!w-5 !h-5 !border-2 !bg-red-500 !border-red-300 hover:!bg-red-400 hover:!border-red-200 transition-colors"
                   style={{ left: `${offset}%` }}
                 />
                 {output.label && (
                   <span
-                    className="absolute text-[11px] text-slate-600 whitespace-nowrap"
+                    className="absolute whitespace-nowrap"
                     style={{
                       left: `${offset}%`,
-                      bottom: '2px',
+                      bottom: '0px',
                       transform: 'translateX(-50%)',
                     }}
                   >

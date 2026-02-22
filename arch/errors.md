@@ -58,6 +58,11 @@ INV-{SERVICE}-{NUMBER}
 | INV-BE-010 | Message log query failed | Mesaj kayitlari yuklenemedi. |
 | INV-BE-011 | Tenant list query failed | Firma listesi yuklenemedi. |
 | INV-BE-012 | Tenant impersonate failed | Firma girisi basarisiz oldu. |
+| INV-BE-020 | Wizard session creation failed | Wizard oturumu olusturulamadi. |
+| INV-BE-021 | Wizard AI service unavailable | AI servisi yapilandirilmamis. |
+| INV-BE-022 | Wizard AI communication failed | AI iletisim hatasi. |
+| INV-BE-023 | Wizard confirm failed | Akis olusturulamadi. |
+| INV-BE-024 | Wizard invalid payload | Gecersiz wizard istegi. |
 
 ---
 

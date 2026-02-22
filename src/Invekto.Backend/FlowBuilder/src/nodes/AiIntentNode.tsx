@@ -19,8 +19,8 @@ function AiIntentNodeComponent(props: NodeProps) {
   const threshold = data.confidence_threshold ?? 0.5;
 
   const outputs = [
-    { id: 'high_confidence', label: <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V3M4 7l4-4 4 4" /></svg> },
-    { id: 'low_confidence', label: <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v10M4 9l4 4 4-4" /></svg> },
+    { id: 'high_confidence', label: <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V3M4 7l4-4 4 4" /></svg> },
+    { id: 'low_confidence', label: <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v10M4 9l4 4 4-4" /></svg> },
   ];
 
   return (
@@ -31,12 +31,12 @@ function AiIntentNodeComponent(props: NodeProps) {
       hasDefaultOutput={false}
       outputs={outputs}
     >
-      {intentCount > 0 ? (
-        <span className="text-slate-600 text-xs">
-          {intentCount} intent &middot; esik: {(threshold * 100).toFixed(0)}%
-        </span>
-      ) : (
-        <span className="text-slate-500 italic text-xs">Intent tanimlanmadi</span>
+      <span className="text-slate-600 text-xs">
+        {intentCount > 0 ? `${intentCount} intent` : <i className="text-slate-400">varsayilan</i>}
+        {' '}&middot; esik: {(threshold * 100).toFixed(0)}%
+      </span>
+      {data.ask_name !== false && (
+        <span className="text-purple-400 text-[10px] block mt-0.5">isim sorar &middot; sohbet eder</span>
       )}
     </BaseNode>
   );

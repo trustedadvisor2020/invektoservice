@@ -163,22 +163,6 @@ export function FlowListPage() {
     }
   };
 
-  const handleCopyConfig = async (flow: FlowSummary) => {
-    // We only have summary here; for copy we fetch full detail to get flow_config
-    setActionLoading(flow.flow_id);
-    try {
-      const detail = await getFlow(tenantId, flow.flow_id);
-      await navigator.clipboard.writeText(
-        JSON.stringify(detail.flow_config, null, 2)
-      );
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kopyalama basarisiz');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString('tr-TR', {
@@ -190,7 +174,25 @@ export function FlowListPage() {
     });
   };
 
+  const [wizardLoading, setWizardLoading] = useState(false);
+
+  const handleStartWizard = async () => {
+    if (!tenantId || wizardLoading) return;
+    setWizardLoading(true);
+    setError(null);
+    try {
+      const { startWizard } = await import('../lib/wizard-api');
+      const result = await startWizard(tenantId);
+      navigate(`/wizard/${result.flow_id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI Wizard baslatilamadi');
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
   const btnPrimary = 'px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors';
+  const btnAI = 'px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-40';
   const btnGhost = 'px-3 py-2 text-sm text-navy-400 hover:text-navy-900 transition-colors';
   const inputClasses = 'w-full px-3 py-2.5 bg-white border border-navy-100 rounded-lg text-navy-900 placeholder-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus transition-all';
 
@@ -203,6 +205,13 @@ export function FlowListPage() {
           <span className="text-2xs text-navy-300">Tenant #{tenantId}</span>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleStartWizard}
+            disabled={wizardLoading}
+            className={btnAI}
+          >
+            {wizardLoading ? 'Hazirlaniyor...' : '\u2728 AI ile Olustur'}
+          </button>
           <button
             onClick={() => {
               setNewFlowName('');
@@ -251,7 +260,8 @@ export function FlowListPage() {
             {flows.map((flow) => (
               <div
                 key={flow.flow_id}
-                className="bg-white border border-navy-100 rounded-xl px-5 py-4 flex items-center justify-between hover:border-navy-200 hover:shadow-elevated transition-all"
+                onDoubleClick={() => navigate(`/editor/${flow.flow_id}`)}
+                className="bg-white border border-navy-100 rounded-xl px-5 py-4 flex items-center justify-between hover:border-navy-200 hover:shadow-elevated transition-all cursor-pointer select-none"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -272,57 +282,66 @@ export function FlowListPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                  {/* Edit */}
                   <button
-                    onClick={() => navigate(`/editor/${flow.flow_id}`)}
-                    className="px-3 py-1.5 text-xs bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/editor/${flow.flow_id}`); }}
+                    className="p-2 rounded-lg text-brand-500 hover:bg-brand-50 transition-colors"
+                    title="Duzenle"
                   >
-                    Duzenle
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                    </svg>
                   </button>
 
+                  {/* Activate / Deactivate */}
                   {flow.is_active ? (
                     <button
-                      onClick={() => handleDeactivate(flow.flow_id)}
+                      onClick={(e) => { e.stopPropagation(); handleDeactivate(flow.flow_id); }}
                       disabled={actionLoading === flow.flow_id}
-                      className="px-3 py-1.5 text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-100 rounded-lg transition-colors disabled:opacity-40"
+                      className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-40"
+                      title="Deaktif Et"
                     >
-                      Deaktif Et
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
+                      </svg>
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleActivate(flow.flow_id)}
+                      onClick={(e) => { e.stopPropagation(); handleActivate(flow.flow_id); }}
                       disabled={actionLoading === flow.flow_id}
-                      className="px-3 py-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 rounded-lg transition-colors disabled:opacity-40"
+                      className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40"
+                      title="Aktif Et"
                     >
-                      Aktif Et
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.344-5.891a1.5 1.5 0 000-2.538L6.3 2.841z" />
+                      </svg>
                     </button>
                   )}
 
+                  {/* Duplicate */}
                   <button
-                    onClick={() => handleDuplicate(flow)}
+                    onClick={(e) => { e.stopPropagation(); handleDuplicate(flow); }}
                     disabled={actionLoading === flow.flow_id}
-                    className="px-3 py-1.5 text-xs bg-brand-50 hover:bg-brand-100 text-brand-600 border border-brand-100 rounded-lg transition-colors disabled:opacity-40"
-                    title="Flow'un kopyasini olustur"
+                    className="p-2 rounded-lg text-brand-500 hover:bg-brand-50 transition-colors disabled:opacity-40"
+                    title="Kopyala"
                   >
-                    Kopyala
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+                      <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.44A1.5 1.5 0 008.378 6H4.5z" />
+                    </svg>
                   </button>
 
+                  {/* Delete */}
                   <button
-                    onClick={() => handleCopyConfig(flow)}
-                    disabled={actionLoading === flow.flow_id}
-                    className="px-3 py-1.5 text-xs bg-navy-50 hover:bg-navy-100 text-navy-500 rounded-lg transition-colors disabled:opacity-40"
-                    title="Flow JSON'u panoya kopyala"
-                  >
-                    JSON
-                  </button>
-
-                  <button
-                    onClick={() => setDeleteTarget(flow)}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(flow); }}
                     disabled={actionLoading === flow.flow_id || flow.is_active}
-                    className="px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    title={flow.is_active ? 'Aktif flow silinemez' : 'Flow sil'}
+                    className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={flow.is_active ? 'Aktif flow silinemez' : 'Sil'}
                   >
-                    Sil
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+                    </svg>
                   </button>
                 </div>
               </div>

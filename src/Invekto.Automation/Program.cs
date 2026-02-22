@@ -402,22 +402,32 @@ app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
         if (flow == null)
             return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", "-"), statusCode: 404);
 
-        return Results.Ok(new
+        var result = new Dictionary<string, object?>
         {
-            flow_id = flow.FlowId,
-            tenant_id = flow.TenantId,
-            flow_name = flow.FlowName,
-            is_active = flow.IsActive,
-            is_default = flow.IsDefault,
-            flow_config = JsonSerializer.Deserialize<JsonElement>(flow.FlowConfigJson),
-            created_at = flow.CreatedAt,
-            updated_at = flow.UpdatedAt
-        });
+            ["flow_id"] = flow.FlowId,
+            ["tenant_id"] = flow.TenantId,
+            ["flow_name"] = flow.FlowName,
+            ["is_active"] = flow.IsActive,
+            ["is_default"] = flow.IsDefault,
+            ["flow_config"] = JsonSerializer.Deserialize<JsonElement>(flow.FlowConfigJson),
+            ["created_at"] = flow.CreatedAt,
+            ["updated_at"] = flow.UpdatedAt,
+            ["wizard_status"] = flow.WizardStatus
+        };
+        if (flow.WizardHistoryJson != null)
+            result["wizard_history"] = JsonSerializer.Deserialize<JsonElement>(flow.WizardHistoryJson);
+
+        return Results.Ok(result);
     }
-    catch (Exception ex)
+    catch (JsonException ex)
     {
-        jsonLogger.StepError($"Flow GET by ID failed: {ex.Message}", "-");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", "-"), statusCode: 500);
+        jsonLogger.StepError($"Flow GET by ID JSON error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Akis verisi okunamadi. Lutfen tekrar deneyin.", "-"), statusCode: 500);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"Flow GET by ID DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Veritabani hatasi. Lutfen tekrar deneyin.", "-"), statusCode: 500);
     }
 });
 
@@ -440,13 +450,14 @@ app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx
             return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "flow_name is required", requestId), statusCode: 400);
 
         var flowConfig = root.TryGetProperty("flow_config", out var fc) ? fc.GetRawText() : "{}";
+        var wizardStatus = root.TryGetProperty("wizard_status", out var ws) ? ws.GetString() : null;
 
         // Validate flow_config is valid JSON
         try { using var _ = JsonDocument.Parse(flowConfig); }
         catch (JsonException ex) { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, $"flow_config is not valid JSON: {ex.Message}", requestId), statusCode: 400); }
 
-        var flowId = await repo.CreateFlowAsync(tenantId, flowName, flowConfig);
-        jsonLogger.StepInfo($"Flow created for tenant {tenantId}: flow_id={flowId}, name={flowName}", requestId);
+        var flowId = await repo.CreateFlowAsync(tenantId, flowName, flowConfig, wizardStatus);
+        jsonLogger.StepInfo($"Flow created for tenant {tenantId}: flow_id={flowId}, name={flowName}, wizard={wizardStatus ?? "none"}", requestId);
 
         return Results.Json(new { flow_id = flowId, tenant_id = tenantId, flow_name = flowName, status = "created" }, statusCode: 201);
     }
@@ -488,8 +499,10 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
         catch (JsonException ex) { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, $"flow_config is not valid JSON: {ex.Message}", requestId), statusCode: 400); }
 
         var flowName = root.TryGetProperty("flow_name", out var fn) ? fn.GetString() : null;
+        var wizardHistory = root.TryGetProperty("wizard_history", out var wh) ? wh.GetRawText() : null;
+        var wizardStatus = root.TryGetProperty("wizard_status", out var ws) ? ws.GetString() : null;
 
-        var updated = await repo.UpdateFlowByIdAsync(tenantId, flowId, flowName, flowConfig);
+        var updated = await repo.UpdateFlowByIdAsync(tenantId, flowId, flowName, flowConfig, wizardHistory, wizardStatus);
         if (!updated)
             return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
 
@@ -587,6 +600,42 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/deactivate", async (int t
     {
         jsonLogger.StepError($"Flow deactivate failed: {ex.Message}", requestId);
         return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "Internal server error", requestId), statusCode: 500);
+    }
+});
+
+// PATCH /api/v1/flows/{tenantId}/{flowId}/wizard-history — Update wizard history only
+app.MapMethods("/api/v1/flows/{tenantId:int}/{flowId:int}/wizard-history", new[] { "PATCH" },
+    async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+
+        var wizardHistory = root.TryGetProperty("wizard_history", out var wh) ? wh.GetRawText() : null;
+        if (string.IsNullOrEmpty(wizardHistory))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "wizard_history is required", requestId), statusCode: 400);
+
+        var updated = await repo.UpdateWizardHistoryAsync(tenantId, flowId, wizardHistory);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        return Results.Ok(new { flow_id = flowId, status = "wizard_history_updated" });
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, "Invalid JSON body", requestId), statusCode: 400);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Wizard history PATCH DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
     }
 });
 

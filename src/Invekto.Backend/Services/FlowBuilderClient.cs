@@ -48,6 +48,13 @@ public sealed class FlowBuilderClient
         return await ProxyRequestAsync(HttpMethod.Delete, path, null, authHeader, requestId, ct);
     }
 
+    public async Task<(int StatusCode, string? Body)> ProxyPatchAsync(
+        string path, string requestBody, string? authHeader, string? requestId,
+        CancellationToken ct = default)
+    {
+        return await ProxyRequestAsync(HttpMethod.Patch, path, requestBody, authHeader, requestId, ct);
+    }
+
     private async Task<(int StatusCode, string? Body)> ProxyRequestAsync(
         HttpMethod method, string path, string? requestBody, string? authHeader, string? requestId,
         CancellationToken ct)

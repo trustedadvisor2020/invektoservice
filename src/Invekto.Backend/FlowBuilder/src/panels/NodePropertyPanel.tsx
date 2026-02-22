@@ -489,6 +489,7 @@ function AiIntentProps({
   const threshold = typeof data.confidence_threshold === 'string'
     ? parseFloat(data.confidence_threshold) || 0.5
     : data.confidence_threshold ?? 0.5;
+  const askName = data.ask_name !== false; // default true
 
   const addIntent = () => {
     onChange({ intents: [...intents, ''] });
@@ -506,6 +507,33 @@ function AiIntentProps({
 
   return (
     <>
+      <FieldGroup label="Konusma Ayarlari">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={askName}
+            onChange={(e) => onChange({ ask_name: e.target.checked })}
+            className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 accent-purple-500"
+          />
+          <span className="text-xs text-slate-600">Musteri ismini sor</span>
+        </label>
+        <p className="text-[10px] text-slate-400 mt-1">
+          Acikken musteri ismini sorar, dogrular ve isimle hitap eder. Anlayamadigi mesajlarda sohbete devam eder.
+        </p>
+        {askName && (
+          <div className="mt-2">
+            <input
+              type="text"
+              value={data.greeting_message ?? ''}
+              onChange={(e) => onChange({ greeting_message: e.target.value || undefined })}
+              className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-purple-500"
+              placeholder="Merhaba! Isminizi ogrenebilir miyim?"
+            />
+            <p className="text-[10px] text-slate-400 mt-0.5">Karsilama mesaji (bos = varsayilan)</p>
+          </div>
+        )}
+      </FieldGroup>
+
       <FieldGroup label={`Intentler (${intents.length})`}>
         <div className="space-y-1.5">
           {intents.map((intent, idx) => (
@@ -555,7 +583,7 @@ function AiIntentProps({
       </FieldGroup>
 
       <p className="text-xs text-slate-400">
-        Musteri mesaji Claude AI ile analiz edilir. Guven esiginin uzerindeki intent'ler <strong>YUKSEK</strong> dalina yonlenir.
+        Musteri mesaji Claude AI ile analiz edilir. Orta guvendeki intent'ler icin &quot;bunu mu demek istiyorsunuz?&quot; onay sorusu sorulur. Dusuk guvende sohbet devam eder.
       </p>
     </>
   );

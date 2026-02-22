@@ -143,6 +143,8 @@ export interface AiIntentData extends BaseNodeData {
   label: string;
   intents?: string[];
   confidence_threshold?: number;
+  ask_name?: boolean;
+  greeting_message?: string;
 }
 
 export interface AiFaqData extends BaseNodeData {
@@ -282,7 +284,7 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     label: 'Intent Algilama',
     description: 'Claude AI ile niyet tespiti',
     color: '#8b5cf6',
-    defaultData: { label: 'Intent', confidence_threshold: 0.5 } as AiIntentData,
+    defaultData: { label: 'Intent', confidence_threshold: 0.5, ask_name: true } as AiIntentData,
   },
   {
     type: 'ai_faq',

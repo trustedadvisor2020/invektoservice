@@ -58,7 +58,8 @@ public sealed class AutomationRepository
                    COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'nodes' THEN flow_config->'nodes' ELSE NULL END), 0) AS node_count,
                    COALESCE(jsonb_array_length(CASE WHEN flow_config ? 'edges' THEN flow_config->'edges' ELSE NULL END), 0) AS edge_count,
                    created_at, updated_at,
-                   CASE WHEN flow_config->>'version' = '2' THEN flow_config::text ELSE NULL END AS flow_config_raw
+                   CASE WHEN flow_config->>'version' = '2' THEN flow_config::text ELSE NULL END AS flow_config_raw,
+                   wizard_status
             FROM chatbot_flows
             WHERE tenant_id = @tid
             ORDER BY is_active DESC, updated_at DESC";
@@ -79,7 +80,8 @@ public sealed class AutomationRepository
                 EdgeCount = reader.GetInt32(6),
                 CreatedAt = reader.GetDateTime(7),
                 UpdatedAt = reader.GetDateTime(8),
-                FlowConfigJson = reader.IsDBNull(9) ? null : reader.GetString(9)
+                FlowConfigJson = reader.IsDBNull(9) ? null : reader.GetString(9),
+                WizardStatus = reader.IsDBNull(10) ? null : reader.GetString(10)
             });
         }
         return result;
@@ -93,7 +95,8 @@ public sealed class AutomationRepository
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT flow_id, flow_name, flow_config, is_active, is_default, created_at, updated_at
+            SELECT flow_id, flow_name, flow_config, is_active, is_default, created_at, updated_at,
+                   wizard_history, wizard_status
             FROM chatbot_flows
             WHERE tenant_id = @tid AND flow_id = @fid";
         cmd.Parameters.AddWithValue("tid", tenantId);
@@ -112,7 +115,9 @@ public sealed class AutomationRepository
             IsActive = reader.GetBoolean(3),
             IsDefault = reader.GetBoolean(4),
             CreatedAt = reader.GetDateTime(5),
-            UpdatedAt = reader.GetDateTime(6)
+            UpdatedAt = reader.GetDateTime(6),
+            WizardHistoryJson = reader.IsDBNull(7) ? null : reader.GetString(7),
+            WizardStatus = reader.IsDBNull(8) ? null : reader.GetString(8)
         };
     }
 
@@ -154,17 +159,19 @@ public sealed class AutomationRepository
     /// Create a new flow for a tenant. Returns the new flow_id.
     /// New flows start as inactive (draft).
     /// </summary>
-    public async Task<int> CreateFlowAsync(int tenantId, string flowName, string flowConfigJson, CancellationToken ct = default)
+    public async Task<int> CreateFlowAsync(int tenantId, string flowName, string flowConfigJson,
+        string? wizardStatus = null, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO chatbot_flows (tenant_id, flow_name, flow_config, is_active, is_default)
-            VALUES (@tid, @name, @cfg::jsonb, false, false)
+            INSERT INTO chatbot_flows (tenant_id, flow_name, flow_config, is_active, is_default, wizard_status)
+            VALUES (@tid, @name, @cfg::jsonb, false, false, @ws)
             RETURNING flow_id";
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("name", flowName);
         cmd.Parameters.AddWithValue("cfg", flowConfigJson);
+        cmd.Parameters.AddWithValue("ws", (object?)wizardStatus ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return Convert.ToInt32(id);
@@ -173,20 +180,43 @@ public sealed class AutomationRepository
     /// <summary>
     /// Update an existing flow's config and name.
     /// </summary>
-    public async Task<bool> UpdateFlowByIdAsync(int tenantId, int flowId, string? flowName, string flowConfigJson, CancellationToken ct = default)
+    public async Task<bool> UpdateFlowByIdAsync(int tenantId, int flowId, string? flowName, string flowConfigJson,
+        string? wizardHistoryJson = null, string? wizardStatus = null, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = flowName != null
-            ? @"UPDATE chatbot_flows SET flow_config = @cfg::jsonb, flow_name = @name
-                WHERE tenant_id = @tid AND flow_id = @fid"
-            : @"UPDATE chatbot_flows SET flow_config = @cfg::jsonb
-                WHERE tenant_id = @tid AND flow_id = @fid";
+
+        cmd.CommandText = @"
+            UPDATE chatbot_flows SET
+                flow_config = @cfg::jsonb,
+                flow_name = COALESCE(@name, flow_name),
+                wizard_history = COALESCE(@wh::jsonb, wizard_history),
+                wizard_status = COALESCE(@ws, wizard_status)
+            WHERE tenant_id = @tid AND flow_id = @fid";
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("fid", flowId);
         cmd.Parameters.AddWithValue("cfg", flowConfigJson);
-        if (flowName != null)
-            cmd.Parameters.AddWithValue("name", flowName);
+        cmd.Parameters.AddWithValue("name", (object?)flowName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("wh", (object?)wizardHistoryJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("ws", (object?)wizardStatus ?? DBNull.Value);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>
+    /// Update only wizard_history for a flow (used during wizard conversation).
+    /// </summary>
+    public async Task<bool> UpdateWizardHistoryAsync(int tenantId, int flowId, string wizardHistoryJson,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE chatbot_flows SET wizard_history = @wh::jsonb
+            WHERE tenant_id = @tid AND flow_id = @fid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        cmd.Parameters.AddWithValue("wh", wizardHistoryJson);
 
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
@@ -746,6 +776,7 @@ public sealed class FlowSummary
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
     public string? FlowConfigJson { get; init; }
+    public string? WizardStatus { get; init; }
 }
 
 public sealed class FlowDetail
@@ -758,6 +789,8 @@ public sealed class FlowDetail
     public bool IsDefault { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+    public string? WizardHistoryJson { get; init; }
+    public string? WizardStatus { get; init; }
 }
 
 public sealed class ScheduleFlowInfo

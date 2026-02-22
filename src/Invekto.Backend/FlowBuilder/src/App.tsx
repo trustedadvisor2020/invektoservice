@@ -11,6 +11,7 @@ import { login as apiLogin } from './lib/api';
 import { LoginPage } from './pages/LoginPage';
 import { FlowListPage } from './pages/FlowListPage';
 import { FlowEditorPage } from './pages/FlowEditorPage';
+import { WizardPage } from './pages/WizardPage';
 
 // -- Auth Provider --
 
@@ -69,6 +70,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <FlowEditorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/wizard/:flowId"
+            element={
+              <RequireAuth>
+                <WizardPage />
               </RequireAuth>
             }
           />

@@ -52,7 +52,7 @@ export function FlowEditorPage() {
           edges: raw.edges ?? [],
           settings: raw.settings ?? {} as FlowConfigV2['settings'],
         };
-        loadFlow(config);
+        loadFlow(config, detail.wizard_history ?? null);
         setIsLoading(false);
       })
       .catch((err) => {

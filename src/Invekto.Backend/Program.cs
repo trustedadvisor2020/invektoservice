@@ -179,6 +179,9 @@ builder.Services.AddHttpClient<FlowBuilderClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(automationTimeoutMs);
 });
 
+// Register AI Wizard service for flow builder
+builder.Services.AddHttpClient<ClaudeWizardService>();
+
 // Configure WhatsApp Analytics HTTP client (PKT-4: NLP query + upload proxy)
 builder.Services.AddHttpClient<WhatsAppAnalyticsClient>(client =>
 {
@@ -290,7 +293,7 @@ if (jwtValidator != null)
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
     var webhookIps = builder.Configuration.GetSection("Webhook:AllowedIps").Get<string[]>() ?? [];
     var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreCase);
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/attribution/", "/api/v1/leads/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -2154,6 +2157,335 @@ app.MapPost("/api/v1/flow-builder/simulation/step", async (HttpContext ctx, Flow
 
 app.MapDelete("/api/v1/flow-builder/simulation/{sessionId}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string sessionId) =>
     await FbProxyDelete(ctx, fbClient, jsonLog, $"/api/v1/simulation/{sessionId}"));
+
+// ============================================
+// FLOW BUILDER WIZARD (AI-powered flow creation)
+// ============================================
+
+async Task<IResult> FbProxyPatch(HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, string targetPath)
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    using var bodyReader = new StreamReader(ctx.Request.Body);
+    var body = await bodyReader.ReadToEndAsync();
+    var (statusCode, respBody) = await fbClient.ProxyPatchAsync(targetPath, body, authHeader, requestId);
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (respBody != null) await ctx.Response.WriteAsync(respBody);
+    return Results.Empty;
+}
+
+// POST /api/v1/flow-builder/wizard/start — Create draft flow and start wizard session
+app.MapPost("/api/v1/flow-builder/wizard/start", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId), statusCode: 401);
+
+    var tenantId = tenantContext.TenantId;
+
+    try
+    {
+        var draftName = $"AI Taslak - {DateTime.UtcNow:dd MMM HH:mm}";
+        var emptyConfig = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            version = 2,
+            metadata = new { name = draftName },
+            nodes = Array.Empty<object>(),
+            edges = Array.Empty<object>(),
+            settings = new
+            {
+                off_hours_message = "Su anda mesai saatleri disindayiz.",
+                unknown_input_message = "Anlayamadim. Lutfen gecerli bir secenek girin.",
+                handoff_confidence_threshold = 0.5,
+                session_timeout_minutes = 30,
+                max_loop_count = 10
+            }
+        });
+
+        var createBody = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            flow_name = draftName,
+            flow_config = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(emptyConfig),
+            wizard_status = "drafting"
+        });
+
+        var (statusCode, respBody) = await fbClient.ProxyPostAsync($"/api/v1/flows/{tenantId}", createBody, authHeader, requestId);
+        ctx.Response.StatusCode = statusCode;
+        ctx.Response.ContentType = "application/json";
+        if (respBody != null) await ctx.Response.WriteAsync(respBody);
+        return Results.Empty;
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.BackendWizardSessionFailed}] Wizard start proxy failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendWizardSessionFailed, "Wizard session olusturulamadi", requestId), statusCode: 502);
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.BackendWizardInvalidPayload}] Wizard start JSON error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendWizardInvalidPayload, "Gecersiz istek formati", requestId), statusCode: 400);
+    }
+});
+
+// POST /api/v1/flow-builder/wizard/{flowId}/message — Send message to wizard, return SSE stream
+app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowId, HttpContext ctx,
+    FlowBuilderClient fbClient, ClaudeWizardService wizardService, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+        ctx.Response.StatusCode = 401;
+        await ctx.Response.WriteAsJsonAsync(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId));
+        return;
+    }
+
+    var tenantId = tenantContext.TenantId;
+
+    if (!wizardService.IsAvailable)
+    {
+        ctx.Response.StatusCode = 503;
+        await ctx.Response.WriteAsJsonAsync(ErrorResponse.Create(ErrorCodes.BackendWizardAiUnavailable, "AI servisi yapilandirilmamis. Claude API anahtari gerekli.", requestId));
+        return;
+    }
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+        var userMessage = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? "" : "";
+
+        if (string.IsNullOrWhiteSpace(userMessage))
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsJsonAsync(ErrorResponse.Create(ErrorCodes.BackendWizardInvalidPayload, "message is required", requestId));
+            return;
+        }
+
+        // Load existing wizard history
+        var (flowStatus, flowBody) = await fbClient.ProxyGetAsync($"/api/v1/flows/{tenantId}/{flowId}", authHeader, requestId);
+        var history = new List<WizardMessage>();
+        if (flowStatus == 200 && flowBody != null)
+        {
+            using var flowDoc = System.Text.Json.JsonDocument.Parse(flowBody);
+            var flowRoot = flowDoc.RootElement;
+            if (flowRoot.TryGetProperty("wizard_history", out var whProp) && whProp.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var item in whProp.EnumerateArray())
+                {
+                    history.Add(new WizardMessage
+                    {
+                        Role = item.GetProperty("role").GetString() ?? "user",
+                        Content = item.GetProperty("content").GetString() ?? "",
+                        Timestamp = item.TryGetProperty("timestamp", out var ts) ? ts.GetString() : null
+                    });
+                }
+            }
+        }
+
+        // Load existing flows for context
+        List<FlowSummaryContext>? existingFlows = null;
+        var (listStatus, listBody) = await fbClient.ProxyGetAsync($"/api/v1/flows/{tenantId}", authHeader, requestId);
+        if (listStatus == 200 && listBody != null)
+        {
+            existingFlows = ParseFlowSummaries(listBody, flowId, app.Logger);
+        }
+
+        // Set up SSE response
+        ctx.Response.ContentType = "text/event-stream";
+        ctx.Response.Headers.Append("Cache-Control", "no-cache");
+        ctx.Response.Headers.Append("Connection", "keep-alive");
+        ctx.Response.Headers.Append("X-Accel-Buffering", "no");
+
+        var fullAssistantText = new System.Text.StringBuilder();
+        string? extractedFlowConfig = null;
+        List<FlowPrerequisite>? prerequisites = null;
+
+        await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, ctx.RequestAborted))
+        {
+            if (chunk.Type == "done")
+            {
+                fullAssistantText.Clear();
+                fullAssistantText.Append(chunk.Content);
+                extractedFlowConfig = chunk.FlowConfig;
+                prerequisites = chunk.Prerequisites;
+
+                var doneEvent = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    type = "done",
+                    flow_config = extractedFlowConfig != null
+                        ? System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(extractedFlowConfig)
+                        : (System.Text.Json.JsonElement?)null,
+                    prerequisites
+                });
+                await ctx.Response.WriteAsync($"data: {doneEvent}\n\n");
+                await ctx.Response.Body.FlushAsync();
+            }
+            else
+            {
+                if (chunk.Type == "text") fullAssistantText.Append(chunk.Content);
+                var eventData = System.Text.Json.JsonSerializer.Serialize(new { type = chunk.Type, content = chunk.Content });
+                await ctx.Response.WriteAsync($"data: {eventData}\n\n");
+                await ctx.Response.Body.FlushAsync();
+            }
+        }
+
+        // Save updated history
+        history.Add(new WizardMessage { Role = "user", Content = userMessage, Timestamp = DateTime.UtcNow.ToString("o") });
+        history.Add(new WizardMessage
+        {
+            Role = "assistant",
+            Content = fullAssistantText.ToString(),
+            Timestamp = DateTime.UtcNow.ToString("o"),
+            FlowConfigSnapshot = extractedFlowConfig
+        });
+
+        var historyJson = System.Text.Json.JsonSerializer.Serialize(history);
+        var patchBody = System.Text.Json.JsonSerializer.Serialize(new { wizard_history = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(historyJson) });
+        await fbClient.ProxyPatchAsync($"/api/v1/flows/{tenantId}/{flowId}/wizard-history", patchBody, authHeader, requestId);
+    }
+    catch (OperationCanceledException)
+    {
+        jsonLog.StepInfo("Wizard SSE client disconnected (normal)", requestId);
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.BackendWizardInvalidPayload}] Wizard message JSON error: {ex.Message}", requestId);
+        if (!ctx.Response.HasStarted)
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsJsonAsync(ErrorResponse.Create(ErrorCodes.BackendWizardInvalidPayload, "Gecersiz istek formati", requestId));
+        }
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.BackendWizardAiCommFailed}] Wizard message proxy failed: {ex.Message}", requestId);
+        if (!ctx.Response.HasStarted)
+        {
+            ctx.Response.StatusCode = 502;
+            await ctx.Response.WriteAsJsonAsync(ErrorResponse.Create(ErrorCodes.BackendWizardAiCommFailed, "AI iletisim hatasi", requestId));
+        }
+    }
+});
+
+// GET /api/v1/flow-builder/wizard/{flowId} — Load wizard state (history + current flow)
+app.MapGet("/api/v1/flow-builder/wizard/{flowId:int}", async (int flowId, HttpContext ctx,
+    FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", "-"), statusCode: 401);
+
+    return await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantContext.TenantId}/{flowId}");
+});
+
+// POST /api/v1/flow-builder/wizard/{flowId}/confirm — Finalize wizard: update flow_config + wizard_status
+app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/confirm", async (int flowId, HttpContext ctx,
+    FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", requestId), statusCode: 401);
+
+    var tenantId = tenantContext.TenantId;
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+        var flowName = root.TryGetProperty("flow_name", out var fnProp) ? fnProp.GetString() : null;
+        var flowConfig = root.TryGetProperty("flow_config", out var fcProp) ? fcProp.GetRawText() : null;
+
+        if (string.IsNullOrEmpty(flowConfig))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.BackendWizardInvalidPayload, "flow_config is required", requestId), statusCode: 400);
+
+        var updateBody = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            flow_name = flowName,
+            flow_config = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(flowConfig),
+            wizard_status = "completed"
+        });
+
+        var (statusCode, respBody) = await fbClient.ProxyPutAsync($"/api/v1/flows/{tenantId}/{flowId}", updateBody, authHeader, requestId);
+        ctx.Response.StatusCode = statusCode;
+        ctx.Response.ContentType = "application/json";
+        if (respBody != null) await ctx.Response.WriteAsync(respBody);
+        return Results.Empty;
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.BackendWizardInvalidPayload}] Wizard confirm JSON error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendWizardInvalidPayload, "Gecersiz istek formati", requestId), statusCode: 400);
+    }
+    catch (HttpRequestException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.BackendWizardConfirmFailed}] Wizard confirm proxy failed: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendWizardConfirmFailed, "Akis olusturulamadi", requestId), statusCode: 502);
+    }
+});
+
+// Helper: parse flow list response into FlowSummaryContext (excluding current draft)
+static List<FlowSummaryContext> ParseFlowSummaries(string json, int excludeFlowId, ILogger? logger = null)
+{
+    var result = new List<FlowSummaryContext>();
+    try
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var flows = root.ValueKind == System.Text.Json.JsonValueKind.Array ? root : root;
+        foreach (var flow in flows.EnumerateArray())
+        {
+            if (!flow.TryGetProperty("flow_id", out var fidProp)) continue;
+            var fid = fidProp.GetInt32();
+            if (fid == excludeFlowId) continue;
+
+            var ctx = new FlowSummaryContext
+            {
+                FlowId = fid,
+                FlowName = flow.TryGetProperty("flow_name", out var fnProp) ? fnProp.GetString() ?? "" : "",
+                IsActive = flow.TryGetProperty("is_active", out var ia) && ia.GetBoolean(),
+                NodeCount = flow.TryGetProperty("node_count", out var nc) ? nc.GetInt32() : 0
+            };
+
+            // Extract node types from flow_config_raw if available
+            if (flow.TryGetProperty("flow_config_raw", out var rawProp) && rawProp.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var rawJson = rawProp.GetString();
+                if (rawJson != null)
+                {
+                    try
+                    {
+                        using var cfgDoc = System.Text.Json.JsonDocument.Parse(rawJson);
+                        if (cfgDoc.RootElement.TryGetProperty("nodes", out var nodesProp))
+                        {
+                            var types = new HashSet<string>();
+                            foreach (var node in nodesProp.EnumerateArray())
+                            {
+                                if (node.TryGetProperty("type", out var typeProp))
+                                    types.Add(typeProp.GetString() ?? "");
+                            }
+                            ctx.NodeTypes = types.ToList();
+                        }
+                    }
+                    catch (System.Text.Json.JsonException ex) { logger?.LogDebug("ParseFlowSummaries: malformed flow_config for flow {FlowId}: {Error}", fid, ex.Message); }
+                }
+            }
+
+            result.Add(ctx);
+        }
+    }
+    catch (System.Text.Json.JsonException ex) { logger?.LogDebug("ParseFlowSummaries: malformed flow list JSON: {Error}", ex.Message); }
+    return result;
+}
 
 // ============================================
 // FLOW BUILDER AUTH (API Key -> JWT)

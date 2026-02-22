@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useFlowStore } from '../store/flow-store';
 import { validateFlow, type ValidationResult } from '../lib/api';
 import { cn } from '../lib/utils';
+import { WizardHistoryTab } from '../components/WizardHistoryTab';
+
+type SettingsTab = 'settings' | 'ai_history';
 
 interface FlowSettingsModalProps {
   open: boolean;
@@ -12,18 +15,36 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
   const settings = useFlowStore((s) => s.flowSettings);
   const setSettings = useFlowStore((s) => s.setSettings);
   const toFlowConfig = useFlowStore((s) => s.toFlowConfig);
+  const wizardHistory = useFlowStore((s) => s.wizardHistory);
+  const hasWizardHistory = wizardHistory != null && wizardHistory.length > 0;
 
+  const [activeTab, setActiveTab] = useState<SettingsTab>('settings');
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [jsonCopied, setJsonCopied] = useState(false);
 
-  // Reset validation state when modal opens
+  // Reset state when modal opens
   useEffect(() => {
     if (open) {
       setValidationResult(null);
       setValidationError(null);
+      setJsonCopied(false);
+      setActiveTab('settings');
     }
   }, [open]);
+
+  const handleCopyJson = async () => {
+    try {
+      const config = toFlowConfig();
+      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+      setJsonCopied(true);
+      setTimeout(() => setJsonCopied(false), 2000);
+    } catch (_e) {
+      // Clipboard API may fail in non-secure contexts (http://) or when denied by permissions policy
+      console.warn('Clipboard write failed — non-secure context or permission denied');
+    }
+  };
 
   // Close on Escape
   useEffect(() => {
@@ -61,7 +82,38 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
       <div className="relative bg-white rounded-xl shadow-xl w-[420px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-          <h2 className="text-sm font-semibold text-slate-800">Flow Ayarlari</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-semibold text-slate-800">Flow Ayarlari</h2>
+            {hasWizardHistory && (
+              <div className="flex border-b border-transparent -mb-4 pb-3">
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={cn(
+                    'px-2 pb-1 text-xs font-medium border-b-2 transition-colors',
+                    activeTab === 'settings'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  )}
+                >
+                  Ayarlar
+                </button>
+                <button
+                  onClick={() => setActiveTab('ai_history')}
+                  className={cn(
+                    'px-2 pb-1 text-xs font-medium border-b-2 transition-colors flex items-center gap-1',
+                    activeTab === 'ai_history'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  )}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  AI Gecmisi
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
@@ -75,19 +127,39 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
 
         {/* Body */}
         <div className="p-5 space-y-4 overflow-y-auto">
-          {/* Validate button */}
-          <button
-            onClick={handleValidate}
-            disabled={validating}
-            className={cn(
-              'w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              validating
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-500 text-white'
-            )}
-          >
-            {validating ? 'Dogrulaniyor...' : 'Akisi Dogrula'}
-          </button>
+        {activeTab === 'ai_history' ? (
+          <WizardHistoryTab />
+        ) : (
+          <>
+          <div className="flex gap-2">
+            {/* Validate button */}
+            <button
+              onClick={handleValidate}
+              disabled={validating}
+              className={cn(
+                'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                validating
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              )}
+            >
+              {validating ? 'Dogrulaniyor...' : 'Akisi Dogrula'}
+            </button>
+
+            {/* Copy JSON button */}
+            <button
+              onClick={handleCopyJson}
+              className={cn(
+                'px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap',
+                jsonCopied
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+              )}
+              title="Flow JSON'u panoya kopyala"
+            >
+              {jsonCopied ? 'Kopyalandi!' : 'JSON'}
+            </button>
+          </div>
 
           {/* Validation results */}
           {validationResult && (
@@ -193,6 +265,8 @@ export function FlowSettingsModal({ open, onClose }: FlowSettingsModalProps) {
               />
             </FieldGroup>
           </div>
+          </>
+        )}
         </div>
       </div>
     </div>

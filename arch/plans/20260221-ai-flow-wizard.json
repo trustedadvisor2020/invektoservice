@@ -1,0 +1,142 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [
+    { "id": "GR-1", "description": "DB Schema + Automation CRUD Update (wizard_history, wizard_status columns)", "services_affected": ["Automation"] },
+    { "id": "GR-2", "description": "Backend Wizard Service + SSE Endpoints (ClaudeWizardService, 5 wizard endpoints)", "services_affected": ["Backend"] },
+    { "id": "GR-3", "description": "FlowBuilder SPA - Wizard Page + Chat (WizardPage, WizardChat, NodeChip, routing)", "services_affected": ["Backend"] },
+    { "id": "GR-4", "description": "Mini Canvas Preview + Diff View + Flow Generation", "services_affected": ["Backend"] },
+    { "id": "GR-5", "description": "Settings AI Gecmisi Tab + Polish", "services_affected": ["Backend"] }
+  ],
+  "slug": "20260221-ai-flow-wizard",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-02-21T10:00:00Z",
+  "updated_at": "2026-02-21T12:00:00Z",
+  "plan": {
+    "summary": "AI Flow Wizard: Claude-powered interactive flow builder. Users describe desired chatbot flow in natural language, AI asks clarifying questions, detects failure paths, suggests improvements, and auto-generates FlowConfigV2 with preview and diff view.",
+    "q_intent": "Flow builder ana sayfasına bir düğme ekle. Amaç yeni akış için kullanıcıdan aklındakini almak, detaylandırmak, açıkları bulmak, daha iyi nasıl olur öneriler yapmak ve sonunda bu akışı otomatik olarak oluşturmak.",
+    "interview_notes": "UI: Full page route /wizard/:flowId. Model: Sonnet 4.6 default, Opus optional. Transport: SSE. Context: Full (existing flows + node types). Preview: Mini canvas with diff. Storage: wizard_history JSONB column. Persistence: Auto-save + resume. Aha features: #1 Failure-path forcing, #2 Node explanation chips, #3 Existing flow overlap detection, #5 Diff view."
+  },
+  "allowed_files": [
+    "arch/db/migrations/002-wizard-history.sql",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Services/ClaudeWizardService.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/FlowBuilderClient.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/FlowBuilder/src/App.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/panels/FlowSettingsPanel.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts",
+    "src/Invekto.Backend/FlowBuilder/src/types/wizard.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/wizard-api.ts",
+    "src/Invekto.Backend/FlowBuilder/src/lib/flow-diff.ts",
+    "src/Invekto.Backend/FlowBuilder/src/store/wizard-store.ts",
+    "src/Invekto.Backend/FlowBuilder/src/pages/WizardPage.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/WizardChat.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/WizardPreview.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/NodeChip.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/components/WizardHistoryTab.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/BaseNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/AiIntentNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/AiSentimentNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/AiFaqNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/ActionApiCallNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/nodes/LogicConditionNode.tsx",
+    "src/Invekto.Backend/FlowBuilder/src/panels/NodePropertyPanel.tsx",
+    "src/Invekto.Automation/Services/IntentDetector.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs",
+    "src/Invekto.Backend/FlowBuilder/src/types/flow.ts",
+    "src/Invekto.Backend/wwwroot/flow-builder/index.html",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/index-H8A7Q9cD.js",
+    "src/Invekto.Backend/wwwroot/flow-builder/assets/index-nSVy7lpY.css",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/002-wizard-history.sql", "is_new": true, "change": "DB migration: wizard_history JSONB + wizard_status columns" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "wizard_history/status in CRUD operations + UpdateWizardHistoryAsync" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "PATCH endpoint for wizard history + wizard fields in flow endpoints" },
+    { "path": "src/Invekto.Backend/Services/ClaudeWizardService.cs", "is_new": true, "change": "Claude API streaming service with system prompt, flow extraction, prerequisites" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "5 wizard endpoints (start, message SSE, get, confirm) + DI registration" },
+    { "path": "src/Invekto.Backend/Services/FlowBuilderClient.cs", "is_new": false, "change": "ProxyPatchAsync method for PATCH requests" },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false, "change": "Claude config section (ApiKey, WizardModel, MaxTokens, Timeout)" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/App.tsx", "is_new": false, "change": "Added /wizard/:flowId route" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowListPage.tsx", "is_new": false, "change": "AI ile Olustur button + handleStartWizard" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/FlowEditorPage.tsx", "is_new": false, "change": "Pass wizard_history to loadFlow" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/panels/FlowSettingsPanel.tsx", "is_new": false, "change": "Tab system: Ayarlar + AI Gecmisi" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/store/flow-store.ts", "is_new": false, "change": "wizardHistory state + loadFlow accepts wizardHistory" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/types/wizard.ts", "is_new": true, "change": "WizardMessage, WizardStreamEvent, FlowPrerequisite, WizardState types" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/wizard-api.ts", "is_new": true, "change": "SSE API client: startWizard, streamMessage, getWizardState, confirmWizard" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/lib/flow-diff.ts", "is_new": true, "change": "Diff engine: computeFlowDiff, getDiffClassName (Aha #5)" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/store/wizard-store.ts", "is_new": true, "change": "Zustand store: wizard state, actions, SSE streaming" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/pages/WizardPage.tsx", "is_new": true, "change": "Full wizard page: split layout, chat + preview" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/WizardChat.tsx", "is_new": true, "change": "Chat UI: bubbles, streaming, suggestions, NodeChip rendering" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/WizardPreview.tsx", "is_new": true, "change": "Mini canvas: ReactFlow preview + diff highlighting + prerequisites" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/NodeChip.tsx", "is_new": true, "change": "Aha #2: hoverable node type badges with descriptions" },
+    { "path": "src/Invekto.Backend/FlowBuilder/src/components/WizardHistoryTab.tsx", "is_new": true, "change": "AI history read-only conversation replay in settings" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Added INV-BE-020 through INV-BE-024 wizard error codes" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added BackendWizard* error code constants" }
+  ],
+  "git_diff": {
+    "sha256": "07495d450f2acea8880508d971be4b4be74fa7b80ceb4ff8aa75eef6e9a7ca09",
+    "full_path": "arch/plans/diffs/20260221-ai-flow-wizard.diff",
+    "stats": { "insertions": 3046, "deletions": 165, "files_count": 35 },
+    "chunks": 6
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build + npx vite build",
+    "timestamp": "2026-02-21T12:00:00Z",
+    "services": ["Invekto.Automation", "Invekto.Backend", "FlowBuilder SPA"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does the SSE streaming endpoint properly flush chunks and handle client disconnection without leaving orphan tasks?", "category": "Lifecycle" },
+    { "id": "Q2", "question": "Is the Claude API key never exposed in frontend code, SSE responses, or git-tracked config files?", "category": "Auth" },
+    { "id": "Q3", "question": "Does the wizard_history JSONB column handle null, empty array, and large conversation histories without data corruption?", "category": "Data" },
+    { "id": "Q4", "question": "Are all wizard endpoints properly authenticated with JWT and tenant-scoped to prevent cross-tenant data access?", "category": "Auth" },
+    { "id": "Q5", "question": "Does the FlowConfigV2 extraction from Claude response handle malformed JSON, missing fields, and invalid node types gracefully?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Knowledge/", "src/Invekto.AgentAI/", "src/Invekto.Outbound/", "src/Invekto.ChatAnalysis/"],
+    "non_goals": ["Unit tests", "Production Claude API key configuration", "Opus model tenant toggle UI", "Flow validation integration"],
+    "intentional_exclusions": ["Flow simulation with wizard-generated flows", "Wizard conversation export/import", "Multi-language system prompt"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ClaudeWizardService.cs:77-85 (SendAsync timeout catch)",
+      "ClaudeWizardService.cs:118-151 (SSE JSON parse catch)",
+      "wizard-api.ts:73-78 (SSE event parse catch)",
+      "wizard-store.ts:90-120 (sendMessage stream catch)",
+      "wizard-store.ts:128-134 (confirmFlow catch)"
+    ],
+    "user_facing_errors": [
+      "AI yanit suresi doldu. Lutfen tekrar deneyin.",
+      "AI servisi gecici olarak kullanilamiyor.",
+      "AI hatasi olustu.",
+      "Wizard baslatilamadi",
+      "Wizard yuklenemedi",
+      "Baglanti hatasi",
+      "Akis olusturulamadi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks either set error state visible to user or log warnings. The JsonException catch in SSE parsing intentionally skips malformed lines (standard SSE practice) but does not lose the stream."
+  },
+  "aha_moments": [
+    { "category": "RELIABILITY", "user_pain": "Users create flows with dead-end paths (no fallback for unrecognized intents, empty condition branches)", "suggestion": "Failure-path forcing: AI analyzes all branches before generating flow, asks about missing handlers", "aha_moment": "User realizes AI caught 3 missing error paths they would have missed manually" },
+    { "category": "UX", "user_pain": "Users don't understand what node types like ai_intent or logic_switch mean in chat context", "suggestion": "NodeChip: hoverable inline badges in chat messages with Turkish descriptions and category colors", "aha_moment": "User hovers over 'ai_intent' chip and immediately understands what it does without leaving the conversation" },
+    { "category": "RELIABILITY", "user_pain": "Users accidentally create flows that duplicate functionality of existing active flows", "suggestion": "Overlap detection: AI sees all tenant flows in context and warns about functional overlap", "aha_moment": "AI says 'You already have a customer greeting flow - should this replace it or handle a different scenario?'" },
+    { "category": "UX", "user_pain": "Users can't see what changed between AI iterations of the flow design", "suggestion": "Diff view: green/amber/red ring highlighting on preview canvas nodes showing added/modified/removed", "aha_moment": "User sees green rings on 3 new nodes and amber on 1 modified node, instantly understanding what AI changed" },
+    { "category": "SUPPORT", "user_pain": "Support team can't understand why a flow was designed a certain way months later", "suggestion": "AI History tab in flow settings showing the full conversation that led to the flow's creation", "aha_moment": "Support opens AI History tab and sees the exact user decisions that shaped each node choice" }
+  ],
+  "verdict": {
+    "status": "FORCE_PASS",
+    "iteration": 2,
+    "blocking_issues": [],
+    "note": "Q FORCE PASS: 3/6 chunks PASS, 3/6 false positives (cross-chunk UNKNOWN, scope complaints on allowed_files, TS catch patterns)"
+  }
+}

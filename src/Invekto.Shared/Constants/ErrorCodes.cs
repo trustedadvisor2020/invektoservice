@@ -20,6 +20,13 @@ public static class ErrorCodes
     public const string BackendTenantListQueryFailed = "INV-BE-011";     // Tenant list query failed
     public const string BackendTenantImpersonateFailed = "INV-BE-012";   // Tenant impersonate failed
 
+    // Backend Wizard errors (INV-BE-020+)
+    public const string BackendWizardSessionFailed = "INV-BE-020";     // Wizard session creation failed
+    public const string BackendWizardAiUnavailable = "INV-BE-021";     // Wizard AI service unavailable
+    public const string BackendWizardAiCommFailed = "INV-BE-022";      // Wizard AI communication failed
+    public const string BackendWizardConfirmFailed = "INV-BE-023";     // Wizard confirm failed
+    public const string BackendWizardInvalidPayload = "INV-BE-024";    // Wizard invalid payload
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";

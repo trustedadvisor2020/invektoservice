@@ -11,6 +11,7 @@ import {
   addEdge,
 } from '@xyflow/react';
 import type { FlowConfigV2, FlowSettings, FlowMetadata, FlowNodeType, NodeData } from '../types/flow';
+import type { WizardMessage } from '../types/wizard';
 import { getNodeTypeInfo, createDefaultFlow } from '../types/flow';
 import { generateNodeId, generateEdgeId } from '../lib/utils';
 import { validateGraph, type ValidationError } from '../lib/graph-validator';
@@ -25,6 +26,9 @@ export interface FlowState {
   isDirty: boolean;
   flowMetadata: FlowMetadata;
   flowSettings: FlowSettings;
+
+  // Wizard history (AI-generated flows)
+  wizardHistory: WizardMessage[] | null;
 
   // Validation
   validationErrors: Map<string, ValidationError[]>;
@@ -54,7 +58,7 @@ export interface FlowState {
   toggleGhostPath: () => void;
 
   // Flow operations
-  loadFlow: (config: FlowConfigV2) => void;
+  loadFlow: (config: FlowConfigV2, wizardHistory?: WizardMessage[] | null) => void;
   toFlowConfig: () => FlowConfigV2;
   newFlow: () => void;
   setMetadata: (metadata: Partial<FlowMetadata>) => void;
@@ -76,6 +80,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   isDirty: false,
   flowMetadata: { ...DEFAULT_FLOW.metadata },
   flowSettings: { ...DEFAULT_FLOW.settings },
+  wizardHistory: null,
   validationErrors: new Map(),
   ghostPathEnabled: false,
   ghostPathNodeIds: new Set(),
@@ -210,7 +215,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     set({ selectedNodeId: id });
   },
 
-  loadFlow: (config) => {
+  loadFlow: (config, wizardHistory) => {
     const defaults = createDefaultFlow();
 
     let nodes: Node[] = (config.nodes ?? []).map((n) => ({
@@ -242,6 +247,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       isDirty: false,
       flowMetadata: { ...defaults.metadata, ...config.metadata },
       flowSettings: { ...defaults.settings, ...config.settings },
+      wizardHistory: wizardHistory ?? null,
       history: [],
       historyIndex: -1,
     });
