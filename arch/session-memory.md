@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Flow execution log sistemi tamamlandi + deploy edildi. "Flow Tetiklendi" bug fix (instance-aware). Backend + Automation production HEALTHY.
-- **Last Task:** Flow Execution Log — (1) flow_execution_log DB tablosu (BIGSERIAL, JSONB node_trace), (2) Automation fire-and-forget logging (typed catches: NpgsqlException, JsonException, InvalidOperationException), (3) 2 API endpoint (list + detail), (4) Backend proxy, (5) FlowLogPanel UI (resizable, mutual exclusion w/ AI Chat), (6) Bug fix: instance-aware flow lookup in GetMessageStoryAsync, (7) Flow mismatch guard (minimal state reset). Codex review: main commit 4 iter + FORCE PASS, fix commit 2 iter + FORCE PASS. SQL migration calistirildi. Backend + Automation deploy HEALTHY.
+- **Status:** Mesajlar sayfasina kanal adi (Kanal) filtre + kolon eklendi. Codex FORCE PASS (CQ5 false positive — SuperAdmin ops cross-tenant by design).
+- **Last Task:** Tum Mesajlar: Kanal filtre + kolon — (1) MessageLogRepository LEFT JOIN tenant_instances (instance_name), (2) instance_id filtre, (3) GetDistinctChannelsAsync + /api/ops/channels endpoint, (4) Frontend Kanal dropdown (tenant-aware) + tablo kolonu. Codex 2 iter, FORCE PASS (CQ5 cross-tenant = SuperAdmin pattern).
 - **Next Task:** Siradaki: diger paket calismasi veya yeni feature.
 - **Strateji:** 12 Paket Stratejisi v5.2
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api, MessageLogEntry, MessageStoryResponse, TenantEntry } from '../lib/api';
+import { api, MessageLogEntry, MessageStoryResponse, TenantEntry, ChannelEntry } from '../lib/api';
 import { ArrowDownLeft, ArrowUpRight, Search, RefreshCw, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const PAGE_SIZE = 50;
@@ -23,11 +23,13 @@ export function MessagesPage() {
   const [filterTenant, setFilterTenant] = useState('');
   const [filterPhone, setFilterPhone] = useState('');
   const [filterDirection, setFilterDirection] = useState('');
+  const [filterChannel, setFilterChannel] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
 
-  // Tenants for dropdown
+  // Tenants + channels for dropdowns
   const [tenants, setTenants] = useState<TenantEntry[]>([]);
+  const [channels, setChannels] = useState<ChannelEntry[]>([]);
 
   // Expanded story
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -41,6 +43,7 @@ export function MessagesPage() {
         tenantId: filterTenant ? parseInt(filterTenant) : undefined,
         phone: filterPhone || undefined,
         direction: filterDirection || undefined,
+        instanceId: filterChannel || undefined,
         from: filterFrom || undefined,
         to: filterTo || undefined,
         limit: PAGE_SIZE,
@@ -53,7 +56,7 @@ export function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterTenant, filterPhone, filterDirection, filterFrom, filterTo, page]);
+  }, [filterTenant, filterPhone, filterDirection, filterChannel, filterFrom, filterTo, page]);
 
   useEffect(() => {
     fetchMessages();
@@ -62,6 +65,13 @@ export function MessagesPage() {
   useEffect(() => {
     api.getOpsTenants().then(r => setTenants(r.tenants)).catch(() => {});
   }, []);
+
+  // Load channels (re-fetch when tenant filter changes)
+  useEffect(() => {
+    const tid = filterTenant ? parseInt(filterTenant) : undefined;
+    api.getOpsChannels(tid).then(r => setChannels(r.channels)).catch(err => { console.error('Channels fetch failed:', err); setChannels([]); });
+    setFilterChannel('');
+  }, [filterTenant]);
 
   // Auto-refresh every 30s
   useEffect(() => {
@@ -161,6 +171,21 @@ export function MessagesPage() {
             </select>
           </div>
           <div>
+            <label className="block text-xs font-medium text-navy-400 mb-1">Kanal</label>
+            <select
+              value={filterChannel}
+              onChange={e => setFilterChannel(e.target.value)}
+              className="w-44 px-2.5 py-1.5 text-sm border border-navy-100 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
+            >
+              <option value="">Tumu</option>
+              {channels.map(ch => (
+                <option key={ch.instanceId} value={ch.instanceId}>
+                  {ch.instanceName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-navy-400 mb-1">Baslangic</label>
             <input
               type="date"
@@ -197,6 +222,7 @@ export function MessagesPage() {
                 <th className="w-8 px-2 py-2.5"></th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Tarih</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Firma</th>
+                <th className="text-left px-4 py-2.5 font-medium text-navy-500">Kanal</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Telefon</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Yon</th>
                 <th className="text-left px-4 py-2.5 font-medium text-navy-500">Gonderen</th>
@@ -207,13 +233,13 @@ export function MessagesPage() {
             <tbody>
               {loading && messages.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-navy-300">
+                  <td colSpan={9} className="text-center py-12 text-navy-300">
                     Yukleniyor...
                   </td>
                 </tr>
               ) : messages.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-navy-300">
+                  <td colSpan={9} className="text-center py-12 text-navy-300">
                     Mesaj bulunamadi
                   </td>
                 </tr>
@@ -243,6 +269,9 @@ export function MessagesPage() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-100 text-navy-700">
                           #{msg.tenantId}
                         </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-navy-500 max-w-[140px] truncate" title={msg.instanceName || msg.instanceId || ''}>
+                        {msg.instanceName || msg.instanceId || <span className="text-navy-300">-</span>}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-xs text-navy-500">
                         {msg.phone}
@@ -274,7 +303,7 @@ export function MessagesPage() {
                     </tr>
                     {expandedId === msg.id && (
                       <tr key={`story-${msg.id}`}>
-                        <td colSpan={8} className="px-6 py-4 bg-navy-50/70 border-b border-navy-100">
+                        <td colSpan={9} className="px-6 py-4 bg-navy-50/70 border-b border-navy-100">
                           <StoryTimeline loading={storyLoading} story={story} />
                         </td>
                       </tr>

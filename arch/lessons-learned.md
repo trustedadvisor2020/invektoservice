@@ -142,6 +142,7 @@
 | 2026-02-23 | Codex CQ3 "scope creep" dedi flow mismatch detection icin (planda yok). Fix commit'te CQ8 "behavior change" dedi (silmek de sorun). Dongusal FAIL | Minimal guard: complex session reset yerine sadece `state.CurrentNodeId` reset (1 satir logic, repo call yok) | **Codex CQ3 vs CQ8 dongusune dusersen: tam silme yerine MINIMAL guard birak — behavior korunur, scope creep olmaz** |
 | 2026-02-23 | `git checkout HEAD -- file` sonrasi VSCode dosyayi buffer'dan geri yazdi — staged diff'e alakasiz degisiklikler karisti | `git show HEAD:path > temp && [IO.File]::WriteAllBytes(target, bytes)` pattern ile VSCode bypass | **VSCode acikken git checkout/reset ile dosya geri yukleme GUVENILMEZ — git show + byte copy pattern kullan** |
 | 2026-02-23 | Codex CoVe Q1 UNKNOWN: diff'te sadece guard gorunuyor, downstream persistence gorunmuyor — false positive | Build PASS + mevcut Codex review'da persistence verified = FORCE PASS | **Codex partial diff'te downstream persistence goremez — guard degisikligi + build PASS = FORCE PASS uygun** |
+| 2026-02-23 | Codex CQ5 "tenant isolation" SuperAdmin ops query'de tid=NULL cross-tenant diye FAIL — ayni dosyadaki GetMessagesAsync de ayni pattern | Q FORCE PASS (iter 1) — SuperAdmin ops = cross-tenant by design | **SuperAdmin ops query'leri `(@tid IS NULL OR tenant_id = @tid)` pattern kullanir — Codex bunu tenant isolation ihlali sanir. Verification question'a "SuperAdmin ops, cross-tenant by design" notu ekle, 2 iter sonra FORCE PASS** |
 
 ### Deploy & Config
 

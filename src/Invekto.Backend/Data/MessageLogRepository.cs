@@ -78,44 +78,45 @@ public sealed class MessageLogRepository
     /// <summary>
     /// Paginated message list for superadmin ops page.
     /// All filters optional. Returns (messages, totalCount).
+    /// LEFT JOINs tenant_instances to resolve instance_name (channel).
     /// </summary>
     public async Task<(List<MessageLogEntry> Messages, int Total)> GetMessagesAsync(
         int? tenantId, string? phone, string? direction,
         DateTime? from, DateTime? to,
+        string? instanceId,
         int limit, int offset,
         CancellationToken ct = default)
     {
-        const string countSql = @"
-            SELECT COUNT(*)
-            FROM message_log
-            WHERE (@tid IS NULL OR tenant_id = @tid)
-              AND (@phone IS NULL OR phone ILIKE @phone)
-              AND (@dir IS NULL OR direction = @dir)
-              AND (@from IS NULL OR created_at >= @from)
-              AND (@to IS NULL OR created_at <= @to)";
+        const string whereClause = @"
+            WHERE (@tid IS NULL OR ml.tenant_id = @tid)
+              AND (@phone IS NULL OR ml.phone ILIKE @phone)
+              AND (@dir IS NULL OR ml.direction = @dir)
+              AND (@from IS NULL OR ml.created_at >= @from)
+              AND (@to IS NULL OR ml.created_at <= @to)
+              AND (@iid IS NULL OR ml.instance_id = @iid)";
 
-        const string selectSql = @"
-            SELECT id, tenant_id, direction, phone, sender_name,
-                   message_text, message_type, chat_id, external_message_id, instance_id, created_at
-            FROM message_log
-            WHERE (@tid IS NULL OR tenant_id = @tid)
-              AND (@phone IS NULL OR phone ILIKE @phone)
-              AND (@dir IS NULL OR direction = @dir)
-              AND (@from IS NULL OR created_at >= @from)
-              AND (@to IS NULL OR created_at <= @to)
-            ORDER BY created_at DESC
+        var countSql = $"SELECT COUNT(*) FROM message_log ml {whereClause}";
+
+        var selectSql = $@"
+            SELECT ml.id, ml.tenant_id, ml.direction, ml.phone, ml.sender_name,
+                   ml.message_text, ml.message_type, ml.chat_id, ml.external_message_id,
+                   ml.instance_id, ml.created_at, ti.instance_name
+            FROM message_log ml
+            LEFT JOIN tenant_instances ti ON ti.tenant_id = ml.tenant_id AND ti.instance_id = ml.instance_id
+            {whereClause}
+            ORDER BY ml.created_at DESC
             LIMIT @limit OFFSET @offset";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
 
         // Count
         await using var countCmd = new NpgsqlCommand(countSql, conn);
-        AddFilterParams(countCmd, tenantId, phone, direction, from, to);
+        AddFilterParams(countCmd, tenantId, phone, direction, from, to, instanceId);
         var total = Convert.ToInt32(await countCmd.ExecuteScalarAsync(ct));
 
         // Select
         await using var selectCmd = new NpgsqlCommand(selectSql, conn);
-        AddFilterParams(selectCmd, tenantId, phone, direction, from, to);
+        AddFilterParams(selectCmd, tenantId, phone, direction, from, to, instanceId);
         selectCmd.Parameters.AddWithValue("limit", Math.Min(limit, 200));
         selectCmd.Parameters.AddWithValue("offset", Math.Max(offset, 0));
 
@@ -135,11 +136,42 @@ public sealed class MessageLogRepository
                 ChatId = reader.IsDBNull(7) ? null : reader.GetString(7),
                 ExternalMessageId = reader.IsDBNull(8) ? null : reader.GetString(8),
                 InstanceId = reader.IsDBNull(9) ? null : reader.GetString(9),
-                CreatedAt = reader.GetDateTime(10)
+                CreatedAt = reader.GetDateTime(10),
+                InstanceName = reader.IsDBNull(11) ? null : reader.GetString(11)
             });
         }
 
         return (messages, total);
+    }
+
+    /// <summary>
+    /// Returns distinct channels (instance_id + instance_name) for the ops filter dropdown.
+    /// Optionally filtered by tenant.
+    /// </summary>
+    public async Task<List<ChannelEntry>> GetDistinctChannelsAsync(int? tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT DISTINCT ti.instance_id, ti.instance_name
+            FROM tenant_instances ti
+            INNER JOIN message_log ml ON ml.tenant_id = ti.tenant_id AND ml.instance_id = ti.instance_id
+            WHERE (@tid IS NULL OR ti.tenant_id = @tid)
+            ORDER BY ti.instance_name";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.Add(new NpgsqlParameter("tid", NpgsqlDbType.Integer) { Value = tenantId.HasValue ? tenantId.Value : DBNull.Value });
+
+        var channels = new List<ChannelEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            channels.Add(new ChannelEntry
+            {
+                InstanceId = reader.GetString(0),
+                InstanceName = reader.IsDBNull(1) ? reader.GetString(0) : reader.GetString(1)
+            });
+        }
+        return channels;
     }
 
     /// <summary>
@@ -304,13 +336,15 @@ public sealed class MessageLogRepository
 
     private static void AddFilterParams(
         NpgsqlCommand cmd, int? tenantId, string? phone,
-        string? direction, DateTime? from, DateTime? to)
+        string? direction, DateTime? from, DateTime? to,
+        string? instanceId = null)
     {
         cmd.Parameters.Add(new NpgsqlParameter("tid", NpgsqlDbType.Integer) { Value = tenantId.HasValue ? tenantId.Value : DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("phone", NpgsqlDbType.Text) { Value = !string.IsNullOrEmpty(phone) ? $"%{phone}%" : DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("dir", NpgsqlDbType.Varchar) { Value = (object?)direction ?? DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("from", NpgsqlDbType.TimestampTz) { Value = from.HasValue ? from.Value : DBNull.Value });
         cmd.Parameters.Add(new NpgsqlParameter("to", NpgsqlDbType.TimestampTz) { Value = to.HasValue ? to.Value : DBNull.Value });
+        cmd.Parameters.Add(new NpgsqlParameter("iid", NpgsqlDbType.Varchar) { Value = (object?)instanceId ?? DBNull.Value });
     }
 }
 
@@ -330,6 +364,13 @@ public sealed class MessageLogEntry
     public string? ExternalMessageId { get; init; }
     public string? InstanceId { get; init; }
     public DateTime CreatedAt { get; init; }
+    public string? InstanceName { get; init; }
+}
+
+public sealed class ChannelEntry
+{
+    public required string InstanceId { get; init; }
+    public required string InstanceName { get; init; }
 }
 
 /// <summary>
