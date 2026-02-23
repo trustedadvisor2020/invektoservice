@@ -175,6 +175,7 @@
 | 2026-02-14 | Pgvector NpgsqlDbType.Unknown kullanildi | AddWithValue() kullan | **UseVector() register ettiysen explicit type verme** |
 | 2026-02-15 | deleted_at IS NULL ama kolon yok | deleted_at check kaldirildi | **SQL'de kolon kullanmadan ONCE schema kontrol et** |
 | 2026-02-23 | wa_faq_clusters.cluster_label INT ama GetString(0) okundu | GetInt32(0).ToString() | **Npgsql reader'da kolon tipini DB schema'dan dogrula, INT!=STRING** |
+| 2026-02-23 | MCP server `sql.connect()` global pool → per-DB pool gerekli, EXEC/EXECUTE security hole, string interpolation SQL injection | Per-DB `ConnectionPool`, dangerous keyword block, parameterized queries | **MCP server yazarken: (1) global pool YASAK — per-resource pool, (2) EXEC/EXECUTE read-only violation, (3) table-schema icin parameterized query** |
 
 ### API & Auth
 
@@ -325,6 +326,9 @@
 | DB-driven intent pattern (seed + runtime) | PKT-6A AiIntentHandler | Hardcoded intent yerine DB'den cek, sektor bazli seed data ile bootstrap, runtime'da CRUD |
 | WapCRM callback bridge (thin proxy) | Backend /api/v1/callback/wapcrm | Automation OutgoingCallback → WapCRM chatoperation format donusumu, instanceID message_log'dan, userID tenant_registry settings'den |
 | Dynamic instanceID from message_log | WapCRM bridge | Gelen mesajin instance_id'si message_log'a yazilir, callback'te ayni phone+tenant icin son instance_id okunur — hangi hattan geldiyse oradan doner |
+| Dual-source pipeline (CSV + MSSQL) via IAsyncEnumerable | CleanerService RunCoreAsync | Ayni temizleme/dedup/insert mantigi `IAsyncEnumerable<List<string[]>>` uzerinden calisiyor — CsvStreamReader veya MssqlReaderService farketmez, core logic tek yerde |
+| Streaming SqlDataReader forward-only + SequentialAccess | MssqlReaderService | Milyonlarca satir icin buffered collection OLUSTURMA — `yield return` + `SqlDataReader` = constant memory, backpressure pipeline tarafindan yonetilir |
+| Per-DB ConnectionPool (MCP server) | customer-mssql MCP | `sql.connect()` global tek pool = DB degisince sorun. Her DB icin ayri `new sql.ConnectionPool(config)` + idle timeout ile otomatik temizlik |
 | Linked CTS timeout = request already sent | MainAppCallbackClient callback retry | CancellationTokenSource.CreateLinkedTokenSource + CancelAfter(timeout) OperationCanceledException firlatir AMA HTTP request zaten gonderilmistir — retry = duplicate mesaj. Timeout catch'inde `return true` (delivered say) |
 | New session __last_input initialization | AutomationOrchestrator + AiIntentHandler | Yeni session'da `__last_input` set edilmezse flow auto-chain (trigger→welcome→ai_intent) kullanicinin ilk mesajini kaybeder. Orchestrator'da `state.Variables["__last_input"] = messageText` + Handler'da first-visit check |
 
