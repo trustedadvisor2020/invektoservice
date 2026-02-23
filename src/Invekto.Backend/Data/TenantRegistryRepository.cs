@@ -134,6 +134,36 @@ public sealed class TenantRegistryRepository
         return rows > 0;
     }
 
+    /// <summary>Get current sector for a tenant. Returns null if not set.</summary>
+    public async Task<string?> GetSectorAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = "SELECT sector FROM tenant_registry WHERE tenant_id = @tid AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : result.ToString();
+    }
+
+    /// <summary>Update sector for a tenant. Returns true if updated.</summary>
+    public async Task<bool> UpdateSectorAsync(int tenantId, string sector, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE tenant_registry
+            SET sector = @sector, updated_at = NOW()
+            WHERE tenant_id = @tid AND is_active = true";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("sector", sector);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        return rows > 0;
+    }
+
     /// <summary>
     /// Get a single tenant by ID. Returns null if not found.
     /// Used before impersonate to verify tenant exists and check is_active.

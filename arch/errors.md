@@ -68,6 +68,8 @@ INV-{SERVICE}-{NUMBER}
 | INV-BE-040 | Working hours fetch failed | Calisma saatleri yuklenemedi. |
 | INV-BE-041 | Working hours update failed | Calisma saatleri guncellenemedi. |
 | INV-BE-050 | Onboarding status aggregation failed | Onboarding durumu hesaplanamadi. |
+| INV-BE-060 | Sector update failed | Sektor guncellenemedi. |
+| INV-BE-061 | Invalid sector value | Gecersiz sektor degeri. |
 
 ---
 

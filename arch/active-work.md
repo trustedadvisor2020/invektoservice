@@ -12,6 +12,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-02-23 | Flow Execution Log + Instance Bug Fix — flow_execution_log DB + Automation logging + FlowLogPanel UI + instance-aware flow lookup + deploy (Backend + Automation HEALTHY) |
 | 2026-02-23 | Template ingestion E2E test — 4 phase (Extract→Review→Publish→Adopt), Ebrumoda e-commerce data, 16 suggestion, 14 catalog, 7 adoption, 1 bug fix (GetInt32), Knowledge redeploy |
 | 2026-02-23 | Demo Bot — Invekto Demo Bot flow (20 node, 31 edge), BaseNode right outputs, MockIntentDetector synonym expansion, 5 FAQ entry |
 | 2026-02-23 | Instance routing + Multi-flow routing E2E test — 6 senaryo, 6/6 PASS |

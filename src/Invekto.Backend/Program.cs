@@ -2278,6 +2278,138 @@ app.MapPut("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLo
     }
 });
 
+// ============================================================
+// Sector settings (tenant self-service)
+// ============================================================
+
+var allowedSectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "eticaret", "dis_klinik", "estetik", "saglik", "otel", "guzellik", "egitim", "mobil", "genel"
+};
+
+// GET /api/v1/settings/sector — read tenant's sector
+app.MapGet("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (tenantRepo == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendSectorUpdateFailed, "PostgreSQL not configured", "-"), statusCode: 503);
+
+    try
+    {
+        var sector = await tenantRepo.GetSectorAsync(tenant.TenantId);
+        return Results.Ok(new { sector });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.BackendSectorUpdateFailed}] Sector read failed for tenant {tenant.TenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendSectorUpdateFailed, "Sektor bilgisi alinamadi", "-"), statusCode: 500);
+    }
+});
+
+// PUT /api/v1/settings/sector — update tenant's sector
+app.MapPut("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    var tenantRepo = ctx.RequestServices.GetService<TenantRegistryRepository>();
+    if (tenantRepo == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendSectorUpdateFailed, "PostgreSQL not configured", "-"), statusCode: 503);
+
+    JsonElement body;
+    try { body = await ctx.Request.ReadFromJsonAsync<JsonElement>(); }
+    catch (JsonException) { return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid JSON body", "-")); }
+
+    if (!body.TryGetProperty("sector", out var sectorProp) || string.IsNullOrWhiteSpace(sectorProp.GetString()))
+        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendSectorInvalidValue, "sector field required", "-"));
+
+    var sector = sectorProp.GetString()!.Trim().ToLowerInvariant();
+    if (!allowedSectors.Contains(sector))
+        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendSectorInvalidValue, $"Gecersiz sektor: {sector}", "-"));
+
+    try
+    {
+        var updated = await tenantRepo.UpdateSectorAsync(tenant.TenantId, sector);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.BackendSectorUpdateFailed, "Tenant not found or inactive", "-"), statusCode: 404);
+
+        return Results.Ok(new { success = true, sector });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.BackendSectorUpdateFailed}] Sector update failed for tenant {tenant.TenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendSectorUpdateFailed, "Sektor guncellenemedi", "-"), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Template self-service (tenant-scoped proxy to Knowledge)
+// ============================================================
+
+// GET /api/v1/templates/available — tenant's available templates (filtered by sector)
+app.MapGet("/api/v1/templates/available", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", "-"), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenant.TenantId);
+    var qs = ctx.Request.QueryString.Value ?? "";
+    var (statusCode, body) = await knClient.ProxyGetAsync($"/api/v1/templates/{tenant.TenantId}/available{qs}", $"Bearer {serviceToken}", "-");
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+});
+
+// POST /api/v1/templates/adopt/{templateId} — tenant adopts a template
+app.MapPost("/api/v1/templates/adopt/{templateId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int templateId) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", "-"), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenant.TenantId);
+    var (statusCode, body) = await knClient.ProxyPostAsync($"/api/v1/templates/{tenant.TenantId}/adopt/{templateId}", "{}", $"Bearer {serviceToken}", "-");
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+});
+
+// GET /api/v1/templates/adoptions — tenant's adoption history
+app.MapGet("/api/v1/templates/adoptions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+{
+    var tenant = ExtractTenantFromBearer(ctx);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", "-"), statusCode: 500);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenant.TenantId);
+    var qs = ctx.Request.QueryString.Value ?? "";
+    var (statusCode, body) = await knClient.ProxyGetAsync($"/api/v1/templates/{tenant.TenantId}/adoptions{qs}", $"Bearer {serviceToken}", "-");
+
+    ctx.Response.StatusCode = statusCode;
+    ctx.Response.ContentType = "application/json";
+    if (body != null) await ctx.Response.WriteAsync(body);
+    return Results.Empty;
+});
+
 // GET /api/v1/flow-builder/instances/available — available instances for flow assignment
 app.MapGet("/api/v1/flow-builder/instances/available", async (HttpContext ctx, JsonLinesLogger jsonLog, int? flow_id) =>
 {
@@ -4538,7 +4670,8 @@ app.MapGet("/api/ops/analytics/campaigns", async (HttpContext ctx, AnalyticsRepo
 
 app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
     int? tenant_id, string? phone, string? direction,
-    string? from, string? to, int? limit, int? offset) =>
+    string? from, string? to, string? instance_id,
+    int? limit, int? offset) =>
 {
     if (!ValidateOpsAuth(ctx))
         return OpsUnauthorized(ctx);
@@ -4570,7 +4703,7 @@ app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
     {
         var (messages, total) = await msgLogRepo.GetMessagesAsync(
             tenant_id, phone, direction, fromDt, toDt,
-            limit ?? 50, offset ?? 0);
+            instance_id, limit ?? 50, offset ?? 0);
 
         return Results.Ok(new { messages, total });
     }
@@ -4579,6 +4712,19 @@ app.MapGet("/api/ops/messages", async (HttpContext ctx, JsonLinesLogger jsonLog,
         jsonLog.SystemWarn($"Message log query failed ({ErrorCodes.BackendMessageLogQueryFailed}): {ex.Message}");
         return Results.Json(new { error = ErrorCodes.BackendMessageLogQueryFailed, message = "Mesaj kayitlari yuklenemedi." }, statusCode: 500);
     }
+});
+
+app.MapGet("/api/ops/channels", async (HttpContext ctx, int? tenant_id) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var msgLogRepo = ctx.RequestServices.GetService<MessageLogRepository>();
+    if (msgLogRepo == null)
+        return Results.Json(new { error = ErrorCodes.BackendMessageLogQueryFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    var channels = await msgLogRepo.GetDistinctChannelsAsync(tenant_id);
+    return Results.Ok(new { channels });
 });
 
 // ============================================

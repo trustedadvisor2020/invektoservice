@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { api, TemplateCatalogItem } from '../lib/api';
+import { api, TemplateCatalogItem, AvailableTemplate } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import {
-  RefreshCw, Plus, Search, Eye, Trash2, Check,
+  RefreshCw, Plus, Search, Eye, Trash2, Check, Download,
   LayoutTemplate, FileQuestion, MessageCircle, Lightbulb, GitBranch, Layers,
 } from 'lucide-react';
 
@@ -32,6 +33,177 @@ const TEMPLATE_TYPES = ['', 'faq', 'message', 'intent', 'flow', 'scenario'];
 const SCOPES = ['', 'platform', 'sector', 'tenant'];
 
 export function TemplateLibraryPage() {
+  const { session } = useAuth();
+  const isTenant = session != null && session.tenantId > 0;
+
+  if (isTenant) return <TenantTemplateView />;
+  return <OpsTemplateView />;
+}
+
+/* ─── Tenant View: card grid with adopt buttons ──────────── */
+
+function TenantTemplateView() {
+  const [items, setItems] = useState<AvailableTemplate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [adoptingId, setAdoptingId] = useState<number | null>(null);
+  const [adoptedIds, setAdoptedIds] = useState<Set<number>>(new Set());
+  const [filterType, setFilterType] = useState('');
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.getAvailableTemplates();
+      setItems(res.items);
+      setAdoptedIds(new Set(res.items.filter(t => t.is_adopted).map(t => t.id)));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      setError(`Sablonlar yuklenemedi: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
+
+  const handleAdopt = async (templateId: number) => {
+    setAdoptingId(templateId);
+    setError(null);
+    try {
+      await api.adoptTemplate(templateId);
+      setAdoptedIds(prev => new Set([...prev, templateId]));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      if (msg.includes('409') || msg.includes('already')) {
+        setAdoptedIds(prev => new Set([...prev, templateId]));
+      } else {
+        setError(`Sablon benimsenemedi: ${msg}`);
+      }
+    } finally {
+      setAdoptingId(null);
+    }
+  };
+
+  const filtered = filterType ? items.filter(t => t.template_type === filterType) : items;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-navy-900 flex items-center gap-2">
+            <LayoutTemplate className="w-5 h-5" />
+            Sablon Kutuphanesi
+          </h1>
+          <p className="text-xs text-navy-400">Sektorunuze uygun sablonlari icerik kutuphanenize ekleyin.</p>
+        </div>
+        <button onClick={fetchTemplates} className="p-1.5 rounded hover:bg-navy-50" disabled={loading}>
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center gap-3">
+        <select
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+          className="text-xs border border-navy-200 rounded px-2 py-1.5 bg-white"
+        >
+          <option value="">Tum Tipler</option>
+          {TEMPLATE_TYPES.filter(Boolean).map(t => (
+            <option key={t} value={t}>{t.toUpperCase()}</option>
+          ))}
+        </select>
+        <span className="text-xs text-navy-400">{filtered.length} sablon</span>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="py-12 text-center text-navy-300">Sablonlar yukleniyor...</div>
+      )}
+
+      {/* Empty */}
+      {!loading && filtered.length === 0 && !error && (
+        <div className="py-12 text-center text-navy-400">
+          <LayoutTemplate className="w-8 h-8 mx-auto mb-2 text-navy-200" />
+          <p className="text-sm">Henuz sablon bulunamadi.</p>
+          <p className="text-xs text-navy-300 mt-1">Once sektorunuzu Ayarlar sayfasindan secin.</p>
+        </div>
+      )}
+
+      {/* Card Grid */}
+      {!loading && filtered.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map(tpl => {
+            const TypeIcon = TYPE_ICONS[tpl.template_type] || LayoutTemplate;
+            const isAdopted = adoptedIds.has(tpl.id);
+            const isAdopting = adoptingId === tpl.id;
+
+            return (
+              <div key={tpl.id} className="bg-white rounded-xl border border-navy-100 p-4 flex flex-col">
+                {/* Type badge + name */}
+                <div className="flex items-start gap-2 mb-2">
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0 ${TYPE_COLORS[tpl.template_type] || 'bg-gray-50 text-gray-700'}`}>
+                    <TypeIcon className="w-3 h-3" />
+                    {tpl.template_type}
+                  </span>
+                  {tpl.scope === 'sector' && tpl.sector && (
+                    <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${SCOPE_COLORS.sector}`}>
+                      {tpl.sector}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-sm font-medium text-navy-800 mb-1">{tpl.name}</h3>
+                {tpl.description && (
+                  <p className="text-xs text-navy-400 mb-3 line-clamp-2 flex-1">{tpl.description}</p>
+                )}
+                {!tpl.description && <div className="flex-1" />}
+
+                {/* Confidence + Tags */}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-16 bg-navy-100 rounded-full h-1.5">
+                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${tpl.confidence_score * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] text-navy-400">{(tpl.confidence_score * 100).toFixed(0)}%</span>
+                </div>
+
+                {/* Adopt button */}
+                {isAdopted ? (
+                  <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-medium">
+                    <Check className="w-3.5 h-3.5" />
+                    Benimsendi
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleAdopt(tpl.id)}
+                    disabled={isAdopting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {isAdopting ? 'Benimseniyor...' : 'Benimsem'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Ops View: existing admin table (unchanged) ─────────── */
+
+function OpsTemplateView() {
   const navigate = useNavigate();
   const [items, setItems] = useState<TemplateCatalogItem[]>([]);
   const [total, setTotal] = useState(0);

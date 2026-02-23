@@ -1,0 +1,53 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "slug": "20260223-self-service-onboarding",
+  "risk": "MEDIUM",
+  "status": "DEV",
+  "created_at": "2026-02-23T20:00:00Z",
+  "updated_at": "2026-02-23T21:00:00Z",
+  "plan": {
+    "summary": "Self-service onboarding: (A) Sector selection via GET/PUT /api/v1/settings/sector endpoints + SettingsPage GeneralTab dropdown with 9 sector options. (B) Template adoption via 3 tenant-scoped proxy routes to Knowledge service (available, adopt, adoptions) + dual-mode TemplateLibraryPage showing card grid for tenants with adopt buttons, preserving ops admin table view.",
+    "q_intent": "ikisini de self servis yap — onboarding wizard step 1 (sektor secimi) ve step 2 (sablon ekleme) tenant tarafindan yapilabilsin",
+    "interview_notes": "Knowledge servisi tenant-level auth zaten destekliyor. Sadece Backend proxy + UI gerekli. 9 sektor listesi SeSeedService'den alinmistir."
+  },
+  "allowed_files": [
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Data/TenantRegistryRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx"
+  ],
+  "files_changed": [
+    {"path": "arch/errors.md", "is_new": false, "change": "Added INV-BE-060/061 sector error codes"},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added BackendSectorUpdateFailed + BackendSectorInvalidValue constants"},
+    {"path": "src/Invekto.Backend/Data/TenantRegistryRepository.cs", "is_new": false, "change": "Added GetSectorAsync + UpdateSectorAsync methods"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "5 new endpoints: GET/PUT sector + 3 template proxy routes"},
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "2 new interfaces + 5 new methods for sector and template adoption"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/SettingsPage.tsx", "is_new": false, "change": "GeneralTab sector dropdown with save/load/error states"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx", "is_new": false, "change": "Dual-mode: ops admin table (unchanged) + tenant card grid with adopt buttons"}
+  ],
+  "verification_questions": [
+    {"id": "Q1", "question": "Are the sector GET/PUT endpoints properly tenant-scoped via JWT and do they validate sector against the allowed list?", "category": "security"},
+    {"id": "Q2", "question": "Do the template proxy routes correctly extract tenantId from Bearer token and forward to Knowledge service?", "category": "integration"},
+    {"id": "Q3", "question": "Does the TemplateLibraryPage correctly detect ops vs tenant mode and show appropriate views?", "category": "ui"},
+    {"id": "Q4", "question": "Is the sector dropdown in GeneralTab loading/saving/error state management correct with no silent failures?", "category": "error-handling"},
+    {"id": "Q5", "question": "Does the template adopt button handle 409 Conflict (already adopted) gracefully without crashing?", "category": "error-handling"}
+  ],
+  "review": {
+    "iteration": 0,
+    "codex_verdict": null,
+    "blocking_issues": [],
+    "history": []
+  },
+  "git_diff": {
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260223-self-service-onboarding.diff",
+    "total_bytes": 0,
+    "chunks": 0,
+    "stats": {"insertions": 0, "deletions": 0, "files_count": 0}
+  }
+}

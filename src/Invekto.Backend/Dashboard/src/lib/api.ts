@@ -141,7 +141,13 @@ export interface MessageLogEntry {
   chatId: string | null;
   externalMessageId: string | null;
   instanceId: string | null;
+  instanceName: string | null;
   createdAt: string;
+}
+
+export interface ChannelEntry {
+  instanceId: string;
+  instanceName: string;
 }
 
 // Message story types (SuperAdmin)
@@ -423,6 +429,31 @@ export interface TemplateOnboardResult {
   skipped_count: number;
   failed_count: number;
   duration_ms: number;
+}
+
+// Self-service template types (tenant-facing)
+export interface AvailableTemplate {
+  id: number;
+  template_type: string;
+  scope: string;
+  sector?: string;
+  name: string;
+  description?: string;
+  tags: string[];
+  version: number;
+  confidence_score: number;
+  is_adopted: boolean;
+}
+
+export interface AdoptionRecord {
+  id: number;
+  template_id: number;
+  template_name: string;
+  template_type: string;
+  adopted_version: number;
+  target_type: string;
+  target_id: number;
+  adopted_at: string;
 }
 
 // INMA JWT decoded claims
@@ -1242,6 +1273,7 @@ class OpsApiClient {
     tenantId?: number;
     phone?: string;
     direction?: string;
+    instanceId?: string;
     from?: string;
     to?: string;
     limit?: number;
@@ -1251,6 +1283,7 @@ class OpsApiClient {
     if (params.tenantId) sp.set('tenant_id', params.tenantId.toString());
     if (params.phone) sp.set('phone', params.phone);
     if (params.direction) sp.set('direction', params.direction);
+    if (params.instanceId) sp.set('instance_id', params.instanceId);
     if (params.from) sp.set('from', params.from);
     if (params.to) sp.set('to', params.to);
     if (params.limit) sp.set('limit', params.limit.toString());
@@ -1266,6 +1299,13 @@ class OpsApiClient {
   // SuperAdmin: Tenant list
   async getOpsTenants(): Promise<{ tenants: TenantEntry[] }> {
     return this.request<{ tenants: TenantEntry[] }>('/api/ops/tenants');
+  }
+
+  // SuperAdmin: Channel list for filter dropdown
+  async getOpsChannels(tenantId?: number): Promise<{ channels: ChannelEntry[] }> {
+    const sp = new URLSearchParams();
+    if (tenantId) sp.set('tenant_id', tenantId.toString());
+    return this.request<{ channels: ChannelEntry[] }>(`/api/ops/channels?${sp}`);
   }
 
   // SuperAdmin: Impersonate tenant
@@ -1304,6 +1344,32 @@ class OpsApiClient {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  // Sector settings
+  async getSector(): Promise<{ sector: string | null }> {
+    return this.request<{ sector: string | null }>('/api/v1/settings/sector');
+  }
+
+  async updateSector(sector: string): Promise<{ success: boolean; sector: string }> {
+    return this.request<{ success: boolean; sector: string }>('/api/v1/settings/sector', {
+      method: 'PUT',
+      body: JSON.stringify({ sector }),
+    });
+  }
+
+  // Self-service template adoption (tenant-facing)
+  async getAvailableTemplates(): Promise<{ items: AvailableTemplate[] }> {
+    return this.request<{ items: AvailableTemplate[] }>('/api/v1/templates/available');
+  }
+
+  async adoptTemplate(templateId: number): Promise<{ adopted: boolean; target_type: string; target_id: number }> {
+    return this.request<{ adopted: boolean; target_type: string; target_id: number }>(
+      `/api/v1/templates/adopt/${templateId}`, { method: 'POST' });
+  }
+
+  async getMyAdoptions(): Promise<{ items: AdoptionRecord[] }> {
+    return this.request<{ items: AdoptionRecord[] }>('/api/v1/templates/adoptions');
   }
 
   // --- FlowBuilder API methods ---

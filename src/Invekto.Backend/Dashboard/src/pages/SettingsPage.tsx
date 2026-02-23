@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api, type InstanceDto, type WorkingHoursDto } from '../lib/api';
-import { Settings, RefreshCw, Wifi, WifiOff, Smartphone, Globe, Radio, MessageSquare, Clock, Save, Check, Building2, Phone } from 'lucide-react';
+import { Settings, RefreshCw, Wifi, WifiOff, Smartphone, Globe, Radio, MessageSquare, Clock, Save, Check, Building2, Phone, Factory } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -58,6 +58,13 @@ export function SettingsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Sector state
+  const [sector, setSector] = useState<string | null>(null);
+  const [sectorLoading, setSectorLoading] = useState(false);
+  const [sectorSaving, setSectorSaving] = useState(false);
+  const [sectorError, setSectorError] = useState<string | null>(null);
+  const [sectorSuccess, setSectorSuccess] = useState(false);
+
   // Working Hours state
   const [whLoading, setWhLoading] = useState(false);
   const [whSaving, setWhSaving] = useState(false);
@@ -68,6 +75,37 @@ export function SettingsPage() {
   const [whTimezone, setWhTimezone] = useState('Europe/Istanbul');
   const [whDaysOff, setWhDaysOff] = useState<string[]>(['Saturday', 'Sunday']);
   const [whConfigured, setWhConfigured] = useState(false);
+
+  const fetchSector = useCallback(async () => {
+    setSectorLoading(true);
+    setSectorError(null);
+    try {
+      const result = await api.getSector();
+      setSector(result.sector);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      setSectorError(`Sektor yuklenemedi: ${msg}`);
+    } finally {
+      setSectorLoading(false);
+    }
+  }, []);
+
+  const handleSaveSector = useCallback(async (newSector: string) => {
+    setSectorSaving(true);
+    setSectorError(null);
+    setSectorSuccess(false);
+    try {
+      await api.updateSector(newSector);
+      setSector(newSector);
+      setSectorSuccess(true);
+      setTimeout(() => setSectorSuccess(false), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      setSectorError(`Sektor kaydedilemedi: ${msg}`);
+    } finally {
+      setSectorSaving(false);
+    }
+  }, []);
 
   const fetchInstances = useCallback(async () => {
     setLoading(true);
@@ -107,10 +145,11 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (session) {
+      fetchSector();
       fetchInstances();
       fetchWorkingHours();
     }
-  }, [session, fetchInstances, fetchWorkingHours]);
+  }, [session, fetchSector, fetchInstances, fetchWorkingHours]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -206,7 +245,15 @@ export function SettingsPage() {
         {/* Tab Content */}
         <div className="flex-1 min-w-0">
           {activeTab === 'general' && (
-            <GeneralTab session={session} />
+            <GeneralTab
+              session={session}
+              sector={sector}
+              sectorLoading={sectorLoading}
+              sectorSaving={sectorSaving}
+              sectorError={sectorError}
+              sectorSuccess={sectorSuccess}
+              onSaveSector={handleSaveSector}
+            />
           )}
 
           {activeTab === 'working-hours' && (
@@ -247,7 +294,36 @@ export function SettingsPage() {
 
 /* ─── General Tab ──────────────────────────────────────────── */
 
-function GeneralTab({ session }: { session: ReturnType<typeof useAuth>['session'] }) {
+const SECTOR_OPTIONS = [
+  { value: 'eticaret', label: 'E-Ticaret' },
+  { value: 'dis_klinik', label: 'Dis Klinigi' },
+  { value: 'estetik', label: 'Estetik Merkezi' },
+  { value: 'saglik', label: 'Saglik' },
+  { value: 'otel', label: 'Otel & Konaklama' },
+  { value: 'guzellik', label: 'Guzellik Salonu' },
+  { value: 'egitim', label: 'Egitim' },
+  { value: 'mobil', label: 'Mobil Uygulama' },
+  { value: 'genel', label: 'Genel' },
+];
+
+interface GeneralTabProps {
+  session: ReturnType<typeof useAuth>['session'];
+  sector: string | null;
+  sectorLoading: boolean;
+  sectorSaving: boolean;
+  sectorError: string | null;
+  sectorSuccess: boolean;
+  onSaveSector: (sector: string) => void;
+}
+
+function GeneralTab({ session, sector, sectorLoading, sectorSaving, sectorError, sectorSuccess, onSaveSector }: GeneralTabProps) {
+  const [localSector, setLocalSector] = useState(sector ?? '');
+
+  // Sync when sector loads from API
+  useEffect(() => {
+    if (sector != null) setLocalSector(sector);
+  }, [sector]);
+
   if (!session) return null;
 
   const fields = [
@@ -256,37 +332,99 @@ function GeneralTab({ session }: { session: ReturnType<typeof useAuth>['session'
     { label: 'Rol', value: session.role },
   ];
 
+  const sectorDirty = localSector !== (sector ?? '');
+
   return (
-    <div>
-      <div className="mb-3">
-        <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-navy-400" />
-          Temel Bilgiler
-        </h2>
-        <p className="text-xs text-navy-400 mt-0.5">Firma ve oturum bilgileri.</p>
+    <div className="space-y-4">
+      <div>
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-navy-400" />
+            Temel Bilgiler
+          </h2>
+          <p className="text-xs text-navy-400 mt-0.5">Firma ve oturum bilgileri.</p>
+        </div>
+        <Card>
+          <CardContent className="py-5">
+            <div className="space-y-4">
+              {fields.map(f => (
+                <div key={f.label} className="flex items-center">
+                  <span className="w-32 text-sm text-navy-400">{f.label}</span>
+                  <span className="text-sm font-medium text-navy-800 capitalize">{f.value}</span>
+                </div>
+              ))}
+              {session.inseFeatures.length > 0 && (
+                <div className="flex items-center">
+                  <span className="w-32 text-sm text-navy-400">Moduller</span>
+                  <div className="flex gap-1.5">
+                    {session.inseFeatures.map(f => (
+                      <Badge key={f} variant="info">{f}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <Card>
-        <CardContent className="py-5">
-          <div className="space-y-4">
-            {fields.map(f => (
-              <div key={f.label} className="flex items-center">
-                <span className="w-32 text-sm text-navy-400">{f.label}</span>
-                <span className="text-sm font-medium text-navy-800 capitalize">{f.value}</span>
+
+      {/* Sector picker */}
+      <div>
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-navy-900 flex items-center gap-2">
+            <Factory className="w-4 h-4 text-navy-400" />
+            Sektor
+          </h2>
+          <p className="text-xs text-navy-400 mt-0.5">
+            Isletmenizin sektorunu belirleyin. Sablon ve icerik onerileri sektore gore kisisellesir.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="py-5">
+            {sectorError && (
+              <div className="p-3 mb-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+                {sectorError}
               </div>
-            ))}
-            {session.inseFeatures.length > 0 && (
-              <div className="flex items-center">
-                <span className="w-32 text-sm text-navy-400">Moduller</span>
-                <div className="flex gap-1.5">
-                  {session.inseFeatures.map(f => (
-                    <Badge key={f} variant="info">{f}</Badge>
-                  ))}
+            )}
+            {sectorSuccess && (
+              <div className="p-3 mb-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700 flex items-center gap-2">
+                <Check className="w-4 h-4" />
+                Sektor basariyla kaydedildi.
+              </div>
+            )}
+            {sectorLoading ? (
+              <div className="py-4 text-center text-navy-300">Yukleniyor...</div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1">Sektor</label>
+                  <select
+                    value={localSector}
+                    onChange={e => setLocalSector(e.target.value)}
+                    className="w-full max-w-xs px-3 py-2 border border-navy-100 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white"
+                  >
+                    <option value="">Seciniz...</option>
+                    {SECTOR_OPTIONS.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => onSaveSector(localSector)}
+                    disabled={sectorSaving || !localSector || !sectorDirty}
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{sectorSaving ? 'Kaydediliyor...' : 'Kaydet'}</span>
+                  </Button>
                 </div>
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

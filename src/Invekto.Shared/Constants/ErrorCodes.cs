@@ -38,6 +38,10 @@ public static class ErrorCodes
     // Backend Onboarding Status (INV-BE-050+)
     public const string BackendOnboardingStatusFailed = "INV-BE-050";    // Onboarding status aggregation failed
 
+    // Backend Sector (INV-BE-060+)
+    public const string BackendSectorUpdateFailed = "INV-BE-060";
+    public const string BackendSectorInvalidValue = "INV-BE-061";
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";

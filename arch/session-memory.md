@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Ebrumoda full pipeline + template ingestion tamamlandi. 2.1M satir CSV → 7-stage WA pipeline → 3,159 suggestion → 60 approved/published (12 intent + 48 FAQ) → 3,099 rejected.
-- **Last Task:** Ebrumoda veri besleme E2E — (1) tenant_registry kayit (5051), (2) 318MB CSV upload, (3) WA pipeline 7 stage (analysis_id=3: 2.1M msg → 170K conv → 1M intent → 3.1K FAQ cluster → 127K sentiment → 170K product), (4) Template extraction: 3,159 suggestion (3,147 FAQ + 12 intent), (5) Bulk approve: 60 (12 intent + 48 top FAQ by category), (6) Publish: 60/60, (7) Reject remaining: 3,099. Bug fix: FormOptions.MultipartBodyLengthLimit (128MB→500MB).
-- **Next Task:** Tum ops tasklari tamamlandi (SQL migrations + deploy). Siradaki: PKT-7/8/9/10 veya yeni feature.
+- **Status:** Flow execution log sistemi tamamlandi + deploy edildi. "Flow Tetiklendi" bug fix (instance-aware). Backend + Automation production HEALTHY.
+- **Last Task:** Flow Execution Log — (1) flow_execution_log DB tablosu (BIGSERIAL, JSONB node_trace), (2) Automation fire-and-forget logging (typed catches: NpgsqlException, JsonException, InvalidOperationException), (3) 2 API endpoint (list + detail), (4) Backend proxy, (5) FlowLogPanel UI (resizable, mutual exclusion w/ AI Chat), (6) Bug fix: instance-aware flow lookup in GetMessageStoryAsync, (7) Flow mismatch guard (minimal state reset). Codex review: main commit 4 iter + FORCE PASS, fix commit 2 iter + FORCE PASS. SQL migration calistirildi. Backend + Automation deploy HEALTHY.
+- **Next Task:** Siradaki: diger paket calismasi veya yeni feature.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -92,6 +92,7 @@ src/
 | 2026-02-22 | Platform Evrim Katmanlari (Roadmap) | 6 akilil altyapi katmani roadmap'e eklendi: Musteri Hafizasi, Template Marketplace, Bilesik Olay Motoru, Voice AI, Gateway, Extension API. Phase 2-7 entegrasyonu, bagimllik haritasi, revenue etkisi, 6 yeni teknik risk, 3 yeni revenue driver. |
 | 2026-02-23 | Template System (Sablon Sistemi) | Knowledge 7104 genisletildi: 5 tip (FAQ/Message/Intent/Flow/Scenario), 3 katman (Platform>Sector>Tenant), pgvector cosine similarity, suggestion queue, superadmin review UI, tenant onboarding. 19 dosya, 4243 insertion. Codex 5-chunk, 4 iter, PASS. |
 | 2026-02-23 | Ebrumoda Full Pipeline | 2.1M satirlik WA CSV → pipeline (Claude skip, keyword-only intent) → 3,159 template suggestion → 60 approved+published (12 intent + 48 FAQ), 3,099 rejected. FormOptions fix (128MB→500MB multipart limit). |
+| 2026-02-23 | Flow Execution Log + Instance Bug Fix | flow_execution_log tablosu + Automation fire-and-forget logging + FlowLogPanel UI + instance-aware GetMessageStoryAsync. Codex main 4 iter FORCE PASS, fix 2 iter FORCE PASS. SQL + deploy (Backend + Automation HEALTHY). |
 
 ## Q Pending Operational Tasks
 
