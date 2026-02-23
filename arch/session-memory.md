@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Template ingestion E2E test tamamlandi. 4 phase (Extract→Review→Publish→Adopt) basariyla gecti. 1 bug fix (GetInt32 cluster_label type mismatch). Knowledge redeployed.
-- **Last Task:** Template ingestion E2E test — (1) Ebrumoda WA analysis seed data (1 analysis, 8 FAQ cluster, 41 intent), (2) Extract: 16 suggestion (8 FAQ + 8 intent), (3) Review: 14 approved + 1 rejected + 1 pending, (4) Publish: 14/14 published, (5) Adopt: 7 intent adopted (tenant 5050), 7 FAQ skipped, (6) Bug fix: TemplateExtractorService.cs GetInt32 for cluster_label
-- **Next Task:** Bug fix commit (GetInt32) + Codex review
+- **Status:** Ebrumoda full pipeline + template ingestion tamamlandi. 2.1M satir CSV → 7-stage WA pipeline → 3,159 suggestion → 60 approved/published (12 intent + 48 FAQ) → 3,099 rejected.
+- **Last Task:** Ebrumoda veri besleme E2E — (1) tenant_registry kayit (5051), (2) 318MB CSV upload, (3) WA pipeline 7 stage (analysis_id=3: 2.1M msg → 170K conv → 1M intent → 3.1K FAQ cluster → 127K sentiment → 170K product), (4) Template extraction: 3,159 suggestion (3,147 FAQ + 12 intent), (5) Bulk approve: 60 (12 intent + 48 top FAQ by category), (6) Publish: 60/60, (7) Reject remaining: 3,099. Bug fix: FormOptions.MultipartBodyLengthLimit (128MB→500MB).
+- **Next Task:** Tum ops tasklari tamamlandi (SQL migrations + deploy). Siradaki: PKT-7/8/9/10 veya yeni feature.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -91,16 +91,17 @@ src/
 | 2026-02-22 | Instance Filtering & Multi-Flow Routing | tenant_instances tablosu, 1 instance = max 1 flow, backward compat (kayit yoksa eski davranis), webhook filter (disabled/unassigned = log+ignore), ActivateFlowAsync artik diger flow'lari kapatmiyor. |
 | 2026-02-22 | Platform Evrim Katmanlari (Roadmap) | 6 akilil altyapi katmani roadmap'e eklendi: Musteri Hafizasi, Template Marketplace, Bilesik Olay Motoru, Voice AI, Gateway, Extension API. Phase 2-7 entegrasyonu, bagimllik haritasi, revenue etkisi, 6 yeni teknik risk, 3 yeni revenue driver. |
 | 2026-02-23 | Template System (Sablon Sistemi) | Knowledge 7104 genisletildi: 5 tip (FAQ/Message/Intent/Flow/Scenario), 3 katman (Platform>Sector>Tenant), pgvector cosine similarity, suggestion queue, superadmin review UI, tenant onboarding. 19 dosya, 4243 insertion. Codex 5-chunk, 4 iter, PASS. |
+| 2026-02-23 | Ebrumoda Full Pipeline | 2.1M satirlik WA CSV → pipeline (Claude skip, keyword-only intent) → 3,159 template suggestion → 60 approved+published (12 intent + 48 FAQ), 3,099 rejected. FormOptions fix (128MB→500MB multipart limit). |
 
 ## Q Pending Operational Tasks
 
-- [ ] Knowledge: pgvector extension kur, knowledge.sql calistir, deploy
-- [ ] WhatsAppAnalytics: deploy + NSSM servis
-- [ ] Integrations: deploy + NSSM servis
-- [ ] Marketing: Claude:ApiKey appsettings.Production.json'a ekle
-- [ ] Appointments: appointments-v2.sql + appointments-v3.sql calistir
-- [ ] Attribution: attribution.sql calistir
-- [ ] Outbound: campaign + consent migration calistir
+- [x] Knowledge: pgvector + deploy (2026-02-23 — servis RUNNING + HEALTHY)
+- [x] WhatsAppAnalytics: deploy + NSSM (2026-02-23 — servis RUNNING + HEALTHY)
+- [x] Integrations: deploy + NSSM (2026-02-23 — servis RUNNING + HEALTHY)
+- [x] Marketing: Claude:ApiKey (2026-02-23 — zaten konfigüre edilmiş)
+- [x] Appointments: appointments-v2.sql calistir (2026-02-23 — waitlist + service_pricing, v3 zaten mevcuttu)
+- [x] Attribution: attribution.sql calistir (2026-02-23 — lead_attributions + ad_costs)
+- [x] Outbound: campaign + consent migration (2026-02-23 — 5 tablo + lang columns)
 - [x] Backend: backend-metrics.sql calistir (2026-02-21 tamamlandi)
 - [x] Template System: template-catalog.sql calistir (2026-02-23 — 7 tablo zaten mevcut)
 - [x] Instance Routing: tenant-instances.sql calistir (2026-02-23 — tablo + index zaten mevcut)

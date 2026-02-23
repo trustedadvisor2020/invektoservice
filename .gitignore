@@ -74,3 +74,6 @@ arch/plans/diffs/*.diff
 
 # Test outputs
 test-results/
+
+# Postman collections
+*.postman_collection.json
