@@ -61,6 +61,15 @@ export default {
         'elevated': '0 4px 12px 0 rgb(0 0 0 / 0.06)',
         'focus': '0 0 0 3px rgba(99, 91, 255, 0.15)',
       },
+      keyframes: {
+        confetti: {
+          '0%': { transform: 'translateY(0) rotate(0deg)', opacity: '1' },
+          '100%': { transform: 'translateY(100vh) rotate(720deg)', opacity: '0' },
+        },
+      },
+      animation: {
+        confetti: 'confetti 3s ease-out forwards',
+      },
     },
   },
   plugins: [],

@@ -14,6 +14,7 @@ import { MessagesPage } from './pages/MessagesPage';
 import { TenantsPage } from './pages/TenantsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingGuidePage } from './pages/OnboardingGuidePage';
+import { OnboardingWizardPage } from './pages/OnboardingWizardPage';
 import { LogsPage } from './pages/LogsPage';
 
 const FlowListPage = lazy(() => import('./pages/flow-builder/FlowListPage').then(m => ({ default: m.FlowListPage })));
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
         <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />
         <Route path="/intents" element={<Suspense><IntentManagementPage /></Suspense>} />
+        <Route path="/onboarding" element={<OnboardingWizardPage />} />
         <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

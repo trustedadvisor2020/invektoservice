@@ -1,0 +1,91 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-3-onboarding",
+  "gr_list": [],
+  "slug": "20260223-onboarding-wizard-ui",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-23T21:00:00Z",
+  "updated_at": "2026-02-24T00:15:00Z",
+  "plan": {
+    "summary": "Onboarding Wizard frontend page consuming GET /api/v1/onboarding/status API (PKT-2). Vertical stepper layout with 7 steps, progress bar, step detail panel, and confetti celebration on 100% completion.",
+    "q_intent": "PKT-2 API'sini tuketen Dashboard onboarding wizard sayfasi. Tenant kurulum ilerlemesini gosterip yonlendirsin.",
+    "interview_notes": "Q chose vertical stepper layout + confetti on completion. No new dependencies. Pure frontend — no backend changes."
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/OnboardingWizardPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/tailwind.config.js"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/OnboardingWizardPage.tsx", "is_new": true, "change": "Full wizard page: vertical stepper, step detail panel, confetti overlay, 7-step metadata" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "Added OnboardingStatusResponse types + getOnboardingStatus() method" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "Added /onboarding route + OnboardingWizardPage import" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false, "change": "Added Kurulum Sihirbazi nav item with Rocket icon" },
+    { "path": "src/Invekto.Backend/Dashboard/tailwind.config.js", "is_new": false, "change": "Added confetti keyframes animation" }
+  ],
+  "git_diff": {
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260223-onboarding-wizard-ui.diff",
+    "stats": { "insertions": 404, "deletions": 0, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npx vite build + dotnet build InvektoServis.sln",
+    "timestamp": "2026-02-23T21:30:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the page handle loading, error, and empty states gracefully without crashing?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Are the step keys in STEP_META consistent with the backend OnboardingStatusService step keys?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the action_url navigation correctly strip the /app prefix before calling useNavigate?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/Program.cs", "src/Invekto.Shared/"],
+    "non_goals": ["Backend changes", "New API endpoints", "New npm dependencies"],
+    "intentional_exclusions": ["No backend code changes — pure frontend consuming existing PKT-2 API"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "OnboardingWizardPage.tsx: fetchStatus try/catch with error state"
+    ],
+    "user_facing_errors": [
+      "Error message displayed in red banner on fetch failure"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "fetchStatus catches all errors and displays them in the UI. No silent failures."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant ne yapmasi gerektigini bilmiyor, kaybolmus hissediyor",
+      "suggestion": "7-adimlik visual stepper ile net ilerleme gostergesi ve sonraki adim yonlendirmesi",
+      "aha_moment": "Dashboard'da %57 tamamlandi gordugunce ve 'Bilgi Bankasina Git' butonu ile direkt yonlendirildiginde"
+    },
+    {
+      "category": "DELIGHT",
+      "user_pain": "Onboarding tamamlandiktan sonra hicbir geri bildirim yok",
+      "suggestion": "Confetti animasyonu ve tebrik mesaji ile kutlama",
+      "aha_moment": "%100'e ulastiginda ekranda confetti patlayip 'Tebrikler! Sisteminiz hazir.' mesajini gordugunce"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1,
+    "blocking_issues": []
+  }
+}

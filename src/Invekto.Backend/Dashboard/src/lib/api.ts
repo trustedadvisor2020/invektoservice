@@ -597,6 +597,27 @@ export interface SimulationStepResponse {
   pending_input: SimulationPendingInput | null;
 }
 
+// Onboarding status (PKT-2)
+export interface OnboardingStepResponse {
+  key: string;
+  completed: boolean;
+  detail: string | null;
+}
+
+export interface OnboardingNextStepResponse {
+  key: string;
+  action_url: string;
+  hint: string;
+}
+
+export interface OnboardingStatusResponse {
+  tenant_id: number;
+  sector: string | null;
+  progress_pct: number;
+  steps: OnboardingStepResponse[];
+  next_step: OnboardingNextStepResponse | null;
+}
+
 // API Client
 class OpsApiClient {
   private credentials: string | null = null;
@@ -1442,6 +1463,11 @@ class OpsApiClient {
     return this.request(`/api/ops/knowledge/${tenantId}/intents/${intentId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Onboarding status (PKT-2 API)
+  async getOnboardingStatus(): Promise<OnboardingStatusResponse> {
+    return this.request<OnboardingStatusResponse>('/api/v1/onboarding/status');
   }
 }
 

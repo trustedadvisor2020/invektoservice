@@ -23,6 +23,7 @@ import {
   LayoutTemplate,
   Upload,
   Brain,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo, InvektoMark } from './ui/InvektoLogo';
@@ -62,6 +63,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true },
   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },
   { path: '/intents',             label: 'Intent Yonetimi', icon: Brain,          opsOnly: true },
+  { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazi', icon: Rocket },
   { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
   { path: '/settings',        label: 'Ayarlar',          icon: Settings },
 ];
