@@ -76,6 +76,17 @@ public sealed class AutomationClient
         }
     }
 
+    // ============================================================
+    // Generic HTTP proxy
+    // ============================================================
+
+    public async Task<(int StatusCode, string? Body)> ProxyGetAsync(
+        string path, string? authHeader, string? requestId,
+        CancellationToken ct = default)
+    {
+        return await ProxyRequestAsync(HttpMethod.Get, path, null, authHeader, requestId, ct);
+    }
+
     /// <summary>
     /// Proxy webhook event to Automation service.
     /// Main App -> Backend -> Automation (Automation stays localhost-only).
@@ -108,6 +119,40 @@ public sealed class AutomationClient
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Automation webhook proxy failed");
+            return (502, JsonSerializer.Serialize(new { error_code = "INV-BE-001", message = $"Automation service unavailable: {ex.Message}" }));
+        }
+    }
+
+    private async Task<(int StatusCode, string? Body)> ProxyRequestAsync(
+        HttpMethod method, string path, string? requestBody, string? authHeader, string? requestId,
+        CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(method, path);
+
+            if (requestBody != null)
+                request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+
+            if (!string.IsNullOrEmpty(authHeader))
+                request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+
+            if (!string.IsNullOrEmpty(requestId))
+                request.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            return ((int)response.StatusCode, body);
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("Automation proxy timeout: {Path}", path);
+            return (504, JsonSerializer.Serialize(new { error_code = "INV-BE-002", message = "Automation service timeout" }));
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Automation proxy failed: {Path}", path);
             return (502, JsonSerializer.Serialize(new { error_code = "INV-BE-001", message = $"Automation service unavailable: {ex.Message}" }));
         }
     }

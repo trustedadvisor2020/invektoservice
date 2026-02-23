@@ -8,6 +8,7 @@ using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Integration;
+using Invekto.Shared.DTOs.Onboarding;
 using Invekto.Shared.DTOs.Returns;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;
@@ -1328,6 +1329,33 @@ app.MapPost("/api/v1/webhooks/{tenantId:int}/{flowId:int}", async (
 });
 
 // ============================================================
+// Onboarding stats (lightweight, called by Backend aggregation)
+// ============================================================
+
+app.MapGet("/api/v1/flows/{tenantId:int}/onboarding-stats", async (int tenantId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    try
+    {
+        var (totalFlowCount, activeFlowCount) = await repo.GetOnboardingStatsAsync(tenantId);
+        return Results.Ok(new AutomationOnboardingStatsDto
+        {
+            TenantId = tenantId,
+            TotalFlowCount = totalFlowCount,
+            ActiveFlowCount = activeFlowCount
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"Onboarding stats failed for tenant {tenantId}: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationOnboardingStatsFailed, "Failed to retrieve onboarding stats", "-"), statusCode: 500);
+    }
+}).RequireAuthorization();
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1356,6 +1384,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/returns/{tenantId}/stats", Description = "Return deflection stats (PKT-6B1)", Auth = "Bearer JWT", Category = "Returns" },
         new() { Method = "POST", Path = "/api/v1/returns/{tenantId}/{deflectionId}/deflected", Description = "Mark deflection as successful (PKT-6B1)", Auth = "Bearer JWT", Category = "Returns" },
         new() { Method = "POST", Path = "/api/v1/webhooks/{tenantId}/{flowId}", Description = "Fire webhook_trigger flow (no auth)", Auth = "none", Category = "Webhook" },
+        new() { Method = "GET", Path = "/api/v1/flows/{tenantId}/onboarding-stats", Description = "Onboarding stats (flow counts)", Auth = "Bearer JWT", Category = "Onboarding" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },

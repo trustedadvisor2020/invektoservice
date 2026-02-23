@@ -6,6 +6,7 @@ using Invekto.Shared.Middleware;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
+using Invekto.Shared.DTOs.Onboarding;
 using Invekto.Shared.DTOs.Templates;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Services;
@@ -1407,6 +1408,39 @@ app.MapPost("/api/v1/templates/seed-from-se", async (
 });
 
 // ============================================================
+// Onboarding stats (lightweight, for Backend aggregation)
+// ============================================================
+
+app.MapGet("/api/v1/knowledge/{tenantId:int}/onboarding-stats", async (
+    int tenantId,
+    HttpContext ctx,
+    KnowledgeRepository knRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var (adoptions, faqs, intents) = await knRepo.GetOnboardingStatsAsync(tenantId, ctx.RequestAborted);
+        return Results.Ok(new KnowledgeOnboardingStatsDto
+        {
+            TenantId = tenantId,
+            TemplateAdoptionCount = adoptions,
+            ActiveFaqCount = faqs,
+            IntentPatternCount = intents
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeOnboardingStatsFailed}] Onboarding stats query failed for tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeOnboardingStatsFailed, "Onboarding stats query failed", requestId), statusCode: 500);
+    }
+}).RequireAuthorization();
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1448,6 +1482,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/templates/{tenantId}/onboard", Description = "Onboard tenant templates", Auth = "Bearer JWT", Category = "Template" },
         new() { Method = "GET", Path = "/api/v1/templates/{tenantId}/adoptions", Description = "List tenant adoptions", Auth = "Bearer JWT", Category = "Template" },
         new() { Method = "POST", Path = "/api/v1/templates/seed-from-se", Description = "Seed templates from SE scenarios (superadmin)", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "GET", Path = "/api/v1/knowledge/{tenantId}/onboarding-stats", Description = "Onboarding stats (lightweight counts)", Auth = "Bearer JWT", Category = "Onboarding" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

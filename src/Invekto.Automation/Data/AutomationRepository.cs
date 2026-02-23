@@ -808,6 +808,25 @@ public sealed class AutomationRepository
         cmd.Parameters.AddWithValue("tid", tenantId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
+
+    public async Task<(int TotalFlowCount, int ActiveFlowCount)>
+        GetOnboardingStatsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT
+                COUNT(*)::int AS total_count,
+                COUNT(*) FILTER (WHERE is_active = true)::int AS active_count
+            FROM chatbot_flows
+            WHERE tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return (0, 0);
+        return (reader.GetInt32(0), reader.GetInt32(1));
+    }
 }
 
 // ============================================================

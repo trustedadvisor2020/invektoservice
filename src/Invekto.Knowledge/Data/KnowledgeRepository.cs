@@ -1103,6 +1103,29 @@ public sealed class KnowledgeRepository
         }
         return null;
     }
+
+    /// <summary>
+    /// Lightweight onboarding stats: single query, 3 subselects.
+    /// </summary>
+    public async Task<(int AdoptionCount, int ActiveFaqCount, int IntentCount)>
+        GetOnboardingStatsAsync(int tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT
+                (SELECT COUNT(*)::int FROM template_adoptions WHERE tenant_id = @tid) AS adoption_count,
+                (SELECT COUNT(*)::int FROM faqs WHERE tenant_id = @tid AND is_active = true) AS faq_count,
+                (SELECT COUNT(*)::int FROM intent_patterns WHERE tenant_id = @tid) AS intent_count";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return (0, 0, 0);
+
+        return (reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2));
+    }
 }
 
 // ============================================================

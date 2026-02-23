@@ -18,6 +18,7 @@ using Invekto.Shared.Integration;
 using Invekto.Shared.DTOs.Analytics;
 using Invekto.Shared.DTOs.Attribution;
 using Invekto.Shared.DTOs.Leads;
+using Invekto.Shared.DTOs.Onboarding;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
@@ -269,6 +270,9 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 
     // Instance management (tenant_instances table: filtering + flow routing)
     builder.Services.AddSingleton<InstanceRepository>();
+
+    // Onboarding status aggregation (PKT-2: computed from Knowledge + Automation + tenant_registry)
+    builder.Services.AddSingleton<OnboardingStatusService>();
 }
 
 // Callback client for async results to Main App
@@ -1393,6 +1397,43 @@ app.MapPost("/api/v1/chat/analyze", async (
         statusCode: 502);
 });
 
+// ============================================================
+// Onboarding status (PKT-2: aggregated from Knowledge + Automation + tenant_registry)
+// ============================================================
+
+app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, OnboardingStatusService onboardingService, JsonLinesLogger jsonLogger) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context missing", "-"),
+            statusCode: 401);
+    }
+
+    try
+    {
+        var status = await onboardingService.GetStatusAsync(tenantContext.TenantId);
+        return Results.Ok(status);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLogger.StepError($"[{ErrorCodes.BackendOnboardingStatusFailed}] Onboarding status DB error for tenant {tenantContext.TenantId}: {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.BackendOnboardingStatusFailed, "Onboarding durumu hesaplanamadi: veritabani hatasi", requestId),
+            statusCode: 500);
+    }
+    catch (HttpRequestException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLogger.StepError($"[{ErrorCodes.BackendOnboardingStatusFailed}] Onboarding status service call failed for tenant {tenantContext.TenantId}: {ex.Message}", requestId);
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.BackendOnboardingStatusFailed, "Onboarding durumu hesaplanamadi: servis baglanti hatasi", requestId),
+            statusCode: 500);
+    }
+}).RequireAuthorization();
+
 // Endpoint discovery - returns all services' endpoints (aggregated)
 app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
 {
@@ -1480,6 +1521,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
             new() { Method = "GET", Path = "/api/v1/tourism/leads/{id}", Description = "Get tourism lead proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "PUT", Path = "/api/v1/tourism/leads/{id}", Description = "Update tourism lead proxy", Auth = "Bearer", Category = "API" },
             new() { Method = "GET", Path = "/api/v1/tourism/stats", Description = "Tourism stats proxy", Auth = "Bearer", Category = "API" },
+
+            // Onboarding (PKT-2)
+            new() { Method = "GET", Path = "/api/v1/onboarding/status", Description = "Onboarding status (aggregated)", Auth = "Bearer JWT", Category = "Onboarding" },
 
             // Health
             new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },

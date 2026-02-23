@@ -35,6 +35,9 @@ public static class ErrorCodes
     public const string BackendWorkingHoursFetchFailed = "INV-BE-040";   // Working hours fetch failed
     public const string BackendWorkingHoursUpdateFailed = "INV-BE-041";  // Working hours update failed
 
+    // Backend Onboarding Status (INV-BE-050+)
+    public const string BackendOnboardingStatusFailed = "INV-BE-050";    // Onboarding status aggregation failed
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -104,6 +107,9 @@ public static class ErrorCodes
     public const string AutomationInstanceNotFound = "INV-AT-035";
     public const string AutomationInstanceDisabled = "INV-AT-036";
     public const string AutomationInstanceUnassigned = "INV-AT-037";
+
+    // Automation Onboarding Stats (INV-AT-038)
+    public const string AutomationOnboardingStatsFailed = "INV-AT-038"; // Onboarding stats query failed
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
@@ -189,6 +195,9 @@ public static class ErrorCodes
     public const string KnowledgeIntentCreateFailed = "INV-KN-033";
     public const string KnowledgeIntentUpdateFailed = "INV-KN-034";
     public const string KnowledgeIntentDeleteFailed = "INV-KN-035";
+
+    // Knowledge Onboarding Stats (INV-KN-036)
+    public const string KnowledgeOnboardingStatsFailed = "INV-KN-036"; // Onboarding stats query failed
 
     // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
     public const string WAAnalysisNotFound = "INV-WA-001";

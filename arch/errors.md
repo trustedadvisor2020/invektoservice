@@ -67,6 +67,7 @@ INV-{SERVICE}-{NUMBER}
 | INV-BE-031 | Instance disable blocked (in use by flow) | Hat bir akis tarafindan kullaniliyor, devre disi birakilamaz. |
 | INV-BE-040 | Working hours fetch failed | Calisma saatleri yuklenemedi. |
 | INV-BE-041 | Working hours update failed | Calisma saatleri guncellenemedi. |
+| INV-BE-050 | Onboarding status aggregation failed | Onboarding durumu hesaplanamadi. |
 
 ---
 
@@ -136,6 +137,7 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-035 | Instance not found in tenant cache | Hat tenant cache'inde bulunamadi. |
 | INV-AT-036 | Instance disabled, message ignored | Hat devre disi, mesaj yoksayildi. |
 | INV-AT-037 | Instance unassigned, message ignored | Hat bir akisa atanmamis, mesaj yoksayildi. |
+| INV-AT-038 | Onboarding stats retrieval failed | Automation onboarding istatistikleri alinamadi. |
 
 ---
 
@@ -332,6 +334,7 @@ INV-{SERVICE}-{NUMBER}
 | INV-KN-030 | Suggestion not found | Belirtilen oneri bulunamadi. |
 | INV-KN-031 | Comparison failed | Sablon karsilastirma sirasinda hata olustu. |
 | INV-KN-032 | Invalid suggestion status | Gecersiz oneri durum gecisi. |
+| INV-KN-036 | Onboarding stats retrieval failed | Knowledge onboarding istatistikleri alinamadi. |
 
 ---
 

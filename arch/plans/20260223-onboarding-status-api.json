@@ -1,0 +1,136 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-2",
+  "gr_list": [],
+  "slug": "20260223-onboarding-status-api",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-23T18:00:00Z",
+  "updated_at": "2026-02-23T19:00:00Z",
+  "plan": {
+    "summary": "Computed onboarding status API that aggregates from 3 sources (tenant_registry direct DB, Knowledge stats HTTP, Automation stats HTTP) into a single GET /api/v1/onboarding/status endpoint with graceful degradation.",
+    "q_intent": "Onboarding wizard icin computed status API gerekiyor. Tenant'in onboarding ilerlemesi 3 servisten alinip tek endpoint'te birlestiriliyor.",
+    "interview_notes": "No new tables/migrations. 7-step checklist with configurable thresholds. Graceful degradation: downstream failure returns partial data with detail=bilinmiyor."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Onboarding/OnboardingStatusDto.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Knowledge/Data/KnowledgeRepository.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Services/AutomationClient.cs",
+    "src/Invekto.Backend/Services/OnboardingStatusService.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Onboarding/OnboardingStatusDto.cs", "is_new": true, "change": "5 DTOs: OnboardingStatusDto, OnboardingStepDto, OnboardingNextStepDto, KnowledgeOnboardingStatsDto, AutomationOnboardingStatsDto" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added INV-BE-050, INV-KN-036, INV-AT-038 error codes" },
+    { "path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false, "change": "Added GetOnboardingStatsAsync (3 subselect COUNT query)" },
+    { "path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "Added GET /api/v1/knowledge/{tenantId}/onboarding-stats endpoint + using + discovery" },
+    { "path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "Added GetOnboardingStatsAsync (COUNT + FILTER query)" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "Added GET /api/v1/flows/{tenantId}/onboarding-stats endpoint + using + discovery" },
+    { "path": "src/Invekto.Backend/Services/AutomationClient.cs", "is_new": false, "change": "Added ProxyGetAsync + private ProxyRequestAsync (following KnowledgeClient pattern)" },
+    { "path": "src/Invekto.Backend/Services/OnboardingStatusService.cs", "is_new": true, "change": "Aggregation service: tenant_registry + Knowledge HTTP + Automation HTTP, graceful degradation, 7-step checklist" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "DI registration + GET /api/v1/onboarding/status endpoint + discovery entry + using" },
+    { "path": "arch/errors.md", "is_new": false, "change": "3 new error codes documented" }
+  ],
+  "git_diff": {
+    "sha256": "1048ef64b154d1bcc89681490e16be2399ba05efe4fa75b2bdd5325cbd869bca",
+    "full_path": "arch/plans/diffs/20260223-onboarding-status-api.diff",
+    "stats": { "insertions": 644, "deletions": 0, "files_count": 11 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-23T19:00:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does each downstream service call (Knowledge, Automation) use graceful degradation so a service failure does not crash the aggregated endpoint?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Are the service-to-service HTTP calls authenticated with JwtGenerator.GenerateServiceToken, not forwarding the caller's raw token?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Do the Knowledge and Automation onboarding-stats endpoints validate tenant ownership via GetValidatedTenant before returning data?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Are all 3 new error codes (INV-BE-050, INV-KN-036, INV-AT-038) registered in ErrorCodes.cs and used consistently in catch blocks?",
+      "category": "Data"
+    },
+    {
+      "id": "Q5",
+      "question": "Is the progress_pct calculation correct: (completed steps / 7) * 100, rounded to integer?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/Dashboard/", "src/Invekto.Backend/wwwroot/"],
+    "non_goals": ["Onboarding wizard UI (Paket 3)", "Dashboard checklist widget (Paket 4)", "New database tables"],
+    "intentional_exclusions": ["No migration files - uses existing tables only", "No frontend changes"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "OnboardingStatusService.cs: Knowledge HTTP call try/catch",
+      "OnboardingStatusService.cs: Automation HTTP call try/catch",
+      "Backend/Program.cs: onboarding/status endpoint try/catch",
+      "Knowledge/Program.cs: onboarding-stats endpoint try/catch",
+      "Automation/Program.cs: onboarding-stats endpoint try/catch"
+    ],
+    "user_facing_errors": [
+      "INV-BE-050: Failed to compute onboarding status",
+      "INV-KN-036: Failed to retrieve onboarding stats",
+      "INV-AT-038: Failed to retrieve onboarding stats"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks either log warnings (degraded path) or return error responses with proper error codes. No empty catches."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Yeni tenant ne yapmasi gerektigini bilmiyor, kaybolmus hissediyor",
+      "suggestion": "Onboarding checklist ile adim adim yonlendirme, next_step hint ile aksiyon URL'i",
+      "aha_moment": "Dashboard'a giris yaptiginda 'Sonraki adim: Ilk chatbot akisinizi olusturun' mesajini gordugunce"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her servise ayri ayri bakmak vakit aliyor, ilerleme goremiyor",
+      "suggestion": "Tek endpoint ile tum onboarding durumunu tek seferde getir",
+      "aha_moment": "Tek API cagrisinda %57 tamamlandi gordugunce ve hangi adimlarin eksik oldugunu anladiginda"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bir servis down oldugunda tum sayfa bozuluyor",
+      "suggestion": "Graceful degradation: down servisler 'bilinmiyor' gosteriyor, sayfa calismaya devam ediyor",
+      "aha_moment": "Knowledge down olsa bile checklist hala gorunuyor ve diger adimlar tamamlanabiliyor"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Trial tenant'lar hizli kurulum yapamayinca churn oluyor",
+      "suggestion": "Onboarding progress ile tenant'in hangi asamada takildigini gormek",
+      "aha_moment": "Admin panel'de tenant %30'da takilmis gorup proaktif destek verebildiginde"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek ekibi tenant'in ne yaptigini bilmiyor, her seferinde sormak zorunda",
+      "suggestion": "Onboarding status API ile tenant'in mevcut durumunu tek bakista gormek",
+      "aha_moment": "Destek temsilcisi tenant'in WhatsApp baglanmamis oldugunu gorup direkt yonlendirebildiginde"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 2,
+    "blocking_issues": [],
+    "notes": "Chunked review (2 chunks). Q4 UNKNOWN per chunk is a verified chunking artifact — ErrorCodes.cs in chunk 1, usage in chunk 2. Both CQ gates ALL PASS."
+  }
+}
