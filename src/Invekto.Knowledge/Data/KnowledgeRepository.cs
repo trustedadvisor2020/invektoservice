@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Npgsql;
 using NpgsqlTypes;
 using Pgvector;
@@ -1165,14 +1166,14 @@ public sealed class IntentPatternRow
 
 public sealed class IntentPatternFullDto
 {
-    public int Id { get; init; }
-    public int TenantId { get; init; }
-    public required string IntentName { get; init; }
-    public string[] Keywords { get; init; } = Array.Empty<string>();
-    public decimal? ConfidenceAvg { get; init; }
-    public int SampleCount { get; init; }
-    public string SampleMessagesJson { get; init; } = "[]";
-    public DateTime CreatedAt { get; init; }
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("tenant_id")] public int TenantId { get; init; }
+    [JsonPropertyName("intent_name")] public required string IntentName { get; init; }
+    [JsonPropertyName("keywords")] public string[] Keywords { get; init; } = Array.Empty<string>();
+    [JsonPropertyName("confidence_avg")] public decimal? ConfidenceAvg { get; init; }
+    [JsonPropertyName("sample_count")] public int SampleCount { get; init; }
+    [JsonPropertyName("sample_messages_json")] public string SampleMessagesJson { get; init; } = "[]";
+    [JsonPropertyName("created_at")] public DateTime CreatedAt { get; init; }
 }
 
 public sealed class ProductCatalogRow
