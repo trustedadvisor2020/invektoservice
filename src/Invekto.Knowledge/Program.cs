@@ -671,6 +671,129 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/intents/seed", async (
     }
 });
 
+// Full intent list (all fields, for ops/UI)
+app.MapGet("/api/v1/knowledge/{tenantId:int}/intents/full", async (
+    int tenantId,
+    HttpContext ctx,
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var intents = await repo.ListIntentsFullAsync(tenantId);
+        return Results.Ok(new { intents, count = intents.Count });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeIntentReadFailed}] Intent full list failed for tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentReadFailed, "Intent read failed", requestId), statusCode: 500);
+    }
+});
+
+// Create intent
+app.MapPost("/api/v1/knowledge/{tenantId:int}/intents", async (
+    int tenantId,
+    HttpContext ctx,
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    IntentCreateRequest? body;
+    try { body = await request.ReadFromJsonAsync<IntentCreateRequest>(); }
+    catch (System.Text.Json.JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || string.IsNullOrWhiteSpace(body.IntentName))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "intent_name is required", requestId), statusCode: 400);
+
+    try
+    {
+        var id = await repo.InsertIntentAsync(tenantId, body.IntentName.Trim(), body.Keywords ?? Array.Empty<string>());
+        if (id == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Intent already exists for this tenant", requestId), statusCode: 409);
+
+        return Results.Ok(new { id, intent_name = body.IntentName.Trim(), tenant_id = tenantId });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeIntentCreateFailed}] Intent create failed for tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentCreateFailed, $"Intent creation failed for tenant {tenantId}", requestId), statusCode: 500);
+    }
+});
+
+// Update intent
+app.MapPut("/api/v1/knowledge/{tenantId:int}/intents/{intentId:int}", async (
+    int tenantId,
+    int intentId,
+    HttpContext ctx,
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger,
+    HttpRequest request) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    IntentCreateRequest? body;
+    try { body = await request.ReadFromJsonAsync<IntentCreateRequest>(); }
+    catch (System.Text.Json.JsonException) { return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "Invalid JSON", requestId), statusCode: 400); }
+
+    if (body == null || string.IsNullOrWhiteSpace(body.IntentName))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "intent_name is required", requestId), statusCode: 400);
+
+    try
+    {
+        var updated = await repo.UpdateIntentAsync(intentId, tenantId, body.IntentName.Trim(), body.Keywords ?? Array.Empty<string>());
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentPatternsNotFound, "Intent not found", requestId), statusCode: 404);
+
+        return Results.Ok(new { id = intentId, intent_name = body.IntentName.Trim(), updated = true });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeIntentUpdateFailed}] Intent update failed for intent {intentId}, tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentUpdateFailed, $"Intent update failed for intent {intentId}", requestId), statusCode: 500);
+    }
+});
+
+// Delete intent
+app.MapDelete("/api/v1/knowledge/{tenantId:int}/intents/{intentId:int}", async (
+    int tenantId,
+    int intentId,
+    HttpContext ctx,
+    KnowledgeRepository repo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var deleted = await repo.DeleteIntentAsync(intentId, tenantId);
+        if (!deleted)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentPatternsNotFound, "Intent not found", requestId), statusCode: 404);
+
+        return Results.Ok(new { id = intentId, deleted = true });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeIntentDeleteFailed}] Intent delete failed for intent {intentId}, tenant {tenantId}: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeIntentDeleteFailed, $"Intent delete failed for intent {intentId}", requestId), statusCode: 500);
+    }
+});
+
 // ============================================================
 // Generate embeddings endpoint (background trigger)
 // ============================================================

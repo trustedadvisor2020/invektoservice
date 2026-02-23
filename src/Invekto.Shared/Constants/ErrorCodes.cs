@@ -185,6 +185,11 @@ public static class ErrorCodes
     public const string TemplateComparisonFailed = "INV-KN-031";
     public const string TemplateSuggestionInvalidStatus = "INV-KN-032";
 
+    // Knowledge Intent CRUD (INV-KN-033+)
+    public const string KnowledgeIntentCreateFailed = "INV-KN-033";
+    public const string KnowledgeIntentUpdateFailed = "INV-KN-034";
+    public const string KnowledgeIntentDeleteFailed = "INV-KN-035";
+
     // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
     public const string WAAnalysisNotFound = "INV-WA-001";
     public const string WAAnalysisInProgress = "INV-WA-002";

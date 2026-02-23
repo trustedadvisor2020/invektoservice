@@ -1,0 +1,31 @@
+{
+  "slug": "20260223-intent-management-ui",
+  "title": "Intent Yonetimi Sayfasi — CRUD + Dashboard UI",
+  "summary": "Tenant intent_patterns tablosunu yoneten superadmin Dashboard sayfasi. Knowledge CRUD endpoints + Backend ops proxy + React UI. 3 katman: Knowledge API → Backend proxy → Dashboard IntentManagementPage.",
+  "status": "DONE",
+  "risk_level": "LOW",
+  "iteration": 1,
+  "created_at": "2026-02-23T03:30:00Z",
+  "updated_at": "2026-02-23T03:30:00Z",
+  "files_changed": [
+    { "path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/IntentPatternDtos.cs", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/IntentManagementPage.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false }
+  ],
+  "verification_questions": [
+    { "id": "V1", "question": "Do the Knowledge CRUD endpoints properly validate tenant ownership (GetValidatedTenant)?", "category": "security" },
+    { "id": "V2", "question": "Does InsertIntentAsync handle ON CONFLICT correctly to prevent duplicate intent names per tenant?", "category": "correctness" },
+    { "id": "V3", "question": "Does the Backend ops proxy correctly route to Knowledge service with service JWT?", "category": "integration" },
+    { "id": "V4", "question": "Does the React IntentManagementPage handle error states and empty states properly?", "category": "ux" }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260223-intent-management-ui.diff",
+    "stats": { "insertions": 589, "deletions": 3, "files_count": 9 }
+  }
+}

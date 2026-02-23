@@ -952,6 +952,85 @@ public sealed class KnowledgeRepository
     }
 
     // ============================================================
+    // Intent CRUD (full fields)
+    // ============================================================
+
+    public async Task<List<IntentPatternFullDto>> ListIntentsFullAsync(int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT id, tenant_id, intent_name, keywords, confidence_avg, sample_count, sample_messages, created_at
+            FROM intent_patterns
+            WHERE tenant_id = @tid
+            ORDER BY intent_name";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var list = new List<IntentPatternFullDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            list.Add(new IntentPatternFullDto
+            {
+                Id = reader.GetInt32(0),
+                TenantId = reader.GetInt32(1),
+                IntentName = reader.GetString(2),
+                Keywords = reader.IsDBNull(3) ? Array.Empty<string>() : (string[])reader.GetValue(3),
+                ConfidenceAvg = reader.IsDBNull(4) ? null : reader.GetDecimal(4),
+                SampleCount = reader.GetInt32(5),
+                SampleMessagesJson = reader.IsDBNull(6) ? "[]" : reader.GetString(6),
+                CreatedAt = reader.GetDateTime(7)
+            });
+        }
+
+        return list;
+    }
+
+    public async Task<int> InsertIntentAsync(int tenantId, string intentName, string[] keywords, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            INSERT INTO intent_patterns (tenant_id, intent_name, keywords, sample_count, sample_messages)
+            VALUES (@tid, @name, @kw, 0, '[]'::jsonb)
+            ON CONFLICT (tenant_id, intent_name) DO NOTHING
+            RETURNING id";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", intentName);
+        cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = keywords });
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int id ? id : 0;
+    }
+
+    public async Task<bool> UpdateIntentAsync(int id, int tenantId, string intentName, string[] keywords, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE intent_patterns
+            SET intent_name = @name, keywords = @kw
+            WHERE id = @id AND tenant_id = @tid";
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("name", intentName);
+        cmd.Parameters.Add(new NpgsqlParameter("kw", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = keywords });
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    public async Task<bool> DeleteIntentAsync(int id, int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM intent_patterns WHERE id = @id AND tenant_id = @tid";
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    // ============================================================
     // KVKK health tenant check (GR-2.6)
     // ============================================================
 
@@ -1082,6 +1161,18 @@ public sealed class IntentPatternRow
     public decimal? ConfidenceAvg { get; init; }
     public int SampleCount { get; init; }
     public string? SampleMessagesJson { get; init; }
+}
+
+public sealed class IntentPatternFullDto
+{
+    public int Id { get; init; }
+    public int TenantId { get; init; }
+    public required string IntentName { get; init; }
+    public string[] Keywords { get; init; } = Array.Empty<string>();
+    public decimal? ConfidenceAvg { get; init; }
+    public int SampleCount { get; init; }
+    public string SampleMessagesJson { get; init; } = "[]";
+    public DateTime CreatedAt { get; init; }
 }
 
 public sealed class ProductCatalogRow

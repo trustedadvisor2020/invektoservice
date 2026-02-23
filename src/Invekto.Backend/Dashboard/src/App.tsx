@@ -24,6 +24,7 @@ const TemplateLibraryPage = lazy(() => import('./pages/TemplateLibraryPage').the
 const TemplateDetailPage = lazy(() => import('./pages/TemplateDetailPage').then(m => ({ default: m.TemplateDetailPage })));
 const TemplateIngestionPage = lazy(() => import('./pages/TemplateIngestionPage').then(m => ({ default: m.TemplateIngestionPage })));
 const TemplateOnboardPage = lazy(() => import('./pages/TemplateOnboardPage').then(m => ({ default: m.TemplateOnboardPage })));
+const IntentManagementPage = lazy(() => import('./pages/IntentManagementPage').then(m => ({ default: m.IntentManagementPage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/templates/ingestion" element={<Suspense><TemplateIngestionPage /></Suspense>} />
         <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
         <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />
+        <Route path="/intents" element={<Suspense><IntentManagementPage /></Suspense>} />
         <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

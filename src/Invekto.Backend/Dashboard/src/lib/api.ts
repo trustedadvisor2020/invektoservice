@@ -177,6 +177,17 @@ export interface TenantEntry {
   createdAt: string;
 }
 
+export interface IntentPatternDto {
+  id: number;
+  tenant_id: number;
+  intent_name: string;
+  keywords: string[];
+  confidence_avg: number | null;
+  sample_count: number;
+  sample_messages_json: string;
+  created_at: string;
+}
+
 // Instance management types (Settings)
 export interface InstanceDto {
   id: number;
@@ -1408,6 +1419,29 @@ class OpsApiClient {
       `/api/ops/templates/${tenantId}/onboard`, {
         method: 'POST', body: JSON.stringify(body),
       });
+  }
+
+  // Intent CRUD
+  async getIntents(tenantId: number): Promise<{ intents: IntentPatternDto[]; count: number }> {
+    return this.request(`/api/ops/knowledge/${tenantId}/intents`);
+  }
+
+  async createIntent(tenantId: number, data: { intent_name: string; keywords: string[] }): Promise<{ id: number }> {
+    return this.request(`/api/ops/knowledge/${tenantId}/intents`, {
+      method: 'POST', body: JSON.stringify(data),
+    });
+  }
+
+  async updateIntent(tenantId: number, intentId: number, data: { intent_name: string; keywords: string[] }): Promise<{ updated: boolean }> {
+    return this.request(`/api/ops/knowledge/${tenantId}/intents/${intentId}`, {
+      method: 'PUT', body: JSON.stringify(data),
+    });
+  }
+
+  async deleteIntent(tenantId: number, intentId: number): Promise<{ deleted: boolean }> {
+    return this.request(`/api/ops/knowledge/${tenantId}/intents/${intentId}`, {
+      method: 'DELETE',
+    });
   }
 }
 
