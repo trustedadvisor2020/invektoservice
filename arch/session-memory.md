@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-23
-- **Status:** Mesajlar sayfasina kanal adi (Kanal) filtre + kolon eklendi. Codex FORCE PASS (CQ5 false positive — SuperAdmin ops cross-tenant by design).
-- **Last Task:** Tum Mesajlar: Kanal filtre + kolon — (1) MessageLogRepository LEFT JOIN tenant_instances (instance_name), (2) instance_id filtre, (3) GetDistinctChannelsAsync + /api/ops/channels endpoint, (4) Frontend Kanal dropdown (tenant-aware) + tablo kolonu. Codex 2 iter, FORCE PASS (CQ5 cross-tenant = SuperAdmin pattern).
+- **Status:** Self-Service Onboarding (Sektor Secimi + Sablon Benimseme) tamamlandi, deploy edildi, 500 hotfix yapildi.
+- **Last Task:** Self-Service Onboarding — (1) GET/PUT /api/v1/settings/sector, (2) 3 template proxy route (available/adopt/adoptions), (3) SettingsPage sektor dropdown, (4) TemplateLibraryPage dual-mode (ops table vs tenant card grid), (5) Codex 2 iter FORCE PASS, (6) Deploy + onboarding/status 500 hotfix (`.RequireAuthorization()` kaldirildi — custom JWT middleware yeterli).
 - **Next Task:** Siradaki: diger paket calismasi veya yeni feature.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
@@ -93,6 +93,7 @@ src/
 | 2026-02-23 | Template System (Sablon Sistemi) | Knowledge 7104 genisletildi: 5 tip (FAQ/Message/Intent/Flow/Scenario), 3 katman (Platform>Sector>Tenant), pgvector cosine similarity, suggestion queue, superadmin review UI, tenant onboarding. 19 dosya, 4243 insertion. Codex 5-chunk, 4 iter, PASS. |
 | 2026-02-23 | Ebrumoda Full Pipeline | 2.1M satirlik WA CSV → pipeline (Claude skip, keyword-only intent) → 3,159 template suggestion → 60 approved+published (12 intent + 48 FAQ), 3,099 rejected. FormOptions fix (128MB→500MB multipart limit). |
 | 2026-02-23 | Flow Execution Log + Instance Bug Fix | flow_execution_log tablosu + Automation fire-and-forget logging + FlowLogPanel UI + instance-aware GetMessageStoryAsync. Codex main 4 iter FORCE PASS, fix 2 iter FORCE PASS. SQL + deploy (Backend + Automation HEALTHY). |
+| 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
 
 ## Q Pending Operational Tasks
 

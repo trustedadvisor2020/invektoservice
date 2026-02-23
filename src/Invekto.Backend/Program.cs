@@ -1432,7 +1432,7 @@ app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, OnboardingStatus
             ErrorResponse.Create(ErrorCodes.BackendOnboardingStatusFailed, "Onboarding durumu hesaplanamadi: servis baglanti hatasi", requestId),
             statusCode: 500);
     }
-}).RequireAuthorization();
+});
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
 app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
