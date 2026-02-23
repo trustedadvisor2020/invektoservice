@@ -3214,6 +3214,12 @@ app.MapPost("/api/ops/templates/{tenantId:int}/onboard", async (HttpContext ctx,
 app.MapGet("/api/ops/templates/{tenantId:int}/adoptions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
     await KnProxyGet(ctx, knClient, jsonLog, 0, $"/api/v1/templates/{tenantId}/adoptions"));
 
+app.MapPost("/api/ops/templates/seed-from-se", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
+{
+    var dryRun = ctx.Request.Query.ContainsKey("dry_run") ? $"?dry_run={ctx.Request.Query["dry_run"]}" : "";
+    return await KnProxyPost(ctx, knClient, jsonLog, 0, $"/api/v1/templates/seed-from-se{dryRun}");
+});
+
 // ============================================
 // APPOINTMENTS PROXY ENDPOINTS (GR-2.4)
 // ============================================

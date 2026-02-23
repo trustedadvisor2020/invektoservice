@@ -1,0 +1,136 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260223-se-template-seed",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-02-23T22:00:00Z",
+  "updated_at": "2026-02-23T22:30:00Z",
+  "plan": {
+    "summary": "SE (Sales Engineering) 170 senaryo JSON dosyasından template_catalog tablosuna scenario/FAQ/intent template seed eden servis ve endpoint. Onboarding wizard için sektör bazlı template altyapısı.",
+    "q_intent": "SE klasöründeki 170 senaryoyu template catalog'a import et — onboarding wizard'da kullanılacak",
+    "interview_notes": "Hedef: non-technical kullanıcılar (dişçi, e-ticaret yöneticisi vb). Self-service onboarding. Sektör seçince şablonlar otomatik yüklensin. SE senaryolarından al."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Templates/SeSeedDtos.cs",
+    "src/Invekto.Knowledge/Services/SeSeedService.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Knowledge/appsettings.json",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Templates/SeSeedDtos.cs", "is_new": true, "change": "SeSeedResult response DTO" },
+    { "path": "src/Invekto.Knowledge/Services/SeSeedService.cs", "is_new": true, "change": "SE scenario JSON parser + template extractor (scenario/FAQ/intent) + batch insert via TemplateRepository" },
+    { "path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "DI registration + POST /api/v1/templates/seed-from-se endpoint (superadmin, dry_run support)" },
+    { "path": "src/Invekto.Knowledge/appsettings.json", "is_new": false, "change": "SE:DataPath config section" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Ops proxy POST /api/ops/templates/seed-from-se → Knowledge" }
+  ],
+  "git_diff": {
+    "sha256": "B1329DE362A9E5632BA36BD8F91CA5E91457DD37B6AAF371CF42192324A2B33B",
+    "full_path": "arch/plans/diffs/20260223-se-template-seed.diff",
+    "stats": { "insertions": 721, "deletions": 0, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-23T22:25:00Z",
+    "duration_ms": 16360,
+    "output_tail": "Build succeeded. 0 Error(s). 14 Warning(s).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Knowledge", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does SeSeedService correctly map all 10 SE niche values to DB sector values, with crossSector/universal becoming scope=platform?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Are FAQ templates only extracted from valid user→bot consecutive step pairs (user>=5 chars, bot>=30 chars, no system messages)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "Is the endpoint properly guarded with GetSuperadmin (tenant_id=0) check, preventing tenant-level access?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the intent deduplication correctly merge keywords and sample_messages for same intent_name within the same sector?",
+      "category": "Data"
+    },
+    {
+      "id": "Q5",
+      "question": "Is BatchInsertTemplatesAsync called with ON CONFLICT DO NOTHING ensuring idempotent re-runs?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Automation/", "src/Invekto.AgentAI/", "Dashboard/"],
+    "non_goals": ["Flow template extraction (deferred)", "Template UI changes", "Onboarding wizard frontend"],
+    "intentional_exclusions": ["type=flow template extraction — complex graph generation deferred to separate paket"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "SeSeedService.cs: JsonException catch per file parse",
+      "SeSeedService.cs: IOException catch per file read",
+      "SeSeedService.cs: NpgsqlException catch per batch insert",
+      "Program.cs: NpgsqlException catch on endpoint"
+    ],
+    "user_facing_errors": [
+      "INV-KN-029: TemplateSeedFailed — SE:DataPath not configured",
+      "INV-KN-029: Database error during SE seed"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All helper methods are instance methods with logger access. Every catch block logs with SystemWarn. No static methods with catch blocks."
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni tenant kurulumu saat sürüyor — sektör bazlı şablonlar elle yükleniyor",
+      "suggestion": "Wizard'da sektör seç → tek tıkla 50+ şablon otomatik yüklensin",
+      "aha_moment": "Kullanıcı sektörünü seçtiğinde anında hazır FAQ, intent ve senaryolar hesabında"
+    },
+    {
+      "category": "UX",
+      "user_pain": "170 senaryo ayrı uygulamada, müşterinin haberi bile yok",
+      "suggestion": "SE senaryolarını onboarding'de capabilities showcase olarak göster",
+      "aha_moment": "'Bunların hepsini yapabiliyoruz!' dediğinde müşterinin gözleri parlıyor"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Her sektör demosunda aynı senaryoları anlatmak zaman kaybı",
+      "suggestion": "Sektör seçince o sektöre özel ROI hesaplayıcı ve demo senaryoları otomatik gelsin",
+      "aha_moment": "Diş kliniği sahibi kendi sektörüne özel 19 hazır senaryo görünce 'tam bize göre' diyor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Manuel şablon girişinde yazım hataları, tutarsız formatlar",
+      "suggestion": "SE'den otomatik extract + idempotent seed — tekrar çalıştırılabilir, hata riski yok",
+      "aha_moment": "Ops ekibi bir endpoint çağrısıyla tüm sektörleri seed ediyor, manual entry sıfır"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Yeni müşteri 'ne yapabilirim?' diye soruyor, cevap vermek uzun sürüyor",
+      "suggestion": "Sektör bazlı FAQ template'leri otomatik yükle — müşteri ilk günden SSS cevapları alsın",
+      "aha_moment": "Bot ilk mesajdan itibaren sektöre uygun cevaplar veriyor, müşteri şaşırıyor"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "codex-mcp + Q-FORCE-PASS",
+    "received_at": "2026-02-23T22:45:00Z",
+    "updated_by": "Q",
+    "updated_at": "2026-02-23T22:50:00Z",
+    "raw_text": "Iteration 0: CQ3+CQ5 FAIL (fixed). Iteration 1: CQ1-8 all PASS, Q1-Q4 PASS, Q5 UNKNOWN (existing code). Q FORCE PASS — BatchInsertTemplatesAsync ON CONFLICT verified in TemplateRepository.cs:563-599.",
+    "code_quality_gate": { "CQ1": "PASS", "CQ2": "PASS", "CQ3": "PASS", "CQ4": "PASS", "CQ5": "PASS", "CQ6": "PASS", "CQ7": "PASS", "CQ8": "PASS" },
+    "cove_verification": { "Q1": "PASS", "Q2": "PASS", "Q3": "PASS", "Q4": "PASS", "Q5": "PASS (Q verified)" },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

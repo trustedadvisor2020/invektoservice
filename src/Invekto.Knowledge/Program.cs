@@ -122,6 +122,9 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton<DocumentProcessingService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<DocumentProcessingService>());
 
+// SE scenario seed service
+builder.Services.AddSingleton<SeSeedService>();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -1363,6 +1366,47 @@ app.MapGet("/api/v1/templates/{tenantId:int}/adoptions", async (
 });
 
 // ============================================================
+// SE scenario seed
+// ============================================================
+
+app.MapPost("/api/v1/templates/seed-from-se", async (
+    HttpContext ctx,
+    SeSeedService seSeedService,
+    IConfiguration config,
+    JsonLinesLogger jsonLog) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    if (GetSuperadmin(ctx) == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Superadmin required", requestId), statusCode: 403);
+
+    var dryRun = ctx.Request.Query.ContainsKey("dry_run")
+        && string.Equals(ctx.Request.Query["dry_run"], "true", StringComparison.OrdinalIgnoreCase);
+
+    var dataPath = config["SE:DataPath"];
+    if (string.IsNullOrWhiteSpace(dataPath))
+    {
+        jsonLog.StepError($"[{ErrorCodes.TemplateSeedFailed}] SE:DataPath not configured", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSeedFailed, "SE:DataPath not configured in appsettings", requestId), statusCode: 500);
+    }
+
+    // Resolve relative paths
+    if (!Path.IsPathRooted(dataPath))
+        dataPath = Path.GetFullPath(dataPath, AppContext.BaseDirectory);
+
+    try
+    {
+        var result = await seSeedService.SeedAsync(dataPath, dryRun, ctx.RequestAborted);
+        jsonLog.SystemInfo($"SE seed completed: {result.TotalInserted} templates, dry_run={dryRun}, duration={result.DurationMs}ms");
+        return Results.Ok(result);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.StepError($"[{ErrorCodes.TemplateSeedFailed}] SE seed DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.TemplateSeedFailed, $"Database error during SE seed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1403,6 +1447,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "POST", Path = "/api/v1/templates/{tenantId}/adopt/{templateId}", Description = "Adopt template", Auth = "Bearer JWT", Category = "Template" },
         new() { Method = "POST", Path = "/api/v1/templates/{tenantId}/onboard", Description = "Onboard tenant templates", Auth = "Bearer JWT", Category = "Template" },
         new() { Method = "GET", Path = "/api/v1/templates/{tenantId}/adoptions", Description = "List tenant adoptions", Auth = "Bearer JWT", Category = "Template" },
+        new() { Method = "POST", Path = "/api/v1/templates/seed-from-se", Description = "Seed templates from SE scenarios (superadmin)", Auth = "Bearer JWT", Category = "Template" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 
