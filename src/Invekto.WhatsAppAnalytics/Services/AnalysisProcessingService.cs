@@ -49,33 +49,52 @@ public sealed class AnalysisProcessingService : BackgroundService
             var pending = await _repository.ClaimPendingAnalysesAsync(cancellationToken);
             foreach (var analysis in pending)
             {
-                // Reconstruct file path from stored info
-                var filePath = Path.Combine(_uploadPath, analysis.TenantId.ToString(), analysis.SourceFileName);
-
-                if (!File.Exists(filePath))
-                {
-                    _logger.SystemWarn($"[AnalysisProcessingService] Skipping stuck analysis {analysis.Id}: file not found at {filePath}");
-                    await _repository.FailAnalysisAsync(analysis.Id, $"Recovery failed: source file not found at {filePath}");
-                    continue;
-                }
-
-                // Parse delimiter from config
+                // Parse config to determine source type
+                var sourceType = "csv";
                 var delimiter = ';';
+                string? mssqlDatabase = null;
+                int? mssqlInstanceId = null;
+
                 if (!string.IsNullOrEmpty(analysis.ConfigJson))
                 {
                     try
                     {
                         var config = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(analysis.ConfigJson);
-                        if (config != null && config.TryGetValue("delimiter", out var delimVal))
+                        if (config != null)
                         {
-                            var delimStr = delimVal?.ToString();
-                            if (!string.IsNullOrEmpty(delimStr) && delimStr.Length == 1)
-                                delimiter = delimStr[0];
+                            if (config.TryGetValue("source_type", out var stVal))
+                                sourceType = stVal?.ToString() ?? "csv";
+                            if (config.TryGetValue("delimiter", out var delimVal))
+                            {
+                                var delimStr = delimVal?.ToString();
+                                if (!string.IsNullOrEmpty(delimStr) && delimStr.Length == 1)
+                                    delimiter = delimStr[0];
+                            }
+                            if (config.TryGetValue("mssql_database", out var dbVal))
+                                mssqlDatabase = dbVal?.ToString();
+                            if (config.TryGetValue("mssql_instance_id", out var instVal))
+                            {
+                                if (int.TryParse(instVal?.ToString(), out var instId))
+                                    mssqlInstanceId = instId;
+                            }
                         }
                     }
-                    catch (Exception delimEx)
+                    catch (Exception configEx)
                     {
-                        _logger.SystemWarn($"[AnalysisProcessingService] Failed to parse delimiter from config for analysis {analysis.Id}, using default ';': {delimEx.Message}");
+                        _logger.SystemWarn($"[AnalysisProcessingService] Failed to parse config for analysis {analysis.Id}: {configEx.Message}");
+                    }
+                }
+
+                // For CSV source, verify file exists
+                var filePath = "";
+                if (sourceType == "csv")
+                {
+                    filePath = Path.Combine(_uploadPath, analysis.TenantId.ToString(), analysis.SourceFileName);
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.SystemWarn($"[AnalysisProcessingService] Skipping stuck analysis {analysis.Id}: file not found at {filePath}");
+                        await _repository.FailAnalysisAsync(analysis.Id, $"Recovery failed: source file not found at {filePath}");
+                        continue;
                     }
                 }
 
@@ -83,13 +102,16 @@ public sealed class AnalysisProcessingService : BackgroundService
                 {
                     AnalysisId = analysis.Id,
                     TenantId = analysis.TenantId,
+                    SourceType = sourceType,
                     FilePath = filePath,
                     SourceFileName = analysis.SourceFileName,
-                    Delimiter = delimiter
+                    Delimiter = delimiter,
+                    MssqlDatabase = mssqlDatabase,
+                    MssqlInstanceId = mssqlInstanceId
                 });
                 _signal.Release();
 
-                _logger.SystemWarn($"[AnalysisProcessingService] Re-enqueued stuck analysis: id={analysis.Id}, status={analysis.Status}");
+                _logger.SystemWarn($"[AnalysisProcessingService] Re-enqueued stuck analysis: id={analysis.Id}, status={analysis.Status}, source={sourceType}");
             }
         }
         catch (Exception ex)

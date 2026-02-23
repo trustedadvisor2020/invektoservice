@@ -29,6 +29,13 @@ var claudeModel = builder.Configuration["Claude:Model"] ?? "claude-haiku-4-5-202
 var claudeMaxTokens = builder.Configuration.GetValue<int>("Claude:MaxTokens", 4096);
 var claudeTimeoutSeconds = builder.Configuration.GetValue<int>("Claude:TimeoutSeconds", 30);
 
+// Customer MSSQL configuration (optional — for import-mssql endpoint)
+var mssqlServer = builder.Configuration["CustomerMssql:Server"] ?? "";
+var mssqlPort = builder.Configuration.GetValue<int>("CustomerMssql:Port", 1433);
+var mssqlUser = builder.Configuration["CustomerMssql:User"] ?? "";
+var mssqlPassword = builder.Configuration["CustomerMssql:Password"] ?? "";
+var mssqlConfigured = !string.IsNullOrEmpty(mssqlServer) && !string.IsNullOrEmpty(mssqlUser);
+
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
     throw new InvalidOperationException("FATAL: ConnectionStrings:PostgreSQL is not configured");
@@ -89,7 +96,22 @@ builder.Services.AddSingleton<AnalyticsRepository>();
 // Register pipeline services (Phase A: stages 1-3)
 builder.Services.AddSingleton<CsvStreamReader>();
 builder.Services.AddSingleton<TextNormalizer>();
-builder.Services.AddSingleton<CleanerService>();
+
+// Register MSSQL reader (optional — null if not configured)
+if (mssqlConfigured)
+{
+    builder.Services.AddSingleton<MssqlReaderService>(sp =>
+        new MssqlReaderService(mssqlServer, mssqlPort, mssqlUser, mssqlPassword,
+            sp.GetRequiredService<JsonLinesLogger>()));
+}
+
+builder.Services.AddSingleton<CleanerService>(sp =>
+    new CleanerService(
+        sp.GetRequiredService<AnalyticsRepository>(),
+        sp.GetRequiredService<CsvStreamReader>(),
+        sp.GetService<MssqlReaderService>(), // nullable — null if not configured
+        sp.GetRequiredService<TextNormalizer>(),
+        sp.GetRequiredService<JsonLinesLogger>()));
 builder.Services.AddSingleton<ThreaderService>(sp =>
     new ThreaderService(
         sp.GetRequiredService<AnalyticsRepository>(),
@@ -276,6 +298,70 @@ app.MapPost("/api/v1/wa/{tenantId:int}/upload", async (
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAStorageError, "File upload failed", requestId), statusCode: 500);
     }
 }).DisableAntiforgery();
+
+// ============================================================
+// MSSQL Import endpoint: POST /api/v1/wa/{tenantId}/import-mssql
+// ============================================================
+
+app.MapPost("/api/v1/wa/{tenantId:int}/import-mssql", async (
+    int tenantId,
+    HttpContext ctx,
+    AnalyticsRepository repo,
+    AnalysisProcessingService processingService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    if (!mssqlConfigured)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAStorageError, "CustomerMssql is not configured on this server", requestId), statusCode: 503);
+
+    // Parse request body
+    string? database;
+    int instanceId;
+    try
+    {
+        var body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body);
+        database = body.GetProperty("database").GetString();
+        instanceId = body.GetProperty("instanceId").GetInt32();
+
+        if (string.IsNullOrWhiteSpace(database))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, "database is required", requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WACsvParseError, $"Invalid request body: {ex.Message}", requestId), statusCode: 400);
+    }
+
+    // Build config JSON
+    var config = new Dictionary<string, object?>
+    {
+        ["source_type"] = "mssql",
+        ["mssql_database"] = database,
+        ["mssql_instance_id"] = instanceId
+    };
+    var configJson = JsonSerializer.Serialize(config);
+
+    // Create analysis record (source_file_name stores database_instanceId for identification)
+    var sourceLabel = $"{database}_{instanceId}";
+    var analysisId = await repo.CreateAnalysisAsync(tenantId, sourceLabel, configJson);
+
+    // Enqueue for background processing
+    processingService.EnqueueAnalysis(new AnalysisProcessJob
+    {
+        AnalysisId = analysisId,
+        TenantId = tenantId,
+        SourceType = "mssql",
+        SourceFileName = sourceLabel,
+        MssqlDatabase = database,
+        MssqlInstanceId = instanceId
+    });
+
+    jsonLogger.StepInfo($"MSSQL import started: id={analysisId}, tenant={tenantId}, db={database}, instance={instanceId}", requestId);
+    return Results.Json(new { analysisId, status = "pending", database, instanceId }, statusCode: 202);
+});
 
 // ============================================================
 // Analysis CRUD endpoints
@@ -543,6 +629,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Ready check (DB connection)", Auth = "none", Category = "Health" },
         new() { Method = "POST", Path = "/api/v1/wa/{tenantId}/upload", Description = "Upload CSV and start analysis", Auth = "Bearer JWT", Category = "Pipeline" },
+        new() { Method = "POST", Path = "/api/v1/wa/{tenantId}/import-mssql", Description = "Import from customer MSSQL DB", Auth = "Bearer JWT", Category = "Pipeline" },
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses", Description = "List analyses (paginated)", Auth = "Bearer JWT", Category = "Pipeline" },
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}", Description = "Get analysis status", Auth = "Bearer JWT", Category = "Pipeline" },
         new() { Method = "DELETE", Path = "/api/v1/wa/{tenantId}/analyses/{id}", Description = "Delete analysis + cascade data", Auth = "Bearer JWT", Category = "Pipeline" },

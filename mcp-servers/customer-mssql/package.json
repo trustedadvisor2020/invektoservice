@@ -1,0 +1,14 @@
+{
+  "name": "customer-mssql",
+  "version": "1.0.0",
+  "description": "Read-only MSSQL MCP server for customer databases",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "mssql": "^11.0.0"
+  }
+}

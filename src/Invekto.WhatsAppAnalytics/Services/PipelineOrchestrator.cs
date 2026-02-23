@@ -69,19 +69,29 @@ public sealed class PipelineOrchestrator
         }
 
         // ============================================================
-        // Stage 1: Cleaning
+        // Stage 1: Cleaning (CSV or MSSQL source)
         // ============================================================
         await _repo.UpdateAnalysisStatusAsync(analysisId, "cleaning", null, ct);
 
-        var messageCount = await _cleaner.RunAsync(
-            analysisId, tenantId, job.FilePath, job.Delimiter,
-            OnProgress, ct);
+        int messageCount;
+        if (job.SourceType == "mssql" && job.MssqlDatabase != null && job.MssqlInstanceId.HasValue)
+        {
+            messageCount = await _cleaner.RunFromMssqlAsync(
+                analysisId, tenantId, job.MssqlDatabase, job.MssqlInstanceId.Value,
+                OnProgress, ct);
+        }
+        else
+        {
+            messageCount = await _cleaner.RunAsync(
+                analysisId, tenantId, job.FilePath, job.Delimiter,
+                OnProgress, ct);
+        }
 
-        _logger.SystemInfo($"[PipelineOrchestrator] Stage 1 complete: {messageCount:N0} messages inserted");
+        _logger.SystemInfo($"[PipelineOrchestrator] Stage 1 complete: {messageCount:N0} messages inserted (source={job.SourceType})");
 
         if (messageCount == 0)
         {
-            await _repo.FailAnalysisAsync(analysisId, "No valid messages found in CSV file");
+            await _repo.FailAnalysisAsync(analysisId, $"No valid messages found in {job.SourceType} source");
             return;
         }
 

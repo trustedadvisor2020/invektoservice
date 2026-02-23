@@ -5,34 +5,60 @@ using Invekto.WhatsAppAnalytics.Models;
 namespace Invekto.WhatsAppAnalytics.Services.Pipeline;
 
 /// <summary>
-/// Stage 1: Clean raw CSV -> normalize text -> deduplicate -> insert to wa_messages.
-/// C# port of Python 01_cleaner.py.
+/// Stage 1: Clean raw data -> normalize text -> deduplicate -> insert to wa_messages.
+/// Supports CSV (file) and MSSQL (customer DB) as data sources.
 /// </summary>
 public sealed class CleanerService
 {
     private readonly AnalyticsRepository _repo;
     private readonly CsvStreamReader _csvReader;
+    private readonly MssqlReaderService? _mssqlReader;
     private readonly TextNormalizer _normalizer;
     private readonly JsonLinesLogger _logger;
 
-    public CleanerService(AnalyticsRepository repo, CsvStreamReader csvReader, TextNormalizer normalizer, JsonLinesLogger logger)
+    public CleanerService(AnalyticsRepository repo, CsvStreamReader csvReader, MssqlReaderService? mssqlReader, TextNormalizer normalizer, JsonLinesLogger logger)
     {
         _repo = repo;
         _csvReader = csvReader;
+        _mssqlReader = mssqlReader;
         _normalizer = normalizer;
         _logger = logger;
     }
 
     /// <summary>
-    /// Run Stage 1: clean + dedup + insert.
-    /// Returns total inserted message count.
+    /// Run Stage 1 from CSV source (existing flow, unchanged).
     /// </summary>
-    public async Task<int> RunAsync(int analysisId, int tenantId, string filePath, char delimiter,
+    public Task<int> RunAsync(int analysisId, int tenantId, string filePath, char delimiter,
         Func<StageProgress, Task> onProgress, CancellationToken ct)
     {
-        _logger.SystemInfo($"[CleanerService] Starting Stage 1 for analysis {analysisId}");
+        var totalLines = (long)(_csvReader.CountLines(filePath) - 1);
+        var source = _csvReader.StreamChunksAsync(filePath, delimiter);
+        return RunCoreAsync(analysisId, tenantId, source, totalLines, onProgress, ct);
+    }
 
-        var totalLines = _csvReader.CountLines(filePath) - 1; // subtract header
+    /// <summary>
+    /// Run Stage 1 from MSSQL source (new flow).
+    /// </summary>
+    public async Task<int> RunFromMssqlAsync(int analysisId, int tenantId, string database, int instanceId,
+        Func<StageProgress, Task> onProgress, CancellationToken ct)
+    {
+        if (_mssqlReader == null)
+            throw new InvalidOperationException("MSSQL reader is not configured (CustomerMssql settings missing)");
+
+        var totalLines = await _mssqlReader.CountAsync(database, instanceId, ct);
+        var source = _mssqlReader.StreamChunksAsync(database, instanceId, ct: ct);
+        return await RunCoreAsync(analysisId, tenantId, source, totalLines, onProgress, ct);
+    }
+
+    /// <summary>
+    /// Core cleaning logic shared by CSV and MSSQL sources.
+    /// </summary>
+    private async Task<int> RunCoreAsync(int analysisId, int tenantId,
+        IAsyncEnumerable<List<string[]>> source, long totalLines,
+        Func<StageProgress, Task> onProgress, CancellationToken ct)
+    {
+        _logger.SystemInfo($"[CleanerService] Starting Stage 1 for analysis {analysisId}, ~{totalLines:N0} rows expected");
+
         var processedRows = 0;
         var insertedTotal = 0;
         var duplicateCount = 0;
@@ -41,7 +67,7 @@ public sealed class CleanerService
         // Track previous message per conversation for dedup
         var prevByConversation = new Dictionary<string, (string hash, DateTime timestamp)>();
 
-        await foreach (var chunk in _csvReader.StreamChunksAsync(filePath, delimiter))
+        await foreach (var chunk in source)
         {
             ct.ThrowIfCancellationRequested();
 

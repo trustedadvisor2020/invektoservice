@@ -49,12 +49,20 @@ public sealed class StageProgress
 
 /// <summary>
 /// Queued job for background processing.
+/// SourceType determines data source: "csv" (default) reads from FilePath, "mssql" reads from customer DB.
 /// </summary>
 public sealed class AnalysisProcessJob
 {
     public int AnalysisId { get; set; }
     public int TenantId { get; set; }
+    public string SourceType { get; set; } = "csv"; // "csv" | "mssql"
+
+    // CSV source fields
     public string FilePath { get; set; } = "";
     public string SourceFileName { get; set; } = "";
     public char Delimiter { get; set; } = ';';
+
+    // MSSQL source fields
+    public string? MssqlDatabase { get; set; }
+    public int? MssqlInstanceId { get; set; }
 }
