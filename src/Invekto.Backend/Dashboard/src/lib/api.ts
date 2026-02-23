@@ -1,4 +1,4 @@
-﻿import { jwtDecode } from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import type { FlowExecutionSummary, FlowExecutionDetail } from '../types/flow';
 
 // API types

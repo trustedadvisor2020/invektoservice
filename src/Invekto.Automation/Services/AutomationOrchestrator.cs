@@ -326,18 +326,15 @@ public sealed class AutomationOrchestrator
                 };
             }
 
-            // Flow mismatch detection: if active flow changed since session was created,
-            // the session's current node won't exist in the new flow's graph. Reset to start.
+            // Guard: if session's current node no longer exists in the active flow graph
+            // (e.g. tenant changed flow while session was active), restart from trigger
             if (state.CallStack.Count == 0
                 && !state.ActiveFlowId.HasValue
                 && !string.IsNullOrEmpty(state.CurrentNodeId)
                 && !graph.NodesById.ContainsKey(state.CurrentNodeId))
             {
-                _logger.StepInfo($"Flow mismatch: node '{state.CurrentNodeId}' not in current flow graph. Restarting session for tenant {tenantId}.", requestId);
-                await _repo.EndSessionAsync(session!.Id, "completed", ct);
-                state = new SessionStateV2 { CurrentNodeId = graph.TriggerStart?.Id ?? "" };
-                await _repo.CreateSessionAsync(tenantId, chatId, phone, "v2_active", ct);
-                session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
+                _logger.StepInfo($"Flow graph changed: node '{state.CurrentNodeId}' missing. Resetting to trigger start for tenant {tenantId}.", requestId);
+                state.CurrentNodeId = graph.TriggerStart?.Id ?? "";
             }
 
             // Sub-flow resume: if session was paused inside a sub-flow, load that flow's graph

@@ -1,4 +1,4 @@
-﻿/** Flow Builder Contract v2 - Node/Edge Graph Model */
+/** Flow Builder Contract v2 - Node/Edge Graph Model */
 
 export interface FlowConfigV2 {
   version: 2;
