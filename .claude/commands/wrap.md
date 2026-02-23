@@ -46,6 +46,17 @@ Scan the session for learnable signals (same logic as `/learn`):
 3. Append directly to `arch/lessons-learned.md` (auto mode, no Q approval needed)
 4. If nothing learnable found, skip silently
 
+### Step 2.5: Git Hygiene Scan
+
+Check for files that should NOT be tracked (already in `.gitignore` but previously committed):
+
+```bash
+powershell -NoProfile -Command "git -C C:\CRMs\InvektoServices ls-files --cached -i --exclude-standard | Measure-Object -Line"
+```
+
+**If count > 0:** Remove from tracking with `git rm -r --cached <path>` and stage the removal.
+Common offenders: `node_modules/`, `deploy_output/`, `*.pfx`, `appsettings.Production.json`.
+
 ### Step 3: Secret Scan (BLOCKING GATE)
 
 **Same as /push Step 3 - scan ALL changed files for secrets.**
