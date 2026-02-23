@@ -323,6 +323,39 @@ function TraceNode({ entry, index }: { entry: NodeTraceEntry; index: number }) {
             <span className="text-navy-300">{entry.exit_handle}</span>
           )}
         </div>
+
+        {/* User input */}
+        {entry.user_input && (
+          <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded text-[11px] text-blue-700">
+            <span className="text-blue-400 font-medium">Gelen:</span> {entry.user_input}
+          </div>
+        )}
+
+        {/* Bot messages */}
+        {entry.bot_messages && entry.bot_messages.length > 0 && (
+          <div className="mt-1 space-y-0.5">
+            {entry.bot_messages.map((msg, mi) => (
+              <div key={mi} className="px-2 py-1 bg-emerald-50 border border-emerald-100 rounded text-[11px] text-emerald-700">
+                <span className="text-emerald-400 font-medium">Giden:</span> {msg}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Variables snapshot */}
+        {entry.variables && Object.keys(entry.variables).length > 0 && (
+          <div className="mt-1 px-2 py-1 bg-navy-25 border border-navy-100 rounded">
+            <div className="text-[9px] text-navy-300 mb-0.5">Degiskenler</div>
+            {Object.entries(entry.variables)
+              .filter(([k]) => !k.startsWith('__'))
+              .map(([k, v]) => (
+                <div key={k} className="text-[10px] flex gap-1">
+                  <span className="text-navy-400 font-mono">{k}:</span>
+                  <span className="text-navy-600 truncate">{v}</span>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </div>
   );

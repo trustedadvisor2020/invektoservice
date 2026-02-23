@@ -131,9 +131,8 @@ export function FlowEditorPage() {
       aiChat.close();
       return;
     }
-    // Close simulation & flow log when opening AI chat
+    // Close simulation when opening AI chat (flow log stays independent)
     useSimulationStore.getState().close();
-    useFlowLogStore.getState().close();
     await aiChat.open(flowId, tenantId);
   }, [flowId, tenantId]);
 
@@ -142,19 +141,16 @@ export function FlowEditorPage() {
     loadFlow(config, wizardHistory);
   }, [loadFlow]);
 
-  // Flow log toggle — mutual exclusion with AI chat & simulation
+  // Flow log toggle — independent panel, only controlled by its button
   const flowLogOpen = useFlowLogStore((s) => s.isOpen);
 
   const handleToggleFlowLog = useCallback(() => {
     const logStore = useFlowLogStore.getState();
     if (logStore.isOpen) {
       logStore.close();
-      return;
+    } else {
+      logStore.open();
     }
-    // Close AI chat and simulation when opening flow log
-    useAiChatStore.getState().close();
-    useSimulationStore.getState().close();
-    logStore.open();
   }, []);
 
   // AHA #4: Tek Tikla Test — save first if dirty, then start simulation
@@ -168,9 +164,8 @@ export function FlowEditorPage() {
       return;
     }
 
-    // Close AI chat & flow log when opening simulation
+    // Close AI chat when opening simulation (flow log stays independent)
     useAiChatStore.getState().close();
-    useFlowLogStore.getState().close();
 
     // If dirty, warn user to save first
     if (store.isDirty) {

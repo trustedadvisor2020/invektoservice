@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { api, TemplateCatalogItem, AvailableTemplate } from '../lib/api';
+import { api, ApiClientError, TemplateCatalogItem, AvailableTemplate } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import {
   RefreshCw, Plus, Search, Eye, Trash2, Check, Download,
@@ -58,8 +58,9 @@ function TenantTemplateView() {
       setItems(res.items);
       setAdoptedIds(new Set(res.items.filter(t => t.is_adopted).map(t => t.id)));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      setError(`Sablonlar yuklenemedi: ${msg}`);
+      const code = err instanceof ApiClientError ? err.errorCode : '';
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Sablonlar yuklenemedi${code ? ` [${code}]` : ''}: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -74,11 +75,13 @@ function TenantTemplateView() {
       await api.adoptTemplate(templateId);
       setAdoptedIds(prev => new Set([...prev, templateId]));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      if (msg.includes('409') || msg.includes('already')) {
+      const status = err instanceof ApiClientError ? err.status : 0;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (status === 409 || msg.includes('already')) {
         setAdoptedIds(prev => new Set([...prev, templateId]));
       } else {
-        setError(`Sablon benimsenemedi: ${msg}`);
+        const code = err instanceof ApiClientError ? err.errorCode : '';
+        setError(`Sablon benimsenemedi${code ? ` [${code}]` : ''}: ${msg}`);
       }
     } finally {
       setAdoptingId(null);

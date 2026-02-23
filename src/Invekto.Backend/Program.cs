@@ -2328,7 +2328,11 @@ app.MapPut("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger js
     if (!body.TryGetProperty("sector", out var sectorProp) || string.IsNullOrWhiteSpace(sectorProp.GetString()))
         return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendSectorInvalidValue, "sector field required", "-"));
 
-    var sector = sectorProp.GetString()!.Trim().ToLowerInvariant();
+    var sectorRaw = sectorProp.GetString();
+    if (sectorRaw == null)
+        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendSectorInvalidValue, "sector must be a string", "-"));
+
+    var sector = sectorRaw.Trim().ToLowerInvariant();
     if (!allowedSectors.Contains(sector))
         return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendSectorInvalidValue, $"Gecersiz sektor: {sector}", "-"));
 

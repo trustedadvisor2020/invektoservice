@@ -120,6 +120,12 @@ public sealed class SimulationEngine : IHostedService, IDisposable
         // Don't execute yet — wait for the user's first message (trigger_start = "customer sends a message")
         _logger.StepInfo($"Simulation created (awaiting first message): session={sessionId}, tenant={tenantId}, flow={flowId}", sessionId);
 
+        // Fire-and-forget: create execution log for this simulation
+        _ = LogCreateAsync(session, ct).ContinueWith(t =>
+        {
+            if (t.IsFaulted) _logger.SystemWarn($"[{ErrorCodes.AutomationExecLogInsertFailed}] Simulation log create failed: {t.Exception?.InnerException?.Message}");
+        }, TaskScheduler.Default);
+
         return new SimulationStartResult
         {
             Success = true,
@@ -187,6 +193,12 @@ public sealed class SimulationEngine : IHostedService, IDisposable
         _logger.StepInfo($"Simulation step: session={sessionId}, input='{Truncate(userMessage, 50)}', " +
             $"botMessages={result.Messages.Count}, currentNode={session.State.CurrentNodeId}, status={session.State.Status}", sessionId);
 
+        // Fire-and-forget: update execution log with new trace entries
+        _ = LogUpdateAsync(session, userMessage, result.Messages, result.IsTerminal, result.ErrorMessage, ct).ContinueWith(t =>
+        {
+            if (t.IsFaulted) _logger.SystemWarn($"[{ErrorCodes.AutomationExecLogUpdateFailed}] Simulation log update failed: {t.Exception?.InnerException?.Message}");
+        }, TaskScheduler.Default);
+
         return new SimulationStepResult
         {
             Success = true,
@@ -224,6 +236,71 @@ public sealed class SimulationEngine : IHostedService, IDisposable
         if (removed)
             _logger.StepInfo($"Simulation session removed: {sessionId}", sessionId);
         return removed;
+    }
+
+    // ============================================================
+    // Execution log helpers (fire-and-forget)
+    // ============================================================
+
+    private async Task LogCreateAsync(SimulationSession session, CancellationToken ct)
+    {
+        var logId = await _repo.CreateExecutionLogAsync(
+            session.TenantId, session.FlowId,
+            chatId: $"sim_{session.SessionId[..8]}",
+            phone: "simulation",
+            instanceId: null,
+            triggerMessage: "[Simulasyon]",
+            "[]",
+            ct);
+        session.ExecutionLogId = logId;
+        session.PathSnapshotCount = 0;
+    }
+
+    private async Task LogUpdateAsync(
+        SimulationSession session, string? userMessage,
+        List<string> botMessages, bool isTerminal, string? errorMessage, CancellationToken ct)
+    {
+        if (session.ExecutionLogId == 0) return;
+
+        var newNodeIds = session.State.ExecutionPath.Skip(session.PathSnapshotCount).ToList();
+        session.PathSnapshotCount = session.State.ExecutionPath.Count;
+
+        var entries = new List<object>();
+        for (var i = 0; i < newNodeIds.Count; i++)
+        {
+            var nodeId = newNodeIds[i];
+            var info = session.Graph.NodesById.TryGetValue(nodeId, out var n) ? n : null;
+            var entry = new Dictionary<string, object?>
+            {
+                ["node_id"] = nodeId,
+                ["node_type"] = info?.Type ?? "unknown",
+                ["label"] = info?.GetData("label"),
+                ["entered_at"] = DateTime.UtcNow.ToString("o"),
+                ["exit_handle"] = null,
+                ["duration_ms"] = null,
+            };
+            // First node of this step: attach user input
+            if (i == 0 && userMessage != null)
+                entry["user_input"] = userMessage;
+            // Last node of this step: attach bot messages + variable snapshot
+            if (i == newNodeIds.Count - 1)
+            {
+                if (botMessages.Count > 0)
+                    entry["bot_messages"] = botMessages;
+                entry["variables"] = new Dictionary<string, string>(session.State.Variables);
+            }
+            entries.Add(entry);
+        }
+
+        var traceJson = JsonSerializer.Serialize(entries);
+        var status = isTerminal
+            ? (session.State.Status == "handed_off" ? "handed_off" : (errorMessage != null ? "error" : "completed"))
+            : "running";
+        var varsJson = isTerminal ? JsonSerializer.Serialize(session.State.Variables) : null;
+
+        await _repo.UpdateExecutionLogAsync(
+            session.ExecutionLogId, session.TenantId,
+            traceJson, status, varsJson, errorMessage, ct);
     }
 
     // ============================================================
@@ -268,6 +345,8 @@ internal sealed class SimulationSession
     public required DateTime CreatedAt { get; init; }
     public DateTime LastActivityAt { get; set; }
     public DateTime ExpiresAt { get; set; }
+    public long ExecutionLogId { get; set; }
+    public int PathSnapshotCount { get; set; }
 }
 
 public sealed class SimulationMessage

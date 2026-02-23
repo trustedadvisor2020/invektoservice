@@ -4,9 +4,9 @@
   "packet_id": null,
   "slug": "20260223-self-service-onboarding",
   "risk": "MEDIUM",
-  "status": "DEV",
+  "status": "DONE",
   "created_at": "2026-02-23T20:00:00Z",
-  "updated_at": "2026-02-23T21:00:00Z",
+  "updated_at": "2026-02-23T22:00:00Z",
   "plan": {
     "summary": "Self-service onboarding: (A) Sector selection via GET/PUT /api/v1/settings/sector endpoints + SettingsPage GeneralTab dropdown with 9 sector options. (B) Template adoption via 3 tenant-scoped proxy routes to Knowledge service (available, adopt, adoptions) + dual-mode TemplateLibraryPage showing card grid for tenants with adopt buttons, preserving ops admin table view.",
     "q_intent": "ikisini de self servis yap — onboarding wizard step 1 (sektor secimi) ve step 2 (sablon ekleme) tenant tarafindan yapilabilsin",
@@ -38,16 +38,19 @@
     {"id": "Q5", "question": "Does the template adopt button handle 409 Conflict (already adopted) gracefully without crashing?", "category": "error-handling"}
   ],
   "review": {
-    "iteration": 0,
-    "codex_verdict": null,
+    "iteration": 1,
+    "codex_verdict": "PASS",
     "blocking_issues": [],
-    "history": []
+    "history": [
+      {"iteration": 0, "verdict": "FAIL", "issues": ["CQ1: generic error messages", "CQ5: null-forgiving operator"], "fixed": true},
+      {"iteration": 1, "verdict": "PASS", "issues": [], "note": "CQ1-CQ8 PASS, CoVe Q1-Q4 UNKNOWN (base impl in ff19683), Q5 PASS. Q FORCE PASS approved."}
+    ]
   },
   "git_diff": {
-    "sha256": "",
+    "sha256": "9f4b97c53472cc3c09aa15dfb95dfb9da3f70dfece34d9d66c0fc9501f3c292c",
     "full_path": "arch/plans/diffs/20260223-self-service-onboarding.diff",
-    "total_bytes": 0,
-    "chunks": 0,
-    "stats": {"insertions": 0, "deletions": 0, "files_count": 0}
+    "total_bytes": 34587,
+    "chunks": 1,
+    "stats": {"insertions": 591, "deletions": 33, "files_count": 7}
   }
 }

@@ -423,4 +423,7 @@ export interface NodeTraceEntry {
   entered_at: string;
   exit_handle: string | null;
   duration_ms: number | null;
+  user_input?: string;
+  bot_messages?: string[];
+  variables?: Record<string, string>;
 }

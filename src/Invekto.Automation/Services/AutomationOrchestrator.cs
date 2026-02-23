@@ -706,15 +706,35 @@ public sealed class AutomationOrchestrator
 
             var now = DateTime.UtcNow;
             var traceEntries = new List<object>(newNodeIds.Count);
-            foreach (var nodeId in newNodeIds)
+            for (var i = 0; i < newNodeIds.Count; i++)
             {
+                var nodeId = newNodeIds[i];
                 string? nodeType = null, label = null;
                 if (graph.NodesById.TryGetValue(nodeId, out var node))
                 {
                     nodeType = node.Type;
                     label = node.GetData("label");
                 }
-                traceEntries.Add(new { node_id = nodeId, node_type = nodeType, label, entered_at = now });
+                var entry = new Dictionary<string, object?>
+                {
+                    ["node_id"] = nodeId,
+                    ["node_type"] = nodeType,
+                    ["label"] = label,
+                    ["entered_at"] = now.ToString("o"),
+                    ["exit_handle"] = (object?)null,
+                    ["duration_ms"] = (object?)null,
+                };
+                // First node: attach user input
+                if (i == 0)
+                    entry["user_input"] = messageText;
+                // Last node: attach bot messages + variable snapshot
+                if (i == newNodeIds.Count - 1)
+                {
+                    if (result.Messages.Count > 0)
+                        entry["bot_messages"] = result.Messages;
+                    entry["variables"] = new Dictionary<string, string>(state.Variables);
+                }
+                traceEntries.Add(entry);
             }
 
             var traceJson = JsonSerializer.Serialize(traceEntries, _jsonOptions);

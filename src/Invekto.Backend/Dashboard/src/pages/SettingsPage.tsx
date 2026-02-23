@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { api, type InstanceDto, type WorkingHoursDto } from '../lib/api';
+import { api, ApiClientError, type InstanceDto, type WorkingHoursDto } from '../lib/api';
 import { Settings, RefreshCw, Wifi, WifiOff, Smartphone, Globe, Radio, MessageSquare, Clock, Save, Check, Building2, Phone, Factory } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
@@ -83,8 +83,9 @@ export function SettingsPage() {
       const result = await api.getSector();
       setSector(result.sector);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      setSectorError(`Sektor yuklenemedi: ${msg}`);
+      const code = err instanceof ApiClientError ? err.errorCode : '';
+      const msg = err instanceof Error ? err.message : String(err);
+      setSectorError(`Sektor yuklenemedi${code ? ` [${code}]` : ''}: ${msg}`);
     } finally {
       setSectorLoading(false);
     }
@@ -100,8 +101,9 @@ export function SettingsPage() {
       setSectorSuccess(true);
       setTimeout(() => setSectorSuccess(false), 3000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
-      setSectorError(`Sektor kaydedilemedi: ${msg}`);
+      const code = err instanceof ApiClientError ? err.errorCode : '';
+      const msg = err instanceof Error ? err.message : String(err);
+      setSectorError(`Sektor kaydedilemedi${code ? ` [${code}]` : ''}: ${msg}`);
     } finally {
       setSectorSaving(false);
     }
