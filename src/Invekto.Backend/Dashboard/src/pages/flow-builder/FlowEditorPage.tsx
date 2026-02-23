@@ -7,10 +7,12 @@ import { NodePalette } from './components/NodePalette';
 import { Toolbar } from './components/Toolbar';
 import { SimulationPanel } from './components/SimulationPanel';
 import { AiChatPanel } from './components/AiChatPanel';
+import { FlowLogPanel } from './components/FlowLogPanel';
 import { NodePropertyPanel } from './panels/NodePropertyPanel';
 import { useFlowStore } from '../../stores/flow-store';
 import { useSimulationStore } from '../../stores/simulation-store';
 import { useAiChatStore } from '../../stores/ai-chat-store';
+import { useFlowLogStore } from '../../stores/flow-log-store';
 import { useAuth } from '../../hooks/useAuth';
 import { api, ApiClientError } from '../../lib/api';
 import type { FlowConfigV2 } from '../../types/flow';
@@ -120,7 +122,7 @@ export function FlowEditorPage() {
     navigate('/flow-builder');
   }, [navigate]);
 
-  // AI Chat toggle — mutual exclusion with simulation
+  // AI Chat toggle — mutual exclusion with simulation & flow log
   const aiChatOpen = useAiChatStore((s) => s.isOpen);
 
   const handleToggleAiChat = useCallback(async () => {
@@ -129,8 +131,9 @@ export function FlowEditorPage() {
       aiChat.close();
       return;
     }
-    // Close simulation when opening AI chat
+    // Close simulation & flow log when opening AI chat
     useSimulationStore.getState().close();
+    useFlowLogStore.getState().close();
     await aiChat.open(flowId, tenantId);
   }, [flowId, tenantId]);
 
@@ -138,6 +141,21 @@ export function FlowEditorPage() {
     const wizardHistory = useFlowStore.getState().wizardHistory;
     loadFlow(config, wizardHistory);
   }, [loadFlow]);
+
+  // Flow log toggle — mutual exclusion with AI chat & simulation
+  const flowLogOpen = useFlowLogStore((s) => s.isOpen);
+
+  const handleToggleFlowLog = useCallback(() => {
+    const logStore = useFlowLogStore.getState();
+    if (logStore.isOpen) {
+      logStore.close();
+      return;
+    }
+    // Close AI chat and simulation when opening flow log
+    useAiChatStore.getState().close();
+    useSimulationStore.getState().close();
+    logStore.open();
+  }, []);
 
   // AHA #4: Tek Tikla Test — save first if dirty, then start simulation
   const handleTest = useCallback(async () => {
@@ -150,8 +168,9 @@ export function FlowEditorPage() {
       return;
     }
 
-    // Close AI chat when opening simulation
+    // Close AI chat & flow log when opening simulation
     useAiChatStore.getState().close();
+    useFlowLogStore.getState().close();
 
     // If dirty, warn user to save first
     if (store.isDirty) {
@@ -168,6 +187,7 @@ export function FlowEditorPage() {
     return () => {
       useSimulationStore.getState().close();
       useAiChatStore.getState().close();
+      useFlowLogStore.getState().close();
     };
   }, []);
 
@@ -237,7 +257,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-navy-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} />
 
         {/* Save error banner */}
         {saveError && (
@@ -252,8 +272,11 @@ export function FlowEditorPage() {
           {/* Left: Node palette */}
           <NodePalette />
 
-          {/* Left: AI Chat panel (next to palette) */}
+          {/* Left: AI Chat panel (next to palette, mutual exclusion with flow log) */}
           <AiChatPanel onApply={handleAiApply} />
+
+          {/* Left: Flow Log panel (next to palette, mutual exclusion with AI chat) */}
+          <FlowLogPanel tenantId={tenantId} flowId={flowId} />
 
           {/* Center: Canvas */}
           <div className="flex-1 flex flex-col min-w-0">

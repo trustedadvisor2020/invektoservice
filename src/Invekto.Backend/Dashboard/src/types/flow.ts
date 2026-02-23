@@ -1,4 +1,4 @@
-/** Flow Builder Contract v2 - Node/Edge Graph Model */
+﻿/** Flow Builder Contract v2 - Node/Edge Graph Model */
 
 export interface FlowConfigV2 {
   version: 2;
@@ -391,4 +391,36 @@ export function createDefaultFlow(): FlowConfigV2 {
       max_loop_count: 10,
     },
   };
+}
+
+// ============================================================
+// Flow Execution Log types
+// ============================================================
+
+export interface FlowExecutionSummary {
+  id: number;
+  flow_id: number;
+  chat_id: string | null;
+  phone: string | null;
+  trigger_message: string | null;
+  started_at: string;
+  completed_at: string | null;
+  status: 'running' | 'completed' | 'error' | 'handed_off' | 'waiting';
+  node_count: number;
+}
+
+export interface FlowExecutionDetail extends FlowExecutionSummary {
+  instance_id: string | null;
+  node_trace: NodeTraceEntry[];
+  variables_final: Record<string, string> | null;
+  error_detail: string | null;
+}
+
+export interface NodeTraceEntry {
+  node_id: string;
+  node_type: string;
+  label: string | null;
+  entered_at: string;
+  exit_handle: string | null;
+  duration_ms: number | null;
 }

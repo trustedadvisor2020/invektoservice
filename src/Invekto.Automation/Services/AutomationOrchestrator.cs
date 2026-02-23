@@ -136,7 +136,7 @@ public sealed class AutomationOrchestrator
                     // v2 path: pure engine + orchestrator side-effects
                     return await ProcessV2MessageAsync(
                         flowDoc, rootFlowId, tenantId, chatId, phone, messageText,
-                        message.Time, requestId, callbackUrl, sw, ct);
+                        message.Time, requestId, callbackUrl, resolvedInstanceId, sw, ct);
                 }
             }
 
@@ -265,7 +265,7 @@ public sealed class AutomationOrchestrator
     /// </summary>
     private async Task<bool> ProcessV2MessageAsync(
         JsonDocument flowDoc, int rootFlowId, int tenantId, string chatId, string? phone, string messageText,
-        long sequenceId, string requestId, string? callbackUrl, Stopwatch sw, CancellationToken ct)
+        long sequenceId, string requestId, string? callbackUrl, string instanceId, Stopwatch sw, CancellationToken ct)
     {
         // 1. Build immutable graph (root flow)
         var graph = FlowGraphV2.Build(flowDoc);
@@ -326,6 +326,20 @@ public sealed class AutomationOrchestrator
                 };
             }
 
+            // Flow mismatch detection: if active flow changed since session was created,
+            // the session's current node won't exist in the new flow's graph. Reset to start.
+            if (state.CallStack.Count == 0
+                && !state.ActiveFlowId.HasValue
+                && !string.IsNullOrEmpty(state.CurrentNodeId)
+                && !graph.NodesById.ContainsKey(state.CurrentNodeId))
+            {
+                _logger.StepInfo($"Flow mismatch: node '{state.CurrentNodeId}' not in current flow graph. Restarting session for tenant {tenantId}.", requestId);
+                await _repo.EndSessionAsync(session!.Id, "completed", ct);
+                state = new SessionStateV2 { CurrentNodeId = graph.TriggerStart?.Id ?? "" };
+                await _repo.CreateSessionAsync(tenantId, chatId, phone, "v2_active", ct);
+                session = await _repo.GetActiveSessionAsync(tenantId, chatId, ct);
+            }
+
             // Sub-flow resume: if session was paused inside a sub-flow, load that flow's graph
             if (state.ActiveFlowId.HasValue)
             {
@@ -381,23 +395,11 @@ public sealed class AutomationOrchestrator
             _logger.SystemWarn($"[{ErrorCodes.AutomationKnowledgeIntentFetchFailed}] Pre-flow enrichment failed for tenant {tenantId}: {ex.Message}");
         }
 
-        // 4b. Execute pure engine (with streaming) + sub-flow dispatch loop
-        var streamed = false;
-        Action<string> onMessage = msg =>
-        {
-            streamed = true;
-            _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                CallbackActions.SendMessage, msg, null, null, 0, callbackUrl, CancellationToken.None)
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                        _logger.SystemWarn($"Stream callback failed: {t.Exception?.InnerException?.Message}");
-                }, TaskScheduler.Default);
-        };
-
+        // 4b. Execute pure engine (no streaming — messages sent in order after execution)
+        var pathSnapshotCount = state.ExecutionPath.Count;
         var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
             tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-            onMessage: onMessage);
+            onMessage: null);
 
         // Sub-flow dispatch loop: handle CallSubFlow and sub-flow completion
         const int maxSubFlowDepth = 5;
@@ -434,7 +436,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: onMessage);
+                        onMessage: null);
                     continue;
                 }
 
@@ -447,7 +449,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: onMessage);
+                        onMessage: null);
                     continue;
                 }
 
@@ -459,7 +461,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: onMessage);
+                        onMessage: null);
                     continue;
                 }
 
@@ -504,7 +506,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: onMessage);
+                    onMessage: null);
                 continue;
             }
 
@@ -575,7 +577,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: onMessage);
+                    onMessage: null);
                 continue;
             }
 
@@ -583,20 +585,19 @@ public sealed class AutomationOrchestrator
             break;
         }
 
-        // 5. Side-effects: log messages (already sent via streaming, don't re-send)
+        // 4c. Fire-and-forget execution log
+        _ = LogFlowExecutionAsync(
+            state, result, graph, tenantId, rootFlowId, chatId, phone,
+            instanceId, messageText, pathSnapshotCount, requestId);
+
+        // 5. Side-effects: send messages in order (sequential to preserve delivery order)
         if (result.Messages.Count > 0)
         {
             sw.Stop();
-            if (!streamed)
+            foreach (var msg in result.Messages)
             {
-                _ = SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                    CallbackActions.SendMessage, string.Join("\n\n", result.Messages),
-                    null, null, sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
-                    .ContinueWith(t =>
-                    {
-                        if (t.IsFaulted)
-                            _logger.SystemWarn($"Callback failed: {t.Exception?.InnerException?.Message}");
-                    }, TaskScheduler.Default);
+                await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                    CallbackActions.SendMessage, msg, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
             }
 
             var combinedMessage = string.Join("\n\n", result.Messages);
@@ -688,6 +689,80 @@ public sealed class AutomationOrchestrator
         catch (JsonException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Fire-and-forget: create or update flow_execution_log with node trace from this step.
+    /// </summary>
+    private async Task LogFlowExecutionAsync(
+        SessionStateV2 state, EngineStepResult result, FlowGraphV2 graph,
+        int tenantId, int flowId, string chatId, string? phone,
+        string instanceId, string messageText, int pathSnapshotCount, string requestId)
+    {
+        try
+        {
+            // Build trace entries for nodes visited in THIS step only
+            var newNodeIds = state.ExecutionPath.Skip(pathSnapshotCount).ToList();
+            if (newNodeIds.Count == 0 && !state.ExecutionLogId.HasValue)
+                return; // nothing to log
+
+            var now = DateTime.UtcNow;
+            var traceEntries = new List<object>(newNodeIds.Count);
+            foreach (var nodeId in newNodeIds)
+            {
+                string? nodeType = null, label = null;
+                if (graph.NodesById.TryGetValue(nodeId, out var node))
+                {
+                    nodeType = node.Type;
+                    label = node.GetData("label");
+                }
+                traceEntries.Add(new { node_id = nodeId, node_type = nodeType, label, entered_at = now });
+            }
+
+            var traceJson = JsonSerializer.Serialize(traceEntries, _jsonOptions);
+
+            // Determine execution status
+            var status = result.IsTerminal
+                ? (result.NeedsHandoff ? "handed_off" : (result.ErrorCode != null ? "error" : "completed"))
+                : (result.State.PendingInput != null ? "waiting" : "running");
+
+            string? variablesJson = result.IsTerminal
+                ? JsonSerializer.Serialize(state.Variables, _jsonOptions)
+                : null;
+
+            if (state.ExecutionLogId.HasValue)
+            {
+                // Existing log — append trace
+                await _repo.UpdateExecutionLogAsync(
+                    state.ExecutionLogId.Value, tenantId, traceJson, status,
+                    variablesJson, result.ErrorMessage);
+            }
+            else
+            {
+                // New log — insert
+                var logId = await _repo.CreateExecutionLogAsync(
+                    tenantId, flowId, chatId, phone, instanceId, messageText, traceJson);
+                state.ExecutionLogId = logId;
+
+                // If terminal on first message, also set completed_at
+                if (result.IsTerminal && logId > 0)
+                {
+                    await _repo.UpdateExecutionLogAsync(logId, tenantId, "[]", status, variablesJson, result.ErrorMessage);
+                }
+            }
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationExecLogInsertFailed}] Execution log DB error for tenant {tenantId}: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationExecLogInsertFailed}] Execution log serialization error for tenant {tenantId}: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationExecLogInsertFailed}] Execution log operation error for tenant {tenantId}: {ex.Message}");
         }
     }
 

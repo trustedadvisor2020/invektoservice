@@ -1,4 +1,5 @@
-import { jwtDecode } from 'jwt-decode';
+﻿import { jwtDecode } from 'jwt-decode';
+import type { FlowExecutionSummary, FlowExecutionDetail } from '../types/flow';
 
 // API types
 export interface ServiceHealth {
@@ -771,7 +772,7 @@ class OpsApiClient {
   /**
    * Exchanges raw INMA JWT for an INSE JWT and replaces the primary token.
    * FlowBuilder backend validates with INSE JwtValidator, so INMA JWTs fail 401.
-   * This method is fire-and-forget — called after URL token SSO flow.
+   * This method is fire-and-forget ΓÇö called after URL token SSO flow.
    */
   async exchangeInmaToken(): Promise<void> {
     const token = this.getAccessToken();
@@ -850,7 +851,7 @@ class OpsApiClient {
   // --- Welcome endpoint ---
 
   async getWelcome(): Promise<unknown> {
-    // Welcome endpoint may return plain text — bypass default JSON parse
+    // Welcome endpoint may return plain text ΓÇö bypass default JSON parse
     const response = await this.executeWithRefresh(() =>
       fetch('/api/v1/inma/welcome', { headers: this.buildHeaders() })
     );
@@ -899,7 +900,7 @@ class OpsApiClient {
 
       this.storeTokens(tokens.accessToken, tokens.refreshToken);
 
-      // Refresh returns raw INMA JWT — re-exchange to INSE JWT
+      // Refresh returns raw INMA JWT ΓÇö re-exchange to INSE JWT
       // so JwtAuthMiddleware-protected endpoints keep working.
       await this.exchangeInmaToken();
 
@@ -946,13 +947,13 @@ class OpsApiClient {
       if (refreshed) {
         response = await doFetch();
       } else if (!this.isInmaSession()) {
-        // Ops/Basic Auth: refresh failed → session truly invalid, wipe everything.
+        // Ops/Basic Auth: refresh failed ΓåÆ session truly invalid, wipe everything.
         this.removeTokens();
         this.clearCredentials();
         throw new Error('INV-AU-001: Session expired, refresh failed');
       } else {
         // INMA session: 401 from ops-only endpoint, NOT a session problem.
-        // Token validity is enforced by getDecodedToken() expiry check —
+        // Token validity is enforced by getDecodedToken() expiry check ΓÇö
         // once JWT expires, isInmaSession() returns false and this branch
         // is never reached, so stale tokens cannot persist.
         throw new Error('INV-AU-002: Endpoint requires ops auth');
@@ -1359,6 +1360,23 @@ class OpsApiClient {
 
   async simulationCleanup(sessionId: string): Promise<void> {
     return this.request<void>(`/api/v1/flow-builder/simulation/${sessionId}`, { method: 'DELETE' });
+  }
+
+  // --- Flow Execution Logs ---
+
+  async getFlowExecutions(tenantId: number, flowId: number, params?: {
+    limit?: number; offset?: number;
+  }): Promise<{ items: FlowExecutionSummary[]; total: number }> {
+    const sp = new URLSearchParams();
+    if (params?.limit) sp.set('limit', params.limit.toString());
+    if (params?.offset) sp.set('offset', params.offset.toString());
+    return this.request<{ items: FlowExecutionSummary[]; total: number }>(
+      `/api/v1/flow-builder/flows/${tenantId}/${flowId}/executions?${sp}`);
+  }
+
+  async getFlowExecution(tenantId: number, flowId: number, logId: number): Promise<FlowExecutionDetail> {
+    return this.request<FlowExecutionDetail>(
+      `/api/v1/flow-builder/flows/${tenantId}/${flowId}/executions/${logId}`);
   }
 
   async getFlowBuilderInstances(flowId?: number): Promise<{ instances: FbAvailableInstance[] }> {

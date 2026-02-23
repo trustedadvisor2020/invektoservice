@@ -138,6 +138,9 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-036 | Instance disabled, message ignored | Hat devre disi, mesaj yoksayildi. |
 | INV-AT-037 | Instance unassigned, message ignored | Hat bir akisa atanmamis, mesaj yoksayildi. |
 | INV-AT-038 | Onboarding stats retrieval failed | Automation onboarding istatistikleri alinamadi. |
+| INV-AT-039 | Execution log insert failed | Akis yurutme logu olusturulamadi. |
+| INV-AT-040 | Execution log update failed | Akis yurutme logu guncellenemedi. |
+| INV-AT-041 | Execution log query failed | Akis yurutme loglari alinamadi. |
 
 ---
 

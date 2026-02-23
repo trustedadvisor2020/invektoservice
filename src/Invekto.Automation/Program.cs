@@ -780,6 +780,79 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/migrate-v1", async (int t
 });
 
 // ============================================================
+// Flow Execution Log endpoints
+// ============================================================
+
+// GET /api/v1/flows/{tenantId}/{flowId}/executions — List execution logs (paginated)
+app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}/executions", async (
+    int tenantId, int flowId, HttpContext ctx,
+    AutomationRepository repo, JsonLinesLogger jsonLogger,
+    int limit = 50, int offset = 0) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    limit = Math.Clamp(limit, 1, 100);
+    offset = Math.Max(offset, 0);
+
+    try
+    {
+        var (items, total) = await repo.ListExecutionLogsAsync(tenantId, flowId, limit, offset);
+        return Results.Ok(new { items, total });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.AutomationExecLogQueryFailed}] Execution log list DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationExecLogQueryFailed, "Akis yurutme loglari alinamadi.", "-"), statusCode: 500);
+    }
+});
+
+// GET /api/v1/flows/{tenantId}/{flowId}/executions/{logId} — Single execution detail
+app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}/executions/{logId:long}", async (
+    int tenantId, int flowId, long logId, HttpContext ctx,
+    AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    try
+    {
+        var detail = await repo.GetExecutionLogAsync(tenantId, flowId, logId);
+        if (detail == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationExecLogQueryFailed, "Akis yurutme logu bulunamadi.", "-"), statusCode: 404);
+
+        return Results.Ok(new
+        {
+            detail.Id,
+            detail.FlowId,
+            detail.ChatId,
+            detail.Phone,
+            detail.InstanceId,
+            detail.TriggerMessage,
+            detail.StartedAt,
+            detail.CompletedAt,
+            detail.Status,
+            detail.NodeCount,
+            node_trace = string.IsNullOrEmpty(detail.NodeTraceJson) ? (object)"[]" : JsonSerializer.Deserialize<JsonElement>(detail.NodeTraceJson),
+            variables_final = string.IsNullOrEmpty(detail.VariablesFinalJson) ? null : (object?)JsonSerializer.Deserialize<JsonElement>(detail.VariablesFinalJson),
+            detail.ErrorDetail
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.AutomationExecLogQueryFailed}] Execution log detail DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationExecLogQueryFailed, "Akis yurutme logu alinamadi.", "-"), statusCode: 500);
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.AutomationExecLogQueryFailed}] Execution log JSON parse error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationExecLogQueryFailed, "Akis yurutme logu okunamadi.", "-"), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Simulation endpoints (Phase 3b — in-memory, no DB writes, no side-effects)
 // ============================================================
 

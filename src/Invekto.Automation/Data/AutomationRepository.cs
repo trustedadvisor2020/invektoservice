@@ -827,6 +827,155 @@ public sealed class AutomationRepository
             return (0, 0);
         return (reader.GetInt32(0), reader.GetInt32(1));
     }
+
+    // ============================================================
+    // flow_execution_log (Flow Execution Log)
+    // ============================================================
+
+    /// <summary>Create a new execution log entry. Returns the log ID.</summary>
+    public async Task<long> CreateExecutionLogAsync(
+        int tenantId, int flowId, string? chatId, string? phone,
+        string? instanceId, string? triggerMessage, string nodeTraceJson,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO flow_execution_log
+                (tenant_id, flow_id, chat_id, phone, instance_id, trigger_message, node_trace)
+            VALUES (@tid, @fid, @cid, @phone, @iid, @msg, @trace::jsonb)
+            RETURNING id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        cmd.Parameters.AddWithValue("cid", (object?)chatId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("phone", (object?)phone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("iid", (object?)instanceId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("msg", (object?)triggerMessage ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("trace", nodeTraceJson);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return (long)(result ?? 0L);
+    }
+
+    /// <summary>Append node trace entries and update status atomically.</summary>
+    public async Task UpdateExecutionLogAsync(
+        long logId, int tenantId, string appendTraceJson, string status,
+        string? variablesFinalJson = null, string? errorDetail = null,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE flow_execution_log
+            SET node_trace = node_trace || @append::jsonb,
+                status = @status,
+                variables_final = CASE WHEN @vars IS NOT NULL THEN @vars::jsonb ELSE variables_final END,
+                error_detail = COALESCE(@err, error_detail),
+                completed_at = CASE WHEN @status IN ('completed','error','handed_off') THEN NOW() ELSE completed_at END
+            WHERE id = @id AND tenant_id = @tid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", logId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("append", appendTraceJson);
+        cmd.Parameters.AddWithValue("status", status);
+        cmd.Parameters.AddWithValue("vars", (object?)variablesFinalJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("err", (object?)errorDetail ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>List execution logs for a flow (paginated, newest first).</summary>
+    public async Task<(List<FlowExecutionLogSummary> Items, int Total)>
+        ListExecutionLogsAsync(int tenantId, int flowId, int limit, int offset,
+        CancellationToken ct = default)
+    {
+        const string countSql = @"
+            SELECT COUNT(*)::int FROM flow_execution_log
+            WHERE tenant_id = @tid AND flow_id = @fid";
+
+        const string listSql = @"
+            SELECT id, flow_id, chat_id, phone, trigger_message,
+                   started_at, completed_at, status, jsonb_array_length(node_trace) AS node_count
+            FROM flow_execution_log
+            WHERE tenant_id = @tid AND flow_id = @fid
+            ORDER BY started_at DESC
+            LIMIT @lim OFFSET @off";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        await using var countCmd = new NpgsqlCommand(countSql, conn);
+        countCmd.Parameters.AddWithValue("tid", tenantId);
+        countCmd.Parameters.AddWithValue("fid", flowId);
+        var total = (int)(await countCmd.ExecuteScalarAsync(ct) ?? 0);
+
+        var items = new List<FlowExecutionLogSummary>();
+        await using var listCmd = new NpgsqlCommand(listSql, conn);
+        listCmd.Parameters.AddWithValue("tid", tenantId);
+        listCmd.Parameters.AddWithValue("fid", flowId);
+        listCmd.Parameters.AddWithValue("lim", limit);
+        listCmd.Parameters.AddWithValue("off", offset);
+
+        await using var reader = await listCmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            items.Add(new FlowExecutionLogSummary
+            {
+                Id = reader.GetInt64(0),
+                FlowId = reader.GetInt32(1),
+                ChatId = reader.IsDBNull(2) ? null : reader.GetString(2),
+                Phone = reader.IsDBNull(3) ? null : reader.GetString(3),
+                TriggerMessage = reader.IsDBNull(4) ? null : reader.GetString(4),
+                StartedAt = reader.GetDateTime(5),
+                CompletedAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6),
+                Status = reader.GetString(7),
+                NodeCount = reader.GetInt32(8)
+            });
+        }
+
+        return (items, total);
+    }
+
+    /// <summary>Get a single execution log with full node_trace.</summary>
+    public async Task<FlowExecutionLogDetail?> GetExecutionLogAsync(
+        int tenantId, int flowId, long logId,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, flow_id, chat_id, phone, instance_id, trigger_message,
+                   started_at, completed_at, status,
+                   jsonb_array_length(node_trace) AS node_count,
+                   node_trace::text, variables_final::text, error_detail
+            FROM flow_execution_log
+            WHERE id = @id AND tenant_id = @tid AND flow_id = @fid";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", logId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("fid", flowId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return null;
+
+        return new FlowExecutionLogDetail
+        {
+            Id = reader.GetInt64(0),
+            FlowId = reader.GetInt32(1),
+            ChatId = reader.IsDBNull(2) ? null : reader.GetString(2),
+            Phone = reader.IsDBNull(3) ? null : reader.GetString(3),
+            InstanceId = reader.IsDBNull(4) ? null : reader.GetString(4),
+            TriggerMessage = reader.IsDBNull(5) ? null : reader.GetString(5),
+            StartedAt = reader.GetDateTime(6),
+            CompletedAt = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
+            Status = reader.GetString(8),
+            NodeCount = reader.GetInt32(9),
+            NodeTraceJson = reader.IsDBNull(10) ? "[]" : reader.GetString(10),
+            VariablesFinalJson = reader.IsDBNull(11) ? null : reader.GetString(11),
+            ErrorDetail = reader.IsDBNull(12) ? null : reader.GetString(12)
+        };
+    }
 }
 
 // ============================================================
@@ -890,4 +1039,25 @@ public sealed class ScheduleFlowInfo
     public int FlowId { get; init; }
     public int TenantId { get; init; }
     public required string FlowConfigJson { get; init; }
+}
+
+public class FlowExecutionLogSummary
+{
+    public long Id { get; init; }
+    public int FlowId { get; init; }
+    public string? ChatId { get; init; }
+    public string? Phone { get; init; }
+    public string? TriggerMessage { get; init; }
+    public DateTime StartedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+    public required string Status { get; init; }
+    public int NodeCount { get; init; }
+}
+
+public sealed class FlowExecutionLogDetail : FlowExecutionLogSummary
+{
+    public string? InstanceId { get; init; }
+    public required string NodeTraceJson { get; init; }
+    public string? VariablesFinalJson { get; init; }
+    public string? ErrorDetail { get; init; }
 }

@@ -111,6 +111,11 @@ public static class ErrorCodes
     // Automation Onboarding Stats (INV-AT-038)
     public const string AutomationOnboardingStatsFailed = "INV-AT-038"; // Onboarding stats query failed
 
+    // Automation Execution Log (INV-AT-039+)
+    public const string AutomationExecLogInsertFailed = "INV-AT-039";
+    public const string AutomationExecLogUpdateFailed = "INV-AT-040";
+    public const string AutomationExecLogQueryFailed = "INV-AT-041";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";

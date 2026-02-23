@@ -309,6 +309,9 @@ public sealed class SessionStateV2
     public List<FlowCallFrame> CallStack { get; set; } = new();
     /// <summary>Currently executing flow ID. Null = root flow (loaded by instance/tenant routing).</summary>
     public int? ActiveFlowId { get; set; }
+
+    /// <summary>Execution log row ID. Set on first message, used for trace append on subsequent messages.</summary>
+    public long? ExecutionLogId { get; set; }
 }
 
 /// <summary>

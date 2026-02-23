@@ -1,0 +1,105 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "slug": "20260223-flow-execution-log",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-23T18:00:00Z",
+  "updated_at": "2026-02-23T19:00:00Z",
+  "plan": {
+    "summary": "Flow execution logging system with node-by-node trace JSONB storage, fire-and-forget integration in Automation orchestrator, API endpoints, and a FlowLogPanel UI in the flow editor. Also fixes 'Flow Tetiklendi' bug where message story showed flow trigger info regardless of WhatsApp line (instance_id). Note: message sending changed from streaming (fire-and-forget per message during execution) to sequential post-execution to support accurate pathSnapshotCount for trace logging.",
+    "q_intent": "her flow icin log tut ve UI da gostermek icin edit modundayken yukari dugme ekle. dikey kolon olarak acilsin. baska hattan gelen mesajlar icin flow tetiklendi yaziyor?",
+    "interview_notes": "Canvas highlight yok, sadece panel ici gosterim. Log paneli AI Chat ile mutual exclusion."
+  },
+  "allowed_files": [
+    "arch/db/flow-execution-log.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Automation/Services/FlowGraphV2.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Data/MessageLogRepository.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/types/flow.ts",
+    "src/Invekto.Backend/Dashboard/src/stores/flow-log-store.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/FlowLogPanel.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/Toolbar.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowEditorPage.tsx"
+  ],
+  "files_changed": [
+    {"path": "arch/db/flow-execution-log.sql", "is_new": true, "change": "New DB schema for flow_execution_log table"},
+    {"path": "arch/errors.md", "is_new": false, "change": "Added INV-AT-039/040/041 error codes"},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added AutomationExecLog error code constants"},
+    {"path": "src/Invekto.Automation/Services/FlowGraphV2.cs", "is_new": false, "change": "Added ExecutionLogId to SessionStateV2"},
+    {"path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "4 CRUD methods + 2 DTOs for flow_execution_log"},
+    {"path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false, "change": "Fire-and-forget LogFlowExecutionAsync + instanceId param"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "2 GET endpoints for execution log list/detail"},
+    {"path": "src/Invekto.Backend/Data/MessageLogRepository.cs", "is_new": false, "change": "Bug fix: instance-aware flow lookup in GetMessageStoryAsync"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "2 proxy routes for execution log endpoints"},
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "2 API methods + FlowExecution type import"},
+    {"path": "src/Invekto.Backend/Dashboard/src/types/flow.ts", "is_new": false, "change": "3 TypeScript interfaces for execution log"},
+    {"path": "src/Invekto.Backend/Dashboard/src/stores/flow-log-store.ts", "is_new": true, "change": "Zustand store for flow log panel state"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/FlowLogPanel.tsx", "is_new": true, "change": "Flow log panel UI component with list/detail views"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/Toolbar.tsx", "is_new": false, "change": "Added flow log toggle button"},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowEditorPage.tsx", "is_new": false, "change": "FlowLogPanel integration with mutual exclusion"}
+  ],
+  "git_diff": {
+    "sha256": "",
+    "full_path": "arch/plans/diffs/20260223-flow-execution-log.diff",
+    "total_bytes": 68626,
+    "chunks": 2,
+    "stats": {"insertions": 1042, "deletions": 56, "files_count": 16}
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-23T19:00:00Z"
+  },
+  "verification_questions": [
+    {"id": "Q1", "question": "Does the bug fix correctly handle legacy tenants (no tenant_instances records) by falling back to the original active flow query?", "category": "Data"},
+    {"id": "Q2", "question": "Is the fire-and-forget execution logging truly non-blocking and does it handle failures gracefully without affecting message processing?", "category": "Process/Policy"},
+    {"id": "Q3", "question": "Does the JSONB append operation (node_trace || @append::jsonb) correctly accumulate trace entries across multiple messages in the same session?", "category": "Data"},
+    {"id": "Q4", "question": "Are the new API endpoints properly authenticated and do they validate tenant ownership before returning execution logs?", "category": "Auth"},
+    {"id": "Q5", "question": "Does the FlowLogPanel correctly implement mutual exclusion with AiChatPanel and SimulationPanel?", "category": "Lifecycle"}
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Knowledge/", "src/Invekto.Outbound/", "src/Invekto.Marketing/"],
+    "non_goals": ["Canvas node highlighting", "Log retention/cleanup", "Export functionality"],
+    "intentional_exclusions": ["No ghost path visualization on canvas", "No auto-refresh polling", "No pagination beyond initial 50 limit"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "AutomationOrchestrator.cs:LogFlowExecutionAsync (catch Exception)",
+      "Automation/Program.cs:executions endpoint (catch NpgsqlException)"
+    ],
+    "user_facing_errors": [
+      "INV-AT-039: Akis yurutme logu olusturulamadi",
+      "INV-AT-040: Akis yurutme logu guncellenemedi",
+      "INV-AT-041: Akis yurutme loglari alinamadi"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Fire-and-forget logging catches all exceptions and logs warnings. Failed logging does not affect message processing. API endpoints return proper error codes."
+  },
+  "aha_moments": [
+    {"category": "RELIABILITY", "user_pain": "Flow gercek kullanicilarda nasil calisiyor goremiyorum, problem oldugunda koru korune debug ediyorum", "suggestion": "Flow execution log panelinde her calismadaki node izlemesini goster", "aha_moment": "Kullanici flow editor acip Loglar butonuna tikladiginda son 50 calismayi ve her birinin node-by-node izlemesini gorunce 'artik flow'um nerede takildigini gorebiliyorum' diye dusunur"},
+    {"category": "UX", "user_pain": "Hangi hattan gelen mesajlar icin flow tetiklendi bilmiyorum, yanlis hat mesajlari da flow tetiklendi diyor", "suggestion": "Instance-aware flow lookup ile sadece dogru hata atanmis flow goster", "aha_moment": "SuperAdmin mesaj detayinda artik sadece gercekten tetiklenen flow gosterilince 'bu dogru bilgi, guvenebilirim' hissi olusur"},
+    {"category": "SPEED", "user_pain": "Flow debug icin DB'ye baglanip query yaziyorum, cok yavas", "suggestion": "Tek tikla flow editor icinde execution log paneli", "aha_moment": "Q flow editor acip loglar butonuna tikladiginda aninda son calismalari gorunce 'DB query yazmama gerek kalmadi' der"},
+    {"category": "SUPPORT", "user_pain": "Musteri 'flow calismadi' diyor ama hangi node'da takildigini bilemiyorum", "suggestion": "Node trace timeline ile her adimi, tipini ve suresini goster", "aha_moment": "Destek ekibi execution log'dan musterinin flow'unun tam olarak 3. adimda takildigini gorunce 'sorunu hemen tespit ettim' der"},
+    {"category": "SALES", "user_pain": "Flow'un ne kadar etkili oldugunu gostermek zor, sayisal veri yok", "suggestion": "Execution log istatistikleri (completed/error/handed_off) tenant bazinda", "aha_moment": "Tenant admin 50 basarili calisma vs 2 hata gorunce 'flow'umuz %96 basari oraninda' diye satis argumani olusturur"}
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 0,
+    "blocking_issues": [],
+    "codex_model": "gpt-5.2-codex",
+    "chunked_review": true,
+    "chunk_verdicts": [
+      {"chunk": "1of2", "cq_verdict": "PASS", "cove_verified": ["Q1","Q2","Q3","Q4"]},
+      {"chunk": "2of2", "cq_verdict": "PASS", "cove_verified": ["Q5"]}
+    ],
+    "merged_at": "2026-02-23T19:30:00Z"
+  }
+}

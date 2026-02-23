@@ -238,21 +238,64 @@ public sealed class MessageLogRepository
             }
         }
 
-        // 4. Get active flow name for tenant
-        const string flowSql = @"
-            SELECT flow_id, flow_name FROM chatbot_flows
-            WHERE tenant_id = @tid AND is_active = true
-            LIMIT 1";
+        // 4. Get flow name — instance-aware routing (mirrors Automation's GetFlowByInstanceAsync)
+        bool flowResolved = false;
 
-        await using var flowCmd = new NpgsqlCommand(flowSql, conn);
-        flowCmd.Parameters.AddWithValue("tid", story.TenantId);
-
-        await using (var r4 = await flowCmd.ExecuteReaderAsync(ct))
+        if (!string.IsNullOrEmpty(story.InstanceId))
         {
-            if (await r4.ReadAsync(ct))
+            const string instFlowSql = @"
+                SELECT cf.flow_id, cf.flow_name
+                FROM tenant_instances ti
+                JOIN chatbot_flows cf ON cf.flow_id = ti.flow_id AND cf.tenant_id = ti.tenant_id
+                WHERE ti.tenant_id = @tid AND ti.instance_id = @iid
+                  AND ti.is_enabled = true AND cf.is_active = true
+                LIMIT 1";
+
+            await using var instFlowCmd = new NpgsqlCommand(instFlowSql, conn);
+            instFlowCmd.Parameters.AddWithValue("tid", story.TenantId);
+            instFlowCmd.Parameters.AddWithValue("iid", story.InstanceId);
+
+            await using (var r4 = await instFlowCmd.ExecuteReaderAsync(ct))
             {
-                story.FlowId = r4.GetInt32(0);
-                story.FlowName = r4.IsDBNull(1) ? null : r4.GetString(1);
+                if (await r4.ReadAsync(ct))
+                {
+                    story.FlowId = r4.GetInt32(0);
+                    story.FlowName = r4.IsDBNull(1) ? null : r4.GetString(1);
+                    flowResolved = true;
+                }
+            }
+
+            // If instance exists in tenant_instances but has no flow → don't show "Flow Tetiklendi"
+            // If instance NOT in tenant_instances → fall through to legacy lookup below
+            if (!flowResolved)
+            {
+                const string hasInstSql = "SELECT EXISTS(SELECT 1 FROM tenant_instances WHERE tenant_id = @tid)";
+                await using var hasInstCmd = new NpgsqlCommand(hasInstSql, conn);
+                hasInstCmd.Parameters.AddWithValue("tid", story.TenantId);
+                var hasInstances = (bool)(await hasInstCmd.ExecuteScalarAsync(ct))!;
+                if (hasInstances)
+                    flowResolved = true; // tenant uses instance routing; this instance has no flow → skip
+            }
+        }
+
+        if (!flowResolved)
+        {
+            // Legacy: no tenant_instances records or no instance_id → first active flow
+            const string flowSql = @"
+                SELECT flow_id, flow_name FROM chatbot_flows
+                WHERE tenant_id = @tid AND is_active = true
+                LIMIT 1";
+
+            await using var flowCmd = new NpgsqlCommand(flowSql, conn);
+            flowCmd.Parameters.AddWithValue("tid", story.TenantId);
+
+            await using (var r4 = await flowCmd.ExecuteReaderAsync(ct))
+            {
+                if (await r4.ReadAsync(ct))
+                {
+                    story.FlowId = r4.GetInt32(0);
+                    story.FlowName = r4.IsDBNull(1) ? null : r4.GetString(1);
+                }
             }
         }
 
