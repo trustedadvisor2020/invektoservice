@@ -210,22 +210,34 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
         <p className="text-xs text-navy-300">Yukleniyor...</p>
       ) : (
         <div className="space-y-1.5">
-          {instances.map(inst => (
-            <label key={inst.instanceId} className="flex items-center gap-2 cursor-pointer group" title={`ID: ${inst.instanceId}`}>
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(inst.instanceId)}
-                onChange={() => toggleInstance(inst.instanceId)}
-                className="w-3.5 h-3.5 rounded border-navy-200 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-navy-700 group-hover:text-navy-900 truncate flex-1">
-                {inst.instanceName}
-              </span>
-              <span className="text-[10px] text-navy-300">
-                {INSTANCE_TYPE_LABELS[inst.instanceType] || 'Diger'}
-              </span>
-            </label>
-          ))}
+          {instances.map(inst => {
+            const isOtherFlow = inst.assignedFlowId != null && inst.assignedFlowId !== flowId;
+            return (
+              <label key={inst.instanceId} className="flex items-start gap-2 cursor-pointer group" title={`ID: ${inst.instanceId}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(inst.instanceId)}
+                  onChange={() => toggleInstance(inst.instanceId)}
+                  className="w-3.5 h-3.5 rounded border-navy-200 text-emerald-600 focus:ring-emerald-500 mt-0.5"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-navy-700 group-hover:text-navy-900 truncate">
+                      {inst.instanceName}
+                    </span>
+                    <span className="text-[10px] text-navy-300 flex-shrink-0">
+                      {INSTANCE_TYPE_LABELS[inst.instanceType] || 'Diger'}
+                    </span>
+                  </div>
+                  {isOtherFlow && (
+                    <span className="text-[10px] text-amber-600 leading-tight block">
+                      {inst.assignedFlowName ?? 'Baska akis'} akisinda
+                    </span>
+                  )}
+                </div>
+              </label>
+            );
+          })}
         </div>
       )}
       <p className="text-xs text-navy-300 mt-2">
@@ -242,16 +254,37 @@ function MessageTextProps({
   data: MessageTextData;
   onChange: (d: Record<string, unknown>) => void;
 }) {
+  const waitForInput = data.wait_for_input === true;
+
   return (
-    <FieldGroup label="Mesaj Metni">
-      <textarea
-        value={data.text ?? ''}
-        onChange={(e) => onChange({ text: e.target.value })}
-        rows={4}
-        className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
-        placeholder="Gonderilecek mesaj..."
-      />
-    </FieldGroup>
+    <>
+      <FieldGroup label="Mesaj Metni">
+        <textarea
+          value={data.text ?? ''}
+          onChange={(e) => onChange({ text: e.target.value })}
+          rows={4}
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
+          placeholder="Gonderilecek mesaj..."
+        />
+      </FieldGroup>
+      <FieldGroup label="Davranis">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={waitForInput}
+            onChange={(e) => onChange({ wait_for_input: e.target.checked })}
+            className="w-4 h-4 rounded border-navy-200 text-blue-600 focus:ring-blue-500 accent-blue-500"
+          />
+          <span className="text-xs text-navy-500">Kullanici yanitini bekle</span>
+        </label>
+        {waitForInput && (
+          <p className="text-[10px] text-navy-400 mt-1">
+            Mesaj gonderildikten sonra akis durur ve kullanicinin yanitini bekler.
+            Yanit, sonraki node'larda {'{{user_input}}'} olarak kullanilabilir.
+          </p>
+        )}
+      </FieldGroup>
+    </>
   );
 }
 

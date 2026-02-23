@@ -1,0 +1,82 @@
+{
+  "id": "fv06",
+  "title": "Sessiz Musteri Follow-Up",
+  "subtitle": "Silent Customer Recovery",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "85,612 kayip konusma: urun gosterildi ama siparis verilmedi. Medyan 4 mesaj vs basarili sipariste 33 mesaj. 30dk sonra follow-up = en buyuk conversion firsati.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Tum)" },
+      { "label": "Sorun", "value": "85K+ konusmada urun gosterilip musteri sessiz kaliyor. %87.4 kayip orani" },
+      { "label": "Deger", "value": "Follow-up ile %15-25 kayip kurtarma = en buyuk gelir firsati" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Outbound Engine (C10)", "color": "green" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "Urun karti gonderildikten 30dk sonra musteri cevap vermezse AI otomatik follow-up gonderir. 24 saat sonra ikinci follow-up.",
+    "steps": [
+      {
+        "title": "Sessizlik Tespiti",
+        "goal": "Musteri cevap vermedi mi?",
+        "badges": [{ "text": "85K Kayip", "color": "rose" }],
+        "content": "Urun karti gonderildi + 30dk gecti + musteri cevap yok → follow-up tetikle."
+      },
+      {
+        "title": "Follow-Up Gonderimi",
+        "goal": "Musteriyi geri getir",
+        "badges": [{ "text": "T+30dk", "color": "blue" }, { "text": "T+24h", "color": "purple" }],
+        "content": "T+30dk: 'Beğendiniz mi? Sorularınız varsa yardımcı olalım'. T+24h: Stok/fiyat urgency."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "30dk Follow-Up → Musteri Donusu",
+      "description": "Sessiz kalan musteriye 30dk sonra follow-up gonderdilir.",
+      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "85K Firsat", "color": "blue" }],
+      "requirements": {
+        "client": [
+          { "text": "Follow-up sablonlari", "service": "Backend", "page": "Sablon > Follow-Up", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "30dk ve 24h follow-up sablonlari olusturun" }
+        ],
+        "provider": [
+          { "text": "Sessizlik timer", "service": "Automation", "page": "Tetikleyiciler > Sessizlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Son mesajdan itibaren timer baslatir" },
+          { "text": "Follow-up outbound", "service": "Outbound", "page": "Follow-Up > Sessizlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Zamanli mesaj gonderimi" }
+        ]
+      },
+      "steps": [
+        { "role": "bot", "content": "4856 Lara Palazzo Eşofman Takım\n•1599,99 TL •36-44 Beden •3 renk\nOnline ödemede kargo ücretsiz ♥" },
+        { "role": "system", "content": "T+30dk: Musteri cevap vermedi. Follow-up tetikleniyor." },
+        { "role": "bot", "content": "Beğendiniz mi? 🌸 Beden, renk veya başka bir sorunuz varsa yardımcı olalım.\n\nStoklarımız hızla tükeniyor, gecikmemenizi öneririz 💕" },
+        { "role": "user", "content": "Evet beğendim 42 beden bordo var mı?" },
+        { "role": "bot", "content": "Evet, 42 beden bordo mevcut! 🌸\nSipariş oluşturmamız için bilgilerinizi paylaşır mısınız?" },
+        { "role": "system", "content": "Follow-up basarili! Sessiz musteri dondu ve siparis akisina gecildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "85K kayip konusmadan %15 kurtarma = buyuk gelir etkisi. Timer-based follow-up Automation Engine ile calisiir.",
+    "backend": [
+      { "title": "Silence Timer", "goal": "Sessizlik Zamanlayici", "content": "Son mesajdan itibaren 30dk, 24h zamanlayici. Musteri cevap verirse timer durur." },
+      { "title": "Follow-Up Generator", "goal": "Kisisellestirilmis Follow-Up", "content": "Son gosterilen urune gore kisisellestirilmis follow-up mesaji olusturur." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Kayip Musteri Kurtarma Geliri",
+    "description": "Sessiz kalan musterilerden follow-up ile kazanilan satislar.",
+    "resultLabel": "Kurtarilan Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlySilentCustomers", "label": "Aylik Sessiz Musteri", "default": 200, "hint": "Urun gosterilip cevap vermeyen", "editable": true },
+      { "key": "recoveryRate", "label": "Kurtarma Orani", "default": 15, "prefix": "%", "hint": "Follow-up ile donen musteri", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 1000, "suffix": "TL", "editable": true }
+    ],
+    "formula": "monthlySilentCustomers * (recoveryRate / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

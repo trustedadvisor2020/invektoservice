@@ -1,0 +1,79 @@
+{
+  "id": "fv12",
+  "title": "Memnuniyet → Review Yonlendirme",
+  "subtitle": "Satisfaction to Review Pipeline",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "49,323 memnuniyet mesaji var ama sadece 1,838 kez review istegi gonderilmis (%3.7). Memnun musterinin %96'sindan review istenmemis. AI teslimat sonrasi memnuniyet → review akisini otomatize eder.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Sosyal kanit onemli olan)" },
+      { "label": "Sorun", "value": "49K memnuniyet mesajinin sadece %3.7'sinde review istenmis. Devasa firsat kaybi" },
+      { "label": "Deger", "value": "Sistematik review toplama = sosyal kanit = yeni musteri = organik buyume" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Outbound Engine (C10)", "color": "green" },
+      { "name": "Ads Attribution (C12)", "color": "purple" }
+    ],
+    "servicesNote": "Musteri memnuniyet mesaji gonderdiginde veya teslimat sonrasi T+2 gun AI review istegi gonderir.",
+    "steps": [
+      {
+        "title": "Memnuniyet Tespiti",
+        "goal": "Memnun musteriyi yakala",
+        "badges": [{ "text": "49K Memnuniyet", "color": "emerald" }],
+        "content": "AI 'tesekkkurler', 'cok begendim', 'muhtesem' gibi memnuniyet intent'lerini tespit eder."
+      },
+      {
+        "title": "Review Istegi",
+        "goal": "Instagram/Google review yonlendir",
+        "badges": [{ "text": "%3.7 → %30+", "color": "blue" }],
+        "content": "Memnuniyet mesajindan hemen sonra veya T+2 gun review istegi: 'Deneyiminizi Instagram'da paylaşırsanız çok mutlu oluruz 💗'"
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Memnuniyet Mesaji → Aninda Review",
+      "description": "Musteri 'cok begendim' dediginde AI aninda review istegi gonderir.",
+      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "Sosyal Kanit", "color": "purple" }],
+      "requirements": {
+        "client": [
+          { "text": "Review linki", "service": "Knowledge", "page": "Sosyal Medya > Review Linki", "status": "setup", "priority": "required", "effort": "easy", "capability": "C12", "hint": "Instagram ve Google review sayfasi linki" }
+        ],
+        "provider": [
+          { "text": "Memnuniyet AI", "service": "AgentAI", "page": "Intent Engine > Memnuniyet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Memnuniyet intent tespiti" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Ürünüm geldi çok beğendim çok güzeeelllllllll🙏🌸" },
+        { "role": "ai", "content": "Intent: memnuniyet (yuksek). Review istegi firsati." },
+        { "role": "bot", "content": "Çok sevindik! Sağlıkla güzel günlerde giymenizi dileriz 💗\n\nGüzel düşüncenizi Instagram sayfamızda paylaşırsanız çok mutlu oluruz. Aramıza yeni katılan takipçilerimizin bize güven duymasına destek sağlamış olursunuz 🌺\n\nhttps://www.instagram.com/ebrumoda" },
+        { "role": "system", "content": "Memnuniyet → review istegi basarili. Sosyal kanit toplama firsati degerlendiirildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "49K memnuniyet mesajinin %96'si degerlendrilmemis. AI bu firsati otomatik yakalar.",
+    "backend": [
+      { "title": "Satisfaction Detector", "goal": "Memnuniyet Tespiti", "content": "Olumlu duygu tespiti + memnuniyet seviyesi puanlama." },
+      { "title": "Review Request Engine", "goal": "Review Istegi", "content": "Memnuniyet tespitinden sonra uygun zamanda review istegi gonderimi." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Sosyal Kanit + Organik Buyume",
+    "description": "Sistematik review toplama ile yeni musteri kazanma.",
+    "resultLabel": "Ek Review (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlySatisfied", "label": "Memnun Musteri", "default": 100, "hint": "Aylik memnuniyet mesaji", "editable": true },
+      { "key": "reviewRate", "label": "Review Orani", "default": 15, "prefix": "%", "hint": "Review yapan oran", "editable": true },
+      { "key": "reviewValue", "label": "Review Degeri", "default": 200, "suffix": "TL", "hint": "Her review'un tahmini degeri", "editable": true }
+    ],
+    "formula": "monthlySatisfied * (reviewRate / 100) * reviewValue",
+    "formulaDisplay": null
+  }
+}

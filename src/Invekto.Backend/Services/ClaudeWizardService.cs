@@ -167,8 +167,26 @@ public sealed class ClaudeWizardService
         var prerequisites = flowConfig != null ? ExtractPrerequisites(flowConfig) : null;
         var options = ExtractOptions(fullResponse);
 
-        // Strip options block from content so user sees clean text
-        var cleanContent = options != null ? StripOptionsBlock(fullResponse) : fullResponse;
+        // Always strip code blocks from content so user sees clean text
+        var cleanContent = StripCodeBlocks(fullResponse);
+
+        // Validate API URLs in generated flow config before offering to user
+        if (flowConfig != null)
+        {
+            yield return new WizardStreamChunk { Type = "text", Content = "\n\n\ud83d\udd0d API adresleri dogrulanıyor..." };
+
+            var urlFailures = await ValidateApiUrlsAsync(flowConfig, ct);
+            if (urlFailures.Count > 0)
+            {
+                var warning = new StringBuilder("\n\n\u26a0\ufe0f API Dogrulama Sonucu:\n");
+                foreach (var f in urlFailures)
+                    warning.AppendLine($"\u2022 \u274c {f.Label}: {f.Host} sunucudan erisilemedi");
+                warning.AppendLine("\nBu haliyle akis calismaz. \"Duzelt\" diyerek calisan alternatif API'ler onerebilirim.");
+
+                cleanContent += warning.ToString();
+                flowConfig = null; // Don't offer broken config for apply
+            }
+        }
 
         yield return new WizardStreamChunk
         {
@@ -185,7 +203,7 @@ public sealed class ClaudeWizardService
     /// </summary>
     public string? ExtractFlowConfig(string response)
     {
-        var match = Regex.Match(response, @"```flowconfig\s*\n([\s\S]*?)```", RegexOptions.Multiline);
+        var match = Regex.Match(response, @"```flowconfig\s*([\s\S]*?)```", RegexOptions.Multiline);
         if (!match.Success) return null;
 
         var json = match.Groups[1].Value.Trim();
@@ -297,7 +315,7 @@ public sealed class ClaudeWizardService
     /// </summary>
     public List<WizardOption>? ExtractOptions(string response)
     {
-        var match = Regex.Match(response, @"```options\s*\n([\s\S]*?)```", RegexOptions.Multiline);
+        var match = Regex.Match(response, @"```options\s*([\s\S]*?)```", RegexOptions.Multiline);
         if (!match.Success) return null;
 
         var json = match.Groups[1].Value.Trim();
@@ -317,12 +335,96 @@ public sealed class ClaudeWizardService
     }
 
     /// <summary>
-    /// Strip ```options blocks from the text so the user sees clean prose.
+    /// Strip ```options and ```flowconfig blocks from the text so the user sees clean prose.
     /// </summary>
-    private static string StripOptionsBlock(string text)
+    private static string StripCodeBlocks(string text)
     {
-        return Regex.Replace(text, @"```options\s*\n[\s\S]*?```", "", RegexOptions.Multiline).TrimEnd();
+        var result = Regex.Replace(text, @"```options\s*[\s\S]*?```", "", RegexOptions.Multiline);
+        result = Regex.Replace(result, @"```flowconfig\s*[\s\S]*?```", "", RegexOptions.Multiline);
+        return result.TrimEnd();
     }
+
+    /// <summary>
+    /// Validate API URLs in a generated flow config by making test HTTP requests from the server.
+    /// Returns list of unreachable URLs. Empty list = all reachable.
+    /// Replaces {{variable}} placeholders with "test" before probing.
+    /// </summary>
+    private async Task<List<ApiUrlFailure>> ValidateApiUrlsAsync(string flowConfigJson, CancellationToken ct)
+    {
+        var failures = new List<ApiUrlFailure>();
+
+        List<(string Label, string RawUrl)> apiUrls;
+        try
+        {
+            using var doc = JsonDocument.Parse(flowConfigJson);
+            if (!doc.RootElement.TryGetProperty("nodes", out var nodes))
+                return failures;
+
+            apiUrls = new();
+            foreach (var node in nodes.EnumerateArray())
+            {
+                var type = node.TryGetProperty("type", out var t) ? t.GetString() : "";
+                if (type != "action_api_call") continue;
+                if (!node.TryGetProperty("data", out var data)) continue;
+
+                var url = data.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
+                if (string.IsNullOrEmpty(url)) continue;
+
+                var label = data.TryGetProperty("label", out var l) ? l.GetString() ?? "" : "";
+                apiUrls.Add((label, url));
+            }
+        }
+        catch (JsonException)
+        {
+            return failures;
+        }
+
+        if (apiUrls.Count == 0) return failures;
+
+        // Validate all URLs in parallel (5s timeout each)
+        var tasks = apiUrls.Select(async entry =>
+        {
+            var (label, rawUrl) = entry;
+            var testUrl = Regex.Replace(rawUrl, @"\{\{[^}]+\}\}", "test");
+
+            if (!Uri.TryCreate(testUrl, UriKind.Absolute, out var uri))
+                return new ApiUrlFailure(label, "gecersiz-url");
+
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(5));
+                using var response = await _httpClient.GetAsync(testUrl, cts.Token);
+                return null; // Any HTTP response = server reachable
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw; // App shutdown
+            }
+            catch
+            {
+                return new ApiUrlFailure(label, uri.Host);
+            }
+        });
+
+        try
+        {
+            var results = await Task.WhenAll(tasks);
+            failures.AddRange(results.Where(r => r != null)!);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug("API URL validation error: {Error}", ex.Message);
+        }
+
+        return failures;
+    }
+
+    private sealed record ApiUrlFailure(string Label, string Host);
 
     private static string BuildSystemPrompt(List<FlowSummaryContext>? existingFlows, string? currentFlowConfig = null)
     {
@@ -421,6 +523,21 @@ public sealed class ClaudeWizardService
         sb.AppendLine("FlowConfigV2: { version: 2, metadata: { name }, nodes: [{ id, type, position: {x,y}, data: { label, ...config } }], edges: [{ id, source, target, sourceHandle }], settings: { off_hours_message, unknown_input_message, handoff_confidence_threshold, session_timeout_minutes, max_loop_count } }");
         sb.AppendLine("Node ID format: {type}_{sayi}. Coklu cikisli dugumler (logic_condition, ai_intent, ai_faq, ai_sentiment, action_api_call) icin sourceHandle zorunlu, tek cikisli icin null.");
         sb.AppendLine("</output_schema>");
+        sb.AppendLine();
+
+        // API guidelines — known working/broken APIs + validation notice
+        sb.AppendLine("<api_guidelines>");
+        sb.AppendLine("Harici API onerirken asagidaki kurallara uy:");
+        sb.AppendLine("1. API key gerektirmeyen ucretsiz servisleri TERCIH ET.");
+        sb.AppendLine("2. Dogrulanmis calisan API'ler:");
+        sb.AppendLine("   - Hava durumu: open-meteo.com (geocoding: geocoding-api.open-meteo.com/v1/search, forecast: api.open-meteo.com/v1/forecast)");
+        sb.AppendLine("   - Doviz kuru: cdn.jsdelivr.net/npm/@fawazahmed0/currency-api (ucretsiz, API key yok)");
+        sb.AppendLine("3. ONERME (sunucudan erisilemez veya guvenilmez):");
+        sb.AppendLine("   - wttr.in (sunucudan zaman asimi, erisilemez)");
+        sb.AppendLine("4. API key gerektiren servisler icin kullaniciyi acikca bilgilendir ve prerequisite olarak belirt.");
+        sb.AppendLine("5. Bilinmeyen bir API onereceksen, erisim riski hakkinda uyar.");
+        sb.AppendLine("NOT: Akis uretildikten sonra API URL'leri sunucudan OTOMATIK dogrulanir. Erisilemez API'ler tespit edilirse akis reddedilir.");
+        sb.AppendLine("</api_guidelines>");
         sb.AppendLine();
 
         // Existing flows context

@@ -1,0 +1,81 @@
+{
+  "id": "fv10",
+  "title": "Siparis Bilgi Toplama Akisi",
+  "subtitle": "Order Info Collection Flow",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "20,004 siparis bilgi istegi mesaji. Temsilci ad, soyad, telefon, adres, beden, mail, odeme yontemi topluyor. AI bu sureci yapisal olarak yonetir, eksik bilgileri otomatik sorar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (WhatsApp siparis alan)" },
+      { "label": "Sorun", "value": "20K mesajda bilgi toplama. Musteri bazen tek mesajda, bazen 5-6 mesajda bilgi gonderiyor. Eksik bilgi tespiti zor" },
+      { "label": "Deger", "value": "Yapisal bilgi toplama + eksik bilgi otomatik sorma = siparis hizlanir" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Unified Inbox (C1)", "color": "blue" }
+    ],
+    "servicesNote": "AI siparis niyetini tespit eder, gerekli bilgileri checklist olarak ister, gelen mesajlardan bilgileri parse eder, eksik olanlari sorar.",
+    "steps": [
+      {
+        "title": "Bilgi Istegi",
+        "goal": "Gerekli bilgileri iste",
+        "badges": [{ "text": "20K Mesaj", "color": "emerald" }],
+        "content": "Checklist format: Ad Soyad, Telefon, Adres (mahalle, ilce, il dahil), Beden, Mail, Odeme yontemi."
+      },
+      {
+        "title": "Bilgi Parse + Eksik Kontrol",
+        "goal": "Gelen bilgiyi yapilandir",
+        "badges": [{ "text": "NER", "color": "purple" }],
+        "content": "AI mesajdan isim, adres, telefon, beden parse eder. Eksik alan varsa sadece eksik olani sorar."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Tek Mesajda Bilgi Toplama",
+      "description": "Musteri tum bilgiyi tek mesajda gonderiyor.",
+      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Order info parser", "service": "AgentAI", "page": "Intent Engine > Siparis Bilgi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesajdan isim, adres, tel, beden parse eder" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Almak istiyorum" },
+        { "role": "bot", "content": "Harika! Siparişinizi hemen oluşturalım 💕\n\n✅ Ad Soyad\n✅ Telefon\n✅ Beden\n✅ Açık Adres (Mah, Sok, No, İl, İlçe)\n✅ Mail (opsiyonel)\n✅ Ödeme şekli (kapıda nakit/kart veya havale)" },
+        { "role": "user", "content": "Günnaz Özdil Yunuseli mahallesi 2 defne sokak no 5 Bursa Osmangazi kapıda nakit 38 beden siyah 4367" },
+        { "role": "ai", "content": "Parse: Ad=Günnaz Özdil, Adres=Yunuseli mah. 2 Defne sok. No:5 Osmangazi/Bursa, Odeme=Kapıda nakit, Beden=38, Renk=Siyah, Urun=4367. Eksik: Telefon, Mail." },
+        { "role": "bot", "content": "Teşekkürler Günnaz Hanım 🌸\n\n📋 Siparişiniz:\n• 4367 Kadife Elbise - Siyah - 38 Beden\n• Kapıda nakit (+99,99 TL kargo)\n• Adres: Yunuseli Mah. 2 Defne Sok. No:5 Osmangazi/Bursa\n\nTelefon numaranızı da alabilir miyim? 📞" },
+        { "role": "user", "content": "05464961018" },
+        { "role": "bot", "content": "Siparişinizi oluşturdum mutlu günlerde giymenizi dilerim 🤗❤️\nAras kargodan SMS ile takip numarası gelecektir." },
+        { "role": "system", "content": "Siparis bilgi toplama tamamlandi. 3 mesajda tum bilgiler alindi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "NER (Named Entity Recognition) ile mesajdan isim, adres, telefon, beden otomatik parse edilir. Eksik alan tespiti ile minimal soru sorulur.",
+    "backend": [
+      { "title": "Order Info Parser", "goal": "Bilgi Cikarma", "content": "Mesajdan NER ile isim, adres, tel, beden, odeme bilgisi cikarir." },
+      { "title": "Missing Field Detector", "goal": "Eksik Alan", "content": "Zorunlu alanlar kontrol edilir, sadece eksik olanlar sorulur." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Siparis Hizlandirma",
+    "description": "Yapisal bilgi toplama ile siparis suresi kisalir.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyOrders", "label": "Aylik Siparis", "default": 100, "hint": "WhatsApp siparis sayisi", "editable": true },
+      { "key": "minutesSaved", "label": "Tasarruf", "default": 10, "suffix": "dk", "hint": "Siparis basina kazanilan sure", "editable": true },
+      { "key": "agentCost", "label": "Temsilci Saat Ucreti", "default": 150, "suffix": "TL", "editable": true }
+    ],
+    "formula": "monthlyOrders * minutesSaved / 60 * agentCost",
+    "formulaDisplay": null
+  }
+}

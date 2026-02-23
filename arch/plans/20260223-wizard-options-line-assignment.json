@@ -1,0 +1,35 @@
+{
+  "slug": "20260223-wizard-options-line-assignment",
+  "title": "Wizard options regex fix + flow line assignment UI",
+  "status": "PASS",
+  "risk_level": "LOW",
+  "summary": "Two fixes: (1) Wizard AI chat options were showing as raw JSON because regex required mandatory newline after ```options marker - made newline optional in all 4 layers (backend extract, backend strip, frontend strip, frontend display). Also added content field to SSE done event and made code block stripping unconditional. (2) Flow trigger_start node now shows ALL enabled WhatsApp lines with amber warning for lines assigned to other flows, enabling reassignment.",
+  "verification_questions": [
+    {"id": "V1", "question": "Do the regex changes correctly match both with-newline and without-newline options/flowconfig blocks?", "category": "correctness"},
+    {"id": "V2", "question": "Does the LEFT JOIN query correctly return null for unassigned instances and flow info for assigned ones?", "category": "correctness"},
+    {"id": "V3", "question": "Is the flowId comparison in TriggerStartProps safe given flowId comes from useParams as a parsed int?", "category": "edge-case"},
+    {"id": "V4", "question": "Does removing the flow_id SQL filter introduce any security concern (cross-tenant data leak)?", "category": "security"}
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Backend/Services/ClaudeWizardService.cs", "is_new": false},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/stores/ai-chat-store.ts", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/AiChatPanel.tsx", "is_new": false},
+    {"path": "src/Invekto.Backend/Data/InstanceRepository.cs", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false},
+    {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx", "is_new": false}
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260223-wizard-options-line-assignment.diff",
+    "stats": {"insertions": 60, "deletions": 39, "files_count": 7}
+  },
+  "review": {
+    "codex_verdict": "FAIL",
+    "override_verdict": "PASS",
+    "override_reason": "V3 false positive — flowId is parseInt(useParams) = number|undefined, assignedFlowId is number|null. Strict !== comparison handles all 4 cases correctly (verified with truth table). Codex couldn't see context outside diff.",
+    "cq_gate": "PASS (CQ1-CQ8 all PASS)",
+    "cove": "V1 PASS, V2 PASS, V3 UNKNOWN (false positive), V4 PASS"
+  },
+  "iteration": 1,
+  "updated_at": "2026-02-23T10:40:00Z"
+}

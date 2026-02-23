@@ -24,8 +24,19 @@ function MessageTextNodeComponent(props: NodeProps) {
       <span className={data.text ? 'text-navy-500' : 'text-navy-400 italic'}>
         {preview}
       </span>
+      {data.wait_for_input && (
+        <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
+          <PauseIcon /> Yanit bekler
+        </span>
+      )}
     </BaseNode>
   );
 }
+
+const PauseIcon = () => (
+  <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+    <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z" />
+  </svg>
+);
 
 export const MessageTextNode = memo(MessageTextNodeComponent);

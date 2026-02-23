@@ -1,0 +1,83 @@
+{
+  "id": "fv05",
+  "title": "Indirimli Urun Iade Red — De-eskalasyon",
+  "subtitle": "Discounted Product Return De-escalation",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "7,384 iade red mesaji → eskalasyon dongusu. 'Indirimli urunlerde iade yok' dendiginde musteri sinirlanip 'tuketici haklari', 'CIMER' tehditi yapiyor. AI empati + alternatif ile eskalasyonu onler.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Indirimli urun satan tum isletmeler)" },
+      { "label": "Sorun", "value": "7,384 iade red mesaji + 6,017 sikayet. Red → sinir → tehdit → kabul etme dongusu. En sik eskalasyon sebebi" },
+      { "label": "Deger", "value": "Empati ile eskalasyon %60 azalir, musteri elde tutma artar" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Routing (C2)", "color": "blue" }
+    ],
+    "servicesNote": "AI iade intent + indirimli urun tespiti yapar. Sablonu tekrarlamak yerine empati gosterip degisim alternatifi sunar. Eskalasyon tespit edilirse human handoff.",
+    "steps": [
+      {
+        "title": "Iade Intent + Indirimli Urun Tespiti",
+        "goal": "Iade istegi + siparis durumu kontrol",
+        "badges": [{ "text": "7,384 Red", "color": "rose" }],
+        "content": "AI siparis veritabanindan urunun indirimli olup olmadigini kontrol eder."
+      },
+      {
+        "title": "Empati + Alternatif Sunma",
+        "goal": "Eskalasyonu onle",
+        "badges": [{ "text": "De-eskalasyon", "color": "emerald" }],
+        "content": "Sablonu tekrarlama! Empati ile basla, degisim secenegini cazip sun. Musteri israr ederse escalation."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Indirimli Urun Iade → Empati → Degisim",
+      "description": "Saha verisindeki en sik eskalasyon paterni icin AI cozumu.",
+      "tags": [{ "text": "Eskalasyon Onleme", "color": "rose" }, { "text": "Saha Dogrulanmis", "color": "emerald" }],
+      "requirements": {
+        "client": [
+          { "text": "Iade politikasi (indirimli)", "service": "Knowledge", "page": "Politikalar > Iade (Indirimli)", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Indirimli urun iade kosullari + degisim alternatifleri" }
+        ],
+        "provider": [
+          { "text": "De-eskalasyon AI", "service": "AgentAI", "page": "Cevap Motoru > Sikayet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Empati + cozum odakli cevap olusturma" },
+          { "text": "Eskalasyon algilama", "service": "AgentAI", "page": "Intent Engine > Frustration", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Frustration seviyesi tespiti ve human handoff tetikleme" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Ürün iade edeceğim zaman da 65 TL kargo parası verdim siz şimdi bana 609 TL göndereceğiz diyorsunuz bu nasıl bir hesaptır" },
+        { "role": "ai", "content": "Intent: iade_istegi + sikayet (Seviye 2). Urun indirimli. Kargo ucreti sikayeti var. De-eskalasyon modu." },
+        { "role": "bot", "content": "Anlıyorum, bu durum sizi üzmüştür 🙏 Kargo ücreti konusundaki endişenizi çok iyi anlıyorum.\n\nSize şu alternatifleri sunabiliriz:\n1️⃣ Farklı bir ürünle değişim — kargo ücretsiz, bakiyeniz: 674,99 TL\n2️⃣ İade süreci — yasal haklarınız çerçevesinde değerlendirme\n\nHangi seçeneği tercih edersiniz?" },
+        { "role": "user", "content": "Sadece para iademi istiyorum" },
+        { "role": "ai", "content": "Musteri iade konusunda israrli. Frustration Seviye 3. Human handoff onerisi." },
+        { "role": "bot", "content": "Talebinizi not aldım. İade işleminiz için sizi müşteri hizmetleri yetkilimize yönlendiriyorum, en kısa sürede çözüm sağlanacaktır 🙏" },
+        { "role": "system", "content": "Human handoff tetiklendi. Eskalasyon dongusu 2 mesajda kesilerek insana devredildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Saha verisinde en sik eskalasyon kaynagi bu senaryo. AI iade red sablonunu tekrarlamak yerine empati gosterir + alternatif sunar + gerekirse human handoff yapar.",
+    "backend": [
+      { "title": "Frustration Detector", "goal": "Sinir Tespiti", "content": "Mesaj tonundan frustration seviyesi (1-5) tespit eder. Seviye 3+ → human handoff." },
+      { "title": "De-escalation AI", "goal": "Empati + Cozum", "content": "Sablonu tekrarlamadan empati ile baslar, somut alternatif sunar." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Eskalasyon Azaltma + Musteri Tutma",
+    "description": "Eskalasyon dongusu kirilarak musteri kaybi onlenir.",
+    "resultLabel": "Elde Tutulan Musteri Degeri (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyEscalations", "label": "Aylik Eskalasyon", "default": 30, "hint": "Indirimli urun iade eskalasyonu", "editable": true },
+      { "key": "retentionRate", "label": "Tutma Orani", "default": 40, "prefix": "%", "hint": "De-eskalasyon ile kazanilan musteri", "editable": true },
+      { "key": "customerLTV", "label": "Musteri LTV", "default": 2000, "suffix": "TL", "hint": "Ortalama musteri yasam boyu degeri", "editable": true }
+    ],
+    "formula": "monthlyEscalations * (retentionRate / 100) * customerLTV",
+    "formulaDisplay": null
+  }
+}

@@ -7,6 +7,7 @@ import { deriveTriggerSource, TRIGGER_SOURCE_META } from '../lib/scenarioMeta';
 
 const sectorFilters = [
     { key: 'all', label: 'Tumu' },
+    { key: 'fieldValidated', label: 'Saha Dogrulanmis', categories: ['SAHA DOGRULANMIS'] },
     { key: 'ecommerce', label: 'E-Ticaret', niches: ['ecommerce'] },
     { key: 'health', label: 'Saglik', niches: ['health', 'dental', 'aesthetic'] },
     { key: 'hotel', label: 'Otel', niches: ['hotel'] },
@@ -19,12 +20,13 @@ const sectorFilters = [
 const nicheColors = {
     ecommerce: 'blue', health: 'green', dental: 'green', aesthetic: 'green',
     universal: 'purple', crossSector: 'purple', hotel: 'amber',
-    beauty: 'pink', education: 'indigo', mobile: 'gray',
+    beauty: 'pink', education: 'indigo', mobile: 'gray', fieldValidated: 'emerald',
 };
 const nicheLabels = {
     ecommerce: 'E-Ticaret', health: 'Saglik', dental: 'Dis Klinigi',
     aesthetic: 'Estetik', universal: 'Evrensel', crossSector: 'Cross-Sector',
     hotel: 'Otel', beauty: 'Guzellik', education: 'Egitim', mobile: 'Mobil',
+    fieldValidated: 'Saha Dogrulanmis',
 };
 
 const triggerFilters = [
@@ -49,7 +51,9 @@ const Landing = () => {
         let items = allScenarios;
         if (activeSector !== 'all') {
             const filter = sectorFilters.find(f => f.key === activeSector);
-            if (filter?.niches) {
+            if (filter?.categories) {
+                items = items.filter(s => filter.categories.includes(s.category));
+            } else if (filter?.niches) {
                 items = items.filter(s => filter.niches.includes(s.niche));
             }
         }
@@ -73,7 +77,8 @@ const Landing = () => {
         let base = allScenarios;
         if (activeSector !== 'all') {
             const filter = sectorFilters.find(f => f.key === activeSector);
-            if (filter?.niches) base = base.filter(s => filter.niches.includes(s.niche));
+            if (filter?.categories) base = base.filter(s => filter.categories.includes(s.category));
+            else if (filter?.niches) base = base.filter(s => filter.niches.includes(s.niche));
         }
         return {
             all: base.length,
@@ -244,7 +249,8 @@ const triggerBadgeLabels = {
 };
 
 const ScenarioCard = ({ scenario, onClick }) => {
-    const { id, title, subtitle, phase, niche, description, impact } = scenario;
+    const { id, title, subtitle, phase, niche, category, description, impact } = scenario;
+    const displayNiche = category === 'SAHA DOGRULANMIS' ? 'fieldValidated' : niche;
     const triggerSource = scenarioTriggerMap.get(id);
 
     let defaultResult = 0;
@@ -268,7 +274,7 @@ const ScenarioCard = ({ scenario, onClick }) => {
                     {id.toUpperCase()}
                 </span>
                 {phase && <Badge color="blue">{phase}</Badge>}
-                {niche && <Badge color={nicheColors[niche] || 'gray'}>{nicheLabels[niche] || niche}</Badge>}
+                {displayNiche && <Badge color={nicheColors[displayNiche] || 'gray'}>{nicheLabels[displayNiche] || displayNiche}</Badge>}
                 {triggerSource && triggerSource !== 'incoming' && (
                     <Badge color={triggerBadgeColors[triggerSource]}>{triggerBadgeLabels[triggerSource]}</Badge>
                 )}

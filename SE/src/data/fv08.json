@@ -1,0 +1,69 @@
+{
+  "id": "fv08",
+  "title": "Duplike Mesaj Onleme",
+  "subtitle": "Duplicate Message Prevention",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "127,802 duplike mesaj tespit edildi. Temsilciler ayni sablonu 2-3 kez arka arkaya gonderiyor. AI mesaj gondermeden once duplike kontrol yapar.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "Tum Sektorler" },
+      { "label": "Sorun", "value": "127K duplike mesaj = musteri kafa karisikligi + profesyonellik kaybi" },
+      { "label": "Deger", "value": "Otomatik duplike onleme = temiz iletisim + profesyonel gorunum" }
+    ],
+    "services": [
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "AI Agent Assist (C8)", "color": "amber" }
+    ],
+    "servicesNote": "Her mesaj gonderilmeden once son X mesaj ile karsilastirilir. Ayni icerik tespit edilirse gonderim engellenir veya uyari verilir.",
+    "steps": [
+      {
+        "title": "Duplike Kontrolu",
+        "goal": "Ayni mesajin tekrar gonderimini onle",
+        "badges": [{ "text": "127K Duplike", "color": "rose" }],
+        "content": "Son 5 mesaj ile hash karsilastirmasi. %90+ benzerlik → engelle veya uyar."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Duplike Sablon Engelleme",
+      "description": "Temsilci ayni sablonu tekrar gondermeye calisir, sistem uyarir.",
+      "tags": [{ "text": "Kalite", "color": "purple" }, { "text": "127K Sorun", "color": "rose" }],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Duplike tespit motoru", "service": "Backend", "page": "Mesaj Kalitesi > Duplike", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Son mesajlarla benzerlik kontrolu" }
+        ]
+      },
+      "steps": [
+        { "role": "agent", "content": "[Siparis onay sablonu gonderdi]" },
+        { "role": "agent", "content": "[Ayni sablonu tekrar gonderiyor — DUPLIKE]" },
+        { "role": "system", "content": "⚠️ Bu mesaj az önce gönderildi. Tekrar göndermek istiyor musunuz?" },
+        { "role": "system", "content": "Duplike engellendi. Musteri temiz iletisim aldi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Basit hash karsilastirmasi ile son 5 mesaj kontrol edilir. Operasyonel kalite artisi.",
+    "backend": [
+      { "title": "Message Dedup Engine", "goal": "Duplike Onleme", "content": "Son gonderilen mesajlarin hash'i saklanir, yeni mesaj ile karsilastirilir." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Profesyonellik + Kalite Artisi",
+    "description": "Duplike mesaj onleme ile musteri deneyimi iyilesmesi.",
+    "resultLabel": "Kalite Skoru Artisi",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyMessages", "label": "Aylik Mesaj", "default": 5000, "hint": "Toplam gonderilen mesaj", "editable": true },
+      { "key": "duplikeRate", "label": "Duplike Orani", "default": 6, "prefix": "%", "hint": "Mevcut duplike orani", "editable": true },
+      { "key": "costPerDuplicate", "label": "Duplike Maliyeti", "default": 2, "suffix": "TL", "hint": "Musteri kaybi riski", "editable": true }
+    ],
+    "formula": "monthlyMessages * (duplikeRate / 100) * costPerDuplicate",
+    "formulaDisplay": null
+  }
+}

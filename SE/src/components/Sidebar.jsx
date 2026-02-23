@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, Activity, Globe, ChevronDown, ChevronRight, LayoutGrid, Building2, Sparkles, GraduationCap, Smartphone, Shield, HeartPulse } from 'lucide-react';
+import { Home, ShoppingCart, Activity, Globe, ChevronDown, ChevronRight, LayoutGrid, Building2, Sparkles, GraduationCap, Smartphone, Shield, HeartPulse, CheckCircle } from 'lucide-react';
 import { sidebarGroups } from '../data';
 
-const iconMap = { ShoppingCart, Activity, Globe, Building2, Sparkles, GraduationCap, Smartphone, Shield };
+const iconMap = { ShoppingCart, Activity, Globe, Building2, Sparkles, GraduationCap, Smartphone, Shield, CheckCircle };
 
 // S1 → S01, E01 → E01 (consistent 3-char format)
 const formatCode = (id) => {

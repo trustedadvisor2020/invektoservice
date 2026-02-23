@@ -293,11 +293,9 @@ export function FlowListPage() {
               >
                 {/* Flow Icon */}
                 {(() => {
-                  const { Icon, gradient } = getFlowIcon(flow.flow_name, flow.flow_description);
+                  const { Icon } = getFlowIcon(flow.flow_name, flow.flow_description);
                   return (
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0 mr-4 shadow-sm`}>
-                      <Icon className="w-5 h-5 text-white" strokeWidth={1.75} />
-                    </div>
+                    <Icon className="w-5 h-5 text-navy-400 flex-shrink-0 mr-4" strokeWidth={1.75} />
                   );
                 })()}
                 <div className="flex-1 min-w-0">

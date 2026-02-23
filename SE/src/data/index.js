@@ -15,6 +15,20 @@ import s10 from './s10.json';
 import s11 from './s11.json';
 import s12 from './s12.json';
 
+// ─── Saha Dogrulanmis (FV01-FV12) ───────────────────────────────
+import fv01 from './fv01.json';
+import fv02 from './fv02.json';
+import fv03 from './fv03.json';
+import fv04 from './fv04.json';
+import fv05 from './fv05.json';
+import fv06 from './fv06.json';
+import fv07 from './fv07.json';
+import fv08 from './fv08.json';
+import fv09 from './fv09.json';
+import fv10 from './fv10.json';
+import fv11 from './fv11.json';
+import fv12 from './fv12.json';
+
 // ─── E-Ticaret (E01-E25) ──────────────────────────────────────
 import e01 from './e01.json';
 import e02 from './e02.json';
@@ -197,6 +211,8 @@ import cs08 from './cs08.json';
 export const allScenarios = [
     // Revenue (S1-S12)
     s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12,
+    // Saha Dogrulanmis (FV01-FV12)
+    fv01, fv02, fv03, fv04, fv05, fv06, fv07, fv08, fv09, fv10, fv11, fv12,
     // E-Ticaret (E01-E25)
     e01, e02, e03, e04, e05, e06, e07, e08, e09, e10,
     e11, e12, e13, e14, e15, e16, e17, e18, e19, e20,
@@ -236,10 +252,16 @@ export const scenarioById = Object.fromEntries(
 // Sidebar navigation structure — unified (no more revenues/fields split)
 export const sidebarGroups = [
     {
+        key: 'fieldValidated',
+        label: 'Saha Dogrulanmis',
+        icon: 'CheckCircle',
+        scenarios: allScenarios.filter(s => s.category === 'SAHA DOGRULANMIS'),
+    },
+    {
         key: 'ecommerce',
         label: 'E-Ticaret',
         icon: 'ShoppingCart',
-        scenarios: allScenarios.filter(s => s.niche === 'ecommerce'),
+        scenarios: allScenarios.filter(s => s.niche === 'ecommerce' && s.category !== 'SAHA DOGRULANMIS'),
     },
     {
         key: 'health',

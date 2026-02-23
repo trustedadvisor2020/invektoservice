@@ -1,0 +1,87 @@
+{
+  "id": "fv04",
+  "title": "Degisim Bakiye Yonetimi",
+  "subtitle": "Exchange Balance & Reorder Flow",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "14,537 degisim istegi + 9,104 bakiye bildirimi. Musteri urunu iade edip bakiye alir, yeni urun secer, fark + kargo hesaplanir. AI bu sureci otomatize eder.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Giyim — degisim yogun)" },
+      { "label": "Sorun", "value": "Degisim sureci 5-6 mesaj + bakiye hesabi + fark hesabi + kargo. Temsilci her seferinde manuel hesapliyor" },
+      { "label": "Deger", "value": "Otomatik bakiye/fark hesabi ile islem suresi %70 azalir, musteri memnuniyeti artar" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "E-com Integration (C11)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" },
+      { "name": "Unified Inbox (C1)", "color": "blue" }
+    ],
+    "servicesNote": "AI degisim intent'ini tespit eder, bakiyeyi hesaplar, yeni urun seciminde fark + kargo bilgisi otomatik sunar.",
+    "steps": [
+      {
+        "title": "Bakiye Bildirimi",
+        "goal": "Degisim bakiyesini bildir",
+        "badges": [{ "text": "9K Mesaj", "color": "emerald" }],
+        "content": "Iade kargo ulastiginda otomatik bakiye bildirimi: '{Tutar} TL bakiyeniz bulunmaktadır. Değişim yapmak istediğiniz ürünün görselini paylaşır mısınız?'"
+      },
+      {
+        "title": "Fark Hesaplama",
+        "goal": "Yeni urun fark + kargo hesabi",
+        "badges": [{ "text": "1,927 Fark Mesaji", "color": "blue" }],
+        "content": "Yeni urun fiyati - bakiye = fark. Fark + kargo ucreti otomatik hesaplanir ve musteriye sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Standart Degisim Akisi",
+      "description": "Bakiye bildirimi → yeni urun secimi → fark + kargo → siparis onay.",
+      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "14K+ Degisim", "color": "blue" }],
+      "requirements": {
+        "client": [
+          { "text": "Degisim politikasi", "service": "Knowledge", "page": "Politikalar > Degisim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "14 gun, fatura, kullanilmamis kosullari" }
+        ],
+        "provider": [
+          { "text": "Bakiye hesaplama", "service": "Backend", "page": "Siparis > Bakiye", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Iade edilen urun fiyati = bakiye" },
+          { "text": "Fark + kargo hesaplama", "service": "Backend", "page": "Siparis > Fark", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Yeni urun - bakiye + kargo ucreti" }
+        ]
+      },
+      "steps": [
+        { "role": "system", "content": "Degisim kargosu ulasti. Urun: 4282 Hirka (899,99 TL). Bakiye olusturuldu." },
+        { "role": "bot", "content": "899,99 TL Bakiyeniz bulunmaktadır 🌸 Değişim kargonuz bize ulaştı.\n\nDeğişim yapmak istediğiniz ürünün görselini buradan paylaşır mısınız?" },
+        { "role": "user", "content": "https://www.instagram.com/reel/DSF7h7HCJak/" },
+        { "role": "ai", "content": "Intent: degisim_urun_secimi. IG link → Urun: 4856 Palazzo (1599,99 TL). Fark: 700 TL." },
+        { "role": "bot", "content": "4856 Lara Palazzo Eşofman Takım — 1599,99 TL\n\nBakiyeniz: 899,99 TL\n700 TL fark + 99,99 TL kargo ödemeniz olacaktır.\n\nBu tutarı nasıl ödemek istersiniz? (Havale/Kapıda nakit/kart)" },
+        { "role": "user", "content": "Kapıda nakit 42 beden bordo" },
+        { "role": "bot", "content": "Siparişinizi oluşturdum mutlu günlerde giymenizi dilerim 🤗❤️\n\n4856 Palazzo - Bordo - 42 Beden\nFark: 700 TL + Kargo: 99,99 TL = Kapıda 799,99 TL" },
+        { "role": "system", "content": "Degisim tamamlandi. Bakiye + fark + kargo otomatik hesaplandi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Saha verisinde 9,104 bakiye bildirimi + 1,927 fark odeme mesaji gorulmustur. Bu senaryo bu operasyonel yuku otomatize eder.",
+    "backend": [
+      { "title": "Exchange Balance Engine", "goal": "Bakiye Yonetimi", "content": "Iade edilen urun fiyatindan bakiye olusturur, yeni siparis ile netlestirme yapar." },
+      { "title": "Diff Calculator", "goal": "Fark Hesaplama", "content": "Yeni urun fiyati - bakiye + kargo ucreti otomatik hesaplar." }
+    ],
+    "apis": [
+      { "title": "Order API", "goal": "Siparis Bilgisi", "content": "Orijinal siparis ve bakiye bilgisi cekilir." }
+    ]
+  },
+  "impact": {
+    "title": "Degisim Surec Otomasyonu Tasarrufu",
+    "description": "Manuel bakiye/fark hesabi yerine otomatik islem.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyExchanges", "label": "Aylik Degisim", "default": 40, "hint": "Degisim talebi sayisi", "editable": true },
+      { "key": "minutesSaved", "label": "Tasarruf (dk)", "default": 15, "suffix": "dk", "hint": "Degisim basina kazanilan sure", "editable": true },
+      { "key": "agentCost", "label": "Temsilci Saat Ucreti", "default": 150, "suffix": "TL", "editable": true }
+    ],
+    "formula": "monthlyExchanges * minutesSaved / 60 * agentCost",
+    "formulaDisplay": null
+  }
+}

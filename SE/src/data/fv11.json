@@ -1,0 +1,69 @@
+{
+  "id": "fv11",
+  "title": "Kargo Ucretsiz Motivasyon",
+  "subtitle": "Free Shipping Conversion Nudge",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "49,430 kez 'online odemede kargo ucretsiz' mesaji gonderilmis. Bu mesajin gonderildigi konusmalarda conversion %18 iken gonderilmeyenlerde %9. AI her konusmada stratejik olarak kullanir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Kargo ucreti fark yaratan)" },
+      { "label": "Sorun", "value": "Kapida odeme = +99,99 TL kargo. Online odeme = ucretsiz. Bu fark vurgulandiginda conversion 2x" },
+      { "label": "Deger", "value": "Tutarli kargo ucretsiz vurgusu = %8 conversion artisi" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI urun karti gonderiminden hemen sonra kargo ucretsiz mesajini otomatik ekler. Kapida odeme tercih eden musteriye motivasyon olarak kullanir.",
+    "steps": [
+      {
+        "title": "Urun Karti + Kargo Bilgisi",
+        "goal": "Her urun kartinda kargo bilgisi",
+        "badges": [{ "text": "49K Mesaj", "color": "emerald" }],
+        "content": "Urun kartindan hemen sonra: 'Online kredi kartı & havale ödemelerinde kargo ücretsizdir ♥'"
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Kargo Ucretsiz ile Online Odemeye Yonlendirme",
+      "description": "Kapida nakit isteyen musteriye ucretsiz kargo ile online odeme motivasyonu.",
+      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "2x Conversion", "color": "blue" }],
+      "requirements": {
+        "client": [
+          { "text": "Kargo ucretsiz kosulu", "service": "Knowledge", "page": "Politikalar > Kargo", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Hangi odeme yontemlerinde kargo ucretsiz" }
+        ],
+        "provider": []
+      },
+      "steps": [
+        { "role": "user", "content": "Kapıda nakit ödeme yapıcam" },
+        { "role": "bot", "content": "Tabii, kapıda nakit ödeme mevcut 🌸\n\nKapıda ödeme: +99,99 TL kargo ücreti\n\n💡 Bilgi: Online kredi kartı veya havale ile ödemenizde kargo tamamen ücretsizdir ♥\n\nHangi ödeme yöntemini tercih edersiniz?" },
+        { "role": "user", "content": "O zaman havale yapayım" },
+        { "role": "system", "content": "Kargo ucretsiz motivasyonu basarili. Musteri kapida nakitten havaleye gecti. 99,99 TL kargo tasarrufu." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Saha verisinde kargo ucretsiz vurgulanan konusmalarda conversion %18 vs %9. AI bu mesaji her konusmada stratejik kullanir.",
+    "backend": [
+      { "title": "Shipping Cost Advisor", "goal": "Kargo Bilgisi", "content": "Odeme yontemine gore kargo ucreti hesaplar ve ucretsiz secenek varsa vurgular." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Kargo Ucretsiz Conversion Artisi",
+    "description": "Online odemeye yonlendirme ile kargo maliyeti azalir + conversion artar.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyConversations", "label": "Aylik Konusma", "default": 300, "hint": "Urun gosterilen konusma", "editable": true },
+      { "key": "conversionLift", "label": "Conversion Artisi", "default": 8, "prefix": "%", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 1000, "suffix": "TL", "editable": true }
+    ],
+    "formula": "monthlyConversations * (conversionLift / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

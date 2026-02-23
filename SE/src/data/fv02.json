@@ -1,0 +1,85 @@
+{
+  "id": "fv02",
+  "title": "Instagram Link → Urun Tanima",
+  "subtitle": "IG URL Product Recognition",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "Musteri Instagram reel/post linki paylasiyor ama temsilci gorseli goremiyor — 16,442 kez 'gorsel gorunmuyor' mesaji gonderilmis. AI linki parse edip urunu otomatik taniir.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Instagram satisli tum isletmeler)" },
+      { "label": "Sorun", "value": "7,223 IG link paylasimi + 16,442 'gorsel gorunmuyor' mesaji = devasa operasyonel yuk" },
+      { "label": "Deger", "value": "Link tanima ile temsilci yuku %15 azalir, musteri bekleme suresi sifirlanir" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "E-com Integration (C11)", "color": "amber" }
+    ],
+    "servicesNote": "AI Instagram URL'sini parse eder, urun metadatasindan eslestirme yapar ve otomatik urun karti gonderir.",
+    "steps": [
+      {
+        "title": "IG Link Tespiti",
+        "goal": "Instagram URL'sini yakala",
+        "badges": [{ "text": "Sistem (AI)", "color": "purple" }, { "text": "16K+ Gorsel Sorunu", "color": "rose" }],
+        "content": "AI instagram.com/reel/, instagram.com/p/ veya facebook.com/share/ linklerini tespit eder."
+      },
+      {
+        "title": "Urun Eslestirme",
+        "goal": "Linkten urunu bul",
+        "badges": [{ "text": "Sistem (Parser)", "color": "purple" }, { "text": "Tenant (Katalog)", "color": "green" }],
+        "content": "IG post metadata + urun katalogu cross-reference ile urun eslestirmesi. Basarisiz ise ekran goruntusu isteme fallback."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "IG Reel Linki ile Urun Sorma",
+      "description": "Musteri Instagram reel linkini atiyor, AI urunu otomatik tanir.",
+      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "7K+ Link", "color": "blue" }],
+      "requirements": {
+        "client": [
+          { "text": "Instagram hesap baglantisi", "service": "Integrations", "page": "Sosyal Medya > Instagram", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Instagram Business hesabini Invekto'ya baglayin" },
+          { "text": "Urun-IG post eslestirmesi", "service": "Knowledge", "page": "Urun Katalogu > IG Eslestirme", "status": "setup", "priority": "recommended", "effort": "medium", "capability": "C7", "hint": "Urun kodlariyla IG post ID'lerini eslestirin" }
+        ],
+        "provider": [
+          { "text": "IG URL parser", "service": "AgentAI", "page": "Entegrasyonlar > Instagram Parser", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Instagram URL'sinden post metadata cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "https://www.instagram.com/reel/DKZnKjhImI2/?igsh=MWx1Z3BmaHR1dWRxYQ==" },
+        { "role": "ai", "content": "Intent: urun_link_paylasimi. IG Reel tespit edildi. Post meta: 'Lara Palazzo Esofman'. Urun eslestirme: 4856." },
+        { "role": "bot", "content": "Bu ürünü bulduk! 🌸\n\n4856 Lara payetli palazzo paça eşofman takım\n•Kampanyalı fiyatımız 1599,99 TL\n•36-44 Beden\n•3 renk (haki-siyah-bordo)\n\nSipariş vermek ister misiniz? 💕" },
+        { "role": "user", "content": "Evet bordo 42 beden" },
+        { "role": "system", "content": "IG link → urun tanima → siparis akisi. Gorsel gorunmuyor problemi bypass edildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo 16,442 'gorsel gorunmuyor' mesajini ortadan kaldirir. IG URL parse + urun katalogu eslestirmesi ile calisiir.",
+    "backend": [
+      { "title": "Instagram URL Parser", "goal": "Link Analizi", "content": "IG reel/post URL'sinden post ID cekilir, OEmbed API veya scraping ile urun bilgisi alinir." },
+      { "title": "Product Matcher", "goal": "Urun Eslestirme", "content": "IG post metadatasi (caption, hashtag) + urun katalogu fuzzy match ile eslestirme." }
+    ],
+    "apis": [
+      { "title": "Instagram OEmbed API", "goal": "Post Metadata", "content": "Instagram linkinden baslik, thumbnail ve aciklama cekilir." },
+      { "title": "Product Catalog API", "goal": "Urun Bilgisi", "content": "Eslesen urunun fiyat, beden, stok bilgisi." }
+    ]
+  },
+  "impact": {
+    "title": "Temsilci Yuk Azaltma + Hiz Artisi",
+    "description": "16K+ gorsel gorunmuyor mesajinin ortadan kalkmasi ile operasyonel tasarruf.",
+    "resultLabel": "Tasarruf (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyIgLinks", "label": "Aylik IG Link", "default": 50, "hint": "Aylık IG link paylasimi", "editable": true },
+      { "key": "minutesSavedPerLink", "label": "Link Basina Tasarruf", "default": 5, "suffix": "dk", "hint": "Her linkte kazanilan dakika", "editable": true },
+      { "key": "agentHourlyCost", "label": "Temsilci Saat Ucreti", "default": 150, "suffix": "TL", "hint": "Ortalama temsilci saat ucreti", "editable": true }
+    ],
+    "formula": "monthlyIgLinks * minutesSavedPerLink / 60 * agentHourlyCost",
+    "formulaDisplay": null
+  }
+}

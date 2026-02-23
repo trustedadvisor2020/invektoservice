@@ -173,24 +173,24 @@ public sealed class InstanceRepository
     }
 
     /// <summary>
-    /// Get enabled instances available for flow assignment.
-    /// Returns enabled instances that are either unassigned OR already assigned to the given flow.
+    /// Get all enabled instances for flow assignment.
+    /// Returns every enabled instance with its current flow assignment info (if any).
     /// </summary>
     public async Task<List<AvailableInstanceEntry>> GetAvailableInstancesAsync(
         int tenantId, int? flowId = null, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT instance_id, instance_name, instance_type, account
-            FROM tenant_instances
-            WHERE tenant_id = @tid
-              AND is_enabled = true
-              AND (flow_id IS NULL OR flow_id = @fid)
-            ORDER BY instance_name ASC";
+            SELECT ti.instance_id, ti.instance_name, ti.instance_type, ti.account,
+                   ti.flow_id, cf.flow_name
+            FROM tenant_instances ti
+            LEFT JOIN chatbot_flows cf ON cf.flow_id = ti.flow_id AND cf.tenant_id = ti.tenant_id
+            WHERE ti.tenant_id = @tid
+              AND ti.is_enabled = true
+            ORDER BY ti.instance_name ASC";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("tid", tenantId);
-        cmd.Parameters.AddWithValue("fid", (object?)flowId ?? DBNull.Value);
 
         var result = new List<AvailableInstanceEntry>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -202,6 +202,8 @@ public sealed class InstanceRepository
                 InstanceName = reader.GetString(1),
                 InstanceType = reader.GetInt32(2),
                 Account = reader.IsDBNull(3) ? null : reader.GetString(3),
+                AssignedFlowId = reader.IsDBNull(4) ? null : reader.GetInt32(4),
+                AssignedFlowName = reader.IsDBNull(5) ? null : reader.GetString(5),
             });
         }
 
@@ -288,6 +290,8 @@ public sealed class AvailableInstanceEntry
     public required string InstanceName { get; init; }
     public int InstanceType { get; init; }
     public string? Account { get; init; }
+    public int? AssignedFlowId { get; init; }
+    public string? AssignedFlowName { get; init; }
 }
 
 /// <summary>

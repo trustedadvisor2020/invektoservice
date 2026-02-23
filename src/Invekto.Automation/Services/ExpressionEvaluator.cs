@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Invekto.Shared.Logging;
 
@@ -5,13 +6,15 @@ namespace Invekto.Automation.Services;
 
 /// <summary>
 /// Variable substitution and condition evaluation for v2 flow engine.
-/// Safety limits: regex 100ms timeout, max 50 variables, max 10KB per value, flat only.
+/// Safety limits: regex 100ms timeout, max 50 variables, max 10KB per value.
+/// Supports dot-path JSON traversal: {{var.prop.0.nested}} resolves into stored JSON.
 /// IMP-3: Expression Safety.
 /// </summary>
 public sealed class ExpressionEvaluator
 {
+    // Supports dot-path: {{var}}, {{var.prop}}, {{var.prop.0.nested}}
     private static readonly Regex VariablePattern = new(
-        @"\{\{(\w+)\}\}",
+        @"\{\{([\w.]+)\}\}",
         RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(100));
 
@@ -27,7 +30,8 @@ public sealed class ExpressionEvaluator
 
     /// <summary>
     /// Replace {{variable}} placeholders in a template string with session variable values.
-    /// Missing variables become empty string. Errors return original template with warning log.
+    /// Supports dot-path: {{api_response.results.0.name}} navigates into JSON stored in variables.
+    /// Missing variables/paths become empty string. Errors return original template with warning log.
     /// </summary>
     public string Substitute(string template, IReadOnlyDictionary<string, string> variables)
     {
@@ -39,9 +43,14 @@ public sealed class ExpressionEvaluator
             return VariablePattern.Replace(template, match =>
             {
                 var varName = match.Groups[1].Value;
+
+                // Dot-path: resolve into JSON
+                if (varName.Contains('.'))
+                    return ResolveJsonPath(varName, variables);
+
+                // Flat variable lookup
                 if (variables.TryGetValue(varName, out var value))
                 {
-                    // Safety: truncate oversized values
                     if (value.Length > MaxValueBytes)
                     {
                         _logger.SystemWarn($"Variable '{varName}' exceeds {MaxValueBytes}B limit, truncated");
@@ -56,6 +65,63 @@ public sealed class ExpressionEvaluator
         {
             _logger.SystemWarn($"Expression substitution timeout (100ms) on template length={template.Length}");
             return template; // Graceful fallback
+        }
+    }
+
+    /// <summary>
+    /// Resolve a dot-path like "geo_data.results.0.latitude" by:
+    /// 1. Looking up the root variable (geo_data) in session variables
+    /// 2. Parsing as JSON
+    /// 3. Navigating the path (results → [0] → latitude)
+    /// Returns empty string on any failure (missing var, invalid JSON, path not found).
+    /// </summary>
+    private string ResolveJsonPath(string path, IReadOnlyDictionary<string, string> variables)
+    {
+        var segments = path.Split('.');
+        var rootVar = segments[0];
+
+        if (!variables.TryGetValue(rootVar, out var jsonValue) || string.IsNullOrEmpty(jsonValue))
+            return "";
+
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonValue);
+            var current = doc.RootElement;
+
+            for (var i = 1; i < segments.Length; i++)
+            {
+                var segment = segments[i];
+
+                if (current.ValueKind == JsonValueKind.Object &&
+                    current.TryGetProperty(segment, out var next))
+                {
+                    current = next;
+                }
+                else if (current.ValueKind == JsonValueKind.Array &&
+                         int.TryParse(segment, out var index) &&
+                         index >= 0 && index < current.GetArrayLength())
+                {
+                    current = current[index];
+                }
+                else
+                {
+                    return ""; // Path segment not found
+                }
+            }
+
+            return current.ValueKind switch
+            {
+                JsonValueKind.String => current.GetString() ?? "",
+                JsonValueKind.Number => current.GetRawText(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Null => "",
+                _ => current.GetRawText() // Object/Array → raw JSON
+            };
+        }
+        catch (JsonException)
+        {
+            return ""; // Stored value is not valid JSON
         }
     }
 

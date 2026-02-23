@@ -6,8 +6,8 @@ import { streamMessage, getWizardState } from '../lib/wizard-api';
 /** Strip ```options and ```flowconfig blocks from text for display */
 function stripCodeBlocks(text: string): string {
   return text
-    .replace(/```options\s*\n[\s\S]*?```/g, '')
-    .replace(/```flowconfig\s*\n[\s\S]*?```/g, '')
+    .replace(/```options\s*[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*[\s\S]*?```/g, '')
     .trimEnd();
 }
 
@@ -15,10 +15,10 @@ function stripCodeBlocks(text: string): string {
 function stripStreamingBlocks(text: string): string {
   // Strip complete blocks
   let clean = text
-    .replace(/```options\s*\n[\s\S]*?```/g, '')
-    .replace(/```flowconfig\s*\n[\s\S]*?```/g, '');
+    .replace(/```options\s*[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*[\s\S]*?```/g, '');
   // Strip incomplete block at the end (started but not closed)
-  clean = clean.replace(/```(?:options|flowconfig)\s*\n[\s\S]*$/g, '');
+  clean = clean.replace(/```(?:options|flowconfig)\s*[\s\S]*$/g, '');
   return clean.trimEnd();
 }
 

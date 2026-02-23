@@ -1,0 +1,126 @@
+{
+  "id": "fv01",
+  "title": "Fiyat Sorusuna Aninda Urun Karti",
+  "subtitle": "Instant Price Card Response",
+  "phase": "Phase 1",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "En sik musteri niyeti: tek kelime 'Fiyat' veya 'Ne kadar'. AI urun intent'ini tespit edip Knowledge Base'den urun kartini aninda gonderir. 94,434 gercek mesajda dogrulanmis.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Giyim, Aksesuar, Genel)" },
+      { "label": "Sorun", "value": "Musterilerin %22.8'i fiyat soruyor — en sik niyet. Temsilci her seferinde urun kartini manuel olusturuyor" },
+      { "label": "Deger", "value": "3 saniyede fiyat cevabi = conversion artisi. 94K+ mesajda dogrulanmis saha verisi" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Unified Inbox (C1)", "color": "blue" },
+      { "name": "Templates (C3)", "color": "blue" }
+    ],
+    "servicesNote": "AI fiyat intent'ini tespit eder, urun baglamindan veya paylasilan IG linkinden urunu belirler, Knowledge Base'den urun kartini cekerr aninda gonderir.",
+    "steps": [
+      {
+        "title": "Fiyat Intent Tespiti",
+        "goal": "Fiyat sorusunu tani",
+        "badges": [
+          { "text": "Sistem (AI)", "color": "purple" },
+          { "text": "Saha Verisi", "color": "emerald" }
+        ],
+        "content": "AI su kaliplari tanir: 'Fiyat', 'Ne kadar', 'Fiyatı nedir', 'Ne kadar acaba', 'Fiyat alabilir miyim', 'Nakadar bu' (yazim hatali). Saha verisinde 94,434 mesajda gorulmus."
+      },
+      {
+        "title": "Urun Eslestirme",
+        "goal": "Hangi urunu sordugunuu bul",
+        "badges": [
+          { "text": "Sistem (Knowledge)", "color": "purple" },
+          { "text": "Tenant (Urun Katalogu)", "color": "green" }
+        ],
+        "content": "Baglam analizi: onceki mesajdaki urun, IG linki, urun kodu veya gorsel. Eslestirme basarisiz ise 'Hangi urunumuzle ilgileniyorsunuz?' sorusu."
+      },
+      {
+        "title": "Urun Karti Gonderimi",
+        "goal": "Standart format ile bilgi sun",
+        "badges": [
+          { "text": "Sistem (Template)", "color": "purple" },
+          { "text": "Saha Formati", "color": "emerald" }
+        ],
+        "content": "Saha verisinden turetilen standart format: Kod + Fiyat + Beden araligi + Kumas + Renk secenekleri. Ardindan kargo ucretsiz bilgisi + siparis teklifi."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Tek Kelime Fiyat Sorusu",
+      "description": "Musteri 'Fiyat' veya 'Ne kadar' yazar — en sik gorulen form.",
+      "tags": [
+        { "text": "Saha Dogrulanmis", "color": "emerald" },
+        { "text": "94K+ Mesaj", "color": "blue" }
+      ],
+      "requirements": {
+        "client": [
+          { "text": "Urun katalogu Knowledge Base'de", "service": "Knowledge", "page": "Dokuman Bankasi > Urun Katalogu", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her urun icin kod, fiyat, beden, kumas, renk bilgisi yukleyin" },
+          { "text": "Urun karti sablonu", "service": "Backend", "page": "Sablon Yonetimi > Urun Karti", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Saha formatinda sablon: Kod + Fiyat + Beden + Kumas + Renk" }
+        ],
+        "provider": [
+          { "text": "Fiyat intent algilama", "service": "AgentAI", "page": "Intent Engine > Fiyat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fuzzy matching ile 'fiyat', 'ne kadar', 'nakadar' vb. tanir" },
+          { "text": "Urun RAG eslestirme", "service": "Knowledge", "page": "RAG Engine > Urun", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Baglam ve urun kodu ile urun bilgisi cekilir" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Fiyat" },
+        { "role": "ai", "content": "Intent: fiyat_sorma. Baglam: Onceki mesajda IG linki paylasdi → Urun: 4856 Lara Palazzo." },
+        { "role": "bot", "content": "4856 Lara payetli palazzo paça eşofman takım\n•Kampanyalı fiyatımız 1599,99 TL\n•36'dan Başlayıp 44 Bedene kadar\n•Premium seri, kaliteli Modal Kumaş\n•Esnekliği fazladır\n•3 renk seçeneği (haki-siyah-bordo)\n\nOnline kredi kartı & havale ödemelerinde kargo ücretsizdir ♥\nSiparişinizi hemen birlikte oluşturalım 💕" },
+        { "role": "user", "content": "42 beden var mı?" },
+        { "role": "bot", "content": "Evet, 42 beden mevcut! 🌸 Sipariş oluşturmamız için bilgilerinizi paylaşır mısınız?\n\n✅ Ad Soyad\n✅ Telefon\n✅ Adres\n✅ Ödeme şekli (kapıda nakit/kart veya havale)" },
+        { "role": "system", "content": "Fiyat sorusu → urun karti → siparis akisina gecildi. Conversion sureci baslatildi." }
+      ]
+    },
+    {
+      "id": "flow-2",
+      "title": "Yazim Hatali / Informal Fiyat Sorusu",
+      "description": "Musteri kirik Turkce veya kisaltma ile sorar: 'Nakadar', 'fiyayin nasil', 'ne kadar acsba'",
+      "tags": [
+        { "text": "Fuzzy Match", "color": "purple" },
+        { "text": "Edge Case", "color": "amber" }
+      ],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Fuzzy intent algilama", "service": "AgentAI", "page": "Intent Engine > Fuzzy", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Yazim hatali mesajlari dogru intent'e esler" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "Nakadar bu" },
+        { "role": "ai", "content": "Intent: fiyat_sorma (fuzzy match: 'Nakadar' → 'Ne kadar'). Urun: son paylasilan gorsel." },
+        { "role": "bot", "content": "4367 Mini Ve Midi U Yaka Kadife Elbise\n•Kampanyalı fiyatımız 1599,99 TL\n•36'dan 46 Bedene kadar\n•Premium kalite kadife kumaş\n•2 renk seçeneği (kırmızı, siyah)\n\nOnline ödemede kargo ücretsiz ♥" },
+        { "role": "system", "content": "Fuzzy match basarili. Standart urun karti gonderildi." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "Bu senaryo AI intent + Knowledge RAG birlesimiyle calisir. Fiyat sorusu algilandiginda baglamdan urun tespit edilir ve standart urun karti formati gonderilir.",
+    "backend": [
+      { "title": "Price Intent Classifier", "goal": "Fiyat Intent Tespiti", "content": "94K+ gercek mesajdan turetilen fiyat intent kaliplari: 'fiyat', 'ne kadar', 'nakadar', 'fiyat alabilirmiyim', 'fiyati nedir'. Fuzzy matching ile yazim hatalarina dayanikli." },
+      { "title": "Product Card Generator", "goal": "Urun Karti Olusturma", "content": "Saha verisinden turetilen format: Kod + Fiyat + Beden + Kumas + Renk. Ardindan kargo bilgisi + siparis teklifi eklenir." }
+    ],
+    "apis": [
+      { "title": "Product Catalog API", "goal": "Urun Bilgisi", "content": "Urun kodu/adi ile fiyat, beden, kumas, renk, stok bilgisi cekilir." },
+      { "title": "Instagram URL Parser", "goal": "IG Link Tanima", "content": "Instagram reel/post linkinden urun eslestirmesi yapilir (gorsel gorunmuyor probleminin cozumu)." }
+    ]
+  },
+  "impact": {
+    "title": "Aylik Fiyat Sorusu Conversion Artisi",
+    "description": "Aninda fiyat cevabi ile artan donusum orani.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyPriceQueries", "label": "Aylik Fiyat Sorusu", "default": 300, "hint": "Fiyat sorusu sayisi", "editable": true },
+      { "key": "conversionLift", "label": "Conversion Artisi", "default": 8, "prefix": "%", "hint": "Aninda cevap ile ek donusum", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis Degeri", "default": 1000, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+    ],
+    "formula": "monthlyPriceQueries * (conversionLift / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

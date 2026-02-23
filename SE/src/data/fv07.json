@@ -1,0 +1,78 @@
+{
+  "id": "fv07",
+  "title": "Yabanci Dil Musteri Destegi",
+  "subtitle": "Multi-Language Customer Support",
+  "phase": "Phase 2",
+  "category": "SAHA DOGRULANMIS",
+  "niche": "ecommerce",
+  "description": "577+ yabanci dil mesaji (Arapca 461, Rusca 92, Fransizca 24). Temsilciler Turkce sablonla cevap veriyor. AI dil algilama + temel cevap = yeni musteri segmenti.",
+  "overview": {
+    "audience": [
+      { "label": "Sektor", "value": "E-Ticaret (Turkiye'de yabanci musterisi olan)" },
+      { "label": "Sorun", "value": "577+ yabanci dil mesajina Turkce sablon gonderiliyor. 'Türkçe bilmiyorum' diyen musteriler kayboluyor" },
+      { "label": "Deger", "value": "EN/AR/RU destek = yeni musteri segmenti acilir" }
+    ],
+    "services": [
+      { "name": "AI Agent Assist (C8)", "color": "amber" },
+      { "name": "Knowledge RAG (C7)", "color": "green" },
+      { "name": "Unified Inbox (C1)", "color": "blue" }
+    ],
+    "servicesNote": "AI mesaj dilini otomatik tespit eder ve tespit edilen dilde cevap verir. Knowledge Base'deki urun bilgileri cok dilli olarak sunulur.",
+    "steps": [
+      {
+        "title": "Dil Tespiti",
+        "goal": "Mesaj dilini otomatik belirle",
+        "badges": [{ "text": "AR/RU/FR/EN", "color": "purple" }],
+        "content": "AI ilk mesajdan dili tespit eder: Arapca, Rusca, Fransizca, Ingilizce veya Turkce."
+      },
+      {
+        "title": "Cok Dilli Cevap",
+        "goal": "Tespit edilen dilde cevap ver",
+        "badges": [{ "text": "577+ Mesaj", "color": "emerald" }],
+        "content": "Urun bilgisi, odeme secenekleri ve siparis akisi tespit edilen dilde sunulur."
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-1",
+      "title": "Arapca Musteri — Dil Tespiti",
+      "description": "Turkiye'de yasayan Arapca konusan musteri.",
+      "tags": [{ "text": "Cok Dilli", "color": "purple" }, { "text": "461 AR Mesaj", "color": "blue" }],
+      "requirements": {
+        "client": [],
+        "provider": [
+          { "text": "Dil algilama AI", "service": "AgentAI", "page": "Cevap Motoru > Dil", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Otomatik dil tespiti + cok dilli cevap" }
+        ]
+      },
+      "steps": [
+        { "role": "user", "content": "مرحبا، كم سعر هذا الفستان؟" },
+        { "role": "ai", "content": "Dil: Arapca. Intent: fiyat_sorma. Urun: onceki baglamdan elbise." },
+        { "role": "bot", "content": "مرحباً! 🌸\n\nفستان 4367 قطيفة\n•السعر: 1599,99 ليرة تركية\n•المقاسات: 36-46\n•الألوان: أحمر، أسود\n\nالشحن مجاني للدفع الإلكتروني ♥\nهل تريدين الطلب؟" },
+        { "role": "user", "content": "نعم، مقاس 42" },
+        { "role": "system", "content": "Arapca dil tespiti basarili. Siparis akisi Arapca devam ediyor." }
+      ]
+    }
+  ],
+  "tech": {
+    "note": "577+ yabanci dil mesaji su an kaybediliyor. AI dil tespiti + ceviri ile bu segmenti acmak mumkun.",
+    "backend": [
+      { "title": "Language Detector", "goal": "Dil Tespiti", "content": "Mesaj dilini otomatik tespit eder (TR/EN/AR/RU/FR)." },
+      { "title": "Multilingual Response", "goal": "Cok Dilli Cevap", "content": "Urun bilgisi ve siparis akisini tespit edilen dilde olusturur." }
+    ],
+    "apis": []
+  },
+  "impact": {
+    "title": "Yabanci Musteri Segmenti Acilmasi",
+    "description": "Dil destegi ile kazanilan yeni musteriler.",
+    "resultLabel": "Ek Gelir (Aylik)",
+    "subscriptionCost": 3000,
+    "inputs": [
+      { "key": "monthlyForeignMessages", "label": "Aylik Yabanci Mesaj", "default": 20, "hint": "Yabanci dil mesaj sayisi", "editable": true },
+      { "key": "conversionRate", "label": "Donusum", "default": 20, "prefix": "%", "editable": true },
+      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 1200, "suffix": "TL", "editable": true }
+    ],
+    "formula": "monthlyForeignMessages * (conversionRate / 100) * avgOrderValue",
+    "formulaDisplay": null
+  }
+}

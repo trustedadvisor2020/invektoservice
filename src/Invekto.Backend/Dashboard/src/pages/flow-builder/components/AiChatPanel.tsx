@@ -14,8 +14,8 @@ const STORAGE_KEY = 'invekto_ai_chat_width';
 /** Strip ```options and ```flowconfig blocks from assistant text for display */
 function cleanAssistantText(text: string): string {
   return text
-    .replace(/```options\s*\n[\s\S]*?```/g, '')
-    .replace(/```flowconfig\s*\n[\s\S]*?```/g, '')
+    .replace(/```options\s*[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*[\s\S]*?```/g, '')
     .trimEnd();
 }
 
