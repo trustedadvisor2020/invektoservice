@@ -375,6 +375,7 @@ public sealed class BenchmarkOrchestrator
                         result.TieredLabel = cls?.Label;
                         result.TieredConfidence = cls?.Confidence;
                         result.TieredEvidence = cls?.Evidence;
+                        result.HasOffer = cls?.HasOffer;
                         break;
                 }
             }

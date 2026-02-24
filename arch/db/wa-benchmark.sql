@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS wa_benchmark_results (
     tiered_label             VARCHAR(30),
     tiered_confidence        REAL,
     tiered_evidence          TEXT,
+    has_offer                BOOLEAN,        -- Tiered model: was a concrete price/offer made? (taxonomy v0.4)
     ground_truth_label       VARCHAR(30),
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -146,14 +146,14 @@ public sealed class BenchmarkRepository
                 gemini_pro_label, gemini_pro_confidence, gemini_pro_evidence,
                 gemini_3_flash_label, gemini_3_flash_confidence, gemini_3_flash_evidence,
                 tiered_label, tiered_confidence, tiered_evidence,
-                ground_truth_label) VALUES ");
+                has_offer, ground_truth_label) VALUES ");
 
             await using var cmd = conn.CreateCommand();
             for (var j = 0; j < batch.Count; j++)
             {
                 if (j > 0) sb.Append(',');
-                var p = j * 25; // parameter offset (25 columns)
-                sb.Append($"(@p{p},@p{p + 1},@p{p + 2},@p{p + 3},@p{p + 4},@p{p + 5},@p{p + 6},@p{p + 7},@p{p + 8},@p{p + 9},@p{p + 10},@p{p + 11},@p{p + 12},@p{p + 13},@p{p + 14},@p{p + 15},@p{p + 16},@p{p + 17},@p{p + 18},@p{p + 19},@p{p + 20},@p{p + 21},@p{p + 22},@p{p + 23},@p{p + 24})");
+                var p = j * 26; // parameter offset (26 columns)
+                sb.Append($"(@p{p},@p{p + 1},@p{p + 2},@p{p + 3},@p{p + 4},@p{p + 5},@p{p + 6},@p{p + 7},@p{p + 8},@p{p + 9},@p{p + 10},@p{p + 11},@p{p + 12},@p{p + 13},@p{p + 14},@p{p + 15},@p{p + 16},@p{p + 17},@p{p + 18},@p{p + 19},@p{p + 20},@p{p + 21},@p{p + 22},@p{p + 23},@p{p + 24},@p{p + 25})");
 
                 var r = batch[j];
                 cmd.Parameters.AddWithValue($"p{p}", r.BenchmarkId);
@@ -180,7 +180,8 @@ public sealed class BenchmarkRepository
                 cmd.Parameters.AddWithValue($"p{p + 21}", (object?)r.TieredLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 22}", (object?)r.TieredConfidence ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 23}", (object?)r.TieredEvidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 24}", (object?)r.GroundTruthLabel ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 24}", (object?)r.HasOffer ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 25}", (object?)r.GroundTruthLabel ?? DBNull.Value);
             }
 
             cmd.CommandText = sb.ToString();

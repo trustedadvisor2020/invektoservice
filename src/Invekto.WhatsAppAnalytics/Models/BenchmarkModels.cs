@@ -54,6 +54,7 @@ public sealed class BenchmarkResult
     public string? TieredLabel { get; set; }
     public float? TieredConfidence { get; set; }
     public string? TieredEvidence { get; set; }
+    public bool? HasOffer { get; set; }
     public string? GroundTruthLabel { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -93,11 +94,12 @@ public sealed class LlmClassification
 {
     public string Label { get; set; } = "";
     public float Confidence { get; set; }
+    public bool HasOffer { get; set; }
     public string Evidence { get; set; } = "";
 
     private static readonly string[] ValidLabels =
     {
-        "sale", "appointment_booked", "offered", "no_sale",
+        "sale", "appointment_booked", "offered", "offer_no_reply", "offer_lost",
         "no_response", "abandoned", "return_or_complaint"
     };
 
@@ -141,13 +143,14 @@ public sealed class LlmClassification
             // Normalize label
             parsed.Label = parsed.Label.Trim().ToLowerInvariant();
 
-            // Map common aliases
+            // Map common aliases (including backward compat: no_sale -> offer_lost)
             parsed.Label = parsed.Label switch
             {
                 "return" => "return_or_complaint",
                 "complaint" => "return_or_complaint",
                 "booked" => "appointment_booked",
                 "appointment" => "appointment_booked",
+                "no_sale" => "offer_lost",
                 _ => parsed.Label
             };
 
