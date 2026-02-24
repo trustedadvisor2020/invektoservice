@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import {
   FileText,
-  LogOut,
+  Power,
   LayoutDashboard,
   BookOpen,
   GraduationCap,
@@ -18,22 +18,15 @@ import {
   MessageSquare,
   Building2,
   PanelLeftClose,
-  Type,
-  RotateCcw,
   LayoutTemplate,
   Upload,
   Brain,
   Rocket,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { InvektoLogo, InvektoMark } from './ui/InvektoLogo';
+import { InvektoLogo } from './ui/InvektoLogo';
 
 const SIDEBAR_KEY = 'inse-sidebar-collapsed';
-const FONT_SIZE_KEY = 'inse-font-size';
-const FONT_MIN = 12;
-const FONT_MAX = 25;
-const FONT_DEFAULT = 14;
-const FONT_STEP = 1;
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -76,20 +69,6 @@ export function Layout({ children }: LayoutProps) {
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
 
-  const [fontSize, setFontSize] = useState(() => {
-    const stored = localStorage.getItem(FONT_SIZE_KEY);
-    return stored ? Math.min(FONT_MAX, Math.max(FONT_MIN, Number(stored))) : FONT_DEFAULT;
-  });
-
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${fontSize}px`;
-    localStorage.setItem(FONT_SIZE_KEY, String(fontSize));
-  }, [fontSize]);
-
-  const adjustFontSize = useCallback((delta: number) => {
-    setFontSize(prev => Math.min(FONT_MAX, Math.max(FONT_MIN, prev + delta)));
-  }, []);
-
   const toggleSidebar = useCallback(() => {
     setCollapsed(prev => {
       localStorage.setItem(SIDEBAR_KEY, String(!prev));
@@ -104,12 +83,10 @@ export function Layout({ children }: LayoutProps) {
 
   // Ops mode (no session): sadece opsOnly + Ayarlar gorunur (Firmalar, Mesajlar, Loglar, Ayarlar).
   // Tenant mode (session var): feature flag'e gore filtrele, opsOnly gizle, Turkce label.
-  const navItems = ALL_NAV_ITEMS.filter(item => {
+  const allFiltered = ALL_NAV_ITEMS.filter(item => {
     if (!session) {
-      // Ops mode: sadece opsOnly items + Ayarlar
       return item.opsOnly || item.path === '/settings';
     }
-    // Tenant mode
     if (item.opsOnly && session.tenantId !== 0) return false;
     if (!item.feature) return true;
     return api.hasFeature(item.feature);
@@ -117,6 +94,41 @@ export function Layout({ children }: LayoutProps) {
     ...item,
     label: session && item.tenantLabel ? item.tenantLabel : item.label,
   }));
+
+  // Split nav into main, secondary (onboarding/settings), and bottom (logout)
+  const mainItems = allFiltered.filter(i => i.path !== '/settings' && i.path !== '/onboarding' && i.path !== '/onboarding-guide');
+  const onboardingItem = allFiltered.find(i => i.path === '/onboarding');
+  const settingsItem = allFiltered.find(i => i.path === '/settings');
+
+  const renderNavLink = (item: NavItem & { label: string }) => {
+    const Icon = item.icon;
+    const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        title={collapsed ? item.label : undefined}
+        className={cn(
+          'group flex items-center h-10 rounded-xl text-sm font-medium transition-all duration-200',
+          collapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5',
+          isActive
+            ? 'glass-nav-active text-brand-600 font-semibold'
+            : 'text-navy-400 hover:glass-nav-hover hover:text-navy-700 hover:translate-x-0.5'
+        )}
+      >
+        <div className={cn(
+          'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200',
+          isActive
+            ? 'bg-brand-500/12 text-brand-500 shadow-[0_0_0_1px_rgba(99,91,255,0.1)]'
+            : 'text-navy-300 group-hover:bg-navy-100/60 group-hover:text-navy-500'
+        )}>
+          <Icon className="w-[17px] h-[17px]" strokeWidth={isActive ? 2.2 : 1.8} />
+        </div>
+        {!collapsed && <span className="truncate">{item.label}</span>}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -134,28 +146,28 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <div className={cn('min-h-screen flex bg-navy-50', isImpersonating && 'pt-10')}>
-        {/* Sidebar — collapsible, light, Stripe-inspired */}
+        {/* Sidebar — Glass Morphism */}
         <aside className={cn(
-          'h-screen sticky top-0 bg-[#f8f9fb] shadow-[3px_0_16px_-4px_rgba(0,0,0,0.10)] z-10 flex flex-col transition-[width] duration-200',
-          collapsed ? 'w-[3.5rem]' : 'w-56'
+          'h-screen sticky top-0 glass-sidebar shadow-glass z-10 flex flex-col transition-[width] duration-300 ease-out',
+          collapsed ? 'w-[3.5rem]' : 'w-60'
         )}>
           {/* Logo + Toggle */}
-          <div className="h-14 px-2 flex items-center border-b border-navy-100/60">
+          <div className={cn('h-14 flex items-center', collapsed ? 'px-1.5' : 'px-3')}>
             {collapsed ? (
               <button
                 onClick={toggleSidebar}
-                className="w-10 h-10 mx-auto flex items-center justify-center rounded-lg hover:bg-navy-50 transition-colors"
-                title="Menüyü aç"
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl hover:bg-white/60 transition-all duration-200"
+                title="Menuyu ac"
               >
                 <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Invekto" className="w-7 h-7 rounded-lg" />
               </button>
             ) : (
               <>
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="w-7 h-7 flex-shrink-0 rounded-lg ml-2" />
-                <div className="min-w-0 ml-2 flex-1">
+                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="w-8 h-8 flex-shrink-0 rounded-lg" />
+                <div className="min-w-0 ml-2.5 flex-1">
                   <InvektoLogo size="sm" className="block leading-tight" />
                   {session?.companyCode && (
-                    <span className="text-2xs text-navy-300 truncate block leading-tight mt-0.5">
+                    <span className="text-2xs text-navy-300 truncate block leading-tight mt-0.5 font-medium">
                       {session.companyCode}
                     </span>
                   )}
@@ -164,95 +176,46 @@ export function Layout({ children }: LayoutProps) {
             )}
           </div>
 
-          {/* Navigation */}
-          <nav className={cn('flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden', collapsed ? 'px-1.5' : 'px-2')}>
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  title={collapsed ? item.label : undefined}
-                  className={cn(
-                    'flex items-center h-9 rounded-lg text-[13px] font-medium transition-colors duration-150',
-                    collapsed ? 'justify-center px-0' : 'gap-2.5 px-3',
-                    isActive
-                      ? 'bg-brand-50 text-brand-600'
-                      : 'text-navy-400 hover:bg-navy-50 hover:text-navy-700'
-                  )}
-                >
-                  <Icon className={cn(
-                    'w-4 h-4 flex-shrink-0',
-                    isActive ? 'text-brand-500' : 'text-navy-300'
-                  )} />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Glass divider */}
+          <div className="glass-divider mx-3" />
 
-          {/* Font Size — hidden when collapsed */}
-          {!collapsed && (
-            <div className="px-3 py-1.5">
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => adjustFontSize(-FONT_STEP)}
-                  disabled={fontSize <= FONT_MIN}
-                  className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Yazı küçült"
-                >
-                  <Type className="w-3 h-3" />
-                </button>
-                <span className="text-2xs text-navy-300 min-w-[2.5rem] text-center select-none">
-                  {fontSize}px
-                </span>
-                <button
-                  onClick={() => adjustFontSize(FONT_STEP)}
-                  disabled={fontSize >= FONT_MAX}
-                  className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Yazı büyüt"
-                >
-                  <Type className="w-3.5 h-3.5" />
-                </button>
-                {fontSize !== FONT_DEFAULT && (
-                  <button
-                    onClick={() => setFontSize(FONT_DEFAULT)}
-                    className="w-7 h-7 flex items-center justify-center rounded-md border border-navy-100 text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors ml-1"
-                    title={`Sıfırla (${FONT_DEFAULT}px)`}
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Main Navigation */}
+          <nav className={cn('flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden', collapsed ? 'px-1' : 'px-2')}>
+            {mainItems.map(item => renderNavLink(item))}
+          </nav>
 
           {/* Version + Collapse */}
           {!collapsed && (
             <div className="px-4 py-1.5 flex items-center justify-between">
-              <span className="text-2xs text-navy-200">v{__BUILD_TIME__}</span>
+              <span className="text-2xs text-navy-200 font-medium">v{__BUILD_TIME__}</span>
               <button
                 onClick={toggleSidebar}
-                className="w-5 h-5 flex items-center justify-center rounded text-navy-200 hover:bg-navy-50 hover:text-navy-500 transition-colors"
-                title="Menüyü kapat"
+                className="w-6 h-6 flex items-center justify-center rounded-lg text-navy-200 hover:bg-white/50 hover:text-navy-500 transition-all duration-200"
+                title="Menuyu kapat"
               >
                 <PanelLeftClose className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
 
-          {/* Logout */}
-          <div className={cn('py-2 border-t border-navy-100/60', collapsed ? 'px-1.5' : 'px-2')}>
+          {/* Glass divider */}
+          <div className="glass-divider mx-3" />
+
+          {/* Bottom: Onboarding + Settings + Logout */}
+          <div className={cn('py-2 space-y-0.5', collapsed ? 'px-1' : 'px-2')}>
+            {onboardingItem && renderNavLink(onboardingItem)}
+            {settingsItem && renderNavLink(settingsItem)}
             <button
               className={cn(
-                'w-full flex items-center h-9 rounded-lg text-[13px] font-medium text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors duration-150',
-                collapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
+                'w-full flex items-center h-10 rounded-xl text-sm font-medium text-navy-400 hover:glass-nav-hover hover:text-navy-700 transition-all duration-200 group',
+                collapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5'
               )}
               onClick={logout}
-              title={collapsed ? 'Çıkış Yap' : undefined}
+              title={collapsed ? 'Cikis Yap' : undefined}
             >
-              <LogOut className="w-4 h-4 flex-shrink-0 text-navy-300" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-navy-300 group-hover:bg-red-50 group-hover:text-red-400 transition-all duration-200">
+                <Power className="w-[17px] h-[17px]" strokeWidth={1.8} />
+              </div>
               {!collapsed && <span>Cikis Yap</span>}
             </button>
           </div>

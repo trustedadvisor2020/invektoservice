@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-02-24
-- **Status:** FlowBuilder wizard bug fix + UX iyilestirmeleri tamamlandi.
-- **Last Task:** (1) Wizard flow config extraction fix (```json blocks + done event content), (2) Option button rendering (WizardChat + wizard-store pendingOptions), (3) Codex PASS iter 0, (4) Samimi loading yazilar (6 rotating mesaj), (5) Collapsible teknik detaylar (splitContent + details/summary).
-- **Next Task:** Deploy (Backend SPA build + publish + server-deploy) veya diger feature/paket calismasi.
+- **Status:** Dashboard UI redesign (glass morphism sidebar) + deploy tamamlandi.
+- **Last Task:** (1) Glass morphism sidebar redesign (frosted glass bg, gradient dividers, brand glow active state), (2) Typography upgrade Inter→Plus Jakarta Sans (body)+DM Sans (display), (3) Root font-size 14px→18px, (4) Font size controls removed, (5) Onboarding card→normal nav link, (6) Logout icon LogOut→Power, (7) Multiple iterative deploys.
+- **Next Task:** Diger feature/paket calismasi veya UI polish devami.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

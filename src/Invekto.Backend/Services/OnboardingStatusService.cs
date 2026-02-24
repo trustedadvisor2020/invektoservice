@@ -149,7 +149,7 @@ public sealed class OnboardingStatusService
             {
                 Key = "templates_adopted",
                 Completed = (knStats?.TemplateAdoptionCount ?? 0) >= MinTemplateAdoptions,
-                Detail = knStats != null ? $"{knStats.TemplateAdoptionCount} sablon" : "bilinmiyor"
+                Detail = knStats != null ? $"{knStats.TemplateAdoptionCount} şablon" : "bilinmiyor"
             },
             new()
             {
@@ -167,7 +167,7 @@ public sealed class OnboardingStatusService
             {
                 Key = "first_flow_created",
                 Completed = (atStats?.TotalFlowCount ?? 0) >= MinFlowsCreated,
-                Detail = atStats != null ? (atStats.TotalFlowCount >= MinFlowsCreated ? $"{atStats.TotalFlowCount} akis" : null) : "bilinmiyor"
+                Detail = atStats != null ? (atStats.TotalFlowCount >= MinFlowsCreated ? $"{atStats.TotalFlowCount} akış" : null) : "bilinmiyor"
             },
             new()
             {
@@ -179,7 +179,7 @@ public sealed class OnboardingStatusService
             {
                 Key = "whatsapp_connected",
                 Completed = whatsAppConnected,
-                Detail = whatsAppConnected ? "bagli" : null
+                Detail = whatsAppConnected ? "bağlı" : null
             }
         };
     }
@@ -196,43 +196,43 @@ public sealed class OnboardingStatusService
             {
                 Key = "sector_selected",
                 ActionUrl = "/app/settings",
-                Hint = "Isletmenizin sektorunu secin"
+                Hint = "İşletmenizin sektörünü seçin"
             },
             "templates_adopted" => new OnboardingNextStepDto
             {
                 Key = "templates_adopted",
                 ActionUrl = "/app/templates",
-                Hint = "Sektorunuze uygun sablonlari icerik kutuphanenize ekleyin"
+                Hint = "Sektörünüze uygun şablonları kütüphanenize ekleyin"
             },
             "knowledge_ready" => new OnboardingNextStepDto
             {
                 Key = "knowledge_ready",
                 ActionUrl = "/app/knowledge",
-                Hint = $"En az {MinActiveFaqs} aktif SSS olusturun"
+                Hint = $"En az {MinActiveFaqs} sık sorulan soru ekleyin"
             },
             "intents_configured" => new OnboardingNextStepDto
             {
                 Key = "intents_configured",
                 ActionUrl = "/app/intents",
-                Hint = $"En az {MinIntentPatterns} niyet kalıbı tanimlayın"
+                Hint = $"En az {MinIntentPatterns} müşteri niyeti tanımlayın"
             },
             "first_flow_created" => new OnboardingNextStepDto
             {
                 Key = "first_flow_created",
                 ActionUrl = "/app/flow-builder",
-                Hint = "Ilk chatbot akisinizi olusturun"
+                Hint = "İlk chatbot akışınızı oluşturun"
             },
             "flow_activated" => new OnboardingNextStepDto
             {
                 Key = "flow_activated",
                 ActionUrl = "/app/flow-builder",
-                Hint = "Bir chatbot akisini aktif hale getirin"
+                Hint = "Bir chatbot akışını aktif hale getirin"
             },
             "whatsapp_connected" => new OnboardingNextStepDto
             {
                 Key = "whatsapp_connected",
                 ActionUrl = "/app/settings",
-                Hint = "WhatsApp entegrasyonunuzu baglayın"
+                Hint = "WhatsApp hesabınızı bağlayın"
             },
             _ => null
         };

@@ -6,12 +6,13 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| - | Backend deploy (wizard fix + UX) | Pending | SPA build + publish + server-deploy |
+| - | (empty) | - | - |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-02-24 | Dashboard UI Redesign — Glass morphism sidebar, Plus Jakarta Sans + DM Sans typography, root 18px, icon containers, Power logout icon, 6x iterative deploy |
 | 2026-02-24 | FlowBuilder Wizard UX — (1) flow config extraction fix (```json + done content), (2) option buttons, (3) samimi loading text, (4) collapsible teknik detaylar. Codex PASS iter 0. |
 | 2026-02-23 | Self-Service Onboarding — Sektor secimi + sablon benimseme self-service, Codex 2 iter FORCE PASS, deploy + onboarding/status 500 hotfix |
 | 2026-02-23 | Tum Mesajlar Kanal — LEFT JOIN instance_name, Kanal filtre dropdown (tenant-aware) + tablo kolonu, /api/ops/channels endpoint |

@@ -243,6 +243,15 @@
 
 ---
 
+### UI / Frontend Design
+
+| Date | Mistake | Solution | Prevention |
+|------|---------|----------|------------|
+| 2026-02-24 | Sidebar nav font 13px + icon 16px cok kucuk — Q "fontlar ve ikonlar cok ufak oldu" dedi | Font text-sm (14px), icon w-5 h-5 (20px), row h-10 (40px) | **Nav item minimum: text-sm + w-5 icon + h-10 row. 13px/16px asla kullanma** |
+| 2026-02-24 | Root font-size 14px Q icin kucuk — 18px tercih etti | html { font-size: 18px } | **Q'nun font tercihi 18px root. Yeni SPA'larda bunu default yap** |
+| 2026-02-24 | Onboarding nav item'a ozel gradient kutu eklendi — Q istemedi, "normal yazi olsun" dedi | Normal renderNavLink ile render, ozel CSS kaldirildi | **Nav item'lari uniform tut. Ozel kutu/card istemeden ekleme — Q minimalist tercih ediyor** |
+| 2026-02-24 | Font size controls (T/px/T/reset) sidebar'da yer kapliyordu — Q "kaldir" dedi | Tum font size UI + state + localStorage tamamen silindi | **Font size UI sidebar'dan kaldirildi. Q tekrar isterse ekle, proaktif ekleme** |
+
 ## Patterns That Work
 
 ### Architecture & Design

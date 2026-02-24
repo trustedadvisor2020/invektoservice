@@ -4,19 +4,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { api, type FlowSummary, ApiClientError } from '../../lib/api';
 import { createDefaultFlow, type FlowConfigV2 } from '../../types/flow';
 import {
-  ShoppingBag,
-  MessageCircleHeart,
-  Headphones,
-  CalendarCheck,
-  Package,
-  CreditCard,
-  HelpCircle,
-  Megaphone,
-  Star,
-  Bell,
-  UserCheck,
-  PhoneCall,
-  Workflow,
+  ShoppingBag, MessageCircleHeart, Headphones, CalendarCheck,
+  Package, CreditCard, HelpCircle, Megaphone, Star, Bell,
+  UserCheck, PhoneCall, Workflow, Search, Plus, Sparkles,
+  Pencil, Copy, Pause, Play, Trash2, X, Phone,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -47,6 +38,25 @@ function getFlowIcon(name: string, description?: string | null): { Icon: LucideI
   return { Icon: Workflow, gradient: 'from-slate-500 to-navy-600' };
 }
 
+/* ── Helpers ──────────────────────────────────────── */
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 0) return 'Simdi';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Az once';
+  if (mins < 60) return `${mins} dk once`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} saat once`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Dun';
+  if (days < 7) return `${days} gun once`;
+  if (days < 30) return `${Math.floor(days / 7)} hafta once`;
+  return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/* ── Main Component ──────────────────────────────────────── */
+
 export function FlowListPage() {
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -56,15 +66,15 @@ export function FlowListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
 
-  // New flow dialog
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newFlowName, setNewFlowName] = useState('');
   const [newFlowError, setNewFlowError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Delete confirm dialog
   const [deleteTarget, setDeleteTarget] = useState<FlowSummary | null>(null);
+  const [wizardLoading, setWizardLoading] = useState(false);
 
   const fetchFlows = useCallback(async () => {
     if (!tenantId) return;
@@ -80,9 +90,13 @@ export function FlowListPage() {
     }
   }, [tenantId]);
 
-  useEffect(() => {
-    fetchFlows();
-  }, [fetchFlows]);
+  useEffect(() => { fetchFlows(); }, [fetchFlows]);
+
+  const openNewDialog = () => {
+    setNewFlowName('');
+    setNewFlowError(null);
+    setShowNewDialog(true);
+  };
 
   const handleCreate = async () => {
     if (!newFlowName.trim()) {
@@ -161,30 +175,22 @@ export function FlowListPage() {
     try {
       const detail = await api.getFlow(tenantId, flow.flow_id);
       const config = detail.flow_config as FlowConfigV2;
-
-      // Generate duplicate name with numbered suffix
       const baseName = flow.flow_name;
       const existingNames = new Set(flows.map((f) => f.flow_name));
-
       let dupName = `${baseName} - Kopya`;
       if (existingNames.has(dupName)) {
         let counter = 2;
-        while (existingNames.has(`${baseName} - Kopya (${counter})`)) {
-          counter++;
-        }
+        while (existingNames.has(`${baseName} - Kopya (${counter})`)) counter++;
         dupName = `${baseName} - Kopya (${counter})`;
       }
-
       const dupConfig: FlowConfigV2 = {
         ...config,
         metadata: { ...config.metadata, name: dupName },
       };
-
       const created = await api.createFlow(tenantId, {
         flow_name: dupName,
         flow_config: dupConfig,
       });
-
       navigate(`/flow-builder/editor/${created.flow_id}`);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 409) {
@@ -196,19 +202,6 @@ export function FlowListPage() {
       setActionLoading(null);
     }
   };
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const [wizardLoading, setWizardLoading] = useState(false);
 
   const handleStartWizard = async () => {
     if (!tenantId || wizardLoading) return;
@@ -225,215 +218,276 @@ export function FlowListPage() {
     }
   };
 
-  const btnPrimary = 'px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors';
-  const btnAI = 'px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-40';
-  const btnGhost = 'px-3 py-2 text-sm text-navy-400 hover:text-navy-900 transition-colors';
-  const inputClasses = 'w-full px-3 py-2.5 bg-white border border-navy-100 rounded-lg text-navy-900 placeholder-navy-300 focus:outline-none focus:border-brand-500 focus:shadow-focus transition-all';
+  /* ── Derived ──────────────────────────────── */
+
+  const filteredFlows = flows.filter(f => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return f.flow_name.toLowerCase().includes(q) ||
+      (f.flow_description?.toLowerCase().includes(q) ?? false);
+  });
+
+  const activeCount = flows.filter(f => f.is_active).length;
+
+  /* ── Render ──────────────────────────────── */
 
   return (
     <div className="min-h-screen bg-navy-50 text-navy-900">
-      {/* Header */}
-      <header className="bg-white border-b border-navy-100 px-6 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-navy-900">Flow Builder</h1>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleStartWizard}
-            disabled={wizardLoading}
-            className={btnAI}
-          >
-            {wizardLoading ? 'Hazirlaniyor...' : '\u2728 AI ile Olustur'}
-          </button>
-          <button
-            onClick={() => {
-              setNewFlowName('');
-              setNewFlowError(null);
-              setShowNewDialog(true);
-            }}
-            className={btnPrimary}
-          >
-            + Yeni Flow
-          </button>
+      {/* ── Sticky Header ── */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-navy-100 px-6 py-3 sticky top-0 z-30">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-display font-bold text-navy-900 tracking-tight">
+              Flow Builder
+            </h1>
+            {!loading && flows.length > 0 && (
+              <div className="flex items-center gap-3 text-2xs text-navy-400">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flow-status-pulse" />
+                  {activeCount} aktif
+                </span>
+                <span className="text-navy-200">/</span>
+                <span>{flows.length} toplam</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {!loading && flows.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-navy-300 pointer-events-none" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Ara..."
+                  className="w-40 pl-8 pr-7 py-1.5 bg-navy-50 border border-transparent rounded-lg text-sm text-navy-900 placeholder-navy-300 focus:outline-none focus:bg-white focus:border-brand-200 focus:shadow-focus focus:w-56 transition-all"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-navy-300 hover:text-navy-500"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+            <button
+              onClick={handleStartWizard}
+              disabled={wizardLoading}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-40 disabled:pointer-events-none"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {wizardLoading ? 'Hazirlaniyor...' : 'AI ile Olustur'}
+            </button>
+            <button
+              onClick={openNewDialog}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Yeni Flow
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Content */}
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      {/* ── Content ── */}
+      <main className="max-w-5xl mx-auto px-6 py-5">
+        {/* Error banner */}
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 flex items-center justify-between flow-card-enter">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4">
-              &times;
+            <button onClick={() => setError(null)} className="p-1 rounded-lg text-red-300 hover:text-red-500 hover:bg-red-100 transition-colors ml-3">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {loading ? (
-          <div className="text-center py-20 text-navy-300">Yukleniyor...</div>
-        ) : flows.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-navy-400 mb-4">Henuz bir flow olusturulmamis.</p>
-            <button
-              onClick={() => {
-                setNewFlowName('');
-                setNewFlowError(null);
-                setShowNewDialog(true);
-              }}
-              className={btnPrimary}
-            >
-              Ilk Flow'u Olustur
-            </button>
+        {/* Loading skeleton */}
+        {loading && (
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map(i => <SkeletonRow key={i} delay={i * 80} />)}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {flows.map((flow) => (
-              <div
-                key={flow.flow_id}
-                onDoubleClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
-                className="bg-white border border-navy-100 rounded-xl px-5 py-4 flex items-center justify-between hover:border-navy-200 hover:shadow-elevated transition-all cursor-pointer select-none"
+        )}
+
+        {/* Empty state */}
+        {!loading && flows.length === 0 && !error && (
+          <div className="text-center py-24 max-w-sm mx-auto flow-card-enter">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <Workflow className="w-7 h-7 text-brand-400" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-base font-display font-semibold text-navy-900 mb-1.5">Henuz flow yok</h3>
+            <p className="text-sm text-navy-400 mb-5 leading-relaxed">
+              Ilk chatbot flow'unuzu olusturun.
+            </p>
+            <div className="flex items-center justify-center gap-2.5">
+              <button
+                onClick={handleStartWizard}
+                disabled={wizardLoading}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-40"
               >
-                {/* Flow Icon */}
-                {(() => {
-                  const { Icon } = getFlowIcon(flow.flow_name, flow.flow_description);
-                  return (
-                    <Icon className="w-5 h-5 text-navy-400 flex-shrink-0 mr-4" strokeWidth={1.75} />
-                  );
-                })()}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-medium text-navy-900 truncate">{flow.flow_name}</span>
-                    {flow.is_active && (
-                      <span className="px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
-                        Aktif
-                      </span>
-                    )}
-                    {flow.health_score != null && (
-                      <HealthBadge score={flow.health_score} issues={flow.health_issues} />
-                    )}
+                <Sparkles className="w-3.5 h-3.5" />
+                AI ile Baslat
+              </button>
+              <button
+                onClick={openNewDialog}
+                className="flex items-center gap-1.5 px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                Bos Flow
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Flow Rows */}
+        {!loading && filteredFlows.length > 0 && (
+          <div className="space-y-2">
+            {filteredFlows.map((flow, i) => {
+              const { Icon, gradient } = getFlowIcon(flow.flow_name, flow.flow_description);
+              const isRowLoading = actionLoading === flow.flow_id;
+
+              return (
+                <div
+                  key={flow.flow_id}
+                  onDoubleClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
+                  className={`
+                    group bg-white border rounded-xl px-4 py-3 flex items-center gap-3.5
+                    hover:shadow-elevated hover:border-navy-200
+                    transition-all duration-200 cursor-pointer select-none flow-card-enter
+                    ${flow.is_active ? 'border-emerald-200/60' : 'border-navy-100'}
+                  `}
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  {/* Gradient Icon */}
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm flex-shrink-0`}>
+                    <Icon className="w-4 h-4 text-white" strokeWidth={2} />
                   </div>
-                  {flow.flow_description && (
-                    <p className="text-xs text-navy-400 truncate mb-1">{flow.flow_description}</p>
-                  )}
-                  <div className="flex items-center gap-4 text-xs text-navy-300">
-                    <span>v{flow.config_version}</span>
-                    <span>{flow.node_count} node / {flow.edge_count} edge</span>
-                    <span>Guncelleme: {formatDate(flow.updated_at)}</span>
-                  </div>
-                  {flow.assigned_instances && flow.assigned_instances.length > 0 && (
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {flow.assigned_instances.map((inst) => (
-                        <span
-                          key={inst.instanceId}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full"
-                          title={inst.instanceId}
-                        >
-                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                            <path d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.694.198-.83 1.063-.373 1.574a7.028 7.028 0 004.633 2.368c.703.1 1.202-.466 1.128-1.176l-.11-1.056a1.5 1.5 0 011.21-1.632l2.378-.476A1.5 1.5 0 0115.5 9.5v1.264a3 3 0 01-2.286 2.909 11.054 11.054 0 01-7.863-1.867A11.023 11.023 0 012 5.732V3.5z" />
-                          </svg>
-                          {inst.instanceName}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-navy-900 truncate">{flow.flow_name}</span>
+                      {flow.is_active ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-px text-2xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full flex-shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flow-status-pulse" />
+                          Aktif
                         </span>
-                      ))}
+                      ) : (
+                        <span className="px-1.5 py-px text-2xs font-medium bg-navy-50 text-navy-400 rounded-full flex-shrink-0">
+                          Pasif
+                        </span>
+                      )}
+                      {flow.health_score != null && (
+                        <HealthBadge score={flow.health_score} issues={flow.health_issues} />
+                      )}
                     </div>
-                  )}
+                    <div className="flex items-center gap-3 mt-0.5 text-2xs text-navy-300">
+                      <span>v{flow.config_version}</span>
+                      <span>{flow.node_count} node &middot; {flow.edge_count} edge</span>
+                      <span>{timeAgo(flow.updated_at)}</span>
+                      {flow.assigned_instances && flow.assigned_instances.length > 0 && (
+                        <span className="inline-flex items-center gap-1 text-sky-500">
+                          <Phone className="w-2.5 h-2.5" />
+                          {flow.assigned_instances.map(i => i.instanceName).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-0.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <IconBtn
+                      icon={Pencil}
+                      title="Duzenle"
+                      onClick={() => navigate(`/flow-builder/editor/${flow.flow_id}`)}
+                      className="text-brand-500 hover:bg-brand-50"
+                    />
+                    {flow.is_active ? (
+                      <IconBtn
+                        icon={Pause}
+                        title="Deaktif Et"
+                        onClick={() => handleDeactivate(flow.flow_id)}
+                        disabled={isRowLoading}
+                        className="text-amber-500 hover:bg-amber-50"
+                      />
+                    ) : (
+                      <IconBtn
+                        icon={Play}
+                        title="Aktif Et"
+                        onClick={() => handleActivate(flow.flow_id)}
+                        disabled={isRowLoading}
+                        className="text-emerald-500 hover:bg-emerald-50"
+                      />
+                    )}
+                    <IconBtn
+                      icon={Copy}
+                      title="Kopyala"
+                      onClick={() => handleDuplicate(flow)}
+                      disabled={isRowLoading}
+                      className="text-navy-400 hover:text-brand-500 hover:bg-brand-50"
+                    />
+                    <IconBtn
+                      icon={Trash2}
+                      title={flow.is_active ? 'Aktif flow silinemez' : 'Sil'}
+                      onClick={() => setDeleteTarget(flow)}
+                      disabled={isRowLoading || flow.is_active}
+                      className="text-red-400 hover:bg-red-50"
+                    />
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
 
-                <div className="flex items-center gap-1 ml-4 flex-shrink-0">
-                  {/* Edit */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/flow-builder/editor/${flow.flow_id}`); }}
-                    className="p-2 rounded-lg text-brand-500 hover:bg-brand-50 transition-colors"
-                    title="Duzenle"
-                  >
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
-                    </svg>
-                  </button>
-
-                  {/* Activate / Deactivate */}
-                  {flow.is_active ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeactivate(flow.flow_id); }}
-                      disabled={actionLoading === flow.flow_id}
-                      className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-40"
-                      title="Deaktif Et"
-                    >
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleActivate(flow.flow_id); }}
-                      disabled={actionLoading === flow.flow_id}
-                      className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40"
-                      title="Aktif Et"
-                    >
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.344-5.891a1.5 1.5 0 000-2.538L6.3 2.841z" />
-                      </svg>
-                    </button>
-                  )}
-
-                  {/* Duplicate */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDuplicate(flow); }}
-                    disabled={actionLoading === flow.flow_id}
-                    className="p-2 rounded-lg text-brand-500 hover:bg-brand-50 transition-colors disabled:opacity-40"
-                    title="Kopyala"
-                  >
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
-                      <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.44A1.5 1.5 0 008.378 6H4.5z" />
-                    </svg>
-                  </button>
-
-                  {/* Delete */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(flow); }}
-                    disabled={actionLoading === flow.flow_id || flow.is_active}
-                    className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    title={flow.is_active ? 'Aktif flow silinemez' : 'Sil'}
-                  >
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
+        {/* Search no results */}
+        {!loading && search && filteredFlows.length === 0 && flows.length > 0 && (
+          <div className="text-center py-16 flow-card-enter">
+            <Search className="w-8 h-8 text-navy-200 mx-auto mb-2" strokeWidth={1.5} />
+            <p className="text-sm text-navy-400">
+              &ldquo;<span className="font-medium text-navy-500">{search}</span>&rdquo; ile eslesen flow bulunamadi
+            </p>
           </div>
         )}
       </main>
 
-      {/* New Flow Dialog */}
+      {/* ── New Flow Dialog ── */}
       {showNewDialog && (
-        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-md p-6 shadow-elevated">
-            <h2 className="text-lg font-semibold text-navy-900 mb-4">Yeni Flow Olustur</h2>
+        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => !creating && setShowNewDialog(false)}>
+          <div
+            className="bg-white border border-navy-100 rounded-2xl w-full max-w-md p-6 shadow-elevated flow-card-enter"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-display font-semibold text-navy-900">Yeni Flow Olustur</h2>
+              <button
+                onClick={() => setShowNewDialog(false)}
+                disabled={creating}
+                className="p-1.5 rounded-lg text-navy-300 hover:text-navy-500 hover:bg-navy-50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <input
               type="text"
               value={newFlowName}
               onChange={(e) => setNewFlowName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="Flow adi (ornek: Satis Chatbot)"
-              className={`${inputClasses} mb-3`}
+              className="w-full px-3.5 py-2.5 bg-white border border-navy-100 rounded-xl text-navy-900 placeholder-navy-300 focus:outline-none focus:border-brand-300 focus:shadow-focus transition-all mb-3"
               autoFocus
               disabled={creating}
             />
             {newFlowError && (
               <p className="text-sm text-red-500 mb-3">{newFlowError}</p>
             )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowNewDialog(false)}
-                disabled={creating}
-                className={btnGhost}
-              >
-                Iptal
-              </button>
+            <div className="flex justify-end">
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className={`${btnPrimary} disabled:opacity-40`}
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40"
               >
                 {creating ? 'Olusturuluyor...' : 'Olustur'}
               </button>
@@ -442,24 +496,29 @@ export function FlowListPage() {
         </div>
       )}
 
-      {/* Delete Confirm Dialog */}
+      {/* ── Delete Confirm Dialog ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated">
-            <h2 className="text-lg font-semibold text-navy-900 mb-2">Flow'u Sil</h2>
-            <p className="text-sm text-navy-400 mb-4">
-              <strong className="text-navy-900">{deleteTarget.flow_name}</strong> flow'u kalici olarak silinecek. Bu islem geri alinamaz.
-            </p>
-            <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
+          <div
+            className="bg-white border border-navy-100 rounded-2xl w-full max-w-sm p-6 shadow-elevated flow-card-enter"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-display font-semibold text-navy-900">Flow'u Sil</h2>
               <button
                 onClick={() => setDeleteTarget(null)}
-                className={btnGhost}
+                className="p-1.5 rounded-lg text-navy-300 hover:text-navy-500 hover:bg-navy-50 transition-colors"
               >
-                Iptal
+                <X className="w-5 h-5" />
               </button>
+            </div>
+            <p className="text-sm text-navy-400 mb-5 leading-relaxed">
+              <strong className="text-navy-900">{deleteTarget.flow_name}</strong> flow'u kalici olarak silinecek. Bu islem geri alinamaz.
+            </p>
+            <div className="flex justify-end">
               <button
                 onClick={() => handleDelete(deleteTarget)}
-                className="px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
+                className="px-5 py-2.5 text-sm bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors"
               >
                 Evet, Sil
               </button>
@@ -471,37 +530,73 @@ export function FlowListPage() {
   );
 }
 
+/* ── Sub-Components ──────────────────────────────────────── */
+
+function IconBtn({
+  icon: Icon,
+  title,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  icon: LucideIcon;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      disabled={disabled}
+      title={title}
+      className={`p-1.5 rounded-lg transition-colors disabled:opacity-25 disabled:pointer-events-none ${className}`}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  );
+}
+
 function HealthBadge({ score, issues }: { score: number; issues: string[] | null }) {
-  let bg: string;
-  let text: string;
-  let border: string;
-  let label: string;
+  let bg: string, text: string, border: string, label: string;
 
   if (score >= 80) {
-    bg = 'bg-emerald-50';
-    text = 'text-emerald-700';
-    border = 'border-emerald-100';
-    label = 'Saglikli';
+    bg = 'bg-emerald-50'; text = 'text-emerald-600'; border = 'border-emerald-100'; label = 'Saglikli';
   } else if (score >= 50) {
-    bg = 'bg-amber-50';
-    text = 'text-amber-700';
-    border = 'border-amber-100';
-    label = 'Dikkat';
+    bg = 'bg-amber-50'; text = 'text-amber-600'; border = 'border-amber-100'; label = 'Dikkat';
   } else {
-    bg = 'bg-red-50';
-    text = 'text-red-700';
-    border = 'border-red-100';
-    label = 'Sorunlu';
+    bg = 'bg-red-50'; text = 'text-red-600'; border = 'border-red-100'; label = 'Sorunlu';
   }
 
   const tooltip = issues && issues.length > 0 ? issues.join(' | ') : `Skor: ${score}`;
 
   return (
     <span
-      className={`px-2 py-0.5 text-xs ${bg} ${text} border ${border} rounded-full cursor-default`}
+      className={`px-1.5 py-px text-2xs font-medium ${bg} ${text} border ${border} rounded-full cursor-default`}
       title={tooltip}
     >
-      {score} - {label}
+      {score} &middot; {label}
     </span>
+  );
+}
+
+function SkeletonRow({ delay = 0 }: { delay?: number }) {
+  return (
+    <div
+      className="bg-white border border-navy-100 rounded-xl px-4 py-3 flex items-center gap-3.5 flow-card-enter"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="w-9 h-9 rounded-lg flow-skeleton flex-shrink-0" />
+      <div className="flex-1">
+        <div className="h-4 w-40 flow-skeleton rounded mb-1.5" />
+        <div className="h-3 w-64 flow-skeleton rounded" />
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-7 h-7 flow-skeleton rounded-lg" />
+        <div className="w-7 h-7 flow-skeleton rounded-lg" />
+        <div className="w-7 h-7 flow-skeleton rounded-lg" />
+        <div className="w-7 h-7 flow-skeleton rounded-lg" />
+      </div>
+    </div>
   );
 }

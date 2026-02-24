@@ -45,8 +45,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        logo: ['Neon', 'Inter', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        display: ['"DM Sans"', '"Plus Jakarta Sans"', 'sans-serif'],
+        logo: ['Neon', '"DM Sans"', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
@@ -60,6 +61,8 @@ export default {
         'card': '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
         'elevated': '0 4px 12px 0 rgb(0 0 0 / 0.06)',
         'focus': '0 0 0 3px rgba(99, 91, 255, 0.15)',
+        'glass': '0 8px 32px rgba(99, 91, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
+        'glass-active': 'inset 0 0 0 1px rgba(99, 91, 255, 0.12), 0 0 12px rgba(99, 91, 255, 0.06)',
       },
       keyframes: {
         confetti: {
