@@ -1,7 +1,25 @@
-import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback, type KeyboardEvent } from 'react';
 import { useWizardStore } from '../../../stores/wizard-store';
 import { renderWithNodeChips } from './NodeChip';
 import type { WizardMessage, WizardOption } from '../../../types/wizard';
+
+const thinkingMessages = [
+  'Bir saniye, dusunuyorum...',
+  'Hmm, guzel bir seyler geliyor...',
+  'Fikirlerimi topluyorum...',
+  'Yaratici moduma gectim...',
+  'Hemen hazirliyorum...',
+  'Sizin icin en iyisini dusunuyorum...',
+];
+
+/** Split long assistant messages into summary + collapsible detail */
+function splitContent(text: string): { summary: string; detail: string | null } {
+  const paragraphs = text.split(/\n\n+/);
+  if (paragraphs.length <= 2 && text.length < 300) {
+    return { summary: text, detail: null };
+  }
+  return { summary: paragraphs[0], detail: paragraphs.slice(1).join('\n\n') };
+}
 
 export function WizardChat() {
   const messages = useWizardStore(s => s.messages);
@@ -14,6 +32,11 @@ export function WizardChat() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const thinkingText = useMemo(
+    () => thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isStreaming],
+  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -101,7 +124,7 @@ export function WizardChat() {
               </svg>
             </div>
             <div className="bg-white border border-navy-100 rounded-xl px-4 py-3 text-sm text-navy-400">
-              AI dusunuyor...
+              {thinkingText}
             </div>
           </div>
         )}
@@ -158,6 +181,28 @@ export function WizardChat() {
   );
 }
 
+function CollapsibleContent({ text }: { text: string }) {
+  const { summary, detail } = splitContent(text);
+  return (
+    <>
+      <div className="whitespace-pre-wrap">{renderWithNodeChips(summary)}</div>
+      {detail && (
+        <details className="mt-2 group/detail">
+          <summary className="text-xs text-purple-500 cursor-pointer hover:text-purple-600 select-none list-none flex items-center gap-1">
+            <svg className="w-3.5 h-3.5 transition-transform group-open/detail:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+            Detaylari goster
+          </summary>
+          <div className="mt-1.5 pt-1.5 border-t border-navy-50 whitespace-pre-wrap text-navy-600">
+            {renderWithNodeChips(detail)}
+          </div>
+        </details>
+      )}
+    </>
+  );
+}
+
 function MessageBubble({ message }: { message: WizardMessage }) {
   const isUser = message.role === 'user';
 
@@ -183,8 +228,8 @@ function MessageBubble({ message }: { message: WizardMessage }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
         </svg>
       </div>
-      <div className="bg-white border border-navy-100 rounded-xl px-4 py-3 max-w-[85%] text-sm text-navy-800 whitespace-pre-wrap">
-        {renderWithNodeChips(message.content)}
+      <div className="bg-white border border-navy-100 rounded-xl px-4 py-3 max-w-[85%] text-sm text-navy-800">
+        <CollapsibleContent text={message.content} />
         {message.flow_config_snapshot && (
           <div className="mt-2 pt-2 border-t border-navy-100 text-xs text-green-600 font-medium flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

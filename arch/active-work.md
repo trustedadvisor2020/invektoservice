@@ -6,12 +6,13 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| - | (bos) | - | - |
+| - | Backend deploy (wizard fix + UX) | Pending | SPA build + publish + server-deploy |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-02-24 | FlowBuilder Wizard UX — (1) flow config extraction fix (```json + done content), (2) option buttons, (3) samimi loading text, (4) collapsible teknik detaylar. Codex PASS iter 0. |
 | 2026-02-23 | Self-Service Onboarding — Sektor secimi + sablon benimseme self-service, Codex 2 iter FORCE PASS, deploy + onboarding/status 500 hotfix |
 | 2026-02-23 | Tum Mesajlar Kanal — LEFT JOIN instance_name, Kanal filtre dropdown (tenant-aware) + tablo kolonu, /api/ops/channels endpoint |
 | 2026-02-23 | Flow Execution Log + Instance Bug Fix — flow_execution_log DB + Automation logging + FlowLogPanel UI + instance-aware flow lookup + deploy (Backend + Automation HEALTHY) |

@@ -23,8 +23,9 @@
 | 8 | PKT-8 | Face AI | GR-3D.1~3D.5 | PLANNED | - | - |
 | 9 | PKT-9 | Guzellik Salonu | GR-3E.1~3E.8 | PLANNED | - | - |
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
+| RI | Phase RI | Revenue Intelligence POC | RI-0, RI-1 | IN-PROGRESS | 24 Sub | - |
 
-**Toplam:** 12 paket (11 done, 0 in-progress, 4 planned) | 50+ GR | 5 gun (14-18 Sub 2026)
+**Toplam:** 13 paket (11 done, 1 in-progress, 4 planned) | 50+ GR | 5 gun (14-18 Sub 2026)
 
 ## Mikroservis Port Haritasi
 

@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useWizardStore } from '../../stores/wizard-store';
+
+const thinkingMessages = [
+  'Dusunuyorum...',
+  'Hazirliyorum...',
+  'Bir saniye...',
+  'Planliyorum...',
+];
 import { WizardChat } from './components/WizardChat';
 import { WizardPreview } from './components/WizardPreview';
 
@@ -22,6 +29,11 @@ export function WizardPage() {
 
   const [nameInput, setNameInput] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const thinkingText = useMemo(
+    () => thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isStreaming],
+  );
 
   useEffect(() => {
     if (flowId && tenantId) {
@@ -92,7 +104,7 @@ export function WizardPage() {
         {isStreaming && (
           <span className="px-2.5 py-1 text-xs bg-purple-50 text-purple-600 rounded-full flex items-center gap-1.5 flex-shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-            AI dusunuyor
+            {thinkingText}
           </span>
         )}
 

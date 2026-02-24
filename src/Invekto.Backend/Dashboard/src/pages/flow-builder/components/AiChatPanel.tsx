@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { useAiChatStore } from '../../../stores/ai-chat-store';
 import { useFlowStore } from '../../../stores/flow-store';
 import { renderWithNodeChips } from './NodeChip';
@@ -10,6 +10,15 @@ const MIN_WIDTH = 240;
 const MAX_WIDTH = 520;
 const DEFAULT_WIDTH = 320;
 const STORAGE_KEY = 'invekto_ai_chat_width';
+
+const thinkingMessages = [
+  'Bir saniye, dusunuyorum...',
+  'Hmm, guzel bir seyler geliyor...',
+  'Fikirlerimi topluyorum...',
+  'Yaratici moduma gectim...',
+  'Hemen hazirliyorum...',
+  'Sizin icin en iyisini dusunuyorum...',
+];
 
 /** Check if a JSON string looks like FlowConfigV2 */
 function isFlowConfigJson(json: string): boolean {
@@ -64,6 +73,11 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isDragging = useRef(false);
   const latestWidth = useRef(panelWidth);
+  const thinkingText = useMemo(
+    () => thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isStreaming],
+  );
 
   // Keep ref in sync
   useEffect(() => { latestWidth.current = panelWidth; }, [panelWidth]);
@@ -233,7 +247,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
               </svg>
             </div>
             <div className="bg-white border border-navy-100 rounded-lg px-3 py-2 text-xs text-navy-400">
-              AI dusunuyor...
+              {thinkingText}
             </div>
           </div>
         )}
@@ -334,6 +348,15 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   );
 }
 
+/** Split long assistant messages into summary + collapsible detail */
+function splitContent(text: string): { summary: string; detail: string | null } {
+  const paragraphs = text.split(/\n\n+/);
+  if (paragraphs.length <= 2 && text.length < 300) {
+    return { summary: text, detail: null };
+  }
+  return { summary: paragraphs[0], detail: paragraphs.slice(1).join('\n\n') };
+}
+
 function ChatBubble({ message }: { message: WizardMessage }) {
   const isUser = message.role === 'user';
 
@@ -347,6 +370,9 @@ function ChatBubble({ message }: { message: WizardMessage }) {
     );
   }
 
+  const cleaned = cleanAssistantText(message.content);
+  const { summary, detail } = splitContent(cleaned);
+
   return (
     <div className="flex gap-2">
       <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -354,8 +380,21 @@ function ChatBubble({ message }: { message: WizardMessage }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
         </svg>
       </div>
-      <div className="bg-white border border-navy-100 rounded-lg px-3 py-2 max-w-[85%] text-xs text-navy-800 whitespace-pre-wrap">
-        {renderWithNodeChips(cleanAssistantText(message.content))}
+      <div className="bg-white border border-navy-100 rounded-lg px-3 py-2 max-w-[85%] text-xs text-navy-800">
+        <div className="whitespace-pre-wrap">{renderWithNodeChips(summary)}</div>
+        {detail && (
+          <details className="mt-1.5 group/detail">
+            <summary className="text-[10px] text-purple-500 cursor-pointer hover:text-purple-600 select-none list-none flex items-center gap-0.5">
+              <svg className="w-3 h-3 transition-transform group-open/detail:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+              Detaylari goster
+            </summary>
+            <div className="mt-1 pt-1 border-t border-navy-50 whitespace-pre-wrap text-navy-600">
+              {renderWithNodeChips(detail)}
+            </div>
+          </details>
+        )}
         {message.flow_config_snapshot && (
           <div className="mt-1.5 pt-1.5 border-t border-navy-100 text-[10px] text-green-600 font-medium flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

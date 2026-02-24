@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-23
-- **Status:** Self-Service Onboarding (Sektor Secimi + Sablon Benimseme) tamamlandi, deploy edildi, 500 hotfix yapildi.
-- **Last Task:** Self-Service Onboarding — (1) GET/PUT /api/v1/settings/sector, (2) 3 template proxy route (available/adopt/adoptions), (3) SettingsPage sektor dropdown, (4) TemplateLibraryPage dual-mode (ops table vs tenant card grid), (5) Codex 2 iter FORCE PASS, (6) Deploy + onboarding/status 500 hotfix (`.RequireAuthorization()` kaldirildi — custom JWT middleware yeterli).
-- **Next Task:** Siradaki: diger paket calismasi veya yeni feature.
+- **Date:** 2026-02-24
+- **Status:** FlowBuilder wizard bug fix + UX iyilestirmeleri tamamlandi.
+- **Last Task:** (1) Wizard flow config extraction fix (```json blocks + done event content), (2) Option button rendering (WizardChat + wizard-store pendingOptions), (3) Codex PASS iter 0, (4) Samimi loading yazilar (6 rotating mesaj), (5) Collapsible teknik detaylar (splitContent + details/summary).
+- **Next Task:** Deploy (Backend SPA build + publish + server-deploy) veya diger feature/paket calismasi.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
