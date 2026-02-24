@@ -2890,6 +2890,7 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
                 var doneEvent = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     type = "done",
+                    content = chunk.Content,
                     flow_config = extractedFlowConfig != null
                         ? System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(extractedFlowConfig)
                         : (System.Text.Json.JsonElement?)null,

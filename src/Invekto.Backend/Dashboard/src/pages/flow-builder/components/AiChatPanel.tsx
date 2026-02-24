@@ -11,11 +11,20 @@ const MAX_WIDTH = 520;
 const DEFAULT_WIDTH = 320;
 const STORAGE_KEY = 'invekto_ai_chat_width';
 
-/** Strip ```options and ```flowconfig blocks from assistant text for display */
+/** Check if a JSON string looks like FlowConfigV2 */
+function isFlowConfigJson(json: string): boolean {
+  try {
+    const obj = JSON.parse(json);
+    return obj?.version === 2 && Array.isArray(obj?.nodes) && Array.isArray(obj?.edges);
+  } catch { return false; }
+}
+
+/** Strip ```options, ```flowconfig, and FlowConfigV2-containing ```json blocks from assistant text */
 function cleanAssistantText(text: string): string {
   return text
     .replace(/```options\s*[\s\S]*?```/g, '')
     .replace(/```flowconfig\s*[\s\S]*?```/g, '')
+    .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m)
     .trimEnd();
 }
 

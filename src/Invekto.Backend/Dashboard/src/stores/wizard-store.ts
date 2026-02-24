@@ -1,7 +1,18 @@
 import { create } from 'zustand';
 import type { FlowConfigV2 } from '../types/flow';
-import type { WizardMessage, FlowPrerequisite } from '../types/wizard';
+import type { WizardMessage, WizardOption, FlowPrerequisite } from '../types/wizard';
 import { startWizard, streamMessage, getWizardState, confirmWizard } from '../lib/wizard-api';
+
+/** Strip completed and incomplete code blocks from streaming text */
+function stripStreamingBlocks(text: string): string {
+  let clean = text
+    .replace(/```options\s*[\s\S]*?```/g, '')
+    .replace(/```flowconfig\s*[\s\S]*?```/g, '')
+    .replace(/```json\s*[\s\S]*?```/g, '');
+  // Strip incomplete block at the end
+  clean = clean.replace(/```(?:options|flowconfig|json)\s*[\s\S]*$/g, '');
+  return clean.trimEnd();
+}
 
 interface WizardStore {
   flowId: number | null;
@@ -12,6 +23,7 @@ interface WizardStore {
   currentFlowPreview: FlowConfigV2 | null;
   previousFlowPreview: FlowConfigV2 | null;
   prerequisites: FlowPrerequisite[] | null;
+  pendingOptions: WizardOption[] | null;
   wizardStatus: 'drafting' | 'completed' | null;
   error: string | null;
   flowName: string;
@@ -33,6 +45,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
   currentFlowPreview: null,
   previousFlowPreview: null,
   prerequisites: null,
+  pendingOptions: null,
   wizardStatus: null,
   error: null,
   flowName: '',
@@ -83,6 +96,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       messages: [...messages, userMsg],
       isStreaming: true,
       streamingText: '',
+      pendingOptions: null,
       error: null,
     });
 
@@ -91,16 +105,17 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       for await (const event of streamMessage(flowId, tenantId, message)) {
         if (event.type === 'text') {
           fullText += event.content || '';
-          set({ streamingText: fullText });
+          set({ streamingText: stripStreamingBlocks(fullText) });
         } else if (event.type === 'error') {
           set({ error: event.content || 'AI hatasi', isStreaming: false });
           return;
         } else if (event.type === 'done') {
           const assistantMsg: WizardMessage = {
             role: 'assistant',
-            content: fullText || event.content || '',
+            content: event.content || fullText,
             timestamp: new Date().toISOString(),
             flow_config_snapshot: event.flow_config,
+            options: event.options,
           };
 
           set(state => ({
@@ -110,6 +125,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
             previousFlowPreview: currentFlowPreview,
             currentFlowPreview: event.flow_config || state.currentFlowPreview,
             prerequisites: event.prerequisites || state.prerequisites,
+            pendingOptions: event.options ?? null,
           }));
         }
       }
@@ -145,6 +161,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
     currentFlowPreview: null,
     previousFlowPreview: null,
     prerequisites: null,
+    pendingOptions: null,
     wizardStatus: null,
     error: null,
     flowName: '',

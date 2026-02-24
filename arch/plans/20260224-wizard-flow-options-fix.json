@@ -1,0 +1,78 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260224-wizard-flow-options-fix",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-02-24T10:00:00Z",
+  "updated_at": "2026-02-24T10:00:00Z",
+  "plan": {
+    "summary": "Fix two FlowBuilder wizard bugs: (1) AI-generated flow configs in ```json blocks not extracted (only ```flowconfig was matched), causing 'Uygula' banner to never appear; (2) WizardChat missing option button rendering and wizard-store ignoring event.options.",
+    "q_intent": "flow builder da. son adım da oluşturmuyor flowu. ayrıca kullanıcıya sorulan sorular düzgün düğme olarak gösterilmiyor.",
+    "interview_notes": null
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Services/ClaudeWizardService.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/stores/wizard-store.ts",
+    "src/Invekto.Backend/Dashboard/src/stores/ai-chat-store.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/WizardChat.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/AiChatPanel.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Services/ClaudeWizardService.cs", "change": "ExtractFlowConfig now matches ```json blocks, StripCodeBlocks strips FlowConfigV2 ```json blocks, extracted ValidateFlowConfigJson helper", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Added content field to done SSE event", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/stores/wizard-store.ts", "change": "Added pendingOptions state, extract options from done event, strip streaming blocks", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/stores/ai-chat-store.ts", "change": "Updated stripCodeBlocks/stripStreamingBlocks to handle ```json FlowConfigV2 blocks", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/WizardChat.tsx", "change": "Added option button rendering with handleOptionClick", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/AiChatPanel.tsx", "change": "Updated cleanAssistantText to strip ```json FlowConfigV2 blocks", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "323F6B5EB71CC598D661EC87032868171B5872C4C7C27C74F1167D26336AD6AA",
+    "full_path": "arch/plans/diffs/20260224-wizard-flow-options-fix.diff",
+    "stats": { "insertions": 172, "deletions": 17, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-24T10:00:00Z"
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Does ExtractFlowConfig correctly match both ```flowconfig and ```json blocks containing valid FlowConfigV2?", "category": "Process/Policy" },
+    { "id": "Q2", "question": "Are code blocks properly stripped from display text in all paths (streaming, done event, message history)?", "category": "Data" },
+    { "id": "Q3", "question": "Do option buttons render correctly in WizardChat and are they wired to sendMessage?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Automation/", "src/Invekto.Shared/"],
+    "non_goals": ["Changing AI prompt format", "Adding new node types", "Modifying flow execution engine"],
+    "intentional_exclusions": ["SimulationPanel already has option buttons — no changes needed there"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ClaudeWizardService.cs:ValidateFlowConfigJson - JSON parse",
+      "ai-chat-store.ts:isFlowConfigJson - JSON parse",
+      "AiChatPanel.tsx:isFlowConfigJson - JSON parse"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All JSON parse failures return null/false gracefully, falling back to existing behavior"
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Wizard AI responses show raw JSON instead of clean flow creation", "suggestion": "Extract and display flow configs regardless of code block format (```json or ```flowconfig)", "aha_moment": "User sees 'Uygula' banner appear immediately after AI generates a flow, feels the AI understood their request" },
+    { "category": "UX", "user_pain": "Users must type answers to wizard questions instead of clicking buttons", "suggestion": "Show clickable option buttons below AI questions in WizardChat", "aha_moment": "User sees clean buttons and clicks one, feels like talking to a smart assistant that makes it easy" },
+    { "category": "SPEED", "user_pain": "Creating a flow requires multiple typed messages back and forth", "suggestion": "One-click option selection speeds up the wizard conversation flow", "aha_moment": "User creates their first flow in under 2 minutes by just clicking options" },
+    { "category": "RELIABILITY", "user_pain": "AI sometimes generates valid flow configs but they get lost", "suggestion": "Multiple fallback extraction strategies ensure no valid config is missed", "aha_moment": "Every AI response that contains a valid flow is captured and offered for application" },
+    { "category": "UX", "user_pain": "Raw JSON code blocks clutter the chat during streaming", "suggestion": "Strip code blocks from streaming text in real-time", "aha_moment": "User sees clean, readable AI responses without technical noise" }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-02-24T10:05:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-24T10:05:00Z",
+    "iteration": 0,
+    "blocking_issues": []
+  }
+}

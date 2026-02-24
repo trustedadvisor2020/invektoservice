@@ -3,22 +3,31 @@ import type { FlowConfigV2 } from '../types/flow';
 import type { WizardMessage, WizardOption } from '../types/wizard';
 import { streamMessage, getWizardState } from '../lib/wizard-api';
 
-/** Strip ```options and ```flowconfig blocks from text for display */
+/** Check if a JSON string looks like FlowConfigV2 */
+function isFlowConfigJson(json: string): boolean {
+  try {
+    const obj = JSON.parse(json);
+    return obj?.version === 2 && Array.isArray(obj?.nodes) && Array.isArray(obj?.edges);
+  } catch { return false; }
+}
+
+/** Strip ```options, ```flowconfig, and FlowConfigV2-containing ```json blocks from text */
 function stripCodeBlocks(text: string): string {
   return text
     .replace(/```options\s*[\s\S]*?```/g, '')
     .replace(/```flowconfig\s*[\s\S]*?```/g, '')
+    .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m)
     .trimEnd();
 }
 
 /** Strip only incomplete (unterminated) code blocks from streaming text */
 function stripStreamingBlocks(text: string): string {
-  // Strip complete blocks
   let clean = text
     .replace(/```options\s*[\s\S]*?```/g, '')
-    .replace(/```flowconfig\s*[\s\S]*?```/g, '');
+    .replace(/```flowconfig\s*[\s\S]*?```/g, '')
+    .replace(/```json\s*([\s\S]*?)```/g, (m, json) => isFlowConfigJson(json.trim()) ? '' : m);
   // Strip incomplete block at the end (started but not closed)
-  clean = clean.replace(/```(?:options|flowconfig)\s*[\s\S]*$/g, '');
+  clean = clean.replace(/```(?:options|flowconfig|json)\s*[\s\S]*$/g, '');
   return clean.trimEnd();
 }
 

@@ -199,18 +199,35 @@ public sealed class ClaudeWizardService
     }
 
     /// <summary>
-    /// Extract FlowConfigV2 JSON from ```flowconfig code blocks in the response.
+    /// Extract FlowConfigV2 JSON from ```flowconfig or ```json code blocks in the response.
+    /// Tries ```flowconfig first, then falls back to ```json blocks containing valid FlowConfigV2.
     /// </summary>
     public string? ExtractFlowConfig(string response)
     {
+        // Try ```flowconfig block first (primary format)
         var match = Regex.Match(response, @"```flowconfig\s*([\s\S]*?)```", RegexOptions.Multiline);
-        if (!match.Success) return null;
+        if (match.Success)
+        {
+            var result = ValidateFlowConfigJson(match.Groups[1].Value.Trim());
+            if (result != null) return result;
+        }
 
-        var json = match.Groups[1].Value.Trim();
+        // Fallback: try ```json blocks that contain valid FlowConfigV2
+        var jsonMatches = Regex.Matches(response, @"```json\s*([\s\S]*?)```", RegexOptions.Multiline);
+        foreach (Match jm in jsonMatches)
+        {
+            var result = ValidateFlowConfigJson(jm.Groups[1].Value.Trim());
+            if (result != null) return result;
+        }
+
+        return null;
+    }
+
+    private string? ValidateFlowConfigJson(string json)
+    {
         try
         {
             using var doc = JsonDocument.Parse(json);
-            // Validate it looks like a FlowConfigV2
             var root = doc.RootElement;
             if (root.TryGetProperty("version", out var ver) && ver.GetInt32() == 2
                 && root.TryGetProperty("nodes", out _)
@@ -221,7 +238,7 @@ public sealed class ClaudeWizardService
         }
         catch (JsonException ex)
         {
-            _logger.LogDebug("ExtractFlowConfig: invalid JSON in flowconfig block: {Error}", ex.Message);
+            _logger.LogDebug("ValidateFlowConfigJson: invalid JSON: {Error}", ex.Message);
         }
         return null;
     }
@@ -335,12 +352,18 @@ public sealed class ClaudeWizardService
     }
 
     /// <summary>
-    /// Strip ```options and ```flowconfig blocks from the text so the user sees clean prose.
+    /// Strip ```options, ```flowconfig, and FlowConfigV2-containing ```json blocks
+    /// from the text so the user sees clean prose.
     /// </summary>
-    private static string StripCodeBlocks(string text)
+    private string StripCodeBlocks(string text)
     {
         var result = Regex.Replace(text, @"```options\s*[\s\S]*?```", "", RegexOptions.Multiline);
         result = Regex.Replace(result, @"```flowconfig\s*[\s\S]*?```", "", RegexOptions.Multiline);
+        // Strip ```json blocks that contain FlowConfigV2 (version: 2 + nodes + edges)
+        result = Regex.Replace(result, @"```json\s*([\s\S]*?)```", m =>
+        {
+            return ValidateFlowConfigJson(m.Groups[1].Value.Trim()) != null ? "" : m.Value;
+        }, RegexOptions.Multiline);
         return result.TrimEnd();
     }
 

@@ -1,12 +1,13 @@
-import { useRef, useEffect, useState, type KeyboardEvent } from 'react';
+import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from 'react';
 import { useWizardStore } from '../../../stores/wizard-store';
 import { renderWithNodeChips } from './NodeChip';
-import type { WizardMessage } from '../../../types/wizard';
+import type { WizardMessage, WizardOption } from '../../../types/wizard';
 
 export function WizardChat() {
   const messages = useWizardStore(s => s.messages);
   const isStreaming = useWizardStore(s => s.isStreaming);
   const streamingText = useWizardStore(s => s.streamingText);
+  const pendingOptions = useWizardStore(s => s.pendingOptions);
   const error = useWizardStore(s => s.error);
   const sendMessage = useWizardStore(s => s.sendMessage);
 
@@ -35,6 +36,11 @@ export function WizardChat() {
       handleSend();
     }
   };
+
+  const handleOptionClick = useCallback((option: WizardOption) => {
+    if (isStreaming) return;
+    sendMessage(option.label);
+  }, [isStreaming, sendMessage]);
 
   return (
     <div className="flex flex-col h-full">
@@ -104,6 +110,24 @@ export function WizardChat() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
             {error}
+          </div>
+        )}
+
+        {/* Option buttons */}
+        {!isStreaming && pendingOptions && pendingOptions.length > 0 && (
+          <div className="space-y-2 pt-1">
+            {pendingOptions.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => handleOptionClick(opt)}
+                className="w-full text-left px-4 py-3 bg-white border border-navy-100 rounded-xl shadow-soft hover:border-purple-400 hover:shadow-focus transition-all duration-150 group"
+              >
+                <div className="text-sm font-medium text-navy-900 group-hover:text-purple-600">{opt.label}</div>
+                {opt.description && (
+                  <div className="text-xs text-navy-400 mt-0.5 leading-relaxed">{opt.description}</div>
+                )}
+              </button>
+            ))}
           </div>
         )}
       </div>
