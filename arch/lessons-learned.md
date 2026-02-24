@@ -251,6 +251,9 @@
 | 2026-02-24 | Root font-size 14px Q icin kucuk — 18px tercih etti | html { font-size: 18px } | **Q'nun font tercihi 18px root. Yeni SPA'larda bunu default yap** |
 | 2026-02-24 | Onboarding nav item'a ozel gradient kutu eklendi — Q istemedi, "normal yazi olsun" dedi | Normal renderNavLink ile render, ozel CSS kaldirildi | **Nav item'lari uniform tut. Ozel kutu/card istemeden ekleme — Q minimalist tercih ediyor** |
 | 2026-02-24 | Font size controls (T/px/T/reset) sidebar'da yer kapliyordu — Q "kaldir" dedi | Tum font size UI + state + localStorage tamamen silindi | **Font size UI sidebar'dan kaldirildi. Q tekrar isterse ekle, proaktif ekleme** |
+| 2026-02-24 | Template Library'de 60 kart grid'i — Q "sablon ne oldugu anlasilmiyor, okunamiyor" dedi | Category-grouped accordion layout + Turkish labels + descriptions + examples | **Cok sayida benzer kartı grid'e doseme = okunamaz. Kategori gruplama + aciklama + orneklerle bilgiyi sindirilebilir yap** |
+| 2026-02-24 | "Tumunu Ekle" butonu + genel ilerleme bar'i eklendi — Q "hedef hepsini eklemek degil, kaldir" dedi | Bulk adopt + overall progress kaldirildi | **Kullaniciya "hepsini ekle" dayatma. Secici benimseme doğru — her sablon bireysel secilmeli** |
+| 2026-02-24 | Onboarding expanded panel'de "Henuz bilgi yok" + aciklama yazisi vardi — Q "kaldir, varsa listele yoksa henuz eklenmedi" dedi | Description kaldirildi, detail/fallback pattern eklendi | **Bos durum icin uzun aciklama yerine minimal fallback: "Henuz eklenmedi" yeterli** |
 
 ## Patterns That Work
 
@@ -369,6 +372,16 @@
 | IHostedService for cleanup timers | Background services | Clean shutdown |
 | SET DEADLOCK_PRIORITY LOW + backoff + jitter | Non-critical jobs | Deadlock'ta victim olur |
 | Deadlock retry with error code check | SQL retry | Sadece deadlock'a retry |
+
+### UI/UX & Frontend
+
+| Pattern | Where Used | Why It Works |
+|---------|------------|--------------|
+| Category-grouped layout with accordion | TemplateLibraryPage | 60 kart okunmaz — kategori gruplama + expand/collapse bilgiyi sindirilebilir yapar |
+| Turkish labels + descriptions + examples mapping | INTENT_TR, FAQ_TOPICS | Snake_case slug'lar kullaniciya anlamsiz — Turkce label + aciklama + ornek musteri mesaji anlasilirlikta buyuk fark yapar |
+| Iterative UI feedback loop (Q feedback → immediate fix → deploy) | Onboarding + Templates | Tek seferde mukemmel UI cikmaz. Q'nun 4-5 iterasyon feedback vermesi ve her birinin hemen uygulanmasi en iyi sonuc verir |
+| DB data quality cleanup alongside UI redesign | FAQ templates | UI duzeltmek yetmez — 42 FAQ'nun 33'u duplicate/garbage idi. UI + data birlikte temizlenmeli |
+| Per-category accent colors via inline style + hex | CategorySection | Tailwind class yerine inline hex — runtime'da dinamik renk, CSS class patlamasi yok |
 
 ---
 

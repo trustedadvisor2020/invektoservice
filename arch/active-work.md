@@ -12,6 +12,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-02-24 | Onboarding + Template Library UI/UX Redesign — OnboardingWizardPage (dark hero, SVG progress, timeline, accordion), TemplateLibraryPage (category-grouped, INTENT_TR, FAQ_TOPICS, examples), FAQ DB cleanup (39 unpublish, 9 kaldi), 4+ iterative deploy |
 | 2026-02-24 | Dashboard UI Redesign — Glass morphism sidebar, Plus Jakarta Sans + DM Sans typography, root 18px, icon containers, Power logout icon, 6x iterative deploy |
 | 2026-02-24 | FlowBuilder Wizard UX — (1) flow config extraction fix (```json + done content), (2) option buttons, (3) samimi loading text, (4) collapsible teknik detaylar. Codex PASS iter 0. |
 | 2026-02-23 | Self-Service Onboarding — Sektor secimi + sablon benimseme self-service, Codex 2 iter FORCE PASS, deploy + onboarding/status 500 hotfix |

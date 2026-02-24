@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-24
-- **Status:** Dashboard UI redesign (glass morphism sidebar) + deploy tamamlandi.
-- **Last Task:** (1) Glass morphism sidebar redesign (frosted glass bg, gradient dividers, brand glow active state), (2) Typography upgrade Inter→Plus Jakarta Sans (body)+DM Sans (display), (3) Root font-size 14px→18px, (4) Font size controls removed, (5) Onboarding card→normal nav link, (6) Logout icon LogOut→Power, (7) Multiple iterative deploys.
+- **Status:** Onboarding + Template Library UI/UX redesign + FAQ cleanup tamamlandi, deploy edildi.
+- **Last Task:** (1) OnboardingWizardPage redesign (dark hero + SVG circular progress + timeline journey + accordion + per-step accent colors + motivation messages), (2) TemplateLibraryPage TenantView redesign (category-grouped layout + INTENT_TR Turkish labels + FAQ_TOPICS matching + examples + cleaned display), (3) FAQ DB cleanup (6 product-specific unpublish + 33 duplicate unpublish = 9 temsili FAQ kaldi), (4) Multiple iterative deploys.
 - **Next Task:** Diger feature/paket calismasi veya UI polish devami.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
