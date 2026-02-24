@@ -1,30 +1,177 @@
-# Phase RI: Revenue Intelligence Engine
+# Phase RI: Revenue Intelligence / Satis Zekasi
 
-> **Durum:** IN-PROGRESS | **Baslangic:** 24 Sub 2026 | **POC DB:** WaClientvailaclinic (saglik, 5.7M msg)
-> **Amac:** 55M gercek sohbet mesajindan conversion davranisi cikarmak — Revenue Intelligence urunu fizibilitesi
-> **GPT-5.2-Pro Feasibility:** 7/10 | Complexity: Medium
+> **Durum:** IN-PROGRESS | **Baslangic:** 24 Sub 2026 | **Oncelik:** YUKSEK (ana odak)
+> **Amac:** 63M gercek sohbet mesajindan (91 DB, 12+ sektor) Invekto musterileri icin ticari deger cikaracak BASE altyapiyi kurmak.
+> **Hedef:** Ayni sektordeki tenant'a "bunlar var, istedigini sec/duzenle" diyebilecek hazir sektor template'leri + 7 insight engine.
+> **Monetizasyon:** Premium tier ozellik
 
-## Ozet
+## Vizyon
 
-91 MSSQL tenant DB'sinde ~55.7M WhatsApp/Instagram mesaji var. Mevcut WhatsAppAnalytics servisi
-keyword-based outcome labeling yapiyor ama saglik sektoru icin neredeyse calismiyor (randevu pattern yok).
-Bu faz, LLM-based labeling'in yeterli dogrulukta olup olmadigini 7 gunde dogruluyor.
+55+ aktif tenant DB'sinde ~63M WhatsApp mesaji var. Su an keyword-based etiketleme kullaniliyor (%24 dogruluk).
+LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
+
+**Bu sadece etiketleme degil.** Her sohbetten 7 farkli insight cikarilacak:
+1. Kayip gelir hesabi (ne kadar para masada kaldi?)
+2. Agent performansi (kim iyi satiyor, kim kotu?)
+3. Itiraz haritasi (neden almiyorlar?)
+4. Cevap suresi korelasyonu (hiz = para)
+5. Kurtarilabilir konusmalar (follow-up ile kapanabilecekler)
+6. Konusma kalite puani (agent ne kadar iyi iletisim kuruyor?)
+7. Hizmet talep haritasi (ne soruyorlar?)
+
+**Base yaklasimi:** Invekto tum sektorleri isleyip ogreniyor → ayni sektordeki yeni tenant'a hazir template sunuyor → tenant istemedigiyle dugurler, istedigini ekler.
 
 ## Q Kararlari (24 Sub 2026)
 
-- **Monetizasyon:** Henuz belirsiz — POC sonucuna gore karar verilecek
-- **KVKK / LLM:** Claude + OpenAI API'leri kullanilacak (3rd-party). PII redaction ZORUNLU.
-- **Bot ayrimi:** vailaclinic'te bot mesajlari olup olmadigi bilinmiyor — RI-0.1'de kontrol edilecek
+| Karar | Secim |
+|-------|-------|
+| Ground Truth | **Hibrit:** Q sektor basina 50-100 etiketler, LLM calibrate, tenant agree/disagree ile flywheel |
+| Sektor Stratejisi | **Top 3 ile basla:** Saglik (%36), Moda (%16), Gayrimenkul (%11) — geri kalanlar sonra |
+| Isleme Sikigi | **Gunluk/haftalik batch** — musteri secer |
+| LLM Maliyet Limiti | Simdilik yok, ileride belirlenecek |
+| Agent Tanima | API'den cekilecek (Users tablosu) |
+| Follow-up Rescue | Gece islenir, sabah raporlanir |
+| Pipeline | Sektor-spesifik (her sektorde farkli label seti + farkli extraction prompt) |
 
-## GPT-5.2-Pro Kritik Uyarilari (plani degistiren)
+## Sektor Haritasi (Gercek Veri - 24 Sub 2026)
 
-| # | Uyari | Etki | Aksiyon |
-|---|-------|------|---------|
-| 1 | **KVKK: Saglik mesajlari ozel nitelikli veri** | CRITICAL | PII redaction modulu ZORUNLU (telefon, isim, TCKN, doktor adi). Ham metin LLM'e gitmeyecek — once summary, sonra classify |
-| 2 | **Yanlis metrik: accuracy yerine macro-F1** | HIGH | Class imbalance var. Salt accuracy "hepsini no_sale de" ile %60+ tutabilir. Gate'i macro-F1 ile yeniden tanimla |
-| 3 | **Taxonomy ONCE tanimlanmali** | HIGH | LLM + Q ayni dili konusmali. Etiketleme guideline'i + 5-7 label (9 fazla) |
-| 4 | **Analytics tek basina satilmaz** | MEDIUM | Outcome → aksiyon baglantisi sart (FlowBuilder tetikleri) |
-| 5 | **"Revenue Intelligence" ismi TR SMB'de soyut** | LOW | "Randevu/Satis Donusum Analitigi" daha anlasilir |
+| Sektor | Mesaj Hacmi | % | Aktif DB | Baslangic Pilotu |
+|--------|------------|---|----------|------------------|
+| **Saglik/Klinik** | ~23.5M | 36% | 11 | EVET (Faz 2) |
+| **Moda/E-ticaret** | ~10.5M | 16% | 5 | EVET (Faz 2) |
+| **Gayrimenkul** | ~7.2M | 11% | 3 | EVET (Faz 2) |
+| Dijital Pazarlama | ~6.3M | 10% | 2 | Faz 4 |
+| Guzellik/Estetik | ~4.2M | 7% | 2 | Faz 4 |
+| Finans/Sigorta | ~2.9M | 4% | 1 | Faz 4 |
+| Turizm/Seyahat | ~2.1M | 3% | 4 | Faz 4 |
+| Egitim | ~1.4M | 2% | 2 | Faz 4 |
+| Dis | ~1.4M | 2% | 5 | Faz 4 |
+| Lojistik | ~1.2M | 2% | 1 | Faz 4 |
+| Diger | ~4.5M | 7% | ~15 | Faz 5 |
+| **TOPLAM** | **~63M** | | **~55** | |
+
+**Top 5 Tenant (mesaj hacmi):** Hermest 7.4M, VailaClinic 6.7M, EbruModa 6.3M, GoldenPartner 6.1M, Paragram 5.4M
+
+---
+
+## FAZ PLANI
+
+### Faz 1: Model Secimi & Kalibrasyon (DEVAM EDIYOR)
+
+**Amac:** Hangi LLM en dogru + en ucuz? macro-F1 >= 0.80 gate.
+
+| # | Task | Durum | Notlar |
+|---|------|-------|--------|
+| RI-0.1 | Schema Uyumluluk Tarami | **DONE** | 5/5 DB %100 uyumlu |
+| RI-0.2 | Veri Kalitesi Degerlendirmesi | **DONE** | Ort %68 usable |
+| RI-0.3 | Sektor Haritalama | **DONE** | 88 tenant DB, 14 sektor |
+| RI-0.4 | Outcome Taxonomy v0.2 | **DONE** | 7 label, sektor-spesifik notlar |
+| RI-0.5 | PII Redaction kurallari | **DONE** | 8 PII tipi tanimli |
+| RI-1A | LLM Benchmark Altyapisi | **DONE** | DB, DTOs, clients, PiiMasker |
+| RI-1B | Benchmark Orchestration + Endpoints | **DONE** | 5 API endpoint, 6 model |
+| RI-1.1 | 200 Thread Benchmark (4 model) | **IN-PROGRESS** | Benchmark #12 calisiyor |
+| RI-1.2 | Q Manuel Etiketleme (Ground Truth) | PLANNED | Benchmark sonuclari gelince 200 thread Q etiketler |
+| RI-1.3 | Dogruluk Olcumu | PLANNED | macro-F1 + confusion matrix |
+| RI-1.4 | Maliyet Modeli | PLANNED | Model basina cost/thread |
+| RI-1.5 | Pipeline Karsilastirmasi | PLANNED | 4 model karsilastirma raporu |
+| **GATE** | **Decision Gate** | PLANNED | macro-F1 >= 0.80 → Faz 2'ye gec |
+
+**Beklenen cikti:** Kazanan model + maliyet tahmini + accuracy raporu
+
+---
+
+### Faz 2: Sektor Pipeline Gelistirme (Top 3)
+
+**Amac:** Saglik, Moda, Gayrimenkul icin sektor-spesifik extraction pipeline'lari kurmak.
+
+| # | Task | Durum | Notlar |
+|---|------|-------|--------|
+| RI-2.1 | Sektor-spesifik taxonomy tanimlama | PLANNED | Her sektor icin label seti + karar agaci |
+| RI-2.2 | Sektor-spesifik LLM prompt'lari | PLANNED | 3 sektor x optimized prompt |
+| RI-2.3 | Pilot: Saglik (vailaclinic + 2 DB daha) | PLANNED | ~500 thread, Q etiketleme + LLM |
+| RI-2.4 | Pilot: Moda (EbruModa + 2 DB daha) | PLANNED | ~500 thread |
+| RI-2.5 | Pilot: Gayrimenkul (GoldenPartner + 1 DB) | PLANNED | ~500 thread |
+| RI-2.6 | Cross-sector accuracy raporu | PLANNED | macro-F1 per sector |
+| RI-2.7 | Sektor template sistemi tasarimi | PLANNED | Template = label set + prompt + extraction config |
+
+**Beklenen cikti:** 3 sektor icin calibrated pipeline + template yapisi
+
+---
+
+### Faz 3: 7 Insight Engine
+
+**Amac:** Etiketleme ustune 7 extraction engine kurmak. Her biri bagimsiz calisir.
+
+| # | Engine | Aciklama | Karmasiklik | LLM? |
+|---|--------|----------|-------------|------|
+| RI-3.1 | **Response Time Correlation** | Ilk mesaj → ilk cevap suresi vs conversion | **Low** | Hayir (pure timestamp) |
+| RI-3.2 | **Service Demand Heatmap** | Hangi hizmet/urun ne kadar soruluyor | Low-Med | Evet (extraction) |
+| RI-3.3 | **Agent Leaderboard** | Agent bazli conversion rate, response time, ghost rate | Low-Med | Hayir (aggregation) |
+| RI-3.4 | **Lost Revenue Calculator** | Offered konusmalardan tutar extraction + toplam kayip | Medium | Evet (price extraction) |
+| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | Medium | Evet (reason extraction) |
+| RI-3.6 | **Follow-up Rescue Alerts** | Offered + 48 saat cevapsiz → rescue listesi | Medium | Hayir (timestamp + label) |
+| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | Medium | Evet (scoring) |
+
+**Siralama:** LLM gerektirmeyenler once (3.1, 3.3, 3.6), sonra LLM gerektirenler (3.2, 3.4, 3.5, 3.7)
+
+**Onemli:** RI-3.2 + RI-3.4 + RI-3.5 ayni LLM call'da cikarilabilir (tek prompt, multi-extraction). Maliyet optimizasyonu.
+
+**Beklenen cikti:** 7 engine calisiyor, her biri sektor-agnostik ama sektor template'ine gore configure edilebilir
+
+---
+
+### Faz 4: Bulk Sektor Isleme + Kalan Sektorler
+
+**Amac:** Top 3 sektor icin tum verileri isle + kalan sektorleri ekle.
+
+| # | Task | Durum | Notlar |
+|---|------|-------|--------|
+| RI-4.1 | Saglik tum DB'leri isleme (~23.5M msg) | PLANNED | 11 DB, batch pipeline |
+| RI-4.2 | Moda tum DB'leri isleme (~10.5M msg) | PLANNED | 5 DB |
+| RI-4.3 | Gayrimenkul tum DB'leri isleme (~7.2M msg) | PLANNED | 3 DB |
+| RI-4.4 | Kalan sektorler taxonomy + prompt | PLANNED | Guzellik, Turizm, Egitim, Dis, vd. |
+| RI-4.5 | Kalan sektorler pilot + isleme | PLANNED | Oncelik: hacim sirasina gore |
+| RI-4.6 | Sektor profil raporlari | PLANNED | Her sektor icin "bu sektorde su oluyor" ozeti |
+
+**Beklenen cikti:** 63M mesaj islenmis, sektor bazli profiller hazir
+
+---
+
+### Faz 5: Tenant Self-Service + Dashboard
+
+**Amac:** Tenant kendi verilerini gorsun, template'i ozellestirsin, agree/disagree ile ground truth versin.
+
+| # | Task | Durum | Notlar |
+|---|------|-------|--------|
+| RI-5.1 | Dashboard widget'lari tasarimi | PLANNED | 7 engine icin 7+ widget |
+| RI-5.2 | Lost Revenue widget | PLANNED | Buyuk kirmizi sayi: "Bu ay €X kapanmadi" |
+| RI-5.3 | Agent Leaderboard widget | PLANNED | Ranking tablosu + trend |
+| RI-5.4 | Objection Map widget | PLANNED | Pie chart: kayip sebepleri |
+| RI-5.5 | Response Time widget | PLANNED | Korelasyon grafigi + SLA |
+| RI-5.6 | Rescue Alerts widget | PLANNED | Sabah raporu: "X konusma rescue bekliyor" |
+| RI-5.7 | Quality Score widget | PLANNED | Agent bazli kalite puani |
+| RI-5.8 | Service Demand widget | PLANNED | Heatmap: hizmet talep dagilimi |
+| RI-5.9 | Tenant template yonetimi UI | PLANNED | Label ekleme/cikarma, prompt duzenleme |
+| RI-5.10 | Agree/disagree UI (ground truth flywheel) | PLANNED | "Bu etiket dogru mu?" butonu |
+| RI-5.11 | API endpoints (tenant-facing) | PLANNED | Tum widget verileri + export |
+| RI-5.12 | Gunluk/haftalik batch pipeline | PLANNED | Cron job, tenant bazi, configurable |
+
+**Beklenen cikti:** Premium tier olarak canli urun
+
+---
+
+### Faz 6: Optimizasyon & Olcekleme
+
+**Amac:** Maliyet dusurme, accuracy artirma, yeni sektorler.
+
+| # | Task | Durum | Notlar |
+|---|------|-------|--------|
+| RI-6.1 | Flywheel feedback → model iyilestirme | PLANNED | Tenant agree/disagree → prompt tuning |
+| RI-6.2 | Maliyet optimizasyonu | PLANNED | Hybrid: keyword pre-filter + LLM (sadece belirsizler) |
+| RI-6.3 | Yeni sektor onboarding sureci | PLANNED | Self-serve sektor ekleme |
+| RI-6.4 | FlowBuilder entegrasyonu | PLANNED | Insight → otomatik aksiyon tetikleme |
+
+---
 
 ## Mevcut Altyapi (Sifirdan baslamiyoruz)
 
@@ -32,320 +179,68 @@ Bu faz, LLM-based labeling'in yeterli dogrulukta olup olmadigini 7 gunde dogrulu
 |---------|-------|-------|
 | MSSQL okuma (streaming) | CALISIYOR | MssqlReaderService.cs |
 | Threading (conversation gruplama) | CALISIYOR | ThreaderService.cs |
-| Outcome labeling (7 tip, regex) | SORUNLU | ThreaderService.cs:30-72 |
+| Outcome labeling (7 tip, regex) | SORUNLU (%24) | ThreaderService.cs:30-72 |
 | Intent siniflandirma (12 tip) | CALISIYOR | IntentClassifierService.cs |
 | Sentiment analizi | CALISIYOR | SentimentAnalyzerService.cs |
 | Agent tespiti + first response time | CALISIYOR | ThreaderService.cs:199-215 |
+| LLM Benchmark sistemi | CALISIYOR | Services/Benchmark/*.cs |
+| PII Masker | CALISIYOR | Services/Benchmark/PiiMasker.cs |
+| Gemini + Claude client | CALISIYOR | Services/Benchmark/GeminiLlmClient.cs, AnthropicLlmClient.cs |
 
-### Mevcut Outcome Labeling Problemleri
+## GPT-5.2-Pro Kritik Uyarilari
 
-| Problem | Etki |
-|---------|------|
-| `\bkargo\b` her kargo kelimesini yakaliyor | "offered" %52.8'e sisiyor |
-| Saglik/dis icin SIFIR pattern | 17M+ mesaj icin outcome = hep no_sale/no_response |
-| "tamam gonder" / "aliyorum" yakalanamiyor | Musteri onaylarini kaciyor |
-| `appointment_booked` kategorisi YOK | Klinik/dis icin en kritik conversion |
+| # | Uyari | Etki | Aksiyon |
+|---|-------|------|---------|
+| 1 | **KVKK: Saglik mesajlari ozel nitelikli veri** | CRITICAL | PII redaction ZORUNLU |
+| 2 | **macro-F1 kullan, accuracy degil** | HIGH | Class imbalance var |
+| 3 | **Taxonomy ONCE tanimlanmali** | HIGH | Sektor bazli taxonomy Faz 2'de |
+| 4 | **Analytics tek basina satilmaz** | MEDIUM | FlowBuilder entegrasyonu Faz 6'da |
+| 5 | **"Revenue Intelligence" TR'de soyut** | LOW | "Satis Zekasi" kullanilacak |
 
-## Task Tracking
+## Maliyet Tahminleri
 
-| # | Task | Durum | Tarih | Notlar |
-|---|------|-------|-------|--------|
-| RI-0.1 | Schema Uyumluluk Tarami (5 DB) + Bot tespiti | **DONE** | 24 Sub | 5/5 DB %100 uyumlu. Bot: IsBotUser hep false, ApiMessage+IsTemplateMessage filtre icin mevcut |
-| RI-0.2 | Veri Kalitesi Degerlendirmesi (5 DB) | **DONE** | 24 Sub | Ort %68 usable. vailaclinic %79, EbruModa %53, DentAdavista %72, elcitur %73, SisliMYO %62 |
-| RI-0.3 | Sektor Haritalama (88 DB) | **DONE** | 24 Sub | 88 tenant DB (5 sistem/test haric). 14 sektor tespit edildi |
-| RI-0.4 | Outcome Taxonomy v0.2 (gercek veriye dayali) | **DONE** | 24 Sub | 7 label, sektor-spesifik notlar, etiketleme guideline, sinir durumlari |
-| RI-0.5 | PII Redaction kurallari | **DONE** | 24 Sub | 8 PII tipi, regex taslagi, sakla/sil stratejisi |
-| RI-1A | LLM Benchmark Altyapisi (DB, DTOs, ILlmClient, GeminiClient, PiiMasker, Repository) | **DONE** | 24 Sub | ~500 satir. arch/plans/20260224-ri-benchmark-tiered.json |
-| RI-1B | Benchmark Orchestration + Endpoints (Orchestrator, ProcessingService, OutcomeClassifier, MetricsCalculator, TieredClassifier, 5 API endpoint) | **DONE** | 24 Sub | ~700 satir. 6 model: Haiku, Sonnet, Flash, Pro, 3Flash, Tiered |
-| RI-1.1 | Thread Ornekleme (1000 thread) | PLANNED | - | vailaclinic, stratified sample |
-| RI-1.2 | Aday Cikarma (manual label seti) | PLANNED | - | active learning: belirsiz thread oncelikli |
-| RI-1.3 | Manuel Etiketleme (Q) | PLANNED | - | 50-100 thread, ~2-3 saat Q |
-| RI-1.4 | LLM Etiketleme (1000 thread) | PLANNED | - | Benchmark endpoint ile: POST /api/ops/benchmark/start |
-| RI-1.5 | Dogruluk Olcumu | PLANNED | - | macro-F1 + confusion matrix via /api/ops/benchmark/{id}/metrics |
-| RI-1.6 | Maliyet Modeli | PLANNED | - | Scale: 1K → 5M conv |
-| RI-1.7 | Pipeline Karsilastirmasi | PLANNED | - | Keyword vs LLM vs Hybrid vs Tiered |
-| GATE | Decision Gate | PLANNED | - | macro-F1 bazli |
+| Olcek | Konusma | Tahmini Maliyet (Haiku/Flash) |
+|-------|---------|-------------------------------|
+| POC (Faz 1) | 1,000 | ~$1.50 |
+| Pilot (Faz 2) | ~1,500 | ~$3 |
+| Tek buyuk DB | ~170,000 | ~$200 |
+| Top 3 sektor | ~3M | ~$3,500 |
+| Tum 55 aktif DB | ~5M+ conv | ~$6,000 |
 
-## Decision Gate Kriterleri (GUNCELLENDI: macro-F1)
-
-| LLM macro-F1 | Yol | Aksiyon |
-|-------------|-----|---------|
-| >= 0.80 | A: Revenue Intelligence Urunu | Production pipeline + Revenue UI + monetizasyon |
-| 0.60-0.79 | B: Operational Analytics | Keyword regex iyilestir + yeni kategoriler |
-| < 0.60 | C: Rethink | Prompt iyilestir / basit metriklere odaklan |
-
-## Outcome Taxonomy v0.2 (Gercek Veriye Dayali, 7 label)
-
-> **GUNCELLENDI 24 Sub:** vailaclinic'ten 60+ gercek mesaj incelenerek dogrulandi.
-> Saglik/medical tourism + retail/e-ticaret icin gecerli. Sektor-agnostik tanimlar.
-
-| Label | Tanim | Gercek Sinyal Ornekleri | Mevcut Regex? |
-|-------|-------|------------------------|---------------|
-| **sale** | Odeme/depozito alindi VEYA siparis kesin onaylandi | "Thank you for the payment", "deposit received", "surgery date is booked", "siparisiniz olusturuldu", "kargo takip no" | EVET (retail regex, saglik EKSIK) |
-| **appointment_booked** | Randevu/ameliyat tarihi kesinlesti (odeme bekleniyor olabilir) | "I have reserved your surgery date for April 16th", "randevunuz olusturuldu", "ameliyat tarihiniz 18 Mart" | **HAYIR — KRITIK EKSIK** |
-| **offered** | Fiyat/bilgi verildi, musteri henuz karar vermedi | "The total price is €6,500", "BBL procedure is €8,000", "indirim verebilirim", depozito istendi ama gelmedi | EVET (ama `\bkargo\b` sisis) |
-| **no_sale** | Musteri acikca vazgecti veya uygun degil | "not interested", "too expensive", "decided not to go ahead", "I am not impressed", doktor reddi | EVET (ama saglik red pattern eksik) |
-| **no_response** | Son mesaj ajandan, musteri yanit vermedi | Agent follow-up gonderdi, musteri sessiz. "I haven't heard back from you" | EVET |
-| **abandoned** | 1-2 mesaj, gercek etkilesim yok | Tek "merhaba" veya sadece otomatik karsilama | EVET |
-| **return_or_complaint** | Iade/sikayet/memnuniyetsizlik (post-hizmet) | "It's my money and the consultation got cancelled!", "bozuk geldi", "iade taleb" | EVET (retail, saglik icin az) |
-
-### Sektor-Spesifik Notlar
-
-**Medical Tourism (vailaclinic tipi):**
-- `sale` = depozito odendi (€500 tipik) + ameliyat tarihi kesinlesti. Tam odeme ameliyat gununde.
-- `appointment_booked` = ameliyat tarihi verildi ama depozito HENUZ odenmedi. (sale'den farkli!)
-- Funnel: Inquiry → Medical form → Dr. approval → Pricing → Deposit → Surgery date
-- Drop reasons: too expensive, medical rejection (Dr. not approving), timing, competitor clinic
-- Coklu dil: EN/TR/NL/DE/FR karisik — LLM multilingual olmali
-
-**Retail/E-ticaret (EbruModa tipi):**
-- `sale` = siparis onaylandi, kargo hazirlik
-- `appointment_booked` = KULLANILMAZ (retail'de randevu yok)
-- Funnel: Inquiry → Product info → Size/stock → Order → Shipment
-- Drop reasons: stok yok, fiyat, beden uyumsuzlugu
-
-**Dis/Dental (DentAdavista tipi):**
-- `sale` = tedavi basladi / odeme alindi
-- `appointment_booked` = muayene/tedavi randevusu kesinlesti
-- Funnel: Inquiry → Treatment info → Pricing → Appointment
-
-### Etiketleme Guideline (Q ve LLM icin)
-
-**Karar agaci (oncelik sirasi):**
-1. Odeme/depozito alindiysa → `sale`
-2. Tarih/saat kesinlestiyse (odeme olmasa bile) → `appointment_booked`
-3. Fiyat/teklif verildiyse ama karar yok → `offered`
-4. Musteri acikca "hayir" dediyse → `no_sale`
-5. Son mesaj ajandan, musteri sessiz → `no_response`
-6. 1-2 mesaj, gercek etkilesim yok → `abandoned`
-7. Iade/sikayet varsa → `return_or_complaint`
-
-**Sinir durumlari:**
-- Musteri "dusunecegim" dedi → `offered` (henuz red degil)
-- Doktor reddetti (saglik nedeni) → `no_sale` (musteri istese de olamaz)
-- Depozito istendi ama gelmedi → `offered` (henuz sale degil)
-- Ameliyat tarihi "tentative" verildi ama depozito bekleniyor → `appointment_booked` (tarih kesin)
-- Musteri baska klinik buldu → `no_sale`
-
----
-
-## PII Redaction Kurallari (RI-0.5)
-
-> **KVKK CRITICAL:** Saglik mesajlari "ozel nitelikli kisisel veri". LLM'e gitmeden ONCE PII temizlenmeli.
-
-### Tespit Edilen PII Tipleri (gercek vailaclinic verisinden)
-
-| PII Tipi | Ornek | Redaction | Oncelik |
-|----------|-------|-----------|---------|
-| **Telefon numarasi** | 447729758860, 905015527793 | `[PHONE]` | CRITICAL |
-| **Hasta adi** | "Meryem Hanim", "Gulnaz Hanim", "Kay", "Michelle" | `[NAME]` | CRITICAL |
-| **Doktor adi** | "Dr. Furkan", "Dr. Furkan Certel" | `[DOCTOR]` | HIGH |
-| **TCKN** | 11 haneli sayi | `[TCKN]` | CRITICAL |
-| **Odeme linki** | "https://iyzi.link/AJDFSA" | `[PAYMENT_LINK]` | MEDIUM |
-| **Banka bilgisi** | IBAN, hesap numarasi, Western Union detaylari | `[BANK_INFO]` | HIGH |
-| **Adres** | Otel adresi, klinik adresi | `[ADDRESS]` | MEDIUM |
-| **Tibbi bilgi** | "short bowel syndrome", "TPN", "demir ve B12 takviyesi" | **SAKLA** (outcome icin gerekli) | N/A |
-| **Fiyat bilgisi** | "€6,500", "£8,700" | **SAKLA** (conversion analizi icin gerekli) | N/A |
-
-### Redaction Stratejisi
-
-**SAKLANACAKLAR (outcome icin gerekli):**
-- Fiyatlar, indirimler, odeme tutarlari
-- Tibbi bilgiler (tedavi turu, doktor degerlendirmesi)
-- Tarihler (randevu, ameliyat)
-- Genel lokasyonlar (ulke/sehir — "UK", "Istanbul")
-
-**SILINECEKLER:**
-- Telefon numaralari → `[PHONE]`
-- Kisi isimleri → `[NAME]`
-- Doktor tam isimleri → `[DOCTOR]`
-- TCKN/pasaport → `[ID]`
-- Banka/odeme detaylari → `[BANK_INFO]`
-- Odeme linkleri → `[PAYMENT_LINK]`
-- Tam adresler → `[ADDRESS]`
-- Email adresleri → `[EMAIL]`
-
-### Regex Taslagi (C# icin)
-
-```
-Telefon:  \+?\d{10,15} veya \b\d{3}[\s-]?\d{3}[\s-]?\d{4}\b
-TCKN:     \b[1-9]\d{10}\b
-Email:    [\w.+-]+@[\w-]+\.[\w.]+
-IBAN:     \b[A-Z]{2}\d{2}[\s]?[\dA-Z]{4}[\s]?[\dA-Z]{4}[\s]?[\dA-Z]{4}[\s]?[\dA-Z]{4}[\s]?[\dA-Z]{0,4}\b
-URL:      https?://[^\s]+
-```
-
-Isim redaction icin NER (Named Entity Recognition) veya basit heuristik:
-- "Hanim/Bey" oncesindeki kelime → isim
-- "Dr./Doktor" sonrasindaki kelime(ler) → doktor adi
-- "Dear/Hi/Hello" sonrasindaki kelime → isim (EN)
-
-> NOT: Production'da NER modeli (spaCy tr/en) daha dogru olur. POC icin regex + heuristik yeterli.
-
----
-
-## LLM Pipeline (Two-Pass)
-
-```
-Pass 1: Thread → PII Redaction → Summary (kisa ozet)
-Pass 2: Summary → Outcome Classification (label + confidence + evidence)
-```
-
-Bu yaklasim:
-- KVKK riskini azaltir (ham metin LLM'e gitmez, sadece ozet)
-- Token maliyetini dusurur (~%40)
-- Tekrar calistirilabilir (summary cache'lenir)
-
-## Maliyet Tahminleri (Claude Haiku 4.5)
-
-| Olcek | Konusma | Tahmini Maliyet |
-|-------|---------|----------------|
-| POC | 1,000 | ~$1.50 |
-| Tek Tier-1 DB | 170,000 | ~$200 |
-| Tum Tier-1 (16 DB) | ~2M | ~$2,500 |
-| Tum 91 DB (~5M conv) | ~5M | ~$6,000 |
-
-## Zamanlama
-
-```
-GUN 1: RI-0.1 + RI-0.2 (Schema tarami + veri kalitesi)
-GUN 2: RI-0.3 + RI-0.4 + RI-0.5 (Sektor harita + taxonomy + PII kurallari)
-GUN 3: RI-1.1 + RI-1.2 (Ornekleme + aday cikarma)
-GUN 4: RI-1.3 (Manuel etiketleme — Q, ~2-3 saat)
-GUN 5: RI-1.4 (LLM etiketleme — two-pass)
-GUN 6: RI-1.5 + RI-1.6 + RI-1.7 (Analiz)
-GUN 7: DECISION GATE
-```
-
-## Risk Kaydi (GUNCELLENDI)
+## Risk Kaydi
 
 | Risk | Olasilik | Etki | Onlem |
 |------|----------|------|-------|
-| **KVKK: saglik verisi 3rd-party LLM'e** | YUKSEK | CRITICAL | PII redaction + summary-only pipeline + kisa retention |
-| Class imbalance yanlis gate karari | ORTA | YUKSEK | macro-F1 kullan, per-class precision/recall raporla |
-| Schema uyumsuzlugu | DUSUK | ORTA | 4 DB zaten dogrulandi (ayni INMA CRM) |
-| Label accuracy <0.60 | ORTA | YUKSEK | Prompt iyilestirme, few-shot, Sonnet dene |
-| LLM maliyeti yuksek | DUSUK | ORTA | Hybrid (keyword pre-filter + LLM) %30 azaltir |
-| vailaclinic sorgu agirligi (5.7M) | ORTA | ORTA | TOP + DATEADD filtresi, NOLOCK |
-| Bot/human karisimligi | BILINMIYOR | ORTA | RI-0.1'de kontrol edilecek |
+| KVKK: saglik verisi 3rd-party LLM'e | YUKSEK | CRITICAL | PII redaction + summary-only pipeline |
+| Class imbalance yanlis gate | ORTA | YUKSEK | macro-F1 kullan |
+| Sektor arasi prompt transfer basarisiz | ORTA | YUKSEK | Her sektor icin ayri prompt + pilot |
+| LLM maliyeti olceklenmiyor | ORTA | ORTA | Hybrid pre-filter + batch |
+| Tenant template karmasikligi | DUSUK | ORTA | Basit UI, sane defaults |
 
-## Mevcut Phase'lerle Iliski
+## Outcome Taxonomy v0.2 (Saglik sektoru icin dogrulandi)
 
-| Phase | Iliski |
-|-------|--------|
-| Phase 5 (Revenue Agent) | RI veri temeli saglar, Phase 5 "agent" katmani olur |
-| Phase 6 (QA + Conv Mining) | GR-6.3 Conv Mining ~ RI-2/3, GR-6.5 Revenue Dashboard ~ RI-5 |
-| PKT-7/8/9/10 | Bagimsiz |
+| Label | Tanim | Sektor Notu |
+|-------|-------|-------------|
+| **sale** | Odeme/depozito alindi veya siparis onaylandi | Saglik: depozito. Moda: siparis. Gayrimenkul: kaparo |
+| **appointment_booked** | Randevu/gorusme tarihi kesinlesti | Saglik: ameliyat. Moda: YOK. Gayrimenkul: gosterim |
+| **offered** | Fiyat/teklif verildi, karar yok | Evrensel |
+| **no_sale** | Musteri acikca vazgecti | Evrensel |
+| **no_response** | Musteri cevap vermedi | Evrensel |
+| **abandoned** | 1-2 mesaj, etkilesim yok | Evrensel |
+| **return_or_complaint** | Iade/sikayet | Saglik: memnuniyetsizlik. Moda: iade |
 
-## Phase RI-2+ Taslak (Gate A sonrasi)
+## PII Redaction (RI-0.5 — DONE)
 
-- RI-2: Journey stage extraction (inquiry → info → price → trust → booking)
-- RI-3: Decision point analizi (sektor bazli drop tetikleyicileri)
-- RI-4: Agent performansi (lead kalitesi kontrollu — ham conversion rate DEGIL)
-- RI-5: Revenue UI (1 sayfa donusum ozeti + 3 insight + FlowBuilder CTA)
-- RI-6: Monetizasyon (POC sonucuna gore belirlenecek)
+8 PII tipi tanimli, regex + heuristik. Fiyat ve tibbi bilgi SAKLANIR (analiz icin gerekli).
+Detay: Yukaridaki PII section'da.
+
+## Benchmark Gecmisi
+
+| # | Tarih | Config | Sonuc |
+|---|-------|--------|-------|
+| 11 | 24 Sub | 10 thread, tiered-only, vailaclinic | DONE — tiered %95 confidence, nuansli ayrim |
+| 12 | 24 Sub | 200 thread, 4 model, vailaclinic | IN-PROGRESS |
 
 ## Detayli Plan
 
-Tam plan: `C:\Users\taner\.claude\plans\linked-jingling-summit.md`
-
-## Bulgular (POC sirasinda guncellenecek)
-
-### RI-0.1 Bulgulari — Schema Uyumluluk (DONE)
-
-**Sonuc: 5/5 DB %100 uyumlu.** Tum kritik kolonlar mevcut:
-
-| Kolon | vailaclinic | EbruModa | DentAdavista | elcitur | SisliMYO |
-|-------|:-----------:|:--------:|:------------:|:-------:|:--------:|
-| ChatMessages.Body | OK | OK | OK | OK | OK |
-| ChatMessages.FromMe | OK | OK | OK | OK | OK |
-| ChatMessages.ChatID | OK | OK | OK | OK | OK |
-| ChatMessages.MessageType | OK | OK | OK | OK | OK |
-| ChatMessages.ApiMessage | OK | OK | OK | OK | OK |
-| ChatMessages.IsTemplateMessage | OK | OK | OK | OK | OK |
-| ChatMessages.SystemMessageType | OK | OK | OK | OK | OK |
-| Chats.CustomerPhoneNumber | OK | OK | OK | OK | OK |
-| Chats.InstanceType | OK | OK | OK | OK | OK |
-| Chats.IsGroup | OK | OK | OK | OK | OK |
-| Users.Name | OK | OK | OK | OK | OK |
-| Users.IsBotUser | OK | OK | OK | OK | OK |
-
-**Bot tespiti (vailaclinic):** 55 user, hepsi IsBotUser=false. Ancak "Welcome" user otomasyon/karsilama hesabi olabilir. ApiMessage + IsTemplateMessage kolonlari bot mesaj filtrelemesi icin kullanilabilir.
-
-**ConversationResults:** vailaclinic'te 955 kayit var ama TAMAMI PBX telefon arama loglari (%94 "Ulasilamadi"). WhatsApp outcome ground-truth olarak KULLANILAMAZ.
-
-**Risk guncelleme:** Schema uyumsuzlugu riski DUSUK → COZULDU.
-
----
-
-### RI-0.2 Bulgulari — Veri Kalitesi (DONE)
-
-| DB | Sektor | Toplam Msg | Usable Text | % Usable | WA Musteri | User Sayisi |
-|----|--------|-----------|-------------|----------|------------|-------------|
-| vailaclinic | Saglik (Med. Tourism) | 6,750K | 5,360K | **79.4%** | ~92K chat | 55 |
-| EbruModa | Moda/Retail | 6,317K | 3,344K | **52.9%** | 173,855 | 10 |
-| DentAdavista | Dis | 357K | 256K | **71.7%** | 7,794 | 4 |
-| elcitur | Turizm | 594K | 433K | **72.9%** | 38,313 | 6 |
-| SisliMYO | Egitim | 598K | 372K | **62.2%** | 31,930 | 19 |
-
-**Ortalama usable: %67.8** (gate: >=%60 — **GECTI**)
-
-**EbruModa dusuk neden?** 2.4M system mesaj (toplamin %38'i) + 2.7M empty body. E-ticaret otomasyon mesajlari yuksek.
-
-**Konusma Uzunlugu Dagilimi:**
-
-| Bucket | EbruModa | DentAdavista | elcitur | SisliMYO |
-|--------|----------|-------------|---------|----------|
-| 1 msg | 5,664 (3%) | 1,666 (22%) | 2,813 (7%) | 900 (3%) |
-| 2-5 msgs | 90,058 (52%) | 2,260 (30%) | 15,382 (41%) | 13,239 (45%) |
-| 6-20 msgs | 50,923 (29%) | 1,839 (24%) | 16,283 (43%) | 11,419 (39%) |
-| 21-50 msgs | 18,373 (11%) | 1,113 (15%) | 2,246 (6%) | 2,867 (10%) |
-| 50+ msgs | 8,152 (5%) | 775 (10%) | 912 (2%) | 895 (3%) |
-| **Toplam** | **173,170** | **7,653** | **37,636** | **29,320** |
-| **Anlamli (6+ msg)** | **77,448 (45%)** | **3,727 (49%)** | **19,441 (52%)** | **15,181 (52%)** |
-
-**Kritik bulgu:** DentAdavista'da %22 tek mesajli konusma (yuksek abandon). Saglik sektorunde konusmalar daha uzun (vailaclinic'te 50+ msg konusmalar yasik — medical tourism long-cycle).
-
-**vailaclinic ozel bulgular:**
-- 35 WhatsApp instance, Instagram YOK
-- Uluslararasi hastalar: UK, Hollanda, Almanya, Fransa, Gana, Nijerya
-- Medical tourism klinigi (Voila Health Tourism)
-- Ingilizce + Turkce karisik konusmalar
-- 3 ornek thread incelendi: BBL/meme/karin germe operasyonlari — uzun satis dongusu
-
----
-
-### RI-0.3 Bulgulari — Sektor Haritalama (DONE)
-
-**Toplam:** 93 DB listelendi. 5 sistem/test DB cikarildi → **88 tenant DB**
-
-Sistem/Test (haric): WaClient.Client, WaClient.Management, WaClientLog, WaClientofficetest, WaClientTxcteste
-
-| Sektor | DB Sayisi | Ornek DB'ler |
-|--------|----------|-------------|
-| **Saglik/Medikal** | ~11 | vailaclinic, Hermest, erdemhospital, Estethica, trustmed, AlfaTip, Sanovita, lindenclinics, medipol, Menplusclinic, auraliss |
-| **Dis** | ~7 | DentAdavista, Dentares, Dentmaks, SMILEPOD, CeyhunAydoganClinic, Yucelerdis, Vivaladent |
-| **Sac/Guzellik** | ~4 | ClinicHair, Hairtime, dogalfilem, Beautywithdany |
-| **Turizm/Seyahat** | ~7 | elcitur, Capellatour, FlyTo, EthnoHotels, Justtravel, Mysltravel, B2BSeas |
-| **Moda/Retail** | ~8 | EbruModa, nevinkayamoda1, SizeOzel, QUstyle, Elodi, Guney, Moreandmore, Altinbas(io) |
-| **Gida/F&B** | ~3 | Mutbex, Cafemarkt, Makropoli |
-| **Egitim** | ~3 | SisliMYO, sislimyoMali, CinKulturMerkezi |
-| **Teknoloji/Dijital** | ~5 | CloudyFlex, TeberDijital, Paragram, Nternetspace, tunusbt |
-| **Sigorta** | ~1 | Erhanyazicisigorta |
-| **Mimari/Insaat** | ~1 | arkhemimarlik |
-| **Etkinlik/Organizasyon** | ~2 | Drum-Party, Fuarara |
-| **Lojistik/Kargo** | ~2 | Techcargohub, Logix |
-| **Tarim/Hayvancilik** | ~2 | Krishiyug, Dhatifeeds |
-| **Diger/Belirsiz** | ~32 | 3x0sx2-zn, Aonedgtalndapvtltd, BKA, Brightnexmarketing, Dive, EmreIlhan, Eppa, glass, GoldenPartner, Inbox, idc, K-Plumbing, Ligarba, Mafabioscience, Maitre, Marinehardwaresyndicate, MLPCM, Mokn, Mytaxicrm, OzakGlobal, Plus963, pst, Rgx, chatin6, SuleymanTas, tcs, Thegolfbuggyguy, Unknwndesignz, vimfay, Wapcrm, Xenom, ymmetal |
-
-**Sektor dagilimi ozet:** Saglik+Dis+Sac = **22 DB (~%25)** → en buyuk ve en cok conversion-relevant segment. Moda/Retail = 8 DB ama yuksek mesaj hacmi. Turizm = 7 DB. "Belirsiz" 32 DB icin sample mesaj okuma gerekli (ayri task).
-
-**RI icin onemli:** POC'u vailaclinic (saglik/med tourism) uzerinde yapiyoruz. Sektor dagilimi, saglik+dis segmentinin buyuk oldugunu dogruluyor — appointment_booked label'i en az 22 DB'de islevsel olacak.
-
----
-
-### RI-1.5 Accuracy Sonuclari
-_Henuz baslamadi_
-
-### Decision Gate Karari
-_Henuz belirlenmedi_
+Tam plan: `arch/plans/` altinda olusturulacak (her faz icin ayri JSON)

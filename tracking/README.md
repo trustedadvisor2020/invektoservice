@@ -23,9 +23,14 @@
 | 8 | PKT-8 | Face AI | GR-3D.1~3D.5 | PLANNED | - | - |
 | 9 | PKT-9 | Guzellik Salonu | GR-3E.1~3E.8 | PLANNED | - | - |
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
-| RI | Phase RI | Revenue Intelligence POC | RI-0, RI-1 | IN-PROGRESS | 24 Sub | - |
+| RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | IN-PROGRESS | 24 Sub | - |
+| RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.7 | PLANNED | - | - |
+| RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 | PLANNED | - | - |
+| RI-4 | Faz 4 | RI: Bulk Isleme + Kalan Sektorler | RI-4.1~4.6 | PLANNED | - | - |
+| RI-5 | Faz 5 | RI: Dashboard & Tenant Self-Service | RI-5.1~5.12 | PLANNED | - | - |
+| RI-6 | Faz 6 | RI: Optimizasyon & Olcekleme | RI-6.1~6.4 | PLANNED | - | - |
 
-**Toplam:** 13 paket (11 done, 1 in-progress, 4 planned) | 50+ GR | 5 gun (14-18 Sub 2026)
+**Toplam:** 17 paket (11 done, 1 in-progress, 9 planned) | 50+ GR + RI-40 task | Revenue Intelligence = ana odak
 
 ## Mikroservis Port Haritasi
 
@@ -60,18 +65,32 @@ Phase 0 (Stage-0 + GR-1.x + WA + Knowledge + Flow Builder)
   +-- PKT-1~4 (Phase 2 tamamlama)
   |
   +-- PKT-5A/5B (Phase 3A platform)
+  |    |
+  |    +-- PKT-6A (bagimsiz: Intent + Onboarding + Voice AI)
+  |    +-- PKT-6B (Integrations bagli: Outbound + Iade + Lead + Yorum)
+  |         |
+  |         +-- PKT-6C1 (Health Automation - Appointments bagli)
+  |         +-- PKT-6C2 (Marketing servisi)
+  |         +-- PKT-6C3 (Marketing v2)
+  |    |
+  |    +-- PKT-7 (Visual AI - yeni servis :7111)
+  |    +-- PKT-8 (Face AI - yeni servis :7110)
+  |    +-- PKT-9 (Guzellik - config layer, PKT-6 altyapisi)
+  |    +-- PKT-10 (Egitim - config layer, PKT-6 altyapisi)
+  |
+  +-- REVENUE INTELLIGENCE (ANA ODAK)
        |
-       +-- PKT-6A (bagimsiz: Intent + Onboarding + Voice AI)
-       +-- PKT-6B (Integrations bagli: Outbound + Iade + Lead + Yorum)
-            |
-            +-- PKT-6C1 (Health Automation - Appointments bagli)
-            +-- PKT-6C2 (Marketing servisi)
-            +-- PKT-6C3 (Marketing v2)
-       |
-       +-- PKT-7 (Visual AI - yeni servis :7111)
-       +-- PKT-8 (Face AI - yeni servis :7110)
-       +-- PKT-9 (Guzellik - config layer, PKT-6 altyapisi)
-       +-- PKT-10 (Egitim - config layer, PKT-6 altyapisi)
+       +-- RI-1: Model Secimi & Kalibrasyon (DEVAM EDIYOR)
+       |    |
+       |    +-- RI-2: Sektor Pipeline (Top 3: Saglik, Moda, Gayrimenkul)
+       |         |
+       |         +-- RI-3: 7 Insight Engine (Response Time, Demand, Agent, Revenue, Objection, Rescue, Quality)
+       |              |
+       |              +-- RI-4: Bulk Isleme (63M msg) + Kalan Sektorler
+       |                   |
+       |                   +-- RI-5: Dashboard + Tenant Self-Service + API
+       |                        |
+       |                        +-- RI-6: Optimizasyon + FlowBuilder Entegrasyonu
 ```
 
 ## Ertelenen

@@ -6,8 +6,8 @@
 ## Last Update
 
 - **Date:** 2026-02-24
-- **Status:** Onboarding + Template Library UI/UX redesign + FAQ cleanup tamamlandi, deploy edildi.
-- **Last Task:** (1) OnboardingWizardPage redesign (dark hero + SVG circular progress + timeline journey + accordion + per-step accent colors + motivation messages), (2) TemplateLibraryPage TenantView redesign (category-grouped layout + INTENT_TR Turkish labels + FAQ_TOPICS matching + examples + cleaned display), (3) FAQ DB cleanup (6 product-specific unpublish + 33 duplicate unpublish = 9 temsili FAQ kaldi), (4) Multiple iterative deploys.
+- **Status:** FlowListPage + Sidebar UI/UX redesign tamamlandi, deploy edildi.
+- **Last Task:** (1) FlowListPage redesign (gradient icon circles, search/filter, staggered animations, skeleton loading, timeAgo, redesigned modals with X close, row layout), (2) Sidebar icon enhancement (icon containers, brand-colored active state, red hover logout), (3) Full Backend deploy (HEALTHY).
 - **Next Task:** Diger feature/paket calismasi veya UI polish devami.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
