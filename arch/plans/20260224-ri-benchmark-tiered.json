@@ -1,0 +1,163 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260224-ri-benchmark-tiered",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-02-24T10:00:00Z",
+  "updated_at": "2026-02-24T16:30:00Z",
+  "plan": {
+    "summary": "RI-1A/1B: LLM benchmark endpoint with multi-model comparison (Claude Haiku, Claude Sonnet, Gemini 2.5 Flash, Gemini 3.1 Pro, Gemini 3 Flash) plus tiered classification (Gemini 2.5 Flash primary + Claude Haiku escalation at <0.80 confidence). Samples threads from customer MSSQL, masks PII, classifies with all models, stores denormalized results with per-model metrics.",
+    "q_intent": "LLM benchmark API endpoint yaz — Claude Haiku, Sonnet, Gemini Flash, Pro, 3 Flash karsilastir. Ucuz modelleri takim haline getir (tiered: Flash primary + Haiku escalation).",
+    "interview_notes": "Q decided Option C (tiered) after seeing benchmark results: 3 cheap models had 9/10 unanimous agreement. Gemini 2.5 Flash + Claude Haiku escalation at <0.80 confidence chosen for production use."
+  },
+  "allowed_files": [
+    "arch/db/wa-benchmark.sql",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "src/Invekto.WhatsAppAnalytics/appsettings.json",
+    "src/Invekto.WhatsAppAnalytics/Services/ClaudeClient.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/ILlmClient.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/GeminiClient.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/PiiMasker.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/MssqlReaderService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs",
+    "src/Invekto.WhatsAppAnalytics/Models/BenchmarkModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/BenchmarkRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkOrchestrator.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkProcessingService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/OutcomeClassifierService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/MetricsCalculator.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/TieredClassifierService.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/db/wa-benchmark.sql", "is_new": true, "change": "Benchmark DB schema (wa_benchmark_jobs + wa_benchmark_results + tiered columns)" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added INV-WA-016..019 benchmark error codes" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/BenchmarkRepository.cs", "is_new": true, "change": "CRUD for benchmark jobs and results (batch INSERT 25 cols, parameterized queries)" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Models/BenchmarkModels.cs", "is_new": true, "change": "DTOs: BenchmarkJob, BenchmarkResult (incl Tiered fields), LlmClassification, SampledThread" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false, "change": "DI for 6 keyed ILlmClient services (incl tiered), 5 benchmark API endpoints, catch(JsonException)" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkOrchestrator.cs", "is_new": true, "change": "6-stage pipeline with typed catches (HttpRequestException, SqlException, InvalidOperationException)" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkProcessingService.cs", "is_new": true, "change": "BackgroundService with typed catches (Http, InvalidOp, Npgsql, SqlException)" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/MetricsCalculator.cs", "is_new": true, "change": "Accuracy, macro-F1, per-label precision/recall/F1, label distribution" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/OutcomeClassifierService.cs", "is_new": true, "change": "System prompt + thread formatter for LLM classification" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/TieredClassifierService.cs", "is_new": true, "change": "Tiered: Gemini Flash primary + Claude Haiku escalation at <0.80 confidence" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/ClaudeClient.cs", "is_new": false, "change": "Implements ILlmClient interface (non-breaking addition)" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/GeminiClient.cs", "is_new": true, "change": "Google Generative AI REST client implementing ILlmClient" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/ILlmClient.cs", "is_new": true, "change": "Polymorphic LLM client interface: ModelName, IsAvailable, ClassifyAsync" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/PiiMasker.cs", "is_new": true, "change": "Regex-based PII redaction (phone, email, TCKN, IBAN, URL incl www.)" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/MssqlReaderService.cs", "is_new": false, "change": "Made BuildConnectionString internal for benchmark MSSQL access" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Pipeline/ThreaderService.cs", "is_new": false, "change": "DetectOutcome visibility: private -> internal for keyword baseline" },
+    { "path": "src/Invekto.WhatsAppAnalytics/appsettings.json", "is_new": false, "change": "Added Gemini, ClaudeSonnet, Benchmark config sections" }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260224-ri-benchmark-tiered.diff",
+    "stats": { "insertions": 2004, "deletions": 3, "files_count": 18 },
+    "total_bytes": 94597,
+    "chunks": 3
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-02-24T13:35:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Are all LLM API keys read from config (not hardcoded) and never logged or exposed in error messages?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the PII masker correctly redact phone numbers, emails, TCKN, IBAN, and URLs before sending thread text to external LLM APIs?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the tiered classifier correctly escalate to the fallback model when primary confidence is below threshold, and take the higher-confidence result?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q4",
+      "question": "Are SQL parameters properly parameterized in all MSSQL queries (no string concatenation/injection vectors)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q5",
+      "question": "Does the benchmark orchestrator correctly handle model failures (null results, consecutive errors, unavailable models) without crashing the entire job?",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/",
+      "src/Invekto.Automation/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.Knowledge/"
+    ],
+    "non_goals": [
+      "Frontend UI for benchmark results",
+      "Production outcome labeling pipeline",
+      "Multi-tenant benchmark isolation"
+    ],
+    "intentional_exclusions": [
+      "No automated test suite (benchmark is itself a test tool)",
+      "No tenant-scoped auth (ops-level tool with X-Ops-Key)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "BenchmarkOrchestrator.cs:64-171",
+      "ClaudeClient.cs:ClassifyAsync",
+      "GeminiClient.cs:ClassifyAsync",
+      "LlmClassification.cs:Parse"
+    ],
+    "user_facing_errors": [
+      "INV-WA-016: Benchmark not found",
+      "INV-WA-017: MSSQL connection error",
+      "INV-WA-018: Invalid benchmark config",
+      "INV-WA-019: Unauthorized ops key"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "LLM failures return null and are counted. 5+ consecutive errors skip the model with a logged warning. Job-level errors are caught and stored in error_message column."
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Running 6 LLM models sequentially on 200 threads takes too long for quick comparisons",
+      "suggestion": "Add a 'quick' mode that runs only tiered model on 10 samples for instant validation",
+      "aha_moment": "Q sees tiered results in under 30 seconds instead of waiting 20+ minutes for all models"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Tiered escalation wastes Haiku calls if Flash consistently produces high confidence on certain label types",
+      "suggestion": "Track escalation rate per label and auto-tune threshold per category",
+      "aha_moment": "Escalation rate drops from 20% to 8% after learning which labels Flash handles confidently"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Benchmark results are raw JSON — hard to compare models visually for sales demos",
+      "suggestion": "Add a /api/ops/benchmark/{id}/report endpoint returning formatted HTML comparison table",
+      "aha_moment": "Q opens one URL and sees a clean model comparison dashboard ready to show stakeholders"
+    },
+    {
+      "category": "UX",
+      "user_pain": "No way to know if benchmark is progressing or stuck — only polling status endpoint",
+      "suggestion": "Add SSE endpoint for real-time progress updates during benchmark execution",
+      "aha_moment": "Q watches live progress bar showing 'Classifying with tiered(flash+haiku): 47/200 threads'"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "When a model produces unexpected labels, debugging requires reading raw evidence for each thread",
+      "suggestion": "Add disagreement filter to results endpoint — show only threads where models disagree",
+      "aha_moment": "Q instantly finds the 3 threads where models disagree and understands why classification differs"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 2,
+    "override": "Q FORCE PASS — remaining Codex failures are false positives: tenant_id intentionally omitted (ops-level tool), MSSQL reads customer data (not our DB), GRANT pattern matches existing codebase, UNKNOWN verdicts from chunking",
+    "blocking_issues": []
+  }
+}

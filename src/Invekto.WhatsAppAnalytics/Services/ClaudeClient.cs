@@ -10,7 +10,7 @@ namespace Invekto.WhatsAppAnalytics.Services;
 /// Keyword-first hybrid: API key missing → keyword-only mode (no API calls).
 /// Per-batch error handling: failure → fallback to "unknown"/"skipped", pipeline continues.
 /// </summary>
-public sealed class ClaudeClient : IDisposable
+public sealed class ClaudeClient : ILlmClient, IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly JsonLinesLogger _logger;
@@ -25,6 +25,7 @@ public sealed class ClaudeClient : IDisposable
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    public string ModelName => _model;
     public bool IsAvailable => !string.IsNullOrEmpty(_apiKey);
 
     public ClaudeClient(string? apiKey, string model, int maxTokens, int timeoutSeconds, JsonLinesLogger logger)
@@ -158,6 +159,12 @@ public sealed class ClaudeClient : IDisposable
             return new List<T>();
         }
     }
+
+    /// <summary>
+    /// ILlmClient implementation — delegates to SendBatchAsync.
+    /// </summary>
+    public Task<string?> ClassifyAsync(string systemPrompt, string userContent, CancellationToken ct)
+        => SendBatchAsync(systemPrompt, userContent, ct);
 
     public void Dispose() => _httpClient.Dispose();
 }

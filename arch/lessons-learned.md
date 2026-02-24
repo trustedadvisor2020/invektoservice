@@ -13,6 +13,9 @@
 
 | Date | Mistake | Solution | Prevention |
 |------|---------|----------|------------|
+| 2026-02-24 | Codex chunked review'da ops-level tool icin "tenant_id missing" false positive — 3 iterasyon boyunca ayni hatayi veriyor | Summary'de "ops-level tool, tenant_id intentionally omitted, documented in plan intentional_exclusions" acikca belirtildi ama Codex hala fail verdi | **Ops-level (non-tenant) tool'larda Codex tenant_id false positive verecek — bu beklenen davranis. 2+ iterasyon ayni sorun = FORCE PASS** |
+| 2026-02-24 | Codex "GRANT ALL required" dedi ama mevcut codebase explicit GRANT (SELECT, INSERT, UPDATE, DELETE) kullaniyor | Dispute — mevcut pattern dogru | **Codex "project rule" diye uydurabilir. Mevcut schema dosyalarini kontrol et, Codex'in iddiasiyla eslestir. Eslesmiyorsa dispute** |
+| 2026-02-24 | catch(Exception) endpoint body deserialization'da Codex tarafindan reddedildi | catch(JsonException) ile degistirildi — JsonSerializer.DeserializeAsync primarily JsonException firlatir | **Minimal API endpoint'lerde request body parse icin catch(JsonException) kullan, catch(Exception) degil** |
 | 2026-02-22 | JWT decode-only fallback (ReadJwtToken) imza dogrulamasi atliyor — forged JWT ile admin erisimi | Tum decode-only fallback'ler silindi, SecretKey yoksa 503 reject | **ReadJwtToken ASLA auth path'te kullanilmaz — her zaman ValidateToken (imza dogrulama) kullan. Fallback = guvenlik acigi** |
 | 2026-02-22 | MockEnabled=true prod config'de kaldi — sifresiz admin token uretti | Prod'da MockEnabled=false yapildi, acil restart | **Her yeni boolean feature flag icin PROD CONFIG KONTROLU yap. Default false olsa bile prod override'i kontrol et** |
 | 2026-02-22 | ChatAnalysis /api/v1/analyze authsuz — disaridan Claude API maliyeti tetiklenebilir + SSRF | X-Internal-Api-Key header + IsAllowedCallbackUrl SSRF korumasi | **Internal service endpoint = auth gereksiz DEMEK DEGIL. Firewall + kod seviyesinde cift katmanli koruma sart** |

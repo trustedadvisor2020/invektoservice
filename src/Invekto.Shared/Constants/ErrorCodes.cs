@@ -224,6 +224,10 @@ public static class ErrorCodes
     public const string WATenantMismatch = "INV-WA-013";
     public const string WAStorageError = "INV-WA-014";
     public const string WADatabaseError = "INV-WA-015";
+    public const string WABenchmarkNotFound = "INV-WA-016";
+    public const string WABenchmarkMssqlError = "INV-WA-017";
+    public const string WABenchmarkInvalidConfig = "INV-WA-018";
+    public const string WABenchmarkUnauthorized = "INV-WA-019";
 
     // Integrations errors (INV-IG-xxx) -- GR-3.4/3.6
     public const string IntegrationsInvalidAccountPayload = "INV-IG-001";

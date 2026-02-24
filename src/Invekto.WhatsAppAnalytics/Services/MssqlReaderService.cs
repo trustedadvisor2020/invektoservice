@@ -28,7 +28,7 @@ public sealed class MssqlReaderService
         _logger = logger;
     }
 
-    private string BuildConnectionString(string database) =>
+    internal string BuildConnectionString(string database) =>
         $"Server={_server},{_port};Database={database};User Id={_user};Password={_password};" +
         "TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;Command Timeout=600;";
 

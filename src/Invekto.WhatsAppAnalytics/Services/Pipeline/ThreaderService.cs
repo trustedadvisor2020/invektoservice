@@ -252,7 +252,7 @@ public sealed class ThreaderService
     /// Detect conversation outcome based on regex patterns (priority order).
     /// Text is transliterated to ASCII via TextNormalizer to avoid encoding issues.
     /// </summary>
-    private string DetectOutcome(List<(string text, string senderType, string agentName, DateTime timestamp)> messages)
+    internal string DetectOutcome(List<(string text, string senderType, string agentName, DateTime timestamp)> messages)
     {
         // Transliterate all texts once for robust matching (Turkish -> ASCII)
         var agentTransliterated = messages

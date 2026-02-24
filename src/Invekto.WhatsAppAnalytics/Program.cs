@@ -8,6 +8,7 @@ using Invekto.Shared.Middleware;
 using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
 using Invekto.WhatsAppAnalytics.Services;
+using Invekto.WhatsAppAnalytics.Services.Benchmark;
 using Invekto.WhatsAppAnalytics.Services.Pipeline;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -142,6 +143,74 @@ builder.Services.AddSingleton<AnalysisProcessingService>(sp =>
         sp.GetRequiredService<JsonLinesLogger>(),
         uploadPath));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AnalysisProcessingService>());
+
+// ============================================================
+// LLM Benchmark services (Phase RI)
+// ============================================================
+
+// Gemini API configuration
+var geminiApiKey = builder.Configuration["Gemini:ApiKey"];
+var geminiFlashModel = builder.Configuration["Gemini:FlashModel"] ?? "gemini-2.0-flash";
+var geminiProModel = builder.Configuration["Gemini:ProModel"] ?? "gemini-3.1-pro-preview";
+var gemini3FlashModel = builder.Configuration["Gemini:Flash3Model"] ?? "gemini-3-flash-preview";
+var geminiMaxTokens = builder.Configuration.GetValue<int>("Gemini:MaxTokens", 4096);
+var geminiTimeoutSeconds = builder.Configuration.GetValue<int>("Gemini:TimeoutSeconds", 60);
+
+// Claude Sonnet model (shares API key with Haiku)
+var claudeSonnetModel = builder.Configuration["ClaudeSonnet:Model"] ?? "claude-sonnet-4-20250514";
+
+// Benchmark configuration
+var benchmarkOpsKey = builder.Configuration["Benchmark:OpsKey"] ?? "";
+var benchmarkDelay = builder.Configuration.GetValue<int>("Benchmark:DelayBetweenCallsMs", 500);
+var benchmarkMaxTextLen = builder.Configuration.GetValue<int>("Benchmark:MaxThreadTextLength", 4000);
+var benchmarkDefaultSample = builder.Configuration.GetValue<int>("Benchmark:DefaultSampleSize", 200);
+var benchmarkMinMsgs = builder.Configuration.GetValue<int>("Benchmark:MinMessages", 6);
+var benchmarkMaxMsgs = builder.Configuration.GetValue<int>("Benchmark:MaxMessages", 200);
+
+// Keyed ILlmClient registrations (.NET 8)
+builder.Services.AddKeyedSingleton<ILlmClient>("claude_haiku", (sp, _) =>
+    new ClaudeClient(claudeApiKey, claudeModel, claudeMaxTokens, claudeTimeoutSeconds,
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddKeyedSingleton<ILlmClient>("claude_sonnet", (sp, _) =>
+    new ClaudeClient(claudeApiKey, claudeSonnetModel, claudeMaxTokens, claudeTimeoutSeconds,
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddKeyedSingleton<ILlmClient>("gemini_flash", (sp, _) =>
+    new GeminiClient(geminiApiKey, geminiFlashModel, geminiMaxTokens, geminiTimeoutSeconds,
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddKeyedSingleton<ILlmClient>("gemini_pro", (sp, _) =>
+    new GeminiClient(geminiApiKey, geminiProModel, geminiMaxTokens, geminiTimeoutSeconds,
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddKeyedSingleton<ILlmClient>("gemini_3_flash", (sp, _) =>
+    new GeminiClient(geminiApiKey, gemini3FlashModel, geminiMaxTokens, geminiTimeoutSeconds,
+        sp.GetRequiredService<JsonLinesLogger>()));
+builder.Services.AddKeyedSingleton<ILlmClient>("tiered", (sp, _) =>
+    new TieredClassifierService(
+        sp.GetRequiredKeyedService<ILlmClient>("gemini_flash"),
+        sp.GetRequiredKeyedService<ILlmClient>("claude_haiku"),
+        sp.GetRequiredService<JsonLinesLogger>()));
+
+// Benchmark services
+builder.Services.AddSingleton<PiiMasker>();
+builder.Services.AddSingleton<BenchmarkRepository>();
+builder.Services.AddSingleton<MetricsCalculator>();
+builder.Services.AddSingleton<OutcomeClassifierService>();
+
+if (mssqlConfigured)
+{
+    builder.Services.AddSingleton<BenchmarkOrchestrator>(sp =>
+        new BenchmarkOrchestrator(
+            sp.GetRequiredService<BenchmarkRepository>(),
+            sp.GetRequiredService<MssqlReaderService>(),
+            sp.GetRequiredService<PiiMasker>(),
+            sp.GetRequiredService<OutcomeClassifierService>(),
+            sp.GetRequiredService<ThreaderService>(),
+            sp,
+            sp.GetRequiredService<JsonLinesLogger>(),
+            benchmarkDelay,
+            benchmarkMaxTextLen));
+    builder.Services.AddSingleton<BenchmarkProcessingService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<BenchmarkProcessingService>());
+}
 
 var app = builder.Build();
 
@@ -619,6 +688,195 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/nlp-summary", as
 });
 
 // ============================================================
+// LLM Benchmark endpoints (Phase RI) — /api/ops/benchmark/
+// Auth: X-Ops-Key header (not JWT — internal ops tool)
+// ============================================================
+
+// Helper: validate ops key
+bool ValidateOpsKey(HttpContext ctx)
+{
+    if (string.IsNullOrEmpty(benchmarkOpsKey)) return true; // No key = open (dev mode)
+    var key = ctx.Request.Headers["X-Ops-Key"].FirstOrDefault();
+    return key == benchmarkOpsKey;
+}
+
+// POST /api/ops/benchmark/start
+app.MapPost("/api/ops/benchmark/start", async (
+    HttpContext ctx,
+    BenchmarkRepository benchRepo,
+    BenchmarkProcessingService? benchProcessor,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    if (benchProcessor == null || !mssqlConfigured)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, "MSSQL not configured — benchmark unavailable", requestId), statusCode: 503);
+
+    BenchmarkStartRequest? req;
+    try
+    {
+        req = await JsonSerializer.DeserializeAsync<BenchmarkStartRequest>(ctx.Request.Body,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (req == null || string.IsNullOrWhiteSpace(req.Database))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, "database is required", requestId), statusCode: 400);
+    }
+    catch (JsonException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, $"Invalid request: {ex.Message}", requestId), statusCode: 400);
+    }
+
+    var sampleSize = Math.Clamp(req.SampleSize, 1, 5000);
+    var config = JsonSerializer.Serialize(new
+    {
+        models = req.Models ?? new[] { "claude_haiku", "claude_sonnet", "gemini_flash", "gemini_pro", "gemini_3_flash", "tiered" },
+        min_messages = req.MinMessages ?? benchmarkMinMsgs,
+        max_messages = req.MaxMessages ?? benchmarkMaxMsgs
+    });
+
+    // tenantId = 0 for ops benchmarks (not tenant-scoped)
+    var benchmarkId = await benchRepo.CreateJobAsync(0, req.Database, req.InstanceId, sampleSize, config);
+
+    benchProcessor.EnqueueBenchmark(new BenchmarkProcessJob
+    {
+        BenchmarkId = benchmarkId,
+        TenantId = 0,
+        DatabaseName = req.Database,
+        InstanceId = req.InstanceId,
+        SampleSize = sampleSize,
+        MinMessages = req.MinMessages ?? benchmarkMinMsgs,
+        MaxMessages = req.MaxMessages ?? benchmarkMaxMsgs,
+        Models = req.Models ?? new[] { "claude_haiku", "claude_sonnet", "gemini_flash", "gemini_pro", "gemini_3_flash", "tiered" }
+    });
+
+    jsonLogger.StepInfo($"Benchmark started: id={benchmarkId}, db={req.Database}, sample={sampleSize}", requestId);
+    return Results.Json(new { benchmarkId, status = "pending", database = req.Database, sampleSize }, statusCode: 202);
+});
+
+// GET /api/ops/benchmark/{id}
+app.MapGet("/api/ops/benchmark/{id:int}", async (
+    int id,
+    HttpContext ctx,
+    BenchmarkRepository benchRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    var job = await benchRepo.GetJobAsync(id);
+    if (job == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkNotFound, $"Benchmark {id} not found", requestId), statusCode: 404);
+
+    return Results.Ok(job);
+});
+
+// GET /api/ops/benchmark/{id}/results
+app.MapGet("/api/ops/benchmark/{id:int}/results", async (
+    int id,
+    HttpContext ctx,
+    BenchmarkRepository benchRepo,
+    string? model,
+    string? label) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    var results = await benchRepo.GetResultsAsync(id, model, label);
+    return Results.Ok(new { results, total = results.Count });
+});
+
+// GET /api/ops/benchmark/{id}/metrics
+app.MapGet("/api/ops/benchmark/{id:int}/metrics", async (
+    int id,
+    HttpContext ctx,
+    BenchmarkRepository benchRepo,
+    MetricsCalculator metricsCalc) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    var results = await benchRepo.GetResultsAsync(id);
+    if (results.Count == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkNotFound, $"No results for benchmark {id}", requestId), statusCode: 404);
+
+    var groundTruth = results.Select(r => r.GroundTruthLabel).ToList();
+    var hasGroundTruth = groundTruth.Any(g => g != null);
+
+    var metrics = new Dictionary<string, object>();
+
+    // Model metrics (accuracy only if ground truth exists)
+    var modelPairs = new (string key, Func<BenchmarkResult, string?> labelGetter)[]
+    {
+        ("keyword", r => r.KeywordLabel),
+        ("claude_haiku", r => r.ClaudeHaikuLabel),
+        ("claude_sonnet", r => r.ClaudeSonnetLabel),
+        ("gemini_flash", r => r.GeminiFlashLabel),
+        ("gemini_pro", r => r.GeminiProLabel),
+        ("gemini_3_flash", r => r.Gemini3FlashLabel),
+        ("tiered", r => r.TieredLabel)
+    };
+
+    foreach (var (key, getter) in modelPairs)
+    {
+        var predictions = results.Select(getter).ToList();
+        var distribution = MetricsCalculator.ComputeDistribution(predictions);
+        var classified = predictions.Count(p => p != null);
+
+        if (hasGroundTruth)
+        {
+            var modelMetrics = metricsCalc.Compute(key, predictions, groundTruth);
+            modelMetrics.LabelDistribution = distribution;
+            metrics[key] = modelMetrics;
+        }
+        else
+        {
+            metrics[key] = new { modelName = key, classified, total = results.Count, labelDistribution = distribution };
+        }
+    }
+
+    return Results.Ok(new
+    {
+        benchmarkId = id,
+        threadCount = results.Count,
+        hasGroundTruth,
+        groundTruthCount = groundTruth.Count(g => g != null),
+        models = metrics
+    });
+});
+
+// PUT /api/ops/benchmark/{id}/ground-truth
+app.MapPut("/api/ops/benchmark/{id:int}/ground-truth", async (
+    int id,
+    HttpContext ctx,
+    BenchmarkRepository benchRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    GroundTruthRequest? req;
+    try
+    {
+        req = await JsonSerializer.DeserializeAsync<GroundTruthRequest>(ctx.Request.Body,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (req == null || req.Labels.Count == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, "labels array is required", requestId), statusCode: 400);
+    }
+    catch (JsonException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, $"Invalid request: {ex.Message}", requestId), statusCode: 400);
+    }
+
+    var updated = await benchRepo.UpdateGroundTruthAsync(id, req.Labels);
+    jsonLogger.StepInfo($"Ground truth updated: benchmark={id}, labels={req.Labels.Count}, updated={updated}", requestId);
+    return Results.Ok(new { updated, requested = req.Labels.Count });
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -640,6 +898,11 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/prices", Description = "Top price mentions", Auth = "Bearer JWT", Category = "Query" },
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/faq-clusters", Description = "FAQ question clusters", Auth = "Bearer JWT", Category = "Query" },
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/analyses/{id}/nlp-summary", Description = "NLP aggregate summary", Auth = "Bearer JWT", Category = "Query" },
+        new() { Method = "POST", Path = "/api/ops/benchmark/start", Description = "Start LLM benchmark", Auth = "X-Ops-Key", Category = "Benchmark" },
+        new() { Method = "GET", Path = "/api/ops/benchmark/{id}", Description = "Get benchmark status", Auth = "X-Ops-Key", Category = "Benchmark" },
+        new() { Method = "GET", Path = "/api/ops/benchmark/{id}/results", Description = "Get benchmark results", Auth = "X-Ops-Key", Category = "Benchmark" },
+        new() { Method = "GET", Path = "/api/ops/benchmark/{id}/metrics", Description = "Get comparison metrics", Auth = "X-Ops-Key", Category = "Benchmark" },
+        new() { Method = "PUT", Path = "/api/ops/benchmark/{id}/ground-truth", Description = "Update ground truth labels", Auth = "X-Ops-Key", Category = "Benchmark" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 
