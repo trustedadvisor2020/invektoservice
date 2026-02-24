@@ -2,7 +2,7 @@
 
 > **Durum:** IN-PROGRESS | **Baslangic:** 24 Sub 2026 | **Oncelik:** YUKSEK (ana odak)
 > **Amac:** 63M gercek sohbet mesajindan (91 DB, 12+ sektor) Invekto musterileri icin ticari deger cikaracak BASE altyapiyi kurmak.
-> **Hedef:** Ayni sektordeki tenant'a "bunlar var, istedigini sec/duzenle" diyebilecek hazir sektor template'leri + 7 insight engine.
+> **Hedef:** Ayni sektordeki tenant'a "bunlar var, istedigini sec/duzenle" diyebilecek hazir sektor sablonlari + 7 insight engine + actionable template'ler.
 > **Monetizasyon:** Premium tier ozellik
 
 ## Vizyon
@@ -10,7 +10,9 @@
 55+ aktif tenant DB'sinde ~63M WhatsApp mesaji var. Su an keyword-based etiketleme kullaniliyor (%24 dogruluk).
 LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
 
-**Bu sadece etiketleme degil.** Her sohbetten 7 farkli insight cikarilacak:
+**Bu sadece etiketleme degil.** Uc katmanli deger cikartma:
+
+### Katman 1: Insight Engine'ler (7 adet)
 1. Kayip gelir hesabi (ne kadar para masada kaldi?)
 2. Agent performansi (kim iyi satiyor, kim kotu?)
 3. Itiraz haritasi (neden almiyorlar?)
@@ -19,7 +21,20 @@ LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
 6. Konusma kalite puani (agent ne kadar iyi iletisim kuruyor?)
 7. Hizmet talep haritasi (ne soruyorlar?)
 
-**Base yaklasimi:** Invekto tum sektorleri isleyip ogreniyor → ayni sektordeki yeni tenant'a hazir template sunuyor → tenant istemedigiyle dugurler, istedigini ekler.
+### Katman 2: Actionable Sablonlar (6 adet)
+1. Intent sablonlari — sektorde en cok sorulan soru kaliplari
+2. FAQ sablonlari — tekrar eden soru-cevap ciftleri
+3. Flow sablonlari — basarili satislardaki konusma akis kaliplari
+4. Objection handling — itiraz-cevap ciftleri ("Fiyat yuksek" → en etkili cevap)
+5. Follow-up sablonlari — rescue eden mesaj kaliplari
+6. Onboarding checklist — basarili tenant'larin ilk 30 gun aksiyonlari
+
+### Katman 3: Sektor Paketi
+Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + label + benchmark yuklenior → 1. gunden insight gorur.
+
+**Base yaklasimi:** Invekto tum sektorleri isleyip ogreniyor → ayni sektordeki yeni tenant'a hazir sablon sunuyor → tenant istemedigi cikarir, istedigini ekler, yenisini olusturur.
+
+---
 
 ## Q Kararlari (24 Sub 2026)
 
@@ -32,21 +47,24 @@ LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
 | Agent Tanima | API'den cekilecek (Users tablosu) |
 | Follow-up Rescue | Gece islenir, sabah raporlanir |
 | Pipeline | Sektor-spesifik (her sektorde farkli label seti + farkli extraction prompt) |
+| Sablonlar | Intent, FAQ, Flow, Objection, Follow-up, Onboarding — sektorel mining ile cikarilacak |
+
+---
 
 ## Sektor Haritasi (Gercek Veri - 24 Sub 2026)
 
-| Sektor | Mesaj Hacmi | % | Aktif DB | Baslangic Pilotu |
-|--------|------------|---|----------|------------------|
-| **Saglik/Klinik** | ~23.5M | 36% | 11 | EVET (Faz 2) |
-| **Moda/E-ticaret** | ~10.5M | 16% | 5 | EVET (Faz 2) |
-| **Gayrimenkul** | ~7.2M | 11% | 3 | EVET (Faz 2) |
-| Dijital Pazarlama | ~6.3M | 10% | 2 | Faz 4 |
-| Guzellik/Estetik | ~4.2M | 7% | 2 | Faz 4 |
-| Finans/Sigorta | ~2.9M | 4% | 1 | Faz 4 |
-| Turizm/Seyahat | ~2.1M | 3% | 4 | Faz 4 |
-| Egitim | ~1.4M | 2% | 2 | Faz 4 |
-| Dis | ~1.4M | 2% | 5 | Faz 4 |
-| Lojistik | ~1.2M | 2% | 1 | Faz 4 |
+| Sektor | Mesaj Hacmi | % | Aktif DB | Pilot Fazi |
+|--------|------------|---|----------|------------|
+| **Saglik/Klinik** | ~23.5M | 36% | 11 | Faz 2 |
+| **Moda/E-ticaret** | ~10.5M | 16% | 5 | Faz 2 |
+| **Gayrimenkul** | ~7.2M | 11% | 3 | Faz 2 |
+| Dijital Pazarlama | ~6.3M | 10% | 2 | Faz 5 |
+| Guzellik/Estetik | ~4.2M | 7% | 2 | Faz 5 |
+| Finans/Sigorta | ~2.9M | 4% | 1 | Faz 5 |
+| Turizm/Seyahat | ~2.1M | 3% | 4 | Faz 5 |
+| Egitim | ~1.4M | 2% | 2 | Faz 5 |
+| Dis | ~1.4M | 2% | 5 | Faz 5 |
+| Lojistik | ~1.2M | 2% | 1 | Faz 5 |
 | Diger | ~4.5M | 7% | ~15 | Faz 5 |
 | **TOPLAM** | **~63M** | | **~55** | |
 
@@ -54,124 +72,333 @@ LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
 
 ---
 
-## FAZ PLANI
+## FAZ PLANI (8 Faz)
+
+---
 
 ### Faz 1: Model Secimi & Kalibrasyon (DEVAM EDIYOR)
 
-**Amac:** Hangi LLM en dogru + en ucuz? macro-F1 >= 0.80 gate.
+> **Amac:** Hangi LLM en dogru + en ucuz? macro-F1 >= 0.80 gate.
+> **Servis:** WhatsAppAnalytics (:7109)
 
 | # | Task | Durum | Notlar |
 |---|------|-------|--------|
-| RI-0.1 | Schema Uyumluluk Tarami | **DONE** | 5/5 DB %100 uyumlu |
-| RI-0.2 | Veri Kalitesi Degerlendirmesi | **DONE** | Ort %68 usable |
-| RI-0.3 | Sektor Haritalama | **DONE** | 88 tenant DB, 14 sektor |
-| RI-0.4 | Outcome Taxonomy v0.2 | **DONE** | 7 label, sektor-spesifik notlar |
+| RI-0.1 | Schema Uyumluluk Tarami (5 DB) | **DONE** | 5/5 DB %100 uyumlu |
+| RI-0.2 | Veri Kalitesi Degerlendirmesi (5 DB) | **DONE** | Ort %68 usable |
+| RI-0.3 | Sektor Haritalama (88 DB) | **DONE** | 88 tenant DB, 14 sektor → 24 Sub guncelleme: 91 DB, 12 sektor |
+| RI-0.4 | Outcome Taxonomy v0.4 | **DONE** | 8 label — offer_no_reply + offer_lost (ex: no_sale) — manuel etiketleme sirasinda kesfedildi |
 | RI-0.5 | PII Redaction kurallari | **DONE** | 8 PII tipi tanimli |
-| RI-1A | LLM Benchmark Altyapisi | **DONE** | DB, DTOs, clients, PiiMasker |
+| RI-1A | LLM Benchmark Altyapisi (DB, DTOs, clients) | **DONE** | ~500 satir |
 | RI-1B | Benchmark Orchestration + Endpoints | **DONE** | 5 API endpoint, 6 model |
-| RI-1.1 | 200 Thread Benchmark (4 model) | **IN-PROGRESS** | Benchmark #12 calisiyor |
-| RI-1.2 | Q Manuel Etiketleme (Ground Truth) | PLANNED | Benchmark sonuclari gelince 200 thread Q etiketler |
-| RI-1.3 | Dogruluk Olcumu | PLANNED | macro-F1 + confusion matrix |
-| RI-1.4 | Maliyet Modeli | PLANNED | Model basina cost/thread |
+| RI-1.1 | 200 Thread Benchmark (4 model) | **DONE** | Benchmark #12: haiku, flash, gemini-3-flash, tiered. 199 labeled. |
+| RI-1.2 | Q Manuel Etiketleme (Ground Truth) | **DONE** | 94 DISAGREE Q etiketledi + 106 AGREE majority_vote = 199 GT label. Taxonomy v0.4 kesfedildi. |
+| RI-1.3 | Dogruluk Olcumu | **DONE** | Sonuclar asagida (RI-1.3 Results). |
+| RI-1.4 | Maliyet Modeli | PLANNED | Model basina cost/thread, scale projeksiyon |
 | RI-1.5 | Pipeline Karsilastirmasi | PLANNED | 4 model karsilastirma raporu |
-| **GATE** | **Decision Gate** | PLANNED | macro-F1 >= 0.80 → Faz 2'ye gec |
+| RI-1.6 | Benchmark 13: Prompt v0.4 Update | **NEXT** | Modellere offer_no_reply + offer_lost ekle, yeniden calistir. Hedef: gemini-3-flash >= 0.80 |
+| **GATE-1** | **Decision Gate** | **BEKLIYOR** | Benchmark 13 sonrasi degerlendir. gemini-3-flash offer_no_reply biliyor olursa >= 0.82 bekleniyor |
 
-**Beklenen cikti:** Kazanan model + maliyet tahmini + accuracy raporu
+**Cikti:** Kazanan model + maliyet tahmini + accuracy raporu
 
 ---
 
 ### Faz 2: Sektor Pipeline Gelistirme (Top 3)
 
-**Amac:** Saglik, Moda, Gayrimenkul icin sektor-spesifik extraction pipeline'lari kurmak.
+> **Amac:** Saglik, Moda, Gayrimenkul icin sektor-spesifik classification + extraction pipeline'lari kurmak.
+> **Onkosul:** GATE-1 gecilmis olmali
 
-| # | Task | Durum | Notlar |
-|---|------|-------|--------|
-| RI-2.1 | Sektor-spesifik taxonomy tanimlama | PLANNED | Her sektor icin label seti + karar agaci |
-| RI-2.2 | Sektor-spesifik LLM prompt'lari | PLANNED | 3 sektor x optimized prompt |
-| RI-2.3 | Pilot: Saglik (vailaclinic + 2 DB daha) | PLANNED | ~500 thread, Q etiketleme + LLM |
-| RI-2.4 | Pilot: Moda (EbruModa + 2 DB daha) | PLANNED | ~500 thread |
-| RI-2.5 | Pilot: Gayrimenkul (GoldenPartner + 1 DB) | PLANNED | ~500 thread |
-| RI-2.6 | Cross-sector accuracy raporu | PLANNED | macro-F1 per sector |
-| RI-2.7 | Sektor template sistemi tasarimi | PLANNED | Template = label set + prompt + extraction config |
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| RI-2.1 | **Saglik sektoru taxonomy** | PLANNED | v0.2 zaten var, genisletilecek: sale, appointment_booked, offered, no_sale, no_response, abandoned, return_or_complaint. Saglik-spesifik sub-label'lar: depozito_alindi, ameliyat_tarihi_kesin, doktor_onayladi, doktor_reddetti |
+| RI-2.2 | **Moda sektoru taxonomy** | PLANNED | Yeni tanimlama gerekli: sale (siparis onaylandi), offered (fiyat/stok bilgisi verildi), no_sale (vazgecti), no_response, abandoned, return_or_complaint (iade/degisim). appointment_booked KULLANILMAZ |
+| RI-2.3 | **Gayrimenkul sektoru taxonomy** | PLANNED | sale (kaparo/satis), showing_booked (gosterim randevusu), offered (fiyat verildi), no_sale, no_response, abandoned. Gayrimenkul-spesifik: kredi_sureci, tapu_islemi |
+| RI-2.4 | **Sektor-spesifik LLM prompt'lari** | PLANNED | 3 sektor x optimized classification prompt + extraction prompt |
+| RI-2.5 | **Pilot: Saglik** | PLANNED | vailaclinic + Hermest + Estethica (3 farkli olcek). ~500 thread, Q etiketleme + LLM karsilastirma |
+| RI-2.6 | **Pilot: Moda** | PLANNED | EbruModa + nevinkayamoda + Moreandmore. ~500 thread |
+| RI-2.7 | **Pilot: Gayrimenkul** | PLANNED | GoldenPartner + EmreIlhan. ~300 thread |
+| RI-2.8 | **Cross-sector accuracy raporu** | PLANNED | macro-F1 per sector. Hedef: her sektorde >= 0.80 |
+| RI-2.9 | **Sektor template veri modeli** | PLANNED | Template = { sector_id, label_set, classification_prompt, extraction_prompts, benchmark_values, intent_templates, faq_templates, flow_templates } |
+| **GATE-2** | **Sektor Gate** | PLANNED | 3 sektorde macro-F1 >= 0.80 → Faz 3'e gec |
 
-**Beklenen cikti:** 3 sektor icin calibrated pipeline + template yapisi
+**Cikti:** 3 sektor icin calibrated pipeline + template veri modeli + sektor bazli accuracy raporu
 
 ---
 
 ### Faz 3: 7 Insight Engine
 
-**Amac:** Etiketleme ustune 7 extraction engine kurmak. Her biri bagimsiz calisir.
+> **Amac:** Etiketleme ustune 7 extraction engine kurmak. Her biri bagimsiz calisir.
+> **Onkosul:** GATE-2 gecilmis olmali (en az 1 sektor icin)
 
-| # | Engine | Aciklama | Karmasiklik | LLM? |
-|---|--------|----------|-------------|------|
-| RI-3.1 | **Response Time Correlation** | Ilk mesaj → ilk cevap suresi vs conversion | **Low** | Hayir (pure timestamp) |
-| RI-3.2 | **Service Demand Heatmap** | Hangi hizmet/urun ne kadar soruluyor | Low-Med | Evet (extraction) |
-| RI-3.3 | **Agent Leaderboard** | Agent bazli conversion rate, response time, ghost rate | Low-Med | Hayir (aggregation) |
-| RI-3.4 | **Lost Revenue Calculator** | Offered konusmalardan tutar extraction + toplam kayip | Medium | Evet (price extraction) |
-| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | Medium | Evet (reason extraction) |
-| RI-3.6 | **Follow-up Rescue Alerts** | Offered + 48 saat cevapsiz → rescue listesi | Medium | Hayir (timestamp + label) |
-| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | Medium | Evet (scoring) |
+#### Engine'ler — Detayli
 
-**Siralama:** LLM gerektirmeyenler once (3.1, 3.3, 3.6), sonra LLM gerektirenler (3.2, 3.4, 3.5, 3.7)
+| # | Engine | Aciklama | LLM? | Karmasiklik |
+|---|--------|----------|------|-------------|
+| RI-3.1 | **Response Time Correlation** | Ilk mesaj → ilk cevap suresi vs conversion | Hayir | Low |
+| RI-3.2 | **Service Demand Heatmap** | Hangi hizmet/urun ne kadar soruluyor | Evet | Low-Med |
+| RI-3.3 | **Agent Leaderboard** | Agent bazli conversion, response time, ghost rate | Hayir | Low-Med |
+| RI-3.4 | **Lost Revenue Calculator** | Offered konusmalardan tutar extraction + kayip toplam | Evet | Medium |
+| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | Evet | Medium |
+| RI-3.6 | **Follow-up Rescue Alerts** | Offered + 48 saat cevapsiz → rescue listesi | Hayir | Medium |
+| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | Evet | Medium |
 
-**Onemli:** RI-3.2 + RI-3.4 + RI-3.5 ayni LLM call'da cikarilabilir (tek prompt, multi-extraction). Maliyet optimizasyonu.
+#### Detayli Task'lar
 
-**Beklenen cikti:** 7 engine calisiyor, her biri sektor-agnostik ama sektor template'ine gore configure edilebilir
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| RI-3.1.1 | Response Time hesaplama servisi | PLANNED | Her konusma icin: first_customer_msg_time, first_agent_response_time, delta_seconds. Timestamp'lerden hesaplanir, LLM gerekmez |
+| RI-3.1.2 | Response Time ↔ Conversion korelasyon hesabi | PLANNED | Bucket'lar: 0-5dk, 5-15dk, 15-60dk, 1-4saat, 4saat+. Her bucket icin conversion rate. Sektor bazli. Output: "5dk altinda cevap verilen konusmalar %31 conversion, 2saat+ %4" |
+| RI-3.1.3 | Sektor benchmark degerleri | PLANNED | "Saglikta ortalama ilk cevap 18dk, moda'da 42dk" — yeni tenant karsilastirma icin |
+| | | | |
+| RI-3.2.1 | Service/product extraction prompt | PLANNED | LLM prompt: "Bu konusmada musteri hangi hizmeti/urunu soruyor?" → structured output: { service: "burun estetigi", category: "yuz_estetigi" } |
+| RI-3.2.2 | Sektor-spesifik hizmet/urun kategori agaci | PLANNED | Saglik: sac_ekimi, burun, gogus, karin_germe, dis, goz... Moda: elbise, ayakkabi, canta... Gayrimenkul: satilik_daire, kiralik, arsa... |
+| RI-3.2.3 | Talep dagilimi aggregation | PLANNED | Sektor + zaman + hizmet bazli pivot tablo |
+| RI-3.2.4 | Trend analizi | PLANNED | Aylik hizmet talep degisimi. "Burun estetigi bu ay %15 artti" |
+| | | | |
+| RI-3.3.1 | Agent tanima servisi | PLANNED | Users tablosundan agent_id + agent_name. FromMe=true mesajlari agent'a esle |
+| RI-3.3.2 | Agent metrik hesaplama | PLANNED | Per agent: total_conversations, conversion_rate, avg_response_time, ghost_rate (no_response %), avg_message_count, avg_quality_score |
+| RI-3.3.3 | Agent ranking algoritmasi | PLANNED | Weighted score: conversion (%40) + response_time (%25) + quality (%20) + ghost_rate_inverse (%15) |
+| RI-3.3.4 | Sektor benchmark: agent performansi | PLANNED | "Saglikta en iyi agent'lar %28 conversion, ortalama %16" |
+| | | | |
+| RI-3.4.1 | Price extraction prompt | PLANNED | LLM: konusmadan fiyat/tutar bilgisi cikar. { amount: 6500, currency: "EUR", type: "offer" / "deposit" / "total" }. Birden fazla fiyat olabilir |
+| RI-3.4.2 | Revenue calculation engine | PLANNED | Offered konusma x extracted_price = potential_revenue. Sale konusma x extracted_price = actual_revenue. Lost = potential - actual |
+| RI-3.4.3 | Revenue trend | PLANNED | Haftalik/aylik: potansiyel, gerceklesen, kayip. Trend grafigi |
+| RI-3.4.4 | Sektor benchmark: ortalama deal size | PLANNED | "Saglikta ortalama teklif €4,800, moda'da ₺450, gayrimenkulde ₺2.1M" |
+| | | | |
+| RI-3.5.1 | Objection/rejection reason extraction prompt | PLANNED | LLM: "Musteri neden almadi?" → { reason: "price_high", detail: "Fiyati yuksek buldugu icin vazgecti", customer_quote: "too expensive for me" } |
+| RI-3.5.2 | Objection kategori sistemi | PLANNED | Evrensel: price_high, chose_competitor, not_ready, wrong_service, no_trust, timing, medical_rejection (saglik), out_of_stock (moda), location (gayrimenkul) |
+| RI-3.5.3 | Objection dagilimi aggregation | PLANNED | Pie chart data: sektor + donem + sebep. Trend: "Bu ay fiyat itirazlari %12 azaldi" |
+| RI-3.5.4 | Sektor benchmark: top itiraz sebepleri | PLANNED | "Saglikta %38 fiyat, %22 rakip. Moda'da %45 stok yok, %20 beden" |
+| | | | |
+| RI-3.6.1 | Rescue candidate detection | PLANNED | Kriter: label IN (offered, offer_no_reply) AND son_mesaj=agent AND (now - son_mesaj_zamani) > 48h AND (now - son_mesaj_zamani) < 14gun. offer_no_reply = birincil hedef (daha kritik) |
+| RI-3.6.2 | Rescue value estimation | PLANNED | rescue_candidate x extracted_price = rescue_potential. "5 konusma, tahmini €8,400" |
+| RI-3.6.3 | Nightly batch job | PLANNED | Her gece 03:00: tum tenant'lar icin rescue candidate tara → sonuclari kaydet |
+| RI-3.6.4 | Rescue success tracking | PLANNED | Rescue edilen konusma offered → sale'e donustu mu? rescue_rate metrik |
+| | | | |
+| RI-3.7.1 | Quality scoring prompt | PLANNED | LLM: konusmayi 5 boyutta degerlendir: empati (1-10), bilgi_dogrulugu (1-10), closing_attempt (1-10), response_uygunlugu (1-10), profesyonellik (1-10). Toplam = weighted average |
+| RI-3.7.2 | Quality → Conversion korelasyon | PLANNED | "Kalite puani 8+ olan konusmalar %34 conversion, 4 alti %6" |
+| RI-3.7.3 | Agent bazli kalite trendi | PLANNED | "Mehmet bu ay ortalama 4.2 → gecen ay 5.1 — dusus var" |
+| RI-3.7.4 | Sektor benchmark: kalite standardi | PLANNED | "Saglikta ortalama kalite 6.8/10, en iyi %10 = 8.5+" |
+
+**LLM Maliyet Optimizasyonu:** RI-3.2 (service demand) + RI-3.4 (price) + RI-3.5 (objection) + RI-3.7 (quality) → TEK LLM call ile multi-extraction. 4 ayri call yerine 1 call, ~%60 maliyet tasarrufu.
+
+**Siralama:** Once LLM gerektirmeyenler (3.1, 3.3, 3.6) → sonra LLM gerektirenler (3.2+3.4+3.5+3.7 birlesik call)
+
+**Cikti:** 7 engine calisiyor + sektor benchmark degerleri hazir
+
+---
+
+### Faz 4: Sektor Sablon Mining (Intent, FAQ, Flow, Objection Handling)
+
+> **Amac:** 63M mesajdan sektor bazli actionable sablonlar cikar. Yeni tenant'a 1. gunden deger sun.
+> **Onkosul:** Faz 3 engine'ler calisiyor (en az 3.2, 3.5 gerekli)
+
+#### Sablon Tipleri
+
+| Sablon | Nereden Cikar | Ornek Cikti |
+|--------|---------------|-------------|
+| **Intent sablonlari** | Service Demand Heatmap (RI-3.2) verisinden en sik sorulan konular | Saglik: "Sac ekimi fiyat sorgusu", "Burun estetigi bilgi", "Ameliyat sonrasi surecler" |
+| **FAQ sablonlari** | Basarili konusmalardan (sale/appointment_booked) tekrar eden soru-cevap ciftleri | "Ameliyat ne kadar suruyor?" → "Ortalama 6-8 saat, genel anestezi altinda..." |
+| **Flow sablonlari** | Conversion'a ulasan konusmalardan akis kaliplari | Saglik: Ilk temas → Tibbi form → Doktor degerlendirme → Fiyat → Depozito → Tarih |
+| **Objection handling** | no_sale konusmalardan itiraz-cevap ciftleri + rescue edilen ornekler | "Fiyat yuksek" → "Taksit imkanimiz var, ayrica erken rezervasyona %15 indirim..." |
+| **Follow-up sablonlari** | Rescue edilen (offered → sale) konusmalardan basarili follow-up mesajlari | "Merhaba [NAME], gecen hafta gonderdigim teklif hakkinda bir gelisme var mi?" |
+| **Onboarding checklist** | Basarili tenant'larin (yuksek conversion) ilk 30 gun aksiyonlarinin analizi | "1. Hafta: FAQ'lari ekle. 2. Hafta: Flow kur. 3. Hafta: Agent egitimine basla" |
+
+#### Detayli Task'lar
+
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| **Intent Mining** | | | |
+| RI-4.1.1 | Sektor bazli intent clustering | PLANNED | RI-3.2 service demand verisinden: top 20 intent per sector. LLM ile category + description + ornek mesajlar |
+| RI-4.1.2 | Intent frequency + conversion correlation | PLANNED | "Sac ekimi fiyat sorgusu" intent'i %35 conversion, "genel bilgi" %8 → high-value intent tespiti |
+| RI-4.1.3 | Intent sablon formatlama | PLANNED | Invekto Intent format'ina uygun JSON: { name, description, examples[], sector, priority } |
+| RI-4.1.4 | Intent kalite kontrolu (Q review) | PLANNED | Sektor basina top 15-20 intent, Q onaylar |
+| | | | |
+| **FAQ Mining** | | | |
+| RI-4.2.1 | Soru-cevap cifti extraction | PLANNED | LLM ile sale/appointment_booked konusmalardan: musteri ne sordu → agent ne cevap verdi → ise yaradi mi? |
+| RI-4.2.2 | FAQ clustering (benzer sorulari birlestir) | PLANNED | "Ameliyat kac saat?" ve "Operasyon suresi?" → ayni FAQ |
+| RI-4.2.3 | FAQ ranking (en etkili cevaplar) | PLANNED | Conversion'a goturen cevaplar one cikar. "Bu cevabi veren agent'lar %28 conversion" |
+| RI-4.2.4 | FAQ sablon formatlama | PLANNED | { question, answer, sector, effectiveness_score, source_count } |
+| RI-4.2.5 | FAQ kalite kontrolu (Q review) | PLANNED | Sektor basina top 15-20 FAQ |
+| | | | |
+| **Flow Mining** | | | |
+| RI-4.3.1 | Basarili konusma akis analizi | PLANNED | sale + appointment_booked konusmalar: hangi sirada ne oldu? LLM ile stage extraction: inquiry → info → form → evaluation → pricing → closing |
+| RI-4.3.2 | Sektor bazli ideal flow tanimlarma | PLANNED | Saglik: inquiry → tibbi_form → doktor_degerlendirme → fiyat → depozito → tarih. Moda: inquiry → urun_bilgi → beden_stok → siparis → kargo. Gayrimenkul: inquiry → ozellikler → gosterim → teklif → kaparo → tapu |
+| RI-4.3.3 | Drop-off noktasi analizi | PLANNED | "Saglikta konusmalarin %42'si fiyat asamasinda dusuyor" → flow'da fiyat sonrasi rescue node gerekli |
+| RI-4.3.4 | FlowBuilder uyumlu flow sablon olusturma | PLANNED | Invekto FlowBuilder JSON format'inda: nodes + edges + conditions |
+| RI-4.3.5 | Flow kalite kontrolu (Q review) | PLANNED | Sektor basina 2-3 flow: ilk_temas, follow_up, rescue |
+| | | | |
+| **Objection Handling Mining** | | | |
+| RI-4.4.1 | Itiraz-cevap cifti extraction | PLANNED | no_sale konusmalardan: itiraz ne → agent ne dedi → ise yaradi mi (rescue oldu mu?) |
+| RI-4.4.2 | Itiraz bazli en etkili cevap tespiti | PLANNED | "Fiyat yuksek" itirazi icin en cok rescue eden cevap kaliplari. "Taksit" %22 rescue, "indirim" %18, "karsilastirma" %12 |
+| RI-4.4.3 | Sektor bazli objection playbook | PLANNED | Her itiraz tipi icin: top 3 etkili cevap + basari orani + ornek konusma snippet |
+| RI-4.4.4 | Objection handling sablon formatlama | PLANNED | { objection_type, description, response_templates[], effectiveness_score, sector } |
+| | | | |
+| **Follow-up Template Mining** | | | |
+| RI-4.5.1 | Basarili follow-up mesaj analizi | PLANNED | offered → sale donusen konusmalar: follow-up mesaji ne, kac gun sonra, ne formatta |
+| RI-4.5.2 | Follow-up timing optimization | PLANNED | "48 saat sonra follow-up %25 rescue, 7 gun sonra %8" → optimal zamanlama |
+| RI-4.5.3 | Follow-up sablon seti | PLANNED | Sektor basina 3-5 follow-up template: ilk_hatirlatma, ikinci_hatirlatma, son_sans, ozel_teklif |
+| | | | |
+| **Onboarding Checklist Mining** | | | |
+| RI-4.6.1 | Basarili tenant profil analizi | PLANNED | Yuksek conversion tenant'lar: ilk 30 gunde ne yaptilar? (FAQ sayisi, flow sayisi, response time, agent sayisi) |
+| RI-4.6.2 | Sektor bazli onboarding adimlarI | PLANNED | Saglik: "1. Agent'lari ekle → 2. Tibbi form flow kur → 3. Fiyat FAQ'larini ekle → 4. Follow-up otomasyon → 5. Rescue alerts ac" |
+| RI-4.6.3 | Onboarding checklist formatlama | PLANNED | { step_number, action, description, expected_impact, sector, day_range } |
+
+**Cikti:** Sektor basina hazir sablon paketi: ~15 intent + ~15 FAQ + ~3 flow + ~10 objection handling + ~5 follow-up + onboarding checklist
 
 ---
 
-### Faz 4: Bulk Sektor Isleme + Kalan Sektorler
+### Faz 5: Bulk Isleme + Kalan Sektorler
 
-**Amac:** Top 3 sektor icin tum verileri isle + kalan sektorleri ekle.
+> **Amac:** Top 3 sektor icin tum verileri isle + kalan 9 sektoru ekle + sektor profillerini olustur.
+> **Onkosul:** Faz 3 + Faz 4 tamamlanmis
 
-| # | Task | Durum | Notlar |
-|---|------|-------|--------|
-| RI-4.1 | Saglik tum DB'leri isleme (~23.5M msg) | PLANNED | 11 DB, batch pipeline |
-| RI-4.2 | Moda tum DB'leri isleme (~10.5M msg) | PLANNED | 5 DB |
-| RI-4.3 | Gayrimenkul tum DB'leri isleme (~7.2M msg) | PLANNED | 3 DB |
-| RI-4.4 | Kalan sektorler taxonomy + prompt | PLANNED | Guzellik, Turizm, Egitim, Dis, vd. |
-| RI-4.5 | Kalan sektorler pilot + isleme | PLANNED | Oncelik: hacim sirasina gore |
-| RI-4.6 | Sektor profil raporlari | PLANNED | Her sektor icin "bu sektorde su oluyor" ozeti |
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| **Top 3 Sektor Bulk** | | | |
+| RI-5.1 | Saglik tum DB'leri isleme | PLANNED | 11 DB, ~23.5M msg. Batch pipeline: thread → PII → classify → extract (7 engine) |
+| RI-5.2 | Moda tum DB'leri isleme | PLANNED | 5 DB, ~10.5M msg |
+| RI-5.3 | Gayrimenkul tum DB'leri isleme | PLANNED | 3 DB, ~7.2M msg |
+| RI-5.4 | Bulk isleme sonuc raporu | PLANNED | Her DB icin: toplam thread, label dagilimi, revenue, response time, top intents |
+| | | | |
+| **Kalan Sektorler** | | | |
+| RI-5.5 | Guzellik/Estetik taxonomy + prompt + pilot | PLANNED | 2 DB, ~4.2M msg. Hairtime + dogalfilem |
+| RI-5.6 | Dijital Pazarlama taxonomy + prompt + pilot | PLANNED | 2 DB, ~6.3M msg. Paragram + Rgx |
+| RI-5.7 | Finans/Sigorta taxonomy + prompt + pilot | PLANNED | 1 DB, ~2.9M msg. BKA |
+| RI-5.8 | Turizm/Seyahat taxonomy + prompt + pilot | PLANNED | 4 DB, ~2.1M msg. elcitur + EthnoHotels + FlyTo |
+| RI-5.9 | Egitim taxonomy + prompt + pilot | PLANNED | 2 DB, ~1.4M msg. SisliMYO + sislimyoMali |
+| RI-5.10 | Dis taxonomy + prompt + pilot | PLANNED | 5 DB, ~1.4M msg. Vivaladent + DentAdavista + Dentmaks |
+| RI-5.11 | Lojistik taxonomy + prompt + pilot | PLANNED | 1 DB, ~1.2M msg. OzakGlobal |
+| RI-5.12 | Kalan sektorler sablon mining (Faz 4 tekrari) | PLANNED | Her yeni sektor icin: intent + FAQ + flow + objection + follow-up |
+| RI-5.13 | Sektor profil raporlari | PLANNED | Her sektor icin: ozet istatistikler, benchmark degerler, en onemli bulgular |
+| | | | |
+| **Belirsiz Sektorler** | | | |
+| RI-5.14 | "Diger" kategorideki DB'lerin sektor tespiti | PLANNED | ~15 DB, sample mesaj okuma ile sektor atama |
+| RI-5.15 | Belirsiz DB'leri mevcut sektorlere esleme veya yeni sektor olusturma | PLANNED | |
 
-**Beklenen cikti:** 63M mesaj islenmis, sektor bazli profiller hazir
-
----
-
-### Faz 5: Tenant Self-Service + Dashboard
-
-**Amac:** Tenant kendi verilerini gorsun, template'i ozellestirsin, agree/disagree ile ground truth versin.
-
-| # | Task | Durum | Notlar |
-|---|------|-------|--------|
-| RI-5.1 | Dashboard widget'lari tasarimi | PLANNED | 7 engine icin 7+ widget |
-| RI-5.2 | Lost Revenue widget | PLANNED | Buyuk kirmizi sayi: "Bu ay €X kapanmadi" |
-| RI-5.3 | Agent Leaderboard widget | PLANNED | Ranking tablosu + trend |
-| RI-5.4 | Objection Map widget | PLANNED | Pie chart: kayip sebepleri |
-| RI-5.5 | Response Time widget | PLANNED | Korelasyon grafigi + SLA |
-| RI-5.6 | Rescue Alerts widget | PLANNED | Sabah raporu: "X konusma rescue bekliyor" |
-| RI-5.7 | Quality Score widget | PLANNED | Agent bazli kalite puani |
-| RI-5.8 | Service Demand widget | PLANNED | Heatmap: hizmet talep dagilimi |
-| RI-5.9 | Tenant template yonetimi UI | PLANNED | Label ekleme/cikarma, prompt duzenleme |
-| RI-5.10 | Agree/disagree UI (ground truth flywheel) | PLANNED | "Bu etiket dogru mu?" butonu |
-| RI-5.11 | API endpoints (tenant-facing) | PLANNED | Tum widget verileri + export |
-| RI-5.12 | Gunluk/haftalik batch pipeline | PLANNED | Cron job, tenant bazi, configurable |
-
-**Beklenen cikti:** Premium tier olarak canli urun
+**Cikti:** 63M mesaj islenmis, 12+ sektor profili, tum sektorler icin sablon paketleri
 
 ---
 
-### Faz 6: Optimizasyon & Olcekleme
+### Faz 6: Dashboard + API + Widget'lar
 
-**Amac:** Maliyet dusurme, accuracy artirma, yeni sektorler.
+> **Amac:** Insight engine ve sablon verilerini gorsel olarak sunmak. Tenant-facing.
+> **Onkosul:** Faz 3 engine'ler calisiyor, en az Top 3 sektor verisi islenmis
 
-| # | Task | Durum | Notlar |
-|---|------|-------|--------|
-| RI-6.1 | Flywheel feedback → model iyilestirme | PLANNED | Tenant agree/disagree → prompt tuning |
-| RI-6.2 | Maliyet optimizasyonu | PLANNED | Hybrid: keyword pre-filter + LLM (sadece belirsizler) |
-| RI-6.3 | Yeni sektor onboarding sureci | PLANNED | Self-serve sektor ekleme |
-| RI-6.4 | FlowBuilder entegrasyonu | PLANNED | Insight → otomatik aksiyon tetikleme |
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| **Widget'lar (7 Insight)** | | | |
+| RI-6.1 | Lost Revenue widget | PLANNED | Buyuk kirmizi sayi: "Bu ay €X kapanmadi". Trend grafigi. Haftalik/aylik toggle. Offered konusmalara tikla → detay |
+| RI-6.2 | Agent Leaderboard widget | PLANNED | Ranking tablosu: agent, conversion %, response time, quality score. Son 30 gun trend sparkliner. Filtre: donem, label |
+| RI-6.3 | Objection Map widget | PLANNED | Pie/donut chart: kayip sebepleri dagilimi. Tikla → o sebeple kaybedilen konusma listesi. Trend: "Bu ay fiyat itirazlari %5 azaldi" |
+| RI-6.4 | Response Time widget | PLANNED | Korelasyon grafigi: response time bucket vs conversion rate. Kirmizi uyari: "Ortalama cevap sureniz 2.3 saat — sektorunuzde %18'lik conversion kaybi" |
+| RI-6.5 | Rescue Alerts widget | PLANNED | Sabah raporu: "X konusma rescue bekliyor, tahmini deger €Y". Liste: konusma, son mesaj, sure, tahmini deger. Tek tikla: rescue template gonder |
+| RI-6.6 | Quality Score widget | PLANNED | Agent bazli kalite puani radar chart (empati, bilgi, closing, response, profesyonellik). Trend. En dusuk puanli agent'a egitim onerisi |
+| RI-6.7 | Service Demand widget | PLANNED | Heatmap/bar chart: hizmet talep dagilimi. Trend: aylarca kiyasla. "Burun estetigi talepleri %15 artti ama reklam butceniz sabit" |
+| | | | |
+| **Sablon Yonetimi** | | | |
+| RI-6.8 | Sektor paketi goruntuleme sayfasi | PLANNED | "Sektorunuz: Saglik. Size ozel 15 intent, 15 FAQ, 3 flow hazir." Detay gorunumu |
+| RI-6.9 | Intent sablon yonetimi | PLANNED | Liste: intent adi, aciklama, ornek, aktif/pasif toggle. Ekleme/duzenleme/silme |
+| RI-6.10 | FAQ sablon yonetimi | PLANNED | Liste: soru, cevap, etkililik puani. Duzenleme, yenisini ekleme |
+| RI-6.11 | Flow sablon yonetimi | PLANNED | FlowBuilder'da acilabilir flow sablonlari. "Bu sablonu kullan" → FlowBuilder'a kopyala |
+| RI-6.12 | Objection handling yonetimi | PLANNED | Itiraz tipi → onerilen cevaplar listesi. Tenant kendi cevabini ekleyebilir |
+| RI-6.13 | Follow-up sablon yonetimi | PLANNED | Zamanlama + mesaj sablonu. Aktif/pasif. Ozel sablon ekleme |
+| | | | |
+| **Ground Truth Flywheel** | | | |
+| RI-6.14 | Agree/disagree UI | PLANNED | Her etiketlenmis konusmada: "Bu etiket dogru mu?" → Evet / Hayir + dogru etiket sec. Basit, tek tikla |
+| RI-6.15 | Feedback aggregation | PLANNED | Tenant bazli agree/disagree oranlari. Dusuk agree → prompt tuning sinyali |
+| RI-6.16 | Feedback → prompt iyilestirme pipeline | PLANNED | Otomatik veya yari-otomatik: cok disagree alan label'lar icin prompt ayarlama |
+| | | | |
+| **API Endpoints (Tenant-facing)** | | | |
+| RI-6.17 | GET /api/ri/dashboard | PLANNED | Tum widget verileri tek call'da |
+| RI-6.18 | GET /api/ri/revenue | PLANNED | Lost revenue detay: donem, agent, hizmet bazli |
+| RI-6.19 | GET /api/ri/agents | PLANNED | Agent leaderboard + detay |
+| RI-6.20 | GET /api/ri/objections | PLANNED | Itiraz haritasi + trend |
+| RI-6.21 | GET /api/ri/response-time | PLANNED | Response time korelasyon |
+| RI-6.22 | GET /api/ri/rescue | PLANNED | Rescue listesi + value |
+| RI-6.23 | GET /api/ri/quality | PLANNED | Quality score per agent |
+| RI-6.24 | GET /api/ri/demand | PLANNED | Service demand heatmap |
+| RI-6.25 | GET /api/ri/templates | PLANNED | Sektor sablonlari: intent, FAQ, flow, objection, follow-up |
+| RI-6.26 | PUT /api/ri/templates/{id} | PLANNED | Sablon guncelleme (tenant ozellestirmesi) |
+| RI-6.27 | POST /api/ri/feedback | PLANNED | Agree/disagree kaydet |
+| RI-6.28 | GET /api/ri/benchmarks | PLANNED | Sektor benchmark degerleri (karsilastirma icin) |
+
+**Cikti:** Canli dashboard + API + sablon yonetimi
 
 ---
+
+### Faz 7: Tenant Onboarding Deneyimi
+
+> **Amac:** Yeni tenant signup oldugunda sektorune gore hazir paket yuklensin, 1. gunden deger gorsun.
+> **Onkosul:** Faz 4 sablonlar + Faz 6 dashboard hazir
+
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| RI-7.1 | Sektor secim adimi (onboarding wizard) | PLANNED | Signup sirasinda veya ilk giriste: "Sektorunuz nedir?" dropdown. Otomatik tespit de olabilir (ilk 50 mesajdan LLM ile) |
+| RI-7.2 | Sektor paketi otomatik yukleme | PLANNED | Sektor secilince: intent'ler, FAQ'lar, flow'lar, label set'i, benchmark degerler otomatik yuklensin |
+| RI-7.3 | Onboarding checklist UI | PLANNED | "Ilk 7 gun plani" — sektore ozel adimlar. Tamamlandikca checkmark. Progress bar |
+| RI-7.4 | "Sektorunuzde neler oluyor" ozet sayfasi | PLANNED | Ilk giris: "Saglik sektorunde ortalama conversion %18, en sik itiraz fiyat (%38), en cok sorulan: sac ekimi. Sizin durumunuz: henuz veri yok — ilk hafta verileriniz islendikten sonra karsilastirma yapacagiz" |
+| RI-7.5 | Hizli baslangu kiti | PLANNED | "Bu 3 flow'u hemen aktif edin, conversion %15 artabilir" — sektordeki en etkili flow'larin one cikmasi |
+| RI-7.6 | Benchmark karsilastirma | PLANNED | 2. haftadan sonra: "Cevap sureniz 45dk — sektorunuzde ortalama 18dk. Iyilestirme onerisi: Agent SLA 15dk" |
+| RI-7.7 | Haftalik progress email/notification | PLANNED | "Bu hafta: 12 konusma etiketlendi, 3 offered, 1 sale. Sektordeki benchmark: %18 conversion, siz: %8 — follow-up sablonlarinizi aktif edin" |
+
+**Cikti:** Yeni tenant 1. gunden deger goruyor, sektordeki en iyi pratikleri otomatik aliyor
+
+---
+
+### Faz 8: Optimizasyon & Olcekleme
+
+> **Amac:** Maliyet dusurme, accuracy artirma, yeni sektorler, FlowBuilder entegrasyonu.
+> **Surekli (Faz 6+ sonrasi)**
+
+| # | Task | Durum | Detay |
+|---|------|-------|-------|
+| **Maliyet Optimizasyonu** | | | |
+| RI-8.1 | Hybrid pipeline | PLANNED | Keyword pre-filter: bariz konusmalar (abandoned, clear sale) LLM'e gitmez → %30-40 maliyet tasarrufu |
+| RI-8.2 | Summary caching | PLANNED | PII-redacted summary'ler cache'lenir, tekrar islenmez |
+| RI-8.3 | Model downgrade stratejisi | PLANNED | Yuksek confidence konusmalari ucuz modele, dusuk confidence'i pahali modele |
+| RI-8.4 | Batch processing optimizasyonu | PLANNED | Paralel isleme, rate limiting, retry logic |
+| | | | |
+| **Accuracy Iyilestirme** | | | |
+| RI-8.5 | Flywheel feedback → prompt tuning | PLANNED | Tenant disagree'leri topla → prompt'u optimize et → yeniden isle |
+| RI-8.6 | Few-shot learning | PLANNED | Ground truth orneklerini prompt'a ekle → accuracy artisi |
+| RI-8.7 | Sektor-spesifik fine-tuning (gelecek) | PLANNED | Yeterli veri birikince sektore ozel model fine-tune |
+| | | | |
+| **Entegrasyonlar** | | | |
+| RI-8.8 | FlowBuilder entegrasyonu | PLANNED | Insight → otomatik aksiyon: "offered + 48 saat" → follow-up flow tetikle. "no_response + 7 gun" → rescue flow. "quality < 5" → agent uyarisi |
+| RI-8.9 | Marketing servisi entegrasyonu | PLANNED | Demand heatmap → kampanya onerisi. "Burun estetigi talepleri %28 — bu ay kampanya yap" |
+| RI-8.10 | Outbound servisi entegrasyonu | PLANNED | Rescue alerts → otomatik outbound mesaj. Configurable: tenant izin verirse |
+| RI-8.11 | Knowledge base entegrasyonu | PLANNED | FAQ sablonlari → Knowledge base'e otomatik ekleme |
+| | | | |
+| **Yeni Sektor Onboarding** | | | |
+| RI-8.12 | Self-serve sektor ekleme | PLANNED | Admin panelinden: yeni sektor tanimla, taxonomy olustur, pilot calistir |
+| RI-8.13 | Otomatik sektor tespiti | PLANNED | Yeni tenant'in ilk 100 mesajindan LLM ile sektor tahmin et |
+
+**Cikti:** Dusuk maliyetli, yuksek accuracy'li, entegre RI sistemi
+
+---
+
+## Maliyet Tahminleri (Guncellenmis)
+
+| Faz | Olcek | Tahmini LLM Maliyeti |
+|-----|-------|----------------------|
+| Faz 1 (benchmark) | ~1,000 conv | ~$2 |
+| Faz 2 (pilot) | ~1,500 conv | ~$3 |
+| Faz 3 (engine dev) | ~2,000 conv (test) | ~$5 |
+| Faz 4 (sablon mining) | ~5,000 conv (sample) | ~$15 |
+| Faz 5 (bulk isleme) | ~5M conv | ~$6,000 |
+| Faz 6-8 (ongoing) | Gunluk batch | ~$50-200/ay (tahmin) |
+
+## Risk Kaydi
+
+| Risk | Olasilik | Etki | Onlem |
+|------|----------|------|-------|
+| KVKK: saglik verisi 3rd-party LLM'e | YUKSEK | CRITICAL | PII redaction + summary-only pipeline |
+| Class imbalance yanlis gate | ORTA | YUKSEK | macro-F1 kullan |
+| Sektor arasi prompt transfer basarisiz | ORTA | YUKSEK | Her sektor icin ayri prompt + pilot |
+| LLM maliyeti olceklenmiyor | ORTA | ORTA | Hybrid pre-filter + batch + cache |
+| Tenant template karmasikligi | DUSUK | ORTA | Basit UI, sane defaults |
+| Sablon kalitesi dusuk cikar | ORTA | ORTA | Q review gate + tenant feedback |
+| Flow mining yanlis pattern cikar | ORTA | YUKSEK | Sale konusmalardan cikart, Q dogrula |
 
 ## Mevcut Altyapi (Sifirdan baslamiyoruz)
 
@@ -186,6 +413,69 @@ LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
 | LLM Benchmark sistemi | CALISIYOR | Services/Benchmark/*.cs |
 | PII Masker | CALISIYOR | Services/Benchmark/PiiMasker.cs |
 | Gemini + Claude client | CALISIYOR | Services/Benchmark/GeminiLlmClient.cs, AnthropicLlmClient.cs |
+| FlowBuilder (merge edildi) | CALISIYOR | Dashboard SPA icinde |
+
+## Outcome Taxonomy v0.4
+
+> **v0.3:** `offer_no_reply` eklendi (teklif sonrasi sessizlesen musteri).
+> **v0.4:** `no_sale` → `offer_lost` rename edildi. Daha acik is dili: "firsat kaybedildi, musteri aktif olarak reddetti." Manuel etiketleme sirasinda kesfedildi (24 Sub 2026).
+
+| Label | Tanim | Saglik | Moda | Gayrimenkul |
+|-------|-------|--------|------|-------------|
+| **sale** | Odeme/depozito alindi | Depozito alindi | Siparis onaylandi | Kaparo yattirildi |
+| **appointment_booked** | Randevu/gorusme kesinlesti | Ameliyat tarihi | KULLANILMAZ | Gosterim randevusu |
+| **offered** | Fiyat/teklif verildi, musteri hala aktif | Fiyat verildi, musteri sordu/dusunuyor | Fiyat/stok bilgisi verildi | Fiyat + ozellikler sunuldu |
+| **offer_no_reply** | Fiyat/teklif verildi AMA musteri sessizlesti | Fiyat verildikten sonra yanit yok | Teklif sonrasi kayboldu | Fiyat verildi, iletisim kesildi |
+| **offer_lost** | Musteri aktif olarak reddetti (herhangi bir asamada) | Red (fiyat, konum, tibbi uygunsuzluk) | Red (fiyat, beden, stok) | Red (fiyat, lokasyon, kredi) |
+| **no_response** | Teklif yapilmadan musteri cevap vermedi | Evrensel | Evrensel | Evrensel |
+| **abandoned** | 1-2 mesaj, etkilesim yok | Evrensel | Evrensel | Evrensel |
+| **return_or_complaint** | Iade/sikayet | Memnuniyetsizlik | Iade/degisim | Sikayet |
+
+**Karar Rehberi:**
+- Teklif VAR + musteri AKTIF ("dusuneyim", soru soruyor) → `offered`
+- Teklif VAR + musteri bir sonraki mesaja YANIT VERMEDI → `offer_no_reply`
+- Teklif YOK + musteri cevap vermedi → `no_response`
+- Musteri AKTIF REDDE dedi ("olmaz", "uzgunum", "baska klinige gidecegim") → `offer_lost`
+- 1-2 mesaj, hic etkilesim yok → `abandoned`
+
+## RI-1.3 Sonuclari (Benchmark 12 — 24 Sub 2026)
+
+**Ground Truth:** 199 labeled thread (vailaclinic). GT dagilimi: offered:54, no_response:52, offer_lost:41, offer_no_reply:40, return_or_complaint:5, sale:3, abandoned:2, appointment_booked:2.
+
+| Model | Macro-F1 | Accuracy | Notlar |
+|-------|----------|----------|--------|
+| **gemini_3_flash** | **0.7253** | 71.9% | En iyi macro-F1. offer_lost F1=0.886 |
+| claude_haiku | 0.6003 | 57.8% | "offered" bias: no_response'leri offered tahmin ediyor |
+| gemini_flash | 0.5706 | 70.4% | offer_no_reply=0, abandoned=0 |
+| tiered | 0.5654 | 73.4% | En yuksek accuracy ama dusuk macro-F1 |
+
+**Per-class F1 — gemini_3_flash (kazanan):**
+| Label | P | R | F1 | Support |
+|-------|---|---|----|---------|
+| offered | 0.586 | 0.944 | 0.723 | 54 |
+| no_response | 0.746 | 0.904 | 0.817 | 52 |
+| offer_lost | 0.921 | 0.854 | 0.886 | 41 |
+| **offer_no_reply** | **0** | **0** | **0** | **40** |
+| return_or_complaint | 0.833 | 1.0 | 0.909 | 5 |
+| sale | 1.0 | 0.667 | 0.800 | 3 |
+| abandoned | 1.0 | 0.5 | 0.667 | 2 |
+| appointment_booked | 1.0 | 1.0 | 1.000 | 2 |
+
+**Kritik Bulgu — offer_no_reply Sifir F1:**
+Tum modeller `offer_no_reply` icin F1=0 verdi. Beklenen: bu label taxonomy v0.3/v0.4'te eklendi, model prompt'lari guncellenmedi. 40 sample = %20 veri → macro-F1'i ~0.12-0.15 asagi cekiyor.
+
+**offer_no_reply haric macro-F1 tahmini (gemini_3_flash):** ~0.829 → GATE-1'i geciyor!
+
+**Karar:** Model prompt'larini offer_no_reply + offer_lost (offer_lost → no_sale yerine) icin guncelle → Benchmark 13 calistir → GATE-1 yeniden degerlendir.
+
+---
+
+## Benchmark Gecmisi
+
+| # | Tarih | Config | Sonuc |
+|---|-------|--------|-------|
+| 11 | 24 Sub | 10 thread, tiered-only, vailaclinic | DONE — tiered %95 confidence, nuansli ayrim |
+| 12 | 24 Sub | 200 thread, 4 model, vailaclinic, taxonomy v0.4 | **DONE** — gemini_3_flash 0.7253 macro-F1. offer_no_reply=0 tum modellerde (prompt guncelleme gerekli) |
 
 ## GPT-5.2-Pro Kritik Uyarilari
 
@@ -194,53 +484,5 @@ LLM-based classification ile %89+ dogruluga ulastik (Benchmark 11).
 | 1 | **KVKK: Saglik mesajlari ozel nitelikli veri** | CRITICAL | PII redaction ZORUNLU |
 | 2 | **macro-F1 kullan, accuracy degil** | HIGH | Class imbalance var |
 | 3 | **Taxonomy ONCE tanimlanmali** | HIGH | Sektor bazli taxonomy Faz 2'de |
-| 4 | **Analytics tek basina satilmaz** | MEDIUM | FlowBuilder entegrasyonu Faz 6'da |
+| 4 | **Analytics tek basina satilmaz** | MEDIUM | FlowBuilder entegrasyonu Faz 8'de |
 | 5 | **"Revenue Intelligence" TR'de soyut** | LOW | "Satis Zekasi" kullanilacak |
-
-## Maliyet Tahminleri
-
-| Olcek | Konusma | Tahmini Maliyet (Haiku/Flash) |
-|-------|---------|-------------------------------|
-| POC (Faz 1) | 1,000 | ~$1.50 |
-| Pilot (Faz 2) | ~1,500 | ~$3 |
-| Tek buyuk DB | ~170,000 | ~$200 |
-| Top 3 sektor | ~3M | ~$3,500 |
-| Tum 55 aktif DB | ~5M+ conv | ~$6,000 |
-
-## Risk Kaydi
-
-| Risk | Olasilik | Etki | Onlem |
-|------|----------|------|-------|
-| KVKK: saglik verisi 3rd-party LLM'e | YUKSEK | CRITICAL | PII redaction + summary-only pipeline |
-| Class imbalance yanlis gate | ORTA | YUKSEK | macro-F1 kullan |
-| Sektor arasi prompt transfer basarisiz | ORTA | YUKSEK | Her sektor icin ayri prompt + pilot |
-| LLM maliyeti olceklenmiyor | ORTA | ORTA | Hybrid pre-filter + batch |
-| Tenant template karmasikligi | DUSUK | ORTA | Basit UI, sane defaults |
-
-## Outcome Taxonomy v0.2 (Saglik sektoru icin dogrulandi)
-
-| Label | Tanim | Sektor Notu |
-|-------|-------|-------------|
-| **sale** | Odeme/depozito alindi veya siparis onaylandi | Saglik: depozito. Moda: siparis. Gayrimenkul: kaparo |
-| **appointment_booked** | Randevu/gorusme tarihi kesinlesti | Saglik: ameliyat. Moda: YOK. Gayrimenkul: gosterim |
-| **offered** | Fiyat/teklif verildi, karar yok | Evrensel |
-| **no_sale** | Musteri acikca vazgecti | Evrensel |
-| **no_response** | Musteri cevap vermedi | Evrensel |
-| **abandoned** | 1-2 mesaj, etkilesim yok | Evrensel |
-| **return_or_complaint** | Iade/sikayet | Saglik: memnuniyetsizlik. Moda: iade |
-
-## PII Redaction (RI-0.5 — DONE)
-
-8 PII tipi tanimli, regex + heuristik. Fiyat ve tibbi bilgi SAKLANIR (analiz icin gerekli).
-Detay: Yukaridaki PII section'da.
-
-## Benchmark Gecmisi
-
-| # | Tarih | Config | Sonuc |
-|---|-------|--------|-------|
-| 11 | 24 Sub | 10 thread, tiered-only, vailaclinic | DONE — tiered %95 confidence, nuansli ayrim |
-| 12 | 24 Sub | 200 thread, 4 model, vailaclinic | IN-PROGRESS |
-
-## Detayli Plan
-
-Tam plan: `arch/plans/` altinda olusturulacak (her faz icin ayri JSON)
