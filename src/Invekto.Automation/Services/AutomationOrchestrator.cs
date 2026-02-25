@@ -23,7 +23,7 @@ public sealed class AutomationOrchestrator
     private readonly AutomationRepository _repo;
     private readonly FlowEngine _flowEngine;
     private readonly FlowEngineV2 _flowEngineV2;
-    private readonly FaqMatcher _faqMatcher;
+    private readonly KnowledgeSearchClient _knowledgeSearchClient;
     private readonly IntentDetector _intentDetector;
     private readonly WorkingHoursChecker _workingHours;
     private readonly MainAppCallbackClient _callbackClient;
@@ -39,7 +39,7 @@ public sealed class AutomationOrchestrator
         AutomationRepository repo,
         FlowEngine flowEngine,
         FlowEngineV2 flowEngineV2,
-        FaqMatcher faqMatcher,
+        KnowledgeSearchClient knowledgeSearchClient,
         IntentDetector intentDetector,
         WorkingHoursChecker workingHours,
         MainAppCallbackClient callbackClient,
@@ -51,7 +51,7 @@ public sealed class AutomationOrchestrator
         _repo = repo;
         _flowEngine = flowEngine;
         _flowEngineV2 = flowEngineV2;
-        _faqMatcher = faqMatcher;
+        _knowledgeSearchClient = knowledgeSearchClient;
         _intentDetector = intentDetector;
         _workingHours = workingHours;
         _callbackClient = callbackClient;
@@ -829,19 +829,24 @@ public sealed class AutomationOrchestrator
             return true;
         }
 
-        // Search FAQs
-        var faqMatch = await _faqMatcher.FindMatchAsync(tenantId, messageText, ct);
-        if (faqMatch != null && faqMatch.Confidence >= 0.3)
+        // Search Knowledge (semantic FAQ search — v1 compat)
+        var serviceJwt = _jwtGenerator.GenerateServiceToken(tenantId);
+        var searchResult = await _knowledgeSearchClient.SearchAsync(tenantId, messageText, 3, "faq_only", serviceJwt, ct);
+        if (searchResult.Available && searchResult.Items.Count > 0)
         {
-            sw.Stop();
-            var replyText = faqMatch.Answer + "\n\nBaska bir sorunuz var mi? Ana menu icin '0' yazin.";
-            await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
-                CallbackActions.SendMessage, replyText, "faq_match", faqMatch.Confidence, sw.ElapsedMilliseconds, callbackUrl, ct);
+            var bestItem = searchResult.Items[0];
+            if (bestItem.Score >= 0.3 && !string.IsNullOrEmpty(bestItem.Answer))
+            {
+                sw.Stop();
+                var replyText = bestItem.Answer + "\n\nBaska bir sorunuz var mi? Ana menu icin '0' yazin.";
+                await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                    CallbackActions.SendMessage, replyText, "faq_match", bestItem.Score, sw.ElapsedMilliseconds, callbackUrl, ct);
 
-            await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, faqMatch.Answer,
-                "faq", "faq_match", faqMatch.Confidence, (int)sw.ElapsedMilliseconds, ct);
+                await _repo.LogAutoReplyAsync(tenantId, chatId, phone, messageText, bestItem.Answer,
+                    "faq", "faq_match", bestItem.Score, (int)sw.ElapsedMilliseconds, ct);
 
-            return true;
+                return true;
+            }
         }
 
         // No FAQ match -> fallback to intent detection

@@ -224,9 +224,10 @@
       "required": ["label"],
       "properties": {
         "label": { "type": "string" },
-        "min_confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.3 }
+        "min_confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.65 },
+        "search_source": { "type": "string", "enum": ["faq_only", "all"], "default": "all" }
       },
-      "description": "FAQ database search. Wait for user input. 2 handles: matched, no_match."
+      "description": "Knowledge semantic search (FAQ + document chunks). Wait for user input. Chunk results summarized via Claude. 2 handles: matched, no_match. Variables: faq_answer, faq_confidence, faq_question, faq_source."
     },
 
     "ActionHandoffData": {

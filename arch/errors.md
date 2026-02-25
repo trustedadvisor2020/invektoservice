@@ -143,6 +143,8 @@ INV-{SERVICE}-{NUMBER}
 | INV-AT-039 | Execution log insert failed | Akis yurutme logu olusturulamadi. |
 | INV-AT-040 | Execution log update failed | Akis yurutme logu guncellenemedi. |
 | INV-AT-041 | Execution log query failed | Akis yurutme loglari alinamadi. |
+| INV-AT-042 | Knowledge search failed | ai_faq node Knowledge servisi arama hatasi (timeout, HTTP, parse). no_match'e yonlendirilir. |
+| INV-AT-043 | Chunk summarization failed | PDF chunk ozetleme Claude API hatasi. Chunk sonucu atlanir, no_match'e yonlendirilir. |
 
 ---
 

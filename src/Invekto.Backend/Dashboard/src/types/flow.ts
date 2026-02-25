@@ -152,6 +152,7 @@ export interface AiIntentData extends BaseNodeData {
 export interface AiFaqData extends BaseNodeData {
   label: string;
   min_confidence?: number;
+  search_source?: 'faq_only' | 'all';
 }
 
 export interface ActionHandoffData extends BaseNodeData {

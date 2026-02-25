@@ -86,7 +86,6 @@ builder.Services.AddHttpClient<MainAppCallbackClient>();
 
 // Register services (v1)
 builder.Services.AddSingleton<WorkingHoursChecker>();
-builder.Services.AddSingleton<FaqMatcher>();
 builder.Services.AddSingleton<FlowEngine>();
 
 // Register v2 node handlers (IMP-1: Strategy Pattern)
@@ -156,6 +155,22 @@ builder.Services.AddHttpClient<KnowledgeIntentClient>((sp, client) =>
 {
     client.BaseAddress = new Uri(knowledgeBaseUrl);
     client.Timeout = TimeSpan.FromMilliseconds(knowledgeTimeoutMs);
+});
+
+// Register KnowledgeSearchClient (typed HttpClient for ai_faq semantic search)
+var knowledgeSearchTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:SearchTimeoutMs", 5000);
+builder.Services.AddHttpClient<KnowledgeSearchClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri(knowledgeBaseUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(knowledgeSearchTimeoutMs);
+});
+
+// Register ChunkSummarizer (Claude Haiku for PDF chunk -> customer answer)
+builder.Services.AddHttpClient<ChunkSummarizer>((sp, client) =>
+{
+}).AddTypedClient((httpClient, sp) =>
+{
+    return new ChunkSummarizer(httpClient, claudeApiKey, sp.GetRequiredService<JsonLinesLogger>());
 });
 
 // PKT-6A: Register VipDetectionService (with HttpClient for sales webhook)

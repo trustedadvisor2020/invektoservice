@@ -706,7 +706,8 @@ function AiFaqProps({
   data: AiFaqData;
   onChange: (d: Record<string, unknown>) => void;
 }) {
-  const minConf = data.min_confidence ?? 0.3;
+  const minConf = data.min_confidence ?? 0.65;
+  const searchSource = data.search_source ?? 'all';
 
   return (
     <>
@@ -726,8 +727,19 @@ function AiFaqProps({
         </div>
       </FieldGroup>
 
+      <FieldGroup label="Arama Kaynagi">
+        <select
+          value={searchSource}
+          onChange={(e) => onChange({ search_source: e.target.value })}
+          className="w-full rounded-md border border-navy-600 bg-navy-700 text-navy-100 px-3 py-1.5 text-sm focus:ring-1 focus:ring-purple-500"
+        >
+          <option value="all">FAQ + Dokumanlar</option>
+          <option value="faq_only">Sadece FAQ</option>
+        </select>
+      </FieldGroup>
+
       <p className="text-xs text-navy-300">
-        Musteri mesaji FAQ veritabaninda aranir. Esik uzerindeki eslesmeler <strong>ESLESTI</strong> dalina yonlenir ve cevap otomatik gonderilir.
+        Bilgi bankasinda semantik arama yapilir. FAQ eslesirse cevap otomatik gonderilir. Dokuman eslesirse AI ile ozetlenip gonderilir. Esik altindaki sonuclar <strong>ESLESMEDI</strong> dalina yonlenir.
       </p>
     </>
   );

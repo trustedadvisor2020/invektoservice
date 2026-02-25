@@ -14,7 +14,8 @@ const FaqIcon = () => (
 
 function AiFaqNodeComponent(props: NodeProps) {
   const data = props.data as AiFaqData;
-  const minConf = data.min_confidence ?? 0.3;
+  const minConf = data.min_confidence ?? 0.65;
+  const searchSource = data.search_source ?? 'all';
 
   const outputs = [
     { id: 'matched', label: <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5l3.5 3.5L13 5" /></svg> },
@@ -29,9 +30,14 @@ function AiFaqNodeComponent(props: NodeProps) {
       hasDefaultOutput={false}
       outputs={outputs}
     >
-      <span className="text-navy-500 text-xs">
-        Min guven: {(minConf * 100).toFixed(0)}%
-      </span>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-navy-500 text-xs">
+          Min guven: {(minConf * 100).toFixed(0)}%
+        </span>
+        <span className="text-navy-400 text-[10px]">
+          {searchSource === 'all' ? 'FAQ + Dokumanlar' : 'Sadece FAQ'}
+        </span>
+      </div>
     </BaseNode>
   );
 }

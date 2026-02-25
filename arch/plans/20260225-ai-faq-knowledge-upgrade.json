@@ -1,0 +1,161 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [
+    {
+      "id": "GR-FAQ-1",
+      "description": "KnowledgeSearchClient — HTTP client for Knowledge search API in Automation service",
+      "services_affected": ["Invekto.Automation"]
+    },
+    {
+      "id": "GR-FAQ-2",
+      "description": "ChunkSummarizer — Claude API call to summarize PDF chunk content for customer-friendly auto-reply",
+      "services_affected": ["Invekto.Automation"]
+    },
+    {
+      "id": "GR-FAQ-3",
+      "description": "AiFaqHandler upgrade — replace FaqMatcher with KnowledgeSearchClient + ChunkSummarizer",
+      "services_affected": ["Invekto.Automation"]
+    },
+    {
+      "id": "GR-FAQ-4",
+      "description": "DI registration updates in Automation Program.cs",
+      "services_affected": ["Invekto.Automation"]
+    },
+    {
+      "id": "GR-FAQ-5",
+      "description": "Frontend — AiFaqData type + AiFaqNode + PropertyPanel (search_source toggle, updated description)",
+      "services_affected": ["Invekto.Backend"]
+    },
+    {
+      "id": "GR-FAQ-6",
+      "description": "Contract schema + error codes + faq_entries→faqs migration SQL",
+      "services_affected": ["Invekto.Shared", "arch"]
+    }
+  ],
+  "slug": "20260225-ai-faq-knowledge-upgrade",
+  "risk": "HIGH",
+  "status": "PLANNING",
+  "created_at": "2026-02-25T10:00:00Z",
+  "updated_at": "2026-02-25T10:00:00Z",
+  "plan": {
+    "summary": "Upgrade ai_faq FlowBuilder node from keyword-based FaqMatcher (reads faq_entries table directly) to Knowledge service semantic search (HTTP call to POST /search). When PDF chunk results match, Claude summarizes them before auto-sending to customer. min_confidence default changes from 0.3 to 0.65 for semantic scores. search_source toggle added (faq_only/all). FaqMatcher class deleted, faq_entries CRUD endpoints kept (separate concern).",
+    "q_intent": "ai_faq node'unu Knowledge servisi semantic search ile upgrade et. Mevcut keyword-based FaqMatcher yerine KnowledgeHttpClient kullanacak. Chunk sonuclari Claude ile ozetlenip gonderilecek. faq_entries → faqs migration. top_k sabit 3.",
+    "interview_notes": "Q decisions: (1) Chunk UX = Claude ile ozetlenip gonderilir, (2) Data = faq_entries→faqs SQL migration + FaqMatcher kaldirilir, (3) top_k = sabit 3, UI'da gostermiyoruz. Automation FAQ CRUD endpoints (/api/v1/faq/) korunacak — ayri concern."
+  },
+  "allowed_files": [
+    "src/Invekto.Automation/Services/KnowledgeSearchClient.cs",
+    "src/Invekto.Automation/Services/ChunkSummarizer.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/AiFaqHandler.cs",
+    "src/Invekto.Automation/Services/FaqMatcher.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Backend/Dashboard/src/types/flow.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/AiFaqNode.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx",
+    "arch/contracts/automation-flow-v2.json",
+    "arch/db/faq-entries-to-knowledge-migration.sql",
+    "arch/errors.md"
+  ],
+  "files_changed": [],
+  "git_diff": {
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 0 }
+  },
+  "build": {
+    "status": null
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "When Knowledge service is down (timeout/connection error), does the ai_faq node gracefully route to no_match handle instead of throwing an exception or hanging the flow?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the upgraded handler correctly preserve __last_input reuse from preceding nodes (ai_intent→ai_faq chain) without forcing user to send message twice?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "When ChunkSummarizer fails (Claude API error/timeout), does the handler fall back to raw chunk content or route to no_match, rather than silently swallowing the error?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the simulation path (MockFaqMatcher) remain untouched and continue working correctly without calling Knowledge service or Claude API?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q5",
+      "question": "Are faq_answer, faq_confidence, and faq_question variables always set (even on no_match) to prevent downstream {{variable}} template failures?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Knowledge/ — Knowledge service code untouched, we only call its API",
+      "src/Invekto.AgentAI/ — AgentAI's KnowledgeHttpClient stays separate",
+      "src/Invekto.Automation/Data/AutomationRepository.cs faq_entries methods — CRUD endpoints still use these"
+    ],
+    "non_goals": [
+      "Removing Automation FAQ CRUD endpoints (/api/v1/faq/) — separate concern",
+      "Modifying Knowledge service search logic — we consume as-is",
+      "Adding top_k to property panel UI — Q chose fixed default",
+      "Changing MockFaqMatcher behavior — simulation remains keyword-based"
+    ],
+    "intentional_exclusions": [
+      "faq_entries table DROP — table stays for existing CRUD endpoints",
+      "AutomationRepository FAQ methods — kept for /api/v1/faq/ endpoints",
+      "Knowledge service changes — zero modifications to Knowledge codebase"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "KnowledgeSearchClient.SearchAsync — try/catch with graceful degradation",
+      "ChunkSummarizer.SummarizeAsync — try/catch returns null on failure",
+      "AiFaqHandler.MatchAndRoute — checks KnowledgeSearchResult.Available, ChunkSummarizer null result"
+    ],
+    "user_facing_errors": [
+      "No user-facing error messages — all failures route to no_match handle silently"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All failure paths log via JsonLinesLogger with error codes (INV-AT-042, INV-AT-043) before routing to no_match. No silent swallowing."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "FAQ keyword match is brittle — 'iademi' doesn't match 'iade', Turkish morphology ignored",
+      "suggestion": "Semantic vector search understands meaning, not just exact keywords. 'iade istiyorum' and 'urunu geri gondermek istiyorum' both match return policy FAQ",
+      "aha_moment": "Tenant sees that chatbot correctly answers customer questions it previously missed, without adding more keywords manually"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Flow builder FAQ node only searches FAQ entries — PDF documents uploaded to Knowledge are invisible to chatbot flows",
+      "suggestion": "search_source='all' mode includes PDF chunk results, Claude-summarized into customer-friendly answers",
+      "aha_moment": "Tenant uploads product manual PDF, chatbot immediately answers product questions from it without manual FAQ entry creation"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Tenant has to manually create FAQ entries one by one in Automation, separately from Knowledge page",
+      "suggestion": "Single source of truth: Knowledge service's faqs table. Create FAQs in Knowledge page, flow engine finds them automatically via semantic search",
+      "aha_moment": "Tenant creates FAQ in Knowledge page and chatbot starts answering it immediately — no flow editing needed"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "When FAQ confidence threshold is wrong, hard to debug why chatbot isn't matching — keyword scoring is opaque",
+      "suggestion": "faq_source variable ('faq' or 'chunk') lets subsequent nodes act differently based on source type. Execution logs show Knowledge search method (semantic/keyword) and score",
+      "aha_moment": "Support agent checks flow log, sees search method + score + source, immediately understands why match did/didn't happen"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Chatbot can't leverage rich PDF content (catalogs, manuals, policies) that tenants already uploaded",
+      "suggestion": "Claude-summarized chunk answers turn static documents into interactive Q&A — customer asks about product, bot synthesizes answer from catalog PDF",
+      "aha_moment": "Customer asks 'bu urunun ozellikleri neler?' and bot answers from product catalog PDF — tenant realizes their documents are 'alive' in the chatbot"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}

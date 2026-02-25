@@ -120,6 +120,10 @@ public static class ErrorCodes
     public const string AutomationExecLogUpdateFailed = "INV-AT-040";
     public const string AutomationExecLogQueryFailed = "INV-AT-041";
 
+    // Automation Knowledge Search (INV-AT-042+)
+    public const string AutomationKnowledgeSearchFailed = "INV-AT-042";
+    public const string AutomationChunkSummarizationFailed = "INV-AT-043";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";
