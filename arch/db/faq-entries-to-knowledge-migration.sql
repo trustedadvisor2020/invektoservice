@@ -5,8 +5,9 @@
 -- to generate pgvector embeddings for the migrated FAQs.
 
 -- Step 1: Copy active FAQ entries from Automation's faq_entries to Knowledge's faqs table
--- Maps: question -> question, answer -> answer, keywords -> keywords array join as text
+-- Maps: question -> question, answer -> answer, keywords -> keywords (both text[])
 -- Note: faqs table has UNIQUE(tenant_id, question) constraint — duplicates are skipped.
+-- Note: faqs.source has CHECK constraint: only 'manual' or 'wa_import' allowed.
 INSERT INTO faqs (tenant_id, question, answer, category, lang, keywords, source, is_active, created_at, updated_at)
 SELECT
     fe.tenant_id,
@@ -14,8 +15,8 @@ SELECT
     fe.answer,
     'genel' AS category,
     'tr' AS lang,
-    array_to_string(fe.keywords, ', ') AS keywords,
-    'migration' AS source,
+    fe.keywords,
+    'manual' AS source,
     true AS is_active,
     COALESCE(fe.created_at, NOW()) AS created_at,
     NOW() AS updated_at
