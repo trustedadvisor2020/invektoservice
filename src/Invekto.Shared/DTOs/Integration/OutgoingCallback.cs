@@ -90,6 +90,10 @@ public sealed class CallbackData
     /// <summary>Outbound message record ID for delivery status correlation</summary>
     [JsonPropertyName("outbound_message_id")]
     public long? OutboundMessageId { get; init; }
+
+    /// <summary>Group ID to assign conversation to (for assign_group action)</summary>
+    [JsonPropertyName("group_id")]
+    public string? GroupId { get; init; }
 }
 
 /// <summary>
@@ -114,4 +118,7 @@ public static class CallbackActions
 
     /// <summary>Processing error - background processing failed</summary>
     public const string Error = "error";
+
+    /// <summary>Assign conversation to a specific agent group</summary>
+    public const string AssignGroup = "assign_group";
 }

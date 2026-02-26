@@ -1,0 +1,169 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260226-flow-node-workinghours-assigngroup",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-02-26T14:00:00Z",
+  "updated_at": "2026-02-26T15:30:00Z",
+  "plan": {
+    "summary": "Add two new flow builder nodes: logic_working_hours (branching node using tenant settings for business hours check) and action_assign_group (terminal node that routes conversation to a specific INMA agent group via callback).",
+    "q_intent": "flowda mesai saat kontrolü için bir nod lazım. ayrıca inma daki gruplara yönlendirmek içinde bir ayrı node",
+    "interview_notes": "Mesai node: tenant ayarları kullanılacak (per-node config değil). Grup node: şimdilik manuel group_id girişi (INMA API entegrasyonu ertelendi)."
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/LogicWorkingHoursHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/ActionAssignGroupHandler.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/types/flow.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/LogicWorkingHoursNode.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/ActionAssignGroupNode.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/index.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/NodePalette.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/graph-validator.ts"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/DTOs/Integration/OutgoingCallback.cs", "is_new": false, "change": "Added GroupId property to CallbackData + AssignGroup constant to CallbackActions" },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/LogicWorkingHoursHandler.cs", "is_new": true, "change": "New branching node handler using WorkingHoursChecker, 2 output handles: within_hours/outside_hours" },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/ActionAssignGroupHandler.cs", "is_new": true, "change": "New terminal node handler storing __assign_group_id and __assign_group_summary variables" },
+    { "path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "is_new": false, "change": "Extended Terminal case for action_assign_group + 3 new fields on EngineStepResult" },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false, "change": "Sub-flow guard + assign_group side-effect block + SendAssignGroupAsync method" },
+    { "path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "2 DI registrations for new handlers + Knowledge timeout change" },
+    { "path": "src/Invekto.Backend/Dashboard/src/types/flow.ts", "is_new": false, "change": "FlowNodeType union + 2 data interfaces + NodeData union + 2 NODE_TYPE_REGISTRY entries" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/LogicWorkingHoursNode.tsx", "is_new": true, "change": "New node component with clock icon and 2 output handles (green check / red X)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/ActionAssignGroupNode.tsx", "is_new": true, "change": "New terminal node component with users icon, displays group_name/group_id" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/index.ts", "is_new": false, "change": "2 imports + 2 nodeTypes registrations" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/NodePalette.tsx", "is_new": false, "change": "2 SVG icons added to NODE_ICONS record" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx", "is_new": false, "change": "2 property sub-components: LogicWorkingHoursProps + ActionAssignGroupProps" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/graph-validator.ts", "is_new": false, "change": "TERMINAL_NODE_TYPES + checkEmptyField case for action_assign_group" }
+  ],
+  "git_diff": {
+    "sha256": "27262fd8e1e5cb590ee87a4594455825b37fc875f8a8f7566149db0fd646157f",
+    "full_path": "arch/plans/diffs/20260226-flow-node-workinghours-assigngroup.diff",
+    "stats": {
+      "insertions": 76,
+      "deletions": 4,
+      "files_count": 4
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q + npx vite build",
+    "timestamp": "2026-02-26T14:25:00Z",
+    "duration_ms": null,
+    "output_tail": "Build succeeded. 0 Error(s). 13 Warning(s). + vite build: chunks generated successfully.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Automation", "Invekto.Backend (Dashboard)"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Knowledge/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "src/Invekto.Integrations/",
+      "src/Invekto.Outbound/",
+      "src/Invekto.ChatAnalysis/"
+    ],
+    "non_goals": [
+      "INMA API integration for group list (deferred)",
+      "Working hours per-node configuration",
+      "Group assignment load balancing"
+    ],
+    "intentional_exclusions": [
+      "No tests (Q did not request)",
+      "No INMA API group picker (manual ID input for now)",
+      "No off-hours message in working hours node (flow designer uses message_text for that)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "graph-validator: 'Grup ID bos' warning for empty group_id"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "AssignGroup callback uses fire-and-forget with ContinueWith logging on failure (same pattern as handoff). Empty group_id logs SystemWarn without sending callback. All node handler exceptions propagate to engine error handling."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Flow designer cannot route conversations to specific agent groups, forcing manual reassignment in INMA",
+      "suggestion": "action_assign_group node with group picker dropdown (future: INMA API integration)",
+      "aha_moment": "Designer drops a 'Gruba Ata' node, types group ID, and sees conversations auto-routed to the right team"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Flows cannot check business hours, causing bots to respond during off-hours without context",
+      "suggestion": "logic_working_hours node using tenant settings for automatic branching",
+      "aha_moment": "Flow automatically sends different messages during and after business hours without any manual scheduling"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Setting up business hours logic requires complex condition nodes checking time manually",
+      "suggestion": "Single drag-and-drop working hours node with tenant-level config reuse",
+      "aha_moment": "What used to be 5+ condition nodes is now 1 node that just works with existing tenant settings"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Group assignment requires human intervention - agent must manually transfer to correct group",
+      "suggestion": "Automated group routing eliminates manual transfer steps in high-volume scenarios",
+      "aha_moment": "Support lead sees queue times drop because conversations auto-route to specialized groups"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Prospects contacting outside business hours get generic responses, reducing conversion",
+      "suggestion": "Working hours branching enables personalized off-hours flows with appointment booking or callback requests",
+      "aha_moment": "Sales manager sees after-hours leads captured instead of lost, with proper follow-up flow"
+    }
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does LogicWorkingHoursHandler correctly use the singleton WorkingHoursChecker without state mutation or concurrency issues?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Does ActionAssignGroupHandler follow the exact same terminal pattern as ActionHandoffHandler (variable naming, NodeAction.Terminal, no side effects in handler)?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the EngineStepResult NeedsAssignGroup field default to false, ensuring existing terminal nodes (handoff, completed) are unaffected?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the AutomationOrchestrator assign_group block properly end the session with 'handed_off' status and handle empty group_id gracefully?",
+      "category": "Data"
+    },
+    {
+      "id": "Q5",
+      "question": "Are the frontend types (FlowNodeType union, NodeData union, NODE_TYPE_REGISTRY) consistent with the backend handler node type strings?",
+      "category": "Data"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "MCP_CODEX",
+    "received_at": "2026-02-26T15:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-02-26T15:45:00Z",
+    "raw_text": "Changes add assign_group terminal handling and callbacks without breaking existing flows; error handling and DI registrations follow established patterns.",
+    "code_quality_gate": {
+      "CQ1": "PASS", "CQ2": "PASS", "CQ3": "PASS", "CQ4": "PASS",
+      "CQ5": "PASS", "CQ6": "PASS", "CQ7": "PASS", "CQ8": "PASS"
+    },
+    "cove_verification": {
+      "Q1": "PASS", "Q2": "PASS", "Q3": "PASS", "Q4": "PASS", "Q5": "PASS"
+    },
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

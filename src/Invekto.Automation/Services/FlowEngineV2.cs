@@ -247,9 +247,10 @@ public sealed class FlowEngineV2
                     };
 
                 case NodeAction.Terminal:
-                    // Session ends (handoff, explicit end)
+                    // Session ends (handoff, assign_group, explicit end)
                     var needsHandoff = node.Type == "action_handoff";
-                    if (needsHandoff)
+                    var needsAssignGroup = node.Type == "action_assign_group";
+                    if (needsHandoff || needsAssignGroup)
                         state.Status = "handed_off";
                     else
                         state.Status = "completed";
@@ -260,7 +261,10 @@ public sealed class FlowEngineV2
                         State = state,
                         IsTerminal = true,
                         NeedsHandoff = needsHandoff,
-                        HandoffSummary = state.Variables.TryGetValue("__handoff_summary", out var hs) ? hs : null
+                        HandoffSummary = state.Variables.TryGetValue("__handoff_summary", out var hs) ? hs : null,
+                        NeedsAssignGroup = needsAssignGroup,
+                        AssignGroupId = state.Variables.TryGetValue("__assign_group_id", out var gid) ? gid : null,
+                        AssignGroupSummary = state.Variables.TryGetValue("__assign_group_summary", out var gs) ? gs : null
                     };
 
                 case NodeAction.CallSubFlow:
@@ -301,6 +305,12 @@ public sealed class EngineStepResult
     public bool NeedsHandoff { get; init; }
     /// <summary>Handoff summary (from ActionHandoffHandler).</summary>
     public string? HandoffSummary { get; init; }
+    /// <summary>True when flow ended at action_assign_group node.</summary>
+    public bool NeedsAssignGroup { get; init; }
+    /// <summary>Group ID to assign to when NeedsAssignGroup=true.</summary>
+    public string? AssignGroupId { get; init; }
+    /// <summary>Summary text for assign_group callback.</summary>
+    public string? AssignGroupSummary { get; init; }
     /// <summary>Error code if engine stopped due to error.</summary>
     public string? ErrorCode { get; init; }
     /// <summary>Error message for logging.</summary>

@@ -106,6 +106,8 @@ builder.Services.AddSingleton<INodeHandler, WebhookTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, OutboundTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, ScheduleTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, CallFlowHandler>();
+builder.Services.AddSingleton<INodeHandler, LogicWorkingHoursHandler>();
+builder.Services.AddSingleton<INodeHandler, ActionAssignGroupHandler>();
 
 // Register HttpClientFactory for ApiCallHandler
 builder.Services.AddHttpClient("ApiCallHandler");

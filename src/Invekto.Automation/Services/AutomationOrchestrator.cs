@@ -508,7 +508,7 @@ public sealed class AutomationOrchestrator
             }
 
             // Case 2: Sub-flow completed — pop call stack and resume parent
-            if (result.IsTerminal && state.CallStack.Count > 0 && !result.NeedsHandoff)
+            if (result.IsTerminal && state.CallStack.Count > 0 && !result.NeedsHandoff && !result.NeedsAssignGroup)
             {
                 var frame = state.CallStack[^1];
                 state.CallStack.RemoveAt(state.CallStack.Count - 1);
@@ -614,6 +614,34 @@ public sealed class AutomationOrchestrator
                     if (t.IsFaulted)
                         _logger.SystemWarn($"Handoff callback failed: {t.Exception?.InnerException?.Message}");
                 }, TaskScheduler.Default);
+
+            if (session != null)
+                await _repo.EndSessionAsync(session.Id, "handed_off", ct);
+
+            return true;
+        }
+
+        // action_assign_group: send assign_group callback, end session
+        if (result.NeedsAssignGroup)
+        {
+            if (!sw.IsRunning) sw.Stop();
+            var groupId = result.AssignGroupId ?? "";
+            var summary = result.AssignGroupSummary ?? "Grup atamasi";
+
+            if (!string.IsNullOrWhiteSpace(groupId))
+            {
+                _ = SendAssignGroupAsync(requestId, tenantId, chatId, sequenceId,
+                    groupId, summary, sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            _logger.SystemWarn($"AssignGroup callback failed: {t.Exception?.InnerException?.Message}");
+                    }, TaskScheduler.Default);
+            }
+            else
+            {
+                _logger.SystemWarn($"action_assign_group node has empty group_id for tenant {tenantId}, chat {chatId}");
+            }
 
             if (session != null)
                 await _repo.EndSessionAsync(session.Id, "handed_off", ct);
@@ -1062,6 +1090,31 @@ public sealed class AutomationOrchestrator
         var delivered = await _callbackClient.SendCallbackAsync(callback, callbackUrl, ct);
         if (!delivered)
             _logger.StepError($"[{ErrorCodes.IntegrationCallbackFailed}] Handoff callback delivery failed: tenant={tenantId}, chat={chatId}", requestId, processingTimeMs);
+        return delivered;
+    }
+
+    private async Task<bool> SendAssignGroupAsync(
+        string requestId, int tenantId, string chatId, long sequenceId,
+        string groupId, string aiSummary, long processingTimeMs, string? callbackUrl, CancellationToken ct)
+    {
+        var callback = new OutgoingCallback
+        {
+            RequestId = requestId,
+            Action = CallbackActions.AssignGroup,
+            TenantId = tenantId,
+            ChatId = chatId,
+            SequenceId = sequenceId,
+            Data = new CallbackData
+            {
+                GroupId = groupId,
+                AiSummary = aiSummary
+            },
+            ProcessingTimeMs = processingTimeMs
+        };
+
+        var delivered = await _callbackClient.SendCallbackAsync(callback, callbackUrl, ct);
+        if (!delivered)
+            _logger.StepError($"[{ErrorCodes.IntegrationCallbackFailed}] AssignGroup callback delivery failed: tenant={tenantId}, chat={chatId}, group={groupId}", requestId, processingTimeMs);
         return delivered;
     }
 }
