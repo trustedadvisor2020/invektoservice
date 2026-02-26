@@ -13,6 +13,7 @@ import type {
   ScheduleTriggerData,
   ActionApiCallData,
   ActionDelayData,
+  ActionAssignGroupData,
   UtilitySetVariableData,
   ActionCallFlowData,
 } from '../types/flow';
@@ -44,6 +45,7 @@ const SOURCE_NODE_TYPES: Set<FlowNodeType> = new Set([
 /** Node types that are NOT expected to have output edges (terminal nodes) */
 const TERMINAL_NODE_TYPES: Set<FlowNodeType> = new Set([
   'action_handoff',
+  'action_assign_group',
   'utility_note',
 ]);
 
@@ -169,6 +171,13 @@ function checkEmptyField(node: Node): ValidationError | null {
       const cf = data as ActionCallFlowData;
       if (!cf.flow_id || cf.flow_id.trim() === '') {
         return { type: 'empty_field', severity: 'warning', message: 'Hedef flow secilmedi' };
+      }
+      break;
+    }
+    case 'action_assign_group': {
+      const ag = data as ActionAssignGroupData;
+      if (!ag.group_id || ag.group_id.trim() === '') {
+        return { type: 'empty_field', severity: 'warning', message: 'Grup ID bos' };
       }
       break;
     }

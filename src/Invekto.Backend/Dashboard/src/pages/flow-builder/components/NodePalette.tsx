@@ -75,6 +75,12 @@ const NODE_ICONS: Record<FlowNodeType, (color: string) => ReactNode> = {
       <line x1="4" y1="4" x2="9" y2="9" />
     </svg>
   ),
+  logic_working_hours: (c) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
 
   // AI
   ai_intent: (c) => (
@@ -109,6 +115,14 @@ const NODE_ICONS: Record<FlowNodeType, (color: string) => ReactNode> = {
       <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="8.5" cy="7" r="4" />
       <polyline points="17 11 19 13 23 9" />
+    </svg>
+  ),
+  action_assign_group: (c) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
   action_api_call: (c) => (

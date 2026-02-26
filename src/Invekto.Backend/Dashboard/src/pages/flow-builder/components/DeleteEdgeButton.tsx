@@ -17,6 +17,7 @@ export function DeleteEdge({
   style = {},
   markerEnd,
   selected,
+  data,
 }: EdgeProps) {
   const { setEdges } = useReactFlow();
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -27,6 +28,8 @@ export function DeleteEdge({
     targetY,
     targetPosition,
   });
+
+  const edgeLabel = (data as Record<string, unknown> | undefined)?.edgeLabel as string | null | undefined;
 
   const onDelete = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -52,6 +55,13 @@ export function DeleteEdge({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
           }}
         >
+          {/* Edge label (always visible) */}
+          {edgeLabel && (
+            <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 bg-white border border-navy-200 rounded text-[9px] font-medium text-navy-600 shadow-sm select-none pointer-events-none">
+              {edgeLabel}
+            </div>
+          )}
+          {/* Delete button (hover only) */}
           <button
             onClick={onDelete}
             className="w-5 h-5 rounded-full bg-white border border-navy-200 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:border-red-400 transition-all duration-150 cursor-pointer shadow-sm"

@@ -54,9 +54,11 @@ export type FlowNodeType =
   | 'action_handoff'
   | 'action_api_call'
   | 'action_delay'
+  | 'logic_working_hours'
   | 'utility_set_variable'
   | 'utility_note'
-  | 'action_call_flow';
+  | 'action_call_flow'
+  | 'action_assign_group';
 
 // Union type for all node data shapes
 export type NodeData =
@@ -74,9 +76,11 @@ export type NodeData =
   | ActionHandoffData
   | ActionApiCallData
   | ActionDelayData
+  | LogicWorkingHoursData
   | UtilitySetVariableData
   | UtilityNoteData
-  | ActionCallFlowData;
+  | ActionCallFlowData
+  | ActionAssignGroupData;
 
 /** Base interface with index signature for React Flow compatibility */
 interface BaseNodeData {
@@ -141,6 +145,10 @@ export interface LogicSwitchData extends BaseNodeData {
   default_handle_id: string;
 }
 
+export interface LogicWorkingHoursData extends BaseNodeData {
+  label: string;
+}
+
 export interface AiIntentData extends BaseNodeData {
   label: string;
   intents?: string[];
@@ -157,6 +165,13 @@ export interface AiFaqData extends BaseNodeData {
 
 export interface ActionHandoffData extends BaseNodeData {
   label: string;
+  summary_template?: string;
+}
+
+export interface ActionAssignGroupData extends BaseNodeData {
+  label: string;
+  group_id: string;
+  group_name?: string;
   summary_template?: string;
 }
 
@@ -289,6 +304,14 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     } as LogicSwitchData,
   },
   {
+    type: 'logic_working_hours',
+    category: 'logic',
+    label: 'Mesai Saati',
+    description: 'Mesai saati ici/disi dallanma',
+    color: '#f59e0b',
+    defaultData: { label: 'Mesai Saati' } as LogicWorkingHoursData,
+  },
+  {
     type: 'ai_intent',
     category: 'ai',
     label: 'Intent Algilama',
@@ -302,7 +325,7 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     label: 'FAQ Arama',
     description: 'SSS veritabaninda ara',
     color: '#8b5cf6',
-    defaultData: { label: 'FAQ', min_confidence: 0.3 } as AiFaqData,
+    defaultData: { label: 'FAQ', min_confidence: 0.65 } as AiFaqData,
   },
   {
     type: 'ai_sentiment',
@@ -319,6 +342,14 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     description: 'Insana yonlendir (terminal)',
     color: '#ef4444',
     defaultData: { label: 'Temsilciye Aktar' } as ActionHandoffData,
+  },
+  {
+    type: 'action_assign_group',
+    category: 'action',
+    label: 'Gruba Ata',
+    description: 'INMA grubuna yonlendir (terminal)',
+    color: '#ef4444',
+    defaultData: { label: 'Gruba Ata', group_id: '' } as ActionAssignGroupData,
   },
   {
     type: 'action_api_call',

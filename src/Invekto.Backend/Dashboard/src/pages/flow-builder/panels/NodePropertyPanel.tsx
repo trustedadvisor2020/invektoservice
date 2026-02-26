@@ -4,6 +4,12 @@ import { useFlowStore } from '../../../stores/flow-store';
 import { useAuth } from '../../../hooks/useAuth';
 import { getNodeTypeInfo, type FlowNodeType } from '../../../types/flow';
 import { api, type FbAvailableInstance, type FlowSummary } from '../../../lib/api';
+import {
+  NODE_GUIDES,
+  NODE_OUTPUT_VARS,
+  SYSTEM_VARIABLES,
+  describeCron,
+} from '../../../lib/node-metadata';
 import type {
   MessageTextData,
   MessageMenuData,
@@ -45,10 +51,10 @@ export function NodePropertyPanel() {
   return (
     <div
       className="bg-white border-l border-navy-100 flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
-      style={{ width: isOpen ? 256 : 0 }}
+      style={{ width: isOpen ? 320 : 0 }}
     >
       {!selectedNode ? null : (
-      <div className="w-64 overflow-y-auto h-full">
+      <div className="w-80 overflow-y-auto h-full">
       {/* Header */}
       <div className="p-3 border-b border-navy-100">
         <div className="flex items-center gap-2">
@@ -133,6 +139,12 @@ export function NodePropertyPanel() {
           <CallFlowProps data={selectedNode.data as ActionCallFlowData} onChange={update} />
         )}
 
+        {/* Output variables (GR-6) */}
+        {nodeType && <NodeOutputVarsSection nodeType={nodeType} />}
+
+        {/* Variable explorer (GR-1) */}
+        <VariableExplorerSection />
+
         {/* Delete button (not for trigger types) */}
         {nodeType !== 'trigger_start' && nodeType !== 'webhook_trigger' && nodeType !== 'outbound_trigger' && nodeType !== 'schedule_trigger' && (
           <div className="pt-3 border-t border-navy-100">
@@ -144,6 +156,9 @@ export function NodePropertyPanel() {
             </button>
           </div>
         )}
+
+        {/* Help guide (GR-10) */}
+        {nodeType && <NodeHelpSection nodeType={nodeType} />}
       </div>
       </div>
       )}
@@ -160,6 +175,216 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+// -- Shared Enhancement Components --
+
+const WA_MAX_LENGTH = 4096;
+
+function MessageLengthCounter({ text }: { text: string }) {
+  const len = (text ?? '').length;
+  const pct = Math.min((len / WA_MAX_LENGTH) * 100, 100);
+  const color = len > WA_MAX_LENGTH ? 'text-red-600' : len > WA_MAX_LENGTH * 0.85 ? 'text-amber-600' : 'text-navy-400';
+  const barColor = len > WA_MAX_LENGTH ? 'bg-red-500' : len > WA_MAX_LENGTH * 0.85 ? 'bg-amber-400' : 'bg-emerald-400';
+
+  return (
+    <div className="mt-1">
+      <div className="flex justify-between items-center mb-0.5">
+        <span className={`text-[10px] ${color}`}>{len} / {WA_MAX_LENGTH}</span>
+        {len > WA_MAX_LENGTH && <span className="text-[10px] text-red-600 font-medium">Limit asildi!</span>}
+      </div>
+      <div className="w-full h-1 bg-navy-100 rounded-full overflow-hidden">
+        <div className={`h-full ${barColor} transition-all duration-200 rounded-full`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function NodeOutputVarsSection({ nodeType }: { nodeType: FlowNodeType }) {
+  const vars = NODE_OUTPUT_VARS[nodeType];
+  if (!vars || vars.length === 0) return null;
+
+  return (
+    <div className="pt-2 border-t border-navy-100">
+      <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1.5">Cikti Degiskenleri</p>
+      <div className="space-y-1">
+        {vars.map((v) => (
+          <div key={v.name} className="flex items-start gap-1.5 group">
+            <code className="text-[10px] bg-navy-50 text-purple-600 px-1 py-0.5 rounded font-mono flex-shrink-0 select-all">{`{{${v.name}}}`}</code>
+            <span className="text-[10px] text-navy-400 leading-tight">{v.description}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VariableExplorerSection() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="pt-2 border-t border-navy-100">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[10px] font-medium text-navy-400 uppercase tracking-wider hover:text-navy-600 transition-colors w-full"
+      >
+        <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+        Kullanilabilir Degiskenler
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1">
+          {SYSTEM_VARIABLES.map((v) => (
+            <div key={v.name} className="flex items-start gap-1.5">
+              <code className="text-[10px] bg-navy-50 text-blue-600 px-1 py-0.5 rounded font-mono flex-shrink-0 select-all">{`{{${v.name}}}`}</code>
+              <span className="text-[10px] text-navy-400 leading-tight">{v.description}</span>
+            </div>
+          ))}
+          <p className="text-[10px] text-navy-300 mt-1">Degisken Ata ve API Cagrisi node\'lari ek degiskenler olusturur.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NodeHelpSection({ nodeType }: { nodeType: FlowNodeType }) {
+  const [open, setOpen] = useState(false);
+  const guide = NODE_GUIDES[nodeType];
+  if (!guide) return null;
+
+  return (
+    <div className="pt-2 border-t border-navy-100">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 w-full text-left group"
+      >
+        <svg className={`w-3.5 h-3.5 text-navy-300 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+        <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+        </svg>
+        <span className="text-xs text-navy-500 group-hover:text-navy-700 transition-colors">Kullanim Kilavuzu</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-3 text-xs text-navy-600 bg-navy-25 rounded-lg p-3">
+          {/* Summary */}
+          <p className="font-medium text-navy-700">{guide.summary}</p>
+
+          {/* Detail */}
+          <div>
+            <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1">Detayli Aciklama</p>
+            <p className="whitespace-pre-line leading-relaxed">{guide.detail}</p>
+          </div>
+
+          {/* Scenarios */}
+          <div>
+            <p className="text-[10px] font-medium text-navy-400 uppercase tracking-wider mb-1">Kullanim Senaryolari</p>
+            <p className="whitespace-pre-line leading-relaxed">{guide.scenarios}</p>
+          </div>
+
+          {/* Anti-patterns */}
+          <div>
+            <p className="text-[10px] font-medium text-red-400 uppercase tracking-wider mb-1">Dikkat Edilmesi Gerekenler</p>
+            <p className="whitespace-pre-line leading-relaxed text-navy-500">{guide.antiPatterns}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1 text-navy-300 hover:text-navy-600 transition-colors flex-shrink-0"
+      title="Kopyala"
+    >
+      {copied ? (
+        <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      ) : (
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function HeadersEditor({
+  headers,
+  onChange,
+}: {
+  headers: Record<string, string>;
+  onChange: (headers: Record<string, string>) => void;
+}) {
+  const entries = Object.entries(headers ?? {});
+
+  const updateEntry = (idx: number, key: string, value: string) => {
+    const newEntries = [...entries];
+    newEntries[idx] = [key, value];
+    onChange(Object.fromEntries(newEntries.filter(([k]) => k.trim())));
+  };
+
+  const addEntry = () => {
+    onChange({ ...headers, '': '' });
+  };
+
+  const removeEntry = (idx: number) => {
+    const newEntries = entries.filter((_, i) => i !== idx);
+    onChange(Object.fromEntries(newEntries));
+  };
+
+  return (
+    <div className="space-y-1.5">
+      {entries.map(([key, value], idx) => (
+        <div key={idx} className="flex items-center gap-1">
+          <input
+            type="text"
+            value={key}
+            onChange={(e) => updateEntry(idx, e.target.value, value)}
+            className="w-[40%] bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-[10px] text-navy-700 outline-none focus:border-brand-500 font-mono"
+            placeholder="Header"
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => updateEntry(idx, key, e.target.value)}
+            className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-[10px] text-navy-700 outline-none focus:border-brand-500 font-mono"
+            placeholder="Deger"
+          />
+          <button
+            onClick={() => removeEntry(idx)}
+            className="p-0.5 text-navy-300 hover:text-red-500 transition-colors"
+            title="Kaldir"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={addEntry}
+        className="w-full px-2 py-1 rounded border border-dashed border-navy-200 text-xs text-navy-400 hover:border-red-400 hover:text-red-500 transition-colors"
+      >
+        + Header Ekle
+      </button>
     </div>
   );
 }
@@ -272,6 +497,7 @@ function MessageTextProps({
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
           placeholder="Gonderilecek mesaj..."
         />
+        <MessageLengthCounter text={data.text ?? ''} />
       </FieldGroup>
       <FieldGroup label="Davranis">
         <label className="flex items-center gap-2 cursor-pointer">
@@ -333,6 +559,7 @@ function MessageMenuProps({
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
           placeholder="Secim yapin:"
         />
+        <MessageLengthCounter text={data.text ?? ''} />
       </FieldGroup>
 
       <FieldGroup label="Secenekler">
@@ -789,6 +1016,13 @@ function ActionApiCallProps({
         </p>
       </FieldGroup>
 
+      <FieldGroup label="Headers">
+        <HeadersEditor
+          headers={(data.headers as Record<string, string>) ?? {}}
+          onChange={(h) => onChange({ headers: Object.keys(h).length > 0 ? h : undefined })}
+        />
+      </FieldGroup>
+
       <FieldGroup label="Body Template">
         <textarea
           value={data.body_template ?? ''}
@@ -870,8 +1104,21 @@ function WebhookTriggerProps({
   data: WebhookTriggerData;
   onChange: (d: Record<string, unknown>) => void;
 }) {
+  const { flowId } = useParams<{ flowId: string }>();
+  const webhookUrl = flowId ? `${window.location.origin}/api/flow-builder/webhook/${flowId}` : '';
+
   return (
     <>
+      {webhookUrl && (
+        <FieldGroup label="Webhook URL">
+          <div className="flex items-center gap-1 bg-navy-50 border border-navy-200 rounded px-2 py-1.5">
+            <code className="text-[10px] text-navy-600 font-mono truncate flex-1 select-all">{webhookUrl}</code>
+            <CopyButton text={webhookUrl} />
+          </div>
+          <p className="text-[10px] text-navy-300 mt-0.5">Bu URL'ye POST istegi gondererek akisi tetikleyebilirsiniz.</p>
+        </FieldGroup>
+      )}
+
       <FieldGroup label="Secret Key (Opsiyonel)">
         <input
           type="text"
@@ -931,9 +1178,23 @@ function ScheduleTriggerProps({
           className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="0 9 * * *"
         />
-        <p className="text-xs text-navy-300 mt-1">
+        {data.cron_expression && (() => {
+          const desc = describeCron(data.cron_expression);
+          const isError = desc?.startsWith('Gecersiz');
+          return desc ? (
+            <div className={`mt-1 px-2 py-1 rounded text-[10px] ${isError ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>
+              {desc}
+            </div>
+          ) : null;
+        })()}
+        <p className="text-[10px] text-navy-300 mt-1">
           Format: dakika saat gun ay haftanin_gunu
         </p>
+        <div className="text-[10px] text-navy-300 mt-0.5 space-y-0.5">
+          <p><code className="bg-navy-100 px-0.5 rounded">0 9 * * *</code> Her gun 09:00</p>
+          <p><code className="bg-navy-100 px-0.5 rounded">0 9 * * 1-5</code> Hafta ici 09:00</p>
+          <p><code className="bg-navy-100 px-0.5 rounded">*/30 * * * *</code> Her 30 dk</p>
+        </div>
       </FieldGroup>
 
       <FieldGroup label="Saat Dilimi">
