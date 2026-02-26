@@ -67,6 +67,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const reset = useAiChatStore(s => s.reset);
 
   const [input, setInput] = useState('');
+  const [freeInput, setFreeInput] = useState('');
   const [showDiff, setShowDiff] = useState(false);
   const [panelWidth, setPanelWidth] = useState(getStoredWidth);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -149,6 +150,14 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
     sendMessage(option.label, flowConfig);
   }, [isStreaming, sendMessage]);
 
+  const handleFreeSend = useCallback(() => {
+    const text = freeInput.trim();
+    if (!text || isStreaming) return;
+    setFreeInput('');
+    const flowConfig = useFlowStore.getState().toFlowConfig();
+    sendMessage(text, flowConfig);
+  }, [freeInput, isStreaming, sendMessage]);
+
   if (!isOpen) return null;
 
   return (
@@ -219,7 +228,7 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
         )}
 
         {messages.map((msg, i) => (
-          <ChatBubble key={i} message={msg} />
+          <ChatBubble key={i} message={msg} showOptions={i < messages.length - 1} />
         ))}
 
         {/* Streaming text */}
@@ -274,6 +283,34 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
                 )}
               </button>
             ))}
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex-1 h-px bg-navy-100" />
+              <span className="text-[10px] text-navy-300">veya</span>
+              <div className="flex-1 h-px bg-navy-100" />
+            </div>
+            <div className="flex gap-1.5">
+              <input
+                value={freeInput}
+                onChange={e => setFreeInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFreeSend(); } }}
+                placeholder="Kendi cevabinizi yazin..."
+                className="flex-1 px-2.5 py-1.5 bg-white border border-navy-100 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 placeholder:text-navy-300"
+              />
+              <button
+                onClick={handleFreeSend}
+                disabled={!freeInput.trim()}
+                className={cn(
+                  'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                  freeInput.trim()
+                    ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                    : 'bg-navy-50 text-navy-200 cursor-not-allowed'
+                )}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -348,16 +385,25 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   );
 }
 
-/** Split long assistant messages into summary + collapsible detail */
+/** Split long assistant messages into summary + collapsible detail.
+ *  If the last paragraph contains a question (?), keep it visible in the summary
+ *  so the user always sees what's being asked. */
 function splitContent(text: string): { summary: string; detail: string | null } {
   const paragraphs = text.split(/\n\n+/);
   if (paragraphs.length <= 2 && text.length < 300) {
     return { summary: text, detail: null };
   }
+  const last = paragraphs[paragraphs.length - 1];
+  if (last.includes('?') && paragraphs.length > 2) {
+    return {
+      summary: paragraphs[0] + '\n\n' + last,
+      detail: paragraphs.slice(1, -1).join('\n\n'),
+    };
+  }
   return { summary: paragraphs[0], detail: paragraphs.slice(1).join('\n\n') };
 }
 
-function ChatBubble({ message }: { message: WizardMessage }) {
+function ChatBubble({ message, showOptions = true }: { message: WizardMessage; showOptions?: boolean }) {
   const isUser = message.role === 'user';
 
   if (isUser) {
@@ -394,6 +440,16 @@ function ChatBubble({ message }: { message: WizardMessage }) {
               {renderWithNodeChips(detail)}
             </div>
           </details>
+        )}
+        {showOptions && message.options && message.options.length > 0 && (
+          <div className="mt-1.5 pt-1.5 border-t border-navy-50 space-y-1">
+            {message.options.map((opt, j) => (
+              <div key={j} className="px-2 py-1.5 bg-navy-25 border border-navy-100 rounded text-[10px] text-navy-500">
+                <span className="font-medium text-navy-600">{opt.label}</span>
+                {opt.description && <span className="text-navy-400"> — {opt.description}</span>}
+              </div>
+            ))}
+          </div>
         )}
         {message.flow_config_snapshot && (
           <div className="mt-1.5 pt-1.5 border-t border-navy-100 text-[10px] text-green-600 font-medium flex items-center gap-1">

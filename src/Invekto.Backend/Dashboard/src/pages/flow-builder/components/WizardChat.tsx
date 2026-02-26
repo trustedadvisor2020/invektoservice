@@ -12,11 +12,20 @@ const thinkingMessages = [
   'Sizin icin en iyisini dusunuyorum...',
 ];
 
-/** Split long assistant messages into summary + collapsible detail */
+/** Split long assistant messages into summary + collapsible detail.
+ *  If the last paragraph contains a question (?), keep it visible in the summary
+ *  so the user always sees what's being asked. */
 function splitContent(text: string): { summary: string; detail: string | null } {
   const paragraphs = text.split(/\n\n+/);
   if (paragraphs.length <= 2 && text.length < 300) {
     return { summary: text, detail: null };
+  }
+  const last = paragraphs[paragraphs.length - 1];
+  if (last.includes('?') && paragraphs.length > 2) {
+    return {
+      summary: paragraphs[0] + '\n\n' + last,
+      detail: paragraphs.slice(1, -1).join('\n\n'),
+    };
   }
   return { summary: paragraphs[0], detail: paragraphs.slice(1).join('\n\n') };
 }
@@ -30,6 +39,7 @@ export function WizardChat() {
   const sendMessage = useWizardStore(s => s.sendMessage);
 
   const [input, setInput] = useState('');
+  const [freeInput, setFreeInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const thinkingText = useMemo(
@@ -64,6 +74,13 @@ export function WizardChat() {
     if (isStreaming) return;
     sendMessage(option.label);
   }, [isStreaming, sendMessage]);
+
+  const handleFreeSend = useCallback(() => {
+    const text = freeInput.trim();
+    if (!text || isStreaming) return;
+    setFreeInput('');
+    sendMessage(text);
+  }, [freeInput, isStreaming, sendMessage]);
 
   return (
     <div className="flex flex-col h-full">
@@ -151,6 +168,33 @@ export function WizardChat() {
                 )}
               </button>
             ))}
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex-1 h-px bg-navy-100" />
+              <span className="text-xs text-navy-300">veya</span>
+              <div className="flex-1 h-px bg-navy-100" />
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={freeInput}
+                onChange={e => setFreeInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFreeSend(); } }}
+                placeholder="Kendi cevabinizi yazin..."
+                className="flex-1 px-3 py-2 bg-white border border-navy-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 placeholder:text-navy-300"
+              />
+              <button
+                onClick={handleFreeSend}
+                disabled={!freeInput.trim()}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                  freeInput.trim()
+                    ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                    : 'bg-navy-50 text-navy-200 cursor-not-allowed'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
       </div>

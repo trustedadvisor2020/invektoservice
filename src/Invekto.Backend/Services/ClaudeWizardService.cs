@@ -17,6 +17,7 @@ public sealed class ClaudeWizardService
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _model;
+    private readonly string _fallbackModel;
     private readonly int _maxTokens;
     private readonly int _timeoutSeconds;
     private readonly ILogger<ClaudeWizardService> _logger;
@@ -26,6 +27,7 @@ public sealed class ClaudeWizardService
         _httpClient = httpClient;
         _apiKey = config["Claude:ApiKey"] ?? "";
         _model = config["Claude:WizardModel"] ?? "claude-sonnet-4-6";
+        _fallbackModel = config["Claude:WizardFallbackModel"] ?? "claude-haiku-4-5-20251001";
         _maxTokens = int.TryParse(config["Claude:WizardMaxTokens"], out var mt) ? mt : 4096;
         _timeoutSeconds = int.TryParse(config["Claude:WizardTimeoutSeconds"], out var ts) ? ts : 60;
         _logger = logger;
@@ -53,9 +55,18 @@ public sealed class ClaudeWizardService
         }
         messages.Add(new { role = "user", content = userMessage });
 
+        // Try primary model, fall back on overload (529)
+        var models = string.IsNullOrEmpty(_fallbackModel) || _fallbackModel == _model
+            ? new[] { _model } : new[] { _model, _fallbackModel };
+
+        for (int modelIdx = 0; modelIdx < models.Length; modelIdx++)
+        {
+        var activeModel = models[modelIdx];
+        var isLastModel = modelIdx == models.Length - 1;
+
         var requestBody = new
         {
-            model = _model,
+            model = activeModel,
             max_tokens = _maxTokens,
             stream = true,
             system = systemPrompt,
@@ -93,9 +104,24 @@ public sealed class ClaudeWizardService
 
         if (response == null || !response.IsSuccessStatusCode)
         {
+            var statusCode = response != null ? (int)response.StatusCode : 0;
             var errorBody = response != null ? await response.Content.ReadAsStringAsync(cts.Token) : "null response";
-            _logger.LogWarning("Claude wizard API error {Status}: {Body}", (int)response.StatusCode, errorBody);
-            yield return new WizardStreamChunk { Type = "error", Content = "AI servisi gecici olarak kullanilamiyor." };
+            _logger.LogWarning("Claude wizard API error {Status}: {Body}", statusCode, errorBody);
+
+            // Overloaded — try fallback model before giving up
+            if (statusCode == 529 && !isLastModel)
+            {
+                _logger.LogInformation("Wizard: {Model} overloaded (HTTP 529), falling back to {Fallback}", activeModel, models[modelIdx + 1]);
+                response?.Dispose();
+                continue;
+            }
+
+            var userMsg = "AI servisi gecici olarak kullanilamiyor.";
+            if (statusCode == 429) userMsg = "AI istek limiti asildi. Birkaç saniye bekleyip tekrar deneyin.";
+            else if (statusCode == 529) userMsg = "AI servisi su anda yogun. Lutfen biraz bekleyin.";
+            else if (statusCode >= 500) userMsg = $"AI servisi hatasi (HTTP {statusCode}). Tekrar deneyin.";
+
+            yield return new WizardStreamChunk { Type = "error", Content = userMsg };
             yield break;
         }
 
@@ -103,6 +129,7 @@ public sealed class ClaudeWizardService
         using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
         using var reader = new StreamReader(stream);
         string? streamError = null;
+        var streamOverloaded = false;
 
         while (!reader.EndOfStream && !cts.Token.IsCancellationRequested)
         {
@@ -142,7 +169,8 @@ public sealed class ClaudeWizardService
                         ? errProp.GetProperty("message").GetString() ?? "Unknown error"
                         : "Unknown error";
                     _logger.LogWarning("Claude stream error: {Error}", errorMsg);
-                    streamError = "AI hatasi olustu.";
+                    streamOverloaded = errorMsg.Contains("overload", StringComparison.OrdinalIgnoreCase);
+                    streamError = $"AI hatasi: {errorMsg}";
                     shouldStop = true;
                 }
             }
@@ -157,6 +185,13 @@ public sealed class ClaudeWizardService
 
         if (streamError != null)
         {
+            // Overloaded mid-stream before any content — try fallback model
+            if (streamOverloaded && !isLastModel && fullText.Length == 0)
+            {
+                _logger.LogInformation("Wizard: {Model} overloaded (stream), falling back to {Fallback}", activeModel, models[modelIdx + 1]);
+                response?.Dispose();
+                continue;
+            }
             yield return new WizardStreamChunk { Type = "error", Content = streamError };
             yield break;
         }
@@ -196,6 +231,8 @@ public sealed class ClaudeWizardService
             Prerequisites = prerequisites,
             Options = options
         };
+        yield break; // Success — don't try next model
+        } // end for (modelIdx)
     }
 
     /// <summary>
@@ -482,6 +519,7 @@ public sealed class ClaudeWizardService
         sb.AppendLine("Turkce konusursun. Kisa, sohbet tarzi yanitlar ver. Bullet listeler yerine akici cumleler kullan.");
         sb.AppendLine("Sadece ```flowconfig blogu icinde JSON uret, baska yerde JSON kullanma.");
         sb.AppendLine("Preamble ekleme, direkt konuya gir.");
+        sb.AppendLine("Soru sorarken: Soruyu KISA tut (1-2 cumle). Detayli aciklama gerekiyorsa once aciklamayi yaz, sonda soruyu AYRI paragrafta sor. Soru ve aciklama FARKLI paragraflarda olmali. Uzun aciklamanin ICINE soru gomme.");
         sb.AppendLine("</response_style>");
         sb.AppendLine();
 
@@ -602,6 +640,9 @@ public sealed class WizardMessage
 
     [System.Text.Json.Serialization.JsonPropertyName("flow_config_snapshot")]
     public string? FlowConfigSnapshot { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("options")]
+    public List<WizardOption>? Options { get; set; }
 }
 
 public sealed class WizardStreamChunk
