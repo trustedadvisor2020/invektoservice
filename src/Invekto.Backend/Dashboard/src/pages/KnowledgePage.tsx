@@ -1,31 +1,26 @@
 import { useState } from 'react';
-import { FileText, MessageSquare, Sparkles } from 'lucide-react';
+import { FileText, MessageSquare } from 'lucide-react';
 import { DocumentUpload } from '../components/knowledge/DocumentUpload';
 import { DocumentList } from '../components/knowledge/DocumentList';
 import { FaqManager } from '../components/knowledge/FaqManager';
+import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 
 type Tab = 'documents' | 'faqs';
 
 export function KnowledgePage() {
+  const { session } = useAuth();
+  const tenantId = session?.tenantId ?? 1;
   const [activeTab, setActiveTab] = useState<Tab>('documents');
-  const [tenantId, setTenantId] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [embedMsg, setEmbedMsg] = useState<string | null>(null);
 
-  const handleUploadComplete = () => setRefreshKey(k => k + 1);
-
-  const handleGenerateEmbeddings = async () => {
-    setEmbedMsg('Uretiliyor...');
-    try {
-      const result = await api.generateEmbeddings(tenantId);
-      setEmbedMsg(`${result.generated} uretildi${result.failed ? `, ${result.failed} basarisiz` : ''}`);
-      setTimeout(() => setEmbedMsg(null), 5000);
-    } catch (err) {
-      setEmbedMsg(`Hata: ${err instanceof Error ? err.message : 'Bilinmeyen'}`);
-      setTimeout(() => setEmbedMsg(null), 5000);
-    }
+  const handleUploadComplete = () => {
+    setRefreshKey(k => k + 1);
+    // Embedding generation runs in background after upload — non-blocking
+    api.generateEmbeddings(tenantId).catch((err) => {
+      console.warn('[KnowledgePage] Embedding generation failed:', err);
+    });
   };
 
   const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
@@ -37,24 +32,6 @@ export function KnowledgePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-navy-900">Bilgi Bankasi</h1>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-navy-400">Firma:</label>
-          <input
-            type="number"
-            value={tenantId}
-            onChange={e => setTenantId(Number(e.target.value) || 1)}
-            className="w-20 px-2 py-1.5 text-sm border border-navy-100 rounded-lg focus:outline-none focus:border-brand-500 focus:shadow-focus"
-            min={1}
-          />
-          <button
-            onClick={handleGenerateEmbeddings}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Embeddings
-          </button>
-          {embedMsg && <span className="text-xs text-navy-400">{embedMsg}</span>}
-        </div>
       </div>
 
       {/* Tabs */}

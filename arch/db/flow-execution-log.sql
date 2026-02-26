@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS flow_execution_log (
     variables_final JSONB,
     error_detail    TEXT,
     CONSTRAINT fk_fel_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
-    CONSTRAINT fk_fel_flow FOREIGN KEY (flow_id) REFERENCES chatbot_flows(flow_id)
+    CONSTRAINT fk_fel_flow FOREIGN KEY (flow_id) REFERENCES chatbot_flows(flow_id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_fel_flow ON flow_execution_log(flow_id, started_at DESC);

@@ -2877,51 +2877,88 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
         var fullAssistantText = new System.Text.StringBuilder();
         string? extractedFlowConfig = null;
         List<FlowPrerequisite>? prerequisites = null;
+        List<WizardOption>? capturedOptions = null;
+        bool hadError = false;
 
-        await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, currentFlowConfig, ctx.RequestAborted))
+        // Retry once on transient errors (overloaded, rate limit) if no SSE data sent yet
+        const int maxAttempts = 2;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            if (chunk.Type == "done")
-            {
-                fullAssistantText.Clear();
-                fullAssistantText.Append(chunk.Content);
-                extractedFlowConfig = chunk.FlowConfig;
-                prerequisites = chunk.Prerequisites;
+            fullAssistantText.Clear();
+            extractedFlowConfig = null;
+            prerequisites = null;
+            capturedOptions = null;
+            hadError = false;
+            bool anySseSent = false;
 
-                var doneEvent = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    type = "done",
-                    content = chunk.Content,
-                    flow_config = extractedFlowConfig != null
-                        ? System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(extractedFlowConfig)
-                        : (System.Text.Json.JsonElement?)null,
-                    prerequisites,
-                    options = chunk.Options
-                });
-                await ctx.Response.WriteAsync($"data: {doneEvent}\n\n");
-                await ctx.Response.Body.FlushAsync();
-            }
-            else
+            await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, currentFlowConfig, ctx.RequestAborted))
             {
-                if (chunk.Type == "text") fullAssistantText.Append(chunk.Content);
-                var eventData = System.Text.Json.JsonSerializer.Serialize(new { type = chunk.Type, content = chunk.Content });
-                await ctx.Response.WriteAsync($"data: {eventData}\n\n");
-                await ctx.Response.Body.FlushAsync();
+                if (chunk.Type == "done")
+                {
+                    fullAssistantText.Clear();
+                    fullAssistantText.Append(chunk.Content);
+                    extractedFlowConfig = chunk.FlowConfig;
+                    prerequisites = chunk.Prerequisites;
+                    capturedOptions = chunk.Options;
+
+                    var doneEvent = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        type = "done",
+                        content = chunk.Content,
+                        flow_config = extractedFlowConfig != null
+                            ? System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(extractedFlowConfig)
+                            : (System.Text.Json.JsonElement?)null,
+                        prerequisites,
+                        options = chunk.Options
+                    });
+                    await ctx.Response.WriteAsync($"data: {doneEvent}\n\n");
+                    await ctx.Response.Body.FlushAsync();
+                    anySseSent = true;
+                }
+                else
+                {
+                    if (chunk.Type == "error")
+                    {
+                        hadError = true;
+                        // If no data sent yet and we can retry, skip sending error to client
+                        if (!anySseSent && attempt < maxAttempts)
+                            break;
+                    }
+                    if (chunk.Type == "text") fullAssistantText.Append(chunk.Content);
+                    var eventData = System.Text.Json.JsonSerializer.Serialize(new { type = chunk.Type, content = chunk.Content });
+                    await ctx.Response.WriteAsync($"data: {eventData}\n\n");
+                    await ctx.Response.Body.FlushAsync();
+                    anySseSent = true;
+                }
             }
+
+            // Retry if error occurred before any SSE was sent
+            if (hadError && !anySseSent && attempt < maxAttempts)
+            {
+                jsonLog.StepInfo($"Wizard AI transient error on attempt {attempt}, retrying in 2s...", requestId);
+                await Task.Delay(2000, ctx.RequestAborted);
+                continue;
+            }
+            break;
         }
 
-        // Save updated history
-        history.Add(new WizardMessage { Role = "user", Content = userMessage, Timestamp = DateTime.UtcNow.ToString("o") });
-        history.Add(new WizardMessage
+        // Only save history when AI responded successfully
+        if (!hadError && fullAssistantText.Length > 0)
         {
-            Role = "assistant",
-            Content = fullAssistantText.ToString(),
-            Timestamp = DateTime.UtcNow.ToString("o"),
-            FlowConfigSnapshot = extractedFlowConfig
-        });
+            history.Add(new WizardMessage { Role = "user", Content = userMessage, Timestamp = DateTime.UtcNow.ToString("o") });
+            history.Add(new WizardMessage
+            {
+                Role = "assistant",
+                Content = fullAssistantText.ToString(),
+                Timestamp = DateTime.UtcNow.ToString("o"),
+                FlowConfigSnapshot = extractedFlowConfig,
+                Options = capturedOptions
+            });
 
-        var historyJson = System.Text.Json.JsonSerializer.Serialize(history);
-        var patchBody = System.Text.Json.JsonSerializer.Serialize(new { wizard_history = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(historyJson) });
-        await fbClient.ProxyPatchAsync($"/api/v1/flows/{tenantId}/{flowId}/wizard-history", patchBody, authHeader, requestId);
+            var historyJson = System.Text.Json.JsonSerializer.Serialize(history);
+            var patchBody = System.Text.Json.JsonSerializer.Serialize(new { wizard_history = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(historyJson) });
+            await fbClient.ProxyPatchAsync($"/api/v1/flows/{tenantId}/{flowId}/wizard-history", patchBody, authHeader, requestId);
+        }
     }
     catch (OperationCanceledException)
     {

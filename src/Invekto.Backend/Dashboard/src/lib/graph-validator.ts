@@ -89,7 +89,7 @@ function checkEmptyField(node: Node): ValidationError | null {
       if (!text || text.trim() === '') {
         return {
           type: 'empty_field',
-          severity: 'warning',
+          severity: 'error',
           message: 'Mesaj metni bos',
         };
       }
@@ -100,7 +100,7 @@ function checkEmptyField(node: Node): ValidationError | null {
       if (!options || options.length === 0) {
         return {
           type: 'empty_field',
-          severity: 'warning',
+          severity: 'error',
           message: 'Menu secenegi eklenmedi',
         };
       }
@@ -109,7 +109,7 @@ function checkEmptyField(node: Node): ValidationError | null {
     case 'logic_condition': {
       const cond = data as LogicConditionData;
       if (!cond.variable || cond.variable.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Kosul degiskeni bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Kosul degiskeni bos' };
       }
       if (cond.operator !== 'is_empty' && (!cond.value || cond.value.trim() === '')) {
         return { type: 'empty_field', severity: 'warning', message: 'Kosul degeri bos' };
@@ -119,10 +119,10 @@ function checkEmptyField(node: Node): ValidationError | null {
     case 'logic_switch': {
       const sw = data as LogicSwitchData;
       if (!sw.variable || sw.variable.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Switch degiskeni bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Switch degiskeni bos' };
       }
       if (!sw.cases || sw.cases.length === 0) {
-        return { type: 'empty_field', severity: 'warning', message: 'Switch durumu eklenmedi' };
+        return { type: 'empty_field', severity: 'error', message: 'Switch durumu eklenmedi' };
       }
       break;
     }
@@ -136,7 +136,7 @@ function checkEmptyField(node: Node): ValidationError | null {
     case 'utility_set_variable': {
       const sv = data as UtilitySetVariableData;
       if (!sv.variable_name || sv.variable_name.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Degisken adi bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Degisken adi bos' };
       }
       if (!sv.value_expression || sv.value_expression.trim() === '') {
         return { type: 'empty_field', severity: 'warning', message: 'Deger ifadesi bos' };
@@ -146,38 +146,38 @@ function checkEmptyField(node: Node): ValidationError | null {
     case 'ai_intent': {
       const ai = data as AiIntentData;
       if (!ai.intents || ai.intents.length === 0) {
-        return { type: 'empty_field', severity: 'warning', message: 'Intent listesi bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Intent listesi bos' };
       }
       break;
     }
     case 'schedule_trigger': {
       const sched = data as ScheduleTriggerData;
       if (!sched.cron_expression || sched.cron_expression.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Cron ifadesi bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Cron ifadesi bos' };
       }
       break;
     }
     case 'action_api_call': {
       const api = data as ActionApiCallData;
       if (!api.url || api.url.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'API URL bos' };
+        return { type: 'empty_field', severity: 'error', message: 'API URL bos' };
       }
       if (!api.method) {
-        return { type: 'empty_field', severity: 'warning', message: 'HTTP metodu secilmedi' };
+        return { type: 'empty_field', severity: 'error', message: 'HTTP metodu secilmedi' };
       }
       break;
     }
     case 'action_call_flow': {
       const cf = data as ActionCallFlowData;
       if (!cf.flow_id || cf.flow_id.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Hedef flow secilmedi' };
+        return { type: 'empty_field', severity: 'error', message: 'Hedef flow secilmedi' };
       }
       break;
     }
     case 'action_assign_group': {
       const ag = data as ActionAssignGroupData;
       if (!ag.group_id || ag.group_id.trim() === '') {
-        return { type: 'empty_field', severity: 'warning', message: 'Grup ID bos' };
+        return { type: 'empty_field', severity: 'error', message: 'Grup ID bos' };
       }
       break;
     }

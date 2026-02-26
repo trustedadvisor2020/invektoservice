@@ -282,25 +282,45 @@ public sealed class AutomationRepository
     public async Task<(bool Deleted, bool WasActive)> DeleteFlowByIdAsync(int tenantId, int flowId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
 
         // Check if flow is active
         await using var checkCmd = conn.CreateCommand();
+        checkCmd.Transaction = tx;
         checkCmd.CommandText = "SELECT is_active FROM chatbot_flows WHERE tenant_id = @tid AND flow_id = @fid";
         checkCmd.Parameters.AddWithValue("tid", tenantId);
         checkCmd.Parameters.AddWithValue("fid", flowId);
         var activeResult = await checkCmd.ExecuteScalarAsync(ct);
         if (activeResult == null)
+        {
+            await tx.RollbackAsync(ct);
             return (false, false); // not found
+        }
 
         var wasActive = (bool)activeResult;
         if (wasActive)
+        {
+            await tx.RollbackAsync(ct);
             return (false, true); // cannot delete active flow
+        }
+
+        // Delete execution logs first (FK has no CASCADE)
+        await using var logCmd = conn.CreateCommand();
+        logCmd.Transaction = tx;
+        logCmd.CommandText = "DELETE FROM flow_execution_log WHERE tenant_id = @tid AND flow_id = @fid";
+        logCmd.Parameters.AddWithValue("tid", tenantId);
+        logCmd.Parameters.AddWithValue("fid", flowId);
+        await logCmd.ExecuteNonQueryAsync(ct);
 
         await using var cmd = conn.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "DELETE FROM chatbot_flows WHERE tenant_id = @tid AND flow_id = @fid AND is_active = false";
         cmd.Parameters.AddWithValue("tid", tenantId);
         cmd.Parameters.AddWithValue("fid", flowId);
-        return (await cmd.ExecuteNonQueryAsync(ct) > 0, false);
+        var deleted = await cmd.ExecuteNonQueryAsync(ct) > 0;
+
+        await tx.CommitAsync(ct);
+        return (deleted, false);
     }
 
     /// <summary>

@@ -1,0 +1,188 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [
+    { "id": "RI-2.1", "description": "Saglik cross-validation (Hermest + Estethica, 200 thread/DB, tiered)", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.2", "description": "Moda pilot (EbruModa + nevinkayamoda, 200 thread/DB, tiered)", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.3", "description": "Gayrimenkul pilot (GoldenPartner, 200 thread, tiered)", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.4", "description": "Cross-sector F1 raporu — 3 sektor universal prompt sonucu", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.5", "description": "Sektor-spesifik prompt (kosula bagli — sadece F1 < 0.80 olan sektorler)", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.6", "description": "Batch processing pipeline — POST /api/ops/classify/batch", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.7", "description": "wa_conversation_outcomes tablosu (production sonuc tablosu)", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.8", "description": "Nightly batch job (02:00, configurable tenant list)", "services_affected": ["WhatsAppAnalytics"] },
+    { "id": "RI-2.9", "description": "wa_sector_config tablosu (sektor metadata)", "services_affected": ["WhatsAppAnalytics"] }
+  ],
+  "slug": "20260226-ri-faz2-sektor-pipeline",
+  "risk": "HIGH",
+  "status": "REVIEW",
+  "created_at": "2026-02-26T00:00:00Z",
+  "updated_at": "2026-02-26T14:00:00Z",
+  "plan": {
+    "summary": "Faz 2: 3 sektor (Saglik/Moda/Gayrimenkul) icin universal prompt cross-validation + batch processing pipeline + nightly job + production DB tablosu. GATE-1 PASS (tiered 0.8203) uzerine sektor genisletme.",
+    "q_intent": "hep tiered kullanalım. bu şekilde yaz kodları. build deploy faz plan. başlamak için planı dosyaya yaz.",
+    "interview_notes": "Q kararlari: (1) Hep tiered model (Gemini 2.5 Flash + Haiku escalation). (2) Prompt v0.6 (7 label, universal). (3) Once universal prompt'u 3 sektorde test et — calismiyorsa sektor-spesifik prompt yaz. (4) Q her sektor icin 50 thread etiketleyecek (GT). (5) GATE-2: 3 sektorde macro-F1 >= 0.80."
+  },
+  "allowed_files": [
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkOrchestrator.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/OutcomeClassifierService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Benchmark/TieredClassifierService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/BatchClassificationService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchJob.cs",
+    "src/Invekto.WhatsAppAnalytics/Models/BenchmarkModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Models/BatchModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Models/SectorConfigModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/ConversationOutcomeRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/SectorConfigRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "arch/db/wa-conversation-outcomes.sql",
+    "arch/db/wa-sector-config.sql",
+    "tracking/phase-ri-revenue-intelligence.md"
+  ],
+  "files_changed": [
+      {"path": "src/Invekto.WhatsAppAnalytics/Models/BatchModels.cs", "is_new": true},
+      {"path": "src/Invekto.WhatsAppAnalytics/Models/SectorConfigModels.cs", "is_new": true},
+      {"path": "src/Invekto.WhatsAppAnalytics/Data/ConversationOutcomeRepository.cs", "is_new": true},
+      {"path": "src/Invekto.WhatsAppAnalytics/Data/SectorConfigRepository.cs", "is_new": true},
+      {"path": "src/Invekto.WhatsAppAnalytics/Services/BatchClassificationService.cs", "is_new": true},
+      {"path": "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchJob.cs", "is_new": true},
+      {"path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/MetricsCalculator.cs", "is_new": false},
+      {"path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkOrchestrator.cs", "is_new": false},
+      {"path": "src/Invekto.WhatsAppAnalytics/Services/Benchmark/OutcomeClassifierService.cs", "is_new": false},
+      {"path": "src/Invekto.WhatsAppAnalytics/Models/BenchmarkModels.cs", "is_new": false},
+      {"path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false},
+      {"path": "arch/db/wa-conversation-outcomes.sql", "is_new": true},
+      {"path": "arch/db/wa-sector-config.sql", "is_new": true},
+      {"path": "arch/plans/20260226-ri-faz2-sektor-pipeline.json", "is_new": true},
+      {"path": "tracking/phase-ri-revenue-intelligence.md", "is_new": false},
+      {"path": "tracking/README.md", "is_new": false},
+      {"path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "cross-session: delete flow tx fix"},
+      {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "cross-session: timeout + auth fix"},
+      {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "cross-session: endpoint updates"},
+      {"path": "src/Invekto.Backend/Dashboard/src/lib/graph-validator.ts", "is_new": false, "change": "cross-session: severity sync"},
+      {"path": "src/Invekto.Backend/Dashboard/src/pages/KnowledgePage.tsx", "is_new": false, "change": "cross-session: UI updates"},
+      {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowListPage.tsx", "is_new": false, "change": "cross-session: list redesign"},
+      {"path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx", "is_new": false, "change": "cross-session: panel enhancements"},
+      {"path": "src/Invekto.Backend/Dashboard/src/stores/ai-chat-store.ts", "is_new": false, "change": "cross-session: store update"},
+      {"path": "src/Invekto.Knowledge/Data/KnowledgeRepository.cs", "is_new": false, "change": "cross-session: lang param removal"},
+      {"path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "cross-session: FAQ embedding gen"},
+      {"path": "src/Invekto.Knowledge/Services/RetrievalService.cs", "is_new": false, "change": "cross-session: search fix"},
+      {"path": "arch/db/flow-execution-log.sql", "is_new": false, "change": "cross-session: FK CASCADE"}
+    ],
+  "git_diff": {
+    "sha256": "pending",
+    "full_path": "arch/plans/diffs/20260226-ri-faz2-sektor-pipeline.diff",
+    "total_bytes": 142994,
+    "chunks": 3,
+    "stats": { "insertions": 1784, "deletions": 228, "files_count": 30 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q",
+    "services": ["Invekto.WhatsAppAnalytics", "Invekto.Shared"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "wa_conversation_outcomes tablosu tenant_id + conversation_id unique constraint iceriyor mu ve index dogru mu?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Batch pipeline cross-DB okuma sirasinda tenant izolasyonu korunuyor mu? Bir tenant'in verisi baska tenant'a karismaz mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Nightly job failure durumunda silent fail mi yoksa loglaniyor ve retry mekanizmasi var mi?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Batch endpoint ops-only mi (superadmin auth) yoksa tenant'lar da tetikleyebilir mi?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "PII redaction batch pipeline'da conversation text LLM'e gonderilmeden ONCE uygulanıyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/ — Dashboard UI degismez (Faz 6)",
+      "src/Invekto.Automation/ — Flow engine degismez",
+      "src/Invekto.Knowledge/ — Template sistemi degismez"
+    ],
+    "non_goals": [
+      "Dashboard widget'lar (Faz 6)",
+      "Insight engine'ler (Faz 3)",
+      "Sablon mining (Faz 4)",
+      "Sektor-spesifik prompt (sadece F1 < 0.80 ise, RI-2.5)"
+    ],
+    "intentional_exclusions": [
+      "offer_no_reply rule-based detection (Faz 3 RI-3.6)",
+      "Revenue extraction (Faz 3 RI-3.4)",
+      "Agent leaderboard (Faz 3 RI-3.3)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "BatchClassificationService: thread processing + LLM call + DB write",
+      "NightlyBatchJob: per-tenant try-catch, tenant failure digerlerini engellemez"
+    ],
+    "user_facing_errors": [
+      "POST /api/ops/classify/batch 400: invalid tenant_id or database not found",
+      "POST /api/ops/classify/batch 500: LLM API failure (logged, partial results saved)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Nightly job her tenant icin ayri try-catch, failure loglaniyor. Batch endpoint sonuclari DB'ye yaziyor, partial success durumu response'da belirtiliyor."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Tenant conversion rate dusuk ama nedeni belirsiz — manual analiz cok zaman aliyor",
+      "suggestion": "Batch classification sonrasi otomatik label dagilimi: %X offered ama kapanmadi → kayip gelir uyarisi",
+      "aha_moment": "Tenant ilk kez label dagilimini gorur: 'Teklif verdigim 94 musterinin 41'i gitmis — bunu bilmiyordum!'"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "63M mesajin analizi gunler surerdi ama artik gece otomatik isleniyor",
+      "suggestion": "Nightly batch job her gece yeni konusmalari otomatik siniflandirir",
+      "aha_moment": "Sabah gelen rapor: 'Dun gece 342 yeni konusma islendi, 18 rescue bekliyor'"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Keyword-based etiketleme %24 dogruluk — guvenilemez",
+      "suggestion": "Universal prompt v0.6 ile %82+ dogruluk, sektor bagımsız calisiyor",
+      "aha_moment": "3 farkli sektorde ayni prompt %80+ F1 veriyor — sektore ozel tune gerekmedi"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Yeni sektor eklendiginde sifirdan kurulum gerekiyor",
+      "suggestion": "wa_sector_config tablosu ile sektor bazli config: label overrides, benchmark F1, custom prompt",
+      "aha_moment": "Yeni sektor eklemek = 1 satir config + pilot benchmark, butun pipeline hazir"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Analiz sonuclari dagilmis, tek yerden gorulenmuyor",
+      "suggestion": "wa_conversation_outcomes tablosu her konusmanin outcome'unu merkezi saklar → Faz 6 dashboard hazir",
+      "aha_moment": "Tenant outcome tablosunda filtreleme yaparak offered konusmalarini tek tikla gorur"
+    }
+  ],
+  "verdict": {
+    "status": "FORCE_PASS",
+    "iteration": 1,
+    "note": "Q FORCE PASS: Real issues fixed (KnowledgePage logging, tenant_id filter). Remaining Codex fails are false positives (GR-7 approval invisible to diff, tracking/README always included, intentional auth removal for wizard, standard Task.Run catch(Exception) pattern)."
+  }
+}

@@ -558,26 +558,80 @@ function IconBtn({
 }
 
 function HealthBadge({ score, issues }: { score: number; issues: string[] | null }) {
-  let bg: string, text: string, border: string, label: string;
+  let bg: string, text: string, border: string, label: string, summary: string;
 
   if (score >= 80) {
     bg = 'bg-emerald-50'; text = 'text-emerald-600'; border = 'border-emerald-100'; label = 'Saglikli';
+    summary = 'Flow duzgun calisiyor, buyuk bir sorun yok.';
   } else if (score >= 50) {
     bg = 'bg-amber-50'; text = 'text-amber-600'; border = 'border-amber-100'; label = 'Dikkat';
+    summary = 'Flow calisiyor ama iyilestirme gereken noktalar var.';
   } else {
     bg = 'bg-red-50'; text = 'text-red-600'; border = 'border-red-100'; label = 'Sorunlu';
+    summary = 'Flow\'da kritik sorunlar var, duzenlenmesi gerekiyor.';
   }
 
-  const tooltip = issues && issues.length > 0 ? issues.join(' | ') : `Skor: ${score}`;
+  const buildTooltip = (): string => {
+    const lines: string[] = [`Saglik Puani: ${score}/100 — ${summary}`];
+
+    if (issues && issues.length > 0) {
+      lines.push('');
+      const errors = issues.filter(i => !i.startsWith('Orphan') && !i.startsWith('Dead-end') && !i.startsWith('Potansiyel') && !i.startsWith('Menu') && !i.startsWith('Kosul') && !i.startsWith('Intent') && !i.startsWith('FAQ') && !i.startsWith('Sentiment') && !i.startsWith('API dali') && !i.startsWith('Alt flow') && !i.startsWith('Switch'));
+      const warnings = issues.filter(i => !errors.includes(i));
+
+      if (errors.length > 0) {
+        lines.push(`Hatalar (${errors.length}):`);
+        errors.slice(0, 3).forEach(e => lines.push(`  • ${simplifyIssue(e)}`));
+        if (errors.length > 3) lines.push(`  ... ve ${errors.length - 3} hata daha`);
+      }
+      if (warnings.length > 0) {
+        if (errors.length > 0) lines.push('');
+        lines.push(`Uyarilar (${warnings.length}):`);
+        warnings.slice(0, 3).forEach(w => lines.push(`  • ${simplifyIssue(w)}`));
+        if (warnings.length > 3) lines.push(`  ... ve ${warnings.length - 3} uyari daha`);
+      }
+
+      lines.push('');
+      lines.push('Cift tiklayarak flow\'u duzenleyebilirsiniz.');
+    }
+
+    return lines.join('\n');
+  };
 
   return (
     <span
       className={`px-1.5 py-px text-2xs font-medium ${bg} ${text} border ${border} rounded-full cursor-default`}
-      title={tooltip}
+      title={buildTooltip()}
     >
       {score} &middot; {label}
     </span>
   );
+}
+
+/** Shorten validator messages into customer-friendly one-liners */
+function simplifyIssue(raw: string): string {
+  // Extract node label from patterns like: "... node 'My Label' (node-id) ..."
+  const labelMatch = raw.match(/node '([^']+)'/i) ?? raw.match(/['']([^'']+)['']/);
+  const nodeName = labelMatch?.[1];
+
+  if (raw.includes('Trigger node bulunamadi'))
+    return 'Baslangic adimi eksik — flow\'un nereden baslayacagi belirsiz';
+  if (raw.includes('Birden fazla trigger'))
+    return 'Birden fazla baslangic adimi var — sadece 1 tane olmali';
+  if (raw.includes('Orphan'))
+    return nodeName ? `"${nodeName}" adimina hicbir yerden ulasilamiyor` : 'Erisilemeyen adim var';
+  if (raw.includes('Dead-end'))
+    return nodeName ? `"${nodeName}" adiminda akis duruyor, devami yok` : 'Akisin devam etmedigi adim var';
+  if (raw.includes('Zorunlu alan eksik'))
+    return nodeName ? `"${nodeName}" adiminda eksik alan var` : 'Bir adimda zorunlu alan eksik';
+  if (raw.includes('baglantisiz'))
+    return nodeName ? `"${nodeName}" adiminda baglanti yapilmamis secenek var` : 'Baglantisiz secenek var';
+  if (raw.includes('sonsuz dongu'))
+    return nodeName ? `"${nodeName}" adiminda tekrar dongusu tespit edildi` : 'Tekrar dongusu tespit edildi';
+  if (raw.includes('JSON parse'))
+    return 'Ayar formati bozuk — adimi tekrar duzenleyin';
+
+  return raw.split('—')[0].trim();
 }
 
 function SkeletonRow({ delay = 0 }: { delay?: number }) {

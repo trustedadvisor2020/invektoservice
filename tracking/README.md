@@ -23,8 +23,8 @@
 | 8 | PKT-8 | Face AI | GR-3D.1~3D.5 | PLANNED | - | - |
 | 9 | PKT-9 | Guzellik Salonu | GR-3E.1~3E.8 | PLANNED | - | - |
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
-| RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | IN-PROGRESS | 24 Sub | - |
-| RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | PLANNED | - | - |
+| RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | DONE | 24 Sub | GATE-1 PASS (tiered 0.8203) |
+| RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | IN-PROGRESS | 26 Sub | - |
 | RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | PLANNED | - | - |
 | RI-4 | Faz 4 | RI: Sektor Sablon Mining | RI-4.1~4.6 (21 sub-task) | PLANNED | - | - |
 | RI-5 | Faz 5 | RI: Bulk Isleme + Kalan Sektorler | RI-5.1~5.15 | PLANNED | - | - |
@@ -32,7 +32,7 @@
 | RI-7 | Faz 7 | RI: Tenant Onboarding Deneyimi | RI-7.1~7.7 | PLANNED | - | - |
 | RI-8 | Faz 8 | RI: Optimizasyon & Olcekleme | RI-8.1~8.13 | PLANNED | - | - |
 
-**Toplam:** 19 paket (11 done, 1 in-progress, 11 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
+**Toplam:** 19 paket (12 done, 1 in-progress, 10 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
 
 ## Mikroservis Port Haritasi
 

@@ -10,7 +10,7 @@ public sealed class MetricsCalculator
 {
     private static readonly string[] Labels =
     {
-        "sale", "appointment_booked", "offered", "no_sale",
+        "sale", "appointment_booked", "offered", "offer_lost",
         "no_response", "abandoned", "return_or_complaint"
     };
 
@@ -43,7 +43,8 @@ public sealed class MetricsCalculator
             if (pred == truth)
             {
                 correct++;
-                perLabel[truth] = (perLabel[truth].tp + 1, perLabel[truth].fp, perLabel[truth].fn);
+                if (perLabel.ContainsKey(truth))
+                    perLabel[truth] = (perLabel[truth].tp + 1, perLabel[truth].fp, perLabel[truth].fn);
             }
             else
             {

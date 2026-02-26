@@ -51,10 +51,10 @@ export function NodePropertyPanel() {
   return (
     <div
       className="bg-white border-l border-navy-100 flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
-      style={{ width: isOpen ? 320 : 0 }}
+      style={{ width: isOpen ? 360 : 0 }}
     >
       {!selectedNode ? null : (
-      <div className="w-80 overflow-y-auto h-full">
+      <div className="w-[360px] overflow-y-auto h-full">
       {/* Header */}
       <div className="p-3 border-b border-navy-100">
         <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export function NodePropertyPanel() {
             {info?.label ?? nodeType}
           </span>
         </div>
-        <p className="text-xs text-navy-300 mt-0.5">{info?.description}</p>
+        <p className="text-sm text-navy-300 mt-0.5">{info?.description}</p>
       </div>
 
       {/* Common: Label */}
@@ -267,10 +267,10 @@ function NodeHelpSection({ nodeType }: { nodeType: FlowNodeType }) {
         <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
         </svg>
-        <span className="text-xs text-navy-500 group-hover:text-navy-700 transition-colors">Kullanim Kilavuzu</span>
+        <span className="text-sm text-navy-500 group-hover:text-navy-700 transition-colors">Kullanim Kilavuzu</span>
       </button>
       {open && (
-        <div className="mt-2 space-y-3 text-xs text-navy-600 bg-navy-25 rounded-lg p-3">
+        <div className="mt-2 space-y-3 text-sm text-navy-600 bg-navy-25 rounded-lg p-3">
           {/* Summary */}
           <p className="font-medium text-navy-700">{guide.summary}</p>
 
@@ -428,7 +428,7 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
 
   if (instances.length === 0 && !loading) {
     return (
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Musteri mesaj gonderdiginde bu node'dan akis baslar.
         {tenantId && <span className="block mt-1 text-navy-200">Hat secimi icin Ayarlar sayfasindan WapCRM hatlarini yukleyin.</span>}
       </p>
@@ -438,7 +438,7 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
   return (
     <FieldGroup label={`Hatlar (${selectedIds.length}/${instances.length})`}>
       {loading ? (
-        <p className="text-xs text-navy-300">Yukleniyor...</p>
+        <p className="text-sm text-navy-300">Yukleniyor...</p>
       ) : (
         <div className="space-y-1.5">
           {instances.map(inst => {
@@ -471,7 +471,7 @@ function TriggerStartProps({ data, onChange }: { data: Record<string, unknown>; 
           })}
         </div>
       )}
-      <p className="text-xs text-navy-300 mt-2">
+      <p className="text-sm text-navy-300 mt-2">
         Secili hatlardan gelen mesajlar bu akisa yonlendirilir.
       </p>
     </FieldGroup>
@@ -494,7 +494,7 @@ function MessageTextProps({
           value={data.text ?? ''}
           onChange={(e) => onChange({ text: e.target.value })}
           rows={4}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
           placeholder="Gonderilecek mesaj..."
         />
         <MessageLengthCounter text={data.text ?? ''} />
@@ -507,7 +507,7 @@ function MessageTextProps({
             onChange={(e) => onChange({ wait_for_input: e.target.checked })}
             className="w-4 h-4 rounded border-navy-200 text-blue-600 focus:ring-blue-500 accent-blue-500"
           />
-          <span className="text-xs text-navy-500">Kullanici yanitini bekle</span>
+          <span className="text-sm text-navy-500">Kullanici yanitini bekle</span>
         </label>
         {waitForInput && (
           <p className="text-[10px] text-navy-400 mt-1">
@@ -570,7 +570,7 @@ function MessageMenuProps({
                 type="text"
                 value={opt.key}
                 onChange={(e) => updateOption(idx, 'key', e.target.value)}
-                className="w-8 bg-navy-50 border border-navy-200 rounded px-1 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 text-center"
+                className="w-8 bg-navy-50 border border-navy-200 rounded px-1 py-1 text-sm text-navy-700 outline-none focus:border-brand-500 text-center"
               />
               <input
                 type="text"
@@ -615,7 +615,7 @@ function ActionHandoffProps({
         value={data.summary_template ?? ''}
         onChange={(e) => onChange({ summary_template: e.target.value })}
         rows={3}
-        className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
+        className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
         placeholder="Temsilciye aktarilacak ozet..."
       />
     </FieldGroup>
@@ -719,7 +719,7 @@ function LogicSwitchProps({
         <div className="space-y-2">
           {cases.map((c, idx) => (
             <div key={c.handle_id} className="flex items-center gap-1">
-              <span className="text-xs text-navy-300 w-4 flex-shrink-0">{idx + 1}</span>
+              <span className="text-sm text-navy-300 w-4 flex-shrink-0">{idx + 1}</span>
               <input
                 type="text"
                 value={c.value}
@@ -750,7 +750,7 @@ function LogicSwitchProps({
         )}
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Hicbir durum eslesmediyse <strong>VARSAYILAN</strong> dala gider.
       </p>
     </>
@@ -777,7 +777,7 @@ function ActionDelayProps({
         }}
         className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
       />
-      <p className="text-xs text-navy-300 mt-1">Min: 1sn, Maks: 300sn (5dk)</p>
+      <p className="text-sm text-navy-300 mt-1">Min: 1sn, Maks: 300sn (5dk)</p>
     </FieldGroup>
   );
 }
@@ -805,10 +805,10 @@ function UtilitySetVariableProps({
           value={data.value_expression ?? ''}
           onChange={(e) => onChange({ value_expression: e.target.value })}
           rows={3}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
           placeholder="ornek: {{__last_input}}"
         />
-        <p className="text-xs text-navy-300 mt-1">
+        <p className="text-sm text-navy-300 mt-1">
           {"{{degisken}}"} ile mevcut degiskenlere referans verebilirsiniz.
         </p>
       </FieldGroup>
@@ -858,7 +858,7 @@ function AiIntentProps({
             onChange={(e) => onChange({ ask_name: e.target.checked })}
             className="w-4 h-4 rounded border-navy-200 text-purple-600 focus:ring-purple-500 accent-purple-500"
           />
-          <span className="text-xs text-navy-500">Musteri ismini sor</span>
+          <span className="text-sm text-navy-500">Musteri ismini sor</span>
         </label>
         <p className="text-[10px] text-navy-300 mt-1">
           Acikken musteri ismini sorar, dogrular ve isimle hitap eder. Anlayamadigi mesajlarda sohbete devam eder.
@@ -869,7 +869,7 @@ function AiIntentProps({
               type="text"
               value={data.greeting_message ?? ''}
               onChange={(e) => onChange({ greeting_message: e.target.value || undefined })}
-              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-purple-500"
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-purple-500"
               placeholder="Merhaba! Isminizi ogrenebilir miyim?"
             />
             <p className="text-[10px] text-navy-300 mt-0.5">Karsilama mesaji (bos = varsayilan)</p>
@@ -885,7 +885,7 @@ function AiIntentProps({
                 type="text"
                 value={intent}
                 onChange={(e) => updateIntent(idx, e.target.value)}
-                className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-xs text-navy-700 outline-none focus:border-purple-500 font-mono"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-2 py-1 text-sm text-navy-700 outline-none focus:border-purple-500 font-mono"
                 placeholder="ornek: satin_alma"
               />
               <button
@@ -918,14 +918,14 @@ function AiIntentProps({
           onChange={(e) => onChange({ confidence_threshold: Number(e.target.value) / 100 })}
           className="w-full accent-purple-500"
         />
-        <div className="flex justify-between text-xs text-navy-300 mt-0.5">
+        <div className="flex justify-between text-sm text-navy-300 mt-0.5">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Musteri mesaji Claude AI ile analiz edilir. Orta guvendeki intent'ler icin &quot;bunu mu demek istiyorsunuz?&quot; onay sorusu sorulur. Dusuk guvende sohbet devam eder.
       </p>
     </>
@@ -953,7 +953,7 @@ function AiFaqProps({
           onChange={(e) => onChange({ min_confidence: Number(e.target.value) / 100 })}
           className="w-full accent-purple-500"
         />
-        <div className="flex justify-between text-xs text-navy-300 mt-0.5">
+        <div className="flex justify-between text-sm text-navy-300 mt-0.5">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
@@ -971,7 +971,7 @@ function AiFaqProps({
         </select>
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Bilgi bankasinda semantik arama yapilir. FAQ eslesirse cevap otomatik gonderilir. Dokuman eslesirse AI ile ozetlenip gonderilir. Esik altindaki sonuclar <strong>ESLESMEDI</strong> dalina yonlenir.
       </p>
     </>
@@ -1008,10 +1008,10 @@ function ActionApiCallProps({
           type="text"
           value={data.url ?? ''}
           onChange={(e) => onChange({ url: e.target.value })}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="https://api.example.com/endpoint"
         />
-        <p className="text-xs text-navy-300 mt-0.5">
+        <p className="text-sm text-navy-300 mt-0.5">
           {"{{degisken}}"} destekler
         </p>
       </FieldGroup>
@@ -1028,7 +1028,7 @@ function ActionApiCallProps({
           value={data.body_template ?? ''}
           onChange={(e) => onChange({ body_template: e.target.value })}
           rows={3}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none font-mono"
           placeholder='{"key": "{{degisken}}"}'
         />
       </FieldGroup>
@@ -1083,14 +1083,14 @@ function AiSentimentProps({
           onChange={(e) => onChange({ threshold: Number(e.target.value) / 100 })}
           className="w-full accent-purple-500"
         />
-        <div className="flex justify-between text-xs text-navy-300 mt-0.5">
+        <div className="flex justify-between text-sm text-navy-300 mt-0.5">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Musteri mesaji Claude AI ile analiz edilir. Skor esik uzerindeyse <strong>POZITIF</strong>, altindaysa <strong>NEGATIF</strong> dalina yonlenir.
       </p>
     </>
@@ -1124,7 +1124,7 @@ function WebhookTriggerProps({
           type="text"
           value={data.secret_key ?? ''}
           onChange={(e) => onChange({ secret_key: e.target.value })}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="HMAC-SHA256 dogrulama anahtari"
         />
       </FieldGroup>
@@ -1139,7 +1139,7 @@ function WebhookTriggerProps({
         />
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Dis sistemlerden gelen HTTP POST istekleriyle tetiklenir. Payload belirtilen degiskene atanir.
       </p>
     </>
@@ -1148,7 +1148,7 @@ function WebhookTriggerProps({
 
 function OutboundTriggerProps() {
   return (
-    <p className="text-xs text-navy-300">
+    <p className="text-sm text-navy-300">
       Outbound kampanyasi bu flow'u tetiklediginde akis baslar. Kampanya bilgileri <code className="bg-navy-100 px-1 rounded">campaign_id</code> degiskenine atanir.
     </p>
   );
@@ -1175,7 +1175,7 @@ function ScheduleTriggerProps({
           type="text"
           value={data.cron_expression ?? ''}
           onChange={(e) => onChange({ cron_expression: e.target.value })}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
           placeholder="0 9 * * *"
         />
         {data.cron_expression && (() => {
@@ -1209,7 +1209,7 @@ function ScheduleTriggerProps({
         </select>
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Belirtilen cron zamanlamasina gore otomatik tetiklenir.
       </p>
     </>
@@ -1238,7 +1238,7 @@ function UtilityNoteProps({
           value={data.text ?? ''}
           onChange={(e) => onChange({ text: e.target.value })}
           rows={5}
-          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-xs text-navy-700 outline-none focus:border-brand-500 resize-none"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
           placeholder="Notunuz..."
         />
       </FieldGroup>
@@ -1348,7 +1348,7 @@ function CallFlowProps({
     <>
       <FieldGroup label="Hedef Flow">
         {loading ? (
-          <p className="text-xs text-navy-300">Yukleniyor...</p>
+          <p className="text-sm text-navy-300">Yukleniyor...</p>
         ) : (
           <select
             value={data.flow_id ?? ''}
@@ -1378,7 +1378,7 @@ function CallFlowProps({
                 type="text"
                 value={parentVar}
                 onChange={(e) => updateMapEntry('input_map', inputEntries, idx, 0, e.target.value)}
-                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
                 placeholder="parent_var"
               />
               <span className="text-navy-300 text-xs flex-shrink-0">&rarr;</span>
@@ -1386,7 +1386,7 @@ function CallFlowProps({
                 type="text"
                 value={childVar}
                 onChange={(e) => updateMapEntry('input_map', inputEntries, idx, 1, e.target.value)}
-                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
                 placeholder="child_var"
               />
               <button
@@ -1421,7 +1421,7 @@ function CallFlowProps({
                 type="text"
                 value={childVar}
                 onChange={(e) => updateMapEntry('output_map', outputEntries, idx, 0, e.target.value)}
-                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
                 placeholder="child_var"
               />
               <span className="text-navy-300 text-xs flex-shrink-0">&rarr;</span>
@@ -1429,7 +1429,7 @@ function CallFlowProps({
                 type="text"
                 value={parentVar}
                 onChange={(e) => updateMapEntry('output_map', outputEntries, idx, 1, e.target.value)}
-                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-xs text-navy-700 outline-none focus:border-brand-500 font-mono"
+                className="flex-1 bg-navy-50 border border-navy-200 rounded px-1.5 py-1 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
                 placeholder="parent_var"
               />
               <button
@@ -1456,7 +1456,7 @@ function CallFlowProps({
         </p>
       </FieldGroup>
 
-      <p className="text-xs text-navy-300">
+      <p className="text-sm text-navy-300">
         Alt flow tamamlandiginda <strong>completed</strong>, hata olursa <strong>error</strong> dalina yonlenir.
       </p>
     </>
@@ -1466,7 +1466,7 @@ function CallFlowProps({
 function LogicWorkingHoursProps() {
   return (
     <div className="p-2 rounded-md bg-amber-50 border border-amber-100">
-      <p className="text-xs text-amber-700">
+      <p className="text-sm text-amber-700">
         Bu node tenant ayarlarindaki mesai saatlerini kullanir.
         Cikis: <strong>within_hours</strong> (mesai ici) / <strong>outside_hours</strong> (mesai disi).
       </p>

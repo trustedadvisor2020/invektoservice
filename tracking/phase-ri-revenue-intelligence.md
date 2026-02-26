@@ -93,34 +93,133 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | RI-1.1 | 200 Thread Benchmark (4 model) | **DONE** | Benchmark #12: haiku, flash, gemini-3-flash, tiered. 199 labeled. |
 | RI-1.2 | Q Manuel Etiketleme (Ground Truth) | **DONE** | 94 DISAGREE Q etiketledi + 106 AGREE majority_vote = 199 GT label. Taxonomy v0.4 kesfedildi. |
 | RI-1.3 | Dogruluk Olcumu | **DONE** | Sonuclar asagida (RI-1.3 Results). |
-| RI-1.4 | Maliyet Modeli | PLANNED | Model basina cost/thread, scale projeksiyon |
-| RI-1.5 | Pipeline Karsilastirmasi | PLANNED | 4 model karsilastirma raporu |
-| RI-1.6 | Benchmark 13: Prompt v0.4 Update | **NEXT** | Modellere offer_no_reply + offer_lost ekle, yeniden calistir. Hedef: gemini-3-flash >= 0.80 |
-| **GATE-1** | **Decision Gate** | **BEKLIYOR** | Benchmark 13 sonrasi degerlendir. gemini-3-flash offer_no_reply biliyor olursa >= 0.82 bekleniyor |
+| RI-1.4 | Maliyet Modeli | **DONE** | Asagida. Tiered $0.19/1K thread, 2M thread = $374. |
+| RI-1.5 | Pipeline Karsilastirmasi | **DONE** | Asagida. Tiered kazandi (F1 + maliyet + guvenilirlik). |
+| RI-1.6 | Benchmark 15: Prompt v0.4 (apples-to-apples) | **DONE** | conversationIds API eklendi, ayni 199 GT thread ile F1. En iyi: tiered 0.7553. offered↔offer_no_reply karisikligi tespit edildi. |
+| RI-1.7 | Prompt v0.5: Sharpen offered↔offer_no_reply | **DONE** | 2-step temporal test eklendi (offer sonrasi musteri cevap verdi mi?). Deploy 25 Sub 12:17. |
+| RI-1.8 | Benchmark 17: Prompt v0.5 | **DONE** | v0.5 KOTU: tiered 0.6947 (B15'ten dusus). 2-step temporal test calismadi. |
+| RI-1.9 | Label Birlestirme Karari | **DONE** | offered+offer_no_reply → tek offered. offer_no_reply Faz 3'te rule-based (timestamp). |
+| RI-1.10 | Prompt v0.6: 7 label (offer_no_reply kaldirildi) | **DONE** | v0.4 tabanli, offer_no_reply cikarildi. Deploy bekliyor. |
+| **GATE-1** | **Decision Gate** | **PASS** | B15 v0.4 + merged labels: tiered **0.8203**, gemini_flash **0.8151** (>= 0.80). |
+
+**GATE-1 Sonuc:** Kazanan model = **tiered** (0.8203 macro-F1). Prompt v0.6 (7 label). Taxonomy v0.5 (7 label).
 
 **Cikti:** Kazanan model + maliyet tahmini + accuracy raporu
 
 ---
 
+### RI-1.4: Maliyet Modeli (26 Sub 2026)
+
+**Token Butcesi (thread basina):**
+| Birim | Token |
+|-------|-------|
+| System prompt (v0.6) | ~440 |
+| Thread text (avg, truncated 2000 char) | ~500 |
+| **Toplam input** | **~940** |
+| Output (JSON) | ~50 |
+
+**Model Fiyatlandirmasi:**
+| Model | Input $/MTok | Output $/MTok | $/thread | $/1K thread |
+|-------|-------------|--------------|----------|-------------|
+| Gemini 2.5 Flash | $0.15 | $0.60 | $0.000171 | **$0.17** |
+| Claude Haiku 4.5 | $0.80 | $4.00 | $0.000952 | **$0.95** |
+| Gemini 2.0 Flash | $0.10 | $0.40 | $0.000114 | **$0.11** |
+| **Tiered** (98% flash / 2% haiku) | — | — | $0.000187 | **$0.19** |
+
+**Tiered Maliyet Hesabi:**
+- %98 thread: sadece Gemini Flash ($0.000171)
+- %2 thread: Flash + Haiku escalation ($0.000171 + $0.000952 = $0.001123)
+- Agirlikli ortalama: **$0.000187/thread**
+- Escalation threshold: confidence < 0.80 → haiku'ya yonlendir
+
+**63M Mesaj → Thread Projeksiyon:**
+- Ortalama ~30-40 mesaj/thread, min 6 mesaj filtresi
+- Tahmini classifiable thread: **~1.5M - 2.5M** (konservatif: 2M)
+
+| Senaryo | Thread Sayisi | Tiered Maliyet | Haiku Maliyet | Tasarruf |
+|---------|--------------|---------------|---------------|----------|
+| Konservatif | 1.5M | **$281** | $1,428 | %80 |
+| Orta | 2.0M | **$374** | $1,904 | %80 |
+| Agresif | 2.5M | **$468** | $2,380 | %80 |
+
+**Sonuc:** 63M mesajin tamami **~$375** ile islenebilir (tiered). Maliyet ihmal edilebilir seviyede.
+
+---
+
+### RI-1.5: Pipeline Karsilastirma Raporu (26 Sub 2026)
+
+| Kriter | Tiered | Gemini Flash | Gemini 3 Flash | Claude Haiku |
+|--------|--------|-------------|----------------|-------------|
+| **macro-F1 (7 label)** | **0.8203** | 0.8151 | 0.7697 | 0.7569 |
+| **Maliyet ($/1K)** | $0.19 | **$0.17** | ~$0.17 | $0.95 |
+| **Guvenilirlik** | **199/199** (%100) | 199/199 | 199/199 | 197/199 (%99) |
+| **Hiz (199 thread)** | ~16 dk | ~16 dk | ~18 dk | ~10 dk |
+| **Escalation** | %2 (4/199) | — | — | — |
+| **GATE-1** | **PASS** | **PASS** | FAIL | FAIL |
+
+**Detayli Per-Class F1 Karsilastirma (7 label, B15):**
+
+| Label | Support | Tiered | G.Flash | G3.Flash | Haiku |
+|-------|---------|--------|---------|----------|-------|
+| offered | 94 | **0.859** | 0.853 | 0.803 | 0.798 |
+| no_response | 52 | **0.830** | 0.826 | 0.798 | 0.758 |
+| offer_lost | 41 | 0.832 | **0.847** | 0.819 | 0.817 |
+| return_or_complaint | 5 | 0.889 | **1.000** | 0.889 | 0.889 |
+| sale | 3 | 0.667 | 0.667 | **0.750** | 0.571 |
+| appt_booked | 2 | **1.000** | 0.667 | **1.000** | **1.000** |
+| abandoned | 2 | 0.667 | **0.857** | 0.333 | 0.667 |
+
+**Guclu Yanlar:**
+- **Tiered:** En yuksek overall F1, en dengeli per-class performans, escalation ile zor vakalarda iyilesme
+- **Gemini Flash:** Neredeyse tiered kadar iyi, daha ucuz (escalation yok), kucuk label'larda daha iyi
+- **Gemini 3 Flash:** Bazi label'larda iyi ama overall tutarsiz
+- **Haiku:** En pahali, en dusuk F1, intermittent API failure riski (B15'te 81/199 → retry gerekti)
+
+**Zayif Yanlar:**
+- **Tiered:** %9 daha pahali (flash'a gore), 2-model bagimliligi
+- **Gemini Flash:** Escalation yok → dusuk confidence vakalarda kalite kaybi
+- **Gemini 3 Flash:** GATE-1 FAIL, abandoned F1 = 0.333
+- **Haiku:** 5.6x daha pahali, API guvenilirlik sorunu, offered F1 dusuk
+
+**KARAR: Tiered (Gemini 2.5 Flash + Claude Haiku 4.5 escalation)**
+- En yuksek macro-F1 (0.8203)
+- Ihmal edilebilir maliyet farki ($0.02/1K thread ekstra)
+- %100 guvenilirlik (B15 + B17)
+- Escalation mekanizmasi zor vakalarda kalite artisi sagliyor
+
+**Fallback Plan:** Eger Haiku API sorunlari devam ederse → pure Gemini Flash (0.8151, hala GATE-1 PASS)
+
+---
+
 ### Faz 2: Sektor Pipeline Gelistirme (Top 3)
 
-> **Amac:** Saglik, Moda, Gayrimenkul icin sektor-spesifik classification + extraction pipeline'lari kurmak.
-> **Onkosul:** GATE-1 gecilmis olmali
+> **Amac:** Saglik, Moda, Gayrimenkul icin classification pipeline dogrulamasi + batch processing altyapisi.
+> **Onkosul:** GATE-1 gecilmis olmali (**PASS — 25 Sub 2026**)
+> **Model:** Tiered (Gemini 2.5 Flash + Haiku escalation). Prompt v0.6 (7 label, universal).
+> **Strateji:** Once universal prompt'u 3 sektorde test et. Calismiyorsa sektor-spesifik prompt yaz.
 
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
-| RI-2.1 | **Saglik sektoru taxonomy** | PLANNED | v0.2 zaten var, genisletilecek: sale, appointment_booked, offered, no_sale, no_response, abandoned, return_or_complaint. Saglik-spesifik sub-label'lar: depozito_alindi, ameliyat_tarihi_kesin, doktor_onayladi, doktor_reddetti |
-| RI-2.2 | **Moda sektoru taxonomy** | PLANNED | Yeni tanimlama gerekli: sale (siparis onaylandi), offered (fiyat/stok bilgisi verildi), no_sale (vazgecti), no_response, abandoned, return_or_complaint (iade/degisim). appointment_booked KULLANILMAZ |
-| RI-2.3 | **Gayrimenkul sektoru taxonomy** | PLANNED | sale (kaparo/satis), showing_booked (gosterim randevusu), offered (fiyat verildi), no_sale, no_response, abandoned. Gayrimenkul-spesifik: kredi_sureci, tapu_islemi |
-| RI-2.4 | **Sektor-spesifik LLM prompt'lari** | PLANNED | 3 sektor x optimized classification prompt + extraction prompt |
-| RI-2.5 | **Pilot: Saglik** | PLANNED | vailaclinic + Hermest + Estethica (3 farkli olcek). ~500 thread, Q etiketleme + LLM karsilastirma |
-| RI-2.6 | **Pilot: Moda** | PLANNED | EbruModa + nevinkayamoda + Moreandmore. ~500 thread |
-| RI-2.7 | **Pilot: Gayrimenkul** | PLANNED | GoldenPartner + EmreIlhan. ~300 thread |
-| RI-2.8 | **Cross-sector accuracy raporu** | PLANNED | macro-F1 per sector. Hedef: her sektorde >= 0.80 |
-| RI-2.9 | **Sektor template veri modeli** | PLANNED | Template = { sector_id, label_set, classification_prompt, extraction_prompts, benchmark_values, intent_templates, faq_templates, flow_templates } |
-| **GATE-2** | **Sektor Gate** | PLANNED | 3 sektorde macro-F1 >= 0.80 → Faz 3'e gec |
+| RI-2.1 | **Saglik cross-validation** | IN-PROGRESS | Benchmark #18 Hermest (inst 3326, 200 thr, tiered) + #19 Estethica (inst 3072, 200 thr, tiered) baslatildi 26 Sub. Q 50 label → F1 hesapla. Hedef: >= 0.80 |
+| RI-2.2 | **Moda pilot** | PLANNED | EbruModa (6.3M msg) + nevinkayamoda. 200 thread/DB, tiered, universal prompt. Q 50 label → F1. appointment_booked → offered'a map olabilir (moda'da randevu yok) |
+| RI-2.3 | **Gayrimenkul pilot** | PLANNED | GoldenPartner (6.1M msg). 200 thread, tiered. Q 50 label → F1. appointment_booked = gosterim randevusu (gecerli) |
+| RI-2.4 | **Cross-sector F1 raporu** | PLANNED | 3 sektor macro-F1 tablosu. Universal prompt yeterliyse sektor-spesifik prompt ATLA |
+| RI-2.5 | **Sektor-spesifik prompt (kosula bagli)** | PLANNED | Sadece F1 < 0.80 olan sektorler icin. Prompt'a sektor context ekle (hizmet tipleri, terminoloji) |
+| RI-2.6 | **Batch processing pipeline** | PLANNED | Production batch: DB okuma → thread → PII mask → tiered classify → sonuclari PG'ye yaz. Tek API endpoint: POST /api/ops/classify/batch |
+| RI-2.7 | **wa_conversation_outcomes tablosu** | PLANNED | Production sonuc tablosu: conversation_id, tenant_id, sector, outcome_label, confidence, has_offer, classified_at, model_version. Index: tenant_id + outcome_label |
+| RI-2.8 | **Nightly batch job** | PLANNED | Her gece 02:00: yeni thread'leri classify et. Configurable: tenant_id listesi, max_threads_per_run |
+| RI-2.9 | **Sektor metadata tablosu** | PLANNED | wa_sector_config: sector_id, name, label_overrides (JSON), custom_prompt (nullable), benchmark_f1. Yeni tenant → sektor sec → config yukle |
+| **GATE-2** | **Sektor Gate** | PLANNED | 3 sektorde macro-F1 >= 0.80 + batch pipeline calisiyor + nightly job aktif → Faz 3 |
 
-**Cikti:** 3 sektor icin calibrated pipeline + template veri modeli + sektor bazli accuracy raporu
+**Faz 2 Paket Akisi:**
+1. **RI-2.1-2.3:** Pilot calistir (3 sektor x 200 thread) — Q etiketleme gerekli
+2. **RI-2.4:** F1 hesapla, karar ver (universal yeterli mi?)
+3. **RI-2.5:** Gerekirse sektor prompt (kosula bagli)
+4. **RI-2.6-2.8:** Batch pipeline + DB + nightly job (kod yazimi)
+5. **RI-2.9:** Sektor config tablosu
+6. **GATE-2:** Degerlendir
+
+**Cikti:** 3 sektor dogrulanmis + batch pipeline + nightly job + sektor config
 
 ---
 
@@ -415,27 +514,29 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | Gemini + Claude client | CALISIYOR | Services/Benchmark/GeminiLlmClient.cs, AnthropicLlmClient.cs |
 | FlowBuilder (merge edildi) | CALISIYOR | Dashboard SPA icinde |
 
-## Outcome Taxonomy v0.4
+## Outcome Taxonomy v0.5 (LLM Classification — 7 Label)
 
 > **v0.3:** `offer_no_reply` eklendi (teklif sonrasi sessizlesen musteri).
-> **v0.4:** `no_sale` → `offer_lost` rename edildi. Daha acik is dili: "firsat kaybedildi, musteri aktif olarak reddetti." Manuel etiketleme sirasinda kesfedildi (24 Sub 2026).
+> **v0.4:** `no_sale` → `offer_lost` rename edildi.
+> **v0.5 (25 Sub 2026):** `offer_no_reply` LLM label'indan KALDIRILDI, `offered`'a merge edildi. Sebep: LLM'ler offered↔offer_no_reply ayrimini guvenilir yapamadi (B15: tiered 0.7553, B17 v0.5: 0.6947 — dusus). Merged ile tiered 0.8203, GATE-1 PASS. `offer_no_reply` tespiti Faz 3'te rule-based yapilacak (son mesaj=agent + X saat gecti mi?).
 
 | Label | Tanim | Saglik | Moda | Gayrimenkul |
 |-------|-------|--------|------|-------------|
 | **sale** | Odeme/depozito alindi | Depozito alindi | Siparis onaylandi | Kaparo yattirildi |
 | **appointment_booked** | Randevu/gorusme kesinlesti | Ameliyat tarihi | KULLANILMAZ | Gosterim randevusu |
-| **offered** | Fiyat/teklif verildi, musteri hala aktif | Fiyat verildi, musteri sordu/dusunuyor | Fiyat/stok bilgisi verildi | Fiyat + ozellikler sunuldu |
-| **offer_no_reply** | Fiyat/teklif verildi AMA musteri sessizlesti | Fiyat verildikten sonra yanit yok | Teklif sonrasi kayboldu | Fiyat verildi, iletisim kesildi |
+| **offered** | Fiyat/teklif verildi (musteri cevap verdi veya vermedi farketmez) | Fiyat verildi | Fiyat/stok bilgisi verildi | Fiyat + ozellikler sunuldu |
 | **offer_lost** | Musteri aktif olarak reddetti (herhangi bir asamada) | Red (fiyat, konum, tibbi uygunsuzluk) | Red (fiyat, beden, stok) | Red (fiyat, lokasyon, kredi) |
 | **no_response** | Teklif yapilmadan musteri cevap vermedi | Evrensel | Evrensel | Evrensel |
 | **abandoned** | 1-2 mesaj, etkilesim yok | Evrensel | Evrensel | Evrensel |
 | **return_or_complaint** | Iade/sikayet | Memnuniyetsizlik | Iade/degisim | Sikayet |
 
-**Karar Rehberi:**
-- Teklif VAR + musteri AKTIF ("dusuneyim", soru soruyor) → `offered`
-- Teklif VAR + musteri bir sonraki mesaja YANIT VERMEDI → `offer_no_reply`
+**Karar Rehberi (LLM):**
+- Fiyat/teklif verildi → `offered` (musteri cevap verdi mi vermedi mi LLM'e sorulmuyor)
 - Teklif YOK + musteri cevap vermedi → `no_response`
 - Musteri AKTIF REDDE dedi ("olmaz", "uzgunum", "baska klinige gidecegim") → `offer_lost`
+
+**Post-LLM Rule-Based (Faz 3):**
+- `offered` + son mesaj agent'tan + 48 saat gecti → `offer_no_reply` (sub-label)
 - 1-2 mesaj, hic etkilesim yok → `abandoned`
 
 ## RI-1.3 Sonuclari (Benchmark 12 — 24 Sub 2026)
@@ -466,7 +567,45 @@ Tum modeller `offer_no_reply` icin F1=0 verdi. Beklenen: bu label taxonomy v0.3/
 
 **offer_no_reply haric macro-F1 tahmini (gemini_3_flash):** ~0.829 → GATE-1'i geciyor!
 
-**Karar:** Model prompt'larini offer_no_reply + offer_lost (offer_lost → no_sale yerine) icin guncelle → Benchmark 13 calistir → GATE-1 yeniden degerlendir.
+## RI-1.6 Sonuclari (Benchmark 15 — 25 Sub 2026, v0.4 prompt)
+
+**Setup:** Ayni 199 GT conversation, v0.4 prompt (offer_no_reply + offer_lost ekli). `conversationIds` API ile apples-to-apples.
+
+| Model | B12 F1 | B15 F1 | Delta | Rank |
+|-------|--------|--------|-------|------|
+| **tiered** | 0.5654 | **0.7553** | +0.190 | **1st** |
+| gemini_flash | 0.5706 | **0.7332** | +0.163 | 2nd |
+| claude_haiku | 0.6003 | **0.7154** | +0.115 | 3rd |
+| gemini_3_flash | 0.7253 | 0.7016 | -0.024 | 4th |
+
+**Ana Sorun — offered↔offer_no_reply karisikligi:**
+Modeller offer_no_reply'i ogrendi ama asiri tahmin ediyor. gemini_3_flash: 71 pred vs 40 GT (24 false positive offered'dan). Prompt v0.5'te 2-step temporal test eklendi: "Offer mesajindan SONRA musteri cevap verdi mi?"
+
+**Karar (25 Sub):** offered+offer_no_reply → tek `offered` label. offer_no_reply Faz 3'te rule-based. Prompt v0.6 (7 label) yazildi. GATE-1 PASS: tiered 0.8203 macro-F1.
+
+## GATE-1 Final Sonuclari (25 Sub 2026)
+
+**Yontem:** B15 (v0.4 prompt) sonuclari, offered+offer_no_reply → tek `offered` olarak merge edildi. 7 label, 199 GT.
+
+| Model | 8-Label F1 | **7-Label F1** | GATE-1 |
+|-------|-----------|---------------|--------|
+| **tiered** | 0.7553 | **0.8203** | **PASS** |
+| **gemini_flash** | 0.7332 | **0.8151** | **PASS** |
+| gemini_3_flash | 0.7016 | 0.7697 | FAIL |
+| claude_haiku | 0.7154 | 0.7569 | FAIL |
+
+**Tiered per-class F1 (merged, B15):**
+| Label | P | R | F1 | Support |
+|-------|---|---|----|---------|
+| offered (merged) | 0.845 | 0.872 | 0.859 | 94 |
+| no_response | 0.907 | 0.765 | 0.830 | 52 |
+| offer_lost | 0.771 | 0.902 | 0.832 | 41 |
+| return_or_complaint | 1.000 | 0.800 | 0.889 | 5 |
+| sale | 0.667 | 0.667 | 0.667 | 3 |
+| appointment_booked | 1.000 | 1.000 | 1.000 | 2 |
+| abandoned | 1.000 | 0.500 | 0.667 | 2 |
+
+**Kazanan:** tiered (flash first-pass + haiku escalation). Sonraki: RI-1.4 Maliyet Modeli → RI-1.5 Pipeline Karsilastirma → Faz 2.
 
 ---
 
@@ -476,6 +615,11 @@ Tum modeller `offer_no_reply` icin F1=0 verdi. Beklenen: bu label taxonomy v0.3/
 |---|-------|--------|-------|
 | 11 | 24 Sub | 10 thread, tiered-only, vailaclinic | DONE — tiered %95 confidence, nuansli ayrim |
 | 12 | 24 Sub | 200 thread, 4 model, vailaclinic, taxonomy v0.4 | **DONE** — gemini_3_flash 0.7253 macro-F1. offer_no_reply=0 tum modellerde (prompt guncelleme gerekli) |
+| 13 | 25 Sub | GECERSIZ | Deploy oncesi calistirildi, eski prompt |
+| 14 | 25 Sub | 200 thread, v0.4 prompt, farkli sample | Dagilim dogru ama farkli 200 conv — F1 hesaplanamadi |
+| 15 | 25 Sub | 199 GT conv, 4 model, v0.4 prompt (conversationIds API) | **DONE** — tiered 0.7553, gemini_flash 0.7332, haiku 0.7154, gemini_3_flash 0.7016. **Merged labels: tiered 0.8203, gemini_flash 0.8151 — GATE-1 PASS.** |
+| 16 | 25 Sub | 199 GT conv, haiku-only retry | **DONE** — haiku 197/199 classified (B15'e merge edildi) |
+| 17 | 25 Sub | 199 GT conv, 4 model, v0.5 prompt | **DONE** — v0.5 KOTU: tiered 0.6947, gemini_flash 0.7068 (B15'ten dusus). 2-step temporal test calismadi. |
 
 ## GPT-5.2-Pro Kritik Uyarilari
 

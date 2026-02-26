@@ -160,7 +160,7 @@ builder.Services.AddHttpClient<KnowledgeIntentClient>((sp, client) =>
 });
 
 // Register KnowledgeSearchClient (typed HttpClient for ai_faq semantic search)
-var knowledgeSearchTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:SearchTimeoutMs", 5000);
+var knowledgeSearchTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:SearchTimeoutMs", 15000);
 builder.Services.AddHttpClient<KnowledgeSearchClient>((sp, client) =>
 {
     client.BaseAddress = new Uri(knowledgeBaseUrl);
@@ -1443,7 +1443,7 @@ app.MapGet("/api/v1/flows/{tenantId:int}/onboarding-stats", async (int tenantId,
         jsonLogger.StepError($"Onboarding stats failed for tenant {tenantId}: {ex.Message}", "-");
         return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationOnboardingStatsFailed, "Failed to retrieve onboarding stats", "-"), statusCode: 500);
     }
-}).RequireAuthorization();
+});
 
 // ============================================================
 // Endpoint discovery

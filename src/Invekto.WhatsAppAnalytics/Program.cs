@@ -212,6 +212,36 @@ if (mssqlConfigured)
     builder.Services.AddHostedService(sp => sp.GetRequiredService<BenchmarkProcessingService>());
 }
 
+// ============================================================
+// Batch Classification services (RI-2.6-2.8)
+// ============================================================
+
+builder.Services.AddSingleton<ConversationOutcomeRepository>();
+builder.Services.AddSingleton<SectorConfigRepository>();
+
+if (mssqlConfigured)
+{
+    builder.Services.AddSingleton<BatchClassificationService>(sp =>
+        new BatchClassificationService(
+            sp.GetRequiredService<ConversationOutcomeRepository>(),
+            sp.GetRequiredService<MssqlReaderService>(),
+            sp.GetRequiredService<PiiMasker>(),
+            sp.GetRequiredService<OutcomeClassifierService>(),
+            sp,
+            sp.GetRequiredService<JsonLinesLogger>(),
+            benchmarkDelay,
+            benchmarkMaxTextLen,
+            benchmarkMinMsgs,
+            benchmarkMaxMsgs));
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<BatchClassificationService>());
+
+    // Nightly batch job
+    var nightlyConfig = new NightlyBatchConfig();
+    builder.Configuration.GetSection("NightlyBatch").Bind(nightlyConfig);
+    builder.Services.AddSingleton(nightlyConfig);
+    builder.Services.AddHostedService<NightlyBatchJob>();
+}
+
 var app = builder.Build();
 
 // Ensure upload directory exists
@@ -727,12 +757,15 @@ app.MapPost("/api/ops/benchmark/start", async (
         return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, $"Invalid request: {ex.Message}", requestId), statusCode: 400);
     }
 
-    var sampleSize = Math.Clamp(req.SampleSize, 1, 5000);
+    var sampleSize = req.ConversationIds is { Length: > 0 }
+        ? req.ConversationIds.Length
+        : Math.Clamp(req.SampleSize, 1, 5000);
     var config = JsonSerializer.Serialize(new
     {
         models = req.Models ?? new[] { "claude_haiku", "claude_sonnet", "gemini_flash", "gemini_pro", "gemini_3_flash", "tiered" },
         min_messages = req.MinMessages ?? benchmarkMinMsgs,
-        max_messages = req.MaxMessages ?? benchmarkMaxMsgs
+        max_messages = req.MaxMessages ?? benchmarkMaxMsgs,
+        explicit_conversation_ids = req.ConversationIds?.Length ?? 0
     });
 
     // tenantId = 0 for ops benchmarks (not tenant-scoped)
@@ -747,7 +780,8 @@ app.MapPost("/api/ops/benchmark/start", async (
         SampleSize = sampleSize,
         MinMessages = req.MinMessages ?? benchmarkMinMsgs,
         MaxMessages = req.MaxMessages ?? benchmarkMaxMsgs,
-        Models = req.Models ?? new[] { "claude_haiku", "claude_sonnet", "gemini_flash", "gemini_pro", "gemini_3_flash", "tiered" }
+        Models = req.Models ?? new[] { "claude_haiku", "claude_sonnet", "gemini_flash", "gemini_pro", "gemini_3_flash", "tiered" },
+        ConversationIds = req.ConversationIds
     });
 
     jsonLogger.StepInfo($"Benchmark started: id={benchmarkId}, db={req.Database}, sample={sampleSize}", requestId);
@@ -877,6 +911,90 @@ app.MapPut("/api/ops/benchmark/{id:int}/ground-truth", async (
 });
 
 // ============================================================
+// Batch Classification endpoints (RI-2.6)
+// ============================================================
+
+// POST /api/ops/classify/batch — Start async batch classification
+app.MapPost("/api/ops/classify/batch", async (
+    HttpContext ctx,
+    ConversationOutcomeRepository outcomeRepo,
+    BatchClassificationService? batchService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    if (batchService == null || !mssqlConfigured)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, "MSSQL not configured — batch unavailable", requestId), statusCode: 503);
+
+    BatchStartRequest? req;
+    try
+    {
+        req = await JsonSerializer.DeserializeAsync<BatchStartRequest>(ctx.Request.Body,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (req == null || string.IsNullOrWhiteSpace(req.Database))
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, "database is required", requestId), statusCode: 400);
+        if (req.TenantId <= 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, "tenant_id is required", requestId), statusCode: 400);
+    }
+    catch (JsonException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkInvalidConfig, $"Invalid request: {ex.Message}", requestId), statusCode: 400);
+    }
+
+    var jobId = await outcomeRepo.CreateBatchJobAsync(
+        req.TenantId, req.Database, req.InstanceId, req.Sector, "manual", req.LookbackDays);
+
+    batchService.Enqueue(new BatchProcessJob
+    {
+        BatchJobId = jobId,
+        TenantId = req.TenantId,
+        DatabaseName = req.Database,
+        InstanceId = req.InstanceId,
+        Sector = req.Sector,
+        LookbackDays = req.LookbackDays,
+        MaxThreads = req.MaxThreads
+    });
+
+    jsonLogger.StepInfo($"Batch job created: id={jobId}, db={req.Database}, tenant={req.TenantId}", requestId);
+    return Results.Ok(new { batchJobId = jobId, status = "pending", database = req.Database, tenantId = req.TenantId });
+});
+
+// GET /api/ops/classify/batch/{id} — Batch job status
+app.MapGet("/api/ops/classify/batch/{id:int}", async (
+    int id,
+    HttpContext ctx,
+    ConversationOutcomeRepository outcomeRepo) =>
+{
+    if (!ValidateOpsKey(ctx)) return Results.StatusCode(401);
+    var job = await outcomeRepo.GetBatchJobAsync(id);
+    if (job == null) return Results.NotFound();
+    return Results.Ok(job);
+});
+
+// GET /api/ops/outcomes/{tenantId}/distribution — Label distribution for a tenant
+app.MapGet("/api/ops/outcomes/{tenantId:int}/distribution", async (
+    int tenantId,
+    HttpContext ctx,
+    ConversationOutcomeRepository outcomeRepo) =>
+{
+    if (!ValidateOpsKey(ctx)) return Results.StatusCode(401);
+    var dist = await outcomeRepo.GetLabelDistributionAsync(tenantId);
+    return Results.Ok(new { tenantId, distribution = dist, total = dist.Values.Sum() });
+});
+
+// GET /api/ops/sectors — List sector configs
+app.MapGet("/api/ops/sectors", async (
+    HttpContext ctx,
+    SectorConfigRepository sectorRepo) =>
+{
+    if (!ValidateOpsKey(ctx)) return Results.StatusCode(401);
+    var sectors = await sectorRepo.GetAllAsync();
+    return Results.Ok(sectors);
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -903,6 +1021,10 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/benchmark/{id}/results", Description = "Get benchmark results", Auth = "X-Ops-Key", Category = "Benchmark" },
         new() { Method = "GET", Path = "/api/ops/benchmark/{id}/metrics", Description = "Get comparison metrics", Auth = "X-Ops-Key", Category = "Benchmark" },
         new() { Method = "PUT", Path = "/api/ops/benchmark/{id}/ground-truth", Description = "Update ground truth labels", Auth = "X-Ops-Key", Category = "Benchmark" },
+        new() { Method = "POST", Path = "/api/ops/classify/batch", Description = "Start async batch classification", Auth = "X-Ops-Key", Category = "Batch" },
+        new() { Method = "GET", Path = "/api/ops/classify/batch/{id}", Description = "Batch job status", Auth = "X-Ops-Key", Category = "Batch" },
+        new() { Method = "GET", Path = "/api/ops/outcomes/{tenantId}/distribution", Description = "Outcome label distribution", Auth = "X-Ops-Key", Category = "Batch" },
+        new() { Method = "GET", Path = "/api/ops/sectors", Description = "List sector configs", Auth = "X-Ops-Key", Category = "Batch" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

@@ -72,6 +72,7 @@ public sealed class BenchmarkProcessJob
     public int MinMessages { get; set; } = 6;
     public int MaxMessages { get; set; } = 200;
     public string[] Models { get; set; } = Array.Empty<string>();
+    public string[]? ConversationIds { get; set; }
 }
 
 /// <summary>
@@ -85,6 +86,7 @@ public sealed class BenchmarkStartRequest
     public int? MinMessages { get; set; }
     public int? MaxMessages { get; set; }
     public string[]? Models { get; set; }
+    public string[]? ConversationIds { get; set; }
 }
 
 /// <summary>
@@ -99,7 +101,7 @@ public sealed class LlmClassification
 
     private static readonly string[] ValidLabels =
     {
-        "sale", "appointment_booked", "offered", "offer_no_reply", "offer_lost",
+        "sale", "appointment_booked", "offered", "offer_lost",
         "no_response", "abandoned", "return_or_complaint"
     };
 
@@ -151,6 +153,7 @@ public sealed class LlmClassification
                 "booked" => "appointment_booked",
                 "appointment" => "appointment_booked",
                 "no_sale" => "offer_lost",
+                "offer_no_reply" => "offered",
                 _ => parsed.Label
             };
 

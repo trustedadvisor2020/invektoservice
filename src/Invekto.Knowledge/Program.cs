@@ -314,6 +314,7 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/faqs", async (
     int tenantId,
     HttpContext ctx,
     KnowledgeRepository repo,
+    EmbeddingService embeddingService,
     JsonLinesLogger jsonLogger,
     HttpRequest request) =>
 {
@@ -344,6 +345,25 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/faqs", async (
         if (faq == null)
             return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeImportDbError, $"FAQ with this question already exists for tenant {tenantId}", requestId), statusCode: 409);
 
+        // Generate embedding in background (fire-and-forget, don't block response)
+        if (embeddingService.IsAvailable && faq.Id > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var text = $"{body.Question} {body.Answer}";
+                    var embedding = await embeddingService.GetEmbeddingAsync(text);
+                    if (embedding != null)
+                        await repo.UpdateFaqEmbeddingAsync(tenantId, faq.Id, embedding);
+                }
+                catch (Exception ex)
+                {
+                    jsonLogger.SystemWarn($"FAQ {faq.Id} embedding generation failed: {ex.Message}");
+                }
+            });
+        }
+
         return Results.Json(faq, statusCode: 201);
     }
     catch (Exception ex)
@@ -358,6 +378,7 @@ app.MapPut("/api/v1/knowledge/{tenantId:int}/faqs/{faqId:int}", async (
     int tenantId, int faqId,
     HttpContext ctx,
     KnowledgeRepository repo,
+    EmbeddingService embeddingService,
     JsonLinesLogger jsonLogger,
     HttpRequest request) =>
 {
@@ -385,6 +406,28 @@ app.MapPut("/api/v1/knowledge/{tenantId:int}/faqs/{faqId:int}", async (
         var updated = await repo.UpdateFaqAsync(tenantId, faqId, body.Question, body.Answer, body.Category, body.Lang, body.Keywords);
         if (updated == null)
             return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeFaqNotFound, $"FAQ {faqId} not found", requestId), statusCode: 404);
+
+        // Regenerate embedding when question or answer changes (fire-and-forget)
+        if (embeddingService.IsAvailable && (body.Question != null || body.Answer != null))
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var q = body.Question ?? updated.Question ?? "";
+                    var a = body.Answer ?? updated.Answer ?? "";
+                    var text = $"{q} {a}";
+                    var embedding = await embeddingService.GetEmbeddingAsync(text);
+                    if (embedding != null)
+                        await repo.UpdateFaqEmbeddingAsync(tenantId, faqId, embedding);
+                }
+                catch (Exception ex)
+                {
+                    jsonLogger.SystemWarn($"FAQ {faqId} embedding regeneration failed: {ex.Message}");
+                }
+            });
+        }
+
         return Results.Ok(updated);
     }
     catch (Exception ex)
@@ -819,13 +862,14 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/generate-embeddings", async (
 
     try
     {
-        var pending = await repo.GetFaqsWithoutEmbeddingAsync(tenantId, limit: 100);
-        if (pending.Count == 0)
-            return Results.Ok(new { message = "All FAQs already have embeddings", generated = 0 });
-
         var generated = 0;
         var failed = 0;
-        foreach (var (faqId, text) in pending)
+        var total = 0;
+
+        // 1. FAQ embeddings
+        var pendingFaqs = await repo.GetFaqsWithoutEmbeddingAsync(tenantId, limit: 100);
+        total += pendingFaqs.Count;
+        foreach (var (faqId, text) in pendingFaqs)
         {
             var embedding = await embeddingService.GetEmbeddingAsync(text);
             if (embedding != null)
@@ -840,8 +884,35 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/generate-embeddings", async (
             }
         }
 
-        jsonLogger.StepInfo($"Embedding generation: {generated} generated, {failed} failed out of {pending.Count}", requestId);
-        return Results.Ok(new { message = $"Generated {generated} embeddings", generated, failed, total = pending.Count });
+        // 2. Document chunk embeddings
+        var pendingChunks = await repo.GetChunksWithoutEmbeddingAsync(tenantId, limit: 200);
+        total += pendingChunks.Count;
+        if (pendingChunks.Count > 0)
+        {
+            var chunkUpdates = new List<(long ChunkId, Pgvector.Vector Embedding)>();
+            foreach (var (chunkId, text) in pendingChunks)
+            {
+                var embedding = await embeddingService.GetEmbeddingAsync(text);
+                if (embedding != null)
+                {
+                    chunkUpdates.Add((chunkId, embedding));
+                    generated++;
+                }
+                else
+                {
+                    failed++;
+                    jsonLogger.SystemWarn($"Embedding generation failed for chunk {chunkId}");
+                }
+            }
+            if (chunkUpdates.Count > 0)
+                await repo.BatchUpdateChunkEmbeddingsAsync(tenantId, chunkUpdates);
+        }
+
+        if (total == 0)
+            return Results.Ok(new { message = "All FAQs and chunks already have embeddings", generated = 0 });
+
+        jsonLogger.StepInfo($"Embedding generation: {generated} generated, {failed} failed out of {total} (FAQs: {pendingFaqs.Count}, chunks: {pendingChunks.Count})", requestId);
+        return Results.Ok(new { message = $"Generated {generated} embeddings", generated, failed, total });
     }
     catch (Exception ex)
     {

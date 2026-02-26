@@ -81,6 +81,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
         content: (m.content ?? m.Content ?? '') as string,
         timestamp: (m.timestamp ?? m.Timestamp ?? '') as string,
         flow_config_snapshot: (m.flow_config_snapshot ?? m.FlowConfigSnapshot) as WizardMessage['flow_config_snapshot'],
+        options: (m.options ?? m.Options) as WizardMessage['options'],
       }));
       set({ messages: history });
     } catch (err: unknown) {

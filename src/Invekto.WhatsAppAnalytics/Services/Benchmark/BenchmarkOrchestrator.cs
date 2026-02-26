@@ -193,40 +193,52 @@ public sealed class BenchmarkOrchestrator
         await using var conn = new SqlConnection(connStr);
         await conn.OpenAsync(ct);
 
-        // Step 1: Find random conversation IDs with message count in range
-        var candidateQuery = @"
-            SELECT TOP (@sampleSize) sub.conversation_id, sub.msg_count
-            FROM (
-                SELECT
-                    C.CustomerPhoneNumber AS conversation_id,
-                    COUNT(*) AS msg_count
-                FROM ChatMessages CM WITH (NOLOCK)
-                INNER JOIN Chats C WITH (NOLOCK) ON CM.ChatID = C.ID
-                WHERE CM.MessageType = 1
-                  AND CM.SystemMessageType IS NULL
-                  AND C.CustomerPhoneNumber IS NOT NULL
-                  AND C.IsGroup = 0
-                  AND LEN(CM.Body) > 0
-                  AND CM.Body NOT IN (N'Dosya İndirilememiştir', N'Media could not be downloaded')
-                  AND C.InstanceID = @instanceId
-                GROUP BY C.CustomerPhoneNumber
-                HAVING COUNT(*) >= @minMsgs AND COUNT(*) <= @maxMsgs
-            ) sub
-            ORDER BY NEWID()";
-
-        await using var candidateCmd = new SqlCommand(candidateQuery, conn);
-        candidateCmd.CommandTimeout = 120;
-        candidateCmd.Parameters.AddWithValue("@sampleSize", job.SampleSize);
-        candidateCmd.Parameters.AddWithValue("@instanceId", job.InstanceId ?? 0);
-        candidateCmd.Parameters.AddWithValue("@minMsgs", job.MinMessages);
-        candidateCmd.Parameters.AddWithValue("@maxMsgs", job.MaxMessages);
-
         var candidates = new List<(string conversationId, int msgCount)>();
-        await using (var reader = await candidateCmd.ExecuteReaderAsync(ct))
+
+        if (job.ConversationIds is { Length: > 0 })
         {
-            while (await reader.ReadAsync(ct))
+            // Explicit conversation IDs provided — skip random sampling
+            foreach (var id in job.ConversationIds)
+                candidates.Add((id, 0));
+
+            _logger.SystemInfo($"[BenchmarkOrchestrator] Using {candidates.Count} explicit conversation IDs (skip random sampling)");
+        }
+        else
+        {
+            // Step 1: Find random conversation IDs with message count in range
+            var candidateQuery = @"
+                SELECT TOP (@sampleSize) sub.conversation_id, sub.msg_count
+                FROM (
+                    SELECT
+                        C.CustomerPhoneNumber AS conversation_id,
+                        COUNT(*) AS msg_count
+                    FROM ChatMessages CM WITH (NOLOCK)
+                    INNER JOIN Chats C WITH (NOLOCK) ON CM.ChatID = C.ID
+                    WHERE CM.MessageType = 1
+                      AND CM.SystemMessageType IS NULL
+                      AND C.CustomerPhoneNumber IS NOT NULL
+                      AND C.IsGroup = 0
+                      AND LEN(CM.Body) > 0
+                      AND CM.Body NOT IN (N'Dosya İndirilememiştir', N'Media could not be downloaded')
+                      AND C.InstanceID = @instanceId
+                    GROUP BY C.CustomerPhoneNumber
+                    HAVING COUNT(*) >= @minMsgs AND COUNT(*) <= @maxMsgs
+                ) sub
+                ORDER BY NEWID()";
+
+            await using var candidateCmd = new SqlCommand(candidateQuery, conn);
+            candidateCmd.CommandTimeout = 120;
+            candidateCmd.Parameters.AddWithValue("@sampleSize", job.SampleSize);
+            candidateCmd.Parameters.AddWithValue("@instanceId", job.InstanceId ?? 0);
+            candidateCmd.Parameters.AddWithValue("@minMsgs", job.MinMessages);
+            candidateCmd.Parameters.AddWithValue("@maxMsgs", job.MaxMessages);
+
+            await using (var reader = await candidateCmd.ExecuteReaderAsync(ct))
             {
-                candidates.Add((reader.GetString(0), reader.GetInt32(1)));
+                while (await reader.ReadAsync(ct))
+                {
+                    candidates.Add((reader.GetString(0), reader.GetInt32(1)));
+                }
             }
         }
 

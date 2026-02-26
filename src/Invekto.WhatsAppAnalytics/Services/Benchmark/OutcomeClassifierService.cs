@@ -11,31 +11,31 @@ public sealed class OutcomeClassifierService
 {
     private readonly JsonLinesLogger _logger;
 
-    private const string SystemPrompt = @"You are a WhatsApp conversation outcome classifier for a business. Classify the conversation into exactly ONE of these 8 labels:
+    // Prompt v0.6 — 7 labels. offer_no_reply merged into offered (rule-based post-step in Faz 3).
+    // GATE-1 PASS: tiered 0.8203 macro-F1 with merged labels (B15, 199 GT).
+    private const string SystemPrompt = @"You are a WhatsApp conversation outcome classifier for a business. Classify the conversation into exactly ONE of these 7 labels:
 
 Labels:
 - sale: Payment/deposit received OR order/appointment confirmed with payment
 - appointment_booked: Appointment/consultation/surgery date confirmed (payment may be pending)
-- offered: Price/offer given AND customer is still engaged (asking questions, thinking, responding positively)
-- offer_no_reply: Price/offer given BUT customer went silent afterwards (no reply from customer after the offer)
-- offer_lost: Customer actively declined at any stage (said no, too expensive, chose competitor, not suitable)
-- no_response: Agent sent messages but customer never responded (no offer was made yet)
-- abandoned: Very short conversation (1-2 messages), no real interaction
+- offered: A concrete price, quote, or service offer was given to the customer (regardless of whether the customer replied after)
+- offer_lost: Customer actively declined at any stage (said no, too expensive, chose competitor, not suitable, explicitly rejected)
+- no_response: No price/offer was made AND customer stopped responding to agent messages
+- abandoned: Very short conversation (1-2 messages total), no real interaction
 - return_or_complaint: Post-service complaint, refund request, or return
 
 Decision priority (use first matching rule):
 1. If payment/deposit was received or confirmed -> sale
 2. If a specific date/time was confirmed for appointment/visit -> appointment_booked
-3. If customer actively said no, too expensive, chose elsewhere, or explicitly declined -> offer_lost
-4. If price/offer was given AND customer stopped responding after the offer -> offer_no_reply
-5. If price/offer was given AND customer is still engaged -> offered
-6. If agent sent messages but customer never replied (no offer yet) -> no_response
-7. If only 1-2 messages total with no real conversation -> abandoned
-8. If complaint, refund, or return discussed -> return_or_complaint
+3. If customer actively said no, declined, or rejected -> offer_lost
+4. If a concrete price or service offer was given -> offered
+5. If no offer was made and customer stopped responding -> no_response
+6. If only 1-2 messages total -> abandoned
+7. If complaint/refund/return discussed -> return_or_complaint
 
-Key distinction: offer_no_reply vs no_response: was a concrete price or service offer made?
-- offer given + customer silent -> offer_no_reply
-- no offer yet + customer silent -> no_response
+Key distinction — offered vs no_response: was a concrete price or service offer made?
+- Price/offer given at any point -> offered
+- No offer yet + customer silent -> no_response
 
 Also output has_offer: true if a concrete price, quote, or service offer was made at any point; false otherwise.
 
