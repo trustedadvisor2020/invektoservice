@@ -558,7 +558,7 @@ public sealed class ClaudeWizardService
         sb.AppendLine("outbound_trigger: data: { label, campaign_variable }.");
         sb.AppendLine("schedule_trigger: data: { label, cron_expression, timezone }.");
         sb.AppendLine();
-        sb.AppendLine("message_text: data: { label, text }. text ZORUNLU — gonderilecek mesaj metni. {{degisken}} destekli. ASLA bos birakma!");
+        sb.AppendLine("message_text: data: { label, text, wait_for_input }. text ZORUNLU — gonderilecek mesaj metni. {{degisken}} destekli. ASLA bos birakma! wait_for_input: true ise mesaj gonderildikten sonra akis durur ve kullanicinin yanitini bekler. Kullanicidan bilgi isteyen mesajlar (ad, telefon, adres, numara vb.) icin wait_for_input: true KULLAN! Bilgilendirme mesajlari icin false veya belirtme.");
         sb.AppendLine("message_menu: data: { label, text, options }. text = baslik metni. options = [{key:\"1\",label:\"Secenek 1\",handle_id:\"opt_1\"}, ...]. Her secenek icin ayri edge cikisi.");
         sb.AppendLine();
         sb.AppendLine("logic_condition: data: { label, variable, operator, value }. operator: equals|contains|starts_with|greater_than|less_than|is_empty|regex. Cikis: sourceHandle=\"true_handle\" veya \"false_handle\".");
@@ -576,6 +576,7 @@ public sealed class ClaudeWizardService
         sb.AppendLine("utility_note: data: { label, text }. Sadece tasarimci notu, calistirilmaz.");
         sb.AppendLine();
         sb.AppendLine("KRITIK: message_text icin text alani ASLA bos olamaz! Kullaniciyla konusarak belirlenen mesaj metnini data.text'e yaz.");
+        sb.AppendLine("KRITIK: Kullanicidan bilgi toplayan message_text node'larinda (isim, telefon, adres, numara vb. soran) wait_for_input: true ZORUNLU! Aksi halde akis durmadan tum mesajlari arka arkaya gonderir.");
         sb.AppendLine("</node_registry>");
         sb.AppendLine();
 

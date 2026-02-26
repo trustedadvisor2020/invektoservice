@@ -1,0 +1,57 @@
+{
+  "slug": "20260226-fb-panel-slide-wait-input",
+  "title": "Flow Builder: Panel slide animation + AI wait_for_input fix",
+  "status": "REVIEW",
+  "risk_level": "LOW",
+  "created_at": "2026-02-26T14:00:00Z",
+  "updated_at": "2026-02-26T14:00:00Z",
+  "summary": "Two flow builder fixes: (1) NodePropertyPanel slides in/out with CSS transition instead of always showing, (2) AI wizard system prompt updated to include wait_for_input field for message_text nodes so AI-generated flows correctly pause for user input.",
+  "packages": [
+    {
+      "id": "PKT-1",
+      "title": "NodePropertyPanel slide animation",
+      "description": "Replace always-visible 256px sidebar with transition-based slide. Width animates from 0 to 256px when node selected, collapses when deselected.",
+      "files": ["src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx"]
+    },
+    {
+      "id": "PKT-2",
+      "title": "AI wizard wait_for_input prompt fix",
+      "description": "Add wait_for_input to message_text node_registry description in ClaudeWizardService BuildSystemPrompt. Add KRITIK rule for mandatory wait_for_input on info-collecting nodes.",
+      "files": ["src/Invekto.Backend/Services/ClaudeWizardService.cs"]
+    }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx",
+    "src/Invekto.Backend/Services/ClaudeWizardService.cs"
+  ],
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the panel correctly animate width from 0 to 256px on node select and back to 0 on deselect?",
+      "category": "functionality"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the inner content only rendered when a node is selected (no DOM waste)?",
+      "category": "performance"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the AI system prompt clearly instruct setting wait_for_input: true for question-asking message_text nodes?",
+      "category": "functionality"
+    },
+    {
+      "id": "Q4",
+      "question": "Are there any regressions in existing NodePropertyPanel behavior (type-specific editors, delete button, label input)?",
+      "category": "regression"
+    }
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/ClaudeWizardService.cs", "is_new": false }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260226-fb-panel-slide-wait-input.diff",
+    "stats": { "insertions": 14, "deletions": 14, "files_count": 2 }
+  }
+}

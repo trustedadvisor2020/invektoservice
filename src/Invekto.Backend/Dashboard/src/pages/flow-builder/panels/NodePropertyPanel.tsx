@@ -17,6 +17,7 @@ import type {
   ActionApiCallData,
   ActionDelayData,
   ActionHandoffData,
+  ActionAssignGroupData,
   ActionCallFlowData,
   UtilitySetVariableData,
   UtilityNoteData,
@@ -32,25 +33,22 @@ export function NodePropertyPanel() {
     ? nodes.find((n) => n.id === selectedNodeId)
     : null;
 
-  if (!selectedNode) {
-    return (
-      <div className="w-64 bg-white border-l border-navy-100 flex-shrink-0 flex items-center justify-center">
-        <p className="text-sm text-navy-300 text-center px-4">
-          Ozelliklerini duzenlemek icin bir node secin
-        </p>
-      </div>
-    );
-  }
+  const isOpen = !!selectedNode;
 
-  const nodeType = selectedNode.type as FlowNodeType;
-  const info = getNodeTypeInfo(nodeType);
+  const nodeType = selectedNode ? (selectedNode.type as FlowNodeType) : null;
+  const info = nodeType ? getNodeTypeInfo(nodeType) : null;
 
   const update = (data: Record<string, unknown>) => {
-    updateNodeData(selectedNode.id, data);
+    if (selectedNode) updateNodeData(selectedNode.id, data);
   };
 
   return (
-    <div className="w-64 bg-white border-l border-navy-100 flex-shrink-0 overflow-y-auto">
+    <div
+      className="bg-white border-l border-navy-100 flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
+      style={{ width: isOpen ? 256 : 0 }}
+    >
+      {!selectedNode ? null : (
+      <div className="w-64 overflow-y-auto h-full">
       {/* Header */}
       <div className="p-3 border-b border-navy-100">
         <div className="flex items-center gap-2">
@@ -92,6 +90,9 @@ export function NodePropertyPanel() {
         {nodeType === 'logic_switch' && (
           <LogicSwitchProps data={selectedNode.data as LogicSwitchData} onChange={update} />
         )}
+        {nodeType === 'logic_working_hours' && (
+          <LogicWorkingHoursProps />
+        )}
         {nodeType === 'ai_intent' && (
           <AiIntentProps data={selectedNode.data as AiIntentData} onChange={update} />
         )}
@@ -106,6 +107,9 @@ export function NodePropertyPanel() {
         )}
         {nodeType === 'action_handoff' && (
           <ActionHandoffProps data={selectedNode.data as ActionHandoffData} onChange={update} />
+        )}
+        {nodeType === 'action_assign_group' && (
+          <ActionAssignGroupProps data={selectedNode.data as ActionAssignGroupData} onChange={update} />
         )}
         {nodeType === 'utility_set_variable' && (
           <UtilitySetVariableProps data={selectedNode.data as UtilitySetVariableData} onChange={update} />
@@ -141,6 +145,8 @@ export function NodePropertyPanel() {
           </div>
         )}
       </div>
+      </div>
+      )}
     </div>
   );
 }
@@ -1192,6 +1198,57 @@ function CallFlowProps({
       <p className="text-xs text-navy-300">
         Alt flow tamamlandiginda <strong>completed</strong>, hata olursa <strong>error</strong> dalina yonlenir.
       </p>
+    </>
+  );
+}
+
+function LogicWorkingHoursProps() {
+  return (
+    <div className="p-2 rounded-md bg-amber-50 border border-amber-100">
+      <p className="text-xs text-amber-700">
+        Bu node tenant ayarlarindaki mesai saatlerini kullanir.
+        Cikis: <strong>within_hours</strong> (mesai ici) / <strong>outside_hours</strong> (mesai disi).
+      </p>
+    </div>
+  );
+}
+
+function ActionAssignGroupProps({
+  data,
+  onChange,
+}: {
+  data: ActionAssignGroupData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  return (
+    <>
+      <FieldGroup label="Grup ID">
+        <input
+          type="text"
+          value={data.group_id ?? ''}
+          onChange={(e) => onChange({ group_id: e.target.value })}
+          placeholder="INMA'dan gelen grup ID"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+        />
+      </FieldGroup>
+      <FieldGroup label="Grup Adi (Gorsel)">
+        <input
+          type="text"
+          value={data.group_name ?? ''}
+          onChange={(e) => onChange({ group_name: e.target.value })}
+          placeholder="Ornegin: Satis Ekibi"
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+        />
+      </FieldGroup>
+      <FieldGroup label="Ozet Sablonu (Opsiyonel)">
+        <textarea
+          value={data.summary_template ?? ''}
+          onChange={(e) => onChange({ summary_template: e.target.value })}
+          placeholder="Degisken kullanabilirsiniz: {{musteri_adi}}"
+          rows={3}
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 resize-none"
+        />
+      </FieldGroup>
     </>
   );
 }
