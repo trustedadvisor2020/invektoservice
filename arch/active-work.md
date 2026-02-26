@@ -6,12 +6,16 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| - | (empty) | - | - |
+| 1 | RI-2.1: Saglik cross-validation (Hermest + Estethica) | WAITING | Q must label 50 threads |
+| 2 | RI-2.2: Moda pilot (EbruModa + nevinkayamoda) | WAITING | Q must label 50 threads |
+| 3 | RI-2.3: Gayrimenkul pilot (GoldenPartner) | WAITING | Q must label 50 threads |
+| 4 | RI-2.4: Cross-sector F1 raporu | BLOCKED | Depends on RI-2.1~2.3 |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-02-26 | RI-Faz2 Batch Pipeline + Cross-session Cleanup — 6 new WA files (batch/nightly/outcome/sector), 2 SQL schemas, multi-sector benchmark, cross-session fixes (KnowledgePage logging, tenant_id filter, FAQ embedding, lang removal, severity sync, FlowList, NodePropertyPanel). 52 files, 4 service deploy (all HEALTHY). |
 | 2026-02-24 | FlowListPage + Sidebar Redesign — Gradient icon circles, search/filter, staggered animations, skeleton loading, timeAgo relative dates, modal X close, row layout, sidebar icon containers + brand active state + red hover logout. Deploy HEALTHY. |
 | 2026-02-24 | Onboarding + Template Library UI/UX Redesign — OnboardingWizardPage (dark hero, SVG progress, timeline, accordion), TemplateLibraryPage (category-grouped, INTENT_TR, FAQ_TOPICS, examples), FAQ DB cleanup (39 unpublish, 9 kaldi), 4+ iterative deploy |
 | 2026-02-24 | Dashboard UI Redesign — Glass morphism sidebar, Plus Jakarta Sans + DM Sans typography, root 18px, icon containers, Power logout icon, 6x iterative deploy |

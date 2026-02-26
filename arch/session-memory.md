@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-24
-- **Status:** FlowListPage + Sidebar UI/UX redesign tamamlandi, deploy edildi.
-- **Last Task:** (1) FlowListPage redesign (gradient icon circles, search/filter, staggered animations, skeleton loading, timeAgo, redesigned modals with X close, row layout), (2) Sidebar icon enhancement (icon containers, brand-colored active state, red hover logout), (3) Full Backend deploy (HEALTHY).
-- **Next Task:** Diger feature/paket calismasi veya UI polish devami.
+- **Date:** 2026-02-26
+- **Status:** RI-Faz2 batch pipeline + cross-session cleanup committed, deployed (4 service HEALTHY).
+- **Last Task:** (1) RI-Faz2 RI-2.6~2.9: BatchClassificationService, NightlyBatchJob, ConversationOutcomeRepository, SectorConfigRepository, wa_conversation_outcomes + wa_sector_config SQL, BenchmarkOrchestrator multi-sector. (2) Cross-session: KnowledgePage error logging fix, Automation DeleteFlow tenant_id filter, Knowledge FAQ embedding gen, Backend endpoint updates, Dashboard graph-validator severity sync + FlowList redesign + NodePropertyPanel enhancements. (3) Codex 3-chunk review, 2 fixes, FORCE PASS. (4) Deploy: Backend + Automation + Knowledge + WhatsAppAnalytics (all HEALTHY).
+- **Next Task:** RI-2.1~2.4: Saglik/Moda/Gayrimenkul cross-validation benchmarks + cross-sector F1 raporu. Q must provide ground truth labels (50 thread per sector).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -93,6 +93,8 @@ src/
 | 2026-02-23 | Template System (Sablon Sistemi) | Knowledge 7104 genisletildi: 5 tip (FAQ/Message/Intent/Flow/Scenario), 3 katman (Platform>Sector>Tenant), pgvector cosine similarity, suggestion queue, superadmin review UI, tenant onboarding. 19 dosya, 4243 insertion. Codex 5-chunk, 4 iter, PASS. |
 | 2026-02-23 | Ebrumoda Full Pipeline | 2.1M satirlik WA CSV → pipeline (Claude skip, keyword-only intent) → 3,159 template suggestion → 60 approved+published (12 intent + 48 FAQ), 3,099 rejected. FormOptions fix (128MB→500MB multipart limit). |
 | 2026-02-23 | Flow Execution Log + Instance Bug Fix | flow_execution_log tablosu + Automation fire-and-forget logging + FlowLogPanel UI + instance-aware GetMessageStoryAsync. Codex main 4 iter FORCE PASS, fix 2 iter FORCE PASS. SQL + deploy (Backend + Automation HEALTHY). |
+| 2026-02-26 | RI-Faz2 batch pipeline | BatchClassificationService + NightlyBatchJob + ConversationOutcomeRepository + SectorConfigRepository + multi-sector BenchmarkOrchestrator. 2 SQL schema (wa_conversation_outcomes, wa_sector_config). Codex 3-chunk, FORCE PASS. |
+| 2026-02-26 | Cross-session cleanup | 30 files from 5+ sessions: Automation tx fix + tenant_id filter, Knowledge FAQ embedding + lang removal, Backend endpoint updates, Dashboard severity sync + FlowList + NodePropertyPanel + KnowledgePage error logging. |
 | 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
 
 ## Q Pending Operational Tasks
