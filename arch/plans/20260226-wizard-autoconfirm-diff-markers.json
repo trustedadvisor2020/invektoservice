@@ -1,0 +1,133 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260226-wizard-autoconfirm-diff-markers",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-02-26T11:30:00Z",
+  "updated_at": "2026-02-26T11:30:00Z",
+  "plan": {
+    "summary": "Wizard'da yeni akis olusturulunca preview atlanip direkt editore yonlendirme. Editor'de AI Chat degisiklik onerdiginde canvas uzerinde Eklendi/Degisti/Silindi node isaretleri. Ayrica onceki session'dan kalan flow activate/deactivate toggle eklentisi.",
+    "q_intent": "akis preview olarak gostermeye gerek yok. dogrudan akisi goster. ama akis zaten var ve degisiklik yapiliyorsa o zaman eklendi, degisti, silindi gibi nodelari isaretle.",
+    "interview_notes": null
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/stores/wizard-store.ts",
+    "src/Invekto.Backend/Dashboard/src/stores/flow-store.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/WizardPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowEditorPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/WizardChat.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/WizardPreview.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/FlowCanvas.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/BaseNode.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/Toolbar.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/stores/wizard-store.ts", "is_new": false, "change": "Added autoConfirmPending flag and clearAutoConfirm action" },
+    { "path": "src/Invekto.Backend/Dashboard/src/stores/flow-store.ts", "is_new": false, "change": "Added pendingDiff map and setPendingDiff action" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/WizardPage.tsx", "is_new": false, "change": "Added auto-confirm effect when first flow_config arrives" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowEditorPage.tsx", "is_new": false, "change": "Added diff computation effect when pendingFlowConfig changes" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/WizardChat.tsx", "is_new": false, "change": "Updated indicator message to reflect auto-redirect" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/WizardPreview.tsx", "is_new": false, "change": "Suppressed diff markers for brand new flows (no previousFlowPreview)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/FlowCanvas.tsx", "is_new": false, "change": "Added DiffLegend overlay component when pending diff exists" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/BaseNode.tsx", "is_new": false, "change": "Added diffStatus subscription with ring/badge/opacity for added/modified/removed" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/Toolbar.tsx", "is_new": false, "change": "Pre-existing: added isActive/isToggling/onToggleActive props for flow activation toggle" }
+  ],
+  "git_diff": {
+    "sha256": "7974B9358D17F9A9219AB575E52C66EF5832F7A0D8FD86F8F2ACE7B836EAE5AE",
+    "full_path": "arch/plans/diffs/20260226-wizard-autoconfirm-diff-markers.diff",
+    "total_bytes": 23808,
+    "stats": { "insertions": 254, "deletions": 8, "files_count": 9 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npx vite build --outDir ../wwwroot/app",
+    "timestamp": "2026-02-26T11:30:00Z",
+    "duration_ms": 7630,
+    "output_tail": "build completed in 7.63s",
+    "error_summary": null,
+    "services": ["Dashboard"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does auto-confirm only fire on the FIRST flow_config (not on subsequent wizard iterations)?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Is the pendingDiff map properly cleared when pendingFlowConfig becomes null (accept or reject)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the DiffLegend only appear when there are actual diff entries (not on empty map)?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/Controllers/", "src/Invekto.Automation/", "src/Invekto.Knowledge/"],
+    "non_goals": ["Backend API changes", "Database schema changes", "New node types"],
+    "intentional_exclusions": ["AiChatPanel.tsx text-based DiffSummary kept as-is alongside new canvas markers"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["WizardPage.tsx:55-60 (auto-confirm catch)"],
+    "user_facing_errors": ["Wizard store error state surfaces via existing error banner"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Auto-confirm catch block lets wizard store error state surface to UI. confirmFlow rejection is visible."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Kullanici wizard'da akis olusturduktan sonra gereksiz preview adiminda takiliyordu",
+      "suggestion": "Ilk flow_config geldiginde otomatik confirm ve editore yonlendirme",
+      "aha_moment": "AI akisi olusturdugunda kullanici aninda editorde gorur, ekstra tiklama gerekmez"
+    },
+    {
+      "category": "UX",
+      "user_pain": "AI degisiklik onerdiginde kullanici hangi nodelarin etkilendigini gorselde goremiyordu",
+      "suggestion": "Canvas uzerinde yesil/sari/kirmizi ring + badge ile degisiklik isaretleri",
+      "aha_moment": "Kullanici AI onerisini kabul etmeden once gorsel olarak hangi nodelar etkilenecek gorebilir"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Wizard'dan editore gecis 2 tiklamaydi (preview -> olustur -> editor)",
+      "suggestion": "Auto-confirm tek adimda halleder",
+      "aha_moment": "Akis tasarimi sureci yarilir: AI olusturur, kullanici aninda duzenleyebilir"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yeni akista tum nodelar 'Eklendi' olarak isaretleniyordu, gereksiz gorsel gurultu",
+      "suggestion": "previousFlowPreview null ise diff marker gosterme",
+      "aha_moment": "Diff isaretleri sadece gercek degisikliklerde gorulur, yeni akista temiz gorunum"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Editor'de AI onerisi sadece metin ozeti olarak gosteriliyordu, gorsel bagintisi yoktu",
+      "suggestion": "Legend overlay + node bazinda badge ile gorsel feedback",
+      "aha_moment": "Kullanici 'Eklendi/Degisti/Silindi' legendini gorur ve canvas'ta her node'un durumunu anlar"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": null,
+    "code_quality_gate": {},
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

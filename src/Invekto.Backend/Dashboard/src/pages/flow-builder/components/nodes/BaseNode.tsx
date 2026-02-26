@@ -39,6 +39,9 @@ function BaseNodeComponent({
   const simIsOpen = useSimulationStore((s) => s.isOpen);
   const isSimActive = simIsOpen && simCurrentNodeId === id;
 
+  // AI diff overlay (pending change markers)
+  const diffStatus = useFlowStore((s) => s.pendingDiff.get(id) ?? null);
+
   // Ghost path dimming
   const ghostPathEnabled = useFlowStore((s) => s.ghostPathEnabled);
   const isOnGhostPath = useFlowStore((s) => s.ghostPathNodeIds.has(id));
@@ -47,9 +50,17 @@ function BaseNodeComponent({
   const ringColor = getValidationRingColor(validationErrors);
   const tooltipText = getValidationTooltip(validationErrors);
 
-  // Simulation highlight takes priority over validation ring
+  // Diff overlay ring colors
+  const diffRingColor = diffStatus === 'added' ? '#4ade80'
+    : diffStatus === 'modified' ? '#fbbf24'
+    : diffStatus === 'removed' ? '#f87171'
+    : null;
+
+  // Priority: simulation > diff overlay > validation ring
   const resolvedBoxShadow = isSimActive
     ? '0 0 0 3px #10b98160, 0 0 12px #10b98140'
+    : diffRingColor
+      ? `0 0 0 3px ${diffRingColor}80, 0 0 10px ${diffRingColor}40`
     : ringColor && !selected
       ? `0 0 0 3px ${ringColor}40, 0 0 8px ${ringColor}30`
       : undefined;
@@ -62,9 +73,9 @@ function BaseNodeComponent({
         isSimActive && 'ring-2 ring-emerald-400/60'
       )}
       style={{
-        borderColor: isSimActive ? '#10b981' : selected ? '#60a5fa' : color,
+        borderColor: isSimActive ? '#10b981' : diffRingColor ?? (selected ? '#60a5fa' : color),
         background: '#ffffff',
-        opacity: isGhostDimmed ? 0.3 : 1,
+        opacity: isGhostDimmed ? 0.3 : diffStatus === 'removed' ? 0.5 : 1,
         ...(resolvedBoxShadow ? { boxShadow: resolvedBoxShadow } : {}),
       }}
       onClick={() => selectNode(id)}
@@ -81,6 +92,16 @@ function BaseNodeComponent({
         <span className="text-base font-medium truncate text-navy-700">
           {label}
         </span>
+        {diffStatus && (
+          <span className={cn(
+            'ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0',
+            diffStatus === 'added' && 'bg-green-100 text-green-700',
+            diffStatus === 'modified' && 'bg-amber-100 text-amber-700',
+            diffStatus === 'removed' && 'bg-red-100 text-red-700',
+          )}>
+            {diffStatus === 'added' ? 'Yeni' : diffStatus === 'modified' ? 'Degisti' : 'Silindi'}
+          </span>
+        )}
       </div>
 
       {/* Body */}

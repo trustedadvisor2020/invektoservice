@@ -26,6 +26,8 @@ export function WizardPage() {
   const isStreaming = useWizardStore(s => s.isStreaming);
   const error = useWizardStore(s => s.error);
   const flowName = useWizardStore(s => s.flowName);
+  const autoConfirmPending = useWizardStore(s => s.autoConfirmPending);
+  const clearAutoConfirm = useWizardStore(s => s.clearAutoConfirm);
 
   const [nameInput, setNameInput] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -45,6 +47,23 @@ export function WizardPage() {
   useEffect(() => {
     if (flowName && !nameInput) setNameInput(flowName);
   }, [flowName, nameInput]);
+
+  // Auto-confirm: when AI generates first flow_config, skip preview and go to editor
+  useEffect(() => {
+    if (!autoConfirmPending || confirming) return;
+    clearAutoConfirm();
+    const name = nameInput.trim() || flowName || 'AI Akisi';
+    setConfirming(true);
+    confirmFlow(name)
+      .then(() => navigate(`/flow-builder/editor/${flowId}`))
+      .catch((err: unknown) => {
+        // confirmFlow sets store `error` state internally; ensure fallback if it didn't
+        if (!useWizardStore.getState().error) {
+          useWizardStore.setState({ error: err instanceof Error ? err.message : 'INV-BE-023: Akis olusturulamadi' });
+        }
+      })
+      .finally(() => setConfirming(false));
+  }, [autoConfirmPending, confirming, clearAutoConfirm, confirmFlow, navigate, flowId, nameInput, flowName]);
 
   const handleBack = () => {
     navigate('/flow-builder');

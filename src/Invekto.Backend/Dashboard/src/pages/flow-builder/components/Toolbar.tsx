@@ -15,9 +15,12 @@ interface ToolbarProps {
   onToggleAiChat?: () => void;
   flowLogOpen?: boolean;
   onToggleFlowLog?: () => void;
+  isActive?: boolean;
+  isToggling?: boolean;
+  onToggleActive?: () => void;
 }
 
-export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onTogglePreview, aiChatOpen, onToggleAiChat, flowLogOpen, onToggleFlowLog }: ToolbarProps) {
+export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onTogglePreview, aiChatOpen, onToggleAiChat, flowLogOpen, onToggleFlowLog, isActive, isToggling, onToggleActive }: ToolbarProps) {
   const isDirty = useFlowStore((s) => s.isDirty);
   const simIsOpen = useSimulationStore((s) => s.isOpen);
   const simIsLoading = useSimulationStore((s) => s.isLoading);
@@ -61,6 +64,35 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
         {/* Dirty indicator */}
         {isDirty && (
           <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Kaydedilmemis degisiklikler" />
+        )}
+
+        {/* Activate / Deactivate toggle */}
+        {onToggleActive && (
+          <button
+            onClick={onToggleActive}
+            disabled={isToggling}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+              isToggling
+                ? 'bg-navy-50 text-navy-300 cursor-wait'
+                : isActive
+                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                  : 'bg-navy-50 text-navy-400 hover:bg-navy-100 border border-navy-200'
+            )}
+            title={isActive ? 'Flow\'u durdur' : 'Flow\'u baslat'}
+          >
+            {isActive ? (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            )}
+            {isActive ? 'Aktif' : 'Pasif'}
+          </button>
         )}
 
         <div className="flex-1" />

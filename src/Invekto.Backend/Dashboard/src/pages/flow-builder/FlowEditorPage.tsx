@@ -15,6 +15,7 @@ import { useAiChatStore } from '../../stores/ai-chat-store';
 import { useFlowLogStore } from '../../stores/flow-log-store';
 import { useAuth } from '../../hooks/useAuth';
 import { api, ApiClientError } from '../../lib/api';
+import { computeFlowDiff } from '../../lib/flow-diff';
 import type { FlowConfigV2 } from '../../types/flow';
 import type { WizardMessage } from '../../types/wizard';
 
@@ -30,6 +31,8 @@ export function FlowEditorPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(() => {
     try { return localStorage.getItem('invekto_flow_preview_open') !== 'false'; }
     catch { return true; }
@@ -59,6 +62,7 @@ export function FlowEditorPage() {
           settings: raw.settings ?? {} as FlowConfigV2['settings'],
         };
         loadFlow(config, (detail.wizard_history as WizardMessage[] | null) ?? null);
+        setIsActive(detail.is_active);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -109,6 +113,23 @@ export function FlowEditorPage() {
     navigate('/flow-builder');
   }, [navigate]);
 
+  const handleToggleActive = useCallback(async () => {
+    setIsToggling(true);
+    try {
+      if (isActive) {
+        await api.deactivateFlow(tenantId, flowId);
+        setIsActive(false);
+      } else {
+        await api.activateFlow(tenantId, flowId);
+        setIsActive(true);
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'INV-AT-008: Flow aktivasyon hatasi');
+    } finally {
+      setIsToggling(false);
+    }
+  }, [isActive, tenantId, flowId]);
+
   const handleExitSave = useCallback(async () => {
     setShowExitDialog(false);
     await handleSave();
@@ -124,6 +145,25 @@ export function FlowEditorPage() {
 
   // AI Chat toggle — mutual exclusion with simulation & flow log
   const aiChatOpen = useAiChatStore((s) => s.isOpen);
+  const pendingFlowConfig = useAiChatStore((s) => s.pendingFlowConfig);
+
+  // Compute diff overlay when AI suggests changes
+  useEffect(() => {
+    const setPendingDiff = useFlowStore.getState().setPendingDiff;
+    if (!pendingFlowConfig) {
+      setPendingDiff(new Map());
+      return;
+    }
+    const currentConfig = useFlowStore.getState().toFlowConfig();
+    const diffMap = computeFlowDiff(currentConfig, pendingFlowConfig);
+    const statusMap = new Map<string, 'added' | 'modified' | 'removed'>();
+    for (const [id, diff] of diffMap) {
+      if (diff.status !== 'unchanged') {
+        statusMap.set(id, diff.status);
+      }
+    }
+    setPendingDiff(statusMap);
+  }, [pendingFlowConfig]);
 
   const handleToggleAiChat = useCallback(async () => {
     const aiChat = useAiChatStore.getState();
@@ -252,7 +292,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-navy-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} />
 
         {/* Save error banner */}
         {saveError && (

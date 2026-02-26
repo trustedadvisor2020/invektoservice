@@ -25,7 +25,7 @@ export function WizardPreview() {
       data: {
         label: n.data?.label || n.type,
       },
-      className: getDiffClassName(diffMap.get(n.id)?.status || 'unchanged'),
+      className: previousFlowPreview ? getDiffClassName(diffMap.get(n.id)?.status || 'unchanged') : '',
       style: getNodeStyle(n.type),
     }));
 
@@ -66,9 +66,10 @@ export function WizardPreview() {
   }, [currentFlowPreview, previousFlowPreview]);
 
   const hasContent = nodes.length > 0;
+  // Only show diff markers when modifying an existing flow, not for brand new creation
   const hasDiffs = useMemo(() =>
-    Array.from(diffs.values()).some(d => d.status !== 'unchanged'),
-    [diffs]
+    previousFlowPreview != null && Array.from(diffs.values()).some(d => d.status !== 'unchanged'),
+    [diffs, previousFlowPreview]
   );
 
   const proOptions = useMemo(() => ({ hideAttribution: true }), []);

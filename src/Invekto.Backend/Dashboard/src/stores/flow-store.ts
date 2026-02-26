@@ -33,6 +33,10 @@ export interface FlowState {
   // Validation
   validationErrors: Map<string, ValidationError[]>;
 
+  // AI diff overlay (node change markers when AI suggests changes)
+  pendingDiff: Map<string, 'added' | 'modified' | 'removed'>;
+  setPendingDiff: (diff: Map<string, 'added' | 'modified' | 'removed'>) => void;
+
   // Ghost path (AHA #3)
   ghostPathEnabled: boolean;
   ghostPathNodeIds: Set<string>;
@@ -85,6 +89,8 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   flowSettings: { ...DEFAULT_FLOW.settings },
   wizardHistory: null,
   validationErrors: new Map(),
+  pendingDiff: new Map(),
+  setPendingDiff: (diff) => set({ pendingDiff: diff }),
   ghostPathEnabled: true,
   ghostPathNodeIds: new Set(),
   ghostPathEdgeIds: new Set(),

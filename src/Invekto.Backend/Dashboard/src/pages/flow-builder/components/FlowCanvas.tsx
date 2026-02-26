@@ -10,9 +10,11 @@ import {
   type Edge,
 } from '@xyflow/react';
 import { useFlowStore } from '../../../stores/flow-store';
+import { useAiChatStore } from '../../../stores/ai-chat-store';
 import { nodeTypes } from './nodes';
 import { DeleteEdge } from './DeleteEdgeButton';
 import type { FlowNodeType } from '../../../types/flow';
+import { resolveEdgeLabel } from '../../../lib/node-metadata';
 
 const edgeTypes = {
   deletable: DeleteEdge,
@@ -32,21 +34,35 @@ export function FlowCanvas() {
   const deleteNode = useFlowStore((s) => s.deleteNode);
   const ghostPathEnabled = useFlowStore((s) => s.ghostPathEnabled);
   const ghostPathEdgeIds = useFlowStore((s) => s.ghostPathEdgeIds);
+  const pendingDiffSize = useFlowStore((s) => s.pendingDiff.size);
+  const hasPendingConfig = useAiChatStore((s) => !!s.pendingFlowConfig);
 
-  // Apply ghost path edge styling
+  // Build node lookup for edge label resolution
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, { type: FlowNodeType; data: Record<string, unknown> }>();
+    for (const n of nodes) map.set(n.id, { type: n.type as FlowNodeType, data: n.data as Record<string, unknown> });
+    return map;
+  }, [nodes]);
+
+  // Apply ghost path edge styling + edge labels
   const styledEdges: Edge[] = useMemo(() => {
-    if (!ghostPathEnabled) return edges;
     return edges.map((edge) => {
-      const isOnPath = ghostPathEdgeIds.has(edge.id);
+      const sourceNode = nodeMap.get(edge.source);
+      const label = resolveEdgeLabel(sourceNode?.type, edge.sourceHandle, sourceNode?.data);
+      const isOnPath = ghostPathEnabled && ghostPathEdgeIds.has(edge.id);
+      const ghostStyle = ghostPathEnabled
+        ? isOnPath
+          ? { stroke: '#a855f7', strokeWidth: 3 }
+          : { stroke: '#94a3b8', strokeWidth: 2, opacity: 0.3 }
+        : undefined;
       return {
         ...edge,
-        style: isOnPath
-          ? { stroke: '#a855f7', strokeWidth: 3 }
-          : { stroke: '#94a3b8', strokeWidth: 2, opacity: 0.3 },
-        animated: isOnPath,
+        ...(ghostStyle && { style: ghostStyle }),
+        ...(ghostPathEnabled && { animated: isOnPath }),
+        data: { ...((edge.data as Record<string, unknown>) ?? {}), edgeLabel: label },
       };
     });
-  }, [edges, ghostPathEnabled, ghostPathEdgeIds]);
+  }, [edges, ghostPathEnabled, ghostPathEdgeIds, nodeMap]);
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     reactFlowInstance.current = instance;
@@ -147,7 +163,27 @@ export function FlowCanvas() {
           position="bottom-right"
         />
         <AutoLayoutButton />
+        {hasPendingConfig && pendingDiffSize > 0 && <DiffLegend />}
       </ReactFlow>
+    </div>
+  );
+}
+
+function DiffLegend() {
+  return (
+    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm border border-navy-100 rounded-lg px-3 py-2 text-xs space-y-1 z-10">
+      <div className="flex items-center gap-2">
+        <span className="w-3 h-3 rounded" style={{ boxShadow: '0 0 0 2px #4ade80' }} />
+        <span className="text-navy-600">Eklendi</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="w-3 h-3 rounded" style={{ boxShadow: '0 0 0 2px #fbbf24' }} />
+        <span className="text-navy-600">Degisti</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="w-3 h-3 rounded opacity-50" style={{ boxShadow: '0 0 0 2px #f87171' }} />
+        <span className="text-navy-600">Silindi</span>
+      </div>
     </div>
   );
 }

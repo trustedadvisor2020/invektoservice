@@ -27,12 +27,15 @@ interface WizardStore {
   wizardStatus: 'drafting' | 'completed' | null;
   error: string | null;
   flowName: string;
+  /** Set to true when AI generates the first flow_config — triggers auto-confirm in WizardPage */
+  autoConfirmPending: boolean;
 
   initWizard: (tenantId: number) => Promise<number>;
   loadWizard: (tenantId: number, flowId: number) => Promise<void>;
   sendMessage: (message: string) => Promise<void>;
   confirmFlow: (name: string) => Promise<void>;
   setFlowName: (name: string) => void;
+  clearAutoConfirm: () => void;
   reset: () => void;
 }
 
@@ -49,6 +52,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
   wizardStatus: null,
   error: null,
   flowName: '',
+  autoConfirmPending: false,
 
   initWizard: async (tenantId: number) => {
     set({ error: null, tenantId });
@@ -118,6 +122,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
             options: event.options,
           };
 
+          const isFirstFlowConfig = !!event.flow_config && !currentFlowPreview;
           set(state => ({
             messages: [...state.messages, assistantMsg],
             isStreaming: false,
@@ -126,6 +131,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
             currentFlowPreview: event.flow_config || state.currentFlowPreview,
             prerequisites: event.prerequisites || state.prerequisites,
             pendingOptions: event.options ?? null,
+            autoConfirmPending: isFirstFlowConfig,
           }));
         }
       }
@@ -152,6 +158,8 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
 
   setFlowName: (name: string) => set({ flowName: name }),
 
+  clearAutoConfirm: () => set({ autoConfirmPending: false }),
+
   reset: () => set({
     flowId: null,
     tenantId: 0,
@@ -165,5 +173,6 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
     wizardStatus: null,
     error: null,
     flowName: '',
+    autoConfirmPending: false,
   }),
 }));
