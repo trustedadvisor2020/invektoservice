@@ -126,6 +126,56 @@ public sealed class BenchmarkRepository
     // wa_benchmark_results
     // ============================================================
 
+    /// <summary>
+    /// Strips unpaired Unicode surrogates that crash Npgsql's UTF-8 encoder.
+    /// WhatsApp messages occasionally contain lone surrogates (e.g. \uDCCC).
+    /// </summary>
+    private static string SanitizeForPostgres(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return value!;
+
+        var hasIssue = false;
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (char.IsHighSurrogate(value[i]))
+            {
+                if (i + 1 >= value.Length || !char.IsLowSurrogate(value[i + 1])) { hasIssue = true; break; }
+                i++; // skip the valid pair
+            }
+            else if (char.IsLowSurrogate(value[i]))
+            {
+                hasIssue = true; break;
+            }
+        }
+
+        if (!hasIssue) return value;
+
+        var sb = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (char.IsHighSurrogate(value[i]))
+            {
+                if (i + 1 < value.Length && char.IsLowSurrogate(value[i + 1]))
+                {
+                    sb.Append(value[i]);
+                    sb.Append(value[i + 1]);
+                    i++;
+                }
+                // else: lone high surrogate — skip
+            }
+            else if (char.IsLowSurrogate(value[i]))
+            {
+                // lone low surrogate — skip
+            }
+            else
+            {
+                sb.Append(value[i]);
+            }
+        }
+
+        return sb.ToString();
+    }
+
     public async Task InsertResultsBatchAsync(List<BenchmarkResult> results, CancellationToken ct = default)
     {
         if (results.Count == 0) return;
@@ -160,26 +210,26 @@ public sealed class BenchmarkRepository
                 cmd.Parameters.AddWithValue($"p{p + 1}", r.TenantId);
                 cmd.Parameters.AddWithValue($"p{p + 2}", r.ConversationId);
                 cmd.Parameters.AddWithValue($"p{p + 3}", r.MessageCount);
-                cmd.Parameters.AddWithValue($"p{p + 4}", (object?)r.ThreadTextMasked ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 4}", (object?)SanitizeForPostgres(r.ThreadTextMasked) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 5}", (object?)r.KeywordLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 6}", (object?)r.ClaudeHaikuLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 7}", (object?)r.ClaudeHaikuConfidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 8}", (object?)r.ClaudeHaikuEvidence ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 8}", (object?)SanitizeForPostgres(r.ClaudeHaikuEvidence) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 9}", (object?)r.ClaudeSonnetLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 10}", (object?)r.ClaudeSonnetConfidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 11}", (object?)r.ClaudeSonnetEvidence ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 11}", (object?)SanitizeForPostgres(r.ClaudeSonnetEvidence) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 12}", (object?)r.GeminiFlashLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 13}", (object?)r.GeminiFlashConfidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 14}", (object?)r.GeminiFlashEvidence ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 14}", (object?)SanitizeForPostgres(r.GeminiFlashEvidence) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 15}", (object?)r.GeminiProLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 16}", (object?)r.GeminiProConfidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 17}", (object?)r.GeminiProEvidence ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 17}", (object?)SanitizeForPostgres(r.GeminiProEvidence) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 18}", (object?)r.Gemini3FlashLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 19}", (object?)r.Gemini3FlashConfidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 20}", (object?)r.Gemini3FlashEvidence ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 20}", (object?)SanitizeForPostgres(r.Gemini3FlashEvidence) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 21}", (object?)r.TieredLabel ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 22}", (object?)r.TieredConfidence ?? DBNull.Value);
-                cmd.Parameters.AddWithValue($"p{p + 23}", (object?)r.TieredEvidence ?? DBNull.Value);
+                cmd.Parameters.AddWithValue($"p{p + 23}", (object?)SanitizeForPostgres(r.TieredEvidence) ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 24}", (object?)r.HasOffer ?? DBNull.Value);
                 cmd.Parameters.AddWithValue($"p{p + 25}", (object?)r.GroundTruthLabel ?? DBNull.Value);
             }

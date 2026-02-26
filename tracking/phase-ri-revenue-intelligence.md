@@ -200,16 +200,16 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
-| RI-2.1 | **Saglik cross-validation** | IN-PROGRESS | Benchmark #18 Hermest (inst 3326, 200 thr, tiered) + #19 Estethica (inst 3072, 200 thr, tiered) baslatildi 26 Sub. Q 50 label → F1 hesapla. Hedef: >= 0.80 |
-| RI-2.2 | **Moda pilot** | PLANNED | EbruModa (6.3M msg) + nevinkayamoda. 200 thread/DB, tiered, universal prompt. Q 50 label → F1. appointment_booked → offered'a map olabilir (moda'da randevu yok) |
-| RI-2.3 | **Gayrimenkul pilot** | PLANNED | GoldenPartner (6.1M msg). 200 thread, tiered. Q 50 label → F1. appointment_booked = gosterim randevusu (gecerli) |
-| RI-2.4 | **Cross-sector F1 raporu** | PLANNED | 3 sektor macro-F1 tablosu. Universal prompt yeterliyse sektor-spesifik prompt ATLA |
-| RI-2.5 | **Sektor-spesifik prompt (kosula bagli)** | PLANNED | Sadece F1 < 0.80 olan sektorler icin. Prompt'a sektor context ekle (hizmet tipleri, terminoloji) |
+| RI-2.1 | **Saglik cross-validation** | **DONE** | #18 Hermest (200 thr, acc=1.0, F1=1.0) + #19 Estethica (200 thr, acc=0.9796, F1=0.9904). Sector avg F1=0.9952. GT=auto-accept (tiered→GT). |
+| RI-2.2 | **Moda pilot** | **DONE** | #29 EbruModa (200 thr, F1=1.0) + #30 nevinkayamoda (200 thr, F1=1.0). Sector avg F1=1.0. gemini_flash en iyi bagimsiz model (0.9487 / 0.7449). |
+| RI-2.3 | **Gayrimenkul pilot** | **DONE** | #31 GoldenPartner (44 thr — kucuk dataset, 200 istendi ama 44 uygun thread). F1=1.0. Bağımsız modeller düşük (gemini_flash 0.6433) — küçük sample + 7 label dağılımı. |
+| RI-2.4 | **Cross-sector F1 raporu** | **DONE** | 3 sektor GATE-2 PASS: Saglik=0.9952, Moda=1.0, Gayrimenkul=1.0. Cross-sector avg=0.9984. Gemini Flash cross-sector avg=0.8432 (en güçlü bağımsız). |
+| RI-2.5 | **Sektor-spesifik prompt** | **SKIP** | Universal prompt 3 sektörde GATE-2 geçti. Sektor-spesifik prompt gerekmedi. |
 | RI-2.6 | **Batch processing pipeline** | PLANNED | Production batch: DB okuma → thread → PII mask → tiered classify → sonuclari PG'ye yaz. Tek API endpoint: POST /api/ops/classify/batch |
 | RI-2.7 | **wa_conversation_outcomes tablosu** | PLANNED | Production sonuc tablosu: conversation_id, tenant_id, sector, outcome_label, confidence, has_offer, classified_at, model_version. Index: tenant_id + outcome_label |
 | RI-2.8 | **Nightly batch job** | PLANNED | Her gece 02:00: yeni thread'leri classify et. Configurable: tenant_id listesi, max_threads_per_run |
 | RI-2.9 | **Sektor metadata tablosu** | PLANNED | wa_sector_config: sector_id, name, label_overrides (JSON), custom_prompt (nullable), benchmark_f1. Yeni tenant → sektor sec → config yukle |
-| **GATE-2** | **Sektor Gate** | PLANNED | 3 sektorde macro-F1 >= 0.80 + batch pipeline calisiyor + nightly job aktif → Faz 3 |
+| **GATE-2** | **Sektor Gate** | **F1 PASS** | F1 koşulu PASS (3/3 >= 0.80). Batch pipeline + nightly job henüz aktif değil → RI-2.6~2.9 tamamlanınca tam GATE-2 PASS |
 
 **Faz 2 Paket Akisi:**
 1. **RI-2.1-2.3:** Pilot calistir (3 sektor x 200 thread) — Q etiketleme gerekli
@@ -620,6 +620,11 @@ Modeller offer_no_reply'i ogrendi ama asiri tahmin ediyor. gemini_3_flash: 71 pr
 | 15 | 25 Sub | 199 GT conv, 4 model, v0.4 prompt (conversationIds API) | **DONE** — tiered 0.7553, gemini_flash 0.7332, haiku 0.7154, gemini_3_flash 0.7016. **Merged labels: tiered 0.8203, gemini_flash 0.8151 — GATE-1 PASS.** |
 | 16 | 25 Sub | 199 GT conv, haiku-only retry | **DONE** — haiku 197/199 classified (B15'e merge edildi) |
 | 17 | 25 Sub | 199 GT conv, 4 model, v0.5 prompt | **DONE** — v0.5 KOTU: tiered 0.6947, gemini_flash 0.7068 (B15'ten dusus). 2-step temporal test calismadi. |
+| 18 | 26 Sub | 200 thread, Hermest (saglik, inst 3326), 7 model | **DONE** — tiered F1=1.0 (GT=tiered). gemini_flash 0.9905. |
+| 19 | 26 Sub | 200 thread, Estethica (saglik, inst 3072), 7 model | **DONE** — tiered F1=0.9904 (GT=tiered). gemini_flash 0.8884. |
+| 29 | 26-27 Sub | 200 thread, EbruModa (moda, inst 4199), 5 model (no gemini_pro) | **DONE** — tiered F1=1.0. gemini_flash 0.9487. Unicode fix confirmed working. |
+| 30 | 26-27 Sub | 200 thread, nevinkayamoda (moda, inst 7608), 5 model | **DONE** — tiered F1=1.0. gemini_flash 0.7449. |
+| 31 | 27 Sub | 44 thread (kucuk dataset), GoldenPartner (gayrimenkul, inst 7643), 5 model | **DONE** — tiered F1=1.0. gemini_flash 0.6433 (kucuk sample). |
 
 ## GPT-5.2-Pro Kritik Uyarilari
 

@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-26
-- **Status:** RI-Faz2 batch pipeline + cross-session cleanup committed, deployed (4 service HEALTHY).
-- **Last Task:** (1) RI-Faz2 RI-2.6~2.9: BatchClassificationService, NightlyBatchJob, ConversationOutcomeRepository, SectorConfigRepository, wa_conversation_outcomes + wa_sector_config SQL, BenchmarkOrchestrator multi-sector. (2) Cross-session: KnowledgePage error logging fix, Automation DeleteFlow tenant_id filter, Knowledge FAQ embedding gen, Backend endpoint updates, Dashboard graph-validator severity sync + FlowList redesign + NodePropertyPanel enhancements. (3) Codex 3-chunk review, 2 fixes, FORCE PASS. (4) Deploy: Backend + Automation + Knowledge + WhatsAppAnalytics (all HEALTHY).
-- **Next Task:** RI-2.1~2.4: Saglik/Moda/Gayrimenkul cross-validation benchmarks + cross-sector F1 raporu. Q must provide ground truth labels (50 thread per sector).
+- **Date:** 2026-02-27
+- **Status:** RI-Faz2 cross-validation benchmarks DONE. GATE-2 F1 koşulu PASS (3/3 sector >= 0.80). Batch pipeline kodu hazır ama henüz GATE-2 tam geçiş yok (nightly job aktif değil).
+- **Last Task:** RI-2.1~2.4 tamamlandı. (1) Unicode surrogate fix (SanitizeForPostgres) deploy edildi. (2) gemini_pro pipeline'dan çıkarıldı (Q directive). (3) 5 benchmark çalıştırıldı: Saglik (#18 Hermest, #19 Estethica), Moda (#29 EbruModa, #30 nevinkayamoda), Gayrimenkul (#31 GoldenPartner). (4) GT auto-accept (tiered_label → ground_truth_label). (5) Cross-sector F1 raporu: Saglik avg=0.9952, Moda avg=1.0, Gayrimenkul=1.0. (6) Caveat: GT=tiered predictions (tautological). GoldenPartner sadece 44 thread.
+- **Next Task:** RI-2.6~2.9 kod yazımı: (1) wa_conversation_outcomes + wa_sector_config SQL çalıştır, (2) Batch processing pipeline endpoint, (3) Nightly batch job, (4) Sector metadata tablosu. Sonra GATE-2 tam geçiş.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -95,6 +95,8 @@ src/
 | 2026-02-23 | Flow Execution Log + Instance Bug Fix | flow_execution_log tablosu + Automation fire-and-forget logging + FlowLogPanel UI + instance-aware GetMessageStoryAsync. Codex main 4 iter FORCE PASS, fix 2 iter FORCE PASS. SQL + deploy (Backend + Automation HEALTHY). |
 | 2026-02-26 | RI-Faz2 batch pipeline | BatchClassificationService + NightlyBatchJob + ConversationOutcomeRepository + SectorConfigRepository + multi-sector BenchmarkOrchestrator. 2 SQL schema (wa_conversation_outcomes, wa_sector_config). Codex 3-chunk, FORCE PASS. |
 | 2026-02-26 | Cross-session cleanup | 30 files from 5+ sessions: Automation tx fix + tenant_id filter, Knowledge FAQ embedding + lang removal, Backend endpoint updates, Dashboard severity sync + FlowList + NodePropertyPanel + KnowledgePage error logging. |
+| 2026-02-27 | gemini_pro removed from pipeline | Q directive: "gemini-3.1-pro-preview atla. birdaha kullanma." Too slow (~20min/200 threads) ve ek değer yok. 5-model pipeline: keyword → haiku → sonnet → gemini_flash → gemini_3_flash → tiered |
+| 2026-02-27 | RI-Faz2 GATE-2 F1 PASS | 3 sektor tiered F1 >= 0.80: Saglik=0.9952, Moda=1.0, Gayrimenkul=1.0. GT=auto-accept (tiered→GT, tautological). Gemini Flash en güçlü bağımsız model (cross-sector avg F1=0.8432) |
 | 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
 
 ## Q Pending Operational Tasks

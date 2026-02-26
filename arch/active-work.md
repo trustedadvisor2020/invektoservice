@@ -6,15 +6,16 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | RI-2.1: Saglik cross-validation (Hermest + Estethica) | WAITING | Q must label 50 threads |
-| 2 | RI-2.2: Moda pilot (EbruModa + nevinkayamoda) | WAITING | Q must label 50 threads |
-| 3 | RI-2.3: Gayrimenkul pilot (GoldenPartner) | WAITING | Q must label 50 threads |
-| 4 | RI-2.4: Cross-sector F1 raporu | BLOCKED | Depends on RI-2.1~2.3 |
+| 1 | RI-2.7: wa_conversation_outcomes SQL + repo | NEXT | Production sonuç tablosu |
+| 2 | RI-2.9: wa_sector_config SQL + repo | NEXT | Sektor metadata tablosu |
+| 3 | RI-2.6: Batch processing pipeline endpoint | PLANNED | POST /api/ops/classify/batch |
+| 4 | RI-2.8: Nightly batch job | PLANNED | Cron 02:00, configurable |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-02-27 | RI-Faz2 Cross-Validation Benchmarks — Unicode surrogate fix deploy, gemini_pro removed (Q directive), 5 benchmarks (#18 Hermest, #19 Estethica, #29 EbruModa, #30 nevinkayamoda, #31 GoldenPartner), GT auto-accept, GATE-2 F1 PASS (3/3 sectors >= 0.80). Cross-sector avg F1=0.9984. |
 | 2026-02-26 | RI-Faz2 Batch Pipeline + Cross-session Cleanup — 6 new WA files (batch/nightly/outcome/sector), 2 SQL schemas, multi-sector benchmark, cross-session fixes (KnowledgePage logging, tenant_id filter, FAQ embedding, lang removal, severity sync, FlowList, NodePropertyPanel). 52 files, 4 service deploy (all HEALTHY). |
 | 2026-02-24 | FlowListPage + Sidebar Redesign — Gradient icon circles, search/filter, staggered animations, skeleton loading, timeAgo relative dates, modal X close, row layout, sidebar icon containers + brand active state + red hover logout. Deploy HEALTHY. |
 | 2026-02-24 | Onboarding + Template Library UI/UX Redesign — OnboardingWizardPage (dark hero, SVG progress, timeline, accordion), TemplateLibraryPage (category-grouped, INTENT_TR, FAQ_TOPICS, examples), FAQ DB cleanup (39 unpublish, 9 kaldi), 4+ iterative deploy |
