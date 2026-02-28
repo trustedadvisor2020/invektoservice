@@ -66,8 +66,14 @@ No matter how clear the task seems, interview continues until ALL grey areas are
 2. Q answers
 3. New grey area from answer? -> Ask via AskUserQuestion
 4. All grey areas resolved? -> If no, go to 3
-5. Summarize, ask "Approve?"
-6. Q approves -> Go to Phase 1
+5. **Acceptance Criteria Gate (ZORUNLU):**
+   - Ask Q at least 2 acceptance criteria questions: "Bu feature'i ne zaman basarili sayariz?", "Hangi sonucu gorursek tamamlanmis deriz?"
+   - Q's answers -> formalize as AC1, AC2, AC3... (testable, concrete)
+   - Summarize criteria back to Q: "Basari kriterleri sunlar: AC1: ..., AC2: ... Dogru mu?"
+   - Q confirms -> proceed
+   - Q corrects -> update and re-confirm
+6. Summarize full scope + acceptance criteria, ask "Approve?"
+7. Q approves -> Go to Phase 1
 
 **Required:** Interview questions MUST use AskUserQuestion tool.
 
@@ -114,11 +120,15 @@ Q requests packet (or single task)
     |
 Interview via AskUserQuestion (paket scope, max 4 soru/batch)
     |
-Plan JSON created (packet_id + gr_list) -> Q approves
+Acceptance Criteria Gate: min 2 AC sorusu -> Q confirms -> AC1, AC2, AC3...
+    |
+Plan JSON created (packet_id + gr_list + acceptance_criteria) -> Q approves
     |
 GR'ler sirali implement -> build check between GR's
     |
 All GR's done -> Final Build PASS
+    |
+AC verification: tum acceptance_criteria kontrol -> verified = true
     |
 /rev -> MCP codex_review tool (AUTOMATED - no copy-paste!)
     |

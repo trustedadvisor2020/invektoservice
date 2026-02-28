@@ -1,23 +1,19 @@
-<!-- VERSION: 5.3 | UPDATED: 2026-02-18 | Persist After Compact | Auto Workflow Active | Hooks Active -->
+<!-- VERSION: 5.4 | UPDATED: 2026-02-28 | Opus 4.6 Language Tuning | Persist After Compact -->
 <!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> MCP Codex -> Commit -->
 <!-- HARITA YAKLAŞIMI: Bu dosya kisa tutuluyor, detaylar INVEKTO_BASE.prompt.md + arch/ dosyalarinda. -->
 # InvektoServis
 
 Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 
-## SESSION INIT (CRITICAL - HER SESSION BASINDA)
+## SESSION INIT
 
-**Her session basladiginda (plan modunda bile) su adimlar OTOMATIK uygulanir:**
+Her session basladiginda otomatik:
 
-1. **Auto Workflow Aktif:** Ne istenirse istensin, auto.md kurallari gecerli
-2. **Kritik Dosyalari Oku:**
-   - `arch/session-memory.md` -> Son durumu anla
-   - `tracking/README.md` -> Paket tracking durumu
-   - `arch/lessons-learned.md` -> Tekrarlanan hatalar
-   - `.claude/agents/INVEKTO_BASE.prompt.md` -> Global kurallar
-3. **Interview ile Basla:** Q ne isterse, once AskUserQuestion ile gri noktalari coz
+1. **Auto Workflow aktif:** auto.md kurallari gecerli
+2. **Kritik dosyalari oku:** `arch/session-memory.md`, `tracking/README.md`, `arch/lessons-learned.md`, `.claude/agents/INVEKTO_BASE.prompt.md`
+3. **Interview ile basla:** AskUserQuestion ile gri noktalari coz
 
-**BU ADIMLAR ATLANAMAZ!** Plan mode veya baska mode farketmez.
+Bu adimlar plan mode dahil her session icin gecerlidir.
 
 ## Naming & Roles
 
@@ -44,11 +40,9 @@ Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 | Path | `C:\CRMs\InvektoServices\` | `E:\InvektoServices\` |
 | Services | `dotnet run` | NSSM Windows Services |
 
-**Windows PowerShell Rules (CRITICAL):**
-- **ALWAYS use PowerShell wrapper for Bash tool:** `powershell -NoProfile -Command "..."`
-- NEVER use raw bash/Linux syntax on Windows
-- `&&` chaining does NOT work - use `;` to chain commands
-- `$` karakterlerini PowerShell'de escape et - single quotes kullan veya `` `$ `` yaz
+**Windows PowerShell:** Detayli kurallar `shared-lessons.md`'de.
+- `powershell -NoProfile -Command "..."` wrapper kullan
+- `&&` calismaz → `;` ile chain et
 
 > **Build:** `powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\InvektoServis.sln --no-restore -v q"`
 > Shared degistiyse -> Full solution build. Build fails -> fix immediately. Full: `INVEKTO_BASE.prompt.md` section 7.
@@ -56,8 +50,8 @@ Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 ## Code Quality
 
 > **Canonical:** `INVEKTO_BASE.prompt.md` sections 2-4 (CODEX UTANSIN + Enterprise Standards + Self-Review CQ1-CQ8 + AQ1-AQ6).
-> **Basari metrigi:** `/rev` -> Codex verdict = PASS, iteration = 0
-> **HARD RULE:** Codex review yapilmadan ASLA commit yapilamaz!
+> Basari metrigi: `/rev` → Codex verdict = PASS, iteration = 0
+> **Codex review yapilmadan commit yapilamaz** (LOW dahil tum risk seviyeleri).
 
 ## Critical Rules
 
@@ -117,12 +111,10 @@ Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 | `build-runner` | haiku | Sadece dotnet build komutlari |
 | `db-query` | haiku | **SADECE SELECT** - write YASAK |
 
-### Cross-Service Research Rule
+### Cross-Service Research
 
-**Birden fazla servisi arastiran her sorguda `Explore` subagent kullan!**
-KURAL: Cross-service arastirma icin dogrudan Grep/Glob kullanma -> `Explore` subagent cagir.
+Birden fazla servisi arastiran sorgularda `Explore` subagent kullan.
 Ana context sadece sonuclari alir, arastirma detaylarini degil.
-Otomatik tetikleme: "hangi servis...", "tum servislerde...", "karsilastir..." -> Explore subagent.
 
 ## Hooks (Mekanik Zorlama)
 
@@ -194,5 +186,7 @@ Full v5.1 workflow: `auto.md` + `INVEKTO_BASE.prompt.md` section 1.
 - [ ] Shared kod degisikligi varsa tum servisler kontrol edildi
 
 ---
+
+**Shared Lessons:** `C:\Users\taner\.claude\workflow\shared-lessons.md` — cross-project kurallar ve Q tercihleri.
 
 **Full rules: `INVEKTO_BASE.prompt.md` (canonical source for Bootstrap, PP-006, Self-Review, Build Commands, CODEX UTANSIN).**

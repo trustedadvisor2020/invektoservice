@@ -126,6 +126,13 @@ After approval (manual) or directly (auto):
 3. Date format: `YYYY-MM-DD`
 4. Duplicate check: Don't add if same mistake already exists
 
+### Cross-Project Lessons (shared-lessons.md)
+
+Eğer öğrenilen ders InvektoServices'a özgü DEĞİLSE ve diğer projelerde de geçerliyse:
+1. `C:\Users\taner\.claude\workflow\shared-lessons.md` dosyasını oku
+2. Uygun bölüme ekle (Tekrarlayan Hatalar, Anti-Pattern'ler, veya Cross-Project Teknik Kurallar)
+3. Duplicate check — zaten varsa ekleme
+
 ---
 
 ## Format Rules

@@ -1,0 +1,75 @@
+{
+  "engine_version": "6.0",
+  "project_name": "InvektoServices",
+  "project_code": "INV",
+  "developer_name": "Q",
+  "build": {
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "single_service_template": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.{SERVICE}\\Invekto.{SERVICE}.csproj --no-restore -v q\"",
+    "source_extensions": [".cs"]
+  },
+  "error_codes": {
+    "prefix": "INV-",
+    "reference": "arch/errors.md"
+  },
+  "tracking": {
+    "session_memory": "arch/session-memory.md",
+    "active_work": "arch/active-work.md",
+    "lessons_learned": "arch/lessons-learned.md",
+    "plans_dir": "arch/plans",
+    "diffs_dir": "arch/plans/diffs"
+  },
+  "workflow": {
+    "plan_schema_version": "6.0",
+    "base_prompt": "INVEKTO_BASE.prompt.md",
+    "max_diff_lines_per_paket": 200
+  },
+  "language": "en",
+  "codex": {
+    "mcp_tool": "mcp__codex-review__codex_review",
+    "model": "gpt-5.2-codex"
+  },
+  "intent": {
+    "trade_offs": {
+      "speed_vs_quality": "quality — CODEX UTANSIN: iteration=0 hedefi, never rush for speed",
+      "scope_vs_time": "scope — deliver what was promised, never cut corners silently",
+      "innovation_vs_stability": "stability — use existing patterns, new patterns only with Q approval"
+    },
+    "escalation_rules": [
+      "Requirements unclear or ambiguous → ASK Q",
+      "Multiple valid approaches exist → ASK Q",
+      "New pattern not in existing codebase → ASK Q",
+      "Changing shared contracts/schemas → ASK Q",
+      "Adding new dependencies → ASK Q",
+      "Modifying auth/security logic → ASK Q",
+      "Adding new microservice → ASK Q",
+      "Build fails 2x with same error → STOP, explain to Q",
+      "Surprise output (unexpected error, missing file) → STOP, explain mental model gap"
+    ],
+    "decision_boundaries": {
+      "agent_can_decide": [
+        "Variable/method naming within existing conventions",
+        "File organization within existing structure",
+        "Error message wording for known error codes",
+        "Which existing pattern to follow when only one matches"
+      ],
+      "agent_must_ask": [
+        "New error code creation",
+        "New DB table/column",
+        "New API endpoint shape",
+        "New dependency/package",
+        "Cross-service data flow",
+        "Anything touching auth/tenant isolation"
+      ]
+    }
+  },
+  "compaction": {
+    "preserve": [
+      "Plan JSON status and current paket scope",
+      "Modified file list with change descriptions",
+      "Pending Codex review results",
+      "Unresolved Q decisions from interview",
+      "Current phase in workflow (interview/plan/dev/review)"
+    ]
+  }
+}

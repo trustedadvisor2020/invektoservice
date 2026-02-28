@@ -44,7 +44,8 @@ Scan the session for learnable signals (same logic as `/learn`):
 1. Q corrections, recurring patterns, approved approaches, error->solution chains
 2. Filter: project-specific + repeatable + new + actionable (3/4 rule)
 3. Append directly to `arch/lessons-learned.md` (auto mode, no Q approval needed)
-4. If nothing learnable found, skip silently
+4. Cross-project lesson ise `C:\Users\taner\.claude\workflow\shared-lessons.md`'ye de ekle
+5. If nothing learnable found, skip silently
 
 ### Step 2.5: Git Hygiene Scan
 

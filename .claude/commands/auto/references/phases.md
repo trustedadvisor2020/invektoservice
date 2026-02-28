@@ -31,10 +31,11 @@ Read these files BEFORE writing code:
 3. Determine scope from `arch/contracts/*`
 4. Identify risks, affected modules/services
 5. **Read `arch/contracts/plan-schema.json` BEFORE creating plan JSON**
-6. Create JSON plan: `arch/plans/{slug}.json`
-7. Write **Verification Questions** (mandatory for ALL risk levels)
-8. Write **AHA Moments** (5 suggestions mandatory)
-9. Show brief to Q, ask "Approve?"
+6. **Acceptance Criteria Gate:** Interview sonunda min 2 AC sorusu sor, Q'dan teyit al -> plan.acceptance_criteria'ya yaz
+7. Create JSON plan: `arch/plans/{slug}.json` (acceptance_criteria dahil)
+8. Write **Verification Questions** (mandatory for ALL risk levels)
+9. Write **AHA Moments** (5 suggestions mandatory)
+10. Show brief + acceptance criteria to Q, ask "Approve?"
 
 ### AHA Checklist (5 suggestions mandatory)
 
@@ -64,9 +65,11 @@ Each suggestion must include:
    powershell -NoProfile -Command "dotnet build C:\CRMs\InvektoServices\src\Invekto.{Name}\Invekto.{Name}.csproj --no-restore -v q"
    ```
 4. If build fails -> fix immediately
-5. Build PASS -> proceed to Phase 3
+5. Build PASS -> **AC Verification:** her acceptance_criteria icin verified=true/false guncelle
+6. Tum AC'ler verified=true -> proceed to Phase 3
+7. AC unmet -> fix implementation veya Q'ya escalate
 
-**Build PASS != Done.** Build PASS -> mandatory Phase 3 (Review).
+**Build PASS != Done.** Build PASS + AC verified -> mandatory Phase 3 (Review).
 
 ### Paket Bazli Dev (v5.0)
 
@@ -157,10 +160,11 @@ FAIL verdict -> DevAgent fixes -> Self-Review -> Build -> /rev -> MCP codex_revi
 
 Cannot mark as DONE if:
 - Plan JSON was not created
+- Acceptance criteria not all verified=true
 - Codex review was not done
 - Codex verdict is FAIL
 
-DONE only when: Build PASS + Codex PASS -> commit
+DONE only when: Build PASS + All AC verified=true + Codex PASS -> commit
 
 ### After PASS -> /wrap Otomatik Calisir
 

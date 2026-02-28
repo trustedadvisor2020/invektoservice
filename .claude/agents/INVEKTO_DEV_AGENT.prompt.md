@@ -87,6 +87,7 @@ You will always receive:
 - Initial risk level (from PlanAgent)
 - Allowed file list (scope)
 - Architecture references
+- **Acceptance Criteria** (AC1, AC2, ... - Q-confirmed success criteria)
 - **Verification Questions**
 
 If any required input is missing -> STOP and escalate to Q.
@@ -120,12 +121,16 @@ In `arch/plans/{slug}.json`, update:
 - `files_changed[]`: Files touched
 - `build.*`: Build evidence
 
-### Step 3: Build PASS -> /rev Calistir (MCP Automated)
+### Step 3: Build PASS -> AC Verification -> /rev Calistir (MCP Automated)
 
 **Build PASS oldugunda:**
 
 ```
 Build PASS
+    |
+AC Verification: her acceptance_criteria icin verified = true/false guncelle
+    |
+Tum AC'ler verified=true? -> devam | Herhangi biri false? -> fix et
     |
 /rev calistir (TUM risk seviyeleri)
     |
@@ -140,11 +145,18 @@ DevAgent result'i isler, Q'ya ozet gosterir
 PASS -> commit | FAIL -> fix loop
 ```
 
+**AC Verification Detay:**
+- Plan JSON'daki `plan.acceptance_criteria` array'ini oku
+- Her AC icin: implementation bu kriteri karsiladiysa `verified: true` + `verification_note` yaz
+- Ornek: `{"id": "AC1", "criterion": "...", "verified": true, "verification_note": "Endpoint 200 doner, response icinde X alani var"}`
+- **Tum AC'ler verified=true olmadan /rev CALISTIRILMAZ**
+- AC karsilanamiyorsa -> Q'ya escalate et (kriter guncellenmesi gerekebilir)
+
 ### Step 4: Verdict Sonrasi
 
 ```
-PASS -> commit -> DONE
-FAIL -> fix -> build -> /rev (max 3 iter)
+PASS + all AC verified=true -> commit -> DONE
+FAIL -> fix -> build -> AC verify -> /rev (max 3 iter)
 3 iter FAIL -> Q'ya escalate
 ```
 
@@ -291,6 +303,7 @@ No further work is allowed after STOP.
 ### Q-Facing (minimal)
 - Status: PASS / FAIL / STOP
 - Risk level
+- Acceptance Criteria: `AC: 3/3 verified` or `AC: 2/3 - AC2 unmet`
 - Self-Review result: `14/14 PASS` or `CQx FAIL`
 - Codex verdict + blocking issues (from MCP)
 - Next action required from Q
