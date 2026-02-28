@@ -1,59 +1,86 @@
 # Endpoint Registration Rule
 
-## KURAL: Her yeni endpoint ZORUNLU olarak kayıt edilmeli
+<!-- FORMAT: agent-first (v6.0). YAML block is the source of truth for rules + naming. -->
 
-Yeni bir endpoint eklendiğinde **3 yerde** güncelleme yapılmalı:
+> **KURAL:** Her yeni endpoint **3 yerde** kayıt edilmeli.
 
-### 1. Servis Program.cs - Discovery Endpoint
+## Registration Points
 
-Her servisin `/api/ops/endpoints` MapGet handler'ındaki `EndpointInfo` listesine yeni endpoint ekle:
+```yaml
+registration:
+  - target: Program.cs Discovery
+    path: "/api/ops/endpoints"
+    action: Add EndpointInfo to MapGet handler list
+    required: true
+
+  - target: Postman Collection
+    path: "postman/InvektoServis.postman_collection.json"
+    action: Add request to appropriate folder
+    required: true
+    folders:
+      - name: "Backend - Public API"
+        for: Business endpoints
+      - name: "Backend - Ops Dashboard"
+        for: Ops endpoints
+      - name: "ChatAnalysis - Direct"
+        for: ChatAnalysis endpoints
+
+  - target: Backend Aggregation
+    path: "Backend/Program.cs"
+    action: Add discovery call for new microservice
+    required: only_when_new_service
+```
+
+## Category & Auth Values
+
+```yaml
+categories:
+  API:     { description: Dışarıdan çağrılan business endpoint'ler }
+  Health:  { description: Health/ready probe'ları }
+  Ops:     { description: Dashboard/monitoring endpoint'leri }
+  Legacy:  { description: Eski endpoint'ler (deprecation yolunda) }
+
+auth_types:
+  none:    { description: Auth gerektirmiyor }
+  Basic:   { description: Ops Basic Auth }
+  Bearer:  { description: "JWT/Token auth (gelecekte)" }
+```
+
+## Naming Convention
+
+```yaml
+naming:
+  - pattern: "/api/v{version}/{resource}"
+    type: Business API
+  - pattern: "/api/ops/{category}/{action}"
+    type: Ops/Dashboard
+  - pattern: "/health"
+    type: Health check (standard)
+  - pattern: "/ready"
+    type: Readiness probe (standard)
+  - pattern: "/api/ops/endpoints"
+    type: Discovery (standard — her serviste)
+```
+
+## EndpointInfo Example
 
 ```csharp
-new() { Method = "POST", Path = "/api/v1/new-endpoint", Description = "Açıklama", Auth = "none", Category = "API" }
-```
-
-**Category değerleri:**
-| Category | Açıklama |
-|----------|----------|
-| `API` | Dışarıdan çağrılan business endpoint'ler |
-| `Health` | Health/ready probe'ları |
-| `Ops` | Dashboard/monitoring endpoint'leri |
-| `Legacy` | Eski endpoint'ler (deprecation yolunda) |
-
-**Auth değerleri:**
-| Auth | Açıklama |
-|------|----------|
-| `none` | Auth gerektirmiyor |
-| `Basic` | Ops Basic Auth |
-| `Bearer` | JWT/Token auth (gelecekte) |
-
-### 2. Postman Collection
-
-`postman/InvektoServis.postman_collection.json` dosyasına yeni request ekle.
-
-İlgili folder'a ekle:
-- `Backend - Public API` → Business endpoint'ler
-- `Backend - Ops Dashboard` → Ops endpoint'ler
-- `ChatAnalysis - Direct` → ChatAnalysis endpoint'ler
-
-### 3. Backend Aggregation (sadece yeni servis eklendiğinde)
-
-Yeni bir mikro servis eklendiğinde `Backend/Program.cs` içindeki `/api/ops/endpoints` handler'ına yeni servisin discovery çağrısını ekle.
-
-## Endpoint Naming Convention
-
-```
-/api/v{version}/{resource}          → Business API
-/api/ops/{category}/{action}        → Ops/Dashboard
-/health                             → Health check (standart)
-/ready                              → Readiness probe (standart)
-/api/ops/endpoints                  → Discovery (standart - her serviste)
+new() {
+    Method = "POST",
+    Path = "/api/v1/new-endpoint",
+    Description = "Açıklama",
+    Auth = "none",
+    Category = "API"
+}
 ```
 
 ## Checklist (Her Yeni Endpoint İçin)
 
-- [ ] Program.cs'de endpoint tanımlandı
-- [ ] Discovery listesine (`/api/ops/endpoints`) eklendi
-- [ ] Postman collection güncellendi
-- [ ] Auth doğru belirtildi (none/Basic/Bearer)
-- [ ] Category doğru belirtildi (API/Health/Ops/Legacy)
+```yaml
+checklist:
+  - step: Program.cs'de endpoint tanımlandı
+  - step: Discovery listesine (/api/ops/endpoints) eklendi
+  - step: Postman collection güncellendi
+  - step: Auth doğru belirtildi (none/Basic/Bearer)
+  - step: Category doğru belirtildi (API/Health/Ops/Legacy)
+```

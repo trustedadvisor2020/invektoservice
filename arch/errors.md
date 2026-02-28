@@ -1,388 +1,713 @@
 # InvektoServis Error Codes
 
+<!-- FORMAT: agent-first (v6.0). YAML block is the source of truth. -->
+
 > **KURAL:** Tüm hata mesajları bu dosyadaki kodları kullanmalı.
 > **KOD DOSYASI:** `src/Invekto.Shared/Constants/ErrorCodes.cs`
+> **FORMAT:** `INV-{SERVICE}-{NUMBER}` — SERVICE kodları aşağıda, NUMBER 3 haneli.
 
-## Format
+## Service Codes
 
+```yaml
+services:
+  GEN:  { name: General,       description: Genel hatalar }
+  BE:   { name: Backend,       description: Backend API hataları }
+  CA:   { name: ChatAnalysis,  description: Chat Analysis microservice hataları }
+  AT:   { name: Automation,    description: "GR-1.1: Chatbot/Flow Builder hataları" }
+  AA:   { name: AgentAI,       description: AgentAI hataları }
+  AUTH: { name: Auth,          description: Authentication hataları }
+  DB:   { name: Database,      description: Veritabanı hataları }
+  VAL:  { name: Validation,    description: Validasyon hataları }
+  INT:  { name: Integration,   description: "GR-1.9: Entegrasyon köprüsü hataları" }
+  OB:   { name: Outbound,      description: "GR-1.3/3.15/3.26/3.29: Broadcast, campaign, consent hataları" }
+  IG:   { name: Integrations,  description: "GR-3.4/3.6: Marketplace & kargo entegrasyonları" }
+  AP:   { name: Appointments,  description: "GR-2.4: Randevu Motoru hataları" }
+  KN:   { name: Knowledge,     description: "GR-2.1: Knowledge Service (RAG) hataları" }
+  AD:   { name: Attribution,   description: "GR-3.14: Ads Attribution hataları" }
+  MK:   { name: Marketing,     description: "GR-3.21/3.22: Google Yorum, Referans, Medikal Turizm hataları" }
+  MT:   { name: Metrics,       description: "PKT-3: Analitik/metrik hataları" }
+  EXT:  { name: External,      description: Dış servis hataları }
 ```
-INV-{SERVICE}-{NUMBER}
+
+## Error Registry
+
+```yaml
+errors:
+  # ── GEN — General ──
+  - code: INV-GEN-001
+    description: Unknown error
+    user_message: Beklenmeyen bir hata oluştu.
+  - code: INV-GEN-002
+    description: Timeout
+    user_message: İşlem zaman aşımına uğradı.
+  - code: INV-GEN-003
+    description: Validation error
+    user_message: Geçersiz veri formatı.
+
+  # ── BE — Backend ──
+  - code: INV-BE-001
+    description: Microservice unavailable
+    user_message: Servis geçici olarak kullanılamıyor.
+  - code: INV-BE-002
+    description: Microservice timeout
+    user_message: Servis yanıt vermedi. Lütfen tekrar deneyin.
+  - code: INV-BE-003
+    description: Microservice error (5xx)
+    user_message: Servis hatası. Lütfen tekrar deneyin.
+  - code: INV-BE-004
+    description: Microservice invalid response
+    user_message: Servis geçersiz yanıt döndü.
+  - code: INV-BE-005
+    description: Microservice client error (4xx)
+    user_message: İstek hatası. Lütfen parametreleri kontrol edin.
+  - code: INV-BE-010
+    description: Message log query failed
+    user_message: Mesaj kayıtları yüklenemedi.
+  - code: INV-BE-011
+    description: Tenant list query failed
+    user_message: Firma listesi yüklenemedi.
+  - code: INV-BE-012
+    description: Tenant impersonate failed
+    user_message: Firma girişi başarısız oldu.
+  - code: INV-BE-020
+    description: Wizard session creation failed
+    user_message: Wizard oturumu oluşturulamadı.
+  - code: INV-BE-021
+    description: Wizard AI service unavailable
+    user_message: AI servisi yapılandırılmamış.
+  - code: INV-BE-022
+    description: Wizard AI communication failed
+    user_message: AI iletişim hatası.
+  - code: INV-BE-023
+    description: Wizard confirm failed
+    user_message: Akış oluşturulamadı.
+  - code: INV-BE-024
+    description: Wizard invalid payload
+    user_message: Geçersiz wizard isteği.
+  - code: INV-BE-030
+    description: WapCRM instance fetch failed
+    user_message: WapCRM hat listesi alınamadı.
+  - code: INV-BE-031
+    description: Instance disable blocked (in use by flow)
+    user_message: Hat bir akış tarafından kullanılıyor, devre dışı bırakılamaz.
+  - code: INV-BE-040
+    description: Working hours fetch failed
+    user_message: Çalışma saatleri yüklenemedi.
+  - code: INV-BE-041
+    description: Working hours update failed
+    user_message: Çalışma saatleri güncellenemedi.
+  - code: INV-BE-050
+    description: Onboarding status aggregation failed
+    user_message: Onboarding durumu hesaplanamadı.
+  - code: INV-BE-060
+    description: Sector update failed
+    user_message: Sektör güncellenemedi.
+  - code: INV-BE-061
+    description: Invalid sector value
+    user_message: Geçersiz sektör değeri.
+
+  # ── CA — ChatAnalysis ──
+  - code: INV-CA-001
+    description: Invalid payload
+    user_message: Geçersiz istek formatı.
+  - code: INV-CA-002
+    description: Processing failed
+    user_message: Analiz işlemi başarısız oldu.
+  - code: INV-CA-003
+    description: WapCRM API error
+    user_message: CRM servisine bağlanılamadı.
+  - code: INV-CA-004
+    description: WapCRM timeout
+    user_message: CRM servisi yanıt vermedi.
+  - code: INV-CA-005
+    description: Claude API error
+    user_message: Analiz servisi hatası.
+  - code: INV-CA-006
+    description: Claude timeout
+    user_message: Analiz servisi yanıt vermedi.
+  - code: INV-CA-007
+    description: No messages found
+    user_message: Bu numara için mesaj bulunamadı.
+
+  # ── AUTH — Authentication ──
+  - code: INV-AUTH-001
+    description: Token expired
+    user_message: Oturumunuz sona erdi. Lütfen tekrar giriş yapın.
+  - code: INV-AUTH-002
+    description: Invalid token
+    user_message: Geçersiz oturum.
+  - code: INV-AUTH-003
+    description: Unauthorized
+    user_message: Bu işlem için yetkiniz bulunmuyor.
+  - code: INV-AUTH-004
+    description: Missing or invalid tenant claim
+    user_message: INMA token'ında CompanyCode/CompanyId claim'i eksik veya geçersiz.
+
+  # ── AT — Automation (GR-1.1) ──
+  - code: INV-AT-001
+    description: Invalid flow config
+    user_message: Chatbot akış konfigürasyonu geçersiz.
+  - code: INV-AT-002
+    description: Flow not found
+    user_message: Bu tenant için chatbot akışı tanımlanmamış.
+  - code: INV-AT-003
+    description: FAQ not found
+    user_message: SSS kaydı bulunamadı.
+  - code: INV-AT-004
+    description: Intent detection failed
+    user_message: Niyet algılama servisi hatası.
+  - code: INV-AT-005
+    description: Session expired
+    user_message: Sohbet oturumu sona erdi.
+  - code: INV-AT-006
+    description: Flow validation failed
+    user_message: Chatbot akış doğrulaması başarısız.
+  - code: INV-AT-007
+    description: Flow not found by ID
+    user_message: Belirtilen chatbot akışı bulunamadı.
+  - code: INV-AT-008
+    description: Flow activation conflict
+    user_message: Bu tenant için zaten aktif bir akış var.
+  - code: INV-AT-009
+    description: Invalid flow config version
+    user_message: Desteklenmeyen akış konfigürasyonu versiyonu.
+  - code: INV-AT-010
+    description: Invalid API key
+    user_message: Geçersiz API anahtarı.
+  - code: INV-AT-011
+    description: Max loop count exceeded
+    user_message: "Sonsuz döngü limiti aşıldı, node: {node_id}"
+  - code: INV-AT-012
+    description: Unknown node type
+    user_message: "Desteklenmeyen node tipi: {type}"
+  - code: INV-AT-013
+    description: No pending input expected
+    user_message: Beklenmeyen kullanıcı girdisi
+  - code: INV-AT-014
+    description: Unknown input type
+    user_message: "Bilinmeyen girdi tipi: {type}"
+  - code: INV-AT-015
+    description: Graph validation failed
+    user_message: "Akış doğrulaması başarısız: {reason}"
+  - code: INV-AT-016
+    description: Required field missing
+    user_message: "Zorunlu alan eksik, node '{node_id}': {field}"
+  - code: INV-AT-017
+    description: Expression evaluation failed
+    user_message: "İfade değerlendirme hatası, node '{node_id}': {reason}"
+  - code: INV-AT-018
+    description: Simulation session not found
+    user_message: Simülasyon oturumu bulunamadı.
+  - code: INV-AT-019
+    description: Simulation session expired
+    user_message: Simülasyon oturumunun süresi doldu.
+  - code: INV-AT-020
+    description: Flow not found for simulation
+    user_message: Simülasyon için akış bulunamadı.
+  - code: INV-AT-021
+    description: Node execution failed
+    user_message: "Node çalışma hatası ({node_id}): {reason}"
+  - code: INV-AT-022
+    description: API call SSRF blocked
+    user_message: API adresi güvenlik kontrolünden geçemedi (dahili adresler engellenmiştir).
+  - code: INV-AT-023
+    description: API call timeout
+    user_message: "API çağrısı zaman aşımına uğradı ({timeout_ms}ms)."
+  - code: INV-AT-024
+    description: API call HTTP error
+    user_message: "API çağrısı HTTP hatası ({status_code}): {reason}"
+  - code: INV-AT-025
+    description: Knowledge intent fetch failed
+    user_message: Intent bilgileri alınamadı, varsayılan intent seti kullanılıyor.
+  - code: INV-AT-026
+    description: VIP detection failed
+    user_message: VIP/B2B tespit işlemi başarısız (akış etkilenmez).
+  - code: INV-AT-027
+    description: Return deflection failed
+    user_message: İade deflection işlemi başarısız.
+  - code: INV-AT-028
+    description: Return reason classify failed
+    user_message: İade nedeni sınıflandırma başarısız.
+  - code: INV-AT-029
+    description: Coupon assign failed
+    user_message: Kupon atama başarısız.
+  - code: INV-AT-030
+    description: Webhook flow not found
+    user_message: Webhook için akış bulunamadı.
+  - code: INV-AT-031
+    description: Webhook flow not webhook_trigger type
+    user_message: Bu akış webhook ile tetiklenemez.
+  - code: INV-AT-032
+    description: Webhook execution failed
+    user_message: Webhook akış yürütmesi başarısız.
+  - code: INV-AT-033
+    description: Cron expression invalid
+    user_message: Geçersiz cron ifadesi.
+  - code: INV-AT-034
+    description: Schedule execution failed
+    user_message: Zamanlama akış yürütmesi başarısız.
+  - code: INV-AT-035
+    description: Instance not found in tenant cache
+    user_message: Hat tenant cache'inde bulunamadı.
+  - code: INV-AT-036
+    description: Instance disabled, message ignored
+    user_message: Hat devre dışı, mesaj yoksayıldı.
+  - code: INV-AT-037
+    description: Instance unassigned, message ignored
+    user_message: Hat bir akışa atanmamış, mesaj yoksayıldı.
+  - code: INV-AT-038
+    description: Onboarding stats retrieval failed
+    user_message: Automation onboarding istatistikleri alınamadı.
+  - code: INV-AT-039
+    description: Execution log insert failed
+    user_message: Akış yürütme logu oluşturulamadı.
+  - code: INV-AT-040
+    description: Execution log update failed
+    user_message: Akış yürütme logu güncellenemedi.
+  - code: INV-AT-041
+    description: Execution log query failed
+    user_message: Akış yürütme logları alınamadı.
+  - code: INV-AT-042
+    description: Knowledge search failed
+    user_message: ai_faq node Knowledge servisi arama hatası (timeout, HTTP, parse). no_match'e yönlendirilir.
+  - code: INV-AT-043
+    description: Chunk summarization failed
+    user_message: PDF chunk özetleme Claude API hatası. Chunk sonucu atlanır, no_match'e yönlendirilir.
+
+  # ── AA — AgentAI ──
+  - code: INV-AA-001
+    description: Invalid request payload
+    user_message: Geçersiz istek formatı.
+  - code: INV-AA-002
+    description: Reply generation failed
+    user_message: AI cevap önerisi oluşturulamadı.
+  - code: INV-AA-003
+    description: Intent detection failed
+    user_message: Niyet algılama başarısız.
+  - code: INV-AA-004
+    description: No conversation context
+    user_message: Sohbet geçmişi sağlanmadı.
+  - code: INV-AA-005
+    description: Claude API timeout
+    user_message: AI servisi zaman aşımına uğradı.
+  - code: INV-AA-006
+    description: Invalid feedback payload
+    user_message: Geçersiz geri bildirim formatı.
+  - code: INV-AA-007
+    description: Knowledge service unavailable
+    user_message: Bilgi bankası servisi geçici olarak kullanılamıyor (öneri üretildi, kaynak referansı yok).
+  - code: INV-AA-008
+    description: Language detection failed
+    user_message: Dil algılama başarısız, varsayılan dil kullanıldı.
+  - code: INV-AA-009
+    description: Conversation summary failed
+    user_message: Konuşma özeti oluşturulamadı, ham geçmiş kullanıldı.
+
+  # ── DB — Database ──
+  - code: INV-DB-001
+    description: Connection failed
+    user_message: Veritabanı bağlantısı kurulamadı.
+  - code: INV-DB-002
+    description: Query timeout
+    user_message: Sorgu zaman aşımına uğradı.
+  - code: INV-DB-003
+    description: Duplicate entry
+    user_message: Bu kayıt zaten mevcut.
+
+  # ── VAL — Validation ──
+  - code: INV-VAL-001
+    description: Invalid format
+    user_message: "Geçersiz format: {field}"
+  - code: INV-VAL-002
+    description: Required field
+    user_message: "Zorunlu alan: {field}"
+  - code: INV-VAL-003
+    description: Out of range
+    user_message: "Değer geçerli aralıkta değil: {field}"
+
+  # ── INT — Integration (GR-1.9) ──
+  - code: INV-INT-001
+    description: Webhook payload invalid
+    user_message: Geçersiz webhook formatı.
+  - code: INV-INT-002
+    description: Callback to Main App failed
+    user_message: Main App'e bildirim gönderilemedi.
+  - code: INV-INT-003
+    description: Unknown webhook event type
+    user_message: Bilinmeyen event tipi.
+  - code: INV-INT-004
+    description: Tenant not found in registry
+    user_message: Bu tenant kayıtlı değil.
+
+  # ── OB — Outbound (GR-1.3) ──
+  - code: INV-OB-001
+    description: Invalid broadcast payload
+    user_message: Geçersiz toplu mesaj isteği.
+  - code: INV-OB-002
+    description: Template not found
+    user_message: Mesaj şablonu bulunamadı.
+  - code: INV-OB-003
+    description: Rate limit exceeded (queued)
+    user_message: Gönderim limiti aşıldı, mesajlar kuyrukta bekliyor.
+  - code: INV-OB-004
+    description: Recipient opted out
+    user_message: Alıcı mesaj almak istemiyor (opt-out).
+  - code: INV-OB-005
+    description: Broadcast not found
+    user_message: Toplu mesaj kaydı bulunamadı.
+  - code: INV-OB-006
+    description: Delivery status update failed
+    user_message: Teslimat durumu güncellenemedi.
+  - code: INV-OB-007
+    description: Invalid template payload
+    user_message: Geçersiz şablon formatı.
+  - code: INV-OB-008
+    description: No matching trigger template
+    user_message: Bu event için eşleşen şablon bulunamadı.
+  - code: INV-OB-009
+    description: Message send callback failed
+    user_message: Mesaj gönderim callback'i başarısız oldu.
+  - code: INV-OB-010
+    description: Too many recipients (max 1000)
+    user_message: Alıcı sayısı sınırı aşıldı (max 1000).
+  - code: INV-OB-011
+    description: Template language not available
+    user_message: İstenen dilde şablon bulunamadı, varsayılan dil kullanıldı.
+  - code: INV-OB-012
+    description: No template for language
+    user_message: Bu dilde şablon tanımlanmamış.
+  - code: INV-OB-013
+    description: Invalid campaign payload
+    user_message: Geçersiz kampanya isteği.
+  - code: INV-OB-014
+    description: Campaign not found
+    user_message: Kampanya bulunamadı.
+  - code: INV-OB-015
+    description: Campaign already active
+    user_message: Kampanya zaten aktif/zamanlanmış.
+  - code: INV-OB-016
+    description: Conversion record failed
+    user_message: Dönüşüm kaydı oluşturulamadı.
+  - code: INV-OB-017
+    description: AI personalization unavailable
+    user_message: AI kişiselleştirme servisi kullanılamıyor.
+  - code: INV-OB-018
+    description: Consent not given
+    user_message: Alıcı pazarlama izni vermemiş.
+  - code: INV-OB-019
+    description: Invalid consent payload
+    user_message: Geçersiz izin kaydı isteği.
+  - code: INV-OB-020
+    description: Data deletion failed
+    user_message: Veri silme işlemi başarısız oldu.
+
+  # ── IG — Integrations (GR-3.4/3.6) ──
+  - code: INV-IG-001
+    description: Invalid account payload
+    user_message: Geçersiz entegrasyon hesabı isteği.
+  - code: INV-IG-002
+    description: Account not found
+    user_message: Entegrasyon hesabı bulunamadı.
+  - code: INV-IG-003
+    description: Provider sync failed
+    user_message: Sağlayıcı senkronizasyonu başarısız.
+  - code: INV-IG-004
+    description: Order not found
+    user_message: Sipariş bulunamadı.
+  - code: INV-IG-005
+    description: Provider connection failed
+    user_message: Sağlayıcı bağlantı testi başarısız.
+  - code: INV-IG-006
+    description: Invalid order query
+    user_message: Geçersiz sipariş sorgusu.
+  - code: INV-IG-007
+    description: Cargo tracking unavailable
+    user_message: Kargo takip bilgisi kullanılamıyor.
+
+  # ── AP — Appointments (GR-2.4) ──
+  - code: INV-AP-001
+    description: Invalid slot payload
+    user_message: Geçersiz slot tanımlama isteği.
+  - code: INV-AP-002
+    description: Slot not found
+    user_message: Randevu slotu bulunamadı.
+  - code: INV-AP-003
+    description: Invalid booking payload
+    user_message: Geçersiz randevu isteği.
+  - code: INV-AP-004
+    description: Slot fully booked
+    user_message: Bu slot dolu, başka bir zaman seçin.
+  - code: INV-AP-005
+    description: Appointment not found
+    user_message: Randevu bulunamadı.
+  - code: INV-AP-006
+    description: Already cancelled
+    user_message: Randevu zaten iptal edilmiş.
+  - code: INV-AP-007
+    description: Invalid date/time
+    user_message: Geçersiz tarih veya saat.
+  - code: INV-AP-008
+    description: Booking in the past
+    user_message: Geçmiş tarihli randevu alınamaz.
+  - code: INV-AP-009
+    description: Reminder send failed
+    user_message: Hatırlatma mesajı gönderilemedi.
+  - code: INV-AP-010
+    description: Outbound service unavailable
+    user_message: Mesaj gönderim servisi geçici olarak kullanılamıyor.
+  - code: INV-AP-011
+    description: Invalid waitlist payload
+    user_message: Geçersiz bekleme listesi isteği.
+  - code: INV-AP-012
+    description: Waitlist entry not found
+    user_message: Bekleme listesi kaydı bulunamadı.
+  - code: INV-AP-013
+    description: Invalid pricing payload
+    user_message: Geçersiz fiyat tanımlama isteği.
+  - code: INV-AP-014
+    description: Pricing not found
+    user_message: Fiyat kaydı bulunamadı.
+  - code: INV-AP-015
+    description: Calendar sync failed
+    user_message: Takvim senkronizasyon hatası.
+  - code: INV-AP-016
+    description: Invalid lifecycle payload
+    user_message: Geçersiz tedavi takip isteği.
+  - code: INV-AP-017
+    description: Lifecycle not found
+    user_message: Tedavi takip kaydı bulunamadı.
+  - code: INV-AP-018
+    description: Lifecycle already finished
+    user_message: Tedavi takip süreci zaten tamamlanmış veya iptal edilmiş.
+  - code: INV-AP-019
+    description: Invalid lifecycle type
+    user_message: Geçersiz takip tipi (post_treatment, plan_approval, pre_op).
+  - code: INV-AP-020
+    description: Lifecycle step send failed
+    user_message: Takip mesajı gönderilemedi.
+
+  # ── AD — Attribution (GR-3.14) ──
+  - code: INV-AD-001
+    description: Invalid attribution payload
+    user_message: Geçersiz attribution isteği.
+  - code: INV-AD-002
+    description: Attribution not found
+    user_message: Attribution kaydı bulunamadı.
+  - code: INV-AD-003
+    description: Invalid cost entry
+    user_message: Geçersiz reklam maliyeti girişi.
+  - code: INV-AD-004
+    description: Cost not found
+    user_message: Reklam maliyeti kaydı bulunamadı.
+  - code: INV-AD-005
+    description: Invalid lead status update
+    user_message: Geçersiz lead durum güncellemesi.
+
+  # ── MK — Marketing (GR-3.21/3.22) ──
+  - code: INV-MK-001
+    description: Invalid review request payload
+    user_message: Geçersiz yorum talebi isteği.
+  - code: INV-MK-002
+    description: Review request not found
+    user_message: Yorum talebi bulunamadı.
+  - code: INV-MK-003
+    description: Invalid referral payload
+    user_message: Geçersiz referans isteği.
+  - code: INV-MK-004
+    description: Referral not found
+    user_message: Referans kaydı bulunamadı.
+  - code: INV-MK-005
+    description: Referral code already exists
+    user_message: Referans kodu zaten mevcut (tekrar deneyin).
+  - code: INV-MK-006
+    description: Invalid tourism lead payload
+    user_message: Geçersiz medikal turizm lead isteği.
+  - code: INV-MK-007
+    description: Tourism lead not found
+    user_message: Medikal turizm lead bulunamadı.
+  - code: INV-MK-008
+    description: Invalid tourism lead status
+    user_message: Geçersiz lead durumu.
+  - code: INV-MK-009
+    description: Review stats query failed
+    user_message: Yorum istatistikleri sorgusu başarısız.
+  - code: INV-MK-010
+    description: Tourism stats query failed
+    user_message: Turizm istatistikleri sorgusu başarısız.
+  - code: INV-MK-011
+    description: Invalid risk assessment payload
+    user_message: Geçersiz risk değerlendirmesi isteği.
+  - code: INV-MK-012
+    description: Review risk not found
+    user_message: Risk kaydı bulunamadı.
+  - code: INV-MK-013
+    description: Invalid risk/rescue status
+    user_message: Geçersiz risk veya kurtarma durumu.
+  - code: INV-MK-014
+    description: Rescue stats query failed
+    user_message: Kurtarma istatistikleri sorgusu başarısız.
+  - code: INV-MK-015
+    description: Invalid rescue template payload
+    user_message: Geçersiz kurtarma şablonu isteği.
+  - code: INV-MK-016
+    description: Rescue template not found
+    user_message: Kurtarma şablonu bulunamadı.
+  - code: INV-MK-017
+    description: Invalid treatment catalog payload
+    user_message: Geçersiz tedavi katalogu isteği.
+  - code: INV-MK-018
+    description: Treatment catalog item not found
+    user_message: Tedavi katalogu kaydı bulunamadı.
+  - code: INV-MK-019
+    description: Invalid conversation payload
+    user_message: Geçersiz konuşma isteği.
+  - code: INV-MK-020
+    description: Tourism conversation not found
+    user_message: Turizm konuşması bulunamadı.
+  - code: INV-MK-021
+    description: Conversation stats query failed
+    user_message: Konuşma istatistikleri sorgusu başarısız.
+  - code: INV-MK-022
+    description: Response generation failed
+    user_message: Çok dilli cevap üretimi başarısız.
+  - code: INV-MK-023
+    description: Claude AI service unavailable
+    user_message: Claude AI servisi kullanılamıyor.
+
+  # ── KN — Knowledge (GR-2.1) ──
+  - code: INV-KN-001
+    description: Import path not found
+    user_message: Belirtilen NLP dosya yolu bulunamadı.
+  - code: INV-KN-002
+    description: Import parse error
+    user_message: Dosya parse hatası (JSON/CSV).
+  - code: INV-KN-003
+    description: Import DB error
+    user_message: Veritabanı kayıt hatası.
+  - code: INV-KN-004
+    description: Search failed
+    user_message: Arama sırasında hata oluştu.
+  - code: INV-KN-005
+    description: OpenAI timeout
+    user_message: Embedding servisi zaman aşımı (anahtar kelime aramasına geçildi).
+  - code: INV-KN-006
+    description: OpenAI rate limit
+    user_message: Embedding rate limiti aşıldı (anahtar kelime aramasına geçildi).
+  - code: INV-KN-007
+    description: OpenAI API error
+    user_message: Embedding servisi hatası.
+  - code: INV-KN-008
+    description: FAQ not found
+    user_message: Belirtilen FAQ bulunamadı.
+  - code: INV-KN-009
+    description: Invalid request
+    user_message: Geçersiz istek formatı.
+  - code: INV-KN-010
+    description: pgvector missing
+    user_message: pgvector eklentisi yüklü değil (sunucu hatası).
+  - code: INV-KN-011
+    description: File too large
+    user_message: Dosya boyutu sınırı aşıldı.
+  - code: INV-KN-012
+    description: Invalid file type
+    user_message: Desteklenmeyen dosya formatı.
+  - code: INV-KN-013
+    description: PDF extraction failed
+    user_message: PDF içerik çıkarma hatası.
+  - code: INV-KN-014
+    description: Document not found
+    user_message: Döküman bulunamadı.
+  - code: INV-KN-015
+    description: Upload failed
+    user_message: Dosya yükleme hatası.
+  - code: INV-KN-016
+    description: Photo blocked (health tenant)
+    user_message: Sağlık tenant'ları için hasta fotoğrafı yüklemesi engellendi (KVKK).
+  - code: INV-KN-017
+    description: Intent patterns not found
+    user_message: Bu tenant için intent tanımları bulunamadı.
+  - code: INV-KN-018
+    description: Intent read failed
+    user_message: Intent tanımları okunurken hata oluştu.
+  - code: INV-KN-019
+    description: Template not found
+    user_message: Belirtilen şablon bulunamadı.
+  - code: INV-KN-020
+    description: Invalid template type
+    user_message: Geçersiz şablon tipi (faq/message/intent/flow/scenario).
+  - code: INV-KN-021
+    description: Template slug conflict
+    user_message: Bu slug zaten kullanılıyor.
+  - code: INV-KN-022
+    description: Template scope mismatch
+    user_message: Scope/sector/tenant_id tutarsızlığı.
+  - code: INV-KN-023
+    description: Template not published
+    user_message: Şablon henüz yayınlanmamış.
+  - code: INV-KN-024
+    description: Adoption already exists
+    user_message: Bu tenant zaten bu şablonu benimsemiş.
+  - code: INV-KN-025
+    description: AB test invalid state
+    user_message: Geçersiz A/B test durum geçişi.
+  - code: INV-KN-026
+    description: Template version not found
+    user_message: Belirtilen versiyon bulunamadı.
+  - code: INV-KN-027
+    description: Cannot delete adopted template
+    user_message: Benimsenmiş şablon silinemez.
+  - code: INV-KN-028
+    description: Onboarding failed
+    user_message: Şablon dağıtımı sırasında hata oluştu (kısmi başarı).
+  - code: INV-KN-029
+    description: Seed from analysis failed
+    user_message: Analiz verisinden şablon çıkarma hatası.
+  - code: INV-KN-030
+    description: Suggestion not found
+    user_message: Belirtilen öneri bulunamadı.
+  - code: INV-KN-031
+    description: Comparison failed
+    user_message: Şablon karşılaştırma sırasında hata oluştu.
+  - code: INV-KN-032
+    description: Invalid suggestion status
+    user_message: Geçersiz öneri durum geçişi.
+  - code: INV-KN-036
+    description: Onboarding stats retrieval failed
+    user_message: Knowledge onboarding istatistikleri alınamadı.
+
+  # ── MT — Metrics/Analytics (PKT-3) ──
+  - code: INV-MT-001
+    description: Metrics aggregation failed
+    user_message: Metrik toplama hatası. Bir sonraki periyotta tekrar denenecek.
+  - code: INV-MT-002
+    description: Analytics query failed
+    user_message: Analitik sorgusu başarısız oldu.
+  - code: INV-MT-003
+    description: Invalid date range
+    user_message: Geçersiz tarih aralığı (başlangıç > bitiş veya negatif).
+
+  # ── EXT — External ──
+  - code: INV-EXT-001
+    description: External API error
+    user_message: Dış servis hatası.
+  - code: INV-EXT-002
+    description: External timeout
+    user_message: Dış servis yanıt vermedi.
 ```
 
-- `INV` = InvektoServis prefix
-- `SERVICE` = Servis kodu (GEN, BE, CA, etc.)
-- `NUMBER` = 3 haneli numara
+## Adding New Codes
 
-## Servis Kodları
-
-| Code | Service | Açıklama |
-|------|---------|----------|
-| GEN | General | Genel hatalar |
-| BE | Backend | Backend API hataları |
-| CA | ChatAnalysis | Chat Analysis microservice hataları |
-| AT | Automation | GR-1.1: Chatbot/Flow Builder hataları |
-| AUTH | Auth | Authentication hataları |
-| INT | Integration | GR-1.9: Entegrasyon köprüsü hataları |
-| DB | Database | Veritabanı hataları |
-| VAL | Validation | Validasyon hataları |
-| OB | Outbound | GR-1.3/3.15/3.26/3.29: Broadcast, campaign, consent, compliance hatalari |
-| IG | Integrations | GR-3.4/3.6: Marketplace & kargo entegrasyonlari |
-| AP | Appointments | GR-2.4: Randevu Motoru hatalari |
-| KN | Knowledge | GR-2.1: Knowledge Service (RAG) hatalari |
-| AD | Attribution | GR-3.14: Ads Attribution hatalari |
-| MK | Marketing | GR-3.21/3.22: Google Yorum, Referans, Medikal Turizm hatalari |
-| MT | Metrics | PKT-3: Analitik/metrik hatalari |
-| EXT | External | Dış servis hataları |
-
----
-
-## GEN - General Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-GEN-001 | Unknown error | Beklenmeyen bir hata oluştu. |
-| INV-GEN-002 | Timeout | İşlem zaman aşımına uğradı. |
-| INV-GEN-003 | Validation error | Geçersiz veri formatı. |
-
----
-
-## BE - Backend Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-BE-001 | Microservice unavailable | Servis geçici olarak kullanılamıyor. |
-| INV-BE-002 | Microservice timeout | Servis yanıt vermedi. Lütfen tekrar deneyin. |
-| INV-BE-003 | Microservice error (5xx) | Servis hatası. Lütfen tekrar deneyin. |
-| INV-BE-004 | Microservice invalid response | Servis geçersiz yanıt döndü. |
-| INV-BE-005 | Microservice client error (4xx) | İstek hatası. Lütfen parametreleri kontrol edin. |
-| INV-BE-010 | Message log query failed | Mesaj kayitlari yuklenemedi. |
-| INV-BE-011 | Tenant list query failed | Firma listesi yuklenemedi. |
-| INV-BE-012 | Tenant impersonate failed | Firma girisi basarisiz oldu. |
-| INV-BE-020 | Wizard session creation failed | Wizard oturumu olusturulamadi. |
-| INV-BE-021 | Wizard AI service unavailable | AI servisi yapilandirilmamis. |
-| INV-BE-022 | Wizard AI communication failed | AI iletisim hatasi. |
-| INV-BE-023 | Wizard confirm failed | Akis olusturulamadi. |
-| INV-BE-024 | Wizard invalid payload | Gecersiz wizard istegi. |
-| INV-BE-030 | WapCRM instance fetch failed | WapCRM hat listesi alinamadi. |
-| INV-BE-031 | Instance disable blocked (in use by flow) | Hat bir akis tarafindan kullaniliyor, devre disi birakilamaz. |
-| INV-BE-040 | Working hours fetch failed | Calisma saatleri yuklenemedi. |
-| INV-BE-041 | Working hours update failed | Calisma saatleri guncellenemedi. |
-| INV-BE-050 | Onboarding status aggregation failed | Onboarding durumu hesaplanamadi. |
-| INV-BE-060 | Sector update failed | Sektor guncellenemedi. |
-| INV-BE-061 | Invalid sector value | Gecersiz sektor degeri. |
-
----
-
-## CA - ChatAnalysis Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-CA-001 | Invalid payload | Geçersiz istek formatı. |
-| INV-CA-002 | Processing failed | Analiz işlemi başarısız oldu. |
-| INV-CA-003 | WapCRM API error | CRM servisine bağlanılamadı. |
-| INV-CA-004 | WapCRM timeout | CRM servisi yanıt vermedi. |
-| INV-CA-005 | Claude API error | Analiz servisi hatası. |
-| INV-CA-006 | Claude timeout | Analiz servisi yanıt vermedi. |
-| INV-CA-007 | No messages found | Bu numara için mesaj bulunamadı. |
-
----
-
-## AUTH - Authentication Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-AUTH-001 | Token expired | Oturumunuz sona erdi. Lütfen tekrar giriş yapın. |
-| INV-AUTH-002 | Invalid token | Geçersiz oturum. |
-| INV-AUTH-003 | Unauthorized | Bu işlem için yetkiniz bulunmuyor. |
-| INV-AUTH-004 | Missing or invalid tenant claim | INMA token'ında CompanyCode/CompanyId claim'i eksik veya geçersiz. |
-
----
-
-## AT - Automation Errors (GR-1.1)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-AT-001 | Invalid flow config | Chatbot akis konfigurasyonu gecersiz. |
-| INV-AT-002 | Flow not found | Bu tenant icin chatbot akisi tanimlanmamis. |
-| INV-AT-003 | FAQ not found | SSS kaydi bulunamadi. |
-| INV-AT-004 | Intent detection failed | Niyet algilama servisi hatasi. |
-| INV-AT-005 | Session expired | Sohbet oturumu sona erdi. |
-| INV-AT-006 | Flow validation failed | Chatbot akis dogrulamasi basarisiz. |
-| INV-AT-007 | Flow not found by ID | Belirtilen chatbot akisi bulunamadi. |
-| INV-AT-008 | Flow activation conflict | Bu tenant icin zaten aktif bir akis var. |
-| INV-AT-009 | Invalid flow config version | Desteklenmeyen akis konfigurasyonu versiyonu. |
-| INV-AT-010 | Invalid API key | Gecersiz API anahtari. |
-| INV-AT-011 | Max loop count exceeded | Sonsuz dongu limiti asildi, node: {node_id} |
-| INV-AT-012 | Unknown node type | Desteklenmeyen node tipi: {type} |
-| INV-AT-013 | No pending input expected | Beklenmeyen kullanici girdisi |
-| INV-AT-014 | Unknown input type | Bilinmeyen girdi tipi: {type} |
-| INV-AT-015 | Graph validation failed | Akis dogrulamasi basarisiz: {reason} |
-| INV-AT-016 | Required field missing | Zorunlu alan eksik, node '{node_id}': {field} |
-| INV-AT-017 | Expression evaluation failed | Ifade degerlendirme hatasi, node '{node_id}': {reason} |
-| INV-AT-018 | Simulation session not found | Simulasyon oturumu bulunamadi. |
-| INV-AT-019 | Simulation session expired | Simulasyon oturumunun suresi doldu. |
-| INV-AT-020 | Flow not found for simulation | Simulasyon icin akis bulunamadi. |
-| INV-AT-021 | Node execution failed | Node calisma hatasi ({node_id}): {reason} |
-| INV-AT-022 | API call SSRF blocked | API adresi guvenlik kontrolunden gecemedi (dahili adresler engellenmistir). |
-| INV-AT-023 | API call timeout | API cagrisi zaman asimina ugradi ({timeout_ms}ms). |
-| INV-AT-024 | API call HTTP error | API cagrisi HTTP hatasi ({status_code}): {reason} |
-| INV-AT-025 | Knowledge intent fetch failed | Intent bilgileri alinamadi, varsayilan intent seti kullaniliyor. |
-| INV-AT-026 | VIP detection failed | VIP/B2B tespit islemi basarisiz (akis etkilenmez). |
-| INV-AT-027 | Return deflection failed | Iade deflection islemi basarisiz. |
-| INV-AT-028 | Return reason classify failed | Iade nedeni siniflandirma basarisiz. |
-| INV-AT-029 | Coupon assign failed | Kupon atama basarisiz. |
-| INV-AT-030 | Webhook flow not found | Webhook icin akis bulunamadi. |
-| INV-AT-031 | Webhook flow not webhook_trigger type | Bu akis webhook ile tetiklenemez. |
-| INV-AT-032 | Webhook execution failed | Webhook akis yurutmesi basarisiz. |
-| INV-AT-033 | Cron expression invalid | Gecersiz cron ifadesi. |
-| INV-AT-034 | Schedule execution failed | Zamanlama akis yurutmesi basarisiz. |
-| INV-AT-035 | Instance not found in tenant cache | Hat tenant cache'inde bulunamadi. |
-| INV-AT-036 | Instance disabled, message ignored | Hat devre disi, mesaj yoksayildi. |
-| INV-AT-037 | Instance unassigned, message ignored | Hat bir akisa atanmamis, mesaj yoksayildi. |
-| INV-AT-038 | Onboarding stats retrieval failed | Automation onboarding istatistikleri alinamadi. |
-| INV-AT-039 | Execution log insert failed | Akis yurutme logu olusturulamadi. |
-| INV-AT-040 | Execution log update failed | Akis yurutme logu guncellenemedi. |
-| INV-AT-041 | Execution log query failed | Akis yurutme loglari alinamadi. |
-| INV-AT-042 | Knowledge search failed | ai_faq node Knowledge servisi arama hatasi (timeout, HTTP, parse). no_match'e yonlendirilir. |
-| INV-AT-043 | Chunk summarization failed | PDF chunk ozetleme Claude API hatasi. Chunk sonucu atlanir, no_match'e yonlendirilir. |
-
----
-
-## AA - AgentAI Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-AA-001 | Invalid request payload | Gecersiz istek formati. |
-| INV-AA-002 | Reply generation failed | AI cevap onerisi olusturulamadi. |
-| INV-AA-003 | Intent detection failed | Niyet algilama basarisiz. |
-| INV-AA-004 | No conversation context | Sohbet gecmisi saglanmadi. |
-| INV-AA-005 | Claude API timeout | AI servisi zaman asimina ugradi. |
-| INV-AA-006 | Invalid feedback payload | Gecersiz geri bildirim formati. |
-| INV-AA-007 | Knowledge service unavailable | Bilgi bankasi servisi gecici olarak kullanilamiyor (oneri uretildi, kaynak referansi yok). |
-| INV-AA-008 | Language detection failed | Dil algilama basarisiz, varsayilan dil kullanildi. |
-| INV-AA-009 | Conversation summary failed | Konusma ozeti olusturulamadi, ham gecmis kullanildi. |
-
----
-
-## DB - Database Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-DB-001 | Connection failed | Veritabanı bağlantısı kurulamadı. |
-| INV-DB-002 | Query timeout | Sorgu zaman aşımına uğradı. |
-| INV-DB-003 | Duplicate entry | Bu kayıt zaten mevcut. |
-
----
-
-## VAL - Validation Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-VAL-001 | Invalid format | Geçersiz format: {field} |
-| INV-VAL-002 | Required field | Zorunlu alan: {field} |
-| INV-VAL-003 | Out of range | Değer geçerli aralıkta değil: {field} |
-
----
-
-## INT - Integration Errors (GR-1.9)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-INT-001 | Webhook payload invalid | Geçersiz webhook formatı. |
-| INV-INT-002 | Callback to Main App failed | Main App'e bildirim gönderilemedi. |
-| INV-INT-003 | Unknown webhook event type | Bilinmeyen event tipi. |
-| INV-INT-004 | Tenant not found in registry | Bu tenant kayıtlı değil. |
-
----
-
-## OB - Outbound Errors (GR-1.3)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-OB-001 | Invalid broadcast payload | Gecersiz toplu mesaj istegi. |
-| INV-OB-002 | Template not found | Mesaj sablonu bulunamadi. |
-| INV-OB-003 | Rate limit exceeded (queued) | Gonderim limiti asildi, mesajlar kuyrukta bekliyor. |
-| INV-OB-004 | Recipient opted out | Alici mesaj almak istemiyor (opt-out). |
-| INV-OB-005 | Broadcast not found | Toplu mesaj kaydi bulunamadi. |
-| INV-OB-006 | Delivery status update failed | Teslimat durumu guncellenemedi. |
-| INV-OB-007 | Invalid template payload | Gecersiz sablon formati. |
-| INV-OB-008 | No matching trigger template | Bu event icin esle&#351;en sablon bulunamadi. |
-| INV-OB-009 | Message send callback failed | Mesaj gonderim callback'i basarisiz oldu. |
-| INV-OB-010 | Too many recipients (max 1000) | Alici sayisi siniri asildi (max 1000). |
-| INV-OB-011 | Template language not available | Istenen dilde sablon bulunamadi, varsayilan dil kullanildi. |
-| INV-OB-012 | No template for language | Bu dilde sablon tanimlanmamis. |
-| INV-OB-013 | Invalid campaign payload | Gecersiz kampanya istegi. |
-| INV-OB-014 | Campaign not found | Kampanya bulunamadi. |
-| INV-OB-015 | Campaign already active | Kampanya zaten aktif/zamanlanmis. |
-| INV-OB-016 | Conversion record failed | Donusum kaydi olusturulamadi. |
-| INV-OB-017 | AI personalization unavailable | AI kisisellistirme servisi kullanilamiyor. |
-| INV-OB-018 | Consent not given | Alici pazarlama izni vermemis. |
-| INV-OB-019 | Invalid consent payload | Gecersiz izin kaydi istegi. |
-| INV-OB-020 | Data deletion failed | Veri silme islemi basarisiz oldu. |
-
----
-
-## IG - Integrations Errors (GR-3.4/3.6)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-IG-001 | Invalid account payload | Gecersiz entegrasyon hesabi istegi. |
-| INV-IG-002 | Account not found | Entegrasyon hesabi bulunamadi. |
-| INV-IG-003 | Provider sync failed | Saglayici senkronizasyonu basarisiz. |
-| INV-IG-004 | Order not found | Siparis bulunamadi. |
-| INV-IG-005 | Provider connection failed | Saglayici baglanti testi basarisiz. |
-| INV-IG-006 | Invalid order query | Gecersiz siparis sorgusu. |
-| INV-IG-007 | Cargo tracking unavailable | Kargo takip bilgisi kullanilamiyor. |
-
----
-
-## AP - Appointments Errors (GR-2.4)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-AP-001 | Invalid slot payload | Gecersiz slot tanimlama istegi. |
-| INV-AP-002 | Slot not found | Randevu slotu bulunamadi. |
-| INV-AP-003 | Invalid booking payload | Gecersiz randevu istegi. |
-| INV-AP-004 | Slot fully booked | Bu slot dolu, baska bir zaman secin. |
-| INV-AP-005 | Appointment not found | Randevu bulunamadi. |
-| INV-AP-006 | Already cancelled | Randevu zaten iptal edilmis. |
-| INV-AP-007 | Invalid date/time | Gecersiz tarih veya saat. |
-| INV-AP-008 | Booking in the past | Gecmis tarihli randevu alinamaz. |
-| INV-AP-009 | Reminder send failed | Hatirlatma mesaji gonderilemedi. |
-| INV-AP-010 | Outbound service unavailable | Mesaj gonderim servisi gecici olarak kullanilamiyor. |
-| INV-AP-011 | Invalid waitlist payload | Gecersiz bekleme listesi istegi. |
-| INV-AP-012 | Waitlist entry not found | Bekleme listesi kaydi bulunamadi. |
-| INV-AP-013 | Invalid pricing payload | Gecersiz fiyat tanimlama istegi. |
-| INV-AP-014 | Pricing not found | Fiyat kaydi bulunamadi. |
-| INV-AP-015 | Calendar sync failed | Takvim senkronizasyon hatasi. |
-| INV-AP-016 | Invalid lifecycle payload | Gecersiz tedavi takip istegi. |
-| INV-AP-017 | Lifecycle not found | Tedavi takip kaydi bulunamadi. |
-| INV-AP-018 | Lifecycle already finished | Tedavi takip sureci zaten tamamlanmis veya iptal edilmis. |
-| INV-AP-019 | Invalid lifecycle type | Gecersiz takip tipi (post_treatment, plan_approval, pre_op). |
-| INV-AP-020 | Lifecycle step send failed | Takip mesaji gonderilemedi. |
-
----
-
-## AD - Attribution Errors (GR-3.14)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-AD-001 | Invalid attribution payload | Gecersiz attribution istegi. |
-| INV-AD-002 | Attribution not found | Attribution kaydi bulunamadi. |
-| INV-AD-003 | Invalid cost entry | Gecersiz reklam maliyeti girisi. |
-| INV-AD-004 | Cost not found | Reklam maliyeti kaydi bulunamadi. |
-| INV-AD-005 | Invalid lead status update | Gecersiz lead durum guncellemesi. |
-
----
-
-## MK - Marketing Errors (GR-3.21/3.22)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-MK-001 | Invalid review request payload | Gecersiz yorum talebi istegi. |
-| INV-MK-002 | Review request not found | Yorum talebi bulunamadi. |
-| INV-MK-003 | Invalid referral payload | Gecersiz referans istegi. |
-| INV-MK-004 | Referral not found | Referans kaydi bulunamadi. |
-| INV-MK-005 | Referral code already exists | Referans kodu zaten mevcut (tekrar deneyin). |
-| INV-MK-006 | Invalid tourism lead payload | Gecersiz medikal turizm lead istegi. |
-| INV-MK-007 | Tourism lead not found | Medikal turizm lead bulunamadi. |
-| INV-MK-008 | Invalid tourism lead status | Gecersiz lead durumu. |
-| INV-MK-009 | Review stats query failed | Yorum istatistikleri sorgusu basarisiz. |
-| INV-MK-010 | Tourism stats query failed | Turizm istatistikleri sorgusu basarisiz. |
-| INV-MK-011 | Invalid risk assessment payload | Gecersiz risk degerlendirmesi istegi. |
-| INV-MK-012 | Review risk not found | Risk kaydi bulunamadi. |
-| INV-MK-013 | Invalid risk/rescue status | Gecersiz risk veya kurtarma durumu. |
-| INV-MK-014 | Rescue stats query failed | Kurtarma istatistikleri sorgusu basarisiz. |
-| INV-MK-015 | Invalid rescue template payload | Gecersiz kurtarma sablonu istegi. |
-| INV-MK-016 | Rescue template not found | Kurtarma sablonu bulunamadi. |
-| INV-MK-017 | Invalid treatment catalog payload | Gecersiz tedavi katalogu istegi. |
-| INV-MK-018 | Treatment catalog item not found | Tedavi katalogu kaydi bulunamadi. |
-| INV-MK-019 | Invalid conversation payload | Gecersiz konusma istegi. |
-| INV-MK-020 | Tourism conversation not found | Turizm konusmasi bulunamadi. |
-| INV-MK-021 | Conversation stats query failed | Konusma istatistikleri sorgusu basarisiz. |
-| INV-MK-022 | Response generation failed | Cok dilli cevap uretimi basarisiz. |
-| INV-MK-023 | Claude AI service unavailable | Claude AI servisi kullanilamiyor. |
-
----
-
-## KN - Knowledge Errors (GR-2.1)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-KN-001 | Import path not found | Belirtilen NLP dosya yolu bulunamadi. |
-| INV-KN-002 | Import parse error | Dosya parse hatasi (JSON/CSV). |
-| INV-KN-003 | Import DB error | Veritabani kayit hatasi. |
-| INV-KN-004 | Search failed | Arama sirasinda hata olustu. |
-| INV-KN-005 | OpenAI timeout | Embedding servisi zaman asimi (anahtar kelime aramasina gecildi). |
-| INV-KN-006 | OpenAI rate limit | Embedding rate limiti asildi (anahtar kelime aramasina gecildi). |
-| INV-KN-007 | OpenAI API error | Embedding servisi hatasi. |
-| INV-KN-008 | FAQ not found | Belirtilen FAQ bulunamadi. |
-| INV-KN-009 | Invalid request | Gecersiz istek formati. |
-| INV-KN-010 | pgvector missing | pgvector eklentisi yuklu degil (sunucu hatasi). |
-| INV-KN-011 | File too large | Dosya boyutu siniri asildi. |
-| INV-KN-012 | Invalid file type | Desteklenmeyen dosya formati. |
-| INV-KN-013 | PDF extraction failed | PDF icerik cikarma hatasi. |
-| INV-KN-014 | Document not found | Dokuman bulunamadi. |
-| INV-KN-015 | Upload failed | Dosya yukleme hatasi. |
-| INV-KN-016 | Photo blocked (health tenant) | Saglik tenant'lari icin hasta fotografi yuklemesi engellendi (KVKK). |
-| INV-KN-017 | Intent patterns not found | Bu tenant icin intent tanimlari bulunamadi. |
-| INV-KN-018 | Intent read failed | Intent tanimlari okunurken hata olustu. |
-| INV-KN-019 | Template not found | Belirtilen sablon bulunamadi. |
-| INV-KN-020 | Invalid template type | Gecersiz sablon tipi (faq/message/intent/flow/scenario). |
-| INV-KN-021 | Template slug conflict | Bu slug zaten kullaniliyor. |
-| INV-KN-022 | Template scope mismatch | Scope/sector/tenant_id tutarsizligi. |
-| INV-KN-023 | Template not published | Sablon henuz yayinlanmamis. |
-| INV-KN-024 | Adoption already exists | Bu tenant zaten bu sablonu benimsemis. |
-| INV-KN-025 | AB test invalid state | Gecersiz A/B test durum gecisi. |
-| INV-KN-026 | Template version not found | Belirtilen versiyon bulunamadi. |
-| INV-KN-027 | Cannot delete adopted template | Benimsenmis sablon silinemez. |
-| INV-KN-028 | Onboarding failed | Sablon dagitimi sirasinda hata olustu (kismi basari). |
-| INV-KN-029 | Seed from analysis failed | Analiz verisinden sablon cikarma hatasi. |
-| INV-KN-030 | Suggestion not found | Belirtilen oneri bulunamadi. |
-| INV-KN-031 | Comparison failed | Sablon karsilastirma sirasinda hata olustu. |
-| INV-KN-032 | Invalid suggestion status | Gecersiz oneri durum gecisi. |
-| INV-KN-036 | Onboarding stats retrieval failed | Knowledge onboarding istatistikleri alinamadi. |
-
----
-
-## MT - Metrics/Analytics Errors (PKT-3)
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-MT-001 | Metrics aggregation failed | Metrik toplama hatasi. Bir sonraki periyotta tekrar denenecek. |
-| INV-MT-002 | Analytics query failed | Analitik sorgusu basarisiz oldu. |
-| INV-MT-003 | Invalid date range | Gecersiz tarih araligi (baslangic > bitis veya negatif). |
-
----
-
-## EXT - External Service Errors
-
-| Code | Description | User Message |
-|------|-------------|--------------|
-| INV-EXT-001 | External API error | Dış servis hatası. |
-| INV-EXT-002 | External timeout | Dış servis yanıt vermedi. |
-
----
-
-## Yeni Kod Ekleme
-
-1. Servis kodunu belirle (GEN, BE, CA, etc.)
-2. Sonraki boş numarayı bul (001, 002, etc.)
-3. Bu dosyaya ekle
-4. `ErrorCodes.cs` dosyasına ekle
-5. Kodda kullan
-
-## ErrorCodes.cs Örneği
+1. Find the service section in the YAML block above
+2. Use the next available number for that service
+3. Add entry with `code`, `description`, `user_message`
+4. Mirror in `src/Invekto.Shared/Constants/ErrorCodes.cs`
 
 ```csharp
+// ErrorCodes.cs example
 public static class ErrorCodes
 {
-    // General errors
     public const string GeneralUnknown = "INV-GEN-001";
     public const string GeneralTimeout = "INV-GEN-002";
-
-    // Backend errors
     public const string BackendMicroserviceUnavailable = "INV-BE-001";
-    public const string BackendMicroserviceTimeout = "INV-BE-002";
 }
 ```
