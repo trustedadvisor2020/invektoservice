@@ -118,13 +118,13 @@ Ana context sadece sonuclari alir, arastirma detaylarini degil.
 
 ## Hooks (Mekanik Zorlama)
 
-`.claude/hooks/` altinda 3 hook aktif:
+`.claude/hooks/` altinda 2 lokal hook aktif + 1 global hook:
 
 | Hook | Tetikleme | Davranis |
 |------|-----------|----------|
-| `secret-scan.ps1` | PreToolUse: Bash(git add/commit/push) | **BLOCKING** (exit 2) - secret tespit ederse engeller |
 | `build-reminder.ps1` | PostToolUse: Edit/Write (.cs) | Non-blocking - build hatirlatmasi + remediation inject |
 | `invariant-check.ps1` | PostToolUse: Edit/Write (.sql/.cs) | Non-blocking - snake_case, error code, isolation kontrol |
+| `~/.claude/hooks/secret-scan.ps1` | PreToolUse: Bash (GLOBAL) | **BLOCKING** (exit 2) - secret tespit ederse engeller |
 
 ## Workflow Reference
 
