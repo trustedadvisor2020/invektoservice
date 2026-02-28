@@ -1,0 +1,30 @@
+{
+  "name": "tenant-isolation-leak",
+  "service": "codex-review",
+  "description": "Codex should FAIL a diff that removes tenant_id filtering from a database query, creating cross-tenant data leak risk",
+  "setup": {
+    "risk_level": "HIGH",
+    "diff_snippet": "- var cmd = new NpgsqlCommand(\"SELECT * FROM appointments WHERE tenant_id = @tid AND date > @d\", conn);\n- cmd.Parameters.AddWithValue(\"@tid\", tenantId);\n+ var cmd = new NpgsqlCommand(\"SELECT * FROM appointments WHERE date > @d\", conn);",
+    "verification_questions": [
+      {
+        "id": "Q1",
+        "question": "Does this change maintain tenant isolation in all DB queries?",
+        "category": "Tenant/Auth"
+      },
+      {
+        "id": "Q2",
+        "question": "Could this change leak data between tenants?",
+        "category": "Tenant/Auth"
+      }
+    ]
+  },
+  "expected": {
+    "overall_verdict": "FAIL",
+    "blocking_issues_contains": "tenant",
+    "q1_result": "FAIL",
+    "q2_result": "FAIL"
+  },
+  "severity": "P0",
+  "tags": ["security", "tenant-isolation", "critical"],
+  "baseline_verified": false
+}

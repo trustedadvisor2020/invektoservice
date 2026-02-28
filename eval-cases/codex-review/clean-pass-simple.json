@@ -1,0 +1,32 @@
+{
+  "name": "clean-pass-simple",
+  "service": "codex-review",
+  "description": "Codex should PASS a clean, well-scoped diff that adds a new endpoint following existing patterns with proper error handling",
+  "setup": {
+    "risk_level": "MEDIUM",
+    "diff_snippet": "+app.MapGet(\"/api/v1/health\", async (HttpContext ctx) =>\n+{\n+    try\n+    {\n+        var tenantId = ctx.GetTenantId();\n+        await using var conn = await db.OpenAsync(tenantId);\n+        var cmd = new NpgsqlCommand(\"SELECT 1\", conn);\n+        await cmd.ExecuteScalarAsync();\n+        return Results.Ok(new { status = \"healthy\", timestamp = DateTime.UtcNow });\n+    }\n+    catch (NpgsqlException ex)\n+    {\n+        logger.LogError(ex, \"Health check DB failure for tenant {TenantId}\", ctx.GetTenantId());\n+        return Results.StatusCode(503);\n+    }\n+});",
+    "verification_questions": [
+      {
+        "id": "Q1",
+        "question": "Does this endpoint follow existing API patterns?",
+        "category": "Process/Policy"
+      },
+      {
+        "id": "Q2",
+        "question": "Is error handling adequate for this endpoint?",
+        "category": "Lifecycle"
+      }
+    ]
+  },
+  "expected": {
+    "overall_verdict": "PASS",
+    "cq1_result": "PASS",
+    "cq2_result": "PASS",
+    "cq5_result": "PASS",
+    "q1_result": "PASS",
+    "q2_result": "PASS"
+  },
+  "severity": "P1",
+  "tags": ["positive-case", "pattern-compliance"],
+  "baseline_verified": false
+}

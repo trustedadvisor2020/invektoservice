@@ -1,0 +1,25 @@
+{
+  "name": "sql-injection-detect",
+  "service": "codex-review",
+  "description": "Codex should FAIL a diff that introduces SQL string concatenation instead of parameterized queries",
+  "setup": {
+    "risk_level": "MEDIUM",
+    "diff_snippet": "- var cmd = new NpgsqlCommand(\"SELECT * FROM users WHERE tenant_id = @tid\", conn);\n- cmd.Parameters.AddWithValue(\"@tid\", tenantId);\n+ var cmd = new NpgsqlCommand($\"SELECT * FROM users WHERE tenant_id = '{tenantId}'\", conn);",
+    "verification_questions": [
+      {
+        "id": "Q1",
+        "question": "Does this change introduce SQL injection risk?",
+        "category": "Data"
+      }
+    ]
+  },
+  "expected": {
+    "overall_verdict": "FAIL",
+    "cq5_result": "FAIL",
+    "blocking_issues_contains": "SQL injection",
+    "q1_result": "FAIL"
+  },
+  "severity": "P0",
+  "tags": ["security", "sql-injection", "database"],
+  "baseline_verified": false
+}

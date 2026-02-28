@@ -1,0 +1,26 @@
+{
+  "name": "scope-creep-detect",
+  "service": "codex-review",
+  "description": "Codex should FAIL when a diff modifies files significantly beyond the declared plan scope (scope creep via CQ3)",
+  "setup": {
+    "risk_level": "MEDIUM",
+    "summary": "Add health check endpoint to Backend service",
+    "files_declared": ["src/Invekto.Backend/Endpoints/HealthEndpoint.cs"],
+    "diff_snippet": "--- a/src/Invekto.Backend/Endpoints/HealthEndpoint.cs\n+++ b/src/Invekto.Backend/Endpoints/HealthEndpoint.cs\n+// health endpoint code\n--- a/src/Invekto.Shared/Constants/ErrorCodes.cs\n+++ b/src/Invekto.Shared/Constants/ErrorCodes.cs\n+public const string HEALTH_ERROR = \"INV-BK-500\";\n--- a/src/Invekto.ChatAnalysis/Program.cs\n+++ b/src/Invekto.ChatAnalysis/Program.cs\n+// refactored unrelated startup code\n--- a/src/Invekto.Appointments/Program.cs\n+++ b/src/Invekto.Appointments/Program.cs\n+// refactored unrelated startup code",
+    "verification_questions": [
+      {
+        "id": "Q1",
+        "question": "Are all changed files within the declared plan scope?",
+        "category": "Process/Policy"
+      }
+    ]
+  },
+  "expected": {
+    "overall_verdict": "FAIL",
+    "cq3_result": "FAIL",
+    "blocking_issues_contains": "CQ3"
+  },
+  "severity": "P1",
+  "tags": ["scope-discipline", "cq3"],
+  "baseline_verified": false
+}

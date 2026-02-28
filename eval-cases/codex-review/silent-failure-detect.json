@@ -1,0 +1,25 @@
+{
+  "name": "silent-failure-detect",
+  "service": "codex-review",
+  "description": "Codex should FAIL a diff that introduces empty catch blocks or swallows exceptions without logging (CQ2 silent failure)",
+  "setup": {
+    "risk_level": "MEDIUM",
+    "diff_snippet": "+try\n+{\n+    await SendWhatsAppMessage(tenantId, phoneNumber, template);\n+}\n+catch (Exception)\n+{\n+    // TODO: handle later\n+}\n+\n+try\n+{\n+    await UpdateMessageStatus(messageId, \"sent\");\n+}\n+catch\n+{\n+}",
+    "verification_questions": [
+      {
+        "id": "Q1",
+        "question": "Are all exceptions properly handled with logging or re-throw?",
+        "category": "Lifecycle"
+      }
+    ]
+  },
+  "expected": {
+    "overall_verdict": "FAIL",
+    "cq2_result": "FAIL",
+    "cq7_result": "FAIL",
+    "blocking_issues_contains": "CQ2"
+  },
+  "severity": "P0",
+  "tags": ["error-handling", "silent-failure", "cq2", "cq7"],
+  "baseline_verified": false
+}
