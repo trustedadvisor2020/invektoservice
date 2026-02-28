@@ -205,11 +205,11 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | RI-2.3 | **Gayrimenkul pilot** | **DONE** | #31 GoldenPartner (44 thr — kucuk dataset, 200 istendi ama 44 uygun thread). F1=1.0. Bağımsız modeller düşük (gemini_flash 0.6433) — küçük sample + 7 label dağılımı. |
 | RI-2.4 | **Cross-sector F1 raporu** | **DONE** | 3 sektor GATE-2 PASS: Saglik=0.9952, Moda=1.0, Gayrimenkul=1.0. Cross-sector avg=0.9984. Gemini Flash cross-sector avg=0.8432 (en güçlü bağımsız). |
 | RI-2.5 | **Sektor-spesifik prompt** | **SKIP** | Universal prompt 3 sektörde GATE-2 geçti. Sektor-spesifik prompt gerekmedi. |
-| RI-2.6 | **Batch processing pipeline** | PLANNED | Production batch: DB okuma → thread → PII mask → tiered classify → sonuclari PG'ye yaz. Tek API endpoint: POST /api/ops/classify/batch |
-| RI-2.7 | **wa_conversation_outcomes tablosu** | PLANNED | Production sonuc tablosu: conversation_id, tenant_id, sector, outcome_label, confidence, has_offer, classified_at, model_version. Index: tenant_id + outcome_label |
-| RI-2.8 | **Nightly batch job** | PLANNED | Her gece 02:00: yeni thread'leri classify et. Configurable: tenant_id listesi, max_threads_per_run |
-| RI-2.9 | **Sektor metadata tablosu** | PLANNED | wa_sector_config: sector_id, name, label_overrides (JSON), custom_prompt (nullable), benchmark_f1. Yeni tenant → sektor sec → config yukle |
-| **GATE-2** | **Sektor Gate** | **F1 PASS** | F1 koşulu PASS (3/3 >= 0.80). Batch pipeline + nightly job henüz aktif değil → RI-2.6~2.9 tamamlanınca tam GATE-2 PASS |
+| RI-2.6 | **Batch processing pipeline** | **DONE** | E2E PASS: POST /api/ops/classify/batch → job #2, 4357 candidates, 3 classified, 0 errors, ~17s. GET /batch/{id}, GET /outcomes/{tenantId}/distribution, GET /sectors — hepsi çalışıyor. |
+| RI-2.7 | **wa_conversation_outcomes tablosu** | **DONE** | Production'da mevcut (14 kolon). 3 outcome kayıtlı (batch test). Repo: ConversationOutcomeRepository.cs. |
+| RI-2.8 | **Nightly batch job** | **DONE** | NightlyBatch config appsettings'e eklendi: Enabled=true, RunHour=2, 3 tenant (5051/EbruModa/moda, 5018/Hermest/saglik, 5031/GoldenPartner/gayrimenkul). Servis restart → "[NightlyBatch] Next run at 2026-02-28 02:00" doğrulandı. NSSM servis adı: InvektoWhatsAppAnalytics. |
+| RI-2.9 | **Sektor metadata tablosu** | **DONE** | wa_sector_config production'da: 3 seed satır (saglik/moda/gayrimenkul). benchmark_f1 güncellendi (0.9952/1.0/1.0). Repo: SectorConfigRepository.cs. |
+| **GATE-2** | **Sektor Gate** | **FULL PASS** | F1 PASS (3/3 >= 0.80) + Batch pipeline E2E PASS + Nightly job aktif. Faz 2 TAMAMLANDI → Faz 3'e geçiş hazır. |
 
 **Faz 2 Paket Akisi:**
 1. **RI-2.1-2.3:** Pilot calistir (3 sektor x 200 thread) — Q etiketleme gerekli

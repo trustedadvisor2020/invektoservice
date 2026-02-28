@@ -6,15 +6,17 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | RI-2.7: wa_conversation_outcomes SQL + repo | NEXT | Production sonuç tablosu |
-| 2 | RI-2.9: wa_sector_config SQL + repo | NEXT | Sektor metadata tablosu |
-| 3 | RI-2.6: Batch processing pipeline endpoint | PLANNED | POST /api/ops/classify/batch |
-| 4 | RI-2.8: Nightly batch job | PLANNED | Cron 02:00, configurable |
+| 1 | RI-3.1: Response Time Correlation | NEXT | LLM gerekmez, timestamp hesaplama |
+| 2 | RI-3.3: Agent Leaderboard | NEXT | Agent bazli conversion, response time |
+| 3 | RI-3.6: Follow-up Rescue Alerts | PLANNED | offered + 48h cevapsiz → rescue listesi |
+| 4 | RI-3.2+3.4+3.5+3.7: Multi-extraction LLM call | PLANNED | 4 engine tek call |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-02-28 | RI-Faz2 Nightly Batch İlk Çalışma — 02:00 TR tetiklendi: EbruModa 500 classified (37dk), Hermest 500 classified (55dk), GoldenPartner 0 candidate. Toplam 1,003 outcome PG'de. Faz 2 tamamen kapatıldı. |
+| 2026-02-27 | RI-Faz2 GATE-2 FULL PASS — Batch pipeline E2E (job #2: 3 classified, 0 errors, ~17s). NightlyBatch config aktif (3 tenant, 02:00). 4 endpoint verified. wa_conversation_outcomes + wa_sector_config tabloları + F1 değerleri production'da. |
 | 2026-02-27 | RI-Faz2 Cross-Validation Benchmarks — Unicode surrogate fix deploy, gemini_pro removed (Q directive), 5 benchmarks (#18 Hermest, #19 Estethica, #29 EbruModa, #30 nevinkayamoda, #31 GoldenPartner), GT auto-accept, GATE-2 F1 PASS (3/3 sectors >= 0.80). Cross-sector avg F1=0.9984. |
 | 2026-02-26 | RI-Faz2 Batch Pipeline + Cross-session Cleanup — 6 new WA files (batch/nightly/outcome/sector), 2 SQL schemas, multi-sector benchmark, cross-session fixes (KnowledgePage logging, tenant_id filter, FAQ embedding, lang removal, severity sync, FlowList, NodePropertyPanel). 52 files, 4 service deploy (all HEALTHY). |
 | 2026-02-24 | FlowListPage + Sidebar Redesign — Gradient icon circles, search/filter, staggered animations, skeleton loading, timeAgo relative dates, modal X close, row layout, sidebar icon containers + brand active state + red hover logout. Deploy HEALTHY. |

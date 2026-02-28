@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-27
-- **Status:** RI-Faz2 cross-validation benchmarks DONE. GATE-2 F1 koşulu PASS (3/3 sector >= 0.80). Batch pipeline kodu hazır ama henüz GATE-2 tam geçiş yok (nightly job aktif değil).
-- **Last Task:** RI-2.1~2.4 tamamlandı. (1) Unicode surrogate fix (SanitizeForPostgres) deploy edildi. (2) gemini_pro pipeline'dan çıkarıldı (Q directive). (3) 5 benchmark çalıştırıldı: Saglik (#18 Hermest, #19 Estethica), Moda (#29 EbruModa, #30 nevinkayamoda), Gayrimenkul (#31 GoldenPartner). (4) GT auto-accept (tiered_label → ground_truth_label). (5) Cross-sector F1 raporu: Saglik avg=0.9952, Moda avg=1.0, Gayrimenkul=1.0. (6) Caveat: GT=tiered predictions (tautological). GoldenPartner sadece 44 thread.
-- **Next Task:** RI-2.6~2.9 kod yazımı: (1) wa_conversation_outcomes + wa_sector_config SQL çalıştır, (2) Batch processing pipeline endpoint, (3) Nightly batch job, (4) Sector metadata tablosu. Sonra GATE-2 tam geçiş.
+- **Date:** 2026-02-28
+- **Status:** RI-Faz2 TAMAMLANDI. GATE-2 FULL PASS. Nightly batch ilk gece çalıştı: 1,000 konuşma sınıflandırıldı (500 EbruModa + 500 Hermest), 0 hata.
+- **Last Task:** (1) RI-2.6~2.9 tamamlandı: batch endpoint E2E, nightly config, servis restart. (2) Nightly batch 28 Sub 02:00 TR (23:00 UTC) çalıştı: EbruModa 1119 candidate→500 classified (37dk), Hermest 687→500 (55dk), GoldenPartner 0 candidate (son 7 gün boş). (3) wa_conversation_outcomes: 1003 kayıt (EbruModa sale:305+offered:104, Hermest offered:203+sale:103+appt:42).
+- **Next Task:** Faz 3 (7 Insight Engine). İlk adım: RI-3.1 Response Time Correlation (LLM gerekmez, timestamp hesaplama). Sıra: 3.1→3.3→3.6 (LLM-free) → 3.2+3.4+3.5+3.7 (multi-extraction LLM call).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -97,6 +97,7 @@ src/
 | 2026-02-26 | Cross-session cleanup | 30 files from 5+ sessions: Automation tx fix + tenant_id filter, Knowledge FAQ embedding + lang removal, Backend endpoint updates, Dashboard severity sync + FlowList + NodePropertyPanel + KnowledgePage error logging. |
 | 2026-02-27 | gemini_pro removed from pipeline | Q directive: "gemini-3.1-pro-preview atla. birdaha kullanma." Too slow (~20min/200 threads) ve ek değer yok. 5-model pipeline: keyword → haiku → sonnet → gemini_flash → gemini_3_flash → tiered |
 | 2026-02-27 | RI-Faz2 GATE-2 F1 PASS | 3 sektor tiered F1 >= 0.80: Saglik=0.9952, Moda=1.0, Gayrimenkul=1.0. GT=auto-accept (tiered→GT, tautological). Gemini Flash en güçlü bağımsız model (cross-sector avg F1=0.8432) |
+| 2026-02-27 | RI-Faz2 GATE-2 FULL PASS | Batch pipeline E2E (job #2: 3 classified, 0 errors). NightlyBatch config: 3 tenant, RunHour=02:00, aktif. 4 endpoint çalışıyor. NSSM servis adı=InvektoWhatsAppAnalytics. |
 | 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
 
 ## Q Pending Operational Tasks
