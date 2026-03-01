@@ -26,6 +26,7 @@ const TemplateDetailPage = lazy(() => import('./pages/TemplateDetailPage').then(
 const TemplateIngestionPage = lazy(() => import('./pages/TemplateIngestionPage').then(m => ({ default: m.TemplateIngestionPage })));
 const TemplateOnboardPage = lazy(() => import('./pages/TemplateOnboardPage').then(m => ({ default: m.TemplateOnboardPage })));
 const IntentManagementPage = lazy(() => import('./pages/IntentManagementPage').then(m => ({ default: m.IntentManagementPage })));
+const RevenueIntelligencePage = lazy(() => import('./pages/RevenueIntelligencePage').then(m => ({ default: m.RevenueIntelligencePage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/revenue-intelligence" element={<Suspense><RevenueIntelligencePage /></Suspense>} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
