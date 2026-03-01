@@ -263,9 +263,9 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | RI-3.2 | **Service Demand Heatmap** | Hangi hizmet/urun ne kadar soruluyor | Evet | Low-Med |
 | RI-3.3 | **Agent Leaderboard** | Agent bazli conversion, response time, ghost rate | Hayir | Low-Med |
 | RI-3.4 | **Lost Revenue Calculator** | Offered konusmalardan tutar extraction + kayip toplam | Evet | Medium |
-| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | Evet | Medium |
+| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | ~~Evet~~ Hayir (keyword) | Medium |
 | RI-3.6 | **Follow-up Rescue Alerts** | Offered + 48 saat cevapsiz → rescue listesi | Hayir | Medium |
-| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | Evet | Medium |
+| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | ~~Evet~~ Hayir (PG compute) | Medium |
 
 #### Detayli Task'lar
 
