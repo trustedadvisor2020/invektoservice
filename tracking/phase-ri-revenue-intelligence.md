@@ -471,15 +471,15 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
-| RI-7.1 | Sektor secim adimi (onboarding wizard) | PLANNED | Signup sirasinda veya ilk giriste: "Sektorunuz nedir?" dropdown. Otomatik tespit de olabilir (ilk 50 mesajdan LLM ile) |
-| RI-7.2 | Sektor paketi otomatik yukleme | PLANNED | Sektor secilince: intent'ler, FAQ'lar, flow'lar, label set'i, benchmark degerler otomatik yuklensin |
-| RI-7.3 | Onboarding checklist UI | PLANNED | "Ilk 7 gun plani" — sektore ozel adimlar. Tamamlandikca checkmark. Progress bar |
-| RI-7.4 | "Sektorunuzde neler oluyor" ozet sayfasi | PLANNED | Ilk giris: "Saglik sektorunde ortalama conversion %18, en sik itiraz fiyat (%38), en cok sorulan: sac ekimi. Sizin durumunuz: henuz veri yok — ilk hafta verileriniz islendikten sonra karsilastirma yapacagiz" |
-| RI-7.5 | Hizli baslangu kiti | PLANNED | "Bu 3 flow'u hemen aktif edin, conversion %15 artabilir" — sektordeki en etkili flow'larin one cikmasi |
-| RI-7.6 | Benchmark karsilastirma | PLANNED | 2. haftadan sonra: "Cevap sureniz 45dk — sektorunuzde ortalama 18dk. Iyilestirme onerisi: Agent SLA 15dk" |
-| RI-7.7 | Haftalik progress email/notification | PLANNED | "Bu hafta: 12 konusma etiketlendi, 3 offered, 1 sale. Sektordeki benchmark: %18 conversion, siz: %8 — follow-up sablonlarinizi aktif edin" |
+| RI-7.1 | Sektor secim adimi (onboarding wizard) | **DONE** | Already exists in OnboardingWizardPage (step 1: sector_selected) |
+| RI-7.2 | Sektor paketi otomatik yukleme | **DONE** | OnboardingInsightService reads wa_sector_* tables + quick start reco |
+| RI-7.3 | Onboarding checklist UI | **DONE** | RiOnboardingPanel — 5-step sector checklist from wa_sector_onboarding_steps (60 rows seeded) |
+| RI-7.4 | "Sektorunuzde neler oluyor" ozet sayfasi | **DONE** | SectorOverview card — template counts + benchmarkF1 |
+| RI-7.5 | Hizli baslangu kiti | **DONE** | QuickStartItem — top flows by conversion, top intent by frequency |
+| RI-7.6 | Benchmark karsilastirma | **DONE** | TenantBenchmarkComparison — response time, conversion, agents, quality + recommendation |
+| RI-7.7 | Haftalik progress email/notification | **DEFER** | No email infrastructure — deferred to dedicated notification sprint |
 
-**Cikti:** Yeni tenant 1. gunden deger goruyor, sektordeki en iyi pratikleri otomatik aliyor
+**Cikti:** OnboardingInsightService + GET /ri/onboarding endpoint + RiOnboardingPanel React component (620 LoC)
 
 ---
 
