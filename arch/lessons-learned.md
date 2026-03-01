@@ -279,6 +279,8 @@
 | Contextual required field validation | FlowValidator | Runtime context check, false positive onler |
 | Roadmap/teknik-detay hiyerarsisi | Docs | Summary -> tracking -> detail, tek kaynak |
 | Plan review + iyilestirme adimi | Phase 3a | 8 mimari iyilestirme bulundu, plansiz baslamak kacirirdi |
+| Keyword pre-filter before LLM | BatchClassification RI-8.1 | High-confidence regex matches skip expensive LLM call → cost savings, same accuracy for clear-cut outcomes |
+| Parallel.ForEachAsync with bounded concurrency | BatchClassification RI-8.4 | maxDegreeOfParallelism=4 prevents overwhelming MSSQL while 4x faster loading |
 | 10 Paket Execution Stratejisi (v5.1) | Phase 2-3 | 24 dongu -> 8 paket -> buyuk PKT split ile 10 paket, yonetilebilir boyut |
 | Pre-phase tech research + faz dosyasina embed | Phase 3C/3D CLIP/MediaPipe | Faz basladiginda karar alinmis, zaman kaybi yok |
 | PKT split: isimli strateji + Q secimi | PKT-6 -> 6A/6B/6C (Strategy C) | Coklu secenek -> Q bilincli karar verir, tek oneri dayatma yok |
