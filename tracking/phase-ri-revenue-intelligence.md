@@ -436,23 +436,30 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | **Ground Truth Flywheel** | | | |
 | RI-6.14 | Agree/disagree UI | PLANNED | Her etiketlenmis konusmada: "Bu etiket dogru mu?" → Evet / Hayir + dogru etiket sec. Basit, tek tikla |
 | RI-6.15 | Feedback aggregation | PLANNED | Tenant bazli agree/disagree oranlari. Dusuk agree → prompt tuning sinyali |
-| RI-6.16 | Feedback → prompt iyilestirme pipeline | PLANNED | Otomatik veya yari-otomatik: cok disagree alan label'lar icin prompt ayarlama |
+| RI-6.16 | Feedback → prompt iyilestirme pipeline | **DEFER** | Requires LLM prompt tuning — Faz 8 optimization |
 | | | | |
 | **API Endpoints (Tenant-facing)** | | | |
-| RI-6.17 | GET /api/ri/dashboard | PLANNED | Tum widget verileri tek call'da |
-| RI-6.18 | GET /api/ri/revenue | PLANNED | Lost revenue detay: donem, agent, hizmet bazli |
-| RI-6.19 | GET /api/ri/agents | PLANNED | Agent leaderboard + detay |
-| RI-6.20 | GET /api/ri/objections | PLANNED | Itiraz haritasi + trend |
-| RI-6.21 | GET /api/ri/response-time | PLANNED | Response time korelasyon |
-| RI-6.22 | GET /api/ri/rescue | PLANNED | Rescue listesi + value |
-| RI-6.23 | GET /api/ri/quality | PLANNED | Quality score per agent |
-| RI-6.24 | GET /api/ri/demand | PLANNED | Service demand heatmap |
-| RI-6.25 | GET /api/ri/templates | PLANNED | Sektor sablonlari: intent, FAQ, flow, objection, follow-up |
-| RI-6.26 | PUT /api/ri/templates/{id} | PLANNED | Sablon guncelleme (tenant ozellestirmesi) |
-| RI-6.27 | POST /api/ri/feedback | PLANNED | Agree/disagree kaydet |
-| RI-6.28 | GET /api/ri/benchmarks | PLANNED | Sektor benchmark degerleri (karsilastirma icin) |
+| RI-6.17 | GET /api/ri/dashboard | **DONE** | GET /api/v1/wa/{tenantId}/ri/dashboard — parallel aggregate all 7 insights |
+| RI-6.18 | GET /api/ri/revenue | **DONE** | GET /api/v1/wa/{tenantId}/ri/revenue — lost revenue detail |
+| RI-6.19 | GET /api/ri/agents | **DONE** | GET /api/v1/wa/{tenantId}/ri/agents — agent leaderboard |
+| RI-6.20 | GET /api/ri/objections | **DONE** | GET /api/v1/wa/{tenantId}/ri/objections — objection map |
+| RI-6.21 | GET /api/ri/response-time | **DONE** | GET /api/v1/wa/{tenantId}/ri/response-time — correlation |
+| RI-6.22 | GET /api/ri/rescue | **DONE** | GET /api/v1/wa/{tenantId}/ri/rescue — rescue candidates |
+| RI-6.23 | GET /api/ri/quality | **DONE** | GET /api/v1/wa/{tenantId}/ri/quality — quality scores |
+| RI-6.24 | GET /api/ri/demand | **DONE** | GET /api/v1/wa/{tenantId}/ri/demand — service demand heatmap |
+| RI-6.25 | GET /api/ri/templates | **DONE** | GET /api/v1/wa/{tenantId}/ri/templates?sector= — sector templates |
+| RI-6.26 | PUT /api/ri/templates/{id} | **DONE** | PUT /api/v1/wa/{tenantId}/ri/templates/{type}/{id} — toggle active |
+| RI-6.27 | POST /api/ri/feedback | **DONE** | POST /api/v1/wa/{tenantId}/ri/feedback — agree/disagree upsert |
+| RI-6.28 | GET /api/ri/benchmarks | **DONE** | GET /api/v1/wa/{tenantId}/ri/benchmarks?sector= — sector benchmarks |
+| | | | |
+| **Backend Services** | | | |
+| RI-6.29 | RiDashboardService | **DONE** | Parallel aggregation of 7 insight repos + SafeGet null wrapper |
+| RI-6.30 | FeedbackRepository | **DONE** | ON CONFLICT upsert + summary aggregation |
+| RI-6.31 | wa_outcome_feedback table | **DONE** | DDL executed on production PG |
+| RI-6.32 | RiDashboardModels DTOs | **DONE** | RiDashboardResponse, SectorBenchmarks, FeedbackRequest/Record/Summary |
 
-**Cikti:** Canli dashboard + API + sablon yonetimi
+**Cikti P1:** 12 tenant-facing API endpoints + RiDashboardService + FeedbackRepository + wa_outcome_feedback table
+**Cikti P2:** React dashboard + sablon yonetimi UI (PLANNED)
 
 ---
 
