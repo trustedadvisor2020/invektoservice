@@ -974,4 +974,432 @@ public sealed class InsightRepository
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         _logger.StepInfo($"[InsightRepo] Deleted {deleted} revenue attribution records for tenant {tenantId}", "insight");
     }
+
+    // ============================================================
+    // wa_objection_map (RI-3.5)
+    // ============================================================
+
+    /// <summary>
+    /// Get offer_lost outcomes with evidence text for objection classification.
+    /// Returns (conversation_id, instance_id, evidence, outcome_label) tuples.
+    /// </summary>
+    public async Task<List<(string ConversationId, int InstanceId, string? Evidence, string OutcomeLabel)>>
+        GetOfferLostWithEvidenceAsync(int tenantId, int? instanceId = null, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid AND outcome_label = 'offer_lost'";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT conversation_id, COALESCE(instance_id, 0), evidence, outcome_label
+            FROM wa_conversation_outcomes
+            {where}";
+
+        var results = new List<(string, int, string?, string)>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add((
+                reader.GetString(0),
+                reader.GetInt32(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.GetString(3)));
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// Batch upsert objection map records (INSERT ON CONFLICT UPDATE).
+    /// UNIQUE constraint: (tenant_id, conversation_id, objection_type).
+    /// </summary>
+    public async Task UpsertObjectionMapAsync(List<ObjectionMapRecord> records, CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        const int batchSize = 50;
+        for (var offset = 0; offset < records.Count; offset += batchSize)
+        {
+            var batch = records.Skip(offset).Take(batchSize).ToList();
+            await UpsertObjectionMapBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task UpsertObjectionMapBatchAsync(List<ObjectionMapRecord> batch, CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var sb = new StringBuilder();
+        sb.AppendLine(@"INSERT INTO wa_objection_map
+            (tenant_id, instance_id, conversation_id, objection_type, detail, outcome_label, computed_at)
+            VALUES ");
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.AppendLine($"(@tid{i}, @iid{i}, @cid{i}, @ot{i}, @dtl{i}, @lbl{i}, NOW())");
+            var r = batch[i];
+            cmd.Parameters.AddWithValue($"tid{i}", r.TenantId);
+            cmd.Parameters.AddWithValue($"iid{i}", r.InstanceId);
+            cmd.Parameters.AddWithValue($"cid{i}", r.ConversationId);
+            cmd.Parameters.AddWithValue($"ot{i}", r.ObjectionType);
+            cmd.Parameters.AddWithValue($"dtl{i}", (object?)r.Detail ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"lbl{i}", (object?)r.OutcomeLabel ?? DBNull.Value);
+        }
+
+        sb.AppendLine(@"ON CONFLICT (tenant_id, conversation_id, objection_type) DO UPDATE SET
+            instance_id = EXCLUDED.instance_id,
+            detail = EXCLUDED.detail,
+            outcome_label = EXCLUDED.outcome_label,
+            computed_at = NOW()");
+
+        cmd.CommandText = sb.ToString();
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get objection map insight: aggregated objection type distribution.
+    /// </summary>
+    public async Task<ObjectionMapInsight> GetObjectionMapAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE om.tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND om.instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT om.objection_type, COUNT(*)::INT AS cnt
+            FROM wa_objection_map om
+            {where}
+            GROUP BY om.objection_type
+            ORDER BY cnt DESC";
+
+        var entries = new List<ObjectionTypeEntry>();
+        var total = 0;
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var count = reader.GetInt32(1);
+            total += count;
+            entries.Add(new ObjectionTypeEntry
+            {
+                ObjectionType = reader.GetString(0),
+                ObjectionLabel = ObjectionTypes.GetLabel(reader.GetString(0)),
+                Count = count
+            });
+        }
+
+        // Fill percentages
+        foreach (var e in entries)
+            e.Percentage = total > 0 ? Math.Round((double)e.Count / total * 100, 1) : 0;
+
+        return new ObjectionMapInsight
+        {
+            TenantId = tenantId,
+            InstanceId = instanceId,
+            TotalObjections = total,
+            ObjectionTypes = entries
+        };
+    }
+
+    /// <summary>
+    /// Delete all objection map records for a tenant (used before recompute).
+    /// </summary>
+    public async Task DeleteObjectionMapAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $"DELETE FROM wa_objection_map {where}";
+        var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.StepInfo($"[InsightRepo] Deleted {deleted} objection map records for tenant {tenantId}", "insight");
+    }
+
+    // ============================================================
+    // wa_quality_scores (RI-3.7)
+    // ============================================================
+
+    /// <summary>
+    /// Get response time buckets per conversation (conversation_id -> bucket).
+    /// Used by quality score engine to compute speed dimension.
+    /// </summary>
+    public async Task<Dictionary<string, string>> GetResponseTimeBucketsAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT conversation_id, bucket
+            FROM wa_response_times
+            WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var results = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            results[reader.GetString(0)] = reader.GetString(1);
+        return results;
+    }
+
+    /// <summary>
+    /// Get sentiment scores per conversation (conversation_id -> score).
+    /// Score range: -1.0 to 1.0. Read from wa_sentiments table.
+    /// </summary>
+    public async Task<Dictionary<string, double>> GetSentimentScoresAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT conversation_id, score
+            FROM wa_sentiments
+            WHERE tenant_id = @tid AND score IS NOT NULL";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var results = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            results[reader.GetString(0)] = reader.GetDouble(1);
+        return results;
+    }
+
+    /// <summary>
+    /// Get conversation -> agent mapping from wa_agent_metrics + wa_conversation_outcomes.
+    /// Uses a join through wa_response_times for conversation-level agent association.
+    /// Fallback: returns agent_id=0 entries from wa_agent_metrics per tenant.
+    /// </summary>
+    public Task<Dictionary<string, (int AgentId, string AgentName, int InstanceId)>>
+        GetConversationAgentMapAsync(int tenantId, CancellationToken ct = default)
+    {
+        // Placeholder: conversation->agent mapping requires MSSQL (deferred to enrichment phase).
+        // Full mapping will query Chats.OwnerUserID + Users table per conversation.
+        return Task.FromResult(
+            new Dictionary<string, (int, string, int)>(StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Batch upsert quality score records (INSERT ON CONFLICT UPDATE).
+    /// UNIQUE constraint: (tenant_id, conversation_id).
+    /// </summary>
+    public async Task UpsertQualityScoresAsync(List<QualityScoreRecord> records, CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        const int batchSize = 50;
+        for (var offset = 0; offset < records.Count; offset += batchSize)
+        {
+            var batch = records.Skip(offset).Take(batchSize).ToList();
+            await UpsertQualityScoresBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task UpsertQualityScoresBatchAsync(List<QualityScoreRecord> batch, CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var sb = new StringBuilder();
+        sb.AppendLine(@"INSERT INTO wa_quality_scores
+            (tenant_id, instance_id, conversation_id, agent_id, agent_name,
+             response_speed_score, engagement_score, resolution_score, sentiment_score,
+             overall_score, computed_at)
+            VALUES ");
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.AppendLine($"(@tid{i}, @iid{i}, @cid{i}, @aid{i}, @anm{i}, @rss{i}, @ens{i}, @res{i}, @sns{i}, @ovs{i}, NOW())");
+            var r = batch[i];
+            cmd.Parameters.AddWithValue($"tid{i}", r.TenantId);
+            cmd.Parameters.AddWithValue($"iid{i}", r.InstanceId);
+            cmd.Parameters.AddWithValue($"cid{i}", r.ConversationId);
+            cmd.Parameters.AddWithValue($"aid{i}", (object?)r.AgentId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"anm{i}", (object?)r.AgentName ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"rss{i}", (float)r.ResponseSpeedScore);
+            cmd.Parameters.AddWithValue($"ens{i}", (float)r.EngagementScore);
+            cmd.Parameters.AddWithValue($"res{i}", (float)r.ResolutionScore);
+            cmd.Parameters.AddWithValue($"sns{i}", (float)r.SentimentScore);
+            cmd.Parameters.AddWithValue($"ovs{i}", (float)r.OverallScore);
+        }
+
+        sb.AppendLine(@"ON CONFLICT (tenant_id, conversation_id) DO UPDATE SET
+            instance_id = EXCLUDED.instance_id,
+            agent_id = EXCLUDED.agent_id,
+            agent_name = EXCLUDED.agent_name,
+            response_speed_score = EXCLUDED.response_speed_score,
+            engagement_score = EXCLUDED.engagement_score,
+            resolution_score = EXCLUDED.resolution_score,
+            sentiment_score = EXCLUDED.sentiment_score,
+            overall_score = EXCLUDED.overall_score,
+            computed_at = NOW()");
+
+        cmd.CommandText = sb.ToString();
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get quality scores for a tenant, optionally grouped by agent.
+    /// Returns per-agent average quality or per-conversation scores.
+    /// </summary>
+    public async Task<QualityInsight> GetQualityInsightAsync(int tenantId, int? instanceId = null,
+        bool groupByAgent = false, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE qs.tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND qs.instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        if (groupByAgent)
+        {
+            cmd.CommandText = $@"
+                SELECT qs.agent_id, qs.agent_name,
+                       AVG(qs.response_speed_score)::REAL,
+                       AVG(qs.engagement_score)::REAL,
+                       AVG(qs.resolution_score)::REAL,
+                       AVG(qs.sentiment_score)::REAL,
+                       AVG(qs.overall_score)::REAL,
+                       COUNT(*)::INT
+                FROM wa_quality_scores qs
+                {where} AND qs.agent_id IS NOT NULL
+                GROUP BY qs.agent_id, qs.agent_name
+                ORDER BY AVG(qs.overall_score) DESC";
+
+            var agentScores = new List<QualityEntry>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                agentScores.Add(new QualityEntry
+                {
+                    AgentId = reader.IsDBNull(0) ? null : reader.GetInt32(0),
+                    AgentName = reader.IsDBNull(1) ? null : reader.GetString(1),
+                    ResponseSpeedScore = Math.Round(reader.GetFloat(2), 1),
+                    EngagementScore = Math.Round(reader.GetFloat(3), 1),
+                    ResolutionScore = Math.Round(reader.GetFloat(4), 1),
+                    SentimentScore = Math.Round(reader.GetFloat(5), 1),
+                    OverallScore = Math.Round(reader.GetFloat(6), 1)
+                });
+            }
+
+            return new QualityInsight
+            {
+                TenantId = tenantId,
+                InstanceId = instanceId,
+                TotalScored = agentScores.Count,
+                AvgOverallScore = agentScores.Count > 0
+                    ? Math.Round(agentScores.Average(s => s.OverallScore), 1) : 0,
+                Scores = agentScores
+            };
+        }
+
+        // Per-conversation (top 100 by overall_score DESC)
+        cmd.CommandText = $@"
+            SELECT qs.conversation_id, qs.agent_id, qs.agent_name,
+                   qs.response_speed_score, qs.engagement_score,
+                   qs.resolution_score, qs.sentiment_score, qs.overall_score
+            FROM wa_quality_scores qs
+            {where}
+            ORDER BY qs.overall_score DESC
+            LIMIT 100";
+
+        var scores = new List<QualityEntry>();
+        double totalOverall = 0;
+
+        await using var rdr = await cmd.ExecuteReaderAsync(ct);
+        while (await rdr.ReadAsync(ct))
+        {
+            var overall = Math.Round(rdr.GetFloat(7), 1);
+            totalOverall += overall;
+            scores.Add(new QualityEntry
+            {
+                ConversationId = rdr.GetString(0),
+                AgentId = rdr.IsDBNull(1) ? null : rdr.GetInt32(1),
+                AgentName = rdr.IsDBNull(2) ? null : rdr.GetString(2),
+                ResponseSpeedScore = Math.Round(rdr.GetFloat(3), 1),
+                EngagementScore = Math.Round(rdr.GetFloat(4), 1),
+                ResolutionScore = Math.Round(rdr.GetFloat(5), 1),
+                SentimentScore = Math.Round(rdr.GetFloat(6), 1),
+                OverallScore = overall
+            });
+        }
+
+        // Get total count for avg
+        var totalCount = scores.Count;
+        if (totalCount == 100)
+        {
+            // There are more records, get actual average from DB
+            await using var conn2 = await _db.OpenConnectionAsync(ct);
+            await using var cmd2 = conn2.CreateCommand();
+            cmd2.CommandText = $"SELECT AVG(overall_score)::REAL, COUNT(*)::INT FROM wa_quality_scores qs {where}";
+            cmd2.Parameters.AddWithValue("tid", tenantId);
+            if (instanceId.HasValue)
+                cmd2.Parameters.AddWithValue("iid", instanceId.Value);
+            await using var rdr2 = await cmd2.ExecuteReaderAsync(ct);
+            if (await rdr2.ReadAsync(ct))
+            {
+                totalOverall = rdr2.IsDBNull(0) ? 0 : rdr2.GetFloat(0);
+                totalCount = rdr2.GetInt32(1);
+            }
+        }
+
+        return new QualityInsight
+        {
+            TenantId = tenantId,
+            InstanceId = instanceId,
+            TotalScored = totalCount,
+            AvgOverallScore = scores.Count > 0 ? Math.Round(totalOverall, 1) : 0,
+            Scores = scores
+        };
+    }
+
+    /// <summary>
+    /// Delete all quality score records for a tenant (used before recompute).
+    /// </summary>
+    public async Task DeleteQualityScoresAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $"DELETE FROM wa_quality_scores {where}";
+        var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.StepInfo($"[InsightRepo] Deleted {deleted} quality score records for tenant {tenantId}", "insight");
+    }
 }

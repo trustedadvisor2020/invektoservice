@@ -43,11 +43,38 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | Ground Truth | **Hibrit:** Q sektor basina 50-100 etiketler, LLM calibrate, tenant agree/disagree ile flywheel |
 | Sektor Stratejisi | **Top 3 ile basla:** Saglik (%36), Moda (%16), Gayrimenkul (%11) — geri kalanlar sonra |
 | Isleme Sikigi | **Gunluk/haftalik batch** — musteri secer |
-| LLM Maliyet Limiti | Simdilik yok, ileride belirlenecek |
 | Agent Tanima | API'den cekilecek (Users tablosu) |
 | Follow-up Rescue | Gece islenir, sabah raporlanir |
 | Pipeline | Sektor-spesifik (her sektorde farkli label seti + farkli extraction prompt) |
 | Sablonlar | Intent, FAQ, Flow, Objection, Follow-up, Onboarding — sektorel mining ile cikarilacak |
+
+## Q Kararlari (1 Mar 2026) — Faz 3-8 Toplu Interview
+
+| Karar | Secim | Etkilenen Faz |
+|-------|-------|---------------|
+| **LLM Butce** | **$100-150 toplam** tum fazlar icin. Smart sampling, tam isleme degil. | Faz 3-5 |
+| **Faz 4 Q Review** | **Atla**, direkt kaydet. Sablon mining sonuclari Q review gate yok. | Faz 4 |
+| **Faz 6 Scope** | **Full scope** (28 task): 7 widget + 12 API + sablon yonetimi + flywheel UI | Faz 6 |
+| **Faz 7-8** | **Planla ilerle**, Q'ya sormadan yap. Plandaki varsayilanlar gecerli. | Faz 7-8 |
+| **Genel Otonom** | Q'ya sadece kritik blocker'larda sor. Teknik kararlar otomatik alinir. | Tumu |
+| **Wrap + Deploy** | Her faz bitiminde /wrap + deploy yap. Phase kapama + production deploy. | Tumu |
+| **Currency** | Orijinal currency sakla (EUR/TRY/USD). Normalizasyon yapma. | Faz 3.4 |
+| **Dashboard Yeri** | Mevcut React SPA icinde /revenue-intelligence route | Faz 6 |
+
+**Butce Dagilimi ($150 toplam):**
+
+| Faz | Kullanim | Tahmini Maliyet |
+|-----|----------|-----------------|
+| Faz 3 (engine test) | ~500 thread test samples | ~$1 |
+| Faz 4 (sablon mining) | ~5,000 thread per sector x 3 = 15K | ~$3 |
+| Faz 5 (bulk isleme) | ~760K thread (gemini flash only, no escalation) | ~$130 |
+| Faz 6-8 (ongoing) | Minimal (cache + batch) | ~$16 reserve |
+
+**Faz 5 Sampling Stratejisi ($130 ile):**
+- Gemini Flash only ($0.17/1K) → ~760K thread islenebilir
+- Top 3 oncelik: Saglik %40, Moda %25, Gayrimenkul %20
+- Kalan 9 sektor: %15 (sector basina ~12K thread sample)
+- Yeterince representative sonuc icin istatistiksel sampling
 
 ---
 

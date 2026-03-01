@@ -249,6 +249,8 @@ if (mssqlConfigured)
     builder.Services.AddSingleton<InsightRescueService>();
     builder.Services.AddSingleton<InsightDemandHeatmapService>();
     builder.Services.AddSingleton<InsightRevenueService>();
+    builder.Services.AddSingleton<InsightObjectionMapService>();
+    builder.Services.AddSingleton<InsightQualityService>();
 }
 
 var app = builder.Build();
@@ -1348,6 +1350,142 @@ app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
     }
 });
 
+// POST /api/ops/insights/compute/objection-map — Compute objection map (RI-3.5)
+app.MapPost("/api/ops/insights/compute/objection-map", async (
+    HttpContext ctx,
+    InsightObjectionMapService objService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await objService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Objection map compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Objection map compute failed — check PG offer_lost outcomes exist", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/objection-map/{tenantId} — Get objection map data (RI-3.5)
+app.MapGet("/api/ops/insights/objection-map/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetObjectionMapAsync(tenantId, instanceId);
+        if (insight.TotalObjections == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No objection map data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read objection map — wa_objection_map query error", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/ops/insights/compute/quality-score — Compute conversation quality scores (RI-3.7)
+app.MapPost("/api/ops/insights/compute/quality-score", async (
+    HttpContext ctx,
+    InsightQualityService qsService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await qsService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("No classified outcomes"))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Quality score compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Quality score compute failed — check PG outcomes + response times exist", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/quality-score/{tenantId} — Get quality score data (RI-3.7)
+app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var groupByAgent = ctx.Request.Query.ContainsKey("groupByAgent");
+
+    try
+    {
+        var insight = await insightRepo.GetQualityInsightAsync(tenantId, instanceId, groupByAgent);
+        if (insight.TotalScored == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No quality score data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read quality scores — wa_quality_scores query error", requestId, ex.Message), statusCode: 500);
+    }
+});
+
 // ============================================================
 // Endpoint discovery
 // ============================================================
@@ -1389,6 +1527,10 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/insights/demand-heatmap/{tenantId}", Description = "Get demand heatmap", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "POST", Path = "/api/ops/insights/compute/revenue-attribution", Description = "Compute revenue attribution", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/insights/revenue-attribution/{tenantId}", Description = "Get revenue attribution", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/objection-map", Description = "Compute objection map", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/objection-map/{tenantId}", Description = "Get objection map", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/quality-score", Description = "Compute quality scores", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/quality-score/{tenantId}", Description = "Get quality scores", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

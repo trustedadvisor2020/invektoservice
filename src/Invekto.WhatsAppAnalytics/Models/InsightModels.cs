@@ -358,6 +358,214 @@ public sealed class HourlyOutcomeRow
     public int Count { get; set; }
 }
 
+// ── Objection Map DTOs (RI-3.5) ──
+
+public sealed class ObjectionMapComputeResult
+{
+    public int TotalOfferLost { get; set; }
+    public int TotalObjections { get; set; }
+    public int NoEvidence { get; set; }
+    public long DurationMs { get; set; }
+}
+
+public sealed class ObjectionMapInsight
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public int TotalObjections { get; set; }
+    public List<ObjectionTypeEntry> ObjectionTypes { get; set; } = new();
+}
+
+public sealed class ObjectionTypeEntry
+{
+    public string ObjectionType { get; set; } = "";
+    public string ObjectionLabel { get; set; } = "";
+    public int Count { get; set; }
+    public double Percentage { get; set; }
+}
+
+public sealed class ObjectionMapRecord
+{
+    public int TenantId { get; set; }
+    public int InstanceId { get; set; }
+    public string ConversationId { get; set; } = "";
+    public string ObjectionType { get; set; } = "";
+    public string? Detail { get; set; }
+    public string? OutcomeLabel { get; set; }
+}
+
+// ── Objection Type Classification (RI-3.5) ──
+
+public static class ObjectionTypes
+{
+    public const string PriceHigh = "price_high";
+    public const string ChoseCompetitor = "chose_competitor";
+    public const string NotReady = "not_ready";
+    public const string WrongService = "wrong_service";
+    public const string NoTrust = "no_trust";
+    public const string Timing = "timing";
+    public const string MedicalConcern = "medical_concern";
+    public const string OutOfStock = "out_of_stock";
+    public const string Location = "location";
+    public const string Unknown = "unknown";
+
+    public static readonly Dictionary<string, string> Labels = new()
+    {
+        [PriceHigh] = "Fiyat Yuksek",
+        [ChoseCompetitor] = "Rakip Tercih",
+        [NotReady] = "Hazir Degil",
+        [WrongService] = "Yanlis Hizmet",
+        [NoTrust] = "Guven Eksikligi",
+        [Timing] = "Zamanlama",
+        [MedicalConcern] = "Tibbi Endise",
+        [OutOfStock] = "Stok Yok",
+        [Location] = "Konum Uygunsuz",
+        [Unknown] = "Bilinmeyen"
+    };
+
+    /// <summary>
+    /// Keyword-based objection classification from evidence text.
+    /// Processes Turkish and English keywords.
+    /// </summary>
+    private static readonly (string Type, string[] Keywords)[] KeywordMap =
+    [
+        (PriceHigh, ["fiyat", "pahal", "ucuz", "bütçe", "butce", "expensive", "cost", "price", "ücret", "ucret", "indirim", "taksit"]),
+        (ChoseCompetitor, ["rakip", "başka", "baska", "competitor", "alternatif", "another", "diğer", "diger", "farklı klinik", "farkli klinik"]),
+        (NotReady, ["düşün", "dusun", "karar", "henüz", "henuz", "think", "decide", "not ready", "emin değil", "emin degil", "ilerde"]),
+        (Timing, ["zaman", "tarih", "müsait", "musait", "timing", "schedule", "uygun değil", "uygun degil", "sonra", "ertel"]),
+        (MedicalConcern, ["tıbbi", "tibbi", "medical", "risk", "doktor", "sağlık", "saglik", "uygun değil", "ameliyat", "komplikasyon"]),
+        (OutOfStock, ["stok", "tüken", "tuken", "kalmadı", "kalmadi", "stock", "mevcut değil", "mevcut degil", "beden"]),
+        (Location, ["uzak", "konum", "lokasyon", "location", "distance", "şehir", "sehir", "yurt dışı", "yurt disi"]),
+        (NoTrust, ["güven", "guven", "emin", "trust", "referans", "yorum", "şüphe", "suphe"]),
+        (WrongService, ["yanlış", "yanlis", "farklı", "farkli", "ihtiyaç", "ihtiyac", "wrong", "different", "istemediğ", "istemedig"])
+    ];
+
+    public static string ClassifyFromEvidence(string? evidence)
+    {
+        if (string.IsNullOrWhiteSpace(evidence)) return Unknown;
+
+        var lower = evidence.ToLower(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        foreach (var (type, keywords) in KeywordMap)
+        {
+            foreach (var keyword in keywords)
+            {
+                if (lower.Contains(keyword))
+                    return type;
+            }
+        }
+
+        return Unknown;
+    }
+
+    public static string GetLabel(string objectionType) =>
+        Labels.TryGetValue(objectionType, out var label) ? label : objectionType;
+}
+
+// ── Quality Score DTOs (RI-3.7) ──
+
+public sealed class QualityComputeResult
+{
+    public int TotalOutcomes { get; set; }
+    public int TotalScored { get; set; }
+    public int NoResponseTime { get; set; }
+    public double AvgOverallScore { get; set; }
+    public long DurationMs { get; set; }
+}
+
+public sealed class QualityInsight
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public int TotalScored { get; set; }
+    public double AvgOverallScore { get; set; }
+    public List<QualityEntry> Scores { get; set; } = new();
+}
+
+public sealed class QualityEntry
+{
+    public string ConversationId { get; set; } = "";
+    public int? AgentId { get; set; }
+    public string? AgentName { get; set; }
+    public double ResponseSpeedScore { get; set; }
+    public double EngagementScore { get; set; }
+    public double ResolutionScore { get; set; }
+    public double SentimentScore { get; set; }
+    public double OverallScore { get; set; }
+}
+
+public sealed class QualityScoreRecord
+{
+    public int TenantId { get; set; }
+    public int InstanceId { get; set; }
+    public string ConversationId { get; set; } = "";
+    public int? AgentId { get; set; }
+    public string? AgentName { get; set; }
+    public double ResponseSpeedScore { get; set; }
+    public double EngagementScore { get; set; }
+    public double ResolutionScore { get; set; }
+    public double SentimentScore { get; set; }
+    public double OverallScore { get; set; }
+}
+
+// ── Quality Score Constants (RI-3.7) ──
+
+public static class QualityScoring
+{
+    /// <summary>
+    /// Map response time bucket to speed score (0-100).
+    /// Faster response = higher score.
+    /// </summary>
+    public static double BucketToSpeedScore(string bucket) => bucket switch
+    {
+        ResponseTimeBuckets.Instant => 100.0,
+        ResponseTimeBuckets.Fast => 80.0,
+        ResponseTimeBuckets.Moderate => 60.0,
+        ResponseTimeBuckets.Slow => 30.0,
+        ResponseTimeBuckets.VerySlow => 10.0,
+        ResponseTimeBuckets.NoResponse => 0.0,
+        _ => 0.0
+    };
+
+    /// <summary>
+    /// Map outcome label to resolution score (0-100).
+    /// Successful outcomes score higher.
+    /// </summary>
+    public static double OutcomeToResolutionScore(string outcomeLabel) => outcomeLabel.ToLowerInvariant() switch
+    {
+        "sale" => 100.0,
+        "appointment_booked" => 90.0,
+        "offered" => 60.0,
+        "return_or_complaint" => 30.0,
+        "offer_lost" => 20.0,
+        "no_response" => 10.0,
+        "abandoned" => 0.0,
+        _ => 0.0
+    };
+
+    /// <summary>
+    /// Map sentiment score (-1.0 to 1.0) to 0-100 scale.
+    /// </summary>
+    public static double SentimentToScore(double sentimentScore) =>
+        Math.Clamp((sentimentScore + 1.0) * 50.0, 0.0, 100.0);
+
+    /// <summary>
+    /// Compute overall quality score.
+    /// Weights: speed(25%) + engagement(25%) + resolution(30%) + sentiment(20%)
+    /// When engagement is 0 (no MSSQL data), redistribute: speed(35%) + resolution(40%) + sentiment(25%)
+    /// </summary>
+    public static double ComputeOverall(double speed, double engagement, double resolution, double sentiment)
+    {
+        if (engagement <= 0)
+        {
+            // No engagement data: redistribute weights
+            return Math.Round((speed * 0.35) + (resolution * 0.40) + (sentiment * 0.25), 1);
+        }
+
+        return Math.Round(
+            (speed * 0.25) + (engagement * 0.25) + (resolution * 0.30) + (sentiment * 0.20), 1);
+    }
+}
+
 // ── Bucket Constants ──
 
 public static class ResponseTimeBuckets
