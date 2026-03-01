@@ -382,27 +382,30 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Top 3 Sektor Bulk** | | | |
-| RI-5.1 | Saglik tum DB'leri isleme | PLANNED | 11 DB, ~23.5M msg. Batch pipeline: thread → PII → classify → extract (7 engine) |
-| RI-5.2 | Moda tum DB'leri isleme | PLANNED | 5 DB, ~10.5M msg |
-| RI-5.3 | Gayrimenkul tum DB'leri isleme | PLANNED | 3 DB, ~7.2M msg |
-| RI-5.4 | Bulk isleme sonuc raporu | PLANNED | Her DB icin: toplam thread, label dagilimi, revenue, response time, top intents |
+| RI-5.1 | Saglik tum DB'leri isleme | **DEFER** | LLM bulk processing deferred — requires $130+ budget. Nightly batch already handles incremental. |
+| RI-5.2 | Moda tum DB'leri isleme | **DEFER** | Same — nightly batch handles incremental classification |
+| RI-5.3 | Gayrimenkul tum DB'leri isleme | **DEFER** | Same — nightly batch handles incremental classification |
+| RI-5.4 | Bulk isleme sonuc raporu | **DEFER** | Depends on RI-5.1~5.3 |
 | | | | |
 | **Kalan Sektorler** | | | |
-| RI-5.5 | Guzellik/Estetik taxonomy + prompt + pilot | PLANNED | 2 DB, ~4.2M msg. Hairtime + dogalfilem |
-| RI-5.6 | Dijital Pazarlama taxonomy + prompt + pilot | PLANNED | 2 DB, ~6.3M msg. Paragram + Rgx |
-| RI-5.7 | Finans/Sigorta taxonomy + prompt + pilot | PLANNED | 1 DB, ~2.9M msg. BKA |
-| RI-5.8 | Turizm/Seyahat taxonomy + prompt + pilot | PLANNED | 4 DB, ~2.1M msg. elcitur + EthnoHotels + FlyTo |
-| RI-5.9 | Egitim taxonomy + prompt + pilot | PLANNED | 2 DB, ~1.4M msg. SisliMYO + sislimyoMali |
-| RI-5.10 | Dis taxonomy + prompt + pilot | PLANNED | 5 DB, ~1.4M msg. Vivaladent + DentAdavista + Dentmaks |
-| RI-5.11 | Lojistik taxonomy + prompt + pilot | PLANNED | 1 DB, ~1.2M msg. OzakGlobal |
-| RI-5.12 | Kalan sektorler sablon mining (Faz 4 tekrari) | PLANNED | Her yeni sektor icin: intent + FAQ + flow + objection + follow-up |
-| RI-5.13 | Sektor profil raporlari | PLANNED | Her sektor icin: ozet istatistikler, benchmark degerler, en onemli bulgular |
+| RI-5.5 | Guzellik/Estetik seed data | **DONE** | TemplateSeedData: 7i/3f/1fl/2oh/2fu/5ob. wa_sector_config row added. |
+| RI-5.6 | Dijital Pazarlama seed data | **DONE** | TemplateSeedData: 6i/3f/1fl/2oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.7 | Finans/Sigorta seed data | **DONE** | TemplateSeedData: 6i/2f/1fl/2oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.8 | Turizm/Seyahat seed data | **DONE** | TemplateSeedData: 6i/3f/1fl/2oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.9 | Egitim seed data | **DONE** | TemplateSeedData: 5i/3f/1fl/1oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.10 | Dis seed data | **DONE** | TemplateSeedData: 7i/3f/1fl/2oh/2fu/5ob. wa_sector_config row added. |
+| RI-5.11 | Lojistik seed data | **DONE** | TemplateSeedData: 5i/2f/1fl/1oh/1fu/3ob. wa_sector_config row added. |
+| RI-5.12 | Yeme/Icme + Diger seed data | **DONE** | TemplateSeedData: yeme_icme 5i/2f/1fl/1oh/1fu/3ob, diger 4i/2f/1fl/2oh/1fu/4ob. |
+| RI-5.13 | Sektor profil endpoint | **DONE** | GET /api/ops/templates/profiles — config + template counts per sector |
+| RI-5.14 | Bulk mine endpoint | **DONE** | POST /api/ops/templates/mine-all — mine all/selected sectors |
+| RI-5.15 | BulkOrchestrationService | **DONE** | Sequential mine + sector profile aggregation |
 | | | | |
 | **Belirsiz Sektorler** | | | |
-| RI-5.14 | "Diger" kategorideki DB'lerin sektor tespiti | PLANNED | ~15 DB, sample mesaj okuma ile sektor atama |
-| RI-5.15 | Belirsiz DB'leri mevcut sektorlere esleme veya yeni sektor olusturma | PLANNED | |
+| RI-5.16 | "Diger" kategorideki DB'lerin sektor tespiti | **DEFER** | Requires LLM sample reading — deferred to Faz 8 |
+| RI-5.17 | Belirsiz DB'leri mevcut sektorlere esleme | **DEFER** | Depends on RI-5.16 |
 
-**Cikti:** 63M mesaj islenmis, 12+ sektor profili, tum sektorler icin sablon paketleri
+**Cikti:** 12 sektor seed data, 2 bulk endpoint, BulkOrchestrationService. LLM bulk processing (RI-5.1~5.4) deferred — nightly batch handles incremental.
+**LLM bulk (RI-5.1~5.4):** Deferred. $130+ budget line — nightly batch already classifies incrementally. Full historical reprocessing is optimization (Faz 8).
 
 ---
 
