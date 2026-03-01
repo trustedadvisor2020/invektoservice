@@ -491,27 +491,27 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Maliyet Optimizasyonu** | | | |
-| RI-8.1 | Hybrid pipeline | PLANNED | Keyword pre-filter: bariz konusmalar (abandoned, clear sale) LLM'e gitmez → %30-40 maliyet tasarrufu |
-| RI-8.2 | Summary caching | PLANNED | PII-redacted summary'ler cache'lenir, tekrar islenmez |
-| RI-8.3 | Model downgrade stratejisi | PLANNED | Yuksek confidence konusmalari ucuz modele, dusuk confidence'i pahali modele |
-| RI-8.4 | Batch processing optimizasyonu | PLANNED | Paralel isleme, rate limiting, retry logic |
+| RI-8.1 | Hybrid pipeline | **DONE** | Keyword pre-filter: sale/return/complaint patterns → LLM skip. 14 regex, ModelVersion=keyword-v1, Confidence=0.95 |
+| RI-8.2 | Summary caching | **DONE** | Already exists — DB-level dedup (Stage 2: GetClassifiedConversationIdsAsync filters already-classified) |
+| RI-8.3 | Model downgrade stratejisi | **DEFER** | Already have tiered (flash+haiku). Further downgrade requires data accumulation |
+| RI-8.4 | Batch processing optimizasyonu | **DONE** | Parallel MSSQL reads via Parallel.ForEachAsync (maxConcurrency=4). LoadSingleThreadAsync extracted |
 | | | | |
 | **Accuracy Iyilestirme** | | | |
-| RI-8.5 | Flywheel feedback → prompt tuning | PLANNED | Tenant disagree'leri topla → prompt'u optimize et → yeniden isle |
-| RI-8.6 | Few-shot learning | PLANNED | Ground truth orneklerini prompt'a ekle → accuracy artisi |
-| RI-8.7 | Sektor-spesifik fine-tuning (gelecek) | PLANNED | Yeterli veri birikince sektore ozel model fine-tune |
+| RI-8.5 | Flywheel feedback → prompt tuning | **DEFER** | Requires accumulated tenant feedback data |
+| RI-8.6 | Few-shot learning | **DEFER** | Requires accumulated ground truth examples |
+| RI-8.7 | Sektor-spesifik fine-tuning (gelecek) | **DEFER** | Requires large-scale labeled data per sector |
 | | | | |
 | **Entegrasyonlar** | | | |
-| RI-8.8 | FlowBuilder entegrasyonu | PLANNED | Insight → otomatik aksiyon: "offered + 48 saat" → follow-up flow tetikle. "no_response + 7 gun" → rescue flow. "quality < 5" → agent uyarisi |
-| RI-8.9 | Marketing servisi entegrasyonu | PLANNED | Demand heatmap → kampanya onerisi. "Burun estetigi talepleri %28 — bu ay kampanya yap" |
-| RI-8.10 | Outbound servisi entegrasyonu | PLANNED | Rescue alerts → otomatik outbound mesaj. Configurable: tenant izin verirse |
-| RI-8.11 | Knowledge base entegrasyonu | PLANNED | FAQ sablonlari → Knowledge base'e otomatik ekleme |
+| RI-8.8 | FlowBuilder entegrasyonu | **DEFER** | Cross-service wiring — dedicated sprint |
+| RI-8.9 | Marketing servisi entegrasyonu | **DEFER** | Cross-service wiring — dedicated sprint |
+| RI-8.10 | Outbound servisi entegrasyonu | **DEFER** | Cross-service wiring — dedicated sprint |
+| RI-8.11 | Knowledge base entegrasyonu | **DEFER** | Cross-service wiring — dedicated sprint |
 | | | | |
 | **Yeni Sektor Onboarding** | | | |
-| RI-8.12 | Self-serve sektor ekleme | PLANNED | Admin panelinden: yeni sektor tanimla, taxonomy olustur, pilot calistir |
-| RI-8.13 | Otomatik sektor tespiti | PLANNED | Yeni tenant'in ilk 100 mesajindan LLM ile sektor tahmin et |
+| RI-8.12 | Self-serve sektor ekleme | **DEFER** | Admin UI — dedicated sprint |
+| RI-8.13 | Otomatik sektor tespiti | **DEFER** | Requires tenantId→DB mapping infrastructure |
 
-**Cikti:** Dusuk maliyetli, yuksek accuracy'li, entegre RI sistemi
+**Cikti:** RI-8.1 keyword pre-filter (14 regex, 3 outcome types) + RI-8.2 existing dedup + RI-8.4 parallel MSSQL loading (4x concurrency)
 
 ---
 

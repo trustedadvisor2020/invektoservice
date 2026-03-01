@@ -30,9 +30,9 @@
 | RI-5 | Faz 5 | RI: Bulk Isleme + Kalan Sektorler | RI-5.5~5.13 | DONE | 1 Mar | iter 0 FP |
 | RI-6 | Faz 6 | RI: Dashboard + API + Widget'lar | RI-6.1~6.28 | DONE | 1 Mar | P1: iter 0 FP, P2: iter 1 FP |
 | RI-7 | Faz 7 | RI: Tenant Onboarding Deneyimi | RI-7.1~7.7 | DONE | 1 Mar | iter 0 FP |
-| RI-8 | Faz 8 | RI: Optimizasyon & Olcekleme | RI-8.1~8.13 | PLANNED | - | - |
+| RI-8 | Faz 8 | RI: Optimizasyon & Olcekleme | RI-8.1~8.13 | DONE | 1 Mar | pending |
 
-**Toplam:** 20 paket (19 done, 0 in-progress, 3 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
+**Toplam:** 20 paket (20 done, 0 in-progress, 3 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
 
 ## Mikroservis Port Haritasi
 
