@@ -26,6 +26,7 @@ services:
   AD:   { name: Attribution,   description: "GR-3.14: Ads Attribution hataları" }
   MK:   { name: Marketing,     description: "GR-3.21/3.22: Google Yorum, Referans, Medikal Turizm hataları" }
   MT:   { name: Metrics,       description: "PKT-3: Analitik/metrik hataları" }
+  WC:   { name: WebChat,       description: Website webchat hataları }
   EXT:  { name: External,      description: Dış servis hataları }
 ```
 
@@ -302,6 +303,38 @@ errors:
   - code: INV-AA-009
     description: Conversation summary failed
     user_message: Konuşma özeti oluşturulamadı, ham geçmiş kullanıldı.
+
+  # ── WC — WebChat ──
+  - code: INV-WC-001
+    description: Invalid visitor ID
+    user_message: Geçersiz ziyaretçi kimliği.
+  - code: INV-WC-002
+    description: Conversation not found
+    user_message: Sohbet bulunamadı.
+  - code: INV-WC-003
+    description: Message send failed
+    user_message: Mesaj gönderilemedi.
+  - code: INV-WC-004
+    description: AI reply generation failed
+    user_message: AI yanıtı oluşturulamadı.
+  - code: INV-WC-005
+    description: AI reply timeout
+    user_message: AI yanıtı zaman aşımına uğradı.
+  - code: INV-WC-006
+    description: Invalid payload
+    user_message: Geçersiz istek verisi.
+  - code: INV-WC-007
+    description: Auth login failed
+    user_message: Giriş başarısız. E-posta veya şifre hatalı.
+  - code: INV-WC-008
+    description: Operator not found
+    user_message: Operatör bulunamadı.
+  - code: INV-WC-009
+    description: Conversation already closed
+    user_message: Bu sohbet kapatılmış.
+  - code: INV-WC-010
+    description: Hub connection failed
+    user_message: Bağlantı kurulamadı.
 
   # ── DB — Database ──
   - code: INV-DB-001

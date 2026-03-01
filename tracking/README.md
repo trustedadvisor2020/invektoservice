@@ -50,6 +50,7 @@
 | FaceAnalysis | 7110 | Planned | PKT-8 |
 | VisualSearch | 7111 | Planned | PKT-7 |
 | Marketing | 7112 | Implemented | PKT-6C2 |
+| WebChat | 7113 | Implemented | WebChat |
 
 ## Strateji Gecmisi
 

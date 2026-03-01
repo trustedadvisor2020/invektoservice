@@ -517,4 +517,4 @@ logger.SystemInfo($"AgentAI service starting on port {listenPort}");
 app.Run();
 
 // Required for integration tests
-public partial class Program { }
+namespace Invekto.AgentAI { public partial class Program { } }

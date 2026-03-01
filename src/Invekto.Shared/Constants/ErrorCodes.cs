@@ -333,6 +333,18 @@ public static class ErrorCodes
     public const string MarketingResponseGenerationFailed = "INV-MK-022";
     public const string MarketingClaudeUnavailable = "INV-MK-023";
 
+    // WebChat errors (INV-WC-xxx)
+    public const string WebChatInvalidVisitor = "INV-WC-001";
+    public const string WebChatConversationNotFound = "INV-WC-002";
+    public const string WebChatMessageSendFailed = "INV-WC-003";
+    public const string WebChatAIReplyFailed = "INV-WC-004";
+    public const string WebChatAIReplyTimeout = "INV-WC-005";
+    public const string WebChatInvalidPayload = "INV-WC-006";
+    public const string WebChatAuthLoginFailed = "INV-WC-007";
+    public const string WebChatOperatorNotFound = "INV-WC-008";
+    public const string WebChatConversationClosed = "INV-WC-009";
+    public const string WebChatHubConnectionFailed = "INV-WC-010";
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

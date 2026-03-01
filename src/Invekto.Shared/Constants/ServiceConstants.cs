@@ -29,6 +29,8 @@ public static class ServiceConstants
     public const int WhatsAppAnalyticsPort = 7109;
     // Phase 3B service ports
     public const int MarketingPort = 7112;
+    // WebChat service port
+    public const int WebChatPort = 7113;
 
     // Service names
     public const string BackendServiceName = "Invekto.Backend";
@@ -44,6 +46,8 @@ public static class ServiceConstants
     public const string WhatsAppAnalyticsServiceName = "Invekto.WhatsAppAnalytics";
     // Phase 3B service names
     public const string MarketingServiceName = "Invekto.Marketing";
+    // WebChat service name
+    public const string WebChatServiceName = "Invekto.WebChat";
 
     // Log retention
     public const int LogRetentionDays = 30;

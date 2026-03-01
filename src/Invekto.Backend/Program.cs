@@ -61,6 +61,9 @@ var integrationsTimeoutMs = builder.Configuration.GetValue<int>("Microservice:In
 var marketingUrl = builder.Configuration["Microservice:Marketing:Url"]
     ?? $"http://localhost:{ServiceConstants.MarketingPort}";
 var marketingTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Marketing:TimeoutMs", 10000);
+var webChatUrl = builder.Configuration["Microservice:WebChat:Url"]
+    ?? $"http://localhost:{ServiceConstants.WebChatPort}";
+var webChatTimeoutMs = builder.Configuration.GetValue<int>("Microservice:WebChat:TimeoutMs", 5000);
 var internalApiKey = builder.Configuration["Microservice:InternalApiKey"] ?? "";
 
 // Register JSON Lines logger
@@ -187,6 +190,13 @@ builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 // Register AI Wizard service for flow builder
 builder.Services.AddHttpClient<ClaudeWizardService>();
 
+// Configure WebChat HTTP client
+builder.Services.AddHttpClient<WebChatClient>(client =>
+{
+    client.BaseAddress = new Uri(webChatUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(webChatTimeoutMs);
+});
+
 // Configure WhatsApp Analytics HTTP client (PKT-4: NLP query + upload proxy)
 builder.Services.AddHttpClient<WhatsAppAnalyticsClient>(client =>
 {
@@ -304,7 +314,7 @@ var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreC
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads/", "/api/v1/onboarding/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -560,7 +570,7 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -713,6 +723,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = marketingHealthy ? null : "Service unreachable"
+    });
+
+    // WebChat - check health with timing
+    var swWebChat = System.Diagnostics.Stopwatch.StartNew();
+    var webChatHealthy = await webChatClient.CheckHealthAsync();
+    swWebChat.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.WebChatServiceName,
+        status = webChatHealthy ? "ok" : "unavailable",
+        responseTimeMs = webChatHealthy ? (int?)swWebChat.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = webChatHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -886,6 +911,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
         "Invekto.Integrations" => "InvektoIntegrations",
         "Invekto.WhatsAppAnalytics" => "InvektoWhatsAppAnalytics",
         "Invekto.Marketing" => "InvektoMarketing",
+        "Invekto.WebChat" => "InvektoWebChat",
         _ => null
     };
 
@@ -939,7 +965,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1074,6 +1100,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await marketingClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "webchat")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await webChatClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -1435,7 +1476,7 @@ app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, OnboardingStatus
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1589,6 +1630,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch Marketing endpoints (internal call, GR-3.21/3.22)
     var marketingEndpoints = await marketingClient.GetEndpointsAsync();
 
+    // Fetch WebChat endpoints (internal call)
+    var webChatEndpoints = await webChatClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -1625,6 +1669,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (marketingEndpoints != null)
     {
         services.Add(marketingEndpoints);
+    }
+    if (webChatEndpoints != null)
+    {
+        services.Add(webChatEndpoints);
     }
 
     return Results.Ok(new { services });
@@ -5679,4 +5727,4 @@ logger.SystemInfo($"Backend starting on port {ServiceConstants.BackendPort}");
 app.Run();
 
 // Required for integration tests
-public partial class Program { }
+namespace Invekto.Backend { public partial class Program { } }
