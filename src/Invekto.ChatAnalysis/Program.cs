@@ -359,4 +359,4 @@ static bool IsAllowedCallbackUrl(string url)
 }
 
 // Required for integration tests
-public partial class Program { }
+namespace Invekto.ChatAnalysis { public partial class Program { } }

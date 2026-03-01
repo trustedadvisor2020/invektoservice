@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Invekto.ChatAnalysis.Tests.Fixtures;
 
-public class ChatAnalysisWebApplicationFactory : WebApplicationFactory<Program>
+public class ChatAnalysisWebApplicationFactory : WebApplicationFactory<Invekto.ChatAnalysis.Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

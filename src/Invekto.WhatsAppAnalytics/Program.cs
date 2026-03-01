@@ -241,7 +241,14 @@ if (mssqlConfigured)
     var nightlyConfig = new NightlyBatchConfig();
     builder.Configuration.GetSection("NightlyBatch").Bind(nightlyConfig);
     builder.Services.AddSingleton(nightlyConfig);
-    builder.Services.AddHostedService<NightlyBatchJob>();
+    builder.Services.AddSingleton<NightlyBatchJob>(sp =>
+        new NightlyBatchJob(
+            sp.GetRequiredService<BatchClassificationService>(),
+            sp.GetRequiredService<ConversationOutcomeRepository>(),
+            sp.GetRequiredService<JsonLinesLogger>(),
+            sp.GetRequiredService<NightlyBatchConfig>(),
+            sp.GetService<MssqlReaderService>())); // nullable — null if MSSQL not configured
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<NightlyBatchJob>());
 
     // Insight engines (RI Faz 3)
     builder.Services.AddSingleton<InsightRepository>();

@@ -11,7 +11,7 @@ namespace Invekto.Knowledge.Data;
 /// PostgreSQL data access for Knowledge Service.
 /// FAQ CRUD, batch import, semantic search (pgvector), keyword search (FTS).
 /// </summary>
-public sealed class KnowledgeRepository
+public class KnowledgeRepository
 {
     private readonly KnowledgeConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -26,7 +26,7 @@ public sealed class KnowledgeRepository
     // Health check
     // ============================================================
 
-    public async Task<bool> CheckPgvectorAsync(CancellationToken ct = default)
+    public virtual async Task<bool> CheckPgvectorAsync(CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -39,7 +39,7 @@ public sealed class KnowledgeRepository
     // FAQ CRUD
     // ============================================================
 
-    public async Task<FaqDto?> GetFaqAsync(int tenantId, int faqId, CancellationToken ct = default)
+    public virtual async Task<FaqDto?> GetFaqAsync(int tenantId, int faqId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -58,7 +58,7 @@ public sealed class KnowledgeRepository
         return ReadFaqDto(reader);
     }
 
-    public async Task<(List<FaqDto> Faqs, int Total)> ListFaqsAsync(
+    public virtual async Task<(List<FaqDto> Faqs, int Total)> ListFaqsAsync(
         int tenantId, string? lang, string? category, int page, int limit, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -105,7 +105,7 @@ public sealed class KnowledgeRepository
     /// Insert a new FAQ or reactivate a soft-deleted one with the same question.
     /// Returns null if an active FAQ with the same (tenant_id, question) already exists (duplicate).
     /// </summary>
-    public async Task<FaqDto?> InsertFaqAsync(int tenantId, string question, string answer,
+    public virtual async Task<FaqDto?> InsertFaqAsync(int tenantId, string question, string answer,
         string? category, string lang, string[] keywords, string source, string? sourceMetadata,
         CancellationToken ct = default)
     {
@@ -154,7 +154,7 @@ public sealed class KnowledgeRepository
         };
     }
 
-    public async Task<FaqDto?> UpdateFaqAsync(int tenantId, int faqId, string? question, string? answer,
+    public virtual async Task<FaqDto?> UpdateFaqAsync(int tenantId, int faqId, string? question, string? answer,
         string? category, string? lang, string[]? keywords, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -189,7 +189,7 @@ public sealed class KnowledgeRepository
         return ReadFaqDto(reader);
     }
 
-    public async Task<bool> DeleteFaqAsync(int tenantId, int faqId, CancellationToken ct = default)
+    public virtual async Task<bool> DeleteFaqAsync(int tenantId, int faqId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -207,7 +207,7 @@ public sealed class KnowledgeRepository
     // Search
     // ============================================================
 
-    public async Task<List<SearchResultDto>> SemanticSearchAsync(
+    public virtual async Task<List<SearchResultDto>> SemanticSearchAsync(
         int tenantId, Vector queryEmbedding, int topK, string? lang, string? category,
         CancellationToken ct = default)
     {
@@ -249,7 +249,7 @@ public sealed class KnowledgeRepository
         return results;
     }
 
-    public async Task<List<SearchResultDto>> KeywordSearchAsync(
+    public virtual async Task<List<SearchResultDto>> KeywordSearchAsync(
         int tenantId, string query, int topK, string? lang, string? category,
         CancellationToken ct = default)
     {
@@ -298,7 +298,7 @@ public sealed class KnowledgeRepository
     // Batch import (WA-3)
     // ============================================================
 
-    public async Task<int> BatchInsertFaqsAsync(int tenantId, List<FaqImportRow> rows, CancellationToken ct = default)
+    public virtual async Task<int> BatchInsertFaqsAsync(int tenantId, List<FaqImportRow> rows, CancellationToken ct = default)
     {
         if (rows.Count == 0) return 0;
 
@@ -337,7 +337,7 @@ public sealed class KnowledgeRepository
         }
     }
 
-    public async Task<int> BatchInsertIntentPatternsAsync(int tenantId, List<IntentPatternRow> rows, CancellationToken ct = default)
+    public virtual async Task<int> BatchInsertIntentPatternsAsync(int tenantId, List<IntentPatternRow> rows, CancellationToken ct = default)
     {
         if (rows.Count == 0) return 0;
 
@@ -379,7 +379,7 @@ public sealed class KnowledgeRepository
         }
     }
 
-    public async Task<int> BatchInsertProductCatalogAsync(int tenantId, List<ProductCatalogRow> rows, CancellationToken ct = default)
+    public virtual async Task<int> BatchInsertProductCatalogAsync(int tenantId, List<ProductCatalogRow> rows, CancellationToken ct = default)
     {
         if (rows.Count == 0) return 0;
 
@@ -423,7 +423,7 @@ public sealed class KnowledgeRepository
         }
     }
 
-    public async Task<int> BatchInsertSentimentsAsync(int tenantId, List<SentimentRow> rows, int batchSize = 500, CancellationToken ct = default)
+    public virtual async Task<int> BatchInsertSentimentsAsync(int tenantId, List<SentimentRow> rows, int batchSize = 500, CancellationToken ct = default)
     {
         if (rows.Count == 0) return 0;
 
@@ -470,7 +470,7 @@ public sealed class KnowledgeRepository
         return totalInserted;
     }
 
-    public async Task<int> InsertDocumentAsync(int tenantId, string title, string sourceType,
+    public virtual async Task<int> InsertDocumentAsync(int tenantId, string title, string sourceType,
         string? filePath, string? metadataJson, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -489,7 +489,7 @@ public sealed class KnowledgeRepository
         return Convert.ToInt32(id);
     }
 
-    public async Task UpdateDocumentStatusAsync(int tenantId, int documentId, string status, int chunkCount = 0, CancellationToken ct = default)
+    public virtual async Task UpdateDocumentStatusAsync(int tenantId, int documentId, string status, int chunkCount = 0, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -507,7 +507,7 @@ public sealed class KnowledgeRepository
     // Document CRUD (Phase B)
     // ============================================================
 
-    public async Task<(List<DocumentDto> Documents, int Total)> ListDocumentsAsync(
+    public virtual async Task<(List<DocumentDto> Documents, int Total)> ListDocumentsAsync(
         int tenantId, string? status, int page, int limit, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -544,7 +544,7 @@ public sealed class KnowledgeRepository
         return (docs, total);
     }
 
-    public async Task<DocumentDto?> GetDocumentAsync(int tenantId, int documentId, CancellationToken ct = default)
+    public virtual async Task<DocumentDto?> GetDocumentAsync(int tenantId, int documentId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -563,7 +563,7 @@ public sealed class KnowledgeRepository
         return ReadDocumentDto(reader);
     }
 
-    public async Task<bool> DeleteDocumentAsync(int tenantId, int documentId, CancellationToken ct = default)
+    public virtual async Task<bool> DeleteDocumentAsync(int tenantId, int documentId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -580,7 +580,7 @@ public sealed class KnowledgeRepository
     /// Get documents stuck in pending/processing for restart recovery.
     /// Used by DocumentProcessingService.StartAsync to re-enqueue on startup.
     /// </summary>
-    public async Task<List<DocumentDto>> GetStuckDocumentsAsync(CancellationToken ct = default)
+    public virtual async Task<List<DocumentDto>> GetStuckDocumentsAsync(CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -603,7 +603,7 @@ public sealed class KnowledgeRepository
     // Chunk operations (Phase B)
     // ============================================================
 
-    public async Task<int> BatchInsertChunksAsync(int tenantId, int documentId, List<ChunkInsertRow> rows, CancellationToken ct = default)
+    public virtual async Task<int> BatchInsertChunksAsync(int tenantId, int documentId, List<ChunkInsertRow> rows, CancellationToken ct = default)
     {
         if (rows.Count == 0) return 0;
 
@@ -661,7 +661,7 @@ public sealed class KnowledgeRepository
         }
     }
 
-    public async Task<int> UpdateChunkEmbeddingAsync(int tenantId, long chunkId, Vector embedding, CancellationToken ct = default)
+    public virtual async Task<int> UpdateChunkEmbeddingAsync(int tenantId, long chunkId, Vector embedding, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -672,7 +672,7 @@ public sealed class KnowledgeRepository
         return await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task<int> BatchUpdateChunkEmbeddingsAsync(int tenantId, List<(long ChunkId, Vector Embedding)> updates, CancellationToken ct = default)
+    public virtual async Task<int> BatchUpdateChunkEmbeddingsAsync(int tenantId, List<(long ChunkId, Vector Embedding)> updates, CancellationToken ct = default)
     {
         if (updates.Count == 0) return 0;
 
@@ -719,7 +719,7 @@ public sealed class KnowledgeRepository
         }
     }
 
-    public async Task<List<(long Id, string Text)>> GetChunksWithoutEmbeddingAsync(int tenantId, int limit = 100, CancellationToken ct = default)
+    public virtual async Task<List<(long Id, string Text)>> GetChunksWithoutEmbeddingAsync(int tenantId, int limit = 100, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -744,7 +744,7 @@ public sealed class KnowledgeRepository
     // Chunk search (Phase B)
     // ============================================================
 
-    public async Task<List<ChunkSearchResultDto>> SemanticSearchChunksAsync(
+    public virtual async Task<List<ChunkSearchResultDto>> SemanticSearchChunksAsync(
         int tenantId, Vector queryEmbedding, int topK, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -784,7 +784,7 @@ public sealed class KnowledgeRepository
         return results;
     }
 
-    public async Task<List<ChunkSearchResultDto>> KeywordSearchChunksAsync(
+    public virtual async Task<List<ChunkSearchResultDto>> KeywordSearchChunksAsync(
         int tenantId, string query, int topK, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -832,7 +832,7 @@ public sealed class KnowledgeRepository
     // Embedding update
     // ============================================================
 
-    public async Task<int> UpdateFaqEmbeddingAsync(int tenantId, int faqId, Vector embedding, CancellationToken ct = default)
+    public virtual async Task<int> UpdateFaqEmbeddingAsync(int tenantId, int faqId, Vector embedding, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -843,7 +843,7 @@ public sealed class KnowledgeRepository
         return await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task<List<(int Id, string Text)>> GetFaqsWithoutEmbeddingAsync(int tenantId, int limit = 100, CancellationToken ct = default)
+    public virtual async Task<List<(int Id, string Text)>> GetFaqsWithoutEmbeddingAsync(int tenantId, int limit = 100, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -872,7 +872,7 @@ public sealed class KnowledgeRepository
     /// Get intent names for a tenant from intent_patterns table.
     /// Returns empty list if no patterns exist (caller decides fallback).
     /// </summary>
-    public async Task<List<string>> GetTenantIntentNamesAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<List<string>> GetTenantIntentNamesAsync(int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -894,7 +894,7 @@ public sealed class KnowledgeRepository
     /// Get sector intent templates (global, no tenant FK).
     /// Used by onboarding to seed tenant-specific intents.
     /// </summary>
-    public async Task<List<SectorIntentTemplateDto>> GetSectorTemplatesAsync(string sector, CancellationToken ct = default)
+    public virtual async Task<List<SectorIntentTemplateDto>> GetSectorTemplatesAsync(string sector, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -927,7 +927,7 @@ public sealed class KnowledgeRepository
     /// Uses existing BatchInsertIntentPatternsAsync internally.
     /// Returns count of seeded intents.
     /// </summary>
-    public async Task<int> SeedTenantIntentsFromSectorAsync(int tenantId, string sector, CancellationToken ct = default)
+    public virtual async Task<int> SeedTenantIntentsFromSectorAsync(int tenantId, string sector, CancellationToken ct = default)
     {
         var templates = await GetSectorTemplatesAsync(sector, ct);
         if (templates.Count == 0)
@@ -952,7 +952,7 @@ public sealed class KnowledgeRepository
     // Intent CRUD (full fields)
     // ============================================================
 
-    public async Task<List<IntentPatternFullDto>> ListIntentsFullAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<List<IntentPatternFullDto>> ListIntentsFullAsync(int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -983,7 +983,7 @@ public sealed class KnowledgeRepository
         return list;
     }
 
-    public async Task<int> InsertIntentAsync(int tenantId, string intentName, string[] keywords, CancellationToken ct = default)
+    public virtual async Task<int> InsertIntentAsync(int tenantId, string intentName, string[] keywords, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -1000,7 +1000,7 @@ public sealed class KnowledgeRepository
         return result is int id ? id : 0;
     }
 
-    public async Task<bool> UpdateIntentAsync(int id, int tenantId, string intentName, string[] keywords, CancellationToken ct = default)
+    public virtual async Task<bool> UpdateIntentAsync(int id, int tenantId, string intentName, string[] keywords, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -1016,7 +1016,7 @@ public sealed class KnowledgeRepository
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
-    public async Task<bool> DeleteIntentAsync(int id, int tenantId, CancellationToken ct = default)
+    public virtual async Task<bool> DeleteIntentAsync(int id, int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -1031,7 +1031,7 @@ public sealed class KnowledgeRepository
     // KVKK health tenant check (GR-2.6)
     // ============================================================
 
-    public async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
+    public virtual async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
         int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -1103,7 +1103,7 @@ public sealed class KnowledgeRepository
     /// <summary>
     /// Lightweight onboarding stats: single query, 3 subselects.
     /// </summary>
-    public async Task<(int AdoptionCount, int ActiveFaqCount, int IntentCount)>
+    public virtual async Task<(int AdoptionCount, int ActiveFaqCount, int IntentCount)>
         GetOnboardingStatsAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = @"

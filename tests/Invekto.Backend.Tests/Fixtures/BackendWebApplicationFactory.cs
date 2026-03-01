@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Invekto.Backend.Tests.Fixtures;
 
-public class BackendWebApplicationFactory : WebApplicationFactory<Program>
+public class BackendWebApplicationFactory : WebApplicationFactory<Invekto.Backend.Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

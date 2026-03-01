@@ -1613,3 +1613,6 @@ internal sealed class FaqUpdateRequest
     public string? Lang { get; set; }
     public string[]? Keywords { get; set; }
 }
+
+// Required for integration tests
+namespace Invekto.Knowledge { public partial class Program { } }

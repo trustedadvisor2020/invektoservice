@@ -5,7 +5,7 @@ using NpgsqlTypes;
 
 namespace Invekto.AgentAI.Data;
 
-public sealed class AgentAIRepository
+public class AgentAIRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -19,7 +19,7 @@ public sealed class AgentAIRepository
     /// <summary>
     /// GR-2.2: Extended logging with Knowledge context, tone, follow-up, summary, detected language.
     /// </summary>
-    public async Task<string> LogSuggestionAsync(
+    public virtual async Task<string> LogSuggestionAsync(
         Guid suggestionId, int tenantId, int agentId, int chatId,
         string? channel, string language, string messageText,
         int conversationLength, string? suggestedReply,
@@ -75,7 +75,7 @@ public sealed class AgentAIRepository
         return id?.ToString() ?? "";
     }
 
-    public async Task<bool> UpdateFeedbackAsync(
+    public virtual async Task<bool> UpdateFeedbackAsync(
         Guid suggestionId, int tenantId,
         string agentAction, string? finalReplyText,
         CancellationToken ct = default)
@@ -98,7 +98,7 @@ public sealed class AgentAIRepository
         return rows > 0;
     }
 
-    public async Task<List<FeedbackRecord>> GetRecentFeedbackAsync(
+    public virtual async Task<List<FeedbackRecord>> GetRecentFeedbackAsync(
         int tenantId, int agentId, int limit = 20,
         CancellationToken ct = default)
     {
@@ -140,7 +140,7 @@ public sealed class AgentAIRepository
     // KVKK health tenant check (GR-2.6)
     // ============================================================
 
-    public async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
+    public virtual async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
         int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);

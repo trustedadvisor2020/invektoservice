@@ -9,7 +9,7 @@ namespace Invekto.Backend.Data;
 /// PostgreSQL repository for leads + lead_activities tables.
 /// Thread-safe, register as singleton. PKT-6B1: GR-3.13 Lead Management v2.
 /// </summary>
-public sealed class LeadRepository
+public class LeadRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -28,7 +28,7 @@ public sealed class LeadRepository
     /// Upsert a lead. On conflict (tenant_id, phone), updates name/email/source/interest/notes.
     /// Returns lead id.
     /// </summary>
-    public async Task<int> UpsertLeadAsync(
+    public virtual async Task<int> UpsertLeadAsync(
         int tenantId, LeadRequest request, CancellationToken ct = default)
     {
         const string sql = @"
@@ -65,7 +65,7 @@ public sealed class LeadRepository
         return Convert.ToInt32(result);
     }
 
-    public async Task<LeadResponse?> GetLeadAsync(
+    public virtual async Task<LeadResponse?> GetLeadAsync(
         int tenantId, int leadId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -86,7 +86,7 @@ public sealed class LeadRepository
         return null;
     }
 
-    public async Task<List<LeadResponse>> ListLeadsAsync(
+    public virtual async Task<List<LeadResponse>> ListLeadsAsync(
         int tenantId, string? pipelineStatus, bool? isHot,
         string? search, int limit, int offset, CancellationToken ct = default)
     {
@@ -125,7 +125,7 @@ public sealed class LeadRepository
     /// Update pipeline status. Inserts a status_change activity.
     /// Returns false if lead not found.
     /// </summary>
-    public async Task<bool> UpdatePipelineStatusAsync(
+    public virtual async Task<bool> UpdatePipelineStatusAsync(
         int tenantId, int leadId, string newStatus, string? assignedTo,
         CancellationToken ct = default)
     {
@@ -177,7 +177,7 @@ public sealed class LeadRepository
     /// Update lead score (0-100). Sets is_hot if score >= 80.
     /// Returns false if lead not found.
     /// </summary>
-    public async Task<bool> UpdateScoreAsync(
+    public virtual async Task<bool> UpdateScoreAsync(
         int tenantId, int leadId, int newScore, CancellationToken ct = default)
     {
         const string sql = @"
@@ -201,7 +201,7 @@ public sealed class LeadRepository
     // Activities
     // ================================================================
 
-    public async Task<int> InsertActivityAsync(
+    public virtual async Task<int> InsertActivityAsync(
         int tenantId, int leadId, string activityType,
         string? oldValue, string? newValue, string? note,
         CancellationToken ct = default)
@@ -224,7 +224,7 @@ public sealed class LeadRepository
         return Convert.ToInt32(result);
     }
 
-    public async Task<List<LeadActivityResponse>> GetActivitiesAsync(
+    public virtual async Task<List<LeadActivityResponse>> GetActivitiesAsync(
         int tenantId, int leadId, int limit, CancellationToken ct = default)
     {
         const string sql = @"
@@ -260,7 +260,7 @@ public sealed class LeadRepository
     // Funnel & Hot leads
     // ================================================================
 
-    public async Task<LeadFunnelStatsResponse> GetFunnelStatsAsync(
+    public virtual async Task<LeadFunnelStatsResponse> GetFunnelStatsAsync(
         int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -291,7 +291,7 @@ public sealed class LeadRepository
         };
     }
 
-    public async Task<List<LeadResponse>> GetHotLeadsAsync(
+    public virtual async Task<List<LeadResponse>> GetHotLeadsAsync(
         int tenantId, int limit, CancellationToken ct = default)
     {
         const string sql = @"
@@ -319,7 +319,7 @@ public sealed class LeadRepository
     /// <summary>
     /// Schedule next follow-up. Increments followup_count.
     /// </summary>
-    public async Task<bool> ScheduleFollowUpAsync(
+    public virtual async Task<bool> ScheduleFollowUpAsync(
         int tenantId, int leadId, DateTime followUpAt, CancellationToken ct = default)
     {
         const string sql = @"

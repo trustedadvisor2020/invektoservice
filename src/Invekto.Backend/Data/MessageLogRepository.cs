@@ -10,7 +10,7 @@ namespace Invekto.Backend.Data;
 /// Thread-safe, register as singleton. SuperAdmin mesaj izleme.
 /// Fire-and-forget insert at webhook, paginated select for ops page.
 /// </summary>
-public sealed class MessageLogRepository
+public class MessageLogRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -25,7 +25,7 @@ public sealed class MessageLogRepository
     /// Fire-and-forget insert. Called from webhook endpoint.
     /// No exception propagation — caller uses ContinueWith for logging.
     /// </summary>
-    public async Task InsertAsync(
+    public virtual async Task InsertAsync(
         int tenantId, string direction, string phone,
         string? senderName, string? messageText, string? messageType,
         string? chatId, string? externalMessageId, string? instanceId,
@@ -58,7 +58,7 @@ public sealed class MessageLogRepository
     /// Get the last incoming message's instance_id for a tenant+phone pair.
     /// Used by WapCRM callback bridge to reply on the same WhatsApp instance.
     /// </summary>
-    public async Task<string?> GetLastInstanceIdAsync(int tenantId, string phone, CancellationToken ct = default)
+    public virtual async Task<string?> GetLastInstanceIdAsync(int tenantId, string phone, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT instance_id FROM message_log
@@ -80,7 +80,7 @@ public sealed class MessageLogRepository
     /// All filters optional. Returns (messages, totalCount).
     /// LEFT JOINs tenant_instances to resolve instance_name (channel).
     /// </summary>
-    public async Task<(List<MessageLogEntry> Messages, int Total)> GetMessagesAsync(
+    public virtual async Task<(List<MessageLogEntry> Messages, int Total)> GetMessagesAsync(
         int? tenantId, string? phone, string? direction,
         DateTime? from, DateTime? to,
         string? instanceId,
@@ -148,7 +148,7 @@ public sealed class MessageLogRepository
     /// Returns distinct channels (instance_id + instance_name) for the ops filter dropdown.
     /// Optionally filtered by tenant.
     /// </summary>
-    public async Task<List<ChannelEntry>> GetDistinctChannelsAsync(int? tenantId, CancellationToken ct = default)
+    public virtual async Task<List<ChannelEntry>> GetDistinctChannelsAsync(int? tenantId, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT DISTINCT ti.instance_id, ti.instance_name
@@ -178,7 +178,7 @@ public sealed class MessageLogRepository
     /// Get the full "story" of an incoming message: what happened after it arrived.
     /// Joins message_log + auto_reply_log + chatbot_flows to build a timeline.
     /// </summary>
-    public async Task<MessageStory?> GetMessageStoryAsync(long messageId, CancellationToken ct = default)
+    public virtual async Task<MessageStory?> GetMessageStoryAsync(long messageId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
 

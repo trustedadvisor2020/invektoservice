@@ -10,7 +10,7 @@ namespace Invekto.Backend.Services;
 /// Thread-safe singleton, uses PostgresConnectionFactory for connection pooling.
 /// Pattern: same as AnalyticsRepository (PKT-3).
 /// </summary>
-public sealed class AttributionRepository
+public class AttributionRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -29,7 +29,7 @@ public sealed class AttributionRepository
     /// Insert lead attribution from webhook conversation_started event.
     /// Called inline during webhook processing - must be fast.
     /// </summary>
-    public async Task<int> InsertLeadAttributionAsync(
+    public virtual async Task<int> InsertLeadAttributionAsync(
         int tenantId, AttributionTrackRequest req, string leadSource, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -69,7 +69,7 @@ public sealed class AttributionRepository
     /// <summary>
     /// List lead attributions for tenant with optional date range filter.
     /// </summary>
-    public async Task<List<LeadAttributionDto>> GetLeadAttributionsAsync(
+    public virtual async Task<List<LeadAttributionDto>> GetLeadAttributionsAsync(
         int tenantId, DateOnly? from, DateOnly? to, int limit = 200, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -103,7 +103,7 @@ public sealed class AttributionRepository
     /// <summary>
     /// Get a single lead attribution by ID.
     /// </summary>
-    public async Task<LeadAttributionDto?> GetLeadAttributionByIdAsync(
+    public virtual async Task<LeadAttributionDto?> GetLeadAttributionByIdAsync(
         int tenantId, int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -130,7 +130,7 @@ public sealed class AttributionRepository
     /// <summary>
     /// Update lead conversion status and optional value.
     /// </summary>
-    public async Task<bool> UpdateLeadStatusAsync(
+    public virtual async Task<bool> UpdateLeadStatusAsync(
         int tenantId, int id, LeadStatusUpdateRequest req, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -157,7 +157,7 @@ public sealed class AttributionRepository
     /// <summary>
     /// Get attribution summary with source and campaign breakdowns.
     /// </summary>
-    public async Task<AttributionSummaryDto> GetAttributionSummaryAsync(
+    public virtual async Task<AttributionSummaryDto> GetAttributionSummaryAsync(
         int tenantId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         var summary = new AttributionSummaryDto
@@ -284,7 +284,7 @@ public sealed class AttributionRepository
     /// <summary>
     /// Get cost-per-lead by platform, joining ad_costs with lead_attributions.
     /// </summary>
-    public async Task<List<CostPerLeadDto>> GetCostPerLeadAsync(
+    public virtual async Task<List<CostPerLeadDto>> GetCostPerLeadAsync(
         int tenantId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -355,7 +355,7 @@ public sealed class AttributionRepository
     // AD COSTS CRUD
     // ============================================================
 
-    public async Task<int> InsertAdCostAsync(
+    public virtual async Task<int> InsertAdCostAsync(
         int tenantId, AdCostCreateRequest req, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -377,7 +377,7 @@ public sealed class AttributionRepository
         return result is int id ? id : 0;
     }
 
-    public async Task<List<AdCostDto>> GetAdCostsAsync(
+    public virtual async Task<List<AdCostDto>> GetAdCostsAsync(
         int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -412,7 +412,7 @@ public sealed class AttributionRepository
         return result;
     }
 
-    public async Task<bool> DeleteAdCostAsync(
+    public virtual async Task<bool> DeleteAdCostAsync(
         int tenantId, int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);

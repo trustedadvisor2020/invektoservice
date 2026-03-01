@@ -6,7 +6,7 @@ using Npgsql;
 
 namespace Invekto.Outbound.Data;
 
-public sealed class OutboundRepository
+public class OutboundRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -24,7 +24,7 @@ public sealed class OutboundRepository
     /// <summary>
     /// GR-2.3: Get active templates, optionally filtered by language.
     /// </summary>
-    public async Task<List<TemplateDto>> GetActiveTemplatesAsync(
+    public virtual async Task<List<TemplateDto>> GetActiveTemplatesAsync(
         int tenantId, string? lang = null, CancellationToken ct = default)
     {
         var sql = @"
@@ -50,7 +50,7 @@ public sealed class OutboundRepository
         return templates;
     }
 
-    public async Task<TemplateDto?> GetTemplateByIdAsync(
+    public virtual async Task<TemplateDto?> GetTemplateByIdAsync(
         int tenantId, int templateId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -74,7 +74,7 @@ public sealed class OutboundRepository
     /// GR-2.3: Get trigger template, optionally filtered by language.
     /// Falls back to any language if no match found for specified lang.
     /// </summary>
-    public async Task<TemplateDto?> GetTriggerTemplateAsync(
+    public virtual async Task<TemplateDto?> GetTriggerTemplateAsync(
         int tenantId, string triggerEvent, string? lang = null, CancellationToken ct = default)
     {
         var sql = @"
@@ -102,7 +102,7 @@ public sealed class OutboundRepository
     /// <summary>
     /// GR-2.3: Create template with language tag.
     /// </summary>
-    public async Task<int> CreateTemplateAsync(
+    public virtual async Task<int> CreateTemplateAsync(
         int tenantId, string name, string triggerEvent,
         string messageTemplate, Dictionary<string, string>? variablesJson,
         string lang = "tr", CancellationToken ct = default)
@@ -127,7 +127,7 @@ public sealed class OutboundRepository
         return Convert.ToInt32(id);
     }
 
-    public async Task<bool> UpdateTemplateAsync(
+    public virtual async Task<bool> UpdateTemplateAsync(
         int tenantId, int templateId, TemplateUpdateRequest req,
         CancellationToken ct = default)
     {
@@ -177,7 +177,7 @@ public sealed class OutboundRepository
         return rows > 0;
     }
 
-    public async Task<bool> DeactivateTemplateAsync(
+    public virtual async Task<bool> DeactivateTemplateAsync(
         int tenantId, int templateId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -201,7 +201,7 @@ public sealed class OutboundRepository
     /// <summary>
     /// GR-2.3: Create broadcast with optional language tag.
     /// </summary>
-    public async Task<Guid> CreateBroadcastAsync(
+    public virtual async Task<Guid> CreateBroadcastAsync(
         int tenantId, int templateId, int totalRecipients, int queued,
         DateTime? scheduledAt, string? lang = null, CancellationToken ct = default)
     {
@@ -224,7 +224,7 @@ public sealed class OutboundRepository
         return (Guid)id!;
     }
 
-    public async Task<BroadcastStatusResponse?> GetBroadcastStatusAsync(
+    public virtual async Task<BroadcastStatusResponse?> GetBroadcastStatusAsync(
         int tenantId, Guid broadcastId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -257,7 +257,7 @@ public sealed class OutboundRepository
         };
     }
 
-    public async Task UpdateBroadcastStatusAsync(
+    public virtual async Task UpdateBroadcastStatusAsync(
         Guid broadcastId, string status, CancellationToken ct = default)
     {
         var extraSet = status switch
@@ -277,7 +277,7 @@ public sealed class OutboundRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task IncrementBroadcastCounterAsync(
+    public virtual async Task IncrementBroadcastCounterAsync(
         Guid broadcastId, string counterColumn, CancellationToken ct = default)
     {
         // Whitelist valid columns to prevent SQL injection
@@ -298,7 +298,7 @@ public sealed class OutboundRepository
     }
 
     /// <summary>Check if all messages in a broadcast are processed (no more queued/sending).</summary>
-    public async Task<bool> IsBroadcastCompleteAsync(
+    public virtual async Task<bool> IsBroadcastCompleteAsync(
         Guid broadcastId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -320,7 +320,7 @@ public sealed class OutboundRepository
     /// <summary>
     /// GR-2.3: Insert message with optional language tag.
     /// </summary>
-    public async Task<long> InsertMessageAsync(
+    public virtual async Task<long> InsertMessageAsync(
         int tenantId, Guid? broadcastId, int? templateId,
         string recipientPhone, string messageText,
         string? lang = null, CancellationToken ct = default)
@@ -345,7 +345,7 @@ public sealed class OutboundRepository
     }
 
     /// <summary>Dequeue next batch of messages to send, respecting rate limit.</summary>
-    public async Task<List<QueuedMessage>> DequeueMessagesAsync(
+    public virtual async Task<List<QueuedMessage>> DequeueMessagesAsync(
         int batchSize, CancellationToken ct = default)
     {
         const string sql = @"
@@ -382,7 +382,7 @@ public sealed class OutboundRepository
         return messages;
     }
 
-    public async Task UpdateMessageStatusAsync(
+    public virtual async Task UpdateMessageStatusAsync(
         long messageId, string status, string? externalMessageId = null,
         string? failedReason = null, CancellationToken ct = default)
     {
@@ -413,7 +413,7 @@ public sealed class OutboundRepository
     }
 
     /// <summary>Find message by external_message_id (from WapCRM/WhatsApp).</summary>
-    public async Task<(long messageId, Guid? broadcastId, int tenantId)?> FindMessageByExternalIdAsync(
+    public virtual async Task<(long messageId, Guid? broadcastId, int tenantId)?> FindMessageByExternalIdAsync(
         string externalMessageId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -442,7 +442,7 @@ public sealed class OutboundRepository
     // Opt-outs
     // ================================================================
 
-    public async Task<bool> IsOptedOutAsync(
+    public virtual async Task<bool> IsOptedOutAsync(
         int tenantId, string phone, CancellationToken ct = default)
     {
         const string sql = @"
@@ -459,7 +459,7 @@ public sealed class OutboundRepository
         return result != null;
     }
 
-    public async Task<DateTime?> GetOptOutDateAsync(
+    public virtual async Task<DateTime?> GetOptOutDateAsync(
         int tenantId, string phone, CancellationToken ct = default)
     {
         const string sql = @"
@@ -476,7 +476,7 @@ public sealed class OutboundRepository
         return result as DateTime?;
     }
 
-    public async Task<bool> AddOptOutAsync(
+    public virtual async Task<bool> AddOptOutAsync(
         int tenantId, string phone, string? reason,
         CancellationToken ct = default)
     {
@@ -496,7 +496,7 @@ public sealed class OutboundRepository
         return id != null;
     }
 
-    public async Task<bool> RemoveOptOutAsync(
+    public virtual async Task<bool> RemoveOptOutAsync(
         int tenantId, string phone, CancellationToken ct = default)
     {
         const string sql = @"
@@ -517,7 +517,7 @@ public sealed class OutboundRepository
     // ================================================================
 
     /// <summary>Batch check which phones are opted out for a tenant.</summary>
-    public async Task<HashSet<string>> BatchCheckOptOutsAsync(
+    public virtual async Task<HashSet<string>> BatchCheckOptOutsAsync(
         int tenantId, List<string> phones, CancellationToken ct = default)
     {
         if (phones.Count == 0) return new HashSet<string>();
@@ -538,7 +538,7 @@ public sealed class OutboundRepository
     /// <summary>
     /// GR-2.3: Batch insert messages with optional language tag.
     /// </summary>
-    public async Task BatchInsertMessagesAsync(
+    public virtual async Task BatchInsertMessagesAsync(
         int tenantId, Guid broadcastId, int templateId,
         List<(string phone, string text)> messages,
         string? lang = null, CancellationToken ct = default)
@@ -573,7 +573,7 @@ public sealed class OutboundRepository
     }
 
     /// <summary>Reset stale 'sending' messages back to 'queued' on service shutdown.</summary>
-    public async Task ResetSendingMessagesAsync(CancellationToken ct = default)
+    public virtual async Task ResetSendingMessagesAsync(CancellationToken ct = default)
     {
         const string sql = "UPDATE outbound_messages SET status = 'queued' WHERE status = 'sending'";
 
@@ -588,7 +588,7 @@ public sealed class OutboundRepository
     // Consent Records (GR-3.26)
     // ================================================================
 
-    public async Task<bool> HasMarketingConsentAsync(
+    public virtual async Task<bool> HasMarketingConsentAsync(
         int tenantId, string customerPhone, CancellationToken ct = default)
     {
         const string sql = @"
@@ -607,7 +607,7 @@ public sealed class OutboundRepository
         return result != null;
     }
 
-    public async Task<HashSet<string>> BatchCheckMarketingConsentAsync(
+    public virtual async Task<HashSet<string>> BatchCheckMarketingConsentAsync(
         int tenantId, List<string> phones, CancellationToken ct = default)
     {
         if (phones.Count == 0) return new HashSet<string>();
@@ -630,7 +630,7 @@ public sealed class OutboundRepository
         return consented;
     }
 
-    public async Task UpsertConsentAsync(
+    public virtual async Task UpsertConsentAsync(
         int tenantId, string customerPhone, string consentType,
         string channel, string? source, bool optedIn,
         CancellationToken ct = default)
@@ -661,7 +661,7 @@ public sealed class OutboundRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task<List<(int Id, string ConsentType, string Channel, bool OptedIn, DateTime? OptedInAt, DateTime? OptedOutAt)>>
+    public virtual async Task<List<(int Id, string ConsentType, string Channel, bool OptedIn, DateTime? OptedInAt, DateTime? OptedOutAt)>>
         GetConsentRecordsAsync(int tenantId, string customerPhone, CancellationToken ct = default)
     {
         const string sql = @"
@@ -695,7 +695,7 @@ public sealed class OutboundRepository
     // Template Audit Trail (GR-3.29)
     // ================================================================
 
-    public async Task InsertAuditTrailAsync(
+    public virtual async Task InsertAuditTrailAsync(
         int tenantId, int? templateId, int? campaignId,
         string recipientPhone, string templateContent,
         CancellationToken ct = default)
@@ -719,7 +719,7 @@ public sealed class OutboundRepository
     /// <summary>
     /// GR-3.29: Batch insert audit trail records (single multi-row INSERT for broadcast perf).
     /// </summary>
-    public async Task BatchInsertAuditTrailAsync(
+    public virtual async Task BatchInsertAuditTrailAsync(
         int tenantId, int? templateId, int? campaignId,
         List<(string phone, string content)> records,
         CancellationToken ct = default)
@@ -750,7 +750,7 @@ public sealed class OutboundRepository
     // Data Deletion (GR-3.29)
     // ================================================================
 
-    public async Task<int> CreateDeletionRequestAsync(
+    public virtual async Task<int> CreateDeletionRequestAsync(
         int tenantId, string customerPhone, string? requestedBy,
         CancellationToken ct = default)
     {
@@ -769,7 +769,7 @@ public sealed class OutboundRepository
         return Convert.ToInt32(result);
     }
 
-    public async Task<List<string>> ExecuteDataDeletionAsync(
+    public virtual async Task<List<string>> ExecuteDataDeletionAsync(
         int tenantId, string customerPhone, CancellationToken ct = default)
     {
         var cleaned = new List<string>();
@@ -830,7 +830,7 @@ public sealed class OutboundRepository
         return cleaned;
     }
 
-    public async Task UpdateDeletionRequestAsync(
+    public virtual async Task UpdateDeletionRequestAsync(
         int tenantId, int requestId, string status, List<string> servicesCleaned,
         string? errorMessage, CancellationToken ct = default)
     {
@@ -857,7 +857,7 @@ public sealed class OutboundRepository
     // Campaigns (GR-3.15)
     // ============================================================
 
-    public async Task<int> CreateCampaignAsync(
+    public virtual async Task<int> CreateCampaignAsync(
         int tenantId, string name, string triggerType, int templateId,
         int? abTemplateId, int abSplitPct,
         string? targetCriteriaJson, string? scheduleJson,
@@ -887,7 +887,7 @@ public sealed class OutboundRepository
         return Convert.ToInt32(result);
     }
 
-    public async Task<CampaignResponse?> GetCampaignAsync(
+    public virtual async Task<CampaignResponse?> GetCampaignAsync(
         int tenantId, int campaignId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -906,7 +906,7 @@ public sealed class OutboundRepository
         return ReadCampaignResponse(reader);
     }
 
-    public async Task<List<CampaignResponse>> ListCampaignsAsync(
+    public virtual async Task<List<CampaignResponse>> ListCampaignsAsync(
         int tenantId, string? status, CancellationToken ct = default)
     {
         var conditions = new List<string> { "tenant_id = @tid" };
@@ -936,7 +936,7 @@ public sealed class OutboundRepository
         return campaigns;
     }
 
-    public async Task<bool> UpdateCampaignStatusAsync(
+    public virtual async Task<bool> UpdateCampaignStatusAsync(
         int tenantId, int campaignId, string newStatus, CancellationToken ct = default)
     {
         const string sql = @"
@@ -952,7 +952,7 @@ public sealed class OutboundRepository
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
-    public async Task UpdateCampaignStatsAsync(
+    public virtual async Task UpdateCampaignStatsAsync(
         int tenantId, int campaignId, string statsJson, CancellationToken ct = default)
     {
         const string sql = @"
@@ -997,7 +997,7 @@ public sealed class OutboundRepository
     // Conversions (GR-3.15)
     // ============================================================
 
-    public async Task<int> RecordConversionAsync(
+    public virtual async Task<int> RecordConversionAsync(
         int tenantId, long? messageId, int? campaignId,
         string conversionType, decimal? valueAmount,
         string? metadataJson, CancellationToken ct = default)
@@ -1022,7 +1022,7 @@ public sealed class OutboundRepository
         return Convert.ToInt32(result);
     }
 
-    public async Task<CampaignRoiResponse?> GetCampaignRoiAsync(
+    public virtual async Task<CampaignRoiResponse?> GetCampaignRoiAsync(
         int tenantId, int campaignId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -1063,7 +1063,7 @@ public sealed class OutboundRepository
     // KVKK health tenant check (GR-2.6)
     // ============================================================
 
-    public async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
+    public virtual async Task<(string? settingsJson, string? sector)> GetTenantHealthInfoAsync(
         int tenantId, CancellationToken ct = default)
     {
         const string sql = @"

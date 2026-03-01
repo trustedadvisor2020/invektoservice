@@ -904,4 +904,4 @@ logger.SystemInfo($"Outbound service starting on port {listenPort}");
 app.Run();
 
 // Required for integration tests
-public partial class Program { }
+namespace Invekto.Outbound { public partial class Program { } }

@@ -9,7 +9,7 @@ namespace Invekto.Backend.Data;
 /// PostgreSQL repository for tenant_instances table.
 /// Thread-safe, register as singleton. Instance filtering + flow routing.
 /// </summary>
-public sealed class InstanceRepository
+public class InstanceRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -24,7 +24,7 @@ public sealed class InstanceRepository
     /// Check if tenant has any instance records (for backward compatibility gate).
     /// No records = old behavior (single flow, no filtering).
     /// </summary>
-    public async Task<bool> HasInstanceRecordsAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<bool> HasInstanceRecordsAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = "SELECT EXISTS(SELECT 1 FROM tenant_instances WHERE tenant_id = @tid)";
 
@@ -40,7 +40,7 @@ public sealed class InstanceRepository
     /// Get instance status for webhook filtering.
     /// Returns null if instance not found in cache.
     /// </summary>
-    public async Task<InstanceStatus?> GetInstanceStatusAsync(
+    public virtual async Task<InstanceStatus?> GetInstanceStatusAsync(
         int tenantId, string instanceId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -69,7 +69,7 @@ public sealed class InstanceRepository
     /// Upsert instances fetched from WapCRM API.
     /// Preserves is_enabled and flow_id on conflict — only updates display fields.
     /// </summary>
-    public async Task UpsertInstancesAsync(
+    public virtual async Task UpsertInstancesAsync(
         int tenantId, List<WapCrmInstanceDto> instances, CancellationToken ct = default)
     {
         if (instances.Count == 0) return;
@@ -103,7 +103,7 @@ public sealed class InstanceRepository
     /// List all instances for a tenant with flow name joined.
     /// Used by Settings page.
     /// </summary>
-    public async Task<List<InstanceEntry>> ListInstancesAsync(
+    public virtual async Task<List<InstanceEntry>> ListInstancesAsync(
         int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
@@ -144,7 +144,7 @@ public sealed class InstanceRepository
     /// Toggle instance enabled state.
     /// Returns false if instance is in use by a flow and caller tries to disable.
     /// </summary>
-    public async Task<(bool Success, string? Error)> SetInstanceEnabledAsync(
+    public virtual async Task<(bool Success, string? Error)> SetInstanceEnabledAsync(
         int tenantId, string instanceId, bool enabled, CancellationToken ct = default)
     {
         // If disabling, check flow assignment first
@@ -176,7 +176,7 @@ public sealed class InstanceRepository
     /// Get all enabled instances for flow assignment.
     /// Returns every enabled instance with its current flow assignment info (if any).
     /// </summary>
-    public async Task<List<AvailableInstanceEntry>> GetAvailableInstancesAsync(
+    public virtual async Task<List<AvailableInstanceEntry>> GetAvailableInstancesAsync(
         int tenantId, int? flowId = null, CancellationToken ct = default)
     {
         const string sql = @"
@@ -214,7 +214,7 @@ public sealed class InstanceRepository
     /// Sync flow-instance mapping: clear old assignments for this flow, assign new ones.
     /// Runs in a transaction for atomicity.
     /// </summary>
-    public async Task SyncFlowInstanceMappingAsync(
+    public virtual async Task SyncFlowInstanceMappingAsync(
         int tenantId, int flowId, List<string> instanceIds, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);

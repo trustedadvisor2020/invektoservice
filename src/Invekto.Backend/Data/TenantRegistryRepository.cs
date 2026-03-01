@@ -12,7 +12,7 @@ namespace Invekto.Backend.Data;
 ///
 /// NOT tenant-scoped (queries all tenants) — does not inherit TenantRepositoryBase.
 /// </summary>
-public sealed class TenantRegistryRepository
+public class TenantRegistryRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -27,7 +27,7 @@ public sealed class TenantRegistryRepository
     /// List all tenants ordered by tenant_id.
     /// No pagination — tenant_registry is expected to be small (hundreds max).
     /// </summary>
-    public async Task<List<TenantEntry>> ListTenantsAsync(CancellationToken ct = default)
+    public virtual async Task<List<TenantEntry>> ListTenantsAsync(CancellationToken ct = default)
     {
         const string sql = @"
             SELECT tenant_id, tenant_name, is_active, sector, plan_tier, created_at
@@ -59,7 +59,7 @@ public sealed class TenantRegistryRepository
     /// Get WapCRM integration settings for a tenant from settings_json->'wapcrm'.
     /// Returns null if tenant not found, inactive, or wapcrm settings missing.
     /// </summary>
-    public async Task<WapCrmSettings?> GetWapCrmSettingsAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<WapCrmSettings?> GetWapCrmSettingsAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT settings_json->'wapcrm' AS wapcrm
@@ -93,7 +93,7 @@ public sealed class TenantRegistryRepository
     /// Get working_hours sub-object from settings_json for a tenant.
     /// Returns null if tenant not found, inactive, or no working_hours configured.
     /// </summary>
-    public async Task<string?> GetWorkingHoursJsonAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<string?> GetWorkingHoursJsonAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT settings_json->'working_hours' AS wh
@@ -117,7 +117,7 @@ public sealed class TenantRegistryRepository
     /// Initializes settings_json to empty object if currently NULL.
     /// Does not overwrite other keys (wapcrm, confidence_threshold, etc.).
     /// </summary>
-    public async Task<bool> UpdateWorkingHoursJsonAsync(int tenantId, string workingHoursJson, CancellationToken ct = default)
+    public virtual async Task<bool> UpdateWorkingHoursJsonAsync(int tenantId, string workingHoursJson, CancellationToken ct = default)
     {
         const string sql = @"
             UPDATE tenant_registry
@@ -135,7 +135,7 @@ public sealed class TenantRegistryRepository
     }
 
     /// <summary>Get current sector for a tenant. Returns null if not set.</summary>
-    public async Task<string?> GetSectorAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<string?> GetSectorAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = "SELECT sector FROM tenant_registry WHERE tenant_id = @tid AND is_active = true";
 
@@ -148,7 +148,7 @@ public sealed class TenantRegistryRepository
     }
 
     /// <summary>Update sector for a tenant. Returns true if updated.</summary>
-    public async Task<bool> UpdateSectorAsync(int tenantId, string sector, CancellationToken ct = default)
+    public virtual async Task<bool> UpdateSectorAsync(int tenantId, string sector, CancellationToken ct = default)
     {
         const string sql = @"
             UPDATE tenant_registry
@@ -168,7 +168,7 @@ public sealed class TenantRegistryRepository
     /// Get a single tenant by ID. Returns null if not found.
     /// Used before impersonate to verify tenant exists and check is_active.
     /// </summary>
-    public async Task<TenantEntry?> GetTenantAsync(int tenantId, CancellationToken ct = default)
+    public virtual async Task<TenantEntry?> GetTenantAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = @"
             SELECT tenant_id, tenant_name, is_active, sector, plan_tier, created_at

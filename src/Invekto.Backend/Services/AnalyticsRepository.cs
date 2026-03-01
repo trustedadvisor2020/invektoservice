@@ -10,7 +10,7 @@ namespace Invekto.Backend.Services;
 /// and WA analytics (direct query on wa_* tables, same PostgreSQL instance).
 /// Thread-safe singleton, uses PostgresConnectionFactory for connection pooling.
 /// </summary>
-public sealed class AnalyticsRepository
+public class AnalyticsRepository
 {
     private readonly PostgresConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -28,7 +28,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// List tenants with metrics availability info.
     /// </summary>
-    public async Task<List<TenantMetricsInfoDto>> GetTenantsWithMetricsAsync(CancellationToken ct = default)
+    public virtual async Task<List<TenantMetricsInfoDto>> GetTenantsWithMetricsAsync(CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -65,7 +65,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get automation summary for tenant in date range (aggregated from daily_metrics).
     /// </summary>
-    public async Task<AutomationSummaryDto> GetAutomationSummaryAsync(
+    public virtual async Task<AutomationSummaryDto> GetAutomationSummaryAsync(
         int tenantId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         var summary = new AutomationSummaryDto
@@ -155,7 +155,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get daily automation trends for charting.
     /// </summary>
-    public async Task<List<DailyMetricDto>> GetAutomationTrendsAsync(
+    public virtual async Task<List<DailyMetricDto>> GetAutomationTrendsAsync(
         int tenantId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -198,7 +198,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get intent performance breakdown.
     /// </summary>
-    public async Task<List<IntentMetricDto>> GetIntentMetricsAsync(
+    public virtual async Task<List<IntentMetricDto>> GetIntentMetricsAsync(
         int tenantId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -250,7 +250,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// List completed WA analyses for a tenant.
     /// </summary>
-    public async Task<List<WaAnalysisInfoDto>> GetWaAnalysesAsync(
+    public virtual async Task<List<WaAnalysisInfoDto>> GetWaAnalysesAsync(
         int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -285,7 +285,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get WA analysis summary (conversation outcomes, avg response time).
     /// </summary>
-    public async Task<WaSummaryDto> GetWaSummaryAsync(
+    public virtual async Task<WaSummaryDto> GetWaSummaryAsync(
         int tenantId, int analysisId, CancellationToken ct = default)
     {
         var summary = new WaSummaryDto { AnalysisId = analysisId };
@@ -355,7 +355,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get WA agent performance comparison.
     /// </summary>
-    public async Task<List<WaAgentMetricDto>> GetWaAgentMetricsAsync(
+    public virtual async Task<List<WaAgentMetricDto>> GetWaAgentMetricsAsync(
         int tenantId, int analysisId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -403,7 +403,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get WA daily conversation trends.
     /// </summary>
-    public async Task<List<WaTrendDto>> GetWaTrendsAsync(
+    public virtual async Task<List<WaTrendDto>> GetWaTrendsAsync(
         int tenantId, int analysisId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -448,7 +448,7 @@ public sealed class AnalyticsRepository
     /// Get campaign stats for a tenant (from outbound_campaigns table).
     /// Returns top 20 campaigns ordered by created_at DESC.
     /// </summary>
-    public async Task<List<CampaignStatDto>> GetCampaignStatsAsync(
+    public virtual async Task<List<CampaignStatDto>> GetCampaignStatsAsync(
         int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -492,7 +492,7 @@ public sealed class AnalyticsRepository
     /// <summary>
     /// Get all tenant IDs that have auto_reply_log data.
     /// </summary>
-    public async Task<List<int>> GetTenantIdsWithAutoReplyDataAsync(CancellationToken ct = default)
+    public virtual async Task<List<int>> GetTenantIdsWithAutoReplyDataAsync(CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -511,7 +511,7 @@ public sealed class AnalyticsRepository
     /// Aggregate auto_reply_log into daily_metrics for a specific tenant and date.
     /// UPSERT: ON CONFLICT DO UPDATE (idempotent).
     /// </summary>
-    public async Task UpsertDailyMetricsAsync(int tenantId, DateOnly date, CancellationToken ct = default)
+    public virtual async Task UpsertDailyMetricsAsync(int tenantId, DateOnly date, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -569,7 +569,7 @@ public sealed class AnalyticsRepository
     /// Aggregate auto_reply_log into daily_intent_metrics for a specific tenant and date.
     /// UPSERT per intent: ON CONFLICT DO UPDATE (idempotent).
     /// </summary>
-    public async Task UpsertDailyIntentMetricsAsync(int tenantId, DateOnly date, CancellationToken ct = default)
+    public virtual async Task UpsertDailyIntentMetricsAsync(int tenantId, DateOnly date, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();

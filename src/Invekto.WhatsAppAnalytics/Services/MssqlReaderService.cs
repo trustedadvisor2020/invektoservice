@@ -80,6 +80,51 @@ WHERE CM.MessageType = 1
   AND C.InstanceID = @instanceId";
 
     /// <summary>
+    /// Discover active tenants from WaClient.Management.Companies.
+    /// Returns CompanyId, Code, Name, DatabaseName for non-expired, active companies.
+    /// </summary>
+    public async Task<List<DiscoveredTenant>> DiscoverTenantsAsync(CancellationToken ct = default)
+    {
+        const string query = @"
+SELECT c.ID, c.Code, c.Name, c.DatabaseName
+FROM Companies c WITH (NOLOCK)
+WHERE c.DataStatus = 1
+  AND c.LicenseExpireDate > GETDATE()
+  AND c.DatabaseName IS NOT NULL
+  AND LEN(c.DatabaseName) > 0
+ORDER BY c.ID";
+
+        var tenants = new List<DiscoveredTenant>();
+
+        await using var conn = new SqlConnection(BuildConnectionString("WaClient.Management"));
+        await conn.OpenAsync(ct);
+
+        await using var cmd = new SqlCommand(query, conn);
+        cmd.CommandTimeout = 30;
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        while (await reader.ReadAsync(ct))
+        {
+            var dbName = reader.GetString(3);
+            // Deduplicate by DatabaseName (some companies have duplicate rows)
+            if (!seen.Add(dbName)) continue;
+
+            tenants.Add(new DiscoveredTenant
+            {
+                CompanyId = reader.GetInt32(0),
+                Code = reader.GetString(1),
+                Name = reader.GetString(2),
+                DatabaseName = dbName
+            });
+        }
+
+        _logger.SystemInfo($"[MssqlReaderService] Discovered {tenants.Count} active tenants from Management DB");
+        return tenants;
+    }
+
+    /// <summary>
     /// Count total rows that will be exported (for progress reporting).
     /// </summary>
     public async Task<long> CountAsync(string database, int instanceId, CancellationToken ct = default)
@@ -141,4 +186,12 @@ WHERE CM.MessageType = 1
 
         _logger.SystemInfo($"[MssqlReaderService] Streaming complete for {database}, instanceId={instanceId}");
     }
+}
+
+public sealed class DiscoveredTenant
+{
+    public int CompanyId { get; set; }
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string DatabaseName { get; set; } = "";
 }

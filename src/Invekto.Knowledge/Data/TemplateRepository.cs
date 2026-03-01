@@ -6,7 +6,7 @@ using Invekto.Shared.Logging;
 
 namespace Invekto.Knowledge.Data;
 
-public sealed class TemplateRepository
+public class TemplateRepository
 {
     private readonly KnowledgeConnectionFactory _db;
     private readonly JsonLinesLogger _logger;
@@ -21,7 +21,7 @@ public sealed class TemplateRepository
     // Catalog CRUD
     // ============================================================
 
-    public async Task<TemplateCatalogDto?> GetByIdAsync(int id, CancellationToken ct = default)
+    public virtual async Task<TemplateCatalogDto?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -38,7 +38,7 @@ public sealed class TemplateRepository
         return ReadCatalogDto(r);
     }
 
-    public async Task<(List<TemplateCatalogDto> Items, int Total)> ListAsync(
+    public virtual async Task<(List<TemplateCatalogDto> Items, int Total)> ListAsync(
         TemplateCatalogFilter f, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -106,7 +106,7 @@ public sealed class TemplateRepository
         return (items, total);
     }
 
-    public async Task<int> InsertAsync(TemplateCreateRequest req, CancellationToken ct = default)
+    public virtual async Task<int> InsertAsync(TemplateCreateRequest req, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -140,7 +140,7 @@ public sealed class TemplateRepository
         return id;
     }
 
-    public async Task<bool> UpdateAsync(int id, TemplateUpdateRequest req, CancellationToken ct = default)
+    public virtual async Task<bool> UpdateAsync(int id, TemplateUpdateRequest req, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
 
@@ -187,7 +187,7 @@ public sealed class TemplateRepository
         return true;
     }
 
-    public async Task<bool> SoftDeleteAsync(int id, CancellationToken ct = default)
+    public virtual async Task<bool> SoftDeleteAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -196,7 +196,7 @@ public sealed class TemplateRepository
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
-    public async Task<bool> PublishAsync(int id, CancellationToken ct = default)
+    public virtual async Task<bool> PublishAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -209,7 +209,7 @@ public sealed class TemplateRepository
     // Resolution — 3-tier hierarchy: tenant > sector > platform
     // ============================================================
 
-    public async Task<TemplateCatalogDto?> ResolveAsync(
+    public virtual async Task<TemplateCatalogDto?> ResolveAsync(
         int tenantId, string slug, string lang, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -255,7 +255,7 @@ public sealed class TemplateRepository
         return result;
     }
 
-    public async Task<List<TemplateCatalogDto>> GetAvailableAsync(
+    public virtual async Task<List<TemplateCatalogDto>> GetAvailableAsync(
         int tenantId, string? templateType, string? lang, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -307,7 +307,7 @@ public sealed class TemplateRepository
     // Suggestions
     // ============================================================
 
-    public async Task<int> InsertSuggestionAsync(
+    public virtual async Task<int> InsertSuggestionAsync(
         int analysisId, string suggestionType, int? existingTemplateId,
         decimal? similarityScore, object suggestedContent, string suggestedSlug,
         string suggestedName, string suggestedType, object? sourceData,
@@ -336,7 +336,7 @@ public sealed class TemplateRepository
         return Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
     }
 
-    public async Task<(List<TemplateSuggestionDto> Items, int Total)> ListSuggestionsAsync(
+    public virtual async Task<(List<TemplateSuggestionDto> Items, int Total)> ListSuggestionsAsync(
         int? analysisId, string? status, int page, int limit, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -376,7 +376,7 @@ public sealed class TemplateRepository
         return (items, total);
     }
 
-    public async Task<TemplateSuggestionDto?> GetSuggestionByIdAsync(int id, CancellationToken ct = default)
+    public virtual async Task<TemplateSuggestionDto?> GetSuggestionByIdAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -396,7 +396,7 @@ public sealed class TemplateRepository
         return ReadSuggestionDto(r);
     }
 
-    public async Task<bool> UpdateSuggestionStatusAsync(
+    public virtual async Task<bool> UpdateSuggestionStatusAsync(
         int id, string status, string? reviewedBy, int? resultTemplateId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -416,7 +416,7 @@ public sealed class TemplateRepository
     // Sources (provenance)
     // ============================================================
 
-    public async Task InsertSourceAsync(
+    public virtual async Task InsertSourceAsync(
         int templateId, int analysisId, string tenantName,
         string contributionType, int sampleCount, CancellationToken ct = default)
     {
@@ -435,7 +435,7 @@ public sealed class TemplateRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task<List<TemplateSourceDto>> GetSourcesAsync(int templateId, CancellationToken ct = default)
+    public virtual async Task<List<TemplateSourceDto>> GetSourcesAsync(int templateId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -462,7 +462,7 @@ public sealed class TemplateRepository
         return items;
     }
 
-    public async Task IncrementSourceCountAsync(int templateId, CancellationToken ct = default)
+    public virtual async Task IncrementSourceCountAsync(int templateId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
@@ -475,7 +475,7 @@ public sealed class TemplateRepository
     // Adoptions
     // ============================================================
 
-    public async Task<int> InsertAdoptionAsync(
+    public virtual async Task<int> InsertAdoptionAsync(
         int tenantId, int templateId, int adoptedVersion,
         string targetType, int? targetId, CancellationToken ct = default)
     {
@@ -496,7 +496,7 @@ public sealed class TemplateRepository
         return result != null ? Convert.ToInt32(result) : 0;
     }
 
-    public async Task<List<TemplateAdoptionDto>> ListAdoptionsAsync(
+    public virtual async Task<List<TemplateAdoptionDto>> ListAdoptionsAsync(
         int tenantId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -535,7 +535,7 @@ public sealed class TemplateRepository
     // Performance
     // ============================================================
 
-    public async Task UpsertPerformanceAsync(
+    public virtual async Task UpsertPerformanceAsync(
         int templateId, int tenantId, string variant,
         string metricType, decimal metricValue, DateTime periodStart,
         CancellationToken ct = default)
@@ -560,7 +560,7 @@ public sealed class TemplateRepository
     // Batch operations
     // ============================================================
 
-    public async Task<int> BatchInsertTemplatesAsync(
+    public virtual async Task<int> BatchInsertTemplatesAsync(
         List<TemplateCreateRequest> templates, CancellationToken ct = default)
     {
         if (templates.Count == 0) return 0;
@@ -602,7 +602,7 @@ public sealed class TemplateRepository
     /// Gets all published templates matching scope + sector + type for comparison.
     /// Used by TemplateExtractorService to find existing templates for similarity matching.
     /// </summary>
-    public async Task<List<TemplateCatalogDto>> GetPublishedForComparisonAsync(
+    public virtual async Task<List<TemplateCatalogDto>> GetPublishedForComparisonAsync(
         string templateType, string? sector, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
@@ -636,7 +636,7 @@ public sealed class TemplateRepository
     // Versions
     // ============================================================
 
-    public async Task<List<TemplateVersionDto>> GetVersionHistoryAsync(
+    public virtual async Task<List<TemplateVersionDto>> GetVersionHistoryAsync(
         int templateId, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenConnectionAsync(ct);
