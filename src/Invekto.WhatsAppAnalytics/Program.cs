@@ -258,6 +258,10 @@ if (mssqlConfigured)
 
     // Bulk orchestration (RI Faz 5)
     builder.Services.AddSingleton<BulkOrchestrationService>();
+
+    // RI Dashboard + Feedback (RI Faz 6)
+    builder.Services.AddSingleton<RiDashboardService>();
+    builder.Services.AddSingleton<FeedbackRepository>();
 }
 
 var app = builder.Build();
@@ -1630,6 +1634,342 @@ app.MapGet("/api/ops/templates/profiles", async (
 });
 
 // ============================================================
+// Revenue Intelligence tenant-facing endpoints (RI Faz 6)
+// JWT-protected: /api/v1/wa/{tenantId}/ri/*
+// ============================================================
+
+// GET /api/v1/wa/{tenantId}/ri/dashboard — All widget data in one call (RI-6.17)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/dashboard", async (
+    int tenantId,
+    HttpContext ctx,
+    RiDashboardService dashboardService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var dashboard = await dashboardService.GetDashboardAsync(tenantId, sector, instanceId);
+        return Results.Ok(new { requestId, dashboard });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Dashboard failed for tenant {tenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Dashboard aggregation failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/v1/wa/{tenantId}/ri/revenue — Lost revenue detail (RI-6.18)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/revenue", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+    var dimension = ctx.Request.Query["dimension"].FirstOrDefault();
+
+    try
+    {
+        var data = await insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, dimension);
+        return Results.Ok(new { requestId, data });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Revenue failed for tenant {tenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No revenue data found. Run insight compute first.", requestId), statusCode: 404);
+    }
+});
+
+// GET /api/v1/wa/{tenantId}/ri/agents — Agent leaderboard (RI-6.19)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/agents", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId);
+    if (data.TotalAgents == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No agent data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/objections — Objection map (RI-6.20)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/objections", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetObjectionMapAsync(tenantId, instanceId);
+    if (data.TotalObjections == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No objection data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/response-time — Response time correlation (RI-6.21)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/response-time", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId);
+    if (data.TotalConversations == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No response time data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/rescue — Rescue candidates (RI-6.22)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/rescue", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetRescueCandidatesAsync(tenantId, instanceId);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/quality — Quality scores (RI-6.23)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/quality", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetQualityInsightAsync(tenantId, instanceId);
+    if (data.TotalScored == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No quality data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/demand — Service demand heatmap (RI-6.24)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/demand", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetDemandHeatmapAsync(tenantId, instanceId);
+    if (data.TotalConversations == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No demand data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/templates — Sector templates (RI-6.25)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/templates", async (
+    int tenantId,
+    HttpContext ctx,
+    TemplateRepository templateRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "sector query parameter required", requestId), statusCode: 400);
+
+    var data = await templateRepo.GetAllTemplatesBySectorAsync(sector);
+    return Results.Ok(new { requestId, data });
+});
+
+// PUT /api/v1/wa/{tenantId}/ri/templates/{type}/{id} — Toggle template active (RI-6.26)
+app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
+    int tenantId,
+    string type,
+    long id,
+    HttpContext ctx,
+    TemplateRepository templateRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    bool? isActive;
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<Dictionary<string, object>>();
+        if (body != null && body.TryGetValue("isActive", out var val))
+            isActive = Convert.ToBoolean(val);
+        else
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+                "isActive field required", requestId), statusCode: 400);
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Invalid request body", requestId), statusCode: 400);
+    }
+
+    try
+    {
+        await templateRepo.ToggleTemplateActiveAsync(type, id, isActive.Value);
+        jsonLogger.StepInfo($"[RiDashboard] Template {type}/{id} active={isActive} by tenant {tenantId}", requestId);
+        return Results.Ok(new { requestId, type, id, isActive });
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            ex.Message, requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Template toggle failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Template update failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/v1/wa/{tenantId}/ri/feedback — Submit agree/disagree (RI-6.27)
+app.MapPost("/api/v1/wa/{tenantId:int}/ri/feedback", async (
+    int tenantId,
+    HttpContext ctx,
+    FeedbackRepository feedbackRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    FeedbackRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<FeedbackRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || string.IsNullOrWhiteSpace(request.ConversationId) || string.IsNullOrWhiteSpace(request.OriginalLabel))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "conversationId and originalLabel are required", requestId), statusCode: 400);
+
+    try
+    {
+        await feedbackRepo.UpsertFeedbackAsync(tenantId, tenant.UserId, request);
+        jsonLogger.StepInfo($"[RiDashboard] Feedback: tenant={tenantId} conv={request.ConversationId} agree={request.IsAgree}", requestId);
+        return Results.Ok(new { requestId, saved = true });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Feedback save failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Feedback save failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/v1/wa/{tenantId}/ri/benchmarks — Sector benchmarks (RI-6.28)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/benchmarks", async (
+    int tenantId,
+    HttpContext ctx,
+    RiDashboardService dashboardService) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "sector query parameter required", requestId), statusCode: 400);
+
+    var benchmarks = await dashboardService.GetBenchmarksAsync(sector);
+    return Results.Ok(new { requestId, benchmarks });
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1678,6 +2018,18 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/templates/{sector}", Description = "Get sector templates", Auth = "X-Ops-Key", Category = "Template" },
         new() { Method = "POST", Path = "/api/ops/templates/mine-all", Description = "Bulk mine all sectors", Auth = "X-Ops-Key", Category = "Bulk" },
         new() { Method = "GET", Path = "/api/ops/templates/profiles", Description = "Get sector profiles", Auth = "X-Ops-Key", Category = "Bulk" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/dashboard", Description = "RI dashboard aggregate", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/revenue", Description = "Lost revenue detail", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/agents", Description = "Agent leaderboard", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/objections", Description = "Objection map", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/response-time", Description = "Response time correlation", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/rescue", Description = "Rescue candidates", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/quality", Description = "Quality scores", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/demand", Description = "Service demand heatmap", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/templates", Description = "Sector templates", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "PUT", Path = "/api/v1/wa/{tenantId}/ri/templates/{type}/{id}", Description = "Toggle template active", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "POST", Path = "/api/v1/wa/{tenantId}/ri/feedback", Description = "Submit label feedback", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/benchmarks", Description = "Sector benchmarks", Auth = "Bearer JWT", Category = "RI" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

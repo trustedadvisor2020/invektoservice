@@ -586,4 +586,34 @@ public sealed class TemplateRepository
             OnboardingSteps = await GetOnboardingStepsBySectorAsync(sector, ct)
         };
     }
+
+    // ============================================================
+    // Toggle template active/inactive (RI Faz 6)
+    // ============================================================
+
+    private static readonly Dictionary<string, string> TemplateTableMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["intent"] = "wa_sector_intents",
+        ["faq"] = "wa_sector_faqs",
+        ["flow"] = "wa_sector_flows",
+        ["objection"] = "wa_sector_objection_handlers",
+        ["followup"] = "wa_sector_followup_templates",
+        ["onboarding"] = "wa_sector_onboarding_steps"
+    };
+
+    public async Task ToggleTemplateActiveAsync(string type, long id, bool isActive, CancellationToken ct = default)
+    {
+        if (!TemplateTableMap.TryGetValue(type, out var table))
+            throw new ArgumentException($"Unknown template type '{type}'. Use: {string.Join(", ", TemplateTableMap.Keys)}");
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        // Table name is from a fixed whitelist — safe from injection
+        cmd.CommandText = $"UPDATE {table} SET is_active = @active, updated_at = NOW() WHERE id = @id";
+        cmd.Parameters.AddWithValue("active", isActive);
+        cmd.Parameters.AddWithValue("id", id);
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        if (rows == 0)
+            throw new ArgumentException($"Template {type}/{id} not found");
+    }
 }
