@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-03-01
-- **Status:** RI-3.6 Follow-up Rescue Alerts TAMAMLANDI. Deployed + production tested.
-- **Last Task:** RI-3.6: 4 dosya (1 new), ~333 insertion. POST compute/rescue + GET rescue/{tenantId}. wa_rescue_candidates tablosu (Paket 1'de olusturuldu). MSSQL last message CTE (ROW_NUMBER + PARTITION BY), 30-day cutoff, rescue_priority_score = recency(50%)+outcome_weight(50%). Eligible: no_response+offered+offer_lost. Codex iter 1, override PASS (CQ5 catch(Exception) FP). CoVe 4/4 PASS.
-- **Next Task:** RI-3.2 Demand Heatmap (Paket 4). Sonra RI-3.4 Revenue Attribution (Paket 5).
+- **Status:** RI-3.2 Demand Heatmap TAMAMLANDI. Deployed + production HEALTHY.
+- **Last Task:** RI-3.2: 6 dosya (1 new), ~654 insertion. POST compute/demand-heatmap + GET demand-heatmap/{tenantId}. wa_demand_heatmap tablosu (instance_id NOT NULL DEFAULT 0). DayOfWeek(0-6) x HourOfDay(0-23) matris. Per-cell: total_conversations, sale_count, conversion_rate, avg_response_time_ms. MSSQL first customer msg timestamps, C# DayOfWeek extraction. Codex iter 0, override PASS (CQ3/CQ5/Q1 FP).
+- **Next Task:** RI-3.4 Revenue Attribution (Paket 5). Sonra RI-3.5 Objection Pattern (Paket 6).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
