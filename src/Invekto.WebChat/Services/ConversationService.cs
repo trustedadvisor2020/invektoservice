@@ -16,6 +16,7 @@ public sealed class ConversationService
     private readonly AIReplyService _aiReply;
     private readonly OperatorPresence _presence;
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly PushNotificationService _pushService;
     private readonly JsonLinesLogger _logger;
     private readonly int _aiDelaySeconds;
 
@@ -27,6 +28,7 @@ public sealed class ConversationService
         AIReplyService aiReply,
         OperatorPresence presence,
         IHubContext<ChatHub> hubContext,
+        PushNotificationService pushService,
         JsonLinesLogger logger,
         int aiDelaySeconds)
     {
@@ -34,6 +36,7 @@ public sealed class ConversationService
         _aiReply = aiReply;
         _presence = presence;
         _hubContext = hubContext;
+        _pushService = pushService;
         _logger = logger;
         _aiDelaySeconds = aiDelaySeconds;
     }
@@ -79,6 +82,10 @@ public sealed class ConversationService
         // Broadcast to conversation group
         await _hubContext.Clients.Group($"conv_{conversationId}")
             .SendAsync("ReceiveMessage", message, ct);
+
+        // Send push notification to operator
+        var visitorName = conversation.VisitorName ?? "Ziyaretçi";
+        _ = _pushService.NotifyNewMessageAsync(conversationId, visitorName, content, ct);
 
         // Start AI timer if operator not online
         if (!_presence.IsOnline)

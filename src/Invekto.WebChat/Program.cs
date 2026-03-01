@@ -83,6 +83,16 @@ builder.Services.AddHttpClient<AIReplyService>()
             sp.GetRequiredService<JsonLinesLogger>());
     });
 
+// Register PushNotificationService with HttpClient
+builder.Services.AddHttpClient<PushNotificationService>()
+    .AddTypedClient((httpClient, sp) =>
+    {
+        return new PushNotificationService(
+            httpClient,
+            sp.GetRequiredService<WebChatRepository>(),
+            sp.GetRequiredService<JsonLinesLogger>());
+    });
+
 // Register SignalR
 builder.Services.AddSignalR();
 
@@ -93,6 +103,7 @@ builder.Services.AddSingleton<ConversationService>(sp =>
         sp.GetRequiredService<AIReplyService>(),
         sp.GetRequiredService<OperatorPresence>(),
         sp.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<ChatHub>>(),
+        sp.GetRequiredService<PushNotificationService>(),
         sp.GetRequiredService<JsonLinesLogger>(),
         aiDelaySeconds));
 
