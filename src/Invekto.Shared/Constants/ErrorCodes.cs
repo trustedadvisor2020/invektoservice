@@ -239,6 +239,9 @@ public static class ErrorCodes
     public const string WAInsightNotFound = "INV-WA-022";
     public const string WAInsightComputeFailed = "INV-WA-023";
 
+    // Nightly Batch errors (INV-WA-024+)
+    public const string WADiscoveryFailed = "INV-WA-024";
+
     // Integrations errors (INV-IG-xxx) -- GR-3.4/3.6
     public const string IntegrationsInvalidAccountPayload = "INV-IG-001";
     public const string IntegrationsAccountNotFound = "INV-IG-002";

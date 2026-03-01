@@ -1,7 +1,9 @@
 using System.Text.Json;
+using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
+using Microsoft.Data.SqlClient;
 
 namespace Invekto.WhatsAppAnalytics.Services;
 
@@ -115,9 +117,18 @@ public sealed class NightlyBatchJob : BackgroundService
         {
             discovered = await _mssqlReader.DiscoverTenantsAsync(ct);
         }
-        catch (Exception ex)
+        catch (SqlException ex)
         {
-            _logger.SystemError($"[NightlyBatch] Auto-discovery failed, falling back to config: {ex.Message}");
+            _logger.SystemError($"[NightlyBatch] {ErrorCodes.WADiscoveryFailed} Auto-discovery SQL error, falling back to config: {ex.Message}");
+            return _config.Tenants;
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // propagate cancellation
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.SystemError($"[NightlyBatch] {ErrorCodes.WADiscoveryFailed} Auto-discovery connection error, falling back to config: {ex.Message}");
             return _config.Tenants;
         }
 

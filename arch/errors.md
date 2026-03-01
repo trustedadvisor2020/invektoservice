@@ -28,6 +28,7 @@ services:
   MT:   { name: Metrics,       description: "PKT-3: Analitik/metrik hataları" }
   WC:   { name: WebChat,       description: Website webchat hataları }
   EXT:  { name: External,      description: Dış servis hataları }
+  WA:   { name: WhatsAppAnalytics, description: "WA Analytics pipeline + Revenue Intelligence hataları" }
 ```
 
 ## Error Registry
@@ -726,6 +727,7 @@ errors:
   - code: INV-EXT-002
     description: External timeout
     user_message: Dış servis yanıt vermedi.
+
 ```
 
 ## Adding New Codes
