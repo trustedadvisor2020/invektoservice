@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Invekto.Shared.Logging;
 using Invekto.WhatsAppAnalytics.Models;
 using Npgsql;
@@ -687,5 +688,290 @@ public sealed class InsightRepository
         cmd.CommandText = $"DELETE FROM wa_demand_heatmap {where}";
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         _logger.StepInfo($"[InsightRepo] Deleted {deleted} demand heatmap records for tenant {tenantId}", "insight");
+    }
+
+    // ============================================================
+    // wa_revenue_attribution (RI-3.4)
+    // ============================================================
+
+    /// <summary>
+    /// Get outcome counts grouped by (outcome_label, instance_id) for a tenant.
+    /// Used by revenue attribution engine to compute per-outcome values.
+    /// </summary>
+    public async Task<List<OutcomeCountRow>> GetOutcomeCountsGroupedAsync(
+        int tenantId, int? instanceId = null, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT outcome_label, COALESCE(instance_id, 0) AS instance_id, COUNT(*)::INT AS cnt
+            FROM wa_conversation_outcomes
+            {where}
+            GROUP BY outcome_label, instance_id";
+
+        var results = new List<OutcomeCountRow>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new OutcomeCountRow
+            {
+                OutcomeLabel = reader.GetString(0),
+                InstanceId = reader.GetInt32(1),
+                Count = reader.GetInt32(2)
+            });
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// Get hourly outcome counts from wa_response_times.
+    /// Extracts hour from first_customer_msg_at, groups with outcome_label.
+    /// </summary>
+    public async Task<List<HourlyOutcomeRow>> GetHourlyOutcomeCountsAsync(
+        int tenantId, int? instanceId = null, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid AND first_customer_msg_at IS NOT NULL AND outcome_label IS NOT NULL";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT EXTRACT(HOUR FROM first_customer_msg_at)::INT AS hour_of_day,
+                   outcome_label,
+                   COUNT(*)::INT AS cnt
+            FROM wa_response_times
+            {where}
+            GROUP BY hour_of_day, outcome_label";
+
+        var results = new List<HourlyOutcomeRow>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new HourlyOutcomeRow
+            {
+                Hour = reader.GetInt32(0),
+                OutcomeLabel = reader.GetString(1),
+                Count = reader.GetInt32(2)
+            });
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// Get agent metrics for revenue calculation (sale_count, offered_count, etc.).
+    /// Returns raw AgentMetricRecord list from wa_agent_metrics.
+    /// </summary>
+    public async Task<List<AgentMetricRecord>> GetAgentMetricsForRevenueAsync(
+        int tenantId, int? instanceId = null, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT agent_id, agent_name, instance_id,
+                   total_conversations, sale_count, offered_count,
+                   no_response_count, offer_lost_count, other_count
+            FROM wa_agent_metrics
+            {where}";
+
+        var results = new List<AgentMetricRecord>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new AgentMetricRecord
+            {
+                TenantId = tenantId,
+                AgentId = reader.GetInt32(0),
+                AgentName = reader.GetString(1),
+                InstanceId = reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                TotalConversations = reader.GetInt32(3),
+                SaleCount = reader.GetInt32(4),
+                OfferedCount = reader.GetInt32(5),
+                NoResponseCount = reader.GetInt32(6),
+                OfferLostCount = reader.GetInt32(7),
+                OtherCount = reader.GetInt32(8)
+            });
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// Batch upsert revenue attribution records (INSERT ON CONFLICT UPDATE).
+    /// UNIQUE constraint: (tenant_id, instance_id, dimension, dimension_key).
+    /// </summary>
+    public async Task UpsertRevenueAttributionAsync(List<RevenueAttributionRecord> records,
+        CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        const int batchSize = 50;
+        for (var offset = 0; offset < records.Count; offset += batchSize)
+        {
+            var batch = records.Skip(offset).Take(batchSize).ToList();
+            await UpsertRevenueAttributionBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task UpsertRevenueAttributionBatchAsync(List<RevenueAttributionRecord> batch,
+        CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var sb = new StringBuilder();
+        sb.AppendLine(@"INSERT INTO wa_revenue_attribution
+            (tenant_id, instance_id, dimension, dimension_key, dimension_label,
+             total_conversations, attributed_revenue, avg_revenue, breakdown_json, computed_at)
+            VALUES ");
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.AppendLine($"(@tid{i}, @iid{i}, @dim{i}, @dk{i}, @dl{i}, @tot{i}, @rev{i}, @avg{i}, @bj{i}, NOW())");
+            var r = batch[i];
+            cmd.Parameters.AddWithValue($"tid{i}", r.TenantId);
+            cmd.Parameters.AddWithValue($"iid{i}", r.InstanceId);
+            cmd.Parameters.AddWithValue($"dim{i}", r.Dimension);
+            cmd.Parameters.AddWithValue($"dk{i}", r.DimensionKey);
+            cmd.Parameters.AddWithValue($"dl{i}", (object?)r.DimensionLabel ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"tot{i}", r.TotalConversations);
+            cmd.Parameters.AddWithValue($"rev{i}", r.AttributedRevenue);
+            cmd.Parameters.AddWithValue($"avg{i}", r.AvgRevenue);
+            cmd.Parameters.AddWithValue($"bj{i}", (object?)r.BreakdownJson ?? DBNull.Value);
+        }
+
+        sb.AppendLine(@"ON CONFLICT (tenant_id, instance_id, dimension, dimension_key) DO UPDATE SET
+            dimension_label = EXCLUDED.dimension_label,
+            total_conversations = EXCLUDED.total_conversations,
+            attributed_revenue = EXCLUDED.attributed_revenue,
+            avg_revenue = EXCLUDED.avg_revenue,
+            breakdown_json = EXCLUDED.breakdown_json,
+            computed_at = NOW()");
+
+        cmd.CommandText = sb.ToString();
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get revenue attribution data for a tenant.
+    /// Optionally filtered by instanceId and/or dimension.
+    /// </summary>
+    public async Task<RevenueAttributionInsight> GetRevenueAttributionAsync(
+        int tenantId, int? instanceId = null, string? dimension = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE ra.tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND ra.instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+        if (!string.IsNullOrEmpty(dimension))
+        {
+            where += " AND ra.dimension = @dim";
+            cmd.Parameters.AddWithValue("dim", dimension);
+        }
+
+        cmd.CommandText = $@"
+            SELECT ra.dimension, ra.dimension_key, ra.dimension_label,
+                   ra.total_conversations, ra.attributed_revenue, ra.avg_revenue,
+                   ra.breakdown_json
+            FROM wa_revenue_attribution ra
+            {where}
+            ORDER BY ra.dimension, ra.attributed_revenue DESC";
+
+        var entries = new List<RevenueAttributionEntry>();
+        decimal totalRevenue = 0;
+        var totalConversations = 0;
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var dim = reader.GetString(0);
+            var revenue = reader.GetDecimal(4);
+
+            // Only count summary row for totals (avoid double-counting dimensions)
+            if (dim == "summary")
+            {
+                totalRevenue = revenue;
+                totalConversations = reader.GetInt32(3);
+            }
+
+            object? breakdown = null;
+            if (!reader.IsDBNull(6))
+            {
+                try { breakdown = JsonSerializer.Deserialize<object>(reader.GetString(6)); }
+                catch (JsonException) { breakdown = reader.GetString(6); }
+            }
+
+            entries.Add(new RevenueAttributionEntry
+            {
+                Dimension = dim,
+                DimensionKey = reader.GetString(1),
+                DimensionLabel = reader.IsDBNull(2) ? null : reader.GetString(2),
+                TotalConversations = reader.GetInt32(3),
+                AttributedRevenue = revenue,
+                AvgRevenue = reader.GetDecimal(5),
+                Breakdown = breakdown
+            });
+        }
+
+        return new RevenueAttributionInsight
+        {
+            TenantId = tenantId,
+            InstanceId = instanceId,
+            TotalRevenue = totalRevenue,
+            TotalConversations = totalConversations,
+            Entries = entries
+        };
+    }
+
+    /// <summary>
+    /// Delete all revenue attribution records for a tenant (used before recompute).
+    /// </summary>
+    public async Task DeleteRevenueAttributionAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $"DELETE FROM wa_revenue_attribution {where}";
+        var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.StepInfo($"[InsightRepo] Deleted {deleted} revenue attribution records for tenant {tenantId}", "insight");
     }
 }

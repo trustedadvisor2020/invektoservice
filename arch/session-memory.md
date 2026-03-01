@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-03-01
-- **Status:** RI-3.2 Demand Heatmap TAMAMLANDI. Deployed + production HEALTHY.
-- **Last Task:** RI-3.2: 6 dosya (1 new), ~654 insertion. POST compute/demand-heatmap + GET demand-heatmap/{tenantId}. wa_demand_heatmap tablosu (instance_id NOT NULL DEFAULT 0). DayOfWeek(0-6) x HourOfDay(0-23) matris. Per-cell: total_conversations, sale_count, conversion_rate, avg_response_time_ms. MSSQL first customer msg timestamps, C# DayOfWeek extraction. Codex iter 0, override PASS (CQ3/CQ5/Q1 FP).
-- **Next Task:** RI-3.4 Revenue Attribution (Paket 5). Sonra RI-3.5 Objection Pattern (Paket 6).
+- **Status:** RI-3.4 Revenue Attribution TAMAMLANDI.
+- **Last Task:** RI-3.4: 6 dosya (1 new), ~792 insertion. POST compute/revenue-attribution + GET revenue-attribution/{tenantId}. PG-only engine (MSSQL yok). wa_revenue_attribution tablosu (instance_id NOT NULL DEFAULT 0, 4-part UNIQUE). 4 boyut: outcome, hour, agent, instance + summary. Fixed TL values (sale=500, offered=150, offer_lost=50, return=-100, appt=200). GET supports ?dimension=xxx&instanceId=N filters. Codex iter 1, FORCE PASS (CQ1/CQ5/Q1/Q2 FP, CQ2 fix JsonException, CQ5 fix null-forgiving).
+- **Next Task:** RI-3.5 Objection Pattern (Paket 6). Sonra RI-3.7 Quality Score (Paket 7).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

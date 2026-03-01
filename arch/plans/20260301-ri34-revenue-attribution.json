@@ -1,0 +1,138 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [
+    {
+      "id": "RI-3.4",
+      "description": "Revenue Attribution: outcome-bazli sabit deger atfetme, 4 boyut (agent/saat/outcome/instance)",
+      "services_affected": ["WhatsAppAnalytics"]
+    }
+  ],
+  "slug": "20260301-ri34-revenue-attribution",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-03-01T19:00:00Z",
+  "updated_at": "2026-03-01T19:00:00Z",
+  "plan": {
+    "summary": "RI-3.4 Revenue Attribution: PG-only compute engine. wa_conversation_outcomes + wa_response_times + wa_agent_metrics'den outcome-bazli sabit TL degerleriyle revenue attribution hesaplar. 4 boyut: agent (agent basina revenue), hour (saat bazli), outcome (outcome tipi x revenue), instance (WA instance bazli). Sonuclar wa_revenue_attribution tablosuna yazilir. POST compute + GET read pattern.",
+    "q_intent": "RI-3.4 Revenue Attribution — conversation outcome'lara parasal deger atfetme, agent/saat bazli revenue korelasyonu. Sabit deger atama, 4 boyut, sadece PG.",
+    "interview_notes": "Q confirmed: (1) Sabit deger atama (sector AOV degil, fixed TL per outcome), (2) 4 boyut: agent+saat+outcome+instance, (3) Sadece PG - MSSQL round-trip yok, mevcut PG verisi yeterli. EbruModa MSSQL'de siparis/odeme verisi yok.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/ops/insights/compute/revenue-attribution endpointi EbruModa icin 4 boyutta revenue hesaplar ve wa_revenue_attribution tablosuna yazar",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /api/ops/insights/revenue-attribution/{tenantId} endpointi tum boyutlari doner (opsiyonel instanceId + dimension filter)",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Her boyut satirinda total_conversations, attributed_revenue, avg_revenue ve outcome breakdown mevcut",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "Build PASS + Codex review PASS",
+        "verified": false
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightRevenueService.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "arch/db/wa-insights.sql"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightRevenueService.cs", "is_new": true, "change": "New RI-3.4 PG-only revenue attribution engine" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs", "is_new": false, "change": "Added revenue attribution upsert/read/delete + outcome/hourly query methods" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs", "is_new": false, "change": "Added Revenue Attribution DTOs and query helper models" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false, "change": "Added DI registration + 2 endpoints (compute + read) + discovery entries" },
+    { "path": "arch/db/wa-insights.sql", "is_new": false, "change": "Added wa_revenue_attribution table schema + grants" }
+  ],
+  "git_diff": {
+    "sha256": "37C64BD362FBA760FDE35A0B8F9B25631B4472351143A813BD8675DFD0CD6548",
+    "full_path": "arch/plans/diffs/20260301-ri34-revenue-attribution.diff",
+    "stats": { "insertions": 792, "deletions": 0, "files_count": 6 }
+  },
+  "build": { "status": "PASS", "timestamp": "2026-03-01T19:30:00Z" },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the PG-only compute correctly join wa_conversation_outcomes with wa_response_times to extract hour-of-day for the hour dimension?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the agent dimension correctly derived from wa_agent_metrics outcome counts multiplied by fixed values (not double-counting with outcome dimension)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the ON CONFLICT upsert handle the composite key (tenant_id, instance_id, dimension, dimension_key) correctly for re-computation?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Shared/", "src/Invekto.Backend/", "other microservices", "MSSQL connections"],
+    "non_goals": ["UI/dashboard rendering", "real order data integration", "scheduled computation", "sector-specific AOV"],
+    "intentional_exclusions": ["MSSQL data fetch (no order data exists)", "Dynamic value configuration per tenant (deferred to RI-6)", "Revenue trend over time (deferred)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["Program.cs endpoint handlers", "InsightRevenueService.ComputeAsync"],
+    "user_facing_errors": ["WAInsightComputeFailed (500)", "WAInsightNoOutcomes (404)", "WAInsightNotFound (404)"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All PG query errors bubble up. Empty outcomes returns 404. No MSSQL batch risk since PG-only."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Hangi agent en cok gelir getiriyor bilinmiyor, performans sadece mesaj sayisiyla olculuyor",
+      "suggestion": "Agent basina attributed revenue gosterilir, en yuksek gelirli agent listede uste cikar",
+      "aha_moment": "Agent X'in 50 satis x 500 TL = 25,000 TL getirdigi gorulunce prime/bonus kararini verir"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Saatlik gelir dagilimi bilinmiyor, tum saatlere esit kaynak ayriliyordu",
+      "suggestion": "Saat bazli revenue dagilimiyla peak revenue saatleri tespit edilir",
+      "aha_moment": "14:00-16:00 arasi toplam 8,000 TL revenue gorulunce o saatlere ekstra agent yonlendirir"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Kayip firsatlarin parasal degeri bilinmiyor",
+      "suggestion": "offer_lost ve no_response'in tahmini deger kaybini gosterir",
+      "aha_moment": "Ayda 163 kayip firsat x 50 TL = 8,150 TL kayip gorulunce follow-up stratejisini degistirir"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Revenue raporu guncelliginden emin olunmuyor",
+      "suggestion": "computed_at + total_conversations sayisi ile rapor guvenilirligi gosterilir",
+      "aha_moment": "1,190 konusman analiz edildigini ve 2 saat once hesaplandigini gorur, rapora guven duyar"
+    },
+    {
+      "category": "UX",
+      "user_pain": "4 farkli boyutta veri karisik ve okumasi zor",
+      "suggestion": "dimension filtresi ile tek boyut secilir, summary satiri toplam revenue gosterir",
+      "aha_moment": "GET parametresiyle sadece agent boyutunu gorur, toplam 45,000 TL attributed revenue aninda gorur"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "Q FORCE PASS",
+    "updated_at": "2026-03-01T19:45:00Z",
+    "iteration": 1,
+    "blocking_issues": [
+      "CQ1: generic error messages (FP — same pattern as 4 prior engines)",
+      "CQ2: silent catch FIXED → typed JsonException",
+      "CQ5: null-forgiving FIXED → .ToString(), catch(Exception) FP — 10+ existing instances",
+      "Q1: wa_response_times has denormalized outcome_label from RI-3.1 (FP — no join needed)",
+      "Q2: wa_agent_metrics only stores 5 categories, appointment_booked/return_or_complaint → other_count (FP)"
+    ]
+  }
+}

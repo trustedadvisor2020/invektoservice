@@ -248,6 +248,7 @@ if (mssqlConfigured)
     builder.Services.AddSingleton<InsightAgentLeaderboardService>();
     builder.Services.AddSingleton<InsightRescueService>();
     builder.Services.AddSingleton<InsightDemandHeatmapService>();
+    builder.Services.AddSingleton<InsightRevenueService>();
 }
 
 var app = builder.Build();
@@ -1274,6 +1275,79 @@ app.MapGet("/api/ops/insights/demand-heatmap/{tenantId:int}", async (
     }
 });
 
+// POST /api/ops/insights/compute/revenue-attribution — Compute revenue attribution (RI-3.4)
+app.MapPost("/api/ops/insights/compute/revenue-attribution", async (
+    HttpContext ctx,
+    InsightRevenueService revService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await revService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("No classified outcomes"))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Revenue attribution compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/revenue-attribution/{tenantId} — Get revenue attribution data (RI-3.4)
+app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    string? dimension = null;
+    if (ctx.Request.Query.TryGetValue("dimension", out var dimStr) && !string.IsNullOrEmpty(dimStr))
+        dimension = dimStr.ToString();
+
+    try
+    {
+        var insight = await insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, dimension);
+        if (insight.Entries.Count == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No revenue attribution data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read revenue attribution data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
 // ============================================================
 // Endpoint discovery
 // ============================================================
@@ -1313,6 +1387,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/insights/rescue/{tenantId}", Description = "Get rescue candidates", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "POST", Path = "/api/ops/insights/compute/demand-heatmap", Description = "Compute demand heatmap", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/insights/demand-heatmap/{tenantId}", Description = "Get demand heatmap", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/revenue-attribution", Description = "Compute revenue attribution", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/revenue-attribution/{tenantId}", Description = "Get revenue attribution", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

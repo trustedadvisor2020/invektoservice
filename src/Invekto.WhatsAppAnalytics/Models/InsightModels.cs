@@ -297,6 +297,67 @@ public static class DemandDayLabels
         dayOfWeek >= 0 && dayOfWeek < Labels.Length ? Labels[dayOfWeek] : $"Day{dayOfWeek}";
 }
 
+// ── Revenue Attribution DTOs (RI-3.4) ──
+
+public sealed class RevenueComputeResult
+{
+    public int TotalOutcomes { get; set; }
+    public int TotalRecords { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public long DurationMs { get; set; }
+}
+
+public sealed class RevenueAttributionInsight
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int TotalConversations { get; set; }
+    public List<RevenueAttributionEntry> Entries { get; set; } = new();
+}
+
+public sealed class RevenueAttributionEntry
+{
+    public string Dimension { get; set; } = "";
+    public string DimensionKey { get; set; } = "";
+    public string? DimensionLabel { get; set; }
+    public int TotalConversations { get; set; }
+    public decimal AttributedRevenue { get; set; }
+    public decimal AvgRevenue { get; set; }
+    public object? Breakdown { get; set; }
+}
+
+// ── Revenue Attribution DB Record (RI-3.4) ──
+
+public sealed class RevenueAttributionRecord
+{
+    public int TenantId { get; set; }
+    public int InstanceId { get; set; }  // NOT NULL DEFAULT 0
+    public string Dimension { get; set; } = "";
+    public string DimensionKey { get; set; } = "";
+    public string? DimensionLabel { get; set; }
+    public int TotalConversations { get; set; }
+    public decimal AttributedRevenue { get; set; }
+    public decimal AvgRevenue { get; set; }
+    public string? BreakdownJson { get; set; }
+}
+
+// ── Revenue PG query helper models (RI-3.4) ──
+
+public sealed class OutcomeCountRow
+{
+    public string OutcomeLabel { get; set; } = "";
+    public int InstanceId { get; set; }
+    public int Count { get; set; }
+}
+
+public sealed class HourlyOutcomeRow
+{
+    public int Hour { get; set; }
+    public string OutcomeLabel { get; set; } = "";
+    public int Count { get; set; }
+}
+
 // ── Bucket Constants ──
 
 public static class ResponseTimeBuckets

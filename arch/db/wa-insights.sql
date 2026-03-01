@@ -89,6 +89,29 @@ CREATE TABLE IF NOT EXISTS wa_demand_heatmap (
 CREATE INDEX IF NOT EXISTS idx_wa_demand_heatmap_tenant
     ON wa_demand_heatmap(tenant_id);
 
+-- RI-3.4: Revenue Attribution (Paket 5)
+-- PG-only compute. Fixed TL values per outcome, 4 dimensions + summary.
+-- instance_id NOT NULL DEFAULT 0 (same pattern as demand_heatmap)
+CREATE TABLE IF NOT EXISTS wa_revenue_attribution (
+    id                  BIGSERIAL PRIMARY KEY,
+    tenant_id           INT NOT NULL,
+    instance_id         INT NOT NULL DEFAULT 0,  -- 0 = aggregate
+    dimension           TEXT NOT NULL,            -- outcome, hour, agent, instance, summary
+    dimension_key       TEXT NOT NULL,            -- outcome_label, hour number, agent_id, instance_id, 'total'
+    dimension_label     TEXT,                     -- display name
+    total_conversations INT NOT NULL DEFAULT 0,
+    attributed_revenue  DECIMAL(12,2) NOT NULL DEFAULT 0,
+    avg_revenue         DECIMAL(12,2) NOT NULL DEFAULT 0,
+    breakdown_json      JSONB,
+    computed_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, instance_id, dimension, dimension_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_wa_revenue_attribution_tenant
+    ON wa_revenue_attribution(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_wa_revenue_attribution_dimension
+    ON wa_revenue_attribution(tenant_id, dimension);
+
 -- Grants
 GRANT ALL ON wa_response_times TO invekto;
 GRANT ALL ON wa_agent_metrics TO invekto;
@@ -98,3 +121,5 @@ GRANT ALL ON SEQUENCE wa_response_times_id_seq TO invekto;
 GRANT ALL ON SEQUENCE wa_agent_metrics_id_seq TO invekto;
 GRANT ALL ON SEQUENCE wa_rescue_candidates_id_seq TO invekto;
 GRANT ALL ON SEQUENCE wa_demand_heatmap_id_seq TO invekto;
+GRANT ALL ON wa_revenue_attribution TO invekto;
+GRANT ALL ON SEQUENCE wa_revenue_attribution_id_seq TO invekto;
