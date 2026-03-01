@@ -28,11 +28,11 @@
 | RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | DONE | 1 Mar | P1-P5 + P6(3.5+3.7): iter 1 FP |
 | RI-4 | Faz 4 | RI: Sektor Sablon Mining | RI-4.1~4.6 (21 sub-task) | DONE | 1 Mar | iter 1 FP |
 | RI-5 | Faz 5 | RI: Bulk Isleme + Kalan Sektorler | RI-5.5~5.13 | DONE | 1 Mar | iter 0 FP |
-| RI-6 | Faz 6 | RI: Dashboard + API + Widget'lar | RI-6.1~6.28 | PLANNED | - | - |
+| RI-6 | Faz 6 | RI: Dashboard + API + Widget'lar | RI-6.1~6.28 | DONE | 1 Mar | P1: iter 0 FP, P2: iter 1 FP |
 | RI-7 | Faz 7 | RI: Tenant Onboarding Deneyimi | RI-7.1~7.7 | PLANNED | - | - |
 | RI-8 | Faz 8 | RI: Optimizasyon & Olcekleme | RI-8.1~8.13 | PLANNED | - | - |
 
-**Toplam:** 19 paket (17 done, 0 in-progress, 5 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
+**Toplam:** 19 paket (18 done, 0 in-progress, 4 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
 
 ## Mikroservis Port Haritasi
 

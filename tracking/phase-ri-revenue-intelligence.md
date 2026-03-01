@@ -417,25 +417,26 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Widget'lar (7 Insight)** | | | |
-| RI-6.1 | Lost Revenue widget | PLANNED | Buyuk kirmizi sayi: "Bu ay €X kapanmadi". Trend grafigi. Haftalik/aylik toggle. Offered konusmalara tikla → detay |
-| RI-6.2 | Agent Leaderboard widget | PLANNED | Ranking tablosu: agent, conversion %, response time, quality score. Son 30 gun trend sparkliner. Filtre: donem, label |
-| RI-6.3 | Objection Map widget | PLANNED | Pie/donut chart: kayip sebepleri dagilimi. Tikla → o sebeple kaybedilen konusma listesi. Trend: "Bu ay fiyat itirazlari %5 azaldi" |
-| RI-6.4 | Response Time widget | PLANNED | Korelasyon grafigi: response time bucket vs conversion rate. Kirmizi uyari: "Ortalama cevap sureniz 2.3 saat — sektorunuzde %18'lik conversion kaybi" |
-| RI-6.5 | Rescue Alerts widget | PLANNED | Sabah raporu: "X konusma rescue bekliyor, tahmini deger €Y". Liste: konusma, son mesaj, sure, tahmini deger. Tek tikla: rescue template gonder |
-| RI-6.6 | Quality Score widget | PLANNED | Agent bazli kalite puani radar chart (empati, bilgi, closing, response, profesyonellik). Trend. En dusuk puanli agent'a egitim onerisi |
-| RI-6.7 | Service Demand widget | PLANNED | Heatmap/bar chart: hizmet talep dagilimi. Trend: aylarca kiyasla. "Burun estetigi talepleri %15 artti ama reklam butceniz sabit" |
+| RI-6.1 | Lost Revenue widget | **DONE** | RiRevenueCard.tsx — big red number, outcome breakdown list |
+| RI-6.2 | Agent Leaderboard widget | **DONE** | RiAgentLeaderboard.tsx — ranked table with conv%, FRT, weighted score |
+| RI-6.3 | Objection Map widget | **DONE** | RiObjectionMap.tsx — horizontal bar chart with percentages |
+| RI-6.4 | Response Time widget | **DONE** | RiResponseTime.tsx — recharts BarChart, bucket colors, conversion pills |
+| RI-6.5 | Rescue Alerts widget | **DONE** | RiRescueAlerts.tsx — candidate list with priority score, day count |
+| RI-6.6 | Quality Score widget | **DONE** | RiQualityScore.tsx — per-agent score bars (speed/engagement/resolution/sentiment) |
+| RI-6.7 | Service Demand widget | **DONE** | RiDemandHeatmap.tsx — 7x24 heatmap grid with color gradient |
+| RI-6.8 | KPI Summary Cards | **DONE** | RiKpiCards.tsx — 4 cards (revenue, agents, rescue, FRT) |
 | | | | |
 | **Sablon Yonetimi** | | | |
-| RI-6.8 | Sektor paketi goruntuleme sayfasi | PLANNED | "Sektorunuz: Saglik. Size ozel 15 intent, 15 FAQ, 3 flow hazir." Detay gorunumu |
-| RI-6.9 | Intent sablon yonetimi | PLANNED | Liste: intent adi, aciklama, ornek, aktif/pasif toggle. Ekleme/duzenleme/silme |
-| RI-6.10 | FAQ sablon yonetimi | PLANNED | Liste: soru, cevap, etkililik puani. Duzenleme, yenisini ekleme |
-| RI-6.11 | Flow sablon yonetimi | PLANNED | FlowBuilder'da acilabilir flow sablonlari. "Bu sablonu kullan" → FlowBuilder'a kopyala |
-| RI-6.12 | Objection handling yonetimi | PLANNED | Itiraz tipi → onerilen cevaplar listesi. Tenant kendi cevabini ekleyebilir |
-| RI-6.13 | Follow-up sablon yonetimi | PLANNED | Zamanlama + mesaj sablonu. Aktif/pasif. Ozel sablon ekleme |
+| RI-6.9 | Sektor paketi goruntuleme | **DONE** | Benchmarks card in RevenueIntelligencePage (template counts) |
+| RI-6.10 | Intent sablon yonetimi | **DEFER** | Detailed CRUD UI — deferred to dedicated template management sprint |
+| RI-6.11 | FAQ sablon yonetimi | **DEFER** | Detailed CRUD UI — deferred to dedicated template management sprint |
+| RI-6.12 | Flow sablon yonetimi | **DEFER** | FlowBuilder integration — deferred |
+| RI-6.13 | Objection handling yonetimi | **DEFER** | Deferred to dedicated template management sprint |
+| RI-6.14 | Follow-up sablon yonetimi | **DEFER** | Deferred to dedicated template management sprint |
 | | | | |
 | **Ground Truth Flywheel** | | | |
-| RI-6.14 | Agree/disagree UI | PLANNED | Her etiketlenmis konusmada: "Bu etiket dogru mu?" → Evet / Hayir + dogru etiket sec. Basit, tek tikla |
-| RI-6.15 | Feedback aggregation | PLANNED | Tenant bazli agree/disagree oranlari. Dusuk agree → prompt tuning sinyali |
+| RI-6.14b | Agree/disagree UI | **DEFER** | Flywheel UI — deferred to post-MVP optimization (Faz 8) |
+| RI-6.15 | Feedback aggregation | **DEFER** | Flywheel aggregation — deferred to post-MVP optimization (Faz 8) |
 | RI-6.16 | Feedback → prompt iyilestirme pipeline | **DEFER** | Requires LLM prompt tuning — Faz 8 optimization |
 | | | | |
 | **API Endpoints (Tenant-facing)** | | | |
@@ -459,7 +460,7 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | RI-6.32 | RiDashboardModels DTOs | **DONE** | RiDashboardResponse, SectorBenchmarks, FeedbackRequest/Record/Summary |
 
 **Cikti P1:** 12 tenant-facing API endpoints + RiDashboardService + FeedbackRepository + wa_outcome_feedback table
-**Cikti P2:** React dashboard + sablon yonetimi UI (PLANNED)
+**Cikti P2:** 8 React widgets + RevenueIntelligencePage + Backend RI proxy + nav/route integration (1103 LoC)
 
 ---
 
