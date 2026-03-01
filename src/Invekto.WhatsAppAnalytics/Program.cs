@@ -228,6 +228,7 @@ if (mssqlConfigured)
             sp.GetRequiredService<MssqlReaderService>(),
             sp.GetRequiredService<PiiMasker>(),
             sp.GetRequiredService<OutcomeClassifierService>(),
+            sp.GetRequiredService<TextNormalizer>(),
             sp,
             sp.GetRequiredService<JsonLinesLogger>(),
             benchmarkDelay,

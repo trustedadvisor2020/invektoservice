@@ -3,6 +3,7 @@ using System.Text.Json;
 using Invekto.Shared.Logging;
 using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
+using System.Text.RegularExpressions;
 using Invekto.WhatsAppAnalytics.Services.Benchmark;
 using Microsoft.Data.SqlClient;
 
@@ -27,29 +28,63 @@ public sealed class BatchClassificationService : BackgroundService
     private readonly int _maxThreadTextLen;
     private readonly int _minMessages;
     private readonly int _maxMessages;
+    private readonly TextNormalizer _normalizer;
+    private readonly int _maxConcurrency;
+
+    // RI-8.1: High-confidence keyword patterns for pre-filter (skip LLM)
+    // Subset from ThreaderService.DetectOutcome — only unambiguous outcomes
+    private static readonly Regex[] KeywordSalePatterns =
+    [
+        new(@"siparisiniz.*olusturulmustur", RegexOptions.Compiled),
+        new(@"siparisiniz.*onaylandi", RegexOptions.Compiled),
+        new(@"kargo.*takip\s*(no|numar)", RegexOptions.Compiled),
+        new(@"havale.*yapildi", RegexOptions.Compiled),
+        new(@"eft.*yapildi", RegexOptions.Compiled),
+        new(@"odeme.*alindi", RegexOptions.Compiled),
+        new(@"odemeniz.*onaylandi", RegexOptions.Compiled),
+    ];
+
+    private static readonly Regex[] KeywordReturnPatterns =
+    [
+        new(@"iade.*taleb", RegexOptions.Compiled),
+        new(@"degisim.*taleb", RegexOptions.Compiled),
+        new(@"geri.*gonder", RegexOptions.Compiled),
+    ];
+
+    private static readonly Regex[] KeywordComplaintPatterns =
+    [
+        new(@"memnun\s*degil", RegexOptions.Compiled),
+        new(@"yanlis.*geldi", RegexOptions.Compiled),
+        new(@"bozuk.*geldi", RegexOptions.Compiled),
+        new(@"berbat|rezalet", RegexOptions.Compiled),
+    ];
 
     public BatchClassificationService(
         ConversationOutcomeRepository outcomeRepo,
         MssqlReaderService mssqlReader,
         PiiMasker piiMasker,
         OutcomeClassifierService classifier,
+        TextNormalizer normalizer,
         IServiceProvider sp,
         JsonLinesLogger logger,
         int delayMs = 500,
         int maxThreadTextLen = 4000,
         int minMessages = 6,
-        int maxMessages = 200)
+        int maxMessages = 200,
+        int maxConcurrency = 4)
     {
         _outcomeRepo = outcomeRepo;
         _mssqlReader = mssqlReader;
         _piiMasker = piiMasker;
         _classifier = classifier;
+        _normalizer = normalizer;
         _sp = sp;
         _logger = logger;
         _delayMs = delayMs;
         _maxThreadTextLen = maxThreadTextLen;
         _minMessages = minMessages;
         _maxMessages = maxMessages;
+        _maxConcurrency = maxConcurrency;
     }
 
     public void Enqueue(BatchProcessJob job)
@@ -130,6 +165,7 @@ public sealed class BatchClassificationService : BackgroundService
         var outcomes = new List<ConversationOutcome>();
         var errorCount = 0;
         var consecutiveErrors = 0;
+        var keywordCount = 0;
 
         for (var i = 0; i < threads.Count; i++)
         {
@@ -142,6 +178,34 @@ public sealed class BatchClassificationService : BackgroundService
             }
 
             var thread = threads[i];
+
+            // RI-8.1: Keyword pre-filter — skip LLM for high-confidence keyword matches
+            var keywordLabel = TryKeywordClassify(thread);
+            if (keywordLabel != null)
+            {
+                keywordCount++;
+                outcomes.Add(new ConversationOutcome
+                {
+                    TenantId = job.TenantId,
+                    DatabaseName = job.DatabaseName,
+                    InstanceId = job.InstanceId,
+                    ConversationId = thread.ConversationId,
+                    Sector = job.Sector,
+                    OutcomeLabel = keywordLabel,
+                    Confidence = 0.95f,
+                    HasOffer = keywordLabel == "sale",
+                    Evidence = "keyword-match",
+                    ModelVersion = "keyword-v1"
+                });
+                if (i % 10 == 0)
+                {
+                    var pct = 30 + (int)(60.0 * (i + 1) / threads.Count);
+                    await _outcomeRepo.UpdateBatchStatusAsync(job.BatchJobId, "classifying",
+                        ProgressJson("classifying", pct, $"kw:{keywordCount} llm:{i + 1 - keywordCount}/{threads.Count}"), ct);
+                }
+                continue;
+            }
+
             var result = await _classifier.ClassifyAsync(tieredClient, thread, ct);
 
             if (result != null)
@@ -158,7 +222,7 @@ public sealed class BatchClassificationService : BackgroundService
                     Confidence = result.Confidence,
                     HasOffer = result.HasOffer,
                     Evidence = result.Evidence,
-                    ModelVersion = $"tiered-v0.6"
+                    ModelVersion = "tiered-v0.6"
                 });
             }
             else
@@ -175,7 +239,7 @@ public sealed class BatchClassificationService : BackgroundService
             {
                 var pct = 30 + (int)(60.0 * (i + 1) / threads.Count);
                 await _outcomeRepo.UpdateBatchStatusAsync(job.BatchJobId, "classifying",
-                    ProgressJson("classifying", pct, $"tiered: {i + 1}/{threads.Count} threads classified"), ct);
+                    ProgressJson("classifying", pct, $"kw:{keywordCount} llm:{i + 1 - keywordCount}/{threads.Count}"), ct);
                 await _outcomeRepo.UpdateBatchCountsAsync(job.BatchJobId,
                     classifiedCount: outcomes.Count, errorCount: errorCount, ct: ct);
             }
@@ -192,7 +256,7 @@ public sealed class BatchClassificationService : BackgroundService
             classifiedCount: outcomes.Count, errorCount: errorCount, ct: ct);
         await _outcomeRepo.CompleteBatchJobAsync(job.BatchJobId, ct);
 
-        _logger.StepInfo($"[BatchClassification] Job {job.BatchJobId} completed: {outcomes.Count} classified, {errorCount} errors", rid);
+        _logger.StepInfo($"[BatchClassification] Job {job.BatchJobId} completed: {outcomes.Count} classified ({keywordCount} keyword, {outcomes.Count - keywordCount} LLM), {errorCount} errors", rid);
     }
 
     /// <summary>
@@ -248,79 +312,121 @@ public sealed class BatchClassificationService : BackgroundService
     }
 
     /// <summary>
-    /// Load full conversation threads from MSSQL and apply PII masking.
-    /// Reuses the same message query pattern as BenchmarkOrchestrator.
+    /// RI-8.4: Load full conversation threads from MSSQL with parallel reads.
+    /// Uses bounded concurrency to avoid overwhelming the SQL Server.
     /// </summary>
     private async Task<List<SampledThread>> LoadThreadsAsync(string databaseName, int? instanceId,
         List<(string conversationId, int msgCount)> candidates, CancellationToken ct)
     {
         var connStr = _mssqlReader.BuildConnectionString(databaseName);
-        var threads = new List<SampledThread>();
+        var results = new ConcurrentBag<SampledThread>();
 
+        await Parallel.ForEachAsync(candidates,
+            new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrency, CancellationToken = ct },
+            async (candidate, token) =>
+            {
+                var thread = await LoadSingleThreadAsync(connStr, instanceId, candidate.conversationId, token);
+                if (thread != null)
+                    results.Add(thread);
+            });
+
+        return results.ToList();
+    }
+
+    private async Task<SampledThread?> LoadSingleThreadAsync(
+        string connStr, int? instanceId, string convId, CancellationToken ct)
+    {
         var instanceFilter = instanceId.HasValue
             ? "AND C.InstanceID = @instanceId"
             : "";
 
-        foreach (var (convId, _) in candidates)
+        await using var conn = new SqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+            SELECT
+                CM.Body,
+                CASE WHEN CM.FromMe = 0 THEN 'CUSTOMER' ELSE 'ME' END AS sender_type,
+                ISNULL(U.Name + ' ' + U.Surname, '') AS agent_name,
+                ISNULL(CM.SentTime, CM.CreateDate) AS ts
+            FROM ChatMessages CM WITH (NOLOCK)
+            INNER JOIN Chats C WITH (NOLOCK) ON CM.ChatID = C.ID
+            LEFT JOIN Users U WITH (NOLOCK) ON CM.UserID = U.ID
+            WHERE CM.MessageType = 1
+              AND CM.SystemMessageType IS NULL
+              AND C.CustomerPhoneNumber = @phone
+              AND C.IsGroup = 0
+              AND LEN(CM.Body) > 0
+              AND CM.Body NOT IN (N'Dosya İndirilememiştir', N'Media could not be downloaded')
+              {instanceFilter}
+            ORDER BY ISNULL(CM.SentTime, CM.CreateDate)";
+
+        cmd.Parameters.AddWithValue("@phone", convId);
+        if (instanceId.HasValue)
+            cmd.Parameters.AddWithValue("@instanceId", instanceId.Value);
+
+        var messages = new List<ThreadMessage>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
         {
-            ct.ThrowIfCancellationRequested();
-
-            await using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
-
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandTimeout = 30;
-            cmd.CommandText = $@"
-                SELECT
-                    CM.Body,
-                    CASE WHEN CM.FromMe = 0 THEN 'CUSTOMER' ELSE 'ME' END AS sender_type,
-                    ISNULL(U.Name + ' ' + U.Surname, '') AS agent_name,
-                    ISNULL(CM.SentTime, CM.CreateDate) AS ts
-                FROM ChatMessages CM WITH (NOLOCK)
-                INNER JOIN Chats C WITH (NOLOCK) ON CM.ChatID = C.ID
-                LEFT JOIN Users U WITH (NOLOCK) ON CM.UserID = U.ID
-                WHERE CM.MessageType = 1
-                  AND CM.SystemMessageType IS NULL
-                  AND C.CustomerPhoneNumber = @phone
-                  AND C.IsGroup = 0
-                  AND LEN(CM.Body) > 0
-                  AND CM.Body NOT IN (N'Dosya İndirilememiştir', N'Media could not be downloaded')
-                  {instanceFilter}
-                ORDER BY ISNULL(CM.SentTime, CM.CreateDate)";
-
-            cmd.Parameters.AddWithValue("@phone", convId);
-            if (instanceId.HasValue)
-                cmd.Parameters.AddWithValue("@instanceId", instanceId.Value);
-
-            var messages = new List<ThreadMessage>();
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
+            messages.Add(new ThreadMessage
             {
-                messages.Add(new ThreadMessage
-                {
-                    Text = reader.GetString(0),
-                    SenderType = reader.GetString(1),
-                    AgentName = reader.GetString(2),
-                    Timestamp = reader.GetDateTime(3)
-                });
-            }
-
-            if (messages.Count < _minMessages) continue;
-
-            var thread = new SampledThread
-            {
-                ConversationId = convId,
-                Messages = messages
-            };
-
-            // PII mask + format
-            var formatted = OutcomeClassifierService.FormatThread(thread, _maxThreadTextLen);
-            thread.MaskedText = _piiMasker.Mask(formatted);
-
-            threads.Add(thread);
+                Text = reader.GetString(0),
+                SenderType = reader.GetString(1),
+                AgentName = reader.GetString(2),
+                Timestamp = reader.GetDateTime(3)
+            });
         }
 
-        return threads;
+        if (messages.Count < _minMessages) return null;
+
+        var thread = new SampledThread
+        {
+            ConversationId = convId,
+            Messages = messages
+        };
+
+        // PII mask + format
+        var formatted = OutcomeClassifierService.FormatThread(thread, _maxThreadTextLen);
+        thread.MaskedText = _piiMasker.Mask(formatted);
+
+        return thread;
+    }
+
+    /// <summary>
+    /// RI-8.1: Try keyword-based classification before LLM.
+    /// Returns outcome label for high-confidence matches, null otherwise.
+    /// Maps to 7-label taxonomy (return/complaint → return_or_complaint).
+    /// </summary>
+    private string? TryKeywordClassify(SampledThread thread)
+    {
+        var agentTexts = thread.Messages
+            .Where(m => m.SenderType == "ME" && !string.IsNullOrEmpty(m.Text))
+            .Select(m => _normalizer.TransliterateTurkish(m.Text))
+            .ToList();
+        var allTexts = thread.Messages
+            .Where(m => !string.IsNullOrEmpty(m.Text))
+            .Select(m => _normalizer.TransliterateTurkish(m.Text))
+            .ToList();
+
+        // Priority 1: Sale (agent messages only — payment/shipment confirmation)
+        foreach (var text in agentTexts)
+            if (KeywordSalePatterns.Any(p => p.IsMatch(text)))
+                return "sale";
+
+        // Priority 2: Return (any message)
+        foreach (var text in allTexts)
+            if (KeywordReturnPatterns.Any(p => p.IsMatch(text)))
+                return "return_or_complaint";
+
+        // Priority 3: Complaint (any message)
+        foreach (var text in allTexts)
+            if (KeywordComplaintPatterns.Any(p => p.IsMatch(text)))
+                return "return_or_complaint";
+
+        return null; // No high-confidence match → needs LLM
     }
 
     private static string ProgressJson(string stage, int percent, string message) =>
