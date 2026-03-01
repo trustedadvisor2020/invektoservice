@@ -4618,6 +4618,47 @@ app.MapGet("/api/ops/analytics/wa/nlp-summary", async (HttpContext ctx, WhatsApp
 });
 
 // ============================================
+// RI-6: Revenue Intelligence proxy (tenant-facing, JWT auth via WA service)
+// Generic catch-all proxy — forwards /api/v1/wa/{tenantId}/ri/* to WhatsAppAnalytics.
+// WA service handles JWT validation + tenant matching via its own middleware.
+// ============================================
+
+app.Map("/api/v1/wa/{tenantId:int}/ri/{**path}", async (HttpContext ctx, WhatsAppAnalyticsClient waClient, int tenantId, string? path) =>
+{
+    var targetPath = $"/api/v1/wa/{tenantId}/ri/{path ?? ""}{ctx.Request.QueryString}";
+    var auth = ctx.Request.Headers.Authorization.FirstOrDefault();
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    int statusCode;
+    string? body;
+    switch (ctx.Request.Method.ToUpperInvariant())
+    {
+        case "GET":
+            (statusCode, body) = await waClient.ProxyGetAsync(targetPath, auth, requestId);
+            break;
+        case "POST":
+        {
+            using var reader = new StreamReader(ctx.Request.Body);
+            var requestBody = await reader.ReadToEndAsync();
+            (statusCode, body) = await waClient.ProxyPostAsync(targetPath, requestBody, auth, requestId);
+            break;
+        }
+        case "PUT":
+        {
+            using var reader = new StreamReader(ctx.Request.Body);
+            var requestBody = await reader.ReadToEndAsync();
+            (statusCode, body) = await waClient.ProxyPutAsync(targetPath, requestBody, auth, requestId);
+            break;
+        }
+        default:
+            return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation,
+                "Method not allowed for RI proxy", requestId), statusCode: 405);
+    }
+
+    return Results.Text(body ?? "{}", "application/json", statusCode: statusCode);
+});
+
+// ============================================
 // GR-3.18: ATTRIBUTION + CAMPAIGN ANALYTICS (ops-level, Basic auth)
 // ============================================
 

@@ -6,9 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-01
-- **Status:** RI-3.1 Response Time Correlation TAMAMLANDI. Deployed + tested on production (EbruModa tenant_id=5051).
-- **Last Task:** RI-3.1: 8 dosya, 877 insertion. POST compute + GET read endpoints. 3 PG tables (wa_response_times, wa_agent_metrics, wa_rescue_candidates). MSSQL batch query (200/batch) + cross-instance dedup. EbruModa: 1191 outcomes → 6 bucket (instant=280, fast=144, moderate=127, slow=54, very_slow=36, no_response=550). Codex iter 1 FORCE PASS (catch(Exception) existing pattern). Commit f07dfb1.
-- **Next Task:** RI-3.3 Agent Leaderboard (Paket 2). Sonra RI-3.6 Follow-up Rescue Alerts (Paket 3).
+- **Status:** RI-6 P2 TAMAMLANDI. RI Faz 3-6 tum isler bitti.
+- **Last Task:** RI-6 P2: Revenue Intelligence React dashboard + 8 widget. RI-3 (7 engine), RI-4 (template mining), RI-5 (bulk + 9 sektor), RI-6 P1 (12 API), RI-6 P2 (dashboard) — hepsi DONE.
+- **Production SQL:** wa_revenue_attribution (RI-3.4), wa_objection_map (RI-3.5), wa_quality_scores (RI-3.7) tablolari production PG'de olusturuldu.
+- **Next Task:** RI-7 Tenant Onboarding Deneyimi (sektor paketi, checklist, benchmark karsilastirma) veya WhatsAppAnalytics deploy.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

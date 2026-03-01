@@ -1553,6 +1553,274 @@ class OpsApiClient {
   async getOnboardingStatus(): Promise<OnboardingStatusResponse> {
     return this.request<OnboardingStatusResponse>('/api/v1/onboarding/status');
   }
+
+  // --- Revenue Intelligence (RI-6) ---
+
+  async getRiDashboard(tenantId: number, sector?: string, instanceId?: number): Promise<RiDashboardResponse> {
+    const sp = new URLSearchParams();
+    if (sector) sp.set('sector', sector);
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request<RiDashboardResponse>(`/api/v1/wa/${tenantId}/ri/dashboard${qs}`);
+  }
+
+  async getRiRevenue(tenantId: number, instanceId?: number, dimension?: string): Promise<{ requestId: string; data: RiRevenueAttribution }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    if (dimension) sp.set('dimension', dimension);
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/revenue${qs}`);
+  }
+
+  async getRiAgents(tenantId: number, instanceId?: number): Promise<{ requestId: string; data: RiAgentLeaderboard }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/agents${qs}`);
+  }
+
+  async getRiObjections(tenantId: number, instanceId?: number): Promise<{ requestId: string; data: RiObjectionMap }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/objections${qs}`);
+  }
+
+  async getRiResponseTime(tenantId: number, instanceId?: number): Promise<{ requestId: string; data: RiResponseTime }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/response-time${qs}`);
+  }
+
+  async getRiRescue(tenantId: number, instanceId?: number): Promise<{ requestId: string; data: RiRescueInsight }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/rescue${qs}`);
+  }
+
+  async getRiQuality(tenantId: number, instanceId?: number): Promise<{ requestId: string; data: RiQualityInsight }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/quality${qs}`);
+  }
+
+  async getRiDemand(tenantId: number, instanceId?: number): Promise<{ requestId: string; data: RiDemandHeatmap }> {
+    const sp = new URLSearchParams();
+    if (instanceId) sp.set('instanceId', instanceId.toString());
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request(`/api/v1/wa/${tenantId}/ri/demand${qs}`);
+  }
+
+  async getRiTemplates(tenantId: number, sector: string): Promise<RiSectorTemplates> {
+    return this.request<RiSectorTemplates>(`/api/v1/wa/${tenantId}/ri/templates?sector=${encodeURIComponent(sector)}`);
+  }
+
+  async toggleRiTemplate(tenantId: number, type: string, id: number, isActive: boolean): Promise<{ success: boolean }> {
+    return this.request(`/api/v1/wa/${tenantId}/ri/templates/${type}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive }),
+    });
+  }
+
+  async submitRiFeedback(tenantId: number, feedback: RiFeedbackRequest): Promise<{ success: boolean; record: RiFeedbackRecord }> {
+    return this.request(`/api/v1/wa/${tenantId}/ri/feedback`, {
+      method: 'POST',
+      body: JSON.stringify(feedback),
+    });
+  }
+
+  async getRiBenchmarks(tenantId: number, sector: string): Promise<RiSectorBenchmarks> {
+    return this.request<RiSectorBenchmarks>(`/api/v1/wa/${tenantId}/ri/benchmarks?sector=${encodeURIComponent(sector)}`);
+  }
+}
+
+// --- RI Types (RI-6) ---
+
+export interface RiDashboardResponse {
+  tenantId: number;
+  sector: string | null;
+  responseTime: RiResponseTime | null;
+  agentLeaderboard: RiAgentLeaderboard | null;
+  objectionMap: RiObjectionMap | null;
+  rescueAlerts: RiRescueInsight | null;
+  qualityScore: RiQualityInsight | null;
+  demandHeatmap: RiDemandHeatmap | null;
+  revenue: RiRevenueAttribution | null;
+  templates: RiSectorTemplates | null;
+  benchmarks: RiSectorBenchmarks | null;
+}
+
+export interface RiResponseTime {
+  tenantId: number;
+  instanceId: number | null;
+  totalConversations: number;
+  avgResponseTimeMs: number | null;
+  buckets: RiResponseTimeBucket[];
+}
+
+export interface RiResponseTimeBucket {
+  bucket: string;
+  bucketLabel: string;
+  conversationCount: number;
+  percentage: number;
+  saleCount: number;
+  conversionRate: number;
+}
+
+export interface RiAgentLeaderboard {
+  tenantId: number;
+  instanceId: number | null;
+  totalAgents: number;
+  agents: RiAgentEntry[];
+}
+
+export interface RiAgentEntry {
+  agentId: number;
+  agentName: string;
+  instanceId: number | null;
+  totalConversations: number;
+  saleCount: number;
+  offeredCount: number;
+  noResponseCount: number;
+  offerLostCount: number;
+  otherCount: number;
+  conversionRate: number;
+  avgResponseTimeMs: number | null;
+  ghostRate: number;
+  weightedScore: number;
+}
+
+export interface RiObjectionMap {
+  tenantId: number;
+  instanceId: number | null;
+  totalObjections: number;
+  objectionTypes: RiObjectionEntry[];
+}
+
+export interface RiObjectionEntry {
+  objectionType: string;
+  objectionLabel: string;
+  count: number;
+  percentage: number;
+}
+
+export interface RiRescueInsight {
+  tenantId: number;
+  instanceId: number | null;
+  totalCandidates: number;
+  candidates: RiRescueCandidate[];
+}
+
+export interface RiRescueCandidate {
+  conversationId: string;
+  instanceId: number | null;
+  outcomeLabel: string;
+  lastMessageAt: string | null;
+  lastMessageFrom: string | null;
+  daysSince: number;
+  rescuePriorityScore: number;
+  rescueStatus: string;
+}
+
+export interface RiQualityInsight {
+  tenantId: number;
+  instanceId: number | null;
+  totalScored: number;
+  avgOverallScore: number;
+  scores: RiQualityEntry[];
+}
+
+export interface RiQualityEntry {
+  conversationId: string;
+  agentId: number | null;
+  agentName: string | null;
+  responseSpeedScore: number;
+  engagementScore: number;
+  resolutionScore: number;
+  sentimentScore: number;
+  overallScore: number;
+}
+
+export interface RiDemandHeatmap {
+  tenantId: number;
+  instanceId: number | null;
+  totalConversations: number;
+  cells: RiDemandCell[];
+}
+
+export interface RiDemandCell {
+  dayOfWeek: number;
+  dayLabel: string;
+  hourOfDay: number;
+  totalConversations: number;
+  saleCount: number;
+  conversionRate: number;
+  avgResponseTimeMs: number | null;
+}
+
+export interface RiRevenueAttribution {
+  tenantId: number;
+  instanceId: number | null;
+  totalRevenue: number;
+  totalConversations: number;
+  entries: RiRevenueEntry[];
+}
+
+export interface RiRevenueEntry {
+  dimension: string;
+  dimensionKey: string;
+  dimensionLabel: string | null;
+  totalConversations: number;
+  attributedRevenue: number;
+  avgRevenue: number;
+  breakdown: unknown;
+}
+
+export interface RiSectorTemplates {
+  sector: string;
+  intents: RiTemplateItem[];
+  faqs: RiTemplateItem[];
+  flows: RiTemplateItem[];
+  objectionHandlers: RiTemplateItem[];
+  followupTemplates: RiTemplateItem[];
+  onboardingSteps: RiTemplateItem[];
+}
+
+export interface RiTemplateItem {
+  id: number;
+  sector: string;
+  [key: string]: unknown;
+}
+
+export interface RiSectorBenchmarks {
+  sector: string;
+  displayName: string;
+  benchmarkF1: number | null;
+  totalTemplates: number;
+  intentCount: number;
+  faqCount: number;
+  flowCount: number;
+}
+
+export interface RiFeedbackRequest {
+  conversationId: string;
+  originalLabel: string;
+  isAgree: boolean;
+  correctedLabel?: string;
+}
+
+export interface RiFeedbackRecord {
+  id: number;
+  tenantId: number;
+  conversationId: string;
+  originalLabel: string;
+  isAgree: boolean;
+  correctedLabel: string | null;
+  userId: number | null;
+  createdAt: string;
 }
 
 export const api = new OpsApiClient();

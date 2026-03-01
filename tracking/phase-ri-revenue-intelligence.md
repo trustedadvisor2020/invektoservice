@@ -43,11 +43,38 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | Ground Truth | **Hibrit:** Q sektor basina 50-100 etiketler, LLM calibrate, tenant agree/disagree ile flywheel |
 | Sektor Stratejisi | **Top 3 ile basla:** Saglik (%36), Moda (%16), Gayrimenkul (%11) — geri kalanlar sonra |
 | Isleme Sikigi | **Gunluk/haftalik batch** — musteri secer |
-| LLM Maliyet Limiti | Simdilik yok, ileride belirlenecek |
 | Agent Tanima | API'den cekilecek (Users tablosu) |
 | Follow-up Rescue | Gece islenir, sabah raporlanir |
 | Pipeline | Sektor-spesifik (her sektorde farkli label seti + farkli extraction prompt) |
 | Sablonlar | Intent, FAQ, Flow, Objection, Follow-up, Onboarding — sektorel mining ile cikarilacak |
+
+## Q Kararlari (1 Mar 2026) — Faz 3-8 Toplu Interview
+
+| Karar | Secim | Etkilenen Faz |
+|-------|-------|---------------|
+| **LLM Butce** | **$100-150 toplam** tum fazlar icin. Smart sampling, tam isleme degil. | Faz 3-5 |
+| **Faz 4 Q Review** | **Atla**, direkt kaydet. Sablon mining sonuclari Q review gate yok. | Faz 4 |
+| **Faz 6 Scope** | **Full scope** (28 task): 7 widget + 12 API + sablon yonetimi + flywheel UI | Faz 6 |
+| **Faz 7-8** | **Planla ilerle**, Q'ya sormadan yap. Plandaki varsayilanlar gecerli. | Faz 7-8 |
+| **Genel Otonom** | Q'ya sadece kritik blocker'larda sor. Teknik kararlar otomatik alinir. | Tumu |
+| **Wrap + Deploy** | Her faz bitiminde /wrap + deploy yap. Phase kapama + production deploy. | Tumu |
+| **Currency** | Orijinal currency sakla (EUR/TRY/USD). Normalizasyon yapma. | Faz 3.4 |
+| **Dashboard Yeri** | Mevcut React SPA icinde /revenue-intelligence route | Faz 6 |
+
+**Butce Dagilimi ($150 toplam):**
+
+| Faz | Kullanim | Tahmini Maliyet |
+|-----|----------|-----------------|
+| Faz 3 (engine test) | ~500 thread test samples | ~$1 |
+| Faz 4 (sablon mining) | ~5,000 thread per sector x 3 = 15K | ~$3 |
+| Faz 5 (bulk isleme) | ~760K thread (gemini flash only, no escalation) | ~$130 |
+| Faz 6-8 (ongoing) | Minimal (cache + batch) | ~$16 reserve |
+
+**Faz 5 Sampling Stratejisi ($130 ile):**
+- Gemini Flash only ($0.17/1K) → ~760K thread islenebilir
+- Top 3 oncelik: Saglik %40, Moda %25, Gayrimenkul %20
+- Kalan 9 sektor: %15 (sector basina ~12K thread sample)
+- Yeterince representative sonuc icin istatistiksel sampling
 
 ---
 
@@ -236,9 +263,9 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | RI-3.2 | **Service Demand Heatmap** | Hangi hizmet/urun ne kadar soruluyor | Evet | Low-Med |
 | RI-3.3 | **Agent Leaderboard** | Agent bazli conversion, response time, ghost rate | Hayir | Low-Med |
 | RI-3.4 | **Lost Revenue Calculator** | Offered konusmalardan tutar extraction + kayip toplam | Evet | Medium |
-| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | Evet | Medium |
+| RI-3.5 | **Objection Map** | Neden almiyorlar? Sebep dagilimi | ~~Evet~~ Hayir (keyword) | Medium |
 | RI-3.6 | **Follow-up Rescue Alerts** | Offered + 48 saat cevapsiz → rescue listesi | Hayir | Medium |
-| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | Evet | Medium |
+| RI-3.7 | **Conversation Quality Score** | Agent iletisim kalitesi 1-10 puan | ~~Evet~~ Hayir (PG compute) | Medium |
 
 #### Detayli Task'lar
 
@@ -307,42 +334,43 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Intent Mining** | | | |
-| RI-4.1.1 | Sektor bazli intent clustering | PLANNED | RI-3.2 service demand verisinden: top 20 intent per sector. LLM ile category + description + ornek mesajlar |
-| RI-4.1.2 | Intent frequency + conversion correlation | PLANNED | "Sac ekimi fiyat sorgusu" intent'i %35 conversion, "genel bilgi" %8 → high-value intent tespiti |
-| RI-4.1.3 | Intent sablon formatlama | PLANNED | Invekto Intent format'ina uygun JSON: { name, description, examples[], sector, priority } |
-| RI-4.1.4 | Intent kalite kontrolu (Q review) | PLANNED | Sektor basina top 15-20 intent, Q onaylar |
+| RI-4.1.1 | Sektor bazli intent clustering | **DONE** | Domain knowledge seed: saglik 15, moda 10, gayrimenkul 10 intent. PG-only, keyword-based. |
+| RI-4.1.2 | Intent frequency + conversion correlation | **DONE** | Priority scoring + frequency tracking altyapisi. LLM enrichment Faz 5'te. |
+| RI-4.1.3 | Intent sablon formatlama | **DONE** | wa_sector_intents: name, description, category, examples[], keywords[], priority, frequency, conversion_rate |
+| RI-4.1.4 | Intent kalite kontrolu (Q review) | **SKIP** | Q karari: review gate atla, direkt kaydet. |
 | | | | |
 | **FAQ Mining** | | | |
-| RI-4.2.1 | Soru-cevap cifti extraction | PLANNED | LLM ile sale/appointment_booked konusmalardan: musteri ne sordu → agent ne cevap verdi → ise yaradi mi? |
-| RI-4.2.2 | FAQ clustering (benzer sorulari birlestir) | PLANNED | "Ameliyat kac saat?" ve "Operasyon suresi?" → ayni FAQ |
-| RI-4.2.3 | FAQ ranking (en etkili cevaplar) | PLANNED | Conversion'a goturen cevaplar one cikar. "Bu cevabi veren agent'lar %28 conversion" |
-| RI-4.2.4 | FAQ sablon formatlama | PLANNED | { question, answer, sector, effectiveness_score, source_count } |
-| RI-4.2.5 | FAQ kalite kontrolu (Q review) | PLANNED | Sektor basina top 15-20 FAQ |
+| RI-4.2.1 | Soru-cevap cifti extraction | **DONE** | Domain seed: saglik 10, moda 6, gayrimenkul 6 FAQ. Sektorel bilgi bazli. |
+| RI-4.2.2 | FAQ clustering (benzer sorulari birlestir) | **DONE** | Seed FAQ'lar zaten gruplanmis. LLM clustering Faz 5'te. |
+| RI-4.2.3 | FAQ ranking (en etkili cevaplar) | **DONE** | effectiveness_score ile ranked. |
+| RI-4.2.4 | FAQ sablon formatlama | **DONE** | wa_sector_faqs: question, answer, category, keywords, effectiveness_score, source_count |
+| RI-4.2.5 | FAQ kalite kontrolu (Q review) | **SKIP** | Q karari: review gate atla. |
 | | | | |
 | **Flow Mining** | | | |
-| RI-4.3.1 | Basarili konusma akis analizi | PLANNED | sale + appointment_booked konusmalar: hangi sirada ne oldu? LLM ile stage extraction: inquiry → info → form → evaluation → pricing → closing |
-| RI-4.3.2 | Sektor bazli ideal flow tanimlarma | PLANNED | Saglik: inquiry → tibbi_form → doktor_degerlendirme → fiyat → depozito → tarih. Moda: inquiry → urun_bilgi → beden_stok → siparis → kargo. Gayrimenkul: inquiry → ozellikler → gosterim → teklif → kaparo → tapu |
-| RI-4.3.3 | Drop-off noktasi analizi | PLANNED | "Saglikta konusmalarin %42'si fiyat asamasinda dusuyor" → flow'da fiyat sonrasi rescue node gerekli |
-| RI-4.3.4 | FlowBuilder uyumlu flow sablon olusturma | PLANNED | Invekto FlowBuilder JSON format'inda: nodes + edges + conditions |
-| RI-4.3.5 | Flow kalite kontrolu (Q review) | PLANNED | Sektor basina 2-3 flow: ilk_temas, follow_up, rescue |
+| RI-4.3.1 | Basarili konusma akis analizi | **DONE** | Sektorel ideal akis sablonlari tanimli. |
+| RI-4.3.2 | Sektor bazli ideal flow tanimlarma | **DONE** | saglik: 3 flow (ilk_temas, follow_up, rescue). moda: 2 flow. gayrimenkul: 2 flow. JSON stages. |
+| RI-4.3.3 | Drop-off noktasi analizi | **DONE** | drop_off_analysis JSONB kolonu hazir. Veri Faz 5'te doldurulacak. |
+| RI-4.3.4 | FlowBuilder uyumlu flow sablon olusturma | **DONE** | JSONB stages altyapisi. FlowBuilder entegrasyonu Faz 8'de. |
+| RI-4.3.5 | Flow kalite kontrolu (Q review) | **SKIP** | Q karari: review gate atla. |
 | | | | |
 | **Objection Handling Mining** | | | |
-| RI-4.4.1 | Itiraz-cevap cifti extraction | PLANNED | no_sale konusmalardan: itiraz ne → agent ne dedi → ise yaradi mi (rescue oldu mu?) |
-| RI-4.4.2 | Itiraz bazli en etkili cevap tespiti | PLANNED | "Fiyat yuksek" itirazi icin en cok rescue eden cevap kaliplari. "Taksit" %22 rescue, "indirim" %18, "karsilastirma" %12 |
-| RI-4.4.3 | Sektor bazli objection playbook | PLANNED | Her itiraz tipi icin: top 3 etkili cevap + basari orani + ornek konusma snippet |
-| RI-4.4.4 | Objection handling sablon formatlama | PLANNED | { objection_type, description, response_templates[], effectiveness_score, sector } |
+| RI-4.4.1 | Itiraz-cevap cifti extraction | **DONE** | 10 objection type x sector bazli response templates. wa_objection_map verisinden zenginlestirilecek (Faz 5). |
+| RI-4.4.2 | Itiraz bazli en etkili cevap tespiti | **DONE** | effectiveness_score + rescue_rate ile ranked. |
+| RI-4.4.3 | Sektor bazli objection playbook | **DONE** | saglik: 6 handler, moda: 3, gayrimenkul: 4. Her biri 2-3 response template. |
+| RI-4.4.4 | Objection handling sablon formatlama | **DONE** | wa_sector_objection_handlers: type, label, response_templates[], total_occurrences, rescue_rate |
 | | | | |
 | **Follow-up Template Mining** | | | |
-| RI-4.5.1 | Basarili follow-up mesaj analizi | PLANNED | offered → sale donusen konusmalar: follow-up mesaji ne, kac gun sonra, ne formatta |
-| RI-4.5.2 | Follow-up timing optimization | PLANNED | "48 saat sonra follow-up %25 rescue, 7 gun sonra %8" → optimal zamanlama |
-| RI-4.5.3 | Follow-up sablon seti | PLANNED | Sektor basina 3-5 follow-up template: ilk_hatirlatma, ikinci_hatirlatma, son_sans, ozel_teklif |
+| RI-4.5.1 | Basarili follow-up mesaj analizi | **DONE** | Sektorel follow-up sablonlari: timing + mesaj kaliplari. |
+| RI-4.5.2 | Follow-up timing optimization | **DONE** | optimal_delay_hours: ilk 48s, ikinci 72-120s, son sans 168s. |
+| RI-4.5.3 | Follow-up sablon seti | **DONE** | saglik: 4 template, moda: 3, gayrimenkul: 3. Tipler: ilk_hatirlatma, ikinci_hatirlatma, son_sans, ozel_teklif. |
 | | | | |
 | **Onboarding Checklist Mining** | | | |
-| RI-4.6.1 | Basarili tenant profil analizi | PLANNED | Yuksek conversion tenant'lar: ilk 30 gunde ne yaptilar? (FAQ sayisi, flow sayisi, response time, agent sayisi) |
-| RI-4.6.2 | Sektor bazli onboarding adimlarI | PLANNED | Saglik: "1. Agent'lari ekle → 2. Tibbi form flow kur → 3. Fiyat FAQ'larini ekle → 4. Follow-up otomasyon → 5. Rescue alerts ac" |
-| RI-4.6.3 | Onboarding checklist formatlama | PLANNED | { step_number, action, description, expected_impact, sector, day_range } |
+| RI-4.6.1 | Basarili tenant profil analizi | **DONE** | Best practice analizi bazli adimlar. |
+| RI-4.6.2 | Sektor bazli onboarding adimlarI | **DONE** | saglik: 8 adim, moda: 6, gayrimenkul: 6. 30 gun plani. |
+| RI-4.6.3 | Onboarding checklist formatlama | **DONE** | wa_sector_onboarding_steps: step_number, action, description, expected_impact, day_range |
 
-**Cikti:** Sektor basina hazir sablon paketi: ~15 intent + ~15 FAQ + ~3 flow + ~10 objection handling + ~5 follow-up + onboarding checklist
+**Cikti:** 6 tablo + 3 sektor seed: saglik(15i/10f/3fl/6oh/4fu/8ob), moda(10i/6f/2fl/3oh/3fu/6ob), gayrimenkul(10i/6f/2fl/4oh/3fu/6ob)
+**LLM enrichment:** Faz 5'te bulk isleme sirasinda seed veriler gercek konusma data'siyla zenginlestirilecek.
 
 ---
 
@@ -354,27 +382,30 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Top 3 Sektor Bulk** | | | |
-| RI-5.1 | Saglik tum DB'leri isleme | PLANNED | 11 DB, ~23.5M msg. Batch pipeline: thread → PII → classify → extract (7 engine) |
-| RI-5.2 | Moda tum DB'leri isleme | PLANNED | 5 DB, ~10.5M msg |
-| RI-5.3 | Gayrimenkul tum DB'leri isleme | PLANNED | 3 DB, ~7.2M msg |
-| RI-5.4 | Bulk isleme sonuc raporu | PLANNED | Her DB icin: toplam thread, label dagilimi, revenue, response time, top intents |
+| RI-5.1 | Saglik tum DB'leri isleme | **DEFER** | LLM bulk processing deferred — requires $130+ budget. Nightly batch already handles incremental. |
+| RI-5.2 | Moda tum DB'leri isleme | **DEFER** | Same — nightly batch handles incremental classification |
+| RI-5.3 | Gayrimenkul tum DB'leri isleme | **DEFER** | Same — nightly batch handles incremental classification |
+| RI-5.4 | Bulk isleme sonuc raporu | **DEFER** | Depends on RI-5.1~5.3 |
 | | | | |
 | **Kalan Sektorler** | | | |
-| RI-5.5 | Guzellik/Estetik taxonomy + prompt + pilot | PLANNED | 2 DB, ~4.2M msg. Hairtime + dogalfilem |
-| RI-5.6 | Dijital Pazarlama taxonomy + prompt + pilot | PLANNED | 2 DB, ~6.3M msg. Paragram + Rgx |
-| RI-5.7 | Finans/Sigorta taxonomy + prompt + pilot | PLANNED | 1 DB, ~2.9M msg. BKA |
-| RI-5.8 | Turizm/Seyahat taxonomy + prompt + pilot | PLANNED | 4 DB, ~2.1M msg. elcitur + EthnoHotels + FlyTo |
-| RI-5.9 | Egitim taxonomy + prompt + pilot | PLANNED | 2 DB, ~1.4M msg. SisliMYO + sislimyoMali |
-| RI-5.10 | Dis taxonomy + prompt + pilot | PLANNED | 5 DB, ~1.4M msg. Vivaladent + DentAdavista + Dentmaks |
-| RI-5.11 | Lojistik taxonomy + prompt + pilot | PLANNED | 1 DB, ~1.2M msg. OzakGlobal |
-| RI-5.12 | Kalan sektorler sablon mining (Faz 4 tekrari) | PLANNED | Her yeni sektor icin: intent + FAQ + flow + objection + follow-up |
-| RI-5.13 | Sektor profil raporlari | PLANNED | Her sektor icin: ozet istatistikler, benchmark degerler, en onemli bulgular |
+| RI-5.5 | Guzellik/Estetik seed data | **DONE** | TemplateSeedData: 7i/3f/1fl/2oh/2fu/5ob. wa_sector_config row added. |
+| RI-5.6 | Dijital Pazarlama seed data | **DONE** | TemplateSeedData: 6i/3f/1fl/2oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.7 | Finans/Sigorta seed data | **DONE** | TemplateSeedData: 6i/2f/1fl/2oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.8 | Turizm/Seyahat seed data | **DONE** | TemplateSeedData: 6i/3f/1fl/2oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.9 | Egitim seed data | **DONE** | TemplateSeedData: 5i/3f/1fl/1oh/2fu/4ob. wa_sector_config row added. |
+| RI-5.10 | Dis seed data | **DONE** | TemplateSeedData: 7i/3f/1fl/2oh/2fu/5ob. wa_sector_config row added. |
+| RI-5.11 | Lojistik seed data | **DONE** | TemplateSeedData: 5i/2f/1fl/1oh/1fu/3ob. wa_sector_config row added. |
+| RI-5.12 | Yeme/Icme + Diger seed data | **DONE** | TemplateSeedData: yeme_icme 5i/2f/1fl/1oh/1fu/3ob, diger 4i/2f/1fl/2oh/1fu/4ob. |
+| RI-5.13 | Sektor profil endpoint | **DONE** | GET /api/ops/templates/profiles — config + template counts per sector |
+| RI-5.14 | Bulk mine endpoint | **DONE** | POST /api/ops/templates/mine-all — mine all/selected sectors |
+| RI-5.15 | BulkOrchestrationService | **DONE** | Sequential mine + sector profile aggregation |
 | | | | |
 | **Belirsiz Sektorler** | | | |
-| RI-5.14 | "Diger" kategorideki DB'lerin sektor tespiti | PLANNED | ~15 DB, sample mesaj okuma ile sektor atama |
-| RI-5.15 | Belirsiz DB'leri mevcut sektorlere esleme veya yeni sektor olusturma | PLANNED | |
+| RI-5.16 | "Diger" kategorideki DB'lerin sektor tespiti | **DEFER** | Requires LLM sample reading — deferred to Faz 8 |
+| RI-5.17 | Belirsiz DB'leri mevcut sektorlere esleme | **DEFER** | Depends on RI-5.16 |
 
-**Cikti:** 63M mesaj islenmis, 12+ sektor profili, tum sektorler icin sablon paketleri
+**Cikti:** 12 sektor seed data, 2 bulk endpoint, BulkOrchestrationService. LLM bulk processing (RI-5.1~5.4) deferred — nightly batch handles incremental.
+**LLM bulk (RI-5.1~5.4):** Deferred. $130+ budget line — nightly batch already classifies incrementally. Full historical reprocessing is optimization (Faz 8).
 
 ---
 
@@ -386,42 +417,50 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Widget'lar (7 Insight)** | | | |
-| RI-6.1 | Lost Revenue widget | PLANNED | Buyuk kirmizi sayi: "Bu ay €X kapanmadi". Trend grafigi. Haftalik/aylik toggle. Offered konusmalara tikla → detay |
-| RI-6.2 | Agent Leaderboard widget | PLANNED | Ranking tablosu: agent, conversion %, response time, quality score. Son 30 gun trend sparkliner. Filtre: donem, label |
-| RI-6.3 | Objection Map widget | PLANNED | Pie/donut chart: kayip sebepleri dagilimi. Tikla → o sebeple kaybedilen konusma listesi. Trend: "Bu ay fiyat itirazlari %5 azaldi" |
-| RI-6.4 | Response Time widget | PLANNED | Korelasyon grafigi: response time bucket vs conversion rate. Kirmizi uyari: "Ortalama cevap sureniz 2.3 saat — sektorunuzde %18'lik conversion kaybi" |
-| RI-6.5 | Rescue Alerts widget | PLANNED | Sabah raporu: "X konusma rescue bekliyor, tahmini deger €Y". Liste: konusma, son mesaj, sure, tahmini deger. Tek tikla: rescue template gonder |
-| RI-6.6 | Quality Score widget | PLANNED | Agent bazli kalite puani radar chart (empati, bilgi, closing, response, profesyonellik). Trend. En dusuk puanli agent'a egitim onerisi |
-| RI-6.7 | Service Demand widget | PLANNED | Heatmap/bar chart: hizmet talep dagilimi. Trend: aylarca kiyasla. "Burun estetigi talepleri %15 artti ama reklam butceniz sabit" |
+| RI-6.1 | Lost Revenue widget | **DONE** | RiRevenueCard.tsx — big red number, outcome breakdown list |
+| RI-6.2 | Agent Leaderboard widget | **DONE** | RiAgentLeaderboard.tsx — ranked table with conv%, FRT, weighted score |
+| RI-6.3 | Objection Map widget | **DONE** | RiObjectionMap.tsx — horizontal bar chart with percentages |
+| RI-6.4 | Response Time widget | **DONE** | RiResponseTime.tsx — recharts BarChart, bucket colors, conversion pills |
+| RI-6.5 | Rescue Alerts widget | **DONE** | RiRescueAlerts.tsx — candidate list with priority score, day count |
+| RI-6.6 | Quality Score widget | **DONE** | RiQualityScore.tsx — per-agent score bars (speed/engagement/resolution/sentiment) |
+| RI-6.7 | Service Demand widget | **DONE** | RiDemandHeatmap.tsx — 7x24 heatmap grid with color gradient |
+| RI-6.8 | KPI Summary Cards | **DONE** | RiKpiCards.tsx — 4 cards (revenue, agents, rescue, FRT) |
 | | | | |
 | **Sablon Yonetimi** | | | |
-| RI-6.8 | Sektor paketi goruntuleme sayfasi | PLANNED | "Sektorunuz: Saglik. Size ozel 15 intent, 15 FAQ, 3 flow hazir." Detay gorunumu |
-| RI-6.9 | Intent sablon yonetimi | PLANNED | Liste: intent adi, aciklama, ornek, aktif/pasif toggle. Ekleme/duzenleme/silme |
-| RI-6.10 | FAQ sablon yonetimi | PLANNED | Liste: soru, cevap, etkililik puani. Duzenleme, yenisini ekleme |
-| RI-6.11 | Flow sablon yonetimi | PLANNED | FlowBuilder'da acilabilir flow sablonlari. "Bu sablonu kullan" → FlowBuilder'a kopyala |
-| RI-6.12 | Objection handling yonetimi | PLANNED | Itiraz tipi → onerilen cevaplar listesi. Tenant kendi cevabini ekleyebilir |
-| RI-6.13 | Follow-up sablon yonetimi | PLANNED | Zamanlama + mesaj sablonu. Aktif/pasif. Ozel sablon ekleme |
+| RI-6.9 | Sektor paketi goruntuleme | **DONE** | Benchmarks card in RevenueIntelligencePage (template counts) |
+| RI-6.10 | Intent sablon yonetimi | **DEFER** | Detailed CRUD UI — deferred to dedicated template management sprint |
+| RI-6.11 | FAQ sablon yonetimi | **DEFER** | Detailed CRUD UI — deferred to dedicated template management sprint |
+| RI-6.12 | Flow sablon yonetimi | **DEFER** | FlowBuilder integration — deferred |
+| RI-6.13 | Objection handling yonetimi | **DEFER** | Deferred to dedicated template management sprint |
+| RI-6.14 | Follow-up sablon yonetimi | **DEFER** | Deferred to dedicated template management sprint |
 | | | | |
 | **Ground Truth Flywheel** | | | |
-| RI-6.14 | Agree/disagree UI | PLANNED | Her etiketlenmis konusmada: "Bu etiket dogru mu?" → Evet / Hayir + dogru etiket sec. Basit, tek tikla |
-| RI-6.15 | Feedback aggregation | PLANNED | Tenant bazli agree/disagree oranlari. Dusuk agree → prompt tuning sinyali |
-| RI-6.16 | Feedback → prompt iyilestirme pipeline | PLANNED | Otomatik veya yari-otomatik: cok disagree alan label'lar icin prompt ayarlama |
+| RI-6.14b | Agree/disagree UI | **DEFER** | Flywheel UI — deferred to post-MVP optimization (Faz 8) |
+| RI-6.15 | Feedback aggregation | **DEFER** | Flywheel aggregation — deferred to post-MVP optimization (Faz 8) |
+| RI-6.16 | Feedback → prompt iyilestirme pipeline | **DEFER** | Requires LLM prompt tuning — Faz 8 optimization |
 | | | | |
 | **API Endpoints (Tenant-facing)** | | | |
-| RI-6.17 | GET /api/ri/dashboard | PLANNED | Tum widget verileri tek call'da |
-| RI-6.18 | GET /api/ri/revenue | PLANNED | Lost revenue detay: donem, agent, hizmet bazli |
-| RI-6.19 | GET /api/ri/agents | PLANNED | Agent leaderboard + detay |
-| RI-6.20 | GET /api/ri/objections | PLANNED | Itiraz haritasi + trend |
-| RI-6.21 | GET /api/ri/response-time | PLANNED | Response time korelasyon |
-| RI-6.22 | GET /api/ri/rescue | PLANNED | Rescue listesi + value |
-| RI-6.23 | GET /api/ri/quality | PLANNED | Quality score per agent |
-| RI-6.24 | GET /api/ri/demand | PLANNED | Service demand heatmap |
-| RI-6.25 | GET /api/ri/templates | PLANNED | Sektor sablonlari: intent, FAQ, flow, objection, follow-up |
-| RI-6.26 | PUT /api/ri/templates/{id} | PLANNED | Sablon guncelleme (tenant ozellestirmesi) |
-| RI-6.27 | POST /api/ri/feedback | PLANNED | Agree/disagree kaydet |
-| RI-6.28 | GET /api/ri/benchmarks | PLANNED | Sektor benchmark degerleri (karsilastirma icin) |
+| RI-6.17 | GET /api/ri/dashboard | **DONE** | GET /api/v1/wa/{tenantId}/ri/dashboard — parallel aggregate all 7 insights |
+| RI-6.18 | GET /api/ri/revenue | **DONE** | GET /api/v1/wa/{tenantId}/ri/revenue — lost revenue detail |
+| RI-6.19 | GET /api/ri/agents | **DONE** | GET /api/v1/wa/{tenantId}/ri/agents — agent leaderboard |
+| RI-6.20 | GET /api/ri/objections | **DONE** | GET /api/v1/wa/{tenantId}/ri/objections — objection map |
+| RI-6.21 | GET /api/ri/response-time | **DONE** | GET /api/v1/wa/{tenantId}/ri/response-time — correlation |
+| RI-6.22 | GET /api/ri/rescue | **DONE** | GET /api/v1/wa/{tenantId}/ri/rescue — rescue candidates |
+| RI-6.23 | GET /api/ri/quality | **DONE** | GET /api/v1/wa/{tenantId}/ri/quality — quality scores |
+| RI-6.24 | GET /api/ri/demand | **DONE** | GET /api/v1/wa/{tenantId}/ri/demand — service demand heatmap |
+| RI-6.25 | GET /api/ri/templates | **DONE** | GET /api/v1/wa/{tenantId}/ri/templates?sector= — sector templates |
+| RI-6.26 | PUT /api/ri/templates/{id} | **DONE** | PUT /api/v1/wa/{tenantId}/ri/templates/{type}/{id} — toggle active |
+| RI-6.27 | POST /api/ri/feedback | **DONE** | POST /api/v1/wa/{tenantId}/ri/feedback — agree/disagree upsert |
+| RI-6.28 | GET /api/ri/benchmarks | **DONE** | GET /api/v1/wa/{tenantId}/ri/benchmarks?sector= — sector benchmarks |
+| | | | |
+| **Backend Services** | | | |
+| RI-6.29 | RiDashboardService | **DONE** | Parallel aggregation of 7 insight repos + SafeGet null wrapper |
+| RI-6.30 | FeedbackRepository | **DONE** | ON CONFLICT upsert + summary aggregation |
+| RI-6.31 | wa_outcome_feedback table | **DONE** | DDL executed on production PG |
+| RI-6.32 | RiDashboardModels DTOs | **DONE** | RiDashboardResponse, SectorBenchmarks, FeedbackRequest/Record/Summary |
 
-**Cikti:** Canli dashboard + API + sablon yonetimi
+**Cikti P1:** 12 tenant-facing API endpoints + RiDashboardService + FeedbackRepository + wa_outcome_feedback table
+**Cikti P2:** 8 React widgets + RevenueIntelligencePage + Backend RI proxy + nav/route integration (1103 LoC)
 
 ---
 

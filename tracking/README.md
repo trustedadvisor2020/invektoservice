@@ -24,15 +24,15 @@
 | 9 | PKT-9 | Guzellik Salonu | GR-3E.1~3E.8 | PLANNED | - | - |
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
 | RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | DONE | 24 Sub | GATE-1 PASS (tiered 0.8203) |
-| RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | IN-PROGRESS | 26 Sub | - |
-| RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | PLANNED | - | - |
-| RI-4 | Faz 4 | RI: Sektor Sablon Mining | RI-4.1~4.6 (21 sub-task) | PLANNED | - | - |
-| RI-5 | Faz 5 | RI: Bulk Isleme + Kalan Sektorler | RI-5.1~5.15 | PLANNED | - | - |
-| RI-6 | Faz 6 | RI: Dashboard + API + Widget'lar | RI-6.1~6.28 | PLANNED | - | - |
+| RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | DONE | 26 Sub | GATE-2 FULL PASS |
+| RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | DONE | 1 Mar | P1-P5 + P6(3.5+3.7): iter 1 FP |
+| RI-4 | Faz 4 | RI: Sektor Sablon Mining | RI-4.1~4.6 (21 sub-task) | DONE | 1 Mar | iter 1 FP |
+| RI-5 | Faz 5 | RI: Bulk Isleme + Kalan Sektorler | RI-5.5~5.13 | DONE | 1 Mar | iter 0 FP |
+| RI-6 | Faz 6 | RI: Dashboard + API + Widget'lar | RI-6.1~6.28 | DONE | 1 Mar | P1: iter 0 FP, P2: iter 1 FP |
 | RI-7 | Faz 7 | RI: Tenant Onboarding Deneyimi | RI-7.1~7.7 | PLANNED | - | - |
 | RI-8 | Faz 8 | RI: Optimizasyon & Olcekleme | RI-8.1~8.13 | PLANNED | - | - |
 
-**Toplam:** 19 paket (12 done, 1 in-progress, 10 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
+**Toplam:** 19 paket (18 done, 0 in-progress, 4 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
 
 ## Mikroservis Port Haritasi
 

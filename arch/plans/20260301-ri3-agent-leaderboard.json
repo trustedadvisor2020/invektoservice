@@ -1,0 +1,180 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-RI3A-2",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "Agent leaderboard models + InsightRepository agent methods (upsert + read + delete)",
+      "services_affected": ["Invekto.WhatsAppAnalytics"]
+    },
+    {
+      "id": "GR-2",
+      "description": "InsightAgentLeaderboardService + POST/GET endpoints + DI registration",
+      "services_affected": ["Invekto.WhatsAppAnalytics"]
+    }
+  ],
+  "slug": "20260301-ri3-agent-leaderboard",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-03-01T23:30:00Z",
+  "updated_at": "2026-03-02T00:30:00Z",
+  "plan": {
+    "summary": "RI-3.3 Agent Leaderboard engine: compute per-agent metrics (total_conversations, sale_count, offered_count, conversion_rate, avg_response_time_ms, ghost_rate, weighted_score) by joining MSSQL Chats.OwnerUserID+Users with PG wa_conversation_outcomes+wa_response_times, and expose via POST compute + GET read endpoints.",
+    "q_intent": "RI Faz 3 Paket 2: Agent Leaderboard. POST+GET pattern, wa_agent_metrics tablosu mevcut. Agent sahibi = Chats.OwnerUserID (MSSQL direkt).",
+    "interview_notes": "Agent mapping: Chats.OwnerUserID (not first-responder). IsBotUser=0 filter. ghost_rate = outcome-based (no_response/total). weighted_score = conversion(50%)+response_time(30%)+ghost_rate_inverse(20%), quality deferred to RI-3.7. MSSQL direkt (not INMA API). AC4: weighted_score ordering verified.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/ops/insights/compute/agent-leaderboard returns 200, computes agent metrics from MSSQL Chats.OwnerUserID+Users, writes results to wa_agent_metrics in PostgreSQL",
+        "verified": true,
+        "verification_note": "EbruModa tenant_id=5051: 1191 outcomes → 15 agents, 3021ms. HTTP 200."
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /api/ops/insights/agent-leaderboard/{tenantId} returns JSON with agent list ordered by weighted_score DESC, including conversion_rate, avg_response_time_ms, ghost_rate",
+        "verified": true,
+        "verification_note": "GET returns 15 agents with all fields, ordered by weighted_score DESC (100→27.7)."
+      },
+      {
+        "id": "AC3",
+        "criterion": "EbruModa (tenant_id=5051, database=WaClientEbruModa) successful compute cycle produces at least 2 agent metrics",
+        "verified": true,
+        "verification_note": "15 agent metrics produced. 3 MSSQL instances (5521, 6473, 5538). Turkish chars correct (zübeyde, Aşlar, Tuğçe)."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Agents are correctly ordered by weighted_score (highest conversion agent has highest or near-highest score)",
+        "verified": true,
+        "verification_note": "100% conversion agents = score 100 (top). Aşlar 66.7% conv = 82.8. Admin 41% conv + slow RT = 40.1. Tuğçe 16.7% + slowest = 27.7 (bottom). Ordering correct."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/plans/20260301-ri3-agent-leaderboard.json",
+    "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightAgentLeaderboardService.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/plans/20260301-ri3-agent-leaderboard.json", "is_new": true },
+    { "path": "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs", "is_new": false, "change": "Add agent leaderboard DTOs and record models" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs", "is_new": false, "change": "Add UpsertAgentMetricsAsync, GetAgentLeaderboardAsync, DeleteAgentMetricsAsync" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightAgentLeaderboardService.cs", "is_new": true, "change": "Agent leaderboard compute engine" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false, "change": "DI registration + 2 endpoints" }
+  ],
+  "git_diff": {
+    "full_path": "arch/plans/diffs/20260301-ri3-agent-leaderboard.diff",
+    "stats": { "insertions": 314, "deletions": 0, "files_count": 5 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-02T00:00:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the MSSQL query correctly use Chats.OwnerUserID joined with Users to identify chat owners, filtering IsBotUser=0?",
+      "category": "Data",
+      "codex_answer": "SQL selects C.OwnerUserID and joins Users U on U.ID = C.OwnerUserID with filter U.IsBotUser = 0",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the ops-level X-Ops-Key authentication applied to both POST compute and GET leaderboard endpoints?",
+      "category": "Auth",
+      "codex_answer": "Both endpoints call ValidateOpsKey(ctx) and return 401 on failure",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the weighted_score formula correctly use conversion(50%)+response_time_score(30%)+ghost_rate_inverse(20%) with normalized inputs?",
+      "category": "Process/Policy",
+      "codex_answer": "Weights 0.50/0.30/0.20 defined as constants. CalculateWeightedScore normalizes all inputs to 0-100 scale",
+      "codex_result": "PASS"
+    },
+    {
+      "id": "Q4",
+      "question": "Are agent metrics upserted (not duplicated) on repeated compute calls, using ON CONFLICT (tenant_id, instance_id, agent_id)?",
+      "category": "Data",
+      "codex_answer": "INSERT ... ON CONFLICT (tenant_id, instance_id, agent_id) DO UPDATE with all metric fields",
+      "codex_result": "PASS"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.WhatsAppAnalytics/Data/ConversationOutcomeRepository.cs",
+      "src/Invekto.WhatsAppAnalytics/Services/BatchClassificationService.cs",
+      "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchJob.cs",
+      "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightResponseTimeService.cs"
+    ],
+    "non_goals": [
+      "Quality score integration (RI-3.7)",
+      "Dashboard UI (Faz 6)",
+      "NightlyBatch integration",
+      "Rescue Alerts (Paket 3)"
+    ],
+    "intentional_exclusions": [
+      "Quality component in weighted_score (deferred to RI-3.7)",
+      "Sector-specific agent benchmarks (deferred to Faz 3 completion)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "InsightAgentLeaderboardService.cs: ComputeAsync — MSSQL connection + query",
+      "InsightRepository.cs: UpsertAgentMetricsAsync — PG batch upsert",
+      "Program.cs: POST endpoint — top-level error handler"
+    ],
+    "user_facing_errors": [
+      "INV-WA-020: Insight compute failed — MSSQL connection error",
+      "INV-WA-021: No classified outcomes for tenant",
+      "INV-WA-022: Agent leaderboard data not found for tenant",
+      "INV-WA-023: Agent leaderboard compute failed"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All errors logged via JsonLinesLogger. MSSQL failures throw SqlException caught at batch level. PG failures throw at upsert level. Both caught at endpoint with ErrorResponse."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Tenant hangi agent'in iyi sattigini bilmiyor, sadece hissiyata dayanarak degerlendiriyor",
+      "suggestion": "Agent leaderboard'da conversion_rate + weighted_score ile objektif siralama goster",
+      "aha_moment": "Tenant ilk kez 'Mehmet %28 conversion, Ahmet %8 — Mehmet'in yontemlerini ogrenelim' diyor"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Agent performansi icin birden fazla raporu birlesik okumak gerekiyor",
+      "suggestion": "Tek endpoint'te tum metrikler: conversion, response time, ghost rate, weighted score",
+      "aha_moment": "Bir bakista hangi agent'in nerede iyi/kotu oldugu goruluyor — ayri ayri tablolara bakma yok"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Ops ekibi hangi agent'larin egitim gerektirdigini tespit edemiyor",
+      "suggestion": "Ghost rate + dusuk conversion flag'i ile 'dikkat gerektiren agent' tespiti",
+      "aha_moment": "Ops 'Bu agent %45 ghost rate ile konusmalari kaybediyor' goruyorsa proaktif aksiyon alabilir"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Agent bazli response time analizi icin MSSQL sorgulari dakikalar surebilir",
+      "suggestion": "wa_response_times tablosundan zaten hesaplanmis response time'lari kullan, MSSQL'den sadece agent mapping cek",
+      "aha_moment": "Compute saniyeler icinde donuyor — RI-3.1'in onceden hesapladigi response time'lar reuse ediliyor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bazi konusmalarda OwnerUserID NULL olabilir (atanmamis chat'ler)",
+      "suggestion": "OwnerUserID IS NOT NULL filtresi + unassigned konusma sayisini loglama",
+      "aha_moment": "Rapor sadece atanmis konusmalari gosteriyor, atanmamis olanlar ayrica loglanarak ops'a gorulur hale geliyor"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 0,
+    "override": true,
+    "override_reason": "3 false positives: (1) CQ5-MSSQL: MSSQL read is intentional cross-DB pattern used by 5 existing files, Q explicitly chose MSSQL direkt. (2) CQ5-catch(Exception): 12 existing catch(Exception) in Program.cs, standard top-level endpoint pattern. (3) CQ1-generic errors: Same ErrorResponse.Create+error codes+ex.Message pattern as RI-3.1. CoVe Q1-Q4 all PASS.",
+    "codex_model": "gpt-5.2-codex",
+    "codex_cove_verdict": "PASS",
+    "codex_cq_verdict": "FAIL (3 false positives overridden)"
+  }
+}

@@ -105,6 +105,13 @@ public sealed class WhatsAppAnalyticsClient
         return await ProxyRequestAsync(HttpMethod.Post, path, requestBody, authHeader, requestId, ct);
     }
 
+    public async Task<(int StatusCode, string? Body)> ProxyPutAsync(
+        string path, string requestBody, string? authHeader, string? requestId,
+        CancellationToken ct = default)
+    {
+        return await ProxyRequestAsync(HttpMethod.Put, path, requestBody, authHeader, requestId, ct);
+    }
+
     public async Task<(int StatusCode, string? Body)> ProxyDeleteAsync(
         string path, string? authHeader, string? requestId,
         CancellationToken ct = default)

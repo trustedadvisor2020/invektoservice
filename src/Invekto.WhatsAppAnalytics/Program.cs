@@ -245,6 +245,23 @@ if (mssqlConfigured)
     // Insight engines (RI Faz 3)
     builder.Services.AddSingleton<InsightRepository>();
     builder.Services.AddSingleton<InsightResponseTimeService>();
+    builder.Services.AddSingleton<InsightAgentLeaderboardService>();
+    builder.Services.AddSingleton<InsightRescueService>();
+    builder.Services.AddSingleton<InsightDemandHeatmapService>();
+    builder.Services.AddSingleton<InsightRevenueService>();
+    builder.Services.AddSingleton<InsightObjectionMapService>();
+    builder.Services.AddSingleton<InsightQualityService>();
+
+    // Template mining (RI Faz 4)
+    builder.Services.AddSingleton<TemplateRepository>();
+    builder.Services.AddSingleton<TemplateMiningService>();
+
+    // Bulk orchestration (RI Faz 5)
+    builder.Services.AddSingleton<BulkOrchestrationService>();
+
+    // RI Dashboard + Feedback (RI Faz 6)
+    builder.Services.AddSingleton<RiDashboardService>();
+    builder.Services.AddSingleton<FeedbackRepository>();
 }
 
 var app = builder.Build();
@@ -1072,6 +1089,886 @@ app.MapGet("/api/ops/insights/response-time/{tenantId:int}", async (
     }
 });
 
+// POST /api/ops/insights/compute/agent-leaderboard — Compute agent leaderboard metrics
+app.MapPost("/api/ops/insights/compute/agent-leaderboard", async (
+    HttpContext ctx,
+    InsightAgentLeaderboardService alService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0 || string.IsNullOrEmpty(request.Database))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId and database are required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await alService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Agent leaderboard compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/agent-leaderboard/{tenantId} — Get agent leaderboard data
+app.MapGet("/api/ops/insights/agent-leaderboard/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId);
+        if (insight.TotalAgents == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No agent leaderboard data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read agent leaderboard data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/ops/insights/compute/rescue — Compute follow-up rescue candidates
+app.MapPost("/api/ops/insights/compute/rescue", async (
+    HttpContext ctx,
+    InsightRescueService rescueService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0 || string.IsNullOrEmpty(request.Database))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId and database are required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await rescueService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Rescue compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/rescue/{tenantId} — Get rescue candidates
+app.MapGet("/api/ops/insights/rescue/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetRescueCandidatesAsync(tenantId, instanceId);
+        if (insight.TotalCandidates == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No rescue candidates found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read rescue candidate data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/ops/insights/compute/demand-heatmap — Compute demand heatmap
+app.MapPost("/api/ops/insights/compute/demand-heatmap", async (
+    HttpContext ctx,
+    InsightDemandHeatmapService dhService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0 || string.IsNullOrEmpty(request.Database))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId and database are required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await dhService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("No classified outcomes"))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Demand heatmap compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/demand-heatmap/{tenantId} — Get demand heatmap data
+app.MapGet("/api/ops/insights/demand-heatmap/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetDemandHeatmapAsync(tenantId, instanceId);
+        if (insight.TotalConversations == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No demand heatmap data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read demand heatmap data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/ops/insights/compute/revenue-attribution — Compute revenue attribution (RI-3.4)
+app.MapPost("/api/ops/insights/compute/revenue-attribution", async (
+    HttpContext ctx,
+    InsightRevenueService revService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await revService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("No classified outcomes"))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Revenue attribution compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/revenue-attribution/{tenantId} — Get revenue attribution data (RI-3.4)
+app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    string? dimension = null;
+    if (ctx.Request.Query.TryGetValue("dimension", out var dimStr) && !string.IsNullOrEmpty(dimStr))
+        dimension = dimStr.ToString();
+
+    try
+    {
+        var insight = await insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, dimension);
+        if (insight.Entries.Count == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No revenue attribution data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read revenue attribution data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/ops/insights/compute/objection-map — Compute objection map (RI-3.5)
+app.MapPost("/api/ops/insights/compute/objection-map", async (
+    HttpContext ctx,
+    InsightObjectionMapService objService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await objService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Objection map compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Objection map compute failed — check PG offer_lost outcomes exist", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/objection-map/{tenantId} — Get objection map data (RI-3.5)
+app.MapGet("/api/ops/insights/objection-map/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetObjectionMapAsync(tenantId, instanceId);
+        if (insight.TotalObjections == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No objection map data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read objection map — wa_objection_map query error", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/ops/insights/compute/quality-score — Compute conversation quality scores (RI-3.7)
+app.MapPost("/api/ops/insights/compute/quality-score", async (
+    HttpContext ctx,
+    InsightQualityService qsService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId is required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await qsService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("No classified outcomes"))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Quality score compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Quality score compute failed — check PG outcomes + response times exist", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/quality-score/{tenantId} — Get quality score data (RI-3.7)
+app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var groupByAgent = ctx.Request.Query.ContainsKey("groupByAgent");
+
+    try
+    {
+        var insight = await insightRepo.GetQualityInsightAsync(tenantId, instanceId, groupByAgent);
+        if (insight.TotalScored == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No quality score data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read quality scores — wa_quality_scores query error", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Template Mining endpoints (RI Faz 4)
+// ============================================================
+
+// POST /api/ops/templates/mine — Mine templates for a sector (RI-4.1 through 4.6)
+app.MapPost("/api/ops/templates/mine", async (
+    HttpContext ctx,
+    TemplateMiningService miningService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    TemplateMineRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<TemplateMineRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || string.IsNullOrWhiteSpace(request.Sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "sector is required", requestId), statusCode: 400);
+
+    if (!TemplateMiningService.IsSupportedSector(request.Sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            $"Sector '{request.Sector}' not supported. Use one of: {string.Join(", ", TemplateMiningService.GetSupportedSectorList())}", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await miningService.MineAsync(request.Sector);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[TemplateMining] Mine failed for sector '{request.Sector}': {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            $"Template mining failed for sector '{request.Sector}' — check PG template tables exist", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/templates/{sector} — Get all templates for a sector
+app.MapGet("/api/ops/templates/{sector}", async (
+    string sector,
+    HttpContext ctx,
+    TemplateRepository templateRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    try
+    {
+        var templates = await templateRepo.GetAllTemplatesBySectorAsync(sector);
+        var total = templates.Intents.Count + templates.Faqs.Count + templates.Flows.Count
+                  + templates.ObjectionHandlers.Count + templates.FollowupTemplates.Count
+                  + templates.OnboardingSteps.Count;
+
+        if (total == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                $"No templates found for sector '{sector}'. Run mine first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, templates });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[TemplateMining] Get templates failed for sector '{sector}': {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            $"Failed to read templates for sector '{sector}' — check PG connection", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Bulk Orchestration endpoints (RI Faz 5)
+// ============================================================
+
+// POST /api/ops/templates/mine-all — Mine templates for all (or selected) sectors
+app.MapPost("/api/ops/templates/mine-all", async (
+    HttpContext ctx,
+    BulkOrchestrationService bulkService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    BulkMineRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<BulkMineRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    try
+    {
+        var result = await bulkService.MineAllSectorsAsync(request?.Sectors);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[BulkMine] Bulk mine failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Bulk template mining failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/templates/profiles — Get sector profiles (config + template counts)
+app.MapGet("/api/ops/templates/profiles", async (
+    HttpContext ctx,
+    BulkOrchestrationService bulkService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    try
+    {
+        var profiles = await bulkService.GetSectorProfilesAsync();
+        return Results.Ok(new { requestId, totalSectors = profiles.Count, profiles });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[BulkMine] Sector profiles failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to load sector profiles", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Revenue Intelligence tenant-facing endpoints (RI Faz 6)
+// JWT-protected: /api/v1/wa/{tenantId}/ri/*
+// ============================================================
+
+// GET /api/v1/wa/{tenantId}/ri/dashboard — All widget data in one call (RI-6.17)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/dashboard", async (
+    int tenantId,
+    HttpContext ctx,
+    RiDashboardService dashboardService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var dashboard = await dashboardService.GetDashboardAsync(tenantId, sector, instanceId);
+        return Results.Ok(new { requestId, dashboard });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Dashboard failed for tenant {tenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Dashboard aggregation failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/v1/wa/{tenantId}/ri/revenue — Lost revenue detail (RI-6.18)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/revenue", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+    var dimension = ctx.Request.Query["dimension"].FirstOrDefault();
+
+    try
+    {
+        var data = await insightRepo.GetRevenueAttributionAsync(tenantId, instanceId, dimension);
+        return Results.Ok(new { requestId, data });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Revenue failed for tenant {tenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No revenue data found. Run insight compute first.", requestId), statusCode: 404);
+    }
+});
+
+// GET /api/v1/wa/{tenantId}/ri/agents — Agent leaderboard (RI-6.19)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/agents", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetAgentLeaderboardAsync(tenantId, instanceId);
+    if (data.TotalAgents == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No agent data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/objections — Objection map (RI-6.20)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/objections", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetObjectionMapAsync(tenantId, instanceId);
+    if (data.TotalObjections == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No objection data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/response-time — Response time correlation (RI-6.21)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/response-time", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId);
+    if (data.TotalConversations == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No response time data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/rescue — Rescue candidates (RI-6.22)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/rescue", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetRescueCandidatesAsync(tenantId, instanceId);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/quality — Quality scores (RI-6.23)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/quality", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetQualityInsightAsync(tenantId, instanceId);
+    if (data.TotalScored == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No quality data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/demand — Service demand heatmap (RI-6.24)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/demand", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    var data = await insightRepo.GetDemandHeatmapAsync(tenantId, instanceId);
+    if (data.TotalConversations == 0)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            "No demand data found. Run insight compute first.", requestId), statusCode: 404);
+    return Results.Ok(new { requestId, data });
+});
+
+// GET /api/v1/wa/{tenantId}/ri/templates — Sector templates (RI-6.25)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/templates", async (
+    int tenantId,
+    HttpContext ctx,
+    TemplateRepository templateRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "sector query parameter required", requestId), statusCode: 400);
+
+    var data = await templateRepo.GetAllTemplatesBySectorAsync(sector);
+    return Results.Ok(new { requestId, data });
+});
+
+// PUT /api/v1/wa/{tenantId}/ri/templates/{type}/{id} — Toggle template active (RI-6.26)
+app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
+    int tenantId,
+    string type,
+    long id,
+    HttpContext ctx,
+    TemplateRepository templateRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    bool? isActive;
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<Dictionary<string, object>>();
+        if (body != null && body.TryGetValue("isActive", out var val))
+            isActive = Convert.ToBoolean(val);
+        else
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+                "isActive field required", requestId), statusCode: 400);
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Invalid request body", requestId), statusCode: 400);
+    }
+
+    try
+    {
+        await templateRepo.ToggleTemplateActiveAsync(type, id, isActive.Value);
+        jsonLogger.StepInfo($"[RiDashboard] Template {type}/{id} active={isActive} by tenant {tenantId}", requestId);
+        return Results.Ok(new { requestId, type, id, isActive });
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            ex.Message, requestId), statusCode: 400);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Template toggle failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Template update failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// POST /api/v1/wa/{tenantId}/ri/feedback — Submit agree/disagree (RI-6.27)
+app.MapPost("/api/v1/wa/{tenantId:int}/ri/feedback", async (
+    int tenantId,
+    HttpContext ctx,
+    FeedbackRepository feedbackRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    FeedbackRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<FeedbackRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || string.IsNullOrWhiteSpace(request.ConversationId) || string.IsNullOrWhiteSpace(request.OriginalLabel))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "conversationId and originalLabel are required", requestId), statusCode: 400);
+
+    try
+    {
+        await feedbackRepo.UpsertFeedbackAsync(tenantId, tenant.UserId, request);
+        jsonLogger.StepInfo($"[RiDashboard] Feedback: tenant={tenantId} conv={request.ConversationId} agree={request.IsAgree}", requestId);
+        return Results.Ok(new { requestId, saved = true });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiDashboard] Feedback save failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Feedback save failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/v1/wa/{tenantId}/ri/benchmarks — Sector benchmarks (RI-6.28)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/benchmarks", async (
+    int tenantId,
+    HttpContext ctx,
+    RiDashboardService dashboardService) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "sector query parameter required", requestId), statusCode: 400);
+
+    var benchmarks = await dashboardService.GetBenchmarksAsync(sector);
+    return Results.Ok(new { requestId, benchmarks });
+});
+
 // ============================================================
 // Endpoint discovery
 // ============================================================
@@ -1105,6 +2002,34 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/sectors", Description = "List sector configs", Auth = "X-Ops-Key", Category = "Batch" },
         new() { Method = "POST", Path = "/api/ops/insights/compute/response-time", Description = "Compute response time correlation", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/insights/response-time/{tenantId}", Description = "Get response time insight", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/agent-leaderboard", Description = "Compute agent leaderboard metrics", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/agent-leaderboard/{tenantId}", Description = "Get agent leaderboard", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/rescue", Description = "Compute follow-up rescue candidates", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/rescue/{tenantId}", Description = "Get rescue candidates", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/demand-heatmap", Description = "Compute demand heatmap", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/demand-heatmap/{tenantId}", Description = "Get demand heatmap", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/revenue-attribution", Description = "Compute revenue attribution", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/revenue-attribution/{tenantId}", Description = "Get revenue attribution", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/objection-map", Description = "Compute objection map", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/objection-map/{tenantId}", Description = "Get objection map", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/quality-score", Description = "Compute quality scores", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/quality-score/{tenantId}", Description = "Get quality scores", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/templates/mine", Description = "Mine sector templates", Auth = "X-Ops-Key", Category = "Template" },
+        new() { Method = "GET", Path = "/api/ops/templates/{sector}", Description = "Get sector templates", Auth = "X-Ops-Key", Category = "Template" },
+        new() { Method = "POST", Path = "/api/ops/templates/mine-all", Description = "Bulk mine all sectors", Auth = "X-Ops-Key", Category = "Bulk" },
+        new() { Method = "GET", Path = "/api/ops/templates/profiles", Description = "Get sector profiles", Auth = "X-Ops-Key", Category = "Bulk" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/dashboard", Description = "RI dashboard aggregate", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/revenue", Description = "Lost revenue detail", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/agents", Description = "Agent leaderboard", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/objections", Description = "Objection map", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/response-time", Description = "Response time correlation", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/rescue", Description = "Rescue candidates", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/quality", Description = "Quality scores", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/demand", Description = "Service demand heatmap", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/templates", Description = "Sector templates", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "PUT", Path = "/api/v1/wa/{tenantId}/ri/templates/{type}/{id}", Description = "Toggle template active", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "POST", Path = "/api/v1/wa/{tenantId}/ri/feedback", Description = "Submit label feedback", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/benchmarks", Description = "Sector benchmarks", Auth = "Bearer JWT", Category = "RI" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

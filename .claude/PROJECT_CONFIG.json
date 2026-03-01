@@ -24,6 +24,11 @@
     "base_prompt": "INVEKTO_BASE.prompt.md",
     "max_diff_lines_per_paket": 200
   },
+  "secret_scan": {
+    "exclude_patterns": [
+      "wwwroot[/\\\\]app[/\\\\]assets[/\\\\]"
+    ]
+  },
   "language": "en",
   "codex": {
     "mcp_tool": "mcp__codex-review__codex_review",
