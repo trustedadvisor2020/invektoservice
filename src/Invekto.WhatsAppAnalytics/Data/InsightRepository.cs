@@ -214,4 +214,181 @@ public sealed class InsightRepository
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         _logger.StepInfo($"[InsightRepo] Deleted {deleted} response time records for tenant {tenantId}", "insight");
     }
+
+    // ============================================================
+    // wa_response_times: Read for agent leaderboard (RI-3.3)
+    // ============================================================
+
+    /// <summary>
+    /// Get response times per conversation for a tenant (for agent avg_response_time aggregation).
+    /// Returns dictionary: conversation_id -> response_time_ms.
+    /// </summary>
+    public async Task<Dictionary<string, long>> GetResponseTimesByConversationAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT conversation_id, response_time_ms
+            FROM wa_response_times
+            WHERE tenant_id = @tid AND response_time_ms IS NOT NULL";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var results = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            results[reader.GetString(0)] = reader.GetInt64(1);
+        return results;
+    }
+
+    // ============================================================
+    // wa_agent_metrics (RI-3.3)
+    // ============================================================
+
+    /// <summary>
+    /// Batch upsert agent metric records (INSERT ON CONFLICT UPDATE).
+    /// UNIQUE constraint: (tenant_id, instance_id, agent_id).
+    /// </summary>
+    public async Task UpsertAgentMetricsAsync(List<AgentMetricRecord> records, CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        const int batchSize = 50;
+        for (var offset = 0; offset < records.Count; offset += batchSize)
+        {
+            var batch = records.Skip(offset).Take(batchSize).ToList();
+            await UpsertAgentMetricsBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task UpsertAgentMetricsBatchAsync(List<AgentMetricRecord> batch, CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var sb = new StringBuilder();
+        sb.AppendLine(@"INSERT INTO wa_agent_metrics
+            (tenant_id, instance_id, agent_id, agent_name, total_conversations,
+             sale_count, offered_count, no_response_count, offer_lost_count, other_count,
+             conversion_rate, avg_response_time_ms, ghost_rate, weighted_score, computed_at)
+            VALUES ");
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.AppendLine($"(@tid{i}, @iid{i}, @aid{i}, @anm{i}, @tot{i}, @sal{i}, @off{i}, @nrc{i}, @olc{i}, @oth{i}, @cvr{i}, @art{i}, @ghr{i}, @wsc{i}, NOW())");
+            var r = batch[i];
+            cmd.Parameters.AddWithValue($"tid{i}", r.TenantId);
+            cmd.Parameters.AddWithValue($"iid{i}", (object?)r.InstanceId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"aid{i}", r.AgentId);
+            cmd.Parameters.AddWithValue($"anm{i}", r.AgentName);
+            cmd.Parameters.AddWithValue($"tot{i}", r.TotalConversations);
+            cmd.Parameters.AddWithValue($"sal{i}", r.SaleCount);
+            cmd.Parameters.AddWithValue($"off{i}", r.OfferedCount);
+            cmd.Parameters.AddWithValue($"nrc{i}", r.NoResponseCount);
+            cmd.Parameters.AddWithValue($"olc{i}", r.OfferLostCount);
+            cmd.Parameters.AddWithValue($"oth{i}", r.OtherCount);
+            cmd.Parameters.AddWithValue($"cvr{i}", (float)r.ConversionRate);
+            cmd.Parameters.AddWithValue($"art{i}", (object?)r.AvgResponseTimeMs ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"ghr{i}", (float)r.GhostRate);
+            cmd.Parameters.AddWithValue($"wsc{i}", (float)r.WeightedScore);
+        }
+
+        sb.AppendLine(@"ON CONFLICT (tenant_id, instance_id, agent_id) DO UPDATE SET
+            agent_name = EXCLUDED.agent_name,
+            total_conversations = EXCLUDED.total_conversations,
+            sale_count = EXCLUDED.sale_count,
+            offered_count = EXCLUDED.offered_count,
+            no_response_count = EXCLUDED.no_response_count,
+            offer_lost_count = EXCLUDED.offer_lost_count,
+            other_count = EXCLUDED.other_count,
+            conversion_rate = EXCLUDED.conversion_rate,
+            avg_response_time_ms = EXCLUDED.avg_response_time_ms,
+            ghost_rate = EXCLUDED.ghost_rate,
+            weighted_score = EXCLUDED.weighted_score,
+            computed_at = NOW()");
+
+        cmd.CommandText = sb.ToString();
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get agent leaderboard for a tenant, ordered by weighted_score DESC.
+    /// Optionally filtered by instance_id.
+    /// </summary>
+    public async Task<AgentLeaderboardInsight> GetAgentLeaderboardAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE am.tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND am.instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT am.agent_id, am.agent_name, am.instance_id,
+                   am.total_conversations, am.sale_count, am.offered_count,
+                   am.no_response_count, am.offer_lost_count, am.other_count,
+                   am.conversion_rate, am.avg_response_time_ms, am.ghost_rate, am.weighted_score
+            FROM wa_agent_metrics am
+            {where}
+            ORDER BY am.weighted_score DESC";
+
+        var agents = new List<AgentLeaderboardEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            agents.Add(new AgentLeaderboardEntry
+            {
+                AgentId = reader.GetInt32(0),
+                AgentName = reader.GetString(1),
+                InstanceId = reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                TotalConversations = reader.GetInt32(3),
+                SaleCount = reader.GetInt32(4),
+                OfferedCount = reader.GetInt32(5),
+                NoResponseCount = reader.GetInt32(6),
+                OfferLostCount = reader.GetInt32(7),
+                OtherCount = reader.GetInt32(8),
+                ConversionRate = Math.Round(reader.GetFloat(9), 1),
+                AvgResponseTimeMs = reader.IsDBNull(10) ? null : reader.GetInt64(10),
+                GhostRate = Math.Round(reader.GetFloat(11), 1),
+                WeightedScore = Math.Round(reader.GetFloat(12), 1)
+            });
+        }
+
+        return new AgentLeaderboardInsight
+        {
+            TenantId = tenantId,
+            InstanceId = instanceId,
+            TotalAgents = agents.Count,
+            Agents = agents
+        };
+    }
+
+    /// <summary>
+    /// Delete all agent metric records for a tenant (used before recompute).
+    /// </summary>
+    public async Task DeleteAgentMetricsAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $"DELETE FROM wa_agent_metrics {where}";
+        var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.StepInfo($"[InsightRepo] Deleted {deleted} agent metric records for tenant {tenantId}", "insight");
+    }
 }

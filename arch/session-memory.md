@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-03-01
-- **Status:** RI-3.1 Response Time Correlation TAMAMLANDI. Deployed + tested on production (EbruModa tenant_id=5051).
-- **Last Task:** RI-3.1: 8 dosya, 877 insertion. POST compute + GET read endpoints. 3 PG tables (wa_response_times, wa_agent_metrics, wa_rescue_candidates). MSSQL batch query (200/batch) + cross-instance dedup. EbruModa: 1191 outcomes → 6 bucket (instant=280, fast=144, moderate=127, slow=54, very_slow=36, no_response=550). Codex iter 1 FORCE PASS (catch(Exception) existing pattern). Commit f07dfb1.
-- **Next Task:** RI-3.3 Agent Leaderboard (Paket 2). Sonra RI-3.6 Follow-up Rescue Alerts (Paket 3).
+- **Date:** 2026-03-02
+- **Status:** RI-3.3 Agent Leaderboard TAMAMLANDI. Deployed + tested on production (EbruModa tenant_id=5051).
+- **Last Task:** RI-3.3: 5 dosya, 784 insertion. POST compute + GET read endpoints. wa_agent_metrics tablosu kullanildi. MSSQL Chats.OwnerUserID+Users join, IsBotUser=0 filter, batch query (200/batch) + cross-instance dedup. EbruModa: 1191 outcomes → 15 agents, 3021ms. weighted_score = conversion(50%)+RT(30%)+ghost_inverse(20%). Codex iter 0, override PASS (3 false positives: MSSQL usage, catch(Exception), generic errors — all established patterns).
+- **Next Task:** RI-3.6 Follow-up Rescue Alerts (Paket 3). Sonra RI-3.2 Demand Heatmap (Paket 4).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

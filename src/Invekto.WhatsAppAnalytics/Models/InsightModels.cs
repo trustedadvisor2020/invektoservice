@@ -61,6 +61,73 @@ public sealed class ResponseTimeRecord
     public DateTime ComputedAt { get; set; }
 }
 
+// ── Agent Leaderboard DTOs (RI-3.3) ──
+
+public sealed class AgentLeaderboardComputeResult
+{
+    public int TotalOutcomes { get; set; }
+    public int TotalAssigned { get; set; }
+    public int UnassignedCount { get; set; }
+    public int BotFilteredCount { get; set; }
+    public int AgentCount { get; set; }
+    public long DurationMs { get; set; }
+}
+
+public sealed class AgentLeaderboardInsight
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public int TotalAgents { get; set; }
+    public List<AgentLeaderboardEntry> Agents { get; set; } = new();
+}
+
+public sealed class AgentLeaderboardEntry
+{
+    public int AgentId { get; set; }
+    public string AgentName { get; set; } = "";
+    public int? InstanceId { get; set; }
+    public int TotalConversations { get; set; }
+    public int SaleCount { get; set; }
+    public int OfferedCount { get; set; }
+    public int NoResponseCount { get; set; }
+    public int OfferLostCount { get; set; }
+    public int OtherCount { get; set; }
+    public double ConversionRate { get; set; }
+    public long? AvgResponseTimeMs { get; set; }
+    public double GhostRate { get; set; }
+    public double WeightedScore { get; set; }
+}
+
+// ── Agent Metric DB Record (RI-3.3) ──
+
+public sealed class AgentMetricRecord
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public int AgentId { get; set; }
+    public string AgentName { get; set; } = "";
+    public int TotalConversations { get; set; }
+    public int SaleCount { get; set; }
+    public int OfferedCount { get; set; }
+    public int NoResponseCount { get; set; }
+    public int OfferLostCount { get; set; }
+    public int OtherCount { get; set; }
+    public double ConversionRate { get; set; }
+    public long? AvgResponseTimeMs { get; set; }
+    public double GhostRate { get; set; }
+    public double WeightedScore { get; set; }
+}
+
+// ── Agent Mapping from MSSQL (internal) ──
+
+internal sealed class ConversationAgentMapping
+{
+    public string ConversationId { get; set; } = "";
+    public int InstanceId { get; set; }
+    public int AgentId { get; set; }
+    public string AgentName { get; set; } = "";
+}
+
 // ── Bucket Constants ──
 
 public static class ResponseTimeBuckets
