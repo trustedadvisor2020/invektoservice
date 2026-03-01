@@ -6,7 +6,7 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | RI-3.1: Response Time Correlation | NEXT | LLM gerekmez, timestamp hesaplama |
+| 1 | RI-3.1: Response Time Correlation | DONE | f07dfb1, deployed, EbruModa verified |
 | 2 | RI-3.3: Agent Leaderboard | NEXT | Agent bazli conversion, response time |
 | 3 | RI-3.6: Follow-up Rescue Alerts | PLANNED | offered + 48h cevapsiz → rescue listesi |
 | 4 | RI-3.2+3.4+3.5+3.7: Multi-extraction LLM call | PLANNED | 4 engine tek call |

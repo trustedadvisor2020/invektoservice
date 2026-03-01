@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-02-28
-- **Status:** RI-Faz2 TAMAMLANDI. GATE-2 FULL PASS. Nightly batch ilk gece çalıştı: 1,000 konuşma sınıflandırıldı (500 EbruModa + 500 Hermest), 0 hata.
-- **Last Task:** (1) RI-2.6~2.9 tamamlandı: batch endpoint E2E, nightly config, servis restart. (2) Nightly batch 28 Sub 02:00 TR (23:00 UTC) çalıştı: EbruModa 1119 candidate→500 classified (37dk), Hermest 687→500 (55dk), GoldenPartner 0 candidate (son 7 gün boş). (3) wa_conversation_outcomes: 1003 kayıt (EbruModa sale:305+offered:104, Hermest offered:203+sale:103+appt:42).
-- **Next Task:** Faz 3 (7 Insight Engine). İlk adım: RI-3.1 Response Time Correlation (LLM gerekmez, timestamp hesaplama). Sıra: 3.1→3.3→3.6 (LLM-free) → 3.2+3.4+3.5+3.7 (multi-extraction LLM call).
+- **Date:** 2026-03-01
+- **Status:** RI-3.1 Response Time Correlation TAMAMLANDI. Deployed + tested on production (EbruModa tenant_id=5051).
+- **Last Task:** RI-3.1: 8 dosya, 877 insertion. POST compute + GET read endpoints. 3 PG tables (wa_response_times, wa_agent_metrics, wa_rescue_candidates). MSSQL batch query (200/batch) + cross-instance dedup. EbruModa: 1191 outcomes → 6 bucket (instant=280, fast=144, moderate=127, slow=54, very_slow=36, no_response=550). Codex iter 1 FORCE PASS (catch(Exception) existing pattern). Commit f07dfb1.
+- **Next Task:** RI-3.3 Agent Leaderboard (Paket 2). Sonra RI-3.6 Follow-up Rescue Alerts (Paket 3).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
