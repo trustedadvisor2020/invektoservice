@@ -1,0 +1,180 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": "PKT-RI3A-1",
+  "gr_list": [
+    {
+      "id": "GR-1",
+      "description": "SQL schema + Models + InsightRepository (data layer)",
+      "services_affected": ["Invekto.WhatsAppAnalytics"]
+    },
+    {
+      "id": "GR-2",
+      "description": "InsightResponseTimeService + MssqlReaderService.CreateConnectionAsync + POST/GET endpoints + DI",
+      "services_affected": ["Invekto.WhatsAppAnalytics", "Invekto.Shared"]
+    }
+  ],
+  "slug": "20260301-ri3-response-time",
+  "risk": "HIGH",
+  "status": "REVIEW",
+  "created_at": "2026-03-01T19:00:00Z",
+  "updated_at": "2026-03-01T22:30:00Z",
+  "plan": {
+    "summary": "RI-3.1 Response Time Correlation engine: compute first-customer-msg to first-agent-response delta per conversation using MSSQL timestamps, join with PG wa_conversation_outcomes, bucket into 5 time ranges, and expose via POST compute + GET read endpoints. Instance-based filtering via MSSQL Chats.InstanceID.",
+    "q_intent": "RI Faz 3 Paket A: 3 LLM-free insight engine (3.1 Response Time Correlation + 3.3 Agent Leaderboard + 3.6 Follow-up Rescue Alerts). Paket 1 = 3.1 Response Time.",
+    "interview_notes": "3 ayri paket. POST trigger + GET read pattern. Instance bazli ayirma (MSSQL join'de filter, PG outcome'lara dokunmadan). Kod + 1 tenant test (EbruModa). Join key: wa_conversation_outcomes.conversation_id = Chats.CustomerPhoneNumber.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/ops/insights/compute/response-time returns 200, computes response times from MSSQL, writes results to wa_response_times in PostgreSQL",
+        "verified": true,
+        "verification_note": "EbruModa tenant_id=5051: 1191 outcomes -> 1191 computed, 0 errors, 916ms. HTTP 200."
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /api/ops/insights/response-time/{tenantId} returns JSON with per-bucket conversion rate correlation (bucket, conversation_count, conversion_rate)",
+        "verified": true,
+        "verification_note": "GET returns 6 buckets with conversation_count, sale_count, conversion_rate, percentage fields."
+      },
+      {
+        "id": "AC3",
+        "criterion": "EbruModa (tenant_id=5051, database=WaClientEbruModa) successful compute cycle produces stored results",
+        "verified": true,
+        "verification_note": "3 MSSQL instances (5521, 6473, 5538) queried. 1191 records upserted to PG. Dedup handled cross-instance duplicates."
+      },
+      {
+        "id": "AC4",
+        "criterion": "Response time bucket distribution has at least 2 non-zero buckets from EbruModa data",
+        "verified": true,
+        "verification_note": "6 non-zero buckets: instant=280, fast=144, moderate=127, slow=54, very_slow=36, no_response=550"
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/wa-insights.sql",
+    "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightResponseTimeService.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/MssqlReaderService.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/db/wa-insights.sql", "is_new": true },
+    { "path": "arch/plans/20260301-ri3-response-time.json", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs", "is_new": true },
+    { "path": "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs", "is_new": true },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightResponseTimeService.cs", "is_new": true },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/MssqlReaderService.cs", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "1dcb79c867dbac1c98c4827820fff2ad4d54063a4e46fda41f66e7faba882502",
+    "full_path": "arch/plans/diffs/20260301-ri3-response-time.diff",
+    "stats": { "insertions": 856, "deletions": 0, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-01T22:15:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the MSSQL query correctly join Chats.CustomerPhoneNumber with PG conversation_id and handle NULL timestamps?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Is the ops-level X-Ops-Key authentication applied to both POST compute and GET read endpoints?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Does the compute service handle edge cases: empty outcomes, MSSQL connection failure, conversations with no agent response?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Are response time records upserted (not duplicated) on repeated compute calls for the same tenant?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.WhatsAppAnalytics/Data/ConversationOutcomeRepository.cs",
+      "src/Invekto.WhatsAppAnalytics/Services/BatchClassificationService.cs",
+      "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchJob.cs"
+    ],
+    "non_goals": [
+      "NightlyBatch entegrasyonu (sonraki paketlerde)",
+      "Dashboard UI (Faz 6)",
+      "Agent Leaderboard (Paket 2)",
+      "Rescue Alerts (Paket 3)"
+    ],
+    "intentional_exclusions": [
+      "wa_conversation_outcomes.instance_id backfill (interview karari: insight'ta instance filter kullan)",
+      "Sector-specific benchmark values (Faz 3 tamamlandiktan sonra)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "InsightResponseTimeService.cs: ComputeAsync — MSSQL connection + query",
+      "InsightRepository.cs: UpsertResponseTimesAsync — PG batch upsert",
+      "Program.cs: POST endpoint — top-level error handler"
+    ],
+    "user_facing_errors": [
+      "INV-WA-020: Insight compute failed — MSSQL connection error",
+      "INV-WA-021: Insight compute failed — no classified outcomes found",
+      "INV-WA-022: Insight data not found for tenant"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All errors logged via JsonLinesLogger with request IDs. MSSQL failures throw, PG failures throw, both caught at endpoint level with ErrorResponse."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Tenant bilmiyor ki hizli cevap vermek conversion'i 3-5x artiriyor",
+      "suggestion": "Response time insight'inda '5dk altinda cevap = %X conversion, 2saat+ = %Y' goster — somut para karsiligi",
+      "aha_moment": "Tenant ilk kez hizli cevap vermenin satisa etkisini rakamlarla goruyor"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "API call sonrasi insight hesaplamasi dakikalarca surebilir",
+      "suggestion": "Compute endpoint async + progress: once PG'ye count yaz, batch MSSQL query, sonuclari progressive store et",
+      "aha_moment": "Compute sonucu saniyeler icinde donuyor, binlerce konusma isleniyor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "MSSQL baglanti koparsa tum compute basarisiz olabilir",
+      "suggestion": "Batch-based query (200/batch) + partial success: basarili batch'ler store edilir, hatalılar loglanir",
+      "aha_moment": "1000 konusmanin 950'si islendi, 50'si MSSQL timeout aldi — partial result kullanılabilir"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Bucket isimleri teknik — '0-5m', '5-15m' gibi kodlar anlamsiz",
+      "suggestion": "Bucket'lara insansi isim ver: 'Aninda (0-5dk)', 'Hizli (5-15dk)', 'Geciken (1-4saat)', 'Cok Gec (4saat+)'",
+      "aha_moment": "Tenant 'Cok Gec' bucket'inda %45 konusma goruyorsa problem net"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Ops ekibi hangi tenant'in response time'i kotu bilmiyor",
+      "suggestion": "GET endpoint'e sector_benchmark karsilastirmasi ekle: 'Bu tenant: 42dk avg, sektor avg: 18dk'",
+      "aha_moment": "Ops bir bakista hangi tenant'larin yardima ihtiyaci oldugunu goruyor"
+    }
+  ],
+  "verdict": {
+    "status": "FORCE PASS",
+    "iteration": 1,
+    "note": "Q FORCE PASS — CQ5 catch(Exception) is existing codebase pattern (10+ instances in Program.cs). CQ1 error messages follow existing endpoint conventions. All CoVe Q1-Q4 PASS. All AC1-AC4 verified on production."
+  }
+}

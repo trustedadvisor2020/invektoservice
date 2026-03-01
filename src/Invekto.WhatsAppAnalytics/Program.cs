@@ -9,6 +9,7 @@ using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
 using Invekto.WhatsAppAnalytics.Services;
 using Invekto.WhatsAppAnalytics.Services.Benchmark;
+using Invekto.WhatsAppAnalytics.Services.Insights;
 using Invekto.WhatsAppAnalytics.Services.Pipeline;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -240,6 +241,10 @@ if (mssqlConfigured)
     builder.Configuration.GetSection("NightlyBatch").Bind(nightlyConfig);
     builder.Services.AddSingleton(nightlyConfig);
     builder.Services.AddHostedService<NightlyBatchJob>();
+
+    // Insight engines (RI Faz 3)
+    builder.Services.AddSingleton<InsightRepository>();
+    builder.Services.AddSingleton<InsightResponseTimeService>();
 }
 
 var app = builder.Build();
@@ -995,6 +1000,79 @@ app.MapGet("/api/ops/sectors", async (
 });
 
 // ============================================================
+// Insight Engine endpoints (RI Faz 3)
+// ============================================================
+
+// POST /api/ops/insights/compute/response-time — Compute response time correlation
+app.MapPost("/api/ops/insights/compute/response-time", async (
+    HttpContext ctx,
+    InsightResponseTimeService rtService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0 || string.IsNullOrEmpty(request.Database))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId and database are required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await rtService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("No classified outcomes"))
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNoOutcomes, ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Response time compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/response-time/{tenantId} — Get response time correlation data
+app.MapGet("/api/ops/insights/response-time/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetResponseTimeInsightAsync(tenantId, instanceId);
+        if (insight.TotalConversations == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No response time data found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read insight data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1025,6 +1103,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/classify/batch/{id}", Description = "Batch job status", Auth = "X-Ops-Key", Category = "Batch" },
         new() { Method = "GET", Path = "/api/ops/outcomes/{tenantId}/distribution", Description = "Outcome label distribution", Auth = "X-Ops-Key", Category = "Batch" },
         new() { Method = "GET", Path = "/api/ops/sectors", Description = "List sector configs", Auth = "X-Ops-Key", Category = "Batch" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/response-time", Description = "Compute response time correlation", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/response-time/{tenantId}", Description = "Get response time insight", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

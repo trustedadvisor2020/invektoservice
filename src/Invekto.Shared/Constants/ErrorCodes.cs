@@ -233,6 +233,12 @@ public static class ErrorCodes
     public const string WABenchmarkInvalidConfig = "INV-WA-018";
     public const string WABenchmarkUnauthorized = "INV-WA-019";
 
+    // Insight Engine errors (INV-WA-020+) -- RI Faz 3
+    public const string WAInsightMssqlError = "INV-WA-020";
+    public const string WAInsightNoOutcomes = "INV-WA-021";
+    public const string WAInsightNotFound = "INV-WA-022";
+    public const string WAInsightComputeFailed = "INV-WA-023";
+
     // Integrations errors (INV-IG-xxx) -- GR-3.4/3.6
     public const string IntegrationsInvalidAccountPayload = "INV-IG-001";
     public const string IntegrationsAccountNotFound = "INV-IG-002";

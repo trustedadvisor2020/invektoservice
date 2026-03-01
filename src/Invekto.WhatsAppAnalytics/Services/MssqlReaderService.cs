@@ -32,6 +32,17 @@ public sealed class MssqlReaderService
         $"Server={_server},{_port};Database={database};User Id={_user};Password={_password};" +
         "TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;Command Timeout=600;";
 
+    /// <summary>
+    /// Create an open SqlConnection to a specific customer database.
+    /// Used by insight engines for custom queries.
+    /// </summary>
+    public async Task<SqlConnection> CreateConnectionAsync(string database, CancellationToken ct = default)
+    {
+        var conn = new SqlConnection(BuildConnectionString(database));
+        await conn.OpenAsync(ct);
+        return conn;
+    }
+
     private const string ChatQuery = @"
 SELECT
   CASE WHEN C.InstanceType = 1 THEN C.InstancePhoneNumber
