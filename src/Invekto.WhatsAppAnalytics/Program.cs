@@ -255,6 +255,9 @@ if (mssqlConfigured)
     // Template mining (RI Faz 4)
     builder.Services.AddSingleton<TemplateRepository>();
     builder.Services.AddSingleton<TemplateMiningService>();
+
+    // Bulk orchestration (RI Faz 5)
+    builder.Services.AddSingleton<BulkOrchestrationService>();
 }
 
 var app = builder.Build();
@@ -1519,7 +1522,7 @@ app.MapPost("/api/ops/templates/mine", async (
 
     if (!TemplateMiningService.IsSupportedSector(request.Sector))
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            $"Sector '{request.Sector}' not supported. Use: saglik, moda, gayrimenkul", requestId), statusCode: 400);
+            $"Sector '{request.Sector}' not supported. Use one of: {string.Join(", ", TemplateMiningService.GetSupportedSectorList())}", requestId), statusCode: 400);
 
     try
     {
@@ -1563,6 +1566,66 @@ app.MapGet("/api/ops/templates/{sector}", async (
         jsonLogger.SystemError($"[TemplateMining] Get templates failed for sector '{sector}': {ex.Message}");
         return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
             $"Failed to read templates for sector '{sector}' — check PG connection", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Bulk Orchestration endpoints (RI Faz 5)
+// ============================================================
+
+// POST /api/ops/templates/mine-all — Mine templates for all (or selected) sectors
+app.MapPost("/api/ops/templates/mine-all", async (
+    HttpContext ctx,
+    BulkOrchestrationService bulkService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    BulkMineRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<BulkMineRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    try
+    {
+        var result = await bulkService.MineAllSectorsAsync(request?.Sectors);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[BulkMine] Bulk mine failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Bulk template mining failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/templates/profiles — Get sector profiles (config + template counts)
+app.MapGet("/api/ops/templates/profiles", async (
+    HttpContext ctx,
+    BulkOrchestrationService bulkService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    try
+    {
+        var profiles = await bulkService.GetSectorProfilesAsync();
+        return Results.Ok(new { requestId, totalSectors = profiles.Count, profiles });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[BulkMine] Sector profiles failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to load sector profiles", requestId, ex.Message), statusCode: 500);
     }
 });
 
@@ -1613,6 +1676,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/insights/quality-score/{tenantId}", Description = "Get quality scores", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "POST", Path = "/api/ops/templates/mine", Description = "Mine sector templates", Auth = "X-Ops-Key", Category = "Template" },
         new() { Method = "GET", Path = "/api/ops/templates/{sector}", Description = "Get sector templates", Auth = "X-Ops-Key", Category = "Template" },
+        new() { Method = "POST", Path = "/api/ops/templates/mine-all", Description = "Bulk mine all sectors", Auth = "X-Ops-Key", Category = "Bulk" },
+        new() { Method = "GET", Path = "/api/ops/templates/profiles", Description = "Get sector profiles", Auth = "X-Ops-Key", Category = "Bulk" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

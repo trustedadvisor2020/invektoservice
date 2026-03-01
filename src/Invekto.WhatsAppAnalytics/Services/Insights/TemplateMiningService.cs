@@ -118,11 +118,15 @@ public sealed class TemplateMiningService
 
     private static readonly HashSet<string> SupportedSectors = new(StringComparer.OrdinalIgnoreCase)
     {
-        "saglik", "moda", "gayrimenkul"
+        "saglik", "moda", "gayrimenkul",
+        "guzellik", "dijital_pazarlama", "finans", "turizm", "egitim", "dis", "lojistik", "yeme_icme", "diger"
     };
 
     public static bool IsSupportedSector(string sector) =>
         SupportedSectors.Contains(sector);
+
+    public static List<string> GetSupportedSectorList() =>
+        SupportedSectors.ToList();
 
     // ── RI-4.1: Intent Seeds ──
 
@@ -172,7 +176,7 @@ public sealed class TemplateMiningService
             MakeIntent("gayrimenkul", "tapu_islemleri", "Tapu ve hukuki islemler", "hukuki", 60, ["tapu", "noter", "devir"]),
             MakeIntent("gayrimenkul", "yatirim_danisma", "Yatirim danismanlik talebi", "yatirim", 55, ["yatirim", "getiri", "deger artisi"]),
         },
-        _ => new List<SectorIntentRecord>()
+        _ => TemplateSeedData.GetIntents(sector)
     };
 
     private static SectorIntentRecord MakeIntent(string sector, string name, string desc, string cat, int priority, string[] keywords) => new()
@@ -222,7 +226,7 @@ public sealed class TemplateMiningService
             MakeFaq("gayrimenkul", "Kira getirisi ne kadar?", "Bolgeye ve daire tipine gore aylk kira getirisi hesaplayabilirim. Yillik ortalama %5-8 getiri saglanmaktadir.", "yatirim", 75),
             MakeFaq("gayrimenkul", "Aidat ne kadar?", "Aidat miktari site yonetimine ve daire buyuklugune gore degisir. Guncel aidat bilgisini paylasabilirim.", "bilgi", 70),
         },
-        _ => new List<SectorFaqRecord>()
+        _ => TemplateSeedData.GetFaqs(sector)
     };
 
     private static SectorFaqRecord MakeFaq(string sector, string q, string a, string cat, float score) => new()
@@ -262,7 +266,7 @@ public sealed class TemplateMiningService
             MakeFlow("gayrimenkul", "yatirim_akisi", "ilk_temas", "Yatirim amacli gayrimenkul akisi",
                 """[{"name":"yatirim_sorgu","description":"Yatirimci butce ve beklenti bildirir"},{"name":"analiz","description":"Bolge analizi ve getiri hesabi sunulur"},{"name":"proje_tanitim","description":"Uygun projeler detayli tanitilir"},{"name":"gosterim","description":"Fiziksel ziyaret ayarlanir"},{"name":"karar","description":"Yatirim karari ve odeme plani"}]"""),
         },
-        _ => new List<SectorFlowRecord>()
+        _ => TemplateSeedData.GetFlows(sector)
     };
 
     private static SectorFlowRecord MakeFlow(string sector, string name, string type, string desc, string stagesJson) => new()
@@ -314,7 +318,7 @@ public sealed class TemplateMiningService
             MakeObjHandler("gayrimenkul", "chose_competitor", "Rakip Tercih",
                 """[{"text":"Projemizin avantajlarini kiyaslama tablosu olarak hazirlayabilirim. Karar vermeden once gorun.","effectiveness_score":70}]"""),
         },
-        _ => new List<SectorObjectionHandlerRecord>()
+        _ => TemplateSeedData.GetObjHandlers(sector)
     };
 
     private static SectorObjectionHandlerRecord MakeObjHandler(string sector, string type, string label, string responsesJson) => new()
@@ -359,7 +363,7 @@ public sealed class TemplateMiningService
             MakeFollowup("gayrimenkul", "son_sans", "Son Birimler",
                 "Merhaba, ilgilendiginiz tipte son 3 birim kaldi. Deger artis beklentisi yuksek. Gosterim icin musait misiniz?", 336),
         },
-        _ => new List<SectorFollowupTemplateRecord>()
+        _ => TemplateSeedData.GetFollowups(sector)
     };
 
     private static SectorFollowupTemplateRecord MakeFollowup(string sector, string type, string label, string msg, int delayHours) => new()
@@ -405,7 +409,7 @@ public sealed class TemplateMiningService
             MakeStep("gayrimenkul", 5, "Follow-up otomasyonunu ac", "Teklif sonrasi 3 gun cevapsiz icin hatirlatma ayarlayin.", "Kayip musteri orani %15-20 azalir", "7-14"),
             MakeStep("gayrimenkul", 6, "Performans raporunu incele", "Haftalik gosterim, teklif ve satis raporlarini inceleyin.", "Veri odakli karar alma baslar", "14-30"),
         },
-        _ => new List<SectorOnboardingStepRecord>()
+        _ => TemplateSeedData.GetOnboardingSteps(sector)
     };
 
     private static SectorOnboardingStepRecord MakeStep(string sector, int num, string action, string desc, string impact, string dayRange) => new()

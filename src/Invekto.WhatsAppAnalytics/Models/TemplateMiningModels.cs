@@ -125,3 +125,33 @@ public sealed class SectorOnboardingStepRecord
     public string? DayRange { get; set; }
     public bool IsActive { get; set; }
 }
+
+// ── Bulk Mine (RI Faz 5) ──
+
+public sealed class BulkMineRequest
+{
+    public List<string>? Sectors { get; set; }
+}
+
+public sealed class BulkMineResult
+{
+    public int TotalSectorsMined { get; set; }
+    public List<TemplateMineResult> SectorResults { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
+    public long DurationMs { get; set; }
+}
+
+public sealed class SectorProfile
+{
+    public string SectorKey { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public float? BenchmarkF1 { get; set; }
+    public bool IsActive { get; set; }
+    public int IntentCount { get; set; }
+    public int FaqCount { get; set; }
+    public int FlowCount { get; set; }
+    public int ObjectionHandlerCount { get; set; }
+    public int FollowupTemplateCount { get; set; }
+    public int OnboardingStepCount { get; set; }
+    public int TotalTemplates { get; set; }
+}
