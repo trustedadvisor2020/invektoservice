@@ -251,6 +251,10 @@ if (mssqlConfigured)
     builder.Services.AddSingleton<InsightRevenueService>();
     builder.Services.AddSingleton<InsightObjectionMapService>();
     builder.Services.AddSingleton<InsightQualityService>();
+
+    // Template mining (RI Faz 4)
+    builder.Services.AddSingleton<TemplateRepository>();
+    builder.Services.AddSingleton<TemplateMiningService>();
 }
 
 var app = builder.Build();
@@ -1487,6 +1491,82 @@ app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
 });
 
 // ============================================================
+// Template Mining endpoints (RI Faz 4)
+// ============================================================
+
+// POST /api/ops/templates/mine — Mine templates for a sector (RI-4.1 through 4.6)
+app.MapPost("/api/ops/templates/mine", async (
+    HttpContext ctx,
+    TemplateMiningService miningService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    TemplateMineRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<TemplateMineRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || string.IsNullOrWhiteSpace(request.Sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "sector is required", requestId), statusCode: 400);
+
+    if (!TemplateMiningService.IsSupportedSector(request.Sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            $"Sector '{request.Sector}' not supported. Use: saglik, moda, gayrimenkul", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await miningService.MineAsync(request.Sector);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[TemplateMining] Mine failed for sector '{request.Sector}': {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            $"Template mining failed for sector '{request.Sector}' — check PG template tables exist", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/templates/{sector} — Get all templates for a sector
+app.MapGet("/api/ops/templates/{sector}", async (
+    string sector,
+    HttpContext ctx,
+    TemplateRepository templateRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    try
+    {
+        var templates = await templateRepo.GetAllTemplatesBySectorAsync(sector);
+        var total = templates.Intents.Count + templates.Faqs.Count + templates.Flows.Count
+                  + templates.ObjectionHandlers.Count + templates.FollowupTemplates.Count
+                  + templates.OnboardingSteps.Count;
+
+        if (total == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                $"No templates found for sector '{sector}'. Run mine first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, templates });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[TemplateMining] Get templates failed for sector '{sector}': {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            $"Failed to read templates for sector '{sector}' — check PG connection", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1531,6 +1611,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/insights/objection-map/{tenantId}", Description = "Get objection map", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "POST", Path = "/api/ops/insights/compute/quality-score", Description = "Compute quality scores", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/insights/quality-score/{tenantId}", Description = "Get quality scores", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/templates/mine", Description = "Mine sector templates", Auth = "X-Ops-Key", Category = "Template" },
+        new() { Method = "GET", Path = "/api/ops/templates/{sector}", Description = "Get sector templates", Auth = "X-Ops-Key", Category = "Template" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 
