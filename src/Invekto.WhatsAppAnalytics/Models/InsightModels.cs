@@ -230,6 +230,73 @@ public static class InsightRescueScoring
     };
 }
 
+// ── Demand Heatmap DTOs (RI-3.2) ──
+
+public sealed class DemandHeatmapComputeResult
+{
+    public int TotalOutcomes { get; set; }
+    public int TotalMessages { get; set; }
+    public int CellsWritten { get; set; }
+    public int Errors { get; set; }
+    public long DurationMs { get; set; }
+}
+
+public sealed class DemandHeatmapInsight
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public int TotalConversations { get; set; }
+    public List<DemandHeatmapCell> Cells { get; set; } = new();
+}
+
+public sealed class DemandHeatmapCell
+{
+    public int DayOfWeek { get; set; }
+    public string DayLabel { get; set; } = "";
+    public int HourOfDay { get; set; }
+    public int TotalConversations { get; set; }
+    public int SaleCount { get; set; }
+    public double ConversionRate { get; set; }
+    public long? AvgResponseTimeMs { get; set; }
+}
+
+// ── Demand Heatmap DB Record (RI-3.2) ──
+
+public sealed class DemandHeatmapRecord
+{
+    public int TenantId { get; set; }
+    public int InstanceId { get; set; }  // 0 = unknown/aggregate, NOT NULL (PG UNIQUE constraint safety)
+    public int DayOfWeek { get; set; }
+    public int HourOfDay { get; set; }
+    public int TotalConversations { get; set; }
+    public int SaleCount { get; set; }
+    public double ConversionRate { get; set; }
+    public long? AvgResponseTimeMs { get; set; }
+}
+
+// ── Demand Heatmap MSSQL row (internal, RI-3.2) ──
+
+internal sealed class ConversationTimestamp
+{
+    public string ConversationId { get; set; } = "";
+    public int? InstanceId { get; set; }
+    public DateTime FirstMessageAt { get; set; }
+}
+
+// ── Day-of-week labels (RI-3.2) ──
+
+public static class DemandDayLabels
+{
+    private static readonly string[] Labels =
+        ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+
+    /// <summary>
+    /// Get Turkish day label for DayOfWeek (0=Monday, 6=Sunday).
+    /// </summary>
+    public static string GetLabel(int dayOfWeek) =>
+        dayOfWeek >= 0 && dayOfWeek < Labels.Length ? Labels[dayOfWeek] : $"Day{dayOfWeek}";
+}
+
 // ── Bucket Constants ──
 
 public static class ResponseTimeBuckets

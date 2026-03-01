@@ -1,0 +1,132 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [
+    {
+      "id": "RI-3.2",
+      "description": "Demand Heatmap: DayOfWeek x HourOfDay traffic+outcome analysis",
+      "services_affected": ["WhatsAppAnalytics"]
+    }
+  ],
+  "slug": "20260301-demand-heatmap",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-03-01T12:00:00Z",
+  "updated_at": "2026-03-01T12:00:00Z",
+  "plan": {
+    "summary": "RI-3.2 Demand Heatmap: DayOfWeek(0-6) x HourOfDay(0-23) matris. Tum tarihsel veriyi aggregate eder. Her hucrede total_conversations, sale_count, conversion_rate, avg_response_time_ms. MSSQL'den mesaj timestampleri cekilir, PG wa_demand_heatmap tablosuna yazilir. POST compute + GET read pattern (Paket 1-3 ile ayni).",
+    "q_intent": "RI-3.2 Demand Heatmap — saat/gun bazli talep yogunlugu analizi, 7x24 matris + outcome korelasyonu",
+    "interview_notes": "Q confirmed: DayOfWeek x Hour aggregate (not last 7 days), per-cell outcome rates (total, sale, conversion, avg_response_time), wa_demand_heatmap table with UNIQUE(tenant_id, instance_id, day_of_week, hour_of_day)",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/ops/insights/compute/demand-heatmap endpointi EbruModa icin 168 hucre (7x24) uretir ve wa_demand_heatmap tablosuna yazar",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /api/ops/insights/demand-heatmap/{tenantId} endpointi hucreleri doner (opsiyonel instanceId filter)",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Her hucrede total_conversations, sale_count, conversion_rate, avg_response_time_ms mevcut",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "Build PASS + Codex review PASS",
+        "verified": false
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightDemandHeatmapService.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "arch/db/wa-insights.sql"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Insights/InsightDemandHeatmapService.cs", "is_new": true, "change": "New RI-3.2 compute engine" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs", "is_new": false, "change": "Added wa_demand_heatmap upsert/read/delete methods" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Models/InsightModels.cs", "is_new": false, "change": "Added DemandHeatmap DTOs and DemandDayLabels" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false, "change": "Added DI registration + 2 endpoints (compute + read)" },
+    { "path": "arch/db/wa-insights.sql", "is_new": false, "change": "Added wa_demand_heatmap table schema" }
+  ],
+  "git_diff": {
+    "sha256": "4863A3DA3A563406C1A00753454DE1D9BDAC58EA6B058D9252866DF7764540FD",
+    "full_path": "arch/plans/diffs/20260301-demand-heatmap.diff",
+    "stats": { "insertions": 642, "deletions": 1, "files_count": 6 }
+  },
+  "build": { "status": "PASS", "timestamp": "2026-03-01T12:15:00Z" },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the MSSQL query correctly extract DayOfWeek and HourOfDay from message timestamps for customer messages only?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the PG upsert ON CONFLICT correct for the composite key (tenant_id, instance_id, day_of_week, hour_of_day)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the compute handle multi-instance dedup and NULL instanceId correctly?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Shared/", "src/Invekto.Backend/", "other microservices"],
+    "non_goals": ["UI/dashboard", "scheduled computation", "peak hour recommendations"],
+    "intentional_exclusions": ["Peak detection logic (deferred to RI-6)", "Time zone conversion (raw UTC timestamps)"]
+  },
+  "error_handling": {
+    "try_catch_locations": ["Program.cs endpoint handlers"],
+    "user_facing_errors": ["INV-WA-023: Compute failed", "INV-WA-021: No classified outcomes", "INV-WA-022: No data found"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All MSSQL batch errors are logged, error count returned in result. Empty data returns 404."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Hangi saatlerde gelen mesajlar daha cok satisa donuyor bilinmiyor",
+      "suggestion": "Heatmap hucresinde conversion_rate gosterilir, yesil/kirmizi renk kodlama",
+      "aha_moment": "Sali 14:00-16:00 arasi %40 conversion gorulunce o saatlere agent yonlendirir"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Peak saatlerde agent yetersiz, off-peak'te bos bekleme",
+      "suggestion": "Peak/off-peak saat tespiti ile shift planlama onerisi",
+      "aha_moment": "Haftanin en yogun 5 saatini gorur, agent vardiyasini buna gore ayarlar"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Gece/hafta sonu mesajlara gec cevap verilince firsat kaybediliyor",
+      "suggestion": "Off-hours mesaj yogunlugu + no_response orani gosterilir",
+      "aha_moment": "Cumartesi 10:00'da %30 trafik ama %60 no_response gorur, chatbot aktif eder"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Rapor guncelliginden emin olunmuyor",
+      "suggestion": "computed_at timestamp ile son compute zamani gosterilir",
+      "aha_moment": "Datanin 2 saat once hesaplandigini gorur, guncel oldugunu bilir"
+    },
+    {
+      "category": "UX",
+      "user_pain": "168 hucrelik ham veri okumasi zor",
+      "suggestion": "Frontend heatmap grid ile renk gradyani (beyaz=0, koyu mavi=max)",
+      "aha_moment": "Tek bakista hangi saatler yogun gorulur, tiklayinca detay acilir"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "Q FORCE PASS",
+    "updated_at": "2026-03-01T12:30:00Z",
+    "iteration": 0,
+    "blocking_issues": ["CQ3: plan JSON scope (FP)", "CQ5: catch(Exception) established pattern (FP)", "Q1: C# DayOfWeek extraction design choice (FP)"]
+  }
+}

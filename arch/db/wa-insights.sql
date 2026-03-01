@@ -70,10 +70,31 @@ CREATE INDEX IF NOT EXISTS idx_wa_rescue_candidates_tenant
 CREATE INDEX IF NOT EXISTS idx_wa_rescue_candidates_status
     ON wa_rescue_candidates(tenant_id, rescue_status);
 
+-- RI-3.2: Demand Heatmap (Paket 4)
+-- instance_id NOT NULL DEFAULT 0 to ensure UNIQUE constraint works (PG treats NULL as distinct)
+CREATE TABLE IF NOT EXISTS wa_demand_heatmap (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       INT NOT NULL,
+    instance_id     INT NOT NULL DEFAULT 0,  -- 0 = unknown/aggregate
+    day_of_week     INT NOT NULL,  -- 0=Monday, 6=Sunday
+    hour_of_day     INT NOT NULL,  -- 0-23
+    total_conversations INT NOT NULL DEFAULT 0,
+    sale_count      INT NOT NULL DEFAULT 0,
+    conversion_rate REAL NOT NULL DEFAULT 0,
+    avg_response_time_ms BIGINT,
+    computed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, instance_id, day_of_week, hour_of_day)
+);
+
+CREATE INDEX IF NOT EXISTS idx_wa_demand_heatmap_tenant
+    ON wa_demand_heatmap(tenant_id);
+
 -- Grants
 GRANT ALL ON wa_response_times TO invekto;
 GRANT ALL ON wa_agent_metrics TO invekto;
 GRANT ALL ON wa_rescue_candidates TO invekto;
+GRANT ALL ON wa_demand_heatmap TO invekto;
 GRANT ALL ON SEQUENCE wa_response_times_id_seq TO invekto;
 GRANT ALL ON SEQUENCE wa_agent_metrics_id_seq TO invekto;
 GRANT ALL ON SEQUENCE wa_rescue_candidates_id_seq TO invekto;
+GRANT ALL ON SEQUENCE wa_demand_heatmap_id_seq TO invekto;

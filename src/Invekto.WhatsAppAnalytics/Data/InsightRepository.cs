@@ -6,7 +6,7 @@ using Npgsql;
 namespace Invekto.WhatsAppAnalytics.Data;
 
 /// <summary>
-/// Repository for insight engine tables: wa_response_times, wa_agent_metrics, wa_rescue_candidates.
+/// Repository for insight engine tables: wa_response_times, wa_agent_metrics, wa_rescue_candidates, wa_demand_heatmap.
 /// </summary>
 public sealed class InsightRepository
 {
@@ -551,5 +551,141 @@ public sealed class InsightRepository
         cmd.CommandText = $"DELETE FROM wa_rescue_candidates {where}";
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         _logger.StepInfo($"[InsightRepo] Deleted {deleted} rescue candidate records for tenant {tenantId}", "insight");
+    }
+
+    // ============================================================
+    // wa_demand_heatmap (RI-3.2)
+    // ============================================================
+
+    /// <summary>
+    /// Batch upsert demand heatmap records (INSERT ON CONFLICT UPDATE).
+    /// UNIQUE constraint: (tenant_id, instance_id, day_of_week, hour_of_day).
+    /// </summary>
+    public async Task UpsertDemandHeatmapAsync(List<DemandHeatmapRecord> records, CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        const int batchSize = 50;
+        for (var offset = 0; offset < records.Count; offset += batchSize)
+        {
+            var batch = records.Skip(offset).Take(batchSize).ToList();
+            await UpsertDemandHeatmapBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task UpsertDemandHeatmapBatchAsync(List<DemandHeatmapRecord> batch, CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var sb = new StringBuilder();
+        sb.AppendLine(@"INSERT INTO wa_demand_heatmap
+            (tenant_id, instance_id, day_of_week, hour_of_day,
+             total_conversations, sale_count, conversion_rate, avg_response_time_ms, computed_at)
+            VALUES ");
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.AppendLine($"(@tid{i}, @iid{i}, @dow{i}, @hod{i}, @tot{i}, @sal{i}, @cvr{i}, @art{i}, NOW())");
+            var r = batch[i];
+            cmd.Parameters.AddWithValue($"tid{i}", r.TenantId);
+            cmd.Parameters.AddWithValue($"iid{i}", r.InstanceId);
+            cmd.Parameters.AddWithValue($"dow{i}", r.DayOfWeek);
+            cmd.Parameters.AddWithValue($"hod{i}", r.HourOfDay);
+            cmd.Parameters.AddWithValue($"tot{i}", r.TotalConversations);
+            cmd.Parameters.AddWithValue($"sal{i}", r.SaleCount);
+            cmd.Parameters.AddWithValue($"cvr{i}", (float)r.ConversionRate);
+            cmd.Parameters.AddWithValue($"art{i}", (object?)r.AvgResponseTimeMs ?? DBNull.Value);
+        }
+
+        sb.AppendLine(@"ON CONFLICT (tenant_id, instance_id, day_of_week, hour_of_day) DO UPDATE SET
+            total_conversations = EXCLUDED.total_conversations,
+            sale_count = EXCLUDED.sale_count,
+            conversion_rate = EXCLUDED.conversion_rate,
+            avg_response_time_ms = EXCLUDED.avg_response_time_ms,
+            computed_at = NOW()");
+
+        cmd.CommandText = sb.ToString();
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get demand heatmap cells for a tenant, ordered by day_of_week then hour_of_day.
+    /// Optionally filtered by instance_id.
+    /// </summary>
+    public async Task<DemandHeatmapInsight> GetDemandHeatmapAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE dh.tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND dh.instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT dh.day_of_week, dh.hour_of_day,
+                   dh.total_conversations, dh.sale_count,
+                   dh.conversion_rate, dh.avg_response_time_ms
+            FROM wa_demand_heatmap dh
+            {where}
+            ORDER BY dh.day_of_week, dh.hour_of_day";
+
+        var cells = new List<DemandHeatmapCell>();
+        var totalConversations = 0;
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var dayOfWeek = reader.GetInt32(0);
+            var convCount = reader.GetInt32(2);
+            totalConversations += convCount;
+
+            cells.Add(new DemandHeatmapCell
+            {
+                DayOfWeek = dayOfWeek,
+                DayLabel = DemandDayLabels.GetLabel(dayOfWeek),
+                HourOfDay = reader.GetInt32(1),
+                TotalConversations = convCount,
+                SaleCount = reader.GetInt32(3),
+                ConversionRate = Math.Round(reader.GetFloat(4), 1),
+                AvgResponseTimeMs = reader.IsDBNull(5) ? null : reader.GetInt64(5)
+            });
+        }
+
+        return new DemandHeatmapInsight
+        {
+            TenantId = tenantId,
+            InstanceId = instanceId,
+            TotalConversations = totalConversations,
+            Cells = cells
+        };
+    }
+
+    /// <summary>
+    /// Delete all demand heatmap records for a tenant (used before recompute).
+    /// </summary>
+    public async Task DeleteDemandHeatmapAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $"DELETE FROM wa_demand_heatmap {where}";
+        var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.StepInfo($"[InsightRepo] Deleted {deleted} demand heatmap records for tenant {tenantId}", "insight");
     }
 }
