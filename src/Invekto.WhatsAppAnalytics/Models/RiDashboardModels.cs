@@ -69,3 +69,65 @@ public sealed class LabelFeedbackBreakdown
     public int Disagree { get; set; }
     public float AgreeRate { get; set; }
 }
+
+// ── RI Faz 7: Onboarding Insight Response ──
+
+public sealed class RiOnboardingResponse
+{
+    public int TenantId { get; set; }
+    public string? Sector { get; set; }
+    public string? SectorDisplayName { get; set; }
+
+    /// <summary>Sector-specific onboarding checklist steps.</summary>
+    public List<OnboardingChecklistItem> Checklist { get; set; } = new();
+
+    /// <summary>High-impact quick start recommendations.</summary>
+    public List<QuickStartItem> QuickStart { get; set; } = new();
+
+    /// <summary>Sector overview stats (template counts, benchmarks).</summary>
+    public SectorOverview? Overview { get; set; }
+
+    /// <summary>Tenant vs sector benchmark comparison (null if no tenant data yet).</summary>
+    public TenantBenchmarkComparison? Comparison { get; set; }
+}
+
+public sealed class OnboardingChecklistItem
+{
+    public int StepNumber { get; set; }
+    public string Action { get; set; } = "";
+    public string? Description { get; set; }
+    public string? ExpectedImpact { get; set; }
+    public string? DayRange { get; set; }
+    public bool IsCompleted { get; set; }
+}
+
+public sealed class QuickStartItem
+{
+    public string Type { get; set; } = "";       // "flow", "intent", "faq"
+    public string Title { get; set; } = "";
+    public string? Description { get; set; }
+    public string? ActionUrl { get; set; }
+    public string? ImpactLabel { get; set; }      // e.g. "Conversion +15%"
+}
+
+public sealed class SectorOverview
+{
+    public int IntentCount { get; set; }
+    public int FaqCount { get; set; }
+    public int FlowCount { get; set; }
+    public int ObjectionCount { get; set; }
+    public int FollowupCount { get; set; }
+    public int TotalTemplates { get; set; }
+    public float? BenchmarkF1 { get; set; }
+}
+
+public sealed class TenantBenchmarkComparison
+{
+    public float? TenantAvgResponseMin { get; set; }
+    public float? SectorAvgResponseMin { get; set; }
+    public float? TenantConversionRate { get; set; }
+    public float? SectorConversionRate { get; set; }
+    public int? TenantActiveAgents { get; set; }
+    public float? TenantAvgQualityScore { get; set; }
+    public string? Recommendation { get; set; }
+}

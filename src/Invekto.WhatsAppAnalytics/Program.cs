@@ -259,9 +259,10 @@ if (mssqlConfigured)
     // Bulk orchestration (RI Faz 5)
     builder.Services.AddSingleton<BulkOrchestrationService>();
 
-    // RI Dashboard + Feedback (RI Faz 6)
+    // RI Dashboard + Feedback (RI Faz 6) + Onboarding (RI Faz 7)
     builder.Services.AddSingleton<RiDashboardService>();
     builder.Services.AddSingleton<FeedbackRepository>();
+    builder.Services.AddSingleton<OnboardingInsightService>();
 }
 
 var app = builder.Build();
@@ -1969,6 +1970,37 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/benchmarks", async (
     return Results.Ok(new { requestId, benchmarks });
 });
 
+// GET /api/v1/wa/{tenantId}/ri/onboarding — Onboarding insight (RI-7.2~7.6)
+app.MapGet("/api/v1/wa/{tenantId:int}/ri/onboarding", async (
+    int tenantId,
+    HttpContext ctx,
+    OnboardingInsightService onboardingService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    var sector = ctx.Request.Query["sector"].FirstOrDefault();
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var data = await onboardingService.GetOnboardingAsync(tenantId, sector, instanceId);
+        return Results.Ok(new { requestId, data });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiOnboarding] Onboarding insight failed for tenant {tenantId}: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Onboarding insight failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
 // ============================================================
 // Endpoint discovery
 // ============================================================
@@ -2030,6 +2062,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "PUT", Path = "/api/v1/wa/{tenantId}/ri/templates/{type}/{id}", Description = "Toggle template active", Auth = "Bearer JWT", Category = "RI" },
         new() { Method = "POST", Path = "/api/v1/wa/{tenantId}/ri/feedback", Description = "Submit label feedback", Auth = "Bearer JWT", Category = "RI" },
         new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/benchmarks", Description = "Sector benchmarks", Auth = "Bearer JWT", Category = "RI" },
+        new() { Method = "GET", Path = "/api/v1/wa/{tenantId}/ri/onboarding", Description = "Onboarding insight + checklist", Auth = "Bearer JWT", Category = "RI" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

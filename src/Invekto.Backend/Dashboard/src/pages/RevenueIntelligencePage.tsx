@@ -13,6 +13,7 @@ import { RiResponseTime } from '../components/ri/RiResponseTime';
 import { RiRescueAlerts } from '../components/ri/RiRescueAlerts';
 import { RiQualityScore } from '../components/ri/RiQualityScore';
 import { RiDemandHeatmap } from '../components/ri/RiDemandHeatmap';
+import { RiOnboardingPanel } from '../components/ri/RiOnboardingPanel';
 
 export function RevenueIntelligencePage() {
   const { session } = useAuth();
@@ -110,6 +111,9 @@ export function RevenueIntelligencePage() {
         <>
           {/* KPI Cards */}
           <RiKpiCards data={data} />
+
+          {/* Onboarding Panel (sector guide + checklist + quick start) */}
+          <RiOnboardingPanel tenantId={tenantId} sector={sector} />
 
           {/* Row 1: Revenue + Agent Leaderboard */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

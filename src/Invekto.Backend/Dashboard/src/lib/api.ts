@@ -1635,6 +1635,11 @@ class OpsApiClient {
   async getRiBenchmarks(tenantId: number, sector: string): Promise<RiSectorBenchmarks> {
     return this.request<RiSectorBenchmarks>(`/api/v1/wa/${tenantId}/ri/benchmarks?sector=${encodeURIComponent(sector)}`);
   }
+
+  async getRiOnboarding(tenantId: number, sector?: string): Promise<RiOnboardingResponse> {
+    const params = sector ? `?sector=${encodeURIComponent(sector)}` : '';
+    return this.request<RiOnboardingResponse>(`/api/v1/wa/${tenantId}/ri/onboarding${params}`);
+  }
 }
 
 // --- RI Types (RI-6) ---
@@ -1821,6 +1826,55 @@ export interface RiFeedbackRecord {
   correctedLabel: string | null;
   userId: number | null;
   createdAt: string;
+}
+
+// --- RI Onboarding Types (RI-7) ---
+
+export interface RiOnboardingResponse {
+  tenantId: number;
+  sector: string | null;
+  sectorDisplayName: string | null;
+  checklist: RiOnboardingChecklistItem[];
+  quickStart: RiQuickStartItem[];
+  overview: RiSectorOverview | null;
+  comparison: RiTenantBenchmarkComparison | null;
+}
+
+export interface RiOnboardingChecklistItem {
+  stepNumber: number;
+  action: string;
+  description: string | null;
+  expectedImpact: string | null;
+  dayRange: string | null;
+  isCompleted: boolean;
+}
+
+export interface RiQuickStartItem {
+  type: string;
+  title: string;
+  description: string | null;
+  actionUrl: string | null;
+  impactLabel: string | null;
+}
+
+export interface RiSectorOverview {
+  intentCount: number;
+  faqCount: number;
+  flowCount: number;
+  objectionCount: number;
+  followupCount: number;
+  totalTemplates: number;
+  benchmarkF1: number | null;
+}
+
+export interface RiTenantBenchmarkComparison {
+  tenantAvgResponseMin: number | null;
+  sectorAvgResponseMin: number | null;
+  tenantConversionRate: number | null;
+  sectorConversionRate: number | null;
+  tenantActiveAgents: number | null;
+  tenantAvgQualityScore: number | null;
+  recommendation: string | null;
 }
 
 export const api = new OpsApiClient();
