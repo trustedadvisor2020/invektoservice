@@ -25,7 +25,7 @@
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
 | RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | DONE | 24 Sub | GATE-1 PASS (tiered 0.8203) |
 | RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | IN-PROGRESS | 26 Sub | - |
-| RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | PLANNED | - | - |
+| RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | IN-PROGRESS | 1-2 Mar | Paket 1: iter 1 FP, Paket 2: iter 0 override |
 | RI-4 | Faz 4 | RI: Sektor Sablon Mining | RI-4.1~4.6 (21 sub-task) | PLANNED | - | - |
 | RI-5 | Faz 5 | RI: Bulk Isleme + Kalan Sektorler | RI-5.1~5.15 | PLANNED | - | - |
 | RI-6 | Faz 6 | RI: Dashboard + API + Widget'lar | RI-6.1~6.28 | PLANNED | - | - |
