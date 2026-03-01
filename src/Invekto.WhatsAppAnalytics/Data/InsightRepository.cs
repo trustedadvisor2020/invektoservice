@@ -391,4 +391,165 @@ public sealed class InsightRepository
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         _logger.StepInfo($"[InsightRepo] Deleted {deleted} agent metric records for tenant {tenantId}", "insight");
     }
+
+    // ============================================================
+    // wa_rescue_candidates (RI-3.6)
+    // ============================================================
+
+    /// <summary>
+    /// Get rescue-eligible outcomes (no_response, offered, offer_lost) for a tenant.
+    /// Returns conversation_id + outcome_label pairs.
+    /// </summary>
+    public async Task<List<(string ConversationId, string OutcomeLabel)>> GetRescueEligibleOutcomesAsync(
+        int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT conversation_id, outcome_label
+            FROM wa_conversation_outcomes
+            WHERE tenant_id = @tid
+              AND outcome_label IN ('no_response', 'offered', 'offer_lost')";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var results = new List<(string, string)>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            results.Add((reader.GetString(0), reader.GetString(1)));
+        return results;
+    }
+
+    /// <summary>
+    /// Batch upsert rescue candidate records (INSERT ON CONFLICT UPDATE).
+    /// estimated_value left NULL (deferred to RI-4+).
+    /// </summary>
+    public async Task UpsertRescueCandidatesAsync(List<RescueCandidateRecord> records, CancellationToken ct = default)
+    {
+        if (records.Count == 0) return;
+
+        const int batchSize = 50;
+        for (var offset = 0; offset < records.Count; offset += batchSize)
+        {
+            var batch = records.Skip(offset).Take(batchSize).ToList();
+            await UpsertRescueCandidatesBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task UpsertRescueCandidatesBatchAsync(List<RescueCandidateRecord> batch, CancellationToken ct)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var sb = new StringBuilder();
+        sb.AppendLine(@"INSERT INTO wa_rescue_candidates
+            (tenant_id, conversation_id, instance_id, outcome_label,
+             last_message_at, last_message_from, days_since, rescue_status, computed_at)
+            VALUES ");
+
+        for (var i = 0; i < batch.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.AppendLine($"(@tid{i}, @cid{i}, @iid{i}, @lbl{i}, @lma{i}, @lmf{i}, @ds{i}, 'pending', NOW())");
+            var r = batch[i];
+            cmd.Parameters.AddWithValue($"tid{i}", r.TenantId);
+            cmd.Parameters.AddWithValue($"cid{i}", r.ConversationId);
+            cmd.Parameters.AddWithValue($"iid{i}", (object?)r.InstanceId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"lbl{i}", r.OutcomeLabel);
+            cmd.Parameters.AddWithValue($"lma{i}", r.LastMessageAt.HasValue
+                ? (object)r.LastMessageAt.Value.ToUniversalTime()
+                : DBNull.Value);
+            cmd.Parameters.AddWithValue($"lmf{i}", (object?)r.LastMessageFrom ?? DBNull.Value);
+            cmd.Parameters.AddWithValue($"ds{i}", r.DaysSince);
+        }
+
+        sb.AppendLine(@"ON CONFLICT (tenant_id, conversation_id) DO UPDATE SET
+            instance_id = EXCLUDED.instance_id,
+            outcome_label = EXCLUDED.outcome_label,
+            last_message_at = EXCLUDED.last_message_at,
+            last_message_from = EXCLUDED.last_message_from,
+            days_since = EXCLUDED.days_since,
+            computed_at = NOW()");
+
+        cmd.CommandText = sb.ToString();
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    /// <summary>
+    /// Get rescue candidates for a tenant, ordered by rescue_priority_score DESC.
+    /// Optionally filtered by instance_id.
+    /// </summary>
+    public async Task<RescueInsight> GetRescueCandidatesAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE rc.tenant_id = @tid AND rc.rescue_status = 'pending'";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND rc.instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $@"
+            SELECT rc.conversation_id, rc.instance_id, rc.outcome_label,
+                   rc.last_message_at, rc.last_message_from, rc.days_since, rc.rescue_status
+            FROM wa_rescue_candidates rc
+            {where}
+            ORDER BY rc.days_since ASC, rc.outcome_label ASC";
+
+        var candidates = new List<RescueCandidateEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var daysSince = reader.GetInt32(5);
+            var outcomeLabel = reader.GetString(2);
+
+            candidates.Add(new RescueCandidateEntry
+            {
+                ConversationId = reader.GetString(0),
+                InstanceId = reader.IsDBNull(1) ? null : reader.GetInt32(1),
+                OutcomeLabel = outcomeLabel,
+                LastMessageAt = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                LastMessageFrom = reader.IsDBNull(4) ? null : reader.GetString(4),
+                DaysSince = daysSince,
+                RescuePriorityScore = InsightRescueScoring.CalculatePriorityScore(daysSince, outcomeLabel),
+                RescueStatus = reader.GetString(6)
+            });
+        }
+
+        // Sort by priority score DESC (computed in-memory)
+        candidates.Sort((a, b) => b.RescuePriorityScore.CompareTo(a.RescuePriorityScore));
+
+        return new RescueInsight
+        {
+            TenantId = tenantId,
+            InstanceId = instanceId,
+            TotalCandidates = candidates.Count,
+            Candidates = candidates
+        };
+    }
+
+    /// <summary>
+    /// Delete all rescue candidate records for a tenant (used before recompute).
+    /// </summary>
+    public async Task DeleteRescueCandidatesAsync(int tenantId, int? instanceId = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+
+        var where = "WHERE tenant_id = @tid";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        if (instanceId.HasValue)
+        {
+            where += " AND instance_id = @iid";
+            cmd.Parameters.AddWithValue("iid", instanceId.Value);
+        }
+
+        cmd.CommandText = $"DELETE FROM wa_rescue_candidates {where}";
+        var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.StepInfo($"[InsightRepo] Deleted {deleted} rescue candidate records for tenant {tenantId}", "insight");
+    }
 }

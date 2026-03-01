@@ -246,6 +246,7 @@ if (mssqlConfigured)
     builder.Services.AddSingleton<InsightRepository>();
     builder.Services.AddSingleton<InsightResponseTimeService>();
     builder.Services.AddSingleton<InsightAgentLeaderboardService>();
+    builder.Services.AddSingleton<InsightRescueService>();
 }
 
 var app = builder.Build();
@@ -1138,6 +1139,71 @@ app.MapGet("/api/ops/insights/agent-leaderboard/{tenantId:int}", async (
     }
 });
 
+// POST /api/ops/insights/compute/rescue — Compute follow-up rescue candidates
+app.MapPost("/api/ops/insights/compute/rescue", async (
+    HttpContext ctx,
+    InsightRescueService rescueService,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    InsightComputeRequest? request;
+    try
+    {
+        request = await ctx.Request.ReadFromJsonAsync<InsightComputeRequest>();
+    }
+    catch (JsonException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Invalid request body", requestId), statusCode: 400);
+    }
+
+    if (request is null || request.TenantId <= 0 || string.IsNullOrEmpty(request.Database))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "tenantId and database are required", requestId), statusCode: 400);
+
+    try
+    {
+        var result = await rescueService.ComputeAsync(request);
+        return Results.Ok(new { requestId, result });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Insight] Rescue compute failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed, "Compute failed", requestId, ex.Message), statusCode: 500);
+    }
+});
+
+// GET /api/ops/insights/rescue/{tenantId} — Get rescue candidates
+app.MapGet("/api/ops/insights/rescue/{tenantId:int}", async (
+    int tenantId,
+    HttpContext ctx,
+    InsightRepository insightRepo) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    if (!ValidateOpsKey(ctx))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WABenchmarkUnauthorized, "Invalid ops key", requestId), statusCode: 401);
+
+    int? instanceId = null;
+    if (ctx.Request.Query.TryGetValue("instanceId", out var iidStr) && int.TryParse(iidStr, out var iid))
+        instanceId = iid;
+
+    try
+    {
+        var insight = await insightRepo.GetRescueCandidatesAsync(tenantId, instanceId);
+        if (insight.TotalCandidates == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "No rescue candidates found. Run compute first.", requestId), statusCode: 404);
+
+        return Results.Ok(new { requestId, insight });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
+            "Failed to read rescue candidate data", requestId, ex.Message), statusCode: 500);
+    }
+});
+
 // ============================================================
 // Endpoint discovery
 // ============================================================
@@ -1173,6 +1239,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/ops/insights/response-time/{tenantId}", Description = "Get response time insight", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "POST", Path = "/api/ops/insights/compute/agent-leaderboard", Description = "Compute agent leaderboard metrics", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/insights/agent-leaderboard/{tenantId}", Description = "Get agent leaderboard", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "POST", Path = "/api/ops/insights/compute/rescue", Description = "Compute follow-up rescue candidates", Auth = "X-Ops-Key", Category = "Insight" },
+        new() { Method = "GET", Path = "/api/ops/insights/rescue/{tenantId}", Description = "Get rescue candidates", Auth = "X-Ops-Key", Category = "Insight" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
 

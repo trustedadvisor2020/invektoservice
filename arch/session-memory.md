@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-03-02
-- **Status:** RI-3.3 Agent Leaderboard TAMAMLANDI. Deployed + tested on production (EbruModa tenant_id=5051).
-- **Last Task:** RI-3.3: 5 dosya, 784 insertion. POST compute + GET read endpoints. wa_agent_metrics tablosu kullanildi. MSSQL Chats.OwnerUserID+Users join, IsBotUser=0 filter, batch query (200/batch) + cross-instance dedup. EbruModa: 1191 outcomes → 15 agents, 3021ms. weighted_score = conversion(50%)+RT(30%)+ghost_inverse(20%). Codex iter 0, override PASS (3 false positives: MSSQL usage, catch(Exception), generic errors — all established patterns).
-- **Next Task:** RI-3.6 Follow-up Rescue Alerts (Paket 3). Sonra RI-3.2 Demand Heatmap (Paket 4).
+- **Date:** 2026-03-01
+- **Status:** RI-3.6 Follow-up Rescue Alerts TAMAMLANDI. Deployed + production tested.
+- **Last Task:** RI-3.6: 4 dosya (1 new), ~333 insertion. POST compute/rescue + GET rescue/{tenantId}. wa_rescue_candidates tablosu (Paket 1'de olusturuldu). MSSQL last message CTE (ROW_NUMBER + PARTITION BY), 30-day cutoff, rescue_priority_score = recency(50%)+outcome_weight(50%). Eligible: no_response+offered+offer_lost. Codex iter 1, override PASS (CQ5 catch(Exception) FP). CoVe 4/4 PASS.
+- **Next Task:** RI-3.2 Demand Heatmap (Paket 4). Sonra RI-3.4 Revenue Attribution (Paket 5).
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

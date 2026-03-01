@@ -128,6 +128,108 @@ internal sealed class ConversationAgentMapping
     public string AgentName { get; set; } = "";
 }
 
+// ── Rescue Candidate DTOs (RI-3.6) ──
+
+public sealed class RescueComputeResult
+{
+    public int TotalOutcomes { get; set; }
+    public int EligibleOutcomes { get; set; }
+    public int RescueCandidates { get; set; }
+    public int Excluded30Days { get; set; }
+    public int Errors { get; set; }
+    public long DurationMs { get; set; }
+}
+
+public sealed class RescueInsight
+{
+    public int TenantId { get; set; }
+    public int? InstanceId { get; set; }
+    public int TotalCandidates { get; set; }
+    public List<RescueCandidateEntry> Candidates { get; set; } = new();
+}
+
+public sealed class RescueCandidateEntry
+{
+    public string ConversationId { get; set; } = "";
+    public int? InstanceId { get; set; }
+    public string OutcomeLabel { get; set; } = "";
+    public DateTime? LastMessageAt { get; set; }
+    public string? LastMessageFrom { get; set; }
+    public int DaysSince { get; set; }
+    public double RescuePriorityScore { get; set; }
+    public string RescueStatus { get; set; } = "pending";
+}
+
+// ── Rescue Candidate DB Record (RI-3.6) ──
+
+public sealed class RescueCandidateRecord
+{
+    public int TenantId { get; set; }
+    public string ConversationId { get; set; } = "";
+    public int? InstanceId { get; set; }
+    public string OutcomeLabel { get; set; } = "";
+    public DateTime? LastMessageAt { get; set; }
+    public string? LastMessageFrom { get; set; }
+    public int DaysSince { get; set; }
+    public double RescuePriorityScore { get; set; }
+}
+
+// ── Last Message from MSSQL (internal, RI-3.6) ──
+
+internal sealed class ConversationLastMessage
+{
+    public string ConversationId { get; set; } = "";
+    public int? InstanceId { get; set; }
+    public DateTime? LastMessageAt { get; set; }
+    public bool LastMessageFromCustomer { get; set; }
+}
+
+// ── Rescue Priority Scoring (RI-3.6) ──
+
+public static class InsightRescueScoring
+{
+    // Outcome weights: offered closest to sale, no_response lowest
+    private static readonly Dictionary<string, double> OutcomeWeights = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["offered"] = 100.0,
+        ["offer_lost"] = 70.0,
+        ["no_response"] = 40.0
+    };
+
+    private const int MaxDays = 30;
+
+    /// <summary>
+    /// rescue_priority_score = recency(50%) + outcome_weight(50%).
+    /// Recency: 0 days = 100, 30 days = 0, linear interpolation.
+    /// Outcome weight: offered=100, offer_lost=70, no_response=40.
+    /// </summary>
+    public static double CalculatePriorityScore(int daysSince, string outcomeLabel)
+    {
+        // Recency: 0d=100, 30d=0
+        double recencyScore;
+        if (daysSince <= 0)
+            recencyScore = 100.0;
+        else if (daysSince >= MaxDays)
+            recencyScore = 0.0;
+        else
+            recencyScore = 100.0 * (MaxDays - daysSince) / MaxDays;
+
+        // Outcome weight
+        var outcomeScore = OutcomeWeights.TryGetValue(outcomeLabel, out var w) ? w : 40.0;
+
+        var score = (recencyScore * 0.50) + (outcomeScore * 0.50);
+        return Math.Round(score, 1);
+    }
+
+    /// <summary>
+    /// Rescue-eligible outcome labels.
+    /// </summary>
+    public static readonly HashSet<string> EligibleOutcomes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "no_response", "offered", "offer_lost"
+    };
+}
+
 // ── Bucket Constants ──
 
 public static class ResponseTimeBuckets
