@@ -6,10 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-01
-- **Status:** RI Faz 1-8 TAMAMLANDI. Tum Revenue Intelligence fazlari bitti.
-- **Last Task:** RI-8: Optimizasyon (keyword pre-filter + parallel batch loading). RI-7: Tenant Onboarding (sector checklist, quick start, benchmark comparison). Tum 8 faz deploy edildi.
-- **Production Deploy:** WhatsAppAnalytics + Backend HEALTHY (Faz 7-8 deploy edildi)
-- **Next Task:** Yeni feature sprint (PKT-7 Visual AI veya cross-service entegrasyonlar)
+- **Status:** NightlyBatch auto-discovery tamamlandi. Tum aktif tenant'lar otomatik kesfedilecek.
+- **Last Task:** NightlyBatch AutoDiscovery — WaClient.Management.Companies'den aktif tenant'lari otomatik kesfetme. Config overrides korunuyor (3 tenant: EbruModa/Hermest/GoldenPartner). Codex PASS iter 2. Deploy + config update HEALTHY.
+- **Production Deploy:** WhatsAppAnalytics HEALTHY (autoDiscovery=True, next run 02:00)
+- **Next Task:** Q belirleyecek (Production validation, bug fix sprint, veya yeni feature)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -100,6 +100,7 @@ src/
 | 2026-02-27 | RI-Faz2 GATE-2 F1 PASS | 3 sektor tiered F1 >= 0.80: Saglik=0.9952, Moda=1.0, Gayrimenkul=1.0. GT=auto-accept (tiered→GT, tautological). Gemini Flash en güçlü bağımsız model (cross-sector avg F1=0.8432) |
 | 2026-02-27 | RI-Faz2 GATE-2 FULL PASS | Batch pipeline E2E (job #2: 3 classified, 0 errors). NightlyBatch config: 3 tenant, RunHour=02:00, aktif. 4 endpoint çalışıyor. NSSM servis adı=InvektoWhatsAppAnalytics. |
 | 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
+| 2026-03-01 | NightlyBatch AutoDiscovery | WaClient.Management.Companies'den aktif, süresi dolmamış tenant'ları otomatik keşfet. Config overrides DatabaseName ile eşleşir (3 mevcut tenant korunuyor). Companies.ID = TenantId, sector = "genel". SqlException + InvalidOperationException typed catch, INV-WA-024. Codex PASS iter 2. |
 
 ## Q Pending Operational Tasks
 
