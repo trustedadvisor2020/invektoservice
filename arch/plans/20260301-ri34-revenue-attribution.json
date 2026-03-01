@@ -11,7 +11,8 @@
   ],
   "slug": "20260301-ri34-revenue-attribution",
   "risk": "LOW",
-  "status": "REVIEW",
+  "status": "DONE",
+  "status_log": [{"status": "DONE", "timestamp": "2026-03-01T20:00:00Z", "commit_sha": "9d4800b"}],
   "created_at": "2026-03-01T19:00:00Z",
   "updated_at": "2026-03-01T19:00:00Z",
   "plan": {
