@@ -6,9 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-01
-- **Status:** RI-3.4 Revenue Attribution TAMAMLANDI.
-- **Last Task:** RI-3.4: 6 dosya (1 new), ~792 insertion. POST compute/revenue-attribution + GET revenue-attribution/{tenantId}. PG-only engine (MSSQL yok). wa_revenue_attribution tablosu (instance_id NOT NULL DEFAULT 0, 4-part UNIQUE). 4 boyut: outcome, hour, agent, instance + summary. Fixed TL values (sale=500, offered=150, offer_lost=50, return=-100, appt=200). GET supports ?dimension=xxx&instanceId=N filters. Codex iter 1, FORCE PASS (CQ1/CQ5/Q1/Q2 FP, CQ2 fix JsonException, CQ5 fix null-forgiving).
-- **Next Task:** RI-3.5 Objection Pattern (Paket 6). Sonra RI-3.7 Quality Score (Paket 7).
+- **Status:** RI-6 P2 TAMAMLANDI. RI Faz 3-6 tum isler bitti.
+- **Last Task:** RI-6 P2: Revenue Intelligence React dashboard + 8 widget. RI-3 (7 engine), RI-4 (template mining), RI-5 (bulk + 9 sektor), RI-6 P1 (12 API), RI-6 P2 (dashboard) — hepsi DONE.
+- **Production SQL:** wa_revenue_attribution (RI-3.4), wa_objection_map (RI-3.5), wa_quality_scores (RI-3.7) tablolari production PG'de olusturuldu.
+- **Next Task:** RI-7 Tenant Onboarding Deneyimi (sektor paketi, checklist, benchmark karsilastirma) veya WhatsAppAnalytics deploy.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

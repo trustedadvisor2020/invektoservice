@@ -1,3 +1,5 @@
+Inma API Swagger: https://testapi.wapcrm.net/index.html
+
 Authentication
 WapCRM  Api kullanımı için yapılan Her Request(POST ve GET) işleminde “X-CIB-SecretKey” bilgisi Header içinde gönderilir.
 
