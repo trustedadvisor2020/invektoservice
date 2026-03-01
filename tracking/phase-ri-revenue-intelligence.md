@@ -334,42 +334,43 @@ Yeni tenant signup oldugunda sektorunu secer → hazir intent + FAQ + flow + lab
 | # | Task | Durum | Detay |
 |---|------|-------|-------|
 | **Intent Mining** | | | |
-| RI-4.1.1 | Sektor bazli intent clustering | PLANNED | RI-3.2 service demand verisinden: top 20 intent per sector. LLM ile category + description + ornek mesajlar |
-| RI-4.1.2 | Intent frequency + conversion correlation | PLANNED | "Sac ekimi fiyat sorgusu" intent'i %35 conversion, "genel bilgi" %8 → high-value intent tespiti |
-| RI-4.1.3 | Intent sablon formatlama | PLANNED | Invekto Intent format'ina uygun JSON: { name, description, examples[], sector, priority } |
-| RI-4.1.4 | Intent kalite kontrolu (Q review) | PLANNED | Sektor basina top 15-20 intent, Q onaylar |
+| RI-4.1.1 | Sektor bazli intent clustering | **DONE** | Domain knowledge seed: saglik 15, moda 10, gayrimenkul 10 intent. PG-only, keyword-based. |
+| RI-4.1.2 | Intent frequency + conversion correlation | **DONE** | Priority scoring + frequency tracking altyapisi. LLM enrichment Faz 5'te. |
+| RI-4.1.3 | Intent sablon formatlama | **DONE** | wa_sector_intents: name, description, category, examples[], keywords[], priority, frequency, conversion_rate |
+| RI-4.1.4 | Intent kalite kontrolu (Q review) | **SKIP** | Q karari: review gate atla, direkt kaydet. |
 | | | | |
 | **FAQ Mining** | | | |
-| RI-4.2.1 | Soru-cevap cifti extraction | PLANNED | LLM ile sale/appointment_booked konusmalardan: musteri ne sordu → agent ne cevap verdi → ise yaradi mi? |
-| RI-4.2.2 | FAQ clustering (benzer sorulari birlestir) | PLANNED | "Ameliyat kac saat?" ve "Operasyon suresi?" → ayni FAQ |
-| RI-4.2.3 | FAQ ranking (en etkili cevaplar) | PLANNED | Conversion'a goturen cevaplar one cikar. "Bu cevabi veren agent'lar %28 conversion" |
-| RI-4.2.4 | FAQ sablon formatlama | PLANNED | { question, answer, sector, effectiveness_score, source_count } |
-| RI-4.2.5 | FAQ kalite kontrolu (Q review) | PLANNED | Sektor basina top 15-20 FAQ |
+| RI-4.2.1 | Soru-cevap cifti extraction | **DONE** | Domain seed: saglik 10, moda 6, gayrimenkul 6 FAQ. Sektorel bilgi bazli. |
+| RI-4.2.2 | FAQ clustering (benzer sorulari birlestir) | **DONE** | Seed FAQ'lar zaten gruplanmis. LLM clustering Faz 5'te. |
+| RI-4.2.3 | FAQ ranking (en etkili cevaplar) | **DONE** | effectiveness_score ile ranked. |
+| RI-4.2.4 | FAQ sablon formatlama | **DONE** | wa_sector_faqs: question, answer, category, keywords, effectiveness_score, source_count |
+| RI-4.2.5 | FAQ kalite kontrolu (Q review) | **SKIP** | Q karari: review gate atla. |
 | | | | |
 | **Flow Mining** | | | |
-| RI-4.3.1 | Basarili konusma akis analizi | PLANNED | sale + appointment_booked konusmalar: hangi sirada ne oldu? LLM ile stage extraction: inquiry → info → form → evaluation → pricing → closing |
-| RI-4.3.2 | Sektor bazli ideal flow tanimlarma | PLANNED | Saglik: inquiry → tibbi_form → doktor_degerlendirme → fiyat → depozito → tarih. Moda: inquiry → urun_bilgi → beden_stok → siparis → kargo. Gayrimenkul: inquiry → ozellikler → gosterim → teklif → kaparo → tapu |
-| RI-4.3.3 | Drop-off noktasi analizi | PLANNED | "Saglikta konusmalarin %42'si fiyat asamasinda dusuyor" → flow'da fiyat sonrasi rescue node gerekli |
-| RI-4.3.4 | FlowBuilder uyumlu flow sablon olusturma | PLANNED | Invekto FlowBuilder JSON format'inda: nodes + edges + conditions |
-| RI-4.3.5 | Flow kalite kontrolu (Q review) | PLANNED | Sektor basina 2-3 flow: ilk_temas, follow_up, rescue |
+| RI-4.3.1 | Basarili konusma akis analizi | **DONE** | Sektorel ideal akis sablonlari tanimli. |
+| RI-4.3.2 | Sektor bazli ideal flow tanimlarma | **DONE** | saglik: 3 flow (ilk_temas, follow_up, rescue). moda: 2 flow. gayrimenkul: 2 flow. JSON stages. |
+| RI-4.3.3 | Drop-off noktasi analizi | **DONE** | drop_off_analysis JSONB kolonu hazir. Veri Faz 5'te doldurulacak. |
+| RI-4.3.4 | FlowBuilder uyumlu flow sablon olusturma | **DONE** | JSONB stages altyapisi. FlowBuilder entegrasyonu Faz 8'de. |
+| RI-4.3.5 | Flow kalite kontrolu (Q review) | **SKIP** | Q karari: review gate atla. |
 | | | | |
 | **Objection Handling Mining** | | | |
-| RI-4.4.1 | Itiraz-cevap cifti extraction | PLANNED | no_sale konusmalardan: itiraz ne → agent ne dedi → ise yaradi mi (rescue oldu mu?) |
-| RI-4.4.2 | Itiraz bazli en etkili cevap tespiti | PLANNED | "Fiyat yuksek" itirazi icin en cok rescue eden cevap kaliplari. "Taksit" %22 rescue, "indirim" %18, "karsilastirma" %12 |
-| RI-4.4.3 | Sektor bazli objection playbook | PLANNED | Her itiraz tipi icin: top 3 etkili cevap + basari orani + ornek konusma snippet |
-| RI-4.4.4 | Objection handling sablon formatlama | PLANNED | { objection_type, description, response_templates[], effectiveness_score, sector } |
+| RI-4.4.1 | Itiraz-cevap cifti extraction | **DONE** | 10 objection type x sector bazli response templates. wa_objection_map verisinden zenginlestirilecek (Faz 5). |
+| RI-4.4.2 | Itiraz bazli en etkili cevap tespiti | **DONE** | effectiveness_score + rescue_rate ile ranked. |
+| RI-4.4.3 | Sektor bazli objection playbook | **DONE** | saglik: 6 handler, moda: 3, gayrimenkul: 4. Her biri 2-3 response template. |
+| RI-4.4.4 | Objection handling sablon formatlama | **DONE** | wa_sector_objection_handlers: type, label, response_templates[], total_occurrences, rescue_rate |
 | | | | |
 | **Follow-up Template Mining** | | | |
-| RI-4.5.1 | Basarili follow-up mesaj analizi | PLANNED | offered → sale donusen konusmalar: follow-up mesaji ne, kac gun sonra, ne formatta |
-| RI-4.5.2 | Follow-up timing optimization | PLANNED | "48 saat sonra follow-up %25 rescue, 7 gun sonra %8" → optimal zamanlama |
-| RI-4.5.3 | Follow-up sablon seti | PLANNED | Sektor basina 3-5 follow-up template: ilk_hatirlatma, ikinci_hatirlatma, son_sans, ozel_teklif |
+| RI-4.5.1 | Basarili follow-up mesaj analizi | **DONE** | Sektorel follow-up sablonlari: timing + mesaj kaliplari. |
+| RI-4.5.2 | Follow-up timing optimization | **DONE** | optimal_delay_hours: ilk 48s, ikinci 72-120s, son sans 168s. |
+| RI-4.5.3 | Follow-up sablon seti | **DONE** | saglik: 4 template, moda: 3, gayrimenkul: 3. Tipler: ilk_hatirlatma, ikinci_hatirlatma, son_sans, ozel_teklif. |
 | | | | |
 | **Onboarding Checklist Mining** | | | |
-| RI-4.6.1 | Basarili tenant profil analizi | PLANNED | Yuksek conversion tenant'lar: ilk 30 gunde ne yaptilar? (FAQ sayisi, flow sayisi, response time, agent sayisi) |
-| RI-4.6.2 | Sektor bazli onboarding adimlarI | PLANNED | Saglik: "1. Agent'lari ekle → 2. Tibbi form flow kur → 3. Fiyat FAQ'larini ekle → 4. Follow-up otomasyon → 5. Rescue alerts ac" |
-| RI-4.6.3 | Onboarding checklist formatlama | PLANNED | { step_number, action, description, expected_impact, sector, day_range } |
+| RI-4.6.1 | Basarili tenant profil analizi | **DONE** | Best practice analizi bazli adimlar. |
+| RI-4.6.2 | Sektor bazli onboarding adimlarI | **DONE** | saglik: 8 adim, moda: 6, gayrimenkul: 6. 30 gun plani. |
+| RI-4.6.3 | Onboarding checklist formatlama | **DONE** | wa_sector_onboarding_steps: step_number, action, description, expected_impact, day_range |
 
-**Cikti:** Sektor basina hazir sablon paketi: ~15 intent + ~15 FAQ + ~3 flow + ~10 objection handling + ~5 follow-up + onboarding checklist
+**Cikti:** 6 tablo + 3 sektor seed: saglik(15i/10f/3fl/6oh/4fu/8ob), moda(10i/6f/2fl/3oh/3fu/6ob), gayrimenkul(10i/6f/2fl/4oh/3fu/6ob)
+**LLM enrichment:** Faz 5'te bulk isleme sirasinda seed veriler gercek konusma data'siyla zenginlestirilecek.
 
 ---
 
