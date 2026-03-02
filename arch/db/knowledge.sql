@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS documents (
     id                  SERIAL PRIMARY KEY,
     tenant_id           INTEGER NOT NULL,
     title               VARCHAR(500) NOT NULL,
-    source_type         VARCHAR(50) NOT NULL,           -- pdf, csv, json, manual, wa_import
+    source_type         VARCHAR(50) NOT NULL,           -- pdf, csv, json, manual, wa_import, website
     status              VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, processing, ready, error
     file_path           VARCHAR(1000),
     chunk_count         INTEGER NOT NULL DEFAULT 0,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS documents (
     CONSTRAINT fk_documents_tenant
         FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
     CONSTRAINT chk_documents_source_type
-        CHECK (source_type IN ('pdf', 'csv', 'json', 'manual', 'wa_import')),
+        CHECK (source_type IN ('pdf', 'csv', 'json', 'manual', 'wa_import', 'website')),
     CONSTRAINT chk_documents_status
         CHECK (status IN ('pending', 'processing', 'ready', 'error'))
 );

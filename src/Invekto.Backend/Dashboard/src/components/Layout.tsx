@@ -127,7 +127,7 @@ export function Layout({ children }: LayoutProps) {
             ? 'bg-brand-500/12 text-brand-500 shadow-[0_0_0_1px_rgba(99,91,255,0.1)]'
             : 'text-navy-300 group-hover:bg-navy-100/60 group-hover:text-navy-500'
         )}>
-          <Icon className="w-[17px] h-[17px]" strokeWidth={isActive ? 2.2 : 1.8} />
+          <Icon className="w-[17px] h-[17px]" />
         </div>
         {!collapsed && <span className="truncate">{item.label}</span>}
       </Link>

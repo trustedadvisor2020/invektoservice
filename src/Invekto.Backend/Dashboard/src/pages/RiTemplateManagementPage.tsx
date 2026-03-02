@@ -36,7 +36,7 @@ export function RiTemplateManagementPage() {
     setError(null);
     try {
       const r = await api.getRiTemplates(tenantId, sector);
-      const data = r as Record<string, unknown>;
+      const data = r as unknown as Record<string, unknown>;
       const key = activeTab === 'intent' ? 'intents'
         : activeTab === 'faq' ? 'faqs'
         : activeTab === 'objection_handler' ? 'objectionHandlers'

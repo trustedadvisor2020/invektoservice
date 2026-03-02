@@ -1,0 +1,135 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260302-knowledge-website-indexing",
+  "risk": "MEDIUM",
+  "status": "DEV",
+  "created_at": "2026-03-02T16:00:00Z",
+  "updated_at": "2026-03-02T16:30:00Z",
+  "plan": {
+    "summary": "Knowledge servisine website URL indexing ozelligini ekleme. Kullanici bir website URL'si verir, sistem sitemap.xml uzerinden sayfalari kesfeder, HtmlAgilityPack ile scrape eder, text cikarir, 512w/50w overlap ile chunk'lar ve OpenAI embedding uretir. Mevcut semantic + keyword search akisina sifir degisiklikle entegre olur.",
+    "q_intent": "PDF ve SSS yanina website indexleme eklenmesi. Sitemap-based crawl, manuel re-crawl, HtmlAgilityPack.",
+    "interview_notes": "Q, sitemap ile tum site taramasi istedi. Periyodik re-crawl yok (manuel). HtmlAgilityPack tercih edildi.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /documents/website endpoint 202 doner ve arka planda crawl baslatir",
+        "verified": true,
+        "verification_note": "DocumentProcessingService'e enqueue edilir, 202 response"
+      },
+      {
+        "id": "AC2",
+        "criterion": "Sitemap.xml parse edilir, sitemap index desteklenir, robots.txt Disallow kurallari uygulanir",
+        "verified": true,
+        "verification_note": "FetchSitemapUrlsAsync + FetchRobotsDisallowAsync metotlari"
+      },
+      {
+        "id": "AC3",
+        "criterion": "HTML sayfalardan noise (script/style/nav/footer) temizlenir, temiz text cikarilir",
+        "verified": true,
+        "verification_note": "RemoveNoiseNodes + main/article/body preference"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Chunk'lar PDF ile ayni parametrelerde (512w/50w) uretilir",
+        "verified": true,
+        "verification_note": "BuildChunks ayni algorithm, chunkSize/chunkOverlap config'den"
+      },
+      {
+        "id": "AC5",
+        "criterion": "Mevcut search endpoint sifir degisiklikle website chunk'larini doner",
+        "verified": true,
+        "verification_note": "RetrievalService source_type bagimsiz tum chunk'lari arar"
+      },
+      {
+        "id": "AC6",
+        "criterion": "SSRF guard: private/loopback IP'ler reddedilir",
+        "verified": true,
+        "verification_note": "IsRfc1918 + IPAddress.IsLoopback kontrolleri endpoint'te"
+      },
+      {
+        "id": "AC7",
+        "criterion": "MaxPages cap (default 200) asiri buyuk siteleri engeller",
+        "verified": true,
+        "verification_note": "CrawlAsync icinde urls.Take(_maxPages)"
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/knowledge.sql",
+    "arch/errors.md",
+    "arch/contracts/knowledge-website.json",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Knowledge/Invekto.Knowledge.csproj",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Knowledge/Services/WebScrapingService.cs",
+    "src/Invekto.Knowledge/Services/DocumentProcessingService.cs",
+    "src/Invekto.Knowledge/appsettings.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/knowledge.sql", "change": "Added 'website' to chk_documents_source_type CHECK constraint", "is_new": false },
+    { "path": "arch/errors.md", "change": "Added INV-KN-037 (invalid URL), INV-KN-038 (sitemap failed), INV-KN-039 (crawl failed)", "is_new": false },
+    { "path": "arch/contracts/knowledge-website.json", "change": "New API contract for website indexing endpoint", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added KnowledgeWebsiteInvalidUrl, KnowledgeWebsiteSitemapFailed, KnowledgeWebsiteCrawlFailed", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Invekto.Knowledge.csproj", "change": "Added HtmlAgilityPack 1.11.67 NuGet package", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Program.cs", "change": "WebScrapingService DI registration, POST /documents/website endpoint with SSRF guard, WebsiteIndexRequest DTO, IsRfc1918 helper", "is_new": false },
+    { "path": "src/Invekto.Knowledge/Services/WebScrapingService.cs", "change": "New service: sitemap parsing, robots.txt compliance, HTML scraping via HtmlAgilityPack, text chunking, rate limiting", "is_new": true },
+    { "path": "src/Invekto.Knowledge/Services/DocumentProcessingService.cs", "change": "Added SourceType to DocumentProcessJob, WebScrapingService injection, ProcessWebsiteAsync method, GenerateEmbeddingsAsync loop for 500+ chunks", "is_new": false },
+    { "path": "src/Invekto.Knowledge/appsettings.json", "change": "Added WebScraping config section (MaxPages, PageTimeoutMs, DelayBetweenRequestsMs)", "is_new": false }
+  ],
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-02T16:28:00Z",
+    "services": ["Invekto.Shared", "Invekto.Knowledge"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the sitemap parsing handle both standard urlset and sitemapindex formats, and does it fall back gracefully when no sitemap is found?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the SSRF guard sufficient to prevent requests to internal/loopback addresses, including IPv6 and DNS rebinding?",
+      "category": "Security"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the GenerateEmbeddingsAsync loop correctly handle more than 500 chunks without missing any?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "Are website crawl failures properly propagated as document status='error' without leaving orphan chunks?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q5",
+      "question": "Does the DocumentProcessJob.SourceType default of 'pdf' ensure backward compatibility for existing enqueued jobs?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/", "src/Invekto.WebChat/", "src/Invekto.Automation/"],
+    "non_goals": ["Automatic periodic re-crawling", "JavaScript rendering (SPA support)", "Per-page document records"],
+    "intentional_exclusions": ["RetrievalService untouched (works as-is)", "No UI for website submission (API-only for now)"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "WebScrapingService.cs:ScrapePageAsync (OperationCanceledException, Exception)",
+      "WebScrapingService.cs:FetchSitemapUrlsAsync (Exception per sitemap URL)",
+      "WebScrapingService.cs:FetchRobotsDisallowAsync (catch-all, non-fatal)",
+      "DocumentProcessingService.cs:ProcessWebsiteAsync (CrawlAsync exception -> status=error)",
+      "Program.cs:website endpoint (JsonException, general Exception)"
+    ],
+    "error_codes_used": ["INV-KN-009", "INV-KN-037", "INV-KN-039"]
+  },
+  "review": {
+    "codex_iteration": 0,
+    "codex_verdict": null,
+    "codex_blocking_issues": []
+  }
+}
