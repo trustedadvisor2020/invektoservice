@@ -162,7 +162,7 @@ builder.Services.AddHttpClient<KnowledgeIntentClient>((sp, client) =>
 });
 
 // Register KnowledgeSearchClient (typed HttpClient for ai_faq semantic search)
-var knowledgeSearchTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:SearchTimeoutMs", 15000);
+var knowledgeSearchTimeoutMs = builder.Configuration.GetValue<int>("Knowledge:SearchTimeoutMs", 5000);
 builder.Services.AddHttpClient<KnowledgeSearchClient>((sp, client) =>
 {
     client.BaseAddress = new Uri(knowledgeBaseUrl);

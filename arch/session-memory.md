@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-03-03
-- **Status:** WebChat SuperAdmin Page DONE.
-- **Last Task:** WebChat SuperAdmin page — live chat window in ops panel. Backend proxies to WebChat via X-Internal-Key. Dashboard WebChatPage with conversation list + chat window + 5s polling + error feedback. Codex PASS iteration 2.
-- **Production Deploy:** Not yet deployed
+- **Status:** Flow response latency optimization DONE.
+- **Last Task:** Automation flow response hız optimizasyonu — pre-flow calls parallelized (Task.WhenAll), tenant intents + settings 5-min in-memory cache, Knowledge search timeout 15s→5s. Build PASS.
+- **Production Deploy:** Automation deploy bekliyor (2026-03-03)
 - **Next Task:** Q belirleyecek
 - **Strateji:** 12 Paket Stratejisi v5.2
 

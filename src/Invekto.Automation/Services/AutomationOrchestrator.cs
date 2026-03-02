@@ -35,6 +35,11 @@ public sealed class AutomationOrchestrator
     // GR-2.6: KVKK health tenant cache (tenant_id -> isHealthTenant)
     private readonly ConcurrentDictionary<int, bool> _healthTenantCache = new();
 
+    // Perf: cache tenant intents + settings to avoid HTTP/DB on every message
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private readonly ConcurrentDictionary<int, (string[]? Intents, DateTime ExpiresAt)> _intentCache = new();
+    private readonly ConcurrentDictionary<int, (string? SettingsJson, DateTime ExpiresAt)> _settingsCache = new();
+
     public AutomationOrchestrator(
         AutomationRepository repo,
         FlowEngine flowEngine,
@@ -376,15 +381,42 @@ public sealed class AutomationOrchestrator
             }
         }
 
-        // 4a. PKT-6A: Fetch tenant intents from Knowledge (graceful degradation: null = defaults)
+        // 4a. PKT-6A: Fetch tenant intents + settings (cached, parallel on miss)
         string[]? tenantIntents = null;
         double tenantConfidenceThreshold = 0.5;
         string? settingsJson = null;
         try
         {
-            var serviceJwt = _jwtGenerator.GenerateServiceToken(tenantId);
-            tenantIntents = await _knowledgeIntentClient.GetTenantIntentsAsync(tenantId, serviceJwt, ct);
-            settingsJson = await _repo.GetTenantSettingsJsonAsync(tenantId, ct);
+            var now = DateTime.UtcNow;
+            var intentsCached = _intentCache.TryGetValue(tenantId, out var ic) && ic.ExpiresAt > now;
+            var settingsCached = _settingsCache.TryGetValue(tenantId, out var sc) && sc.ExpiresAt > now;
+
+            if (intentsCached && settingsCached)
+            {
+                tenantIntents = ic.Intents;
+                settingsJson = sc.SettingsJson;
+            }
+            else
+            {
+                var serviceJwt = _jwtGenerator.GenerateServiceToken(tenantId);
+                var intentTask = intentsCached
+                    ? Task.FromResult(ic.Intents)
+                    : _knowledgeIntentClient.GetTenantIntentsAsync(tenantId, serviceJwt, ct);
+                var settingsTask = settingsCached
+                    ? Task.FromResult(sc.SettingsJson)
+                    : _repo.GetTenantSettingsJsonAsync(tenantId, ct);
+
+                await Task.WhenAll(intentTask, settingsTask);
+                tenantIntents = intentTask.Result;
+                settingsJson = settingsTask.Result;
+
+                var expiry = now.Add(CacheTtl);
+                if (!intentsCached)
+                    _intentCache[tenantId] = (tenantIntents, expiry);
+                if (!settingsCached)
+                    _settingsCache[tenantId] = (settingsJson, expiry);
+            }
+
             tenantConfidenceThreshold = ExtractConfidenceThreshold(settingsJson);
         }
         catch (Exception ex)
