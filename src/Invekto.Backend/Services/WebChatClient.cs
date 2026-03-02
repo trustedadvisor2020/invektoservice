@@ -106,11 +106,14 @@ public sealed class WebChatClient
         return request;
     }
 
-    public async Task<WebChatConversationsResponse?> GetConversationsAsync(CancellationToken ct = default)
+    public async Task<WebChatConversationsResponse?> GetConversationsAsync(bool includeClosed = false, CancellationToken ct = default)
     {
         try
         {
-            var request = WithInternalKey(new HttpRequestMessage(HttpMethod.Get, "/api/v1/operator/conversations"));
+            var url = includeClosed
+                ? "/api/v1/operator/conversations?include_closed=true"
+                : "/api/v1/operator/conversations";
+            var request = WithInternalKey(new HttpRequestMessage(HttpMethod.Get, url));
             using var response = await _httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<WebChatConversationsResponse>(SnakeCase, ct);
@@ -196,6 +199,47 @@ public sealed class WebChatClient
             return false;
         }
     }
+
+    public async Task<bool> RouteToAiAsync(long conversationId, CancellationToken ct = default)
+    {
+        try
+        {
+            var request = WithInternalKey(new HttpRequestMessage(HttpMethod.Put, $"/api/v1/operator/conversations/{conversationId}/route-ai"));
+            using var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "WebChat route-ai timeout for {Id}", conversationId);
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "WebChat route-ai failed for {Id}", conversationId);
+            return false;
+        }
+    }
+
+    public async Task<WebChatVisitorResponse?> GetVisitorAsync(long conversationId, CancellationToken ct = default)
+    {
+        try
+        {
+            var request = WithInternalKey(new HttpRequestMessage(HttpMethod.Get, $"/api/v1/operator/conversations/{conversationId}/visitor"));
+            using var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<WebChatVisitorResponse>(SnakeCase, ct);
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "WebChat get visitor timeout for conversation {Id}", conversationId);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "WebChat get visitor failed for conversation {Id}", conversationId);
+            return null;
+        }
+    }
 }
 
 // DTOs for WebChat proxy responses
@@ -272,4 +316,28 @@ public sealed class WebChatSendResult
 {
     [JsonPropertyName("message")]
     public WebChatMessageDto? Message { get; set; }
+}
+
+public sealed class WebChatVisitorResponse
+{
+    [JsonPropertyName("visitor_id")]
+    public string VisitorId { get; set; } = "";
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+
+    [JsonPropertyName("first_seen")]
+    public DateTime FirstSeen { get; set; }
+
+    [JsonPropertyName("last_seen")]
+    public DateTime LastSeen { get; set; }
+
+    [JsonPropertyName("page_url")]
+    public string? PageUrl { get; set; }
+
+    [JsonPropertyName("user_agent")]
+    public string? UserAgent { get; set; }
 }

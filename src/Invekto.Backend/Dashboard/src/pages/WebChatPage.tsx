@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, WebChatConversation, WebChatMessage } from '../lib/api';
+import { api, WebChatConversation, WebChatMessage, WebChatVisitor } from '../lib/api';
 import {
   MessageCircle,
   Send,
@@ -11,6 +11,11 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  Globe,
+  Mail,
+  Monitor,
+  Eye,
+  Link,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -20,6 +25,7 @@ export function WebChatPage() {
   const [conversations, setConversations] = useState<WebChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showClosed, setShowClosed] = useState(true);
 
   // Active chat
   const [activeConvId, setActiveConvId] = useState<number | null>(null);
@@ -28,7 +34,12 @@ export function WebChatPage() {
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [routing, setRouting] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+
+  // Visitor profile
+  const [visitor, setVisitor] = useState<WebChatVisitor | null>(null);
+  const [visitorLoading, setVisitorLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -43,7 +54,7 @@ export function WebChatPage() {
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
     try {
-      const result = await api.getWebChatConversations();
+      const result = await api.getWebChatConversations(showClosed);
       setConversations(result.conversations);
       setError(null);
     } catch (err) {
@@ -52,7 +63,7 @@ export function WebChatPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showClosed]);
 
   // Fetch messages for active conversation
   const fetchMessages = useCallback(async (convId: number) => {
@@ -62,6 +73,20 @@ export function WebChatPage() {
     } catch (err) {
       console.error('WebChat messages fetch failed:', err);
       setChatError('Mesajlar yuklenemedi');
+    }
+  }, []);
+
+  // Fetch visitor profile
+  const fetchVisitor = useCallback(async (convId: number) => {
+    setVisitorLoading(true);
+    try {
+      const result = await api.getWebChatVisitor(convId);
+      setVisitor(result);
+    } catch (err) {
+      console.error('WebChat visitor fetch failed:', err);
+      setVisitor(null);
+    } finally {
+      setVisitorLoading(false);
     }
   }, []);
 
@@ -90,7 +115,8 @@ export function WebChatPage() {
     setMessages([]);
     setMsgLoading(true);
     setMsgInput('');
-    await fetchMessages(conv.id);
+    setVisitor(null);
+    await Promise.all([fetchMessages(conv.id), fetchVisitor(conv.id)]);
     setMsgLoading(false);
     setTimeout(() => inputRef.current?.focus(), 100);
   };
@@ -107,7 +133,7 @@ export function WebChatPage() {
     } catch (err) {
       console.error('Send failed:', err);
       setChatError('Mesaj gonderilemedi');
-      setMsgInput(content); // restore on failure
+      setMsgInput(content);
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -122,12 +148,28 @@ export function WebChatPage() {
       await api.closeWebChatConversation(activeConvId);
       setActiveConvId(null);
       setMessages([]);
+      setVisitor(null);
       await fetchConversations();
     } catch (err) {
       console.error('Close failed:', err);
       setChatError('Sohbet kapatilmadi');
     } finally {
       setClosing(false);
+    }
+  };
+
+  // Route to AI
+  const handleRouteAi = async () => {
+    if (!activeConvId || routing) return;
+    setRouting(true);
+    try {
+      await api.routeWebChatToAi(activeConvId);
+      await fetchConversations();
+    } catch (err) {
+      console.error('Route AI failed:', err);
+      setChatError('AI yonlendirme basarisiz');
+    } finally {
+      setRouting(false);
     }
   };
 
@@ -140,6 +182,8 @@ export function WebChatPage() {
   };
 
   const activeConv = conversations.find(c => c.id === activeConvId);
+  const activeCount = conversations.filter(c => c.status !== 'closed').length;
+  const closedCount = conversations.filter(c => c.status === 'closed').length;
 
   return (
     <div className="space-y-4">
@@ -150,21 +194,34 @@ export function WebChatPage() {
           <p className="text-sm text-navy-400">
             Aktif web sohbetleri
             {conversations.length > 0 && (
-              <span className="ml-2 text-navy-300">({conversations.length} sohbet)</span>
+              <span className="ml-2 text-navy-300">
+                ({activeCount} aktif{showClosed && closedCount > 0 ? `, ${closedCount} kapali` : ''})
+              </span>
             )}
           </p>
         </div>
-        <button
-          onClick={fetchConversations}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-navy-100 rounded-lg hover:bg-navy-50 disabled:opacity-50"
-        >
-          <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
-          Yenile
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm text-navy-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showClosed}
+              onChange={e => setShowClosed(e.target.checked)}
+              className="rounded border-navy-300 text-brand-500 focus:ring-brand-500"
+            />
+            Kapali sohbetler
+          </label>
+          <button
+            onClick={fetchConversations}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-navy-100 rounded-lg hover:bg-navy-50 disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
+            Yenile
+          </button>
+        </div>
       </div>
 
-      {/* Main layout: conversation list + chat window */}
+      {/* Main layout: conversation list + chat window + visitor profile */}
       <div className="flex gap-4 h-[calc(100vh-12rem)]">
         {/* Left: Conversation list */}
         <div className="w-80 flex-shrink-0 bg-white rounded-lg border border-navy-100 flex flex-col overflow-hidden">
@@ -193,7 +250,8 @@ export function WebChatPage() {
                   onClick={() => handleSelectConv(conv)}
                   className={cn(
                     'w-full text-left px-4 py-3 border-b border-navy-50 hover:bg-navy-50 transition-colors',
-                    activeConvId === conv.id && 'bg-brand-50 border-l-2 border-l-brand-500'
+                    activeConvId === conv.id && 'bg-brand-50 border-l-2 border-l-brand-500',
+                    conv.status === 'closed' && 'opacity-60'
                   )}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -221,7 +279,7 @@ export function WebChatPage() {
           </div>
         </div>
 
-        {/* Right: Chat window */}
+        {/* Middle: Chat window */}
         <div className="flex-1 bg-white rounded-lg border border-navy-100 flex flex-col overflow-hidden">
           {!activeConvId ? (
             <div className="flex-1 flex items-center justify-center text-navy-300">
@@ -248,16 +306,28 @@ export function WebChatPage() {
                   </div>
                   {activeConv && <StatusBadge status={activeConv.status} />}
                 </div>
-                {activeConv?.status !== 'closed' && (
-                  <button
-                    onClick={handleClose}
-                    disabled={closing}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-md hover:bg-red-100 disabled:opacity-50 transition-colors"
-                  >
-                    {closing ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                    Sohbeti Kapat
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {activeConv?.status === 'active' && (
+                    <button
+                      onClick={handleRouteAi}
+                      disabled={routing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                    >
+                      {routing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
+                      AI'a Yonlendir
+                    </button>
+                  )}
+                  {activeConv?.status !== 'closed' && (
+                    <button
+                      onClick={handleClose}
+                      disabled={closing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-md hover:bg-red-100 disabled:opacity-50 transition-colors"
+                    >
+                      {closing ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                      Sohbeti Kapat
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Messages */}
@@ -309,12 +379,96 @@ export function WebChatPage() {
             </>
           )}
         </div>
+
+        {/* Right: Visitor profile */}
+        {activeConvId && (
+          <div className="w-72 flex-shrink-0 bg-white rounded-lg border border-navy-100 flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-navy-100 bg-navy-50">
+              <h2 className="text-sm font-semibold text-navy-700 flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Ziyaretci Profili
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {visitorLoading ? (
+                <div className="flex items-center justify-center py-8 text-navy-300 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Yukleniyor...
+                </div>
+              ) : !visitor ? (
+                <div className="text-sm text-navy-300 text-center py-8">
+                  Profil bulunamadi
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Avatar + Name */}
+                  <div className="flex flex-col items-center text-center pb-3 border-b border-navy-100">
+                    <div className="w-14 h-14 rounded-full bg-brand-100 flex items-center justify-center mb-2">
+                      <User className="w-7 h-7 text-brand-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-navy-800">
+                      {visitor.name || 'Anonim Ziyaretci'}
+                    </p>
+                    {visitor.email && (
+                      <p className="text-xs text-navy-400 mt-0.5">{visitor.email}</p>
+                    )}
+                  </div>
+
+                  {/* Info rows */}
+                  <div className="space-y-3">
+                    <ProfileRow icon={Globe} label="Ziyaretci ID" value={visitor.visitor_id.slice(0, 12) + '...'} />
+                    {visitor.email && <ProfileRow icon={Mail} label="E-posta" value={visitor.email} />}
+                    {visitor.page_url && (
+                      <ProfileRow icon={Link} label="Sayfa" value={visitor.page_url} truncate />
+                    )}
+                    {visitor.user_agent && (
+                      <ProfileRow
+                        icon={Monitor}
+                        label="Tarayici"
+                        value={parseUserAgent(visitor.user_agent)}
+                      />
+                    )}
+                    <ProfileRow
+                      icon={Eye}
+                      label="Ilk Gorulen"
+                      value={formatDateTime(visitor.first_seen)}
+                    />
+                    <ProfileRow
+                      icon={Clock}
+                      label="Son Gorulen"
+                      value={formatDateTime(visitor.last_seen)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // --- Sub-components ---
+
+function ProfileRow({ icon: Icon, label, value, truncate }: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  truncate?: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 text-[10px] font-medium text-navy-400 uppercase tracking-wide mb-0.5">
+        <Icon className="w-3 h-3" />
+        {label}
+      </div>
+      <p className={cn('text-xs text-navy-700', truncate && 'truncate')} title={value}>
+        {value}
+      </p>
+    </div>
+  );
+}
 
 function ChatBubble({ message }: { message: WebChatMessage }) {
   const isVisitor = message.sender_type === 'visitor';
@@ -389,4 +543,27 @@ function formatTime(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function formatDateTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function parseUserAgent(ua: string): string {
+  if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome';
+  if (ua.includes('Edg')) return 'Edge';
+  if (ua.includes('Firefox')) return 'Firefox';
+  if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+  return ua.slice(0, 30);
 }

@@ -398,14 +398,17 @@ IResult? ValidateOperatorJwt(HttpContext ctx, string requestId)
     }
 }
 
-// List active conversations (operator)
+// List conversations (operator) — ?include_closed=true returns all
 app.MapGet("/api/v1/operator/conversations", async (HttpContext ctx, WebChatRepository repo) =>
 {
     var requestId = GetRequestId(ctx);
     var authError = ValidateOperatorJwt(ctx, requestId);
     if (authError != null) return authError;
 
-    var conversations = await repo.GetActiveConversationsAsync(ctx.RequestAborted);
+    var includeClosed = ctx.Request.Query["include_closed"].FirstOrDefault() == "true";
+    var conversations = includeClosed
+        ? await repo.GetAllConversationsAsync(ct: ctx.RequestAborted)
+        : await repo.GetActiveConversationsAsync(ctx.RequestAborted);
 
     // Get last message for each conversation
     var result = new List<object>();
@@ -485,6 +488,67 @@ app.MapPut("/api/v1/operator/conversations/{id}/close", async (long id, HttpCont
     }
 
     return Results.Ok(new { status = "closed" });
+});
+
+// Route conversation to AI (operator)
+app.MapPut("/api/v1/operator/conversations/{id}/route-ai", async (long id, HttpContext ctx, WebChatRepository repo) =>
+{
+    var requestId = GetRequestId(ctx);
+    var authError = ValidateOperatorJwt(ctx, requestId);
+    if (authError != null) return authError;
+
+    var conversation = await repo.GetConversationAsync(id, ctx.RequestAborted);
+    if (conversation == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.WebChatConversationNotFound, "Conversation not found", requestId),
+            statusCode: 404);
+    }
+    if (conversation.Status == "closed")
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.WebChatConversationClosed, "Conversation is closed", requestId),
+            statusCode: 400);
+    }
+
+    await repo.UpdateConversationStatusAsync(id, "ai", ctx.RequestAborted);
+    logger.StepInfo($"Conversation {id} routed to AI by operator", requestId);
+    return Results.Ok(new { status = "ai" });
+});
+
+// Get visitor profile for a conversation (operator)
+app.MapGet("/api/v1/operator/conversations/{id}/visitor", async (long id, HttpContext ctx, WebChatRepository repo) =>
+{
+    var requestId = GetRequestId(ctx);
+    var authError = ValidateOperatorJwt(ctx, requestId);
+    if (authError != null) return authError;
+
+    var conversation = await repo.GetConversationAsync(id, ctx.RequestAborted);
+    if (conversation == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.WebChatConversationNotFound, "Conversation not found", requestId),
+            statusCode: 404);
+    }
+
+    var visitor = await repo.GetVisitorByIdAsync(conversation.VisitorId, ctx.RequestAborted);
+    if (visitor == null)
+    {
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.WebChatInvalidVisitor, "Visitor not found", requestId),
+            statusCode: 404);
+    }
+
+    return Results.Ok(new
+    {
+        visitor_id = visitor.Id,
+        name = visitor.Name,
+        email = visitor.Email,
+        first_seen = visitor.FirstSeen,
+        last_seen = visitor.LastSeen,
+        page_url = visitor.PageUrl,
+        user_agent = visitor.UserAgent
+    });
 });
 
 // Register push token (operator)

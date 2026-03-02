@@ -578,7 +578,8 @@ app.MapGet("/api/ops/webchat/conversations", async (HttpContext ctx, WebChatClie
     if (!ValidateOpsAuth(ctx))
         return OpsUnauthorized(ctx);
 
-    var result = await webChatClient.GetConversationsAsync(ctx.RequestAborted);
+    var includeClosed = ctx.Request.Query["include_closed"].FirstOrDefault() == "true";
+    var result = await webChatClient.GetConversationsAsync(includeClosed, ctx.RequestAborted);
     if (result == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceUnavailable, "WebChat service unavailable", "-"), statusCode: 502);
 
@@ -624,6 +625,30 @@ app.MapPut("/api/ops/webchat/conversations/{id}/close", async (long id, HttpCont
         return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceError, "Failed to close conversation", "-"), statusCode: 502);
 
     return Results.Ok(new { status = "closed" });
+});
+
+app.MapPut("/api/ops/webchat/conversations/{id}/route-ai", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var routed = await webChatClient.RouteToAiAsync(id, ctx.RequestAborted);
+    if (!routed)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceError, "Failed to route to AI", "-"), statusCode: 502);
+
+    return Results.Ok(new { status = "ai" });
+});
+
+app.MapGet("/api/ops/webchat/conversations/{id}/visitor", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var result = await webChatClient.GetVisitorAsync(id, ctx.RequestAborted);
+    if (result == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceUnavailable, "WebChat service unavailable", "-"), statusCode: 502);
+
+    return Results.Ok(result);
 });
 
 // Dashboard: Service health with response times

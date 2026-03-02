@@ -1671,8 +1671,9 @@ class OpsApiClient {
 
   // --- WebChat operator proxy (superadmin chat window) ---
 
-  async getWebChatConversations(): Promise<WebChatConversationsResponse> {
-    return this.request<WebChatConversationsResponse>('/api/ops/webchat/conversations');
+  async getWebChatConversations(includeClosed = false): Promise<WebChatConversationsResponse> {
+    const qs = includeClosed ? '?include_closed=true' : '';
+    return this.request<WebChatConversationsResponse>(`/api/ops/webchat/conversations${qs}`);
   }
 
   async getWebChatMessages(conversationId: number): Promise<WebChatMessagesResponse> {
@@ -1690,6 +1691,16 @@ class OpsApiClient {
     return this.request<{ status: string }>(`/api/ops/webchat/conversations/${conversationId}/close`, {
       method: 'PUT',
     });
+  }
+
+  async routeWebChatToAi(conversationId: number): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/api/ops/webchat/conversations/${conversationId}/route-ai`, {
+      method: 'PUT',
+    });
+  }
+
+  async getWebChatVisitor(conversationId: number): Promise<WebChatVisitor> {
+    return this.request<WebChatVisitor>(`/api/ops/webchat/conversations/${conversationId}/visitor`);
   }
 }
 
@@ -1963,6 +1974,16 @@ export interface WebChatMessagesResponse {
 
 export interface WebChatSendResult {
   message: WebChatMessage;
+}
+
+export interface WebChatVisitor {
+  visitor_id: string;
+  name: string | null;
+  email: string | null;
+  first_seen: string;
+  last_seen: string;
+  page_url: string | null;
+  user_agent: string | null;
 }
 
 export const api = new OpsApiClient();

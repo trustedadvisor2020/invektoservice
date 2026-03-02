@@ -165,6 +165,42 @@ public class WebChatRepository
         return list;
     }
 
+    public async Task<List<ConversationRow>> GetAllConversationsAsync(int closedLimit = 50, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT c.id, c.visitor_id, c.status, c.started_at, c.closed_at,
+                   c.last_message_at, c.ai_active, v.name as visitor_name, v.email as visitor_email
+            FROM webchat_conversations c
+            JOIN webchat_visitors v ON v.id = c.visitor_id
+            ORDER BY
+                CASE WHEN c.status IN ('active', 'ai') THEN 0 ELSE 1 END,
+                c.last_message_at DESC
+            LIMIT @lim";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("lim", closedLimit);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        var list = new List<ConversationRow>();
+        while (await reader.ReadAsync(ct))
+        {
+            list.Add(new ConversationRow
+            {
+                Id = reader.GetInt64(0),
+                VisitorId = reader.GetString(1),
+                Status = reader.GetString(2),
+                StartedAt = reader.GetDateTime(3),
+                ClosedAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4),
+                LastMessageAt = reader.GetDateTime(5),
+                AiActive = reader.GetBoolean(6),
+                VisitorName = reader.IsDBNull(7) ? null : reader.GetString(7),
+                VisitorEmail = reader.IsDBNull(8) ? null : reader.GetString(8)
+            });
+        }
+        return list;
+    }
+
     /// <summary>
     /// Closes a conversation. Returns (closed, widget_id) so the caller can trigger webhooks.
     /// </summary>
@@ -211,6 +247,33 @@ public class WebChatRepository
         cmd.Parameters.AddWithValue("id", conversationId);
 
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // ── Visitors (lookup) ──
+
+    public async Task<VisitorRow?> GetVisitorByIdAsync(string visitorId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, name, email, first_seen, last_seen, page_url, user_agent
+            FROM webchat_visitors WHERE id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", visitorId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+
+        return new VisitorRow
+        {
+            Id = reader.GetString(0),
+            Name = reader.IsDBNull(1) ? null : reader.GetString(1),
+            Email = reader.IsDBNull(2) ? null : reader.GetString(2),
+            FirstSeen = reader.GetDateTime(3),
+            LastSeen = reader.GetDateTime(4),
+            PageUrl = reader.IsDBNull(5) ? null : reader.GetString(5),
+            UserAgent = reader.IsDBNull(6) ? null : reader.GetString(6)
+        };
     }
 
     // ── Messages ──
@@ -360,6 +423,17 @@ public class MessageRow
     public string SenderType { get; set; } = "";
     public string Content { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+}
+
+public class VisitorRow
+{
+    public string Id { get; set; } = "";
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public DateTime FirstSeen { get; set; }
+    public DateTime LastSeen { get; set; }
+    public string? PageUrl { get; set; }
+    public string? UserAgent { get; set; }
 }
 
 public class WidgetFlowConfig
