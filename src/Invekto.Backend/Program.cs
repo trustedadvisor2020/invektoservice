@@ -190,12 +190,14 @@ builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 // Register AI Wizard service for flow builder
 builder.Services.AddHttpClient<ClaudeWizardService>();
 
-// Configure WebChat HTTP client
-builder.Services.AddHttpClient<WebChatClient>(client =>
-{
-    client.BaseAddress = new Uri(webChatUrl);
-    client.Timeout = TimeSpan.FromMilliseconds(webChatTimeoutMs);
-});
+// Configure WebChat HTTP client (with internal API key for operator proxy)
+builder.Services.AddHttpClient<WebChatClient>()
+    .AddTypedClient((httpClient, sp) =>
+    {
+        httpClient.BaseAddress = new Uri(webChatUrl);
+        httpClient.Timeout = TimeSpan.FromMilliseconds(webChatTimeoutMs);
+        return new WebChatClient(httpClient, sp.GetRequiredService<ILogger<WebChatClient>>(), internalApiKey);
+    });
 
 // Configure WhatsApp Analytics HTTP client (PKT-4: NLP query + upload proxy)
 builder.Services.AddHttpClient<WhatsAppAnalyticsClient>(client =>
@@ -568,6 +570,61 @@ app.MapGet("/ops/search", async (HttpContext ctx, LogReader logReader, string? r
 // ============================================
 // DASHBOARD API ENDPOINTS (/api/ops/*)
 // ============================================
+
+// ---- WebChat operator proxy (superadmin chat window) ----
+
+app.MapGet("/api/ops/webchat/conversations", async (HttpContext ctx, WebChatClient webChatClient) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var result = await webChatClient.GetConversationsAsync(ctx.RequestAborted);
+    if (result == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceUnavailable, "WebChat service unavailable", "-"), statusCode: 502);
+
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/ops/webchat/conversations/{id}/messages", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var result = await webChatClient.GetMessagesAsync(id, ctx.RequestAborted);
+    if (result == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceUnavailable, "WebChat service unavailable", "-"), statusCode: 502);
+
+    return Results.Ok(result);
+});
+
+app.MapPost("/api/ops/webchat/conversations/{id}/messages", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
+    var content = bodyDoc.RootElement.TryGetProperty("content", out var c) ? c.GetString() : null;
+    if (string.IsNullOrEmpty(content))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "content is required", "-"), statusCode: 400);
+
+    var result = await webChatClient.SendOperatorMessageAsync(id, content, ctx.RequestAborted);
+    if (result == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceError, "Failed to send message", "-"), statusCode: 502);
+
+    return Results.Ok(result);
+});
+
+app.MapPut("/api/ops/webchat/conversations/{id}/close", async (long id, HttpContext ctx, WebChatClient webChatClient) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    var closed = await webChatClient.CloseConversationAsync(id, ctx.RequestAborted);
+    if (!closed)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendMicroserviceError, "Failed to close conversation", "-"), statusCode: 502);
+
+    return Results.Ok(new { status = "closed" });
+});
 
 // Dashboard: Service health with response times
 app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient) =>

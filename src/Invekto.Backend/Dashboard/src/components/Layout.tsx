@@ -24,6 +24,7 @@ import {
   Brain,
   Rocket,
   Layers,
+  Globe,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo } from './ui/InvektoLogo';
@@ -54,6 +55,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations' },
   { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true },
+  { path: '/webchat',         label: 'WebChat',          icon: Globe,         opsOnly: true },
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
   { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true },

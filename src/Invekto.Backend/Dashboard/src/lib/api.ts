@@ -1668,6 +1668,29 @@ class OpsApiClient {
     const params = sector ? `?sector=${encodeURIComponent(sector)}` : '';
     return this.request<RiOnboardingResponse>(`/api/v1/wa/${tenantId}/ri/onboarding${params}`);
   }
+
+  // --- WebChat operator proxy (superadmin chat window) ---
+
+  async getWebChatConversations(): Promise<WebChatConversationsResponse> {
+    return this.request<WebChatConversationsResponse>('/api/ops/webchat/conversations');
+  }
+
+  async getWebChatMessages(conversationId: number): Promise<WebChatMessagesResponse> {
+    return this.request<WebChatMessagesResponse>(`/api/ops/webchat/conversations/${conversationId}/messages`);
+  }
+
+  async sendWebChatMessage(conversationId: number, content: string): Promise<WebChatSendResult> {
+    return this.request<WebChatSendResult>(`/api/ops/webchat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  async closeWebChatConversation(conversationId: number): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/api/ops/webchat/conversations/${conversationId}/close`, {
+      method: 'PUT',
+    });
+  }
 }
 
 // --- RI Types (RI-6) ---
@@ -1903,6 +1926,43 @@ export interface RiTenantBenchmarkComparison {
   tenantActiveAgents: number | null;
   tenantAvgQualityScore: number | null;
   recommendation: string | null;
+}
+
+// --- WebChat Types ---
+
+export interface WebChatConversation {
+  id: number;
+  visitor_id: string;
+  visitor_name: string | null;
+  visitor_email: string | null;
+  status: 'active' | 'ai' | 'closed';
+  started_at: string;
+  last_message_at: string | null;
+  last_message: {
+    sender_type: string;
+    content: string;
+    created_at: string;
+  } | null;
+}
+
+export interface WebChatConversationsResponse {
+  conversations: WebChatConversation[];
+}
+
+export interface WebChatMessage {
+  id: number;
+  conversation_id: number;
+  sender_type: 'visitor' | 'operator' | 'ai';
+  content: string;
+  created_at: string;
+}
+
+export interface WebChatMessagesResponse {
+  messages: WebChatMessage[];
+}
+
+export interface WebChatSendResult {
+  message: WebChatMessage;
 }
 
 export const api = new OpsApiClient();

@@ -1,0 +1,147 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260302-webchat-superadmin-chat",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-03-02T23:00:00Z",
+  "updated_at": "2026-03-03T00:15:00Z",
+  "plan": {
+    "summary": "Add a WebChat page to the SuperAdmin (ops) panel with a live chat window. Operators can view active webchat conversations and reply to visitors directly from the Dashboard.",
+    "q_intent": "superadmin paneline bir sayfa ekle. webchat için sohbet penceresi olsun.",
+    "interview_notes": "Q skip interview — proceed directly.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "A new 'WebChat' nav item appears in the SuperAdmin sidebar (opsOnly) and navigates to /webchat",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "The WebChat page shows a list of active conversations with visitor name, email, status, and last message preview",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Clicking a conversation opens a chat window showing the full message history with distinct bubble styles for visitor/operator/ai messages",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "Operator can type and send messages from the chat window, and the message appears in the conversation",
+        "verified": false
+      },
+      {
+        "id": "AC5",
+        "criterion": "Operator can close a conversation from the chat window",
+        "verified": false
+      },
+      {
+        "id": "AC6",
+        "criterion": "Solution build passes with zero errors",
+        "verified": false
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.WebChat/Program.cs",
+    "src/Invekto.Backend/Services/WebChatClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/WebChatPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.WebChat/Program.cs", "is_new": false, "change": "Added X-Internal-Key auth to ValidateOperatorJwt" },
+    { "path": "src/Invekto.Backend/Services/WebChatClient.cs", "is_new": false, "change": "Added operator proxy methods + DTOs (GetConversations, GetMessages, SendOperatorMessage, CloseConversation)" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Added 4 ops webchat proxy endpoints + WebChatClient factory with internalApiKey" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/WebChatPage.tsx", "is_new": true, "change": "New WebChat page with conversation list + chat window" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "Added webchat API methods + types" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "Added /webchat route" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false, "change": "Added WebChat nav item with Globe icon (opsOnly)" }
+  ],
+  "git_diff": {
+    "sha256": "9B489A9CF03010467AA33F6FD99E328713FE8D0E799D02A6AEB76E908D6E8FDE",
+    "full_path": "arch/plans/diffs/20260302-webchat-superadmin-chat.diff",
+    "stats": { "insertions": 837, "deletions": 10, "files_count": 8 }
+  },
+  "build": { "status": "PASS", "timestamp": "2026-03-03T00:00:00Z" },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the internal API key auth on WebChat properly validate and reject requests with invalid or missing keys?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Are webchat conversations and messages correctly fetched and displayed with proper sender type distinction?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the operator message send flow correctly proxy through Backend to WebChat preserving all business logic (SignalR, AI timer)?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/",
+      "arch/db/",
+      "src/Invekto.Automation/"
+    ],
+    "non_goals": [
+      "SignalR real-time updates in Dashboard (use polling)",
+      "WebChat widget changes",
+      "New DB tables or schema changes"
+    ],
+    "intentional_exclusions": [
+      "Real-time SignalR integration from Dashboard to WebChat — polling is sufficient for superadmin v1",
+      "Closed conversation history — only active/ai conversations shown"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "Mesaj gonderilemedi — toast on send failure",
+      "Sohbetler yuklenemedi — error state in conversation list"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All API calls show loading/error states. WebChat proxy failures surface as HTTP errors."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "SuperAdmin cannot see or respond to webchat visitors without opening a separate tool",
+      "suggestion": "Unified chat window in Dashboard with familiar messaging UI",
+      "aha_moment": "Operator opens Dashboard, clicks WebChat, sees all live conversations and can reply instantly"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Switching between webchat operator panel and superadmin dashboard wastes time",
+      "suggestion": "Inline chat window eliminates context switching",
+      "aha_moment": "Operator monitors health metrics AND responds to visitors in the same browser tab"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "No visibility into webchat conversation quality or response times",
+      "suggestion": "Conversation list shows status badges and timestamps for at-a-glance monitoring",
+      "aha_moment": "Operator sees 'AI responding for 2 minutes' and jumps in to help the visitor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Operator might miss messages when not monitoring the webchat widget",
+      "suggestion": "Auto-refresh every 5s keeps the conversation list current",
+      "aha_moment": "New conversation appears in the list without manual refresh"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Potential leads from webchat go unnoticed",
+      "suggestion": "Active conversation count badge helps prioritize responses",
+      "aha_moment": "Operator sees '3 active conversations' and immediately engages"
+    }
+  ],
+  "verdict": { "status": "PASS", "iteration": 2 }
+}

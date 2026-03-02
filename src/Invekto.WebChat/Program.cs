@@ -31,6 +31,9 @@ var operatorEmail = builder.Configuration["Operator:Email"] ?? "";
 var operatorPasswordHash = builder.Configuration["Operator:PasswordHash"] ?? "";
 var aiDelaySeconds = builder.Configuration.GetValue<int>("AIReply:DelaySeconds", 30);
 
+// Internal API key for server-to-server auth (Backend proxy)
+var internalApiKey = builder.Configuration["Microservice:InternalApiKey"] ?? "";
+
 // Automation webhook config (flow mappings come from DB per-widget)
 var automationUrl = builder.Configuration["Automation:Url"] ?? "";
 var automationTimeoutMs = builder.Configuration.GetValue<int>("Automation:TimeoutMs", 5000);
@@ -352,9 +355,14 @@ app.MapGet("/api/v1/status", (OperatorPresence presence) =>
 // Operator endpoints (JWT auth required)
 // ============================================================
 
-// Simple JWT validation for operator endpoints
+// Validate operator auth: accepts Bearer JWT OR X-Internal-Key header (server-to-server)
 IResult? ValidateOperatorJwt(HttpContext ctx, string requestId)
 {
+    // Internal API key auth (Backend proxy)
+    var internalKey = ctx.Request.Headers["X-Internal-Key"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(internalKey) && !string.IsNullOrEmpty(internalApiKey) && internalKey == internalApiKey)
+        return null; // Valid internal auth
+
     var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
     if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
     {
