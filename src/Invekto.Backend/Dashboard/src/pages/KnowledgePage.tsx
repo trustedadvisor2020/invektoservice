@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { FileText, MessageSquare, Plus } from 'lucide-react';
-import { DocumentUpload } from '../components/knowledge/DocumentUpload';
+import { FileText, MessageSquare, FileUp, Globe } from 'lucide-react';
+import { DocumentUpload, type UploadMode } from '../components/knowledge/DocumentUpload';
 import { DocumentList } from '../components/knowledge/DocumentList';
 import { FaqManager } from '../components/knowledge/FaqManager';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +15,7 @@ export function KnowledgePage() {
   const [activeTab, setActiveTab] = useState<Tab>('documents');
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<UploadMode>('pdf');
 
   const handleUploadComplete = () => {
     setRefreshKey(k => k + 1);
@@ -33,13 +34,22 @@ export function KnowledgePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-navy-900">Bilgi Bankasi</h1>
         {activeTab === 'documents' && (
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Dokuman Ekle
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setUploadMode('pdf'); setUploadOpen(true); }}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
+            >
+              <FileUp className="w-4 h-4" />
+              PDF Yukle
+            </button>
+            <button
+              onClick={() => { setUploadMode('website'); setUploadOpen(true); }}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-brand-500 text-brand-600 rounded-lg hover:bg-brand-50 transition-colors"
+            >
+              <Globe className="w-4 h-4" />
+              Web Sitesi Ekle
+            </button>
+          </div>
         )}
       </div>
 
@@ -79,6 +89,7 @@ export function KnowledgePage() {
       <DocumentUpload
         tenantId={tenantId}
         open={uploadOpen}
+        mode={uploadMode}
         onClose={() => setUploadOpen(false)}
         onUploadComplete={handleUploadComplete}
       />

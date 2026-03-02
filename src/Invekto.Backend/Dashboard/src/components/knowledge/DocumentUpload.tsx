@@ -2,17 +2,17 @@ import { useState, useCallback } from 'react';
 import { Upload, FileUp, Globe, X } from 'lucide-react';
 import { api } from '../../lib/api';
 
+export type UploadMode = 'pdf' | 'website';
+
 interface Props {
   tenantId: number;
   open: boolean;
+  mode: UploadMode;
   onClose: () => void;
   onUploadComplete: () => void;
 }
 
-type Mode = 'pdf' | 'website';
-
-export function DocumentUpload({ tenantId, open, onClose, onUploadComplete }: Props) {
-  const [mode, setMode] = useState<Mode>('pdf');
+export function DocumentUpload({ tenantId, open, mode, onClose, onUploadComplete }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
@@ -99,31 +99,14 @@ export function DocumentUpload({ tenantId, open, onClose, onUploadComplete }: Pr
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-navy-100">
-          <h3 className="text-base font-semibold text-navy-800">Dokuman Ekle</h3>
+          <div className="flex items-center gap-2">
+            {mode === 'pdf' ? <FileUp className="w-5 h-5 text-brand-500" /> : <Globe className="w-5 h-5 text-brand-500" />}
+            <h3 className="text-base font-semibold text-navy-800">
+              {mode === 'pdf' ? 'PDF Yukle' : 'Web Sitesi Ekle'}
+            </h3>
+          </div>
           <button onClick={handleClose} className="text-navy-400 hover:text-navy-600 transition-colors">
             <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Mode tabs */}
-        <div className="flex border-b border-navy-100">
-          <button
-            onClick={() => { setMode('pdf'); setError(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors ${
-              mode === 'pdf' ? 'border-brand-500 text-brand-600' : 'border-transparent text-navy-400 hover:text-navy-600'
-            }`}
-          >
-            <FileUp className="w-4 h-4" />
-            PDF Yukle
-          </button>
-          <button
-            onClick={() => { setMode('website'); setError(null); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors ${
-              mode === 'website' ? 'border-brand-500 text-brand-600' : 'border-transparent text-navy-400 hover:text-navy-600'
-            }`}
-          >
-            <Globe className="w-4 h-4" />
-            Web Sitesi
           </button>
         </div>
 
