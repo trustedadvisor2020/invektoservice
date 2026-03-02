@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-03-02
-- **Status:** Knowledge Website UI + Deploy DONE.
-- **Last Task:** Knowledge Website UI — DocumentUpload popup modal (PDF + Web Sitesi tabs), Backend proxy route, api.ts indexWebsite. Knowledge + Backend deployed HEALTHY. DB migration (website source_type CHECK) applied.
-- **Production Deploy:** Knowledge + Backend deployed (2026-03-02)
+- **Date:** 2026-03-03
+- **Status:** WebChat SuperAdmin Page DONE.
+- **Last Task:** WebChat SuperAdmin page — live chat window in ops panel. Backend proxies to WebChat via X-Internal-Key. Dashboard WebChatPage with conversation list + chat window + 5s polling + error feedback. Codex PASS iteration 2.
+- **Production Deploy:** Not yet deployed
 - **Next Task:** Q belirleyecek
 - **Strateji:** 12 Paket Stratejisi v5.2
 

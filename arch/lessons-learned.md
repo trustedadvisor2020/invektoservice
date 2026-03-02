@@ -456,6 +456,8 @@
 | 2026-02-15 | Codex comment-code mismatch yakaladi ("auto-detect" in DTO comment but no auto-detect in code) | Comment = kod, Codex comment'leri de review eder |
 | 2026-02-15 | Cross-service dogrulama 3 iter boyunca UNKNOWN - erken escalation gerekiyordu | Architecturally unresolvable = iter 1'de Q escalation |
 | 2026-02-15 | Phase 3C/3D'de .NET-native CLIP/MediaPipe paketi yok - hybrid mimari zorunlu | Arastirma notlarini faz dosyasina embed et, faz basinda plan yap |
+| 2026-03-03 | Codex iter0 CQ1 generic error objects, iter1 CQ1 missing UI error feedback | 1) Ops endpoints: OpsUnauthorized + ErrorResponse.Create pattern kullan 2) Frontend catch: her zaman user-visible error state set et |
+| 2026-03-03 | catch(Exception ex) when (ex is A or B) Codex CQ5 FAIL olarak yakaladi | Ayri typed catch bloklari kullan: catch(TaskCanceledException) + catch(HttpRequestException) |
 
 ---
 
