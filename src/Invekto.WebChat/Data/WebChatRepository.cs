@@ -55,18 +55,46 @@ public class WebChatRepository
         return result != null;
     }
 
-    // ── Conversations ──
+    // ── Widget Configs ──
 
-    public async Task<long> CreateConversationAsync(string visitorId, CancellationToken ct = default)
+    public async Task<WidgetFlowConfig?> GetWidgetConfigAsync(string widgetId, CancellationToken ct = default)
     {
         const string sql = @"
-            INSERT INTO webchat_conversations (visitor_id)
-            VALUES (@vid)
+            SELECT widget_id, tenant_id, flow_conversation_created,
+                   flow_visitor_message, flow_conversation_closed
+            FROM webchat_widget_configs
+            WHERE widget_id = @wid AND is_active = TRUE";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("wid", widgetId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+
+        return new WidgetFlowConfig
+        {
+            WidgetId = reader.GetString(0),
+            TenantId = reader.GetInt32(1),
+            FlowConversationCreated = reader.GetInt32(2),
+            FlowVisitorMessage = reader.GetInt32(3),
+            FlowConversationClosed = reader.GetInt32(4)
+        };
+    }
+
+    // ── Conversations ──
+
+    public async Task<long> CreateConversationAsync(string visitorId, string? widgetId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO webchat_conversations (visitor_id, widget_id)
+            VALUES (@vid, @wid)
             RETURNING id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("vid", visitorId);
+        cmd.Parameters.AddWithValue("wid", (object?)widgetId ?? DBNull.Value);
 
         var id = await cmd.ExecuteScalarAsync(ct);
         return Convert.ToInt64(id);
@@ -76,7 +104,8 @@ public class WebChatRepository
     {
         const string sql = @"
             SELECT c.id, c.visitor_id, c.status, c.started_at, c.closed_at,
-                   c.last_message_at, c.ai_active, v.name as visitor_name, v.email as visitor_email
+                   c.last_message_at, c.ai_active, v.name as visitor_name, v.email as visitor_email,
+                   c.widget_id
             FROM webchat_conversations c
             JOIN webchat_visitors v ON v.id = c.visitor_id
             WHERE c.id = @id";
@@ -98,7 +127,8 @@ public class WebChatRepository
             LastMessageAt = reader.GetDateTime(5),
             AiActive = reader.GetBoolean(6),
             VisitorName = reader.IsDBNull(7) ? null : reader.GetString(7),
-            VisitorEmail = reader.IsDBNull(8) ? null : reader.GetString(8)
+            VisitorEmail = reader.IsDBNull(8) ? null : reader.GetString(8),
+            WidgetId = reader.IsDBNull(9) ? null : reader.GetString(9)
         };
     }
 
@@ -135,19 +165,26 @@ public class WebChatRepository
         return list;
     }
 
-    public async Task<bool> CloseConversationAsync(long conversationId, CancellationToken ct = default)
+    /// <summary>
+    /// Closes a conversation. Returns (closed, widget_id) so the caller can trigger webhooks.
+    /// </summary>
+    public async Task<(bool Closed, string? WidgetId)> CloseConversationAsync(long conversationId, CancellationToken ct = default)
     {
         const string sql = @"
             UPDATE webchat_conversations
             SET status = 'closed', closed_at = NOW()
-            WHERE id = @id AND status != 'closed'";
+            WHERE id = @id AND status != 'closed'
+            RETURNING widget_id";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("id", conversationId);
 
-        var rows = await cmd.ExecuteNonQueryAsync(ct);
-        return rows > 0;
+        var result = await cmd.ExecuteScalarAsync(ct);
+        if (result == null) return (false, null);
+
+        var widgetId = result == DBNull.Value ? null : (string?)result;
+        return (true, widgetId);
     }
 
     public async Task UpdateConversationStatusAsync(long conversationId, string status, CancellationToken ct = default)
@@ -306,6 +343,7 @@ public class ConversationRow
 {
     public long Id { get; set; }
     public string VisitorId { get; set; } = "";
+    public string? WidgetId { get; set; }
     public string Status { get; set; } = "active";
     public DateTime StartedAt { get; set; }
     public DateTime? ClosedAt { get; set; }
@@ -322,4 +360,13 @@ public class MessageRow
     public string SenderType { get; set; } = "";
     public string Content { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+}
+
+public class WidgetFlowConfig
+{
+    public string WidgetId { get; set; } = "";
+    public int TenantId { get; set; }
+    public int FlowConversationCreated { get; set; }
+    public int FlowVisitorMessage { get; set; }
+    public int FlowConversationClosed { get; set; }
 }

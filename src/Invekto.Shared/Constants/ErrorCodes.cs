@@ -42,6 +42,11 @@ public static class ErrorCodes
     public const string BackendSectorUpdateFailed = "INV-BE-060";
     public const string BackendSectorInvalidValue = "INV-BE-061";
 
+    // Backend RI Cross-Service Sync (INV-BE-070+)
+    public const string BackendRiKnowledgeSyncFailed = "INV-BE-070";
+    public const string BackendRiRescueTriggerFailed = "INV-BE-071";
+    public const string BackendRiMarketingSyncFailed = "INV-BE-072";
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
@@ -212,6 +217,11 @@ public static class ErrorCodes
     // Knowledge Onboarding Stats (INV-KN-036)
     public const string KnowledgeOnboardingStatsFailed = "INV-KN-036"; // Onboarding stats query failed
 
+    // Knowledge Website Indexing (INV-KN-037+)
+    public const string KnowledgeWebsiteInvalidUrl = "INV-KN-037";
+    public const string KnowledgeWebsiteSitemapFailed = "INV-KN-038";
+    public const string KnowledgeWebsiteCrawlFailed = "INV-KN-039";
+
     // WhatsApp Analytics errors (INV-WA-xxx) -- WA-5/6
     public const string WAAnalysisNotFound = "INV-WA-001";
     public const string WAAnalysisInProgress = "INV-WA-002";
@@ -241,6 +251,11 @@ public static class ErrorCodes
 
     // Nightly Batch errors (INV-WA-024+)
     public const string WADiscoveryFailed = "INV-WA-024";
+
+    // RI Cross-Service errors (INV-WA-025+)
+    public const string WARescueStatusUpdateFailed = "INV-WA-025";
+    public const string WATemplateCreateFailed = "INV-WA-026";
+    public const string WATemplateUpdateFailed = "INV-WA-027";
 
     // Integrations errors (INV-IG-xxx) -- GR-3.4/3.6
     public const string IntegrationsInvalidAccountPayload = "INV-IG-001";
@@ -347,6 +362,10 @@ public static class ErrorCodes
     public const string WebChatOperatorNotFound = "INV-WC-008";
     public const string WebChatConversationClosed = "INV-WC-009";
     public const string WebChatHubConnectionFailed = "INV-WC-010";
+
+    // WebChat Automation Webhook (INV-WC-011+)
+    public const string WebChatWebhookFailed = "INV-WC-011";
+    public const string WebChatWebhookTimeout = "INV-WC-012";
 
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS webchat_visitors (
 CREATE TABLE IF NOT EXISTS webchat_conversations (
     id              BIGSERIAL PRIMARY KEY,
     visitor_id      TEXT NOT NULL REFERENCES webchat_visitors(id),
+    widget_id       TEXT,                                     -- Links to webchat_widget_configs
     status          VARCHAR(20) NOT NULL DEFAULT 'active',    -- active | ai | closed
     started_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     closed_at       TIMESTAMPTZ,
@@ -49,6 +50,27 @@ CREATE TABLE IF NOT EXISTS webchat_messages (
 );
 
 CREATE INDEX ix_webchat_messages_conv ON webchat_messages(conversation_id, created_at);
+
+-- =============================================================
+-- webchat_push_tokens: Expo push notification tokens for operator app
+-- =============================================================
+
+-- =============================================================
+-- webchat_widget_configs: Per-widget Automation flow mappings
+-- Each widget instance can trigger different Automation flows.
+-- flow_id = 0 means that event is disabled for this widget.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS webchat_widget_configs (
+    widget_id                   TEXT PRIMARY KEY,
+    tenant_id                   INTEGER NOT NULL,
+    flow_conversation_created   INTEGER NOT NULL DEFAULT 0,
+    flow_visitor_message        INTEGER NOT NULL DEFAULT 0,
+    flow_conversation_closed    INTEGER NOT NULL DEFAULT 0,
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- =============================================================
 -- webchat_push_tokens: Expo push notification tokens for operator app

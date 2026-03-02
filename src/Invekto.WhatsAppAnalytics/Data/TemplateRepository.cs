@@ -616,4 +616,178 @@ public sealed class TemplateRepository
         if (rows == 0)
             throw new ArgumentException($"Template {type}/{id} not found");
     }
+
+    // ============================================================
+    // Single-record CRUD for RI-6.10-14 Template Management
+    // ============================================================
+
+    /// <summary>Insert a single intent. Returns new ID.</summary>
+    public async Task<long> InsertIntentAsync(SectorIntentRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"INSERT INTO wa_sector_intents
+            (sector, intent_name, description, category, examples, keywords, priority, frequency, conversion_rate, source_count, is_active)
+            VALUES (@s, @nm, @d, @cat, @ex::jsonb, @kw::jsonb, @pri, @freq, @cr, @sc, @a)
+            RETURNING id";
+        cmd.Parameters.AddWithValue("s", r.Sector);
+        cmd.Parameters.AddWithValue("nm", r.IntentName);
+        cmd.Parameters.AddWithValue("d", (object?)r.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("cat", (object?)r.Category ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("ex", (object?)r.ExamplesJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("kw", (object?)r.KeywordsJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("pri", r.Priority);
+        cmd.Parameters.AddWithValue("freq", r.Frequency);
+        cmd.Parameters.AddWithValue("cr", r.ConversionRate.HasValue ? (object)r.ConversionRate.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("sc", r.SourceCount);
+        cmd.Parameters.AddWithValue("a", r.IsActive);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long id ? id : Convert.ToInt64(result);
+    }
+
+    /// <summary>Update an existing intent by ID. Returns true if row was found.</summary>
+    public async Task<bool> UpdateIntentAsync(long id, SectorIntentRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"UPDATE wa_sector_intents SET
+            intent_name = @nm, description = @d, category = @cat,
+            examples = @ex::jsonb, keywords = @kw::jsonb,
+            priority = @pri, frequency = @freq, conversion_rate = @cr,
+            is_active = @a, updated_at = NOW()
+            WHERE id = @id";
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("nm", r.IntentName);
+        cmd.Parameters.AddWithValue("d", (object?)r.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("cat", (object?)r.Category ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("ex", (object?)r.ExamplesJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("kw", (object?)r.KeywordsJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("pri", r.Priority);
+        cmd.Parameters.AddWithValue("freq", r.Frequency);
+        cmd.Parameters.AddWithValue("cr", r.ConversionRate.HasValue ? (object)r.ConversionRate.Value : DBNull.Value);
+        cmd.Parameters.AddWithValue("a", r.IsActive);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>Insert a single FAQ. Returns new ID.</summary>
+    public async Task<long> InsertFaqAsync(SectorFaqRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"INSERT INTO wa_sector_faqs
+            (sector, question, answer, category, keywords, effectiveness_score, source_count, is_active)
+            VALUES (@s, @q, @a, @cat, @kw::jsonb, @es, @sc, @act)
+            RETURNING id";
+        cmd.Parameters.AddWithValue("s", r.Sector);
+        cmd.Parameters.AddWithValue("q", r.Question);
+        cmd.Parameters.AddWithValue("a", r.Answer);
+        cmd.Parameters.AddWithValue("cat", (object?)r.Category ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("kw", (object?)r.KeywordsJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("es", r.EffectivenessScore);
+        cmd.Parameters.AddWithValue("sc", r.SourceCount);
+        cmd.Parameters.AddWithValue("act", r.IsActive);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long id ? id : Convert.ToInt64(result);
+    }
+
+    /// <summary>Update an existing FAQ by ID. Returns true if row was found.</summary>
+    public async Task<bool> UpdateFaqAsync(long id, SectorFaqRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"UPDATE wa_sector_faqs SET
+            question = @q, answer = @a, category = @cat,
+            keywords = @kw::jsonb, effectiveness_score = @es,
+            is_active = @act, updated_at = NOW()
+            WHERE id = @id";
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("q", r.Question);
+        cmd.Parameters.AddWithValue("a", r.Answer);
+        cmd.Parameters.AddWithValue("cat", (object?)r.Category ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("kw", (object?)r.KeywordsJson ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("es", r.EffectivenessScore);
+        cmd.Parameters.AddWithValue("act", r.IsActive);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>Insert a single objection handler. Returns new ID.</summary>
+    public async Task<long> InsertObjectionHandlerAsync(SectorObjectionHandlerRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"INSERT INTO wa_sector_objection_handlers
+            (sector, objection_type, objection_label, response_templates, total_occurrences, rescue_rate, is_active)
+            VALUES (@s, @ot, @ol, @rt::jsonb, @to, @rr, @a)
+            RETURNING id";
+        cmd.Parameters.AddWithValue("s", r.Sector);
+        cmd.Parameters.AddWithValue("ot", r.ObjectionType);
+        cmd.Parameters.AddWithValue("ol", r.ObjectionLabel);
+        cmd.Parameters.AddWithValue("rt", r.ResponseTemplatesJson);
+        cmd.Parameters.AddWithValue("to", r.TotalOccurrences);
+        cmd.Parameters.AddWithValue("rr", r.RescueRate);
+        cmd.Parameters.AddWithValue("a", r.IsActive);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long id ? id : Convert.ToInt64(result);
+    }
+
+    /// <summary>Update an existing objection handler by ID. Returns true if row was found.</summary>
+    public async Task<bool> UpdateObjectionHandlerAsync(long id, SectorObjectionHandlerRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"UPDATE wa_sector_objection_handlers SET
+            objection_type = @ot, objection_label = @ol,
+            response_templates = @rt::jsonb, total_occurrences = @to,
+            rescue_rate = @rr, is_active = @a, updated_at = NOW()
+            WHERE id = @id";
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("ot", r.ObjectionType);
+        cmd.Parameters.AddWithValue("ol", r.ObjectionLabel);
+        cmd.Parameters.AddWithValue("rt", r.ResponseTemplatesJson);
+        cmd.Parameters.AddWithValue("to", r.TotalOccurrences);
+        cmd.Parameters.AddWithValue("rr", r.RescueRate);
+        cmd.Parameters.AddWithValue("a", r.IsActive);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    /// <summary>Insert a single followup template. Returns new ID.</summary>
+    public async Task<long> InsertFollowupTemplateAsync(SectorFollowupTemplateRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"INSERT INTO wa_sector_followup_templates
+            (sector, template_type, template_label, message_template, optimal_delay_hours, rescue_rate, source_count, is_active)
+            VALUES (@s, @tt, @tl, @mt, @od, @rr, @sc, @a)
+            RETURNING id";
+        cmd.Parameters.AddWithValue("s", r.Sector);
+        cmd.Parameters.AddWithValue("tt", r.TemplateType);
+        cmd.Parameters.AddWithValue("tl", r.TemplateLabel);
+        cmd.Parameters.AddWithValue("mt", r.MessageTemplate);
+        cmd.Parameters.AddWithValue("od", r.OptimalDelayHours);
+        cmd.Parameters.AddWithValue("rr", r.RescueRate);
+        cmd.Parameters.AddWithValue("sc", r.SourceCount);
+        cmd.Parameters.AddWithValue("a", r.IsActive);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long id ? id : Convert.ToInt64(result);
+    }
+
+    /// <summary>Update an existing followup template by ID. Returns true if row was found.</summary>
+    public async Task<bool> UpdateFollowupTemplateAsync(long id, SectorFollowupTemplateRecord r, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"UPDATE wa_sector_followup_templates SET
+            template_type = @tt, template_label = @tl,
+            message_template = @mt, optimal_delay_hours = @od,
+            rescue_rate = @rr, is_active = @a, updated_at = NOW()
+            WHERE id = @id";
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("tt", r.TemplateType);
+        cmd.Parameters.AddWithValue("tl", r.TemplateLabel);
+        cmd.Parameters.AddWithValue("mt", r.MessageTemplate);
+        cmd.Parameters.AddWithValue("od", r.OptimalDelayHours);
+        cmd.Parameters.AddWithValue("rr", r.RescueRate);
+        cmd.Parameters.AddWithValue("a", r.IsActive);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
 }

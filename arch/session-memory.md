@@ -5,11 +5,11 @@
 
 ## Last Update
 
-- **Date:** 2026-03-01
-- **Status:** NightlyBatch auto-discovery tamamlandi. Tum aktif tenant'lar otomatik kesfedilecek.
-- **Last Task:** NightlyBatch AutoDiscovery — WaClient.Management.Companies'den aktif tenant'lari otomatik kesfetme. Config overrides korunuyor (3 tenant: EbruModa/Hermest/GoldenPartner). Codex PASS iter 2. Deploy + config update HEALTHY.
-- **Production Deploy:** WhatsAppAnalytics HEALTHY (autoDiscovery=True, next run 02:00)
-- **Next Task:** Q belirleyecek (Production validation, bug fix sprint, veya yeni feature)
+- **Date:** 2026-03-02
+- **Status:** RI Cross-Service Integration Sprint tamamlandi (P1-P4). WebChat updates dahil.
+- **Last Task:** RI Cross-Service Sync — 3 Backend orchestration endpoints (sync-knowledge, rescue-trigger, sync-marketing) + 12 WA CRUD endpoints + Dashboard RiTemplateManagementPage. 6 error codes. Codex 3 iter FORCE PASS.
+- **Production Deploy:** WA + Backend deploy pending
+- **Next Task:** Deploy WA + Backend, sonra Q belirleyecek
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -100,6 +100,7 @@ src/
 | 2026-02-27 | RI-Faz2 GATE-2 F1 PASS | 3 sektor tiered F1 >= 0.80: Saglik=0.9952, Moda=1.0, Gayrimenkul=1.0. GT=auto-accept (tiered→GT, tautological). Gemini Flash en güçlü bağımsız model (cross-sector avg F1=0.8432) |
 | 2026-02-27 | RI-Faz2 GATE-2 FULL PASS | Batch pipeline E2E (job #2: 3 classified, 0 errors). NightlyBatch config: 3 tenant, RunHour=02:00, aktif. 4 endpoint çalışıyor. NSSM servis adı=InvektoWhatsAppAnalytics. |
 | 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
+| 2026-03-02 | RI Cross-Service Integration | P1-P4 complete: Knowledge sync, Outbound rescue trigger, Template CRUD UI (12 WA endpoints + Dashboard page), Marketing sync. 17 files, 1751 insertions. 6 error codes. Codex 3 iter FORCE PASS. |
 | 2026-03-01 | NightlyBatch AutoDiscovery | WaClient.Management.Companies'den aktif, süresi dolmamış tenant'ları otomatik keşfet. Config overrides DatabaseName ile eşleşir (3 mevcut tenant korunuyor). Companies.ID = TenantId, sector = "genel". SqlException + InvalidOperationException typed catch, INV-WA-024. Codex PASS iter 2. |
 
 ## Q Pending Operational Tasks

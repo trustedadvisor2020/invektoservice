@@ -1865,7 +1865,81 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/templates", async (
     return Results.Ok(new { requestId, data });
 });
 
-// PUT /api/v1/wa/{tenantId}/ri/templates/{type}/{id} — Toggle template active (RI-6.26)
+// POST /api/v1/wa/{tenantId}/ri/templates/{type} — Create a sector template (RI-6.10-14)
+app.MapPost("/api/v1/wa/{tenantId:int}/ri/templates/{type}", async (
+    int tenantId,
+    string type,
+    HttpContext ctx,
+    TemplateRepository templateRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        long id;
+        switch (type.ToLowerInvariant())
+        {
+            case "intent":
+            {
+                var r = await ctx.Request.ReadFromJsonAsync<SectorIntentRecord>();
+                if (r == null || string.IsNullOrWhiteSpace(r.IntentName) || string.IsNullOrWhiteSpace(r.Sector))
+                    return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector and intentName required", requestId), statusCode: 400);
+                r.IsActive = true;
+                id = await templateRepo.InsertIntentAsync(r, ctx.RequestAborted);
+                break;
+            }
+            case "faq":
+            {
+                var r = await ctx.Request.ReadFromJsonAsync<SectorFaqRecord>();
+                if (r == null || string.IsNullOrWhiteSpace(r.Question) || string.IsNullOrWhiteSpace(r.Sector))
+                    return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector and question required", requestId), statusCode: 400);
+                r.IsActive = true;
+                id = await templateRepo.InsertFaqAsync(r, ctx.RequestAborted);
+                break;
+            }
+            case "objection_handler":
+            {
+                var r = await ctx.Request.ReadFromJsonAsync<SectorObjectionHandlerRecord>();
+                if (r == null || string.IsNullOrWhiteSpace(r.ObjectionType) || string.IsNullOrWhiteSpace(r.Sector))
+                    return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector and objectionType required", requestId), statusCode: 400);
+                r.IsActive = true;
+                id = await templateRepo.InsertObjectionHandlerAsync(r, ctx.RequestAborted);
+                break;
+            }
+            case "followup_template":
+            {
+                var r = await ctx.Request.ReadFromJsonAsync<SectorFollowupTemplateRecord>();
+                if (r == null || string.IsNullOrWhiteSpace(r.TemplateType) || string.IsNullOrWhiteSpace(r.Sector))
+                    return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector and templateType required", requestId), statusCode: 400);
+                r.IsActive = true;
+                id = await templateRepo.InsertFollowupTemplateAsync(r, ctx.RequestAborted);
+                break;
+            }
+            default:
+                return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation,
+                    "Unknown type. Use: intent, faq, objection_handler, followup_template", requestId), statusCode: 400);
+        }
+
+        jsonLogger.StepInfo($"[RiTemplates] Created {type} id={id} by tenant {tenantId}", requestId);
+        return Results.Json(new { requestId, type, id }, statusCode: 201);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WATemplateCreateFailed} Create {type} failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WATemplateCreateFailed,
+            $"Template create failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// PUT /api/v1/wa/{tenantId}/ri/templates/{type}/{id} (extended) — Update a sector template (RI-6.10-14)
+// Note: This is the EXTENDED version that handles both toggle (isActive only) and full update.
+// The original toggle endpoint remains compatible — if body has only isActive, it toggles.
+// If body has more fields, it does a full update.
 app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
     int tenantId,
     string type,
@@ -1880,38 +1954,153 @@ app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
             "Token tenant does not match route tenant", requestId), statusCode: 403);
 
-    bool? isActive;
     try
     {
-        var body = await ctx.Request.ReadFromJsonAsync<Dictionary<string, object>>();
-        if (body != null && body.TryGetValue("isActive", out var val))
-            isActive = Convert.ToBoolean(val);
-        else
-            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-                "isActive field required", requestId), statusCode: 400);
-    }
-    catch (JsonException)
-    {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Invalid request body", requestId), statusCode: 400);
-    }
+        // Read body as raw JSON to detect if it's a simple toggle or full update
+        var bodyText = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
+        var bodyJson = JsonDocument.Parse(bodyText).RootElement;
 
-    try
-    {
-        await templateRepo.ToggleTemplateActiveAsync(type, id, isActive.Value);
-        jsonLogger.StepInfo($"[RiDashboard] Template {type}/{id} active={isActive} by tenant {tenantId}", requestId);
-        return Results.Ok(new { requestId, type, id, isActive });
-    }
-    catch (ArgumentException ex)
-    {
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            ex.Message, requestId), statusCode: 400);
+        // Simple toggle: body has only isActive
+        if (bodyJson.TryGetProperty("isActive", out var activeVal) &&
+            bodyJson.EnumerateObject().Count() <= 1)
+        {
+            await templateRepo.ToggleTemplateActiveAsync(type, id, activeVal.GetBoolean(), ctx.RequestAborted);
+            jsonLogger.StepInfo($"[RiTemplates] Toggled {type}/{id} active={activeVal.GetBoolean()} by tenant {tenantId}", requestId);
+            return Results.Ok(new { requestId, type, id, isActive = activeVal.GetBoolean() });
+        }
+
+        // Full update
+        bool updated;
+        switch (type.ToLowerInvariant())
+        {
+            case "intent":
+            {
+                var r = JsonSerializer.Deserialize<SectorIntentRecord>(bodyText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (r == null) return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid body", requestId), statusCode: 400);
+                updated = await templateRepo.UpdateIntentAsync(id, r, ctx.RequestAborted);
+                break;
+            }
+            case "faq":
+            {
+                var r = JsonSerializer.Deserialize<SectorFaqRecord>(bodyText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (r == null) return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid body", requestId), statusCode: 400);
+                updated = await templateRepo.UpdateFaqAsync(id, r, ctx.RequestAborted);
+                break;
+            }
+            case "objection_handler":
+            {
+                var r = JsonSerializer.Deserialize<SectorObjectionHandlerRecord>(bodyText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (r == null) return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid body", requestId), statusCode: 400);
+                updated = await templateRepo.UpdateObjectionHandlerAsync(id, r, ctx.RequestAborted);
+                break;
+            }
+            case "followup_template":
+            {
+                var r = JsonSerializer.Deserialize<SectorFollowupTemplateRecord>(bodyText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (r == null) return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "Invalid body", requestId), statusCode: 400);
+                updated = await templateRepo.UpdateFollowupTemplateAsync(id, r, ctx.RequestAborted);
+                break;
+            }
+            default:
+                return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation,
+                    "Unknown type. Use: intent, faq, objection_handler, followup_template", requestId), statusCode: 400);
+        }
+
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                $"Template {type}/{id} not found", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"[RiTemplates] Updated {type}/{id} by tenant {tenantId}", requestId);
+        return Results.Ok(new { requestId, type, id });
     }
     catch (Exception ex)
     {
-        jsonLogger.SystemError($"[RiDashboard] Template toggle failed: {ex.Message}");
-        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightComputeFailed,
-            "Template update failed", requestId, ex.Message), statusCode: 500);
+        jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WATemplateUpdateFailed} Update {type}/{id} failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WATemplateUpdateFailed,
+            $"Template update failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// DELETE /api/v1/wa/{tenantId}/ri/templates/{type}/{id} — Soft-delete a sector template (RI-6.10-14)
+app.MapDelete("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
+    int tenantId,
+    string type,
+    long id,
+    HttpContext ctx,
+    TemplateRepository templateRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        await templateRepo.ToggleTemplateActiveAsync(type, id, false, ctx.RequestAborted);
+        jsonLogger.StepInfo($"[RiTemplates] Soft-deleted {type}/{id} by tenant {tenantId}", requestId);
+        return Results.Ok(new { requestId, type, id, deleted = true });
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+            ex.Message, requestId), statusCode: 404);
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[RiTemplates] {ErrorCodes.WATemplateUpdateFailed} Delete {type}/{id} failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WATemplateUpdateFailed,
+            $"Template delete failed: {ex.Message}", requestId), statusCode: 500);
+    }
+});
+
+// PUT /api/v1/wa/{tenantId}/ri/rescue/{conversationId}/status — Update rescue candidate status (RI-8.10)
+app.MapPut("/api/v1/wa/{tenantId:int}/ri/rescue/{conversationId}/status", async (
+    int tenantId,
+    string conversationId,
+    HttpContext ctx,
+    InsightRepository insightRepo,
+    JsonLinesLogger jsonLogger) =>
+{
+    var requestId = Guid.NewGuid().ToString("N");
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized,
+            "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    string status;
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<Dictionary<string, string>>();
+        status = body?.GetValueOrDefault("status") ?? "";
+    }
+    catch (JsonException ex)
+    {
+        jsonLogger.SystemWarn($"[Rescue] Invalid status body: {ex.Message}");
+        status = "";
+    }
+
+    var validStatuses = new HashSet<string> { "pending", "triggered", "contacted", "resolved", "expired" };
+    if (!validStatuses.Contains(status))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation,
+            $"Invalid status. Valid: {string.Join(", ", validStatuses)}", requestId), statusCode: 400);
+
+    try
+    {
+        var updated = await insightRepo.UpdateRescueStatusAsync(tenantId, conversationId, status, ctx.RequestAborted);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.WAInsightNotFound,
+                "Rescue candidate not found", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"[Rescue] Status updated: tenant={tenantId}, conv={conversationId}, status={status}", requestId);
+        return Results.Ok(new { requestId, conversationId, status });
+    }
+    catch (Exception ex)
+    {
+        jsonLogger.SystemError($"[Rescue] {ErrorCodes.WARescueStatusUpdateFailed} Status update failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.WARescueStatusUpdateFailed,
+            "Rescue status update failed", requestId), statusCode: 500);
     }
 });
 

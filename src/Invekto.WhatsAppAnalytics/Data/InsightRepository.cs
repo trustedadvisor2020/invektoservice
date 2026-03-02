@@ -554,6 +554,25 @@ public sealed class InsightRepository
         _logger.StepInfo($"[InsightRepo] Deleted {deleted} rescue candidate records for tenant {tenantId}", "insight");
     }
 
+    /// <summary>
+    /// Update rescue_status for a single candidate (e.g., 'pending' → 'triggered').
+    /// Returns true if a row was updated.
+    /// </summary>
+    public async Task<bool> UpdateRescueStatusAsync(int tenantId, string conversationId,
+        string newStatus, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"UPDATE wa_rescue_candidates
+            SET rescue_status = @status
+            WHERE tenant_id = @tid AND conversation_id = @cid";
+        cmd.Parameters.AddWithValue("status", newStatus);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", conversationId);
+        var rows = await cmd.ExecuteNonQueryAsync(ct);
+        return rows > 0;
+    }
+
     // ============================================================
     // wa_demand_heatmap (RI-3.2)
     // ============================================================

@@ -1625,6 +1625,26 @@ class OpsApiClient {
     });
   }
 
+  async createRiTemplate(tenantId: number, type: string, data: Record<string, unknown>): Promise<{ id: number }> {
+    return this.request(`/api/v1/wa/${tenantId}/ri/templates/${type}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRiTemplate(tenantId: number, type: string, id: number, data: Record<string, unknown>): Promise<{ success: boolean }> {
+    return this.request(`/api/v1/wa/${tenantId}/ri/templates/${type}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRiTemplate(tenantId: number, type: string, id: number): Promise<{ deleted: boolean }> {
+    return this.request(`/api/v1/wa/${tenantId}/ri/templates/${type}/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async submitRiFeedback(tenantId: number, feedback: RiFeedbackRequest): Promise<{ success: boolean; record: RiFeedbackRecord }> {
     return this.request(`/api/v1/wa/${tenantId}/ri/feedback`, {
       method: 'POST',

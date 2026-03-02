@@ -27,6 +27,7 @@ const TemplateIngestionPage = lazy(() => import('./pages/TemplateIngestionPage')
 const TemplateOnboardPage = lazy(() => import('./pages/TemplateOnboardPage').then(m => ({ default: m.TemplateOnboardPage })));
 const IntentManagementPage = lazy(() => import('./pages/IntentManagementPage').then(m => ({ default: m.IntentManagementPage })));
 const RevenueIntelligencePage = lazy(() => import('./pages/RevenueIntelligencePage').then(m => ({ default: m.RevenueIntelligencePage })));
+const RiTemplateManagementPage = lazy(() => import('./pages/RiTemplateManagementPage').then(m => ({ default: m.RiTemplateManagementPage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/templates/onboard" element={<Suspense><TemplateOnboardPage /></Suspense>} />
         <Route path="/templates/:id" element={<Suspense><TemplateDetailPage /></Suspense>} />
         <Route path="/intents" element={<Suspense><IntentManagementPage /></Suspense>} />
+        <Route path="/ri/templates" element={<Suspense><RiTemplateManagementPage /></Suspense>} />
         <Route path="/onboarding" element={<OnboardingWizardPage />} />
         <Route path="/onboarding-guide" element={<OnboardingGuidePage />} />
         <Route path="/settings" element={<SettingsPage />} />

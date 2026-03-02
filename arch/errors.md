@@ -107,6 +107,15 @@ errors:
   - code: INV-BE-061
     description: Invalid sector value
     user_message: Geçersiz sektör değeri.
+  - code: INV-BE-070
+    description: RI Knowledge sync failed
+    user_message: RI verisi Knowledge servisine aktarılamadı.
+  - code: INV-BE-071
+    description: RI rescue trigger to Outbound failed
+    user_message: Kurtarma tetiklemesi başarısız oldu.
+  - code: INV-BE-072
+    description: RI Marketing sync failed
+    user_message: RI verisi Marketing servisine aktarılamadı.
 
   # ── CA — ChatAnalysis ──
   - code: INV-CA-001
@@ -336,6 +345,12 @@ errors:
   - code: INV-WC-010
     description: Hub connection failed
     user_message: Bağlantı kurulamadı.
+  - code: INV-WC-011
+    description: Automation webhook call failed
+    user_message: Webhook bildirimi gönderilemedi.
+  - code: INV-WC-012
+    description: Automation webhook call timed out
+    user_message: Webhook bildirimi zaman aşımına uğradı.
 
   # ── DB — Database ──
   - code: INV-DB-001
@@ -708,6 +723,15 @@ errors:
   - code: INV-KN-036
     description: Onboarding stats retrieval failed
     user_message: Knowledge onboarding istatistikleri alınamadı.
+  - code: INV-KN-037
+    description: Website URL invalid or unreachable
+    user_message: Geçersiz veya erişilemeyen web sitesi URL'si.
+  - code: INV-KN-038
+    description: Sitemap not found or unparseable
+    user_message: Sitemap.xml bulunamadı veya parse edilemedi.
+  - code: INV-KN-039
+    description: Website crawl failed
+    user_message: Web sitesi tarama işlemi başarısız oldu.
 
   # ── MT — Metrics/Analytics (PKT-3) ──
   - code: INV-MT-001

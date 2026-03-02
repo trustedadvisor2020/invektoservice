@@ -31,6 +31,10 @@ var operatorEmail = builder.Configuration["Operator:Email"] ?? "";
 var operatorPasswordHash = builder.Configuration["Operator:PasswordHash"] ?? "";
 var aiDelaySeconds = builder.Configuration.GetValue<int>("AIReply:DelaySeconds", 30);
 
+// Automation webhook config (flow mappings come from DB per-widget)
+var automationUrl = builder.Configuration["Automation:Url"] ?? "";
+var automationTimeoutMs = builder.Configuration.GetValue<int>("Automation:TimeoutMs", 5000);
+
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
     throw new InvalidOperationException("FATAL: ConnectionStrings:PostgreSQL is not configured");
@@ -93,6 +97,18 @@ builder.Services.AddHttpClient<PushNotificationService>()
             sp.GetRequiredService<JsonLinesLogger>());
     });
 
+// Register AutomationWebhookClient with HttpClient (flow mappings come from DB per-widget)
+builder.Services.AddHttpClient<AutomationWebhookClient>()
+    .AddTypedClient((httpClient, sp) =>
+    {
+        if (!string.IsNullOrEmpty(automationUrl))
+            httpClient.BaseAddress = new Uri(automationUrl);
+        httpClient.Timeout = TimeSpan.FromMilliseconds(automationTimeoutMs);
+        return new AutomationWebhookClient(
+            httpClient,
+            sp.GetRequiredService<JsonLinesLogger>());
+    });
+
 // Register SignalR
 builder.Services.AddSignalR();
 
@@ -104,6 +120,7 @@ builder.Services.AddSingleton<ConversationService>(sp =>
         sp.GetRequiredService<OperatorPresence>(),
         sp.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<ChatHub>>(),
         sp.GetRequiredService<PushNotificationService>(),
+        sp.GetRequiredService<AutomationWebhookClient>(),
         sp.GetRequiredService<JsonLinesLogger>(),
         aiDelaySeconds));
 
@@ -241,10 +258,11 @@ app.MapPost("/api/v1/conversations", async (HttpContext ctx, ConversationService
         var name = root.TryGetProperty("name", out var n) ? n.GetString() : null;
         var email = root.TryGetProperty("email", out var em) ? em.GetString() : null;
         var pageUrl = root.TryGetProperty("page_url", out var pu) ? pu.GetString() : null;
+        var widgetId = root.TryGetProperty("widget_id", out var wid) ? wid.GetString() : null;
         var userAgent = ctx.Request.Headers.UserAgent.FirstOrDefault();
 
         var conversationId = await convService.StartConversationAsync(
-            visitorId, name, email, pageUrl, userAgent, ctx.RequestAborted);
+            visitorId, name, email, pageUrl, userAgent, widgetId, ctx.RequestAborted);
 
         return Results.Ok(new { conversation_id = conversationId });
     }

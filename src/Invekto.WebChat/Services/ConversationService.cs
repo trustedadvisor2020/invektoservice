@@ -17,11 +17,16 @@ public sealed class ConversationService
     private readonly OperatorPresence _presence;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly PushNotificationService _pushService;
+    private readonly AutomationWebhookClient _webhookClient;
     private readonly JsonLinesLogger _logger;
     private readonly int _aiDelaySeconds;
 
     // Timer tracking per conversation for AI auto-reply
     private readonly ConcurrentDictionary<long, Timer> _aiTimers = new();
+
+    // Widget flow config cache (5 min TTL)
+    private readonly ConcurrentDictionary<string, (WidgetFlowConfig Config, DateTime CachedAt)> _widgetCache = new();
+    private const int WidgetCacheTtlSeconds = 300;
 
     public ConversationService(
         WebChatRepository repo,
@@ -29,6 +34,7 @@ public sealed class ConversationService
         OperatorPresence presence,
         IHubContext<ChatHub> hubContext,
         PushNotificationService pushService,
+        AutomationWebhookClient webhookClient,
         JsonLinesLogger logger,
         int aiDelaySeconds)
     {
@@ -37,21 +43,31 @@ public sealed class ConversationService
         _presence = presence;
         _hubContext = hubContext;
         _pushService = pushService;
+        _webhookClient = webhookClient;
         _logger = logger;
         _aiDelaySeconds = aiDelaySeconds;
     }
 
     public async Task<long> StartConversationAsync(
         string visitorId, string? name, string? email,
-        string? pageUrl, string? userAgent, CancellationToken ct = default)
+        string? pageUrl, string? userAgent, string? widgetId = null, CancellationToken ct = default)
     {
         // Upsert visitor
         await _repo.UpsertVisitorAsync(visitorId, name, email, pageUrl, userAgent, ct);
 
         // Create conversation
-        var conversationId = await _repo.CreateConversationAsync(visitorId, ct);
+        var conversationId = await _repo.CreateConversationAsync(visitorId, widgetId, ct);
 
         _logger.SystemInfo($"Conversation {conversationId} started for visitor {visitorId}");
+
+        // Fire-and-forget: notify Automation webhook
+        if (!string.IsNullOrEmpty(widgetId))
+        {
+            _ = FireWebhookForWidgetAsync(widgetId, wc =>
+                _webhookClient.NotifyConversationCreatedAsync(
+                    wc.TenantId, wc.FlowConversationCreated,
+                    conversationId, visitorId, name, email, pageUrl, ct));
+        }
 
         return conversationId;
     }
@@ -86,6 +102,15 @@ public sealed class ConversationService
         // Send push notification to operator
         var visitorName = conversation.VisitorName ?? "Ziyaretçi";
         _ = _pushService.NotifyNewMessageAsync(conversationId, visitorName, content, ct);
+
+        // Fire-and-forget: notify Automation webhook
+        if (!string.IsNullOrEmpty(conversation.WidgetId))
+        {
+            _ = FireWebhookForWidgetAsync(conversation.WidgetId, wc =>
+                _webhookClient.NotifyVisitorMessageAsync(
+                    wc.TenantId, wc.FlowVisitorMessage,
+                    conversationId, visitorId, content, ct));
+        }
 
         // Start AI timer if operator not online
         if (!_presence.IsOnline)
@@ -136,14 +161,56 @@ public sealed class ConversationService
     public async Task<bool> CloseConversationAsync(long conversationId, CancellationToken ct = default)
     {
         CancelAITimer(conversationId);
-        var closed = await _repo.CloseConversationAsync(conversationId, ct);
+        var (closed, widgetId) = await _repo.CloseConversationAsync(conversationId, ct);
         if (closed)
         {
             await _hubContext.Clients.Group($"conv_{conversationId}")
                 .SendAsync("ConversationClosed", conversationId, ct);
             _logger.SystemInfo($"Conversation {conversationId} closed");
+
+            // Fire-and-forget: notify Automation webhook
+            if (!string.IsNullOrEmpty(widgetId))
+            {
+                _ = FireWebhookForWidgetAsync(widgetId, wc =>
+                    _webhookClient.NotifyConversationClosedAsync(
+                        wc.TenantId, wc.FlowConversationClosed,
+                        conversationId, ct));
+            }
         }
         return closed;
+    }
+
+    // ── Widget Config Cache ──
+
+    private async Task FireWebhookForWidgetAsync(string widgetId, Func<WidgetFlowConfig, Task> action)
+    {
+        try
+        {
+            var wc = await GetCachedWidgetConfigAsync(widgetId);
+            if (wc != null)
+                await action(wc);
+        }
+        catch (Exception ex)
+        {
+            _logger.SystemError($"Webhook fire failed for widget {widgetId}: {ex.Message}");
+        }
+    }
+
+    private async Task<WidgetFlowConfig?> GetCachedWidgetConfigAsync(string widgetId, CancellationToken ct = default)
+    {
+        if (_widgetCache.TryGetValue(widgetId, out var cached) &&
+            (DateTime.UtcNow - cached.CachedAt).TotalSeconds < WidgetCacheTtlSeconds)
+        {
+            return cached.Config;
+        }
+
+        var config = await _repo.GetWidgetConfigAsync(widgetId, ct);
+        if (config != null)
+            _widgetCache[widgetId] = (config, DateTime.UtcNow);
+        else
+            _widgetCache.TryRemove(widgetId, out _);
+
+        return config;
     }
 
     // ── AI Auto-Reply Timer ──

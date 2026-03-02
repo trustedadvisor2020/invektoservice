@@ -3494,6 +3494,505 @@ app.MapPost("/api/ops/templates/seed-from-se", async (HttpContext ctx, Knowledge
 });
 
 // ============================================
+// RI CROSS-SERVICE SYNC ENDPOINTS (RI-8.x)
+// ============================================
+
+// POST /api/ops/ri/sync-knowledge/{tenantId} — Sync RI sector templates → Knowledge FAQs + intents (RI-8.11)
+app.MapPost("/api/ops/ri/sync-knowledge/{tenantId:int}", async (
+    HttpContext ctx,
+    WhatsAppAnalyticsClient waClient,
+    KnowledgeClient knClient,
+    JsonLinesLogger jsonLog,
+    int tenantId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    // Read sector from body
+    string sector;
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<Dictionary<string, string>>();
+        sector = body?.GetValueOrDefault("sector") ?? "";
+    }
+    catch (JsonException ex)
+    {
+        jsonLog.SystemWarn($"[RI-Sync] Invalid request body: {ex.Message}");
+        sector = "";
+    }
+
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector is required in request body", requestId), statusCode: 400);
+
+    // Step 1: Fetch sector templates from WA via tenant-facing endpoint (JWT auth)
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var waAuth = $"Bearer {serviceToken}";
+
+    var (waStatus, waBody) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenantId}/ri/templates?sector={Uri.EscapeDataString(sector)}",
+        waAuth, requestId);
+
+    if (waStatus != 200 || string.IsNullOrEmpty(waBody))
+    {
+        jsonLog.SystemError($"[RI-Sync] {ErrorCodes.BackendRiKnowledgeSyncFailed} WA templates fetch failed: status={waStatus}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendRiKnowledgeSyncFailed,
+            $"Failed to fetch RI templates from WA (status={waStatus})", requestId), statusCode: 502);
+    }
+
+    // Parse WA response: { "requestId": "...", "data": { "sector": "...", "intents": [...], "faqs": [...] } }
+    JsonElement dataElement;
+    try
+    {
+        var waJson = JsonDocument.Parse(waBody);
+        dataElement = waJson.RootElement.GetProperty("data");
+    }
+    catch (JsonException ex)
+    {
+        jsonLog.SystemError($"[RI-Sync] {ErrorCodes.BackendRiKnowledgeSyncFailed} Failed to parse WA response: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendRiKnowledgeSyncFailed,
+            "Invalid response from WA templates endpoint", requestId), statusCode: 502);
+    }
+    catch (KeyNotFoundException ex)
+    {
+        jsonLog.SystemError($"[RI-Sync] {ErrorCodes.BackendRiKnowledgeSyncFailed} Missing 'data' in WA response: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendRiKnowledgeSyncFailed,
+            "WA response missing data field", requestId), statusCode: 502);
+    }
+
+    var knAuth = $"Bearer {serviceToken}";
+    int intentsSynced = 0, faqsSynced = 0, skipped = 0, errors = 0;
+
+    // Step 2: Sync intents → Knowledge
+    if (dataElement.TryGetProperty("intents", out var intentsArray))
+    {
+        foreach (var intent in intentsArray.EnumerateArray())
+        {
+            var isActive = intent.TryGetProperty("isActive", out var activeVal) && activeVal.GetBoolean();
+            if (!isActive) { skipped++; continue; }
+
+            var intentName = intent.TryGetProperty("intentName", out var nameVal) ? nameVal.GetString() ?? "" : "";
+            if (string.IsNullOrWhiteSpace(intentName)) { skipped++; continue; }
+
+            // Parse keywords from JSON array string
+            string[]? keywords = null;
+            if (intent.TryGetProperty("keywordsJson", out var kwVal) && kwVal.ValueKind == JsonValueKind.String)
+            {
+                try
+                {
+                    var kwStr = kwVal.GetString();
+                    if (kwStr != null) keywords = JsonSerializer.Deserialize<string[]>(kwStr);
+                }
+                catch (JsonException ex) { jsonLog.SystemWarn($"[RI-Sync] Malformed keywords JSON: {ex.Message}"); }
+            }
+
+            var intentBody = JsonSerializer.Serialize(new { intent_name = intentName, keywords });
+            var (knStatus, _) = await knClient.ProxyPostAsync(
+                $"/api/v1/knowledge/{tenantId}/intents",
+                intentBody, knAuth, requestId);
+
+            if (knStatus is 200 or 201) intentsSynced++;
+            else if (knStatus == 409) skipped++; // already exists
+            else { errors++; jsonLog.SystemWarn($"[RI-Sync] {ErrorCodes.BackendRiKnowledgeSyncFailed} Intent sync failed for '{intentName}': Knowledge returned {knStatus}"); }
+        }
+    }
+
+    // Step 3: Sync FAQs → Knowledge
+    if (dataElement.TryGetProperty("faqs", out var faqsArray))
+    {
+        foreach (var faq in faqsArray.EnumerateArray())
+        {
+            var isActive = faq.TryGetProperty("isActive", out var activeVal) && activeVal.GetBoolean();
+            if (!isActive) { skipped++; continue; }
+
+            var question = faq.TryGetProperty("question", out var qVal) ? qVal.GetString() ?? "" : "";
+            var answer = faq.TryGetProperty("answer", out var aVal) ? aVal.GetString() ?? "" : "";
+            if (string.IsNullOrWhiteSpace(question) || string.IsNullOrWhiteSpace(answer)) { skipped++; continue; }
+
+            var category = faq.TryGetProperty("category", out var catVal) ? catVal.GetString() : null;
+
+            string[]? keywords = null;
+            if (faq.TryGetProperty("keywordsJson", out var kwVal) && kwVal.ValueKind == JsonValueKind.String)
+            {
+                try
+                {
+                    var kwStr = kwVal.GetString();
+                    if (kwStr != null) keywords = JsonSerializer.Deserialize<string[]>(kwStr);
+                }
+                catch (JsonException ex) { jsonLog.SystemWarn($"[RI-Sync] Malformed keywords JSON: {ex.Message}"); }
+            }
+
+            var faqBody = JsonSerializer.Serialize(new { question, answer, category, keywords });
+            var (knStatus, _) = await knClient.ProxyPostAsync(
+                $"/api/v1/knowledge/{tenantId}/faqs",
+                faqBody, knAuth, requestId);
+
+            if (knStatus is 200 or 201) faqsSynced++;
+            else if (knStatus == 409) skipped++; // already exists
+            else { errors++; jsonLog.SystemWarn($"[RI-Sync] {ErrorCodes.BackendRiKnowledgeSyncFailed} FAQ sync failed for '{question}': Knowledge returned {knStatus}"); }
+        }
+    }
+
+    jsonLog.SystemInfo($"[RI-Sync] Knowledge sync for tenant={tenantId} sector={sector}: " +
+        $"intents={intentsSynced}, faqs={faqsSynced}, skipped={skipped}, errors={errors}");
+
+    return Results.Ok(new
+    {
+        requestId,
+        tenantId,
+        sector,
+        intents_synced = intentsSynced,
+        faqs_synced = faqsSynced,
+        skipped,
+        errors
+    });
+});
+
+// POST /api/ops/ri/rescue-trigger/{tenantId} — Trigger outbound messages for rescue candidates (RI-8.10)
+app.MapPost("/api/ops/ri/rescue-trigger/{tenantId:int}", async (
+    HttpContext ctx,
+    WhatsAppAnalyticsClient waClient,
+    OutboundClient obClient,
+    JsonLinesLogger jsonLog,
+    int tenantId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    // Parse body — use defaults on malformed input
+    double minPriorityScore = 50.0;
+    int maxCandidates = 20;
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
+        if (body.TryGetProperty("min_priority_score", out var minVal))
+            minPriorityScore = minVal.GetDouble();
+        if (body.TryGetProperty("max_candidates", out var maxVal))
+            maxCandidates = maxVal.GetInt32();
+    }
+    catch (JsonException ex)
+    {
+        jsonLog.SystemWarn($"[RI-Rescue] Invalid request body, using defaults: {ex.Message}");
+    }
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+
+    // Step 1: Fetch rescue candidates from WA
+    var (waStatus, waBody) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenantId}/ri/rescue", authHeader, requestId);
+
+    if (waStatus != 200 || string.IsNullOrEmpty(waBody))
+    {
+        jsonLog.SystemError($"[RI-Rescue] {ErrorCodes.BackendRiRescueTriggerFailed} WA rescue fetch failed: status={waStatus}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendRiRescueTriggerFailed,
+            $"Failed to fetch rescue candidates (status={waStatus})", requestId), statusCode: 502);
+    }
+
+    // Parse WA response: { "requestId": "...", "data": { "candidates": [...] } }
+    JsonElement candidatesArray;
+    try
+    {
+        var waJson = JsonDocument.Parse(waBody);
+        candidatesArray = waJson.RootElement.GetProperty("data").GetProperty("candidates");
+    }
+    catch (JsonException ex)
+    {
+        jsonLog.SystemError($"[RI-Rescue] {ErrorCodes.BackendRiRescueTriggerFailed} Failed to parse WA response: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendRiRescueTriggerFailed,
+            "Invalid response from WA rescue endpoint", requestId), statusCode: 502);
+    }
+    catch (KeyNotFoundException ex)
+    {
+        jsonLog.SystemError($"[RI-Rescue] {ErrorCodes.BackendRiRescueTriggerFailed} Missing data.candidates in WA response: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.BackendRiRescueTriggerFailed,
+            "WA response missing candidates", requestId), statusCode: 502);
+    }
+
+    int triggered = 0, skipped = 0, noPhone = 0, errors = 0;
+
+    // Step 2: For each eligible candidate, trigger outbound
+    foreach (var candidate in candidatesArray.EnumerateArray())
+    {
+        if (triggered >= maxCandidates) break;
+
+        var conversationId = candidate.TryGetProperty("conversationId", out var cidVal) ? cidVal.GetString() ?? "" : "";
+        var priorityScore = candidate.TryGetProperty("rescuePriorityScore", out var psVal) ? psVal.GetDouble() : 0;
+        var rescueStatus = candidate.TryGetProperty("rescueStatus", out var rsVal) ? rsVal.GetString() ?? "" : "";
+        var outcomeLabel = candidate.TryGetProperty("outcomeLabel", out var olVal) ? olVal.GetString() ?? "" : "";
+
+        // Filter: only pending candidates above threshold with a valid phone (conversationId = phone number)
+        if (rescueStatus != "pending") { skipped++; continue; }
+        if (priorityScore < minPriorityScore) { skipped++; continue; }
+        if (string.IsNullOrWhiteSpace(conversationId) || conversationId.Length < 10) { noPhone++; continue; }
+
+        // Call Outbound trigger
+        var triggerBody = JsonSerializer.Serialize(new
+        {
+            @event = "lead_followup",
+            phone = conversationId,
+            variables = new Dictionary<string, string>
+            {
+                ["conversation_id"] = conversationId,
+                ["priority_score"] = priorityScore.ToString("F1"),
+                ["outcome"] = outcomeLabel
+            }
+        });
+
+        var (obStatus, _) = await obClient.ProxyPostAsync(
+            "/api/v1/webhook/trigger", triggerBody, authHeader, requestId);
+
+        if (obStatus is >= 200 and < 300)
+        {
+            triggered++;
+            // Update status in WA — log failure but don't halt the batch
+            var statusBody = JsonSerializer.Serialize(new { status = "triggered" });
+            var (putStatus, _) = await waClient.ProxyPutAsync(
+                $"/api/v1/wa/{tenantId}/ri/rescue/{Uri.EscapeDataString(conversationId)}/status",
+                statusBody, authHeader, requestId);
+            if (putStatus is not (>= 200 and < 300))
+                jsonLog.SystemWarn($"[RI-Rescue] {ErrorCodes.WARescueStatusUpdateFailed} Status update failed for {conversationId}: status={putStatus}");
+        }
+        else
+        {
+            errors++;
+            jsonLog.SystemWarn($"[RI-Rescue] {ErrorCodes.BackendRiRescueTriggerFailed} Outbound trigger failed for {conversationId}: status={obStatus}");
+        }
+    }
+
+    jsonLog.SystemInfo($"[RI-Rescue] Trigger complete for tenant={tenantId}: triggered={triggered}, skipped={skipped}, noPhone={noPhone}, errors={errors}");
+
+    return Results.Ok(new
+    {
+        requestId,
+        tenantId,
+        triggered,
+        skipped,
+        no_phone = noPhone,
+        errors
+    });
+});
+
+// POST /api/ops/ri/sync-marketing/{tenantId} — Sync RI objections + templates → Marketing risks + rescue templates (RI-8.9)
+app.MapPost("/api/ops/ri/sync-marketing/{tenantId:int}", async (
+    HttpContext ctx,
+    WhatsAppAnalyticsClient waClient,
+    MarketingClient mktClient,
+    JsonLinesLogger jsonLog,
+    int tenantId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (jwtGenerator == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId), statusCode: 500);
+
+    // Read sector from body
+    string sector;
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<Dictionary<string, string>>();
+        sector = body?.GetValueOrDefault("sector") ?? "";
+    }
+    catch (JsonException ex)
+    {
+        jsonLog.SystemWarn($"[RI-MktSync] Invalid request body: {ex.Message}");
+        sector = "";
+    }
+
+    if (string.IsNullOrWhiteSpace(sector))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.GeneralValidation, "sector is required in request body", requestId), statusCode: 400);
+
+    var serviceToken = jwtGenerator.GenerateServiceToken(tenantId);
+    var authHeader = $"Bearer {serviceToken}";
+    int risksSynced = 0, templatesSynced = 0, skipped = 0, errors = 0;
+
+    // Step 1: Fetch objection map from WA → create Marketing risks
+    var (objStatus, objBody) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenantId}/ri/objections", authHeader, requestId);
+
+    if (objStatus == 200 && !string.IsNullOrEmpty(objBody))
+    {
+        try
+        {
+            var objJson = JsonDocument.Parse(objBody);
+            var dataEl = objJson.RootElement.GetProperty("data");
+            if (dataEl.TryGetProperty("objectionTypes", out var typesArray))
+            {
+                foreach (var ot in typesArray.EnumerateArray())
+                {
+                    var objType = ot.TryGetProperty("objectionType", out var otVal) ? otVal.GetString() ?? "" : "";
+                    var objLabel = ot.TryGetProperty("objectionLabel", out var olVal) ? olVal.GetString() ?? "" : "";
+                    var count = ot.TryGetProperty("count", out var cVal) ? cVal.GetInt32() : 0;
+                    var pct = ot.TryGetProperty("percentage", out var pVal) ? pVal.GetDouble() : 0;
+
+                    if (string.IsNullOrWhiteSpace(objType)) { skipped++; continue; }
+
+                    // Map objection percentage to risk level
+                    var riskLevel = pct >= 30 ? "critical" : pct >= 20 ? "high" : pct >= 10 ? "medium" : "low";
+                    var riskScore = (short)Math.Clamp((int)(pct * 2), 1, 100);
+
+                    var riskBody = JsonSerializer.Serialize(new
+                    {
+                        customer_phone = $"ri_objection_{objType}",
+                        conversation_id = $"sector:{sector}",
+                        risk_score = riskScore,
+                        risk_level = riskLevel,
+                        trigger_reason = $"RI objection: {objLabel} ({count} occurrences, {pct:F1}%)"
+                    });
+
+                    var (mktStatus, _) = await mktClient.ProxyPostAsync(
+                        "/api/v1/rescue/risks", riskBody, authHeader, requestId);
+
+                    if (mktStatus is >= 200 and < 300) risksSynced++;
+                    else if (mktStatus == 409) skipped++;
+                    else { errors++; jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Risk sync failed for '{objType}': Marketing returned {mktStatus}"); }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Objection parse failed: {ex.Message}");
+            errors++;
+        }
+        catch (KeyNotFoundException ex)
+        {
+            jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Missing data in WA objection response: {ex.Message}");
+            errors++;
+        }
+    }
+    else if (objStatus != 404) // 404 = no data yet, not an error
+    {
+        jsonLog.SystemWarn($"[RI-MktSync] WA objections fetch: status={objStatus}");
+    }
+
+    // Step 2: Fetch sector templates (objection_handlers + followup_templates) → Marketing rescue templates
+    var (tplStatus, tplBody) = await waClient.ProxyGetAsync(
+        $"/api/v1/wa/{tenantId}/ri/templates?sector={Uri.EscapeDataString(sector)}",
+        authHeader, requestId);
+
+    if (tplStatus == 200 && !string.IsNullOrEmpty(tplBody))
+    {
+        try
+        {
+            var tplJson = JsonDocument.Parse(tplBody);
+            var dataEl = tplJson.RootElement.GetProperty("data");
+
+            // Map objection handlers → rescue templates
+            if (dataEl.TryGetProperty("objectionHandlers", out var ohArray))
+            {
+                foreach (var oh in ohArray.EnumerateArray())
+                {
+                    var isActive = oh.TryGetProperty("isActive", out var aVal) && aVal.GetBoolean();
+                    if (!isActive) { skipped++; continue; }
+
+                    var objType = oh.TryGetProperty("objectionType", out var otVal) ? otVal.GetString() ?? "" : "";
+                    var objLabel = oh.TryGetProperty("objectionLabel", out var olVal) ? olVal.GetString() ?? "" : "";
+                    var responseTemplate = oh.TryGetProperty("responseTemplate", out var rtVal) ? rtVal.GetString() ?? "" : "";
+
+                    if (string.IsNullOrWhiteSpace(objType) || string.IsNullOrWhiteSpace(responseTemplate)) { skipped++; continue; }
+
+                    // Map objection type to strategy
+                    var strategy = objType switch
+                    {
+                        "price_high" => "discount",
+                        "chose_competitor" => "discount",
+                        "no_trust" => "apology",
+                        "out_of_stock" => "exchange",
+                        _ => "apology"
+                    };
+
+                    var templateBody = JsonSerializer.Serialize(new
+                    {
+                        template_name = $"RI_{sector}_{objType}",
+                        risk_level = "medium",
+                        strategy,
+                        message_template = responseTemplate,
+                        max_discount_pct = strategy == "discount" ? (short?)10 : null
+                    });
+
+                    var (mktStatus, _) = await mktClient.ProxyPostAsync(
+                        "/api/v1/rescue/templates", templateBody, authHeader, requestId);
+
+                    if (mktStatus is >= 200 and < 300) templatesSynced++;
+                    else if (mktStatus == 409) skipped++;
+                    else { errors++; jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Template sync failed for '{objType}': Marketing returned {mktStatus}"); }
+                }
+            }
+
+            // Map followup templates → rescue templates
+            if (dataEl.TryGetProperty("followupTemplates", out var ftArray))
+            {
+                foreach (var ft in ftArray.EnumerateArray())
+                {
+                    var isActive = ft.TryGetProperty("isActive", out var aVal) && aVal.GetBoolean();
+                    if (!isActive) { skipped++; continue; }
+
+                    var templateType = ft.TryGetProperty("templateType", out var ttVal) ? ttVal.GetString() ?? "" : "";
+                    var messageTemplate = ft.TryGetProperty("messageTemplate", out var mtVal) ? mtVal.GetString() ?? "" : "";
+
+                    if (string.IsNullOrWhiteSpace(templateType) || string.IsNullOrWhiteSpace(messageTemplate)) { skipped++; continue; }
+
+                    var templateBody = JsonSerializer.Serialize(new
+                    {
+                        template_name = $"RI_{sector}_followup_{templateType}",
+                        risk_level = "low",
+                        strategy = "apology",
+                        message_template = messageTemplate
+                    });
+
+                    var (mktStatus, _) = await mktClient.ProxyPostAsync(
+                        "/api/v1/rescue/templates", templateBody, authHeader, requestId);
+
+                    if (mktStatus is >= 200 and < 300) templatesSynced++;
+                    else if (mktStatus == 409) skipped++;
+                    else { errors++; jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Followup template sync failed for '{templateType}': Marketing returned {mktStatus}"); }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Template parse failed: {ex.Message}");
+            errors++;
+        }
+        catch (KeyNotFoundException ex)
+        {
+            jsonLog.SystemWarn($"[RI-MktSync] {ErrorCodes.BackendRiMarketingSyncFailed} Missing data in WA template response: {ex.Message}");
+            errors++;
+        }
+    }
+    else if (tplStatus != 404)
+    {
+        jsonLog.SystemWarn($"[RI-MktSync] WA templates fetch: status={tplStatus}");
+    }
+
+    jsonLog.SystemInfo($"[RI-MktSync] Marketing sync for tenant={tenantId} sector={sector}: " +
+        $"risks={risksSynced}, templates={templatesSynced}, skipped={skipped}, errors={errors}");
+
+    return Results.Ok(new
+    {
+        requestId,
+        tenantId,
+        sector,
+        risks_synced = risksSynced,
+        templates_synced = templatesSynced,
+        skipped,
+        errors
+    });
+});
+
+// ============================================
 // APPOINTMENTS PROXY ENDPOINTS (GR-2.4)
 // ============================================
 

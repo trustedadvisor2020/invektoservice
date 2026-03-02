@@ -1,0 +1,172 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "slug": "20260301-ri-cross-service-sync",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-03-01T14:00:00Z",
+  "updated_at": "2026-03-01T15:30:00Z",
+  "plan": {
+    "summary": "Wire RI insight outputs into Knowledge, Outbound, and Marketing services via Backend orchestration endpoints, plus add Template CRUD UI to Dashboard. 4 phases: P1 Knowledge sync, P2 Outbound rescue trigger, P3 Template CRUD, P4 Marketing sync.",
+    "q_intent": "Hemen Yapilabilir (altyapi hazir, sadece wiring) listesi icin plan hazirla — cross-service entegrasyonlar",
+    "interview_notes": "FB-5a skipped (obsolete — FlowBuilder already merged into Dashboard SPA). RI-8.8 deferred (stages→FlowGraphV2 non-trivial). ConversationId = CustomerPhoneNumber (no schema change needed for P2).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/ops/ri/sync-knowledge/{tenantId} reads WA sector templates and creates Knowledge intents+FAQs idempotently",
+        "verified": true,
+        "verification_note": "Endpoint implemented in Backend Program.cs, handles 409 (duplicate) as skip"
+      },
+      {
+        "id": "AC2",
+        "criterion": "POST /api/ops/ri/rescue-trigger/{tenantId} fetches rescue candidates, triggers Outbound for pending high-priority ones, updates status to triggered",
+        "verified": true,
+        "verification_note": "Endpoint implemented, uses conversationId as phone, calls Outbound webhook/trigger"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Template CRUD endpoints (POST/PUT/DELETE) work for all 4 types (intent, faq, objection_handler, followup_template) in WA",
+        "verified": true,
+        "verification_note": "12 endpoint handlers added to WA Program.cs + 8 repository methods"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Dashboard RiTemplateManagementPage renders 4 tabs with search, inline add/edit, toggle, soft delete",
+        "verified": true,
+        "verification_note": "New page created, route added, sidebar link added"
+      },
+      {
+        "id": "AC5",
+        "criterion": "POST /api/ops/ri/sync-marketing/{tenantId} syncs objections as risks and templates as rescue templates to Marketing",
+        "verified": true,
+        "verification_note": "Endpoint implemented, maps objection types to risk levels and templates to rescue strategies"
+      },
+      {
+        "id": "AC6",
+        "criterion": "Full solution builds with zero errors after all 4 phases",
+        "verified": true,
+        "verification_note": "Build PASS, 0 errors, 12 warnings (pre-existing)"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs",
+    "src/Invekto.WhatsAppAnalytics/Data/TemplateRepository.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/RiTemplateManagementPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Added 3 orchestration endpoints: sync-knowledge (P1), rescue-trigger (P2), sync-marketing (P4)" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "Added 6 error codes: INV-BE-070/071/072, INV-WA-025/026/027" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Added error entries for 6 new codes" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "is_new": false, "change": "Added CRUD endpoints (POST/PUT/DELETE) for 4 template types + rescue status PUT" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/InsightRepository.cs", "is_new": false, "change": "Added UpdateRescueStatusAsync method" },
+    { "path": "src/Invekto.WhatsAppAnalytics/Data/TemplateRepository.cs", "is_new": false, "change": "Added 8 single-record CRUD methods (Insert/Update per type)" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/RiTemplateManagementPage.tsx", "is_new": true, "change": "New tabbed CRUD page for RI template management" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "Added createRiTemplate, updateRiTemplate, deleteRiTemplate methods" },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false, "change": "Added lazy import + route for RiTemplateManagementPage" },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "is_new": false, "change": "Added Layers icon + sidebar nav item for RI Sablonlari" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 0, "deletions": 0, "files_count": 10 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-01T15:25:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do the Backend orchestration endpoints properly validate OpsKey auth and tenant JWT before making cross-service calls?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Are WA template CRUD endpoints properly tenant-isolated via GetValidatedTenant check, preventing cross-tenant data access?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Does the Knowledge sync handle duplicate entries idempotently (409 response) without creating data corruption?",
+      "category": "Data"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the rescue trigger correctly filter by status=pending and priority threshold before triggering Outbound, and update status atomically?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q5",
+      "question": "Are all error paths in cross-service calls logged with appropriate error codes and returned as structured ErrorResponse?",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Marketing/", "src/Invekto.Knowledge/", "src/Invekto.Outbound/"],
+    "non_goals": ["RI-8.8 FlowBuilder integration", "FB-5a FlowBuilder embed", "Schema migrations"],
+    "intentional_exclusions": ["No new DB tables or columns", "No changes to target services (Knowledge, Outbound, Marketing)", "No test files"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Backend/Program.cs:sync-knowledge endpoint",
+      "Backend/Program.cs:rescue-trigger endpoint",
+      "Backend/Program.cs:sync-marketing endpoint",
+      "WA/Program.cs:template CRUD endpoints"
+    ],
+    "user_facing_errors": [
+      "INV-BE-070: RI Knowledge sync failed",
+      "INV-BE-071: Rescue trigger to Outbound failed",
+      "INV-BE-072: RI Marketing sync failed",
+      "INV-WA-025: Rescue status update failed",
+      "INV-WA-026: Template create failed",
+      "INV-WA-027: Template update/delete failed"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All cross-service call failures are logged and counted in response (errors field). Individual item failures don't halt the batch — they increment error counter and continue."
+  },
+  "aha_moments": [
+    {
+      "category": "SALES",
+      "user_pain": "Sales team doesn't know which lost customers can still be rescued — rescue candidates sit in dashboard unseen",
+      "suggestion": "Auto-trigger outbound follow-up for high-priority rescue candidates, so no hot lead goes cold",
+      "aha_moment": "Agent gets a notification to follow up with a customer who was about to leave — and wins them back"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Customer objections repeat across conversations but support agents don't have pre-built responses",
+      "suggestion": "Sync RI-mined FAQs and intents to Knowledge base so chatbot auto-handles common objections",
+      "aha_moment": "Chatbot answers a price objection with a tailored response — customer feels understood without waiting for an agent"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Template management requires direct DB access — no way to customize mined templates from the UI",
+      "suggestion": "Tabbed CRUD page with inline edit lets managers customize templates without developer help",
+      "aha_moment": "Manager edits a follow-up template wording and sees it reflected in the next outbound message"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Cross-service sync is all-or-nothing — one failure kills the whole batch",
+      "suggestion": "Per-item error handling with skip counting ensures partial success is still valuable",
+      "aha_moment": "Sync report shows '8 synced, 2 skipped, 1 error' — actionable instead of a generic failure"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Marketing team manually copies objection insights to build rescue campaigns — slow and error-prone",
+      "suggestion": "One API call syncs all RI objection data into Marketing risks + rescue templates",
+      "aha_moment": "Marketing team clicks sync and sees rescue templates auto-populated from real customer objection patterns"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 3,
+    "override": "FORCE PASS by Q — persistent false positives (ops auth pattern, sector-scoped tables, catch(Exception) codebase convention)",
+    "blocking_issues": []
+  }
+}

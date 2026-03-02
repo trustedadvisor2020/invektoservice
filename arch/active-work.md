@@ -6,12 +6,13 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | RI tamamlandi | — | Tum 8 faz DONE. Sonraki sprint Q ile belirlenecek |
+| — | RI Cross-Service tamamlandi | — | P1-P4 DONE + WebChat updates. Deploy pending |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-02 | RI Cross-Service Integration — P1 Knowledge sync, P2 Outbound rescue trigger, P3 Template CRUD (12 WA endpoints + Dashboard page), P4 Marketing sync. 6 error codes (INV-BE-070/071/072, INV-WA-025/026/027). Codex 3 iter FORCE PASS. |
 | 2026-03-01 | NightlyBatch AutoDiscovery — WaClient.Management'dan aktif tenant otomatik keşfi. Config overrides (3 tenant korunuyor). Companies.ID=TenantId, "genel" default sector. INV-WA-024 typed catch. Codex PASS iter 2. Deploy HEALTHY, autoDiscovery=True. |
 | 2026-03-01 | RI-8 Optimizasyon — keyword pre-filter (14 regex, 3 outcome type, ModelVersion=keyword-v1), parallel MSSQL loading (4x concurrency via Parallel.ForEachAsync). Codex CQ PASS, CoVe FP FORCE PASS. Deploy WA HEALTHY. |
 | 2026-03-01 | RI-7 Tenant Onboarding — OnboardingInsightService + GET /ri/onboarding + RiOnboardingPanel (checklist, quick start, benchmark comparison, sector overview). 60 onboarding steps seeded (12 sectors x 5). Deploy WA+Backend HEALTHY. |
