@@ -127,8 +127,8 @@ builder.Services.AddSingleton(sp =>
 {
     var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(pageTimeoutMs * 2) };
     httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("InvektoBot/1.0");
-    return new WebScrapingService(httpClient, sp.GetRequiredService<JsonLinesLogger>(),
-        chunkSize, chunkOverlap, maxPages, pageTimeoutMs, delayBetweenRequestsMs);
+    return new WebScrapingService(httpClient, sp.GetRequiredService<PdfChunkingService>(),
+        sp.GetRequiredService<JsonLinesLogger>(), maxPages, pageTimeoutMs, delayBetweenRequestsMs);
 });
 
 // Register document processing background service
@@ -158,16 +158,6 @@ static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
     var tenant = ctx.Items["TenantContext"] as TenantContext;
     if (tenant == null || tenant.TenantId != routeTenantId) return null;
     return tenant;
-}
-
-// SSRF guard: block private/loopback IP addresses
-static bool IsRfc1918(System.Net.IPAddress ip)
-{
-    var bytes = ip.GetAddressBytes();
-    if (bytes.Length != 4) return false;
-    return bytes[0] == 10
-        || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
-        || (bytes[0] == 192 && bytes[1] == 168);
 }
 
 static TenantContext? GetSuperadmin(HttpContext ctx)
@@ -615,12 +605,19 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/documents/website", async (
         || (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps))
         return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeWebsiteInvalidUrl, "url must be a valid http/https URL", requestId), statusCode: 400);
 
-    // SSRF guard: block private/loopback addresses
-    if (parsedUri.HostNameType == UriHostNameType.IPv4 || parsedUri.HostNameType == UriHostNameType.IPv6)
+    // SSRF guard: resolve hostname and block private/loopback addresses (covers DNS rebinding + IPv6)
+    try
     {
-        if (System.Net.IPAddress.TryParse(parsedUri.Host, out var ip)
-            && (System.Net.IPAddress.IsLoopback(ip) || IsRfc1918(ip)))
-            return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeWebsiteInvalidUrl, "URL points to a private or loopback address", requestId), statusCode: 400);
+        var addresses = await System.Net.Dns.GetHostAddressesAsync(parsedUri.Host);
+        foreach (var ip in addresses)
+        {
+            if (WebScrapingService.IsPrivateAddress(ip))
+                return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeWebsiteInvalidUrl, "URL resolves to a private or loopback address", requestId), statusCode: 400);
+        }
+    }
+    catch (System.Net.Sockets.SocketException)
+    {
+        return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeWebsiteInvalidUrl, "URL hostname could not be resolved", requestId), statusCode: 400);
     }
 
     var normalizedUrl = parsedUri.ToString().TrimEnd('/');
@@ -642,9 +639,9 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/documents/website", async (
         jsonLogger.StepInfo($"Website submitted for indexing: id={docId}, tenant={tenantId}, url={normalizedUrl}", requestId);
         return Results.Json(new { documentId = docId, status = "processing", title }, statusCode: 202);
     }
-    catch (Exception ex)
+    catch (Npgsql.NpgsqlException ex)
     {
-        jsonLogger.StepError($"[{ErrorCodes.KnowledgeWebsiteCrawlFailed}] Website submit failed: {ex.Message}", requestId);
+        jsonLogger.StepError($"[{ErrorCodes.KnowledgeWebsiteCrawlFailed}] Website submit DB failed: {ex.Message}", requestId);
         return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeWebsiteCrawlFailed, "Website indexing submission failed", requestId), statusCode: 500);
     }
 });

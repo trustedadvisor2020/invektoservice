@@ -1,5 +1,5 @@
 using System.Net;
-using System.Text.Json;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using HtmlAgilityPack;
@@ -10,16 +10,15 @@ namespace Invekto.Knowledge.Services;
 /// <summary>
 /// Website crawling: sitemap discovery, HTML scraping, text extraction, chunking.
 /// GR-2.1 Website Indexing: one document per website submission.
-/// Thread-safe (stateless). Uses same 512w/50w overlap as PdfChunkingService.
+/// Thread-safe (stateless). Delegates chunking to PdfChunkingService.ChunkText.
 /// </summary>
 public sealed class WebScrapingService
 {
-    private readonly int _chunkSize;
-    private readonly int _chunkOverlap;
     private readonly int _maxPages;
     private readonly int _pageTimeoutMs;
     private readonly int _delayBetweenRequestsMs;
     private readonly HttpClient _httpClient;
+    private readonly PdfChunkingService _chunkingService;
     private readonly JsonLinesLogger _logger;
 
     private static readonly HashSet<string> NoiseTags = new(StringComparer.OrdinalIgnoreCase)
@@ -29,17 +28,15 @@ public sealed class WebScrapingService
 
     public WebScrapingService(
         HttpClient httpClient,
+        PdfChunkingService chunkingService,
         JsonLinesLogger logger,
-        int chunkSize,
-        int chunkOverlap,
         int maxPages,
         int pageTimeoutMs,
         int delayBetweenRequestsMs)
     {
         _httpClient = httpClient;
+        _chunkingService = chunkingService;
         _logger = logger;
-        _chunkSize = chunkSize > 0 ? chunkSize : 512;
-        _chunkOverlap = chunkOverlap >= 0 ? chunkOverlap : 50;
         _maxPages = maxPages > 0 ? maxPages : 200;
         _pageTimeoutMs = pageTimeoutMs > 0 ? pageTimeoutMs : 15000;
         _delayBetweenRequestsMs = delayBetweenRequestsMs >= 0 ? delayBetweenRequestsMs : 500;
@@ -99,8 +96,8 @@ public sealed class WebScrapingService
                 continue;
             }
 
-            // 5. Chunk extracted text
-            var chunks = BuildChunks(scraped.CleanText);
+            // 5. Chunk extracted text via shared chunking service
+            var chunks = _chunkingService.ChunkText(scraped.CleanText);
             if (chunks.Count == 0)
             {
                 skipped++;
@@ -138,7 +135,6 @@ public sealed class WebScrapingService
     {
         var urls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Try sitemap.xml first, then sitemap_index.xml
         var sitemapCandidates = new[] { $"{baseUrl}/sitemap.xml", $"{baseUrl}/sitemap_index.xml" };
 
         foreach (var sitemapUrl in sitemapCandidates)
@@ -155,7 +151,6 @@ public sealed class WebScrapingService
                 var doc = XDocument.Parse(xml);
                 var ns = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
 
-                // Check if sitemap index
                 if (doc.Root?.Name.LocalName == "sitemapindex")
                 {
                     var nestedSitemapUrls = doc.Descendants(ns + "loc").Select(e => e.Value.Trim()).ToList();
@@ -178,15 +173,18 @@ public sealed class WebScrapingService
                             foreach (var loc in nestedDoc.Descendants(nestedNs + "loc"))
                                 urls.Add(loc.Value.Trim());
                         }
-                        catch (Exception ex)
+                        catch (HttpRequestException ex)
                         {
                             _logger.SystemWarn($"[WebScrapingService] Failed to fetch nested sitemap {nestedUrl}: {ex.Message}");
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.SystemWarn($"[WebScrapingService] Timeout fetching nested sitemap {nestedUrl}");
                         }
                     }
                 }
                 else
                 {
-                    // Standard urlset sitemap
                     foreach (var loc in doc.Descendants(ns + "loc"))
                         urls.Add(loc.Value.Trim());
                 }
@@ -194,12 +192,20 @@ public sealed class WebScrapingService
                 if (urls.Count > 0)
                 {
                     _logger.SystemInfo($"[WebScrapingService] Sitemap parsed: {urls.Count} URLs from {sitemapUrl}");
-                    break; // Found a working sitemap
+                    break;
                 }
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.SystemWarn($"[WebScrapingService] Failed to parse {sitemapUrl}: {ex.Message}");
+                _logger.SystemWarn($"[WebScrapingService] Failed to fetch sitemap {sitemapUrl}: {ex.Message}");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.SystemWarn($"[WebScrapingService] Timeout fetching sitemap {sitemapUrl}");
+            }
+            catch (System.Xml.XmlException ex)
+            {
+                _logger.SystemWarn($"[WebScrapingService] Malformed XML in {sitemapUrl}: {ex.Message}");
             }
         }
 
@@ -248,21 +254,88 @@ public sealed class WebScrapingService
                 }
             }
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            // robots.txt fetch failure is non-fatal
+            _logger.SystemWarn($"[WebScrapingService] robots.txt fetch failed for {baseUrl}: {ex.Message}");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemWarn($"[WebScrapingService] robots.txt fetch timed out for {baseUrl}");
         }
 
         return disallowed;
     }
 
     /// <summary>
-    /// Scrape a single page: fetch HTML, extract clean text content.
+    /// Check if an IP address is private, loopback, or link-local (SSRF guard).
+    /// Used by both the submission endpoint and per-request crawl validation.
+    /// </summary>
+    public static bool IsPrivateAddress(IPAddress ip)
+    {
+        if (IPAddress.IsLoopback(ip)) return true;
+
+        // Handle IPv4-mapped IPv6 addresses (e.g., ::ffff:10.0.0.1)
+        if (ip.IsIPv4MappedToIPv6)
+            return IsPrivateAddress(ip.MapToIPv4());
+
+        var bytes = ip.GetAddressBytes();
+
+        // IPv4 private ranges
+        if (bytes.Length == 4)
+        {
+            return bytes[0] == 10                                           // 10.0.0.0/8
+                || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)   // 172.16.0.0/12
+                || (bytes[0] == 192 && bytes[1] == 168)                    // 192.168.0.0/16
+                || (bytes[0] == 169 && bytes[1] == 254);                   // 169.254.0.0/16 link-local
+        }
+
+        // IPv6 private ranges
+        if (bytes.Length == 16)
+        {
+            return (bytes[0] == 0xfc || bytes[0] == 0xfd)                  // fc00::/7 unique local
+                || (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80);       // fe80::/10 link-local
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// SSRF guard: resolve hostname and check all IPs against private/loopback ranges.
+    /// Called before each HTTP request to prevent DNS rebinding attacks.
+    /// </summary>
+    private async Task<bool> IsUrlSafeAsync(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+
+        try
+        {
+            var addresses = await Dns.GetHostAddressesAsync(uri.Host);
+            foreach (var ip in addresses)
+            {
+                if (IsPrivateAddress(ip)) return false;
+            }
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Scrape a single page: validate SSRF, fetch HTML, extract clean text content.
     /// </summary>
     private async Task<ScrapedPage?> ScrapePageAsync(string url, CancellationToken ct)
     {
         try
         {
+            // Per-request SSRF check (prevents DNS rebinding)
+            if (!await IsUrlSafeAsync(url))
+            {
+                _logger.SystemWarn($"[WebScrapingService] SSRF blocked: {url} resolves to private/loopback");
+                return null;
+            }
+
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(_pageTimeoutMs);
 
@@ -283,14 +356,11 @@ public sealed class WebScrapingService
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
-            // Remove noise nodes
             RemoveNoiseNodes(doc);
 
-            // Extract title
             var titleNode = doc.DocumentNode.SelectSingleNode("//title");
             var pageTitle = titleNode?.InnerText.Trim() ?? url;
 
-            // Prefer main/article content, fallback to body
             var contentNode = doc.DocumentNode.SelectSingleNode("//main")
                               ?? doc.DocumentNode.SelectSingleNode("//article")
                               ?? doc.DocumentNode.SelectSingleNode("//body");
@@ -299,11 +369,8 @@ public sealed class WebScrapingService
                 return null;
 
             var rawText = WebUtility.HtmlDecode(contentNode.InnerText);
-
-            // Normalize whitespace: collapse multiple spaces/newlines to single space
             var cleanText = NormalizeWhitespace(rawText);
 
-            // Skip pages with too little content
             if (cleanText.Length < 100)
                 return null;
 
@@ -319,9 +386,9 @@ public sealed class WebScrapingService
             _logger.SystemWarn($"[WebScrapingService] Timeout scraping {url}");
             return null;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _logger.SystemWarn($"[WebScrapingService] Error scraping {url}: {ex.Message}");
+            _logger.SystemWarn($"[WebScrapingService] HTTP error scraping {url}: {ex.Message}");
             return null;
         }
     }
@@ -336,7 +403,6 @@ public sealed class WebScrapingService
                 nodesToRemove.Add(node);
         }
 
-        // Also remove cookie/popup related elements by class
         var cookieNodes = doc.DocumentNode.SelectNodes(
             "//*[contains(@class,'cookie') or contains(@class,'popup') or contains(@class,'modal') or contains(@id,'cookie') or contains(@id,'popup')]");
         if (cookieNodes != null)
@@ -351,45 +417,6 @@ public sealed class WebScrapingService
     private static string NormalizeWhitespace(string text)
     {
         return Regex.Replace(text, @"\s+", " ").Trim();
-    }
-
-    /// <summary>
-    /// Build overlapping word-based chunks from clean text.
-    /// Same algorithm as PdfChunkingService.BuildChunks but without page tracking.
-    /// </summary>
-    private List<ChunkResult> BuildChunks(string text)
-    {
-        var words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length == 0)
-            return new List<ChunkResult>();
-
-        var chunks = new List<ChunkResult>();
-        int chunkIndex = 0;
-        int pos = 0;
-
-        while (pos < words.Length)
-        {
-            int end = Math.Min(pos + _chunkSize, words.Length);
-            var chunkWords = words[pos..end];
-
-            var content = string.Join(" ", chunkWords);
-
-            chunks.Add(new ChunkResult
-            {
-                Content = content,
-                ChunkIndex = chunkIndex,
-                PageNumber = 0, // Not applicable for website chunks
-                TokenCount = chunkWords.Length
-            });
-
-            chunkIndex++;
-
-            int step = _chunkSize - _chunkOverlap;
-            if (step <= 0) step = 1;
-            pos += step;
-        }
-
-        return chunks;
     }
 }
 

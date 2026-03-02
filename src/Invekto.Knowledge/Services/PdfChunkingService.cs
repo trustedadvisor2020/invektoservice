@@ -61,6 +61,42 @@ public sealed class PdfChunkingService
     }
 
     /// <summary>
+    /// Build overlapping word-based chunks from plain text (no page tracking).
+    /// Used by WebScrapingService for website content.
+    /// </summary>
+    public List<ChunkResult> ChunkText(string text)
+    {
+        var words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0)
+            return new List<ChunkResult>();
+
+        var chunks = new List<ChunkResult>();
+        int chunkIndex = 0;
+        int pos = 0;
+
+        while (pos < words.Length)
+        {
+            int end = Math.Min(pos + _chunkSize, words.Length);
+            var chunkWords = words[pos..end];
+
+            chunks.Add(new ChunkResult
+            {
+                Content = string.Join(" ", chunkWords),
+                ChunkIndex = chunkIndex,
+                PageNumber = 0,
+                TokenCount = chunkWords.Length
+            });
+
+            chunkIndex++;
+            int step = _chunkSize - _chunkOverlap;
+            if (step <= 0) step = 1;
+            pos += step;
+        }
+
+        return chunks;
+    }
+
+    /// <summary>
     /// Build overlapping token chunks from page texts, tracking source page numbers.
     /// </summary>
     private List<ChunkResult> BuildChunks(List<(int PageNumber, string Text)> pageTexts)

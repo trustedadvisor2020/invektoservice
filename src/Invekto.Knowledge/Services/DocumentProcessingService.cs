@@ -184,9 +184,15 @@ public sealed class DocumentProcessingService : BackgroundService
         {
             crawlResult = await _scrapingService.CrawlAsync(job.FilePath, ct);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _logger.SystemError($"[DocumentProcessingService] Website crawl failed for doc {job.DocumentId}: {ex.Message}");
+            _logger.SystemError($"[DocumentProcessingService] Website crawl HTTP error for doc {job.DocumentId}: {ex.Message}");
+            await _repository.UpdateDocumentStatusAsync(job.TenantId, job.DocumentId, "error", 0, ct);
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemError($"[DocumentProcessingService] Website crawl cancelled/timed out for doc {job.DocumentId}");
             await _repository.UpdateDocumentStatusAsync(job.TenantId, job.DocumentId, "error", 0, ct);
             return;
         }
@@ -267,6 +273,14 @@ public sealed class DocumentProcessingService : BackgroundService
 
             var embedded = await _repository.BatchUpdateChunkEmbeddingsAsync(job.TenantId, embeddingUpdates, ct);
             totalEmbedded += embedded;
+
+            // If no embeddings succeeded in this batch, stop to prevent infinite loop
+            // (failed chunks remain without embeddings — keyword search still works)
+            if (embedded == 0)
+            {
+                _logger.SystemWarn($"[DocumentProcessingService] Document {job.DocumentId}: embedding batch produced 0 results, stopping loop ({totalFailed} total failed)");
+                break;
+            }
         }
 
         _logger.SystemInfo($"[DocumentProcessingService] Document {job.DocumentId}: {totalEmbedded} embeddings generated, {totalFailed} failed");
