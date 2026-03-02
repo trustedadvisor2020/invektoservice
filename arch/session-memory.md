@@ -6,10 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-02
-- **Status:** RI Cross-Service Integration Sprint tamamlandi (P1-P4). WebChat updates dahil.
-- **Last Task:** RI Cross-Service Sync — 3 Backend orchestration endpoints (sync-knowledge, rescue-trigger, sync-marketing) + 12 WA CRUD endpoints + Dashboard RiTemplateManagementPage. 6 error codes. Codex 3 iter FORCE PASS.
-- **Production Deploy:** WA + Backend deploy pending
-- **Next Task:** Deploy WA + Backend, sonra Q belirleyecek
+- **Status:** Knowledge Website Indexing DONE (FORCE PASS).
+- **Last Task:** Knowledge Website Indexing — POST /documents/website endpoint, WebScrapingService (sitemap+robots+HtmlAgilityPack), SSRF guard (IsPrivateAddress: IPv4+IPv6+IPv4-mapped+loopback+DNS rebinding), PdfChunkingService.ChunkText DRY, embedding loop zero-progress break, typed exceptions. Codex 6 iter, Q FORCE PASS (sitemap/robots SSRF acceptable).
+- **Production Deploy:** Pending (Knowledge service needs redeploy with website indexing)
+- **Next Task:** Q belirleyecek
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -101,6 +101,9 @@ src/
 | 2026-02-27 | RI-Faz2 GATE-2 FULL PASS | Batch pipeline E2E (job #2: 3 classified, 0 errors). NightlyBatch config: 3 tenant, RunHour=02:00, aktif. 4 endpoint çalışıyor. NSSM servis adı=InvektoWhatsAppAnalytics. |
 | 2026-02-23 | Self-Service Onboarding | Sektor secimi (GET/PUT sector) + sablon benimseme (3 proxy route) + SettingsPage dropdown + TemplateLibraryPage dual-mode. Codex 2 iter FORCE PASS. Deploy + onboarding/status 500 hotfix. |
 | 2026-03-02 | RI Cross-Service Integration | P1-P4 complete: Knowledge sync, Outbound rescue trigger, Template CRUD UI (12 WA endpoints + Dashboard page), Marketing sync. 17 files, 1751 insertions. 6 error codes. Codex 3 iter FORCE PASS. |
+| 2026-03-02 | Knowledge Website Indexing | WebScrapingService (sitemap+robots.txt+HtmlAgilityPack), SSRF guard (IPv4+IPv6+link-local+DNS resolution), PdfChunkingService.ChunkText (DRY), typed exceptions. Codex Q FORCE PASS. |
+| 2026-03-02 | WebChat Automation Webhook | AutomationWebhookClient fire-and-forget, DB-driven per-widget flow mapping (webchat_widget_configs), 5min ConcurrentDictionary cache, 3 hook points. Codex Q FORCE PASS. |
+| 2026-03-02 | Knowledge Website Indexing | POST /documents/website, WebScrapingService (sitemap+robots+HtmlAgilityPack scrape), SSRF guard (IsPrivateAddress public static, IPv4+IPv6+IPv4-mapped+DNS rebinding), PdfChunkingService.ChunkText DRY, embedding loop zero-progress break. Codex 6 iter FORCE PASS. |
 | 2026-03-01 | NightlyBatch AutoDiscovery | WaClient.Management.Companies'den aktif, süresi dolmamış tenant'ları otomatik keşfet. Config overrides DatabaseName ile eşleşir (3 mevcut tenant korunuyor). Companies.ID = TenantId, sector = "genel". SqlException + InvalidOperationException typed catch, INV-WA-024. Codex PASS iter 2. |
 
 ## Q Pending Operational Tasks
