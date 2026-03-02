@@ -32,7 +32,10 @@
 | RI-7 | Faz 7 | RI: Tenant Onboarding Deneyimi | RI-7.1~7.7 | DONE | 1 Mar | iter 0 FP |
 | RI-8 | Faz 8 | RI: Optimizasyon & Olcekleme | RI-8.1~8.13 | DONE | 1 Mar | pending |
 
-**Toplam:** 20 paket (20 done, 0 in-progress, 3 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
+| FAZ1-1 | Faz 1 Pkt 1 | Plan Permission System | plan_definitions, TenantPlanCache, FeatureGuardMiddleware | DONE | 2 Mar | PASS |
+| FAZ1-2 | Faz 1 Pkt 2 | SuperAdmin API + Quota | Plan CRUD, Tenant Plan, Cache Invalidation, Quota Enforcement | DONE | 3 Mar | iter 3, FORCE PASS |
+
+**Toplam:** 22 paket (22 done, 0 in-progress, 3 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
 
 ## Mikroservis Port Haritasi
 

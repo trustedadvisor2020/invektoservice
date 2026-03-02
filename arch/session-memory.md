@@ -6,10 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-03
-- **Status:** Flow response latency optimization DONE.
-- **Last Task:** Automation flow response hız optimizasyonu — pre-flow calls parallelized (Task.WhenAll), tenant intents + settings 5-min in-memory cache, Knowledge search timeout 15s→5s. Build PASS.
-- **Production Deploy:** Automation deploy bekliyor (2026-03-03)
-- **Next Task:** Q belirleyecek
+- **Status:** Faz 1 Paket 2 (SuperAdmin API + Quota) DONE — deployed + verified.
+- **Last Task:** Paket 2 — Plan CRUD (5 endpoints), Tenant Plan Override (2 endpoints), Cache Invalidation (1 endpoint), Quota Foundations (TenantUsageService, message quota check, max_flows guard). Migration 004 run, Backend + Automation deployed, 7/8 endpoints verified live.
+- **Production Deploy:** Backend + Automation deployed 2026-03-03, both HEALTHY.
+- **Next Task:** Q belirleyecek (Faz 1 Paket 3 or other)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -105,6 +105,8 @@ src/
 | 2026-03-02 | WebChat Automation Webhook | AutomationWebhookClient fire-and-forget, DB-driven per-widget flow mapping (webchat_widget_configs), 5min ConcurrentDictionary cache, 3 hook points. Codex Q FORCE PASS. |
 | 2026-03-02 | Knowledge Website Indexing | POST /documents/website, WebScrapingService (sitemap+robots+HtmlAgilityPack scrape), SSRF guard (IsPrivateAddress public static, IPv4+IPv6+IPv4-mapped+DNS rebinding), PdfChunkingService.ChunkText DRY, embedding loop zero-progress break. Codex 6 iter FORCE PASS. |
 | 2026-03-01 | NightlyBatch AutoDiscovery | WaClient.Management.Companies'den aktif, süresi dolmamış tenant'ları otomatik keşfet. Config overrides DatabaseName ile eşleşir (3 mevcut tenant korunuyor). Companies.ID = TenantId, sector = "genel". SqlException + InvalidOperationException typed catch, INV-WA-024. Codex PASS iter 2. |
+| 2026-03-02 | Faz 1 Paket 1 | plan_definitions tablosu + TenantPlanCache + FeatureGuardMiddleware. 3 seed tier (baslangic, profesyonel, kurumsal). Codex PASS. |
+| 2026-03-03 | Faz 1 Paket 2 | SuperAdmin API: Plan CRUD (5 ep), Tenant Plan (2 ep), Cache Invalidate (1 ep). TenantUsageService (ConcurrentDictionary + periodic DB sync). tenant_usage tablosu, 5 error code (INV-BE-080..084). Automation message quota + max_flows guard. Codex 3 iter FORCE PASS (CQ2/CQ5 contradiction). Migration 004 run, Backend + Automation deployed + 7/8 AC verified. |
 
 ## Q Pending Operational Tasks
 
