@@ -129,6 +129,10 @@ public static class ErrorCodes
     public const string AutomationKnowledgeSearchFailed = "INV-AT-042";
     public const string AutomationChunkSummarizationFailed = "INV-AT-043";
 
+    // Automation E-Commerce (INV-AT-044+)
+    public const string AutomationEcommerceCallFailed = "INV-AT-044";
+    public const string AutomationEcommerceTimeout = "INV-AT-045";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";
@@ -270,6 +274,14 @@ public static class ErrorCodes
     public const string IntegrationsInvalidReviewWebhook = "INV-IG-008";
     public const string IntegrationsReviewAlertCreateFailed = "INV-IG-009";
     public const string IntegrationsStockQueryFailed = "INV-IG-010";
+
+    // Integrations E-Commerce (INV-IG-011+)
+    public const string IntegrationsEcomProviderNotFound = "INV-IG-011";
+    public const string IntegrationsEcomProductQueryFailed = "INV-IG-012";
+    public const string IntegrationsEcomCustomerQueryFailed = "INV-IG-013";
+    public const string IntegrationsEcomOrderMutationFailed = "INV-IG-014";
+    public const string IntegrationsEcomOAuthFailed = "INV-IG-015";
+    public const string IntegrationsEcomGraphQlFailed = "INV-IG-016";
 
     // Outbound v2 errors (INV-OB-013+) -- GR-3.15/3.26/3.29
     public const string OutboundInvalidCampaignPayload = "INV-OB-013";

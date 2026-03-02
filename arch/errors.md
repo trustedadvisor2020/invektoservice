@@ -284,6 +284,12 @@ errors:
   - code: INV-AT-043
     description: Chunk summarization failed
     user_message: PDF chunk özetleme Claude API hatası. Chunk sonucu atlanır, no_match'e yönlendirilir.
+  - code: INV-AT-044
+    description: E-commerce action call failed
+    user_message: E-ticaret işlemi başarısız.
+  - code: INV-AT-045
+    description: E-commerce action timeout
+    user_message: E-ticaret işlemi zaman aşımına uğradı.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001
@@ -472,6 +478,33 @@ errors:
   - code: INV-IG-007
     description: Cargo tracking unavailable
     user_message: Kargo takip bilgisi kullanılamıyor.
+  - code: INV-IG-008
+    description: Invalid review webhook payload
+    user_message: Geçersiz değerlendirme webhook isteği.
+  - code: INV-IG-009
+    description: Review alert creation failed
+    user_message: Değerlendirme uyarısı oluşturulamadı.
+  - code: INV-IG-010
+    description: Stock query failed
+    user_message: Stok sorgusu başarısız.
+  - code: INV-IG-011
+    description: E-commerce provider not found
+    user_message: E-ticaret sağlayıcısı bulunamadı.
+  - code: INV-IG-012
+    description: E-commerce product query failed
+    user_message: Ürün sorgusu başarısız.
+  - code: INV-IG-013
+    description: E-commerce customer query failed
+    user_message: Müşteri sorgusu başarısız.
+  - code: INV-IG-014
+    description: E-commerce order mutation failed
+    user_message: Sipariş işlemi başarısız.
+  - code: INV-IG-015
+    description: OAuth2 token acquisition failed
+    user_message: E-ticaret sağlayıcı kimlik doğrulaması başarısız.
+  - code: INV-IG-016
+    description: GraphQL query failed
+    user_message: E-ticaret API sorgusu başarısız.
 
   # ── AP — Appointments (GR-2.4) ──
   - code: INV-AP-001

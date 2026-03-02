@@ -108,6 +108,7 @@ builder.Services.AddSingleton<INodeHandler, ScheduleTriggerHandler>();
 builder.Services.AddSingleton<INodeHandler, CallFlowHandler>();
 builder.Services.AddSingleton<INodeHandler, LogicWorkingHoursHandler>();
 builder.Services.AddSingleton<INodeHandler, ActionAssignGroupHandler>();
+builder.Services.AddSingleton<INodeHandler, EcommerceHandler>();
 
 // Register HttpClientFactory for ApiCallHandler
 builder.Services.AddHttpClient("ApiCallHandler");
@@ -165,6 +166,15 @@ builder.Services.AddHttpClient<KnowledgeSearchClient>((sp, client) =>
 {
     client.BaseAddress = new Uri(knowledgeBaseUrl);
     client.Timeout = TimeSpan.FromMilliseconds(knowledgeSearchTimeoutMs);
+});
+
+// Register IntegrationsClient (typed HttpClient for e-commerce operations)
+var integrationsBaseUrl = builder.Configuration["Integrations:BaseUrl"] ?? $"http://localhost:{ServiceConstants.IntegrationsPort}";
+var integrationsTimeoutMs = builder.Configuration.GetValue<int>("Integrations:TimeoutMs", 10000);
+builder.Services.AddHttpClient<IntegrationsClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri(integrationsBaseUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
 });
 
 // Register ChunkSummarizer (Claude Haiku for PDF chunk -> customer answer)

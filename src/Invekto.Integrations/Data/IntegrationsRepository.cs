@@ -154,6 +154,56 @@ public sealed class IntegrationsRepository
         );
     }
 
+    /// <summary>
+    /// Get full account credentials including settings_json for OAuth2 providers (ikas, Shopify, etc.).
+    /// </summary>
+    public async Task<(string? ApiKeyEnc, string? ApiSecretEnc, string? SellerId, string? SettingsJson)?>
+        GetAccountFullCredentialsAsync(int tenantId, string provider, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT api_key_enc, api_secret_enc, seller_id, settings_json::text
+            FROM integration_accounts
+            WHERE tenant_id = @tid AND provider = @provider AND status = 'active'";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("provider", provider);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return null;
+
+        return (
+            reader.IsDBNull(0) ? null : reader.GetString(0),
+            reader.IsDBNull(1) ? null : reader.GetString(1),
+            reader.IsDBNull(2) ? null : reader.GetString(2),
+            reader.IsDBNull(3) ? null : reader.GetString(3)
+        );
+    }
+
+    /// <summary>
+    /// Resolve tenant_id by api_key_enc (client_id) and provider. O(1) reverse lookup.
+    /// Intentionally cross-tenant: IMarketplaceProvider passes raw credentials without tenantId,
+    /// so this query resolves which tenant owns the given client_id.
+    /// Unique constraint (tenant_id, provider) ensures at most one match per provider+client_id.
+    /// </summary>
+    public async Task<int?> GetTenantIdByClientIdAsync(string provider, string clientId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT tenant_id FROM integration_accounts
+            WHERE provider = @provider AND api_key_enc = @clientId AND status = 'active'
+            LIMIT 1";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("provider", provider);
+        cmd.Parameters.AddWithValue("clientId", clientId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int tid ? tid : null;
+    }
+
     // ================================================================
     // Orders Cache
     // ================================================================

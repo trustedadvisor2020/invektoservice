@@ -75,6 +75,23 @@ builder.Services.AddSingleton<IntegrationsRepository>();
 // Register marketplace providers (mock implementations)
 builder.Services.AddSingleton<IMarketplaceProvider, HepsiburadaMockProvider>();
 
+// Register ikas e-commerce provider (real OAuth2 + GraphQL)
+builder.Services.AddHttpClient<Invekto.Integrations.Services.Ikas.IkasTokenManager>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasTokenManager>();
+builder.Services.AddHttpClient<Invekto.Integrations.Services.Ikas.IkasGraphQlClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasGraphQlClient>();
+builder.Services.AddSingleton<Invekto.Integrations.Services.Ikas.IkasProvider>();
+builder.Services.AddSingleton<IEcommerceProvider>(sp =>
+    sp.GetRequiredService<Invekto.Integrations.Services.Ikas.IkasProvider>());
+builder.Services.AddSingleton<IMarketplaceProvider>(sp =>
+    sp.GetRequiredService<Invekto.Integrations.Services.Ikas.IkasProvider>());
+
 // Register cargo providers (mock implementations)
 builder.Services.AddSingleton<ICargoProvider, ArasCargoMockProvider>();
 builder.Services.AddSingleton<ICargoProvider, YurticiCargoMockProvider>();
@@ -161,7 +178,7 @@ app.MapPost("/api/v1/accounts", async (
         return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidAccountPayload, "Provider is required", requestId), statusCode: 400);
 
     var validProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "hepsiburada", "trendyol", "aras_kargo", "yurtici_kargo" };
+        { "hepsiburada", "trendyol", "aras_kargo", "yurtici_kargo", "ikas" };
 
     if (!validProviders.Contains(request.Provider))
         return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsInvalidAccountPayload, $"Invalid provider: {request.Provider}", requestId), statusCode: 400);
@@ -314,6 +331,232 @@ app.MapGet("/api/v1/cargo/{trackingCode}", async (
     }
 
     return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsCargoTrackingUnavailable, "No tracking data found. Specify cargo_provider parameter to query live.", requestId), statusCode: 404);
+});
+
+// ============================================================
+// E-Commerce endpoints (ikas, Shopify, etc.)
+// ============================================================
+
+app.MapGet("/api/v1/ecommerce/{provider}/products", async (
+    HttpContext ctx,
+    IEnumerable<IEcommerceProvider> ecomProviders,
+    string provider,
+    string? search, string? status, int? limit, string? cursor) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var ecomProvider = ecomProviders.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+    if (ecomProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProviderNotFound,
+            $"E-commerce provider '{provider}' not supported", requestId), statusCode: 400);
+
+    var result = await ecomProvider.ListProductsAsync(tenantContext.TenantId,
+        new EcommerceProductFilter
+        {
+            SearchTerm = search, Status = status,
+            Limit = limit ?? 20, Cursor = cursor
+        }, ctx.RequestAborted);
+
+    return Results.Ok(new EcommerceProductListResponse
+    {
+        Products = result.Products.Select(p => new EcommerceProductResponse
+        {
+            Id = p.Id, Name = p.Name, Price = p.Price,
+            Currency = p.Currency, StockCount = p.StockCount,
+            ImageUrl = p.ImageUrl, Status = p.Status
+        }).ToList(),
+        TotalCount = result.TotalCount,
+        HasNextPage = result.HasNextPage,
+        Cursor = result.Cursor
+    });
+});
+
+app.MapGet("/api/v1/ecommerce/{provider}/products/{productId}", async (
+    HttpContext ctx,
+    IEnumerable<IEcommerceProvider> ecomProviders,
+    string provider, string productId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var ecomProvider = ecomProviders.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+    if (ecomProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProviderNotFound,
+            $"E-commerce provider '{provider}' not supported", requestId), statusCode: 400);
+
+    var product = await ecomProvider.GetProductAsync(tenantContext.TenantId, productId, ctx.RequestAborted);
+    if (product == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProductQueryFailed,
+            $"Product '{productId}' not found", requestId), statusCode: 404);
+
+    return Results.Ok(new EcommerceProductResponse
+    {
+        Id = product.Id, Name = product.Name, Price = product.Price,
+        Currency = product.Currency, StockCount = product.StockCount,
+        ImageUrl = product.ImageUrl, Status = product.Status
+    });
+});
+
+app.MapGet("/api/v1/ecommerce/{provider}/customers", async (
+    HttpContext ctx,
+    IEnumerable<IEcommerceProvider> ecomProviders,
+    string provider,
+    string? phone, string? email, string? search, int? limit) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var ecomProvider = ecomProviders.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+    if (ecomProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProviderNotFound,
+            $"E-commerce provider '{provider}' not supported", requestId), statusCode: 400);
+
+    var result = await ecomProvider.ListCustomersAsync(tenantContext.TenantId,
+        new EcommerceCustomerFilter
+        {
+            Phone = phone, Email = email,
+            SearchTerm = search, Limit = limit ?? 20
+        }, ctx.RequestAborted);
+
+    return Results.Ok(new EcommerceCustomerListResponse
+    {
+        Customers = result.Customers.Select(c => new EcommerceCustomerResponse
+        {
+            Id = c.Id, FullName = c.FullName, Email = c.Email,
+            Phone = c.Phone, OrderCount = c.OrderCount, TotalSpent = c.TotalSpent
+        }).ToList(),
+        TotalCount = result.TotalCount
+    });
+});
+
+app.MapPost("/api/v1/ecommerce/{provider}/orders/{orderId}/fulfill", async (
+    HttpContext ctx,
+    IEnumerable<IEcommerceProvider> ecomProviders,
+    string provider, string orderId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var ecomProvider = ecomProviders.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+    if (ecomProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProviderNotFound,
+            $"E-commerce provider '{provider}' not supported", requestId), statusCode: 400);
+
+    var fulfillRequest = new FulfillOrderRequest();
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+        fulfillRequest = new FulfillOrderRequest
+        {
+            TrackingCode = root.TryGetProperty("tracking_code", out var tc) ? tc.GetString() : null,
+            CargoProvider = root.TryGetProperty("cargo_provider", out var cp) ? cp.GetString() : null
+        };
+    }
+    catch (JsonException ex)
+    {
+        logger.SystemWarn($"[{ErrorCodes.IntegrationsEcomOrderMutationFailed}] fulfill body parse error: {ex.Message}");
+    }
+
+    var result = await ecomProvider.FulfillOrderAsync(tenantContext.TenantId, orderId, fulfillRequest, ctx.RequestAborted);
+    if (!result.Success)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomOrderMutationFailed,
+            result.ErrorMessage ?? "Fulfill failed", requestId), statusCode: 502);
+
+    return Results.Ok(new EcommerceOperationResponse { Success = true, Result = result.ResultJson });
+});
+
+app.MapPost("/api/v1/ecommerce/{provider}/orders/{orderId}/status", async (
+    HttpContext ctx,
+    IEnumerable<IEcommerceProvider> ecomProviders,
+    string provider, string orderId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var ecomProvider = ecomProviders.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+    if (ecomProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProviderNotFound,
+            $"E-commerce provider '{provider}' not supported", requestId), statusCode: 400);
+
+    string? newStatus = null;
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        newStatus = bodyDoc.RootElement.TryGetProperty("status", out var s) ? s.GetString() : null;
+    }
+    catch (JsonException ex)
+    {
+        logger.SystemWarn($"[{ErrorCodes.IntegrationsEcomOrderMutationFailed}] status body parse error: {ex.Message}");
+    }
+
+    if (string.IsNullOrWhiteSpace(newStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomOrderMutationFailed,
+            "status is required", requestId), statusCode: 400);
+
+    var result = await ecomProvider.UpdateOrderStatusAsync(tenantContext.TenantId, orderId, newStatus, ctx.RequestAborted);
+    if (!result.Success)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomOrderMutationFailed,
+            result.ErrorMessage ?? "Status update failed", requestId), statusCode: 502);
+
+    return Results.Ok(new EcommerceOperationResponse { Success = true, Result = result.ResultJson });
+});
+
+app.MapPost("/api/v1/ecommerce/{provider}/orders/{orderId}/refund-line", async (
+    HttpContext ctx,
+    IEnumerable<IEcommerceProvider> ecomProviders,
+    string provider, string orderId) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    var ecomProvider = ecomProviders.FirstOrDefault(p =>
+        string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+    if (ecomProvider == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomProviderNotFound,
+            $"E-commerce provider '{provider}' not supported", requestId), statusCode: 400);
+
+    var refundRequest = new RefundLineRequest();
+    try
+    {
+        using var bodyDoc = await JsonDocument.ParseAsync(ctx.Request.Body);
+        var root = bodyDoc.RootElement;
+        refundRequest = new RefundLineRequest
+        {
+            LineItemId = root.TryGetProperty("line_item_id", out var li) ? li.GetString() ?? "" : "",
+            Quantity = root.TryGetProperty("quantity", out var q) ? q.GetInt32() : 1,
+            Reason = root.TryGetProperty("reason", out var r) ? r.GetString() : null
+        };
+    }
+    catch (JsonException ex)
+    {
+        logger.SystemWarn($"[{ErrorCodes.IntegrationsEcomOrderMutationFailed}] refund body parse error: {ex.Message}");
+    }
+
+    var result = await ecomProvider.RefundOrderLineAsync(tenantContext.TenantId, orderId, refundRequest, ctx.RequestAborted);
+    if (!result.Success)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.IntegrationsEcomOrderMutationFailed,
+            result.ErrorMessage ?? "Refund failed", requestId), statusCode: 502);
+
+    return Results.Ok(new EcommerceOperationResponse { Success = true, Result = result.ResultJson });
 });
 
 // ============================================================
@@ -474,6 +717,12 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/orders", Description = "Query cached orders", Auth = "Bearer", Category = "API" },
         new() { Method = "GET", Path = "/api/v1/orders/{provider}/{externalOrderId}", Description = "Get single order", Auth = "Bearer", Category = "API" },
         new() { Method = "GET", Path = "/api/v1/cargo/{trackingCode}", Description = "Track cargo shipment", Auth = "Bearer", Category = "API" },
+        new() { Method = "GET", Path = "/api/v1/ecommerce/{provider}/products", Description = "List e-commerce products", Auth = "Bearer", Category = "E-Commerce" },
+        new() { Method = "GET", Path = "/api/v1/ecommerce/{provider}/products/{productId}", Description = "Get single product", Auth = "Bearer", Category = "E-Commerce" },
+        new() { Method = "GET", Path = "/api/v1/ecommerce/{provider}/customers", Description = "List e-commerce customers", Auth = "Bearer", Category = "E-Commerce" },
+        new() { Method = "POST", Path = "/api/v1/ecommerce/{provider}/orders/{orderId}/fulfill", Description = "Fulfill order", Auth = "Bearer", Category = "E-Commerce" },
+        new() { Method = "POST", Path = "/api/v1/ecommerce/{provider}/orders/{orderId}/status", Description = "Update order status", Auth = "Bearer", Category = "E-Commerce" },
+        new() { Method = "POST", Path = "/api/v1/ecommerce/{provider}/orders/{orderId}/refund-line", Description = "Refund order line", Auth = "Bearer", Category = "E-Commerce" },
         new() { Method = "POST", Path = "/api/v1/reviews/webhook", Description = "Receive review alert webhook (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "GET", Path = "/api/v1/reviews/alerts", Description = "List review alerts (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "PUT", Path = "/api/v1/reviews/alerts/{alertId}/status", Description = "Update review recovery status (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },

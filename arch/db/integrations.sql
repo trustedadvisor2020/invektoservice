@@ -63,8 +63,32 @@ CREATE TABLE cargo_tracking_events (
 CREATE INDEX idx_cargo_events_order ON cargo_tracking_events(order_id);
 CREATE INDEX idx_cargo_events_tenant_tracking ON cargo_tracking_events(tenant_id, tracking_code);
 
+-- Products cache: synced from e-commerce providers (ikas, Shopify, etc.)
+CREATE TABLE IF NOT EXISTS products_cache (
+    id                  SERIAL PRIMARY KEY,
+    tenant_id           INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    provider            VARCHAR(50) NOT NULL,       -- 'ikas', 'shopify', etc.
+    external_product_id VARCHAR(200) NOT NULL,
+    product_name        VARCHAR(500),
+    price               DECIMAL(12,2),
+    currency            VARCHAR(3) DEFAULT 'TRY',
+    stock_count         INTEGER,
+    status              VARCHAR(20) DEFAULT 'active',  -- active, draft, archived, inactive
+    image_url           TEXT,
+    product_data_json   JSONB DEFAULT '{}',
+    synced_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_product_tenant_provider_ext UNIQUE (tenant_id, provider, external_product_id)
+);
+
+CREATE INDEX idx_products_cache_tenant ON products_cache(tenant_id, provider);
+CREATE INDEX idx_products_cache_name ON products_cache(tenant_id, product_name)
+    WHERE product_name IS NOT NULL;
+
 -- Grants
 GRANT ALL ON integration_accounts TO invekto;
 GRANT ALL ON orders_cache TO invekto;
 GRANT ALL ON cargo_tracking_events TO invekto;
+GRANT ALL ON products_cache TO invekto;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO invekto;
