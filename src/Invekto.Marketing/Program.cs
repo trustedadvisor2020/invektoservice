@@ -6,6 +6,7 @@ using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Middleware;
+using Invekto.Shared.Services;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,6 +93,12 @@ builder.Services.AddHttpClient<TourismResponseGenerator>()
 var app = builder.Build();
 app.UseTrafficLogging();
 app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
+
+// Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+var planCache = new TenantPlanCache(pgConnStr, logger);
+app.UseFeatureGuard(planCache, logger,
+    ("/api/v1/", "Marketing"));
+
 _ = app.Services.GetRequiredService<LogCleanupService>();
 
 // ============================================

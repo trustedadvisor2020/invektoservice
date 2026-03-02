@@ -1,0 +1,93 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "slug": "20260302-faz1-plan-permission",
+  "packet_id": null,
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-03-02T18:00:00Z",
+  "updated_at": "2026-03-02T19:30:00Z",
+  "plan": {
+    "summary": "Faz 1 Permission System: plan_definitions DB table with 3-tier seed (baslangic/profesyonel/kurumsal), TenantPlanCache with 5min TTL and fail-open strategy, FeatureGuardMiddleware with path-prefix feature checking, 3 new error codes (INV-AUTH-005/006/007), registered in 8 microservices. DB migration renames plan_tier values from English to Turkish.",
+    "q_intent": "Backend API permission enforcement — tenant plan tier determines which service endpoints are accessible. Closes the security gap where frontend-only feature hiding was the sole enforcement.",
+    "acceptance_criteria": [
+      {"id": "AC1", "criterion": "plan_definitions table created with 3 tiers and correct feature matrices", "verified": true},
+      {"id": "AC2", "criterion": "plan_tier values renamed to Turkish (baslangic/profesyonel/kurumsal)", "verified": true},
+      {"id": "AC3", "criterion": "FeatureGuardMiddleware blocks requests when feature not in plan (403 + INV-AUTH-005)", "verified": false},
+      {"id": "AC4", "criterion": "SuperAdmin (TenantId=0) and service calls bypass feature guard", "verified": false},
+      {"id": "AC5", "criterion": "Fail-open: DB unavailable does not block requests", "verified": false},
+      {"id": "AC6", "criterion": "Full solution build PASS with 0 errors", "verified": true}
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/Services/TenantPlanCache.cs",
+    "src/Invekto.Shared/Middleware/FeatureGuardMiddleware.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Knowledge/Program.cs",
+    "src/Invekto.Outbound/Program.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.AgentAI/Program.cs",
+    "src/Invekto.Marketing/Program.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "arch/errors.md",
+    "arch/db/tenant-registry.sql",
+    "arch/db/plan-definitions.sql",
+    "arch/db/migrations/003-plan-permission.sql"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Shared/Services/TenantPlanCache.cs", "is_new": true, "change": "New: DB-backed plan cache with 5min TTL, fail-open, stale cache fallback"},
+    {"path": "src/Invekto.Shared/Middleware/FeatureGuardMiddleware.cs", "is_new": true, "change": "New: Path-prefix feature guard middleware + UseFeatureGuard extension"},
+    {"path": "arch/db/migrations/003-plan-permission.sql", "is_new": true, "change": "New: plan_tier rename + plan_definitions table + seed"},
+    {"path": "arch/db/plan-definitions.sql", "is_new": true, "change": "New: Standalone DDL reference for plan_definitions"},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+3 error codes: AuthFeatureDisabled, AuthTierInsufficient, AuthQuotaExceeded"},
+    {"path": "arch/errors.md", "is_new": false, "change": "+3 error code documentation entries"},
+    {"path": "arch/db/tenant-registry.sql", "is_new": false, "change": "Comment update: plan_tier default + features_json description"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "+TenantPlanCache + UseFeatureGuard for FlowBuilder, Outbound"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "+using + TenantPlanCache + UseFeatureGuard for FlowBuilder x3"},
+    {"path": "src/Invekto.Knowledge/Program.cs", "is_new": false, "change": "+TenantPlanCache + UseFeatureGuard for Knowledge x2"},
+    {"path": "src/Invekto.Outbound/Program.cs", "is_new": false, "change": "+using + TenantPlanCache + UseFeatureGuard for Outbound"},
+    {"path": "src/Invekto.Appointments/Program.cs", "is_new": false, "change": "+using + TenantPlanCache + UseFeatureGuard for Appointments"},
+    {"path": "src/Invekto.AgentAI/Program.cs", "is_new": false, "change": "+TenantPlanCache + UseFeatureGuard for AgentAI"},
+    {"path": "src/Invekto.Marketing/Program.cs", "is_new": false, "change": "+using + TenantPlanCache + UseFeatureGuard for Marketing"},
+    {"path": "src/Invekto.Integrations/Program.cs", "is_new": false, "change": "+using + TenantPlanCache + UseFeatureGuard for Integrations"}
+  ],
+  "git_diff": {
+    "stats": {"insertions": 481, "deletions": 2, "files_count": 15},
+    "full_path": "arch/plans/diffs/20260302-faz1-plan-permission.diff"
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-02T19:25:00Z"
+  },
+  "scope_discipline": {
+    "forbidden_areas": ["billing", "frontend", "onboarding", "quota enforcement"],
+    "non_goals": ["SuperAdmin UI for feature toggle", "Quota metering", "Frontend hasFeature update"],
+    "intentional_exclusions": ["WebChat (no JWT auth)", "WhatsAppAnalytics (not in feature matrix)", "ChatAnalysis (internal service)"]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "try_catch_locations": ["TenantPlanCache.GetAsync — catch(Exception) returns stale cache or null", "TenantPlanCache.ParseFeaturesJson — catch returns empty dict", "TenantPlanCache.ParseQuotas — catch returns Unlimited"],
+    "user_facing_errors": ["INV-AUTH-005: 403 with Turkish message 'Bu özellik mevcut planınızda bulunmuyor'"],
+    "silent_failure_explanation": "All catch blocks log via SystemWarn before returning fallback values. Fail-open design is intentional — feature guard should not be a hard dependency on DB availability."
+  },
+  "aha_moments": [
+    {"category": "RELIABILITY", "user_pain": "Feature enforcement as single point of failure", "suggestion": "Fail-open with stale cache fallback", "aha_moment": "DB down doesn't mean all feature-gated endpoints stop working"},
+    {"category": "SECURITY", "user_pain": "Frontend-only feature enforcement bypassed by API calls", "suggestion": "Middleware-level enforcement before endpoint handlers", "aha_moment": "Backend now returns 403 regardless of how the API is called"},
+    {"category": "SPEED", "user_pain": "DB query per request for plan data", "suggestion": "ConcurrentDictionary with 5min TTL", "aha_moment": "First request loads from DB, subsequent requests hit in-memory cache"},
+    {"category": "UX", "user_pain": "Generic 403 when feature not available", "suggestion": "Turkish user message with feature name", "aha_moment": "User knows exactly which feature they're missing"},
+    {"category": "SUPPORT", "user_pain": "Hard to debug why a tenant can't access a feature", "suggestion": "SystemWarn log with tenant ID, feature name, plan tier, path", "aha_moment": "Support can grep logs for INV-AUTH-005 to see exactly what was blocked"}
+  ],
+  "verification_questions": [
+    {"id": "Q1", "question": "Does the FeatureGuardMiddleware correctly bypass for SuperAdmin (TenantId == 0) and service calls (IsServiceCall)?", "category": "Auth"},
+    {"id": "Q2", "question": "When features_json is NULL in tenant_registry, does TenantPlanCache correctly fall back to plan_definitions tier defaults?", "category": "Data"},
+    {"id": "Q3", "question": "If the plan_definitions table does not have a matching tier_name for a tenant's plan_tier, what happens? (LEFT JOIN returns NULL)", "category": "Lifecycle"},
+    {"id": "Q4", "question": "Are there any paths that should be guarded but are not, or paths that are guarded but should not be? (e.g., /api/v1/webhook/ in Automation)", "category": "Process/Policy"}
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1
+  }
+}

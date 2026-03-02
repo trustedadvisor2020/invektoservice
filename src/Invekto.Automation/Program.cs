@@ -2,6 +2,7 @@ using System.Text.Json;
 using Invekto.Automation.Data;
 using Invekto.Automation.Services;
 using Invekto.Shared.Middleware;
+using Invekto.Shared.Services;
 using Invekto.Automation.Services.NodeHandlers;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
@@ -208,6 +209,13 @@ app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
 app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api/v1/faq/", "/api/v1/simulation/", "/api/v1/onboarding/", "/api/v1/returns/");
+
+// Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+var planCache = new TenantPlanCache(pgConnStr, logger);
+app.UseFeatureGuard(planCache, logger,
+    ("/api/v1/flows/", "FlowBuilder"),
+    ("/api/v1/faq/", "FlowBuilder"),
+    ("/api/v1/simulation/", "FlowBuilder"));
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();

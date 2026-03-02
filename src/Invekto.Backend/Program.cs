@@ -285,6 +285,7 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 
     // Onboarding status aggregation (PKT-2: computed from Knowledge + Automation + tenant_registry)
     builder.Services.AddSingleton<OnboardingStatusService>();
+
 }
 
 // Callback client for async results to Main App
@@ -326,6 +327,15 @@ app.UseStaticFiles();
 _ = app.Services.GetRequiredService<LogCleanupService>();
 
 var logger = app.Services.GetRequiredService<JsonLinesLogger>();
+
+// Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+if (!string.IsNullOrEmpty(pgConnectionString))
+{
+    var planCache = new TenantPlanCache(pgConnectionString, logger);
+    app.UseFeatureGuard(planCache, logger,
+        ("/api/v1/flow-builder/", "FlowBuilder"),
+        ("/api/v1/outbound/", "Outbound"));
+}
 
 // Health endpoint (no auth, no logging)
 app.MapGet("/health", () =>

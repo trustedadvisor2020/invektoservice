@@ -61,6 +61,11 @@ public static class ErrorCodes
     public const string AuthTokenInvalid = "INV-AUTH-002";
     public const string AuthUnauthorized = "INV-AUTH-003";
 
+    // Auth Plan Enforcement (INV-AUTH-005+) — Faz 1 Permission System
+    public const string AuthFeatureDisabled = "INV-AUTH-005";     // Feature not in tenant's plan
+    public const string AuthTierInsufficient = "INV-AUTH-006";    // Feature requires higher tier
+    public const string AuthQuotaExceeded = "INV-AUTH-007";       // Quota limit reached
+
     // Backward-compat aliases (pre-GR-1.9 names, do not use in new code)
     public const string AuthForbidden = AuthTokenInvalid;
 

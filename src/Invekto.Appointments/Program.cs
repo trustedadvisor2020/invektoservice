@@ -7,6 +7,7 @@ using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.Appointments;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Middleware;
+using Invekto.Shared.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -125,6 +126,11 @@ app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
 app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
+
+// Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+var planCache = new TenantPlanCache(pgConnStr, logger);
+app.UseFeatureGuard(planCache, logger,
+    ("/api/v1/", "Appointments"));
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();

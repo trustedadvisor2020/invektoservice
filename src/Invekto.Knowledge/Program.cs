@@ -146,6 +146,12 @@ app.UseTrafficLogging();
 // Enable JWT auth for /api/v1/ prefixed paths
 app.UseJwtAuth(jwtValidator, logger, "/api/v1/knowledge/", "/api/v1/templates/");
 
+// Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+var planCache = new TenantPlanCache(pgConnStr, logger);
+app.UseFeatureGuard(planCache, logger,
+    ("/api/v1/knowledge/", "Knowledge"),
+    ("/api/v1/templates/", "Knowledge"));
+
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
 

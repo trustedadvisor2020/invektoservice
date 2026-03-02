@@ -153,6 +153,15 @@ errors:
   - code: INV-AUTH-004
     description: Missing or invalid tenant claim
     user_message: INMA token'ında CompanyCode/CompanyId claim'i eksik veya geçersiz.
+  - code: INV-AUTH-005
+    description: Feature not included in tenant's plan (FeatureGuardMiddleware)
+    user_message: Bu özellik mevcut planınızda bulunmuyor.
+  - code: INV-AUTH-006
+    description: Feature requires higher subscription tier (Paket 2)
+    user_message: Bu özellik daha yüksek bir plan gerektiriyor.
+  - code: INV-AUTH-007
+    description: Monthly usage quota exceeded (Paket 2)
+    user_message: Aylık kullanım limitinize ulaştınız.
 
   # ── AT — Automation (GR-1.1) ──
   - code: INV-AT-001

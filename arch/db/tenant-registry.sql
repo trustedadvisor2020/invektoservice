@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS tenant_registry (
     is_active           BOOLEAN NOT NULL DEFAULT true,
     callback_url        VARCHAR(500),                -- Override callback URL (null = use default)
     sector              VARCHAR(50),                 -- e.g., 'eticaret', 'dis_klinik', 'estetik', 'genel'
-    plan_tier           VARCHAR(20) NOT NULL DEFAULT 'basic', -- 'basic', 'pro', 'enterprise'
-    features_json       JSONB,                       -- Feature flags per tenant, e.g., {"chatbot": true, "broadcast": false}
+    plan_tier           VARCHAR(20) NOT NULL DEFAULT 'baslangic', -- 'baslangic', 'profesyonel', 'kurumsal' (Faz 1: migration 003)
+    features_json       JSONB,                       -- Per-tenant feature overrides. NULL = plan defaults. Format: {"Feature": "mode"}
     settings_json       JSONB,                       -- Tenant-specific settings, e.g., {"working_hours": {...}}
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
