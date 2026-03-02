@@ -3394,6 +3394,10 @@ app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/upload", async (
     return Results.Empty;
 }).DisableAntiforgery();
 
+// Website indexing proxy
+app.MapPost("/api/ops/knowledge/{tenantId:int}/documents/website", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await KnProxyPost(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents/website"));
+
 // Document CRUD
 app.MapGet("/api/ops/knowledge/{tenantId:int}/documents", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int tenantId) =>
     await KnProxyGet(ctx, knClient, jsonLog, tenantId, $"/api/v1/knowledge/{tenantId}/documents"));

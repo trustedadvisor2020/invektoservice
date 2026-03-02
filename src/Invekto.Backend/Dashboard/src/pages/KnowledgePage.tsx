@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, MessageSquare } from 'lucide-react';
+import { FileText, MessageSquare, Plus } from 'lucide-react';
 import { DocumentUpload } from '../components/knowledge/DocumentUpload';
 import { DocumentList } from '../components/knowledge/DocumentList';
 import { FaqManager } from '../components/knowledge/FaqManager';
@@ -14,10 +14,10 @@ export function KnowledgePage() {
   const tenantId = session?.tenantId ?? 1;
   const [activeTab, setActiveTab] = useState<Tab>('documents');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleUploadComplete = () => {
     setRefreshKey(k => k + 1);
-    // Embedding generation runs in background after upload — non-blocking
     api.generateEmbeddings(tenantId).catch((err) => {
       console.warn('[KnowledgePage] Embedding generation failed:', err);
     });
@@ -32,6 +32,15 @@ export function KnowledgePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-navy-900">Bilgi Bankasi</h1>
+        {activeTab === 'documents' && (
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Dokuman Ekle
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -60,14 +69,19 @@ export function KnowledgePage() {
 
       {/* Tab content */}
       {activeTab === 'documents' && (
-        <div className="space-y-6">
-          <DocumentUpload tenantId={tenantId} onUploadComplete={handleUploadComplete} />
-          <DocumentList tenantId={tenantId} refreshKey={refreshKey} />
-        </div>
+        <DocumentList tenantId={tenantId} refreshKey={refreshKey} />
       )}
       {activeTab === 'faqs' && (
         <FaqManager tenantId={tenantId} />
       )}
+
+      {/* Upload modal */}
+      <DocumentUpload
+        tenantId={tenantId}
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onUploadComplete={handleUploadComplete}
+      />
     </div>
   );
 }

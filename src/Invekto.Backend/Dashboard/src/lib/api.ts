@@ -1160,6 +1160,14 @@ class OpsApiClient {
       `/api/ops/knowledge/${tenantId}/documents/upload`, file, title);
   }
 
+  async indexWebsite(tenantId: number, url: string, title?: string) {
+    return this.request<{ documentId: number; status: string; title: string }>(
+      `/api/ops/knowledge/${tenantId}/documents/website`, {
+        method: 'POST',
+        body: JSON.stringify({ url, title: title || undefined }),
+      });
+  }
+
   async deleteDocument(tenantId: number, docId: number) {
     return this.request<{ message: string; documentId: number }>(
       `/api/ops/knowledge/${tenantId}/documents/${docId}`, { method: 'DELETE' });

@@ -12,6 +12,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-03-02 | Knowledge Website UI — DocumentUpload popup modal (PDF + Web Sitesi tabs), Backend proxy route, api.ts indexWebsite. Knowledge + Backend deployed HEALTHY. DB migration applied. |
 | 2026-03-02 | Knowledge Website Indexing — WebScrapingService, SSRF guard (IPv4+IPv6+DNS), PdfChunkingService.ChunkText DRY, typed exceptions. Codex Q FORCE PASS. Knowledge deployed. |
 | 2026-03-02 | WebChat Automation Webhook — AutomationWebhookClient, DB per-widget flow mapping, 3 hook points. Codex Q FORCE PASS. |
 | 2026-03-02 | RI Cross-Service Integration — P1 Knowledge sync, P2 Outbound rescue trigger, P3 Template CRUD (12 WA endpoints + Dashboard page), P4 Marketing sync. 6 error codes (INV-BE-070/071/072, INV-WA-025/026/027). Codex 3 iter FORCE PASS. |

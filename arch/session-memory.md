@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-03-02
-- **Status:** Knowledge Website Indexing DONE (FORCE PASS).
-- **Last Task:** Knowledge Website Indexing — POST /documents/website endpoint, WebScrapingService (sitemap+robots+HtmlAgilityPack), SSRF guard (IsPrivateAddress: IPv4+IPv6+IPv4-mapped+loopback+DNS rebinding), PdfChunkingService.ChunkText DRY, embedding loop zero-progress break, typed exceptions. Codex 6 iter, Q FORCE PASS (sitemap/robots SSRF acceptable).
-- **Production Deploy:** Pending (Knowledge service needs redeploy with website indexing)
+- **Status:** Knowledge Website UI + Deploy DONE.
+- **Last Task:** Knowledge Website UI — DocumentUpload popup modal (PDF + Web Sitesi tabs), Backend proxy route, api.ts indexWebsite. Knowledge + Backend deployed HEALTHY. DB migration (website source_type CHECK) applied.
+- **Production Deploy:** Knowledge + Backend deployed (2026-03-02)
 - **Next Task:** Q belirleyecek
 - **Strateji:** 12 Paket Stratejisi v5.2
 
