@@ -233,6 +233,20 @@ public sealed class AutomationRepository
     }
 
     /// <summary>
+    /// Count active flows for a tenant. Used for max_flows quota check.
+    /// </summary>
+    public async Task<int> CountActiveFlowsAsync(int tenantId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true";
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long c ? (int)c : Convert.ToInt32(result);
+    }
+
+    /// <summary>
     /// Update an existing flow's config and name.
     /// </summary>
     public async Task<bool> UpdateFlowByIdAsync(int tenantId, int flowId, string? flowName, string flowConfigJson,

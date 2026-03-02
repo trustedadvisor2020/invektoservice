@@ -59,6 +59,11 @@ public sealed class TenantPlanCache
     /// </summary>
     public void Invalidate(int tenantId) => _cache.TryRemove(tenantId, out _);
 
+    /// <summary>
+    /// Invalidates all cached entries. Call after plan_definitions update affects all tenants.
+    /// </summary>
+    public void InvalidateAll() => _cache.Clear();
+
     private async Task<TenantPlanInfo?> LoadFromDbAsync(int tenantId, CancellationToken ct)
     {
         const string sql = @"

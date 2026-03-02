@@ -1,0 +1,854 @@
+diff --git a/arch/db/migrations/004-tenant-usage.sql b/arch/db/migrations/004-tenant-usage.sql
+new file mode 100644
+index 0000000..46650d4
+--- /dev/null
++++ b/arch/db/migrations/004-tenant-usage.sql
+@@ -0,0 +1,41 @@
++-- Migration 004: Tenant Usage Counters — Faz 1 Paket 2
++-- Date: 2026-03-02
++-- Description: Create tenant_usage table for monthly quota tracking
++-- Safe: CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS
++-- Precondition: tenant_registry table exists, update_updated_at_column() trigger function exists
++
++-- ============================================================
++-- Part A: Create tenant_usage table
++-- ============================================================
++
++CREATE TABLE IF NOT EXISTS tenant_usage (
++    tenant_id       INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
++    period_month    DATE NOT NULL,              -- First day of month: '2026-03-01'
++    messages_sent   INTEGER NOT NULL DEFAULT 0, -- Cumulative for month
++    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    PRIMARY KEY (tenant_id, period_month)
++);
++
++-- ============================================================
++-- Part B: Index for period-based queries
++-- ============================================================
++
++CREATE INDEX IF NOT EXISTS idx_tenant_usage_period
++    ON tenant_usage (period_month, tenant_id);
++
++-- ============================================================
++-- Part C: Updated_at trigger
++-- ============================================================
++
++CREATE OR REPLACE TRIGGER trigger_tenant_usage_updated_at
++    BEFORE UPDATE ON tenant_usage
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
++
++-- ============================================================
++-- Part D: Grants
++-- ============================================================
++
++GRANT ALL ON tenant_usage TO invekto;
++
++-- Verify: SELECT * FROM tenant_usage LIMIT 5;
+diff --git a/arch/db/tenant-usage.sql b/arch/db/tenant-usage.sql
+new file mode 100644
+index 0000000..417516e
+--- /dev/null
++++ b/arch/db/tenant-usage.sql
+@@ -0,0 +1,26 @@
++-- tenant_usage: Monthly usage counters for quota enforcement.
++-- One row per (tenant_id, period_month). period_month = first day of month.
++-- messages_sent: incremented by Automation + WebChat per billable message.
++-- Created by migration 004-tenant-usage.sql.
++--
++-- Reset semantics: new month = new row (old rows kept for historical reference).
++-- Quota check: compare messages_sent vs plan_definitions.quotas_json->>'messages_per_month'.
++-- -1 in quotas_json = unlimited (no row needed).
++
++CREATE TABLE IF NOT EXISTS tenant_usage (
++    tenant_id       INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
++    period_month    DATE NOT NULL,              -- e.g., '2026-03-01' (always first of month)
++    messages_sent   INTEGER NOT NULL DEFAULT 0,
++    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++    PRIMARY KEY (tenant_id, period_month)
++);
++
++CREATE INDEX IF NOT EXISTS idx_tenant_usage_period
++    ON tenant_usage (period_month, tenant_id);
++
++CREATE OR REPLACE TRIGGER trigger_tenant_usage_updated_at
++    BEFORE UPDATE ON tenant_usage
++    FOR EACH ROW
++    EXECUTE FUNCTION update_updated_at_column();
++
++GRANT ALL ON tenant_usage TO invekto;
+diff --git a/arch/errors.md b/arch/errors.md
+index 976182c..573b337 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -116,6 +116,21 @@ errors:
+   - code: INV-BE-072
+     description: RI Marketing sync failed
+     user_message: RI verisi Marketing servisine aktarılamadı.
++  - code: INV-BE-080
++    description: Plan tier not found
++    user_message: Plan tanımı bulunamadı.
++  - code: INV-BE-081
++    description: Tier name already exists (409 conflict)
++    user_message: Bu plan adı zaten kullanılıyor.
++  - code: INV-BE-082
++    description: Cannot delete plan — active tenants on tier
++    user_message: Bu plana bağlı aktif firmalar var, silinemez.
++  - code: INV-BE-083
++    description: features_json invalid format
++    user_message: Özellik tanımı geçersiz formatta.
++  - code: INV-BE-084
++    description: Tenant plan update failed
++    user_message: Firma plan güncellemesi başarısız oldu.
+ 
+   # ── CA — ChatAnalysis ──
+   - code: INV-CA-001
+diff --git a/src/Invekto.Automation/Data/AutomationRepository.cs b/src/Invekto.Automation/Data/AutomationRepository.cs
+index a304112..4751bea 100644
+--- a/src/Invekto.Automation/Data/AutomationRepository.cs
++++ b/src/Invekto.Automation/Data/AutomationRepository.cs
+@@ -232,6 +232,20 @@ public sealed class AutomationRepository
+         return Convert.ToInt32(id);
+     }
+ 
++    /// <summary>
++    /// Count active flows for a tenant. Used for max_flows quota check.
++    /// </summary>
++    public async Task<int> CountActiveFlowsAsync(int tenantId, CancellationToken ct = default)
++    {
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd = conn.CreateCommand();
++        cmd.CommandText = "SELECT COUNT(*) FROM chatbot_flows WHERE tenant_id = @tid AND is_active = true";
++        cmd.Parameters.AddWithValue("tid", tenantId);
++
++        var result = await cmd.ExecuteScalarAsync(ct);
++        return result is long c ? (int)c : Convert.ToInt32(result);
++    }
++
+     /// <summary>
+     /// Update an existing flow's config and name.
+     /// </summary>
+diff --git a/src/Invekto.Automation/Program.cs b/src/Invekto.Automation/Program.cs
+index 3fd7ac0..8c12319 100644
+--- a/src/Invekto.Automation/Program.cs
++++ b/src/Invekto.Automation/Program.cs
+@@ -212,6 +212,7 @@ app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api
+ 
+ // Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+ var planCache = new TenantPlanCache(pgConnStr, logger);
++var usageService = new TenantUsageService(pgConnStr, logger);
+ app.UseFeatureGuard(planCache, logger,
+     ("/api/v1/flows/", "FlowBuilder"),
+     ("/api/v1/faq/", "FlowBuilder"),
+@@ -237,7 +238,7 @@ app.MapGet("/ready", async (PostgresConnectionFactory db) =>
+ // Webhook endpoint (Main App -> Automation)
+ // ============================================================
+ 
+-app.MapPost("/api/v1/webhook/event", (
++app.MapPost("/api/v1/webhook/event", async (
+     HttpContext ctx,
+     AutomationOrchestrator orchestrator,
+     JsonLinesLogger jsonLogger,
+@@ -290,6 +291,23 @@ app.MapPost("/api/v1/webhook/event", (
+ 
+         accepted++;
+         var chatId = msg.ChatId ?? "-";
++
++        // Faz 1 Paket 2: Message quota check
++        var tenantPlan = await planCache.GetAsync(tenantContext.TenantId);
++        if (tenantPlan != null)
++        {
++            var (allowed, current, limit) = await usageService.IncrementMessageAndCheckAsync(
++                tenantContext.TenantId, tenantPlan.Quotas, CancellationToken.None);
++            if (!allowed)
++            {
++                jsonLogger.StepWarn(
++                    $"[{ErrorCodes.AuthQuotaExceeded}] Message quota exceeded for tenant {tenantContext.TenantId}: {current}/{limit}, chat {chatId}", requestId);
++                ignored++;
++                accepted--;
++                continue;
++            }
++        }
++
+         jsonLogger.StepInfo($"Processing message for tenant {tenantContext.TenantId}, chat {chatId}", requestId);
+ 
+         // Capture loop variable for async closure
+@@ -513,6 +531,22 @@ app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx
+         try { using var _ = JsonDocument.Parse(flowConfig); }
+         catch (JsonException ex) { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, $"flow_config is not valid JSON: {ex.Message}", requestId), statusCode: 400); }
+ 
++        // Faz 1 Paket 2: max_flows quota check
++        var tenantPlan = await planCache.GetAsync(tenantId);
++        if (tenantPlan != null && tenantPlan.Quotas.MaxFlows >= 0)
++        {
++            var currentFlowCount = await repo.CountActiveFlowsAsync(tenantId);
++            if (currentFlowCount >= tenantPlan.Quotas.MaxFlows)
++            {
++                jsonLogger.StepWarn(
++                    $"[{ErrorCodes.AuthQuotaExceeded}] Flow quota exceeded for tenant {tenantId}: {currentFlowCount}/{tenantPlan.Quotas.MaxFlows}", requestId);
++                return Results.Json(
++                    ErrorResponse.Create(ErrorCodes.AuthQuotaExceeded,
++                        $"Maksimum akış sayısına ulaştınız ({tenantPlan.Quotas.MaxFlows}).", requestId),
++                    statusCode: 429);
++            }
++        }
++
+         var flowId = await repo.CreateFlowAsync(tenantId, flowName, flowConfig, wizardStatus);
+         jsonLogger.StepInfo($"Flow created for tenant {tenantId}: flow_id={flowId}, name={flowName}, wizard={wizardStatus ?? "none"}", requestId);
+ 
+diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
+index fe53fb0..055334d 100644
+--- a/src/Invekto.Backend/Program.cs
++++ b/src/Invekto.Backend/Program.cs
+@@ -329,9 +329,10 @@ _ = app.Services.GetRequiredService<LogCleanupService>();
+ var logger = app.Services.GetRequiredService<JsonLinesLogger>();
+ 
+ // Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
++TenantPlanCache? planCache = null;
+ if (!string.IsNullOrEmpty(pgConnectionString))
+ {
+-    var planCache = new TenantPlanCache(pgConnectionString, logger);
++    planCache = new TenantPlanCache(pgConnectionString, logger);
+     app.UseFeatureGuard(planCache, logger,
+         ("/api/v1/flow-builder/", "FlowBuilder"),
+         ("/api/v1/outbound/", "Outbound"));
+@@ -5638,6 +5639,443 @@ app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id,
+     }
+ });
+ 
++// ============================================
++// PLAN CRUD + TENANT PLAN MANAGEMENT (Faz 1 Paket 2)
++// ============================================
++
++// GET /api/ops/plans — List all plan definitions
++app.MapGet("/api/ops/plans", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++        await using var cmd = new Npgsql.NpgsqlCommand(
++            "SELECT tier_name, display_name, features_json::text, quotas_json::text, is_active, created_at, updated_at FROM plan_definitions ORDER BY tier_name", conn);
++
++        var plans = new List<object>();
++        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
++        while (await reader.ReadAsync(ctx.RequestAborted))
++        {
++            using var featDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(2));
++            using var quotaDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(3));
++            plans.Add(new
++            {
++                tier_name = reader.GetString(0),
++                display_name = reader.GetString(1),
++                features_json = featDoc.RootElement.Clone(),
++                quotas_json = quotaDoc.RootElement.Clone(),
++                is_active = reader.GetBoolean(4),
++                created_at = reader.GetDateTime(5),
++                updated_at = reader.GetDateTime(6),
++            });
++        }
++        return Results.Ok(new { plans });
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Plan list query failed ({ErrorCodes.BackendPlanNotFound}): {ex.Message}");
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan listesi yüklenemedi." }, statusCode: 500);
++    }
++});
++
++// GET /api/ops/plans/{tierName} — Single plan detail
++app.MapGet("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++        await using var cmd = new Npgsql.NpgsqlCommand(
++            "SELECT tier_name, display_name, features_json::text, quotas_json::text, is_active, created_at, updated_at FROM plan_definitions WHERE tier_name = @tier", conn);
++        cmd.Parameters.AddWithValue("tier", tierName);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
++        if (!await reader.ReadAsync(ctx.RequestAborted))
++            return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierName}' bulunamadı.", ctx.TraceIdentifier));
++
++        using var featDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(2));
++        using var quotaDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(3));
++        var plan = new
++        {
++            tier_name = reader.GetString(0),
++            display_name = reader.GetString(1),
++            features_json = featDoc.RootElement.Clone(),
++            quotas_json = quotaDoc.RootElement.Clone(),
++            is_active = reader.GetBoolean(4),
++            created_at = reader.GetDateTime(5),
++            updated_at = reader.GetDateTime(6),
++        };
++        return Results.Ok(plan);
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Plan get failed ({ErrorCodes.BackendPlanNotFound}): tier={tierName}, {ex.Message}");
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan bilgisi yüklenemedi." }, statusCode: 500);
++    }
++});
++
++// POST /api/ops/plans — Create new tier
++app.MapPost("/api/ops/plans", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
++        var root = bodyDoc.RootElement;
++
++        var tierName = root.TryGetProperty("tier_name", out var tn) ? tn.GetString() : null;
++        var displayName = root.TryGetProperty("display_name", out var dn) ? dn.GetString() : null;
++
++        if (string.IsNullOrWhiteSpace(tierName) || string.IsNullOrWhiteSpace(displayName))
++            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "tier_name ve display_name zorunlu.", ctx.TraceIdentifier));
++
++        if (tierName.Length > 20)
++            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "tier_name max 20 karakter.", ctx.TraceIdentifier));
++
++        var featuresJson = root.TryGetProperty("features_json", out var fj) ? fj.GetRawText() : "{}";
++        var quotasJson = root.TryGetProperty("quotas_json", out var qj) ? qj.GetRawText() : "{}";
++
++        // Validate JSON structure
++        using var testFeat = System.Text.Json.JsonDocument.Parse(featuresJson);
++        using var testQuota = System.Text.Json.JsonDocument.Parse(quotasJson);
++
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++        await using var cmd = new Npgsql.NpgsqlCommand(@"
++            INSERT INTO plan_definitions (tier_name, display_name, features_json, quotas_json)
++            VALUES (@tier, @display, @feat::jsonb, @quota::jsonb)
++            ON CONFLICT (tier_name) DO NOTHING", conn);
++        cmd.Parameters.AddWithValue("tier", tierName);
++        cmd.Parameters.AddWithValue("display", displayName);
++        cmd.Parameters.AddWithValue("feat", featuresJson);
++        cmd.Parameters.AddWithValue("quota", quotasJson);
++
++        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
++        if (rows == 0)
++            return Results.Json(ErrorResponse.Create(ErrorCodes.BackendPlanTierConflict, $"Tier '{tierName}' zaten mevcut.", ctx.TraceIdentifier), statusCode: 409);
++
++        jsonLog.StepInfo($"Plan created: tier={tierName}, display={displayName}", Guid.NewGuid().ToString("N"));
++        return Results.Ok(new { tier_name = tierName, display_name = displayName, created = true });
++    }
++    catch (System.Text.Json.JsonException ex)
++    {
++        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendPlanFeaturesInvalid, $"JSON format geçersiz: {ex.Message}", ctx.TraceIdentifier));
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Plan create failed ({ErrorCodes.BackendPlanTierConflict}): {ex.Message}");
++        return Results.Json(new { error = ErrorCodes.BackendPlanTierConflict, message = "Plan oluşturulamadı." }, statusCode: 500);
++    }
++});
++
++// PUT /api/ops/plans/{tierName} — Update features/quotas/display_name
++app.MapPut("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
++        var root = bodyDoc.RootElement;
++
++        var setClauses = new List<string>();
++        var parameters = new List<Npgsql.NpgsqlParameter> { new("tier", tierName) };
++
++        if (root.TryGetProperty("display_name", out var dn) && dn.GetString() is string displayName)
++        {
++            setClauses.Add("display_name = @display");
++            parameters.Add(new("display", displayName));
++        }
++        if (root.TryGetProperty("features_json", out var fj))
++        {
++            var featJson = fj.GetRawText();
++            using var test = System.Text.Json.JsonDocument.Parse(featJson);
++            setClauses.Add("features_json = @feat::jsonb");
++            parameters.Add(new("feat", featJson));
++        }
++        if (root.TryGetProperty("quotas_json", out var qj))
++        {
++            var quotaJson = qj.GetRawText();
++            using var test = System.Text.Json.JsonDocument.Parse(quotaJson);
++            setClauses.Add("quotas_json = @quota::jsonb");
++            parameters.Add(new("quota", quotaJson));
++        }
++        if (root.TryGetProperty("is_active", out var ia))
++        {
++            setClauses.Add("is_active = @active");
++            parameters.Add(new("active", ia.GetBoolean()));
++        }
++
++        if (setClauses.Count == 0)
++            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "En az bir alan güncellenmelidir.", ctx.TraceIdentifier));
++
++        setClauses.Add("updated_at = NOW()");
++
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++        await using var cmd = new Npgsql.NpgsqlCommand(
++            $"UPDATE plan_definitions SET {string.Join(", ", setClauses)} WHERE tier_name = @tier", conn);
++        foreach (var p in parameters) cmd.Parameters.Add(p);
++
++        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
++        if (rows == 0)
++            return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierName}' bulunamadı.", ctx.TraceIdentifier));
++
++        // Auto-invalidate all tenants on this tier
++        if (planCache != null)
++        {
++            await using var tidCmd = new Npgsql.NpgsqlCommand(
++                "SELECT tenant_id FROM tenant_registry WHERE plan_tier = @tier AND is_active = true", conn);
++            tidCmd.Parameters.AddWithValue("tier", tierName);
++            await using var tidReader = await tidCmd.ExecuteReaderAsync(ctx.RequestAborted);
++            while (await tidReader.ReadAsync(ctx.RequestAborted))
++                planCache.Invalidate(tidReader.GetInt32(0));
++        }
++
++        jsonLog.StepInfo($"Plan updated: tier={tierName}, fields={string.Join(",", setClauses)}", Guid.NewGuid().ToString("N"));
++        return Results.Ok(new { tier_name = tierName, updated = true });
++    }
++    catch (System.Text.Json.JsonException ex)
++    {
++        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendPlanFeaturesInvalid, $"JSON format geçersiz: {ex.Message}", ctx.TraceIdentifier));
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Plan update failed ({ErrorCodes.BackendPlanNotFound}): tier={tierName}, {ex.Message}");
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan güncellenemedi." }, statusCode: 500);
++    }
++});
++
++// DELETE /api/ops/plans/{tierName} — Soft-delete (is_active=false)
++app.MapDelete("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++
++        // Guard: check no active tenants on this tier
++        await using var countCmd = new Npgsql.NpgsqlCommand(
++            "SELECT COUNT(*) FROM tenant_registry WHERE plan_tier = @tier AND is_active = true", conn);
++        countCmd.Parameters.AddWithValue("tier", tierName);
++        var result = await countCmd.ExecuteScalarAsync(ctx.RequestAborted);
++        var tenantCount = result is long c ? (int)c : Convert.ToInt32(result);
++
++        if (tenantCount > 0)
++            return Results.Json(
++                ErrorResponse.Create(ErrorCodes.BackendPlanHasActiveTenants,
++                    $"Bu plana bağlı {tenantCount} aktif firma var, silinemez.", ctx.TraceIdentifier),
++                statusCode: 409);
++
++        await using var cmd = new Npgsql.NpgsqlCommand(
++            "UPDATE plan_definitions SET is_active = false, updated_at = NOW() WHERE tier_name = @tier AND is_active = true", conn);
++        cmd.Parameters.AddWithValue("tier", tierName);
++
++        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
++        if (rows == 0)
++            return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierName}' bulunamadı veya zaten silinmiş.", ctx.TraceIdentifier));
++
++        jsonLog.StepInfo($"Plan soft-deleted: tier={tierName}", Guid.NewGuid().ToString("N"));
++        return Results.Ok(new { tier_name = tierName, deleted = true });
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Plan delete failed ({ErrorCodes.BackendPlanNotFound}): tier={tierName}, {ex.Message}");
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan silinemedi." }, statusCode: 500);
++    }
++});
++
++// GET /api/ops/tenants/{id}/plan — Tenant plan info + effective features + usage
++app.MapGet("/api/ops/tenants/{id}/plan", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++        await using var cmd = new Npgsql.NpgsqlCommand(@"
++            SELECT tr.plan_tier, tr.features_json::text, pd.features_json::text AS tier_features,
++                   pd.quotas_json::text, pd.display_name,
++                   COALESCE((SELECT messages_sent FROM tenant_usage WHERE tenant_id = @tid AND period_month = date_trunc('month', NOW())::date), 0)
++            FROM tenant_registry tr
++            LEFT JOIN plan_definitions pd ON pd.tier_name = tr.plan_tier AND pd.is_active = true
++            WHERE tr.tenant_id = @tid", conn);
++        cmd.Parameters.AddWithValue("tid", id);
++
++        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
++        if (!await reader.ReadAsync(ctx.RequestAborted))
++            return Results.NotFound(ErrorResponse.Create(ErrorCodes.IntegrationTenantNotFound, $"Tenant {id} bulunamadı.", ctx.TraceIdentifier));
++
++        var planTier = reader.GetString(0);
++        var tenantFeatJson = reader.IsDBNull(1) ? null : reader.GetString(1);
++        var tierFeatJson = reader.IsDBNull(2) ? null : reader.GetString(2);
++        var quotasJson = reader.IsDBNull(3) ? null : reader.GetString(3);
++        var tierDisplayName = reader.IsDBNull(4) ? planTier : reader.GetString(4);
++        var messagesSent = reader.GetInt32(5);
++
++        // Parse effective features (tenant override > tier defaults)
++        var effectiveJson = !string.IsNullOrWhiteSpace(tenantFeatJson) && tenantFeatJson != "{}" ? tenantFeatJson : tierFeatJson;
++        using var effectiveDoc = System.Text.Json.JsonDocument.Parse(!string.IsNullOrWhiteSpace(effectiveJson) ? effectiveJson : "{}");
++        var effectiveFeatures = effectiveDoc.RootElement.Clone();
++
++        using var quotasDoc = System.Text.Json.JsonDocument.Parse(!string.IsNullOrWhiteSpace(quotasJson) ? quotasJson : "{}");
++        var quotas = quotasDoc.RootElement.Clone();
++
++        return Results.Ok(new
++        {
++            tenant_id = id,
++            plan_tier = planTier,
++            tier_display_name = tierDisplayName,
++            has_override = !string.IsNullOrWhiteSpace(tenantFeatJson) && tenantFeatJson != "{}",
++            effective_features = effectiveFeatures,
++            quotas,
++            usage = new { messages_sent = messagesSent }
++        });
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Tenant plan get failed ({ErrorCodes.BackendTenantPlanUpdateFailed}): tenant={id}, {ex.Message}");
++        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "Firma plan bilgisi yüklenemedi." }, statusCode: 500);
++    }
++});
++
++// PUT /api/ops/tenants/{id}/plan — Update plan_tier and/or features_json override
++app.MapPut("/api/ops/tenants/{id}/plan", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (string.IsNullOrEmpty(pgConnectionString))
++        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
++
++    try
++    {
++        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
++        var root = bodyDoc.RootElement;
++
++        var setClauses = new List<string>();
++        var parameters = new List<Npgsql.NpgsqlParameter> { new("tid", id) };
++
++        if (root.TryGetProperty("plan_tier", out var pt) && pt.GetString() is string newTier)
++        {
++            setClauses.Add("plan_tier = @tier");
++            parameters.Add(new("tier", newTier));
++        }
++        if (root.TryGetProperty("features_json", out var fj))
++        {
++            if (fj.ValueKind == System.Text.Json.JsonValueKind.Null)
++            {
++                setClauses.Add("features_json = NULL");
++            }
++            else
++            {
++                var featJson = fj.GetRawText();
++                using var test = System.Text.Json.JsonDocument.Parse(featJson);
++                setClauses.Add("features_json = @feat::jsonb");
++                parameters.Add(new("feat", featJson));
++            }
++        }
++
++        if (setClauses.Count == 0)
++            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "plan_tier veya features_json gerekli.", ctx.TraceIdentifier));
++
++        setClauses.Add("updated_at = NOW()");
++
++        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
++        await conn.OpenAsync(ctx.RequestAborted);
++
++        // Validate new tier exists if provided
++        if (root.TryGetProperty("plan_tier", out var tierCheck) && tierCheck.GetString() is string tierToCheck)
++        {
++            await using var checkCmd = new Npgsql.NpgsqlCommand(
++                "SELECT 1 FROM plan_definitions WHERE tier_name = @t AND is_active = true", conn);
++            checkCmd.Parameters.AddWithValue("t", tierToCheck);
++            var exists = await checkCmd.ExecuteScalarAsync(ctx.RequestAborted);
++            if (exists == null)
++                return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierToCheck}' bulunamadı veya aktif değil.", ctx.TraceIdentifier));
++        }
++
++        await using var cmd = new Npgsql.NpgsqlCommand(
++            $"UPDATE tenant_registry SET {string.Join(", ", setClauses)} WHERE tenant_id = @tid AND is_active = true", conn);
++        foreach (var p in parameters) cmd.Parameters.Add(p);
++
++        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
++        if (rows == 0)
++            return Results.NotFound(ErrorResponse.Create(ErrorCodes.IntegrationTenantNotFound, $"Tenant {id} bulunamadı veya aktif değil.", ctx.TraceIdentifier));
++
++        // Auto-invalidate cache
++        planCache?.Invalidate(id);
++
++        jsonLog.StepInfo($"Tenant plan updated: tenant={id}, fields={string.Join(",", setClauses)}", Guid.NewGuid().ToString("N"));
++        return Results.Ok(new { tenant_id = id, updated = true });
++    }
++    catch (System.Text.Json.JsonException ex)
++    {
++        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendPlanFeaturesInvalid, $"JSON format geçersiz: {ex.Message}", ctx.TraceIdentifier));
++    }
++    catch (Npgsql.NpgsqlException ex)
++    {
++        jsonLog.SystemWarn($"Tenant plan update failed ({ErrorCodes.BackendTenantPlanUpdateFailed}): tenant={id}, {ex.Message}");
++        return Results.Json(
++            ErrorResponse.Create(ErrorCodes.BackendTenantPlanUpdateFailed, "Firma plan güncellemesi başarısız oldu.", ctx.TraceIdentifier),
++            statusCode: 500);
++    }
++});
++
++// POST /api/ops/plans/invalidate/{tenantId} — Manual cache invalidation (0 = all)
++app.MapPost("/api/ops/plans/invalidate/{tenantId}", async (HttpContext ctx, int tenantId, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx))
++        return OpsUnauthorized(ctx);
++
++    if (planCache == null)
++        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan cache not initialized" }, statusCode: 503);
++
++    if (tenantId == 0)
++    {
++        planCache.InvalidateAll();
++        jsonLog.StepInfo("Plan cache invalidated: ALL tenants", Guid.NewGuid().ToString("N"));
++        return Results.Ok(new { invalidated = true, tenant_id = 0, message = "Tüm cache temizlendi." });
++    }
++
++    planCache.Invalidate(tenantId);
++    jsonLog.StepInfo($"Plan cache invalidated: tenant={tenantId}", Guid.NewGuid().ToString("N"));
++    return Results.Ok(new { invalidated = true, tenant_id = tenantId });
++});
++
+ // ============================================
+ // INMA SSO AUTH ENDPOINTS
+ // ============================================
+diff --git a/src/Invekto.Shared/Constants/ErrorCodes.cs b/src/Invekto.Shared/Constants/ErrorCodes.cs
+index 74175e8..579f145 100644
+--- a/src/Invekto.Shared/Constants/ErrorCodes.cs
++++ b/src/Invekto.Shared/Constants/ErrorCodes.cs
+@@ -47,6 +47,13 @@ public static class ErrorCodes
+     public const string BackendRiRescueTriggerFailed = "INV-BE-071";
+     public const string BackendRiMarketingSyncFailed = "INV-BE-072";
+ 
++    // Backend Plan CRUD (INV-BE-080+) — Faz 1 Paket 2
++    public const string BackendPlanNotFound = "INV-BE-080";            // Plan tier not found
++    public const string BackendPlanTierConflict = "INV-BE-081";        // Tier name already exists (409)
++    public const string BackendPlanHasActiveTenants = "INV-BE-082";    // Cannot delete: active tenants on tier
++    public const string BackendPlanFeaturesInvalid = "INV-BE-083";     // features_json invalid format
++    public const string BackendTenantPlanUpdateFailed = "INV-BE-084";  // Tenant plan update failed
++
+     // ChatAnalysis errors (INV-CA-xxx)
+     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
+     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
+diff --git a/src/Invekto.Shared/Services/TenantPlanCache.cs b/src/Invekto.Shared/Services/TenantPlanCache.cs
+index cacd3fe..a8daaa3 100644
+--- a/src/Invekto.Shared/Services/TenantPlanCache.cs
++++ b/src/Invekto.Shared/Services/TenantPlanCache.cs
+@@ -59,6 +59,11 @@ public sealed class TenantPlanCache
+     /// </summary>
+     public void Invalidate(int tenantId) => _cache.TryRemove(tenantId, out _);
+ 
++    /// <summary>
++    /// Invalidates all cached entries. Call after plan_definitions update affects all tenants.
++    /// </summary>
++    public void InvalidateAll() => _cache.Clear();
++
+     private async Task<TenantPlanInfo?> LoadFromDbAsync(int tenantId, CancellationToken ct)
+     {
+         const string sql = @"
+diff --git a/src/Invekto.Shared/Services/TenantUsageService.cs b/src/Invekto.Shared/Services/TenantUsageService.cs
+new file mode 100644
+index 0000000..cc20f8f
+--- /dev/null
++++ b/src/Invekto.Shared/Services/TenantUsageService.cs
+@@ -0,0 +1,156 @@
++using System.Collections.Concurrent;
++using Invekto.Shared.Logging;
++using Npgsql;
++
++namespace Invekto.Shared.Services;
++
++/// <summary>
++/// Thread-safe monthly message counter with in-memory cache and periodic DB sync.
++/// Tracks messages_sent per tenant per month against PlanQuotas.MessagesPerMonth.
++///
++/// Fail-open: DB unavailable → allow request through (same as TenantPlanCache).
++/// Register as singleton in services that send billable messages (Automation, WebChat).
++/// </summary>
++public sealed class TenantUsageService
++{
++    private readonly string _connectionString;
++    private readonly JsonLinesLogger _logger;
++    private readonly ConcurrentDictionary<int, UsageEntry> _counters = new();
++
++    private const int SyncThreshold = 50;
++    private static readonly TimeSpan SyncInterval = TimeSpan.FromMinutes(5);
++
++    public TenantUsageService(string connectionString, JsonLinesLogger logger)
++    {
++        _connectionString = connectionString;
++        _logger = logger;
++    }
++
++    /// <summary>
++    /// Increment message counter and check against quota limit.
++    /// Returns (Allowed, CurrentCount, Limit).
++    /// If MessagesPerMonth == -1 → unlimited, always allowed.
++    /// </summary>
++    public async Task<(bool Allowed, int Current, int Limit)> IncrementMessageAndCheckAsync(
++        int tenantId, PlanQuotas quotas, CancellationToken ct = default)
++    {
++        if (quotas.MessagesPerMonth < 0)
++            return (true, -1, -1);
++
++        var entry = _counters.GetOrAdd(tenantId, tid =>
++        {
++            var e = new UsageEntry();
++            _ = Task.Run(() => SeedFromDbAsync(tid, e, default));
++            return e;
++        });
++
++        var newCount = Interlocked.Increment(ref entry.InMemoryCount);
++
++        if (newCount - entry.LastSyncedCount >= SyncThreshold ||
++            DateTime.UtcNow - entry.LastSyncAt > SyncInterval)
++        {
++            _ = Task.Run(() => SyncToDbAsync(tenantId, entry, default));
++        }
++
++        return (newCount <= quotas.MessagesPerMonth, newCount, quotas.MessagesPerMonth);
++    }
++
++    /// <summary>
++    /// Get current month usage for a tenant (reads from DB, not cache).
++    /// Used by ops endpoints for accurate reporting.
++    /// </summary>
++    public async Task<int> GetCurrentMonthUsageAsync(int tenantId, CancellationToken ct = default)
++    {
++        try
++        {
++            await using var conn = new NpgsqlConnection(_connectionString);
++            await conn.OpenAsync(ct);
++            await using var cmd = new NpgsqlCommand(
++                "SELECT messages_sent FROM tenant_usage WHERE tenant_id = @tid AND period_month = date_trunc('month', NOW())::date",
++                conn);
++            cmd.Parameters.AddWithValue("tid", tenantId);
++
++            var result = await cmd.ExecuteScalarAsync(ct);
++            return result is int count ? count : 0;
++        }
++        catch (NpgsqlException ex)
++        {
++            _logger.SystemWarn($"[TenantUsageService] DB error reading usage for tenant {tenantId}: {ex.Message}");
++            return 0;
++        }
++    }
++
++    /// <summary>
++    /// Flush all dirty counters to DB. Call on service shutdown.
++    /// </summary>
++    public async Task FlushAsync(CancellationToken ct = default)
++    {
++        foreach (var (tenantId, entry) in _counters)
++        {
++            if (entry.IsDirty)
++                await SyncToDbAsync(tenantId, entry, ct);
++        }
++    }
++
++    private async Task SeedFromDbAsync(int tenantId, UsageEntry entry, CancellationToken ct)
++    {
++        try
++        {
++            await using var conn = new NpgsqlConnection(_connectionString);
++            await conn.OpenAsync(ct);
++            await using var cmd = new NpgsqlCommand(
++                "SELECT messages_sent FROM tenant_usage WHERE tenant_id = @tid AND period_month = date_trunc('month', NOW())::date",
++                conn);
++            cmd.Parameters.AddWithValue("tid", tenantId);
++
++            var result = await cmd.ExecuteScalarAsync(ct);
++            var dbCount = result is int c ? c : 0;
++
++            Interlocked.Exchange(ref entry.InMemoryCount, dbCount);
++            entry.LastSyncedCount = dbCount;
++            entry.LastSyncAt = DateTime.UtcNow;
++        }
++        catch (NpgsqlException ex)
++        {
++            _logger.SystemWarn($"[TenantUsageService] DB seed failed for tenant {tenantId}: {ex.Message}");
++        }
++    }
++
++    private async Task SyncToDbAsync(int tenantId, UsageEntry entry, CancellationToken ct)
++    {
++        var current = Volatile.Read(ref entry.InMemoryCount);
++        var delta = current - entry.LastSyncedCount;
++        if (delta <= 0) return;
++
++        try
++        {
++            await using var conn = new NpgsqlConnection(_connectionString);
++            await conn.OpenAsync(ct);
++            await using var cmd = new NpgsqlCommand(@"
++                INSERT INTO tenant_usage (tenant_id, period_month, messages_sent, updated_at)
++                VALUES (@tid, date_trunc('month', NOW())::date, @delta, NOW())
++                ON CONFLICT (tenant_id, period_month)
++                DO UPDATE SET
++                    messages_sent = tenant_usage.messages_sent + @delta,
++                    updated_at = NOW()", conn);
++            cmd.Parameters.AddWithValue("tid", tenantId);
++            cmd.Parameters.AddWithValue("delta", delta);
++
++            await cmd.ExecuteNonQueryAsync(ct);
++            entry.LastSyncedCount = current;
++            entry.LastSyncAt = DateTime.UtcNow;
++        }
++        catch (NpgsqlException ex)
++        {
++            _logger.SystemWarn($"[TenantUsageService] DB sync failed for tenant {tenantId}: {ex.Message}");
++        }
++    }
++}
++
++internal sealed class UsageEntry
++{
++    public int InMemoryCount;
++    public int LastSyncedCount;
++    public DateTime LastSyncAt;
++    public bool IsDirty => InMemoryCount > LastSyncedCount;
++}

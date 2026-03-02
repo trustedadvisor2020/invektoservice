@@ -212,6 +212,7 @@ app.UseJwtAuth(jwtValidator, logger, "/api/v1/webhook/", "/api/v1/flows/", "/api
 
 // Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
 var planCache = new TenantPlanCache(pgConnStr, logger);
+var usageService = new TenantUsageService(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/flows/", "FlowBuilder"),
     ("/api/v1/faq/", "FlowBuilder"),
@@ -237,7 +238,7 @@ app.MapGet("/ready", async (PostgresConnectionFactory db) =>
 // Webhook endpoint (Main App -> Automation)
 // ============================================================
 
-app.MapPost("/api/v1/webhook/event", (
+app.MapPost("/api/v1/webhook/event", async (
     HttpContext ctx,
     AutomationOrchestrator orchestrator,
     JsonLinesLogger jsonLogger,
@@ -290,6 +291,23 @@ app.MapPost("/api/v1/webhook/event", (
 
         accepted++;
         var chatId = msg.ChatId ?? "-";
+
+        // Faz 1 Paket 2: Message quota check
+        var tenantPlan = await planCache.GetAsync(tenantContext.TenantId);
+        if (tenantPlan != null)
+        {
+            var (allowed, current, limit) = await usageService.IncrementMessageAndCheckAsync(
+                tenantContext.TenantId, tenantPlan.Quotas, CancellationToken.None);
+            if (!allowed)
+            {
+                jsonLogger.StepWarn(
+                    $"[{ErrorCodes.AuthQuotaExceeded}] Message quota exceeded for tenant {tenantContext.TenantId}: {current}/{limit}, chat {chatId}", requestId);
+                ignored++;
+                accepted--;
+                continue;
+            }
+        }
+
         jsonLogger.StepInfo($"Processing message for tenant {tenantContext.TenantId}, chat {chatId}", requestId);
 
         // Capture loop variable for async closure
@@ -512,6 +530,22 @@ app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx
         // Validate flow_config is valid JSON
         try { using var _ = JsonDocument.Parse(flowConfig); }
         catch (JsonException ex) { return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationInvalidFlowConfig, $"flow_config is not valid JSON: {ex.Message}", requestId), statusCode: 400); }
+
+        // Faz 1 Paket 2: max_flows quota check
+        var tenantPlan = await planCache.GetAsync(tenantId);
+        if (tenantPlan != null && tenantPlan.Quotas.MaxFlows >= 0)
+        {
+            var currentFlowCount = await repo.CountActiveFlowsAsync(tenantId);
+            if (currentFlowCount >= tenantPlan.Quotas.MaxFlows)
+            {
+                jsonLogger.StepWarn(
+                    $"[{ErrorCodes.AuthQuotaExceeded}] Flow quota exceeded for tenant {tenantId}: {currentFlowCount}/{tenantPlan.Quotas.MaxFlows}", requestId);
+                return Results.Json(
+                    ErrorResponse.Create(ErrorCodes.AuthQuotaExceeded,
+                        $"Maksimum akış sayısına ulaştınız ({tenantPlan.Quotas.MaxFlows}).", requestId),
+                    statusCode: 429);
+            }
+        }
 
         var flowId = await repo.CreateFlowAsync(tenantId, flowName, flowConfig, wizardStatus);
         jsonLogger.StepInfo($"Flow created for tenant {tenantId}: flow_id={flowId}, name={flowName}, wizard={wizardStatus ?? "none"}", requestId);

@@ -1,0 +1,89 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "slug": "20260302-faz1-paket2-superadmin-api",
+  "packet_id": null,
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-03-02T22:00:00Z",
+  "updated_at": "2026-03-03T00:15:00Z",
+  "plan": {
+    "summary": "Faz 1 Paket 2: SuperAdmin API + Quota System. Plan CRUD (5 endpoints: GET/POST/PUT/DELETE plan_definitions), Tenant Plan Override (GET/PUT tenant plan_tier + features_json), Cache Invalidation (manual + auto after PUT/DELETE), Quota Foundations (tenant_usage table, TenantUsageService cache-based counter, Automation message quota check + max_flows guard). 5 new error codes (INV-BE-080..084).",
+    "q_intent": "SuperAdmin'in Dashboard uzerinden plan/feature/quota yonetimi yapabilmesi icin API altyapisi. Paket 1'de kurulan plan_definitions + TenantPlanCache uzerine CRUD + quota enforcement ekliyor.",
+    "acceptance_criteria": [
+      {"id": "AC1", "criterion": "GET /api/ops/plans returns all 3 seeded tiers", "verified": false},
+      {"id": "AC2", "criterion": "POST /api/ops/plans creates new tier, 409 on duplicate", "verified": false},
+      {"id": "AC3", "criterion": "PUT /api/ops/plans/{tier} updates features/quotas + auto-invalidates cache", "verified": false},
+      {"id": "AC4", "criterion": "DELETE /api/ops/plans/{tier} soft-deletes only if no active tenants (409 guard)", "verified": false},
+      {"id": "AC5", "criterion": "GET /api/ops/tenants/{id}/plan returns effective features + usage", "verified": false},
+      {"id": "AC6", "criterion": "PUT /api/ops/tenants/{id}/plan updates plan_tier/features_json + auto-invalidates", "verified": false},
+      {"id": "AC7", "criterion": "POST /api/ops/plans/invalidate/{id} clears plan cache (0=all)", "verified": false},
+      {"id": "AC8", "criterion": "Automation message quota check blocks messages when exceeded (INV-AUTH-007)", "verified": false},
+      {"id": "AC9", "criterion": "Automation max_flows quota check blocks flow creation when exceeded", "verified": false},
+      {"id": "AC10", "criterion": "Full solution build PASS with 0 errors", "verified": true}
+    ]
+  },
+  "allowed_files": [
+    "arch/db/tenant-usage.sql",
+    "arch/db/migrations/004-tenant-usage.sql",
+    "src/Invekto.Shared/Services/TenantUsageService.cs",
+    "src/Invekto.Shared/Services/TenantPlanCache.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs"
+  ],
+  "files_changed": [
+    {"path": "arch/db/tenant-usage.sql", "is_new": true, "change": "New: DDL reference for tenant_usage monthly counter table"},
+    {"path": "arch/db/migrations/004-tenant-usage.sql", "is_new": true, "change": "New: Migration — CREATE TABLE tenant_usage + index + trigger + GRANT"},
+    {"path": "src/Invekto.Shared/Services/TenantUsageService.cs", "is_new": true, "change": "New: Cache-based message counter with ConcurrentDictionary + periodic DB sync (fail-open)"},
+    {"path": "src/Invekto.Shared/Services/TenantPlanCache.cs", "is_new": false, "change": "+InvalidateAll() method for bulk cache clear"},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "+5 error codes: INV-BE-080..084 (plan CRUD errors)"},
+    {"path": "arch/errors.md", "is_new": false, "change": "+5 error code documentation entries with Turkish user messages"},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "+8 ops endpoints (plan CRUD x5, tenant plan x2, cache invalidate x1), planCache scoped outside if block"},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "+TenantUsageService registration, +message quota check in webhook handler, +max_flows guard in flow creation"},
+    {"path": "src/Invekto.Automation/Data/AutomationRepository.cs", "is_new": false, "change": "+CountActiveFlowsAsync method for max_flows quota check"}
+  ],
+  "git_diff": {
+    "stats": {"insertions": 736, "deletions": 2, "files_count": 9},
+    "full_path": "arch/plans/diffs/20260302-faz1-paket2-superadmin-api.diff"
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-02T22:25:00Z"
+  },
+  "scope_discipline": {
+    "forbidden_areas": ["frontend", "billing payment", "onboarding UI"],
+    "non_goals": ["Dashboard UI for plan management", "Stripe/payment integration", "Frontend hasFeature update"],
+    "intentional_exclusions": ["max_users quota — users managed by INMA, not InvektoServices", "WebChat message quota — separate service, can be added later"]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "try_catch_locations": [
+      "TenantUsageService.SeedFromDbAsync — catch(NpgsqlException) with SystemWarn, in-memory stays at 0",
+      "TenantUsageService.SyncToDbAsync — catch(NpgsqlException) with SystemWarn, counter stays dirty until next sync",
+      "TenantUsageService.GetCurrentMonthUsageAsync — catch(NpgsqlException) returns 0",
+      "Backend plan CRUD endpoints — catch(NpgsqlException) returns 500 with error code",
+      "Backend plan CRUD — catch(JsonException) returns 400 for invalid JSON"
+    ],
+    "user_facing_errors": [
+      "INV-BE-080: 404 Plan bulunamadı",
+      "INV-BE-081: 409 Bu plan adı zaten kullanılıyor",
+      "INV-BE-082: 409 Bu plana bağlı aktif firmalar var",
+      "INV-BE-083: 400 Özellik tanımı geçersiz formatta",
+      "INV-BE-084: 500 Firma plan güncellemesi başarısız",
+      "INV-AUTH-007: 429 Aylık kullanım limitinize ulaştınız (Automation)"
+    ],
+    "silent_failure_explanation": "TenantUsageService follows TenantPlanCache fail-open pattern: DB unavailable → allow request through with stale counter. All catch blocks log via SystemWarn."
+  },
+  "verification_questions": [
+    {"id": "Q1", "question": "Do all 8 ops endpoints validate auth via ValidateOpsAuth before any DB operation?", "category": "Auth"},
+    {"id": "Q2", "question": "Does PUT /api/ops/plans/{tier} correctly invalidate cache for all tenants using that tier?", "category": "Data"},
+    {"id": "Q3", "question": "Does TenantUsageService.IncrementMessageAndCheckAsync correctly handle the unlimited case (MessagesPerMonth == -1)?", "category": "Logic"},
+    {"id": "Q4", "question": "Does CountActiveFlowsAsync correctly filter by is_active=true when counting flows for max_flows quota enforcement?", "category": "Process/Policy"}
+  ],
+  "verdict": "PASS",
+  "verdict_source": "Q FORCE PASS — Codex contradiction loop (CQ2 vs CQ5 on fire-and-forget pattern). All CoVe Q1-Q4 PASS. Build PASS. iteration=2"
+}

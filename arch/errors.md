@@ -116,6 +116,21 @@ errors:
   - code: INV-BE-072
     description: RI Marketing sync failed
     user_message: RI verisi Marketing servisine aktarılamadı.
+  - code: INV-BE-080
+    description: Plan tier not found
+    user_message: Plan tanımı bulunamadı.
+  - code: INV-BE-081
+    description: Tier name already exists (409 conflict)
+    user_message: Bu plan adı zaten kullanılıyor.
+  - code: INV-BE-082
+    description: Cannot delete plan — active tenants on tier
+    user_message: Bu plana bağlı aktif firmalar var, silinemez.
+  - code: INV-BE-083
+    description: features_json invalid format
+    user_message: Özellik tanımı geçersiz formatta.
+  - code: INV-BE-084
+    description: Tenant plan update failed
+    user_message: Firma plan güncellemesi başarısız oldu.
 
   # ── CA — ChatAnalysis ──
   - code: INV-CA-001

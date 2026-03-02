@@ -329,9 +329,10 @@ _ = app.Services.GetRequiredService<LogCleanupService>();
 var logger = app.Services.GetRequiredService<JsonLinesLogger>();
 
 // Faz 1: Plan-based feature guard (after JwtAuth sets TenantContext)
+TenantPlanCache? planCache = null;
 if (!string.IsNullOrEmpty(pgConnectionString))
 {
-    var planCache = new TenantPlanCache(pgConnectionString, logger);
+    planCache = new TenantPlanCache(pgConnectionString, logger);
     app.UseFeatureGuard(planCache, logger,
         ("/api/v1/flow-builder/", "FlowBuilder"),
         ("/api/v1/outbound/", "Outbound"));
@@ -5636,6 +5637,443 @@ app.MapPost("/api/ops/tenants/{id}/impersonate", async (HttpContext ctx, int id,
             new { error = ErrorCodes.BackendTenantImpersonateFailed, message = "Firma girisi basarisiz oldu." },
             statusCode: 500);
     }
+});
+
+// ============================================
+// PLAN CRUD + TENANT PLAN MANAGEMENT (Faz 1 Paket 2)
+// ============================================
+
+// GET /api/ops/plans — List all plan definitions
+app.MapGet("/api/ops/plans", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "SELECT tier_name, display_name, features_json::text, quotas_json::text, is_active, created_at, updated_at FROM plan_definitions ORDER BY tier_name", conn);
+
+        var plans = new List<object>();
+        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
+        while (await reader.ReadAsync(ctx.RequestAborted))
+        {
+            using var featDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(2));
+            using var quotaDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(3));
+            plans.Add(new
+            {
+                tier_name = reader.GetString(0),
+                display_name = reader.GetString(1),
+                features_json = featDoc.RootElement.Clone(),
+                quotas_json = quotaDoc.RootElement.Clone(),
+                is_active = reader.GetBoolean(4),
+                created_at = reader.GetDateTime(5),
+                updated_at = reader.GetDateTime(6),
+            });
+        }
+        return Results.Ok(new { plans });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Plan list query failed ({ErrorCodes.BackendPlanNotFound}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan listesi yüklenemedi." }, statusCode: 500);
+    }
+});
+
+// GET /api/ops/plans/{tierName} — Single plan detail
+app.MapGet("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "SELECT tier_name, display_name, features_json::text, quotas_json::text, is_active, created_at, updated_at FROM plan_definitions WHERE tier_name = @tier", conn);
+        cmd.Parameters.AddWithValue("tier", tierName);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
+        if (!await reader.ReadAsync(ctx.RequestAborted))
+            return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierName}' bulunamadı.", ctx.TraceIdentifier));
+
+        using var featDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(2));
+        using var quotaDoc = System.Text.Json.JsonDocument.Parse(reader.GetString(3));
+        var plan = new
+        {
+            tier_name = reader.GetString(0),
+            display_name = reader.GetString(1),
+            features_json = featDoc.RootElement.Clone(),
+            quotas_json = quotaDoc.RootElement.Clone(),
+            is_active = reader.GetBoolean(4),
+            created_at = reader.GetDateTime(5),
+            updated_at = reader.GetDateTime(6),
+        };
+        return Results.Ok(plan);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Plan get failed ({ErrorCodes.BackendPlanNotFound}): tier={tierName}, {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan bilgisi yüklenemedi." }, statusCode: 500);
+    }
+});
+
+// POST /api/ops/plans — Create new tier
+app.MapPost("/api/ops/plans", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
+        var root = bodyDoc.RootElement;
+
+        var tierName = root.TryGetProperty("tier_name", out var tn) ? tn.GetString() : null;
+        var displayName = root.TryGetProperty("display_name", out var dn) ? dn.GetString() : null;
+
+        if (string.IsNullOrWhiteSpace(tierName) || string.IsNullOrWhiteSpace(displayName))
+            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "tier_name ve display_name zorunlu.", ctx.TraceIdentifier));
+
+        if (tierName.Length > 20)
+            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "tier_name max 20 karakter.", ctx.TraceIdentifier));
+
+        var featuresJson = root.TryGetProperty("features_json", out var fj) ? fj.GetRawText() : "{}";
+        var quotasJson = root.TryGetProperty("quotas_json", out var qj) ? qj.GetRawText() : "{}";
+
+        // Validate JSON structure
+        using var testFeat = System.Text.Json.JsonDocument.Parse(featuresJson);
+        using var testQuota = System.Text.Json.JsonDocument.Parse(quotasJson);
+
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+        await using var cmd = new Npgsql.NpgsqlCommand(@"
+            INSERT INTO plan_definitions (tier_name, display_name, features_json, quotas_json)
+            VALUES (@tier, @display, @feat::jsonb, @quota::jsonb)
+            ON CONFLICT (tier_name) DO NOTHING", conn);
+        cmd.Parameters.AddWithValue("tier", tierName);
+        cmd.Parameters.AddWithValue("display", displayName);
+        cmd.Parameters.AddWithValue("feat", featuresJson);
+        cmd.Parameters.AddWithValue("quota", quotasJson);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
+        if (rows == 0)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.BackendPlanTierConflict, $"Tier '{tierName}' zaten mevcut.", ctx.TraceIdentifier), statusCode: 409);
+
+        jsonLog.StepInfo($"Plan created: tier={tierName}, display={displayName}", Guid.NewGuid().ToString("N"));
+        return Results.Ok(new { tier_name = tierName, display_name = displayName, created = true });
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendPlanFeaturesInvalid, $"JSON format geçersiz: {ex.Message}", ctx.TraceIdentifier));
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Plan create failed ({ErrorCodes.BackendPlanTierConflict}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPlanTierConflict, message = "Plan oluşturulamadı." }, statusCode: 500);
+    }
+});
+
+// PUT /api/ops/plans/{tierName} — Update features/quotas/display_name
+app.MapPut("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
+        var root = bodyDoc.RootElement;
+
+        var setClauses = new List<string>();
+        var parameters = new List<Npgsql.NpgsqlParameter> { new("tier", tierName) };
+
+        if (root.TryGetProperty("display_name", out var dn) && dn.GetString() is string displayName)
+        {
+            setClauses.Add("display_name = @display");
+            parameters.Add(new("display", displayName));
+        }
+        if (root.TryGetProperty("features_json", out var fj))
+        {
+            var featJson = fj.GetRawText();
+            using var test = System.Text.Json.JsonDocument.Parse(featJson);
+            setClauses.Add("features_json = @feat::jsonb");
+            parameters.Add(new("feat", featJson));
+        }
+        if (root.TryGetProperty("quotas_json", out var qj))
+        {
+            var quotaJson = qj.GetRawText();
+            using var test = System.Text.Json.JsonDocument.Parse(quotaJson);
+            setClauses.Add("quotas_json = @quota::jsonb");
+            parameters.Add(new("quota", quotaJson));
+        }
+        if (root.TryGetProperty("is_active", out var ia))
+        {
+            setClauses.Add("is_active = @active");
+            parameters.Add(new("active", ia.GetBoolean()));
+        }
+
+        if (setClauses.Count == 0)
+            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "En az bir alan güncellenmelidir.", ctx.TraceIdentifier));
+
+        setClauses.Add("updated_at = NOW()");
+
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            $"UPDATE plan_definitions SET {string.Join(", ", setClauses)} WHERE tier_name = @tier", conn);
+        foreach (var p in parameters) cmd.Parameters.Add(p);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
+        if (rows == 0)
+            return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierName}' bulunamadı.", ctx.TraceIdentifier));
+
+        // Auto-invalidate all tenants on this tier
+        if (planCache != null)
+        {
+            await using var tidCmd = new Npgsql.NpgsqlCommand(
+                "SELECT tenant_id FROM tenant_registry WHERE plan_tier = @tier AND is_active = true", conn);
+            tidCmd.Parameters.AddWithValue("tier", tierName);
+            await using var tidReader = await tidCmd.ExecuteReaderAsync(ctx.RequestAborted);
+            while (await tidReader.ReadAsync(ctx.RequestAborted))
+                planCache.Invalidate(tidReader.GetInt32(0));
+        }
+
+        jsonLog.StepInfo($"Plan updated: tier={tierName}, fields={string.Join(",", setClauses)}", Guid.NewGuid().ToString("N"));
+        return Results.Ok(new { tier_name = tierName, updated = true });
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendPlanFeaturesInvalid, $"JSON format geçersiz: {ex.Message}", ctx.TraceIdentifier));
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Plan update failed ({ErrorCodes.BackendPlanNotFound}): tier={tierName}, {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan güncellenemedi." }, statusCode: 500);
+    }
+});
+
+// DELETE /api/ops/plans/{tierName} — Soft-delete (is_active=false)
+app.MapDelete("/api/ops/plans/{tierName}", async (HttpContext ctx, string tierName, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+
+        // Guard: check no active tenants on this tier
+        await using var countCmd = new Npgsql.NpgsqlCommand(
+            "SELECT COUNT(*) FROM tenant_registry WHERE plan_tier = @tier AND is_active = true", conn);
+        countCmd.Parameters.AddWithValue("tier", tierName);
+        var result = await countCmd.ExecuteScalarAsync(ctx.RequestAborted);
+        var tenantCount = result is long c ? (int)c : Convert.ToInt32(result);
+
+        if (tenantCount > 0)
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.BackendPlanHasActiveTenants,
+                    $"Bu plana bağlı {tenantCount} aktif firma var, silinemez.", ctx.TraceIdentifier),
+                statusCode: 409);
+
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "UPDATE plan_definitions SET is_active = false, updated_at = NOW() WHERE tier_name = @tier AND is_active = true", conn);
+        cmd.Parameters.AddWithValue("tier", tierName);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
+        if (rows == 0)
+            return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierName}' bulunamadı veya zaten silinmiş.", ctx.TraceIdentifier));
+
+        jsonLog.StepInfo($"Plan soft-deleted: tier={tierName}", Guid.NewGuid().ToString("N"));
+        return Results.Ok(new { tier_name = tierName, deleted = true });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Plan delete failed ({ErrorCodes.BackendPlanNotFound}): tier={tierName}, {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan silinemedi." }, statusCode: 500);
+    }
+});
+
+// GET /api/ops/tenants/{id}/plan — Tenant plan info + effective features + usage
+app.MapGet("/api/ops/tenants/{id}/plan", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+        await using var cmd = new Npgsql.NpgsqlCommand(@"
+            SELECT tr.plan_tier, tr.features_json::text, pd.features_json::text AS tier_features,
+                   pd.quotas_json::text, pd.display_name,
+                   COALESCE((SELECT messages_sent FROM tenant_usage WHERE tenant_id = @tid AND period_month = date_trunc('month', NOW())::date), 0)
+            FROM tenant_registry tr
+            LEFT JOIN plan_definitions pd ON pd.tier_name = tr.plan_tier AND pd.is_active = true
+            WHERE tr.tenant_id = @tid", conn);
+        cmd.Parameters.AddWithValue("tid", id);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ctx.RequestAborted);
+        if (!await reader.ReadAsync(ctx.RequestAborted))
+            return Results.NotFound(ErrorResponse.Create(ErrorCodes.IntegrationTenantNotFound, $"Tenant {id} bulunamadı.", ctx.TraceIdentifier));
+
+        var planTier = reader.GetString(0);
+        var tenantFeatJson = reader.IsDBNull(1) ? null : reader.GetString(1);
+        var tierFeatJson = reader.IsDBNull(2) ? null : reader.GetString(2);
+        var quotasJson = reader.IsDBNull(3) ? null : reader.GetString(3);
+        var tierDisplayName = reader.IsDBNull(4) ? planTier : reader.GetString(4);
+        var messagesSent = reader.GetInt32(5);
+
+        // Parse effective features (tenant override > tier defaults)
+        var effectiveJson = !string.IsNullOrWhiteSpace(tenantFeatJson) && tenantFeatJson != "{}" ? tenantFeatJson : tierFeatJson;
+        using var effectiveDoc = System.Text.Json.JsonDocument.Parse(!string.IsNullOrWhiteSpace(effectiveJson) ? effectiveJson : "{}");
+        var effectiveFeatures = effectiveDoc.RootElement.Clone();
+
+        using var quotasDoc = System.Text.Json.JsonDocument.Parse(!string.IsNullOrWhiteSpace(quotasJson) ? quotasJson : "{}");
+        var quotas = quotasDoc.RootElement.Clone();
+
+        return Results.Ok(new
+        {
+            tenant_id = id,
+            plan_tier = planTier,
+            tier_display_name = tierDisplayName,
+            has_override = !string.IsNullOrWhiteSpace(tenantFeatJson) && tenantFeatJson != "{}",
+            effective_features = effectiveFeatures,
+            quotas,
+            usage = new { messages_sent = messagesSent }
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Tenant plan get failed ({ErrorCodes.BackendTenantPlanUpdateFailed}): tenant={id}, {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "Firma plan bilgisi yüklenemedi." }, statusCode: 500);
+    }
+});
+
+// PUT /api/ops/tenants/{id}/plan — Update plan_tier and/or features_json override
+app.MapPut("/api/ops/tenants/{id}/plan", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    try
+    {
+        using var bodyDoc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body, cancellationToken: ctx.RequestAborted);
+        var root = bodyDoc.RootElement;
+
+        var setClauses = new List<string>();
+        var parameters = new List<Npgsql.NpgsqlParameter> { new("tid", id) };
+
+        if (root.TryGetProperty("plan_tier", out var pt) && pt.GetString() is string newTier)
+        {
+            setClauses.Add("plan_tier = @tier");
+            parameters.Add(new("tier", newTier));
+        }
+        if (root.TryGetProperty("features_json", out var fj))
+        {
+            if (fj.ValueKind == System.Text.Json.JsonValueKind.Null)
+            {
+                setClauses.Add("features_json = NULL");
+            }
+            else
+            {
+                var featJson = fj.GetRawText();
+                using var test = System.Text.Json.JsonDocument.Parse(featJson);
+                setClauses.Add("features_json = @feat::jsonb");
+                parameters.Add(new("feat", featJson));
+            }
+        }
+
+        if (setClauses.Count == 0)
+            return Results.BadRequest(ErrorResponse.Create(ErrorCodes.GeneralValidation, "plan_tier veya features_json gerekli.", ctx.TraceIdentifier));
+
+        setClauses.Add("updated_at = NOW()");
+
+        await using var conn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync(ctx.RequestAborted);
+
+        // Validate new tier exists if provided
+        if (root.TryGetProperty("plan_tier", out var tierCheck) && tierCheck.GetString() is string tierToCheck)
+        {
+            await using var checkCmd = new Npgsql.NpgsqlCommand(
+                "SELECT 1 FROM plan_definitions WHERE tier_name = @t AND is_active = true", conn);
+            checkCmd.Parameters.AddWithValue("t", tierToCheck);
+            var exists = await checkCmd.ExecuteScalarAsync(ctx.RequestAborted);
+            if (exists == null)
+                return Results.NotFound(ErrorResponse.Create(ErrorCodes.BackendPlanNotFound, $"Plan '{tierToCheck}' bulunamadı veya aktif değil.", ctx.TraceIdentifier));
+        }
+
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            $"UPDATE tenant_registry SET {string.Join(", ", setClauses)} WHERE tenant_id = @tid AND is_active = true", conn);
+        foreach (var p in parameters) cmd.Parameters.Add(p);
+
+        var rows = await cmd.ExecuteNonQueryAsync(ctx.RequestAborted);
+        if (rows == 0)
+            return Results.NotFound(ErrorResponse.Create(ErrorCodes.IntegrationTenantNotFound, $"Tenant {id} bulunamadı veya aktif değil.", ctx.TraceIdentifier));
+
+        // Auto-invalidate cache
+        planCache?.Invalidate(id);
+
+        jsonLog.StepInfo($"Tenant plan updated: tenant={id}, fields={string.Join(",", setClauses)}", Guid.NewGuid().ToString("N"));
+        return Results.Ok(new { tenant_id = id, updated = true });
+    }
+    catch (System.Text.Json.JsonException ex)
+    {
+        return Results.BadRequest(ErrorResponse.Create(ErrorCodes.BackendPlanFeaturesInvalid, $"JSON format geçersiz: {ex.Message}", ctx.TraceIdentifier));
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"Tenant plan update failed ({ErrorCodes.BackendTenantPlanUpdateFailed}): tenant={id}, {ex.Message}");
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.BackendTenantPlanUpdateFailed, "Firma plan güncellemesi başarısız oldu.", ctx.TraceIdentifier),
+            statusCode: 500);
+    }
+});
+
+// POST /api/ops/plans/invalidate/{tenantId} — Manual cache invalidation (0 = all)
+app.MapPost("/api/ops/plans/invalidate/{tenantId}", async (HttpContext ctx, int tenantId, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (planCache == null)
+        return Results.Json(new { error = ErrorCodes.BackendPlanNotFound, message = "Plan cache not initialized" }, statusCode: 503);
+
+    if (tenantId == 0)
+    {
+        planCache.InvalidateAll();
+        jsonLog.StepInfo("Plan cache invalidated: ALL tenants", Guid.NewGuid().ToString("N"));
+        return Results.Ok(new { invalidated = true, tenant_id = 0, message = "Tüm cache temizlendi." });
+    }
+
+    planCache.Invalidate(tenantId);
+    jsonLog.StepInfo($"Plan cache invalidated: tenant={tenantId}", Guid.NewGuid().ToString("N"));
+    return Results.Ok(new { invalidated = true, tenant_id = tenantId });
 });
 
 // ============================================

@@ -47,6 +47,13 @@ public static class ErrorCodes
     public const string BackendRiRescueTriggerFailed = "INV-BE-071";
     public const string BackendRiMarketingSyncFailed = "INV-BE-072";
 
+    // Backend Plan CRUD (INV-BE-080+) — Faz 1 Paket 2
+    public const string BackendPlanNotFound = "INV-BE-080";            // Plan tier not found
+    public const string BackendPlanTierConflict = "INV-BE-081";        // Tier name already exists (409)
+    public const string BackendPlanHasActiveTenants = "INV-BE-082";    // Cannot delete: active tenants on tier
+    public const string BackendPlanFeaturesInvalid = "INV-BE-083";     // features_json invalid format
+    public const string BackendTenantPlanUpdateFailed = "INV-BE-084";  // Tenant plan update failed
+
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
     public const string ChatAnalysisProcessingFailed = "INV-CA-002";
