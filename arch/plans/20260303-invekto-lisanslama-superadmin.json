@@ -1,0 +1,111 @@
+{
+  "schema_version": "6.0",
+  "slug": "20260303-invekto-lisanslama-superadmin",
+  "title": "Invekto Lisanslama Sayfası — Superadmin",
+  "risk_level": "MEDIUM",
+  "created_at": "2026-03-03T00:00:00Z",
+  "updated_at": "2026-03-03T10:11:57.930Z",
+  "status": "DONE",
+  "summary": "Superadmin paneline tenant başına lisans yönetimi sayfası eklendi. İki kaynak: INMA WaClient.Management SQL Server (readonly — LicenseExpireDate, UserCount, InstanceCount, LicenseHistories) + Invekto PostgreSQL (plan_tier, features_json, tenant_usage). Yeni backend endpoint GET /api/ops/tenants/{id}/license, Microsoft.Data.SqlClient 5.2.2 NuGet eklendi, appsettings.json InmaManagementDb connection string eklendi. React: yeni LicensesPage.tsx sayfası (sol: tenant listesi, sağ: split panel INMA readonly + Invekto editable plan tier/feature override/usage bar), App.tsx route + Layout.tsx nav item eklendi.",
+  "paket": "PAKET-1",
+  "service": "Backend",
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Invekto.Backend.csproj",
+      "is_new": false,
+      "change": "+Microsoft.Data.SqlClient 5.2.2"
+    },
+    {
+      "path": "src/Invekto.Backend/appsettings.json",
+      "is_new": false,
+      "change": "+InmaManagementDb connection string (empty, prod filled via appsettings.Production.json)"
+    },
+    {
+      "path": "src/Invekto.Backend/Program.cs",
+      "is_new": false,
+      "change": "+inmaConnectionString var, +GET /api/ops/tenants/{id}/license endpoint (PG + MSSQL dual query, fail-safe inma:null)"
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+      "is_new": false,
+      "change": "+PlanDefinition, InmaLicenseHistory, InmaLicenseInfo, InvektoLicenseInfo, TenantLicenseInfo interfaces; +getTenantLicense, updateTenantPlan, getPlans methods"
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/LicensesPage.tsx",
+      "is_new": true,
+      "change": "New licensing management page — split panel (tenant list + license detail panel with INMA readonly + Invekto editable sections)"
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/App.tsx",
+      "is_new": false,
+      "change": "+import LicensesPage, +/licenses route"
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+      "is_new": false,
+      "change": "+Key icon import, +Lisanslama opsOnly nav item"
+    }
+  ],
+  "verification_questions": [
+    {
+      "id": "VQ1",
+      "question": "GET /api/ops/tenants/{id}/license returns 200 with invekto data when PG configured?",
+      "category": "api"
+    },
+    {
+      "id": "VQ2",
+      "question": "When InmaManagementDb is empty/null, does inma field return null (not error)?",
+      "category": "fail_safe"
+    },
+    {
+      "id": "VQ3",
+      "question": "When INMA company not found by InvektoCompanyCode, does inma return null gracefully?",
+      "category": "fail_safe"
+    },
+    {
+      "id": "VQ4",
+      "question": "PUT /api/ops/tenants/{id}/plan still works for plan tier update from LicensesPage?",
+      "category": "api"
+    },
+    {
+      "id": "VQ5",
+      "question": "LicensesPage renders in superadmin mode (no session) but not in tenant mode?",
+      "category": "ui"
+    },
+    {
+      "id": "VQ6",
+      "question": "Expired license shows red banner, 30-day warning shows amber, active shows green?",
+      "category": "ui"
+    },
+    {
+      "id": "VQ7",
+      "question": "Feature override JSON textarea accepts null (empty) to clear override via PUT?",
+      "category": "api"
+    },
+    {
+      "id": "VQ8",
+      "question": "Microsoft.Data.SqlClient SqlException caught and silently logged (not 500)?",
+      "category": "error_handling"
+    }
+  ],
+  "acceptance_criteria": [
+    "GET /api/ops/tenants/{id}/license returns combined invekto+inma data",
+    "INMA section is readonly (no write endpoints to MSSQL)",
+    "Invekto plan tier editable via existing PUT /api/ops/tenants/{id}/plan",
+    "Fail-safe: INMA unavailable → inma:null, endpoint still returns 200",
+    "/licenses page opsOnly (hidden in tenant mode)",
+    "Build PASS"
+  ],
+  "git_diff": {
+    "sha256": "2310d2a7bf10c13557796d4884f8e71a3f76d52f78a8bbbbee4fae2a86fdb695",
+    "full_path": "arch/plans/diffs/20260303-invekto-lisanslama-superadmin.diff",
+    "stats": {
+      "insertions": 795,
+      "deletions": 1,
+      "files_count": 7
+    }
+  },
+  "codex_verdict": "PASS",
+  "codex_iteration": 1,
+  "codex_override": "Q FORCE PASS: CQ5 SQL Server — plan onayında kapsanıyor (INMA harici sistem, readonly). VQ4/VQ5 UNKNOWN — diff-only kısıt, mevcut kod çalışıyor."
+}

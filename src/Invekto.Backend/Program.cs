@@ -257,6 +257,7 @@ builder.Services.AddHttpClient("inma_login", client =>
 // PostgreSQL connection factory (singleton, thread-safe pooling)
 PostgresConnectionFactory? pgFactory = null;
 var pgConnectionString = builder.Configuration.GetConnectionString("PostgreSQL");
+var inmaConnectionString = builder.Configuration.GetConnectionString("InmaManagementDb");
 if (!string.IsNullOrEmpty(pgConnectionString))
 {
     pgFactory = new PostgresConnectionFactory(pgConnectionString);
@@ -303,6 +304,8 @@ if (!string.IsNullOrEmpty(callbackUrl))
     builder.Services.AddHttpClient<MainAppCallbackClient>();
 }
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware (logs all HTTP request/response)
@@ -337,6 +340,7 @@ if (!string.IsNullOrEmpty(pgConnectionString))
         ("/api/v1/flow-builder/", "FlowBuilder"),
         ("/api/v1/outbound/", "Outbound"));
 }
+app.UseAuthorization();
 
 // Health endpoint (no auth, no logging)
 app.MapGet("/health", () =>
@@ -6074,6 +6078,168 @@ app.MapPost("/api/ops/plans/invalidate/{tenantId}", async (HttpContext ctx, int 
     planCache.Invalidate(tenantId);
     jsonLog.StepInfo($"Plan cache invalidated: tenant={tenantId}", Guid.NewGuid().ToString("N"));
     return Results.Ok(new { invalidated = true, tenant_id = tenantId });
+});
+
+// GET /api/ops/tenants/{id}/license — Birleşik lisans bilgisi (Invekto PG + INMA MSSQL readonly)
+app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return OpsUnauthorized(ctx);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "PostgreSQL not configured" }, statusCode: 503);
+
+    // --- Invekto: PostgreSQL (plan + usage) ---
+    object? invektoData = null;
+    try
+    {
+        await using var pgConn = new Npgsql.NpgsqlConnection(pgConnectionString);
+        await pgConn.OpenAsync(ctx.RequestAborted);
+        await using var pgCmd = new Npgsql.NpgsqlCommand(@"
+            SELECT tr.plan_tier, tr.features_json::text, pd.features_json::text AS tier_features,
+                   pd.quotas_json::text, pd.display_name,
+                   COALESCE((SELECT messages_sent FROM tenant_usage WHERE tenant_id = @tid AND period_month = date_trunc('month', NOW())::date), 0),
+                   to_char(date_trunc('month', NOW()), 'YYYY-MM-DD')
+            FROM tenant_registry tr
+            LEFT JOIN plan_definitions pd ON pd.tier_name = tr.plan_tier AND pd.is_active = true
+            WHERE tr.tenant_id = @tid", pgConn);
+        pgCmd.Parameters.AddWithValue("tid", id);
+
+        await using var pgReader = await pgCmd.ExecuteReaderAsync(ctx.RequestAborted);
+        if (!await pgReader.ReadAsync(ctx.RequestAborted))
+            return Results.NotFound(ErrorResponse.Create(ErrorCodes.IntegrationTenantNotFound, $"Tenant {id} bulunamadı.", ctx.TraceIdentifier));
+
+        var planTier = pgReader.GetString(0);
+        var tenantFeatJson = pgReader.IsDBNull(1) ? null : pgReader.GetString(1);
+        var tierFeatJson = pgReader.IsDBNull(2) ? null : pgReader.GetString(2);
+        var quotasJson = pgReader.IsDBNull(3) ? null : pgReader.GetString(3);
+        var tierDisplayName = pgReader.IsDBNull(4) ? planTier : pgReader.GetString(4);
+        var messagesSent = pgReader.GetInt32(5);
+        var periodMonth = pgReader.GetString(6);
+
+        var effectiveJson = !string.IsNullOrWhiteSpace(tenantFeatJson) && tenantFeatJson != "{}" ? tenantFeatJson : tierFeatJson;
+        using var effectiveDoc = System.Text.Json.JsonDocument.Parse(!string.IsNullOrWhiteSpace(effectiveJson) ? effectiveJson : "{}");
+        using var quotasDoc = System.Text.Json.JsonDocument.Parse(!string.IsNullOrWhiteSpace(quotasJson) ? quotasJson : "{}");
+
+        invektoData = new
+        {
+            plan_tier = planTier,
+            tier_display_name = tierDisplayName,
+            has_override = !string.IsNullOrWhiteSpace(tenantFeatJson) && tenantFeatJson != "{}",
+            effective_features = effectiveDoc.RootElement.Clone(),
+            quotas = quotasDoc.RootElement.Clone(),
+            usage = new { messages_sent = messagesSent, period_month = periodMonth }
+        };
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"License PG fetch failed: tenant={id}, {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendTenantPlanUpdateFailed, message = "Firma plan bilgisi yüklenemedi." }, statusCode: 500);
+    }
+
+    // --- INMA: SQL Server readonly (fail-safe: null döner, hata değil) ---
+    object? inmaData = null;
+    if (!string.IsNullOrEmpty(inmaConnectionString))
+    {
+        try
+        {
+            await using var mssqlConn = new Microsoft.Data.SqlClient.SqlConnection(inmaConnectionString);
+            await mssqlConn.OpenAsync(ctx.RequestAborted);
+
+            // Companies tablosundan InvektoCompanyCode ile eşleştir
+            int? inmaCompanyId = null;
+            await using var compCmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+                SELECT TOP 1 c.ID, c.Name, c.LicenseExpireDate, c.UserLicenseCount, c.InstanceLicenseCount,
+                       c.LicenseFeature, c.LicenseRenewalPeriod, c.MessageLimitPerDaily,
+                       c.LicenseProgressType, lt.Name AS LicenseTypeName, lt.Price AS LicenseTypePrice,
+                       c.DataStatus
+                FROM Companies c
+                LEFT JOIN LicenseTypes lt ON c.LicenseTypeID = lt.ID
+                WHERE c.InvektoCompanyCode = @code AND c.DataStatus != 2", mssqlConn);
+            compCmd.Parameters.AddWithValue("@code", id.ToString());
+
+            await using var compReader = await compCmd.ExecuteReaderAsync(ctx.RequestAborted);
+            if (await compReader.ReadAsync(ctx.RequestAborted))
+            {
+                inmaCompanyId = compReader.GetInt32(0);
+                var licenseExpireDate = compReader.IsDBNull(2) ? (DateTime?)null : compReader.GetDateTime(2);
+                var userCount = compReader.IsDBNull(3) ? (int?)null : compReader.GetInt32(3);
+                var instanceCount = compReader.IsDBNull(4) ? (int?)null : compReader.GetInt32(4);
+                var licenseFeature = compReader.IsDBNull(5) ? null : compReader.GetString(5);
+                var renewalPeriod = compReader.IsDBNull(6) ? (int?)null : compReader.GetInt32(6);
+                var msgLimitDaily = compReader.IsDBNull(7) ? (int?)null : compReader.GetInt32(7);
+                var licenseProgressType = compReader.IsDBNull(8) ? (byte?)null : compReader.GetByte(8);
+                var licenseTypeName = compReader.IsDBNull(9) ? null : compReader.GetString(9);
+                var licenseTypePrice = compReader.IsDBNull(10) ? (decimal?)null : compReader.GetDecimal(10);
+
+                // LicenseHistories — son 5 kayıt
+                var histories = new List<object>();
+                await compReader.CloseAsync();
+
+                if (inmaCompanyId.HasValue)
+                {
+                    await using var histCmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+                        SELECT TOP 5 LicenseStart, LicenseEnd, IsPaymentReceived, LicenseChangeType
+                        FROM LicenseHistories
+                        WHERE CompanyID = @cid
+                        ORDER BY CreateDate DESC", mssqlConn);
+                    histCmd.Parameters.AddWithValue("@cid", inmaCompanyId.Value);
+
+                    await using var histReader = await histCmd.ExecuteReaderAsync(ctx.RequestAborted);
+                    while (await histReader.ReadAsync(ctx.RequestAborted))
+                    {
+                        histories.Add(new
+                        {
+                            start = histReader.IsDBNull(0) ? null : histReader.GetDateTime(0).ToString("yyyy-MM-dd"),
+                            end = histReader.IsDBNull(1) ? null : histReader.GetDateTime(1).ToString("yyyy-MM-dd"),
+                            is_paid = histReader.GetBoolean(2),
+                            change_type = histReader.GetInt32(3)
+                        });
+                    }
+                }
+
+                // Lisans durumu: geçmiş mi?
+                var isExpired = licenseExpireDate.HasValue && licenseExpireDate.Value < DateTime.UtcNow;
+                var daysUntilExpiry = licenseExpireDate.HasValue
+                    ? (int)(licenseExpireDate.Value - DateTime.UtcNow).TotalDays
+                    : (int?)null;
+
+                inmaData = new
+                {
+                    company_id = inmaCompanyId,
+                    license_type = licenseTypeName,
+                    license_type_price = licenseTypePrice,
+                    license_expire_date = licenseExpireDate?.ToString("yyyy-MM-dd"),
+                    is_expired = isExpired,
+                    days_until_expiry = daysUntilExpiry,
+                    user_license_count = userCount,
+                    instance_license_count = instanceCount,
+                    license_feature = licenseFeature,
+                    license_renewal_period = renewalPeriod,
+                    message_limit_daily = msgLimitDaily,
+                    license_progress_type = licenseProgressType,
+                    histories
+                };
+            }
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            jsonLog.SystemWarn($"INMA license fetch failed (non-critical): tenant={id}, {ex.Message}");
+            // fail-safe: inmaData kalır null
+        }
+        catch (InvalidOperationException ex)
+        {
+            jsonLog.SystemWarn($"INMA license connection failed (non-critical): tenant={id}, {ex.Message}");
+            // fail-safe: inmaData kalır null
+        }
+    }
+
+    return Results.Ok(new
+    {
+        tenant_id = id,
+        invekto = invektoData,
+        inma = inmaData
+    });
 });
 
 // ============================================

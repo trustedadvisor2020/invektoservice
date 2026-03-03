@@ -1323,6 +1323,28 @@ class OpsApiClient {
     });
   }
 
+  // SuperAdmin: Tenant license info (Invekto PG + INMA MSSQL readonly)
+  async getTenantLicense(tenantId: number): Promise<TenantLicenseInfo> {
+    return this.request<TenantLicenseInfo>(`/api/ops/tenants/${tenantId}/license`);
+  }
+
+  // SuperAdmin: Update tenant plan tier / feature overrides
+  async updateTenantPlan(
+    tenantId: number,
+    data: { plan_tier?: string; features_json?: Record<string, unknown> | null }
+  ): Promise<{ tenant_id: number; updated: boolean }> {
+    return this.request<{ tenant_id: number; updated: boolean }>(`/api/ops/tenants/${tenantId}/plan`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  }
+
+  // SuperAdmin: List all plan definitions
+  async getPlans(): Promise<{ plans: PlanDefinition[] }> {
+    return this.request<{ plans: PlanDefinition[] }>('/api/ops/plans');
+  }
+
   // Instance management (Settings page)
   async getInstances(): Promise<{ instances: InstanceDto[] }> {
     return this.request<{ instances: InstanceDto[] }>('/api/v1/settings/instances');
@@ -1984,6 +2006,65 @@ export interface WebChatVisitor {
   last_seen: string;
   page_url: string | null;
   user_agent: string | null;
+}
+
+// ---- Licensing types ----
+
+export interface PlanDefinition {
+  tier_name: string;
+  display_name: string;
+  features_json: Record<string, string[]>;
+  quotas_json: {
+    messages_per_month: number;
+    max_users: number;
+    max_flows: number;
+  };
+  is_active: boolean;
+}
+
+export interface InmaLicenseHistory {
+  start: string | null;
+  end: string | null;
+  is_paid: boolean;
+  change_type: number;
+}
+
+export interface InmaLicenseInfo {
+  company_id: number;
+  license_type: string | null;
+  license_type_price: number | null;
+  license_expire_date: string | null;
+  is_expired: boolean;
+  days_until_expiry: number | null;
+  user_license_count: number | null;
+  instance_license_count: number | null;
+  license_feature: string | null;
+  license_renewal_period: number | null;
+  message_limit_daily: number | null;
+  license_progress_type: number | null;
+  histories: InmaLicenseHistory[];
+}
+
+export interface InvektoLicenseInfo {
+  plan_tier: string;
+  tier_display_name: string;
+  has_override: boolean;
+  effective_features: Record<string, unknown>;
+  quotas: {
+    messages_per_month: number;
+    max_users: number;
+    max_flows: number;
+  };
+  usage: {
+    messages_sent: number;
+    period_month: string;
+  };
+}
+
+export interface TenantLicenseInfo {
+  tenant_id: number;
+  invekto: InvektoLicenseInfo;
+  inma: InmaLicenseInfo | null;
 }
 
 export const api = new OpsApiClient();
