@@ -1,0 +1,124 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "slug": "20260303-qnb-vpos-payment",
+  "risk": "MEDIUM",
+  "status": "in_progress",
+  "created_at": "2026-03-03",
+  "updated_at": "2026-03-03",
+  "plan": {
+    "summary": "QNB Finansbank Sanal POS entegrasyonu — lisans ödemesi için 3DPay akışı. Backend 3 endpoint (initiate, callback, history) + DB tenant_payments tablosu + Dashboard PaymentPage (payments.regex.pro'dan adapte). Shared altyapısı (DTOs + QnbVPosService) önceki session'da tamamlandı.",
+    "tasks": [
+      {
+        "id": "T1",
+        "description": "arch/db/migrations/005-tenant-payments.sql — tenant_payments tablosu",
+        "files": ["arch/db/migrations/005-tenant-payments.sql"]
+      },
+      {
+        "id": "T2",
+        "description": "Error codes INV-BE-085..089 — arch/errors.md + ErrorCodes.cs",
+        "files": ["arch/errors.md", "src/Invekto.Shared/Constants/ErrorCodes.cs"]
+      },
+      {
+        "id": "T3",
+        "description": "Backend DI registration: QnbVPosSettings + QnbVPosService",
+        "files": ["src/Invekto.Backend/Program.cs"]
+      },
+      {
+        "id": "T4",
+        "description": "POST /api/v1/payment/initiate — JWT auth, pending kayıt oluştur, HTML döner",
+        "files": ["src/Invekto.Backend/Program.cs"]
+      },
+      {
+        "id": "T5",
+        "description": "POST /api/v1/payment/callback — public, banka form-data işle, tenant_payments güncelle, redirect",
+        "files": ["src/Invekto.Backend/Program.cs"]
+      },
+      {
+        "id": "T6",
+        "description": "GET /api/v1/payment/history — ops auth, tenant_id query param",
+        "files": ["src/Invekto.Backend/Program.cs"]
+      },
+      {
+        "id": "T7",
+        "description": "Dashboard PaymentPage.tsx — payments.regex.pro App.tsx adapte (Dashboard Tailwind colors, API entegrasyonu)",
+        "files": ["src/Invekto.Backend/Dashboard/src/pages/PaymentPage.tsx"]
+      },
+      {
+        "id": "T8",
+        "description": "Dashboard App.tsx — /payment route ekle",
+        "files": ["src/Invekto.Backend/Dashboard/src/App.tsx"]
+      },
+      {
+        "id": "T9",
+        "description": "Dashboard api.ts — initiatePayment method ekle",
+        "files": ["src/Invekto.Backend/Dashboard/src/lib/api.ts"]
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/005-tenant-payments.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/Payment/PaymentDtos.cs",
+    "src/Invekto.Shared/Services/QnbVPosService.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/PaymentPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts"
+  ],
+  "files_changed": [],
+  "git_diff": "",
+  "build": {
+    "status": "pending",
+    "output": ""
+  },
+  "scope_discipline": {
+    "no_extra_refactor": true,
+    "no_unrelated_changes": true,
+    "minimal_footprint": true
+  },
+  "error_handling": {
+    "uses_arch_error_codes": true,
+    "typed_exceptions_only": true,
+    "no_swallowed_exceptions": true
+  },
+  "aha_moments": [],
+  "verdict": {
+    "status": "FORCE_PASS",
+    "iteration": 3,
+    "force_pass_reason": "CQ3 false positive (cumulative diff mismatch with iteration summary — all endpoints in plan scope). CQ5 false positives: (1) bank callback has no JWT by protocol design — order_id UNIQUE guarantees tenant safety; (2) history is ops-admin only via ValidateOpsAuth; (3) unauthenticated callback is required for 3DPay bank redirect. CoVe 4/4 PASS. Real issues fixed: bare catch + logging (iter 1), null-forgiving operator (iter 1), AND status='pending' guard (iter 1). FORCE PASS by Q.",
+    "issues": [
+      "CQ3 false positive: cumulative diff labeled as scope creep",
+      "CQ5 false positive: bank callback architecture (no JWT = by design)"
+    ]
+  },
+  "verification_questions": [
+    {
+      "id": "VQ1",
+      "question": "tenant_payments.order_id UNIQUE constraint var mı?",
+      "category": "data_integrity"
+    },
+    {
+      "id": "VQ2",
+      "question": "Callback endpoint'i SQL injection'a karşı parametrized query kullanıyor mu?",
+      "category": "security"
+    },
+    {
+      "id": "VQ3",
+      "question": "PaymentInitRequest amount > 0 validasyonu yapılıyor mu?",
+      "category": "validation"
+    },
+    {
+      "id": "VQ4",
+      "question": "Callback işlem başarısız olsa da browser redirect yapılıyor mu (kullanıcı takılı kalmıyor)?",
+      "category": "ux"
+    },
+    {
+      "id": "VQ5",
+      "question": "3D callback order_id'si tenant_payments tablosunda PENDING durumunda kontrol ediliyor mu?",
+      "category": "correctness"
+    }
+  ]
+}

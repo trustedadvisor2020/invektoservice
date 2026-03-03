@@ -1345,6 +1345,14 @@ class OpsApiClient {
     return this.request<{ plans: PlanDefinition[] }>('/api/ops/plans');
   }
 
+  async initiatePayment(request: PaymentInitRequest): Promise<PaymentInitResult> {
+    return this.request<PaymentInitResult>('/api/v1/payment/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+  }
+
   // Instance management (Settings page)
   async getInstances(): Promise<{ instances: InstanceDto[] }> {
     return this.request<{ instances: InstanceDto[] }>('/api/v1/settings/instances');
@@ -2065,6 +2073,20 @@ export interface TenantLicenseInfo {
   tenant_id: number;
   invekto: InvektoLicenseInfo;
   inma: InmaLicenseInfo | null;
+}
+
+export interface PaymentInitRequest {
+  amount: number;
+  card_number: string;
+  card_expire_month: string;
+  card_expire_year: string;
+  cvv: string;
+  card_holder_name: string;
+}
+
+export interface PaymentInitResult {
+  order_id: string;
+  redirect_html: string;
 }
 
 export const api = new OpsApiClient();

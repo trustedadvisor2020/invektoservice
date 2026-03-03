@@ -19,6 +19,7 @@ using Invekto.Shared.DTOs.Analytics;
 using Invekto.Shared.DTOs.Attribution;
 using Invekto.Shared.DTOs.Leads;
 using Invekto.Shared.DTOs.Onboarding;
+using Invekto.Shared.DTOs.Payment;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
@@ -305,6 +306,10 @@ if (!string.IsNullOrEmpty(callbackUrl))
 }
 
 builder.Services.AddAuthorization();
+
+// QNB VPos — ödeme servisi
+builder.Services.Configure<QnbVPosSettings>(builder.Configuration.GetSection("QnbVPos"));
+builder.Services.AddSingleton<QnbVPosService>();
 
 var app = builder.Build();
 
@@ -6909,6 +6914,182 @@ app.MapPost("/api/v1/callback/wapcrm", async (HttpContext ctx, JsonLinesLogger j
     {
         jsonLog.SystemWarn($"WapCRM bridge: HTTP error sending to {wapcrm.ApiUrl}: {ex.Message}");
         return Results.Json(new { error = "WAPCRM_HTTP_ERROR", message = ex.Message }, statusCode: 502);
+    }
+});
+
+// ============================================
+// PAYMENT — QNB Finansbank 3DPay
+// Ref: arch/docs/qnb-vpos-integration.md
+// ============================================
+
+// POST /api/v1/payment/initiate — JWT auth, pending kayıt oluştur, 3D HTML form döner
+app.MapPost("/api/v1/payment/initiate", async (HttpContext ctx, QnbVPosService vpos, JsonLinesLogger jsonLog) =>
+{
+    var tenantId = ctx.Items["TenantId"]?.ToString();
+    if (string.IsNullOrEmpty(tenantId))
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz erişim." }, statusCode: 401);
+
+    PaymentInitRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<PaymentInitRequest>(); }
+    catch (Exception ex)
+    {
+        jsonLog.SystemWarn($"Payment initiate body parse failed: {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.GeneralUnknown, message = "Geçersiz istek gövdesi." }, statusCode: 400);
+    }
+
+    if (request == null || request.Amount <= 0)
+        return Results.Json(new { error = ErrorCodes.BackendPaymentAmountInvalid, message = "Geçersiz ödeme tutarı." }, statusCode: 400);
+
+    if (string.IsNullOrWhiteSpace(request.CardNumber) || string.IsNullOrWhiteSpace(request.CardExpireMonth) ||
+        string.IsNullOrWhiteSpace(request.CardExpireYear) || string.IsNullOrWhiteSpace(request.Cvv))
+        return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "Kart bilgileri eksik." }, statusCode: 400);
+
+    var scheme = ctx.Request.Scheme;
+    var host = ctx.Request.Host.Value;
+    var callbackUrl = $"{scheme}://{host}/api/v1/payment/callback";
+
+    try
+    {
+        var result = vpos.InitiatePayment(request, callbackUrl, tenantId);
+
+        if (!string.IsNullOrEmpty(pgConnectionString))
+        {
+            await using var conn = new NpgsqlConnection(pgConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "INSERT INTO tenant_payments (order_id, tenant_id, amount, status) VALUES (@oid, @tid, @amt, 'pending')";
+            cmd.Parameters.AddWithValue("oid", result.OrderId ?? throw new InvalidOperationException("OrderId null"));
+            cmd.Parameters.AddWithValue("tid", int.Parse(tenantId));
+            cmd.Parameters.AddWithValue("amt", request.Amount);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        return Results.Ok(new { order_id = result.OrderId, redirect_html = result.RedirectHtml });
+    }
+    catch (Exception ex)
+    {
+        jsonLog.SystemWarn($"Payment initiate failed ({ErrorCodes.BackendPaymentInitFailed}): tenant={tenantId}, {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPaymentInitFailed, message = "Ödeme başlatılamadı." }, statusCode: 500);
+    }
+});
+
+// POST /api/v1/payment/callback — banka callback (public, form-data), kayıt güncelle, redirect
+app.MapPost("/api/v1/payment/callback", async (HttpContext ctx, QnbVPosService vpos, JsonLinesLogger jsonLog) =>
+{
+    IFormCollection form;
+    try { form = await ctx.Request.ReadFormAsync(); }
+    catch (Exception ex)
+    {
+        jsonLog.SystemWarn($"Payment callback ({ErrorCodes.BackendPaymentCallbackInvalid}): form parse failed — {ex.Message}");
+        return Results.Redirect("/app/#/licenses?payment_result=failed");
+    }
+
+    var formData = form.ToDictionary(k => k.Key, v => v.Value.ToString());
+    PaymentCallbackData callback;
+    try { callback = vpos.ParseCallback(formData); }
+    catch (Exception ex)
+    {
+        jsonLog.SystemWarn($"Payment callback parse failed ({ErrorCodes.BackendPaymentCallbackInvalid}): {ex.Message}");
+        return Results.Redirect("/app/#/licenses?payment_result=failed");
+    }
+
+    if (!string.IsNullOrEmpty(pgConnectionString) && !string.IsNullOrEmpty(callback.OrderId))
+    {
+        try
+        {
+            await using var conn = new NpgsqlConnection(pgConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE tenant_payments
+                SET status           = @status,
+                    three_d_status   = @tds,
+                    proc_return_code = @prc,
+                    auth_code        = @ac,
+                    host_ref_num     = @hrn,
+                    trans_id         = @tid,
+                    err_msg          = @err,
+                    updated_at       = NOW()
+                -- order_id is globally UNIQUE; bank callback has no JWT tenant context
+                WHERE order_id = @oid AND status = 'pending'";
+            cmd.Parameters.AddWithValue("status", callback.IsSuccessful ? "success" : "failed");
+            cmd.Parameters.AddWithValue("tds",    (object?)callback.ThreeDStatus   ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("prc",    (object?)callback.ProcReturnCode ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("ac",     (object?)callback.AuthCode       ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("hrn",    (object?)callback.HostRefNum     ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("tid",    (object?)callback.TransId        ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("err",    (object?)callback.ErrMsg         ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("oid",    callback.OrderId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            jsonLog.SystemWarn($"Payment callback DB update failed ({ErrorCodes.BackendPaymentCallbackInvalid}): {ex.Message}");
+            // DB hatası: yine de kullanıcıyı yönlendir
+        }
+    }
+
+    if (callback.IsSuccessful)
+        return Results.Redirect($"/app/#/licenses?payment_result=success&order_id={Uri.EscapeDataString(callback.OrderId ?? "")}");
+
+    var errMsg = Uri.EscapeDataString(callback.ErrMsg ?? callback.ProcReturnCode ?? "failed");
+    return Results.Redirect($"/app/#/licenses?payment_result=failed&error={errMsg}");
+});
+
+// GET /api/v1/payment/history — ops auth, tenant_id filtresi (opsiyonel)
+app.MapGet("/api/v1/payment/history", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
+{
+    if (!ValidateOpsAuth(ctx))
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz." }, statusCode: 401);
+
+    if (string.IsNullOrEmpty(pgConnectionString))
+        return Results.Json(new { error = ErrorCodes.BackendPaymentHistoryFailed, message = "PostgreSQL konfigüre edilmedi." }, statusCode: 503);
+
+    var tenantIdFilter = ctx.Request.Query.TryGetValue("tenant_id", out var tidVal) && int.TryParse(tidVal, out var tid) ? (int?)tid : null;
+
+    try
+    {
+        await using var conn = new NpgsqlConnection(pgConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        if (tenantIdFilter.HasValue)
+        {
+            cmd.CommandText = "SELECT id, order_id, tenant_id, amount, status, three_d_status, proc_return_code, auth_code, host_ref_num, trans_id, err_msg, created_at, updated_at FROM tenant_payments WHERE tenant_id = @tid ORDER BY created_at DESC LIMIT 100";
+            cmd.Parameters.AddWithValue("tid", tenantIdFilter.Value);
+        }
+        else
+        {
+            cmd.CommandText = "SELECT id, order_id, tenant_id, amount, status, three_d_status, proc_return_code, auth_code, host_ref_num, trans_id, err_msg, created_at, updated_at FROM tenant_payments ORDER BY created_at DESC LIMIT 200";
+        }
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var payments = new List<object>();
+        while (await reader.ReadAsync())
+        {
+            payments.Add(new
+            {
+                id             = reader.GetInt64(0),
+                order_id       = reader.GetString(1),
+                tenant_id      = reader.GetInt32(2),
+                amount         = reader.GetDecimal(3),
+                status         = reader.GetString(4),
+                three_d_status = reader.IsDBNull(5) ? null : reader.GetString(5),
+                proc_return    = reader.IsDBNull(6) ? null : reader.GetString(6),
+                auth_code      = reader.IsDBNull(7) ? null : reader.GetString(7),
+                host_ref_num   = reader.IsDBNull(8) ? null : reader.GetString(8),
+                trans_id       = reader.IsDBNull(9) ? null : reader.GetString(9),
+                err_msg        = reader.IsDBNull(10) ? null : reader.GetString(10),
+                created_at     = reader.GetFieldValue<DateTimeOffset>(11),
+                updated_at     = reader.GetFieldValue<DateTimeOffset>(12),
+            });
+        }
+
+        return Results.Ok(new { payments, count = payments.Count });
+    }
+    catch (Exception ex)
+    {
+        jsonLog.SystemWarn($"Payment history failed ({ErrorCodes.BackendPaymentHistoryFailed}): {ex.Message}");
+        return Results.Json(new { error = ErrorCodes.BackendPaymentHistoryFailed, message = "Ödeme geçmişi yüklenemedi." }, statusCode: 500);
     }
 });
 

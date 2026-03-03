@@ -131,6 +131,22 @@ errors:
   - code: INV-BE-084
     description: Tenant plan update failed
     user_message: Firma plan güncellemesi başarısız oldu.
+  # Backend Payment (INV-BE-085+) — QNB VPos
+  - code: INV-BE-085
+    description: Payment initiation failed
+    user_message: Ödeme başlatılamadı.
+  - code: INV-BE-086
+    description: Payment callback invalid
+    user_message: Ödeme geri dönüşü işlenemedi.
+  - code: INV-BE-087
+    description: Payment record not found
+    user_message: Ödeme kaydı bulunamadı.
+  - code: INV-BE-088
+    description: Payment history query failed
+    user_message: Ödeme geçmişi yüklenemedi.
+  - code: INV-BE-089
+    description: Payment amount invalid
+    user_message: Geçersiz ödeme tutarı (sıfır veya negatif).
 
   # ── CA — ChatAnalysis ──
   - code: INV-CA-001

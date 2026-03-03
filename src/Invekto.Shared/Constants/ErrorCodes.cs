@@ -53,6 +53,12 @@ public static class ErrorCodes
     public const string BackendPlanHasActiveTenants = "INV-BE-082";    // Cannot delete: active tenants on tier
     public const string BackendPlanFeaturesInvalid = "INV-BE-083";     // features_json invalid format
     public const string BackendTenantPlanUpdateFailed = "INV-BE-084";  // Tenant plan update failed
+    // Backend Payment (INV-BE-085+) — QNB VPos
+    public const string BackendPaymentInitFailed = "INV-BE-085";       // Payment initiation failed
+    public const string BackendPaymentCallbackInvalid = "INV-BE-086";  // Payment callback invalid
+    public const string BackendPaymentNotFound = "INV-BE-087";         // Payment record not found
+    public const string BackendPaymentHistoryFailed = "INV-BE-088";    // Payment history query failed
+    public const string BackendPaymentAmountInvalid = "INV-BE-089";    // Amount <= 0
 
     // ChatAnalysis errors (INV-CA-xxx)
     public const string ChatAnalysisInvalidPayload = "INV-CA-001";
