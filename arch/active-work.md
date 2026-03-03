@@ -12,6 +12,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-03-03 | QNB VPos 3DPay — tenant_payments (005-migration), QnbVPosService (SHA1 hash + HTML form), 3 Backend endpoints, Dashboard PaymentPage + route + api.ts. INV-BE-085..089. Migration + config + Backend deploy HEALTHY. Commit 6b2c57a (FORCE PASS iter=3). |
 | 2026-03-02 | Knowledge Website UI — DocumentUpload popup modal (PDF + Web Sitesi tabs), Backend proxy route, api.ts indexWebsite. Knowledge + Backend deployed HEALTHY. DB migration applied. |
 | 2026-03-02 | Knowledge Website Indexing — WebScrapingService, SSRF guard (IPv4+IPv6+DNS), PdfChunkingService.ChunkText DRY, typed exceptions. Codex Q FORCE PASS. Knowledge deployed. |
 | 2026-03-02 | WebChat Automation Webhook — AutomationWebhookClient, DB per-widget flow mapping, 3 hook points. Codex Q FORCE PASS. |

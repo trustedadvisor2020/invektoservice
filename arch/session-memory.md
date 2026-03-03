@@ -6,11 +6,11 @@
 ## Last Update
 
 - **Date:** 2026-03-03
-- **Status:** 10/10 servis deploy DONE — tumu HEALTHY.
-- **Last Task:** (1) action_ecommerce Flow Node UI + UseAuthorization proaktif fix (commit f1c871b). (2) 10 servis publish + deploy (Marketing SSH retry). (3) Faz 1 (3 paket) feature-complete.
-- **Production Deploy:** 10/10 HEALTHY (Backend, ChatAnalysis, Appointments, Knowledge, AgentAI, Integrations, Outbound, Automation, WhatsAppAnalytics, Marketing).
-- **Next Task:** LicensesPage (FAZ1-3) commit+deploy. Sonra QNB VPos veya PKT-7/8/9/10.
-- **Unstaged:** LicensesPage (6 dosya), QNB VPos (3 dosya), WebScrapingService, DocumentUpload, deploy scripts — onceki session'lardan.
+- **Status:** QNB VPos 3DPay entegrasyonu DONE + Backend deploy HEALTHY.
+- **Last Task:** QNB Finansbank Sanal POS (3DPay) — tenant_payments DB + 3 endpoint (initiate/callback/history) + Dashboard PaymentPage + Migration 005 + config + Backend deploy. Commit: 6b2c57a (FORCE PASS iter=3).
+- **Production Deploy:** Backend HEALTHY (tüm diğer servisler önceki session'dan HEALTHY).
+- **Next Task:** SE Test UI components veya diğer bekleyen işler. Pending unstaged dosyalar: SE scripts, deploy bat, DocumentUpload, WebScrapingService.
+- **Unstaged (pre-existing):** SE/ scripts + test components, arch/deploy bat files, DocumentUpload.tsx, WebScrapingService.cs — başka session'lardan.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -109,6 +109,7 @@ src/
 | 2026-03-02 | Faz 1 Paket 1 | plan_definitions tablosu + TenantPlanCache + FeatureGuardMiddleware. 3 seed tier (baslangic, profesyonel, kurumsal). Codex PASS. |
 | 2026-03-03 | Faz 1 Paket 2 | SuperAdmin API: Plan CRUD (5 ep), Tenant Plan (2 ep), Cache Invalidate (1 ep). TenantUsageService (ConcurrentDictionary + periodic DB sync). tenant_usage tablosu, 5 error code (INV-BE-080..084). Automation message quota + max_flows guard. Codex 3 iter FORCE PASS (CQ2/CQ5 contradiction). Migration 004 run, Backend + Automation deployed + 7/8 AC verified. |
 | 2026-03-03 | ikas E-Commerce | IEcommerceProvider interface, IkasProvider (OAuth2 client_credentials + GraphQL), IkasTokenManager (per-tenant SemaphoreSlim cache), IkasGraphQlClient (401 retry). 6 REST endpoint (Integrations). action_ecommerce flow node (Automation, 8 ops). DB: integration_accounts + orders_cache + cargo_tracking_events + products_cache migration. GraphQL field fix: hasNextPage→hasNext, stock→stocks, packages→orderPackages. Codex 4 iter, FORCE PASS. Tenant 5050 ikas credentials DB'ye eklendi. |
+| 2026-03-03 | QNB VPos 3DPay | tenant_payments tablosu (005-migration) + QnbVPosService (SHA1 hash, auto-submit HTML) + PaymentDtos + 3 endpoint (POST initiate JWT, POST callback public, GET history ops) + Dashboard PaymentPage (payments.regex.pro adapte) + App.tsx /payment route + api.ts initiatePayment. INV-BE-085..089. Codex FORCE PASS iter=3 (bank callback no-JWT by design, CoVe 4/4). Migration + appsettings (QnbVPos section) + Backend deploy HEALTHY. |
 
 ## Q Pending Operational Tasks
 
