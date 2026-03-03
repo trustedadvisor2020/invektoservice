@@ -6,10 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-03
-- **Status:** Faz 1 Paket 2 (SuperAdmin API + Quota) DONE — deployed + verified.
-- **Last Task:** Paket 2 — Plan CRUD (5 endpoints), Tenant Plan Override (2 endpoints), Cache Invalidation (1 endpoint), Quota Foundations (TenantUsageService, message quota check, max_flows guard). Migration 004 run, Backend + Automation deployed, 7/8 endpoints verified live.
-- **Production Deploy:** Backend + Automation deployed 2026-03-03, both HEALTHY.
-- **Next Task:** Q belirleyecek (Faz 1 Paket 3 or other)
+- **Status:** ikas E-Commerce Integration DONE — code committed, DB migrated, tested against live API.
+- **Last Task:** ikas entegrasyonu: IEcommerceProvider interface, IkasProvider (OAuth2 client_credentials + GraphQL), 6 REST endpoint (Integrations), action_ecommerce flow node (Automation). GraphQL field names live test ile düzeltildi. DB migration çalıştırıldı, tenant 5050 ikas credentials eklendi.
+- **Production Deploy:** Integrations + Automation deploy gerekiyor (wrap ile başlatıldı).
+- **Next Task:** action_ecommerce Flow Node UI (flow editor node palette + config panel)
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
@@ -107,6 +107,7 @@ src/
 | 2026-03-01 | NightlyBatch AutoDiscovery | WaClient.Management.Companies'den aktif, süresi dolmamış tenant'ları otomatik keşfet. Config overrides DatabaseName ile eşleşir (3 mevcut tenant korunuyor). Companies.ID = TenantId, sector = "genel". SqlException + InvalidOperationException typed catch, INV-WA-024. Codex PASS iter 2. |
 | 2026-03-02 | Faz 1 Paket 1 | plan_definitions tablosu + TenantPlanCache + FeatureGuardMiddleware. 3 seed tier (baslangic, profesyonel, kurumsal). Codex PASS. |
 | 2026-03-03 | Faz 1 Paket 2 | SuperAdmin API: Plan CRUD (5 ep), Tenant Plan (2 ep), Cache Invalidate (1 ep). TenantUsageService (ConcurrentDictionary + periodic DB sync). tenant_usage tablosu, 5 error code (INV-BE-080..084). Automation message quota + max_flows guard. Codex 3 iter FORCE PASS (CQ2/CQ5 contradiction). Migration 004 run, Backend + Automation deployed + 7/8 AC verified. |
+| 2026-03-03 | ikas E-Commerce | IEcommerceProvider interface, IkasProvider (OAuth2 client_credentials + GraphQL), IkasTokenManager (per-tenant SemaphoreSlim cache), IkasGraphQlClient (401 retry). 6 REST endpoint (Integrations). action_ecommerce flow node (Automation, 8 ops). DB: integration_accounts + orders_cache + cargo_tracking_events + products_cache migration. GraphQL field fix: hasNextPage→hasNext, stock→stocks, packages→orderPackages. Codex 4 iter, FORCE PASS. Tenant 5050 ikas credentials DB'ye eklendi. |
 
 ## Q Pending Operational Tasks
 
