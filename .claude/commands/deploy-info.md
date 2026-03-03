@@ -4,10 +4,12 @@ On-demand referans — deploy, server bilgileri ve SPA architecture detayları.
 
 ## Deploy Rules
 
+- **Migration ÖNCE çalışır:** Deploy komutu verildiğinde, publish/deploy ÖNCE `arch/db/migrations/` altındaki bekleyen SQL dosyaları production DB'de çalıştırılır. Sıra: (1) Migration SQL çalıştır → (2) Publish → (3) Deploy. Bu kural tüm projelerde geçerlidir.
 - **Backend deploy = SPA build ZORUNLU:** Backend deploy edilmeden ÖNCE `npx vite build` Dashboard için çalıştırılmalı
-- **Sıra:** (1) Dashboard vite build (output: wwwroot/app/), (2) dotnet publish, (3) server-deploy
+- **Sıra (Backend):** (1) Migration SQL, (2) Dashboard vite build (output: wwwroot/app/), (3) dotnet publish, (4) server-deploy
 - **FlowBuilder artık ayrı SPA DEĞİL** — Dashboard içine merge edildi (2026-02-22), tek build yeterli
-- **Diğer servisler (Automation, Knowledge, vb.):** Sadece `dotnet publish` + `server-deploy` yeterli (SPA yok)
+- **Diğer servisler (Automation, Knowledge, vb.):** (1) Migration SQL, (2) `dotnet publish` + `server-deploy` (SPA yok)
+- **WebChat:** `dotnet publish` + manuel deploy (deploy tool enum'da henüz yok). Domain: `chat.invekto.com`
 
 ## SPA Architecture (2026-02-22)
 
@@ -22,6 +24,8 @@ On-demand referans — deploy, server bilgileri ve SPA architecture detayları.
 |------|-------|
 | NSSM path | `C:\Invekto\nssm.exe` (NOT E:\nssm.exe) |
 | Service path | `C:\Invekto\{Service}\current\` (NOT E:\InvektoServices\) |
+| Total services | 11 (Backend + 10 microservices) |
+| WebChat domain | `chat.invekto.com` → `localhost:7113` (reverse proxy + WebSocket) |
 | Restart | `Restart-Service <ServiceName> -Force` veya `C:\invekto\nssm.exe restart <ServiceName>` |
 | PowerShell curl | Her zaman `curl.exe` kullan (explicit), yoksa Invoke-WebRequest alias olarak çalışır |
 

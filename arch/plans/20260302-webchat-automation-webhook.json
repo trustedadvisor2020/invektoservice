@@ -1,0 +1,153 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260302-webchat-automation-webhook",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-03-02T14:00:00Z",
+  "updated_at": "2026-03-02T14:30:00Z",
+  "plan": {
+    "summary": "WebChat servisine Automation Flow Builder webhook entegrasyonu ekleniyor. Conversation olayları (created, visitor_message, closed) fire-and-forget HTTP POST ile Automation webhook_trigger endpoint'ine iletilecek. Per-widget flow mapping DB'den (webchat_widget_configs tablosu) 5dk cache ile okunur.",
+    "q_intent": "WebChat servisinde 3 event noktasında Automation servisinin webhook_trigger endpoint'ine HTTP POST atılacak: conversation_created, visitor_message, conversation_closed. Her widget kendi flow'larına bağlanabilmeli.",
+    "interview_notes": "Q, her müşterinin birden fazla webchat widget'ı olabileceğini belirtti. Statik appsettings config yerine DB-driven per-widget flow mapping seçildi (webchat_widget_configs tablosu).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "AutomationWebhookClient fire-and-forget HTTP POST yapar, conversation akışını bloklamaz",
+        "verified": true,
+        "verification_note": "_ = discard pattern ile çağrılıyor, tüm exception'lar catch edilip log'lanıyor"
+      },
+      {
+        "id": "AC2",
+        "criterion": "Her widget'ın flow mapping'i webchat_widget_configs tablosundan okunur, 5dk cache ile",
+        "verified": true,
+        "verification_note": "ConcurrentDictionary cache + 300s TTL, GetCachedWidgetConfigAsync metodu"
+      },
+      {
+        "id": "AC3",
+        "criterion": "widget_id olmayan conversation'lar webhook tetiklemez (backward compatible)",
+        "verified": true,
+        "verification_note": "if (!string.IsNullOrEmpty(widgetId)) guard her hook noktasında"
+      },
+      {
+        "id": "AC4",
+        "criterion": "flowId <= 0 olan event'ler skip edilir (per-event disable)",
+        "verified": true,
+        "verification_note": "AutomationWebhookClient her method'da if (flowId <= 0) return guard"
+      },
+      {
+        "id": "AC5",
+        "criterion": "Error code'lar INV-WC-011/012 arch/errors.md ile senkron",
+        "verified": true,
+        "verification_note": "ErrorCodes.cs + arch/errors.md güncel"
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/webchat.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.WebChat/Data/WebChatRepository.cs",
+    "src/Invekto.WebChat/Program.cs",
+    "src/Invekto.WebChat/Services/AutomationWebhookClient.cs",
+    "src/Invekto.WebChat/Services/ConversationService.cs",
+    "src/Invekto.WebChat/appsettings.json",
+    "src/Invekto.WebChat/appsettings.Production.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/webchat.sql", "change": "Added webchat_widget_configs table DDL + widget_id column to conversations", "is_new": false },
+    { "path": "arch/errors.md", "change": "Added INV-WC-011 (webhook failed), INV-WC-012 (webhook timeout)", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added WebChatWebhookFailed and WebChatWebhookTimeout constants", "is_new": false },
+    { "path": "src/Invekto.WebChat/Data/WebChatRepository.cs", "change": "Added WidgetFlowConfig DTO, GetWidgetConfigAsync, widget_id in CreateConversation/GetConversation/CloseConversation, ConversationRow.WidgetId", "is_new": false },
+    { "path": "src/Invekto.WebChat/Program.cs", "change": "Automation config reads (URL/timeout only), AutomationWebhookClient DI, ConversationService ctor update, widget_id in conversation creation endpoint", "is_new": false },
+    { "path": "src/Invekto.WebChat/Services/AutomationWebhookClient.cs", "change": "Fire-and-forget typed HttpClient for Automation webhooks with per-call tenantId/flowId", "is_new": true },
+    { "path": "src/Invekto.WebChat/Services/ConversationService.cs", "change": "Widget config cache (5min TTL), FireWebhookForWidgetAsync helper, 3 hook points with per-widget config lookup", "is_new": false },
+    { "path": "src/Invekto.WebChat/appsettings.json", "change": "Added Automation section (Url + TimeoutMs only, flows come from DB)", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "e3be5b5738db43f4fe4801e9e69815560f3ccb4d17959d8f60fe649d326edd8f",
+    "full_path": "arch/plans/diffs/20260302-webchat-automation-webhook.diff",
+    "stats": { "insertions": 333, "deletions": 14, "files_count": 8 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-02T14:25:00Z",
+    "services": ["Invekto.Shared", "Invekto.WebChat"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the fire-and-forget pattern properly catch all exceptions without crashing the main conversation flow?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the ConcurrentDictionary widget cache thread-safe and does it handle cache expiry correctly without memory leaks?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Are conversations without widget_id fully backward compatible with no webhook calls?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q4",
+      "question": "Does the CloseConversationAsync RETURNING widget_id correctly handle both closed and already-closed scenarios?",
+      "category": "Data"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Automation/", "src/Invekto.Backend/", "src/Invekto.ChatAnalysis/"],
+    "non_goals": ["Widget CRUD endpoints", "Retry/exponential backoff for webhooks", "Multi-tenant auth for WebChat"],
+    "intentional_exclusions": ["appsettings.Production.json is gitignored (contains secrets)", "No CRUD API for webchat_widget_configs (managed via SQL for now)"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "AutomationWebhookClient.cs:FireWebhookAsync (TaskCanceledException, HttpRequestException, Exception)",
+      "ConversationService.cs:FireWebhookForWidgetAsync (catch-all Exception)"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All webhook failures are logged with INV-WC-011/012 error codes. The fire-and-forget pattern is intentional — webhook failures must not block conversations."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Webhook failure could silently prevent automation flows from triggering",
+      "suggestion": "Log every webhook call result (success + failure) with error codes for easy monitoring",
+      "aha_moment": "Support team opens logs, sees exactly which webhooks failed and why within seconds"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Per-event DB lookups for widget config would slow down every message",
+      "suggestion": "5-minute ConcurrentDictionary cache eliminates DB calls for active conversations",
+      "aha_moment": "Widget config is loaded once, then served from memory for 300 seconds — zero latency on messages"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Customer has multiple websites, each needs different automation flows",
+      "suggestion": "Per-widget flow mapping allows each widget to trigger different flows independently",
+      "aha_moment": "Customer sees their support widget triggers one flow while sales widget triggers another"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Hard to debug why a webhook didn't fire for a specific conversation",
+      "suggestion": "Widget_id is stored in conversation row for full traceability",
+      "aha_moment": "Support agent traces conversation → widget_id → flow config → webhook log in one query"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Potential customers want automation that reacts to chat events in real-time",
+      "suggestion": "Flow Builder can now trigger on chat events, enabling proactive engagement scenarios",
+      "aha_moment": "Business owner configures a flow that auto-sends a promo when visitor starts chatting on product page"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0,
+    "blocking_issues": []
+  }
+}

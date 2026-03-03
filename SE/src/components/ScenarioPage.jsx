@@ -11,6 +11,7 @@ import InteractiveROI from './InteractiveROI';
 import FlowDiagram from './FlowDiagram';
 import { analyzeScenario, deriveAutomationFlow, generateSuggestions } from '../lib/scenarioAnalysis';
 import { getScenarioTier, TIER_META, getAcceptanceCriteria, getExitCriteria, getBusinessMeta } from '../lib/scenarioMeta';
+import TestTab from './TestTab';
 
 // Resolve icon name string to Lucide component
 const getIcon = (name) => {
@@ -113,6 +114,7 @@ const ScenarioPage = ({ data }) => {
         { key: 'overview', label: 'GENEL BAKIS' },
         { key: 'scenarios', label: `SENARYO AKISLARI (${flows.length})` },
         { key: 'tech', label: 'TEKNIK DETAYLAR' },
+        { key: 'test', label: 'TEST' },
     ];
 
     return (
@@ -364,6 +366,11 @@ const ScenarioPage = ({ data }) => {
                         </FlatCard>
                     )}
                 </div>
+            )}
+
+            {/* Tab: Test */}
+            {activeTab === 'test' && (
+                <TestTab data={data} />
             )}
 
             {/* Acceptance Criteria & Business Metadata */}

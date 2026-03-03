@@ -35,6 +35,12 @@ netsh advfirewall firewall add rule name="Invekto WhatsAppAnalytics (TCP 7109)" 
 REM Automation (port 7108) - External access (Main App webhooks)
 netsh advfirewall firewall add rule name="Invekto Automation (TCP 7108)" dir=in action=allow protocol=tcp localport=7108 profile=any
 
+REM Marketing (port 7112) - Localhost only (Backend proxies, not direct external access)
+netsh advfirewall firewall add rule name="Invekto Marketing (TCP 7112)" dir=in action=allow protocol=tcp localport=7112 profile=any remoteip=127.0.0.1
+
+REM WebChat (port 7113) - External access (chat.invekto.com reverse proxy + WebSocket)
+netsh advfirewall firewall add rule name="Invekto WebChat (TCP 7113)" dir=in action=allow protocol=tcp localport=7113 profile=any
+
 REM Simulator (port 4500) - External access (Dev tool UI + callback receiver)
 netsh advfirewall firewall add rule name="Invekto Simulator (TCP 4500)" dir=in action=allow protocol=tcp localport=4500 profile=any
 
@@ -54,6 +60,8 @@ echo    7106  Integrations  (localhost only)
 echo    7107  Outbound      (localhost only)
 echo    7108  Automation    (external)
 echo    7109  WA Analytics  (localhost only)
+echo    7112  Marketing     (localhost only)
+echo    7113  WebChat       (external)
 echo    5432  PostgreSQL    (localhost only)
 echo ============================================
 echo.

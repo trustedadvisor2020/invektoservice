@@ -209,12 +209,13 @@ public sealed class WebScrapingService
             }
         }
 
-        // Filter to same-origin only
+        // Filter to same-origin only (www subdomain tolerance: ebrumoda.com == www.ebrumoda.com)
         if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
         {
+            var baseHost = StripWww(baseUri.Host);
             urls.RemoveWhere(u =>
                 !Uri.TryCreate(u, UriKind.Absolute, out var uri) ||
-                !string.Equals(uri.Host, baseUri.Host, StringComparison.OrdinalIgnoreCase));
+                !string.Equals(StripWww(uri.Host), baseHost, StringComparison.OrdinalIgnoreCase));
         }
 
         return urls.ToList();
@@ -417,6 +418,12 @@ public sealed class WebScrapingService
     private static string NormalizeWhitespace(string text)
     {
         return Regex.Replace(text, @"\s+", " ").Trim();
+    }
+
+    /// <summary>Strip leading "www." from hostname for same-origin comparison.</summary>
+    private static string StripWww(string host)
+    {
+        return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
     }
 }
 

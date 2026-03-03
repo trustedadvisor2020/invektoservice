@@ -165,7 +165,7 @@ echo [OK] InvektoIntegrations installed
 echo.
 
 REM WhatsAppAnalytics Service
-echo [9/9] Installing InvektoWhatsAppAnalytics...
+echo [9/11] Installing InvektoWhatsAppAnalytics...
 %NSSM% install InvektoWhatsAppAnalytics "E:\Invekto\WhatsAppAnalytics\current\Invekto.WhatsAppAnalytics.exe"
 %NSSM% set InvektoWhatsAppAnalytics DisplayName "Invekto WhatsAppAnalytics"
 %NSSM% set InvektoWhatsAppAnalytics Description "Invekto WhatsApp Analytics Pipeline - Port 7109"
@@ -183,6 +183,44 @@ echo [9/9] Installing InvektoWhatsAppAnalytics...
 echo [OK] InvektoWhatsAppAnalytics installed
 echo.
 
+REM Marketing Service
+echo [10/11] Installing InvektoMarketing...
+%NSSM% install InvektoMarketing "E:\Invekto\Marketing\current\Invekto.Marketing.exe"
+%NSSM% set InvektoMarketing DisplayName "Invekto Marketing"
+%NSSM% set InvektoMarketing Description "Invekto Marketing Campaign Engine - Port 7112"
+%NSSM% set InvektoMarketing AppDirectory "E:\Invekto\Marketing\current"
+%NSSM% set InvektoMarketing AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production"
+%NSSM% set InvektoMarketing AppStdout "E:\Invekto\Marketing\logs\service-stdout.log"
+%NSSM% set InvektoMarketing AppStderr "E:\Invekto\Marketing\logs\service-stderr.log"
+%NSSM% set InvektoMarketing AppStdoutCreationDisposition 4
+%NSSM% set InvektoMarketing AppStderrCreationDisposition 4
+%NSSM% set InvektoMarketing AppRotateFiles 1
+%NSSM% set InvektoMarketing AppRotateBytes 10485760
+%NSSM% set InvektoMarketing Start SERVICE_AUTO_START
+%NSSM% set InvektoMarketing AppExit Default Restart
+%NSSM% set InvektoMarketing AppRestartDelay 5000
+echo [OK] InvektoMarketing installed
+echo.
+
+REM WebChat Service
+echo [11/11] Installing InvektoWebChat...
+%NSSM% install InvektoWebChat "E:\Invekto\WebChat\current\Invekto.WebChat.exe"
+%NSSM% set InvektoWebChat DisplayName "Invekto WebChat"
+%NSSM% set InvektoWebChat Description "Invekto WebChat Real-time Chat - Port 7113"
+%NSSM% set InvektoWebChat AppDirectory "E:\Invekto\WebChat\current"
+%NSSM% set InvektoWebChat AppEnvironmentExtra "ASPNETCORE_ENVIRONMENT=Production"
+%NSSM% set InvektoWebChat AppStdout "E:\Invekto\WebChat\logs\service-stdout.log"
+%NSSM% set InvektoWebChat AppStderr "E:\Invekto\WebChat\logs\service-stderr.log"
+%NSSM% set InvektoWebChat AppStdoutCreationDisposition 4
+%NSSM% set InvektoWebChat AppStderrCreationDisposition 4
+%NSSM% set InvektoWebChat AppRotateFiles 1
+%NSSM% set InvektoWebChat AppRotateBytes 10485760
+%NSSM% set InvektoWebChat Start SERVICE_AUTO_START
+%NSSM% set InvektoWebChat AppExit Default Restart
+%NSSM% set InvektoWebChat AppRestartDelay 5000
+echo [OK] InvektoWebChat installed
+echo.
+
 REM Create log directories
 if not exist "E:\Invekto\Backend\logs" mkdir "E:\Invekto\Backend\logs"
 if not exist "E:\Invekto\ChatAnalysis\logs" mkdir "E:\Invekto\ChatAnalysis\logs"
@@ -194,6 +232,8 @@ if not exist "E:\Invekto\Appointments\logs" mkdir "E:\Invekto\Appointments\logs"
 if not exist "E:\Invekto\Integrations\logs" mkdir "E:\Invekto\Integrations\logs"
 if not exist "E:\Invekto\WhatsAppAnalytics\logs" mkdir "E:\Invekto\WhatsAppAnalytics\logs"
 if not exist "E:\Invekto\WhatsAppAnalytics\uploads" mkdir "E:\Invekto\WhatsAppAnalytics\uploads"
+if not exist "E:\Invekto\Marketing\logs" mkdir "E:\Invekto\Marketing\logs"
+if not exist "E:\Invekto\WebChat\logs" mkdir "E:\Invekto\WebChat\logs"
 
 REM Start services
 echo Starting services...
@@ -215,6 +255,10 @@ timeout /t 3 /nobreak >nul
 timeout /t 3 /nobreak >nul
 %NSSM% start InvektoWhatsAppAnalytics
 timeout /t 3 /nobreak >nul
+%NSSM% start InvektoMarketing
+timeout /t 3 /nobreak >nul
+%NSSM% start InvektoWebChat
+timeout /t 3 /nobreak >nul
 
 echo.
 echo ============================================
@@ -231,17 +275,21 @@ echo Services:
 %NSSM% status InvektoAppointments
 %NSSM% status InvektoIntegrations
 %NSSM% status InvektoWhatsAppAnalytics
+%NSSM% status InvektoMarketing
+%NSSM% status InvektoWebChat
 echo.
 echo Test:
 echo   http://localhost:5000/health
 echo   http://localhost:7101/health
+echo   http://localhost:7102/health
 echo   http://localhost:7104/health
 echo   http://localhost:7105/health
-echo   http://localhost:7107/health
-echo   http://localhost:7102/health
-echo   http://localhost:7108/health
 echo   http://localhost:7106/health
+echo   http://localhost:7107/health
+echo   http://localhost:7108/health
 echo   http://localhost:7109/health
+echo   http://localhost:7112/health
+echo   http://localhost:7113/health
 echo.
 echo Manage:
 echo   %NSSM% edit InvektoBackend
@@ -253,5 +301,7 @@ echo   %NSSM% edit InvektoKnowledge
 echo   %NSSM% edit InvektoAppointments
 echo   %NSSM% edit InvektoIntegrations
 echo   %NSSM% edit InvektoWhatsAppAnalytics
+echo   %NSSM% edit InvektoMarketing
+echo   %NSSM% edit InvektoWebChat
 echo.
 pause
