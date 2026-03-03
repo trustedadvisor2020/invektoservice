@@ -202,6 +202,9 @@ builder.Services.AddHttpClient<OnboardingService>((sp, client) =>
 // Register orchestrator
 builder.Services.AddSingleton<AutomationOrchestrator>();
 
+// Satisfy .NET 8 EndpointMiddleware authorization metadata check (no policies configured)
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -217,6 +220,7 @@ app.UseFeatureGuard(planCache, logger,
     ("/api/v1/flows/", "FlowBuilder"),
     ("/api/v1/faq/", "FlowBuilder"),
     ("/api/v1/simulation/", "FlowBuilder"));
+app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
