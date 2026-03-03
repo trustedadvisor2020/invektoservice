@@ -244,8 +244,8 @@ public sealed class IkasProvider : IEcommerceProvider
                     order.CustomerPhone = cust.TryGetProperty("phone", out var ph) ? ph.GetString() : null;
                 }
 
-                // Extract tracking from first package
-                if (item.TryGetProperty("packages", out var pkgs) &&
+                // Extract tracking from first package (ikas: orderPackages, not packages)
+                if (item.TryGetProperty("orderPackages", out var pkgs) &&
                     pkgs.ValueKind == JsonValueKind.Array && pkgs.GetArrayLength() > 0)
                 {
                     var pkg = pkgs[0];
@@ -305,9 +305,11 @@ public sealed class IkasProvider : IEcommerceProvider
                         product.Currency = price.TryGetProperty("currency", out var cur) ? cur.GetString() : "TRY";
                     }
 
-                    if (firstVariant.TryGetProperty("stock", out var stock))
+                    // ikas: stocks is an array (per stock location), take first entry total
+                    if (firstVariant.TryGetProperty("stocks", out var stockArr) &&
+                        stockArr.ValueKind == JsonValueKind.Array && stockArr.GetArrayLength() > 0)
                     {
-                        product.StockCount = stock.TryGetProperty("stockCount", out var sc) ? sc.GetInt32() : null;
+                        product.StockCount = stockArr[0].TryGetProperty("stockCount", out var sc) ? sc.GetInt32() : null;
                     }
 
                     // Main image

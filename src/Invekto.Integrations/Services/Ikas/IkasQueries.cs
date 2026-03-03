@@ -4,6 +4,7 @@ namespace Invekto.Integrations.Services.Ikas;
 /// GraphQL query/mutation templates for ikas admin API.
 /// Static const strings — no runtime allocation.
 /// Field selections kept minimal to reduce response size; expand as needed.
+/// Verified against live ikas API (dev-apitest store) 2026-03-03.
 /// </summary>
 internal static class IkasQueries
 {
@@ -37,9 +38,9 @@ internal static class IkasQueries
                         quantity
                         unitPrice
                     }
-                    packages {
+                    orderPackages {
                         id
-                        status
+                        orderPackageFulfillStatus
                         trackingInfo {
                             trackingNumber
                             trackingLink
@@ -48,7 +49,7 @@ internal static class IkasQueries
                     }
                 }
                 count
-                hasNextPage
+                hasNext
             }
         }";
 
@@ -84,9 +85,9 @@ internal static class IkasQueries
                         unitPrice
                         totalPrice
                     }
-                    packages {
+                    orderPackages {
                         id
-                        status
+                        orderPackageFulfillStatus
                         trackingInfo {
                             trackingNumber
                             trackingLink
@@ -124,13 +125,13 @@ internal static class IkasQueries
                             sellPrice
                             currency
                         }
-                        stock {
+                        stocks {
                             stockCount
                         }
                     }
                 }
                 count
-                hasNextPage
+                hasNext
             }
         }";
 
@@ -161,7 +162,7 @@ internal static class IkasQueries
                             buyPrice
                             currency
                         }
-                        stock {
+                        stocks {
                             stockCount
                             stockLocationId
                         }
@@ -203,9 +204,9 @@ internal static class IkasQueries
                 id
                 orderNumber
                 status
-                packages {
+                orderPackages {
                     id
-                    status
+                    orderPackageFulfillStatus
                     trackingInfo {
                         trackingNumber
                         cargoCompany
@@ -220,9 +221,9 @@ internal static class IkasQueries
                 id
                 orderNumber
                 status
-                packages {
+                orderPackages {
                     id
-                    status
+                    orderPackageFulfillStatus
                 }
             }
         }";
