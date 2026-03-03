@@ -6,10 +6,11 @@
 ## Last Update
 
 - **Date:** 2026-03-03
-- **Status:** action_ecommerce UI + UseAuthorization proaktif fix DONE — build PASS (.NET + Vite).
-- **Last Task:** (1) action_ecommerce Flow Node UI: 8 dosya (1 yeni), palette+canvas+config panel+metadata+validator. (2) UseAuthorization proaktif fix: 9 servis Program.cs'ye AddAuthorization+UseAuthorization eklendi. (3) Onceki session: flow latency fix (parallel pre-flow, cache, timeout) + Automation UseAuthorization fix.
-- **Production Deploy:** Tum 10 servis deploy gerekiyor (UseAuthorization 9 servise eklendi, Dashboard SPA yeniden build edildi).
-- **Next Task:** Deploy (publish + server-deploy tum servisler). Sonra Faz 1 devam.
+- **Status:** 10/10 servis deploy DONE — tumu HEALTHY.
+- **Last Task:** (1) action_ecommerce Flow Node UI + UseAuthorization proaktif fix (commit f1c871b). (2) 10 servis publish + deploy (Marketing SSH retry). (3) Faz 1 (3 paket) feature-complete.
+- **Production Deploy:** 10/10 HEALTHY (Backend, ChatAnalysis, Appointments, Knowledge, AgentAI, Integrations, Outbound, Automation, WhatsAppAnalytics, Marketing).
+- **Next Task:** LicensesPage (FAZ1-3) commit+deploy. Sonra QNB VPos veya PKT-7/8/9/10.
+- **Unstaged:** LicensesPage (6 dosya), QNB VPos (3 dosya), WebScrapingService, DocumentUpload, deploy scripts — onceki session'lardan.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State
