@@ -273,6 +273,8 @@ if (mssqlConfigured)
     builder.Services.AddSingleton<OnboardingInsightService>();
 }
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Ensure upload directory exists
@@ -283,6 +285,7 @@ app.UseTrafficLogging();
 
 // Enable JWT auth for /api/v1/ prefixed paths
 app.UseJwtAuth(jwtValidator, logger, "/api/v1/wa/");
+app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -1957,8 +1960,11 @@ app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
     try
     {
         // Read body as raw JSON to detect if it's a simple toggle or full update
-        var bodyText = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
-        var bodyJson = JsonDocument.Parse(bodyText).RootElement;
+        string bodyText;
+        using (var reader = new StreamReader(ctx.Request.Body))
+            bodyText = await reader.ReadToEndAsync();
+        using var bodyDoc = JsonDocument.Parse(bodyText);
+        var bodyJson = bodyDoc.RootElement;
 
         // Simple toggle: body has only isActive
         if (bodyJson.TryGetProperty("isActive", out var activeVal) &&

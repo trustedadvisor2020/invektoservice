@@ -90,6 +90,8 @@ builder.Services.AddHttpClient<TourismResponseGenerator>()
 // APP
 // ============================================
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 app.UseTrafficLogging();
 app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
@@ -98,6 +100,7 @@ app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
 var planCache = new TenantPlanCache(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/", "Marketing"));
+app.UseAuthorization();
 
 _ = app.Services.GetRequiredService<LogCleanupService>();
 

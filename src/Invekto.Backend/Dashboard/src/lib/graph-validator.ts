@@ -16,6 +16,7 @@ import type {
   ActionAssignGroupData,
   UtilitySetVariableData,
   ActionCallFlowData,
+  ActionEcommerceData,
 } from '../types/flow';
 
 // --- Types ---
@@ -178,6 +179,20 @@ function checkEmptyField(node: Node): ValidationError | null {
       const ag = data as ActionAssignGroupData;
       if (!ag.group_id || ag.group_id.trim() === '') {
         return { type: 'empty_field', severity: 'error', message: 'Grup ID bos' };
+      }
+      break;
+    }
+    case 'action_ecommerce': {
+      const ec = data as ActionEcommerceData;
+      if (!ec.operation) {
+        return { type: 'empty_field', severity: 'error', message: 'E-ticaret islemi secilmedi' };
+      }
+      const needsOrderId = ['get_order', 'fulfill_order', 'update_order_status', 'refund_order_line'].includes(ec.operation);
+      if (needsOrderId && (!ec.order_id || ec.order_id.trim() === '')) {
+        return { type: 'empty_field', severity: 'error', message: 'Siparis ID bos' };
+      }
+      if (ec.operation === 'get_product' && (!ec.product_id || ec.product_id.trim() === '')) {
+        return { type: 'empty_field', severity: 'error', message: 'Urun ID bos' };
       }
       break;
     }

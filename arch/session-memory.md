@@ -6,10 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-03
-- **Status:** ikas E-Commerce Integration DONE — code committed, DB migrated, tested against live API.
-- **Last Task:** ikas entegrasyonu: IEcommerceProvider interface, IkasProvider (OAuth2 client_credentials + GraphQL), 6 REST endpoint (Integrations), action_ecommerce flow node (Automation). GraphQL field names live test ile düzeltildi. DB migration çalıştırıldı, tenant 5050 ikas credentials eklendi.
-- **Production Deploy:** Integrations + Automation deploy gerekiyor (wrap ile başlatıldı).
-- **Next Task:** action_ecommerce Flow Node UI (flow editor node palette + config panel)
+- **Status:** action_ecommerce UI + UseAuthorization proaktif fix DONE — build PASS (.NET + Vite).
+- **Last Task:** (1) action_ecommerce Flow Node UI: 8 dosya (1 yeni), palette+canvas+config panel+metadata+validator. (2) UseAuthorization proaktif fix: 9 servis Program.cs'ye AddAuthorization+UseAuthorization eklendi. (3) Onceki session: flow latency fix (parallel pre-flow, cache, timeout) + Automation UseAuthorization fix.
+- **Production Deploy:** Tum 10 servis deploy gerekiyor (UseAuthorization 9 servise eklendi, Dashboard SPA yeniden build edildi).
+- **Next Task:** Deploy (publish + server-deploy tum servisler). Sonra Faz 1 devam.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Current State

@@ -58,7 +58,8 @@ export type FlowNodeType =
   | 'utility_set_variable'
   | 'utility_note'
   | 'action_call_flow'
-  | 'action_assign_group';
+  | 'action_assign_group'
+  | 'action_ecommerce';
 
 // Union type for all node data shapes
 export type NodeData =
@@ -80,7 +81,8 @@ export type NodeData =
   | UtilitySetVariableData
   | UtilityNoteData
   | ActionCallFlowData
-  | ActionAssignGroupData;
+  | ActionAssignGroupData
+  | ActionEcommerceData;
 
 /** Base interface with index signature for React Flow compatibility */
 interface BaseNodeData {
@@ -207,6 +209,35 @@ export interface ActionCallFlowData extends BaseNodeData {
   flow_id: string;
   input_map: string; // JSON: { "parent_var": "child_var" }
   output_map: string; // JSON: { "child_var": "parent_var" }
+}
+
+export type EcommerceOperation =
+  | 'list_orders'
+  | 'get_order'
+  | 'list_products'
+  | 'get_product'
+  | 'list_customers'
+  | 'fulfill_order'
+  | 'update_order_status'
+  | 'refund_order_line';
+
+export interface ActionEcommerceData extends BaseNodeData {
+  label: string;
+  provider: string;
+  operation: EcommerceOperation;
+  order_id?: string;
+  product_id?: string;
+  filter_phone?: string;
+  filter_email?: string;
+  filter_search?: string;
+  filter_status?: string;
+  tracking_code?: string;
+  cargo_provider?: string;
+  new_status?: string;
+  line_item_id?: string;
+  refund_quantity?: string;
+  refund_reason?: string;
+  response_variable?: string;
 }
 
 // -- Node Category Metadata --
@@ -374,6 +405,14 @@ export const NODE_TYPE_REGISTRY: NodeTypeInfo[] = [
     description: 'Baska bir flow cagir ve tamamlanmasini bekle',
     color: '#ef4444',
     defaultData: { label: 'Alt Flow', flow_id: '', input_map: '{}', output_map: '{}' } as ActionCallFlowData,
+  },
+  {
+    type: 'action_ecommerce',
+    category: 'action',
+    label: 'E-Ticaret',
+    description: 'E-ticaret islemleri (siparis, urun, musteri)',
+    color: '#ef4444',
+    defaultData: { label: 'E-Ticaret', provider: 'ikas', operation: 'list_orders', response_variable: 'ecom_result' } as ActionEcommerceData,
   },
   {
     type: 'utility_set_variable',

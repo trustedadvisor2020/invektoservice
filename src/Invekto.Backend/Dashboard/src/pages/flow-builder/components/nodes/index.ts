@@ -18,6 +18,7 @@ import { ActionApiCallNode } from './ActionApiCallNode';
 import { UtilitySetVariableNode } from './UtilitySetVariableNode';
 import { UtilityNoteNode } from './UtilityNoteNode';
 import { CallFlowNode } from './CallFlowNode';
+import { ActionEcommerceNode } from './ActionEcommerceNode';
 
 export const nodeTypes: NodeTypes = {
   trigger_start: TriggerStartNode,
@@ -39,4 +40,5 @@ export const nodeTypes: NodeTypes = {
   utility_set_variable: UtilitySetVariableNode,
   utility_note: UtilityNoteNode,
   action_call_flow: CallFlowNode,
+  action_ecommerce: ActionEcommerceNode,
 };

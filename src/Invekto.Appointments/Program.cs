@@ -119,6 +119,8 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TreatmentLifecycle
 // GR-3.19: Calendar sync (mock for now, interface ready for Google Calendar)
 builder.Services.AddSingleton<ICalendarSyncService, MockCalendarSyncService>();
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -131,6 +133,7 @@ app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
 var planCache = new TenantPlanCache(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/", "Appointments"));
+app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();

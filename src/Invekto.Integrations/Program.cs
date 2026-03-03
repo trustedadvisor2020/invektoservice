@@ -106,6 +106,8 @@ builder.Services.AddSingleton<OrderSyncService>(sp =>
         syncIntervalMs));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderSyncService>());
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -118,6 +120,7 @@ app.UseJwtAuth(jwtValidator, logger, "/api/v1/");
 var planCache = new TenantPlanCache(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/", "Integrations"));
+app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();

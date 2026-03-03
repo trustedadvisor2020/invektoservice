@@ -27,6 +27,8 @@ import type {
   ActionCallFlowData,
   UtilitySetVariableData,
   UtilityNoteData,
+  ActionEcommerceData,
+  EcommerceOperation,
 } from '../../../types/flow';
 
 export function NodePropertyPanel() {
@@ -137,6 +139,9 @@ export function NodePropertyPanel() {
         )}
         {nodeType === 'action_call_flow' && (
           <CallFlowProps data={selectedNode.data as ActionCallFlowData} onChange={update} />
+        )}
+        {nodeType === 'action_ecommerce' && (
+          <ActionEcommerceProps data={selectedNode.data as ActionEcommerceData} onChange={update} />
         )}
 
         {/* Output variables (GR-6) */}
@@ -1458,6 +1463,235 @@ function CallFlowProps({
 
       <p className="text-sm text-navy-300">
         Alt flow tamamlandiginda <strong>completed</strong>, hata olursa <strong>error</strong> dalina yonlenir.
+      </p>
+    </>
+  );
+}
+
+const ECOM_OPERATIONS: { value: EcommerceOperation; label: string }[] = [
+  { value: 'list_orders', label: 'Siparisleri Listele' },
+  { value: 'get_order', label: 'Siparis Detay' },
+  { value: 'list_products', label: 'Urunleri Listele' },
+  { value: 'get_product', label: 'Urun Detay' },
+  { value: 'list_customers', label: 'Musterileri Listele' },
+  { value: 'fulfill_order', label: 'Siparisi Kargola' },
+  { value: 'update_order_status', label: 'Siparis Durumu Guncelle' },
+  { value: 'refund_order_line', label: 'Iade Yap' },
+];
+
+function ActionEcommerceProps({
+  data,
+  onChange,
+}: {
+  data: ActionEcommerceData;
+  onChange: (d: Record<string, unknown>) => void;
+}) {
+  const op = data.operation || 'list_orders';
+  const needsOrderId = ['get_order', 'fulfill_order', 'update_order_status', 'refund_order_line'].includes(op);
+  const needsProductId = op === 'get_product';
+  const isListOrders = op === 'list_orders';
+  const isListProducts = op === 'list_products';
+  const isListCustomers = op === 'list_customers';
+  const isFulfill = op === 'fulfill_order';
+  const isUpdateStatus = op === 'update_order_status';
+  const isRefund = op === 'refund_order_line';
+
+  return (
+    <>
+      <FieldGroup label="Saglayici">
+        <input
+          type="text"
+          value={data.provider || 'ikas'}
+          readOnly
+          className="w-full bg-navy-100 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-500 outline-none cursor-not-allowed"
+        />
+      </FieldGroup>
+
+      <FieldGroup label="Islem">
+        <select
+          value={op}
+          onChange={(e) => onChange({ operation: e.target.value })}
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+        >
+          {ECOM_OPERATIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </FieldGroup>
+
+      {needsOrderId && (
+        <FieldGroup label="Siparis ID">
+          <input
+            type="text"
+            value={data.order_id ?? ''}
+            onChange={(e) => onChange({ order_id: e.target.value })}
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+            placeholder="{{siparis_id}}"
+          />
+        </FieldGroup>
+      )}
+
+      {needsProductId && (
+        <FieldGroup label="Urun ID">
+          <input
+            type="text"
+            value={data.product_id ?? ''}
+            onChange={(e) => onChange({ product_id: e.target.value })}
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+            placeholder="{{urun_id}}"
+          />
+        </FieldGroup>
+      )}
+
+      {(isListOrders || isListCustomers) && (
+        <FieldGroup label="Telefon Filtre">
+          <input
+            type="text"
+            value={data.filter_phone ?? ''}
+            onChange={(e) => onChange({ filter_phone: e.target.value })}
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+            placeholder="{{__phone}}"
+          />
+        </FieldGroup>
+      )}
+
+      {isListCustomers && (
+        <>
+          <FieldGroup label="E-posta Filtre">
+            <input
+              type="text"
+              value={data.filter_email ?? ''}
+              onChange={(e) => onChange({ filter_email: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+              placeholder="{{email}}"
+            />
+          </FieldGroup>
+          <FieldGroup label="Arama">
+            <input
+              type="text"
+              value={data.filter_search ?? ''}
+              onChange={(e) => onChange({ filter_search: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              placeholder="Isim veya anahtar kelime"
+            />
+          </FieldGroup>
+        </>
+      )}
+
+      {isListOrders && (
+        <FieldGroup label="Durum Filtre">
+          <input
+            type="text"
+            value={data.filter_status ?? ''}
+            onChange={(e) => onChange({ filter_status: e.target.value })}
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+            placeholder="created, approved, shipped..."
+          />
+        </FieldGroup>
+      )}
+
+      {isListProducts && (
+        <>
+          <FieldGroup label="Arama">
+            <input
+              type="text"
+              value={data.filter_search ?? ''}
+              onChange={(e) => onChange({ filter_search: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              placeholder="Urun adi"
+            />
+          </FieldGroup>
+          <FieldGroup label="Durum Filtre">
+            <input
+              type="text"
+              value={data.filter_status ?? ''}
+              onChange={(e) => onChange({ filter_status: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              placeholder="active, passive..."
+            />
+          </FieldGroup>
+        </>
+      )}
+
+      {isFulfill && (
+        <>
+          <FieldGroup label="Takip Kodu">
+            <input
+              type="text"
+              value={data.tracking_code ?? ''}
+              onChange={(e) => onChange({ tracking_code: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+              placeholder="{{takip_kodu}}"
+            />
+          </FieldGroup>
+          <FieldGroup label="Kargo Firmasi">
+            <input
+              type="text"
+              value={data.cargo_provider ?? ''}
+              onChange={(e) => onChange({ cargo_provider: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              placeholder="yurtici, aras, mng..."
+            />
+          </FieldGroup>
+        </>
+      )}
+
+      {isUpdateStatus && (
+        <FieldGroup label="Yeni Durum">
+          <input
+            type="text"
+            value={data.new_status ?? ''}
+            onChange={(e) => onChange({ new_status: e.target.value })}
+            className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+            placeholder="approved, shipped, delivered..."
+          />
+        </FieldGroup>
+      )}
+
+      {isRefund && (
+        <>
+          <FieldGroup label="Kalem ID">
+            <input
+              type="text"
+              value={data.line_item_id ?? ''}
+              onChange={(e) => onChange({ line_item_id: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+              placeholder="{{kalem_id}}"
+            />
+          </FieldGroup>
+          <FieldGroup label="Iade Adedi">
+            <input
+              type="text"
+              value={data.refund_quantity ?? ''}
+              onChange={(e) => onChange({ refund_quantity: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              placeholder="1"
+            />
+          </FieldGroup>
+          <FieldGroup label="Iade Nedeni">
+            <input
+              type="text"
+              value={data.refund_reason ?? ''}
+              onChange={(e) => onChange({ refund_reason: e.target.value })}
+              className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500"
+              placeholder="Musteri iade talebi"
+            />
+          </FieldGroup>
+        </>
+      )}
+
+      <FieldGroup label="Sonuc Degiskeni">
+        <input
+          type="text"
+          value={data.response_variable ?? 'ecom_result'}
+          onChange={(e) => onChange({ response_variable: e.target.value })}
+          className="w-full bg-navy-50 border border-navy-200 rounded px-2 py-1.5 text-sm text-navy-700 outline-none focus:border-brand-500 font-mono"
+          placeholder="ecom_result"
+        />
+      </FieldGroup>
+
+      <p className="text-sm text-navy-300">
+        Basarili sonuc <strong>success</strong>, hata ise <strong>error</strong> dalina yonlenir.
       </p>
     </>
   );

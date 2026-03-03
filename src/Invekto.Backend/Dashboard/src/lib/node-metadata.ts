@@ -304,6 +304,23 @@ export const NODE_GUIDES: Record<FlowNodeType, NodeGuide> = {
       '- Her adima not eklemek akisi karmasik gosterir — sadece gerekli yerlere ekleyin\n' +
       '- Not icine teknik bilgi (degisken adlari vs.) yazmak yerine anlasilir aciklama yazin',
   },
+  action_ecommerce: {
+    summary: 'E-ticaret platformunda siparis, urun ve musteri islemleri yapar.',
+    detail:
+      'E-Ticaret node\'u, entegre edilmis e-ticaret platformunda (ikas vb.) islem yapmanizi saglar. Siparis listeleme, urun sorgulama, kargolama, durum guncelleme ve iade gibi islemleri akis icinden otomatik olarak gerceklestirir.\n\n' +
+      'Her islem icin gerekli alanlar degisir. Ornegin siparis detayi icin siparis ID gerekli, kargolama icin siparis ID + takip kodu + kargo firmasi gereklidir.\n\n' +
+      'Sonuc belirtilen degiskene atanir. Basarili islemler "success" dalina, hatalar "error" dalina yonlenir.',
+    scenarios:
+      '- Siparis sorgulama: Musteri telefonu ile siparis ara → Sonucu mesajla gonder\n' +
+      '- Kargo bildirimi: Siparis ID ile kargola → Takip numarasini musteriye gonder\n' +
+      '- Urun bilgisi: Urun ID ile detay al → Fiyat ve stok bilgisini goster\n' +
+      '- Iade islemi: Siparis + kalem ID ile iade → Sonucu bildir',
+    antiPatterns:
+      '- Siparis ID\'sini bos birakmayin — detay/kargolama/iade calismaz\n' +
+      '- Kargolama icin takip kodu ve kargo firmasi zorunlu\n' +
+      '- Hata dalini baglantisiz birakmayin — API hatasi akisi kirar\n' +
+      '- Cok fazla e-ticaret node\'u art arda koymayin — her biri API cagrisi yapar',
+  },
 };
 
 // ============================================================
@@ -354,6 +371,9 @@ export const NODE_OUTPUT_VARS: Partial<Record<FlowNodeType, NodeOutputVar[]>> = 
   action_api_call: [
     { name: 'api_response', description: 'API cevap verisi' },
     { name: '__api_status_code', description: 'HTTP durum kodu' },
+  ],
+  action_ecommerce: [
+    { name: 'ecom_result', description: 'E-ticaret islem sonucu (JSON)' },
   ],
   utility_set_variable: [
     { name: '(kullanici tanimli)', description: 'Atanan degisken adi ve degeri' },
@@ -410,6 +430,10 @@ export const EDGE_HANDLE_LABELS: Partial<Record<FlowNodeType, Record<string, str
   },
   action_call_flow: {
     completed: 'TAMAMLANDI',
+    error: 'HATA',
+  },
+  action_ecommerce: {
+    success: 'BASARILI',
     error: 'HATA',
   },
 };

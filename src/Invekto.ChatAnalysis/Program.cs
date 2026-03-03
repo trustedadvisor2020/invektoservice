@@ -55,10 +55,13 @@ builder.Services.AddSingleton(new ClaudeAnalyzer(claudeApiKey));
 builder.Services.AddSingleton(sp =>
     new CallbackService(callbackToken, sp.GetRequiredService<JsonLinesLogger>()));
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware (logs all HTTP request/response)
 app.UseTrafficLogging();
+app.UseAuthorization();
 
 // Start log cleanup service
 _ = app.Services.GetRequiredService<LogCleanupService>();

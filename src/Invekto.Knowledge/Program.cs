@@ -138,6 +138,8 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<DocumentProcessing
 // SE scenario seed service
 builder.Services.AddSingleton<SeSeedService>();
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Enable traffic logging middleware
@@ -151,6 +153,7 @@ var planCache = new TenantPlanCache(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/knowledge/", "Knowledge"),
     ("/api/v1/templates/", "Knowledge"));
+app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
@@ -606,8 +609,14 @@ app.MapPost("/api/v1/knowledge/{tenantId:int}/documents/website", async (
     if (body == null || string.IsNullOrWhiteSpace(body.Url))
         return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeInvalidRequest, "url is required", requestId), statusCode: 400);
 
+    // Auto-prefix https:// if no scheme provided (bare domain support)
+    var rawUrl = body.Url.Trim();
+    if (!rawUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+        !rawUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        rawUrl = $"https://{rawUrl}";
+
     // Validate URL format
-    if (!Uri.TryCreate(body.Url, UriKind.Absolute, out var parsedUri)
+    if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsedUri)
         || (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps))
         return Results.Json(ErrorResponse.Create(ErrorCodes.KnowledgeWebsiteInvalidUrl, "url must be a valid http/https URL", requestId), statusCode: 400);
 
