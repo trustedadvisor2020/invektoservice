@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "InvektoServis API",
-    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Appointments** (port 7102): Appointment/slot management (internal)\n- **Knowledge** (port 7104): RAG knowledge base + FAQ (internal)\n- **AgentAI** (port 7105): AI agent assist microservice (internal)\n- **Integrations** (port 7106): HepsiB, Kargo, external APIs (internal)\n- **Outbound** (port 7107): Broadcast/trigger engine (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice (16 node types: 4 triggers, 2 messages, 2 logic, 3 AI, 3 actions, 2 utilities)\n- **WhatsAppAnalytics** (port 7109): WA NLP pipeline (internal)\n- **Marketing** (port 7112): Review/referral/tourism engine (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `appointments_url`: Appointments URL (default: http://localhost:7102)\n- `knowledge_url`: Knowledge URL (default: http://localhost:7104)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `integrations_url`: Integrations URL (default: http://localhost:7106)\n- `outbound_url`: Outbound URL (default: http://localhost:7107)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `whatsappanalytics_url`: WhatsAppAnalytics URL (default: http://localhost:7109)\n- `marketing_url`: Marketing URL (default: http://localhost:7112)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token",
+    "description": "InvektoServis platform API collection.\n\n## Services\n- **Backend** (port 5000): API gateway, ops dashboard\n- **ChatAnalysis** (port 7101): Chat analysis microservice (internal)\n- **Appointments** (port 7102): Appointment/slot management (internal)\n- **Knowledge** (port 7104): RAG knowledge base + FAQ (internal)\n- **AgentAI** (port 7105): AI agent assist microservice (internal)\n- **Integrations** (port 7106): HepsiB, Kargo, external APIs (internal)\n- **Outbound** (port 7107): Broadcast/trigger engine (internal)\n- **Automation** (port 7108): Chatbot/flow builder microservice (16 node types: 4 triggers, 2 messages, 2 logic, 3 AI, 3 actions, 2 utilities)\n- **WhatsAppAnalytics** (port 7109): WA NLP pipeline (internal)\n- **Marketing** (port 7112): Review/referral/tourism engine (internal)\n\n## Auth\n- Public API endpoints: No auth required\n- Ops endpoints: Basic Auth (username/password)\n- Integration endpoints: Bearer JWT (HMAC-SHA256)\n- Internal microservices: Bearer JWT or localhost only\n\n## Environment Variables\n- `base_url`: Backend URL (default: http://localhost:5000)\n- `chatanalysis_url`: ChatAnalysis URL (default: http://localhost:7101)\n- `appointments_url`: Appointments URL (default: http://localhost:7102)\n- `knowledge_url`: Knowledge URL (default: http://localhost:7104)\n- `agentai_url`: AgentAI URL (default: http://localhost:7105)\n- `integrations_url`: Integrations URL (default: http://localhost:7106)\n- `outbound_url`: Outbound URL (default: http://localhost:7107)\n- `automation_url`: Automation URL (default: http://localhost:7108)\n- `whatsappanalytics_url`: WhatsAppAnalytics URL (default: http://localhost:7109)\n- `marketing_url`: Marketing URL (default: http://localhost:7112)\n- `ops_username` / `ops_password`: Basic Auth\n- `jwt_token`: Bearer JWT token\n- `internal_api_key`: Internal API Key (server-to-server, INMA integration)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -17,7 +17,8 @@
     { "key": "marketing_url", "value": "http://localhost:7112" },
     { "key": "ops_username", "value": "admin" },
     { "key": "ops_password", "value": "admin123" },
-    { "key": "jwt_token", "value": "" }
+    { "key": "jwt_token", "value": "" },
+    { "key": "internal_api_key", "value": "" }
   ],
   "auth": { "type": "noauth" },
   "item": [
@@ -105,7 +106,7 @@
       "description": "Chat message translation via Claude Haiku. All endpoints require Bearer JWT + X-Tenant-Id.\n\n## Endpoints\n- `POST /api/v1/translate` — Single message translation\n- `POST /api/v1/translate/batch` — Batch translation (max 50)\n- `POST /api/v1/translate/detect` — Language detection\n- `GET /api/v1/translate/languages` — Supported languages list\n\n## Features\n- 7-day DB cache (SHA-256 hash lookup)\n- Auto source language detection\n- 18 supported languages",
       "item": [
         {
-          "name": "Translate Single Message",
+          "name": "Translate Single Message (JWT)",
           "request": {
             "method": "POST",
             "header": [
@@ -115,7 +116,21 @@
             ],
             "body": { "mode": "raw", "raw": "{\n  \"userID\": 100,\n  \"channelID\": 1,\n  \"chatID\": 12345,\n  \"messageID\": 9999,\n  \"message\": \"Merhaba, randevu almak istiyorum\",\n  \"translatedMessage\": \"\",\n  \"targetLanguage\": \"en\"\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/v1/translate", "host": ["{{base_url}}"], "path": ["api","v1","translate"] },
-            "description": "Translate a single message (INMA echo-back contract). Send full object, get it back with translatedMessage filled.\nAuth: Bearer JWT + X-Tenant-Id\nResponse: Same object with translatedMessage populated"
+            "description": "Translate via JWT auth (INMA echo-back contract).\nAuth: Bearer JWT + X-Tenant-Id\nResponse: Same object with translatedMessage populated"
+          }
+        },
+        {
+          "name": "Translate Single Message (Internal API Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Internal-Api-Key", "value": "{{internal_api_key}}" },
+              { "key": "X-Tenant-Id", "value": "1" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"userID\": 100,\n  \"channelID\": 1,\n  \"chatID\": 12345,\n  \"messageID\": 9999,\n  \"message\": \"Merhaba, randevu almak istiyorum\",\n  \"translatedMessage\": \"\",\n  \"targetLanguage\": \"en\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/v1/translate", "host": ["{{base_url}}"], "path": ["api","v1","translate"] },
+            "description": "Translate via Internal API Key (INMA server-to-server).\nAuth: X-Internal-Api-Key + X-Tenant-Id\nResponse: Same object with translatedMessage populated"
           }
         },
         {
