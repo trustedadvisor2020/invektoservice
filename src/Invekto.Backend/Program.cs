@@ -1000,6 +1000,66 @@ app.MapGet("/api/ops/stats/errors", async (HttpContext ctx, LogReader logReader,
     });
 });
 
+// Dashboard: Translation Stats (Ops auth)
+app.MapGet("/api/ops/stats/translations", async (HttpContext ctx, TranslationCacheRepository cacheRepo) =>
+{
+    if (!ValidateOpsAuth(ctx))
+    {
+        return OpsUnauthorized(ctx);
+    }
+
+    await using var conn = await cacheRepo.GetConnectionAsync();
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = @"
+        SELECT
+            COUNT(*) AS total_cached,
+            COUNT(*) FILTER (WHERE expires_at > NOW()) AS active_cached,
+            COUNT(DISTINCT tenant_id) AS tenant_count,
+            COUNT(DISTINCT target_language) AS language_count,
+            MIN(created_at) AS oldest_entry,
+            MAX(created_at) AS newest_entry
+        FROM message_translations";
+
+    await using var reader = await cmd.ExecuteReaderAsync();
+    await reader.ReadAsync();
+
+    var totalCached = reader.GetInt64(0);
+    var activeCached = reader.GetInt64(1);
+    var tenantCount = reader.GetInt64(2);
+    var languageCount = reader.GetInt64(3);
+    var oldest = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4);
+    var newest = reader.IsDBNull(5) ? (DateTime?)null : reader.GetDateTime(5);
+
+    // Top target languages
+    await using var cmd2 = conn.CreateCommand();
+    cmd2.CommandText = @"
+        SELECT target_language, COUNT(*) AS cnt
+        FROM message_translations
+        WHERE expires_at > NOW()
+        GROUP BY target_language
+        ORDER BY cnt DESC
+        LIMIT 10";
+
+    var languages = new List<object>();
+    await using var reader2 = await cmd2.ExecuteReaderAsync();
+    while (await reader2.ReadAsync())
+    {
+        languages.Add(new { language = reader2.GetString(0), count = reader2.GetInt64(1) });
+    }
+
+    return Results.Ok(new
+    {
+        total_cached = totalCached,
+        active_cached = activeCached,
+        expired = totalCached - activeCached,
+        tenant_count = tenantCount,
+        language_count = languageCount,
+        oldest_entry = oldest,
+        newest_entry = newest,
+        top_languages = languages
+    });
+});
+
 // Dashboard: Service restart (Windows Service)
 app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, string serviceName) =>
 {

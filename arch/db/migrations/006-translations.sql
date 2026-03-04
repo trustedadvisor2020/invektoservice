@@ -20,8 +20,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_trans_lookup
     ON message_translations(tenant_id, source_hash, target_language);
 
 CREATE INDEX IF NOT EXISTS idx_msg_trans_expiry
-    ON message_translations(expires_at)
-    WHERE expires_at < NOW();
+    ON message_translations(expires_at);
 
 GRANT ALL ON message_translations TO invekto;
 GRANT USAGE, SELECT ON SEQUENCE message_translations_id_seq TO invekto;

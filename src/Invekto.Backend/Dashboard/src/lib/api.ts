@@ -81,6 +81,17 @@ export interface ErrorStatsResponse {
   total: number;
 }
 
+export interface TranslationStatsResponse {
+  total_cached: number;
+  active_cached: number;
+  expired: number;
+  tenant_count: number;
+  language_count: number;
+  oldest_entry: string | null;
+  newest_entry: string | null;
+  top_languages: { language: string; count: number }[];
+}
+
 export interface ServiceRestartResponse {
   success: boolean;
   service: string;
@@ -1114,6 +1125,10 @@ class OpsApiClient {
   // Stats endpoints
   async getErrorStats(hours: number = 24): Promise<ErrorStatsResponse> {
     return this.request<ErrorStatsResponse>(`/api/ops/stats/errors?hours=${hours}`);
+  }
+
+  async getTranslationStats(): Promise<TranslationStatsResponse> {
+    return this.request<TranslationStatsResponse>('/api/ops/stats/translations');
   }
 
   // Service management

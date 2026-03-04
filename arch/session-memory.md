@@ -5,24 +5,24 @@
 
 ## Last Update
 
-- **Date:** 2026-03-03
-- **Status:** QNB VPos 3DPay entegrasyonu DONE + Backend deploy HEALTHY.
-- **Last Task:** QNB Finansbank Sanal POS (3DPay) — tenant_payments DB + 3 endpoint (initiate/callback/history) + Dashboard PaymentPage + Migration 005 + config + Backend deploy. Commit: 6b2c57a (FORCE PASS iter=3).
-- **Production Deploy:** Backend HEALTHY (tüm diğer servisler önceki session'dan HEALTHY).
-- **Next Task:** SE Test UI components veya diğer bekleyen işler. Pending unstaged dosyalar: SE scripts, deploy bat, DocumentUpload, WebScrapingService.
-- **Unstaged (pre-existing):** SE/ scripts + test components, arch/deploy bat files, DocumentUpload.tsx, WebScrapingService.cs — başka session'lardan.
+- **Date:** 2026-03-04
+- **Status:** Chat Translation API deploy + Postman + Dashboard widget DONE.
+- **Last Task:** Translation deploy (migration 006 + Backend deploy HEALTHY) + Postman JSON (4 endpoint) + Ops Dashboard TranslationStats widget (stats API + React component).
+- **Production Deploy:** Backend HEALTHY. Migration 006 (message_translations) çalıştırıldı.
+- **Next Task:** Q karar verecek. Pending unstaged: inse_v3_concept.html.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | No active work | — | Q to decide next task |
+| — | No active work | — | Q karar verecek |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-04 | Chat Translation deploy + Postman JSON (4 ep) + Ops Dashboard TranslationStats widget |
 | 2026-03-03 | QNB VPos 3DPay — tenant_payments, QnbVPosService, 3 endpoints, PaymentPage. Commit 6b2c57a |
 | 2026-03-03 | ikas E-Commerce — IEcommerceProvider, IkasProvider, 6 endpoints, action_ecommerce node |
 | 2026-03-03 | Faz 1 Paket 2 — SuperAdmin API, Quota, Cache Invalidation |

@@ -4,6 +4,7 @@ import { api, type HealthResponse, type ServiceHealth } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { usePolling } from '../hooks/usePolling';
 import { HealthCard } from '../components/HealthCard';
+import { TranslationStats } from '../components/TranslationStats';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 
@@ -165,6 +166,9 @@ export function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Translation Cache Stats */}
+      <TranslationStats />
 
     </div>
   );

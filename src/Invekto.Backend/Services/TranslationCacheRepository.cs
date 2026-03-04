@@ -23,6 +23,12 @@ public sealed class TranslationCacheRepository
     }
 
     /// <summary>
+    /// Expose connection for stats queries (Ops dashboard).
+    /// </summary>
+    public Task<NpgsqlConnection> GetConnectionAsync(CancellationToken ct = default)
+        => _db.OpenConnectionAsync(ct);
+
+    /// <summary>
     /// SHA256 hash of source text for fast lookup (avoids indexing full text).
     /// </summary>
     public static string ComputeHash(string text)
