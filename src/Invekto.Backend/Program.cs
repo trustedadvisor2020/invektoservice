@@ -7171,12 +7171,25 @@ app.MapGet("/api/v1/payment/history", async (HttpContext ctx, JsonLinesLogger js
 // Ref: arch/db/translations.sql
 // ============================================
 
-// POST /api/v1/translate — Tek mesaj çeviri (JWT auth)
+// POST /api/v1/translate — Tek mesaj çeviri (JWT auth VEYA X-Internal-Api-Key + X-Tenant-Id)
 app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
 {
+    // Auth: JWT TenantContext VEYA InternalApiKey + X-Tenant-Id header
+    int tenantId;
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
-    if (tenantContext == null)
-        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Tenant context missing." }, statusCode: 401);
+    if (tenantContext != null)
+    {
+        tenantId = tenantContext.TenantId;
+    }
+    else
+    {
+        var apiKeyHeader = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
+        if (string.IsNullOrEmpty(internalApiKey) || apiKeyHeader != internalApiKey)
+            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz. JWT veya X-Internal-Api-Key gerekli." }, statusCode: 401);
+
+        if (!int.TryParse(ctx.Request.Headers["X-Tenant-Id"].FirstOrDefault(), out tenantId) || tenantId <= 0)
+            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "X-Tenant-Id header gerekli." }, statusCode: 401);
+    }
 
     TranslateRequest? request;
     try { request = await ctx.Request.ReadFromJsonAsync<TranslateRequest>(); }
@@ -7190,7 +7203,7 @@ app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService tran
 
     try
     {
-        await translationService.TranslateAsync(tenantContext.TenantId, request);
+        await translationService.TranslateAsync(tenantId, request);
         return Results.Ok(request);
     }
     catch (ArgumentException ex) when (ex.Message == ErrorCodes.BackendTranslationUnsupportedLang)
