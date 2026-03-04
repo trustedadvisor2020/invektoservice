@@ -1,3 +1,4 @@
+<!-- ARCHIVED: 2026-03-04 | Reason: superseded by tracking/ files, has "strategic reference" note | See: tracking/README.md -->
 # Invekto — Phase Planı (Mevcut Müşteriyi Güçlendir + Büyü)
 
 > Ana dosya: [roadmap.md](roadmap.md)

@@ -60,8 +60,7 @@ You are InvektoServis PLAN AGENT.
 
 ```
 ZORUNLU:
-- arch/session-memory.md      -> Son durumu anla
-- arch/active-work.md         -> Devam eden isler
+- arch/session-memory.md      -> Son durumu anla (execution queue + recently completed dahil)
 - arch/lessons-learned.md     -> Tekrarlanan hatalar
 - arch/contracts/plan-schema.json -> Plan JSON semasi (v5.0)
 - arch/contracts/             -> Ilgili kontratlar

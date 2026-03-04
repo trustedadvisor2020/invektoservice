@@ -1,3 +1,4 @@
+<!-- Status: DONE -->
 # Flow Builder — Visual Chatbot Flow Designer
 
 > **Roadmap Konumu:** Phase 1 → **GR-1.1 Chatbot / Flow Builder** → Sub-phases FB-1 ~ FB-5

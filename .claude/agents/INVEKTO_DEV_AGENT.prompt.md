@@ -58,8 +58,7 @@ The developer is **Q**. Q owns all decisions.
 
 ```
 ZORUNLU:
-- arch/session-memory.md      -> Son durumu anla
-- arch/active-work.md         -> Devam eden isler
+- arch/session-memory.md      -> Son durumu anla (execution queue + recently completed dahil)
 - arch/lessons-learned.md     -> Tekrarlanan hatalar
 - arch/contracts/             -> Ilgili kontratlar
 - arch/errors.md              -> Error codes

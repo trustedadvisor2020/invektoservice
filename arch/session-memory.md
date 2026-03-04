@@ -13,6 +13,27 @@
 - **Unstaged (pre-existing):** SE/ scripts + test components, arch/deploy bat files, DocumentUpload.tsx, WebScrapingService.cs — başka session'lardan.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
+## Execution Queue
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| — | No active work | — | Q to decide next task |
+
+## Recently Completed
+
+| Date | Task |
+|------|------|
+| 2026-03-03 | QNB VPos 3DPay — tenant_payments, QnbVPosService, 3 endpoints, PaymentPage. Commit 6b2c57a |
+| 2026-03-03 | ikas E-Commerce — IEcommerceProvider, IkasProvider, 6 endpoints, action_ecommerce node |
+| 2026-03-03 | Faz 1 Paket 2 — SuperAdmin API, Quota, Cache Invalidation |
+| 2026-03-02 | Faz 1 Paket 1 — Plan Permission System |
+| 2026-03-02 | RI Cross-Service Integration — Knowledge sync, Outbound rescue, Template CRUD |
+| 2026-03-02 | Knowledge Website Indexing + WebChat Automation Webhook |
+| 2026-03-01 | RI-8 Optimizasyon + RI-7 Tenant Onboarding + RI Faz 3-6 |
+| 2026-02-28 | RI-Faz2 Nightly Batch İlk Çalışma |
+| 2026-02-27 | RI-Faz2 GATE-2 FULL PASS |
+| 2026-02-24 | Dashboard UI Redesign + FlowBuilder Wizard UX |
+
 ## Current State
 
 ### Ports

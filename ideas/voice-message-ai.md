@@ -1,3 +1,4 @@
+<!-- Status: EVALUATED | PKT-11 | 2026-03-04 -->
 # Sesli Mesaj AI — WhatsApp Sesli Mesaj Transkripsiyon + Intent
 
 > **Tarih:** 2026-02-14

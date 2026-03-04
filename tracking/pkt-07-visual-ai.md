@@ -8,6 +8,7 @@ Müşteri görsel gönderir → AI analiz eder → katalogdan eşleşen/benzer �
 
 **Yeni Servis:** `Invekto.VisualSearch` (port 7111)
 **Bagimlilik:** PKT-5 (Integrations), PKT-6A (Intent), Phase 2 (pgvector)
+**Detay:** ideas/archive/visual-product-search.md, ideas/archive/size-fit-ai.md
 
 ## GR Listesi
 

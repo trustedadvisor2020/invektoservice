@@ -1,3 +1,4 @@
+<!-- ARCHIVED: 2026-03-04 | Reason: incorporated into PKT-7 | See: tracking/pkt-07-visual-ai.md -->
 # Visual Product Search (VPS) — Görsel ile Ürün Arama Servisi
 
 > **Tarih:** 2026-02-14

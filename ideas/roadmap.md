@@ -1,3 +1,4 @@
+<!-- Status: ACTIVE -->
 # Invekto Platform Roadmap v4.0
 
 > Kaynak: Hormozi değer denklemi + 75 senaryo analizi + **Q interview (Invekto mevcut durum analizi)**
@@ -14,7 +15,7 @@
 |-------|--------|
 | **roadmap.md** *(bu dosya)* | Navigator — strateji, mimari, özet |
 | [whatisinvekto.md](whatisinvekto.md) | **Invekto mevcut ürün envanteri** — 50+ müşterili çalışan ürünün tam analizi |
-| [roadmap-phases.md](roadmap-phases.md) | Phase 0-7 detaylı plan, DB tabloları, başarı kriterleri |
+| [archive/roadmap-phases.md](archive/roadmap-phases.md) | Phase 0-7 detaylı plan (ARŞİVLENDİ — tracking/ dosyaları güncel) |
 | [roadmap-scenarios.md](roadmap-scenarios.md) | 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + Outbound Engine gereksinimleri |
 | [roadmap-reviews.md](roadmap-reviews.md) | 4 uzman review (Dunford, Lemkin, Lenny, Hormozi) + aksiyonlar |
 
@@ -950,6 +951,22 @@ Voice AI                        Agent seat tasarrufu           +%20-40 (enterpri
 ─────────────────────────────────────────────────────────────────────────
 Toplam (kümülatif):             ARPU 2-3x artış potansiyeli   Phase 4 sonunda
 ```
+
+---
+
+## Backlog — Değerlendirilen Ama Henüz Planlanmayan
+
+> Idea lifecycle: `IDEA → EVALUATED → PLANNED (PKT-xx) → IN-PROGRESS → DONE → ARCHIVED`
+
+| PKT | Fikir | Status | Detay |
+|-----|-------|--------|-------|
+| PKT-11 | Voice Message AI | EVALUATED | [voice-message-ai.md](voice-message-ai.md) — Whisper STT + intent çıkarma |
+| PKT-12 | Review Rescue AI | EVALUATED | [review-rescue-ai.md](review-rescue-ai.md) — Olumsuz yorum önleme |
+| PKT-13 | Multilingual Medical Tourism | EVALUATED | [multilingual-medical-tourism.md](multilingual-medical-tourism.md) — 7/24 çok dilli asistan |
+| — | SDD Roadmap | EVALUATED | [SDD-ROADMAP.md](../SDD-ROADMAP.md) — Spec-Driven Development (internal quality) |
+| — | Internal Sales CRM | IDEA | [internal-sales-crm.md](internal-sales-crm.md) — Invekto kendi satış süreci (placeholder) |
+
+**Arşivlenen fikirler:** `ideas/archive/` — PKT'ye atanmış ve tracking dosyasına aktarılmış eski fikir dosyaları.
 
 ---
 

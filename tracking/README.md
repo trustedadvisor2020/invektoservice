@@ -23,6 +23,9 @@
 | 8 | PKT-8 | Face AI | GR-3D.1~3D.5 | PLANNED | - | - |
 | 9 | PKT-9 | Guzellik Salonu | GR-3E.1~3E.8 | PLANNED | - | - |
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
+| 11 | PKT-11 | Voice Message AI | GR-3G.x | EVALUATED | - | - |
+| 12 | PKT-12 | Review Rescue AI | GR-3H.x | EVALUATED | - | - |
+| 13 | PKT-13 | Multilingual Medical Tourism | GR-3I.x | EVALUATED | - | - |
 | RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | DONE | 24 Sub | GATE-1 PASS (tiered 0.8203) |
 | RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | DONE | 26 Sub | GATE-2 FULL PASS |
 | RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | DONE | 1 Mar | P1-P5 + P6(3.5+3.7): iter 1 FP |
@@ -36,7 +39,7 @@
 | FAZ1-2 | Faz 1 Pkt 2 | SuperAdmin API + Quota | Plan CRUD, Tenant Plan, Cache Invalidation, Quota Enforcement | DONE | 3 Mar | iter 3, FORCE PASS |
 | IKAS-1 | ikas E-Com | ikas E-Commerce Integration | IEcommerceProvider, IkasProvider, 6 endpoints, action_ecommerce node, DB migration | DONE | 3 Mar | iter 4, FORCE PASS |
 
-**Toplam:** 22 paket (22 done, 0 in-progress, 3 planned) | 50+ GR + RI-100+ task | Revenue Intelligence = ana odak
+**Toplam:** 25 paket (22 done, 0 in-progress, 4 planned, 3 evaluated) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 
@@ -63,6 +66,7 @@
 | v5.0 | 2026-02-15 | Tekli GR dongusu -> 10 paket. %60 overhead azalma |
 | v5.1 | 2026-02-15 | PKT-6 (19 GR) -> PKT-6A/6B/6C. Codex PASS olasiligi artirmak icin |
 | v5.2 | 2026-02-17 | PKT-5 -> PKT-5A/5B. PKT-9/10 eklendi (Phase 3E/F). Toplam: 12 paket |
+| v5.3 | 2026-03-04 | PKT-11/12/13 eklendi. Idea lifecycle. active-work kaldirildi |
 
 ## Bagimlilik Zinciri
 
@@ -84,6 +88,9 @@ Phase 0 (Stage-0 + GR-1.x + WA + Knowledge + Flow Builder)
   |    +-- PKT-8 (Face AI - yeni servis :7110)
   |    +-- PKT-9 (Guzellik - config layer, PKT-6 altyapisi)
   |    +-- PKT-10 (Egitim - config layer, PKT-6 altyapisi)
+  |    +-- PKT-11 (Voice Message AI - Whisper STT + intent)
+  |    +-- PKT-12 (Review Rescue AI - ChatAnalysis + Automation)
+  |    +-- PKT-13 (Multilingual Medical Tourism - Health + multilingual)
   |
   +-- REVENUE INTELLIGENCE / SATIS ZEKASI (ANA ODAK — 100+ task)
        |

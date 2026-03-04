@@ -1,3 +1,4 @@
+<!-- Status: EVALUATED | PKT-13 | 2026-03-04 -->
 # 7/24 Çok Dilli Medikal Turizm Asistanı
 
 > **Tarih:** 2026-02-14

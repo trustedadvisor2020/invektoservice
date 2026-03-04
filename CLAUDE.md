@@ -77,6 +77,7 @@ Bu adimlar plan mode dahil her session icin gecerlidir.
 | Yeni endpoint | `arch/endpoints.md` |
 | Yeni servis | `arch/docs/microservice-guide.md` |
 | Kalite durumu | `arch/quality-grades.md` |
+| Fikir/backlog | `ideas/roadmap.md` (Backlog section) |
 
 ## Agents & Skills
 

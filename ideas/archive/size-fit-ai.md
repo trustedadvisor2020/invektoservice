@@ -1,3 +1,4 @@
+<!-- ARCHIVED: 2026-03-04 | Reason: incorporated into PKT-7 as GR-3C.8 | See: tracking/pkt-07-visual-ai.md -->
 # Beden/Ölçü AI — Akıllı Beden Önerisi Servisi
 
 > **Tarih:** 2026-02-14

@@ -1,3 +1,4 @@
+<!-- Status: EVALUATED | PKT-12 | 2026-03-04 -->
 # Olumsuz Yorum Önleme — Proaktif Müşteri Kurtarma
 
 > **Tarih:** 2026-02-14

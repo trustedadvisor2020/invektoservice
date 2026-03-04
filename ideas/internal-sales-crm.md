@@ -1,3 +1,4 @@
+<!-- Status: IDEA -->
 # Invekto Internal Sales CRM
 
 > **Tarih:** 2026-02-16

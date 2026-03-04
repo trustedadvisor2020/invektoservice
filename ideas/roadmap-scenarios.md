@@ -1,3 +1,4 @@
+<!-- Status: REFERENCE -->
 # Invekto — Senaryo Portföyü & Outbound Engine
 
 > Ana dosya: [roadmap.md](roadmap.md)

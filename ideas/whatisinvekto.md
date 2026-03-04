@@ -1,3 +1,4 @@
+<!-- Status: REFERENCE -->
 # Invekto (WapCRM) — Mevcut Ürün Envanteri
 
 > Tarih: 2026-02-08

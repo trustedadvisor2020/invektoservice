@@ -1,3 +1,4 @@
+<!-- ARCHIVED: 2026-03-04 | Reason: incorporated into PKT-8 | See: tracking/pkt-08-face-ai.md -->
 # Yüz Analizi AI — Estetik Klinikler İçin Görsel Konsültasyon
 
 > **Tarih:** 2026-02-14

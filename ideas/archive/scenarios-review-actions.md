@@ -1,3 +1,4 @@
+<!-- ARCHIVED: 2026-03-04 | Reason: COMPLETED, all actions applied | See: ideas/roadmap-scenarios.md -->
 # Senaryo Portfoyü — Review Aksiyon Plani
 
 > **Tarih:** 2026-02-16
