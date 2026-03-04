@@ -20,6 +20,7 @@ using Invekto.Shared.DTOs.Attribution;
 using Invekto.Shared.DTOs.Leads;
 using Invekto.Shared.DTOs.Onboarding;
 using Invekto.Shared.DTOs.Payment;
+using Invekto.Shared.DTOs.Translation;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
@@ -191,6 +192,9 @@ builder.Services.AddHttpClient<FlowBuilderClient>(client =>
 // Register AI Wizard service for flow builder
 builder.Services.AddHttpClient<ClaudeWizardService>();
 
+// Translation service (Claude Haiku-powered, no base address — raw API call)
+builder.Services.AddHttpClient<TranslationService>();
+
 // Configure WebChat HTTP client (with internal API key for operator proxy)
 builder.Services.AddHttpClient<WebChatClient>()
     .AddTypedClient((httpClient, sp) =>
@@ -288,6 +292,10 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     // Onboarding status aggregation (PKT-2: computed from Knowledge + Automation + tenant_registry)
     builder.Services.AddSingleton<OnboardingStatusService>();
 
+    // Translation cache + cleanup (7-day TTL)
+    builder.Services.AddSingleton<TranslationCacheRepository>();
+    builder.Services.AddHostedService<TranslationCleanupService>();
+
 }
 
 // Callback client for async results to Main App
@@ -325,7 +333,7 @@ var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreC
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/translate");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -1813,6 +1821,11 @@ app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatCl
             new() { Method = "GET", Path = "/ops/errors", Description = "Last 100 errors", Auth = "Basic", Category = "Legacy" },
             new() { Method = "GET", Path = "/ops/slow", Description = "Last 100 slow requests", Auth = "Basic", Category = "Legacy" },
             new() { Method = "GET", Path = "/ops/search", Description = "Search by requestId", Auth = "Basic", Category = "Legacy" },
+            // Translation API
+            new() { Method = "POST", Path = "/api/v1/translate", Description = "Translate single message", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/translate/batch", Description = "Batch translate messages (max 50)", Auth = "Bearer", Category = "API" },
+            new() { Method = "POST", Path = "/api/v1/translate/detect", Description = "Detect message language", Auth = "Bearer", Category = "API" },
+            new() { Method = "GET", Path = "/api/v1/translate/languages", Description = "List supported languages", Auth = "Bearer", Category = "API" },
         })
     };
 
@@ -7091,6 +7104,157 @@ app.MapGet("/api/v1/payment/history", async (HttpContext ctx, JsonLinesLogger js
         jsonLog.SystemWarn($"Payment history failed ({ErrorCodes.BackendPaymentHistoryFailed}): {ex.Message}");
         return Results.Json(new { error = ErrorCodes.BackendPaymentHistoryFailed, message = "Ödeme geçmişi yüklenemedi." }, statusCode: 500);
     }
+});
+
+// ============================================
+// TRANSLATION — Chat Message Translation API
+// Ref: arch/db/translations.sql
+// ============================================
+
+// POST /api/v1/translate — Tek mesaj çeviri (JWT auth)
+app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Tenant context missing." }, statusCode: 401);
+
+    TranslateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<TranslateRequest>(); }
+    catch (JsonException) { return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "Geçersiz istek gövdesi." }, statusCode: 400); }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.Text))
+        return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "Çevrilecek metin boş olamaz." }, statusCode: 400);
+
+    if (string.IsNullOrWhiteSpace(request.TargetLanguage))
+        return Results.Json(new { error = ErrorCodes.BackendTranslationUnsupportedLang, message = "Hedef dil belirtilmeli." }, statusCode: 400);
+
+    try
+    {
+        var result = await translationService.TranslateAsync(tenantContext.TenantId, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex) when (ex.Message == ErrorCodes.BackendTranslationUnsupportedLang)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationUnsupportedLang, message = "Desteklenmeyen hedef dil." }, statusCode: 400);
+    }
+    catch (ArgumentException ex) when (ex.Message == ErrorCodes.BackendTranslationInvalidText)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "Geçersiz kaynak metin." }, statusCode: 400);
+    }
+    catch (HttpRequestException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLog.StepError($"[{ErrorCodes.BackendTranslationFailed}] HTTP: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationFailed, message = "Çeviri işlemi başarısız." }, statusCode: 500);
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationFailed, message = "Çeviri zaman aşımına uğradı." }, statusCode: 504);
+    }
+    catch (InvalidOperationException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLog.StepError($"[{ErrorCodes.BackendTranslationFailed}] {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationFailed, message = "Çeviri işlemi başarısız." }, statusCode: 500);
+    }
+});
+
+// POST /api/v1/translate/batch — Toplu çeviri, max 50 mesaj (JWT auth)
+app.MapPost("/api/v1/translate/batch", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Tenant context missing." }, statusCode: 401);
+
+    BatchTranslateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<BatchTranslateRequest>(); }
+    catch (JsonException) { return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "Geçersiz istek gövdesi." }, statusCode: 400); }
+
+    if (request == null || request.Messages.Count == 0)
+        return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "Çevrilecek mesaj listesi boş." }, statusCode: 400);
+
+    if (request.Messages.Count > 50)
+        return Results.Json(new { error = ErrorCodes.BackendTranslationBatchTooLarge, message = "Toplu çeviri limiti 50 mesaj." }, statusCode: 400);
+
+    if (string.IsNullOrWhiteSpace(request.TargetLanguage))
+        return Results.Json(new { error = ErrorCodes.BackendTranslationUnsupportedLang, message = "Hedef dil belirtilmeli." }, statusCode: 400);
+
+    try
+    {
+        var result = await translationService.TranslateBatchAsync(tenantContext.TenantId, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex) when (ex.Message == ErrorCodes.BackendTranslationUnsupportedLang)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationUnsupportedLang, message = "Desteklenmeyen hedef dil." }, statusCode: 400);
+    }
+    catch (ArgumentException ex) when (ex.Message == ErrorCodes.BackendTranslationBatchTooLarge)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationBatchTooLarge, message = "Toplu çeviri limiti 50 mesaj." }, statusCode: 400);
+    }
+    catch (HttpRequestException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLog.StepError($"[{ErrorCodes.BackendTranslationFailed}] Batch HTTP: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationFailed, message = "Toplu çeviri işlemi başarısız." }, statusCode: 500);
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationFailed, message = "Toplu çeviri zaman aşımına uğradı." }, statusCode: 504);
+    }
+    catch (InvalidOperationException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLog.StepError($"[{ErrorCodes.BackendTranslationFailed}] Batch: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationFailed, message = "Toplu çeviri işlemi başarısız." }, statusCode: 500);
+    }
+});
+
+// POST /api/v1/translate/detect — Dil algılama (JWT auth)
+app.MapPost("/api/v1/translate/detect", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Tenant context missing." }, statusCode: 401);
+
+    DetectLanguageRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<DetectLanguageRequest>(); }
+    catch (JsonException) { return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "Geçersiz istek gövdesi." }, statusCode: 400); }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.Text))
+        return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "Metin boş olamaz." }, statusCode: 400);
+
+    try
+    {
+        var result = await translationService.DetectLanguageAsync(request.Text);
+        return Results.Ok(result);
+    }
+    catch (HttpRequestException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLog.StepError($"[{ErrorCodes.BackendTranslationDetectFailed}] HTTP: {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationDetectFailed, message = "Dil algılama başarısız." }, statusCode: 500);
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.Json(new { error = ErrorCodes.BackendTranslationDetectFailed, message = "Dil algılama zaman aşımına uğradı." }, statusCode: 504);
+    }
+    catch (InvalidOperationException ex)
+    {
+        var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+        jsonLog.StepError($"[{ErrorCodes.BackendTranslationDetectFailed}] {ex.Message}", requestId);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationDetectFailed, message = "Dil algılama başarısız." }, statusCode: 500);
+    }
+});
+
+// GET /api/v1/translate/languages — Desteklenen dil listesi (JWT auth)
+app.MapGet("/api/v1/translate/languages", (HttpContext ctx) =>
+{
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Tenant context missing." }, statusCode: 401);
+
+    return Results.Ok(TranslationService.SupportedLanguages);
 });
 
 // ============================================

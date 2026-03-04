@@ -381,6 +381,14 @@ public static class ErrorCodes
     public const string MarketingResponseGenerationFailed = "INV-MK-022";
     public const string MarketingClaudeUnavailable = "INV-MK-023";
 
+    // Backend Translation (INV-BE-090+)
+    public const string BackendTranslationFailed = "INV-BE-090";            // Claude translation API call failed
+    public const string BackendTranslationDetectFailed = "INV-BE-091";      // Language detection failed
+    public const string BackendTranslationCacheError = "INV-BE-092";        // Translation cache read/write error
+    public const string BackendTranslationUnsupportedLang = "INV-BE-093";   // Unsupported target language
+    public const string BackendTranslationBatchTooLarge = "INV-BE-094";     // Batch size exceeds limit (max 50)
+    public const string BackendTranslationInvalidText = "INV-BE-095";       // Empty or invalid source text
+
     // WebChat errors (INV-WC-xxx)
     public const string WebChatInvalidVisitor = "INV-WC-001";
     public const string WebChatConversationNotFound = "INV-WC-002";

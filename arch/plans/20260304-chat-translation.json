@@ -1,0 +1,199 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260304-chat-translation",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-03-04T10:00:00Z",
+  "updated_at": "2026-03-04T14:30:00Z",
+  "review_verdict": "FORCE PASS",
+  "review_iterations": 3,
+  "review_notes": "Q FORCE PASS — CQ5 tenant_id in DeleteExpiredAsync is by-design (cross-tenant cleanup). Q3 batch graceful degradation is intentional. catch(Exception) fully resolved with typed catches.",
+  "plan": {
+    "summary": "INMA Chat Translation API: Claude Haiku-powered message translation with 7-day DB cache. Generic API supporting all channels (WhatsApp, WebChat, future). 4 endpoints: translate, batch, detect, languages. Implements all 6 aha moments: auto-detect banner, inline toggle data, write preview, cache, contact language profile, sticky mode support.",
+    "q_intent": "inma da kullanıcı sohbet içinde bir mesaja tıklayınca onun istediği dilde çevirisini görecek. mesaj atmak istediğinde mesajı kendi dilinde yazacak ve bunu diğer tarafın diline çevirecek. çeviri yapılan mesajları tekrar çeviri yapmaması lazım, en azından belli bir süre.",
+    "interview_notes": "UI: INMA API (biz sadece backend). Provider: Claude Haiku (mevcut API key). Scope: Tüm kanallar (generic). Target lang: İstek bazlı. Cache TTL: 1 hafta (Q kararı).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "POST /api/v1/translate tek mesaj çevirisi yapabilmeli, response'da from_cache flag dönmeli",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "POST /api/v1/translate/batch birden fazla mesajı tek request'te çevirebilmeli, cache hit olanları API'ye göndermemeli",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "POST /api/v1/translate/detect mesaj dilini algılayabilmeli (Claude-based + LanguageDetector fallback)",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "GET /api/v1/translate/languages desteklenen dil listesini dönmeli",
+        "verified": false
+      },
+      {
+        "id": "AC5",
+        "criterion": "Çeviriler message_translations tablosunda cache'lenmeli, aynı mesaj+hedef dil tekrar API'ye gitmemeli",
+        "verified": false
+      },
+      {
+        "id": "AC6",
+        "criterion": "Cache TTL 7 gün olmalı, süresi dolan kayıtlar TranslationCleanupService tarafından temizlenmeli",
+        "verified": false
+      },
+      {
+        "id": "AC7",
+        "criterion": "Tenant isolation: her tenant sadece kendi çevirilerine erişebilmeli",
+        "verified": false
+      },
+      {
+        "id": "AC8",
+        "criterion": "Error codes INV-BE-090..095 errors.md ve ErrorCodes.cs'de kayıtlı olmalı",
+        "verified": false
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/db/translations.sql",
+    "arch/db/migrations/006-translations.sql",
+    "src/Invekto.Backend/Services/TranslationService.cs",
+    "src/Invekto.Backend/Services/TranslationCacheRepository.cs",
+    "src/Invekto.Backend/Services/TranslationCleanupService.cs",
+    "src/Invekto.Shared/Dtos/TranslationDtos.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md",
+    "arch/endpoints.md",
+    "postman/InvektoServis.postman_collection.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/translations.sql", "is_new": true, "change": "Translation cache schema (source of truth)" },
+    { "path": "arch/db/migrations/006-translations.sql", "is_new": true, "change": "DB migration for message_translations table" },
+    { "path": "src/Invekto.Backend/Services/TranslationService.cs", "is_new": true, "change": "Claude Haiku translation + language detection service" },
+    { "path": "src/Invekto.Backend/Services/TranslationCacheRepository.cs", "is_new": true, "change": "DB cache repository (SHA256 lookup, batch get, upsert, TTL)" },
+    { "path": "src/Invekto.Backend/Services/TranslationCleanupService.cs", "is_new": true, "change": "Background hourly expired cache cleanup (IHostedService)" },
+    { "path": "src/Invekto.Shared/DTOs/Translation/TranslationDtos.cs", "is_new": true, "change": "8 DTOs for translate/batch/detect/languages API" },
+    { "path": "arch/plans/20260304-chat-translation.json", "is_new": true, "change": "Plan JSON" },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "4 endpoints + DI registration + JWT auth prefix + discovery" },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false, "change": "INV-BE-090..095 translation error codes" },
+    { "path": "arch/errors.md", "is_new": false, "change": "Error code documentation for INV-BE-090..095" },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false, "change": "TranslationModel + TranslationTimeoutSeconds config" }
+  ],
+  "git_diff": {
+    "sha256": "6466bf16c0f4054633fdd70a55060b2fbdf941544df238cc0102c2b92369d027",
+    "full_path": "arch/plans/diffs/20260304-chat-translation.diff",
+    "stats": { "insertions": 1082, "deletions": 2, "files_count": 11 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-04T11:00:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Is tenant_id enforced on all translation queries to prevent cross-tenant data leakage?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Does the cache lookup use SHA256(source_text) + target_language + tenant_id as the composite key?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Is the Claude API call wrapped in try-catch with proper error code (INV-BE-090) and does it not silently swallow failures?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q4",
+      "question": "Does TranslationCleanupService properly delete expired rows (expires_at < NOW()) without affecting live cache entries?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q5",
+      "question": "Are batch translate requests bounded (max items per request) to prevent abuse and excessive Claude API costs?",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.ChatAnalysis/",
+      "src/Invekto.Automation/",
+      "src/Invekto.AgentAI/",
+      "src/Invekto.WhatsAppAnalytics/",
+      "Dashboard/"
+    ],
+    "non_goals": [
+      "INMA frontend UI changes (INMA's responsibility)",
+      "Real-time typing translation",
+      "Custom glossary/terminology system",
+      "Multi-language routing/assignment",
+      "WebChat UI translation panel"
+    ],
+    "intentional_exclusions": [
+      "No Dashboard UI — INMA consumes API directly",
+      "No WebSocket/real-time push — INMA polls or uses on-demand",
+      "No translation quality scoring — Claude output trusted as-is"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "TranslationService.cs:TranslateAsync",
+      "TranslationService.cs:DetectLanguageAsync",
+      "TranslationCacheRepository.cs:GetAsync",
+      "TranslationCacheRepository.cs:SaveAsync"
+    ],
+    "user_facing_errors": [
+      "INV-BE-090: Translation API call failed",
+      "INV-BE-091: Language detection failed",
+      "INV-BE-092: Translation cache error",
+      "INV-BE-093: Unsupported target language",
+      "INV-BE-094: Batch size exceeds limit (max 50)",
+      "INV-BE-095: Empty or invalid source text"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All Claude API errors are caught and returned with INV-BE-090. Cache miss gracefully falls through to API call. Cleanup service logs but does not throw."
+  },
+  "aha_moments": [
+    {
+      "category": "SPEED",
+      "user_pain": "Her mesaj için ayrı çeviri isteği yavaş, sohbet açıldığında tüm mesajlar toplu çevrilmeli",
+      "suggestion": "POST /api/v1/translate/batch endpoint'i ile tek request'te 50 mesaja kadar çeviri. Cache hit olanlar anında dönüyor, sadece yeniler Claude'a gidiyor.",
+      "aha_moment": "Temsilci sohbeti açtığında TÜM mesajlar 1-2 saniyede çevrilmiş olarak geliyor, cache sayesinde geri dönüşte 0ms"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Sohbetten çıkıp geri dönünce çeviriler kayboluyordu, tekrar API çağrısı gerekiyordu",
+      "suggestion": "7 gün TTL ile DB-backed cache. from_cache flag sayesinde INMA hangi çevirilerin cache'den geldiğini biliyor.",
+      "aha_moment": "Geri döndüğünde çeviriler hala orada — hiçbir şey kaybolmadı, hiçbir bekleme yok"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Temsilci mesajı yazıp göndermeden önce çevirinin doğru olup olmadığını göremiyordu",
+      "suggestion": "Aynı /translate endpoint'i outgoing mesajlar için de kullanılır. INMA debounced preview gösterir, temsilci gönder'e basmadan çeviriyi görür.",
+      "aha_moment": "Türkçe yazıyorum, altında İngilizce çevirisi anında beliriyor — karşı tarafın ne göreceğini kontrol edebiliyorum"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Yabancı müşterinin hangi dilde yazdığı belli değildi, her seferinde tahmin gerekiyordu",
+      "suggestion": "POST /api/v1/translate/detect Claude-based dil algılama + confidence score. INMA bunu kontakt profiline kaydedebilir.",
+      "aha_moment": "Sistem müşteriyi tanıyor — dil otomatik algılandı, temsilci düşünmeden çeviriye başladı"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Yabancı müşteriyle iletişim kopukluğu satış kaybına yol açıyordu (turist, yabancı müşteri)",
+      "suggestion": "Çift yönlü çeviri (gelen + giden) ile dil bariyeri tamamen kalkıyor. Temsilci kendi dilinde düşünüp yazıyor, müşteri kendi dilinde okuyor.",
+      "aha_moment": "Arapça yazan müşteriyle Türkçe düşünüp sorunsuz satış kapattım — dil artık engel değil"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}

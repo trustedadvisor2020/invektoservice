@@ -148,6 +148,26 @@ errors:
     description: Payment amount invalid
     user_message: Geçersiz ödeme tutarı (sıfır veya negatif).
 
+  # Backend Translation (INV-BE-090+) — Chat Translation API
+  - code: INV-BE-090
+    description: Translation API call failed
+    user_message: Çeviri işlemi başarısız oldu.
+  - code: INV-BE-091
+    description: Language detection failed
+    user_message: Dil algılama başarısız oldu.
+  - code: INV-BE-092
+    description: Translation cache error
+    user_message: Çeviri önbellek hatası.
+  - code: INV-BE-093
+    description: Unsupported target language
+    user_message: Desteklenmeyen hedef dil.
+  - code: INV-BE-094
+    description: Batch size exceeds limit (max 50)
+    user_message: Toplu çeviri limiti aşıldı (maks. 50 mesaj).
+  - code: INV-BE-095
+    description: Empty or invalid source text
+    user_message: Çevrilecek metin boş veya geçersiz.
+
   # ── CA — ChatAnalysis ──
   - code: INV-CA-001
     description: Invalid payload
