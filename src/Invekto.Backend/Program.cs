@@ -333,7 +333,7 @@ var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreC
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/translate");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/translate/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -7103,12 +7103,24 @@ app.MapPost("/api/v1/translate/batch", async (HttpContext ctx, TranslationServic
     }
 });
 
-// POST /api/v1/translate/detect — Dil algılama (JWT auth)
-app.MapPost("/api/v1/translate/detect", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
+// POST /api/v1/translate/detect — Dil algılama (JWT auth VEYA X-Internal-Api-Key + X-Tenant-Id)
+// Ayrıca /api/v1/detect-language olarak da erişilebilir (middleware bypass)
+app.MapPost("/api/v1/detect-language", DetectLanguageHandler);
+app.MapPost("/api/v1/translate/detect", DetectLanguageHandler);
+
+async Task<IResult> DetectLanguageHandler(HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog)
 {
+    // Auth: JWT TenantContext VEYA InternalApiKey + X-Tenant-Id header
     var tenantContext = ctx.Items["TenantContext"] as TenantContext;
     if (tenantContext == null)
-        return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Tenant context missing." }, statusCode: 401);
+    {
+        var apiKeyHeader = ctx.Request.Headers["X-Internal-Api-Key"].FirstOrDefault();
+        if (string.IsNullOrEmpty(internalApiKey) || apiKeyHeader != internalApiKey)
+            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz. JWT veya X-Internal-Api-Key gerekli." }, statusCode: 401);
+
+        if (!int.TryParse(ctx.Request.Headers["X-Tenant-Id"].FirstOrDefault(), out var tid) || tid <= 0)
+            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "X-Tenant-Id header gerekli." }, statusCode: 401);
+    }
 
     DetectLanguageRequest? request;
     try { request = await ctx.Request.ReadFromJsonAsync<DetectLanguageRequest>(); }
@@ -7138,7 +7150,7 @@ app.MapPost("/api/v1/translate/detect", async (HttpContext ctx, TranslationServi
         jsonLog.StepError($"[{ErrorCodes.BackendTranslationDetectFailed}] {ex.Message}", requestId);
         return Results.Json(new { error = ErrorCodes.BackendTranslationDetectFailed, message = "Dil algılama başarısız." }, statusCode: 500);
     }
-});
+}
 
 // GET /api/v1/translate/languages — Desteklenen dil listesi (JWT auth)
 app.MapGet("/api/v1/translate/languages", (HttpContext ctx) =>

@@ -317,21 +317,22 @@ public sealed class TranslationService
         var targetName = SupportedLanguages.FirstOrDefault(l => l.Code == targetLang)?.Name ?? targetLang;
         var sourceName = SupportedLanguages.FirstOrDefault(l => l.Code == sourceLang)?.Name ?? sourceLang;
 
-        var prompt = $"Translate the following text from {sourceName} to {targetName}. Return ONLY the translated text, nothing else. Do not add explanations, quotes, or formatting.\n\nText: {text}";
-        return await CallClaudeRawAsync(prompt, 2048, ct);
+        var system = $"You are a translation engine. Output ONLY the {targetName} translation. No explanations, no commentary, no quotes, no notes. If the text is already in {targetName}, output it unchanged.";
+        var prompt = text;
+        return await CallClaudeRawAsync(system, prompt, 2048, ct);
     }
 
     /// <summary>
     /// Low-level Claude API call. Returns the text content of the first content block.
     /// </summary>
-    private async Task<string> CallClaudeRawAsync(string userMessage, int maxTokens, CancellationToken ct)
+    private Task<string> CallClaudeRawAsync(string userMessage, int maxTokens, CancellationToken ct)
+        => CallClaudeRawAsync(null, userMessage, maxTokens, ct);
+
+    private async Task<string> CallClaudeRawAsync(string? systemPrompt, string userMessage, int maxTokens, CancellationToken ct)
     {
-        var requestBody = new
-        {
-            model = _model,
-            max_tokens = maxTokens,
-            messages = new[] { new { role = "user", content = userMessage } }
-        };
+        object requestBody = systemPrompt != null
+            ? new { model = _model, max_tokens = maxTokens, system = systemPrompt, messages = new[] { new { role = "user", content = userMessage } } }
+            : new { model = _model, max_tokens = maxTokens, messages = new[] { new { role = "user", content = userMessage } } };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
         httpRequest.Headers.Add("x-api-key", _apiKey);
