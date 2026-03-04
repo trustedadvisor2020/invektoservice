@@ -14,10 +14,10 @@
 | Dosya | İçerik |
 |-------|--------|
 | **roadmap.md** *(bu dosya)* | Navigator — strateji, mimari, özet |
-| [whatisinvekto.md](whatisinvekto.md) | **Invekto mevcut ürün envanteri** — 50+ müşterili çalışan ürünün tam analizi |
-| [archive/roadmap-phases.md](archive/roadmap-phases.md) | Phase 0-7 detaylı plan (ARŞİVLENDİ — tracking/ dosyaları güncel) |
-| [roadmap-scenarios.md](roadmap-scenarios.md) | 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + Outbound Engine gereksinimleri |
-| [roadmap-reviews.md](roadmap-reviews.md) | 4 uzman review (Dunford, Lemkin, Lenny, Hormozi) + aksiyonlar |
+| [whatisinvekto.md](../arch/docs/whatisinvekto.md) | **Invekto mevcut ürün envanteri** — 50+ müşterili çalışan ürünün tam analizi |
+| [roadmap-phases.md](ideas/archive/roadmap-phases.md) | Phase 0-7 detaylı plan (ARŞİVLENDİ — tracking/ dosyaları güncel) |
+| [roadmap-scenarios.md](../arch/docs/roadmap-scenarios.md) | 75 senaryo (25 e-ticaret + 25 diş + 25 klinik/estetik) + Outbound Engine gereksinimleri |
+| [roadmap-reviews.md](../arch/docs/roadmap-reviews.md) | 4 uzman review (Dunford, Lemkin, Lenny, Hormozi) + aksiyonlar |
 
 ---
 
@@ -32,7 +32,7 @@ v4 (GERÇEKLİK):          Mevcut müşteriyi güçlendir → Otomasyon → Nich
 > **v4 NEDEN FARKLI:** Invekto sıfırdan başlamıyor. 50+ aktif müşteri, 50-200K TL MRR,
 > 7 kanal, gelişmiş routing, CRM, VOIP — hepsi zaten var. Eksik olan **otomasyon ve AI katmanı**.
 > Bu hem satış engeli ("Chatbot yok mu?") hem churn sebebi (otomasyon eksikliği).
-> Detay: bkz [whatisinvekto.md](whatisinvekto.md)
+> Detay: bkz [whatisinvekto.md](../arch/docs/whatisinvekto.md)
 
 Her phase'in 3 soruya cevabı olmalı:
 1. **Mevcut müşteri ne kazanıyor?** (churn düşür, upsell artır)
@@ -91,7 +91,7 @@ Her phase'in 3 soruya cevabı olmalı:
 | Randevu motoru | 🟠 Mevcut klinik müşterileri bekliyor | Phase 2 (Hibrit v4.1) | ⬜ Başlamadı |
 | Trendyol/HB API | 🟡 E-ticaret niche genişlemesi | Phase 3 (Hibrit v4.1) | ⬜ Başlamadı |
 
-> Tam liste: bkz [whatisinvekto.md](whatisinvekto.md) — "Mevcut Olmayan Özellikler" bölümü
+> Tam liste: bkz [whatisinvekto.md](../arch/docs/whatisinvekto.md) — "Mevcut Olmayan Özellikler" bölümü
 
 ---
 
@@ -325,7 +325,7 @@ Değer Denklemi:
 
 ## Senaryo Portföyü (Özet)
 
-> Detay: bkz [roadmap-scenarios.md](roadmap-scenarios.md)
+> Detay: bkz [roadmap-scenarios.md](../arch/docs/roadmap-scenarios.md)
 
 **75 senaryo**, 3 sektör, 6 persona, toplam aylık etki potansiyeli hesaplanıyor:
 
@@ -335,14 +335,14 @@ Değer Denklemi:
 | Diş Klinikleri | 25 senaryo | [D1] Dr. Burak, [D2] Elif |
 | Klinik/Estetik | 25 senaryo | [A1] Dr. Selin, [A2] Zeynep |
 
-**Kritik bulgu:** Senaryoların çoğu **Outbound Engine** gerektiriyor. Bu olmadan gelir potansiyelinin büyük kısmı kilitli. Outbound Engine gereksinimleri ve detaylı senaryo tabloları: [roadmap-scenarios.md](roadmap-scenarios.md)
+**Kritik bulgu:** Senaryoların çoğu **Outbound Engine** gerektiriyor. Bu olmadan gelir potansiyelinin büyük kısmı kilitli. Outbound Engine gereksinimleri ve detaylı senaryo tabloları: [roadmap-scenarios.md](../arch/docs/roadmap-scenarios.md)
 
 ---
 
 ## Phase Planı (Özet — v4.0 Gerçeklik Bazlı)
 
 > Detay: bkz [roadmap-phases.md](roadmap-phases.md)
-> Mevcut durum: bkz [whatisinvekto.md](whatisinvekto.md)
+> Mevcut durum: bkz [whatisinvekto.md](../arch/docs/whatisinvekto.md)
 
 **BAŞLANGIÇ NOKTASI:** 50+ müşteri, 50-200K TL MRR, 7 kanal CRM çalışıyor.
 
@@ -360,7 +360,7 @@ Değer Denklemi:
 | **6** | 41-48 | **Operasyon & Analytics** — SLA, QA scoring (C13), conversation mining | 2M+ | 200+ |
 | **7** | 49+ | **Genişleme** — mobil app, yeni kanallar/entegrasyonlar, global pazar | 2M++ | 200++ |
 
-> \* Phase 1 timeline solo founder için **10-15 hafta** daha gerçekçi — bkz [roadmap-reviews.md](roadmap-reviews.md) Lemkin uyarısı.
+> \* Phase 1 timeline solo founder için **10-15 hafta** daha gerçekçi — bkz [roadmap-reviews.md](../arch/docs/roadmap-reviews.md) Lemkin uyarısı.
 > Sonraki phase'ler buna göre kayar.
 
 Her phase'in detaylı adımları, DB tabloları, başarı kriterleri ve geçiş şartları: [roadmap-phases.md](roadmap-phases.md)
@@ -564,7 +564,7 @@ Phase 3C-3D eklentisi (GÖRSEL AI — v4.5):
 
 ## Uzman Review'ları (Özet)
 
-> Detay: bkz [roadmap-reviews.md](roadmap-reviews.md)
+> Detay: bkz [roadmap-reviews.md](../arch/docs/roadmap-reviews.md)
 
 | Uzman | Teşhis | Aksiyon | Durum |
 |-------|--------|---------|-------|
@@ -960,13 +960,19 @@ Toplam (kümülatif):             ARPU 2-3x artış potansiyeli   Phase 4 sonund
 
 | PKT | Fikir | Status | Detay |
 |-----|-------|--------|-------|
-| PKT-11 | Voice Message AI | EVALUATED | [voice-message-ai.md](voice-message-ai.md) — Whisper STT + intent çıkarma |
-| PKT-12 | Review Rescue AI | EVALUATED | [review-rescue-ai.md](review-rescue-ai.md) — Olumsuz yorum önleme |
-| PKT-13 | Multilingual Medical Tourism | EVALUATED | [multilingual-medical-tourism.md](multilingual-medical-tourism.md) — 7/24 çok dilli asistan |
+| PKT-11 | Voice Message AI | EVALUATED | [voice-message-ai.md](ideas/voice-message-ai.md) — Whisper STT + intent çıkarma |
+| PKT-12 | Review Rescue AI | EVALUATED | [review-rescue-ai.md](ideas/review-rescue-ai.md) — Olumsuz yorum önleme |
+| PKT-13 | Multilingual Medical Tourism | EVALUATED | [multilingual-medical-tourism.md](ideas/multilingual-medical-tourism.md) — 7/24 çok dilli asistan |
 | — | SDD Roadmap | EVALUATED | [SDD-ROADMAP.md](../SDD-ROADMAP.md) — Spec-Driven Development (internal quality) |
-| — | Internal Sales CRM | IDEA | [internal-sales-crm.md](internal-sales-crm.md) — Invekto kendi satış süreci (placeholder) |
+| — | Internal Sales CRM | IDEA | [internal-sales-crm.md](ideas/internal-sales-crm.md) — Invekto kendi satış süreci (placeholder) |
+| — | Billing Abonelik Sistemi | EVALUATED | Lansman Faz 2 — tenant_subscriptions, recurring billing, trial lifecycle, fatura PDF. Kaynak: [arch/docs/lansman/03-BILLING-VE-PERMISSION-PLANI.md](../arch/docs/lansman/03-BILLING-VE-PERMISSION-PLANI.md) |
+| — | Feature Matrix Config | EVALUATED | 3 tier × 10+ feature availability tablosu (DB/JSON). Kaynak: [arch/docs/lansman/03-BILLING-VE-PERMISSION-PLANI.md](../arch/docs/lansman/03-BILLING-VE-PERMISSION-PLANI.md) |
+| — | Onboarding Wizard | EVALUATED | 5 adımlı wizard: sektör → kanal → template → WebChat test → go-live, 6 endpoint. Kaynak: [arch/docs/lansman/04-ONBOARDING-PLANI.md](../arch/docs/lansman/04-ONBOARDING-PLANI.md) |
+| — | WebChat Customization | EVALUATED | Widget kişiselleştirme: color, logo, welcome_message. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
+| — | Domain Split (super vs crm) | EVALUATED | super.invekto.com (ops) vs crm.invekto.com (tenant) — IIS ARR + React routing. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
+| — | Pricing Page + Sign-up Form | EVALUATED | invekto.com gerçek plan fiyatları + demo/kayıt formu. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
 
-**Arşivlenen fikirler:** `ideas/archive/` — PKT'ye atanmış ve tracking dosyasına aktarılmış eski fikir dosyaları.
+**Arşivlenen fikirler:** `tracking/ideas/archive/` — PKT'ye atanmış ve tracking dosyasına aktarılmış eski fikir dosyaları.
 
 ---
 

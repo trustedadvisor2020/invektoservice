@@ -1,7 +1,7 @@
 # Gelecek Fazlar (Phase 4 ~ Phase 7)
 
 > Uzak gelecek fazları. Detaylar ihtiyaç olduğunda güncellenecek.
-> Kaynak: ideas/phases/phase-4.md ~ phase-7.md (artık silinmiş)
+> Kaynak: eski ideas/phases/ dosyaları (silinmiş, detay tracking/roadmap.md'de)
 
 ---
 

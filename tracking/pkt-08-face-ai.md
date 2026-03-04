@@ -8,7 +8,7 @@ MediaPipe + Claude Vision ile yüz analizi. Estetik klinikler için tedavi eşle
 
 **Yeni Servis:** `Invekto.FaceAnalysis` (port 7110)
 **Bagimlilik:** PKT-6A (Intent), PKT-6C (Marketing multilingual)
-**Detay:** ideas/archive/face-analysis-ai.md
+**Detay:** tracking/ideas/archive/face-analysis-ai.md
 
 ## GR Listesi
 

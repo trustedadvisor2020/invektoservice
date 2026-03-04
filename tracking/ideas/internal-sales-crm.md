@@ -4,7 +4,7 @@
 > **Tarih:** 2026-02-16
 > **Karar:** D4 — roadmap-scenarios.md = müşteri senaryoları. Invekto'nun kendi satış süreci ayrı doküman.
 > **Durum:** PLACEHOLDER — içerik yazılacak
-> **İlişki:** `ideas/roadmap-scenarios.md` (müşteri senaryoları), `ideas/scenarios-review-actions.md` (D4 kararı)
+> **İlişki:** `arch/docs/roadmap-scenarios.md` (müşteri senaryoları), `tracking/ideas/archive/scenarios-review-actions.md` (D4 kararı)
 
 ---
 
