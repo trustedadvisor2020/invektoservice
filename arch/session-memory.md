@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-03-04
-- **Status:** Chat Translation API deploy + Postman + Dashboard widget DONE.
-- **Last Task:** Translation deploy (migration 006 + Backend deploy HEALTHY) + Postman JSON (4 endpoint) + Ops Dashboard TranslationStats widget (stats API + React component).
-- **Production Deploy:** Backend HEALTHY. Migration 006 (message_translations) çalıştırıldı.
+- **Status:** Translation INMA echo-back contract deploy DONE.
+- **Last Task:** TranslateRequest INMA contract (userID/channelID/chatID/messageID/message/translatedMessage/targetLanguage echo-back) + Postman güncelleme + Backend deploy HEALTHY.
+- **Production Deploy:** Backend HEALTHY x2 (ilk deploy: migration+stats, ikinci: INMA contract).
 - **Next Task:** Q karar verecek. Pending unstaged: inse_v3_concept.html.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
@@ -22,7 +22,7 @@
 
 | Date | Task |
 |------|------|
-| 2026-03-04 | Chat Translation deploy + Postman JSON (4 ep) + Ops Dashboard TranslationStats widget |
+| 2026-03-04 | Translation INMA echo-back contract + Postman + Dashboard widget + 2x Backend deploy |
 | 2026-03-03 | QNB VPos 3DPay — tenant_payments, QnbVPosService, 3 endpoints, PaymentPage. Commit 6b2c57a |
 | 2026-03-03 | ikas E-Commerce — IEcommerceProvider, IkasProvider, 6 endpoints, action_ecommerce node |
 | 2026-03-03 | Faz 1 Paket 2 — SuperAdmin API, Quota, Cache Invalidation |

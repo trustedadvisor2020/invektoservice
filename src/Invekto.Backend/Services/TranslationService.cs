@@ -68,18 +68,21 @@ public sealed class TranslationService
     /// <summary>
     /// Translate a single message. Uses cache first, falls back to Claude API.
     /// </summary>
-    public async Task<TranslateResponse> TranslateAsync(int tenantId, TranslateRequest request, CancellationToken ct = default)
+    /// <summary>
+    /// Translate single message. Fills request.TranslatedMessage in-place (INMA echo-back contract).
+    /// </summary>
+    public async Task TranslateAsync(int tenantId, TranslateRequest request, CancellationToken ct = default)
     {
         var targetLang = LanguageDetector.Normalize(request.TargetLanguage)
             ?? throw new ArgumentException(ErrorCodes.BackendTranslationUnsupportedLang);
 
-        if (string.IsNullOrWhiteSpace(request.Text))
+        if (string.IsNullOrWhiteSpace(request.Message))
             throw new ArgumentException(ErrorCodes.BackendTranslationInvalidText);
 
         if (!SupportedLanguageCodes.Contains(targetLang))
             throw new ArgumentException(ErrorCodes.BackendTranslationUnsupportedLang);
 
-        var sourceHash = TranslationCacheRepository.ComputeHash(request.Text);
+        var sourceHash = TranslationCacheRepository.ComputeHash(request.Message);
 
         // Check cache (degrade gracefully on DB failure)
         try
@@ -87,13 +90,8 @@ public sealed class TranslationService
             var cached = await _cache.GetAsync(tenantId, sourceHash, targetLang, ct);
             if (cached != null)
             {
-                return new TranslateResponse
-                {
-                    TranslatedText = cached.TranslatedText,
-                    SourceLanguage = cached.SourceLanguage ?? LanguageDetector.Detect(request.Text),
-                    TargetLanguage = targetLang,
-                    FromCache = true
-                };
+                request.TranslatedMessage = cached.TranslatedText;
+                return;
             }
         }
         catch (NpgsqlException ex)
@@ -102,23 +100,17 @@ public sealed class TranslationService
         }
 
         // Call Claude API
-        var sourceLang = LanguageDetector.Normalize(request.SourceLanguage) ?? LanguageDetector.Detect(request.Text);
-        var translatedText = await CallClaudeTranslateAsync(request.Text, sourceLang, targetLang, ct);
+        var sourceLang = LanguageDetector.Detect(request.Message);
+        var translatedText = await CallClaudeTranslateAsync(request.Message, sourceLang, targetLang, ct);
 
         // Save to cache (fire-and-forget, degrade on DB failure)
         _ = Task.Run(async () =>
         {
-            try { await _cache.SaveAsync(tenantId, sourceHash, request.Text, sourceLang, targetLang, translatedText); }
+            try { await _cache.SaveAsync(tenantId, sourceHash, request.Message, sourceLang, targetLang, translatedText); }
             catch (NpgsqlException ex) { _logger.StepError($"[{ErrorCodes.BackendTranslationCacheError}] Cache write error: {ex.Message}", "-"); }
         }, CancellationToken.None);
 
-        return new TranslateResponse
-        {
-            TranslatedText = translatedText,
-            SourceLanguage = sourceLang,
-            TargetLanguage = targetLang,
-            FromCache = false
-        };
+        request.TranslatedMessage = translatedText;
     }
 
     /// <summary>

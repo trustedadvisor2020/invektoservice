@@ -113,9 +113,9 @@
               { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
               { "key": "X-Tenant-Id", "value": "1" }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"text\": \"Merhaba, randevu almak istiyorum\",\n  \"target_language\": \"en\",\n  \"source_language\": null\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"userID\": 100,\n  \"channelID\": 1,\n  \"chatID\": 12345,\n  \"messageID\": 9999,\n  \"message\": \"Merhaba, randevu almak istiyorum\",\n  \"translatedMessage\": \"\",\n  \"targetLanguage\": \"en\"\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/v1/translate", "host": ["{{base_url}}"], "path": ["api","v1","translate"] },
-            "description": "Translate a single message. Source language is auto-detected if null.\nAuth: Bearer JWT + X-Tenant-Id\nResponse: { translated_text, source_language, target_language, from_cache }"
+            "description": "Translate a single message (INMA echo-back contract). Send full object, get it back with translatedMessage filled.\nAuth: Bearer JWT + X-Tenant-Id\nResponse: Same object with translatedMessage populated"
           }
         },
         {

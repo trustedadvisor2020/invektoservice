@@ -3,36 +3,31 @@ using System.Text.Json.Serialization;
 namespace Invekto.Shared.DTOs.Translation;
 
 /// <summary>
-/// Tek mesaj çeviri isteği.
+/// Tek mesaj çeviri isteği + yanıtı (INMA echo-back contract).
+/// İstek olarak gelir, translatedMessage doldurularak geri döner.
 /// </summary>
 public sealed class TranslateRequest
 {
-    [JsonPropertyName("text")]
-    public string Text { get; set; } = "";
+    [JsonPropertyName("userID")]
+    public int UserID { get; set; }
 
-    [JsonPropertyName("target_language")]
+    [JsonPropertyName("channelID")]
+    public int ChannelID { get; set; }
+
+    [JsonPropertyName("chatID")]
+    public int ChatID { get; set; }
+
+    [JsonPropertyName("messageID")]
+    public int MessageID { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+
+    [JsonPropertyName("translatedMessage")]
+    public string TranslatedMessage { get; set; } = "";
+
+    [JsonPropertyName("targetLanguage")]
     public string TargetLanguage { get; set; } = "";
-
-    [JsonPropertyName("source_language")]
-    public string? SourceLanguage { get; set; }
-}
-
-/// <summary>
-/// Tek mesaj çeviri yanıtı.
-/// </summary>
-public sealed class TranslateResponse
-{
-    [JsonPropertyName("translated_text")]
-    public string TranslatedText { get; set; } = "";
-
-    [JsonPropertyName("source_language")]
-    public string SourceLanguage { get; set; } = "";
-
-    [JsonPropertyName("target_language")]
-    public string TargetLanguage { get; set; } = "";
-
-    [JsonPropertyName("from_cache")]
-    public bool FromCache { get; set; }
 }
 
 /// <summary>

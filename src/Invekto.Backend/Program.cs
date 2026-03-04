@@ -7182,16 +7182,16 @@ app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService tran
     try { request = await ctx.Request.ReadFromJsonAsync<TranslateRequest>(); }
     catch (JsonException) { return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "Geçersiz istek gövdesi." }, statusCode: 400); }
 
-    if (request == null || string.IsNullOrWhiteSpace(request.Text))
-        return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "Çevrilecek metin boş olamaz." }, statusCode: 400);
+    if (request == null || string.IsNullOrWhiteSpace(request.Message))
+        return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "message boş olamaz." }, statusCode: 400);
 
     if (string.IsNullOrWhiteSpace(request.TargetLanguage))
-        return Results.Json(new { error = ErrorCodes.BackendTranslationUnsupportedLang, message = "Hedef dil belirtilmeli." }, statusCode: 400);
+        return Results.Json(new { error = ErrorCodes.BackendTranslationUnsupportedLang, message = "targetLanguage belirtilmeli." }, statusCode: 400);
 
     try
     {
-        var result = await translationService.TranslateAsync(tenantContext.TenantId, request);
-        return Results.Ok(result);
+        await translationService.TranslateAsync(tenantContext.TenantId, request);
+        return Results.Ok(request);
     }
     catch (ArgumentException ex) when (ex.Message == ErrorCodes.BackendTranslationUnsupportedLang)
     {
