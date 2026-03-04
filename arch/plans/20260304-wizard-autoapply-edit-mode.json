@@ -1,0 +1,142 @@
+{
+  "schema_version": "5.0",
+  "review_protocol_version": "5.0",
+  "packet_id": null,
+  "gr_list": [],
+  "slug": "20260304-wizard-autoapply-edit-mode",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-03-04T12:00:00Z",
+  "updated_at": "2026-03-04T12:00:00Z",
+  "plan": {
+    "summary": "Fix AI Destek panel UX: after user approves a plan, auto-apply the generated flowconfig to canvas instead of requiring manual 'Uygula' click. Also strengthen system prompt to ensure Claude generates flowconfig in the same response as approval.",
+    "q_intent": "planı açıklayıp daha sonra onay alması, onaylanırsa hemen flowu güncellemesi lazım. bilgiyi verip bekliyor",
+    "interview_notes": "Q confirmed this is in the AiChatPanel (flow editor AI Destek section), not the standalone WizardPage.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "When AI generates a flowconfig in edit mode (AiChatPanel), it auto-applies to the canvas without requiring manual 'Uygula' button click",
+        "verified": true,
+        "verification_note": "autoApplyPending flag in ai-chat-store triggers useEffect in AiChatPanel that calls onApply"
+      },
+      {
+        "id": "AC2",
+        "criterion": "System prompt instructs Claude to generate flowconfig in the same response after user approval (evet, tamam, devam et, etc.)",
+        "verified": true,
+        "verification_note": "Updated both edit mode rules and general rules in BuildSystemPrompt"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Manual Uygula/Reddet banner still works as fallback if auto-apply doesn't trigger",
+        "verified": true,
+        "verification_note": "pendingFlowConfig banner remains in AiChatPanel JSX, only hidden when autoApplyPending clears it"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Services/ClaudeWizardService.cs",
+    "src/Invekto.Backend/Dashboard/src/stores/ai-chat-store.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/AiChatPanel.tsx"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Services/ClaudeWizardService.cs",
+      "is_new": false,
+      "change": "Strengthened edit mode and general rules in system prompt to generate flowconfig in same response after user approval"
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/stores/ai-chat-store.ts",
+      "is_new": false,
+      "change": "Added autoApplyPending flag and clearAutoApply action; set flag on new flowconfig arrival"
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/AiChatPanel.tsx",
+      "is_new": false,
+      "change": "Added useEffect for auto-apply: when autoApplyPending && pendingFlowConfig, auto-call onApply"
+    }
+  ],
+  "git_diff": {
+    "sha256": "2623bb407bfd626525f996b9cbb353e55c65c5177f9537064a8c5dcff9ec1254",
+    "full_path": "arch/plans/diffs/20260304-wizard-autoapply-edit-mode.diff",
+    "stats": {
+      "insertions": 26,
+      "deletions": 4,
+      "files_count": 3
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-04T12:00:00Z",
+    "duration_ms": 32000,
+    "output_tail": "Build succeeded. 0 Error(s). 17 Warning(s).",
+    "error_summary": null,
+    "services": ["Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the auto-apply effect correctly clear the autoApplyPending flag to prevent infinite re-renders?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Is the pendingFlowConfig properly consumed (set to null) after auto-apply, so the Uygula banner disappears?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/Dashboard/src/stores/wizard-store.ts", "auth", "db"],
+    "non_goals": ["Changing WizardPage auto-confirm behavior", "Adding new node types", "Modifying flow execution engine"],
+    "intentional_exclusions": ["No backend API changes needed", "No DB migration"]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "If auto-apply fails, the existing Uygula/Reddet banner remains as fallback. No data loss possible."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "User approves AI plan but nothing happens — has to manually click Uygula to apply changes",
+      "suggestion": "Auto-apply flowconfig to canvas immediately after AI generates it following user approval",
+      "aha_moment": "User clicks 'Evet, bu planla devam et' and instantly sees the flow update on the canvas"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Extra click required to apply AI-generated flow changes slows down the design iteration cycle",
+      "suggestion": "Eliminate the manual Uygula step for a seamless plan-approve-apply flow",
+      "aha_moment": "User realizes AI assistance is truly hands-free — approve and done"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "AI sometimes explains the plan but doesn't generate flowconfig JSON, leaving user stuck",
+      "suggestion": "Strengthen system prompt to always generate flowconfig in same response as approval",
+      "aha_moment": "Every approval click results in actual flow changes — no more 'information only' dead ends"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Manual Uygula/Reddet banner is confusing for non-technical users who already gave approval",
+      "suggestion": "Keep banner as fallback but default to auto-apply for smoother UX",
+      "aha_moment": "User sees changes applied automatically but still has undo capability via the flow editor"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support tickets about AI Destek not applying changes after approval",
+      "suggestion": "Auto-apply reduces confusion and support overhead for flow wizard usage",
+      "aha_moment": "Support team notices fewer 'AI not working' complaints after the fix"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 0,
+    "blocking_issues": [],
+    "updated_by": "DevAgent",
+    "updated_at": "2026-03-04T12:05:00Z"
+  }
+}

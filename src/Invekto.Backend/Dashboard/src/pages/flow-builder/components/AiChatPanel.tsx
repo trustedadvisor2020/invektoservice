@@ -60,10 +60,12 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
   const pendingFlowConfig = useAiChatStore(s => s.pendingFlowConfig);
   const pendingOptions = useAiChatStore(s => s.pendingOptions);
   const error = useAiChatStore(s => s.error);
+  const autoApplyPending = useAiChatStore(s => s.autoApplyPending);
   const sendMessage = useAiChatStore(s => s.sendMessage);
   const close = useAiChatStore(s => s.close);
   const acceptChanges = useAiChatStore(s => s.acceptChanges);
   const rejectChanges = useAiChatStore(s => s.rejectChanges);
+  const clearAutoApply = useAiChatStore(s => s.clearAutoApply);
   const reset = useAiChatStore(s => s.reset);
 
   const [input, setInput] = useState('');
@@ -112,6 +114,17 @@ export function AiChatPanel({ onApply }: AiChatPanelProps) {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
+
+  // Auto-apply: when AI generates a new flow_config, apply it directly to canvas
+  useEffect(() => {
+    if (!autoApplyPending || !pendingFlowConfig) return;
+    clearAutoApply();
+    const config = acceptChanges();
+    if (config) {
+      onApply(config);
+      setShowDiff(false);
+    }
+  }, [autoApplyPending, pendingFlowConfig, clearAutoApply, acceptChanges, onApply]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });

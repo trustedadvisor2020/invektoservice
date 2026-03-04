@@ -6,22 +6,23 @@
 ## Last Update
 
 - **Date:** 2026-03-04
-- **Status:** Translation API tüm INMA entegrasyonu tamamlandı.
-- **Last Task:** JWT middleware bypass fix (trailing slash) + detect-language dual-auth + Claude system prompt (strict translation output). 5x Backend deploy (tümü HEALTHY).
-- **Production Deploy:** Backend HEALTHY x5 (migration, stats+postman, INMA contract, auth bypass, system prompt).
-- **Next Task:** Q karar verecek. Pending unstaged: inse_v3_concept.html.
+- **Status:** Wizard auto-apply edit mode fix tamamlandı. Codex PASS iter=0.
+- **Last Task:** AI Destek panelinde (AiChatPanel) flowconfig auto-apply + system prompt güçlendirme.
+- **Production Deploy:** Deploy yapılmadı (frontend+backend değişiklik, deploy bekliyor).
+- **Next Task:** Q karar verecek.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | No active work | — | Q karar verecek |
+| — | No active work | — | Q karar verecek. Backend deploy bekliyor (wizard auto-apply). |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-04 | Wizard auto-apply edit mode — AI Destek flowconfig auto-apply + system prompt. Codex PASS iter=0 |
 | 2026-03-04 | Translation INMA echo-back contract + Postman + Dashboard widget + 2x Backend deploy |
 | 2026-03-03 | QNB VPos 3DPay — tenant_payments, QnbVPosService, 3 endpoints, PaymentPage. Commit 6b2c57a |
 | 2026-03-03 | ikas E-Commerce — IEcommerceProvider, IkasProvider, 6 endpoints, action_ecommerce node |

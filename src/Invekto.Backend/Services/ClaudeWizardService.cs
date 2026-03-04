@@ -500,7 +500,7 @@ public sealed class ClaudeWizardService
             sb.AppendLine("- Kullanici acikca 'sil', 'kaldir' veya 'cikar' demedikce mevcut node'lari SILME.");
             sb.AppendLine("- Degisiklik yaparken TUM flow_config JSON'unu uret (sadece diff degil, tam JSON).");
             sb.AppendLine("- Mevcut node ID'lerini ve edge'lerini koru, yeni eklemeler icin yeni ID'ler kullan.");
-            sb.AppendLine("- Kullanici 'uygula', 'yap', 'degistir' diyene kadar once ne yapacagini ACIKLA, sonra flow_config JSON uret.");
+            sb.AppendLine("- Once ne yapacagini KISA ACIKLA. Kullanici onaylarsa (evet, tamam, devam et, bu planla devam et, uygula, yap, degistir gibi) AYNI YANIT ICINDE failure-path analizi yap VE ```flowconfig blogu ile tam JSON uret. Onay sonrasi SADECE metin gonderip bekleme, mutlaka flowconfig uret!");
             sb.AppendLine();
             sb.AppendLine("## Mevcut Akis Yapisi");
             sb.AppendLine("```json");
@@ -528,8 +528,8 @@ public sealed class ClaudeWizardService
         sb.AppendLine("Once kullanicinin amacini anla. Belirsiz noktalar varsa soru sor.");
         sb.AppendLine("Flow'u en az node ile tasarla, cunku her ek node WhatsApp kullanici deneyimini yavaslatir ve bakim maliyetini artirir.");
         sb.AppendLine("Kullanici 'olustur' veya 'tamam' diyene kadar flowconfig JSON uretme, once tasarimi konusarak netles.");
-        sb.AppendLine("Kullanici onayi alindiktan sonra once failure-path analizi yap: kosullarin false dali, intent algilanamama durumu, beklenmeyen girdi. Eksik path varsa kullaniciya sor.");
-        sb.AppendLine("Tum path'ler kapandiktan sonra ```flowconfig blogu icinde gecerli FlowConfigV2 JSON uret.");
+        sb.AppendLine("Kullanici onayi alindiktan sonra (evet, tamam, devam, uygula vb.) AYNI YANIT ICINDE: 1) failure-path analizi yap, 2) eksik path yoksa ```flowconfig blogu ile FlowConfigV2 JSON uret. Onay sonrasi SADECE metin gonderip bekleme — mutlaka flowconfig uret!");
+        sb.AppendLine("Sadece eksik/belirsiz path varsa kullaniciya soru sor, yoksa direkt flowconfig uret.");
         sb.AppendLine("</rules>");
         sb.AppendLine();
 

@@ -41,12 +41,15 @@ interface AiChatStore {
   pendingFlowConfig: FlowConfigV2 | null;
   pendingOptions: WizardOption[] | null;
   error: string | null;
+  /** Set to true when AI generates a new flow_config — triggers auto-apply in AiChatPanel */
+  autoApplyPending: boolean;
 
   open: (flowId: number, tenantId: number) => Promise<void>;
   close: () => void;
   sendMessage: (message: string, currentFlowConfig: FlowConfigV2) => Promise<void>;
   acceptChanges: () => FlowConfigV2 | null;
   rejectChanges: () => void;
+  clearAutoApply: () => void;
   reset: () => void;
 }
 
@@ -60,6 +63,7 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
   pendingFlowConfig: null,
   pendingOptions: null,
   error: null,
+  autoApplyPending: false,
 
   open: async (flowId: number, tenantId: number) => {
     const state = get();
@@ -134,12 +138,14 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
             options: event.options,
           };
 
+          const hasNewFlowConfig = !!event.flow_config;
           set(state => ({
             messages: [...state.messages, assistantMsg],
             isStreaming: false,
             streamingText: '',
             pendingFlowConfig: event.flow_config || state.pendingFlowConfig,
             pendingOptions: event.options ?? null,
+            autoApplyPending: hasNewFlowConfig,
           }));
         }
       }
@@ -156,7 +162,9 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     return config;
   },
 
-  rejectChanges: () => set({ pendingFlowConfig: null }),
+  rejectChanges: () => set({ pendingFlowConfig: null, autoApplyPending: false }),
+
+  clearAutoApply: () => set({ autoApplyPending: false }),
 
   reset: () => set({
     messages: [],
@@ -165,5 +173,6 @@ export const useAiChatStore = create<AiChatStore>((set, get) => ({
     pendingFlowConfig: null,
     pendingOptions: null,
     error: null,
+    autoApplyPending: false,
   }),
 }));
