@@ -269,6 +269,8 @@
 | Date | Mistake | Solution | Prevention |
 |------|---------|----------|------------|
 | 2026-02-14 | SystemInfo/Warn/Error 1 parametre aliyor, 3 ile cagrildi | Tek string formatina duzeltildi | **Logger kullanirken MEVCUT imzayi kontrol et** |
+| 2026-03-04 | JWT middleware prefix `/api/v1/translate` dual-auth endpoint'e ulasmayi engelledi — middleware 401 donuyor, endpoint kodu hic calismadi | Prefix'e trailing slash eklendi `/api/v1/translate/` — exact path skip, sub-path'ler korunuyor | **Dual-auth endpoint (JWT + ApiKey) middleware prefix listesine eklenmemeli. Trailing slash ile sub-path korumasi saglanabilir** |
+| 2026-03-04 | Claude Haiku system prompt olmadan ceviride aciklama donuyor ("I appreciate the request...") | System prompt eklendi: "You are a translation engine. Output ONLY the translation." | **Claude API'de ceviri/extract gibi strict output gereken islemlerde MUTLAKA system prompt kullan. User-only mesaj conversational mod tetikler** |
 
 ---
 

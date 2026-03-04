@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="tr" class="antialiased">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INSE V3 - Yeni Nesil UI/UX (Aydınlık Tema)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                            950: '#042f2e',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 10px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0,0,0,0.02)',
+                        'floating': '0 10px 40px -10px rgba(0,0,0,0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Modern Scrollbar - Açık Tema */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .clean-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.01);
+            transition: all 0.2s ease;
+        }
+
+        .clean-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #475569;
+            /* Hafif, premium bir arkaplan deseni (isteğe bağlı) */
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .role-switch-active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .nav-item-active {
+            background-color: #f0fdfa;
+            /* brand-50 */
+            color: #0d9488;
+            /* brand-600 */
+            font-weight: 500;
+        }
+
+        .nav-item-inactive {
+            color: #64748b;
+            /* slate-500 */
+        }
+
+        .nav-item-inactive:hover {
+            color: #0f172a;
+            /* slate-900 */
+            background-color: #f1f5f9;
+            /* slate-100 */
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen overflow-hidden flex selection:bg-brand-500/20 selection:text-brand-900 text-slate-600 font-sans">
+
+    <!-- Sidebar -->
+    <aside
+        class="w-20 lg:w-64 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-300 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        <!-- Logo Area -->
+        <div class="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-100">
+            <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-400 to-blue-500 flex items-center justify-center shadow-md shadow-brand-500/20">
+                <i data-lucide="hexagon" class="text-white w-6 h-6"></i>
+            </div>
+            <div class="hidden lg:block ml-3">
+                <h1 class="font-display font-bold text-xl text-slate-900 tracking-tight">INSE<span
+                        class="text-brand-500">.AI</span></h1>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Workspace</p>
+            </div>
+        </div>
+
+        <!-- Role Switcher (Demo Only) -->
+        <div class="p-4 border-b border-slate-100 hidden lg:block bg-slate-50/50">
+            <div class="bg-slate-100/80 p-1 rounded-lg flex text-xs font-medium border border-slate-200/50">
+                <button onclick="switchRole('agent')" id="btn-agent"
+                    class="flex-1 py-1.5 rounded-md transition-all role-switch-active">Agent (İnse)</button>
+                <button onclick="switchRole('admin')" id="btn-admin"
+                    class="flex-1 py-1.5 rounded-md text-slate-500 hover:text-slate-900 transition-all border border-transparent">Superadmin</button>
+            </div>
+        </div>
+
+        <!-- Nav Links -->
+        <div class="flex-1 overflow-y-auto py-6 px-4 space-y-1" id="nav-container">
+            <!-- Dynamically injected by JS based on role -->
+        </div>
+
+        <!-- User Profile Minimal -->
+        <div
+            class="p-4 border-t border-slate-100 flex items-center justify-center lg:justify-start cursor-pointer hover:bg-slate-50 transition-colors bg-white">
+            <div class="relative">
+                <img src="https://ui-avatars.com/api/?name=Taner+A&background=e2e8f0&color=0f172a"
+                    class="w-10 h-10 rounded-full border-2 border-white shadow-sm">
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div class="hidden lg:block ml-3">
+                <p class="text-sm font-semibold text-slate-900">Taner A.</p>
+                <p class="text-xs text-slate-500 font-medium" id="current-role-label">Senior Agent</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-50/80">
+        <!-- Top Header -->
+        <header
+            class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 z-10 sticky top-0">
+            <div class="flex items-center gap-4">
+                <h2 class="font-display text-2xl font-bold text-slate-900 tracking-tight" id="page-title">Smart Queue
+                </h2>
+                <div
+                    class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold border border-emerald-100 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-slow"></span>
+                    Sistem Operasyonel
+                </div>
+            </div>
+
+            <div class="flex items-center gap-5">
+                <div class="relative hidden md:block">
+                    <i data-lucide="search"
+                        class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                    <input type="text" placeholder="Müşteri, ID veya Tel ara (Ctrl+K)..."
+                        class="w-72 bg-slate-100/50 border border-slate-200 rounded-full py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/20 text-slate-900 placeholder-slate-400 transition-all font-medium">
+                </div>
+                <button
+                    class="relative p-2.5 text-slate-500 hover:text-slate-900 transition-colors bg-white rounded-full border border-slate-200 shadow-sm hover:shadow">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span
+                        class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <div class="flex-1 overflow-y-auto p-8 scroll-smooth" id="main-content">
+            <!-- Content changes based on role -->
+        </div>
+    </main>
+
+    <!-- VIEWS TEMPLATES -->
+
+    <!-- AGENT (INSE) VIEW TEMPLATE -->
+    <template id="tpl-agent">
+        <div class="animate-fade-in flex h-full gap-8">
+
+            <!-- Sol: Smart Queue & Görevler -->
+            <div class="flex-1 flex flex-col gap-6">
+                <!-- Özet Kartları -->
+                <div class="grid grid-cols-3 gap-5">
+                    <div
+                        class="clean-card rounded-2xl p-5 flex items-center justify-between group cursor-pointer relative overflow-hidden">
+                        <div
+                            class="absolute left-0 top-0 bottom-0 w-1 bg-brand-500 rounded-l-2xl scale-y-0 group-hover:scale-y-100 transition-transform hidden">
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Bekleyen İşlem
+                            </p>
+                            <h3 class="text-3xl font-display font-bold text-slate-900">12</h3>
+                        </div>
+                        <div
+                            class="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                            <i data-lucide="list-todo" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div
+                        class="clean-card rounded-2xl p-5 flex items-center justify-between group cursor-pointer relative overflow-hidden">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Ort. Çözüm
+                                Süresi</p>
+                            <h3 class="text-3xl font-display font-bold text-slate-900"><span
+                                    class="text-xl text-slate-400 font-medium">~</span>2.4<span
+                                    class="text-sm font-medium text-slate-500 ml-1">dk</span></h3>
+                        </div>
+                        <div
+                            class="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                            <i data-lucide="timer" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div
+                        class="clean-card rounded-2xl p-5 flex items-center justify-between group cursor-pointer relative overflow-hidden border-emerald-100 bg-gradient-to-br from-white to-emerald-50/30">
+                        <div class="relative z-10">
+                            <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Günlük Verim
+                                (AI Score)</p>
+                            <h3 class="text-3xl font-display font-bold text-emerald-600">94<span
+                                    class="text-lg">%</span></h3>
+                        </div>
+                        <div
+                            class="relative z-10 w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner">
+                            <i data-lucide="trending-up" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Akıllı Kuyruk (Smart Queue) -->
+                <div
+                    class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col flex-1 overflow-hidden h-full">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div class="flex gap-6 px-2">
+                            <button
+                                class="text-sm font-semibold text-brand-600 border-b-2 border-brand-500 pb-2 -mb-[17px]">AI
+                                Öncelikli (4)</button>
+                            <button
+                                class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors pb-2">Geri
+                                Aramalar (8)</button>
+                        </div>
+                        <button
+                            class="text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-md transition-colors flex items-center gap-2 border border-slate-200 shadow-sm">
+                            <i data-lucide="filter" class="w-3.5 h-3.5"></i> Görünüm
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-3 space-y-2 bg-white">
+                        <!-- Queue Item 1 -->
+                        <div
+                            class="group flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all cursor-pointer">
+                            <div
+                                class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-100 flex-shrink-0 text-red-600 shadow-sm">
+                                <span class="font-bold text-sm tracking-tight">VIP</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4
+                                        class="text-sm font-semibold text-slate-900 group-hover:text-brand-600 transition-colors">
+                                        Ahmet Yılmaz</h4>
+                                    <span
+                                        class="text-[11px] font-medium text-slate-500 flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-full"><i
+                                            data-lucide="clock" class="w-3 h-3 text-slate-400"></i> 2 dk önce
+                                        düştü</span>
+                                </div>
+                                <p class="text-sm text-slate-600 line-clamp-1"><span
+                                        class="font-medium text-slate-900 border-b border-slate-200 border-dashed">AI
+                                        Özeti:</span> Müşteri fatura itirazında bulunuyor, 3. kez arıyor. İade talebi
+                                    var.</p>
+                            </div>
+                            <button
+                                class="hidden group-hover:flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md shadow-brand-500/20 transition-all">
+                                Çağrıyı Al <i data-lucide="phone-incoming" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <!-- Queue Item 2 -->
+                        <div
+                            class="group flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50/50 border border-transparent hover:border-blue-100 transition-all cursor-pointer bg-slate-50/30">
+                            <div
+                                class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 flex-shrink-0 text-blue-600 shadow-sm">
+                                <i data-lucide="message-square" class="w-5 h-5"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4
+                                        class="text-sm font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                        Ayşe Demir</h4>
+                                    <span
+                                        class="text-[11px] font-medium text-slate-500 flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-full"><i
+                                            data-lucide="clock" class="w-3 h-3 text-slate-400"></i> Bekliyor</span>
+                                </div>
+                                <p class="text-sm text-slate-600 line-clamp-1"><span
+                                        class="font-medium text-slate-900 border-b border-slate-200 border-dashed">Web
+                                        Chat:</span> Teknik destek - Cihaz kurulumu yapılamıyor.</p>
+                            </div>
+                            <button
+                                class="hidden group-hover:flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md shadow-blue-500/20 transition-all">
+                                Chate Katıl <i data-lucide="messages-square" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <!-- Dummy Items -->
+                        <div class="opacity-50 pointer-events-none p-4 border-b border-slate-100">
+                            <div class="h-4 w-32 bg-slate-200 rounded mb-2"></div>
+                            <div class="h-3 w-64 bg-slate-100 rounded"></div>
+                        </div>
+                        <div class="opacity-30 pointer-events-none p-4 border-b border-slate-100">
+                            <div class="h-4 w-24 bg-slate-200 rounded mb-2"></div>
+                            <div class="h-3 w-56 bg-slate-100 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sağ: Aktif İşlem Paneli (Soft CTI / Context) -->
+            <div class="w-[400px] xl:w-[480px] flex-shrink-0 flex flex-col gap-4">
+                <div
+                    class="bg-white rounded-2xl flex flex-col h-full border border-slate-200 shadow-floating relative overflow-hidden">
+                    <!-- Aktif Çağrı Header -->
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-800 p-6 relative overflow-hidden text-white">
+                        <div
+                            class="absolute top-0 right-0 w-48 h-48 bg-brand-500/20 rounded-full blur-3xl translate-x-10 -translate-y-10">
+                        </div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <div class="flex items-center gap-4">
+                                <div class="relative">
+                                    <div
+                                        class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center border-2 border-brand-400 shadow-lg">
+                                        <i data-lucide="user" class="w-6 h-6 text-slate-300"></i>
+                                    </div>
+                                    <span
+                                        class="absolute bottom-0 right-0 w-4 h-4 bg-brand-400 rounded-full border-2 border-slate-900 animate-pulse"></span>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-display font-semibold text-white tracking-tight">Mehmet Kaya
+                                    </h3>
+                                    <p
+                                        class="text-xs text-slate-300 font-mono tracking-wider mt-1 opacity-80 flex items-center gap-2">
+                                        <i data-lucide="smartphone" class="w-3 h-3"></i> 0532 *** 45 67
+                                        <span class="w-1 h-1 bg-slate-500 rounded-full"></span> 02:45
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button
+                                    class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm">
+                                    <i data-lucide="mic-off" class="w-4 h-4 text-white"></i>
+                                </button>
+                                <button
+                                    class="w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-lg shadow-red-500/30">
+                                    <i data-lucide="phone-off" class="w-4 h-4 text-white"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Asistan & Notlar Tabları -->
+                    <div class="flex border-b border-slate-200 bg-slate-50">
+                        <button
+                            class="flex-1 py-3.5 text-sm font-semibold text-brand-600 border-b-2 border-brand-500 relative overflow-hidden bg-white">
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i> AI Rehber
+                            </span>
+                        </button>
+                        <button
+                            class="flex-1 py-3.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">Geçmiş
+                            (3)</button>
+                        <button
+                            class="flex-1 py-3.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">Notlar</button>
+                    </div>
+
+                    <!-- Panel İçeriği -->
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+                        <!-- AI Sentiment & Intent -->
+                        <div class="p-5 rounded-xl border border-purple-100 bg-purple-50">
+                            <h4
+                                class="text-[11px] font-bold uppercase tracking-widest text-purple-600 mb-3 flex items-center gap-2">
+                                <i data-lucide="brain-circuit" class="w-4 h-4"></i> AI Canlı Analiz
+                            </h4>
+                            <p class="text-sm text-slate-700 leading-relaxed">
+                                Müşteri <strong>iptal talebi</strong> ile arıyor. Sentiment analizi: <span
+                                    class="text-red-600 font-semibold bg-red-100 px-1.5 py-0.5 rounded">Gergin/Kızgın</span>.<br>
+                            </p>
+                            <div
+                                class="mt-3 p-3 bg-white rounded-lg border border-purple-100/50 shadow-sm flex items-start gap-3">
+                                <i data-lucide="lightbulb" class="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0"></i>
+                                <span class="text-xs font-medium text-slate-600">Öneri: Çözüm odaklı yaklaşın, donanım
+                                    yenileme veya indirim paketi #34 teklif edilebilir. Bütçe itirazı algılandı.</span>
+                            </div>
+                        </div>
+
+                        <!-- Hızlı Aksiyonlar -->
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Hızlı İşlemler
+                            </h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button
+                                    class="p-4 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-200 transition-all text-left group shadow-sm">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <i data-lucide="file-check-2" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="text-sm font-semibold text-slate-900">İade Talebi Aç</div>
+                                </button>
+                                <button
+                                    class="p-4 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-200 transition-all text-left group shadow-sm">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <i data-lucide="badge-percent" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="text-sm font-semibold text-slate-900">İndirim Tanımla</div>
+                                </button>
+                                <button
+                                    class="p-4 rounded-xl border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all text-left group shadow-sm">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <i data-lucide="ticket" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="text-sm font-semibold text-slate-900">Teknik Destek Aç</div>
+                                </button>
+                                <button
+                                    class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition-all text-left flex flex-col justify-center items-center h-full">
+                                    <i data-lucide="more-horizontal" class="w-5 h-5 text-slate-400 mb-2"></i>
+                                    <div class="text-xs font-semibold text-slate-500">Tüm İşlemler</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Çağrı Sonuçlandırma Area (Sticky Bottom) -->
+                    <div class="p-5 border-t border-slate-200 bg-slate-50 mt-auto">
+                        <label
+                            class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Kapanış
+                            Kodu</label>
+                        <select
+                            class="w-full bg-white border border-slate-300 text-sm font-medium text-slate-700 rounded-lg p-3 mb-4 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all shadow-sm">
+                            <option value="">Çağrı Sonucu Seçin...</option>
+                            <option value="resolved">Talep Çözüldü</option>
+                            <option value="escalated">Bir Üst Birime İletildi</option>
+                            <option value="cancelled">İptal Gerçekleşti</option>
+                        </select>
+                        <button
+                            class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> Kaydet ve Sonlandır
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+
+    <!-- SUPERADMIN VIEW TEMPLATE -->
+    <template id="tpl-admin">
+        <div class="animate-fade-in flex flex-col gap-6 max-w-7xl mx-auto pb-10">
+            <!-- Üst Yönetim Metrikleri -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="clean-card p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2.5 bg-brand-50 text-brand-600 rounded-xl">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                        <span
+                            class="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">+12%</span>
+                    </div>
+                    <h4 class="text-slate-500 text-sm font-medium mb-1">Aktif Agent (İnse)</h4>
+                    <p class="text-3xl font-display font-bold text-slate-900">284 <span
+                            class="text-sm font-medium text-slate-400">/ 300</span></p>
+                </div>
+
+                <div class="clean-card p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                            <i data-lucide="activity" class="w-5 h-5"></i>
+                        </div>
+                        <span
+                            class="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-100">Yoğun</span>
+                    </div>
+                    <h4 class="text-slate-500 text-sm font-medium mb-1">Kuyruk Yoğunluğu</h4>
+                    <p class="text-3xl font-display font-bold text-slate-900">1,205 <span
+                            class="text-sm font-medium text-slate-400">bekleyen</span></p>
+                </div>
+
+                <div class="clean-card p-6 rounded-2xl relative overflow-hidden group border-l-4 border-l-purple-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                            <i data-lucide="bot" class="w-5 h-5"></i>
+                        </div>
+                        <span
+                            class="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">Optimal</span>
+                    </div>
+                    <h4 class="text-slate-500 text-sm font-medium mb-1">AI Otonomi Oranı</h4>
+                    <p class="text-3xl font-display font-bold text-slate-900">68.4<span
+                            class="text-lg text-slate-400 font-medium ml-1">%</span></p>
+                </div>
+
+                <div
+                    class="rounded-2xl relative overflow-hidden flex flex-col justify-center items-center border-2 border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100 hover:border-brand-400 cursor-pointer transition-colors group p-6">
+                    <div
+                        class="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform mb-3 border border-slate-200">
+                        <i data-lucide="plus"
+                            class="w-5 h-5 text-slate-400 group-hover:text-brand-500 transition-colors"></i>
+                    </div>
+                    <span class="text-sm font-semibold text-slate-500 group-hover:text-slate-800 transition-colors">Yeni
+                        Flow / Kural Ekle</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Ana Alan: Harita & Sistem Durumu -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[420px]">
+
+                <!-- Grafik / Akış Görünümü (Dummy) -->
+                <div class="lg:col-span-2 clean-card rounded-2xl flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white">
+                        <h3 class="font-bold text-slate-900">Canlı Call Flow Trafiği</h3>
+                        <div class="flex gap-2">
+                            <button
+                                class="px-3 py-1.5 bg-slate-900 text-white text-xs rounded-md shadow-sm font-medium">Satış
+                                Flow</button>
+                            <button
+                                class="px-3 py-1.5 bg-white text-slate-600 hover:text-slate-900 text-xs rounded-md border border-slate-200 transition-colors font-medium">Destek
+                                Flow</button>
+                        </div>
+                    </div>
+                    <!-- Blueprint Arkaplanı -->
+                    <div
+                        class="flex-1 relative bg-slate-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0wIDBMMCA0MEw0MCA0MEw0MCAwWiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWFjZWI0IiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8L3N2Zz4=')] bg-center">
+
+                        <!-- Dummy Nodes for UI Effect -->
+                        <div
+                            class="absolute top-1/2 left-10 -translate-y-1/2 bg-white border border-slate-200 p-3 rounded-xl w-40 shadow-sm z-10">
+                            <div
+                                class="text-[10px] text-brand-600 font-bold mb-1 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="phone" class="w-3 h-3"></i> Trigger</div>
+                            <div class="text-sm font-bold text-slate-800">Gelen Çağrı</div>
+                        </div>
+
+                        <!-- SVG Curve Dummy -->
+                        <svg class="absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 5;">
+                            <!-- Mavi Çizgi -->
+                            <path d="M 200 200 Q 250 200 300 150 T 400 100" fill="none" stroke="#6366f1"
+                                stroke-width="3" stroke-dasharray="6" class="animate-pulse" />
+                            <!-- Yeşil Çizgi -->
+                            <path d="M 200 200 Q 250 200 300 250 T 400 300" fill="none" stroke="#10b981"
+                                stroke-width="3" />
+                        </svg>
+
+                        <div
+                            class="absolute top-[80px] left-[400px] bg-white border border-indigo-200 p-3.5 rounded-xl w-48 shadow-md z-10 border-t-4 border-t-indigo-500">
+                            <div
+                                class="text-[10px] text-indigo-600 font-bold mb-1 uppercase tracking-wider flex items-center justify-between">
+                                AI Intent <span
+                                    class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[9px]">92%
+                                    Doğruluk</span></div>
+                            <div class="text-sm font-bold text-slate-800">Şikayet Analizi</div>
+                        </div>
+
+                        <div
+                            class="absolute top-[280px] left-[400px] bg-white border border-emerald-200 p-3.5 rounded-xl w-48 shadow-md z-10 border-t-4 border-t-emerald-500">
+                            <div class="text-[10px] text-emerald-600 font-bold mb-1 uppercase tracking-wider">Human
+                                Routing</div>
+                            <div class="text-sm font-bold text-slate-800">Agent'a Aktar</div>
+                            <div
+                                class="mt-2 text-[11px] font-medium text-slate-500 flex items-center gap-1.5 bg-slate-50 p-1.5 rounded">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 24 agent müsait</div>
+                        </div>
+
+                        <!-- Zoom Controls -->
+                        <div
+                            class="absolute bottom-5 right-5 flex flex-col gap-1.5 bg-white p-1.5 rounded-xl shadow-sm border border-slate-200 z-20">
+                            <button
+                                class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"><i
+                                    data-lucide="plus" class="w-4 h-4"></i></button>
+                            <button
+                                class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"><i
+                                    data-lucide="minus" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sistem Alarmları / Loglar -->
+                <div class="clean-card rounded-2xl flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white">
+                        <h3 class="font-bold text-slate-900">Sistem & Loglar</h3>
+                        <a href="#" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Tümünü Gör</a>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-5 space-y-4 bg-white">
+                        <div class="border-l-2 border-red-500 pl-3.5 py-0.5">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] font-bold text-red-600 uppercase tracking-wider">Error
+                                    CTI</span>
+                                <span class="text-[11px] font-medium text-slate-400">2 dk önce</span>
+                            </div>
+                            <p class="text-sm text-slate-700 font-medium">Trunk 04 bağlantı hatası (Timeout).</p>
+                        </div>
+                        <div class="border-l-2 border-amber-500 pl-3.5 py-0.5">
+                            <div class="flex justify-between items-center mb-1">
+                                <span
+                                    class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Warning</span>
+                                <span class="text-[11px] font-medium text-slate-400">15 dk önce</span>
+                            </div>
+                            <p class="text-sm text-slate-700 font-medium">Agent bekleme süresi eşik değeri aşıldı
+                                (Kuyruk B).</p>
+                        </div>
+                        <div class="border-l-2 border-emerald-500 pl-3.5 py-0.5">
+                            <div class="flex justify-between items-center mb-1">
+                                <span
+                                    class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">System</span>
+                                <span class="text-[11px] font-medium text-slate-400">1 saat önce</span>
+                            </div>
+                            <p class="text-sm text-slate-700 font-medium">Veritabanı optimizasyon görevi başarıyla
+                                tamamlandı.</p>
+                        </div>
+                        <div class="border-l-2 border-blue-500 pl-3.5 py-0.5">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Deploy</span>
+                                <span class="text-[11px] font-medium text-slate-400">Dün 23:40</span>
+                            </div>
+                            <p class="text-sm text-slate-700 font-medium">V2.4 sürümü Production ortamına alındı.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Yönetimi Tablosu -->
+            <div class="clean-card rounded-2xl overflow-hidden mb-8">
+                <div
+                    class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white">
+                    <h3 class="font-bold text-slate-900 text-lg">Aktif Agent Performansı</h3>
+                    <div class="relative w-full sm:w-auto">
+                        <i data-lucide="search"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input type="text" placeholder="Agent ara..."
+                            class="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 text-slate-900 outline-none transition-all font-medium">
+                    </div>
+                </div>
+                <div class="overflow-x-auto bg-white">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-3.5 font-bold text-[11px] uppercase tracking-wider">Agent Adı</th>
+                                <th class="px-6 py-3.5 font-bold text-[11px] uppercase tracking-wider">Durum</th>
+                                <th class="px-6 py-3.5 font-bold text-[11px] uppercase tracking-wider">Aktif Çağrı/Chat
+                                </th>
+                                <th class="px-6 py-3.5 font-bold text-[11px] uppercase tracking-wider">Ort. Çözüm</th>
+                                <th class="px-6 py-3.5 font-bold text-[11px] uppercase tracking-wider text-right">
+                                    Aksiyon</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="px-6 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://ui-avatars.com/api/?name=Ali+Y&background=e2e8f0&color=0f172a"
+                                            class="w-9 h-9 rounded-full border border-slate-200">
+                                        <div>
+                                            <p class="font-bold text-slate-900">Ali Yılmaz</p>
+                                            <p class="text-[11px] font-medium text-slate-500">Destek Ekibi</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-3.5"><span
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100"><span
+                                            class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online</span></td>
+                                <td class="px-6 py-3.5 font-medium">1 Çağrı, 2 Chat</td>
+                                <td class="px-6 py-3.5 font-medium">3.2 dk</td>
+                                <td class="px-6 py-3.5 text-right">
+                                    <button
+                                        class="text-slate-400 hover:text-slate-900 p-1.5 rounded-md hover:bg-slate-100 transition-colors"><i
+                                            data-lucide="more-vertical" class="w-4 h-4"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="px-6 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://ui-avatars.com/api/?name=Zeynep+K&background=fde68a&color=92400e"
+                                            class="w-9 h-9 rounded-full border border-slate-200">
+                                        <div>
+                                            <p class="font-bold text-slate-900">Zeynep Kaya</p>
+                                            <p class="text-[11px] font-medium text-slate-500">Satış Ekibi</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-3.5"><span
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-100"><span
+                                            class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Molada</span></td>
+                                <td class="px-6 py-3.5 font-medium text-slate-400">-</td>
+                                <td class="px-6 py-3.5 font-medium">1.8 dk</td>
+                                <td class="px-6 py-3.5 text-right">
+                                    <button
+                                        class="text-slate-400 hover:text-slate-900 p-1.5 rounded-md hover:bg-slate-100 transition-colors"><i
+                                            data-lucide="more-vertical" class="w-4 h-4"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+
+    <script>
+        // İkonları render et
+        lucide.createIcons();
+
+        // Navigasyon Menüleri (Açık Tema uyumlu sınıflarla)
+        const navAgent = `
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 mt-2">Çalışma Alanı</div>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-active transition-all mb-1 mx-1">
+                <i data-lucide="layers" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Smart Queue</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <div class="relative">
+                    <i data-lucide="message-square" class="w-5 h-5"></i>
+                    <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 border-2 border-white rounded-full"></span>
+                </div>
+                <span class="hidden lg:block">Aktif Chatler</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="history" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Geçmiş İşlemler</span>
+            </a>
+            
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 mt-6">Kişisel</div>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Performansım</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Ayarlar</span>
+            </a>
+        `;
+
+        const navAdmin = `
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 mt-2">Yönetim Paneli</div>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-active transition-all mb-1 mx-1">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Genel Bakış</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="git-merge" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Flow Builder</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="users" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Agent Yönetimi</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="database" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Müşteri Data</span>
+            </a>
+            
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 mt-6">Sistem</div>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="terminal" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Loglar & Konsol</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg nav-item-inactive font-medium transition-all mb-1 mx-1">
+                <i data-lucide="sliders" class="w-5 h-5"></i>
+                <span class="hidden lg:block">Genel Ayarlar</span>
+            </a>
+        `;
+
+        function switchRole(role) {
+            const container = document.getElementById('main-content');
+            const navContainer = document.getElementById('nav-container');
+            const title = document.getElementById('page-title');
+            const roleLabel = document.getElementById('current-role-label');
+            const btnAgent = document.getElementById('btn-agent');
+            const btnAdmin = document.getElementById('btn-admin');
+
+            if (role === 'agent') {
+                container.innerHTML = document.getElementById('tpl-agent').innerHTML;
+                navContainer.innerHTML = navAgent;
+                title.innerText = "Smart Queue";
+                roleLabel.innerText = "Senior Agent";
+
+                btnAgent.classList.add('role-switch-active');
+                btnAgent.classList.remove('text-slate-500', 'hover:text-slate-900', 'border-transparent');
+
+                btnAdmin.classList.remove('role-switch-active');
+                btnAdmin.classList.add('text-slate-500', 'hover:text-slate-900', 'border-transparent');
+            } else {
+                container.innerHTML = document.getElementById('tpl-admin').innerHTML;
+                navContainer.innerHTML = navAdmin;
+                title.innerText = "Sistem Genel Bakış";
+                roleLabel.innerText = "Superadmin";
+
+                btnAdmin.classList.add('role-switch-active');
+                btnAdmin.classList.remove('text-slate-500', 'hover:text-slate-900', 'border-transparent');
+
+                btnAgent.classList.remove('role-switch-active');
+                btnAgent.classList.add('text-slate-500', 'hover:text-slate-900', 'border-transparent');
+            }
+            lucide.createIcons();
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            switchRole('agent');
+        });
+
+    </script>
+</body>
+
+</html>

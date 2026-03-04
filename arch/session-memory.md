@@ -6,9 +6,9 @@
 ## Last Update
 
 - **Date:** 2026-03-04
-- **Status:** Translation INMA echo-back contract deploy DONE.
-- **Last Task:** TranslateRequest INMA contract (userID/channelID/chatID/messageID/message/translatedMessage/targetLanguage echo-back) + Postman güncelleme + Backend deploy HEALTHY.
-- **Production Deploy:** Backend HEALTHY x2 (ilk deploy: migration+stats, ikinci: INMA contract).
+- **Status:** Translation API tüm INMA entegrasyonu tamamlandı.
+- **Last Task:** JWT middleware bypass fix (trailing slash) + detect-language dual-auth + Claude system prompt (strict translation output). 5x Backend deploy (tümü HEALTHY).
+- **Production Deploy:** Backend HEALTHY x5 (migration, stats+postman, INMA contract, auth bypass, system prompt).
 - **Next Task:** Q karar verecek. Pending unstaged: inse_v3_concept.html.
 - **Strateji:** 12 Paket Stratejisi v5.2
 
