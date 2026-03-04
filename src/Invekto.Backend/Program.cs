@@ -1849,204 +1849,24 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
 });
 
 // Postman collection download - dynamically generated from endpoint discovery
-app.MapGet("/api/ops/postman", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient) =>
+// GET /api/ops/postman — Serve static Postman collection JSON (from postman/ folder, deployed with publish)
+app.MapGet("/api/ops/postman", async (HttpContext ctx) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
         return OpsUnauthorized(ctx);
     }
 
-    // Fetch all service endpoints
-    var chatEndpoints = await chatClient.GetEndpointsAsync();
-    var autoEndpoints = await automationClient.GetEndpointsAsync();
-    var agentAIEndpoints = await agentAIClient.GetEndpointsAsync();
-
-    var allServices = new List<(string service, int port, List<EndpointInfo> endpoints)>
+    var postmanPath = Path.Combine(AppContext.BaseDirectory, "postman", "InvektoServis.postman_collection.json");
+    if (!File.Exists(postmanPath))
     {
-        (ServiceConstants.BackendServiceName, ServiceConstants.BackendPort, new List<EndpointInfo>
-        {
-            new() { Method = "POST", Path = "/api/v1/chat/analyze", Description = "Chat analysis (async, callback)", Auth = "none", Category = "API" },
-            new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
-            new() { Method = "GET", Path = "/api/ops/health", Description = "All services health", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/postman", Description = "Postman collection download", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/logs/stream", Description = "Log stream with filters", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/logs/grouped", Description = "Grouped log stream", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/logs/context", Description = "Log context (\u00b110 lines)", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/stats/errors", Description = "Error statistics (24h)", Auth = "Basic", Category = "Ops" },
-            new() { Method = "DELETE", Path = "/api/ops/logs/clear", Description = "Clear log files", Auth = "Basic", Category = "Ops" },
-            new() { Method = "POST", Path = "/api/ops/services/{name}/restart", Description = "Restart Windows Service", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/api/ops/test/{service}/{path}", Description = "Test proxy for microservices", Auth = "Basic", Category = "Ops" },
-            new() { Method = "GET", Path = "/ops", Description = "Operations dashboard (legacy)", Auth = "Basic", Category = "Legacy" },
-            new() { Method = "GET", Path = "/ops/errors", Description = "Last 100 errors", Auth = "Basic", Category = "Legacy" },
-            new() { Method = "GET", Path = "/ops/slow", Description = "Last 100 slow requests", Auth = "Basic", Category = "Legacy" },
-            new() { Method = "GET", Path = "/ops/search", Description = "Search by requestId", Auth = "Basic", Category = "Legacy" },
-            // Translation API
-            new() { Method = "POST", Path = "/api/v1/translate", Description = "Translate single message", Auth = "Bearer", Category = "API" },
-            new() { Method = "POST", Path = "/api/v1/translate/batch", Description = "Batch translate messages (max 50)", Auth = "Bearer", Category = "API" },
-            new() { Method = "POST", Path = "/api/v1/translate/detect", Description = "Detect message language", Auth = "Bearer", Category = "API" },
-            new() { Method = "GET", Path = "/api/v1/translate/languages", Description = "List supported languages", Auth = "Bearer", Category = "API" },
-        })
-    };
-
-    if (chatEndpoints != null)
-    {
-        allServices.Add((chatEndpoints.Service, chatEndpoints.Port, chatEndpoints.Endpoints));
-    }
-    if (autoEndpoints != null)
-    {
-        allServices.Add((autoEndpoints.Service, autoEndpoints.Port, autoEndpoints.Endpoints));
-    }
-    if (agentAIEndpoints != null)
-    {
-        allServices.Add((agentAIEndpoints.Service, agentAIEndpoints.Port, agentAIEndpoints.Endpoints));
+        return Results.Json(new { error = "Postman collection file not found." }, statusCode: 404);
     }
 
-    // Sample request bodies for known endpoints
-    var sampleBodies = new Dictionary<string, string>
-    {
-        ["/api/v1/chat/analyze"] = """
-{
-  "ChatID": 12345,
-  "InstanceID": 1,
-  "UserID": 100,
-  "RequestID": "test-req-001",
-  "ChatServerURL": "https://your-callback-url.com/api/callback",
-  "Lang": "tr",
-  "LabelSearchText": "Satis,Destek,Sikayet",
-  "MessageListObject": [
-    { "Source": "CUSTOMER", "Message": "Merhaba, bilgi almak istiyorum" },
-    { "Source": "AGENT", "Message": "Merhaba, nasil yardimci olabilirim?" }
-  ]
-}
-""",
-        ["/api/v1/analyze"] = """
-{
-  "ChatID": 12345,
-  "InstanceID": 1,
-  "UserID": 100,
-  "RequestID": "direct-test-001",
-  "ChatServerURL": "https://your-callback-url.com/api/callback",
-  "Lang": "tr",
-  "MessageListObject": [
-    { "Source": "CUSTOMER", "Message": "Merhaba, bilgi almak istiyorum" },
-    { "Source": "AGENT", "Message": "Merhaba, nasil yardimci olabilirim?" }
-  ]
-}
-""",
-        ["/api/v1/suggest"] = """
-{
-  "chat_id": 12345,
-  "message_text": "Merhaba, siparis durumumu ogrenmek istiyorum",
-  "customer_name": "Ali Yilmaz",
-  "channel": "whatsapp",
-  "language": "tr",
-  "conversation_history": [
-    { "source": "CUSTOMER", "text": "Merhaba", "timestamp": "2026-02-11T10:00:00Z" },
-    { "source": "AGENT", "text": "Merhaba, nasil yardimci olabilirim?", "timestamp": "2026-02-11T10:00:05Z" }
-  ],
-  "templates": [],
-  "template_variables": { "agent_name": "Ayse" }
-}
-""",
-        ["/api/v1/feedback"] = """
-{
-  "suggestion_id": "00000000-0000-0000-0000-000000000000",
-  "agent_action": "accepted",
-  "final_reply_text": null
-}
-"""
-    };
-
-    // Build Postman collection
-    var folders = new List<object>();
-    foreach (var (service, port, endpoints) in allServices)
-    {
-        var shortName = service.Replace("Invekto.", "");
-        var baseUrl = $"http://localhost:{port}";
-
-        // Group by category
-        var grouped = endpoints
-            .GroupBy(e => e.Category ?? "Other")
-            .OrderBy(g => g.Key == "API" ? 0 : g.Key == "Health" ? 1 : g.Key == "Ops" ? 2 : 3);
-
-        foreach (var group in grouped)
-        {
-            var items = new List<object>();
-            foreach (var ep in group)
-            {
-                var urlParts = ep.Path.TrimStart('/').Split('/');
-                var request = new Dictionary<string, object>
-                {
-                    ["method"] = ep.Method,
-                    ["url"] = new
-                    {
-                        raw = $"{baseUrl}{ep.Path}",
-                        host = new[] { baseUrl },
-                        path = urlParts
-                    },
-                    ["description"] = ep.Description
-                };
-
-                // Add auth header for Basic auth endpoints
-                if (ep.Auth == "Basic")
-                {
-                    request["auth"] = new
-                    {
-                        type = "basic",
-                        basic = new[]
-                        {
-                            new { key = "username", value = "{{ops_username}}" },
-                            new { key = "password", value = "{{ops_password}}" }
-                        }
-                    };
-                }
-
-                // Add sample body for POST endpoints
-                if (ep.Method == "POST" && sampleBodies.TryGetValue(ep.Path, out var body))
-                {
-                    request["header"] = new[] { new { key = "Content-Type", value = "application/json" } };
-                    request["body"] = new
-                    {
-                        mode = "raw",
-                        raw = body.Trim(),
-                        options = new { raw = new { language = "json" } }
-                    };
-                }
-
-                items.Add(new
-                {
-                    name = $"{ep.Method} {ep.Path}",
-                    request
-                });
-            }
-
-            folders.Add(new
-            {
-                name = $"{shortName} - {group.Key}",
-                item = items
-            });
-        }
-    }
-
-    var collection = new
-    {
-        info = new
-        {
-            name = "InvektoServis API",
-            description = $"Auto-generated from endpoint discovery at {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC",
-            schema = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-        },
-        variable = new[]
-        {
-            new { key = "ops_username", value = "admin" },
-            new { key = "ops_password", value = "admin123" }
-        },
-        item = folders
-    };
-
+    var json = await File.ReadAllTextAsync(postmanPath);
     ctx.Response.Headers.ContentDisposition = "attachment; filename=\"InvektoServis.postman_collection.json\"";
-    return Results.Json(collection);
+    ctx.Response.ContentType = "application/json";
+    return Results.Content(json, "application/json");
 });
 
 // ============================================

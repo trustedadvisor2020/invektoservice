@@ -17,6 +17,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Include Postman collection in publish output -->
+  <ItemGroup>
+    <Content Include="..\..\postman\InvektoServis.postman_collection.json" Link="postman\InvektoServis.postman_collection.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Exclude Dashboard and FlowBuilder source from publish (only wwwroot build output needed) -->
   <!-- Note: wwwroot is auto-included by Microsoft.NET.Sdk.Web -->
   <ItemGroup>
