@@ -286,6 +286,9 @@
 | 2026-02-24 | Template Library'de 60 kart grid'i — Q "sablon ne oldugu anlasilmiyor, okunamiyor" dedi | Category-grouped accordion layout + Turkish labels + descriptions + examples | **Cok sayida benzer kartı grid'e doseme = okunamaz. Kategori gruplama + aciklama + orneklerle bilgiyi sindirilebilir yap** |
 | 2026-02-24 | "Tumunu Ekle" butonu + genel ilerleme bar'i eklendi — Q "hedef hepsini eklemek degil, kaldir" dedi | Bulk adopt + overall progress kaldirildi | **Kullaniciya "hepsini ekle" dayatma. Secici benimseme doğru — her sablon bireysel secilmeli** |
 | 2026-02-24 | Onboarding expanded panel'de "Henuz bilgi yok" + aciklama yazisi vardi — Q "kaldir, varsa listele yoksa henuz eklenmedi" dedi | Description kaldirildi, detail/fallback pattern eklendi | **Bos durum icin uzun aciklama yerine minimal fallback: "Henuz eklenmedi" yeterli** |
+| 2026-03-05 | NSSM stdout.log'da eski hatalar goruldu, servis aslinda calisiyor | curl ile direkt test, JsonLines log tarih kontrolu | **NSSM log dosyalarina APPEND yapar — eski hatalar yeni hata gibi gorunur. Tarih kontrolu + direkt curl test ile dogrula** |
+| 2026-03-05 | WebChat widget'da visitor mesajlari gorunmuyordu — appendMessage'daki duplicate check ayni content'li mesajlari engelliyordu | Duplicate check kaldirildi, SignalR echo'da visitor type skip | **Optimistic UI + SignalR echo = duplicate check yerine sender type filter. Ayni content ≠ ayni mesaj** |
+| 2026-03-05 | Deploy sonrasi appsettings.Production.json eski degerlere donuyordu | Deploy config restore sonrasi regex ile kritik degerleri override et | **Deploy pipeline config backup/restore yapar — yeni config degerlerini deploy SONRASI override et** |
 
 ## Patterns That Work
 

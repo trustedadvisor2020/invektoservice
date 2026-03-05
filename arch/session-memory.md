@@ -5,23 +5,24 @@
 
 ## Last Update
 
-- **Date:** 2026-03-04
-- **Status:** Wizard auto-apply edit mode fix tamamlandı. Codex PASS iter=0.
-- **Last Task:** AI Destek panelinde (AiChatPanel) flowconfig auto-apply + system prompt güçlendirme.
-- **Production Deploy:** Deploy yapılmadı (frontend+backend değişiklik, deploy bekliyor).
-- **Next Task:** Q karar verecek.
-- **Strateji:** 12 Paket Stratejisi v5.2
+- **Date:** 2026-03-05
+- **Status:** WebChat perf fix deployed + SDD Faz 1-3 tamamlandı + cross-project SDD dağıtımı.
+- **Last Task:** SDD (Spec-Driven Development) entegrasyonu — spec template, plan-schema v5.1, spec-aware Codex review, tüm projelere dağıtım.
+- **Production Deploy:** WebChat deploy edildi (AIReply delay 30→0, DB combine, fire-and-forget push). Website widget JS fix deploy edildi.
+- **Next Task:** Q karar verecek. PKT-7 (Visual AI) hazır (SPEC-007 yazıldı).
+- **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | No active work | — | Q karar verecek. Backend deploy bekliyor (wizard auto-apply). |
+| — | No active work | — | SDD Faz 1-3 done. PKT-7 spec hazır. Q karar verecek. |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-05 | WebChat perf fix (AI delay 0, DB combine, fire-and-forget) + widget JS fix + SDD Faz 1-3 + cross-project SDD |
 | 2026-03-04 | Wizard auto-apply edit mode — AI Destek flowconfig auto-apply + system prompt. Codex PASS iter=0 |
 | 2026-03-04 | Translation INMA echo-back contract + Postman + Dashboard widget + 2x Backend deploy |
 | 2026-03-03 | QNB VPos 3DPay — tenant_payments, QnbVPosService, 3 endpoints, PaymentPage. Commit 6b2c57a |
