@@ -11,6 +11,7 @@ import {
   BarChart3,
   TrendingUp,
   GitBranch,
+  Activity,
   Megaphone,
   CalendarDays,
   Link2,
@@ -56,7 +57,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
   { path: '/appointments',    label: 'Randevular',       icon: CalendarDays, feature: 'Appointments' },
   // — Tenant: Analiz —
-  { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics', section: 'Analiz' },
+  { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow Izleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },
+  { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics' },
   { path: '/revenue-intelligence', label: 'Revenue Intelligence', tenantLabel: 'Gelir Analizi', icon: TrendingUp, feature: 'Analytics' },
   // — Tenant: Diğer —
   { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations', section: 'Diğer' },
