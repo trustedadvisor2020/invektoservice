@@ -62,6 +62,7 @@ ZORUNLU:
 - arch/lessons-learned.md     -> Tekrarlanan hatalar
 - arch/contracts/             -> Ilgili kontratlar
 - arch/errors.md              -> Error codes
+- arch/specs/SPEC-XXX-*.md    -> Plan'da spec_ref varsa ilgili spec'i oku
 - INVEKTO_BASE.prompt.md      -> Global rules
 - CLAUDE.md                   -> Proje kurallari
 ```
@@ -88,6 +89,7 @@ You will always receive:
 - Architecture references
 - **Acceptance Criteria** (AC1, AC2, ... - Q-confirmed success criteria)
 - **Verification Questions**
+- **SDD Spec** (v5.1): Plan'da `spec_ref` varsa `arch/specs/SPEC-XXX-*.md` oku
 
 If any required input is missing -> STOP and escalate to Q.
 
@@ -215,10 +217,19 @@ Build PASS sonrasi calistir:
 
 Bu komut:
 1. JSON plan dosyasini gunceller (git_diff, files_changed, status)
-2. Diff dosyasi yazar (arch/plans/diffs/{slug}.diff)
-3. Secret scan yapar (BLOCKING)
-4. **MCP `codex_review` tool'unu cagrir** (otomatik, Q copy-paste GEREK YOK)
-5. Codex result'i isler ve Q'ya ozet gosterir
+2. **Spec-aware enrichment:** Plan'da `spec_ref` varsa:
+   a. `arch/specs/SPEC-XXX-*.md` dosyasini oku
+   b. `spec_acceptance_criteria` status'lerini guncelle (MET/NOT_MET)
+   c. `spec_architectural_decisions` → Codex prompt'una "Pre-Declared Architectural Decisions" section olarak ekle
+3. Diff dosyasi yazar (arch/plans/diffs/{slug}.diff)
+4. Secret scan yapar (BLOCKING)
+5. **MCP `codex_review` tool'unu cagrir** (otomatik, Q copy-paste GEREK YOK)
+   - Spec varsa Codex prompt'a eklenen ek context:
+   ```
+   ## Pre-Declared Architectural Decisions (Do NOT flag as issues)
+   - [decision]: [codex_note] (Q approved)
+   ```
+6. Codex result'i isler ve Q'ya ozet gosterir
 
 ### `/rev verdict` - Manual Verdict Override
 

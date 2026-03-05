@@ -1,6 +1,6 @@
 # Spec-Driven Development (SDD) - InvektoServis Degerlendirme & Yol Haritasi
 
-> **Tarih:** 2026-02-21 | **Hazirlayan:** Q + Claude Code | **Durum:** EVALUATED (Q onay: 2026-03-04)
+> **Tarih:** 2026-02-21 | **Hazirlayan:** Q + Claude Code | **Durum:** FAZ 1-3 DONE (2026-03-05)
 > **Hedef:** Mevcut auto workflow'a SDD prensiplerini entegre ederek AI-assisted kod uretim kalitesini artirmak.
 
 ---
@@ -169,10 +169,10 @@ Mevcut `tracking/pkt-07-visual-ai.md` icerigini `arch/specs/SPEC-007-visual-ai.m
 
 #### 4.1.3 Deliverables
 
-- [ ] `arch/specs/_TEMPLATE.md` olustur
-- [ ] `arch/specs/SPEC-007-visual-ai.md` ornek spec
-- [ ] `arch/README.md` guncelle (specs/ referansi)
-- [ ] `CLAUDE.md` "Architecture Reference" tablosuna `Yeni feature | arch/specs/` ekle
+- [x] `arch/specs/_TEMPLATE.md` olustur
+- [x] `arch/specs/SPEC-007-visual-ai.md` ornek spec
+- [x] `arch/README.md` guncelle (specs/ referansi)
+- [x] `CLAUDE.md` "Architecture Reference" tablosuna `Yeni feature | arch/specs/` ekle
 
 ---
 
@@ -225,9 +225,9 @@ Mevcut `plan-schema.json`'a eklenecek alanlar:
 
 #### 4.2.3 Deliverables
 
-- [ ] `arch/contracts/plan-schema.json` v5.0 → v5.1 guncelle
+- [x] `arch/contracts/plan-schema.json` v5.0 → v5.1 guncelle
 - [ ] Ornek plan JSON ile test et (PKT-7 plan)
-- [ ] `INVEKTO_BASE.prompt.md` plan section guncelle
+- [x] `INVEKTO_BASE.prompt.md` plan section guncelle
 
 ---
 
@@ -269,9 +269,9 @@ SDD EKLEME:
 
 #### 4.3.3 Deliverables
 
-- [ ] `rev.md` guncelle (spec-aware review adimi)
-- [ ] Codex prompt template'ine "Architectural Decisions" section ekle
-- [ ] INVEKTO_DEV_AGENT'a spec okuma adimi ekle
+- [x] `rev.md` guncelle (spec-aware review adimi) — INVEKTO_DEV_AGENT'a eklendi
+- [x] Codex prompt template'ine "Architectural Decisions" section ekle
+- [x] INVEKTO_DEV_AGENT'a spec okuma adimi ekle
 
 ---
 
