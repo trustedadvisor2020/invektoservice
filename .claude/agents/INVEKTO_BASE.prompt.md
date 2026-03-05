@@ -115,7 +115,9 @@ Q paket ister → Interview → AC Gate → Plan JSON → Q onay → Dev → Bui
 - **Codex review yapılmadan commit yapılamaz** (LOW dahil)
 - Paket bazlı: birden fazla GR tek pakette (1 interview + 1 plan + sıralı dev + 1 review)
 - Max 3 iteration. Geçemezse escalate: DECISION_CONFLICT | TOOL_LIMITATION | PLAN_ASSUMPTION_WRONG
-- Plan: `arch/plans/{YYYYMMDD-feature-name}.json`, schema: `arch/contracts/plan-schema.json`
+- Plan: `arch/plans/{YYYYMMDD-feature-name}.json`, schema: `arch/contracts/plan-schema.json` (v5.1)
+- **SDD Spec:** `arch/specs/SPEC-XXX-*.md` varsa plan'a `spec_ref` ekle, AC ve architectural decisions spec'ten cek
+- Spec varsa → Codex prompt'una "Pre-Declared Architectural Decisions" section eklenir (false positive azaltma)
 
 > Detay: `references/workflow-detail.md`
 

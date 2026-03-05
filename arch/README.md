@@ -19,8 +19,10 @@ arch/
 │   └── README.md
 ├── docs/               # Teknik dokümanlar
 │   └── microservice-guide.md
-└── plans/              # Feature planları
-    └── diffs/          # Codex review diff'leri
+├── plans/              # Feature planları
+│   └── diffs/          # Codex review diff'leri
+└── specs/              # SDD Feature Spec'leri
+    └── _TEMPLATE.md    # Yeni feature spec şablonu
 ```
 
 ## Önemli Kurallar

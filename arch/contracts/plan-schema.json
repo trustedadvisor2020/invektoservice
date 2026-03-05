@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "plan-v5.json",
-  "title": "Plan Schema v5.0",
-  "description": "JSON Plan Schema for Codex Review Protocol v5.0 (Packet-based execution)",
+  "$id": "plan-v5.1.json",
+  "title": "Plan Schema v5.1",
+  "description": "JSON Plan Schema for Codex Review Protocol v5.1 (Packet-based execution + SDD spec integration)",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -26,19 +26,73 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "5.0",
-      "description": "Schema version - must be 5.0"
+      "enum": ["5.0", "5.1"],
+      "description": "Schema version - 5.0 or 5.1"
     },
     "review_protocol_version": {
       "type": "string",
-      "const": "5.0",
-      "description": "Review protocol version - must be 5.0"
+      "enum": ["5.0", "5.1"],
+      "description": "Review protocol version - 5.0 or 5.1"
     },
     "packet_id": {
       "type": ["string", "null"],
       "pattern": "^PKT-[0-9]+$",
       "description": "Execution packet ID (e.g. PKT-1). Null for standalone tasks.",
       "examples": ["PKT-1", "PKT-2"]
+    },
+    "spec_ref": {
+      "type": ["string", "null"],
+      "pattern": "^SPEC-[0-9]{3}$",
+      "description": "Reference spec ID (e.g. SPEC-007). Null for standalone/legacy tasks."
+    },
+    "spec_acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^AC-[0-9]+$",
+            "description": "Acceptance criterion ID from spec"
+          },
+          "description": {
+            "type": "string",
+            "description": "Criterion text from spec"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "MET", "NOT_MET", "N/A"],
+            "default": "PENDING",
+            "description": "Criterion status (populated during /rev)"
+          }
+        },
+        "required": ["id", "description", "status"]
+      },
+      "description": "Spec acceptance criteria tracking (populated from spec during /rev)"
+    },
+    "spec_architectural_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string",
+            "description": "Architectural decision description"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this decision was made"
+          },
+          "codex_note": {
+            "type": "string",
+            "description": "Note for Codex to prevent false positives (e.g. EXPECTED: CQ5 skip)"
+          }
+        },
+        "required": ["decision", "codex_note"]
+      },
+      "description": "Pre-declared architectural decisions for Codex awareness (from spec)"
     },
     "gr_list": {
       "type": "array",

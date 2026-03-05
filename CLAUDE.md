@@ -78,6 +78,7 @@ Bu adimlar plan mode dahil her session icin gecerlidir.
 | Yeni servis | `arch/docs/microservice-guide.md` |
 | Kalite durumu | `arch/quality-grades.md` |
 | Fikir/backlog | `tracking/roadmap.md` (Backlog section) |
+| Yeni feature spec | `arch/specs/` + `_TEMPLATE.md` |
 
 ## Agents & Skills
 
