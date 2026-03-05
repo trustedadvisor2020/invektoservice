@@ -6,24 +6,23 @@
 ## Last Update
 
 - **Date:** 2026-03-05
-- **Status:** FM-1b Flow Monitor Page DONE + deployed.
-- **Last Task:** FM-1b: 3-panel monitor page (execution list + timeline + AI placeholder), cross-flow endpoint with JOIN + 4 filters, 5s polling, Zustand store. Codex iter 1 FORCE PASS (CQ3 false positive).
-- **Production Deploy:** Backend (5000) + Automation (7108) deployed.
-- **Files Changed:** ErrorCodes.cs, AutomationRepository.cs, Automation/Program.cs, Backend/Program.cs, api.ts, flow.ts, FlowMonitorPage.tsx, flow-monitor-store.ts, App.tsx, errors.md
-- **Next Task:** FM-1c Monitor AI Chat
+- **Status:** FM-1c Monitor AI Chat DONE.
+- **Last Task:** FM-1c: AI chat panel on FlowMonitorPage. MONITOR mode system prompt in ClaudeWizardService, execution_detail param through wizard SSE, MonitorAiPanel component with streaming + accept/reject, proactive auto-analysis for error/waiting. Codex iter 2 manual PASS (CQ5 false positive — err.message pattern matches codebase).
+- **Files Changed:** ClaudeWizardService.cs, Program.cs, wizard-api.ts, flow-monitor-store.ts, FlowMonitorPage.tsx, errors.md, fm-1c plan JSON
+- **Next Task:** FM-1d or next priority from tracking
 - **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | FM-1b: Flow Monitor Page | DONE | 3-panel monitor, cross-flow endpoint, 5s polling. Codex iter 1 FORCE PASS |
-| 2 | FM-1c: Monitor AI Chat | PLANNED | Monitor sayfasi AI chat entegrasyonu |
+| 1 | FM-1c: Monitor AI Chat | DONE | MONITOR mode prompt, streaming chat, accept/reject, proactive analysis. Codex iter 2 manual PASS |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-05 | FM-1c Monitor AI Chat: MONITOR mode system prompt, execution_detail SSE param, MonitorAiPanel (streaming + accept/reject + proactive), INV-AT-050/051/052. Codex iter 2 manual PASS |
 | 2026-03-05 | FM-1b Flow Monitor Page: 3-panel layout, cross-flow endpoint, 4 filters, 5s polling, Zustand store, FlowMonitorPage. Codex iter 1 FORCE PASS. Backend + Automation deploy |
 | 2026-03-05 | FM-1a Flow Versioning Backend: migration 007, repo CRUD, save hook, 3 API endpoints, 3 proxy routes, Toolbar version badge. Codex iter 1 PASS. Backend + Automation deploy |
 | 2026-03-05 | Dashboard sidebar V3 format (section headers, teal active, slate colors, Inter font, Outfit headings) + 4x production deploy |
