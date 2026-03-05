@@ -6,24 +6,25 @@
 ## Last Update
 
 - **Date:** 2026-03-05
-- **Status:** FM-1a Flow Versioning Backend DONE + deployed.
-- **Last Task:** FM-1a: flow_versions table (migration 007), AutomationRepository 4 CRUD methods, auto-version on save (non-fatal), 3 API endpoints + 3 Backend proxy routes, Toolbar version badge + history dropdown. Codex iter 1 PASS.
+- **Status:** FM-1b Flow Monitor Page DONE + deployed.
+- **Last Task:** FM-1b: 3-panel monitor page (execution list + timeline + AI placeholder), cross-flow endpoint with JOIN + 4 filters, 5s polling, Zustand store. Codex iter 1 FORCE PASS (CQ3 false positive).
 - **Production Deploy:** Backend (5000) + Automation (7108) deployed.
-- **Files Changed:** ErrorCodes.cs, AutomationRepository.cs, Automation/Program.cs, Backend/Program.cs, api.ts, FlowEditorPage.tsx, Toolbar.tsx, errors.md, automation.sql, flow-versions.sql, 007-flow-versions.sql
-- **Next Task:** FM-1b Flow Monitor Page (monitor sayfasi)
+- **Files Changed:** ErrorCodes.cs, AutomationRepository.cs, Automation/Program.cs, Backend/Program.cs, api.ts, flow.ts, FlowMonitorPage.tsx, flow-monitor-store.ts, App.tsx, errors.md
+- **Next Task:** FM-1c Monitor AI Chat
 - **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | FM-1b: Flow Monitor Page | PLANNED | Monitor sayfasi — flow health, execution stats, error tracking |
+| 1 | FM-1b: Flow Monitor Page | DONE | 3-panel monitor, cross-flow endpoint, 5s polling. Codex iter 1 FORCE PASS |
 | 2 | FM-1c: Monitor AI Chat | PLANNED | Monitor sayfasi AI chat entegrasyonu |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-05 | FM-1b Flow Monitor Page: 3-panel layout, cross-flow endpoint, 4 filters, 5s polling, Zustand store, FlowMonitorPage. Codex iter 1 FORCE PASS. Backend + Automation deploy |
 | 2026-03-05 | FM-1a Flow Versioning Backend: migration 007, repo CRUD, save hook, 3 API endpoints, 3 proxy routes, Toolbar version badge. Codex iter 1 PASS. Backend + Automation deploy |
 | 2026-03-05 | Dashboard sidebar V3 format (section headers, teal active, slate colors, Inter font, Outfit headings) + 4x production deploy |
 | 2026-03-05 | WebChat ops 502 fix (InternalApiKey config) + Dashboard tab title + logo font size |

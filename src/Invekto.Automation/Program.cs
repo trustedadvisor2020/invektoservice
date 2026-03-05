@@ -1022,6 +1022,66 @@ app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}/executions/{logId:long}", 
 });
 
 // ============================================================
+// Flow Monitor endpoints (cross-flow execution listing)
+// ============================================================
+
+// GET /api/v1/flows/{tenantId}/executions — Cross-flow execution list with filters
+app.MapGet("/api/v1/flows/{tenantId:int}/executions", async (
+    int tenantId, HttpContext ctx,
+    AutomationRepository repo, JsonLinesLogger jsonLogger,
+    int limit = 50, int offset = 0,
+    int? flow_id = null, string? status = null,
+    string? date_from = null, string? date_to = null, string? phone = null) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    limit = Math.Clamp(limit, 1, 100);
+    offset = Math.Max(offset, 0);
+
+    DateTime? dateFrom = null;
+    DateTime? dateTo = null;
+    if (!string.IsNullOrEmpty(date_from) && DateTime.TryParse(date_from, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var df))
+        dateFrom = df.ToUniversalTime();
+    if (!string.IsNullOrEmpty(date_to) && DateTime.TryParse(date_to, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var dt))
+        dateTo = dt.ToUniversalTime();
+
+    // Default: last 7 days if no date filter provided
+    if (!dateFrom.HasValue && !dateTo.HasValue)
+        dateFrom = DateTime.UtcNow.AddDays(-7);
+
+    try
+    {
+        var (items, total) = await repo.ListMonitorExecutionsAsync(
+            tenantId, flow_id, status, dateFrom, dateTo, phone, limit, offset);
+
+        return Results.Ok(new
+        {
+            items = items.Select(e => new
+            {
+                id = e.Id,
+                flow_id = e.FlowId,
+                flow_name = e.FlowName,
+                chat_id = e.ChatId,
+                phone = e.Phone,
+                trigger_message = e.TriggerMessage,
+                started_at = e.StartedAt,
+                completed_at = e.CompletedAt,
+                status = e.Status,
+                node_count = e.NodeCount
+            }),
+            total
+        });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.AutomationMonitorQueryFailed}] Monitor query DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationMonitorQueryFailed, "Monitor verileri alinamadi.", "-"), statusCode: 500);
+    }
+});
+
+// ============================================================
 // Simulation endpoints (Phase 3b — in-memory, no DB writes, no side-effects)
 // ============================================================
 

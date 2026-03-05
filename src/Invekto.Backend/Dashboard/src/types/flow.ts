@@ -498,3 +498,28 @@ export interface NodeTraceEntry {
   bot_messages?: string[];
   variables?: Record<string, string>;
 }
+
+// ============================================================
+// Flow Monitor types (cross-flow)
+// ============================================================
+
+export interface MonitorExecutionSummary {
+  id: number;
+  flow_id: number;
+  flow_name: string;
+  chat_id: string | null;
+  phone: string | null;
+  trigger_message: string | null;
+  started_at: string;
+  completed_at: string | null;
+  status: 'running' | 'completed' | 'error' | 'handed_off' | 'waiting';
+  node_count: number;
+}
+
+export interface MonitorFilters {
+  flow_id?: number;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  phone?: string;
+}

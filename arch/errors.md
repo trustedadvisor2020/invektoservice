@@ -359,6 +359,9 @@ errors:
   - code: INV-AT-048
     description: Flow rollback failed
     user_message: Surum geri alma basarisiz.
+  - code: INV-AT-049
+    description: Flow monitor query failed
+    user_message: Monitor verileri alinamadi.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001

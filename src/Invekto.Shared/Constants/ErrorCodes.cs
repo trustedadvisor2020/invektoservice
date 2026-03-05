@@ -156,6 +156,9 @@ public static class ErrorCodes
     public const string AutomationVersionCreateFailed = "INV-AT-047";
     public const string AutomationRollbackFailed = "INV-AT-048";
 
+    // Automation Flow Monitor (INV-AT-049+)
+    public const string AutomationMonitorQueryFailed = "INV-AT-049";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";

@@ -1519,6 +1519,23 @@ class OpsApiClient {
       `/api/v1/flow-builder/flows/${tenantId}/${flowId}/executions/${logId}`);
   }
 
+  // --- Flow Monitor ---
+
+  async getMonitorExecutions(tenantId: number, params?: {
+    limit?: number; offset?: number; flow_id?: number; status?: string;
+    date_from?: string; date_to?: string; phone?: string;
+  }): Promise<{ items: import('../types/flow').MonitorExecutionSummary[]; total: number }> {
+    const sp = new URLSearchParams();
+    if (params?.limit) sp.set('limit', params.limit.toString());
+    if (params?.offset) sp.set('offset', params.offset.toString());
+    if (params?.flow_id) sp.set('flow_id', params.flow_id.toString());
+    if (params?.status) sp.set('status', params.status);
+    if (params?.date_from) sp.set('date_from', params.date_from);
+    if (params?.date_to) sp.set('date_to', params.date_to);
+    if (params?.phone) sp.set('phone', params.phone);
+    return this.request(`/api/v1/flow-builder/monitor/${tenantId}/executions?${sp}`);
+  }
+
   async getFlowBuilderInstances(flowId?: number): Promise<{ instances: FbAvailableInstance[] }> {
     const params = flowId ? `?flow_id=${flowId}` : '';
     return this.request<{ instances: FbAvailableInstance[] }>(`/api/v1/flow-builder/instances/available${params}`);

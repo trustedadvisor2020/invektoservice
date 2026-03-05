@@ -1,0 +1,33 @@
+{
+  "slug": "20260305-fm-1b-flow-monitor-page",
+  "title": "FM-1b Flow Monitor Page",
+  "status": "REVIEW",
+  "risk_level": "MEDIUM",
+  "summary": "Flow Monitor dashboard page — 3-panel layout (execution list + timeline + AI placeholder). Cross-flow execution listing endpoint with JOIN to chatbot_flows for flow names. 4 filters (flow_id, status, date range, phone). 5s polling auto-refresh. New error code INV-AT-049.",
+  "created_at": "2026-03-05T10:00:00Z",
+  "updated_at": "2026-03-05T11:00:00Z",
+  "iteration": 0,
+  "verification_questions": [
+    "Q1: Does every DB query filter by tenant_id?",
+    "Q2: Are all new error codes registered in both ErrorCodes.cs and errors.md?",
+    "Q3: Is the JWT auth prefix list updated to include the new proxy route?",
+    "Q4: Does the cross-flow endpoint default to 7-day window when no date filters provided?",
+    "Q5: Are frontend types consistent with backend response shape?"
+  ],
+  "allowed_files": [
+    "arch/errors.md",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/types/flow.ts",
+    "src/Invekto.Backend/Dashboard/src/stores/flow-monitor-store.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/FlowMonitorPage.tsx",
+    "src/Invekto.Backend/wwwroot/app/index.html",
+    "src/Invekto.Backend/wwwroot/app/assets/*"
+  ],
+  "files_changed": [],
+  "git_diff": {}
+}

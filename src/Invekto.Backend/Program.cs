@@ -333,7 +333,7 @@ var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreC
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/translate/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/translate/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -2739,6 +2739,10 @@ app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/activate", a
 
 app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/deactivate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
     await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/deactivate"));
+
+// Monitor proxy: Backend /api/v1/flow-builder/monitor/{tid}/executions -> Automation /api/v1/flows/{tid}/executions
+app.MapGet("/api/v1/flow-builder/monitor/{tenantId:int}/executions", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/executions{ctx.Request.QueryString}"));
 
 // Execution log proxy: Backend /api/v1/flow-builder/flows/{tid}/{fid}/executions -> Automation
 app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/executions", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>

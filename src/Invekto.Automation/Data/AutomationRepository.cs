@@ -1139,6 +1139,76 @@ public sealed class AutomationRepository
             ErrorDetail = reader.IsDBNull(12) ? null : reader.GetString(12)
         };
     }
+
+    // ============================================================
+    // Flow Monitor (cross-flow execution listing)
+    // ============================================================
+
+    /// <summary>List execution logs across all flows for a tenant (with filters). JOIN chatbot_flows for flow_name.</summary>
+    public async Task<(List<MonitorExecutionSummary> Items, int Total)>
+        ListMonitorExecutionsAsync(int tenantId, int? flowId, string? status,
+        DateTime? dateFrom, DateTime? dateTo, string? phone,
+        int limit, int offset, CancellationToken ct = default)
+    {
+        var where = new System.Text.StringBuilder("WHERE e.tenant_id = @tid");
+        if (flowId.HasValue) where.Append(" AND e.flow_id = @fid");
+        if (!string.IsNullOrEmpty(status)) where.Append(" AND e.status = @status");
+        if (dateFrom.HasValue) where.Append(" AND e.started_at >= @dfrom");
+        if (dateTo.HasValue) where.Append(" AND e.started_at <= @dto");
+        if (!string.IsNullOrEmpty(phone)) where.Append(" AND e.phone LIKE @phone");
+
+        var countSql = $"SELECT COUNT(*)::int FROM flow_execution_log e {where}";
+        var listSql = $@"
+            SELECT e.id, e.flow_id, f.flow_name, e.chat_id, e.phone, e.trigger_message,
+                   e.started_at, e.completed_at, e.status, jsonb_array_length(e.node_trace) AS node_count
+            FROM flow_execution_log e
+            JOIN chatbot_flows f ON f.flow_id = e.flow_id AND f.tenant_id = e.tenant_id
+            {where}
+            ORDER BY e.started_at DESC
+            LIMIT @lim OFFSET @off";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+
+        void AddParams(NpgsqlCommand cmd)
+        {
+            cmd.Parameters.AddWithValue("tid", tenantId);
+            if (flowId.HasValue) cmd.Parameters.AddWithValue("fid", flowId.Value);
+            if (!string.IsNullOrEmpty(status)) cmd.Parameters.AddWithValue("status", status);
+            if (dateFrom.HasValue) cmd.Parameters.AddWithValue("dfrom", dateFrom.Value);
+            if (dateTo.HasValue) cmd.Parameters.AddWithValue("dto", dateTo.Value);
+            if (!string.IsNullOrEmpty(phone)) cmd.Parameters.AddWithValue("phone", $"%{phone}%");
+        }
+
+        await using var countCmd = new NpgsqlCommand(countSql, conn);
+        AddParams(countCmd);
+        var total = (int)(await countCmd.ExecuteScalarAsync(ct) ?? 0);
+
+        var items = new List<MonitorExecutionSummary>();
+        await using var listCmd = new NpgsqlCommand(listSql, conn);
+        AddParams(listCmd);
+        listCmd.Parameters.AddWithValue("lim", limit);
+        listCmd.Parameters.AddWithValue("off", offset);
+
+        await using var reader = await listCmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            items.Add(new MonitorExecutionSummary
+            {
+                Id = reader.GetInt64(0),
+                FlowId = reader.GetInt32(1),
+                FlowName = reader.GetString(2),
+                ChatId = reader.IsDBNull(3) ? null : reader.GetString(3),
+                Phone = reader.IsDBNull(4) ? null : reader.GetString(4),
+                TriggerMessage = reader.IsDBNull(5) ? null : reader.GetString(5),
+                StartedAt = reader.GetDateTime(6),
+                CompletedAt = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
+                Status = reader.GetString(8),
+                NodeCount = reader.GetInt32(9)
+            });
+        }
+
+        return (items, total);
+    }
 }
 
 // ============================================================
@@ -1224,6 +1294,20 @@ public sealed class FlowExecutionLogDetail : FlowExecutionLogSummary
     public required string NodeTraceJson { get; init; }
     public string? VariablesFinalJson { get; init; }
     public string? ErrorDetail { get; init; }
+}
+
+public class MonitorExecutionSummary
+{
+    public long Id { get; init; }
+    public int FlowId { get; init; }
+    public required string FlowName { get; init; }
+    public string? ChatId { get; init; }
+    public string? Phone { get; init; }
+    public string? TriggerMessage { get; init; }
+    public DateTime StartedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+    public required string Status { get; init; }
+    public int NodeCount { get; init; }
 }
 
 public class FlowVersionSummary
