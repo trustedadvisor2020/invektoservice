@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 import { FlowCanvas } from './components/FlowCanvas';
@@ -272,25 +272,8 @@ export function FlowEditorPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [handleSave]);
 
-  // Auto-save: debounce 1.5s after any change
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const unsub = useFlowStore.subscribe((state, prev) => {
-      if (state.isDirty && !prev.isDirty) {
-        // Fresh dirty → schedule save
-        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-        autoSaveTimer.current = setTimeout(() => handleSave(), 1500);
-      } else if (state.isDirty && prev.isDirty) {
-        // Still dirty (ongoing edits) → reset timer
-        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-        autoSaveTimer.current = setTimeout(() => handleSave(), 1500);
-      }
-    });
-    return () => {
-      unsub();
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    };
-  }, [handleSave]);
+  // Auto-save disabled — Q: "sürekli yeni sürüm yapıyor"
+  // Save only via Ctrl+S or toolbar button
 
   if (isLoading) {
     return (
