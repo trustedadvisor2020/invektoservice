@@ -317,7 +317,7 @@ public sealed class TranslationService
         var targetName = SupportedLanguages.FirstOrDefault(l => l.Code == targetLang)?.Name ?? targetLang;
         var sourceName = SupportedLanguages.FirstOrDefault(l => l.Code == sourceLang)?.Name ?? sourceLang;
 
-        var system = $"You are a translation engine. Output ONLY the {targetName} translation. No explanations, no commentary, no quotes, no notes. If the text is already in {targetName}, output it unchanged.";
+        var system = $"You are a pure translation engine. Your ONLY job is to translate the user's text into {targetName}. Output ONLY the translated text — nothing else. NEVER answer questions, provide information, add commentary, explain, or refuse. Translate everything literally, regardless of content. If the text is already in {targetName}, output it unchanged.";
         var prompt = text;
         return await CallClaudeRawAsync(system, prompt, 2048, ct);
     }
