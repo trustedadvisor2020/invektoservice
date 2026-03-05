@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useFlowMonitorStore } from '../stores/flow-monitor-store';
 import { getNodeTypeInfo } from '../types/flow';
 import type { MonitorExecutionSummary, FlowExecutionDetail, NodeTraceEntry } from '../types/flow';
+import type { WizardMessage, WizardOption } from '../types/wizard';
 import { cn } from '../lib/utils';
 
 const POLL_INTERVAL = 5000;
@@ -126,18 +127,12 @@ export function FlowMonitorPage() {
           />
         </div>
 
-        {/* Right panel: AI Chat placeholder (FM-1c) */}
-        <div className="w-[300px] flex-shrink-0 border-l border-slate-200 bg-white flex flex-col items-center justify-center">
-          <div className="text-center px-6">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-indigo-500">
-                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                <path d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-              </svg>
-            </div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-1">AI Asistan</h3>
-            <p className="text-xs text-slate-400">Flow analizi ve iyilestirme onerileri icin AI asistan yaklasimda.</p>
-          </div>
+        {/* Right panel: AI Chat */}
+        <div className="w-[320px] flex-shrink-0 border-l border-slate-200 bg-white flex flex-col overflow-hidden">
+          <MonitorAiPanel
+            tenantId={tenantId}
+            selectedExecution={selectedExecution}
+          />
         </div>
       </div>
     </div>
@@ -531,6 +526,255 @@ function TimelineNode({ entry, index, isLast }: { entry: NodeTraceEntry; index: 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MonitorAiPanel
+// ============================================================
+
+interface AiPanelProps {
+  tenantId: number;
+  selectedExecution: FlowExecutionDetail | null;
+}
+
+function MonitorAiPanel({ tenantId, selectedExecution }: AiPanelProps) {
+  const messages = useFlowMonitorStore(s => s.aiMessages);
+  const isStreaming = useFlowMonitorStore(s => s.aiIsStreaming);
+  const streamingText = useFlowMonitorStore(s => s.aiStreamingText);
+  const pendingFlowConfig = useFlowMonitorStore(s => s.aiPendingFlowConfig);
+  const pendingOptions = useFlowMonitorStore(s => s.aiPendingOptions);
+  const aiError = useFlowMonitorStore(s => s.aiError);
+  const isSaving = useFlowMonitorStore(s => s.aiIsSaving);
+  const sendAiMessage = useFlowMonitorStore(s => s.sendAiMessage);
+  const acceptAiChanges = useFlowMonitorStore(s => s.acceptAiChanges);
+  const rejectAiChanges = useFlowMonitorStore(s => s.rejectAiChanges);
+
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const proactiveSentRef = useRef<number | null>(null);
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streamingText]);
+
+  // Proactive analysis: auto-send when error/waiting execution is selected
+  useEffect(() => {
+    if (!selectedExecution) return;
+    if (proactiveSentRef.current === selectedExecution.id) return;
+    if (selectedExecution.status !== 'error' && selectedExecution.status !== 'waiting') return;
+
+    proactiveSentRef.current = selectedExecution.id;
+    const autoMsg = selectedExecution.status === 'error'
+      ? 'Bu yurutme hata ile sonuclandi. Hatanin nedenini analiz et ve cozum oner.'
+      : 'Bu yurutme bekleme durumunda kaldi. Neden bekliyor, analiz et.';
+    sendAiMessage(tenantId, autoMsg);
+  }, [selectedExecution, tenantId, sendAiMessage]);
+
+  const handleSend = useCallback(() => {
+    const text = input.trim();
+    if (!text || isStreaming) return;
+    setInput('');
+    sendAiMessage(tenantId, text);
+  }, [input, isStreaming, tenantId, sendAiMessage]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  const handleOptionClick = useCallback((option: WizardOption) => {
+    if (isStreaming) return;
+    sendAiMessage(tenantId, option.label);
+  }, [isStreaming, tenantId, sendAiMessage]);
+
+  // No execution selected — show placeholder
+  if (!selectedExecution) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center px-6">
+          <AiSparkleIcon />
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">AI Asistan</h3>
+          <p className="text-xs text-slate-400">Bir yurutme secin, AI analiz ve iyilestirme onerileri sunacak.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Header */}
+      <div className="px-3 py-2 border-b border-slate-100 flex-shrink-0 flex items-center gap-2">
+        <AiSparkleIcon size="sm" />
+        <span className="text-xs font-medium text-slate-600">AI Asistan</span>
+        <span className="text-[10px] text-slate-400 ml-auto">#{selectedExecution.id}</span>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+        {messages.map((msg, i) => (
+          <AiMessageBubble key={i} message={msg} onOptionClick={handleOptionClick} />
+        ))}
+
+        {/* Streaming text */}
+        {isStreaming && streamingText && (
+          <div className="flex gap-2">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-indigo-500">
+                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+            </div>
+            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{streamingText}</div>
+          </div>
+        )}
+
+        {/* Streaming indicator */}
+        {isStreaming && !streamingText && (
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="animate-spin w-3.5 h-3.5 border border-indigo-300 border-t-indigo-600 rounded-full" />
+            <span>Dusunuyor...</span>
+          </div>
+        )}
+
+        {/* Error */}
+        {aiError && (
+          <div className="px-3 py-2 bg-red-50 border border-red-100 rounded-md text-xs text-red-600">{aiError}</div>
+        )}
+
+        {/* Pending flow config — Accept/Reject buttons */}
+        {pendingFlowConfig && (
+          <div className="px-3 py-2.5 bg-violet-50 border border-violet-200 rounded-lg">
+            <div className="text-xs font-medium text-violet-700 mb-2">AI akis degisikligi onerdi</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => acceptAiChanges(tenantId)}
+                disabled={isSaving}
+                className="flex-1 text-xs font-medium px-3 py-1.5 bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-50 transition-colors"
+              >
+                {isSaving ? 'Kaydediliyor...' : 'Uygula'}
+              </button>
+              <button
+                onClick={rejectAiChanges}
+                disabled={isSaving}
+                className="flex-1 text-xs font-medium px-3 py-1.5 bg-white text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-50 transition-colors"
+              >
+                Reddet
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Options buttons */}
+        {pendingOptions && pendingOptions.length > 0 && !pendingFlowConfig && (
+          <div className="space-y-1.5">
+            {pendingOptions.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => handleOptionClick(opt)}
+                disabled={isStreaming}
+                className="w-full text-left px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-md hover:bg-slate-100 hover:border-slate-300 disabled:opacity-50 transition-colors"
+              >
+                <span className="font-medium text-slate-700">{opt.label}</span>
+                {opt.description && <span className="text-slate-400 ml-1">— {opt.description}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="px-3 py-2.5 border-t border-slate-100 flex-shrink-0">
+        <div className="flex gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Soru sor veya degisiklik iste..."
+            rows={1}
+            className="flex-1 text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+            disabled={isStreaming}
+          />
+          <button
+            onClick={handleSend}
+            disabled={isStreaming || !input.trim()}
+            className="p-1.5 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-40 transition-colors"
+            title="Gonder"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// AiMessageBubble
+// ============================================================
+
+function AiMessageBubble({ message, onOptionClick }: { message: WizardMessage; onOptionClick: (opt: WizardOption) => void }) {
+  if (message.role === 'user') {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg rounded-br-sm text-xs text-indigo-800 whitespace-pre-wrap">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-indigo-500">
+          <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{message.content}</div>
+        {message.options && message.options.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {message.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => onOptionClick(opt)}
+                className="w-full text-left px-2.5 py-1.5 text-[11px] bg-slate-50 border border-slate-200 rounded hover:bg-slate-100 transition-colors"
+              >
+                <span className="font-medium text-slate-700">{opt.label}</span>
+                {opt.description && <span className="text-slate-400 ml-1">— {opt.description}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// AiSparkleIcon
+// ============================================================
+
+function AiSparkleIcon({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
+  const wrapperCn = size === 'sm'
+    ? 'w-5 h-5 rounded-md'
+    : 'w-12 h-12 mx-auto mb-3 rounded-xl';
+  const iconCn = size === 'sm' ? 'w-3 h-3' : 'w-6 h-6';
+
+  return (
+    <div className={cn(wrapperCn, 'bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center')}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={cn(iconCn, 'text-indigo-500')}>
+        <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        <path d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+      </svg>
     </div>
   );
 }

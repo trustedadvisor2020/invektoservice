@@ -44,9 +44,10 @@ public sealed class ClaudeWizardService
         List<WizardMessage> history,
         List<FlowSummaryContext>? existingFlows,
         string? currentFlowConfig = null,
+        string? executionContext = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var systemPrompt = BuildSystemPrompt(existingFlows, currentFlowConfig);
+        var systemPrompt = BuildSystemPrompt(existingFlows, currentFlowConfig, executionContext);
 
         var messages = new List<object>();
         foreach (var msg in history)
@@ -486,11 +487,39 @@ public sealed class ClaudeWizardService
 
     private sealed record ApiUrlFailure(string Label, string Host);
 
-    private static string BuildSystemPrompt(List<FlowSummaryContext>? existingFlows, string? currentFlowConfig = null)
+    private static string BuildSystemPrompt(List<FlowSummaryContext>? existingFlows, string? currentFlowConfig = null, string? executionContext = null)
     {
         var sb = new StringBuilder();
 
-        if (!string.IsNullOrEmpty(currentFlowConfig))
+        // MONITOR MODE — when execution context is provided
+        if (!string.IsNullOrEmpty(executionContext))
+        {
+            sb.AppendLine("Sen InvektoServices platformunda deneyimli bir chatbot akis analisti ve optimizasyon uzmanisin. Su anda MONITOR modundasin. Kullanici chatbot akisinin yurutme (execution) verilerini inceliyor.");
+            sb.AppendLine();
+            sb.AppendLine("## MONITOR MODE KURALLARI");
+            sb.AppendLine("- Asagida akis konfigurasyonu VE yurutme detaylarini goreceksin.");
+            sb.AppendLine("- Node trace'deki her adimi analiz et: hangi node'lar calistirilmis, kullanici girdileri, bot cevaplari, sureler.");
+            sb.AppendLine("- Hata (error) veya beklenmedik davranis varsa KOK NEDENINI tespit et.");
+            sb.AppendLine("- Yuksek sure (duration_ms > 3000) olan node'lari performans sorunu olarak belirt.");
+            sb.AppendLine("- Kullanicinin akista degisiklik istemesi durumunda EDIT MODE kurallarina gec: once acikla, onay al, ```flowconfig blogu ile tam JSON uret.");
+            sb.AppendLine("- Proaktif oneriler sun: hata orani yuksekse iyilestirme oner, eksik hata yonetimi varsa uyar.");
+            sb.AppendLine("- Analiz yaparken: 1) Ozet durum, 2) Sorunlar/riskler, 3) Oneriler sirasiyla yaz.");
+            sb.AppendLine();
+
+            if (!string.IsNullOrEmpty(currentFlowConfig))
+            {
+                sb.AppendLine("## Akis Konfigurasyonu");
+                sb.AppendLine("```json");
+                sb.AppendLine(currentFlowConfig);
+                sb.AppendLine("```");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("## Yurutme Detaylari");
+            sb.AppendLine(executionContext);
+            sb.AppendLine();
+        }
+        else if (!string.IsNullOrEmpty(currentFlowConfig))
         {
             sb.AppendLine("Sen InvektoServices platformunda deneyimli bir chatbot akis tasarimcisisin. Su anda MEVCUT BIR AKISI DUZENLEME modundasin. Kullanici bu akisi AI yardimiyla gelistirmek istiyor.");
             sb.AppendLine();

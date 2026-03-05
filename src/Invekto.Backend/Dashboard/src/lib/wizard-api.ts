@@ -30,10 +30,12 @@ export async function* streamMessage(
   _tenantId: number,
   message: string,
   signal?: AbortSignal,
-  flowConfig?: object
+  flowConfig?: object,
+  executionDetail?: object
 ): AsyncGenerator<WizardStreamEvent> {
   const body: Record<string, unknown> = { message };
   if (flowConfig) body.flow_config = flowConfig;
+  if (executionDetail) body.execution_detail = executionDetail;
 
   const res = await fetch(`${API_BASE}/wizard/${flowId}/message`, {
     method: 'POST',

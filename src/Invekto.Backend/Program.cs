@@ -2881,6 +2881,11 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
             ? fcProp.GetRawText()
             : null;
 
+        // Monitor mode: execution_detail is a JSON string containing execution trace for AI analysis
+        var executionContext = root.TryGetProperty("execution_detail", out var edProp) && edProp.ValueKind == System.Text.Json.JsonValueKind.Object
+            ? edProp.GetRawText()
+            : null;
+
         if (string.IsNullOrWhiteSpace(userMessage))
         {
             ctx.Response.StatusCode = 400;
@@ -2948,7 +2953,7 @@ app.MapPost("/api/v1/flow-builder/wizard/{flowId:int}/message", async (int flowI
             hadError = false;
             bool anySseSent = false;
 
-            await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, currentFlowConfig, ctx.RequestAborted))
+            await foreach (var chunk in wizardService.StreamChatAsync(userMessage, history, existingFlows, currentFlowConfig, executionContext, ctx.RequestAborted))
             {
                 if (chunk.Type == "done")
                 {

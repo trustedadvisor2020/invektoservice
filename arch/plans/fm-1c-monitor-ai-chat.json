@@ -1,0 +1,40 @@
+{
+  "schema_version": "6.0",
+  "slug": "fm-1c-monitor-ai-chat",
+  "title": "FM-1c: Monitor AI Chat Panel",
+  "summary": "AI chat panel integration on FlowMonitorPage. Extends existing wizard SSE endpoint with execution context (MONITOR mode system prompt). Proactive analysis for error/waiting executions. Accept/Reject flow changes with direct save (creates new version). Zustand store extended with AI chat state.",
+  "risk_level": "MEDIUM",
+  "status": "DONE",
+  "iteration": 2,
+  "created_at": "2026-03-05T18:00:00Z",
+  "updated_at": "2026-03-05T18:30:00Z",
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-03-05T18:25:00Z"
+  },
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Services/ClaudeWizardService.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/wizard-api.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/stores/flow-monitor-store.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/FlowMonitorPage.tsx", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "F6B31FF1BA972A80297629726988FEA0FB8F31891D93EC2E6868D4D9631777F1",
+    "full_path": "arch/plans/diffs/fm-1c-monitor-ai-chat.diff",
+    "stats": { "insertions": 463, "deletions": 21, "files_count": 5 }
+  },
+  "verification_questions": [
+    "Q1: Does the MONITOR mode system prompt correctly include both flow config and execution trace context?",
+    "Q2: Is tenant isolation preserved — does the AI chat only access execution data for the authenticated tenant?",
+    "Q3: Does the proactive analysis only trigger for error/waiting statuses and not re-trigger for the same execution?",
+    "Q4: Does acceptAiChanges correctly save via api.updateFlow (which triggers versioning) and handle errors?",
+    "Q5: Are streaming code blocks (flowconfig/options/json) properly stripped from display text?"
+  ],
+  "intentional_exclusions": [
+    "No separate wizard history storage for monitor chat — messages are ephemeral per session",
+    "No new error codes — reuses existing wizard error codes (INV-BE-070..074)",
+    "No new DB tables or migrations — reuses existing wizard endpoint + flow save endpoint",
+    "Execution context is passed as raw JSON string to system prompt — no structured DTO needed"
+  ]
+}

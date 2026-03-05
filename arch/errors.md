@@ -362,6 +362,15 @@ errors:
   - code: INV-AT-049
     description: Flow monitor query failed
     user_message: Monitor verileri alinamadi.
+  - code: INV-AT-050
+    description: Monitor AI stream error
+    user_message: AI servisi yanit veremedi.
+  - code: INV-AT-051
+    description: Monitor AI connection lost
+    user_message: AI baglantisi kesildi.
+  - code: INV-AT-052
+    description: Monitor AI save failed
+    user_message: AI degisiklik kaydetme basarisiz.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001
