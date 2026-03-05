@@ -282,9 +282,39 @@ public class WebChatRepository
         long conversationId, string senderType, string content, CancellationToken ct = default)
     {
         const string sql = @"
-            INSERT INTO webchat_messages (conversation_id, sender_type, content)
-            VALUES (@cid, @st, @content)
-            RETURNING id";
+            WITH ins AS (
+                INSERT INTO webchat_messages (conversation_id, sender_type, content)
+                VALUES (@cid, @st, @content)
+                RETURNING id
+            )
+            SELECT id FROM ins";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("cid", conversationId);
+        cmd.Parameters.AddWithValue("st", senderType);
+        cmd.Parameters.AddWithValue("content", content);
+
+        var id = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt64(id);
+    }
+
+    /// <summary>
+    /// Inserts a message and updates conversation last_message_at in a single round-trip.
+    /// </summary>
+    public async Task<long> InsertMessageAndTouchAsync(
+        long conversationId, string senderType, string content, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH ins AS (
+                INSERT INTO webchat_messages (conversation_id, sender_type, content)
+                VALUES (@cid, @st, @content)
+                RETURNING id
+            )
+            , upd AS (
+                UPDATE webchat_conversations SET last_message_at = NOW() WHERE id = @cid
+            )
+            SELECT id FROM ins";
 
         await using var conn = await _db.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand(sql, conn);

@@ -83,8 +83,7 @@ public sealed class ConversationService
         if (conversation.VisitorId != visitorId)
             throw new UnauthorizedAccessException("Visitor mismatch");
 
-        var msgId = await _repo.InsertMessageAsync(conversationId, "visitor", content, ct);
-        await _repo.UpdateLastMessageAtAsync(conversationId, ct);
+        var msgId = await _repo.InsertMessageAndTouchAsync(conversationId, "visitor", content, ct);
 
         var message = new MessageRow
         {
@@ -99,9 +98,9 @@ public sealed class ConversationService
         await _hubContext.Clients.Group($"conv_{conversationId}")
             .SendAsync("ReceiveMessage", message, ct);
 
-        // Send push notification to operator
+        // Send push notification to operator (true fire-and-forget, no request CT)
         var visitorName = conversation.VisitorName ?? "Ziyaretçi";
-        _ = _pushService.NotifyNewMessageAsync(conversationId, visitorName, content, ct);
+        _ = Task.Run(() => _pushService.NotifyNewMessageAsync(conversationId, visitorName, content));
 
         // Fire-and-forget: notify Automation webhook
         if (!string.IsNullOrEmpty(conversation.WidgetId))
@@ -112,10 +111,13 @@ public sealed class ConversationService
                     conversationId, visitorId, content, ct));
         }
 
-        // Start AI timer if operator not online
+        // Trigger AI reply if operator not online
         if (!_presence.IsOnline)
         {
-            StartAITimer(conversationId);
+            if (_aiDelaySeconds <= 0)
+                _ = Task.Run(() => TriggerAIReplyAsync(conversationId));
+            else
+                StartAITimer(conversationId);
         }
 
         return message;
@@ -139,8 +141,7 @@ public sealed class ConversationService
             await _repo.UpdateConversationStatusAsync(conversationId, "active", ct);
         }
 
-        var msgId = await _repo.InsertMessageAsync(conversationId, "operator", content, ct);
-        await _repo.UpdateLastMessageAtAsync(conversationId, ct);
+        var msgId = await _repo.InsertMessageAndTouchAsync(conversationId, "operator", content, ct);
 
         var message = new MessageRow
         {
@@ -270,8 +271,7 @@ public sealed class ConversationService
             if (string.IsNullOrEmpty(aiReply)) return;
 
             // Save and broadcast
-            var msgId = await _repo.InsertMessageAsync(conversationId, "ai", aiReply);
-            await _repo.UpdateLastMessageAtAsync(conversationId);
+            var msgId = await _repo.InsertMessageAndTouchAsync(conversationId, "ai", aiReply);
             await _repo.UpdateConversationStatusAsync(conversationId, "ai");
 
             var message = new MessageRow
