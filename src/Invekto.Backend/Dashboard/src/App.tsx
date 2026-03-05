@@ -36,8 +36,11 @@ function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
+    document.title = 'Invekto One';
     return <Navigate to="/login" replace />;
   }
+
+  document.title = 'Invekto One - OPS';
 
   return (
     <Layout>

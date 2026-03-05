@@ -7,7 +7,7 @@ interface InvektoLogoProps {
 }
 
 const sizes = {
-  sm: { width: 161, height: 35, fontSize: 28, oneX: 92 },
+  sm: { width: 187, height: 40, fontSize: 33, oneX: 107 },
   md: { width: 201, height: 44, fontSize: 35, oneX: 115 },
   lg: { width: 264, height: 55, fontSize: 44, oneX: 147 },
 };
