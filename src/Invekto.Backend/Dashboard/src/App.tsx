@@ -36,11 +36,13 @@ function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    document.title = 'Invekto One';
+    const isSuper = window.location.hostname === 'super.invekto.com';
+    document.title = isSuper ? 'Invekto Super' : 'Invekto AI';
     return <Navigate to="/login" replace />;
   }
 
-  document.title = 'Invekto One - OPS';
+  const isSuper = window.location.hostname === 'super.invekto.com';
+  document.title = isSuper ? 'Invekto Super - OPS' : 'Invekto AI';
 
   return (
     <Layout>

@@ -7,11 +7,20 @@ import { InvektoLogo } from '../components/ui/InvektoLogo';
 
 type LoginMode = 'inma' | 'ops';
 
+function getLoginMode(): { mode: LoginMode; locked: boolean } {
+  const host = window.location.hostname;
+  if (host === 'super.invekto.com') return { mode: 'ops', locked: true };
+  if (host === 'ai.invekto.com') return { mode: 'inma', locked: true };
+  // localhost / dev → her iki mod acik (toggle gosterilir)
+  return { mode: 'inma', locked: false };
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const { loginWithInma, loginWithOps, loginWithMock, loginWithQuickAdmin, isLoading, error } = useAuth();
 
-  const [mode, setMode] = useState<LoginMode>('inma');
+  const [hostConfig] = useState(getLoginMode);
+  const [mode, setMode] = useState<LoginMode>(hostConfig.mode);
   const [companyName, setCompanyName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +54,8 @@ export function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-navy-50">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="flex flex-col items-center mb-8">
+          <img src="/app/logo.png" alt="Invekto" className="w-14 h-14 mb-3" />
           <InvektoLogo size="lg" className="mb-2" />
           <p className="text-sm text-navy-300 mt-1">
             {mode === 'inma' ? 'Firma bilgilerinizle giris yapin' : 'Ops paneli girisi'}
@@ -54,31 +64,33 @@ export function LoginPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl border border-navy-100 shadow-card p-6">
-          {/* Mode toggle */}
-          <div className="flex rounded-lg bg-navy-50 p-0.5 mb-6 text-sm font-medium">
-            <button
-              type="button"
-              className={`flex-1 py-2 rounded-md transition-all duration-200 ${
-                mode === 'inma'
-                  ? 'bg-white text-navy-900 shadow-soft'
-                  : 'text-navy-400 hover:text-navy-600'
-              }`}
-              onClick={() => setMode('inma')}
-            >
-              Firma Girisi
-            </button>
-            <button
-              type="button"
-              className={`flex-1 py-2 rounded-md transition-all duration-200 ${
-                mode === 'ops'
-                  ? 'bg-white text-navy-900 shadow-soft'
-                  : 'text-navy-400 hover:text-navy-600'
-              }`}
-              onClick={() => setMode('ops')}
-            >
-              Ops
-            </button>
-          </div>
+          {/* Mode toggle — only show on localhost/dev where both modes available */}
+          {!hostConfig.locked && (
+            <div className="flex rounded-lg bg-navy-50 p-0.5 mb-6 text-sm font-medium">
+              <button
+                type="button"
+                className={`flex-1 py-2 rounded-md transition-all duration-200 ${
+                  mode === 'inma'
+                    ? 'bg-white text-navy-900 shadow-soft'
+                    : 'text-navy-400 hover:text-navy-600'
+                }`}
+                onClick={() => setMode('inma')}
+              >
+                Firma Girisi
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-2 rounded-md transition-all duration-200 ${
+                  mode === 'ops'
+                    ? 'bg-white text-navy-900 shadow-soft'
+                    : 'text-navy-400 hover:text-navy-600'
+                }`}
+                onClick={() => setMode('ops')}
+              >
+                Ops
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'inma' && (

@@ -43,27 +43,36 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   feature?: string; // InseFeatures key — undefined = always visible
   opsOnly?: boolean;
+  section?: string;
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard },
+  // — Tenant: Çalışma Alanı —
+  { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard, section: 'Çalışma Alanı' },
   { path: '/flow-builder', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
   { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
-  { path: '/campaigns',       label: 'Kampanyalar',      icon: Megaphone,    feature: 'Outbound' },
-  { path: '/appointments',    label: 'Randevular',       icon: CalendarDays, feature: 'Appointments' },
-  { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics' },
-  { path: '/revenue-intelligence', label: 'Revenue Intelligence', tenantLabel: 'Gelir Analizi', icon: TrendingUp, feature: 'Analytics' },
-  { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations' },
+  // — Tenant: Pazarlama —
+  { path: '/campaigns',       label: 'Kampanyalar',      icon: Megaphone,    feature: 'Outbound', section: 'Pazarlama' },
   { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
-  { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true },
+  { path: '/appointments',    label: 'Randevular',       icon: CalendarDays, feature: 'Appointments' },
+  // — Tenant: Analiz —
+  { path: '/analytics',       label: 'Analizler',        icon: BarChart3,    feature: 'Analytics', section: 'Analiz' },
+  { path: '/revenue-intelligence', label: 'Revenue Intelligence', tenantLabel: 'Gelir Analizi', icon: TrendingUp, feature: 'Analytics' },
+  // — Tenant: Diğer —
+  { path: '/integrations',    label: 'Entegrasyonlar',   icon: Link2,        feature: 'Integrations', section: 'Diğer' },
+  // — Ops: Yönetim —
+  { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true, section: 'Yönetim' },
   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
-  { path: '/webchat',         label: 'WebChat',          icon: Globe,         opsOnly: true },
-  { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
-  { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
-  { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true },
+  // — Ops: İçerik —
+  { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true, section: 'İçerik' },
   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },
   { path: '/intents',             label: 'Intent Yonetimi', icon: Brain,          opsOnly: true },
   { path: '/ri/templates',        label: 'RI Sablonlari',   icon: Layers,         opsOnly: true },
+  // — Ops: İletişim —
+  { path: '/webchat',         label: 'WebChat',          icon: Globe,         opsOnly: true, section: 'İletişim' },
+  { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
+  { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
+  // — Shared —
   { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazi', icon: Rocket },
   { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
   { path: '/settings',        label: 'Ayarlar',          icon: Settings },
@@ -118,21 +127,14 @@ export function Layout({ children }: LayoutProps) {
         to={item.path}
         title={collapsed ? item.label : undefined}
         className={cn(
-          'group flex items-center h-10 rounded-xl text-sm font-medium transition-all duration-200',
-          collapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5',
+          'group flex items-center rounded-lg text-sm font-medium transition-all duration-150',
+          collapsed ? 'h-10 justify-center px-0' : 'h-[42px] gap-3 px-4 mx-1 mb-0.5',
           isActive
-            ? 'glass-nav-active text-brand-600 font-semibold'
-            : 'text-navy-400 hover:glass-nav-hover hover:text-navy-700 hover:translate-x-0.5'
+            ? 'nav-item-active'
+            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
         )}
       >
-        <div className={cn(
-          'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200',
-          isActive
-            ? 'bg-brand-500/12 text-brand-500 shadow-[0_0_0_1px_rgba(99,91,255,0.1)]'
-            : 'text-navy-300 group-hover:bg-navy-100/60 group-hover:text-navy-500'
-        )}>
-          <Icon className="w-[17px] h-[17px]" />
-        </div>
+        <Icon className={cn('w-5 h-5 flex-shrink-0', isActive ? '' : 'text-slate-500 group-hover:text-slate-900')} />
         {!collapsed && <span className="truncate">{item.label}</span>}
       </Link>
     );
@@ -154,28 +156,28 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <div className={cn('min-h-screen flex bg-navy-50', isImpersonating && 'pt-10')}>
-        {/* Sidebar — Glass Morphism */}
+        {/* Sidebar */}
         <aside className={cn(
-          'h-screen sticky top-0 glass-sidebar shadow-glass z-10 flex flex-col transition-[width] duration-300 ease-out',
-          collapsed ? 'w-[3.5rem]' : 'w-60'
+          'h-screen sticky top-0 bg-white border-r border-slate-200 z-10 flex flex-col transition-[width] duration-300 ease-out shadow-[4px_0_24px_rgba(0,0,0,0.02)]',
+          collapsed ? 'w-[3.5rem]' : 'w-64'
         )}>
           {/* Logo + Toggle */}
-          <div className={cn('h-14 flex items-center', collapsed ? 'px-1.5' : 'px-3')}>
+          <div className={cn('h-[72px] flex items-center border-b border-slate-100 flex-shrink-0', collapsed ? 'px-1.5' : 'px-5')}>
             {collapsed ? (
               <button
                 onClick={toggleSidebar}
-                className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl hover:bg-white/60 transition-all duration-200"
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl hover:bg-slate-50 transition-all duration-200"
                 title="Menuyu ac"
               >
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Invekto" className="w-7 h-7 rounded-lg" />
+                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Invekto" className="w-8 h-8 rounded-xl" />
               </button>
             ) : (
               <>
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="w-8 h-8 flex-shrink-0 rounded-lg" />
-                <div className="min-w-0 ml-2.5 flex-1">
+                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="w-10 h-10 flex-shrink-0 rounded-xl" />
+                <div className="min-w-0 ml-3 flex-1">
                   <InvektoLogo size="sm" className="block leading-tight" />
                   {session?.companyCode && (
-                    <span className="text-2xs text-navy-300 truncate block leading-tight mt-0.5 font-medium">
+                    <span className="text-[10px] text-slate-400 truncate block leading-tight mt-0.5 font-medium uppercase tracking-widest">
                       {session.companyCode}
                     </span>
                   )}
@@ -184,21 +186,34 @@ export function Layout({ children }: LayoutProps) {
             )}
           </div>
 
-          {/* Glass divider */}
-          <div className="glass-divider mx-3" />
-
           {/* Main Navigation */}
-          <nav className={cn('flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden', collapsed ? 'px-1' : 'px-2')}>
-            {mainItems.map(item => renderNavLink(item))}
+          <nav className={cn('flex-1 overflow-y-auto overflow-x-hidden', collapsed ? 'px-1 py-3' : 'px-3 py-5')}>
+            {mainItems.map((item, i) => {
+              const showSection = item.section && !collapsed;
+              const isFirst = i === 0;
+              return (
+                <div key={item.path}>
+                  {showSection && (
+                    <div className={cn(
+                      'text-[11px] font-bold text-slate-400 uppercase tracking-widest px-4',
+                      isFirst ? 'pb-2' : 'pt-6 pb-2'
+                    )}>
+                      {item.section}
+                    </div>
+                  )}
+                  {renderNavLink(item)}
+                </div>
+              );
+            })}
           </nav>
 
           {/* Version + Collapse */}
           {!collapsed && (
-            <div className="px-4 py-1.5 flex items-center justify-between">
-              <span className="text-2xs text-navy-200 font-medium">v{__BUILD_TIME__}</span>
+            <div className="px-5 py-1.5 flex items-center justify-between">
+              <span className="text-2xs text-slate-300 font-medium">v{__BUILD_TIME__}</span>
               <button
                 onClick={toggleSidebar}
-                className="w-6 h-6 flex items-center justify-center rounded-lg text-navy-200 hover:bg-white/50 hover:text-navy-500 transition-all duration-200"
+                className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-100 hover:text-slate-500 transition-all duration-200"
                 title="Menuyu kapat"
               >
                 <PanelLeftClose className="w-3.5 h-3.5" />
@@ -206,24 +221,22 @@ export function Layout({ children }: LayoutProps) {
             </div>
           )}
 
-          {/* Glass divider */}
-          <div className="glass-divider mx-3" />
+          {/* Divider */}
+          <div className="mx-4 h-px bg-slate-100" />
 
           {/* Bottom: Onboarding + Settings + Logout */}
-          <div className={cn('py-2 space-y-0.5', collapsed ? 'px-1' : 'px-2')}>
+          <div className={cn('py-2', collapsed ? 'px-1' : 'px-3')}>
             {onboardingItem && renderNavLink(onboardingItem)}
             {settingsItem && renderNavLink(settingsItem)}
             <button
               className={cn(
-                'w-full flex items-center h-10 rounded-xl text-sm font-medium text-navy-400 hover:glass-nav-hover hover:text-navy-700 transition-all duration-200 group',
-                collapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5'
+                'w-full flex items-center rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all duration-150 group',
+                collapsed ? 'h-10 justify-center px-0' : 'h-[42px] gap-3 px-4 mx-1 mb-0.5'
               )}
               onClick={logout}
               title={collapsed ? 'Cikis Yap' : undefined}
             >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-navy-300 group-hover:bg-red-50 group-hover:text-red-400 transition-all duration-200">
-                <Power className="w-[17px] h-[17px]" strokeWidth={1.8} />
-              </div>
+              <Power className={cn('w-5 h-5 flex-shrink-0 text-slate-300 group-hover:text-red-400 transition-colors', collapsed ? '' : '')} strokeWidth={1.8} />
               {!collapsed && <span>Cikis Yap</span>}
             </button>
           </div>

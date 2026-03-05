@@ -45,8 +45,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-        display: ['"DM Sans"', '"Plus Jakarta Sans"', 'sans-serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'sans-serif'],
         logo: ['Neon', '"DM Sans"', 'sans-serif'],
       },
       fontSize: {

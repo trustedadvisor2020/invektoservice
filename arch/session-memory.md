@@ -6,22 +6,24 @@
 ## Last Update
 
 - **Date:** 2026-03-05
-- **Status:** WebChat ops 502 fix (production config) + Dashboard UI tweaks (tab title, logo size).
-- **Last Task:** WebChat InternalApiKey eksik → ops panel 502. Production config'e key eklendi + restart. Dashboard: login sonrası tab title "Invekto One - OPS", sidebar logo font büyütüldü.
-- **Production Deploy:** WebChat appsettings.Production.json — Microservice.InternalApiKey eklendi + servis restart.
-- **Next Task:** Dashboard build + deploy (tab title + logo değişiklikleri). Q karar verecek.
+- **Status:** Dashboard sidebar V3 concept format + site-wide Inter font + deployed.
+- **Last Task:** Sidebar redesign: section headers (Çalışma Alanı/Pazarlama/Analiz/Diğer for tenant, Yönetim/İçerik/İletişim for ops), v3 concept teal active state (#f0fdfa/#0d9488), slate color palette, Inter font site-wide, Outfit for headings, 42px item height, 14px text. Multiple production deploys (static asset upload).
+- **Production Deploy:** Dashboard static assets (index.html + 18 JS/CSS) uploaded to `C:\Invekto\Backend\current\wwwroot\app\`.
+- **Files Changed:** Layout.tsx, index.css, tailwind.config.js, temp/inse-redesign-prototype.html
+- **Next Task:** Ops site check (reported not working — likely stale cache). Q to verify after hard refresh.
 - **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | Dashboard build+deploy | PENDING | Tab title + logo font değişiklikleri henüz deploy edilmedi |
+| — | Ops site verify | PENDING | Q reported "super ops sitesi çalışmıyor" — deploy done, needs hard refresh test |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-05 | Dashboard sidebar V3 format (section headers, teal active, slate colors, Inter font, Outfit headings) + 4x production deploy |
 | 2026-03-05 | WebChat ops 502 fix (InternalApiKey config) + Dashboard tab title + logo font size |
 | 2026-03-05 | WebChat perf fix (AI delay 0, DB combine, fire-and-forget) + widget JS fix + SDD Faz 1-3 + cross-project SDD |
 | 2026-03-04 | Wizard auto-apply edit mode — AI Destek flowconfig auto-apply + system prompt. Codex PASS iter=0 |

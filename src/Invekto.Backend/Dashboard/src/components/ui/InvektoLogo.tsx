@@ -1,29 +1,49 @@
 import { cn } from '../../lib/utils';
 
+type LogoVariant = 'ai' | 'super' | 'none';
+
 interface InvektoLogoProps {
   size?: 'sm' | 'md' | 'lg';
   showOne?: boolean;
+  variant?: LogoVariant;
   className?: string;
 }
 
 const sizes = {
-  sm: { width: 187, height: 40, fontSize: 33, oneX: 107 },
-  md: { width: 201, height: 44, fontSize: 35, oneX: 115 },
-  lg: { width: 264, height: 55, fontSize: 44, oneX: 147 },
+  sm: { width: 187, height: 40, fontSize: 33, suffixX: 107 },
+  md: { width: 201, height: 44, fontSize: 35, suffixX: 115 },
+  lg: { width: 300, height: 62, fontSize: 50, suffixX: 168 },
 };
 
-export function InvektoLogo({ size = 'md', showOne = true, className }: InvektoLogoProps) {
+function getAutoVariant(): LogoVariant {
+  const host = window.location.hostname;
+  if (host === 'super.invekto.com') return 'super';
+  if (host === 'ai.invekto.com') return 'ai';
+  return 'ai'; // default
+}
+
+const suffixConfig: Record<LogoVariant, { text: string; color: string } | null> = {
+  ai: { text: 'AI', color: '#8898AA' },
+  super: { text: 'super', color: '#E56910' },
+  none: null,
+};
+
+export function InvektoLogo({ size = 'md', showOne, variant, className }: InvektoLogoProps) {
+  const resolved = variant ?? (showOne === false ? 'none' : getAutoVariant());
+  const suffix = suffixConfig[resolved];
   const s = sizes[size];
   const baseline = s.height * 0.78;
+  // "super" is wider than "ai"/"one" — extend viewBox accordingly
+  const extraWidth = resolved === 'super' ? 40 : 0;
 
   return (
     <svg
-      viewBox={`0 0 ${s.width} ${s.height}`}
-      width={s.width}
+      viewBox={`0 0 ${s.width + extraWidth} ${s.height}`}
+      width={s.width + extraWidth}
       height={s.height}
       className={cn('inline-block select-none', className)}
       role="img"
-      aria-label="Invekto One"
+      aria-label={suffix ? `Invekto ${suffix.text}` : 'Invekto'}
     >
       <text
         x={0}
@@ -36,17 +56,17 @@ export function InvektoLogo({ size = 'md', showOne = true, className }: InvektoL
       >
         invekto
       </text>
-      {showOne && (
+      {suffix && (
         <text
-          x={s.oneX}
+          x={s.suffixX}
           y={baseline}
           fontFamily="Neon, Inter, sans-serif"
           fontWeight={600}
           fontSize={s.fontSize}
-          fill="#8898AA"
+          fill={suffix.color}
           letterSpacing="-0.02em"
         >
-          one
+          {suffix.text}
         </text>
       )}
     </svg>
