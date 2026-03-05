@@ -350,6 +350,15 @@ errors:
   - code: INV-AT-045
     description: E-commerce action timeout
     user_message: E-ticaret işlemi zaman aşımına uğradı.
+  - code: INV-AT-046
+    description: Flow version not found
+    user_message: Belirtilen surum bulunamadi.
+  - code: INV-AT-047
+    description: Flow version creation failed
+    user_message: Surum olusturma basarisiz.
+  - code: INV-AT-048
+    description: Flow rollback failed
+    user_message: Surum geri alma basarisiz.
 
   # ── AA — AgentAI ──
   - code: INV-AA-001

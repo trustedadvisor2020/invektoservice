@@ -6,23 +6,25 @@
 ## Last Update
 
 - **Date:** 2026-03-05
-- **Status:** Dashboard sidebar V3 concept format + site-wide Inter font + deployed.
-- **Last Task:** Sidebar redesign: section headers (Çalışma Alanı/Pazarlama/Analiz/Diğer for tenant, Yönetim/İçerik/İletişim for ops), v3 concept teal active state (#f0fdfa/#0d9488), slate color palette, Inter font site-wide, Outfit for headings, 42px item height, 14px text. Multiple production deploys (static asset upload).
-- **Production Deploy:** Dashboard static assets (index.html + 18 JS/CSS) uploaded to `C:\Invekto\Backend\current\wwwroot\app\`.
-- **Files Changed:** Layout.tsx, index.css, tailwind.config.js, temp/inse-redesign-prototype.html
-- **Next Task:** Ops site check (reported not working — likely stale cache). Q to verify after hard refresh.
+- **Status:** FM-1a Flow Versioning Backend DONE + deployed.
+- **Last Task:** FM-1a: flow_versions table (migration 007), AutomationRepository 4 CRUD methods, auto-version on save (non-fatal), 3 API endpoints + 3 Backend proxy routes, Toolbar version badge + history dropdown. Codex iter 1 PASS.
+- **Production Deploy:** Backend (5000) + Automation (7108) deployed.
+- **Files Changed:** ErrorCodes.cs, AutomationRepository.cs, Automation/Program.cs, Backend/Program.cs, api.ts, FlowEditorPage.tsx, Toolbar.tsx, errors.md, automation.sql, flow-versions.sql, 007-flow-versions.sql
+- **Next Task:** FM-1b Flow Monitor Page (monitor sayfasi)
 - **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | Ops site verify | PENDING | Q reported "super ops sitesi çalışmıyor" — deploy done, needs hard refresh test |
+| 1 | FM-1b: Flow Monitor Page | PLANNED | Monitor sayfasi — flow health, execution stats, error tracking |
+| 2 | FM-1c: Monitor AI Chat | PLANNED | Monitor sayfasi AI chat entegrasyonu |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-05 | FM-1a Flow Versioning Backend: migration 007, repo CRUD, save hook, 3 API endpoints, 3 proxy routes, Toolbar version badge. Codex iter 1 PASS. Backend + Automation deploy |
 | 2026-03-05 | Dashboard sidebar V3 format (section headers, teal active, slate colors, Inter font, Outfit headings) + 4x production deploy |
 | 2026-03-05 | WebChat ops 502 fix (InternalApiKey config) + Dashboard tab title + logo font size |
 | 2026-03-05 | WebChat perf fix (AI delay 0, DB combine, fire-and-forget) + widget JS fix + SDD Faz 1-3 + cross-project SDD |

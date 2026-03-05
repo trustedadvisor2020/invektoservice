@@ -2747,6 +2747,16 @@ app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/executions", 
 app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/executions/{logId:long}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId, long logId) =>
     await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/executions/{logId}"));
 
+// Versioning proxy: Backend /api/v1/flow-builder/flows/{tid}/{fid}/versions -> Automation
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/versions", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/versions"));
+
+app.MapGet("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/versions/{versionNumber:int}", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId, int versionNumber) =>
+    await FbProxyGet(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/versions/{versionNumber}"));
+
+app.MapPost("/api/v1/flow-builder/flows/{tenantId:int}/{flowId:int}/versions/{versionNumber:int}/rollback", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog, int tenantId, int flowId, int versionNumber) =>
+    await FbProxyPost(ctx, fbClient, jsonLog, $"/api/v1/flows/{tenantId}/{flowId}/versions/{versionNumber}/rollback"));
+
 // Validation proxy: Backend /api/v1/flow-builder/flows/validate -> Automation /api/v1/flows/validate
 app.MapPost("/api/v1/flow-builder/flows/validate", async (HttpContext ctx, FlowBuilderClient fbClient, JsonLinesLogger jsonLog) =>
     await FbProxyPost(ctx, fbClient, jsonLog, "/api/v1/flows/validate"));

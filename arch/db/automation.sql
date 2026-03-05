@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS chatbot_flows (
     flow_config         JSONB NOT NULL DEFAULT '{}'::jsonb,     -- Flow JSON (v1 menu OR v2 node/edge graph)
     is_active           BOOLEAN NOT NULL DEFAULT false,         -- Bu flow mesaj isleme icin aktif mi? (max 1/tenant)
     is_default          BOOLEAN NOT NULL DEFAULT false,         -- Tenant'in varsayilan flow'u (backward compat)
+    current_version     INTEGER NOT NULL DEFAULT 0,             -- Aktif surum numarasi (0 = versioning oncesi)
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_chatbot_flows_tenant

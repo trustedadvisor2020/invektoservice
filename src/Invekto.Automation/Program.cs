@@ -491,7 +491,8 @@ app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
             ["flow_config"] = JsonSerializer.Deserialize<JsonElement>(flow.FlowConfigJson),
             ["created_at"] = flow.CreatedAt,
             ["updated_at"] = flow.UpdatedAt,
-            ["wizard_status"] = flow.WizardStatus
+            ["wizard_status"] = flow.WizardStatus,
+            ["current_version"] = flow.CurrentVersion
         };
         if (flow.WizardHistoryJson != null)
             result["wizard_history"] = JsonSerializer.Deserialize<JsonElement>(flow.WizardHistoryJson);
@@ -601,6 +602,18 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
         if (!updated)
             return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
 
+        // Auto-version: create a version snapshot on every save (non-fatal)
+        int newVersion = 0;
+        try
+        {
+            newVersion = await repo.CreateFlowVersionAsync(tenantId, flowId, flowConfig!, "user");
+            jsonLogger.StepInfo($"Flow version created for flow {flowId}: v{newVersion}", requestId);
+        }
+        catch (Npgsql.NpgsqlException versionEx)
+        {
+            jsonLogger.StepError($"[{ErrorCodes.AutomationVersionCreateFailed}] Flow version creation DB error for flow {flowId}: {versionEx.Message}", requestId);
+        }
+
         jsonLogger.StepInfo($"Flow updated for tenant {tenantId}: flow_id={flowId}", requestId);
 
         // Sync instance-flow mapping from trigger_start node (non-fatal)
@@ -635,7 +648,7 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
             jsonLogger.StepError($"Instance mapping sync failed for flow {flowId}: {syncEx.Message}", requestId);
         }
 
-        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "updated" });
+        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "updated", current_version = newVersion });
     }
     catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "23505")
     {
@@ -764,6 +777,89 @@ app.MapMethods("/api/v1/flows/{tenantId:int}/{flowId:int}/wizard-history", new[]
     {
         jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Wizard history PATCH DB error: {ex.Message}", requestId);
         return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi", requestId), statusCode: 500);
+    }
+});
+
+// ============================================================
+// Flow versioning endpoints (FM-1a)
+// ============================================================
+
+// GET /api/v1/flows/{tenantId}/{flowId}/versions — List all versions
+app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}/versions", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    try
+    {
+        var versions = await repo.GetFlowVersionsAsync(tenantId, flowId);
+        return Results.Ok(new { flow_id = flowId, versions });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow versions list DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi. Lutfen tekrar deneyin.", "-"), statusCode: 500);
+    }
+});
+
+// GET /api/v1/flows/{tenantId}/{flowId}/versions/{versionNumber} — Get specific version detail
+app.MapGet("/api/v1/flows/{tenantId:int}/{flowId:int}/versions/{versionNumber:int}", async (int tenantId, int flowId, int versionNumber, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", "-"), statusCode: 403);
+
+    try
+    {
+        var version = await repo.GetFlowVersionAsync(tenantId, flowId, versionNumber);
+        if (version == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationVersionNotFound, "Belirtilen surum bulunamadi", "-"), statusCode: 404);
+
+        return Results.Ok(new
+        {
+            version.Id,
+            version.FlowId,
+            version.VersionNumber,
+            version.CreatedAt,
+            version.CreatedBy,
+            flow_config = JsonSerializer.Deserialize<JsonElement>(version.FlowConfigJson)
+        });
+    }
+    catch (JsonException ex)
+    {
+        jsonLogger.StepError($"Flow version detail JSON error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationVersionNotFound, "Surum verisi okunamadi", "-"), statusCode: 500);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.DatabaseConnectionFailed}] Flow version detail DB error: {ex.Message}", "-");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Veritabani hatasi. Lutfen tekrar deneyin.", "-"), statusCode: 500);
+    }
+});
+
+// POST /api/v1/flows/{tenantId}/{flowId}/versions/{versionNumber}/rollback — Rollback to version
+app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/versions/{versionNumber:int}/rollback", async (int tenantId, int flowId, int versionNumber, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+
+    var tenant = GetValidatedTenant(ctx, tenantId);
+    if (tenant == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token tenant does not match route tenant", requestId), statusCode: 403);
+
+    try
+    {
+        var newVersion = await repo.RollbackFlowVersionAsync(tenantId, flowId, versionNumber);
+        if (newVersion == -1)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationVersionNotFound, "Belirtilen surum bulunamadi", requestId), statusCode: 404);
+
+        jsonLogger.StepInfo($"Flow {flowId} rolled back to v{versionNumber}, new version v{newVersion}", requestId);
+        return Results.Ok(new { flow_id = flowId, rolled_back_to = versionNumber, current_version = newVersion, status = "rolled_back" });
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.StepError($"[{ErrorCodes.AutomationRollbackFailed}] Flow rollback DB error: {ex.Message}", requestId);
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationRollbackFailed, "Surum geri alma basarisiz. Veritabani hatasi.", requestId), statusCode: 500);
     }
 });
 

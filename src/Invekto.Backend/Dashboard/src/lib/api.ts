@@ -587,6 +587,15 @@ export interface FlowDetail {
   updated_at: string;
   wizard_history?: unknown[] | null;
   wizard_status?: 'drafting' | 'completed' | null;
+  current_version?: number;
+}
+
+export interface FlowVersionSummary {
+  id: number;
+  flowId: number;
+  versionNumber: number;
+  createdAt: string;
+  createdBy: string | null;
 }
 
 export interface FbAvailableInstance {
@@ -1457,6 +1466,18 @@ class OpsApiClient {
 
   async deactivateFlow(tenantId: number, flowId: number): Promise<void> {
     return this.request<void>(`/api/v1/flow-builder/flows/${tenantId}/${flowId}/deactivate`, { method: 'POST' });
+  }
+
+  async getFlowVersions(tenantId: number, flowId: number): Promise<{ flow_id: number; versions: FlowVersionSummary[] }> {
+    return this.request(`/api/v1/flow-builder/flows/${tenantId}/${flowId}/versions`);
+  }
+
+  async getFlowVersion(tenantId: number, flowId: number, versionNumber: number): Promise<{ flow_config: unknown; versionNumber: number; createdAt: string; createdBy: string | null }> {
+    return this.request(`/api/v1/flow-builder/flows/${tenantId}/${flowId}/versions/${versionNumber}`);
+  }
+
+  async rollbackFlowVersion(tenantId: number, flowId: number, versionNumber: number): Promise<{ current_version: number; status: string }> {
+    return this.request(`/api/v1/flow-builder/flows/${tenantId}/${flowId}/versions/${versionNumber}/rollback`, { method: 'POST' });
   }
 
   async validateFlow(flowConfig: unknown): Promise<FbValidationResult> {

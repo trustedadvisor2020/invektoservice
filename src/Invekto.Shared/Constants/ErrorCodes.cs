@@ -151,6 +151,11 @@ public static class ErrorCodes
     public const string AutomationEcommerceCallFailed = "INV-AT-044";
     public const string AutomationEcommerceTimeout = "INV-AT-045";
 
+    // Automation Flow Versioning (INV-AT-046+)
+    public const string AutomationVersionNotFound = "INV-AT-046";
+    public const string AutomationVersionCreateFailed = "INV-AT-047";
+    public const string AutomationRollbackFailed = "INV-AT-048";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";

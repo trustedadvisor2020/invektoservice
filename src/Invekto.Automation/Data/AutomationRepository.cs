@@ -151,7 +151,7 @@ public sealed class AutomationRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT flow_id, flow_name, flow_config, is_active, is_default, created_at, updated_at,
-                   wizard_history, wizard_status
+                   wizard_history, wizard_status, current_version
             FROM chatbot_flows
             WHERE tenant_id = @tid AND flow_id = @fid";
         cmd.Parameters.AddWithValue("tid", tenantId);
@@ -172,7 +172,8 @@ public sealed class AutomationRepository
             CreatedAt = reader.GetDateTime(5),
             UpdatedAt = reader.GetDateTime(6),
             WizardHistoryJson = reader.IsDBNull(7) ? null : reader.GetString(7),
-            WizardStatus = reader.IsDBNull(8) ? null : reader.GetString(8)
+            WizardStatus = reader.IsDBNull(8) ? null : reader.GetString(8),
+            CurrentVersion = reader.GetInt32(9)
         };
     }
 
@@ -288,6 +289,134 @@ public sealed class AutomationRepository
         cmd.Parameters.AddWithValue("wh", wizardHistoryJson);
 
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    // ============================================================
+    // flow_versions (auto-version on save, rollback)
+    // ============================================================
+
+    /// <summary>
+    /// Create a new version snapshot after a flow save.
+    /// Increments version_number per flow, updates chatbot_flows.current_version.
+    /// Returns the new version number.
+    /// </summary>
+    public async Task<int> CreateFlowVersionAsync(int tenantId, int flowId, string flowConfigJson,
+        string? createdBy = "user", CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        // Get next version number (tenant_id for isolation)
+        await using var cmdNext = new NpgsqlCommand(
+            "SELECT COALESCE(MAX(version_number), 0) + 1 FROM flow_versions WHERE flow_id = @fid AND tenant_id = @tid", conn, tx);
+        cmdNext.Parameters.AddWithValue("fid", flowId);
+        cmdNext.Parameters.AddWithValue("tid", tenantId);
+        var nextVersion = Convert.ToInt32(await cmdNext.ExecuteScalarAsync(ct));
+
+        // Insert version snapshot
+        await using var cmdInsert = new NpgsqlCommand(@"
+            INSERT INTO flow_versions (flow_id, tenant_id, version_number, flow_config, created_by)
+            VALUES (@fid, @tid, @vn, @cfg::jsonb, @cb)", conn, tx);
+        cmdInsert.Parameters.AddWithValue("fid", flowId);
+        cmdInsert.Parameters.AddWithValue("tid", tenantId);
+        cmdInsert.Parameters.AddWithValue("vn", nextVersion);
+        cmdInsert.Parameters.AddWithValue("cfg", flowConfigJson);
+        cmdInsert.Parameters.AddWithValue("cb", (object?)createdBy ?? DBNull.Value);
+        await cmdInsert.ExecuteNonQueryAsync(ct);
+
+        // Update current_version on chatbot_flows
+        await using var cmdUpdate = new NpgsqlCommand(
+            "UPDATE chatbot_flows SET current_version = @vn WHERE flow_id = @fid AND tenant_id = @tid", conn, tx);
+        cmdUpdate.Parameters.AddWithValue("vn", nextVersion);
+        cmdUpdate.Parameters.AddWithValue("fid", flowId);
+        cmdUpdate.Parameters.AddWithValue("tid", tenantId);
+        await cmdUpdate.ExecuteNonQueryAsync(ct);
+
+        await tx.CommitAsync(ct);
+        return nextVersion;
+    }
+
+    /// <summary>
+    /// List all versions for a flow (summary only, no config).
+    /// </summary>
+    public async Task<List<FlowVersionSummary>> GetFlowVersionsAsync(int tenantId, int flowId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT id, flow_id, version_number, created_at, created_by
+            FROM flow_versions
+            WHERE flow_id = @fid AND tenant_id = @tid
+            ORDER BY version_number DESC", conn);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+
+        var result = new List<FlowVersionSummary>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new FlowVersionSummary
+            {
+                Id = reader.GetInt32(0),
+                FlowId = reader.GetInt32(1),
+                VersionNumber = reader.GetInt32(2),
+                CreatedAt = reader.GetDateTime(3),
+                CreatedBy = reader.IsDBNull(4) ? null : reader.GetString(4)
+            });
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Get a specific version's full config.
+    /// </summary>
+    public async Task<FlowVersionDetail?> GetFlowVersionAsync(int tenantId, int flowId, int versionNumber, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT id, flow_id, version_number, created_at, created_by, flow_config::text
+            FROM flow_versions
+            WHERE flow_id = @fid AND tenant_id = @tid AND version_number = @vn", conn);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("vn", versionNumber);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return null;
+
+        return new FlowVersionDetail
+        {
+            Id = reader.GetInt32(0),
+            FlowId = reader.GetInt32(1),
+            VersionNumber = reader.GetInt32(2),
+            CreatedAt = reader.GetDateTime(3),
+            CreatedBy = reader.IsDBNull(4) ? null : reader.GetString(4),
+            FlowConfigJson = reader.GetString(5)
+        };
+    }
+
+    /// <summary>
+    /// Rollback: restore a specific version's config to chatbot_flows and create a new version.
+    /// Returns the new version number.
+    /// </summary>
+    public async Task<int> RollbackFlowVersionAsync(int tenantId, int flowId, int versionNumber, CancellationToken ct = default)
+    {
+        // Get the target version's config
+        var target = await GetFlowVersionAsync(tenantId, flowId, versionNumber, ct);
+        if (target == null)
+            return -1;
+
+        // Update chatbot_flows with the old config
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE chatbot_flows SET flow_config = @cfg::jsonb WHERE flow_id = @fid AND tenant_id = @tid", conn);
+        cmd.Parameters.AddWithValue("cfg", target.FlowConfigJson);
+        cmd.Parameters.AddWithValue("fid", flowId);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        await cmd.ExecuteNonQueryAsync(ct);
+
+        // Create a new version snapshot (marked as rollback)
+        return await CreateFlowVersionAsync(tenantId, flowId, target.FlowConfigJson, "rollback", ct);
     }
 
     /// <summary>
@@ -1066,6 +1195,7 @@ public sealed class FlowDetail
     public DateTime UpdatedAt { get; init; }
     public string? WizardHistoryJson { get; init; }
     public string? WizardStatus { get; init; }
+    public int CurrentVersion { get; init; }
 }
 
 public sealed class ScheduleFlowInfo
@@ -1094,4 +1224,18 @@ public sealed class FlowExecutionLogDetail : FlowExecutionLogSummary
     public required string NodeTraceJson { get; init; }
     public string? VariablesFinalJson { get; init; }
     public string? ErrorDetail { get; init; }
+}
+
+public class FlowVersionSummary
+{
+    public int Id { get; init; }
+    public int FlowId { get; init; }
+    public int VersionNumber { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+}
+
+public sealed class FlowVersionDetail : FlowVersionSummary
+{
+    public required string FlowConfigJson { get; init; }
 }

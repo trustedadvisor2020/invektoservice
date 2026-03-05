@@ -32,6 +32,7 @@ export function FlowEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [isActive, setIsActive] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState(0);
   const [isToggling, setIsToggling] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(() => {
     try { return localStorage.getItem('invekto_flow_preview_open') !== 'false'; }
@@ -63,6 +64,7 @@ export function FlowEditorPage() {
         };
         loadFlow(config, (detail.wizard_history as WizardMessage[] | null) ?? null);
         setIsActive(detail.is_active);
+        setCurrentVersion(detail.current_version ?? 0);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -91,11 +93,14 @@ export function FlowEditorPage() {
     setSaveError(null);
     try {
       const config = useFlowStore.getState().toFlowConfig();
-      await api.updateFlow(tenantId, flowId, {
+      const res = await api.updateFlow(tenantId, flowId, {
         flow_name: config.metadata.name,
         flow_config: config,
       });
       useFlowStore.getState().markClean();
+      // Update version from response (Automation returns current_version)
+      const ver = (res as unknown as { current_version?: number }).current_version;
+      if (ver) setCurrentVersion(ver);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Kaydetme basarisiz');
     } finally {
@@ -217,6 +222,27 @@ export function FlowEditorPage() {
     await sim.start(tenantId, flowId);
   }, [tenantId, flowId]);
 
+  // Rollback handler: restore a version and reload the flow
+  const handleRollback = useCallback(async (versionNumber: number) => {
+    try {
+      const res = await api.rollbackFlowVersion(tenantId, flowId, versionNumber);
+      setCurrentVersion(res.current_version);
+      // Reload the flow to get the restored config
+      const detail = await api.getFlow(tenantId, flowId);
+      const raw = (detail.flow_config ?? {}) as Partial<FlowConfigV2>;
+      const config: FlowConfigV2 = {
+        version: raw.version ?? 2,
+        metadata: { name: detail.flow_name, ...raw.metadata },
+        nodes: raw.nodes ?? [],
+        edges: raw.edges ?? [],
+        settings: raw.settings ?? {} as FlowConfigV2['settings'],
+      };
+      loadFlow(config, (detail.wizard_history as WizardMessage[] | null) ?? null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Geri alma basarisiz');
+    }
+  }, [tenantId, flowId, loadFlow]);
+
   // Cleanup simulation and AI chat on unmount
   useEffect(() => {
     return () => {
@@ -292,7 +318,7 @@ export function FlowEditorPage() {
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-navy-50">
         {/* Toolbar */}
-        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} />
+        <Toolbar onSave={handleSave} isSaving={isSaving} onBack={handleBack} onTest={handleTest} previewOpen={previewOpen} onTogglePreview={handleTogglePreview} aiChatOpen={aiChatOpen} onToggleAiChat={handleToggleAiChat} flowLogOpen={flowLogOpen} onToggleFlowLog={handleToggleFlowLog} isActive={isActive} isToggling={isToggling} onToggleActive={handleToggleActive} currentVersion={currentVersion} tenantId={tenantId} flowId={flowId} onRollback={handleRollback} />
 
         {/* Save error banner */}
         {saveError && (

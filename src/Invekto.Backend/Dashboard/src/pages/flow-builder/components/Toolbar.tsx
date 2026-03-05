@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFlowStore } from '../../../stores/flow-store';
 import { useSimulationStore } from '../../../stores/simulation-store';
 import { FlowSettingsModal } from '../panels/FlowSettingsPanel';
 import { cn } from '../../../lib/utils';
+import { api } from '../../../lib/api';
+import type { FlowVersionSummary } from '../../../lib/api';
 
 interface ToolbarProps {
   onSave?: () => void;
@@ -18,9 +20,13 @@ interface ToolbarProps {
   isActive?: boolean;
   isToggling?: boolean;
   onToggleActive?: () => void;
+  currentVersion?: number;
+  tenantId?: number;
+  flowId?: number;
+  onRollback?: (versionNumber: number) => void;
 }
 
-export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onTogglePreview, aiChatOpen, onToggleAiChat, flowLogOpen, onToggleFlowLog, isActive, isToggling, onToggleActive }: ToolbarProps) {
+export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onTogglePreview, aiChatOpen, onToggleAiChat, flowLogOpen, onToggleFlowLog, isActive, isToggling, onToggleActive, currentVersion, tenantId, flowId, onRollback }: ToolbarProps) {
   const isDirty = useFlowStore((s) => s.isDirty);
   const simIsOpen = useSimulationStore((s) => s.isOpen);
   const simIsLoading = useSimulationStore((s) => s.isLoading);
@@ -32,6 +38,42 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
   const historyLength = useFlowStore((s) => s.history.length);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [versionDropdownOpen, setVersionDropdownOpen] = useState(false);
+  const [versions, setVersions] = useState<FlowVersionSummary[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [versionsError, setVersionsError] = useState<string | null>(null);
+
+  const loadVersions = useCallback(async () => {
+    if (!tenantId || !flowId) return;
+    setVersionsLoading(true);
+    setVersionsError(null);
+    try {
+      const res = await api.getFlowVersions(tenantId, flowId);
+      setVersions(res.versions);
+    } catch (err) {
+      setVersionsError(err instanceof Error ? err.message : 'Surum listesi yuklenemedi');
+    }
+    setVersionsLoading(false);
+  }, [tenantId, flowId]);
+
+  const handleToggleVersionDropdown = useCallback(() => {
+    const next = !versionDropdownOpen;
+    setVersionDropdownOpen(next);
+    if (next) loadVersions();
+  }, [versionDropdownOpen, loadVersions]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!versionDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
+        setVersionDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [versionDropdownOpen]);
 
   const canUndo = historyIndex >= 0;
   const canRedo = historyIndex < historyLength - 1;
@@ -93,6 +135,77 @@ export function Toolbar({ onSave, isSaving, onBack, onTest, previewOpen, onToggl
             )}
             {isActive ? 'Aktif' : 'Pasif'}
           </button>
+        )}
+
+        {/* Version badge */}
+        {currentVersion != null && currentVersion > 0 && (
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={handleToggleVersionDropdown}
+              className={cn(
+                'flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors border',
+                versionDropdownOpen
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : 'bg-navy-50 text-navy-500 hover:bg-navy-100 border-navy-200'
+              )}
+              title="Surum gecmisi"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              v{currentVersion}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {versionDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-navy-200 rounded-lg shadow-elevated z-50 max-h-60 overflow-y-auto">
+                {versionsLoading ? (
+                  <div className="px-3 py-2 text-xs text-navy-400">Yukleniyor...</div>
+                ) : versionsError ? (
+                  <div className="px-3 py-2 text-xs text-red-500">{versionsError}</div>
+                ) : versions.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-navy-400">Surum bulunamadi</div>
+                ) : (
+                  versions.map((v) => (
+                    <div
+                      key={v.id}
+                      className={cn(
+                        'px-3 py-2 flex items-center justify-between text-xs border-b border-navy-50 last:border-0',
+                        v.versionNumber === currentVersion ? 'bg-indigo-50' : 'hover:bg-navy-50'
+                      )}
+                    >
+                      <div>
+                        <span className="font-medium text-navy-900">v{v.versionNumber}</span>
+                        <span className="text-navy-400 ml-1.5">
+                          {new Date(v.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        {v.createdBy && (
+                          <span className={cn(
+                            'ml-1.5 px-1 py-0.5 rounded text-[10px]',
+                            v.createdBy === 'rollback' ? 'bg-amber-100 text-amber-700'
+                              : v.createdBy === 'ai' ? 'bg-purple-100 text-purple-700'
+                              : 'bg-navy-100 text-navy-500'
+                          )}>
+                            {v.createdBy}
+                          </span>
+                        )}
+                      </div>
+                      {v.versionNumber !== currentVersion && onRollback && (
+                        <button
+                          onClick={() => { onRollback(v.versionNumber); setVersionDropdownOpen(false); }}
+                          className="text-indigo-600 hover:text-indigo-800 font-medium"
+                        >
+                          Geri Al
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         <div className="flex-1" />

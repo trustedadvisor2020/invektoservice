@@ -38,8 +38,11 @@
 | FAZ1-1 | Faz 1 Pkt 1 | Plan Permission System | plan_definitions, TenantPlanCache, FeatureGuardMiddleware | DONE | 2 Mar | PASS |
 | FAZ1-2 | Faz 1 Pkt 2 | SuperAdmin API + Quota | Plan CRUD, Tenant Plan, Cache Invalidation, Quota Enforcement | DONE | 3 Mar | iter 3, FORCE PASS |
 | IKAS-1 | ikas E-Com | ikas E-Commerce Integration | IEcommerceProvider, IkasProvider, 6 endpoints, action_ecommerce node, DB migration | DONE | 3 Mar | iter 4, FORCE PASS |
+| FM-1a | Flow Monitor Faz 1a | Flow Versioning Backend | [Detay](fm-1a-flow-versioning.md) | DONE | 5 Mar | iter 1, PASS |
+| FM-1b | Flow Monitor Faz 1b | Monitor Sayfasi | [Detay](fm-1b-flow-monitor-page.md) | PLANNED | - | - |
+| FM-1c | Flow Monitor Faz 1c | Monitor AI Chat | [Detay](fm-1c-monitor-ai-chat.md) | PLANNED | - | - |
 
-**Toplam:** 25 paket (22 done, 0 in-progress, 4 planned, 3 evaluated) | 50+ GR + RI-100+ task
+**Toplam:** 29 paket (23 done, 0 in-progress, 6 planned, 3 evaluated) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 
