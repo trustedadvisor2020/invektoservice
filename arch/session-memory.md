@@ -6,22 +6,23 @@
 ## Last Update
 
 - **Date:** 2026-03-05
-- **Status:** WebChat perf fix deployed + SDD Faz 1-3 tamamlandı + cross-project SDD dağıtımı.
-- **Last Task:** SDD (Spec-Driven Development) entegrasyonu — spec template, plan-schema v5.1, spec-aware Codex review, tüm projelere dağıtım.
-- **Production Deploy:** WebChat deploy edildi (AIReply delay 30→0, DB combine, fire-and-forget push). Website widget JS fix deploy edildi.
-- **Next Task:** Q karar verecek. PKT-7 (Visual AI) hazır (SPEC-007 yazıldı).
+- **Status:** WebChat ops 502 fix (production config) + Dashboard UI tweaks (tab title, logo size).
+- **Last Task:** WebChat InternalApiKey eksik → ops panel 502. Production config'e key eklendi + restart. Dashboard: login sonrası tab title "Invekto One - OPS", sidebar logo font büyütüldü.
+- **Production Deploy:** WebChat appsettings.Production.json — Microservice.InternalApiKey eklendi + servis restart.
+- **Next Task:** Dashboard build + deploy (tab title + logo değişiklikleri). Q karar verecek.
 - **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| — | No active work | — | SDD Faz 1-3 done. PKT-7 spec hazır. Q karar verecek. |
+| — | Dashboard build+deploy | PENDING | Tab title + logo font değişiklikleri henüz deploy edilmedi |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-05 | WebChat ops 502 fix (InternalApiKey config) + Dashboard tab title + logo font size |
 | 2026-03-05 | WebChat perf fix (AI delay 0, DB combine, fire-and-forget) + widget JS fix + SDD Faz 1-3 + cross-project SDD |
 | 2026-03-04 | Wizard auto-apply edit mode — AI Destek flowconfig auto-apply + system prompt. Codex PASS iter=0 |
 | 2026-03-04 | Translation INMA echo-back contract + Postman + Dashboard widget + 2x Backend deploy |

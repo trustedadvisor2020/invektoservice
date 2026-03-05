@@ -196,6 +196,7 @@
 | 2026-02-14 | deploy -mirror production secrets'i sildi | Production.json'a tasindi | **Sunucuda appsettings.json DUZENLEME - deploy ezer** |
 | 2026-02-18 | Deploy-watcher (flag polling) SSH/MCP deploy varken gereksiz | NSSM servisi kaldırıldı | **SSH doğrudan erişim varsa polling mekanizması KURMA — MCP server-deploy atomik akışı yeterli** |
 | 2026-02-14 | Test script bos JWT key okudu | ConfigPath = Production.json | **Sunucu test scriptleri Production.json'dan okusun** |
+| 2026-03-05 | WebChat ops 502 — Backend X-Internal-Key gonderdi ama WebChat production config'de `Microservice:InternalApiKey` yoktu → key="" → match fail → 401 → Backend null → 502 | Production config'e key eklendi + restart | **Yeni servis deploy'unda `Microservice:InternalApiKey` production config'te OLMALIDIR — Backend proxy auth icin zorunlu. Deploy checklist'e ekle** |
 | 2026-02-14 | NuGet stable version yok - build failed | PdfPig (v0.1.13) | **NuGet eklerken stable version VAR MI kontrol et** |
 | 2026-02-15 | FK `tenant_registry(id)` ama PK aslinda `tenant_id` | `tenant_registry(tenant_id)` duzeltildi | **FK yazarken hedef tablonun PK/kolon adini schema'dan DOGRULA** |
 
