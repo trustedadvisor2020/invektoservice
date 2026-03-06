@@ -13,6 +13,14 @@ Pipeline: DevAgent implements → `/rev` → MCP codex_review (automated) → Q 
 4. **AC Gate:** Interview sonunda min 2 başarı kriteri sorusu sor, Q'dan teyit al
 5. **PP-006:** Q'yu challenge et — "Ya X olursa?", alternatif sun, trade-off belirt
 
+## TOOL PERSISTENCE
+
+- Arac cagrisi basarisiz -> ayni cagriyi tekrarlama, alternatif dene
+- Bagimsiz araclar paralel cagrilir, bagimli olanlar sirali
+- Bos sonuc -> sorguyu genislet veya farkli pattern dene
+- 3 basarisiz deneme -> Q'ya escalate, brute force yapma
+- Arastirma gorevi: Plan -> Ara -> Sentezle -> "Daha fazla arastirma sonucu degismeyecekse dur"
+
 ## CODEX UTANSIN DOKTRINI
 
 Her satır yazılmadan ÖNCE 5 soru:

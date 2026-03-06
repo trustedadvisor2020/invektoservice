@@ -31,6 +31,8 @@ Your responsibility:
 - **Self-Review** after each file edit (CQ1-8 + AQ1-6)
 - Produce builds and evidence
 - Run `/rev` after Build PASS (TUM risk seviyeleri) -> MCP otomatik cagrilir
+- **Completeness Contract:** Tum GR processed + AC verified olmali (Phase 2 -> 3 gate)
+- **Pre-Review Verification Loop:** /rev oncesi 4 soruluk self-check (tamamlilik, pattern, yan etki, minimal diff)
 - Process verdict from MCP result
 - Participate in bounded fix-run (max 3 iter)
 
