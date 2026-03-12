@@ -49,6 +49,32 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - Backend proxy changes must be verified against target service API
 - Dashboard UI changes must consider all service health cards
 
+## CQ9-12 INVEKTOSERVICES-SPECIFIC GUIDANCE
+
+### CQ9: Business Logic Consistency
+- Microservice isolation: no direct DB access between services, API/event only
+- Invekto.Shared DTOs must be the single communication contract
+- Tenant scoping (tenant_id filter) must be present in ALL data queries
+- Backend proxy changes must match target service's actual API contract
+
+### CQ10: UX Consistency
+- Dashboard components must follow established service health card patterns
+- API response format must be consistent across all services (standard envelope)
+- Error responses must follow the standard error envelope format
+- FlowBuilder UI changes must not break existing flow configurations
+
+### CQ11: DB-Code Sync
+- Every table/column referenced in C# code must exist in arch/db/*.sql schema files
+- Entity properties must match DB column names (snake_case via NpgsqlSnakeCaseNameTranslator)
+- New DB changes require: 1) arch/db/{service}.sql update, 2) GRANT ALL statement
+- FK constraints must reference correct PK column names (verify from schema)
+
+### CQ12: Error Handling Quality
+- All errors must use INV-XX-NNN codes from arch/errors.md
+- Error messages must include: what failed, why, and what to do next
+- HTTP status codes: 400 (bad input), 401 (no auth), 403 (no permission), 404 (not found), 500 (server error)
+- Typed catch blocks ONLY (no bare catch(Exception)), must log AND return meaningful response
+
 ## FAIL CONDITIONS (ANY = automatic FAIL)
 - Tenant/auth/security regression risk
 - Architecture/policy violation

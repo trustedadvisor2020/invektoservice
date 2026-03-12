@@ -79,6 +79,8 @@ Bu adimlar plan mode dahil her session icin gecerlidir.
 | Kalite durumu | `arch/quality-grades.md` |
 | Fikir/backlog | `tracking/roadmap.md` (Backlog section) |
 | Yeni feature spec | `arch/specs/` + `_TEMPLATE.md` |
+| Codex review context | `arch/codex-context.md` |
+| Review policy | `arch/review-policy.md` |
 
 ## Agents & Skills
 
@@ -91,9 +93,12 @@ Bu adimlar plan mode dahil her session icin gecerlidir.
 **Skills** (`.claude/commands/`):
 - `auto.md` - Default workflow (otomatik, /auto yazmaya gerek yok)
 - `rev.md` - Review protocol (/rev, MCP automated)
+- `codex.md` - Manuel Codex review trigger (/codex, fallback)
+- `brief.md` - Session brief (/brief, session ozeti)
+- `deploy.md` - Deploy to production (/deploy, NSSM services)
 - `learn.md` - Session learnings (/learn)
 - `push.md` - Git push (/push, secret scan BLOCKING)
-- `aha.md` - Aha moment analizi (/aha)
+- `aha.md` - Aha moment + fikir değerlendirme (/aha = UX iyileştirme, /eval = fikir değerlendirme — tek skill, iki mod)
 - `test-ui.md` - UI testing (/test-ui, Playwright)
 - `sync-check.md` - Arch/kod senkronizasyon kontrolu (/sync-check)
 - `wrap.md` - Phase kapama (/wrap: tracking + learn + push + prompt)
@@ -124,6 +129,7 @@ Ana context sadece sonuclari alir, arastirma detaylarini degil.
 
 | Hook | Tetikleme | Davranis |
 |------|-----------|----------|
+| `session-init.ps1` | SessionStart | Non-blocking - kritik dosya hatirlatma, workflow durumu |
 | `build-reminder.ps1` | PostToolUse: Edit/Write (.cs) | Non-blocking - build hatirlatmasi + remediation inject |
 | `invariant-check.ps1` | PostToolUse: Edit/Write (.sql/.cs) | Non-blocking - snake_case, error code, isolation kontrol |
 | `~/.claude/hooks/secret-scan.ps1` | PreToolUse: Bash (GLOBAL) | **BLOCKING** (exit 2) - secret tespit ederse engeller |
