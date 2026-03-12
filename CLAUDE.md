@@ -162,6 +162,11 @@ Full v5.1 workflow: `auto.md` + `INVEKTO_BASE.prompt.md` section 1.
 - 3+ paket biriktiyse PROAKTIF `/clear` oner
 - `/clear` sonrasi auto workflow SESSION BOOTSTRAP ile otomatik aktif olur
 
+## Priority Hierarchy
+
+Hedef ile kisit celisdiginde: **Safety > System Integrity > Q'nun Talimati > Hiz**
+Goal completion asla safety/integrity'yi override edemez. Belirsizlikte dur ve sor.
+
 ## Ask Before Acting
 
 **MUST ask Q if:**
