@@ -29,6 +29,7 @@ services:
   WC:   { name: WebChat,       description: Website webchat hataları }
   EXT:  { name: External,      description: Dış servis hataları }
   WA:   { name: WhatsAppAnalytics, description: "WA Analytics pipeline + Revenue Intelligence hataları" }
+  VA:   { name: VoiceAI,          description: "PKT-11: Voice Message AI — STT + intent hataları" }
 ```
 
 ## Error Registry
@@ -452,6 +453,26 @@ errors:
   - code: INV-WC-012
     description: Automation webhook call timed out
     user_message: Webhook bildirimi zaman aşımına uğradı.
+
+  # ── VA — VoiceAI (PKT-11) ──
+  - code: INV-VA-001
+    description: No audio file in request
+    user_message: "'audio' alanında ses dosyası bulunamadı."
+  - code: INV-VA-002
+    description: Audio file exceeds size limit
+    user_message: Ses dosyası çok büyük.
+  - code: INV-VA-003
+    description: Whisper API transcription failed
+    user_message: Ses tanıma servisi şu anda kullanılamıyor.
+  - code: INV-VA-004
+    description: ChatAnalysis intent forwarding failed
+    user_message: Niyet analizi servisi kullanılamıyor.
+  - code: INV-VA-005
+    description: Transcription log DB insert failed
+    user_message: Transkripsiyon kaydı oluşturulamadı.
+  - code: INV-VA-006
+    description: Unsupported audio format
+    user_message: Desteklenmeyen ses formatı.
 
   # ── DB — Database ──
   - code: INV-DB-001

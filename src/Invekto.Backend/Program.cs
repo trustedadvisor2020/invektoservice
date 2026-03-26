@@ -66,6 +66,9 @@ var marketingTimeoutMs = builder.Configuration.GetValue<int>("Microservice:Marke
 var webChatUrl = builder.Configuration["Microservice:WebChat:Url"]
     ?? $"http://localhost:{ServiceConstants.WebChatPort}";
 var webChatTimeoutMs = builder.Configuration.GetValue<int>("Microservice:WebChat:TimeoutMs", 5000);
+var voiceAIUrl = builder.Configuration["Microservice:VoiceAI:Url"]
+    ?? $"http://localhost:{ServiceConstants.VoiceAIPort}";
+var voiceAITimeoutMs = builder.Configuration.GetValue<int>("Microservice:VoiceAI:TimeoutMs", 35000);
 var internalApiKey = builder.Configuration["Microservice:InternalApiKey"] ?? "";
 
 // Register JSON Lines logger
@@ -203,6 +206,13 @@ builder.Services.AddHttpClient<WebChatClient>()
         httpClient.Timeout = TimeSpan.FromMilliseconds(webChatTimeoutMs);
         return new WebChatClient(httpClient, sp.GetRequiredService<ILogger<WebChatClient>>(), internalApiKey);
     });
+
+// Configure VoiceAI HTTP client (PKT-11: Voice Message AI)
+builder.Services.AddHttpClient<VoiceAIClient>(client =>
+{
+    client.BaseAddress = new Uri(voiceAIUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(voiceAITimeoutMs);
+});
 
 // Configure WhatsApp Analytics HTTP client (PKT-4: NLP query + upload proxy)
 builder.Services.AddHttpClient<WhatsAppAnalyticsClient>(client =>
@@ -691,8 +701,37 @@ app.MapGet("/api/ops/webchat/conversations/{id}/visitor", async (long id, HttpCo
     return Results.Ok(result);
 });
 
+// ============================================
+// PKT-11: VoiceAI proxy routes
+// ============================================
+
+app.MapPost("/api/v1/voice/transcribe", async (HttpContext ctx, VoiceAIClient voiceClient) =>
+{
+    if (!ctx.Request.HasFormContentType)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.VoiceAINoAudioFile, "multipart/form-data bekleniyor", ctx.TraceIdentifier),
+            statusCode: 400);
+
+    var form = await ctx.Request.ReadFormAsync();
+    var file = form.Files.GetFile("audio");
+    if (file == null || file.Length == 0)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.VoiceAINoAudioFile, "'audio' alanında ses dosyası bulunamadı", ctx.TraceIdentifier),
+            statusCode: 400);
+
+    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+    using var stream = file.OpenReadStream();
+    var (statusCode, body) = await voiceClient.ProxyTranscribeAsync(
+        stream, file.FileName, authHeader, ctx.TraceIdentifier, ctx.RequestAborted);
+
+    if (body == null)
+        return Results.StatusCode(statusCode);
+
+    return Results.Text(body, "application/json", statusCode: statusCode);
+});
+
 // Dashboard: Service health with response times
-app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient) =>
+app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, VoiceAIClient voiceAIClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -860,6 +899,21 @@ app.MapGet("/api/ops/health", async (HttpContext ctx, ChatAnalysisClient chatCli
         uptimeSeconds = (long?)null,
         lastCheck = now,
         error = webChatHealthy ? null : "Service unreachable"
+    });
+
+    // VoiceAI - check health with timing (PKT-11)
+    var swVoiceAI = System.Diagnostics.Stopwatch.StartNew();
+    var voiceAIHealthy = await voiceAIClient.CheckHealthAsync();
+    swVoiceAI.Stop();
+
+    services.Add(new
+    {
+        name = ServiceConstants.VoiceAIServiceName,
+        status = voiceAIHealthy ? "ok" : "unavailable",
+        responseTimeMs = voiceAIHealthy ? (int?)swVoiceAI.ElapsedMilliseconds : null,
+        uptimeSeconds = (long?)null,
+        lastCheck = now,
+        error = voiceAIHealthy ? null : "Service unreachable"
     });
 
     return Results.Ok(new
@@ -1147,7 +1201,7 @@ app.MapPost("/api/ops/services/{serviceName}/restart", async (HttpContext ctx, s
 });
 
 // Dashboard: Test proxy for external services (avoids CORS issues)
-app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, string serviceName, string? path) =>
+app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, VoiceAIClient voiceAIClient, string serviceName, string? path) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1297,6 +1351,21 @@ app.MapGet("/api/ops/test/{serviceName}/{*path}", async (HttpContext ctx, ChatAn
         {
             var endpoint = "/" + (path ?? "health");
             var result = await webChatClient.TestEndpointAsync(endpoint);
+            sw.Stop();
+
+            return Results.Ok(new
+            {
+                success = result.Success,
+                statusCode = result.StatusCode,
+                durationMs = sw.ElapsedMilliseconds,
+                message = result.Message
+            });
+        }
+
+        if (serviceName == "voiceai")
+        {
+            var endpoint = "/" + (path ?? "health");
+            var result = await voiceAIClient.TestEndpointAsync(endpoint);
             sw.Stop();
 
             return Results.Ok(new
@@ -1658,7 +1727,7 @@ app.MapGet("/api/v1/onboarding/status", async (HttpContext ctx, OnboardingStatus
 });
 
 // Endpoint discovery - returns all services' endpoints (aggregated)
-app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient) =>
+app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chatClient, AutomationClient automationClient, AgentAIClient agentAIClient, OutboundClient outboundClient, KnowledgeClient knowledgeClient, AppointmentsClient appointmentsClient, IntegrationsClient integrationsClient, WhatsAppAnalyticsClient waAnalyticsClient, MarketingClient marketingClient, WebChatClient webChatClient, VoiceAIClient voiceAIClient) =>
 {
     if (!ValidateOpsAuth(ctx))
     {
@@ -1815,6 +1884,9 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     // Fetch WebChat endpoints (internal call)
     var webChatEndpoints = await webChatClient.GetEndpointsAsync();
 
+    // Fetch VoiceAI endpoints (internal call, PKT-11)
+    var voiceAIEndpoints = await voiceAIClient.GetEndpointsAsync();
+
     var services = new List<EndpointDiscoveryResponse> { backendEndpoints };
     if (chatEndpoints != null)
     {
@@ -1855,6 +1927,10 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
     if (webChatEndpoints != null)
     {
         services.Add(webChatEndpoints);
+    }
+    if (voiceAIEndpoints != null)
+    {
+        services.Add(voiceAIEndpoints);
     }
 
     return Results.Ok(new { services });

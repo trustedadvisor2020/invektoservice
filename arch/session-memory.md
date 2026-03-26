@@ -6,24 +6,24 @@
 ## Last Update
 
 - **Date:** 2026-03-27
-- **Status:** PKT-12 Faz 4 DONE. PKT-12 complete (all 4 phases). Deployed: Backend + Marketing + Automation HEALTHY.
-- **Last Task:** PKT-12 Faz 4 Dashboard: RescueDashboardPage.tsx (KPI cards, risk table with inline edit, template CRUD), api.ts rescue methods, /rescue route, sidebar entry. Migration 008 run on production.
-- **Files Changed:** Dashboard: RescueDashboardPage.tsx (NEW), api.ts, App.tsx, Layout.tsx. Plan: 20260327-pkt12-f4-dashboard.json (NEW).
-- **Next Task:** PKT-11 Faz 1 (VoiceAI MVP)
-- **Plan:** `arch/plans/20260327-pkt12-f4-dashboard.json`
-- **Strateji:** PKT-12 DONE → PKT-11 → PKT-13
+- **Status:** PKT-11 Faz 1 DONE. VoiceAI MVP microservice implemented. Pending deploy.
+- **Last Task:** PKT-11 Faz 1: VoiceAI MVP — Invekto.VoiceAI microservice (port 7114), Whisper API STT, transcript → ChatAnalysis intent, temp audio delete, Backend proxy routes, health/discovery integration. 15 files, 1161 insertions.
+- **Files Changed:** NEW: Invekto.VoiceAI (csproj, Program.cs, WhisperApiService, VoiceTranscriptionService, appsettings), VoiceAIClient.cs, VoiceTranscriptionDtos.cs, voiceai.sql, plan JSON, tracking. EDIT: ServiceConstants, ErrorCodes, Backend Program.cs, errors.md, InvektoServis.sln.
+- **Next Task:** PKT-11 Faz 1 deploy + PKT-13 Faz 1 (Lead Scoring)
+- **Plan:** `arch/plans/20260327-pkt11-f1-voiceai-mvp.json`
+- **Strateji:** PKT-11 Faz 1 DONE → Deploy → PKT-13
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | PKT-11 Faz 1: VoiceAI MVP | PENDING | Yeni mikroservis, port 7114, Whisper API |
-| 2 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
+| 1 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-27 | PKT-11 Faz 1: VoiceAI MVP. Invekto.VoiceAI microservice (port 7114), Whisper API STT, VoiceTranscriptionService orchestrator, Backend proxy + health + discovery. 15 files, 1161 insertions. Codex iter 1 Q FORCE PASS (CQ5 fixed, CQ11/Q1/CQ10/CQ12 false positive). |
 | 2026-03-27 | PKT-12 Faz 4: Dashboard. RescueDashboardPage (KPI cards, risk table inline edit, template CRUD), api.ts 8 methods + 7 interfaces, /rescue route, sidebar. 5 files, 742 insertions. Codex iter 1 Q FORCE PASS. Full deploy (Backend+Marketing+Automation HEALTHY). Migration 008 run. |
 | 2026-03-27 | PKT-12 Faz 3: Follow-Up Scheduler. RescueFollowUpService (4h timer), T+24h satisfaction + T+48h review redirect, Marketing endpoints, migration 008. 9 files, 580 insertions. Codex iter 1 Q FORCE PASS |
 | 2026-03-26 | PKT-12 Faz 1+2 committed (34cca86): Risk Scoring Engine + Rescue Action Engine. 7 files, 318 insertions. Codex iter 3 Q FORCE PASS |

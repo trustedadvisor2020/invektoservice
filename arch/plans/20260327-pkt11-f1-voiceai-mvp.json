@@ -1,0 +1,264 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-11",
+  "spec_ref": null,
+  "spec_acceptance_criteria": [],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Whisper API platform-level key (not per-tenant) — single OpenAI API key in appsettings",
+      "reason": "MVP simplicity, tenant-level key management deferred to Faz 2",
+      "codex_note": "EXPECTED: Single API key in config, no per-tenant key table"
+    },
+    {
+      "decision": "Transcribe → text inject into existing flow (Option A), not new voice node",
+      "reason": "Zero flow changes, MVP scope. message_type metadata preserved for future branching",
+      "codex_note": "EXPECTED: No FlowBuilder/Automation node changes"
+    },
+    {
+      "decision": "Audio files transcribed then deleted (no persistent storage)",
+      "reason": "Q decision: transcribe and delete, no S3/disk retention",
+      "codex_note": "EXPECTED: Temp file cleanup after transcription, no permanent audio storage"
+    },
+    {
+      "decision": "Intent detection delegated to ChatAnalysis service via internal HTTP call",
+      "reason": "Reuse existing Haiku-based intent pipeline, no duplication",
+      "codex_note": "EXPECTED: VoiceAI calls ChatAnalysis /api/v1/analyze, cross-service HTTP is by design"
+    }
+  ],
+  "gr_list": [],
+  "slug": "20260327-pkt11-f1-voiceai-mvp",
+  "risk": "HIGH",
+  "status": "REVIEW",
+  "created_at": "2026-03-27T00:50:00Z",
+  "updated_at": "2026-03-27T01:15:00Z",
+  "plan": {
+    "summary": "PKT-11 Faz 1: VoiceAI MVP microservice — Whisper API STT, transcript → ChatAnalysis intent pipeline, temp audio delete. New .NET 8 service on port 7114 with Backend proxy routes.",
+    "q_intent": "PKT-11 VoiceAI: Yeni mikroservis, Whisper STT, ses kaydı transcribe + intent detection (ChatAnalysis'e besle), transcribe sonrası sil",
+    "interview_notes": "Q decisions: (1) Whisper API cloud, platform-level key, (2) Any audio source (not just WhatsApp), (3) Intent via ChatAnalysis pipeline, (4) STT+intent only (no TTS), (5) Option A: transcribe→text inject, no new flow node, (6) Transcribe and delete audio",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Invekto.VoiceAI microservice runs on port 7114 with health endpoint returning healthy",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "POST /api/v1/voice/transcribe accepts audio (multipart/form-data), calls Whisper API, returns transcript text",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "After transcription, transcript is forwarded to ChatAnalysis /api/v1/analyze for intent detection and intent result is returned",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Temporary audio file is deleted after successful transcription (no persistent audio storage)",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "Backend proxy routes forward /api/v1/voice/* to VoiceAI 7114",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC6",
+        "criterion": "VoiceAI appears in /api/ops/health aggregation and /api/ops/endpoints discovery",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC7",
+        "criterion": "Error codes INV-VA-001..006 defined in ErrorCodes.cs and used in all error paths",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC8",
+        "criterion": "voice_transcriptions table created (transcription log with tenant_id, duration, language, word_count)",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC9",
+        "criterion": "Solution builds with zero errors and zero warnings after adding Invekto.VoiceAI",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.VoiceAI/Invekto.VoiceAI.csproj",
+    "src/Invekto.VoiceAI/Program.cs",
+    "src/Invekto.VoiceAI/Services/WhisperApiService.cs",
+    "src/Invekto.VoiceAI/Services/VoiceTranscriptionService.cs",
+    "src/Invekto.VoiceAI/appsettings.json",
+    "src/Invekto.VoiceAI/appsettings.Development.json",
+    "src/Invekto.Shared/Constants/ServiceConstants.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Shared/DTOs/VoiceTranscriptionDtos.cs",
+    "src/Invekto.Backend/Services/VoiceAIClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "InvektoServis.sln",
+    "arch/db/voiceai.sql",
+    "arch/errors.md",
+    "arch/session-memory.md",
+    "arch/plans/20260327-pkt11-f1-voiceai-mvp.json",
+    "tracking/PKT-11-voiceai.md",
+    "tracking/README.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.VoiceAI/Invekto.VoiceAI.csproj", "change": "New project file", "is_new": true },
+    { "path": "src/Invekto.VoiceAI/Program.cs", "change": "Service bootstrap + endpoints", "is_new": true },
+    { "path": "src/Invekto.VoiceAI/Services/WhisperApiService.cs", "change": "Whisper API STT client", "is_new": true },
+    { "path": "src/Invekto.VoiceAI/Services/VoiceTranscriptionService.cs", "change": "Orchestrator service", "is_new": true },
+    { "path": "src/Invekto.VoiceAI/appsettings.json", "change": "Config template", "is_new": true },
+    { "path": "src/Invekto.Shared/Constants/ServiceConstants.cs", "change": "VoiceAI port + name", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "INV-VA-001..006", "is_new": false },
+    { "path": "src/Invekto.Shared/DTOs/VoiceTranscriptionDtos.cs", "change": "Voice DTOs", "is_new": true },
+    { "path": "src/Invekto.Backend/Services/VoiceAIClient.cs", "change": "HTTP proxy client", "is_new": true },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "DI + proxy routes + health + discovery", "is_new": false },
+    { "path": "InvektoServis.sln", "change": "Added Invekto.VoiceAI project", "is_new": false },
+    { "path": "arch/db/voiceai.sql", "change": "voice_transcriptions table", "is_new": true },
+    { "path": "arch/errors.md", "change": "VA service code + INV-VA error entries", "is_new": false },
+    { "path": "arch/plans/20260327-pkt11-f1-voiceai-mvp.json", "change": "Plan JSON", "is_new": true },
+    { "path": "tracking/PKT-11-voiceai.md", "change": "Tracking file", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "B186B9222CB23333B844E23BBD5E0A7D88BC2489B75B9BCDC748EC6120C1AF67",
+    "full_path": "arch/plans/diffs/20260327-pkt11-f1-voiceai-mvp.diff",
+    "stats": {
+      "insertions": 1161,
+      "deletions": 3,
+      "files_count": 15
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-27T01:12:00Z",
+    "duration_ms": 3470,
+    "output_tail": "Build succeeded. 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.VoiceAI", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does VoiceAI service validate JWT tokens on /api/v1/ endpoints and use X-Internal-Api-Key for service-to-service ChatAnalysis calls?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Is tenant_id extracted from JWT and used in voice_transcriptions INSERT and all DB queries?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Are temporary audio files reliably deleted in both success and error paths (finally block or equivalent)?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does the Whisper API call have appropriate timeout and error handling with feature-specific error codes (INV-VA-xxx)?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/ — no flow node changes (Option A)",
+      "src/Invekto.ChatAnalysis/ — reuse existing /api/v1/analyze as-is",
+      "dashboard/ — no UI in Faz 1"
+    ],
+    "non_goals": [
+      "TTS (text-to-speech) — deferred",
+      "Per-tenant Whisper API keys — platform-level only",
+      "Voice-specific flow node — Option A (text inject)",
+      "Audio file permanent storage — transcribe and delete",
+      "Dashboard voice UI — no frontend in Faz 1"
+    ],
+    "intentional_exclusions": [
+      "No Automation/FlowBuilder changes (voice handled as text after transcription)",
+      "No audio retention policy (immediate delete after transcribe)",
+      "No language detection (Whisper auto-detects, we pass through)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "VoiceTranscriptionService.cs: Whisper API call (HttpRequestException, TaskCanceledException)",
+      "VoiceTranscriptionService.cs: ChatAnalysis forward (HttpRequestException)",
+      "VoiceTranscriptionService.cs: DB log insert (NpgsqlException)",
+      "Program.cs: multipart file read (InvalidOperationException)"
+    ],
+    "user_facing_errors": [
+      "INV-VA-001: No audio file in request",
+      "INV-VA-002: Audio file too large",
+      "INV-VA-003: Whisper API transcription failed",
+      "INV-VA-004: Intent analysis forwarding failed",
+      "INV-VA-005: Transcription log save failed",
+      "INV-VA-006: Unsupported audio format"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All error paths have typed catches with INV-VA error codes and logging. Temp file cleanup in finally block."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Müşteriler uzun sesli mesaj gönderiyor, operatör dinlemek için zaman kaybediyor",
+      "suggestion": "Sesli mesaj geldiğinde otomatik transcript göster, operatör okuyup hızlıca cevap versin",
+      "aha_moment": "Operatör 2 dakikalık sesli mesajı 5 saniyede okuyor — 'artık sesli mesajlardan korkmuyorum'"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Sesli mesajlara cevap vermek text mesajlardan 3-5x daha uzun sürüyor",
+      "suggestion": "Transcript + intent birlikte dönsün, AI reply suggestion otomatik tetiklensin",
+      "aha_moment": "Sesli mesaja 10 saniyede AI-destekli cevap — müşteri 'bu kadar hızlı mı?' diyor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Whisper API down olduğunda sesli mesajlar kaybolabilir",
+      "suggestion": "Faz 2: retry queue + fallback (mesajı 'ses mesajı alındı, işleniyor' olarak kaydet)",
+      "aha_moment": "Hiçbir sesli mesaj kaybolmuyor, en kötü ihtimalde gecikmeli transcript geliyor"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Satış ekibi sesli mesajlardaki niyeti (fiyat sorma, şikayet) manuel tespit ediyor",
+      "suggestion": "Intent detection ile sesli mesajlardaki satış sinyallerini otomatik flag'le",
+      "aha_moment": "'Bu müşteri fiyat sormuş' notification'ı gelince satışçı hemen arıyor — conversion artışı"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Çok dilli müşteriler sesli mesaj gönderince dil bariyeri oluşuyor",
+      "suggestion": "Whisper auto-detect language + transcript ile dil bariyeri kalkıyor",
+      "aha_moment": "Arapça sesli mesaj geldi, Türkçe transcript + intent çıktı — operatör anladı"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0,
+    "source": null,
+    "received_at": null,
+    "updated_by": null,
+    "updated_at": null,
+    "raw_text": null,
+    "code_quality_gate": {},
+    "cove_verification": {},
+    "blocking_issues": [],
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

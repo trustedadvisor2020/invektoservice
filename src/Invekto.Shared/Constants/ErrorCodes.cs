@@ -423,6 +423,14 @@ public static class ErrorCodes
     public const string WebChatWebhookFailed = "INV-WC-011";
     public const string WebChatWebhookTimeout = "INV-WC-012";
 
+    // VoiceAI errors (INV-VA-xxx) -- PKT-11
+    public const string VoiceAINoAudioFile = "INV-VA-001";               // No audio file in request
+    public const string VoiceAIAudioTooLarge = "INV-VA-002";             // Audio file exceeds size limit
+    public const string VoiceAITranscriptionFailed = "INV-VA-003";       // Whisper API transcription failed
+    public const string VoiceAIIntentForwardFailed = "INV-VA-004";       // ChatAnalysis intent forwarding failed
+    public const string VoiceAITranscriptionLogFailed = "INV-VA-005";    // Transcription log DB insert failed
+    public const string VoiceAIUnsupportedFormat = "INV-VA-006";         // Unsupported audio format
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

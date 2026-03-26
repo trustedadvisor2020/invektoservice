@@ -31,6 +31,8 @@ public static class ServiceConstants
     public const int MarketingPort = 7112;
     // WebChat service port
     public const int WebChatPort = 7113;
+    // VoiceAI service port
+    public const int VoiceAIPort = 7114;
 
     // Service names
     public const string BackendServiceName = "Invekto.Backend";
@@ -48,6 +50,8 @@ public static class ServiceConstants
     public const string MarketingServiceName = "Invekto.Marketing";
     // WebChat service name
     public const string WebChatServiceName = "Invekto.WebChat";
+    // VoiceAI service name
+    public const string VoiceAIServiceName = "Invekto.VoiceAI";
 
     // Log retention
     public const int LogRetentionDays = 30;
