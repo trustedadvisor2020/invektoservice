@@ -329,7 +329,19 @@ app.UseTrafficLogging(
 // GR-1.9: JWT auth middleware for protected API paths
 // Webhook:AllowedIps — trusted IPs bypass JWT and use ?companyId= query param
 var webhookIps = builder.Configuration.GetSection("Webhook:AllowedIps").Get<string[]>() ?? [];
-var webhookIpSet = new HashSet<string>(webhookIps, StringComparer.OrdinalIgnoreCase);
+// Normalize: store both raw and ::ffff: mapped forms so IPv6-mapped IPv4 matches
+var webhookIpSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+foreach (var ip in webhookIps)
+{
+    webhookIpSet.Add(ip);
+    if (System.Net.IPAddress.TryParse(ip, out var parsed))
+    {
+        if (parsed.IsIPv4MappedToIPv6)
+            webhookIpSet.Add(parsed.MapToIPv4().ToString());
+        else
+            webhookIpSet.Add($"::ffff:{ip}");
+    }
+}
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();

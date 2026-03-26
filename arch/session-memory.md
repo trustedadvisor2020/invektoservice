@@ -5,10 +5,10 @@
 
 ## Last Update
 
-- **Date:** 2026-03-05
-- **Status:** FM-1c Monitor AI Chat DONE.
-- **Last Task:** FM-1c: AI chat panel on FlowMonitorPage. MONITOR mode system prompt in ClaudeWizardService, execution_detail param through wizard SSE, MonitorAiPanel component with streaming + accept/reject, proactive auto-analysis for error/waiting. Codex iter 2 manual PASS (CQ5 false positive — err.message pattern matches codebase).
-- **Files Changed:** ClaudeWizardService.cs, Program.cs, wizard-api.ts, flow-monitor-store.ts, FlowMonitorPage.tsx, errors.md, fm-1c plan JSON
+- **Date:** 2026-03-26
+- **Status:** INMA Chat Analysis 401 fix DONE.
+- **Last Task:** INMA'dan chat analysis istekleri 401 Unauthorized dönüyordu. Kök neden: INMA IP (91.151.84.79) Backend webhook whitelist'inde yoktu + Kestrel IPv6-mapped format (::ffff:x.x.x.x) ile config'deki düz IPv4 eşleşmiyordu. Production config'e IP eklendi, Backend restart edildi. Kodda kalıcı fix: IP normalize (MapToIPv4 + ::ffff: prefix otomatik ekleme). Deploy config'e Webhook.AllowedIps eklendi.
+- **Files Changed:** Program.cs (IP normalize), appsettings.Production.Backend.json (Webhook.AllowedIps)
 - **Next Task:** FM-1d or next priority from tracking
 - **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
 
@@ -16,12 +16,13 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | FM-1c: Monitor AI Chat | DONE | MONITOR mode prompt, streaming chat, accept/reject, proactive analysis. Codex iter 2 manual PASS |
+| - | (empty) | - | - |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-26 | INMA Chat Analysis 401 fix: IP whitelist (91.151.84.79) + IPv6-mapped normalize (::ffff: prefix). Production hotfix + kalıcı kod fix |
 | 2026-03-05 | FM-1c Monitor AI Chat: MONITOR mode system prompt, execution_detail SSE param, MonitorAiPanel (streaming + accept/reject + proactive), INV-AT-050/051/052. Codex iter 2 manual PASS |
 | 2026-03-05 | FM-1b Flow Monitor Page: 3-panel layout, cross-flow endpoint, 4 filters, 5s polling, Zustand store, FlowMonitorPage. Codex iter 1 FORCE PASS. Backend + Automation deploy |
 | 2026-03-05 | FM-1a Flow Versioning Backend: migration 007, repo CRUD, save hook, 3 API endpoints, 3 proxy routes, Toolbar version badge. Codex iter 1 PASS. Backend + Automation deploy |

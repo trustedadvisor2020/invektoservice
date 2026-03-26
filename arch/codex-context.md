@@ -75,6 +75,16 @@ These are hard codebase conventions. Violations = automatic FAIL:
 - HTTP status codes: 400 (bad input), 401 (no auth), 403 (no permission), 404 (not found), 500 (server error)
 - Typed catch blocks ONLY (no bare catch(Exception)), must log AND return meaningful response
 
+## META-CHECK: REASONING TRACE CONSISTENCY
+
+### CQ-META: Agent reasoning trace ile final output tutarli mi?
+- Reasoning/analiz bolumunde tespit edilen bulgu, output/karar ile celisiyor mu?
+- Ornek FAIL: Reasoning "tenant filter eksik" diyor ama verdict PASS veriyor
+- Ornek FAIL: Analiz "silent failure riski var" diyor ama CQ2 PASS olarak isaretlenmis
+- Ornek FAIL: Reasoning "microservice isolation ihlali" diyor ama PASS verdict
+- Kaynak: Mount Sinai ChatGPT Health Study — CoT faithfulness yapisal LLM problemi
+- Bu kural TUM CQ sonuclarini kapsar: herhangi bir CQ'nun reasoning'i ile verdict'i celisiyorsa = FAIL
+
 ## FAIL CONDITIONS (ANY = automatic FAIL)
 - Tenant/auth/security regression risk
 - Architecture/policy violation
