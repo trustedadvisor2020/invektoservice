@@ -159,6 +159,11 @@ public static class ErrorCodes
     // Automation Flow Monitor (INV-AT-049+)
     public const string AutomationMonitorQueryFailed = "INV-AT-049";
 
+    // Automation PKT-12: Review Rescue (INV-AT-050+)
+    public const string AutomationRiskScoringFailed = "INV-AT-050";
+    public const string AutomationRescueMarketingFailed = "INV-AT-051";
+    public const string AutomationRescueAlertFailed = "INV-AT-052";
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";

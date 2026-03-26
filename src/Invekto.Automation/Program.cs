@@ -192,6 +192,18 @@ builder.Services.AddHttpClient<VipDetectionService>();
 // PKT-6B1: Register ReturnDeflectionService (GR-3.8 + GR-3.17)
 builder.Services.AddSingleton<ReturnDeflectionService>();
 
+// PKT-12: Register MarketingRescueClient (typed HttpClient for Review Rescue)
+var marketingBaseUrl = builder.Configuration["Marketing:BaseUrl"] ?? $"http://localhost:{ServiceConstants.MarketingPort}";
+var marketingTimeoutMs = builder.Configuration.GetValue<int>("Marketing:TimeoutMs", 10000);
+builder.Services.AddHttpClient<MarketingRescueClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri(marketingBaseUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(marketingTimeoutMs);
+});
+
+// PKT-12: Register ReviewRescueService (with HttpClient for supervisor webhook)
+builder.Services.AddHttpClient<ReviewRescueService>();
+
 // PKT-6A: Register OnboardingService (with HttpClient for Knowledge seed API)
 builder.Services.AddHttpClient<OnboardingService>((sp, client) =>
 {

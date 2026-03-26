@@ -6,22 +6,28 @@
 ## Last Update
 
 - **Date:** 2026-03-26
-- **Status:** INMA Chat Analysis 401 fix DONE.
-- **Last Task:** INMA'dan chat analysis istekleri 401 Unauthorized dönüyordu. Kök neden: INMA IP (91.151.84.79) Backend webhook whitelist'inde yoktu + Kestrel IPv6-mapped format (::ffff:x.x.x.x) ile config'deki düz IPv4 eşleşmiyordu. Production config'e IP eklendi, Backend restart edildi. Kodda kalıcı fix: IP normalize (MapToIPv4 + ::ffff: prefix otomatik ekleme). Deploy config'e Webhook.AllowedIps eklendi.
-- **Files Changed:** Program.cs (IP normalize), appsettings.Production.Backend.json (Webhook.AllowedIps)
-- **Next Task:** FM-1d or next priority from tracking
-- **Strateji:** 12 Paket Stratejisi v5.3 + SDD v5.1
+- **Status:** PKT-12 Faz 1 DONE (build PASS, Codex pending). PKT-11/12/13 planlandı.
+- **Last Task:** (1) INMA Chat Analysis 401 hotfix + kalıcı IPv6 normalize. (2) PKT-11/12/13 full scope planlama (interview + plan onay). (3) PKT-12 Faz 1 Risk Scoring Engine: RiskKeywordScanner, ReviewRescueService, MarketingRescueClient, error codes, AutomationOrchestrator entegrasyonu.
+- **Files Changed:** Backend/Program.cs (IP fix), deploy config, Automation: RiskKeywordScanner.cs, ReviewRescueService.cs, MarketingRescueClient.cs, AutomationOrchestrator.cs, Program.cs, appsettings.json, Shared/ErrorCodes.cs
+- **Next Task:** PKT-12 Faz 2 (RescueDispatcher)
+- **Plan:** `~/.claude/plans/unified-giggling-origami.md`
+- **Strateji:** PKT-12 → PKT-11 → PKT-13 (full scope)
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| - | (empty) | - | - |
+| 1 | PKT-12 Faz 2: RescueDispatcher | PENDING | Template fetch + Outbound trigger + rescue mesaj |
+| 2 | PKT-12 Faz 3: RescueFollowUpService | PENDING | CronScheduler + T+24h follow-up |
+| 3 | PKT-12 Faz 4: Dashboard | PENDING | RescueDashboardPage + Backend proxy |
+| 4 | PKT-12 /rev | PENDING | Codex review (Faz 1-4 birlikte) |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-26 | PKT-12 Faz 1 Risk Scoring Engine: RiskKeywordScanner (30+ keyword), ReviewRescueService (composite score), MarketingRescueClient, AutomationOrchestrator fire-and-forget, INV-AT-050/051/052. Build PASS |
+| 2026-03-26 | PKT-11/12/13 full scope planlama: interview + plan onay. Sıra: PKT-12→11→13 |
 | 2026-03-26 | INMA Chat Analysis 401 fix: IP whitelist (91.151.84.79) + IPv6-mapped normalize (::ffff: prefix). Production hotfix + kalıcı kod fix |
 | 2026-03-05 | FM-1c Monitor AI Chat: MONITOR mode system prompt, execution_detail SSE param, MonitorAiPanel (streaming + accept/reject + proactive), INV-AT-050/051/052. Codex iter 2 manual PASS |
 | 2026-03-05 | FM-1b Flow Monitor Page: 3-panel layout, cross-flow endpoint, 4 filters, 5s polling, Zustand store, FlowMonitorPage. Codex iter 1 FORCE PASS. Backend + Automation deploy |

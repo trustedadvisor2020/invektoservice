@@ -29,6 +29,7 @@ public sealed class AutomationOrchestrator
     private readonly MainAppCallbackClient _callbackClient;
     private readonly KnowledgeIntentClient _knowledgeIntentClient;
     private readonly VipDetectionService _vipDetection;
+    private readonly ReviewRescueService _reviewRescue;
     private readonly JwtGenerator _jwtGenerator;
     private readonly JsonLinesLogger _logger;
 
@@ -50,6 +51,7 @@ public sealed class AutomationOrchestrator
         MainAppCallbackClient callbackClient,
         KnowledgeIntentClient knowledgeIntentClient,
         VipDetectionService vipDetection,
+        ReviewRescueService reviewRescue,
         JwtGenerator jwtGenerator,
         JsonLinesLogger logger)
     {
@@ -62,6 +64,7 @@ public sealed class AutomationOrchestrator
         _callbackClient = callbackClient;
         _knowledgeIntentClient = knowledgeIntentClient;
         _vipDetection = vipDetection;
+        _reviewRescue = reviewRescue;
         _jwtGenerator = jwtGenerator;
         _logger = logger;
     }
@@ -724,6 +727,11 @@ public sealed class AutomationOrchestrator
         if (!string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(messageText))
         {
             _ = _vipDetection.CheckAndRecordAsync(tenantId, phone, messageText, settingsJson, CancellationToken.None);
+
+            // PKT-12: Review Rescue risk scoring (fire-and-forget)
+            _ = _reviewRescue.ScoreAndProcessAsync(
+                tenantId, phone, messageText, result.State.Variables,
+                settingsJson, CancellationToken.None);
         }
 
         return true;
