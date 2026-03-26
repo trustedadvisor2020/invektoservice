@@ -1752,6 +1752,55 @@ class OpsApiClient {
     return this.request<RiOnboardingResponse>(`/api/v1/wa/${tenantId}/ri/onboarding${params}`);
   }
 
+  // --- Review Rescue (PKT-12 Faz 4) ---
+
+  async getRescueStats(): Promise<RescueStatsResponse> {
+    return this.request<RescueStatsResponse>('/api/v1/rescue/stats');
+  }
+
+  async listRescueRisks(riskLevel?: string, rescueStatus?: string): Promise<ReviewRiskResponse[]> {
+    const sp = new URLSearchParams();
+    if (riskLevel) sp.set('riskLevel', riskLevel);
+    if (rescueStatus) sp.set('rescueStatus', rescueStatus);
+    const qs = sp.toString() ? `?${sp}` : '';
+    return this.request<ReviewRiskResponse[]>(`/api/v1/rescue/risks${qs}`);
+  }
+
+  async updateRescueRisk(id: number, data: RescueRiskUpdateRequest): Promise<{ success: boolean }> {
+    return this.request(`/api/v1/rescue/risks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listRescueTemplates(riskLevel?: string): Promise<RescueTemplateResponse[]> {
+    const sp = new URLSearchParams();
+    if (riskLevel) sp.set('riskLevel', riskLevel);
+    sp.set('active_only', 'false');
+    const qs = `?${sp}`;
+    return this.request<RescueTemplateResponse[]>(`/api/v1/rescue/templates${qs}`);
+  }
+
+  async createRescueTemplate(data: RescueTemplateCreateRequest): Promise<{ id: number }> {
+    return this.request('/api/v1/rescue/templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRescueTemplate(id: number, data: RescueTemplateUpdateRequest): Promise<{ success: boolean }> {
+    return this.request(`/api/v1/rescue/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRescueTemplate(id: number): Promise<{ success: boolean }> {
+    return this.request(`/api/v1/rescue/templates/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // --- WebChat operator proxy (superadmin chat window) ---
 
   async getWebChatConversations(includeClosed = false): Promise<WebChatConversationsResponse> {
@@ -2020,6 +2069,78 @@ export interface RiTenantBenchmarkComparison {
   tenantActiveAgents: number | null;
   tenantAvgQualityScore: number | null;
   recommendation: string | null;
+}
+
+// --- Review Rescue Types (PKT-12 Faz 4) ---
+
+export interface RescueStatsResponse {
+  total: number;
+  pending: number;
+  inProgress: number;
+  rescued: number;
+  failed: number;
+  criticalCount: number;
+  highCount: number;
+  reviewsPosted: number;
+  avgReviewRating: number;
+  totalRescueCost: number;
+  rescueRate: number;
+}
+
+export interface ReviewRiskResponse {
+  id: number;
+  tenantId: number;
+  customerPhone: string;
+  conversationId: string | null;
+  riskScore: number;
+  riskLevel: string;
+  triggerReason: string | null;
+  rescueStatus: string;
+  rescueStrategy: string | null;
+  rescueCost: number | null;
+  customerResponse: string | null;
+  reviewPosted: boolean;
+  reviewRating: number | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  updatedAt: string;
+}
+
+export interface RescueRiskUpdateRequest {
+  rescueStatus?: string;
+  rescueStrategy?: string;
+  rescueCost?: number;
+  customerResponse?: string;
+  reviewPosted?: boolean;
+  reviewRating?: number;
+}
+
+export interface RescueTemplateResponse {
+  id: number;
+  tenantId: number;
+  templateName: string;
+  riskLevel: string;
+  strategy: string;
+  messageTemplate: string;
+  maxDiscountPct: number | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RescueTemplateCreateRequest {
+  templateName: string;
+  riskLevel: string;
+  strategy: string;
+  messageTemplate: string;
+  maxDiscountPct?: number;
+}
+
+export interface RescueTemplateUpdateRequest {
+  templateName?: string;
+  messageTemplate?: string;
+  maxDiscountPct?: number;
+  isActive?: boolean;
 }
 
 // --- WebChat Types ---

@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Link2,
   Star,
+  ShieldAlert,
   Settings,
   MessageSquare,
   Building2,
@@ -55,6 +56,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // — Tenant: Pazarlama —
   { path: '/campaigns',       label: 'Kampanyalar',      icon: Megaphone,    feature: 'Outbound', section: 'Pazarlama' },
   { path: '/marketing',       label: 'Pazarlama',        icon: Star,         feature: 'Marketing' },
+  { path: '/rescue',          label: 'Review Rescue',    tenantLabel: 'Yorum Kurtarma', icon: ShieldAlert, feature: 'Marketing' },
   { path: '/appointments',    label: 'Randevular',       icon: CalendarDays, feature: 'Appointments' },
   // — Tenant: Analiz —
   { path: '/flow-monitor',    label: 'Flow Monitor',     tenantLabel: 'Flow Izleme', icon: Activity, feature: 'FlowBuilder', section: 'Analiz' },

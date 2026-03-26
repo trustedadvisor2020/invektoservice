@@ -32,6 +32,7 @@ const IntentManagementPage = lazy(() => import('./pages/IntentManagementPage').t
 const RevenueIntelligencePage = lazy(() => import('./pages/RevenueIntelligencePage').then(m => ({ default: m.RevenueIntelligencePage })));
 const RiTemplateManagementPage = lazy(() => import('./pages/RiTemplateManagementPage').then(m => ({ default: m.RiTemplateManagementPage })));
 const FlowMonitorPage = lazy(() => import('./pages/FlowMonitorPage').then(m => ({ default: m.FlowMonitorPage })));
+const RescueDashboardPage = lazy(() => import('./pages/RescueDashboardPage').then(m => ({ default: m.RescueDashboardPage })));
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/appointments" element={<AppointmentsPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/marketing" element={<MarketingPage />} />
+        <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         <Route path="/tenants" element={<TenantsPage />} />

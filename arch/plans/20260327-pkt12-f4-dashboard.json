@@ -1,0 +1,118 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-12-F4",
+  "spec_ref": null,
+  "slug": "20260327-pkt12-f4-dashboard",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-03-27T00:20:00Z",
+  "updated_at": "2026-03-27T00:30:00Z",
+  "plan": {
+    "summary": "PKT-12 Review Rescue AI Faz 4: Dashboard — RescueDashboardPage.tsx with KPI cards (total risks, rescued, failed, rescue rate, reviews posted), risk table with inline editing (status + strategy), template manager CRUD, and sidebar navigation entry. Frontend-only — all Backend proxy routes already exist from Faz 1-3.",
+    "q_intent": "PKT-12 Faz 4: Rescue dashboard sayfasi. KPI kartlari, risk tablosu (filtre + inline edit), sablon yonetimi (CRUD).",
+    "interview_notes": "Session continuation — clear scope from session prompt. Frontend-only, no backend changes needed. Existing proxy routes cover all rescue endpoints.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "RescueDashboardPage.tsx exists with KPI cards showing: total risks, pending, rescued, failed, rescue rate %, reviews posted",
+        "verified": true,
+        "verification_note": "RescueKpiCards component renders 6 KPI cards from RescueStatsResponse data"
+      },
+      {
+        "id": "AC2",
+        "criterion": "Risk table displays all review risks with risk level and status badges, inline editing for rescueStatus and rescueStrategy",
+        "verified": true,
+        "verification_note": "RiskTable component with Pencil edit button, select dropdowns for status/strategy, save/cancel actions calling api.updateRescueRisk"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Risk table has filter dropdowns for riskLevel and rescueStatus that re-fetch data on change",
+        "verified": true,
+        "verification_note": "filterLevel and filterStatus state in main page, passed to api.listRescueRisks, fetchAll re-triggers on filter change via useCallback dependency"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Template manager with create, edit, toggle active, and delete operations using existing /rescue/templates endpoints",
+        "verified": true,
+        "verification_note": "TemplateManager component: openCreate, openEdit, handleSubmit (create/update), handleToggle (isActive), handleDelete. Form with templateName, riskLevel, strategy, messageTemplate, maxDiscountPct fields"
+      },
+      {
+        "id": "AC5",
+        "criterion": "App.tsx has lazy-loaded /rescue route and Layout.tsx sidebar has 'Review Rescue' nav item with ShieldAlert icon under Pazarlama section",
+        "verified": true,
+        "verification_note": "App.tsx: lazy import RescueDashboardPage, Suspense-wrapped route. Layout.tsx: ShieldAlert import, nav item with feature='Marketing', tenantLabel='Yorum Kurtarma'"
+      },
+      {
+        "id": "AC6",
+        "criterion": "api.ts has typed interfaces and methods for rescue stats, risks CRUD, templates CRUD matching Marketing backend DTOs",
+        "verified": true,
+        "verification_note": "8 new API methods + 7 new TypeScript interfaces in api.ts. Field names match MarketingRepository DTOs (camelCase JS ↔ PascalCase C# via System.Text.Json)"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/RescueDashboardPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/RescueDashboardPage.tsx", "change": "NEW: Full rescue dashboard with KPI cards, risk table (inline edit), template manager CRUD, tab navigation", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "Added 8 rescue API methods + 7 TypeScript interfaces (RescueStatsResponse, ReviewRiskResponse, RescueRiskUpdateRequest, RescueTemplateResponse, RescueTemplateCreateRequest, RescueTemplateUpdateRequest)", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "change": "Added lazy import RescueDashboardPage + /rescue route with Suspense", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "change": "Added ShieldAlert import + Review Rescue nav item in Pazarlama section", "is_new": false }
+  ],
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-27T00:30:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Do all api.ts TypeScript interfaces correctly match the C# DTO field names via camelCase conversion?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the rescue dashboard correctly handle empty state (no risks, no templates) without console errors?",
+      "category": "UX",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Is the template form properly validating required fields (templateName, messageTemplate) before allowing submission?",
+      "category": "Validation",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Marketing/", "src/Invekto.Automation/", "src/Invekto.Shared/"],
+    "non_goals": ["Backend proxy routes (already exist)", "Migration changes", "New error codes"],
+    "intentional_exclusions": ["Follow-up status tab (requires cross-tenant endpoint not proxied through Backend)"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "RescueDashboardPage.tsx:fetchAll (Promise.all catch)"
+    ],
+    "user_facing_errors": ["Error card displayed with red border when API calls fail"],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All API errors caught in fetchAll and displayed to user via error state card"
+  },
+  "verdict": {
+    "status": "PASS",
+    "source": "Q_FORCE_PASS",
+    "received_at": "2026-03-27T00:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-03-27T00:45:00Z",
+    "blocking_issues": [],
+    "iteration": 1,
+    "escalation_required": false,
+    "commit_sha": null
+  }
+}
