@@ -23,9 +23,9 @@
 | 8 | PKT-8 | Face AI | GR-3D.1~3D.5 | PLANNED | - | - |
 | 9 | PKT-9 | Guzellik Salonu | GR-3E.1~3E.8 | PLANNED | - | - |
 | 10 | PKT-10 | Egitim | GR-3F.1~3F.8 | PLANNED | - | - |
-| 11 | PKT-11 | Voice Message AI | GR-3G.x | EVALUATED | - | - |
-| 12 | PKT-12 | Review Rescue AI | GR-3H.x | EVALUATED | - | - |
-| 13 | PKT-13 | Multilingual Medical Tourism | GR-3I.x | EVALUATED | - | - |
+| 11 | PKT-11 | Voice Message AI | GR-3G.x | **Faz 1 DONE** | 27 Mar | iter 1, FORCE PASS |
+| 12 | PKT-12 | Review Rescue AI | GR-3H.x | **Faz 1-4 DONE** | 26-27 Mar | iter 1, FORCE PASS |
+| 13 | PKT-13 | Multilingual Medical Tourism | GR-3I.x | PENDING | - | - |
 | RI-1 | Faz 1 | RI: Model Secimi & Kalibrasyon | RI-0.x, RI-1.x | DONE | 24 Sub | GATE-1 PASS (tiered 0.8203) |
 | RI-2 | Faz 2 | RI: Sektor Pipeline (Top 3) | RI-2.1~2.9 | DONE | 26 Sub | GATE-2 FULL PASS |
 | RI-3 | Faz 3 | RI: 7 Insight Engine | RI-3.1~3.7 (28 sub-task) | DONE | 1 Mar | P1-P5 + P6(3.5+3.7): iter 1 FP |
@@ -42,7 +42,7 @@
 | FM-1b | Flow Monitor Faz 1b | Monitor Sayfasi | [Detay](fm-1b-flow-monitor-page.md) | PLANNED | - | - |
 | FM-1c | Flow Monitor Faz 1c | Monitor AI Chat | [Detay](fm-1c-monitor-ai-chat.md) | PLANNED | - | - |
 
-**Toplam:** 29 paket (23 done, 0 in-progress, 6 planned, 3 evaluated) | 50+ GR + RI-100+ task
+**Toplam:** 31 paket (25 done, 0 in-progress, 5 planned, 1 pending) | 50+ GR + RI-100+ task
 
 ## Mikroservis Port Haritasi
 
@@ -61,6 +61,7 @@
 | VisualSearch | 7111 | Planned | PKT-7 |
 | Marketing | 7112 | Implemented | PKT-6C2 |
 | WebChat | 7113 | Implemented | WebChat |
+| VoiceAI | 7114 | Implemented | PKT-11 |
 
 ## Strateji Gecmisi
 
