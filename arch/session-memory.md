@@ -6,25 +6,25 @@
 ## Last Update
 
 - **Date:** 2026-03-27
-- **Status:** PKT-12 Faz 3 DONE. Codex iter 1 Q FORCE PASS (cross-tenant false positive).
-- **Last Task:** PKT-12 Faz 3 Follow-Up Scheduler: RescueFollowUpService (IHostedService, 4h timer, T+24h satisfaction + T+48h review redirect), Marketing follow-up endpoints, migration 008, INV-AT-055/056 + INV-MK-024.
-- **Files Changed:** Automation: RescueFollowUpService.cs (NEW), MarketingRescueClient.cs, Program.cs. Marketing: MarketingRepository.cs, Program.cs. Shared: ErrorCodes.cs. DB: 008-rescue-followup.sql (NEW), marketing-v2.sql. Arch: errors.md
-- **Next Task:** PKT-12 Faz 4 (Dashboard)
-- **Plan:** `arch/plans/20260326-pkt12-review-rescue.json`
-- **Strateji:** PKT-12 → PKT-11 → PKT-13 (full scope)
+- **Status:** PKT-12 Faz 4 DONE. PKT-12 complete (all 4 phases). Deployed: Backend + Marketing + Automation HEALTHY.
+- **Last Task:** PKT-12 Faz 4 Dashboard: RescueDashboardPage.tsx (KPI cards, risk table with inline edit, template CRUD), api.ts rescue methods, /rescue route, sidebar entry. Migration 008 run on production.
+- **Files Changed:** Dashboard: RescueDashboardPage.tsx (NEW), api.ts, App.tsx, Layout.tsx. Plan: 20260327-pkt12-f4-dashboard.json (NEW).
+- **Next Task:** PKT-11 Faz 1 (VoiceAI MVP)
+- **Plan:** `arch/plans/20260327-pkt12-f4-dashboard.json`
+- **Strateji:** PKT-12 DONE → PKT-11 → PKT-13
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | PKT-12 Faz 4: Dashboard | PENDING | RescueDashboardPage + Backend proxy |
-| 3 | PKT-11 Faz 1: VoiceAI MVP | PENDING | Yeni mikroservis, port 7114, Whisper API |
-| 4 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
+| 1 | PKT-11 Faz 1: VoiceAI MVP | PENDING | Yeni mikroservis, port 7114, Whisper API |
+| 2 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-03-27 | PKT-12 Faz 4: Dashboard. RescueDashboardPage (KPI cards, risk table inline edit, template CRUD), api.ts 8 methods + 7 interfaces, /rescue route, sidebar. 5 files, 742 insertions. Codex iter 1 Q FORCE PASS. Full deploy (Backend+Marketing+Automation HEALTHY). Migration 008 run. |
 | 2026-03-27 | PKT-12 Faz 3: Follow-Up Scheduler. RescueFollowUpService (4h timer), T+24h satisfaction + T+48h review redirect, Marketing endpoints, migration 008. 9 files, 580 insertions. Codex iter 1 Q FORCE PASS |
 | 2026-03-26 | PKT-12 Faz 1+2 committed (34cca86): Risk Scoring Engine + Rescue Action Engine. 7 files, 318 insertions. Codex iter 3 Q FORCE PASS |
 | 2026-03-26 | PKT-11/12/13 full scope planlama: interview + plan onay. Sıra: PKT-12→11→13 |
