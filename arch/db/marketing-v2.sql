@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS review_risks (
     customer_response   VARCHAR(20),                        -- 'satisfied','unsatisfied','no_response'
     review_posted       BOOLEAN NOT NULL DEFAULT FALSE,     -- did the customer post a review anyway?
     review_rating       SMALLINT,                           -- 1-5 if posted
+    followup_status     VARCHAR(30) NOT NULL DEFAULT 'none', -- PKT-12 Faz 3: follow-up tracking
+    followup_sent_at    TIMESTAMPTZ,                         -- PKT-12 Faz 3: when last follow-up was sent
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     resolved_at         TIMESTAMPTZ,
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -38,7 +40,8 @@ CREATE TABLE IF NOT EXISTS review_risks (
     CONSTRAINT chk_rescue_status CHECK (rescue_status IN ('pending', 'in_progress', 'rescued', 'failed', 'expired')),
     CONSTRAINT chk_rescue_strategy CHECK (rescue_strategy IS NULL OR rescue_strategy IN ('apology', 'discount', 'free_return', 'exchange', 'full_refund')),
     CONSTRAINT chk_risk_review_rating CHECK (review_rating IS NULL OR (review_rating >= 1 AND review_rating <= 5)),
-    CONSTRAINT chk_customer_response CHECK (customer_response IS NULL OR customer_response IN ('satisfied', 'unsatisfied', 'no_response'))
+    CONSTRAINT chk_customer_response CHECK (customer_response IS NULL OR customer_response IN ('satisfied', 'unsatisfied', 'no_response')),
+    CONSTRAINT chk_followup_status CHECK (followup_status IN ('none', 'satisfaction_sent', 'review_redirect_sent', 'completed', 'closed'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_review_risks_tenant_level
@@ -49,6 +52,11 @@ CREATE INDEX IF NOT EXISTS idx_review_risks_tenant_status
 
 CREATE INDEX IF NOT EXISTS idx_review_risks_tenant_phone
     ON review_risks (tenant_id, customer_phone);
+
+-- PKT-12 Faz 3: Follow-up due query index
+CREATE INDEX IF NOT EXISTS idx_review_risks_followup_due
+    ON review_risks (rescue_status, followup_status, updated_at)
+    WHERE rescue_status = 'rescued';
 
 -- =============================================================
 -- rescue_templates: Tenant-configurable rescue message templates (GR-3.24)

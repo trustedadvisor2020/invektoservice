@@ -216,6 +216,10 @@ builder.Services.AddSingleton<RescueDispatcher>();
 // PKT-12: Register ReviewRescueService (with HttpClient for supervisor webhook)
 builder.Services.AddHttpClient<ReviewRescueService>();
 
+// PKT-12 Faz 3: Register RescueFollowUpService (background hosted service, 4h timer)
+builder.Services.AddSingleton<RescueFollowUpService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<RescueFollowUpService>());
+
 // PKT-6A: Register OnboardingService (with HttpClient for Knowledge seed API)
 builder.Services.AddHttpClient<OnboardingService>((sp, client) =>
 {

@@ -147,6 +147,9 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/rescue/templates", Description = "List rescue templates", Category = "Rescue" },
         new() { Method = "PUT", Path = "/api/v1/rescue/templates/{id}", Description = "Update rescue template", Category = "Rescue" },
         new() { Method = "DELETE", Path = "/api/v1/rescue/templates/{id}", Description = "Deactivate rescue template", Category = "Rescue" },
+        // PKT-12 Faz 3: Follow-Up
+        new() { Method = "GET", Path = "/api/v1/rescue/risks/followup-due", Description = "Get risks due for follow-up", Category = "Rescue" },
+        new() { Method = "PUT", Path = "/api/v1/rescue/risks/{id}/followup", Description = "Update follow-up status", Category = "Rescue" },
         // GR-3.25: Tourism Catalog + Conversations
         new() { Method = "POST", Path = "/api/v1/tourism/catalog", Description = "Create treatment", Category = "Tourism Catalog" },
         new() { Method = "GET", Path = "/api/v1/tourism/catalog", Description = "List treatments", Category = "Tourism Catalog" },
@@ -673,6 +676,58 @@ app.MapGet("/api/v1/rescue/stats", async (HttpContext ctx, MarketingRepository r
 });
 
 // ============================================
+// PKT-12 Faz 3: RESCUE FOLLOW-UP ENDPOINTS
+// ============================================
+
+// Intentionally cross-tenant: follow-up scheduler queries all tenants at once (ops-level batch job)
+app.MapGet("/api/v1/rescue/risks/followup-due", async (MarketingRepository repo, JsonLinesLogger jsonLog) =>
+{
+    try
+    {
+        var risks = await repo.GetFollowUpDueRisksAsync();
+        return Results.Ok(new { risks });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{ErrorCodes.MarketingFollowUpQueryFailed}] Follow-up due query failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingFollowUpQueryFailed, "Follow-up due query failed", "-"), statusCode: 500);
+    }
+});
+
+app.MapPut("/api/v1/rescue/risks/{id:int}/followup", async (HttpContext ctx, MarketingRepository repo, JsonLinesLogger jsonLog, int id) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+    if (tenantContext == null)
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId), statusCode: 401);
+
+    FollowUpUpdateRequest? request;
+    try { request = await ctx.Request.ReadFromJsonAsync<FollowUpUpdateRequest>(); }
+    catch (System.Text.Json.JsonException ex) { jsonLog.SystemWarn($"[{requestId}] Malformed JSON in followup update: {ex.Message}"); request = null; }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.FollowUpStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskPayload, "followup_status is required", requestId), statusCode: 400);
+
+    var validStatuses = new[] { "none", "satisfaction_sent", "review_redirect_sent", "completed", "closed" };
+    if (!validStatuses.Contains(request.FollowUpStatus))
+        return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingInvalidRiskStatus, $"Invalid followup_status. Valid: {string.Join(", ", validStatuses)}", requestId), statusCode: 400);
+
+    try
+    {
+        var updated = await repo.UpdateFollowUpStatusAsync(tenantContext.TenantId, id, request.FollowUpStatus);
+        if (!updated)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.MarketingRiskNotFound, "Review risk not found", requestId), statusCode: 404);
+        jsonLog.StepInfo($"Follow-up status updated: id={id}, status={request.FollowUpStatus}", requestId);
+        return Results.Ok(new { success = true });
+    }
+    catch (NpgsqlException ex)
+    {
+        jsonLog.SystemWarn($"[{requestId}] Follow-up status update failed: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.DatabaseConnectionFailed, "Follow-up status update failed", requestId), statusCode: 500);
+    }
+});
+
+// ============================================
 // RESCUE TEMPLATE ENDPOINTS (GR-3.24)
 // ============================================
 
@@ -1112,6 +1167,12 @@ public sealed class RiskUpdateRequest
     public string? CustomerResponse { get; set; }
     public bool? ReviewPosted { get; set; }
     public short? ReviewRating { get; set; }
+}
+
+/// <summary>PKT-12 Faz 3: Follow-up status update request.</summary>
+public sealed class FollowUpUpdateRequest
+{
+    public string FollowUpStatus { get; set; } = "";
 }
 
 public sealed class RescueTemplateCreateRequest

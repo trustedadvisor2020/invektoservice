@@ -5,20 +5,19 @@
 
 ## Last Update
 
-- **Date:** 2026-03-26
-- **Status:** PKT-12 Faz 1+2 DONE (committed 34cca86). Codex iter 3 Q FORCE PASS.
-- **Last Task:** PKT-12 Faz 2 Rescue Action Engine: RescueDispatcher (template fetch + Outbound trigger + risk status update), OutboundRescueClient (webhook trigger), MarketingRescueClient genişletme (template fetch + status update), INV-AT-053/054.
-- **Files Changed:** Automation: RescueDispatcher.cs (NEW), OutboundRescueClient.cs (NEW), MarketingRescueClient.cs, ReviewRescueService.cs, Program.cs, appsettings.json. Shared: ErrorCodes.cs
-- **Next Task:** PKT-12 Faz 3 (RescueFollowUpService)
-- **Plan:** `~/.claude/plans/unified-giggling-origami.md`
+- **Date:** 2026-03-27
+- **Status:** PKT-12 Faz 3 DONE. Codex iter 1 Q FORCE PASS (cross-tenant false positive).
+- **Last Task:** PKT-12 Faz 3 Follow-Up Scheduler: RescueFollowUpService (IHostedService, 4h timer, T+24h satisfaction + T+48h review redirect), Marketing follow-up endpoints, migration 008, INV-AT-055/056 + INV-MK-024.
+- **Files Changed:** Automation: RescueFollowUpService.cs (NEW), MarketingRescueClient.cs, Program.cs. Marketing: MarketingRepository.cs, Program.cs. Shared: ErrorCodes.cs. DB: 008-rescue-followup.sql (NEW), marketing-v2.sql. Arch: errors.md
+- **Next Task:** PKT-12 Faz 4 (Dashboard)
+- **Plan:** `arch/plans/20260326-pkt12-review-rescue.json`
 - **Strateji:** PKT-12 → PKT-11 → PKT-13 (full scope)
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | PKT-12 Faz 3: RescueFollowUpService | PENDING | CronScheduler + T+24h follow-up |
-| 2 | PKT-12 Faz 4: Dashboard | PENDING | RescueDashboardPage + Backend proxy |
+| 1 | PKT-12 Faz 4: Dashboard | PENDING | RescueDashboardPage + Backend proxy |
 | 3 | PKT-11 Faz 1: VoiceAI MVP | PENDING | Yeni mikroservis, port 7114, Whisper API |
 | 4 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
 
@@ -26,6 +25,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-03-27 | PKT-12 Faz 3: Follow-Up Scheduler. RescueFollowUpService (4h timer), T+24h satisfaction + T+48h review redirect, Marketing endpoints, migration 008. 9 files, 580 insertions. Codex iter 1 Q FORCE PASS |
 | 2026-03-26 | PKT-12 Faz 1+2 committed (34cca86): Risk Scoring Engine + Rescue Action Engine. 7 files, 318 insertions. Codex iter 3 Q FORCE PASS |
 | 2026-03-26 | PKT-11/12/13 full scope planlama: interview + plan onay. Sıra: PKT-12→11→13 |
 | 2026-03-26 | INMA Chat Analysis 401 fix: IP whitelist (91.151.84.79) + IPv6-mapped normalize (::ffff: prefix). Production hotfix + kalıcı kod fix |

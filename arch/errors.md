@@ -372,6 +372,20 @@ errors:
     description: Monitor AI save failed
     user_message: AI degisiklik kaydetme basarisiz.
 
+  # PKT-12: Review Rescue AI (INV-AT-053+)
+  - code: INV-AT-053
+    description: Rescue dispatch failed (template fetch or Outbound send)
+    user_message: Kurtarma mesaji gonderilemedi.
+  - code: INV-AT-054
+    description: Rescue message delivery failed
+    user_message: Kurtarma mesaji iletilemedi.
+  - code: INV-AT-055
+    description: Follow-up due query failed
+    user_message: Takip listesi alinamadi.
+  - code: INV-AT-056
+    description: Follow-up message send failed
+    user_message: Takip mesaji gonderilemedi.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload
@@ -736,6 +750,9 @@ errors:
   - code: INV-MK-023
     description: Claude AI service unavailable
     user_message: Claude AI servisi kullanılamıyor.
+  - code: INV-MK-024
+    description: Follow-up due query failed
+    user_message: Takip listesi alinamadi.
 
   # ── KN — Knowledge (GR-2.1) ──
   - code: INV-KN-001

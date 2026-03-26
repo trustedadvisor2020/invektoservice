@@ -486,6 +486,75 @@ public sealed class MarketingRepository
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
+    /// <summary>
+    /// PKT-12 Faz 3: Get risks due for follow-up.
+    /// Stage 1 (T+24h satisfaction): rescued, followup_status='none', updated_at older than 24h.
+    /// Stage 2 (T+48h review redirect): followup_status='satisfaction_sent', customer_response='satisfied', followup_sent_at older than 24h.
+    /// </summary>
+    public async Task<List<FollowUpDueDto>> GetFollowUpDueRisksAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, customer_phone, risk_level, followup_status, customer_response,
+                   updated_at, followup_sent_at
+            FROM review_risks
+            WHERE (
+                -- Stage 1: T+24h satisfaction check
+                (rescue_status = 'rescued' AND followup_status = 'none'
+                 AND updated_at < NOW() - INTERVAL '24 hours')
+                OR
+                -- Stage 2: T+48h review redirect (24h after satisfaction sent)
+                (followup_status = 'satisfaction_sent' AND customer_response = 'satisfied'
+                 AND followup_sent_at < NOW() - INTERVAL '24 hours')
+            )
+            ORDER BY updated_at ASC
+            LIMIT 100";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+
+        var results = new List<FollowUpDueDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new FollowUpDueDto
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                TenantId = reader.GetInt32(reader.GetOrdinal("tenant_id")),
+                CustomerPhone = reader.GetString(reader.GetOrdinal("customer_phone")),
+                RiskLevel = reader.GetString(reader.GetOrdinal("risk_level")),
+                FollowUpStatus = reader.GetString(reader.GetOrdinal("followup_status")),
+                CustomerResponse = reader.IsDBNull(reader.GetOrdinal("customer_response"))
+                    ? null : reader.GetString(reader.GetOrdinal("customer_response")),
+                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at")),
+                FollowUpSentAt = reader.IsDBNull(reader.GetOrdinal("followup_sent_at"))
+                    ? null : reader.GetDateTime(reader.GetOrdinal("followup_sent_at"))
+            });
+        }
+        return results;
+    }
+
+    /// <summary>
+    /// PKT-12 Faz 3: Update follow-up status and timestamp.
+    /// </summary>
+    public async Task<bool> UpdateFollowUpStatusAsync(
+        int tenantId, int riskId, string followupStatus, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE review_risks
+            SET followup_status = @status,
+                followup_sent_at = NOW(),
+                updated_at = NOW()
+            WHERE tenant_id = @tid AND id = @id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("id", riskId);
+        cmd.Parameters.AddWithValue("status", followupStatus);
+
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
     public async Task<RescueStatsDto> GetRescueStatsAsync(
         int tenantId, CancellationToken ct = default)
     {
@@ -1152,6 +1221,19 @@ public sealed class ReviewRiskDto
     public DateTime CreatedAt { get; init; }
     public DateTime? ResolvedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+}
+
+/// <summary>PKT-12 Faz 3: Lightweight DTO for follow-up due queries.</summary>
+public sealed class FollowUpDueDto
+{
+    public int Id { get; init; }
+    public int TenantId { get; init; }
+    public string CustomerPhone { get; init; } = "";
+    public string RiskLevel { get; init; } = "";
+    public string FollowUpStatus { get; init; } = "none";
+    public string? CustomerResponse { get; init; }
+    public DateTime UpdatedAt { get; init; }
+    public DateTime? FollowUpSentAt { get; init; }
 }
 
 public sealed class RescueStatsDto

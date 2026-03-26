@@ -173,6 +173,103 @@ public sealed class MarketingRescueClient
         }
     }
 
+    /// <summary>
+    /// PKT-12 Faz 3: Fetch risks due for follow-up (cross-tenant batch query).
+    /// Returns empty list on failure.
+    /// </summary>
+    public async Task<List<FollowUpDueItem>> GetFollowUpDueRisksAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            // Intentionally cross-tenant: ops-level batch endpoint, no tenant JWT needed
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/rescue/risks/followup-due");
+            request.Headers.Add("X-Internal-Service", "automation");
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.AutomationFollowUpQueryFailed}] Marketing followup-due returned {(int)response.StatusCode}");
+                return [];
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<FollowUpDueResponse>(ct);
+            return result?.Risks ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationFollowUpQueryFailed}] Marketing followup-due failed: {ex.Message}");
+            return [];
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationFollowUpQueryFailed}] Marketing followup-due cancelled: {ex.Message}");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// PKT-12 Faz 3: Update follow-up status for a risk.
+    /// </summary>
+    public async Task<bool> UpdateFollowUpStatusAsync(
+        int tenantId, int riskId, string followUpStatus, CancellationToken ct = default)
+    {
+        try
+        {
+            var token = _jwtGenerator.GenerateServiceToken(tenantId);
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/rescue/risks/{riskId}/followup");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(new { followUpStatus });
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationFollowUpSendFailed}] Marketing followup status update failed for tenant {tenantId}, riskId={riskId}: {ex.Message}");
+            return false;
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationFollowUpSendFailed}] Marketing followup status update cancelled for tenant {tenantId}, riskId={riskId}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// PKT-12 Faz 3: Update customer_response on a risk (e.g., after keyword detection).
+    /// </summary>
+    public async Task<bool> UpdateCustomerResponseAsync(
+        int tenantId, int riskId, string customerResponse, CancellationToken ct = default)
+    {
+        try
+        {
+            var token = _jwtGenerator.GenerateServiceToken(tenantId);
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/rescue/risks/{riskId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(new { customerResponse });
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing customer response update failed for tenant {tenantId}, riskId={riskId}: {ex.Message}");
+            return false;
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing customer response update cancelled for tenant {tenantId}, riskId={riskId}: {ex.Message}");
+            return false;
+        }
+    }
+
     private sealed class CreateRiskResponse
     {
         public int Id { get; set; }
@@ -193,6 +290,11 @@ public sealed class MarketingRescueClient
     {
         public List<RescueTemplateDto>? Templates { get; set; }
     }
+
+    private sealed class FollowUpDueResponse
+    {
+        public List<FollowUpDueItem>? Risks { get; set; }
+    }
 }
 
 /// <summary>DTO for rescue template from Marketing service.</summary>
@@ -205,4 +307,17 @@ public sealed class RescueTemplateDto
     public string MessageTemplate { get; set; } = "";
     public short? MaxDiscountPct { get; set; }
     public bool IsActive { get; set; }
+}
+
+/// <summary>PKT-12 Faz 3: Follow-up due risk item from Marketing service.</summary>
+public sealed class FollowUpDueItem
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public string CustomerPhone { get; set; } = "";
+    public string RiskLevel { get; set; } = "";
+    public string FollowUpStatus { get; set; } = "none";
+    public string? CustomerResponse { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? FollowUpSentAt { get; set; }
 }

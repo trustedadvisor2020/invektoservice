@@ -165,6 +165,8 @@ public static class ErrorCodes
     public const string AutomationRescueAlertFailed = "INV-AT-052";
     public const string AutomationRescueDispatchFailed = "INV-AT-053";       // Template fetch or Outbound send failed
     public const string AutomationRescueMessageFailed = "INV-AT-054";       // Rescue message delivery failed
+    public const string AutomationFollowUpQueryFailed = "INV-AT-055";      // Follow-up due query failed
+    public const string AutomationFollowUpSendFailed = "INV-AT-056";       // Follow-up message send failed
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
@@ -395,6 +397,7 @@ public static class ErrorCodes
     public const string MarketingConversationStatsFailed = "INV-MK-021";
     public const string MarketingResponseGenerationFailed = "INV-MK-022";
     public const string MarketingClaudeUnavailable = "INV-MK-023";
+    public const string MarketingFollowUpQueryFailed = "INV-MK-024";       // Follow-up due query failed
 
     // Backend Translation (INV-BE-090+)
     public const string BackendTranslationFailed = "INV-BE-090";            // Claude translation API call failed
