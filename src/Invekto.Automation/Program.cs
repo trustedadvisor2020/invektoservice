@@ -201,6 +201,18 @@ builder.Services.AddHttpClient<MarketingRescueClient>((sp, client) =>
     client.Timeout = TimeSpan.FromMilliseconds(marketingTimeoutMs);
 });
 
+// PKT-12 Faz 2: Register OutboundRescueClient (typed HttpClient for rescue message dispatch)
+var outboundBaseUrl = builder.Configuration["Outbound:BaseUrl"] ?? $"http://localhost:{ServiceConstants.OutboundPort}";
+var outboundTimeoutMs = builder.Configuration.GetValue<int>("Outbound:TimeoutMs", 10000);
+builder.Services.AddHttpClient<OutboundRescueClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri(outboundBaseUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
+});
+
+// PKT-12 Faz 2: Register RescueDispatcher (orchestrates template fetch + Outbound send)
+builder.Services.AddSingleton<RescueDispatcher>();
+
 // PKT-12: Register ReviewRescueService (with HttpClient for supervisor webhook)
 builder.Services.AddHttpClient<ReviewRescueService>();
 

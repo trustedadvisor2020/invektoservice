@@ -12,12 +12,16 @@ namespace Invekto.Automation.Services;
 public sealed class ReviewRescueService
 {
     private readonly MarketingRescueClient _marketingClient;
+    private readonly RescueDispatcher _rescueDispatcher;
     private readonly HttpClient _httpClient;
     private readonly JsonLinesLogger _logger;
 
-    public ReviewRescueService(MarketingRescueClient marketingClient, HttpClient httpClient, JsonLinesLogger logger)
+    public ReviewRescueService(
+        MarketingRescueClient marketingClient, RescueDispatcher rescueDispatcher,
+        HttpClient httpClient, JsonLinesLogger logger)
     {
         _marketingClient = marketingClient;
+        _rescueDispatcher = rescueDispatcher;
         _httpClient = httpClient;
         _logger = logger;
     }
@@ -118,6 +122,18 @@ public sealed class ReviewRescueService
                 $"Review risk detected: tenant={tenantId}, phone={phone}, score={totalScore}, " +
                 $"level={riskLevel}, reason=[{triggerReason}], riskId={riskId}",
                 "review-rescue");
+
+            // PKT-12 Faz 2: Dispatch rescue message (fire-and-forget)
+            if (riskId.HasValue)
+            {
+                _ = _rescueDispatcher.DispatchAsync(tenantId, phone, riskLevel, riskId.Value, CancellationToken.None)
+                    .ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            _logger.SystemWarn(
+                                $"[{ErrorCodes.AutomationRescueDispatchFailed}] RescueDispatcher failed for tenant {tenantId}: {t.Exception?.InnerException?.Message}");
+                    }, TaskScheduler.Default);
+            }
 
             // Fire supervisor webhook for CRITICAL
             if (riskLevel == "critical")

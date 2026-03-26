@@ -98,6 +98,81 @@ public sealed class MarketingRescueClient
         }
     }
 
+    /// <summary>
+    /// Fetch active rescue templates for a given risk level from Marketing service.
+    /// Returns empty list on failure (graceful degradation).
+    /// </summary>
+    public async Task<List<RescueTemplateDto>> GetTemplatesByRiskLevelAsync(
+        int tenantId, string riskLevel, CancellationToken ct = default)
+    {
+        try
+        {
+            var token = _jwtGenerator.GenerateServiceToken(tenantId);
+            using var request = new HttpRequestMessage(HttpMethod.Get,
+                $"/api/v1/rescue/templates?level={Uri.EscapeDataString(riskLevel)}&active=true");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.SystemWarn(
+                    $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing template fetch returned {(int)response.StatusCode} for tenant {tenantId}");
+                return [];
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<TemplateListResponse>(ct);
+            return result?.Templates ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing template fetch failed for tenant {tenantId}: {ex.Message}");
+            return [];
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing template fetch cancelled for tenant {tenantId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Update risk status in Marketing (e.g., "rescued", "failed").
+    /// Returns true on success.
+    /// </summary>
+    public async Task<bool> UpdateRiskStatusAsync(
+        int tenantId, int riskId, string status, string? rescueMessageId = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var token = _jwtGenerator.GenerateServiceToken(tenantId);
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/rescue/risks/{riskId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(new
+            {
+                status,
+                rescueMessageId
+            });
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing risk status update failed for tenant {tenantId}, riskId={riskId}: {ex.Message}");
+            return false;
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AutomationRescueMarketingFailed}] Marketing risk status update cancelled for tenant {tenantId}, riskId={riskId}: {ex.Message}");
+            return false;
+        }
+    }
+
     private sealed class CreateRiskResponse
     {
         public int Id { get; set; }
@@ -113,4 +188,21 @@ public sealed class MarketingRescueClient
         public string CustomerPhone { get; set; } = "";
         public DateTime CreatedAt { get; set; }
     }
+
+    private sealed class TemplateListResponse
+    {
+        public List<RescueTemplateDto>? Templates { get; set; }
+    }
+}
+
+/// <summary>DTO for rescue template from Marketing service.</summary>
+public sealed class RescueTemplateDto
+{
+    public int Id { get; set; }
+    public string TemplateName { get; set; } = "";
+    public string RiskLevel { get; set; } = "";
+    public string Strategy { get; set; } = "";
+    public string MessageTemplate { get; set; } = "";
+    public short? MaxDiscountPct { get; set; }
+    public bool IsActive { get; set; }
 }

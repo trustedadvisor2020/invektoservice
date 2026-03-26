@@ -163,6 +163,8 @@ public static class ErrorCodes
     public const string AutomationRiskScoringFailed = "INV-AT-050";
     public const string AutomationRescueMarketingFailed = "INV-AT-051";
     public const string AutomationRescueAlertFailed = "INV-AT-052";
+    public const string AutomationRescueDispatchFailed = "INV-AT-053";       // Template fetch or Outbound send failed
+    public const string AutomationRescueMessageFailed = "INV-AT-054";       // Rescue message delivery failed
 
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
