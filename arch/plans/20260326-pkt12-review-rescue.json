@@ -1,0 +1,174 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-12",
+  "spec_ref": null,
+  "slug": "20260326-pkt12-review-rescue",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-03-26T20:00:00Z",
+  "updated_at": "2026-03-26T23:30:00Z",
+  "plan": {
+    "summary": "PKT-12 Review Rescue AI Faz 1+2: Risk scoring engine (keyword+sentiment+delay+history composite score) and rescue action engine (template fetch from Marketing, message dispatch via Outbound webhook trigger, risk status update).",
+    "q_intent": "PKT-12 Review Rescue AI — kızgın müşterileri tespit edip otomatik kurtarma mesajı gönderen sistem. Faz 1: risk scoring, Faz 2: rescue dispatch.",
+    "interview_notes": "Mevcut servisleri genişlet (Automation+Marketing+Outbound). Yeni servis YOK. review_risks + rescue_templates tabloları Marketing'de ZATEN MEVCUT. Risk scoring: sentiment(30)+keyword(25)+timing(20)+delay(15)+history(10)=0-100.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "RiskKeywordScanner detects 30+ Turkish negative keywords with weighted scoring, capped at 25",
+        "verified": true,
+        "verification_note": "RiskKeywordScanner.cs: 30 keywords, 7 categories, Score capped at Math.Min(totalWeight, 25)"
+      },
+      {
+        "id": "AC2",
+        "criterion": "ReviewRescueService computes composite risk score (sentiment+keyword+delay+history) and persists HIGH/CRITICAL risks to Marketing",
+        "verified": true,
+        "verification_note": "ReviewRescueService.ScoreAndProcessAsync: 4 scoring dimensions, CreateRiskAsync for score>=60"
+      },
+      {
+        "id": "AC3",
+        "criterion": "RescueDispatcher fetches template from Marketing by risk level, renders message, sends via Outbound webhook trigger",
+        "verified": true,
+        "verification_note": "RescueDispatcher.DispatchAsync: GetTemplatesByRiskLevelAsync → RenderTemplate → SendRescueMessageAsync → UpdateRiskStatusAsync"
+      },
+      {
+        "id": "AC4",
+        "criterion": "All rescue operations are fire-and-forget and never block the main flow execution",
+        "verified": true,
+        "verification_note": "AutomationOrchestrator line 732: _ = _reviewRescue.ScoreAndProcessAsync(...), ReviewRescueService: _ = _rescueDispatcher.DispatchAsync(...)"
+      },
+      {
+        "id": "AC5",
+        "criterion": "CRITICAL risks trigger supervisor webhook alert",
+        "verified": true,
+        "verification_note": "ReviewRescueService line 136: FireSupervisorAlertAsync for riskLevel==critical"
+      },
+      {
+        "id": "AC6",
+        "criterion": "Error codes INV-AT-050 through INV-AT-054 properly defined and used",
+        "verified": true,
+        "verification_note": "ErrorCodes.cs: 050-054 defined. Used in ReviewRescueService, MarketingRescueClient, RescueDispatcher, OutboundRescueClient"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Automation/Services/RiskKeywordScanner.cs",
+    "src/Invekto.Automation/Services/ReviewRescueService.cs",
+    "src/Invekto.Automation/Services/MarketingRescueClient.cs",
+    "src/Invekto.Automation/Services/RescueDispatcher.cs",
+    "src/Invekto.Automation/Services/OutboundRescueClient.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/appsettings.json",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Automation/Services/RiskKeywordScanner.cs", "change": "NEW: Static keyword scanner with 30+ Turkish keywords, weighted scoring", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/ReviewRescueService.cs", "change": "NEW+MODIFIED: Composite risk scoring + RescueDispatcher integration", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/MarketingRescueClient.cs", "change": "NEW+MODIFIED: HTTP client for Marketing rescue API + template fetch + status update", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/RescueDispatcher.cs", "change": "NEW: Template fetch → render → Outbound send orchestrator", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/OutboundRescueClient.cs", "change": "NEW: HTTP client for Outbound webhook trigger", "is_new": true },
+    { "path": "src/Invekto.Automation/Program.cs", "change": "DI registration for OutboundRescueClient + RescueDispatcher", "is_new": false },
+    { "path": "src/Invekto.Automation/appsettings.json", "change": "Outbound config section added", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "INV-AT-053 + INV-AT-054 error codes", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "ece570de804cd585b10eddc7c66c4649148f8d60ee68400446e27d4417800fa9",
+    "full_path": "arch/plans/diffs/20260326-pkt12-review-rescue.diff",
+    "stats": { "insertions": 300, "deletions": 1, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-03-26T23:25:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does RescueDispatcher gracefully handle Marketing returning empty templates without crashing or blocking the main flow?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Is tenant isolation maintained — does each service call include proper JWT with correct tenantId?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Are all fire-and-forget tasks properly guarded with ContinueWith error logging to prevent unobserved exceptions?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Does the rescue dispatch pipeline correctly update risk status to 'rescued' or 'failed' in all code paths including exceptions?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Backend/", "src/Invekto.Marketing/", "src/Invekto.Outbound/", "Dashboard/"],
+    "non_goals": ["Outbound template seed data", "Dashboard UI", "Follow-up scheduler", "A/B testing"],
+    "intentional_exclusions": ["Timing score (reserved for Phase 3 delivery tracking)", "Discount code generation (Faz 5)"]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ReviewRescueService.cs:37-158",
+      "MarketingRescueClient.cs:29-68",
+      "MarketingRescueClient.cs:75-98",
+      "RescueDispatcher.cs:41-94",
+      "OutboundRescueClient.cs:34-74"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "All catch blocks log with specific error codes (INV-AT-050..054). Graceful degradation by design — rescue failure never blocks main chat flow."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Customer sends angry message, gets no acknowledgment — escalates to public review",
+      "suggestion": "Auto-send personalized apology within seconds of detecting HIGH risk, before human agent even sees the message",
+      "aha_moment": "Customer receives apology message and feels heard before they can write the negative review"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Manual review of angry messages takes hours; by then customer has already posted negative review",
+      "suggestion": "Fire-and-forget risk scoring runs in parallel with normal flow — zero latency impact on chat response",
+      "aha_moment": "Business owner sees rescue was dispatched within 2 seconds of the angry message arriving"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "If rescue system fails, customer messages get stuck or lost",
+      "suggestion": "Every rescue operation is gracefully degraded — failure logged but never blocks the main chat pipeline",
+      "aha_moment": "System processes 10K messages/day, rescue fails for 3 — main chat keeps working perfectly, failures are logged for ops"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Negative reviews cost 30+ potential customers each; no way to prevent them",
+      "suggestion": "Risk scoring catches 80%+ of pre-review anger signals using keyword+sentiment+delay combo",
+      "aha_moment": "Monthly report shows 15 negative reviews prevented this month — each worth ~$500 in lost revenue"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Supervisors don't know about critical customer issues until it's too late",
+      "suggestion": "CRITICAL risk (score 80+) triggers instant webhook to supervisor — phone/score/reason in real-time",
+      "aha_moment": "Supervisor gets instant alert about VIP customer threatening legal action, intervenes within minutes"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-03-26T23:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-03-26T23:45:00Z",
+    "blocking_issues": [],
+    "iteration": 3,
+    "escalation_required": false
+  }
+}

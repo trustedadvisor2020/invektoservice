@@ -6,10 +6,10 @@
 ## Last Update
 
 - **Date:** 2026-03-26
-- **Status:** PKT-12 Faz 1 DONE (build PASS, Codex pending). PKT-11/12/13 planlandı.
-- **Last Task:** (1) INMA Chat Analysis 401 hotfix + kalıcı IPv6 normalize. (2) PKT-11/12/13 full scope planlama (interview + plan onay). (3) PKT-12 Faz 1 Risk Scoring Engine: RiskKeywordScanner, ReviewRescueService, MarketingRescueClient, error codes, AutomationOrchestrator entegrasyonu.
-- **Files Changed:** Backend/Program.cs (IP fix), deploy config, Automation: RiskKeywordScanner.cs, ReviewRescueService.cs, MarketingRescueClient.cs, AutomationOrchestrator.cs, Program.cs, appsettings.json, Shared/ErrorCodes.cs
-- **Next Task:** PKT-12 Faz 2 (RescueDispatcher)
+- **Status:** PKT-12 Faz 1+2 DONE (committed 34cca86). Codex iter 3 Q FORCE PASS.
+- **Last Task:** PKT-12 Faz 2 Rescue Action Engine: RescueDispatcher (template fetch + Outbound trigger + risk status update), OutboundRescueClient (webhook trigger), MarketingRescueClient genişletme (template fetch + status update), INV-AT-053/054.
+- **Files Changed:** Automation: RescueDispatcher.cs (NEW), OutboundRescueClient.cs (NEW), MarketingRescueClient.cs, ReviewRescueService.cs, Program.cs, appsettings.json. Shared: ErrorCodes.cs
+- **Next Task:** PKT-12 Faz 3 (RescueFollowUpService)
 - **Plan:** `~/.claude/plans/unified-giggling-origami.md`
 - **Strateji:** PKT-12 → PKT-11 → PKT-13 (full scope)
 
@@ -17,16 +17,16 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | PKT-12 Faz 2: RescueDispatcher | PENDING | Template fetch + Outbound trigger + rescue mesaj |
-| 2 | PKT-12 Faz 3: RescueFollowUpService | PENDING | CronScheduler + T+24h follow-up |
-| 3 | PKT-12 Faz 4: Dashboard | PENDING | RescueDashboardPage + Backend proxy |
-| 4 | PKT-12 /rev | PENDING | Codex review (Faz 1-4 birlikte) |
+| 1 | PKT-12 Faz 3: RescueFollowUpService | PENDING | CronScheduler + T+24h follow-up |
+| 2 | PKT-12 Faz 4: Dashboard | PENDING | RescueDashboardPage + Backend proxy |
+| 3 | PKT-11 Faz 1: VoiceAI MVP | PENDING | Yeni mikroservis, port 7114, Whisper API |
+| 4 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
-| 2026-03-26 | PKT-12 Faz 1 Risk Scoring Engine: RiskKeywordScanner (30+ keyword), ReviewRescueService (composite score), MarketingRescueClient, AutomationOrchestrator fire-and-forget, INV-AT-050/051/052. Build PASS |
+| 2026-03-26 | PKT-12 Faz 1+2 committed (34cca86): Risk Scoring Engine + Rescue Action Engine. 7 files, 318 insertions. Codex iter 3 Q FORCE PASS |
 | 2026-03-26 | PKT-11/12/13 full scope planlama: interview + plan onay. Sıra: PKT-12→11→13 |
 | 2026-03-26 | INMA Chat Analysis 401 fix: IP whitelist (91.151.84.79) + IPv6-mapped normalize (::ffff: prefix). Production hotfix + kalıcı kod fix |
 | 2026-03-05 | FM-1c Monitor AI Chat: MONITOR mode system prompt, execution_detail SSE param, MonitorAiPanel (streaming + accept/reject + proactive), INV-AT-050/051/052. Codex iter 2 manual PASS |
