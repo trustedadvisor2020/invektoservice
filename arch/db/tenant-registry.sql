@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS tenant_registry (
     plan_tier           VARCHAR(20) NOT NULL DEFAULT 'baslangic', -- 'baslangic', 'profesyonel', 'kurumsal' (Faz 1: migration 003)
     features_json       JSONB,                       -- Per-tenant feature overrides. NULL = plan defaults. Format: {"Feature": "mode"}
     settings_json       JSONB,                       -- Tenant-specific settings, e.g., {"working_hours": {...}}
+    inma_code           VARCHAR(100),                -- Inma Company.Code for auto-provision (migration 009)
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

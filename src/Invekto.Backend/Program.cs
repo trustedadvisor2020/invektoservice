@@ -355,7 +355,7 @@ foreach (var ip in webhookIps)
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/translate/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -7098,6 +7098,67 @@ app.MapGet("/api/v1/payment/history", async (HttpContext ctx, JsonLinesLogger js
 // Ref: arch/db/translations.sql
 // ============================================
 
+// Resolve tenant_id from X-Tenant-Id header (numeric or Inma company code string)
+// Flow: numeric → direct | PostgreSQL inma_code lookup | auto-provision
+async Task<(int tenantId, string? error)> ResolveTranslateTenantAsync(string rawTenantId, JsonLinesLogger log, CancellationToken ct)
+{
+    // 1. Numeric → direct
+    if (int.TryParse(rawTenantId, out var numericId) && numericId > 0)
+        return (numericId, null);
+
+    var code = rawTenantId.Trim().ToLowerInvariant();
+    if (string.IsNullOrEmpty(code))
+        return (0, "X-Tenant-Id boş olamaz.");
+
+    if (pgFactory == null)
+        return (0, "PostgreSQL bağlantısı yok.");
+
+    // 2. PostgreSQL: tenant_registry.inma_code lookup (cached mapping)
+    try
+    {
+        await using var pg = await pgFactory.OpenConnectionAsync(ct);
+        await using var cmd = pg.CreateCommand();
+        cmd.CommandText = "SELECT tenant_id FROM tenant_registry WHERE inma_code = @code AND is_active = true";
+        cmd.Parameters.AddWithValue("code", code);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        if (result is int tid)
+            return (tid, null);
+    }
+    catch (Exception ex)
+    {
+        log.StepError($"[translate-resolve] PG inma_code lookup error: {ex.Message}", "-");
+    }
+
+    // 3. Auto-provision: yeni tenant_id üret, tenant_registry'ye ekle
+    var newTenantId = new Random().Next(10000000, 99999999);
+    try
+    {
+        await using var pg2 = await pgFactory.OpenConnectionAsync(ct);
+        await using var insertCmd = pg2.CreateCommand();
+        insertCmd.CommandText = @"
+            INSERT INTO tenant_registry (tenant_id, tenant_name, inma_code, is_active, sector, plan_tier)
+            VALUES (@tid, @name, @code, true, 'genel', 'baslangic')
+            ON CONFLICT (tenant_id) DO UPDATE SET inma_code = @code
+            RETURNING tenant_id";
+        insertCmd.Parameters.AddWithValue("tid", newTenantId);
+        insertCmd.Parameters.AddWithValue("name", code);
+        insertCmd.Parameters.AddWithValue("code", code);
+        var created = await insertCmd.ExecuteScalarAsync(ct);
+        if (created is int createdId)
+        {
+            log.SystemInfo($"[translate-resolve] Auto-provisioned tenant: code={code}, tenant_id={createdId}");
+            return (createdId, null);
+        }
+    }
+    catch (Exception ex)
+    {
+        log.StepError($"[translate-resolve] Auto-provision error: {ex.Message}", "-");
+        return (0, "Tenant oluşturma başarısız.");
+    }
+
+    return (0, "Tenant oluşturulamadı.");
+}
+
 // POST /api/v1/translate — Tek mesaj çeviri (JWT auth VEYA X-Internal-Api-Key + X-Tenant-Id)
 app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService translationService, JsonLinesLogger jsonLog) =>
 {
@@ -7114,8 +7175,11 @@ app.MapPost("/api/v1/translate", async (HttpContext ctx, TranslationService tran
         if (string.IsNullOrEmpty(internalApiKey) || apiKeyHeader != internalApiKey)
             return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz. JWT veya X-Internal-Api-Key gerekli." }, statusCode: 401);
 
-        if (!int.TryParse(ctx.Request.Headers["X-Tenant-Id"].FirstOrDefault(), out tenantId) || tenantId <= 0)
-            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "X-Tenant-Id header gerekli." }, statusCode: 401);
+        var rawTenantId = ctx.Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? "";
+        var (resolved, resolveError) = await ResolveTranslateTenantAsync(rawTenantId, jsonLog, ctx.RequestAborted);
+        if (resolved <= 0)
+            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = resolveError ?? "X-Tenant-Id çözümlenemedi." }, statusCode: 401);
+        tenantId = resolved;
     }
 
     TranslateRequest? request;
@@ -7225,8 +7289,10 @@ async Task<IResult> DetectLanguageHandler(HttpContext ctx, TranslationService tr
         if (string.IsNullOrEmpty(internalApiKey) || apiKeyHeader != internalApiKey)
             return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "Yetkisiz. JWT veya X-Internal-Api-Key gerekli." }, statusCode: 401);
 
-        if (!int.TryParse(ctx.Request.Headers["X-Tenant-Id"].FirstOrDefault(), out var tid) || tid <= 0)
-            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = "X-Tenant-Id header gerekli." }, statusCode: 401);
+        var rawTid = ctx.Request.Headers["X-Tenant-Id"].FirstOrDefault() ?? "";
+        var (resolvedTid, tidError) = await ResolveTranslateTenantAsync(rawTid, jsonLog, ctx.RequestAborted);
+        if (resolvedTid <= 0)
+            return Results.Json(new { error = ErrorCodes.AuthUnauthorized, message = tidError ?? "X-Tenant-Id çözümlenemedi." }, statusCode: 401);
     }
 
     DetectLanguageRequest? request;

@@ -5,13 +5,12 @@
 
 ## Last Update
 
-- **Date:** 2026-03-27
-- **Status:** PKT-11 Faz 1 DONE. VoiceAI MVP microservice implemented. Pending deploy.
-- **Last Task:** PKT-11 Faz 1: VoiceAI MVP — Invekto.VoiceAI microservice (port 7114), Whisper API STT, transcript → ChatAnalysis intent, temp audio delete, Backend proxy routes, health/discovery integration. 15 files, 1161 insertions.
-- **Files Changed:** NEW: Invekto.VoiceAI (csproj, Program.cs, WhisperApiService, VoiceTranscriptionService, appsettings), VoiceAIClient.cs, VoiceTranscriptionDtos.cs, voiceai.sql, plan JSON, tracking. EDIT: ServiceConstants, ErrorCodes, Backend Program.cs, errors.md, InvektoServis.sln.
-- **Next Task:** PKT-11 Faz 1 deploy + PKT-13 Faz 1 (Lead Scoring)
-- **Plan:** `arch/plans/20260327-pkt11-f1-voiceai-mvp.json`
-- **Strateji:** PKT-11 Faz 1 DONE → Deploy → PKT-13
+- **Date:** 2026-04-01
+- **Status:** HOTFIX DONE. Translate endpoint 401 fix + tenant auto-provision.
+- **Last Task:** Inma→İnse translate 401 fix: (1) `/api/v1/translate/` JWT middleware'den çıkarıldı (endpoint kendi auth yapıyor), (2) `tenant_registry.inma_code` kolonu eklendi (migration 009), (3) `ResolveTranslateTenantAsync` — string X-Tenant-Id geldiğinde inma_code lookup + auto-provision, (4) 3x Backend deploy. Voila tenant otomatik oluşturuldu (tenant_id=14120748).
+- **Files Changed:** EDIT: Backend Program.cs (UseJwtAuth listesinden /translate/ çıktı, ResolveTranslateTenantAsync eklendi, detect endpoint güncellendi). NEW: arch/db/migrations/009-tenant-inma-code.sql
+- **Next Task:** PKT-13 Faz 1 (Lead Scoring)
+- **Strateji:** Hotfix done → PKT-13
 
 ## Execution Queue
 
@@ -23,6 +22,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-01 | HOTFIX: Translate 401 fix + tenant auto-provision. JWT middleware bypass, inma_code kolonu (migration 009), ResolveTranslateTenantAsync (string code → auto-provision tenant_registry), 3x Backend deploy. Voila tenant_id=14120748 otomatik oluşturuldu. |
 | 2026-03-27 | PKT-11 Faz 1: VoiceAI MVP. Invekto.VoiceAI microservice (port 7114), Whisper API STT, VoiceTranscriptionService orchestrator, Backend proxy + health + discovery. 15 files, 1161 insertions. Codex iter 1 Q FORCE PASS (CQ5 fixed, CQ11/Q1/CQ10/CQ12 false positive). |
 | 2026-03-27 | PKT-12 Faz 4: Dashboard. RescueDashboardPage (KPI cards, risk table inline edit, template CRUD), api.ts 8 methods + 7 interfaces, /rescue route, sidebar. 5 files, 742 insertions. Codex iter 1 Q FORCE PASS. Full deploy (Backend+Marketing+Automation HEALTHY). Migration 008 run. |
 | 2026-03-27 | PKT-12 Faz 3: Follow-Up Scheduler. RescueFollowUpService (4h timer), T+24h satisfaction + T+48h review redirect, Marketing endpoints, migration 008. 9 files, 580 insertions. Codex iter 1 Q FORCE PASS |
