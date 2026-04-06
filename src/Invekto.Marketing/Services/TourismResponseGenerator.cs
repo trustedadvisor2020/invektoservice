@@ -180,6 +180,8 @@ public sealed class TourismResponseGenerator
         sb.AppendLine("- For medical specifics, say \"will be discussed during your personal consultation\"");
         sb.AppendLine("- End with a clear next step (video consultation, photo request, or booking)");
         sb.AppendLine("- Never give guarantees about outcomes");
+        sb.AppendLine("- ONLY mention treatments listed above. Do NOT invent treatments or prices not in the catalog.");
+        sb.AppendLine("- Do NOT include internal reasoning, thinking, or meta-commentary in your response.");
         sb.AppendLine();
         sb.AppendLine("OUTPUT: Return ONLY a JSON object (no other text):");
         sb.Append("{\"response\": \"<your response in patient language>\", \"tr_translation\": \"<Turkish translation for clinic staff>\", \"detected_intent\": \"<one of: treatment_inquiry, price_query, package_query, availability, photo_consultation, general>\"}");

@@ -42,6 +42,8 @@ public sealed class AIReplyService
             - Teknik destek sorularinda "ekibimiz en kisa surede size donecek" de.
             - Bilmedigin konularda "bu konuda size yardimci olmam icin ekibimize iletiyorum" de.
             - Asla uydurma bilgi verme.
+            - Ic dusunceni, muhakemeni veya meta-yorumunu ASLA yazma. Sadece cevabini yaz.
+            - "Dusuneyim", "Hmm", "Aslinda" gibi dolgu ifadeler kullanma.
             """;
     }
 

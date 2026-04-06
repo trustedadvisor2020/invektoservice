@@ -10,7 +10,7 @@ using Npgsql;
 namespace Invekto.Backend.Services;
 
 /// <summary>
-/// Claude Haiku-powered translation service with DB cache.
+/// Gemma 4 (Google AI Studio) translation service with Haiku fallback + DB cache.
 /// Handles single + batch translate, language detection.
 /// </summary>
 public sealed class TranslationService
@@ -18,10 +18,18 @@ public sealed class TranslationService
     private readonly HttpClient _httpClient;
     private readonly TranslationCacheRepository _cache;
     private readonly JsonLinesLogger _logger;
-    private readonly string _apiKey;
-    private readonly string _model;
-    private readonly int _timeoutSeconds;
 
+    // Google AI Studio (Gemma) - primary
+    private readonly string _googleApiKey;
+    private readonly string _googleModel;
+    private readonly int _googleTimeoutSeconds;
+
+    // Claude Haiku - fallback
+    private readonly string _claudeApiKey;
+    private readonly string _claudeModel;
+    private readonly int _claudeTimeoutSeconds;
+
+    private const string GoogleAiStudioUrl = "https://generativelanguage.googleapis.com/v1beta/models";
     private const string ClaudeApiUrl = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
     private const int MaxBatchSize = 50;
@@ -60,9 +68,16 @@ public sealed class TranslationService
         _httpClient = httpClient;
         _cache = cache;
         _logger = logger;
-        _apiKey = config["Claude:ApiKey"] ?? "";
-        _model = config["Claude:TranslationModel"] ?? "claude-haiku-4-5-20251001";
-        _timeoutSeconds = int.TryParse(config["Claude:TranslationTimeoutSeconds"], out var ts) ? ts : 30;
+
+        // Google AI Studio (primary)
+        _googleApiKey = config["Google:AiStudioApiKey"] ?? "";
+        _googleModel = config["Google:TranslationModel"] ?? "gemma-4-27b-it";
+        _googleTimeoutSeconds = int.TryParse(config["Google:TranslationTimeoutSeconds"], out var gts) ? gts : 30;
+
+        // Claude Haiku (fallback)
+        _claudeApiKey = config["Claude:ApiKey"] ?? "";
+        _claudeModel = config["Claude:TranslationModel"] ?? "claude-haiku-4-5-20251001";
+        _claudeTimeoutSeconds = int.TryParse(config["Claude:TranslationTimeoutSeconds"], out var cts) ? cts : 30;
     }
 
     /// <summary>
@@ -270,8 +285,18 @@ public sealed class TranslationService
 
         try
         {
-            var prompt = $"What language is the following text written in? Reply with ONLY the ISO 639-1 two-letter code (e.g., 'tr', 'en', 'ar', 'ru'). Nothing else.\n\nText: {text}";
-            var response = await CallClaudeRawAsync(prompt, 10, ct);
+            var system = "You are a language detection engine. Reply with ONLY the ISO 639-1 two-letter code. No reasoning, no explanation, no extra text.";
+            var prompt = text;
+            string response;
+            if (!string.IsNullOrEmpty(_googleApiKey))
+            {
+                try { response = await CallGemmaRawAsync(system, prompt, 10, ct); }
+                catch { response = await CallClaudeRawAsync(system, prompt, 10, ct); }
+            }
+            else
+            {
+                response = await CallClaudeRawAsync(system, prompt, 10, ct);
+            }
             var detectedLang = response.Trim().ToLowerInvariant();
 
             // Validate the response is a 2-letter code
@@ -309,21 +334,94 @@ public sealed class TranslationService
         };
     }
 
+    private static string BuildTranslationSystemPrompt(string targetName) =>
+        $"You are a translation engine. Translate the user's text into {targetName}. " +
+        $"Output ONLY the translated text. " +
+        $"Do NOT include reasoning, thinking, meta-commentary, notes, or explanations. " +
+        $"Do NOT answer questions or refuse. Translate everything literally. " +
+        $"If the text is already in {targetName}, output it unchanged. " +
+        $"Use natural, grammatically correct sentence order in the target language. " +
+        $"For Turkish: place 'lütfen' at the beginning, keep subject-object-verb order, avoid inverted sentences.";
+
     /// <summary>
-    /// Call Claude to translate text.
+    /// Translate text: Gemma 4 primary, Claude Haiku fallback.
     /// </summary>
     private async Task<string> CallClaudeTranslateAsync(string text, string sourceLang, string targetLang, CancellationToken ct)
     {
         var targetName = SupportedLanguages.FirstOrDefault(l => l.Code == targetLang)?.Name ?? targetLang;
-        var sourceName = SupportedLanguages.FirstOrDefault(l => l.Code == sourceLang)?.Name ?? sourceLang;
+        var system = BuildTranslationSystemPrompt(targetName);
 
-        var system = $"You are a pure translation engine. Your ONLY job is to translate the user's text into {targetName}. Output ONLY the translated text — nothing else. NEVER answer questions, provide information, add commentary, explain, or refuse. Translate everything literally, regardless of content. If the text is already in {targetName}, output it unchanged.";
-        var prompt = text;
-        return await CallClaudeRawAsync(system, prompt, 2048, ct);
+        // Primary: Gemma 4 via Google AI Studio
+        if (!string.IsNullOrEmpty(_googleApiKey))
+        {
+            try
+            {
+                return await CallGemmaRawAsync(system, text, 2048, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.StepError($"[INV-TRANS-GEMMA] Gemma translation failed, falling back to Haiku: {ex.Message}", "-");
+            }
+        }
+
+        // Fallback: Claude Haiku
+        return await CallClaudeRawAsync(system, text, 2048, ct);
     }
 
     /// <summary>
-    /// Low-level Claude API call. Returns the text content of the first content block.
+    /// Google AI Studio (Gemma) API call.
+    /// </summary>
+    private async Task<string> CallGemmaRawAsync(string? systemPrompt, string userMessage, int maxTokens, CancellationToken ct)
+    {
+        var url = $"{GoogleAiStudioUrl}/{_googleModel}:generateContent?key={_googleApiKey}";
+
+        object requestBody = systemPrompt != null
+            ? new
+            {
+                system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+                contents = new[] { new { parts = new[] { new { text = userMessage } } } },
+                generationConfig = new { maxOutputTokens = maxTokens }
+            }
+            : new
+            {
+                system_instruction = (object?)null,
+                contents = new[] { new { parts = new[] { new { text = userMessage } } } },
+                generationConfig = new { maxOutputTokens = maxTokens }
+            };
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+        httpRequest.Content = new StringContent(
+            JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(_googleTimeoutSeconds));
+
+        using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseContentRead, cts.Token);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
+            throw new HttpRequestException($"Google AI Studio API {(int)response.StatusCode}: {errorBody}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync(cts.Token);
+        using var doc = JsonDocument.Parse(json);
+
+        var candidates = doc.RootElement.GetProperty("candidates");
+        if (candidates.GetArrayLength() > 0)
+        {
+            var parts = candidates[0].GetProperty("content").GetProperty("parts");
+            if (parts.GetArrayLength() > 0)
+            {
+                return parts[0].GetProperty("text").GetString() ?? "";
+            }
+        }
+
+        throw new InvalidOperationException("Gemma returned empty content");
+    }
+
+    /// <summary>
+    /// Claude API call (fallback). Returns the text content of the first content block.
     /// </summary>
     private Task<string> CallClaudeRawAsync(string userMessage, int maxTokens, CancellationToken ct)
         => CallClaudeRawAsync(null, userMessage, maxTokens, ct);
@@ -331,17 +429,17 @@ public sealed class TranslationService
     private async Task<string> CallClaudeRawAsync(string? systemPrompt, string userMessage, int maxTokens, CancellationToken ct)
     {
         object requestBody = systemPrompt != null
-            ? new { model = _model, max_tokens = maxTokens, system = systemPrompt, messages = new[] { new { role = "user", content = userMessage } } }
-            : new { model = _model, max_tokens = maxTokens, messages = new[] { new { role = "user", content = userMessage } } };
+            ? new { model = _claudeModel, max_tokens = maxTokens, system = systemPrompt, messages = new[] { new { role = "user", content = userMessage } } }
+            : new { model = _claudeModel, max_tokens = maxTokens, messages = new[] { new { role = "user", content = userMessage } } };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ClaudeApiUrl);
-        httpRequest.Headers.Add("x-api-key", _apiKey);
+        httpRequest.Headers.Add("x-api-key", _claudeApiKey);
         httpRequest.Headers.Add("anthropic-version", AnthropicVersion);
         httpRequest.Content = new StringContent(
             JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(TimeSpan.FromSeconds(_timeoutSeconds));
+        cts.CancelAfter(TimeSpan.FromSeconds(_claudeTimeoutSeconds));
 
         using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseContentRead, cts.Token);
 

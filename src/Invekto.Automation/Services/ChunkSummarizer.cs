@@ -27,7 +27,9 @@ public sealed class ChunkSummarizer
         "Gorev: Metin parcasindaki bilgiyi kullanarak musterinin sorusuna kisa, nazik ve anlasilir bir cevap yaz. " +
         "Kurallar: (1) Sadece verilen metin parcasindaki bilgiyi kullan, uydurmak yasak. " +
         "(2) Turkce yaz, samimi ama profesyonel ton. (3) Maksimum 2-3 cumle. " +
-        "(4) 'Dokumanimizda...' veya 'Bilgilerimize gore...' gibi girisler kullanabilirsin.";
+        "(4) 'Dokumanimizda...' veya 'Bilgilerimize gore...' gibi girisler kullanabilirsin. " +
+        "(5) Ic dusunceni, muhakemeni veya meta-yorumunu ASLA yazma. Sadece cevabini yaz. " +
+        "(6) Musteri mesajinin dilini algilayip ayni dilde cevap ver.";
 
     public ChunkSummarizer(HttpClient httpClient, string apiKey, JsonLinesLogger logger)
     {

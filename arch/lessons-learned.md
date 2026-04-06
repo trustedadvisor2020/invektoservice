@@ -376,6 +376,9 @@
 | JwtGenerator shared token factory | Invekto.Shared | JWT signing tek yerde |
 | Auth guard null-safe (exists && mismatch) | Tenant isolation | null = yok, 403 sadece gercek mismatch |
 | File cleanup on upload failure | Knowledge upload | Orphan dosya birakma |
+| LLM anti-leak prompt kuralı | Tüm müşteriye görünen LLM servisleri | "Do NOT include reasoning, thinking, meta-commentary" — chain-of-thought sızıntısını önler. Haiku özellikle sızıntıya yatkın |
+| LLM çeviri dilbilgisi kuralı | TranslationService system prompt | Türkçe SOV cümle yapısı + "lütfen" başa — LLM'ler İngilizce SVO sırasıyla devrik çeviri yapıyor |
+| LLM çıktı test ederken cache temizle | Translation cache (message_translations) | Aynı metin cache'den gelir, yeni prompt test edilemez — DELETE FROM message_translations |
 | Impersonate via existing JWT infra | SuperAdmin tenant switch | Yeni middleware gereksiz — GenerateToken + setSession + removeTokens mevcut altyapiyi yeniden kullaniyor |
 | Basic Auth in-memory + JWT localStorage | Impersonate exit flow | removeTokens JWT siler ama credentials (in-memory) kalir — ops mode'a donus icin login gereksiz |
 | window.location.href (navigate degil) | Impersonate giris/cikis | Full page reload tum hook'lari yeni session ile baslatir — React Router navigate stale state birakir |
