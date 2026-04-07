@@ -5,30 +5,40 @@ namespace Invekto.Automation.Services;
 /// No Claude API call. Deterministic, instant response.
 /// Supports custom intents with automatic synonym expansion.
 /// Register as singleton.
+/// Uses Turkish-aware comparison for ş/ç/ğ/ı/ö/ü characters.
 /// </summary>
 public sealed class MockIntentDetector
 {
+    private static readonly System.Globalization.CultureInfo TrCulture =
+        System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
     private static readonly List<IntentRule> _rules = new()
     {
-        new("greeting", new[] { "merhaba", "selam", "hey", "iyi gunler", "hello", "hi" }, 0.9),
-        new("farewell", new[] { "gorusuruz", "bye", "hosca kal", "iyi aksamlar", "iyi geceler" }, 0.85),
-        new("complaint", new[] { "sikayet", "sikayette", "memnun degil", "sorun", "problem", "kotu" }, 0.8),
-        new("purchase", new[] { "satin al", "siparis", "almak istiyorum", "fiyat" }, 0.75),
-        new("support", new[] { "yardim", "destek", "nasil yapilir", "calismiyor", "hata" }, 0.8),
+        new("greeting", new[] { "merhaba", "selam", "hey", "iyi günler", "hello", "hi" }, 0.9),
+        new("farewell", new[] { "görüşürüz", "bye", "hoşça kal", "iyi akşamlar", "iyi geceler" }, 0.85),
+        new("complaint", new[] { "şikayet", "şikayette", "memnun değil", "sorun", "problem", "kötü" }, 0.8),
+        new("purchase", new[] { "satın al", "sipariş", "almak istiyorum", "fiyat" }, 0.75),
+        new("support", new[] { "yardım", "destek", "nasıl yapılır", "çalışmıyor", "hata" }, 0.8),
     };
 
     /// <summary>
     /// Synonyms for common Turkish sector/domain keywords.
     /// Used to expand custom intent names into matchable keywords.
+    /// Keys include both Turkish and ASCII forms for flexible matching.
     /// </summary>
     private static readonly Dictionary<string, string[]> _synonyms = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["restoran"] = new[] { "yemek", "cafe", "kafe", "lokanta", "pizza", "kebap", "menu", "mutfak", "garson", "masa" },
-        ["klinik"] = new[] { "dis", "doktor", "hastane", "hekim", "tedavi", "hasta", "muayene", "ameliyat", "implant", "ortodonti" },
-        ["saglik"] = new[] { "dis", "doktor", "hastane", "hekim", "tedavi", "hasta", "klinik", "muayene", "ilac", "recete" },
-        ["eticaret"] = new[] { "magaza", "online", "shop", "urun", "sepet", "alisveris" },
-        ["hizmet"] = new[] { "servis", "temizlik", "tamir", "bakim", "danismanlik", "ajans", "kurye" },
-        ["bilgi"] = new[] { "ogrenmek", "merak", "sormak", "nedir", "nasil" },
+        ["restoran"] = new[] { "yemek", "cafe", "kafe", "lokanta", "pizza", "kebap", "menü", "mutfak", "garson", "masa" },
+        ["klinik"] = new[] { "diş", "dişçi", "doktor", "hastane", "hekim", "tedavi", "hasta", "muayene", "ameliyat", "implant", "ortodonti", "dolgu", "kanal", "protez", "çekim" },
+        ["sağlık"] = new[] { "diş", "doktor", "hastane", "hekim", "tedavi", "hasta", "klinik", "muayene", "ilaç", "reçete" },
+        ["saglik"] = new[] { "diş", "doktor", "hastane", "hekim", "tedavi", "hasta", "klinik", "muayene", "ilaç", "reçete" },
+        ["eticaret"] = new[] { "mağaza", "online", "shop", "ürün", "sepet", "alışveriş" },
+        ["hizmet"] = new[] { "servis", "temizlik", "tamir", "bakım", "danışmanlık", "ajans", "kurye" },
+        ["bilgi"] = new[] { "öğrenmek", "merak", "sormak", "nedir", "nasıl" },
+        ["diş"] = new[] { "ortodonti", "implant", "dolgu", "kanal", "protez", "çekim", "diş teli", "beyazlatma", "kaplama", "dişçi", "tedavi" },
+        ["dis"] = new[] { "ortodonti", "implant", "dolgu", "kanal", "protez", "çekim", "diş teli", "beyazlatma", "kaplama", "dişçi", "tedavi" },
+        ["randevu"] = new[] { "randevu", "rezervasyon", "saat", "gün", "tarih", "müsait" },
+        ["güzellik"] = new[] { "cilt", "bakım", "estetik", "botoks", "dolgu", "lazer", "epilasyon", "peeling" },
     };
 
     /// <summary>
@@ -47,7 +57,7 @@ public sealed class MockIntentDetector
         if (string.IsNullOrWhiteSpace(userInput))
             return null;
 
-        var input = userInput.Trim().ToLowerInvariant();
+        var input = TrLower(userInput.Trim());
 
         MockIntentResult? bestMatch = null;
 
@@ -56,7 +66,7 @@ public sealed class MockIntentDetector
         {
             foreach (var keyword in rule.Keywords)
             {
-                if (input.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                if (TrContains(input, keyword))
                 {
                     if (bestMatch == null || rule.Confidence > bestMatch.Confidence)
                     {
@@ -80,7 +90,7 @@ public sealed class MockIntentDetector
                 var keywords = ExpandIntentKeywords(intent);
                 foreach (var keyword in keywords)
                 {
-                    if (input.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    if (TrContains(input, keyword))
                     {
                         const double customConfidence = 0.80;
                         if (bestMatch == null || customConfidence > bestMatch.Confidence)
@@ -113,7 +123,7 @@ public sealed class MockIntentDetector
 
         foreach (var part in parts)
         {
-            var lower = part.ToLowerInvariant();
+            var lower = TrLower(part);
             keywords.Add(lower);
 
             if (_synonyms.TryGetValue(lower, out var syns))
@@ -123,6 +133,11 @@ public sealed class MockIntentDetector
 
         return keywords;
     }
+
+    private static string TrLower(string s) => s.ToLower(TrCulture);
+
+    private static bool TrContains(string haystack, string needle) =>
+        TrCulture.CompareInfo.IndexOf(haystack, needle, System.Globalization.CompareOptions.IgnoreCase) >= 0;
 
     private sealed record IntentRule(string Intent, string[] Keywords, double Confidence);
 }

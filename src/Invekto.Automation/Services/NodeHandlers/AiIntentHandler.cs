@@ -202,9 +202,10 @@ public sealed class AiIntentHandler : INodeHandler
             }
             else
             {
+                var examples = BuildIntentExamples(customIntents);
                 clarifyQuestion = string.IsNullOrEmpty(customerName)
-                    ? "Ne hakkında yardımcı olabilirim? Örneğin kargo, fiyat, randevu gibi konularda sorularınızı yanıtlayabilirim."
-                    : $"{customerName}, ne hakkında yardımcı olabilirim? Örneğin kargo, fiyat, randevu gibi konularda sorularınızı yanıtlayabilirim.";
+                    ? $"Ne hakkında yardımcı olabilirim?{examples}"
+                    : $"{customerName}, ne hakkında yardımcı olabilirim?{examples}";
             }
         }
         else
@@ -380,6 +381,20 @@ public sealed class AiIntentHandler : INodeHandler
                 ["intent_summary"] = summary
             }
         };
+    }
+
+    private static string BuildIntentExamples(string[]? customIntents)
+    {
+        if (customIntents is not { Length: > 0 })
+            return "";
+
+        // Format intent names: replace underscores with spaces, take first 5
+        var examples = customIntents
+            .Take(5)
+            .Select(i => i.Replace('_', ' '))
+            .ToArray();
+
+        return $" Örneğin {string.Join(", ", examples)} gibi konularda sorularınızı yanıtlayabilirim.";
     }
 
     private static string GetVar(ExecutionContext ctx, string key, string defaultValue = "")
