@@ -8,15 +8,36 @@
   "description": "Masabasinda degilken VIP lead veya acil mesaj geldiginde Invekto Mobil push bildirimi gonderir, AI cevap onerisi sunar ve tek dokunusta cevaplama imkani saglar. Sahada veya evde olan temsilciler hicbir firsati kacirmaz.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — Saha calisan temsilciler, uzaktan calisan ekipler" },
-      { "label": "Sorun", "value": "Masabasindan uzakken gelen VIP mesajlar ve acil talepler cevaplanmiyor, firsat kaybediliyor" },
-      { "label": "Deger", "value": "Lokasyon bagimsiz aninda mudahale — VIP lead donusum orani artisi + SLA uyumlulugu" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — Saha calisan temsilciler, uzaktan calisan ekipler"
+      },
+      {
+        "label": "Sorun",
+        "value": "Masabasindan uzakken gelen VIP mesajlar ve acil talepler cevaplanmiyor, firsat kaybediliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Lokasyon bagimsiz aninda mudahale — VIP lead donusum orani artisi + SLA uyumlulugu"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Smart Routing (C2)", "color": "amber" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "green" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Smart Routing (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "green"
+      }
     ],
     "servicesNote": "Mobil uygulama push notification ile mesaj algilar. AI otomatik cevap onerisi hazirlar, temsilci tek dokunusla onaylar veya duzenler. Proaktif bildirim sistemi.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Push Bildirim",
         "goal": "Acil/VIP mesaji aninda ilet",
         "badges": [
-          { "text": "Sistem (Push)", "color": "purple" },
-          { "text": "Tenant (Oncelik Kurali)", "color": "amber" }
+          {
+            "text": "Sistem (Push)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Oncelik Kurali)",
+            "color": "amber"
+          }
         ],
         "content": "VIP etiketi veya acil mesaj tespit edildiginde mobil uygulamaya push notification gonderilir. Bildirimde musteri adi ve mesaj ozeti yer alir."
       },
@@ -33,8 +60,14 @@
         "title": "AI Cevap Onerisi",
         "goal": "Hizli ve dogru cevap hazirla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Knowledge Base)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Knowledge Base)",
+            "color": "blue"
+          }
         ],
         "content": "AI, gelen mesajin icerigini analiz eder ve tenant Knowledge Base'inden en uygun cevap onerisini olusturur. Temsilci onerileri mobil ekranda gorur."
       },
@@ -42,8 +75,14 @@
         "title": "Tek Dokunusla Cevaplama",
         "goal": "Minimum surede geri donus yap",
         "badges": [
-          { "text": "Sistem (Mobil UI)", "color": "purple" },
-          { "text": "Tenant (Sablon)", "color": "green" }
+          {
+            "text": "Sistem (Mobil UI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Sablon)",
+            "color": "green"
+          }
         ],
         "content": "Temsilci AI onerisini tek dokunusla onaylar veya hizlica duzenler. Cevap WhatsApp uzerinden aninda iletilir."
       }
@@ -55,63 +94,183 @@
       "title": "VIP Lead Sahada Yakalama",
       "description": "Temsilci disarida iken VIP musteriden acil mesaj geliyor.",
       "tags": [
-        { "text": "Mobil Push", "color": "purple" },
-        { "text": "AI Oneri", "color": "blue" }
+        {
+          "text": "Mobil Push",
+          "color": "purple"
+        },
+        {
+          "text": "AI Oneri",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "VIP musteri etiketleme kurallari", "service": "Backend", "page": "CRM > Musteri Etiketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "VIP, Premium gibi etiketleri CRM uzerinden musteri profillerine tanimlayin" },
-          { "text": "Mobil uygulama push izni", "service": "Backend", "page": "Mobil Ayarlar > Bildirimler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Temsilcilerin mobil cihazlarinda push bildirim iznini aktif edin" }
+          {
+            "text": "VIP musteri etiketleme kurallari",
+            "service": "Backend",
+            "page": "CRM > Musteri Etiketleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "VIP, Premium gibi etiketleri CRM uzerinden musteri profillerine tanimlayin"
+          },
+          {
+            "text": "Mobil uygulama push izni",
+            "service": "Backend",
+            "page": "Mobil Ayarlar > Bildirimler",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Temsilcilerin mobil cihazlarinda push bildirim iznini aktif edin"
+          }
         ],
         "provider": [
-          { "text": "Push notification servisi", "service": "Backend", "page": "Bildirim Motoru > Push", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Firebase Cloud Messaging entegrasyonu hazir" },
-          { "text": "AI cevap onerisi motoru", "service": "AgentAI", "page": "Mobil Cevap Onerisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Knowledge Base'e dayali AI cevap onerisi sistemi hazir" }
+          {
+            "text": "Push notification servisi",
+            "service": "Backend",
+            "page": "Bildirim Motoru > Push",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Firebase Cloud Messaging entegrasyonu hazir"
+          },
+          {
+            "text": "AI cevap onerisi motoru",
+            "service": "AgentAI",
+            "page": "Mobil Cevap Onerisi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Knowledge Base'e dayali AI cevap onerisi sistemi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, gecen hafta gorustugumuz kurumsal paketi degerlendirdik. 50 kullanici icin fiyat almak istiyorum." },
-        { "role": "system", "content": "VIP Musteri Tespiti: Kurumsal Lead, 50 kullanici. Push Bildirim gonderiliyor." },
-        { "role": "ai", "content": "Intent: Fiyat Talebi. Musteri Tipi: VIP Kurumsal. Oneri: Kurumsal 50 kullanici paket detayi + ozel indirim bilgisi." },
-        { "role": "bot", "content": "[Temsilci mobil push alir → AI onerisini gorur → tek dokunusla onaylar]\n\nMerhaba! Bizi tercih ettiginiz icin tesekkurler. 50 kullanicilik kurumsal paketimiz icin ozel fiyat teklifimizi hemen hazirliyorum. Yarin sabah sizinle gorusme ayarlayabilir miyiz?" },
-        { "role": "user", "content": "Harika, yarin 10:00 uygun." },
-        { "role": "bot", "content": "Randevunuz olusturuldu: Yarin 10:00. Detayli teklifi gorusme oncesinde ileteceqim. Iyi gunler!" }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, gecen hafta gorustugumuz kurumsal paketi degerlendirdik. 50 kullanici icin fiyat almak istiyorum."
+        },
+        {
+          "role": "system",
+          "content": "VIP Musteri Tespiti: Kurumsal Lead, 50 kullanici. Push Bildirim gonderiliyor."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Fiyat Talebi. Musteri Tipi: VIP Kurumsal. Oneri: Kurumsal 50 kullanici paket detayi + ozel indirim bilgisi."
+        },
+        {
+          "role": "bot",
+          "content": "[Temsilci mobil push alir → AI onerisini gorur → tek dokunusla onaylar]\n\nMerhaba! Bizi tercih ettiginiz icin tesekkurler. 50 kullanicilik kurumsal paketimiz icin ozel fiyat teklifimizi hemen hazirliyorum. Yarin sabah sizinle gorusme ayarlayabilir miyiz?"
+        },
+        {
+          "role": "user",
+          "content": "Harika, yarin 10:00 uygun."
+        },
+        {
+          "role": "bot",
+          "content": "Randevunuz olusturuldu: Yarin 10:00. Detayli teklifi gorusme oncesinde ileteceqim. Iyi gunler!"
+        }
+      ],
+      "aiPrompt": "\"Sahada / Evde Mesaj Yonetimi\" senaryosu icin \"VIP Lead Sahada Yakalama\" akisini olustur.\n\nAciklama: Temsilci disarida iken VIP musteriden acil mesaj geliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, gecen hafta gorustugumuz kurumsal paketi degerlendirdik. 50 kullanici icin fiyat almak istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: VIP Musteri Tespiti: Kurumsal Lead, 50 kullanici. Push Bildirim gonderiliyor.\n\n4. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Fiyat Talebi. Musteri Tipi: VIP Kurumsal. Oneri: Kurumsal 50 kullanici paket detayi + ozel indirim bilgisi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"[Temsilci mobil push alir → AI onerisini gorur → tek dokunusla onaylar]\n\nMerhaba! Bizi tercih ettiginiz icin tesekkurler. 50 kullanicilik kurumsal paketimiz icin ozel fiyat teklifimizi hemen hazirliyorum. Yarin sabah sizinle gorusme ayarlayabilir miyiz?\"\n   Degiskenler: {{temsilci_mobil_push_alir_→_ai_onerisini_gorur_→_tek_dokunusla_onaylar}}\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Harika, yarin 10:00 uygun.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Randevunuz olusturuldu: Yarin 10:00. Detayli teklifi gorusme oncesinde ileteceqim. Iyi gunler!\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Acil Sikayet Sahada Mudahale",
       "description": "Kritik bir sikayet geldiginde temsilci evde/sahada.",
       "tags": [
-        { "text": "Acil Bildirim", "color": "red" },
-        { "text": "Hizli Cevap", "color": "green" }
+        {
+          "text": "Acil Bildirim",
+          "color": "red"
+        },
+        {
+          "text": "Hizli Cevap",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Acil mesaj eskalasyon kurallari", "service": "Backend", "page": "Eskalasyon > Acil Kurallar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Hangi anahtar kelimelerin acil push tetikleyecegini tanimlayin" }
+          {
+            "text": "Acil mesaj eskalasyon kurallari",
+            "service": "Backend",
+            "page": "Eskalasyon > Acil Kurallar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Hangi anahtar kelimelerin acil push tetikleyecegini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Sentiment bazli onceliklendirme", "service": "AgentAI", "page": "Sentiment Analizi > Onceliklendirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Negatif sentiment otomatik olarak oncelik seviyesini yukseltir" }
+          {
+            "text": "Sentiment bazli onceliklendirme",
+            "service": "AgentAI",
+            "page": "Sentiment Analizi > Onceliklendirme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Negatif sentiment otomatik olarak oncelik seviyesini yukseltir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "BU NE REZALET? 3 gundur cevap alamiyorum, sozlesmeyi iptal ediyorum!" },
-        { "role": "system", "content": "ACIL Sentiment: Cok Negatif. SLA: 3 gun asim. Sahada olan temsilciye push gonderiliyor." },
-        { "role": "ai", "content": "Intent: Sikayet + Iptal Tehdidi. Risk: Yuksek. Oneri: Ozur + aninda cozum taahhdu." },
-        { "role": "bot", "content": "[Temsilci acil push alir → AI onerisini duzenler → gonderir]\n\nCok uzgunum bu gecikme icin, haklisiniz. Ben su an konuyu bizzat takibe aliyorum. 1 saat icinde size somut bir cozum ile donecegim. Lutfen bize bir sans daha verin." },
-        { "role": "user", "content": "Peki ama bu sefer gercekten cozun." },
-        { "role": "bot", "content": "Soz veriyorum. En gec 1 saat icinde donus yapacagim. Tesekkurler." }
-      ]
+        {
+          "role": "user",
+          "content": "BU NE REZALET? 3 gundur cevap alamiyorum, sozlesmeyi iptal ediyorum!"
+        },
+        {
+          "role": "system",
+          "content": "ACIL Sentiment: Cok Negatif. SLA: 3 gun asim. Sahada olan temsilciye push gonderiliyor."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Sikayet + Iptal Tehdidi. Risk: Yuksek. Oneri: Ozur + aninda cozum taahhdu."
+        },
+        {
+          "role": "bot",
+          "content": "[Temsilci acil push alir → AI onerisini duzenler → gonderir]\n\nCok uzgunum bu gecikme icin, haklisiniz. Ben su an konuyu bizzat takibe aliyorum. 1 saat icinde size somut bir cozum ile donecegim. Lutfen bize bir sans daha verin."
+        },
+        {
+          "role": "user",
+          "content": "Peki ama bu sefer gercekten cozun."
+        },
+        {
+          "role": "bot",
+          "content": "Soz veriyorum. En gec 1 saat icinde donus yapacagim. Tesekkurler."
+        }
+      ],
+      "aiPrompt": "\"Sahada / Evde Mesaj Yonetimi\" senaryosu icin \"Acil Sikayet Sahada Mudahale\" akisini olustur.\n\nAciklama: Kritik bir sikayet geldiginde temsilci evde/sahada.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"BU NE REZALET? 3 gundur cevap alamiyorum, sozlesmeyi iptal ediyorum!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: ACIL Sentiment: Cok Negatif. SLA: 3 gun asim. Sahada olan temsilciye push gonderiliyor.\n\n4. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Sikayet + Iptal Tehdidi. Risk: Yuksek. Oneri: Ozur + aninda cozum taahhdu.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"[Temsilci acil push alir → AI onerisini duzenler → gonderir]\n\nCok uzgunum bu gecikme icin, haklisiniz. Ben su an konuyu bizzat takibe aliyorum. 1 saat icinde size somut bir cozum ile donecegim. Lutfen bize bir sans daha verin.\"\n   Degiskenler: {{temsilci_acil_push_alir_→_ai_onerisini_duzenler_→_gonderir}}\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Peki ama bu sefer gercekten cozun.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Soz veriyorum. En gec 1 saat icinde donus yapacagim. Tesekkurler.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Mobil uygulama FCM (Firebase Cloud Messaging) uzerinden push bildirim alir. AI cevap onerisi backend'de olusturulur ve mobil API ile temsilciye iletilir.",
     "backend": [
-      { "title": "Push Notification Service", "goal": "Anlik Bildirim", "content": "FCM entegrasyonu ile VIP/acil mesajlarda mobil push gonderimi. Tenant bazli oncelik kurallarini destekler." },
-      { "title": "Mobile API Gateway", "goal": "Mobil Erisim", "content": "Temsilcilerin mesaj okuma, AI onerisi alma ve cevap gonderme islemlerini mobil uzerinden yapmasini saglayan REST API katmani." }
+      {
+        "title": "Push Notification Service",
+        "goal": "Anlik Bildirim",
+        "content": "FCM entegrasyonu ile VIP/acil mesajlarda mobil push gonderimi. Tenant bazli oncelik kurallarini destekler."
+      },
+      {
+        "title": "Mobile API Gateway",
+        "goal": "Mobil Erisim",
+        "content": "Temsilcilerin mesaj okuma, AI onerisi alma ve cevap gonderme islemlerini mobil uzerinden yapmasini saglayan REST API katmani."
+      }
     ],
     "apis": [
-      { "title": "Firebase Cloud Messaging", "goal": "Push Delivery", "content": "Android ve iOS cihazlara aninda push notification gonderimi." },
-      { "title": "AI Suggestion API", "goal": "Cevap Onerisi", "content": "Gelen mesaj icerigine gore Knowledge Base'den en uygun cevap onerisini olusturur." }
+      {
+        "title": "Firebase Cloud Messaging",
+        "goal": "Push Delivery",
+        "content": "Android ve iOS cihazlara aninda push notification gonderimi."
+      },
+      {
+        "title": "AI Suggestion API",
+        "goal": "Cevap Onerisi",
+        "content": "Gelen mesaj icerigine gore Knowledge Base'den en uygun cevap onerisini olusturur."
+      }
     ]
   },
   "impact": {
@@ -120,9 +279,29 @@
     "resultLabel": "Kurtarilan Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "missedVipMessages", "label": "Gunluk Kacirilan VIP Mesaj", "default": 5, "hint": "Masabasindan uzakken cevapsiz kalan VIP mesaj sayisi", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 30, "suffix": "%", "hint": "VIP mesajlardan satisa donusme yuzdesi", "editable": true },
-      { "key": "avgDealValue", "label": "Ortalama Satis Degeri", "default": 5000, "suffix": "TL", "hint": "VIP musteriden ortalama satis tutari", "editable": true }
+      {
+        "key": "missedVipMessages",
+        "label": "Gunluk Kacirilan VIP Mesaj",
+        "default": 5,
+        "hint": "Masabasindan uzakken cevapsiz kalan VIP mesaj sayisi",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 30,
+        "suffix": "%",
+        "hint": "VIP mesajlardan satisa donusme yuzdesi",
+        "editable": true
+      },
+      {
+        "key": "avgDealValue",
+        "label": "Ortalama Satis Degeri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "VIP musteriden ortalama satis tutari",
+        "editable": true
+      }
     ],
     "formula": "missedVipMessages * (conversionRate / 100) * avgDealValue * 30",
     "formulaDisplay": null

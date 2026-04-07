@@ -8,14 +8,32 @@
   "description": "Doktor notlarini ve etiketleri hasta iletisim gecmisine baglayan, etiket bazli raporlama ureten sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
-      { "label": "Sorun", "value": "Doktor notlari daginiK — hangi hasta hangi tedavide, ne konusuldu bilinemez" },
-      { "label": "Deger", "value": "Etiket bazli raporlama ile hasta iletisim gecmisi ve tedavi takibi net olur" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Tum Klinikler)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Doktor notlari daginiK — hangi hasta hangi tedavide, ne konusuldu bilinemez"
+      },
+      {
+        "label": "Deger",
+        "value": "Etiket bazli raporlama ile hasta iletisim gecmisi ve tedavi takibi net olur"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Reporting (C4)", "color": "blue" },
-      { "name": "QA Mining (C13)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Reporting (C4)",
+        "color": "blue"
+      },
+      {
+        "name": "QA Mining (C13)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "C1 mesaj gecmisi + C4 etiket bazli raporlama + C13 QA Mining ile hasta iletisim kalite analizi.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Etiketleme",
         "goal": "Notlari kategorize et",
         "badges": [
-          { "text": "Sistem (Etiket)", "color": "purple" },
-          { "text": "Tenant (Doktor)", "color": "blue" }
+          {
+            "text": "Sistem (Etiket)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Doktor)",
+            "color": "blue"
+          }
         ],
         "content": "Doktor notlari ve hasta iletisimleri tedavi tipi, oncelik ve durum etiketleriyle kategorize edilir."
       },
@@ -32,8 +56,14 @@
         "title": "Raporlama",
         "goal": "Analiz uret",
         "badges": [
-          { "text": "Sistem (Reporting)", "color": "purple" },
-          { "text": "Tenant (Yonetim)", "color": "green" }
+          {
+            "text": "Sistem (Reporting)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Yonetim)",
+            "color": "green"
+          }
         ],
         "content": "Etiket bazli hasta iletisim raporu, tedavi trend analizi ve kalite metrikleri uretilir."
       }
@@ -45,33 +75,88 @@
       "title": "Etiketli Hasta Raporu",
       "description": "Klinik yoneticisi etiket bazli hasta iletisim raporunu inceliyor.",
       "tags": [
-        { "text": "Raporlama", "color": "blue" },
-        { "text": "Etiket", "color": "green" }
+        {
+          "text": "Raporlama",
+          "color": "blue"
+        },
+        {
+          "text": "Etiket",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Etiket tanimlari", "service": "Backend", "page": "Ayarlar > Etiket Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Tedavi tipi, oncelik ve durum etiketlerini tanimlayin" }
+          {
+            "text": "Etiket tanimlari",
+            "service": "Backend",
+            "page": "Ayarlar > Etiket Yonetimi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Tedavi tipi, oncelik ve durum etiketlerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Otomatik etiketleme", "service": "ChatAnalysis", "page": "QA Mining > Otomatik Etiket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "AI mesaj analizi ile otomatik etiketleme hazir" },
-          { "text": "Etiket bazli rapor motoru", "service": "Backend", "page": "Raporlama > Etiket Raporu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Etiket bazli filtreleme ve raporlama hazir" }
+          {
+            "text": "Otomatik etiketleme",
+            "service": "ChatAnalysis",
+            "page": "QA Mining > Otomatik Etiket",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "AI mesaj analizi ile otomatik etiketleme hazir"
+          },
+          {
+            "text": "Etiket bazli rapor motoru",
+            "service": "Backend",
+            "page": "Raporlama > Etiket Raporu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Etiket bazli filtreleme ve raporlama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Aylik etiket raporu olusturuldu.\n\nEtiket dagilimi:\n- Implant: 45 konusma\n- Dolgu: 32 konusma\n- Beyazlatma: 28 konusma\n- Ortodonti: 18 konusma" },
-        { "role": "system", "content": "QA Mining sonuclari:\n- Sikayet orani: %8\n- Memnuniyet: %92\n- Ortalama yanit suresi: 2.5 dk\n- En sik sorun: Randevu degisikligi" },
-        { "role": "system", "content": "Rapor dashboard ve e-posta ile yoneticiye sunuldu." }
-      ]
+        {
+          "role": "system",
+          "content": "Aylik etiket raporu olusturuldu.\n\nEtiket dagilimi:\n- Implant: 45 konusma\n- Dolgu: 32 konusma\n- Beyazlatma: 28 konusma\n- Ortodonti: 18 konusma"
+        },
+        {
+          "role": "system",
+          "content": "QA Mining sonuclari:\n- Sikayet orani: %8\n- Memnuniyet: %92\n- Ortalama yanit suresi: 2.5 dk\n- En sik sorun: Randevu degisikligi"
+        },
+        {
+          "role": "system",
+          "content": "Rapor dashboard ve e-posta ile yoneticiye sunuldu."
+        }
+      ],
+      "aiPrompt": "\"Hekim Notlari + Etiketli Raporlama\" senaryosu icin \"Etiketli Hasta Raporu\" akisini olustur.\n\nAciklama: Klinik yoneticisi etiket bazli hasta iletisim raporunu inceliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Aylik etiket raporu olusturuldu.\n\nEtiket dagilimi:\n- Implant: 45 konusma\n- Dolgu: 32 konusma\n- Beyazlatma: 28 konusma\n- Ortodonti: 18 konusma\n\n2. **utility_note** — Akis sonuc notu\n   text: \"QA Mining sonuclari:\n- Sikayet orani: %8\n- Memnuniyet: %92\n- Ortalama yanit suresi: 2.5 dk\n- En sik sorun: Randevu degisikligi\"\n\n3. **utility_note** — Akis sonuc notu\n   text: \"Rapor dashboard ve e-posta ile yoneticiye sunuldu.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Etiketleme + QA Mining + Reporting birlesimiyle calisir.",
     "backend": [
-      { "title": "Auto Tagger", "goal": "Otomatik Etiketleme", "content": "AI mesaj analizi ile hasta konusmalarini otomatik etiketler." },
-      { "title": "Tag Reporter", "goal": "Etiket Raporu", "content": "Etiket bazli iletisim raporlari ve trend analizi uretir." }
+      {
+        "title": "Auto Tagger",
+        "goal": "Otomatik Etiketleme",
+        "content": "AI mesaj analizi ile hasta konusmalarini otomatik etiketler."
+      },
+      {
+        "title": "Tag Reporter",
+        "goal": "Etiket Raporu",
+        "content": "Etiket bazli iletisim raporlari ve trend analizi uretir."
+      }
     ],
     "apis": [
-      { "title": "Reporting API", "goal": "Rapor Erisimi", "content": "Etiket bazli filtreleme, dashboard ve rapor indirme." }
+      {
+        "title": "Reporting API",
+        "goal": "Rapor Erisimi",
+        "content": "Etiket bazli filtreleme, dashboard ve rapor indirme."
+      }
     ]
   },
   "impact": {
@@ -80,8 +165,22 @@
     "resultLabel": "Verimlilik Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyReportHours", "label": "Manuel Analiz Suresi", "default": 6, "suffix": "saat", "hint": "Manuel hasta analizi icin harcanan sure", "editable": true },
-      { "key": "managerHourlyCost", "label": "Yonetici Saatlik Maliyet", "default": 200, "suffix": "TL", "hint": "Yonetici saatlik ucreti", "editable": true }
+      {
+        "key": "monthlyReportHours",
+        "label": "Manuel Analiz Suresi",
+        "default": 6,
+        "suffix": "saat",
+        "hint": "Manuel hasta analizi icin harcanan sure",
+        "editable": true
+      },
+      {
+        "key": "managerHourlyCost",
+        "label": "Yonetici Saatlik Maliyet",
+        "default": 200,
+        "suffix": "TL",
+        "hint": "Yonetici saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "monthlyReportHours * managerHourlyCost",
     "formulaDisplay": null

@@ -8,15 +8,36 @@
   "description": "Ozel saglik sigortasi veya anlasmali kurum sorusunu AI ile yanitlayan, anlasma listesinden uygunluk kontrolu yapan sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Sigorta Anlasmalari Olan)" },
-      { "label": "Sorun", "value": "Hasta sigortasinin gecerli olup olmadigini bilmiyor — resepsiyonist her seferinde listeyi kontrol etmek zorunda" },
-      { "label": "Deger", "value": "AI aninda sigorta uygunlugu kontrolu yapar, hasta hizla bilgilendirilir" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Sigorta Anlasmalari Olan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Hasta sigortasinin gecerli olup olmadigini bilmiyor — resepsiyonist her seferinde listeyi kontrol etmek zorunda"
+      },
+      {
+        "label": "Deger",
+        "value": "AI aninda sigorta uygunlugu kontrolu yapar, hasta hizla bilgilendirilir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI sigorta sorusunu tespit eder, Knowledge Base'den anlasmali sigorta listesini cekar ve uygunlugu kontrol eder.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Sigorta Kontrolu",
         "goal": "Anlasmali mi?",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "green" },
-          { "text": "Tenant (Sigorta)", "color": "blue" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "green"
+          },
+          {
+            "text": "Tenant (Sigorta)",
+            "color": "blue"
+          }
         ],
         "content": "Knowledge Base'den anlasmali sigorta listesi cekilir ve hastanin sigortasi kontrol edilir."
       },
@@ -33,8 +60,14 @@
         "title": "Bilgilendirme",
         "goal": "Hastaya bilgi ver",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Anlasmali ise kapsam bilgisi, degilse alternatif secenekler sunulur."
       }
@@ -46,36 +79,99 @@
       "title": "Sigorta Sorgusu — Anlasmali",
       "description": "Hasta sigortasini soruyor, anlasmali oldugu tespit ediliyor.",
       "tags": [
-        { "text": "Sigorta", "color": "blue" },
-        { "text": "Anlasmali", "color": "green" }
+        {
+          "text": "Sigorta",
+          "color": "blue"
+        },
+        {
+          "text": "Anlasmali",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Anlasmali sigorta listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Sigorta Anlasmalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Anlasmali sigorta firmalari ve kapsam bilgisini yukleyin" }
+          {
+            "text": "Anlasmali sigorta listesi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Sigorta Anlasmalar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Anlasmali sigorta firmalari ve kapsam bilgisini yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Sigorta intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Sigorta", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Sigorta sorgusu intent'i hazir" },
-          { "text": "Knowledge RAG sorgu", "service": "Knowledge", "page": "RAG > Sigorta Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Anlasmali sigorta listesi ve kapsam RAG ile cekilir" }
+          {
+            "text": "Sigorta intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Sigorta",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Sigorta sorgusu intent'i hazir"
+          },
+          {
+            "text": "Knowledge RAG sorgu",
+            "service": "Knowledge",
+            "page": "RAG > Sigorta Bilgisi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Anlasmali sigorta listesi ve kapsam RAG ile cekilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Ozel saglik sigortam var, anlasmali misiniz?" },
-        { "role": "ai", "content": "Intent: Sigorta Sorgusu. Hangi sigorta oldugu sorulacak." },
-        { "role": "bot", "content": "Tabii, kontrol edelim! Hangi sigorta firmasiniz?" },
-        { "role": "user", "content": "Allianz ozel saglik." },
-        { "role": "ai", "content": "Sigorta: Allianz. Kontrol: ANLASMALI. Kapsam: Dis tedavisi (limit dahilinde)." },
-        { "role": "bot", "content": "Harika haber! Allianz ile anlasmaliyiz ✅\n\n🏥 Kapsam: Dis tedavileri (yillik limit dahilinde)\n📋 Gerekli evrak: Sigorta karti + Kimlik\n💡 Provizyon kontrolu randevu gununde yapilir\n\nRandevu ayarlayalim mi?" },
-        { "role": "system", "content": "Sigorta uygunlugu dogrulandi. Randevu teklifi yapildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Ozel saglik sigortam var, anlasmali misiniz?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Sigorta Sorgusu. Hangi sigorta oldugu sorulacak."
+        },
+        {
+          "role": "bot",
+          "content": "Tabii, kontrol edelim! Hangi sigorta firmasiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Allianz ozel saglik."
+        },
+        {
+          "role": "ai",
+          "content": "Sigorta: Allianz. Kontrol: ANLASMALI. Kapsam: Dis tedavisi (limit dahilinde)."
+        },
+        {
+          "role": "bot",
+          "content": "Harika haber! Allianz ile anlasmaliyiz ✅\n\n🏥 Kapsam: Dis tedavileri (yillik limit dahilinde)\n📋 Gerekli evrak: Sigorta karti + Kimlik\n💡 Provizyon kontrolu randevu gununde yapilir\n\nRandevu ayarlayalim mi?"
+        },
+        {
+          "role": "system",
+          "content": "Sigorta uygunlugu dogrulandi. Randevu teklifi yapildi."
+        }
+      ],
+      "aiPrompt": "\"Sigorta / Ozel Saglik Anlasmasi\" senaryosu icin \"Sigorta Sorgusu — Anlasmali\" akisini olustur.\n\nAciklama: Hasta sigortasini soruyor, anlasmali oldugu tespit ediliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Ozel saglik sigortam var, anlasmali misiniz?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Sigorta Sorgusu. Hangi sigorta oldugu sorulacak.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tabii, kontrol edelim! Hangi sigorta firmasiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Allianz ozel saglik.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Sigorta: Allianz. Kontrol: ANLASMALI. Kapsam: Dis tedavisi (limit dahilinde).\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Harika haber! Allianz ile anlasmaliyiz ✅\n\n🏥 Kapsam: Dis tedavileri (yillik limit dahilinde)\n📋 Gerekli evrak: Sigorta karti + Kimlik\n💡 Provizyon kontrolu randevu gununde yapilir\n\nRandevu ayarlayalim mi?\"\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Sigorta uygunlugu dogrulandi. Randevu teklifi yapildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Knowledge RAG + AI intent tespiti birlesimiyle calisir. Sigorta uygunluk kontrolu.",
     "backend": [
-      { "title": "Insurance Matcher", "goal": "Sigorta Eslestirme", "content": "Hasta sigortasini anlasmali liste ile eslestirir ve kapsam bilgisini getirir." }
+      {
+        "title": "Insurance Matcher",
+        "goal": "Sigorta Eslestirme",
+        "content": "Hasta sigortasini anlasmali liste ile eslestirir ve kapsam bilgisini getirir."
+      }
     ],
     "apis": [
-      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Anlasmali sigorta listesi ve kapsam bilgisi RAG ile cekilir." }
+      {
+        "title": "Knowledge RAG API",
+        "goal": "Bilgi Cekme",
+        "content": "Anlasmali sigorta listesi ve kapsam bilgisi RAG ile cekilir."
+      }
     ]
   },
   "impact": {
@@ -84,9 +180,28 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyInsuranceQueries", "label": "Aylik Sigorta Sorusu", "default": 20, "hint": "Sigorta uygunluk sorgusu", "editable": true },
-      { "key": "minutesPerQuery", "label": "Sorgu Basina Dakika", "default": 4, "hint": "Resepsiyonistin kontrol suresi", "editable": true },
-      { "key": "staffHourlyCost", "label": "Personel Saatlik Maliyet", "default": 120, "suffix": "TL", "hint": "Resepsiyonist saatlik ucreti", "editable": true }
+      {
+        "key": "monthlyInsuranceQueries",
+        "label": "Aylik Sigorta Sorusu",
+        "default": 20,
+        "hint": "Sigorta uygunluk sorgusu",
+        "editable": true
+      },
+      {
+        "key": "minutesPerQuery",
+        "label": "Sorgu Basina Dakika",
+        "default": 4,
+        "hint": "Resepsiyonistin kontrol suresi",
+        "editable": true
+      },
+      {
+        "key": "staffHourlyCost",
+        "label": "Personel Saatlik Maliyet",
+        "default": 120,
+        "suffix": "TL",
+        "hint": "Resepsiyonist saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "monthlyInsuranceQueries * minutesPerQuery * (staffHourlyCost / 60)",
     "formulaDisplay": null

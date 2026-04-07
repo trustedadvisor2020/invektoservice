@@ -8,15 +8,36 @@
   "description": "Misafir konaklama sirasinda temizlik, havlu degisimi veya eksik malzeme talebi iletir. AI talep tipini otomatik siniflandirir ve ilgili housekeeping departmanina routing yapar. Is emri ve tahmini sure misafire bildirilir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otel / Turizm (Her Olcek)" },
-      { "label": "Sorun", "value": "Resepsiyon telefonla mesgul, housekeeping talepleri gecikiyor, misafir memnuniyetsizligi" },
-      { "label": "Deger", "value": "Anlik talep iletimi, departman bazli routing, misafir bekleme suresinde azalma" }
+      {
+        "label": "Sektor",
+        "value": "Otel / Turizm (Her Olcek)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Resepsiyon telefonla mesgul, housekeeping talepleri gecikiyor, misafir memnuniyetsizligi"
+      },
+      {
+        "label": "Deger",
+        "value": "Anlik talep iletimi, departman bazli routing, misafir bekleme suresinde azalma"
+      }
     ],
     "services": [
-      { "name": "WhatsApp Business API (C1)", "color": "green" },
-      { "name": "Akilli Yonlendirme (C2)", "color": "amber" },
-      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
-      { "name": "AI Karar Motoru (C8)", "color": "red" }
+      {
+        "name": "WhatsApp Business API (C1)",
+        "color": "green"
+      },
+      {
+        "name": "Akilli Yonlendirme (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "AI Cevap Motoru (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Karar Motoru (C8)",
+        "color": "red"
+      }
     ],
     "servicesNote": "Misafirin mesaji AI tarafindan analiz edilir, talep tipi belirlenir ve ilgili departmana otomatik is emri olusturulur.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Talep Algilama (Detection)",
         "goal": "Misafir talebini anla",
         "badges": [
-          { "text": "Sistem (AI NLP)", "color": "purple" },
-          { "text": "Tenant (Oda Bilgisi)", "color": "blue" }
+          {
+            "text": "Sistem (AI NLP)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Oda Bilgisi)",
+            "color": "blue"
+          }
         ],
         "content": "Misafirin WhatsApp mesaji AI tarafindan analiz edilir. Temizlik, havlu, minibar, ariza gibi kategorilere otomatik siniflandirilir."
       },
@@ -33,8 +60,14 @@
         "title": "Routing (Yonlendirme)",
         "goal": "Dogru departmana ilet",
         "badges": [
-          { "text": "Sistem (Routing Engine)", "color": "purple" },
-          { "text": "Tenant (Departman Yapisi)", "color": "amber" }
+          {
+            "text": "Sistem (Routing Engine)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Departman Yapisi)",
+            "color": "amber"
+          }
         ],
         "content": "Talep tipine gore ilgili departmana is emri olusturulur: Temizlik -> Kat Hizmetleri, Ariza -> Teknik Servis, Minibar -> F&B."
       },
@@ -42,8 +75,14 @@
         "title": "Bilgilendirme (Response)",
         "goal": "Misafire sure ve onay bildir",
         "badges": [
-          { "text": "Sistem (Otomatik)", "color": "purple" },
-          { "text": "Tenant (SLA)", "color": "green" }
+          {
+            "text": "Sistem (Otomatik)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (SLA)",
+            "color": "green"
+          }
         ],
         "content": "Misafire talebinin alindigi ve tahmini sure bildirilir. Is emri tamamlandiginda otomatik bilgilendirme yapilir."
       },
@@ -51,8 +90,14 @@
         "title": "Tamamlanma & Geri Bildirim (Closure)",
         "goal": "Islemi kapat ve memnuniyet olc",
         "badges": [
-          { "text": "Sistem (Follow-up)", "color": "purple" },
-          { "text": "Tenant (Kalite)", "color": "amber" }
+          {
+            "text": "Sistem (Follow-up)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kalite)",
+            "color": "amber"
+          }
         ],
         "content": "Is emri tamamlandi olarak isaretlendiginde misafire 'Talebiniz tamamlandi, memnun musunuz?' mesaji gonderilir."
       }
@@ -64,66 +109,195 @@
       "title": "Oda Temizligi ve Havlu Degisimi",
       "description": "Misafir temizlik ve havlu degisimi talep ediyor.",
       "tags": [
-        { "text": "In-Stay", "color": "blue" },
-        { "text": "Housekeeping", "color": "green" }
+        {
+          "text": "In-Stay",
+          "color": "blue"
+        },
+        {
+          "text": "Housekeeping",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kat hizmetleri calisma saatleri ve SLA sureleri", "service": "Knowledge", "page": "Operasyon > Housekeeping SLA", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Temizlik talebi icin maksimum yanit suresini tanimlayin (ornegin 30 dk)" },
-          { "text": "Oda-departman esleme tablosu", "service": "Backend", "page": "Oda Yonetimi > Departman Esleme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Hangi kattaki odanin hangi housekeeping ekibine atandigini belirleyin" }
+          {
+            "text": "Kat hizmetleri calisma saatleri ve SLA sureleri",
+            "service": "Knowledge",
+            "page": "Operasyon > Housekeeping SLA",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Temizlik talebi icin maksimum yanit suresini tanimlayin (ornegin 30 dk)"
+          },
+          {
+            "text": "Oda-departman esleme tablosu",
+            "service": "Backend",
+            "page": "Oda Yonetimi > Departman Esleme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Hangi kattaki odanin hangi housekeeping ekibine atandigini belirleyin"
+          }
         ],
         "provider": [
-          { "text": "Talep siniflandirma AI modulu", "service": "AgentAI", "page": "Prompt Sablonlari > Housekeeping", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Temizlik, havlu, minibar, ariza siniflandirma promptu hazir" },
-          { "text": "Departman routing ve is emri motoru", "service": "Automation", "page": "Routing Kurallari > Departman", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Talep tipine gore otomatik departman yonlendirmesi hazir" }
+          {
+            "text": "Talep siniflandirma AI modulu",
+            "service": "AgentAI",
+            "page": "Prompt Sablonlari > Housekeeping",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Temizlik, havlu, minibar, ariza siniflandirma promptu hazir"
+          },
+          {
+            "text": "Departman routing ve is emri motoru",
+            "service": "Automation",
+            "page": "Routing Kurallari > Departman",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Talep tipine gore otomatik departman yonlendirmesi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhabalar, 507 numarali oda. Temizlik yapilmadi bugun, ayrica ekstra havlu lazim." },
-        { "role": "ai", "content": "Intent: Housekeeping Talebi. Oda: 507. Kategori: Temizlik + Havlu Degisimi. Oncelik: Normal." },
-        { "role": "bot", "content": "Merhaba! Oda 507 icin temizlik ve ekstra havlu talebinizi aldik. Kat hizmetleri ekibimiz en gec 30 dakika icinde odanizda olacak. Size uygun bir saat var mi yoksa simdi gelebilirler mi?" },
-        { "role": "user", "content": "Simdi gelsinler, odadayiz." },
-        { "role": "bot", "content": "Tamam, ekibimiz yola cikti! Tahmini varis: 15-20 dakika. Temizlik sirasinda odada olmaniz gerekmez, isterseniz doneceginiz saati belirtebilirsiniz." },
-        { "role": "system", "content": "Is emri #HK-2024-1293 olusturuldu. Kat 5 ekibine atandi. Durum: Devam Ediyor." },
-        { "role": "bot", "content": "Oda 507 temizliginiz tamamlandi, ekstra havlulariniz da yerlestirildi. Her sey yolunda mi?" },
-        { "role": "user", "content": "Harika olmus, tesekkurler!" },
-        { "role": "system", "content": "Is emri #HK-2024-1293 kapatildi. Misafir memnuniyet: Pozitif." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhabalar, 507 numarali oda. Temizlik yapilmadi bugun, ayrica ekstra havlu lazim."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Housekeeping Talebi. Oda: 507. Kategori: Temizlik + Havlu Degisimi. Oncelik: Normal."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Oda 507 icin temizlik ve ekstra havlu talebinizi aldik. Kat hizmetleri ekibimiz en gec 30 dakika icinde odanizda olacak. Size uygun bir saat var mi yoksa simdi gelebilirler mi?"
+        },
+        {
+          "role": "user",
+          "content": "Simdi gelsinler, odadayiz."
+        },
+        {
+          "role": "bot",
+          "content": "Tamam, ekibimiz yola cikti! Tahmini varis: 15-20 dakika. Temizlik sirasinda odada olmaniz gerekmez, isterseniz doneceginiz saati belirtebilirsiniz."
+        },
+        {
+          "role": "system",
+          "content": "Is emri #HK-2024-1293 olusturuldu. Kat 5 ekibine atandi. Durum: Devam Ediyor."
+        },
+        {
+          "role": "bot",
+          "content": "Oda 507 temizliginiz tamamlandi, ekstra havlulariniz da yerlestirildi. Her sey yolunda mi?"
+        },
+        {
+          "role": "user",
+          "content": "Harika olmus, tesekkurler!"
+        },
+        {
+          "role": "system",
+          "content": "Is emri #HK-2024-1293 kapatildi. Misafir memnuniyet: Pozitif."
+        }
+      ],
+      "aiPrompt": "\"Housekeeping Talebi (In-Stay)\" senaryosu icin \"Oda Temizligi ve Havlu Degisimi\" akisini olustur.\n\nAciklama: Misafir temizlik ve havlu degisimi talep ediyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhabalar, 507 numarali oda. Temizlik yapilmadi bugun, ayrica ekstra havlu lazim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Housekeeping Talebi. Oda: 507. Kategori: Temizlik + Havlu Degisimi. Oncelik: Normal.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Oda 507 icin temizlik ve ekstra havlu talebinizi aldik. Kat hizmetleri ekibimiz en gec 30 dakika icinde odanizda olacak. Size uygun bir saat var mi yoksa simdi gelebilirler mi?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Simdi gelsinler, odadayiz.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Tamam, ekibimiz yola cikti! Tahmini varis: 15-20 dakika. Temizlik sirasinda odada olmaniz gerekmez, isterseniz doneceginiz saati belirtebilirsiniz.\"\n\n7. **utility_set_variable** — Durum guncelle\n   Deger: Is emri #HK-2024-1293 olusturuldu. Kat 5 ekibine atandi. Durum: Devam Ediyor.\n\n8. **message_text** — Mesaj gonder\n   text: \"Oda 507 temizliginiz tamamlandi, ekstra havlulariniz da yerlestirildi. Her sey yolunda mi?\"\n\n9. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Harika olmus, tesekkurler!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n10. **utility_note** — Akis sonuc notu\n   text: \"Is emri #HK-2024-1293 kapatildi. Misafir memnuniyet: Pozitif.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Acil Ariza Bildirimi",
       "description": "Misafir odada teknik ariza bildiriyor, teknik servise yonlendirme.",
       "tags": [
-        { "text": "In-Stay", "color": "blue" },
-        { "text": "Acil", "color": "red" }
+        {
+          "text": "In-Stay",
+          "color": "blue"
+        },
+        {
+          "text": "Acil",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Teknik servis mesai ve nobet programi", "service": "Knowledge", "page": "Operasyon > Teknik Servis", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Mesai disi acil mudahale icin nobet programini tanimlayin" }
+          {
+            "text": "Teknik servis mesai ve nobet programi",
+            "service": "Knowledge",
+            "page": "Operasyon > Teknik Servis",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Mesai disi acil mudahale icin nobet programini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Acil oncelik routing modulu", "service": "Automation", "page": "Routing Kurallari > Acil Oncelik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Su baskin, elektrik kesintisi gibi acil talepler oncelikli routing alir" }
+          {
+            "text": "Acil oncelik routing modulu",
+            "service": "Automation",
+            "page": "Routing Kurallari > Acil Oncelik",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Su baskin, elektrik kesintisi gibi acil talepler oncelikli routing alir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Banyoda su akiyor! Yere su birikti, acil yardim lazim!" },
-        { "role": "ai", "content": "Intent: Acil Ariza. Kategori: Su Tesisat. Oncelik: YUKSEK. Oda bilgisi gerekli." },
-        { "role": "bot", "content": "Cok uzgunuz! Oda numaranizi hemen bildirir misiniz? Teknik ekibimizi acil olarak yonlendiriyoruz." },
-        { "role": "user", "content": "Oda 312" },
-        { "role": "bot", "content": "Oda 312 — teknik ekibimiz acil olarak yola cikti. Tahmini varis 10 dakika icerisinde. Lutfen ana vanay kapatabiliyorsaniz kapatin. Rahatsizlik icin cok ozur dileriz." },
-        { "role": "system", "content": "ACIL is emri #TK-2024-0091 olusturuldu. Teknik servis nobetcisi bilgilendirildi. SLA: 10 dk." }
-      ]
+        {
+          "role": "user",
+          "content": "Banyoda su akiyor! Yere su birikti, acil yardim lazim!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Acil Ariza. Kategori: Su Tesisat. Oncelik: YUKSEK. Oda bilgisi gerekli."
+        },
+        {
+          "role": "bot",
+          "content": "Cok uzgunuz! Oda numaranizi hemen bildirir misiniz? Teknik ekibimizi acil olarak yonlendiriyoruz."
+        },
+        {
+          "role": "user",
+          "content": "Oda 312"
+        },
+        {
+          "role": "bot",
+          "content": "Oda 312 — teknik ekibimiz acil olarak yola cikti. Tahmini varis 10 dakika icerisinde. Lutfen ana vanay kapatabiliyorsaniz kapatin. Rahatsizlik icin cok ozur dileriz."
+        },
+        {
+          "role": "system",
+          "content": "ACIL is emri #TK-2024-0091 olusturuldu. Teknik servis nobetcisi bilgilendirildi. SLA: 10 dk."
+        }
+      ],
+      "aiPrompt": "\"Housekeeping Talebi (In-Stay)\" senaryosu icin \"Acil Ariza Bildirimi\" akisini olustur.\n\nAciklama: Misafir odada teknik ariza bildiriyor, teknik servise yonlendirme.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Banyoda su akiyor! Yere su birikti, acil yardim lazim!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Acil Ariza. Kategori: Su Tesisat. Oncelik: YUKSEK. Oda bilgisi gerekli.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Cok uzgunuz! Oda numaranizi hemen bildirir misiniz? Teknik ekibimizi acil olarak yonlendiriyoruz.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Oda 312\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Oda 312 — teknik ekibimiz acil olarak yola cikti. Tahmini varis 10 dakika icerisinde. Lutfen ana vanay kapatabiliyorsaniz kapatin. Rahatsizlik icin cok ozur dileriz.\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"ACIL is emri #TK-2024-0091 olusturuldu. Teknik servis nobetcisi bilgilendirildi. SLA: 10 dk.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Housekeeping talepleri AI siniflandirma ile kategorize edilir ve departman routing motoru uzerinden ilgili ekibe is emri olarak iletilir.",
     "backend": [
-      { "title": "Request Classifier", "goal": "Talep Siniflandirma", "content": "AI mesaj iceriginden talep tipini (temizlik, havlu, ariza, minibar) ve onceligi (normal, acil) belirler." },
-      { "title": "Department Router", "goal": "Departman Yonlendirme", "content": "Talep tipine ve oda konumuna gore dogru departman ekibine is emri atanir." }
+      {
+        "title": "Request Classifier",
+        "goal": "Talep Siniflandirma",
+        "content": "AI mesaj iceriginden talep tipini (temizlik, havlu, ariza, minibar) ve onceligi (normal, acil) belirler."
+      },
+      {
+        "title": "Department Router",
+        "goal": "Departman Yonlendirme",
+        "content": "Talep tipine ve oda konumuna gore dogru departman ekibine is emri atanir."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Business API", "goal": "Misafir Iletisimi", "content": "Talep alma, durum bildirimi ve memnuniyet anketi WhatsApp uzerinden gerceklesir." },
-      { "title": "PMS Oda API", "goal": "Oda Dogrulama", "content": "Misafir oda numarasi ile PMS'den check-in durumu ve misafir bilgisi dogrulanir." }
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Misafir Iletisimi",
+        "content": "Talep alma, durum bildirimi ve memnuniyet anketi WhatsApp uzerinden gerceklesir."
+      },
+      {
+        "title": "PMS Oda API",
+        "goal": "Oda Dogrulama",
+        "content": "Misafir oda numarasi ile PMS'den check-in durumu ve misafir bilgisi dogrulanir."
+      }
     ]
   },
   "impact": {
@@ -132,9 +306,27 @@
     "resultLabel": "Aylik Tasarruf Edilen Is Gunu",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyRequests", "label": "Aylik Housekeeping Talebi", "default": 600, "hint": "Aylik toplam temizlik/havlu/ariza talebi", "editable": true },
-      { "key": "manualMinutes", "label": "Manuel Islem Suresi (dk)", "default": 8, "hint": "Telefon + not alma + departman arama suresi", "editable": true },
-      { "key": "autoMinutes", "label": "Otomatik Islem Suresi (dk)", "default": 1, "hint": "AI siniflandirma + routing suresi", "editable": true }
+      {
+        "key": "monthlyRequests",
+        "label": "Aylik Housekeeping Talebi",
+        "default": 600,
+        "hint": "Aylik toplam temizlik/havlu/ariza talebi",
+        "editable": true
+      },
+      {
+        "key": "manualMinutes",
+        "label": "Manuel Islem Suresi (dk)",
+        "default": 8,
+        "hint": "Telefon + not alma + departman arama suresi",
+        "editable": true
+      },
+      {
+        "key": "autoMinutes",
+        "label": "Otomatik Islem Suresi (dk)",
+        "default": 1,
+        "hint": "AI siniflandirma + routing suresi",
+        "editable": true
+      }
     ],
     "formula": "Math.round((monthlyRequests * (manualMinutes - autoMinutes)) / 60)",
     "formulaDisplay": null

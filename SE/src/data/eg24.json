@@ -8,15 +8,36 @@
   "description": "Kurs suresinde veya sonrasinda staj imkani soran potansiyel ogrenciye AI ile staj bilgisi ve partner sirket listesi sunan senaryo. Knowledge Base staj programi detaylarini saglar.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Mesleki Egitim, Yazilim Bootcamp, Teknik Kurs)" },
-      { "label": "Sorun", "value": "Staj imkani sorusu cevapsiz kaliyor veya gecikmeli donuluyor — potansiyel ogrenci tereddut ediyor" },
-      { "label": "Deger", "value": "AI aninda staj bilgisi + partner sirket listesi ile guven olustur, kayit kararini hizlandir" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Mesleki Egitim, Yazilim Bootcamp, Teknik Kurs)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Staj imkani sorusu cevapsiz kaliyor veya gecikmeli donuluyor — potansiyel ogrenci tereddut ediyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI aninda staj bilgisi + partner sirket listesi ile guven olustur, kayit kararini hizlandir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Knowledge Base (C7)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge Base (C7)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI staj intent'ini yakalar, Knowledge Base'den staj programi detaylari, partner sirket listesi ve basvuru kosullarini sunar.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Staj Sorusu Algilama",
         "goal": "Staj intent'ini tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'staj imkani var mi', 'pratik yapabilir miyim', 'is deneyimi' gibi intent'leri tespit eder."
       },
@@ -33,8 +60,14 @@
         "title": "Staj Bilgisi Sunma",
         "goal": "Detayli bilgi ver",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Staj Programi)", "color": "green" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Staj Programi)",
+            "color": "green"
+          }
         ],
         "content": "Knowledge Base'den staj suresi, kosullari, partner sirketler ve basvuru sureci bilgisi sunulur."
       },
@@ -42,8 +75,14 @@
         "title": "Kayit Yonlendirme",
         "goal": "Kayit kararini kolaylastir",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Kayit)", "color": "amber" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kayit)",
+            "color": "amber"
+          }
         ],
         "content": "Staj bilgisi ile ikna olan potansiyel ogrenci kayit surecine yonlendirilir."
       }
@@ -55,40 +94,129 @@
       "title": "Kurs Oncesi Staj Imkani Sorusu",
       "description": "Potansiyel ogrenci kursa kayit oncesi staj programi hakkinda bilgi aliyor.",
       "tags": [
-        { "text": "Staj", "color": "green" },
-        { "text": "Knowledge Base", "color": "blue" }
+        {
+          "text": "Staj",
+          "color": "green"
+        },
+        {
+          "text": "Knowledge Base",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Staj programi bilgileri", "service": "Knowledge", "page": "Egitim > Staj Programi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Staj suresi, kosullari, kontenjan ve basvuru sureci bilgilerini girin" },
-          { "text": "Partner sirket ve pozisyon listesi", "service": "Knowledge", "page": "Egitim > Staj Partnerleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Staj is birligi yapilan sirketleri ve acik pozisyonlari ekleyin" }
+          {
+            "text": "Staj programi bilgileri",
+            "service": "Knowledge",
+            "page": "Egitim > Staj Programi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Staj suresi, kosullari, kontenjan ve basvuru sureci bilgilerini girin"
+          },
+          {
+            "text": "Partner sirket ve pozisyon listesi",
+            "service": "Knowledge",
+            "page": "Egitim > Staj Partnerleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Staj is birligi yapilan sirketleri ve acik pozisyonlari ekleyin"
+          }
         ],
         "provider": [
-          { "text": "Staj intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Staj", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Staj/pratik intent'i varsayilan olarak tanimli" },
-          { "text": "Knowledge Base staj modulu", "service": "Knowledge", "page": "Knowledge Base > Staj", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Staj programi detaylari ve partner listesi sorgulama hazir" },
-          { "text": "Kayit yonlendirme sablonu", "service": "Backend", "page": "Sablonlar > Staj Bilgilendirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Staj bilgisi sonrasi kayit surecine gecis sablonu hazir" }
+          {
+            "text": "Staj intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Staj",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Staj/pratik intent'i varsayilan olarak tanimli"
+          },
+          {
+            "text": "Knowledge Base staj modulu",
+            "service": "Knowledge",
+            "page": "Knowledge Base > Staj",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Staj programi detaylari ve partner listesi sorgulama hazir"
+          },
+          {
+            "text": "Kayit yonlendirme sablonu",
+            "service": "Backend",
+            "page": "Sablonlar > Staj Bilgilendirme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Staj bilgisi sonrasi kayit surecine gecis sablonu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhabalar, Veri Bilimi kursunuzu inceliyorum. Kurs suresinde staj imkani var mi? Pratik yapma sansi oluyor mu?" },
-        { "role": "ai", "content": "Intent: Staj Sorgulama. Kurs: Veri Bilimi. Knowledge Base sorgusu: staj programi + partner sirketler + kosullar." },
-        { "role": "bot", "content": "Merhaba! Veri Bilimi kursumuzda staj programimiz mevcut. Detaylar:\n\nStaj Programi:\nSure: Kursun son 4 haftasi (toplam 160 saat)\nFormat: Hibrit (uzaktan + ofis)\nKosul: Kursun ilk 8 haftasini basariyla tamamlama\n\nPartner Sirketlerimiz:\n- Turkcell — Data Analyst Stajyer\n- Migros — BI Stajyer\n- Aselsan — Veri Muhendisligi Stajyer\n- KocSistem — ML Stajyer\n\nStaj kontenjan sinirli (donem basi 10 kisi). Daha fazla bilgi ister misiniz?" },
-        { "role": "user", "content": "Staj garantili mi? Herkes gidebiliyor mu?" },
-        { "role": "bot", "content": "Staj yerlestirme partner sirketlerle birlikte yapilir, garanti degil ancak basari oranimiz yuksek:\n\nGecmis Donem Verileri:\n- Basvuranlarinin %85'i staja yerlesti\n- Stajyerlerin %40'i staj sirasinda is teklifi aldi\n\nBasvuru Onceligi:\n1. Kurs basarisi (odev ve proje notlari)\n2. Portfolyo kalitesi\n3. Mulakat performansi\n\nStaj icin basvuru kurs basladiktan 6 hafta sonra acilir. Erken kayit yapsaniz staj kontenjanindan da emin olursunuz.\n\nKursa kayit olmak ister misiniz?" },
-        { "role": "user", "content": "Evet, kayit surecini baslatalim." },
-        { "role": "system", "content": "Lead donusum: Staj sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Veri Bilimi." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhabalar, Veri Bilimi kursunuzu inceliyorum. Kurs suresinde staj imkani var mi? Pratik yapma sansi oluyor mu?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Staj Sorgulama. Kurs: Veri Bilimi. Knowledge Base sorgusu: staj programi + partner sirketler + kosullar."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Veri Bilimi kursumuzda staj programimiz mevcut. Detaylar:\n\nStaj Programi:\nSure: Kursun son 4 haftasi (toplam 160 saat)\nFormat: Hibrit (uzaktan + ofis)\nKosul: Kursun ilk 8 haftasini basariyla tamamlama\n\nPartner Sirketlerimiz:\n- Turkcell — Data Analyst Stajyer\n- Migros — BI Stajyer\n- Aselsan — Veri Muhendisligi Stajyer\n- KocSistem — ML Stajyer\n\nStaj kontenjan sinirli (donem basi 10 kisi). Daha fazla bilgi ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Staj garantili mi? Herkes gidebiliyor mu?"
+        },
+        {
+          "role": "bot",
+          "content": "Staj yerlestirme partner sirketlerle birlikte yapilir, garanti degil ancak basari oranimiz yuksek:\n\nGecmis Donem Verileri:\n- Basvuranlarinin %85'i staja yerlesti\n- Stajyerlerin %40'i staj sirasinda is teklifi aldi\n\nBasvuru Onceligi:\n1. Kurs basarisi (odev ve proje notlari)\n2. Portfolyo kalitesi\n3. Mulakat performansi\n\nStaj icin basvuru kurs basladiktan 6 hafta sonra acilir. Erken kayit yapsaniz staj kontenjanindan da emin olursunuz.\n\nKursa kayit olmak ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Evet, kayit surecini baslatalim."
+        },
+        {
+          "role": "system",
+          "content": "Lead donusum: Staj sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Veri Bilimi."
+        }
+      ],
+      "aiPrompt": "\"Staj / Pratik Sorgulama\" senaryosu icin \"Kurs Oncesi Staj Imkani Sorusu\" akisini olustur.\n\nAciklama: Potansiyel ogrenci kursa kayit oncesi staj programi hakkinda bilgi aliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhabalar, Veri Bilimi kursunuzu inceliyorum. Kurs suresinde staj imkani var mi? Pratik yapma sansi oluyor mu?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Staj Sorgulama. Kurs: Veri Bilimi. Knowledge Base sorgusu: staj programi + partner sirketler + kosullar.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Veri Bilimi kursumuzda staj programimiz mevcut. Detaylar:\n\nStaj Programi:\nSure: Kursun son 4 haftasi (toplam 160 saat)\nFormat: Hibrit (uzaktan + ofis)\nKosul: Kursun ilk 8 haftasini basariyla tamamlama\n\nPartner Sirketlerimiz:\n- Turkcell — Data Analyst Stajyer\n- Migros — BI Stajyer\n- Aselsan — Veri Muhendisligi Stajyer\n- KocSistem — ML Stajyer\n\nStaj kontenjan sinirli (donem basi 10 kisi). Daha fazla bilgi ister misiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Staj garantili mi? Herkes gidebiliyor mu?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Staj yerlestirme partner sirketlerle birlikte yapilir, garanti degil ancak basari oranimiz yuksek:\n\nGecmis Donem Verileri:\n- Basvuranlarinin %85'i staja yerlesti\n- Stajyerlerin %40'i staj sirasinda is teklifi aldi\n\nBasvuru Onceligi:\n1. Kurs basarisi (odev ve proje notlari)\n2. Portfolyo kalitesi\n3. Mulakat performansi\n\nStaj icin basvuru kurs basladiktan 6 hafta sonra acilir. Erken kayit yapsaniz staj kontenjanindan da emin olursunuz.\n\nKursa kayit olmak ister misiniz?\"\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Evet, kayit surecini baslatalim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Lead donusum: Staj sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Veri Bilimi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI intent tespiti + Knowledge Base staj bilgisi ile calisir. Staj programi detaylari ve partner sirket verileri Knowledge Base'de tutulur.",
     "backend": [
-      { "title": "Internship Knowledge Module", "goal": "Staj Bilgisi", "content": "Kurs bazli staj programi, partner sirketler, kontenjan durumu ve basvuru kosullarini yonetir." },
-      { "title": "Lead Conversion Tracker", "goal": "Donusum Takibi", "content": "Staj sorusundan kayit surecine gecis oranini izler ve raporlar." }
+      {
+        "title": "Internship Knowledge Module",
+        "goal": "Staj Bilgisi",
+        "content": "Kurs bazli staj programi, partner sirketler, kontenjan durumu ve basvuru kosullarini yonetir."
+      },
+      {
+        "title": "Lead Conversion Tracker",
+        "goal": "Donusum Takibi",
+        "content": "Staj sorusundan kayit surecine gecis oranini izler ve raporlar."
+      }
     ],
     "apis": [
-      { "title": "Knowledge Base API", "goal": "Staj Verisi", "content": "Kurs bazli staj programi, partner sirketler ve kontenjan bilgisi sorgulama." },
-      { "title": "CRM Lead API", "goal": "Lead Yonlendirme", "content": "Ilgili potansiyel ogrenciyi kayit surecine yonlendirme ve donusum takibi." }
+      {
+        "title": "Knowledge Base API",
+        "goal": "Staj Verisi",
+        "content": "Kurs bazli staj programi, partner sirketler ve kontenjan bilgisi sorgulama."
+      },
+      {
+        "title": "CRM Lead API",
+        "goal": "Lead Yonlendirme",
+        "content": "Ilgili potansiyel ogrenciyi kayit surecine yonlendirme ve donusum takibi."
+      }
     ]
   },
   "impact": {
@@ -97,9 +225,29 @@
     "resultLabel": "Ek Kayit Geliri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyInternshipInquiries", "label": "Aylik Staj Sorusu", "default": 25, "hint": "Staj imkani soran potansiyel ogrenci", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 30, "suffix": "%", "hint": "Staj bilgisi sonrasi kayit yapan orani", "editable": true },
-      { "key": "avgCoursePrice", "label": "Ort. Kurs Ucreti", "default": 18000, "suffix": "TL", "hint": "Mesleki kurs ortalama ucreti", "editable": true }
+      {
+        "key": "monthlyInternshipInquiries",
+        "label": "Aylik Staj Sorusu",
+        "default": 25,
+        "hint": "Staj imkani soran potansiyel ogrenci",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 30,
+        "suffix": "%",
+        "hint": "Staj bilgisi sonrasi kayit yapan orani",
+        "editable": true
+      },
+      {
+        "key": "avgCoursePrice",
+        "label": "Ort. Kurs Ucreti",
+        "default": 18000,
+        "suffix": "TL",
+        "hint": "Mesleki kurs ortalama ucreti",
+        "editable": true
+      }
     ],
     "formula": "monthlyInternshipInquiries * (conversionRate / 100) * avgCoursePrice",
     "formulaDisplay": null

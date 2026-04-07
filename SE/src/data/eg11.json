@@ -8,13 +8,28 @@
   "description": "Veliler cocuklarinin devam durumu ve performansini soruyor. Outbound ile aylik devam+performans ozeti proaktif gonderilir. Veli memnuniyeti ve guveni artar.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Cocuk Kurslari, Ozel Ogretim)" },
-      { "label": "Sorun", "value": "Veliler surekli cocugum nasil gidiyor diye soruyor — agent ogretmenle gorusup geri donuyor" },
-      { "label": "Deger", "value": "Proaktif aylik rapor = veli sorma ihtiyaci duymaz, kurum profesyonel gorunur" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Cocuk Kurslari, Ozel Ogretim)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Veliler surekli cocugum nasil gidiyor diye soruyor — agent ogretmenle gorusup geri donuyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Proaktif aylik rapor = veli sorma ihtiyaci duymaz, kurum profesyonel gorunur"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Outbound ile aylik devam ve performans raporu velilere otomatik gonderilir. Veli sorusu geldiginde de AI guncel bilgiyi sunar.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Aylik Rapor Hazirlama",
         "goal": "Ogrenci ozeti cikar",
         "badges": [
-          { "text": "Sistem (Backend)", "color": "purple" },
-          { "text": "Tenant (Egitmen)", "color": "blue" }
+          {
+            "text": "Sistem (Backend)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Egitmen)",
+            "color": "blue"
+          }
         ],
         "content": "Her ayin sonunda ogrenci bazli devam orani, sinav sonuclari ve egitmen degerlendirmesi raporu hazirlanir."
       },
@@ -31,8 +52,14 @@
         "title": "Proaktif Veli Bildirimi",
         "goal": "Veliye otomatik rapor gonder",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Veli)", "color": "amber" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Veli)",
+            "color": "amber"
+          }
         ],
         "content": "Hazirlanan rapor velinin WhatsApp numarasina Outbound mesaj olarak gonderilir."
       },
@@ -40,8 +67,14 @@
         "title": "Veli Sorusu Yaniti",
         "goal": "Ek sorulari cevapla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Performans)", "color": "green" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Performans)",
+            "color": "green"
+          }
         ],
         "content": "Veli ek soru sorarsa AI guncel devam ve performans bilgisini sunar. Gerekirse egitmenle gorusme ayarlar."
       }
@@ -53,37 +86,111 @@
       "title": "Proaktif Aylik Veli Raporu",
       "description": "Her ay sonunda velilere cocuklarinin devam ve performans raporu otomatik gonderilir.",
       "tags": [
-        { "text": "Proaktif", "color": "purple" },
-        { "text": "Veli Raporu", "color": "blue" }
+        {
+          "text": "Proaktif",
+          "color": "purple"
+        },
+        {
+          "text": "Veli Raporu",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Veli iletisim bilgileri", "service": "Backend", "page": "Ogrenci Yonetimi > Veli Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Her ogrencinin veli WhatsApp numarasini tanimlayin" },
-          { "text": "Egitmen degerlendirme girisi", "service": "Backend", "page": "Egitmen Paneli > Degerlendirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Egitmenler aylik ogrenci degerlendirmesini girmeli" }
+          {
+            "text": "Veli iletisim bilgileri",
+            "service": "Backend",
+            "page": "Ogrenci Yonetimi > Veli Bilgileri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Her ogrencinin veli WhatsApp numarasini tanimlayin"
+          },
+          {
+            "text": "Egitmen degerlendirme girisi",
+            "service": "Backend",
+            "page": "Egitmen Paneli > Degerlendirme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Egitmenler aylik ogrenci degerlendirmesini girmeli"
+          }
         ],
         "provider": [
-          { "text": "Veli rapor sablonu", "service": "Backend", "page": "Sablonlar > Veli Raporu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Aylik veli raporu mesaj sablonu hazir" },
-          { "text": "Aylik rapor tetikleyici", "service": "Backend", "page": "Outbound > Zamanlı Gonderim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Her ay sonu otomatik tetikleme hazir" }
+          {
+            "text": "Veli rapor sablonu",
+            "service": "Backend",
+            "page": "Sablonlar > Veli Raporu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Aylik veli raporu mesaj sablonu hazir"
+          },
+          {
+            "text": "Aylik rapor tetikleyici",
+            "service": "Backend",
+            "page": "Outbound > Zamanlı Gonderim",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Her ay sonu otomatik tetikleme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Tetikleme: Ay sonu rapor donemi. Ingilizce cocuk grubu velilerine aylik rapor gonderiliyor." },
-        { "role": "bot", "content": "Merhaba Ayse Hanim! Ogrenciniz Efe'nin Subat 2026 aylik raporu:\n\nIngilizce A2 Cocuk Grubu\n\nDevam Durumu:\n- Toplam ders: 12\n- Katildigi: 11\n- Devam orani: %92\n\nPerformans:\n- Ara sinav: 78/100\n- Odev tamamlama: %95\n- Ders katilimi: Cok iyi\n\nEgitmen Notu: Efe konusma becerilerinde buyuk gelisim gosteriyor. Kelime calismalarına daha fazla zaman ayirmasini oneriyorum.\n\nSorunuz olursa bize yazin!" },
-        { "role": "user", "content": "Tesekkurler. Efe'nin devamsizlik yaptigi gun hangisiydi?" },
-        { "role": "bot", "content": "Efe 12 Subat Carsamba gunu derse katilmadi. O gun telafi dersi yapilmamis.\n\nTelafi icin musait saatler:\n- Cumartesi 15:00-16:00\n- Sali 17:00-18:00\n\nTelafi ayarlamami ister misiniz?" },
-        { "role": "system", "content": "Proaktif bildirim: Aylik veli raporu + devam detayi + telafi secenegi sunuldu. Veli memnun, guven olusturuldu." }
-      ]
+        {
+          "role": "system",
+          "content": "Tetikleme: Ay sonu rapor donemi. Ingilizce cocuk grubu velilerine aylik rapor gonderiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Ayse Hanim! Ogrenciniz Efe'nin Subat 2026 aylik raporu:\n\nIngilizce A2 Cocuk Grubu\n\nDevam Durumu:\n- Toplam ders: 12\n- Katildigi: 11\n- Devam orani: %92\n\nPerformans:\n- Ara sinav: 78/100\n- Odev tamamlama: %95\n- Ders katilimi: Cok iyi\n\nEgitmen Notu: Efe konusma becerilerinde buyuk gelisim gosteriyor. Kelime calismalarına daha fazla zaman ayirmasini oneriyorum.\n\nSorunuz olursa bize yazin!"
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler. Efe'nin devamsizlik yaptigi gun hangisiydi?"
+        },
+        {
+          "role": "bot",
+          "content": "Efe 12 Subat Carsamba gunu derse katilmadi. O gun telafi dersi yapilmamis.\n\nTelafi icin musait saatler:\n- Cumartesi 15:00-16:00\n- Sali 17:00-18:00\n\nTelafi ayarlamami ister misiniz?"
+        },
+        {
+          "role": "system",
+          "content": "Proaktif bildirim: Aylik veli raporu + devam detayi + telafi secenegi sunuldu. Veli memnun, guven olusturuldu."
+        }
+      ],
+      "aiPrompt": "\"Veli Iletisimi\" senaryosu icin \"Proaktif Aylik Veli Raporu\" akisini olustur.\n\nAciklama: Her ay sonunda velilere cocuklarinin devam ve performans raporu otomatik gonderilir.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Tetikleme: Ay sonu rapor donemi. Ingilizce cocuk grubu velilerine aylik rapor gonderiliyor.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba Ayse Hanim! Ogrenciniz Efe'nin Subat 2026 aylik raporu:\n\nIngilizce A2 Cocuk Grubu\n\nDevam Durumu:\n- Toplam ders: 12\n- Katildigi: 11\n- Devam orani: %92\n\nPerformans:\n- Ara sinav: 78/100\n- Odev tamamlama: %95\n- Ders katilimi: Cok iyi\n\nEgitmen Notu: Efe konusma becerilerinde buyuk gelisim gosteriyor. Kelime calismalarına daha fazla zaman ayirmasini oneriyorum.\n\nSorunuz olursa bize yazin!\"\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler. Efe'nin devamsizlik yaptigi gun hangisiydi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Efe 12 Subat Carsamba gunu derse katilmadi. O gun telafi dersi yapilmamis.\n\nTelafi icin musait saatler:\n- Cumartesi 15:00-16:00\n- Sali 17:00-18:00\n\nTelafi ayarlamami ister misiniz?\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Proaktif bildirim: Aylik veli raporu + devam detayi + telafi secenegi sunuldu. Veli memnun, guven olusturuldu.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Veli raporlari aylik periyodla otomatik olusturulur ve Outbound ile gonderilir. Egitmen degerlendirmeleri rapor icine eklenir.",
     "backend": [
-      { "title": "Student Report Generator", "goal": "Ogrenci Raporu Olusturma", "content": "Devam kayitlari, sinav sonuclari ve egitmen degerlendirmesini birlestirerek aylik ogrenci raporu olusturur." },
-      { "title": "Parent Notification Service", "goal": "Veli Bildirim Servisi", "content": "Aylik rapor tetikleyici, veli WhatsApp numarasina sablon bazli mesaj gonderimi." }
+      {
+        "title": "Student Report Generator",
+        "goal": "Ogrenci Raporu Olusturma",
+        "content": "Devam kayitlari, sinav sonuclari ve egitmen degerlendirmesini birlestirerek aylik ogrenci raporu olusturur."
+      },
+      {
+        "title": "Parent Notification Service",
+        "goal": "Veli Bildirim Servisi",
+        "content": "Aylik rapor tetikleyici, veli WhatsApp numarasina sablon bazli mesaj gonderimi."
+      }
     ],
     "apis": [
-      { "title": "Student Performance API", "goal": "Performans Verisi", "content": "Ogrenci bazli devam orani, sinav sonuclari, odev tamamlama orani ve egitmen degerlendirmesi doner." },
-      { "title": "Parent Outbound API", "goal": "Veli Mesaj Gonderimi", "content": "Veli WhatsApp numarasina aylik rapor mesaji gonderir. Tenant bazli sablon ve zamanlama destekler." }
+      {
+        "title": "Student Performance API",
+        "goal": "Performans Verisi",
+        "content": "Ogrenci bazli devam orani, sinav sonuclari, odev tamamlama orani ve egitmen degerlendirmesi doner."
+      },
+      {
+        "title": "Parent Outbound API",
+        "goal": "Veli Mesaj Gonderimi",
+        "content": "Veli WhatsApp numarasina aylik rapor mesaji gonderir. Tenant bazli sablon ve zamanlama destekler."
+      }
     ]
   },
   "impact": {
@@ -92,10 +199,35 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "totalParents", "label": "Toplam Veli Sayisi", "default": 80, "hint": "Iletisim kurulacak toplam veli sayisi", "editable": true },
-      { "key": "queriesPerParent", "label": "Veli Basina Aylik Soru", "default": 2, "hint": "Her velinin ayda sordugu ortalama soru sayisi", "editable": true },
-      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 10, "hint": "Agent'in egitmenle gorusup veliye donmesi icin harcadigi sure", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+      {
+        "key": "totalParents",
+        "label": "Toplam Veli Sayisi",
+        "default": 80,
+        "hint": "Iletisim kurulacak toplam veli sayisi",
+        "editable": true
+      },
+      {
+        "key": "queriesPerParent",
+        "label": "Veli Basina Aylik Soru",
+        "default": 2,
+        "hint": "Her velinin ayda sordugu ortalama soru sayisi",
+        "editable": true
+      },
+      {
+        "key": "minutesPerQuery",
+        "label": "Soru Basina Dakika",
+        "default": 10,
+        "hint": "Agent'in egitmenle gorusup veliye donmesi icin harcadigi sure",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "totalParents * queriesPerParent * minutesPerQuery * (agentHourlyCost / 60)",
     "formulaDisplay": null

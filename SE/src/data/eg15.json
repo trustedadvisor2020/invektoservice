@@ -8,13 +8,28 @@
   "description": "Yeni donem oncesi gecmis ogrencilere hedefli erken kayit kampanyasi. Outbound Engine ile segmentli broadcast gonderimi yaparak erken kayit oranini artiran proaktif senaryo.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Mesleki Egitim)" },
-      { "label": "Sorun", "value": "Yeni donem kayitlari son haftaya kalisiyor, planlama ve grup olusturma zorlasiyyor" },
-      { "label": "Deger", "value": "Erken kayit kampanyasi ile doluluk oranini artir, gelir tahminini iyilestir" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Mesleki Egitim)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Yeni donem kayitlari son haftaya kalisiyor, planlama ve grup olusturma zorlasiyyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Erken kayit kampanyasi ile doluluk oranini artir, gelir tahminini iyilestir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Outbound Engine gecmis donem ogrenci segmentine hedefli kampanya mesaji gonderir. Erken kayit indirimi ve son tarih bilgisi ile aksiyon tetikler.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Segment Hazirlama",
         "goal": "Hedef kitleyi belirle",
         "badges": [
-          { "text": "Sistem (CRM)", "color": "purple" },
-          { "text": "Tenant (Ogrenci Listesi)", "color": "blue" }
+          {
+            "text": "Sistem (CRM)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Ogrenci Listesi)",
+            "color": "blue"
+          }
         ],
         "content": "Gecmis donem ogrencileri, seviye ve ilgi alanina gore segmentlere ayrilir."
       },
@@ -31,8 +52,14 @@
         "title": "Kampanya Gonderimi",
         "goal": "Broadcast mesaj gonder",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Sablon)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Sablon)",
+            "color": "green"
+          }
         ],
         "content": "Outbound Engine ile kisisellesmis erken kayit teklifi gonderilir. Indirim orani ve son kayit tarihi belirtilir."
       },
@@ -40,8 +67,14 @@
         "title": "Geri Donus Takibi",
         "goal": "Kayit tamamlama",
         "badges": [
-          { "text": "Sistem (Inbox)", "color": "purple" },
-          { "text": "Tenant (Kayit)", "color": "amber" }
+          {
+            "text": "Sistem (Inbox)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kayit)",
+            "color": "amber"
+          }
         ],
         "content": "Gelen yanitlar Unified Inbox'ta takip edilir, ilgilenenler kayit surecine yonlendirilir."
       }
@@ -53,38 +86,115 @@
       "title": "Erken Kayit Kampanya Akisi",
       "description": "Gecmis donem ogrencilerine Outbound ile erken kayit teklifi gonderimi.",
       "tags": [
-        { "text": "Proaktif", "color": "green" },
-        { "text": "Kampanya", "color": "amber" }
+        {
+          "text": "Proaktif",
+          "color": "green"
+        },
+        {
+          "text": "Kampanya",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Ogrenci segmentasyonu", "service": "Backend", "page": "CRM > Ogrenci Segmentleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Gecmis donem ogrencilerini seviye ve ilgi alanina gore segmente edin" },
-          { "text": "Kampanya sablon onay", "service": "Backend", "page": "Sablonlar > Kampanya", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "WhatsApp Business onaylu kampanya sablonunu hazirlatin" }
+          {
+            "text": "Ogrenci segmentasyonu",
+            "service": "Backend",
+            "page": "CRM > Ogrenci Segmentleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Gecmis donem ogrencilerini seviye ve ilgi alanina gore segmente edin"
+          },
+          {
+            "text": "Kampanya sablon onay",
+            "service": "Backend",
+            "page": "Sablonlar > Kampanya",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "WhatsApp Business onaylu kampanya sablonunu hazirlatin"
+          }
         ],
         "provider": [
-          { "text": "Outbound broadcast motoru", "service": "Outbound", "page": "Kampanya > Broadcast", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Segmentli broadcast gonderimi hazir" },
-          { "text": "Yanit takip sistemi", "service": "Backend", "page": "Unified Inbox > Kampanya Yanitlari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Kampanya yanitlari otomatik etiketlenir" }
+          {
+            "text": "Outbound broadcast motoru",
+            "service": "Outbound",
+            "page": "Kampanya > Broadcast",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Segmentli broadcast gonderimi hazir"
+          },
+          {
+            "text": "Yanit takip sistemi",
+            "service": "Backend",
+            "page": "Unified Inbox > Kampanya Yanitlari",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Kampanya yanitlari otomatik etiketlenir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Kampanya tetiklendi: Yeni donem erken kayit — hedef segment: Gecmis donem B1-B2 ogrencileri (127 kisi)." },
-        { "role": "bot", "content": "Merhaba Ahmet Bey! Gecen donem B1 Ingilizce kursunuzu basariyla tamamladiniz. Yeni donem B2 kurslari 15 Mart'ta basliyor.\n\nErken kayit firsati: %15 indirim (Son tarih: 1 Mart)\n\nDevam etmek ister misiniz? Detayli bilgi icin 'BILGI' yazin." },
-        { "role": "user", "content": "BILGI" },
-        { "role": "bot", "content": "B2 Ingilizce Kursu Detaylari:\n\nSure: 3 ay (Mart-Mayis)\nGunler: Sali-Persembe 19:00-20:30\nUcret: 8.500 TL (Erken kayit: 7.225 TL)\nSon Erken Kayit: 1 Mart\n\nKayit icin: [Kayit Linki]\nSorulariniz icin bu mesaja yanit verin." },
-        { "role": "user", "content": "Kayit olmak istiyorum, odemeyi nasil yapabilirim?" },
-        { "role": "system", "content": "Lead donusum: Erken kayit. Ogrenci: Ahmet Y. — B2 Ingilizce, erken kayit indirimli. Kayit surecine yonlendirildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Kampanya tetiklendi: Yeni donem erken kayit — hedef segment: Gecmis donem B1-B2 ogrencileri (127 kisi)."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Ahmet Bey! Gecen donem B1 Ingilizce kursunuzu basariyla tamamladiniz. Yeni donem B2 kurslari 15 Mart'ta basliyor.\n\nErken kayit firsati: %15 indirim (Son tarih: 1 Mart)\n\nDevam etmek ister misiniz? Detayli bilgi icin 'BILGI' yazin."
+        },
+        {
+          "role": "user",
+          "content": "BILGI"
+        },
+        {
+          "role": "bot",
+          "content": "B2 Ingilizce Kursu Detaylari:\n\nSure: 3 ay (Mart-Mayis)\nGunler: Sali-Persembe 19:00-20:30\nUcret: 8.500 TL (Erken kayit: 7.225 TL)\nSon Erken Kayit: 1 Mart\n\nKayit icin: [Kayit Linki]\nSorulariniz icin bu mesaja yanit verin."
+        },
+        {
+          "role": "user",
+          "content": "Kayit olmak istiyorum, odemeyi nasil yapabilirim?"
+        },
+        {
+          "role": "system",
+          "content": "Lead donusum: Erken kayit. Ogrenci: Ahmet Y. — B2 Ingilizce, erken kayit indirimli. Kayit surecine yonlendirildi."
+        }
+      ],
+      "aiPrompt": "\"Kampanya / Erken Kayit Indirimi\" senaryosu icin \"Erken Kayit Kampanya Akisi\" akisini olustur.\n\nAciklama: Gecmis donem ogrencilerine Outbound ile erken kayit teklifi gonderimi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Kampanya tetiklendi: Yeni donem erken kayit — hedef segment: Gecmis donem B1-B2 ogrencileri (127 kisi).\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba Ahmet Bey! Gecen donem B1 Ingilizce kursunuzu basariyla tamamladiniz. Yeni donem B2 kurslari 15 Mart'ta basliyor.\n\nErken kayit firsati: %15 indirim (Son tarih: 1 Mart)\n\nDevam etmek ister misiniz? Detayli bilgi icin 'BILGI' yazin.\"\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"BILGI\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"B2 Ingilizce Kursu Detaylari:\n\nSure: 3 ay (Mart-Mayis)\nGunler: Sali-Persembe 19:00-20:30\nUcret: 8.500 TL (Erken kayit: 7.225 TL)\nSon Erken Kayit: 1 Mart\n\nKayit icin: [Kayit Linki]\nSorulariniz icin bu mesaja yanit verin.\"\n   Degiskenler: {{kayit_linki}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kayit olmak istiyorum, odemeyi nasil yapabilirim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Lead donusum: Erken kayit. Ogrenci: Ahmet Y. — B2 Ingilizce, erken kayit indirimli. Kayit surecine yonlendirildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Outbound Engine broadcast + CRM segmentasyon ile calisir. Gecmis donem verileri uzerinden hedefli kampanya gonderimi yapilir.",
     "backend": [
-      { "title": "Campaign Segment Builder", "goal": "Hedef Kitle", "content": "Ogrenci veritabanindan seviye, donem ve ilgi alanina gore dinamik segment olusturur." },
-      { "title": "Outbound Broadcast Engine", "goal": "Toplu Gonderim", "content": "WhatsApp Business API ile segmentli broadcast gonderimi. Rate limiting ve delivery tracking dahil." }
+      {
+        "title": "Campaign Segment Builder",
+        "goal": "Hedef Kitle",
+        "content": "Ogrenci veritabanindan seviye, donem ve ilgi alanina gore dinamik segment olusturur."
+      },
+      {
+        "title": "Outbound Broadcast Engine",
+        "goal": "Toplu Gonderim",
+        "content": "WhatsApp Business API ile segmentli broadcast gonderimi. Rate limiting ve delivery tracking dahil."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Template API", "goal": "Kampanya Mesaji", "content": "Onaylanmis kampanya sablonu ile toplu mesaj gonderimi (WhatsApp Business politikasina uyumlu)." },
-      { "title": "CRM Segment API", "goal": "Ogrenci Segmenti", "content": "Gecmis donem ogrencilerini filtreleme ve dinamik segment olusturma." }
+      {
+        "title": "WhatsApp Template API",
+        "goal": "Kampanya Mesaji",
+        "content": "Onaylanmis kampanya sablonu ile toplu mesaj gonderimi (WhatsApp Business politikasina uyumlu)."
+      },
+      {
+        "title": "CRM Segment API",
+        "goal": "Ogrenci Segmenti",
+        "content": "Gecmis donem ogrencilerini filtreleme ve dinamik segment olusturma."
+      }
     ]
   },
   "impact": {
@@ -93,9 +203,29 @@
     "resultLabel": "Ek Kayit Geliri (Kampanya Basi)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "campaignReach", "label": "Kampanya Ulasim", "default": 150, "hint": "Kampanya gonderilen kisi sayisi", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 12, "suffix": "%", "hint": "Erken kayit yapan ogrenci orani", "editable": true },
-      { "key": "avgCoursePrice", "label": "Ort. Kurs Ucreti", "default": 7500, "suffix": "TL", "hint": "Ortalama kurs ucreti", "editable": true }
+      {
+        "key": "campaignReach",
+        "label": "Kampanya Ulasim",
+        "default": 150,
+        "hint": "Kampanya gonderilen kisi sayisi",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 12,
+        "suffix": "%",
+        "hint": "Erken kayit yapan ogrenci orani",
+        "editable": true
+      },
+      {
+        "key": "avgCoursePrice",
+        "label": "Ort. Kurs Ucreti",
+        "default": 7500,
+        "suffix": "TL",
+        "hint": "Ortalama kurs ucreti",
+        "editable": true
+      }
     ],
     "formula": "campaignReach * (conversionRate / 100) * avgCoursePrice",
     "formulaDisplay": null

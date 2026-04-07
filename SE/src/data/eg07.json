@@ -8,14 +8,32 @@
   "description": "Taksit secenekleri, odeme yontemleri ve vadeler hakkinda gelen sorulara AI aninda yanit verir. Odeme secenekleri ve online odeme linki otomatik sunulur.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Akademi)" },
-      { "label": "Sorun", "value": "Ogrenciler taksit, vade ve odeme yontemi soruyor — agent her seferinde fiyat tablosuna bakip cevap veriyor" },
-      { "label": "Deger", "value": "Aninda odeme plani + online odeme linki = hizli karar, odeme kolayligi" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Akademi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Ogrenciler taksit, vade ve odeme yontemi soruyor — agent her seferinde fiyat tablosuna bakip cevap veriyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda odeme plani + online odeme linki = hizli karar, odeme kolayligi"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI odeme ve taksit intent'ini algilar, Knowledge Base'den odeme seceneklerini ceker ve online odeme linki sunar.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Odeme Intent Tespiti",
         "goal": "Odeme sorusunu tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'taksit yapilir mi', 'nasil odeyebilirim', 'kredi karti kabul ediyor musunuz' gibi intent'leri tespit eder."
       },
@@ -32,8 +56,14 @@
         "title": "Odeme Secenekleri Sunumu",
         "goal": "Tum secenekleri listele",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Odeme)", "color": "amber" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Odeme)",
+            "color": "amber"
+          }
         ],
         "content": "Pesinat, taksit sayilari, kredi karti/havale/EFT secenekleri ve online odeme linki sunulur."
       },
@@ -41,8 +71,14 @@
         "title": "Online Odeme Yonlendirme",
         "goal": "Odeme linkini ilet",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Odeme Sayfasi)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Odeme Sayfasi)",
+            "color": "green"
+          }
         ],
         "content": "Secilen odeme plani icin online odeme sayfasi linki gonderilir."
       }
@@ -54,37 +90,105 @@
       "title": "Taksit ve Odeme Yontemi Sorgusu",
       "description": "Ogrenci taksit seceneklerini ve odeme yontemlerini soruyor.",
       "tags": [
-        { "text": "Otomatik", "color": "green" },
-        { "text": "Odeme Bilgisi", "color": "blue" }
+        {
+          "text": "Otomatik",
+          "color": "green"
+        },
+        {
+          "text": "Odeme Bilgisi",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Odeme plani bilgileri", "service": "Knowledge", "page": "Bilgi Bankasi > Odeme Planlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Taksit sayilari, faiz oranlari ve odeme yontemlerini tanimlayin" }
+          {
+            "text": "Odeme plani bilgileri",
+            "service": "Knowledge",
+            "page": "Bilgi Bankasi > Odeme Planlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Taksit sayilari, faiz oranlari ve odeme yontemlerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Odeme intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Odeme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Odeme ve taksit sorgulama intent'i varsayilan olarak tanimli" },
-          { "text": "Odeme plani sablonu", "service": "Backend", "page": "Sablonlar > Odeme Plani", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Taksit tablosu ve odeme linki sablonu hazir" }
+          {
+            "text": "Odeme intent algilama",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Odeme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Odeme ve taksit sorgulama intent'i varsayilan olarak tanimli"
+          },
+          {
+            "text": "Odeme plani sablonu",
+            "service": "Backend",
+            "page": "Sablonlar > Odeme Plani",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Taksit tablosu ve odeme linki sablonu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Ingilizce kursunun taksit secenekleri neler? Kredi karti ile odeyebilir miyim?" },
-        { "role": "ai", "content": "Intent: Odeme Plani / Taksit. Kurs: Ingilizce. Knowledge Base odeme bilgisi sorgusu." },
-        { "role": "bot", "content": "Ingilizce kursu odeme secenekleri:\n\nPesinat (Tek cekim):\n- Tutar: 10.500 TL (%5 pesinat indirimi)\n\nTaksit Secenekleri:\n- 2 Taksit: 2 x 5.500 TL = 11.000 TL\n- 3 Taksit: 3 x 3.800 TL = 11.400 TL\n- 6 Taksit: 6 x 1.950 TL = 11.700 TL\n\nOdeme Yontemleri:\n- Kredi Karti (Visa, Mastercard, Troy)\n- Banka Havale / EFT\n- Online Odeme: [Odeme Linki]\n\nHangi secenegi tercih edersiniz?" },
-        { "role": "user", "content": "3 taksit ile kredi karti olsun." },
-        { "role": "bot", "content": "3 taksit seceneginiz hazirlandi!\n\nOdeme Ozeti:\n- Kurs: Ingilizce Genel\n- Plan: 3 x 3.800 TL (aylik)\n- 1. Taksit: Kayit sirasinda\n- 2. Taksit: 1 ay sonra\n- 3. Taksit: 2 ay sonra\n\nKredi karti ile online odeme: [Odeme Sayfasi]\nSorunuz olursa bize yazin!" },
-        { "role": "system", "content": "Otomatik cozum: Taksit secenekleri + odeme yontemi + online odeme linki iletildi. Agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Ingilizce kursunun taksit secenekleri neler? Kredi karti ile odeyebilir miyim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Odeme Plani / Taksit. Kurs: Ingilizce. Knowledge Base odeme bilgisi sorgusu."
+        },
+        {
+          "role": "bot",
+          "content": "Ingilizce kursu odeme secenekleri:\n\nPesinat (Tek cekim):\n- Tutar: 10.500 TL (%5 pesinat indirimi)\n\nTaksit Secenekleri:\n- 2 Taksit: 2 x 5.500 TL = 11.000 TL\n- 3 Taksit: 3 x 3.800 TL = 11.400 TL\n- 6 Taksit: 6 x 1.950 TL = 11.700 TL\n\nOdeme Yontemleri:\n- Kredi Karti (Visa, Mastercard, Troy)\n- Banka Havale / EFT\n- Online Odeme: [Odeme Linki]\n\nHangi secenegi tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "3 taksit ile kredi karti olsun."
+        },
+        {
+          "role": "bot",
+          "content": "3 taksit seceneginiz hazirlandi!\n\nOdeme Ozeti:\n- Kurs: Ingilizce Genel\n- Plan: 3 x 3.800 TL (aylik)\n- 1. Taksit: Kayit sirasinda\n- 2. Taksit: 1 ay sonra\n- 3. Taksit: 2 ay sonra\n\nKredi karti ile online odeme: [Odeme Sayfasi]\nSorunuz olursa bize yazin!"
+        },
+        {
+          "role": "system",
+          "content": "Otomatik cozum: Taksit secenekleri + odeme yontemi + online odeme linki iletildi. Agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Odeme Plani / Taksit\" senaryosu icin \"Taksit ve Odeme Yontemi Sorgusu\" akisini olustur.\n\nAciklama: Ogrenci taksit seceneklerini ve odeme yontemlerini soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Ingilizce kursunun taksit secenekleri neler? Kredi karti ile odeyebilir miyim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Odeme Plani / Taksit. Kurs: Ingilizce. Knowledge Base odeme bilgisi sorgusu.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Ingilizce kursu odeme secenekleri:\n\nPesinat (Tek cekim):\n- Tutar: 10.500 TL (%5 pesinat indirimi)\n\nTaksit Secenekleri:\n- 2 Taksit: 2 x 5.500 TL = 11.000 TL\n- 3 Taksit: 3 x 3.800 TL = 11.400 TL\n- 6 Taksit: 6 x 1.950 TL = 11.700 TL\n\nOdeme Yontemleri:\n- Kredi Karti (Visa, Mastercard, Troy)\n- Banka Havale / EFT\n- Online Odeme: [Odeme Linki]\n\nHangi secenegi tercih edersiniz?\"\n   Degiskenler: {{odeme_linki}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"3 taksit ile kredi karti olsun.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"3 taksit seceneginiz hazirlandi!\n\nOdeme Ozeti:\n- Kurs: Ingilizce Genel\n- Plan: 3 x 3.800 TL (aylik)\n- 1. Taksit: Kayit sirasinda\n- 2. Taksit: 1 ay sonra\n- 3. Taksit: 2 ay sonra\n\nKredi karti ile online odeme: [Odeme Sayfasi]\nSorunuz olursa bize yazin!\"\n   Degiskenler: {{odeme_sayfasi}}\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Otomatik cozum: Taksit secenekleri + odeme yontemi + online odeme linki iletildi. Agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Odeme planlari ve taksit secenekleri Knowledge Base uzerinden yonetilir. Online odeme linki tenant bazli olusturulur.",
     "backend": [
-      { "title": "Payment Plan Service", "goal": "Odeme Plani Yonetimi", "content": "Taksit hesaplama, pesinat indirimi ve kampanya kombinasyonu. Tenant bazli farkli odeme planlari destekler." },
-      { "title": "Payment Link Generator", "goal": "Odeme Linki Olusturma", "content": "Secilen odeme plani icin kisisellestirilmis online odeme linki olusturur." }
+      {
+        "title": "Payment Plan Service",
+        "goal": "Odeme Plani Yonetimi",
+        "content": "Taksit hesaplama, pesinat indirimi ve kampanya kombinasyonu. Tenant bazli farkli odeme planlari destekler."
+      },
+      {
+        "title": "Payment Link Generator",
+        "goal": "Odeme Linki Olusturma",
+        "content": "Secilen odeme plani icin kisisellestirilmis online odeme linki olusturur."
+      }
     ],
     "apis": [
-      { "title": "Payment Options API", "goal": "Odeme Secenekleri", "content": "Kurs bazli odeme planlari, taksit sayilari ve tutar hesaplamasi doner." },
-      { "title": "Payment Gateway API", "goal": "Online Odeme", "content": "Kredi karti ve havale ile online odeme islemleri. 3D Secure destekli." }
+      {
+        "title": "Payment Options API",
+        "goal": "Odeme Secenekleri",
+        "content": "Kurs bazli odeme planlari, taksit sayilari ve tutar hesaplamasi doner."
+      },
+      {
+        "title": "Payment Gateway API",
+        "goal": "Online Odeme",
+        "content": "Kredi karti ve havale ile online odeme islemleri. 3D Secure destekli."
+      }
     ]
   },
   "impact": {
@@ -93,9 +197,28 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyPaymentQueries", "label": "Gunluk Odeme Sorusu", "default": 15, "hint": "Gunluk ortalama odeme sorgulama sayisi", "editable": true },
-      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 5, "hint": "Agent'in odeme bilgisi vermek icin harcadigi sure", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+      {
+        "key": "dailyPaymentQueries",
+        "label": "Gunluk Odeme Sorusu",
+        "default": 15,
+        "hint": "Gunluk ortalama odeme sorgulama sayisi",
+        "editable": true
+      },
+      {
+        "key": "minutesPerQuery",
+        "label": "Soru Basina Dakika",
+        "default": 5,
+        "hint": "Agent'in odeme bilgisi vermek icin harcadigi sure",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "dailyPaymentQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
     "formulaDisplay": null

@@ -8,15 +8,36 @@
   "description": "Bazi estetik islemler icin doktor degerlendirmesi gerekiyor. AI on degerlendirme yapar, hasta dosyasini doktora iletir, onay sonrasi randevu olusturur.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Cerrahi Islem Yapan)" },
-      { "label": "Sorun", "value": "Doktor onayi gereken lead'ler bekleme sirasinda soguyup kayboluyor" },
-      { "label": "Deger", "value": "AI on degerlendirme ile doktor zamani optimize edilir, lead bekleme suresi kisalir" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Cerrahi Islem Yapan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Doktor onayi gereken lead'ler bekleme sirasinda soguyup kayboluyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI on degerlendirme ile doktor zamani optimize edilir, lead bekleme suresi kisalir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI on degerlendirme sorularini sorar, hasta dosyasini hazirlar, C2 ile doktora yonlendirir ve onay sonrasi randevu olusturur.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "On Degerlendirme",
         "goal": "Hasta bilgilerini topla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Saglik)", "color": "rose" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Saglik)",
+            "color": "rose"
+          }
         ],
         "content": "AI gerekli saglik bilgilerini ve fotograflari toplayarak doktor dosyasi hazirlar."
       },
@@ -33,8 +60,14 @@
         "title": "Doktor Onay + Randevu",
         "goal": "Onayla ve randevuyu kur",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Doktor)", "color": "blue" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Doktor)",
+            "color": "blue"
+          }
         ],
         "content": "Dosya doktora iletilir, onay gelince hastaya randevu teklif edilir."
       }
@@ -46,41 +79,132 @@
       "title": "Burun Estetigi — Doktor Degerlendirmesi",
       "description": "Hasta burun estetigi istiyor, doktor on degerlendirmesi gerekli.",
       "tags": [
-        { "text": "Doktor Onayi", "color": "amber" },
-        { "text": "Cerrahi", "color": "red" }
+        {
+          "text": "Doktor Onayi",
+          "color": "amber"
+        },
+        {
+          "text": "Cerrahi",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "On degerlendirme soru formu", "service": "Knowledge", "page": "Dokuman Bankasi > Degerlendirme Formu", "status": "setup", "priority": "required", "effort": "medium", "capability": "C8", "hint": "Cerrahi islem bazli on degerlendirme sorularini ve gerekli fotograf acilerini tanimlayin" },
-          { "text": "Doktor bildirim tercihleri", "service": "Backend", "page": "Ekip > Doktor Bildirim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Doktorun bildirim kanalini ve musait saatlerini belirleyin" }
+          {
+            "text": "On degerlendirme soru formu",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Degerlendirme Formu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C8",
+            "hint": "Cerrahi islem bazli on degerlendirme sorularini ve gerekli fotograf acilerini tanimlayin"
+          },
+          {
+            "text": "Doktor bildirim tercihleri",
+            "service": "Backend",
+            "page": "Ekip > Doktor Bildirim",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Doktorun bildirim kanalini ve musait saatlerini belirleyin"
+          }
         ],
         "provider": [
-          { "text": "AI on degerlendirme motoru", "service": "AgentAI", "page": "Degerlendirme > On Form", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Islem bazli on degerlendirme soru akisi hazir" },
-          { "text": "Doktor dosya hazirlama", "service": "Backend", "page": "Dosya > Hasta Ozet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Toplanan bilgilerden doktor icin ozet dosya olusturma hazir" },
-          { "text": "Onay sonrasi otomasyon", "service": "Automation", "page": "Is Akislari > Doktor Onay", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Doktor onayi gelince hastaya otomatik randevu teklifi hazir" }
+          {
+            "text": "AI on degerlendirme motoru",
+            "service": "AgentAI",
+            "page": "Degerlendirme > On Form",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Islem bazli on degerlendirme soru akisi hazir"
+          },
+          {
+            "text": "Doktor dosya hazirlama",
+            "service": "Backend",
+            "page": "Dosya > Hasta Ozet",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Toplanan bilgilerden doktor icin ozet dosya olusturma hazir"
+          },
+          {
+            "text": "Onay sonrasi otomasyon",
+            "service": "Automation",
+            "page": "Is Akislari > Doktor Onay",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Doktor onayi gelince hastaya otomatik randevu teklifi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Burun estetigi yaptirmak istiyorum. Neler yapmam gerekiyor?" },
-        { "role": "ai", "content": "Intent: Cerrahi Islem Talebi — Rinoplasti. Doktor onayi gerekli. On degerlendirme baslatiliyor." },
-        { "role": "bot", "content": "Burun estetigi icin once doktorumuzun degerlendirmesi gerekiyor. Size birkaC soru sorayim:\n\n1\ufe0f\u20e3 Daha once burun ameliyati oldinuz mu?\n2\ufe0f\u20e3 Nefes alma sorununuz var mi?\n3\ufe0f\u20e3 Herhangi bir alerjiniz veya kronik hastaligiz var mi?" },
-        { "role": "user", "content": "Hayir ilk kez olacak, nefes sorunu yok, alerjim yok." },
-        { "role": "bot", "content": "Tesekkurler! Son olarak degerlendirme icin lutfen:\n\n\ud83d\udcf8 3 fotograf gonderin:\n\u2022 Ondan (duz baki)\n\u2022 Sag profil\n\u2022 Sol profil\n\nDoktorumuz 24 saat icinde degerlendirmesini yapacak." },
-        { "role": "user", "content": "[3 fotograf gonderdi]" },
-        { "role": "ai", "content": "On degerlendirme tamamlandi. Hasta dosyasi hazirlandi. Prof. Dr. Ahmet'e iletiliyor." },
-        { "role": "system", "content": "Doktor onayi alindi. Hasta bilgilendirilecek ve konsultasyon randevusu teklif edilecek." },
-        { "role": "bot", "content": "Harika haber! Prof. Dr. Ahmet dosyanizi inceledi ve konsultasyona uygun gordu. \u2705\n\nKonsultasyon randevusu icin musait gunler:\n\n\ud83d\udcc5 Sali 14:00 — Prof. Dr. Ahmet\n\ud83d\udcc5 Persembe 16:00 — Prof. Dr. Ahmet\n\nHangisi size uygun?" }
-      ]
+        {
+          "role": "user",
+          "content": "Burun estetigi yaptirmak istiyorum. Neler yapmam gerekiyor?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Cerrahi Islem Talebi — Rinoplasti. Doktor onayi gerekli. On degerlendirme baslatiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Burun estetigi icin once doktorumuzun degerlendirmesi gerekiyor. Size birkaC soru sorayim:\n\n1️⃣ Daha once burun ameliyati oldinuz mu?\n2️⃣ Nefes alma sorununuz var mi?\n3️⃣ Herhangi bir alerjiniz veya kronik hastaligiz var mi?"
+        },
+        {
+          "role": "user",
+          "content": "Hayir ilk kez olacak, nefes sorunu yok, alerjim yok."
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler! Son olarak degerlendirme icin lutfen:\n\n📸 3 fotograf gonderin:\n• Ondan (duz baki)\n• Sag profil\n• Sol profil\n\nDoktorumuz 24 saat icinde degerlendirmesini yapacak."
+        },
+        {
+          "role": "user",
+          "content": "[3 fotograf gonderdi]"
+        },
+        {
+          "role": "ai",
+          "content": "On degerlendirme tamamlandi. Hasta dosyasi hazirlandi. Prof. Dr. Ahmet'e iletiliyor."
+        },
+        {
+          "role": "system",
+          "content": "Doktor onayi alindi. Hasta bilgilendirilecek ve konsultasyon randevusu teklif edilecek."
+        },
+        {
+          "role": "bot",
+          "content": "Harika haber! Prof. Dr. Ahmet dosyanizi inceledi ve konsultasyona uygun gordu. ✅\n\nKonsultasyon randevusu icin musait gunler:\n\n📅 Sali 14:00 — Prof. Dr. Ahmet\n📅 Persembe 16:00 — Prof. Dr. Ahmet\n\nHangisi size uygun?"
+        }
+      ],
+      "aiPrompt": "\"Doktor Onayi Gereken Lead'ler\" senaryosu icin \"Burun Estetigi — Doktor Degerlendirmesi\" akisini olustur.\n\nAciklama: Hasta burun estetigi istiyor, doktor on degerlendirmesi gerekli.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Burun estetigi yaptirmak istiyorum. Neler yapmam gerekiyor?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Cerrahi Islem Talebi — Rinoplasti. Doktor onayi gerekli. On degerlendirme baslatiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Burun estetigi icin once doktorumuzun degerlendirmesi gerekiyor. Size birkaC soru sorayim:\n\n1️⃣ Daha once burun ameliyati oldinuz mu?\n2️⃣ Nefes alma sorununuz var mi?\n3️⃣ Herhangi bir alerjiniz veya kronik hastaligiz var mi?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Hayir ilk kez olacak, nefes sorunu yok, alerjim yok.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Tesekkurler! Son olarak degerlendirme icin lutfen:\n\n📸 3 fotograf gonderin:\n• Ondan (duz baki)\n• Sag profil\n• Sol profil\n\nDoktorumuz 24 saat icinde degerlendirmesini yapacak.\"\n\n7. **utility_set_variable** — Musteri medya yuklemesini kaydet\n   variable_name: \"customer_media\"\n   Not: Onceki message_text'in yanit beklemesi gerekir\n\n8. **ai_intent** — Niyet tespiti\n   Analiz: On degerlendirme tamamlandi. Hasta dosyasi hazirlandi. Prof. Dr. Ahmet'e iletiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n9. **utility_set_variable** — Durum guncelle\n   Deger: Doktor onayi alindi. Hasta bilgilendirilecek ve konsultasyon randevusu teklif edilecek.\n\n10. **message_menu** — Secenekli mesaj\n   Mesaj: \"Harika haber! Prof. Dr. Ahmet dosyanizi inceledi ve konsultasyona uygun gordu. ✅\n\nKonsultasyon randevusu icin musait gunler:\n\n📅 Sali 14:00 — Prof. Dr. Ahmet\n📅 Persembe 16:00 — Prof. Dr. Ahmet\n\nHangisi size uygun?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI on degerlendirme + doktor routing + onay otomasyonu birlesimiyle calisir.",
     "backend": [
-      { "title": "Pre-Assessment Engine", "goal": "On Degerlendirme", "content": "Islem tipine gore on degerlendirme sorularini yonetir ve hasta dosyasi olusturur." },
-      { "title": "Doctor Queue", "goal": "Doktor Sirasi", "content": "Doktor onay kuyrugunu yonetir, bildirim gonderir ve onay takibi yapar." }
+      {
+        "title": "Pre-Assessment Engine",
+        "goal": "On Degerlendirme",
+        "content": "Islem tipine gore on degerlendirme sorularini yonetir ve hasta dosyasi olusturur."
+      },
+      {
+        "title": "Doctor Queue",
+        "goal": "Doktor Sirasi",
+        "content": "Doktor onay kuyrugunu yonetir, bildirim gonderir ve onay takibi yapar."
+      }
     ],
     "apis": [
-      { "title": "Assessment API", "goal": "Degerlendirme", "content": "On degerlendirme form yonetimi, fotograf toplama ve doktor dosya hazirlama." }
+      {
+        "title": "Assessment API",
+        "goal": "Degerlendirme",
+        "content": "On degerlendirme form yonetimi, fotograf toplama ve doktor dosya hazirlama."
+      }
     ]
   },
   "impact": {
@@ -89,9 +213,29 @@
     "resultLabel": "Cerrahi Randevu Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyDoctorLeads", "label": "Aylik Doktor Onayi Gereken", "default": 15, "hint": "Cerrahi islem talebi ile gelen lead", "editable": true },
-      { "key": "approvalRate", "label": "Onay Orani", "default": 60, "prefix": "%", "hint": "Doktor tarafindan uygun gorulen lead", "editable": true },
-      { "key": "avgSurgeryValue", "label": "Ort. Cerrahi Degeri", "default": 50000, "suffix": "TL", "hint": "Ortalama cerrahi islem tutari", "editable": true }
+      {
+        "key": "monthlyDoctorLeads",
+        "label": "Aylik Doktor Onayi Gereken",
+        "default": 15,
+        "hint": "Cerrahi islem talebi ile gelen lead",
+        "editable": true
+      },
+      {
+        "key": "approvalRate",
+        "label": "Onay Orani",
+        "default": 60,
+        "prefix": "%",
+        "hint": "Doktor tarafindan uygun gorulen lead",
+        "editable": true
+      },
+      {
+        "key": "avgSurgeryValue",
+        "label": "Ort. Cerrahi Degeri",
+        "default": 50000,
+        "suffix": "TL",
+        "hint": "Ortalama cerrahi islem tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlyDoctorLeads * (approvalRate / 100) * avgSurgeryValue",
     "formulaDisplay": null

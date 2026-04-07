@@ -8,15 +8,36 @@
   "description": "Randevu icin kapora odemek isteyen hastaya AI ile odeme linki olusturan, kapora alindiktan sonra randevuyu kesinlestiren sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Odemeli Randevu Kullanan)" },
-      { "label": "Sorun", "value": "Kapora alinmadan alinan randevularda no-show orani yuksek" },
-      { "label": "Deger", "value": "Odeme linki ile kapora alinir, no-show azalir, gelir korunur" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Odemeli Randevu Kullanan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kapora alinmadan alinan randevularda no-show orani yuksek"
+      },
+      {
+        "label": "Deger",
+        "value": "Odeme linki ile kapora alinir, no-show azalir, gelir korunur"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Revenue Agent (C10)", "color": "green" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Revenue Agent (C10)",
+        "color": "green"
+      }
     ],
     "servicesNote": "AI kapora intent'ini tespit eder, odeme linki olusturur ve odeme sonrasi randevuyu kesinlestirir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Odeme Linki",
         "goal": "Kapora al",
         "badges": [
-          { "text": "Sistem (Odeme)", "color": "purple" },
-          { "text": "Tenant (Fiyat)", "color": "green" }
+          {
+            "text": "Sistem (Odeme)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Fiyat)",
+            "color": "green"
+          }
         ],
         "content": "AI kapora miktarini belirler ve odeme linki olusturur."
       },
@@ -33,8 +60,14 @@
         "title": "Randevu Kesinlestirme",
         "goal": "Randevuyu onayla",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Odeme alindiktan sonra randevu otomatik kesinlestirilir ve onay gonderilir."
       }
@@ -46,35 +79,96 @@
       "title": "Kapora Odeme ile Randevu",
       "description": "Hasta kapora odeyerek randevusunu kesinlestiriyor.",
       "tags": [
-        { "text": "Kapora", "color": "green" },
-        { "text": "Randevu", "color": "blue" }
+        {
+          "text": "Kapora",
+          "color": "green"
+        },
+        {
+          "text": "Randevu",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Online odeme entegrasyonu", "service": "Backend", "page": "Odeme > Online Odeme", "status": "setup", "priority": "required", "effort": "medium", "capability": "C10", "hint": "Odeme saglayici entegrasyonunu (iyzico/PayTR) tanimlayin" }
+          {
+            "text": "Online odeme entegrasyonu",
+            "service": "Backend",
+            "page": "Odeme > Online Odeme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C10",
+            "hint": "Odeme saglayici entegrasyonunu (iyzico/PayTR) tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Odeme linki olusturma", "service": "Backend", "page": "Odeme > Link Olustur", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "WhatsApp uzerinden odeme linki olusturma hazir" },
-          { "text": "Odeme sonrasi randevu kesinlestirme", "service": "Automation", "page": "Is Akislari > Odeme Onay", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Odeme alindiktan sonra randevu otomatik kesinlestirme hazir" }
+          {
+            "text": "Odeme linki olusturma",
+            "service": "Backend",
+            "page": "Odeme > Link Olustur",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "WhatsApp uzerinden odeme linki olusturma hazir"
+          },
+          {
+            "text": "Odeme sonrasi randevu kesinlestirme",
+            "service": "Automation",
+            "page": "Is Akislari > Odeme Onay",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C9",
+            "hint": "Odeme alindiktan sonra randevu otomatik kesinlestirme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Randevu icin kapora odeyebilir miyim?" },
-        { "role": "ai", "content": "Intent: Kapora Odeme. Randevu: Implant konsultasyonu. Kapora: 500 TL." },
-        { "role": "bot", "content": "Tabii! Randevunuzu kapora ile kesinlestirelim:\n\n📅 Cuma 14:00 — Implant Konsultasyonu\n💰 Kapora: 500 TL\n\nOdeme linki:\n🔗 [Guvenli Odeme Linki]\n\nOdeme sonrasi randevunuz otomatik kesinlesecek!" },
-        { "role": "system", "content": "Odeme alindi: 500 TL. Randevu kesinlestirildi. Onay mesaji gonderildi." },
-        { "role": "bot", "content": "Odemeniz alindi! Randevunuz kesinlesti ✅\n\n📅 Cuma 14:00\n👨‍⚕️ Dr. Mehmet — Implant Konsultasyonu\n💰 Kapora: 500 TL (tedaviden dusulecek)\n\nGorulmek uzere!" }
-      ]
+        {
+          "role": "user",
+          "content": "Randevu icin kapora odeyebilir miyim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kapora Odeme. Randevu: Implant konsultasyonu. Kapora: 500 TL."
+        },
+        {
+          "role": "bot",
+          "content": "Tabii! Randevunuzu kapora ile kesinlestirelim:\n\n📅 Cuma 14:00 — Implant Konsultasyonu\n💰 Kapora: 500 TL\n\nOdeme linki:\n🔗 [Guvenli Odeme Linki]\n\nOdeme sonrasi randevunuz otomatik kesinlesecek!"
+        },
+        {
+          "role": "system",
+          "content": "Odeme alindi: 500 TL. Randevu kesinlestirildi. Onay mesaji gonderildi."
+        },
+        {
+          "role": "bot",
+          "content": "Odemeniz alindi! Randevunuz kesinlesti ✅\n\n📅 Cuma 14:00\n👨‍⚕️ Dr. Mehmet — Implant Konsultasyonu\n💰 Kapora: 500 TL (tedaviden dusulecek)\n\nGorulmek uzere!"
+        }
+      ],
+      "aiPrompt": "\"Odeme/Kapora: Rezervasyon Linki\" senaryosu icin \"Kapora Odeme ile Randevu\" akisini olustur.\n\nAciklama: Hasta kapora odeyerek randevusunu kesinlestiriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Randevu icin kapora odeyebilir miyim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kapora Odeme. Randevu: Implant konsultasyonu. Kapora: 500 TL.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tabii! Randevunuzu kapora ile kesinlestirelim:\n\n📅 Cuma 14:00 — Implant Konsultasyonu\n💰 Kapora: 500 TL\n\nOdeme linki:\n🔗 [Guvenli Odeme Linki]\n\nOdeme sonrasi randevunuz otomatik kesinlesecek!\"\n   Degiskenler: {{guvenli_odeme_linki}}\n\n5. **utility_set_variable** — Durum guncelle\n   Deger: Odeme alindi: 500 TL. Randevu kesinlestirildi. Onay mesaji gonderildi.\n\n6. **message_text** — Mesaj gonder\n   text: \"Odemeniz alindi! Randevunuz kesinlesti ✅\n\n📅 Cuma 14:00\n👨‍⚕️ Dr. Mehmet — Implant Konsultasyonu\n💰 Kapora: 500 TL (tedaviden dusulecek)\n\nGorulmek uzere!\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Online Odeme + Randevu Otomasyonu birlesimiyle calisir. Kapora ile randevu kesinlestirme.",
     "backend": [
-      { "title": "Payment Link Generator", "goal": "Odeme Linki", "content": "Tedavi tipine gore kapora miktarini belirler ve guvenli odeme linki olusturur." },
-      { "title": "Booking Confirmer", "goal": "Randevu Kesinlestirme", "content": "Odeme callback'i alindiktan sonra randevuyu otomatik kesinlestirir." }
+      {
+        "title": "Payment Link Generator",
+        "goal": "Odeme Linki",
+        "content": "Tedavi tipine gore kapora miktarini belirler ve guvenli odeme linki olusturur."
+      },
+      {
+        "title": "Booking Confirmer",
+        "goal": "Randevu Kesinlestirme",
+        "content": "Odeme callback'i alindiktan sonra randevuyu otomatik kesinlestirir."
+      }
     ],
     "apis": [
-      { "title": "Payment Gateway API", "goal": "Odeme Islemi", "content": "iyzico/PayTR uzerinden odeme linki olusturma ve callback yonetimi." }
+      {
+        "title": "Payment Gateway API",
+        "goal": "Odeme Islemi",
+        "content": "iyzico/PayTR uzerinden odeme linki olusturma ve callback yonetimi."
+      }
     ]
   },
   "impact": {
@@ -83,9 +177,29 @@
     "resultLabel": "Korunan Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyAppointments", "label": "Aylik Randevu", "default": 40, "hint": "Kapora ile alinan randevu", "editable": true },
-      { "key": "noShowReduction", "label": "No-Show Azalma", "default": 30, "prefix": "%", "hint": "Kapora ile azalan no-show orani", "editable": true },
-      { "key": "avgAppointmentValue", "label": "Randevu Degeri", "default": 1500, "suffix": "TL", "hint": "Ortalama randevu geliri", "editable": true }
+      {
+        "key": "monthlyAppointments",
+        "label": "Aylik Randevu",
+        "default": 40,
+        "hint": "Kapora ile alinan randevu",
+        "editable": true
+      },
+      {
+        "key": "noShowReduction",
+        "label": "No-Show Azalma",
+        "default": 30,
+        "prefix": "%",
+        "hint": "Kapora ile azalan no-show orani",
+        "editable": true
+      },
+      {
+        "key": "avgAppointmentValue",
+        "label": "Randevu Degeri",
+        "default": 1500,
+        "suffix": "TL",
+        "hint": "Ortalama randevu geliri",
+        "editable": true
+      }
     ],
     "formula": "monthlyAppointments * (noShowReduction / 100) * avgAppointmentValue",
     "formulaDisplay": null

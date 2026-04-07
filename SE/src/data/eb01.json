@@ -8,15 +8,36 @@
   "description": "Stokta olmayan urun icin haber isteyen musteriyi kaydedip, stok girisi oldugunda Outbound Engine ile otomatik WhatsApp bildirimi gonderen sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
-      { "label": "Sorun", "value": "Musteri stokta yok diyor ama haber istediginde kayit tutulmuyor — lead kaybi" },
-      { "label": "Deger", "value": "Stok girisi aninda otomatik bildirim ile kaybedilecek satis kurtarilir" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Tum Platformlar)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteri stokta yok diyor ama haber istediginde kayit tutulmuyor — lead kaybi"
+      },
+      {
+        "label": "Deger",
+        "value": "Stok girisi aninda otomatik bildirim ile kaybedilecek satis kurtarilir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "E-com Integration (C11)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "E-com Integration (C11)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI stok talebi intent'ini yakalar, musteriyi bekleme listesine ekler. Stok girisi webhook'u Outbound mesaji tetikler.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Talep Kaydi",
         "goal": "Bekleme listesine ekle",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Stok)", "color": "amber" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Stok)",
+            "color": "amber"
+          }
         ],
         "content": "AI back-in-stock intent'ini tespit eder, musteriyi urun bazli bekleme listesine kaydeder."
       },
@@ -33,8 +60,14 @@
         "title": "Stok Bildirimi",
         "goal": "Otomatik mesaj gonder",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Kampanya)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kampanya)",
+            "color": "green"
+          }
         ],
         "content": "Stok girisi API webhook'u ile Outbound Engine tetiklenir ve bekleyen musterilere bildirim gonderilir."
       }
@@ -46,58 +79,157 @@
       "title": "Stok Yok — Bekleme Listesi",
       "description": "Musteri stokta olmayan urun icin bildirim istiyor.",
       "tags": [
-        { "text": "Stok Yok", "color": "amber" },
-        { "text": "Bekleme", "color": "blue" }
+        {
+          "text": "Stok Yok",
+          "color": "amber"
+        },
+        {
+          "text": "Bekleme",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Stok webhook entegrasyonu", "service": "Integrations", "page": "E-ticaret > Stok Webhook", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Stok girisi oldugunda tetiklenecek webhook tanimlayin" }
+          {
+            "text": "Stok webhook entegrasyonu",
+            "service": "Integrations",
+            "page": "E-ticaret > Stok Webhook",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C11",
+            "hint": "Stok girisi oldugunda tetiklenecek webhook tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Back-in-stock intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Stok Bildirim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Stok bildirimi talebi intent'i hazir" },
-          { "text": "Outbound bildirim motoru", "service": "Outbound", "page": "Kampanya > Stok Bildirimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Stok geldiginde otomatik bildirim gonderimi hazir" }
+          {
+            "text": "Back-in-stock intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Stok Bildirim",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Stok bildirimi talebi intent'i hazir"
+          },
+          {
+            "text": "Outbound bildirim motoru",
+            "service": "Outbound",
+            "page": "Kampanya > Stok Bildirimi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Stok geldiginde otomatik bildirim gonderimi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Bu urun gelince haber verin." },
-        { "role": "ai", "content": "Intent: Back-in-Stock Talebi. Urun: SKU-4455 (Kirmizi Elbise, M beden). Stok durumu: YOK." },
-        { "role": "bot", "content": "Tabii! Sizi bekleme listesine ekledim:\n\n👗 Kirmizi Elbise (M beden)\n🔔 Stok geldiginde WhatsApp'tan haber verecegiz!\n\nBaska begendiginiz bir urun var mi?" },
-        { "role": "system", "content": "Musteri bekleme listesine eklendi. Stok webhook dinlemede." }
-      ]
+        {
+          "role": "user",
+          "content": "Bu urun gelince haber verin."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Back-in-Stock Talebi. Urun: SKU-4455 (Kirmizi Elbise, M beden). Stok durumu: YOK."
+        },
+        {
+          "role": "bot",
+          "content": "Tabii! Sizi bekleme listesine ekledim:\n\n👗 Kirmizi Elbise (M beden)\n🔔 Stok geldiginde WhatsApp'tan haber verecegiz!\n\nBaska begendiginiz bir urun var mi?"
+        },
+        {
+          "role": "system",
+          "content": "Musteri bekleme listesine eklendi. Stok webhook dinlemede."
+        }
+      ],
+      "aiPrompt": "\"Stok Bildirim (Back-in-Stock)\" senaryosu icin \"Stok Yok — Bekleme Listesi\" akisini olustur.\n\nAciklama: Musteri stokta olmayan urun icin bildirim istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Bu urun gelince haber verin.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Back-in-Stock Talebi. Urun: SKU-4455 (Kirmizi Elbise, M beden). Stok durumu: YOK.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tabii! Sizi bekleme listesine ekledim:\n\n👗 Kirmizi Elbise (M beden)\n🔔 Stok geldiginde WhatsApp'tan haber verecegiz!\n\nBaska begendiginiz bir urun var mi?\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Musteri bekleme listesine eklendi. Stok webhook dinlemede.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Stok Geldi — Otomatik Bildirim",
       "description": "Stok girisi oldu, bekleyen musterilere otomatik mesaj gonderiliyor.",
       "tags": [
-        { "text": "Stok Geldi", "color": "green" },
-        { "text": "Outbound", "color": "purple" }
+        {
+          "text": "Stok Geldi",
+          "color": "green"
+        },
+        {
+          "text": "Outbound",
+          "color": "purple"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "WhatsApp template mesaji", "service": "Backend", "page": "Mesaj Sablonlari > Stok Bildirimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli stok bildirimi template'i olusturun" }
+          {
+            "text": "WhatsApp template mesaji",
+            "service": "Backend",
+            "page": "Mesaj Sablonlari > Stok Bildirimi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Meta onayli stok bildirimi template'i olusturun"
+          }
         ],
         "provider": [
-          { "text": "Otomatik outbound tetikleme", "service": "Outbound", "page": "Trigger > Stok Girisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Stok webhook'u Outbound mesajini otomatik tetikler" }
+          {
+            "text": "Otomatik outbound tetikleme",
+            "service": "Outbound",
+            "page": "Trigger > Stok Girisi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Stok webhook'u Outbound mesajini otomatik tetikler"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Stok girisi algilandi: SKU-4455 (Kirmizi Elbise, M beden) — 25 adet. Bekleme listesi: 8 musteri." },
-        { "role": "bot", "content": "[Template Mesaj]\nMerhaba [Ad]! Beklediginiz urun stoklara girdi! 🎉\n\n👗 Kirmizi Elbise (M beden)\n💰 Fiyat: 899 TL\n🛒 Satin al: [link]\n\nStok sinirli, hemen kapatin!" },
-        { "role": "user", "content": "Harika, hemen siparis veriyorum!" },
-        { "role": "system", "content": "8 musteriden 5'i mesaji acti, 3'u satin alma yatti. Donusum: %37.5" }
-      ]
+        {
+          "role": "system",
+          "content": "Stok girisi algilandi: SKU-4455 (Kirmizi Elbise, M beden) — 25 adet. Bekleme listesi: 8 musteri."
+        },
+        {
+          "role": "bot",
+          "content": "[Template Mesaj]\nMerhaba [Ad]! Beklediginiz urun stoklara girdi! 🎉\n\n👗 Kirmizi Elbise (M beden)\n💰 Fiyat: 899 TL\n🛒 Satin al: [link]\n\nStok sinirli, hemen kapatin!"
+        },
+        {
+          "role": "user",
+          "content": "Harika, hemen siparis veriyorum!"
+        },
+        {
+          "role": "system",
+          "content": "8 musteriden 5'i mesaji acti, 3'u satin alma yatti. Donusum: %37.5"
+        }
+      ],
+      "aiPrompt": "\"Stok Bildirim (Back-in-Stock)\" senaryosu icin \"Stok Geldi — Otomatik Bildirim\" akisini olustur.\n\nAciklama: Stok girisi oldu, bekleyen musterilere otomatik mesaj gonderiliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Stok girisi algilandi: SKU-4455 (Kirmizi Elbise, M beden) — 25 adet. Bekleme listesi: 8 musteri.\n\n2. **message_text** — Mesaj gonder\n   text: \"[Template Mesaj]\nMerhaba [Ad]! Beklediginiz urun stoklara girdi! 🎉\n\n👗 Kirmizi Elbise (M beden)\n💰 Fiyat: 899 TL\n🛒 Satin al: [link]\n\nStok sinirli, hemen kapatin!\"\n   Degiskenler: {{template_mesaj}}, {{ad}}, {{link}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Harika, hemen siparis veriyorum!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **utility_note** — Akis sonuc notu\n   text: \"8 musteriden 5'i mesaji acti, 3'u satin alma yatti. Donusum: %37.5\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Stok Webhook + Outbound Engine birlesimiyle calisir. Urun bazli bekleme listesi ve otomatik bildirim.",
     "backend": [
-      { "title": "Waitlist Manager", "goal": "Bekleme Listesi", "content": "Urun bazli musteri bekleme listesi yonetimi. SKU eslestirme ve musteri kaydi." },
-      { "title": "Stock Webhook Handler", "goal": "Stok Tetikleme", "content": "E-ticaret platformundan stok girisi webhook'unu dinler, Outbound Engine'i tetikler." }
+      {
+        "title": "Waitlist Manager",
+        "goal": "Bekleme Listesi",
+        "content": "Urun bazli musteri bekleme listesi yonetimi. SKU eslestirme ve musteri kaydi."
+      },
+      {
+        "title": "Stock Webhook Handler",
+        "goal": "Stok Tetikleme",
+        "content": "E-ticaret platformundan stok girisi webhook'unu dinler, Outbound Engine'i tetikler."
+      }
     ],
     "apis": [
-      { "title": "E-ticaret Stok API", "goal": "Stok Kontrolu", "content": "Gercek zamanli stok durumu sorgulama ve webhook entegrasyonu." },
-      { "title": "WhatsApp Business API", "goal": "Template Gonderim", "content": "Stok bildirimi template mesaji toplu gonderimi." }
+      {
+        "title": "E-ticaret Stok API",
+        "goal": "Stok Kontrolu",
+        "content": "Gercek zamanli stok durumu sorgulama ve webhook entegrasyonu."
+      },
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Template Gonderim",
+        "content": "Stok bildirimi template mesaji toplu gonderimi."
+      }
     ]
   },
   "impact": {
@@ -106,9 +238,29 @@
     "resultLabel": "Kurtarilan Satis (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyWaitlistCustomers", "label": "Aylik Bekleme Kaydi", "default": 40, "hint": "Stok bildirimi isteyen musteri", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 30, "prefix": "%", "hint": "Bildirimden satin alma", "editable": true },
-      { "key": "avgOrderValue", "label": "Ort. Siparis Degeri", "default": 500, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+      {
+        "key": "monthlyWaitlistCustomers",
+        "label": "Aylik Bekleme Kaydi",
+        "default": 40,
+        "hint": "Stok bildirimi isteyen musteri",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 30,
+        "prefix": "%",
+        "hint": "Bildirimden satin alma",
+        "editable": true
+      },
+      {
+        "key": "avgOrderValue",
+        "label": "Ort. Siparis Degeri",
+        "default": 500,
+        "suffix": "TL",
+        "hint": "Ortalama siparis tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlyWaitlistCustomers * (conversionRate / 100) * avgOrderValue",
     "formulaDisplay": null

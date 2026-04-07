@@ -8,15 +8,36 @@
   "description": "Musteri sac rengi, kesim sekli veya manikur sonucundan memnun degil ve sikayette bulunuyor. AI sikayet intent'ini tespit eder, empati template'i ile yaklasir ve duzeltme randevusu olusturur.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
-      { "label": "Sorun", "value": "Musteri sonuctan memnun degil — hizli ve empatik mudahale yapilmazsa musteri kaybediliyor" },
-      { "label": "Deger", "value": "AI sikayet tespiti + empati + hizli duzeltme randevusu = musteri kurtarma" }
+      {
+        "label": "Sektor",
+        "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteri sonuctan memnun degil — hizli ve empatik mudahale yapilmazsa musteri kaybediliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI sikayet tespiti + empati + hizli duzeltme randevusu = musteri kurtarma"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "AI Intent & Slot (C2)", "color": "amber" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Intent & Slot (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI sikayet/memnuniyetsizlik intent'ini tespit eder. Empati template'i ile yaklasir, duzeltme randevusu onerir ve gerekirse yonetime eskale eder.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Sikayet Tespiti",
         "goal": "Memnuniyetsizligi tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'begenmedim', 'hatali olmus', 'farkli istedigim' gibi ifadelerden sikayet intent'ini tespit eder."
       },
@@ -33,8 +60,14 @@
         "title": "Empati ve Cozum",
         "goal": "Musteriye yaklasim",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Politika)", "color": "amber" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Politika)",
+            "color": "amber"
+          }
         ],
         "content": "Empati iceren template ile yaklasim yapilir, duzeltme randevusu veya salon yoneticisi gorusmesi onerilir."
       },
@@ -42,8 +75,14 @@
         "title": "Duzeltme Randevusu",
         "goal": "Sorunu coz",
         "badges": [
-          { "text": "Sistem (Randevu)", "color": "purple" },
-          { "text": "Tenant (Stilist)", "color": "green" }
+          {
+            "text": "Sistem (Randevu)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Stilist)",
+            "color": "green"
+          }
         ],
         "content": "Musteri kabul ederse oncelikli duzeltme randevusu olusturulur. Ayni veya farkli stilist secenegi sunulur."
       }
@@ -55,63 +94,183 @@
       "title": "Sac Rengi Sikayeti",
       "description": "Musteri sac boyama sonucu beklediginden farkli ciktigini bildiriyor.",
       "tags": [
-        { "text": "Sikayet", "color": "red" },
-        { "text": "Duzeltme", "color": "green" }
+        {
+          "text": "Sikayet",
+          "color": "red"
+        },
+        {
+          "text": "Duzeltme",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Sikayet yonetim politikasi", "service": "Knowledge", "page": "Salon Politikalari > Sikayet Proseduru", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Duzeltme isleminin ucretsiz mi yapilacagi, hangi durumlarda yonetici devreye girecegi belirleyin" },
-          { "text": "Empati template'leri", "service": "Backend", "page": "Mesaj Sablonlari > Sikayet Cevaplari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Sikayet turune gore empati iceren cevap template'leri hazirlayin" }
+          {
+            "text": "Sikayet yonetim politikasi",
+            "service": "Knowledge",
+            "page": "Salon Politikalari > Sikayet Proseduru",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Duzeltme isleminin ucretsiz mi yapilacagi, hangi durumlarda yonetici devreye girecegi belirleyin"
+          },
+          {
+            "text": "Empati template'leri",
+            "service": "Backend",
+            "page": "Mesaj Sablonlari > Sikayet Cevaplari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Sikayet turune gore empati iceren cevap template'leri hazirlayin"
+          }
         ],
         "provider": [
-          { "text": "Sikayet intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Sikayet", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Memnuniyetsizlik ve sikayet intent'leri tanimli — sentiment analizi dahil" },
-          { "text": "Oncelikli randevu motoru", "service": "Backend", "page": "Randevu Motoru > Oncelikli Slot", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Sikayet musterilerine oncelikli slot atama hazir" }
+          {
+            "text": "Sikayet intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Sikayet",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Memnuniyetsizlik ve sikayet intent'leri tanimli — sentiment analizi dahil"
+          },
+          {
+            "text": "Oncelikli randevu motoru",
+            "service": "Backend",
+            "page": "Randevu Motoru > Oncelikli Slot",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Sikayet musterilerine oncelikli slot atama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Bugunku sac boyama hic bekledigim gibi olmadi. Cok koyu olmus, ben daha acik ton istemistim." },
-        { "role": "ai", "content": "Intent: Sikayet (Sac Boyama). Sentiment: Negatif. Oncelik: Yuksek. Empati template tetikleniyor." },
-        { "role": "bot", "content": "Cok uzgunum, sizin icin bu durumu anliyorum. Beklediginiz sonucu alamamaniz bizi de uzuyor.\n\nSizi en kisa surede duzeltme icin davet etmek istiyoruz — tamamen ucretsiz olarak:\n\n1. Yarin 10:00 — Selin Stilist (ayni stilist)\n2. Yarin 14:00 — Derya Stilist (baska stilist)\n\nHangisini tercih edersiniz? Dilerseniz salon yoneticimiz ile de gorusebilirsiniz." },
-        { "role": "user", "content": "Derya ile yarin 14'e alalim" },
-        { "role": "bot", "content": "Duzeltme randevunuz olusturuldu:\n\nSac Renk Duzeltme — Derya Stilist\nYarin, 14:00\nUcret: Ucretsiz\n\nDerya sizinle ilgilenecek ve istediginiz tonu elde edeceksiniz. Tekrar uzur dileriz.\n\nBaska bir konuda yardimci olabilir miyim?" },
-        { "role": "system", "content": "Sikayet kaydedildi. Oncelikli duzeltme randevusu olusturuldu. Salon yoneticisine bildirim gonderildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Bugunku sac boyama hic bekledigim gibi olmadi. Cok koyu olmus, ben daha acik ton istemistim."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Sikayet (Sac Boyama). Sentiment: Negatif. Oncelik: Yuksek. Empati template tetikleniyor."
+        },
+        {
+          "role": "bot",
+          "content": "Cok uzgunum, sizin icin bu durumu anliyorum. Beklediginiz sonucu alamamaniz bizi de uzuyor.\n\nSizi en kisa surede duzeltme icin davet etmek istiyoruz — tamamen ucretsiz olarak:\n\n1. Yarin 10:00 — Selin Stilist (ayni stilist)\n2. Yarin 14:00 — Derya Stilist (baska stilist)\n\nHangisini tercih edersiniz? Dilerseniz salon yoneticimiz ile de gorusebilirsiniz."
+        },
+        {
+          "role": "user",
+          "content": "Derya ile yarin 14'e alalim"
+        },
+        {
+          "role": "bot",
+          "content": "Duzeltme randevunuz olusturuldu:\n\nSac Renk Duzeltme — Derya Stilist\nYarin, 14:00\nUcret: Ucretsiz\n\nDerya sizinle ilgilenecek ve istediginiz tonu elde edeceksiniz. Tekrar uzur dileriz.\n\nBaska bir konuda yardimci olabilir miyim?"
+        },
+        {
+          "role": "system",
+          "content": "Sikayet kaydedildi. Oncelikli duzeltme randevusu olusturuldu. Salon yoneticisine bildirim gonderildi."
+        }
+      ],
+      "aiPrompt": "\"Sikayet: Begenmeme / Hata\" senaryosu icin \"Sac Rengi Sikayeti\" akisini olustur.\n\nAciklama: Musteri sac boyama sonucu beklediginden farkli ciktigini bildiriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Bugunku sac boyama hic bekledigim gibi olmadi. Cok koyu olmus, ben daha acik ton istemistim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_sentiment** — Duygu analizi\n   Analiz: Intent: Sikayet (Sac Boyama). Sentiment: Negatif. Oncelik: Yuksek. Empati template tetikleniyor.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Cok uzgunum, sizin icin bu durumu anliyorum. Beklediginiz sonucu alamamaniz bizi de uzuyor.\n\nSizi en kisa surede duzeltme icin davet etmek istiyoruz — tamamen ucretsiz olarak:\n\n1. Yarin 10:00 — Selin Stilist (ayni stilist)\n2. Yarin 14:00 — Derya Stilist (baska stilist)\n\nHangisini tercih edersiniz? Dilerseniz salon yoneticimiz ile de gorusebilirsiniz.\"\n   Her secenek icin ayri cikis handle'i olustur\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Derya ile yarin 14'e alalim\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Duzeltme randevunuz olusturuldu:\n\nSac Renk Duzeltme — Derya Stilist\nYarin, 14:00\nUcret: Ucretsiz\n\nDerya sizinle ilgilenecek ve istediginiz tonu elde edeceksiniz. Tekrar uzur dileriz.\n\nBaska bir konuda yardimci olabilir miyim?\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Sikayet kaydedildi. Oncelikli duzeltme randevusu olusturuldu. Salon yoneticisine bildirim gonderildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Manikur Sikayeti — Eskalasyon",
       "description": "Musteri manikur sonucundan memnun degil ve yonetici ile gorusmek istiyor.",
       "tags": [
-        { "text": "Sikayet", "color": "red" },
-        { "text": "Eskalasyon", "color": "amber" }
+        {
+          "text": "Sikayet",
+          "color": "red"
+        },
+        {
+          "text": "Eskalasyon",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Eskalasyon proseduru", "service": "Knowledge", "page": "Salon Politikalari > Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Hangi sikayet turlerinde yonetici devreye girdigini tanimlayin" }
+          {
+            "text": "Eskalasyon proseduru",
+            "service": "Knowledge",
+            "page": "Salon Politikalari > Eskalasyon",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Hangi sikayet turlerinde yonetici devreye girdigini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Eskalasyon bildirim sistemi", "service": "Automation", "page": "Bildirimler > Yonetici Eskalasyon", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Yuksek oncelikli sikayetlerde yonetici bildirimi hazir" }
+          {
+            "text": "Eskalasyon bildirim sistemi",
+            "service": "Automation",
+            "page": "Bildirimler > Yonetici Eskalasyon",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Yuksek oncelikli sikayetlerde yonetici bildirimi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Manikurum cok kotu olmus. Ojeler duzgun surulmemis, hemen cikmaya basladi. Yoneticinizle gorusmek istiyorum." },
-        { "role": "ai", "content": "Intent: Sikayet (Manikur) + Eskalasyon Talebi. Sentiment: Cok Negatif. Yonetici eskalasyonu tetikleniyor." },
-        { "role": "bot", "content": "Cok ozur dileriz, bu durumdan dolayi uzgunuz. Sizi anliyorum.\n\nSalon yoneticimiz Berna Hanim'i bilgilendirdim. Size en kisa surede donus yapacak.\n\nAyrica duzeltme randevusu icin de yardimci olabilirim. Musait bir saat ister misiniz?" },
-        { "role": "user", "content": "Once yonetici ile goruseyim" },
-        { "role": "bot", "content": "Tabii, Berna Hanim en gec 1 saat icinde sizi arayacak. Tekrar ozur dileriz." },
-        { "role": "system", "content": "Sikayet eskalasyon olarak kaydedildi. Yonetici Berna'ya acil bildirim gonderildi. Musteri takibi acildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Manikurum cok kotu olmus. Ojeler duzgun surulmemis, hemen cikmaya basladi. Yoneticinizle gorusmek istiyorum."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Sikayet (Manikur) + Eskalasyon Talebi. Sentiment: Cok Negatif. Yonetici eskalasyonu tetikleniyor."
+        },
+        {
+          "role": "bot",
+          "content": "Cok ozur dileriz, bu durumdan dolayi uzgunuz. Sizi anliyorum.\n\nSalon yoneticimiz Berna Hanim'i bilgilendirdim. Size en kisa surede donus yapacak.\n\nAyrica duzeltme randevusu icin de yardimci olabilirim. Musait bir saat ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Once yonetici ile goruseyim"
+        },
+        {
+          "role": "bot",
+          "content": "Tabii, Berna Hanim en gec 1 saat icinde sizi arayacak. Tekrar ozur dileriz."
+        },
+        {
+          "role": "system",
+          "content": "Sikayet eskalasyon olarak kaydedildi. Yonetici Berna'ya acil bildirim gonderildi. Musteri takibi acildi."
+        }
+      ],
+      "aiPrompt": "\"Sikayet: Begenmeme / Hata\" senaryosu icin \"Manikur Sikayeti — Eskalasyon\" akisini olustur.\n\nAciklama: Musteri manikur sonucundan memnun degil ve yonetici ile gorusmek istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Manikurum cok kotu olmus. Ojeler duzgun surulmemis, hemen cikmaya basladi. Yoneticinizle gorusmek istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_sentiment** — Duygu analizi\n   Analiz: Intent: Sikayet (Manikur) + Eskalasyon Talebi. Sentiment: Cok Negatif. Yonetici eskalasyonu tetikleniyor.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n4. **message_text** — Mesaj gonder\n   text: \"Cok ozur dileriz, bu durumdan dolayi uzgunuz. Sizi anliyorum.\n\nSalon yoneticimiz Berna Hanim'i bilgilendirdim. Size en kisa surede donus yapacak.\n\nAyrica duzeltme randevusu icin de yardimci olabilirim. Musait bir saat ister misiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Once yonetici ile goruseyim\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Tabii, Berna Hanim en gec 1 saat icinde sizi arayacak. Tekrar ozur dileriz.\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Sikayet eskalasyon olarak kaydedildi. Yonetici Berna'ya acil bildirim gonderildi. Musteri takibi acildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "AI sentiment analizi ile sikayet siddetini degerlendrir. Empati template'leri ve oncelikli randevu ile musteri kurtarma. Gerekirse eskalasyon.",
     "backend": [
-      { "title": "Complaint Handler", "goal": "Sikayet Yonetimi", "content": "Sikayet kaydi, kategorilendirme, oncelik atama ve cozum takibi." },
-      { "title": "Escalation Manager", "goal": "Eskalasyon", "content": "Yuksek oncelikli sikayetleri yonetici veya sahip'e eskale eder. Bildirim ve takip." }
+      {
+        "title": "Complaint Handler",
+        "goal": "Sikayet Yonetimi",
+        "content": "Sikayet kaydi, kategorilendirme, oncelik atama ve cozum takibi."
+      },
+      {
+        "title": "Escalation Manager",
+        "goal": "Eskalasyon",
+        "content": "Yuksek oncelikli sikayetleri yonetici veya sahip'e eskale eder. Bildirim ve takip."
+      }
     ],
     "apis": [
-      { "title": "Complaint API", "goal": "Sikayet Kaydi", "content": "Sikayet olusturma, guncelleme, cozum kaydi ve musteri memnuniyet takibi API'si." },
-      { "title": "Priority Booking API", "goal": "Oncelikli Randevu", "content": "Sikayet musterilerine oncelikli ve ucretsiz duzeltme randevusu olusturma API'si." }
+      {
+        "title": "Complaint API",
+        "goal": "Sikayet Kaydi",
+        "content": "Sikayet olusturma, guncelleme, cozum kaydi ve musteri memnuniyet takibi API'si."
+      },
+      {
+        "title": "Priority Booking API",
+        "goal": "Oncelikli Randevu",
+        "content": "Sikayet musterilerine oncelikli ve ucretsiz duzeltme randevusu olusturma API'si."
+      }
     ]
   },
   "impact": {
@@ -120,9 +279,29 @@
     "resultLabel": "Kurtarilan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyComplaints", "label": "Aylik Sikayet", "default": 12, "hint": "Ortalama aylik sikayet sayisi", "editable": true },
-      { "key": "recoveryRate", "label": "Kurtarma Orani", "default": 70, "suffix": "%", "hint": "Hizli mudahale ile kurtarilan musteri orani", "editable": true },
-      { "key": "customerLifetimeValue", "label": "Musteri Yasam Boyu Degeri", "default": 5000, "suffix": "TL", "hint": "Bir musterinin yillik ortalama harcamasi", "editable": true }
+      {
+        "key": "monthlyComplaints",
+        "label": "Aylik Sikayet",
+        "default": 12,
+        "hint": "Ortalama aylik sikayet sayisi",
+        "editable": true
+      },
+      {
+        "key": "recoveryRate",
+        "label": "Kurtarma Orani",
+        "default": 70,
+        "suffix": "%",
+        "hint": "Hizli mudahale ile kurtarilan musteri orani",
+        "editable": true
+      },
+      {
+        "key": "customerLifetimeValue",
+        "label": "Musteri Yasam Boyu Degeri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "Bir musterinin yillik ortalama harcamasi",
+        "editable": true
+      }
     ],
     "formula": "monthlyComplaints * (recoveryRate / 100) * (customerLifetimeValue / 12)",
     "formulaDisplay": null

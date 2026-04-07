@@ -8,20 +8,40 @@
   "description": "127,802 duplike mesaj tespit edildi. Temsilciler ayni sablonu 2-3 kez arka arkaya gonderiyor. AI mesaj gondermeden once duplike kontrol yapar.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler" },
-      { "label": "Sorun", "value": "127K duplike mesaj = musteri kafa karisikligi + profesyonellik kaybi" },
-      { "label": "Deger", "value": "Otomatik duplike onleme = temiz iletisim + profesyonel gorunum" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler"
+      },
+      {
+        "label": "Sorun",
+        "value": "127K duplike mesaj = musteri kafa karisikligi + profesyonellik kaybi"
+      },
+      {
+        "label": "Deger",
+        "value": "Otomatik duplike onleme = temiz iletisim + profesyonel gorunum"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "Her mesaj gonderilmeden once son X mesaj ile karsilastirilir. Ayni icerik tespit edilirse gonderim engellenir veya uyari verilir.",
     "steps": [
       {
         "title": "Duplike Kontrolu",
         "goal": "Ayni mesajin tekrar gonderimini onle",
-        "badges": [{ "text": "127K Duplike", "color": "rose" }],
+        "badges": [
+          {
+            "text": "127K Duplike",
+            "color": "rose"
+          }
+        ],
         "content": "Son 5 mesaj ile hash karsilastirmasi. %90+ benzerlik → engelle veya uyar."
       }
     ]
@@ -31,25 +51,60 @@
       "id": "flow-1",
       "title": "Duplike Sablon Engelleme",
       "description": "Temsilci ayni sablonu tekrar gondermeye calisir, sistem uyarir.",
-      "tags": [{ "text": "Kalite", "color": "purple" }, { "text": "127K Sorun", "color": "rose" }],
+      "tags": [
+        {
+          "text": "Kalite",
+          "color": "purple"
+        },
+        {
+          "text": "127K Sorun",
+          "color": "rose"
+        }
+      ],
       "requirements": {
         "client": [],
         "provider": [
-          { "text": "Duplike tespit motoru", "service": "Backend", "page": "Mesaj Kalitesi > Duplike", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Son mesajlarla benzerlik kontrolu" }
+          {
+            "text": "Duplike tespit motoru",
+            "service": "Backend",
+            "page": "Mesaj Kalitesi > Duplike",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Son mesajlarla benzerlik kontrolu"
+          }
         ]
       },
       "steps": [
-        { "role": "agent", "content": "[Siparis onay sablonu gonderdi]" },
-        { "role": "agent", "content": "[Ayni sablonu tekrar gonderiyor — DUPLIKE]" },
-        { "role": "system", "content": "⚠️ Bu mesaj az önce gönderildi. Tekrar göndermek istiyor musunuz?" },
-        { "role": "system", "content": "Duplike engellendi. Musteri temiz iletisim aldi." }
-      ]
+        {
+          "role": "agent",
+          "content": "[Siparis onay sablonu gonderdi]"
+        },
+        {
+          "role": "agent",
+          "content": "[Ayni sablonu tekrar gonderiyor — DUPLIKE]"
+        },
+        {
+          "role": "system",
+          "content": "⚠️ Bu mesaj az önce gönderildi. Tekrar göndermek istiyor musunuz?"
+        },
+        {
+          "role": "system",
+          "content": "Duplike engellendi. Musteri temiz iletisim aldi."
+        }
+      ],
+      "aiPrompt": "\"Duplike Mesaj Onleme\" senaryosu icin \"Duplike Sablon Engelleme\" akisini olustur.\n\nAciklama: Temsilci ayni sablonu tekrar gondermeye calisir, sistem uyarir.\n\n## Node Zinciri\n\n1. **action_handoff** — Canli agent'a devret\n   summary_template: \"[Siparis onay sablonu gonderdi]\"\n   (Terminal node — akis burada biter)\n\n2. **action_handoff** — Canli agent'a devret\n   summary_template: \"[Ayni sablonu tekrar gonderiyor — DUPLIKE]\"\n   (Terminal node — akis burada biter)\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: ⚠️ Bu mesaj az önce gönderildi. Tekrar göndermek istiyor musunuz?\n\n4. **utility_note** — Akis sonuc notu\n   text: \"Duplike engellendi. Musteri temiz iletisim aldi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Basit hash karsilastirmasi ile son 5 mesaj kontrol edilir. Operasyonel kalite artisi.",
     "backend": [
-      { "title": "Message Dedup Engine", "goal": "Duplike Onleme", "content": "Son gonderilen mesajlarin hash'i saklanir, yeni mesaj ile karsilastirilir." }
+      {
+        "title": "Message Dedup Engine",
+        "goal": "Duplike Onleme",
+        "content": "Son gonderilen mesajlarin hash'i saklanir, yeni mesaj ile karsilastirilir."
+      }
     ],
     "apis": []
   },
@@ -59,9 +114,29 @@
     "resultLabel": "Kalite Skoru Artisi",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyMessages", "label": "Aylik Mesaj", "default": 5000, "hint": "Toplam gonderilen mesaj", "editable": true },
-      { "key": "duplikeRate", "label": "Duplike Orani", "default": 6, "prefix": "%", "hint": "Mevcut duplike orani", "editable": true },
-      { "key": "costPerDuplicate", "label": "Duplike Maliyeti", "default": 2, "suffix": "TL", "hint": "Musteri kaybi riski", "editable": true }
+      {
+        "key": "monthlyMessages",
+        "label": "Aylik Mesaj",
+        "default": 5000,
+        "hint": "Toplam gonderilen mesaj",
+        "editable": true
+      },
+      {
+        "key": "duplikeRate",
+        "label": "Duplike Orani",
+        "default": 6,
+        "prefix": "%",
+        "hint": "Mevcut duplike orani",
+        "editable": true
+      },
+      {
+        "key": "costPerDuplicate",
+        "label": "Duplike Maliyeti",
+        "default": 2,
+        "suffix": "TL",
+        "hint": "Musteri kaybi riski",
+        "editable": true
+      }
     ],
     "formula": "monthlyMessages * (duplikeRate / 100) * costPerDuplicate",
     "formulaDisplay": null

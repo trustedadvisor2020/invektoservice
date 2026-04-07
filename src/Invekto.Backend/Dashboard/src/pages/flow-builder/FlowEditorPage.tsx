@@ -66,6 +66,26 @@ export function FlowEditorPage() {
         setIsActive(detail.is_active);
         setCurrentVersion(detail.current_version ?? 0);
         setIsLoading(false);
+
+        // Auto-open AI wizard if loaded from template
+        const params = new URLSearchParams(window.location.search);
+        const templateId = params.get('template');
+        if (templateId) {
+          window.history.replaceState({}, '', window.location.pathname);
+          import('../../data/flow-templates').then(({ FLOW_TEMPLATES }) => {
+            const tpl = FLOW_TEMPLATES.find(t => t.id === templateId);
+            const aiStore = useAiChatStore.getState();
+            useSimulationStore.getState().close();
+            aiStore.open(flowId, tenantId).then(() => {
+              if (tpl) {
+                aiStore.sendMessage(
+                  `Bu akis "${tpl.title}" sablonundan olusturuldu. Isletmeme gore ozellestir. Oncelikle sektorum ve marka tonumu sor.`,
+                  config
+                );
+              }
+            });
+          });
+        }
       })
       .catch((err) => {
         if (cancelled) return;

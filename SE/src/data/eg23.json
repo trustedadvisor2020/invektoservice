@@ -8,15 +8,36 @@
   "description": "18 yas alti ogrenciler icin KVKK ozel koruma gereksinimleri. Kayit surecinde veliye otomatik KVKK onam mesaji gondererek yasal uyumlulugu saglayan senaryo.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Cocuk Kurslari, Dil Okulu, Muzik Okulu, Hobi Kurslari)" },
-      { "label": "Sorun", "value": "18 yas alti ogrenci verisi ozel korumaya tabi — veli onami alinmadan veri isleme KVKK ihlali riski" },
-      { "label": "Deger", "value": "Otomatik veli onam sureci ile yasal uyumluluk sagla, cezai risk ortadan kaldir" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Cocuk Kurslari, Dil Okulu, Muzik Okulu, Hobi Kurslari)"
+      },
+      {
+        "label": "Sorun",
+        "value": "18 yas alti ogrenci verisi ozel korumaya tabi — veli onami alinmadan veri isleme KVKK ihlali riski"
+      },
+      {
+        "label": "Deger",
+        "value": "Otomatik veli onam sureci ile yasal uyumluluk sagla, cezai risk ortadan kaldir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Automation (C5)", "color": "green" },
-      { "name": "KVKK Compliance (C6)", "color": "red" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Automation (C5)",
+        "color": "green"
+      },
+      {
+        "name": "KVKK Compliance (C6)",
+        "color": "red"
+      }
     ],
     "servicesNote": "Kayit surecinde ogrenci yasi kontrol edilir. 18 yas altinda ise veliye otomatik KVKK onam mesaji gonderilir. Onam alinmadan veri isleme engellenir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Yas Kontrolu",
         "goal": "18 yas alti tespiti",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Kayit Formu)", "color": "blue" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kayit Formu)",
+            "color": "blue"
+          }
         ],
         "content": "Kayit surecinde dogum tarihi kontrol edilir. 18 yas alti tespit edildiginde KVKK cocuk koruma akisi tetiklenir."
       },
@@ -33,8 +60,14 @@
         "title": "Veli Onam Mesaji Gonderimi",
         "goal": "Yasal onam al",
         "badges": [
-          { "text": "Sistem (KVKK)", "color": "purple" },
-          { "text": "Tenant (Veli)", "color": "green" }
+          {
+            "text": "Sistem (KVKK)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Veli)",
+            "color": "green"
+          }
         ],
         "content": "Veliye acik riza onami iceren mesaj gonderilir. Hangi verilerin ne amacla islenecegi detayli olarak belirtilir."
       },
@@ -42,8 +75,14 @@
         "title": "Onam Kaydi ve Islem Baslatma",
         "goal": "Kaydi tamamla",
         "badges": [
-          { "text": "Sistem (Compliance)", "color": "purple" },
-          { "text": "Tenant (Kayit)", "color": "amber" }
+          {
+            "text": "Sistem (Compliance)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kayit)",
+            "color": "amber"
+          }
         ],
         "content": "Veli onami alindiginda kayit islemi tamamlanir. Onam reddedilirse veri silinir ve surec durdurulur."
       }
@@ -55,38 +94,121 @@
       "title": "Cocuk Ogrenci KVKK Onam Akisi",
       "description": "14 yasindaki ogrenci kaydi icin veliden KVKK onami alinmasi.",
       "tags": [
-        { "text": "KVKK", "color": "red" },
-        { "text": "Cocuk Koruma", "color": "amber" }
+        {
+          "text": "KVKK",
+          "color": "red"
+        },
+        {
+          "text": "Cocuk Koruma",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "KVKK aydinlatma metni (cocuk)", "service": "Knowledge", "page": "KVKK > Cocuk Aydinlatma Metni", "status": "setup", "priority": "required", "effort": "medium", "capability": "C6", "hint": "18 yas alti icin ozel KVKK aydinlatma metnini hazirlayin ve onaylayin" },
-          { "text": "Veli iletisim bilgisi zorunlulugu", "service": "Backend", "page": "Kayit Formu > Veli Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "18 yas alti kayitlarda veli telefon ve email alanini zorunlu yapin" }
+          {
+            "text": "KVKK aydinlatma metni (cocuk)",
+            "service": "Knowledge",
+            "page": "KVKK > Cocuk Aydinlatma Metni",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C6",
+            "hint": "18 yas alti icin ozel KVKK aydinlatma metnini hazirlayin ve onaylayin"
+          },
+          {
+            "text": "Veli iletisim bilgisi zorunlulugu",
+            "service": "Backend",
+            "page": "Kayit Formu > Veli Bilgileri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "18 yas alti kayitlarda veli telefon ve email alanini zorunlu yapin"
+          }
         ],
         "provider": [
-          { "text": "Yas kontrolu otomasyon kurali", "service": "Automation", "page": "Otomasyon > Yas Kontrolu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Dogum tarihinden otomatik yas hesaplama ve esik kontrolu hazir" },
-          { "text": "KVKK onam mesaj sablonu", "service": "Backend", "page": "Sablonlar > KVKK Cocuk Onami", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Veliye gonderilecek KVKK onam mesaji sablonu hazir" },
-          { "text": "Onam kayit ve takip sistemi", "service": "Backend", "page": "KVKK > Onam Kayitlari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Veli onam durumu (bekleniyor/onaylandi/reddedildi) takip sistemi hazir" }
+          {
+            "text": "Yas kontrolu otomasyon kurali",
+            "service": "Automation",
+            "page": "Otomasyon > Yas Kontrolu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "Dogum tarihinden otomatik yas hesaplama ve esik kontrolu hazir"
+          },
+          {
+            "text": "KVKK onam mesaj sablonu",
+            "service": "Backend",
+            "page": "Sablonlar > KVKK Cocuk Onami",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C6",
+            "hint": "Veliye gonderilecek KVKK onam mesaji sablonu hazir"
+          },
+          {
+            "text": "Onam kayit ve takip sistemi",
+            "service": "Backend",
+            "page": "KVKK > Onam Kayitlari",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C6",
+            "hint": "Veli onam durumu (bekleniyor/onaylandi/reddedildi) takip sistemi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Yeni kayit: Ogrenci Ege T. — Dogum tarihi: 15.03.2012 (14 yas). 18 yas alti KVKK cocuk koruma akisi tetiklendi." },
-        { "role": "bot", "content": "Sayin Ayse Hanim, ogrencisiniz Ege icin Robotik Kodlama kursuna kayit talebinizi aldik.\n\nEge 18 yasindan kucuk oldugu icin KVKK kapsaminda veli onaminiz gerekmektedir.\n\nIslenecek veriler:\n- Ad, soyad, dogum tarihi\n- Ders katilim kaydi\n- Odev ve proje dosyalari\n- Fotograf (sinif ici etkinlik)\n\nAmac: Egitim hizmeti sunumu\nSure: Kurs suresi + 1 yil\n\nOnaylamak icin 'ONAY', reddetmek icin 'RET' yazin." },
-        { "role": "user", "content": "ONAY" },
-        { "role": "bot", "content": "Tesekkur ederiz Ayse Hanim! KVKK onaminiz basariyla kaydedildi.\n\nOnam Detaylari:\nOgrenci: Ege T.\nVeli: Ayse T.\nOnam Tarihi: 20.02.2026\nOnam Referans No: KVKK-2026-0412\n\nEge'nin Robotik Kodlama kursuna kaydi tamamlanmistir. Kurs detaylari ve odeme bilgisi ayrica gonderilecektir.\n\nOnam geri cekmek isterseniz her zaman bu mesaja 'IPTAL' yazabilirsiniz." },
-        { "role": "system", "content": "KVKK cocuk onami kaydedildi. Veli: Ayse T. Ogrenci: Ege T. Referans: KVKK-2026-0412. Kayit sureci devam edebilir." }
-      ]
+        {
+          "role": "system",
+          "content": "Yeni kayit: Ogrenci Ege T. — Dogum tarihi: 15.03.2012 (14 yas). 18 yas alti KVKK cocuk koruma akisi tetiklendi."
+        },
+        {
+          "role": "bot",
+          "content": "Sayin Ayse Hanim, ogrencisiniz Ege icin Robotik Kodlama kursuna kayit talebinizi aldik.\n\nEge 18 yasindan kucuk oldugu icin KVKK kapsaminda veli onaminiz gerekmektedir.\n\nIslenecek veriler:\n- Ad, soyad, dogum tarihi\n- Ders katilim kaydi\n- Odev ve proje dosyalari\n- Fotograf (sinif ici etkinlik)\n\nAmac: Egitim hizmeti sunumu\nSure: Kurs suresi + 1 yil\n\nOnaylamak icin 'ONAY', reddetmek icin 'RET' yazin."
+        },
+        {
+          "role": "user",
+          "content": "ONAY"
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkur ederiz Ayse Hanim! KVKK onaminiz basariyla kaydedildi.\n\nOnam Detaylari:\nOgrenci: Ege T.\nVeli: Ayse T.\nOnam Tarihi: 20.02.2026\nOnam Referans No: KVKK-2026-0412\n\nEge'nin Robotik Kodlama kursuna kaydi tamamlanmistir. Kurs detaylari ve odeme bilgisi ayrica gonderilecektir.\n\nOnam geri cekmek isterseniz her zaman bu mesaja 'IPTAL' yazabilirsiniz."
+        },
+        {
+          "role": "system",
+          "content": "KVKK cocuk onami kaydedildi. Veli: Ayse T. Ogrenci: Ege T. Referans: KVKK-2026-0412. Kayit sureci devam edebilir."
+        }
+      ],
+      "aiPrompt": "\"KVKK: Cocuk Verisi Ozel Koruma\" senaryosu icin \"Cocuk Ogrenci KVKK Onam Akisi\" akisini olustur.\n\nAciklama: 14 yasindaki ogrenci kaydi icin veliden KVKK onami alinmasi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Yeni kayit: Ogrenci Ege T. — Dogum tarihi: 15.03.2012 (14 yas). 18 yas alti KVKK cocuk koruma akisi tetiklendi.\n\n2. **message_text** — Mesaj gonder\n   text: \"Sayin Ayse Hanim, ogrencisiniz Ege icin Robotik Kodlama kursuna kayit talebinizi aldik.\n\nEge 18 yasindan kucuk oldugu icin KVKK kapsaminda veli onaminiz gerekmektedir.\n\nIslenecek veriler:\n- Ad, soyad, dogum tarihi\n- Ders katilim kaydi\n- Odev ve proje dosyalari\n- Fotograf (sinif ici etkinlik)\n\nAmac: Egitim hizmeti sunumu\nSure: Kurs suresi + 1 yil\n\nOnaylamak icin 'ONAY', reddetmek icin 'RET' yazin.\"\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"ONAY\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tesekkur ederiz Ayse Hanim! KVKK onaminiz basariyla kaydedildi.\n\nOnam Detaylari:\nOgrenci: Ege T.\nVeli: Ayse T.\nOnam Tarihi: 20.02.2026\nOnam Referans No: KVKK-2026-0412\n\nEge'nin Robotik Kodlama kursuna kaydi tamamlanmistir. Kurs detaylari ve odeme bilgisi ayrica gonderilecektir.\n\nOnam geri cekmek isterseniz her zaman bu mesaja 'IPTAL' yazabilirsiniz.\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"KVKK cocuk onami kaydedildi. Veli: Ayse T. Ogrenci: Ege T. Referans: KVKK-2026-0412. Kayit sureci devam edebilir.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Otomasyon yas kontrolu + KVKK compliance motoru ile calisir. 18 yas alti tespit edildiginde veri isleme onama baglanir.",
     "backend": [
-      { "title": "Age Verification Engine", "goal": "Yas Kontrolu", "content": "Dogum tarihinden yas hesaplar, 18 yas alti tespit edildiginde KVKK cocuk koruma akisini tetikler." },
-      { "title": "KVKK Consent Manager", "goal": "Onam Yonetimi", "content": "Veli onam talebini gonderir, yaniti kaydeder, onam durumunu takip eder. Onam alinmadan veri islemeyi engeller." }
+      {
+        "title": "Age Verification Engine",
+        "goal": "Yas Kontrolu",
+        "content": "Dogum tarihinden yas hesaplar, 18 yas alti tespit edildiginde KVKK cocuk koruma akisini tetikler."
+      },
+      {
+        "title": "KVKK Consent Manager",
+        "goal": "Onam Yonetimi",
+        "content": "Veli onam talebini gonderir, yaniti kaydeder, onam durumunu takip eder. Onam alinmadan veri islemeyi engeller."
+      }
     ],
     "apis": [
-      { "title": "Consent API", "goal": "Onam Kaydi", "content": "KVKK onam talebi gonderme, yanit kaydetme, onam referans numarasi olusturma ve geri cekme islemi." },
-      { "title": "Data Protection API", "goal": "Veri Koruma", "content": "Onamsiz veri isleme engelleme, onam suresi dolmus kayitlari tespit ve silme islemi." }
+      {
+        "title": "Consent API",
+        "goal": "Onam Kaydi",
+        "content": "KVKK onam talebi gonderme, yanit kaydetme, onam referans numarasi olusturma ve geri cekme islemi."
+      },
+      {
+        "title": "Data Protection API",
+        "goal": "Veri Koruma",
+        "content": "Onamsiz veri isleme engelleme, onam suresi dolmus kayitlari tespit ve silme islemi."
+      }
     ]
   },
   "impact": {
@@ -95,9 +217,29 @@
     "resultLabel": "Onlenen Risk Degeri (Yillik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "minorStudents", "label": "18 Yas Alti Ogrenci", "default": 50, "hint": "Yillik 18 yas alti ogrenci sayisi", "editable": true },
-      { "key": "complianceRate", "label": "Uyumluluk Orani", "default": 100, "suffix": "%", "hint": "Otomatik onam alinan ogrenci orani", "editable": true },
-      { "key": "avgPenaltyRisk", "label": "Ort. Ihlal Risk Degeri", "default": 50000, "suffix": "TL", "hint": "Onam alinmayan her cocuk verisi icin tahmini ceza riski", "editable": true }
+      {
+        "key": "minorStudents",
+        "label": "18 Yas Alti Ogrenci",
+        "default": 50,
+        "hint": "Yillik 18 yas alti ogrenci sayisi",
+        "editable": true
+      },
+      {
+        "key": "complianceRate",
+        "label": "Uyumluluk Orani",
+        "default": 100,
+        "suffix": "%",
+        "hint": "Otomatik onam alinan ogrenci orani",
+        "editable": true
+      },
+      {
+        "key": "avgPenaltyRisk",
+        "label": "Ort. Ihlal Risk Degeri",
+        "default": 50000,
+        "suffix": "TL",
+        "hint": "Onam alinmayan her cocuk verisi icin tahmini ceza riski",
+        "editable": true
+      }
     ],
     "formula": "minorStudents * (complianceRate / 100) * avgPenaltyRisk / 100",
     "formulaDisplay": null

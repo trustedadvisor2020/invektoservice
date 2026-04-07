@@ -8,15 +8,36 @@
   "description": "Sessiz churn'u AI ile tespit edip (frekans dususu, negatif sentiment, cevapsizlik), risk seviyesine gore otomatik kurtarma aksiyonu alan ve kayip musterileri win-back kampanyasi ile geri kazanan sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — sessiz churn en pahali kayip turu" },
-      { "label": "Sorun", "value": "Musteri sikayet etmeden gidiyor, %15 sessiz churn orani" },
-      { "label": "Gercek", "value": "Yeni musteri bulmak, mevcut musteriyi tutmaktan 5-7x daha pahali" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — sessiz churn en pahali kayip turu"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteri sikayet etmeden gidiyor, %15 sessiz churn orani"
+      },
+      {
+        "label": "Gercek",
+        "value": "Yeni musteri bulmak, mevcut musteriyi tutmaktan 5-7x daha pahali"
+      }
     ],
     "services": [
-      { "name": "Churn Scoring AI", "color": "blue" },
-      { "name": "Outbound Engine", "color": "green" },
-      { "name": "Sentiment Analysis", "color": "purple" },
-      { "name": "Win-back Campaign", "color": "amber" }
+      {
+        "name": "Churn Scoring AI",
+        "color": "blue"
+      },
+      {
+        "name": "Outbound Engine",
+        "color": "green"
+      },
+      {
+        "name": "Sentiment Analysis",
+        "color": "purple"
+      },
+      {
+        "name": "Win-back Campaign",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI churn risk skorlamasi (frekans + sentiment + cevapsizlik). Risk seviyesine gore otomatik aksiyon: badge, alert, outbound mesaj.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Churn Risk Tespiti",
         "goal": "Kayip sinyalini yakala",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (CRM Verisi)", "color": "amber" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (CRM Verisi)",
+            "color": "amber"
+          }
         ],
         "content": "AI, frekans dususu, negatif sentiment ve cevapsizlik paternlerini analiz eder. Risk skoru: LOW / MEDIUM / HIGH / CRITICAL."
       },
@@ -33,8 +60,14 @@
         "title": "Otomatik Aksiyon",
         "goal": "Risk seviyesine gore hareket",
         "badges": [
-          { "text": "Sistem (Rules)", "color": "purple" },
-          { "text": "Tenant (Kurallar)", "color": "blue" }
+          {
+            "text": "Sistem (Rules)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kurallar)",
+            "color": "blue"
+          }
         ],
         "content": "MEDIUM: Agent'e uyari badge. HIGH: Supervisor alert + onerilen aksiyon. CRITICAL: Outbound kurtarma mesaji."
       },
@@ -42,8 +75,14 @@
         "title": "Kurtarma Mesaji",
         "goal": "Musteriyi geri kazan",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Teklif)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Teklif)",
+            "color": "green"
+          }
         ],
         "content": "'Sizi ozledik! Size ozel %20 indirim kodunuz: HOSGELDIN20' veya 'Kontrol randevunuz icin sizi bekliyoruz.'"
       },
@@ -51,8 +90,14 @@
         "title": "Win-back Kampanyasi",
         "goal": "Kaybedileni geri getir",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Kampanya)", "color": "amber" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kampanya)",
+            "color": "amber"
+          }
         ],
         "content": "T+30: 'Sizi ozledik' + deger hatirlatma. T+60: Kisisellestirilmis indirim. T+90: 'Geri donusunuzde ilk [hizmet] ucretsiz.' Cevap gelmezse pasife al."
       }
@@ -64,90 +109,283 @@
       "title": "Frekans Dususu → Kurtarma",
       "description": "Her ay siparis veren musteri 45 gundur almadi.",
       "tags": [
-        { "text": "Churn Risk", "color": "rose" },
-        { "text": "Proaktif Kurtarma", "color": "blue" }
+        {
+          "text": "Churn Risk",
+          "color": "rose"
+        },
+        {
+          "text": "Proaktif Kurtarma",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Indirim kuponu yetkisi", "service": "Backend", "page": "Kampanya Yonetimi > Kupon Limitleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Win-back kuponu icin maksimum indirim oranini tanimlayin" },
-          { "text": "CRM musteri gecmisi", "service": "Backend", "page": "CRM > Musteri Profili", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Musteri satin alma gecmisi ve iletisim logu" }
+          {
+            "text": "Indirim kuponu yetkisi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Kupon Limitleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Win-back kuponu icin maksimum indirim oranini tanimlayin"
+          },
+          {
+            "text": "CRM musteri gecmisi",
+            "service": "Backend",
+            "page": "CRM > Musteri Profili",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Musteri satin alma gecmisi ve iletisim logu"
+          }
         ],
         "provider": [
-          { "text": "Frekans analizi algoritmasi", "service": "ChatAnalysis", "page": "Churn Scoring > Frekans", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Satin alma frekans dususu tespiti hazir" },
-          { "text": "Outbound Engine", "service": "Outbound", "page": "Kampanya Yonetimi > Kurtarma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Otomatik kurtarma mesaji gonderimi hazir" }
+          {
+            "text": "Frekans analizi algoritmasi",
+            "service": "ChatAnalysis",
+            "page": "Churn Scoring > Frekans",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Satin alma frekans dususu tespiti hazir"
+          },
+          {
+            "text": "Outbound Engine",
+            "service": "Outbound",
+            "page": "Kampanya Yonetimi > Kurtarma",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Otomatik kurtarma mesaji gonderimi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "CHURN ALERT: Musteri [Ad] — son 45 gundur siparis yok. Onceki frekans: ayda 2 siparis. Risk: HIGH." },
-        { "role": "bot", "content": "Merhaba [Ad]! Sizi ozledik! Son siparisinizdeki [Urun]'i begendiniz mi? Size ozel %20 indirim kodunuz: HOSGELDIN20" },
-        { "role": "user", "content": "Tesekkurler, aslinda fiyatlar biraz artmisti." },
-        { "role": "ai", "content": "Churn Sebebi Tespit: Fiyat hassasiyeti. Aksiyon: Kisisellestirilmis teklif." },
-        { "role": "bot", "content": "Anliyoruz! Size ozel bir fiyat olusturabilriz. [Urun] icin: 399 TL yerine 319 TL (sadece sizin icin gecerli). Ilgilenir misiniz?" },
-        { "role": "user", "content": "Bu fiyat cok iyi, siparis veriyorum!" },
-        { "role": "system", "content": "Churn KURTARILDI. Musteri aktif listeye geri alindi. Kurtarilan LTV: ~6.000 TL/yil." }
-      ]
+        {
+          "role": "system",
+          "content": "CHURN ALERT: Musteri [Ad] — son 45 gundur siparis yok. Onceki frekans: ayda 2 siparis. Risk: HIGH."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad]! Sizi ozledik! Son siparisinizdeki [Urun]'i begendiniz mi? Size ozel %20 indirim kodunuz: HOSGELDIN20"
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler, aslinda fiyatlar biraz artmisti."
+        },
+        {
+          "role": "ai",
+          "content": "Churn Sebebi Tespit: Fiyat hassasiyeti. Aksiyon: Kisisellestirilmis teklif."
+        },
+        {
+          "role": "bot",
+          "content": "Anliyoruz! Size ozel bir fiyat olusturabilriz. [Urun] icin: 399 TL yerine 319 TL (sadece sizin icin gecerli). Ilgilenir misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Bu fiyat cok iyi, siparis veriyorum!"
+        },
+        {
+          "role": "system",
+          "content": "Churn KURTARILDI. Musteri aktif listeye geri alindi. Kurtarilan LTV: ~6.000 TL/yil."
+        }
+      ],
+      "aiPrompt": "\"Churn Prevention / Win-back\" senaryosu icin \"Frekans Dususu → Kurtarma\" akisini olustur.\n\nAciklama: Her ay siparis veren musteri 45 gundur almadi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: CHURN ALERT: Musteri [Ad] — son 45 gundur siparis yok. Onceki frekans: ayda 2 siparis. Risk: HIGH.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad]! Sizi ozledik! Son siparisinizdeki [Urun]'i begendiniz mi? Size ozel %20 indirim kodunuz: HOSGELDIN20\"\n   Degiskenler: {{ad}}, {{urun}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler, aslinda fiyatlar biraz artmisti.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **ai_intent** — Niyet tespiti\n   Analiz: Churn Sebebi Tespit: Fiyat hassasiyeti. Aksiyon: Kisisellestirilmis teklif.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Anliyoruz! Size ozel bir fiyat olusturabilriz. [Urun] icin: 399 TL yerine 319 TL (sadece sizin icin gecerli). Ilgilenir misiniz?\"\n   Degiskenler: {{urun}}\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Bu fiyat cok iyi, siparis veriyorum!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Churn KURTARILDI. Musteri aktif listeye geri alindi. Kurtarilan LTV: ~6.000 TL/yil.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Randevu Almayan Hasta → Hatirlatma",
       "description": "6 aylik kontrol randevusu almayan dis hastasi.",
       "tags": [
-        { "text": "Saglik", "color": "green" },
-        { "text": "Kontrol Hatirlatma", "color": "blue" }
+        {
+          "text": "Saglik",
+          "color": "green"
+        },
+        {
+          "text": "Kontrol Hatirlatma",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Hasta randevu gecmisi", "service": "Backend", "page": "Randevu Takvimi > Hasta Gecmisi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Hasta randevu gecmisinin takibi aktif olmali" },
-          { "text": "Kontrol frekansi bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Kontrol Protokolleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tedavi tipine gore kontrol frekanslarini tanimlayin" }
+          {
+            "text": "Hasta randevu gecmisi",
+            "service": "Backend",
+            "page": "Randevu Takvimi > Hasta Gecmisi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Hasta randevu gecmisinin takibi aktif olmali"
+          },
+          {
+            "text": "Kontrol frekansi bilgisi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kontrol Protokolleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Tedavi tipine gore kontrol frekanslarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Randevu frekans analizi", "service": "ChatAnalysis", "page": "Churn Scoring > Randevu Frekans", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Randevu frekans dususu tespiti hazir" },
-          { "text": "Outbound Engine", "service": "Outbound", "page": "Hatirlatma Zinciri > Kontrol", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Otomatik kontrol hatirlatma mesaji hazir" }
+          {
+            "text": "Randevu frekans analizi",
+            "service": "ChatAnalysis",
+            "page": "Churn Scoring > Randevu Frekans",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Randevu frekans dususu tespiti hazir"
+          },
+          {
+            "text": "Outbound Engine",
+            "service": "Outbound",
+            "page": "Hatirlatma Zinciri > Kontrol",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Otomatik kontrol hatirlatma mesaji hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "CHURN RISK: Hasta [Ad] — 8 aydir kontrol randevusu yok. Normal frekans: 6 ayda 1. Risk: MEDIUM." },
-        { "role": "bot", "content": "Merhaba [Ad]! Son kontrolunuzun uzerinden 8 ay gecti. Dis sagliginiz icin 6 ayda bir kontrol oneriyoruz. Bu hafta musait misiniz?" },
-        { "role": "user", "content": "Dogru, unutmusum. Persembe musait miyim?" },
-        { "role": "bot", "content": "Persembe 15:00 mevcut! Hemen ayiralim mi?" },
-        { "role": "user", "content": "Olur, ayirlayin." },
-        { "role": "system", "content": "Churn Kurtarildi: Kontrol randevusu olusturuldu. Hasta aktif listeye donduruldu." }
-      ]
+        {
+          "role": "system",
+          "content": "CHURN RISK: Hasta [Ad] — 8 aydir kontrol randevusu yok. Normal frekans: 6 ayda 1. Risk: MEDIUM."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad]! Son kontrolunuzun uzerinden 8 ay gecti. Dis sagliginiz icin 6 ayda bir kontrol oneriyoruz. Bu hafta musait misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Dogru, unutmusum. Persembe musait miyim?"
+        },
+        {
+          "role": "bot",
+          "content": "Persembe 15:00 mevcut! Hemen ayiralim mi?"
+        },
+        {
+          "role": "user",
+          "content": "Olur, ayirlayin."
+        },
+        {
+          "role": "system",
+          "content": "Churn Kurtarildi: Kontrol randevusu olusturuldu. Hasta aktif listeye donduruldu."
+        }
+      ],
+      "aiPrompt": "\"Churn Prevention / Win-back\" senaryosu icin \"Randevu Almayan Hasta → Hatirlatma\" akisini olustur.\n\nAciklama: 6 aylik kontrol randevusu almayan dis hastasi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: CHURN RISK: Hasta [Ad] — 8 aydir kontrol randevusu yok. Normal frekans: 6 ayda 1. Risk: MEDIUM.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad]! Son kontrolunuzun uzerinden 8 ay gecti. Dis sagliginiz icin 6 ayda bir kontrol oneriyoruz. Bu hafta musait misiniz?\"\n   Degiskenler: {{ad}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Dogru, unutmusum. Persembe musait miyim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Persembe 15:00 mevcut! Hemen ayiralim mi?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Olur, ayirlayin.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Churn Kurtarildi: Kontrol randevusu olusturuldu. Hasta aktif listeye donduruldu.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-3",
       "title": "Win-back Kampanyasi (T+60)",
       "description": "Uzun suredir kayip musteriye ozel teklif.",
       "tags": [
-        { "text": "Win-back", "color": "amber" },
-        { "text": "Son Deneme", "color": "gray" }
+        {
+          "text": "Win-back",
+          "color": "amber"
+        },
+        {
+          "text": "Son Deneme",
+          "color": "gray"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Win-back butcesi", "service": "Backend", "page": "Kampanya Yonetimi > Win-back Butcesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Win-back kampanyasi icin maks indirim oranini belirleyin" },
-          { "text": "Ozel teklif yetkisi", "service": "Backend", "page": "Kampanya Yonetimi > Yetkilendirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Ozel teklif onay mekanizmasini tanimlayin" }
+          {
+            "text": "Win-back butcesi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Win-back Butcesi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Win-back kampanyasi icin maks indirim oranini belirleyin"
+          },
+          {
+            "text": "Ozel teklif yetkisi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Yetkilendirme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Ozel teklif onay mekanizmasini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Outbound Engine", "service": "Outbound", "page": "Follow-Up Zinciri > Win-back", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "T+30/T+60/T+90 otomatik win-back zinciri hazir" },
-          { "text": "Kampanya yonetimi", "service": "Backend", "page": "Kampanya Yonetimi > Win-back", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Kisisellestirilmis teklif uretimi ve takibi hazir" }
+          {
+            "text": "Outbound Engine",
+            "service": "Outbound",
+            "page": "Follow-Up Zinciri > Win-back",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "T+30/T+60/T+90 otomatik win-back zinciri hazir"
+          },
+          {
+            "text": "Kampanya yonetimi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Win-back",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Kisisellestirilmis teklif uretimi ve takibi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Win-back T+60: Musteri [Ad] — 2 aydir etklesim yok. T+30 mesajina cevap vermedi." },
-        { "role": "bot", "content": "Merhaba [Ad]! Sizin icin cok ozel bir teklif haziladik: Geri donusunuzde ilk alisverisıniz %30 indirimli + ucretsiz kargo. Kod: GERIDON30. 7 gun gecerli." },
-        { "role": "system", "content": "Win-back T+60 gonderildi. 7 gun bekleme basladi. Cevap gelmezse T+90 son deneme." }
-      ]
+        {
+          "role": "system",
+          "content": "Win-back T+60: Musteri [Ad] — 2 aydir etklesim yok. T+30 mesajina cevap vermedi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad]! Sizin icin cok ozel bir teklif haziladik: Geri donusunuzde ilk alisverisıniz %30 indirimli + ucretsiz kargo. Kod: GERIDON30. 7 gun gecerli."
+        },
+        {
+          "role": "system",
+          "content": "Win-back T+60 gonderildi. 7 gun bekleme basladi. Cevap gelmezse T+90 son deneme."
+        }
+      ],
+      "aiPrompt": "\"Churn Prevention / Win-back\" senaryosu icin \"Win-back Kampanyasi (T+60)\" akisini olustur.\n\nAciklama: Uzun suredir kayip musteriye ozel teklif.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Win-back T+60: Musteri [Ad] — 2 aydir etklesim yok. T+30 mesajina cevap vermedi.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad]! Sizin icin cok ozel bir teklif haziladik: Geri donusunuzde ilk alisverisıniz %30 indirimli + ucretsiz kargo. Kod: GERIDON30. 7 gun gecerli.\"\n   Degiskenler: {{ad}}\n\n3. **utility_note** — Akis sonuc notu\n   text: \"Win-back T+60 gonderildi. 7 gun bekleme basladi. Cevap gelmezse T+90 son deneme.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo surekli aktif calisir. AI, tum musteri bazini tarar ve churn risk skorlamasi yapar. Outbound Engine, risk seviyesine gore otomatik mesaj zinciri baslatir.",
     "backend": [
-      { "title": "Churn Scoring Engine", "goal": "Risk Tespiti", "content": "Frekans analizi, sentiment trend, cevapsizlik suresi, gecmis satin alma degeri. Risk: LOW/MEDIUM/HIGH/CRITICAL." },
-      { "title": "Win-back Campaign Manager", "goal": "Geri Kazanim", "content": "T+30/+60/+90 mesaj zinciri. Kisisellestirilmis teklifler. Pasife alma kurallari." }
+      {
+        "title": "Churn Scoring Engine",
+        "goal": "Risk Tespiti",
+        "content": "Frekans analizi, sentiment trend, cevapsizlik suresi, gecmis satin alma degeri. Risk: LOW/MEDIUM/HIGH/CRITICAL."
+      },
+      {
+        "title": "Win-back Campaign Manager",
+        "goal": "Geri Kazanim",
+        "content": "T+30/+60/+90 mesaj zinciri. Kisisellestirilmis teklifler. Pasife alma kurallari."
+      }
     ],
     "apis": [
-      { "title": "CRM Analytics API", "goal": "Musteri Analizi", "content": "Satin alma gecmisi, iletisim frekansi, sentiment skoru cekilir." },
-      { "title": "Outbound Engine", "goal": "Kurtarma Mesajlari", "content": "Risk seviyesine gore otomatik mesaj gonderimi. Template + kisisellestirilmis icerik." }
+      {
+        "title": "CRM Analytics API",
+        "goal": "Musteri Analizi",
+        "content": "Satin alma gecmisi, iletisim frekansi, sentiment skoru cekilir."
+      },
+      {
+        "title": "Outbound Engine",
+        "goal": "Kurtarma Mesajlari",
+        "content": "Risk seviyesine gore otomatik mesaj gonderimi. Template + kisisellestirilmis icerik."
+      }
     ]
   },
   "impact": {
@@ -156,9 +394,29 @@
     "resultLabel": "Korunan Gelir (Aylik)",
     "subscriptionCost": 5000,
     "inputs": [
-      { "key": "activeCustomers", "label": "Aktif Musteri", "default": 500, "hint": "Toplam aktif musteri", "editable": true },
-      { "key": "churnReduction", "label": "Churn Azalma", "default": 7, "prefix": "%", "hint": "%15 → %8 hedef", "editable": true },
-      { "key": "avgCustomerValue", "label": "Ort. Musteri Degeri", "default": 300, "suffix": "TL", "hint": "Aylik musteri degeri", "editable": true }
+      {
+        "key": "activeCustomers",
+        "label": "Aktif Musteri",
+        "default": 500,
+        "hint": "Toplam aktif musteri",
+        "editable": true
+      },
+      {
+        "key": "churnReduction",
+        "label": "Churn Azalma",
+        "default": 7,
+        "prefix": "%",
+        "hint": "%15 → %8 hedef",
+        "editable": true
+      },
+      {
+        "key": "avgCustomerValue",
+        "label": "Ort. Musteri Degeri",
+        "default": 300,
+        "suffix": "TL",
+        "hint": "Aylik musteri degeri",
+        "editable": true
+      }
     ],
     "formula": "activeCustomers * (churnReduction / 100) * avgCustomerValue",
     "formulaDisplay": null

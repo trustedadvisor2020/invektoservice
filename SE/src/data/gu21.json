@@ -8,14 +8,32 @@
   "description": "Sezonluk trendler (yaz sarisi, kis bakimi, bahar renkler) musterilerle paylasilamiyor, sadece sosyal medyada icerik uretiliyor. Outbound sezonluk kampanya + AI kisisel oneri ile proaktif trend paylasimi.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Guzellik Salonu (Trend Yonetimi)" },
-      { "label": "Sorun", "value": "Sezonluk trendler (balyaj, ombre, dogal tonlar) musterilere aktarilmiyor — rakip salonlara kayma riski" },
-      { "label": "Deger", "value": "Proaktif trend onerileri ile musteri bagliligi ve yeni hizmet deneme oranini artirma" }
+      {
+        "label": "Sektor",
+        "value": "Guzellik Salonu (Trend Yonetimi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Sezonluk trendler (balyaj, ombre, dogal tonlar) musterilere aktarilmiyor — rakip salonlara kayma riski"
+      },
+      {
+        "label": "Deger",
+        "value": "Proaktif trend onerileri ile musteri bagliligi ve yeni hizmet deneme oranini artirma"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI musteri profili ve gecmis islemlerine gore kisisellestirılmis sezonluk trend onerileri hazirlar. Outbound ile proaktif paylasim yapilir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Trend Tanimlama",
         "goal": "Sezonluk trendleri belirle",
         "badges": [
-          { "text": "Tenant (Salon)", "color": "amber" },
-          { "text": "Sistem (Knowledge)", "color": "purple" }
+          {
+            "text": "Tenant (Salon)",
+            "color": "amber"
+          },
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          }
         ],
         "content": "Salon sahibi her sezon icin trend hizmetleri ve gorsel referanslarini Knowledge Base'e yukler."
       },
@@ -32,8 +56,14 @@
         "title": "Kisisel Oneri",
         "goal": "Musteriye uygun trend sec",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (CRM)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (CRM)",
+            "color": "blue"
+          }
         ],
         "content": "AI musteri gecmis islemlerini analiz eder ve uygun trendi secer: koyu sac boyasi olana ombre, duz sac olana dalgali kesim gibi."
       },
@@ -41,8 +71,14 @@
         "title": "Proaktif Paylasim",
         "goal": "Trend onerisini gonder",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (WA Hatti)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (WA Hatti)",
+            "color": "green"
+          }
         ],
         "content": "Kisisellestirılmis trend onerisi gorsel referanslar ve kampanya firsati ile birlikte gonderilir."
       }
@@ -54,39 +90,118 @@
       "title": "Bahar Sezonu Trend Onerisi",
       "description": "Bahar sezonu baslangicinda musteri profiline gore kisisellestirılmis trend onerisi.",
       "tags": [
-        { "text": "Proaktif", "color": "green" },
-        { "text": "Trend", "color": "purple" }
+        {
+          "text": "Proaktif",
+          "color": "green"
+        },
+        {
+          "text": "Trend",
+          "color": "purple"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Sezonluk trend katalogu", "service": "Knowledge", "page": "Dokuman Bankasi > Sezon Trendleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Her sezon icin trend hizmetleri, gorselleri ve fiyatlarini ekleyin" },
-          { "text": "Musteri islem gecmisi", "service": "Backend", "page": "CRM > Islem Gecmisi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Musterinin gecmis islemleri kisisel oneri icin kullanilacak" }
+          {
+            "text": "Sezonluk trend katalogu",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Sezon Trendleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Her sezon icin trend hizmetleri, gorselleri ve fiyatlarini ekleyin"
+          },
+          {
+            "text": "Musteri islem gecmisi",
+            "service": "Backend",
+            "page": "CRM > Islem Gecmisi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Musterinin gecmis islemleri kisisel oneri icin kullanilacak"
+          }
         ],
         "provider": [
-          { "text": "Kisisel trend eslestirme motoru", "service": "AgentAI", "page": "Oneri Sistemi > Trend Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Musteri profili ve gecmis islemlere gore trend eslestirme hazir" },
-          { "text": "Gorsel iceren template mesaj", "service": "Outbound", "page": "Template Yonetimi > Trend Onerisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Gorsel referansli trend oneri sablonu hazir" }
+          {
+            "text": "Kisisel trend eslestirme motoru",
+            "service": "AgentAI",
+            "page": "Oneri Sistemi > Trend Eslestirme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Musteri profili ve gecmis islemlere gore trend eslestirme hazir"
+          },
+          {
+            "text": "Gorsel iceren template mesaj",
+            "service": "Outbound",
+            "page": "Template Yonetimi > Trend Onerisi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Gorsel referansli trend oneri sablonu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Sezon degisimi tetiklendi: Bahar 2026. AI musteri profillerini tarıyor ve kisisel trend onerileri hazirlıyor." },
-        { "role": "system", "content": "Musteri: Ebru Sahin. Profil: Koyu sac, son 4 islem dip boyama (siyah). AI onerisi: Cikolata kahverengi balyaj trendi." },
-        { "role": "bot", "content": "Merhaba Ebru Hanim!\n\nBahar geldi, yeni sezon trendleri harika! Size ozel bir onerimiz var:\n\nBu bahar en cok talep edilen trend: Cikolata Balyaj! Koyu saclariniza muhtesem isiltı katar.\n\n[Referans gorsel]\n\nBahar lansmanina ozel %20 indirimle deneyin!\nNormal: 2.000 TL → Lansman: 1.600 TL\n\nRandevu almak ister misiniz?" },
-        { "role": "user", "content": "Cok guzel gorunuyor! Ama sacimi cok acmak istemiyorum" },
-        { "role": "bot", "content": "Anliyorum Ebru Hanim! Cikolata balyajin guzelligi tam da bu — saclarinizi cok acmadan dogal bir geçis sagliyor.\n\nSize daha yakin tonlarla soft bir balyaj uygulamasi yapabiliriz. Sonuc dogal ve zarif olacak.\n\n[Soft balyaj referans gorsel]\n\nBu stili denemek ister misiniz?" },
-        { "role": "user", "content": "Bu cok daha iyi, randevu alalim" },
-        { "role": "bot", "content": "Harika secim! Musait slotlar:\n\nSali 11 Mart: 10:00, 14:00\nPersembe 13 Mart: 11:00\n\nBalyaj islemi yaklasik 2.5 saat surecek.\nFiyat: 1.600 TL (Bahar Lansman)\n\nHangi gun uygun?" },
-        { "role": "system", "content": "Trend onerisi basarili. Yeni hizmet denemesi: Balyaj (ilk kez). Kampanya donusumu: 1 randevu." }
-      ]
+        {
+          "role": "system",
+          "content": "Sezon degisimi tetiklendi: Bahar 2026. AI musteri profillerini tarıyor ve kisisel trend onerileri hazirlıyor."
+        },
+        {
+          "role": "system",
+          "content": "Musteri: Ebru Sahin. Profil: Koyu sac, son 4 islem dip boyama (siyah). AI onerisi: Cikolata kahverengi balyaj trendi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Ebru Hanim!\n\nBahar geldi, yeni sezon trendleri harika! Size ozel bir onerimiz var:\n\nBu bahar en cok talep edilen trend: Cikolata Balyaj! Koyu saclariniza muhtesem isiltı katar.\n\n[Referans gorsel]\n\nBahar lansmanina ozel %20 indirimle deneyin!\nNormal: 2.000 TL → Lansman: 1.600 TL\n\nRandevu almak ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Cok guzel gorunuyor! Ama sacimi cok acmak istemiyorum"
+        },
+        {
+          "role": "bot",
+          "content": "Anliyorum Ebru Hanim! Cikolata balyajin guzelligi tam da bu — saclarinizi cok acmadan dogal bir geçis sagliyor.\n\nSize daha yakin tonlarla soft bir balyaj uygulamasi yapabiliriz. Sonuc dogal ve zarif olacak.\n\n[Soft balyaj referans gorsel]\n\nBu stili denemek ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Bu cok daha iyi, randevu alalim"
+        },
+        {
+          "role": "bot",
+          "content": "Harika secim! Musait slotlar:\n\nSali 11 Mart: 10:00, 14:00\nPersembe 13 Mart: 11:00\n\nBalyaj islemi yaklasik 2.5 saat surecek.\nFiyat: 1.600 TL (Bahar Lansman)\n\nHangi gun uygun?"
+        },
+        {
+          "role": "system",
+          "content": "Trend onerisi basarili. Yeni hizmet denemesi: Balyaj (ilk kez). Kampanya donusumu: 1 randevu."
+        }
+      ],
+      "aiPrompt": "\"Mevsimsel Trend Oneri\" senaryosu icin \"Bahar Sezonu Trend Onerisi\" akisini olustur.\n\nAciklama: Bahar sezonu baslangicinda musteri profiline gore kisisellestirılmis trend onerisi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Sezon degisimi tetiklendi: Bahar 2026. AI musteri profillerini tarıyor ve kisisel trend onerileri hazirlıyor.\n\n2. **utility_set_variable** — Durum guncelle\n   Deger: Musteri: Ebru Sahin. Profil: Koyu sac, son 4 islem dip boyama (siyah). AI onerisi: Cikolata kahverengi balyaj trendi.\n\n3. **message_text** — Mesaj gonder\n   text: \"Merhaba Ebru Hanim!\n\nBahar geldi, yeni sezon trendleri harika! Size ozel bir onerimiz var:\n\nBu bahar en cok talep edilen trend: Cikolata Balyaj! Koyu saclariniza muhtesem isiltı katar.\n\n[Referans gorsel]\n\nBahar lansmanina ozel %20 indirimle deneyin!\nNormal: 2.000 TL → Lansman: 1.600 TL\n\nRandevu almak ister misiniz?\"\n   Degiskenler: {{referans_gorsel}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Cok guzel gorunuyor! Ama sacimi cok acmak istemiyorum\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Anliyorum Ebru Hanim! Cikolata balyajin guzelligi tam da bu — saclarinizi cok acmadan dogal bir geçis sagliyor.\n\nSize daha yakin tonlarla soft bir balyaj uygulamasi yapabiliriz. Sonuc dogal ve zarif olacak.\n\n[Soft balyaj referans gorsel]\n\nBu stili denemek ister misiniz?\"\n   Degiskenler: {{soft_balyaj_referans_gorsel}}\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Bu cok daha iyi, randevu alalim\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Harika secim! Musait slotlar:\n\nSali 11 Mart: 10:00, 14:00\nPersembe 13 Mart: 11:00\n\nBalyaj islemi yaklasik 2.5 saat surecek.\nFiyat: 1.600 TL (Bahar Lansman)\n\nHangi gun uygun?\"\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Trend onerisi basarili. Yeni hizmet denemesi: Balyaj (ilk kez). Kampanya donusumu: 1 randevu.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "AI musteri gecmis islemlerini analiz ederek kisisellestirılmis sezonluk trend onerileri olusturur. Outbound ile gorsel referanslarla birlikte proaktif gonderim yapilir.",
     "backend": [
-      { "title": "Trend Recommendation Engine", "goal": "Trend Eslestirme", "content": "Musteri sac tipi, renk gecmisi ve tercihlerine gore uygun sezonluk trendi eslestiren AI motoru." },
-      { "title": "Seasonal Campaign Manager", "goal": "Sezon Kampanyasi", "content": "Sezon degisimlerinde otomatik tetiklenen kampanya yonetim sistemi." }
+      {
+        "title": "Trend Recommendation Engine",
+        "goal": "Trend Eslestirme",
+        "content": "Musteri sac tipi, renk gecmisi ve tercihlerine gore uygun sezonluk trendi eslestiren AI motoru."
+      },
+      {
+        "title": "Seasonal Campaign Manager",
+        "goal": "Sezon Kampanyasi",
+        "content": "Sezon degisimlerinde otomatik tetiklenen kampanya yonetim sistemi."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Media API", "goal": "Gorsel Gonderim", "content": "Trend referans gorsellerini WhatsApp uzerinden gonderme kapasitesi." }
+      {
+        "title": "WhatsApp Media API",
+        "goal": "Gorsel Gonderim",
+        "content": "Trend referans gorsellerini WhatsApp uzerinden gonderme kapasitesi."
+      }
     ]
   },
   "impact": {
@@ -95,9 +210,29 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyTrendMessages", "label": "Aylik Trend Mesaji", "default": 100, "hint": "Trend onerisi gonderilen musteri sayisi", "editable": true },
-      { "key": "trialRate", "label": "Deneme Orani", "default": 12, "prefix": "%", "hint": "Yeni hizmet deneyen oran", "editable": true },
-      { "key": "avgNewServiceValue", "label": "Ort. Yeni Hizmet Degeri", "default": 1500, "suffix": "TL", "hint": "Yeni denenen hizmetin ortalama degeri", "editable": true }
+      {
+        "key": "monthlyTrendMessages",
+        "label": "Aylik Trend Mesaji",
+        "default": 100,
+        "hint": "Trend onerisi gonderilen musteri sayisi",
+        "editable": true
+      },
+      {
+        "key": "trialRate",
+        "label": "Deneme Orani",
+        "default": 12,
+        "prefix": "%",
+        "hint": "Yeni hizmet deneyen oran",
+        "editable": true
+      },
+      {
+        "key": "avgNewServiceValue",
+        "label": "Ort. Yeni Hizmet Degeri",
+        "default": 1500,
+        "suffix": "TL",
+        "hint": "Yeni denenen hizmetin ortalama degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyTrendMessages * (trialRate / 100) * avgNewServiceValue",
     "formulaDisplay": null

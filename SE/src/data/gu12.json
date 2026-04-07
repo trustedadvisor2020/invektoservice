@@ -8,13 +8,28 @@
   "description": "Memnun musteri arkadaslarini yonlendirebilir ama sistematik bir teklif yapilmiyor. Islem sonrasi Outbound ile arkadas getir kampanyasi gonderilerek organik buyume saglanir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
-      { "label": "Sorun", "value": "Memnun musteriler arkadaslarini yonlendirmiyor — sistematik referans mekanizmasi yok" },
-      { "label": "Deger", "value": "Otomatik referral teklifi = dusuk maliyetli yeni musteri kazanimi" }
+      {
+        "label": "Sektor",
+        "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Memnun musteriler arkadaslarini yonlendirmiyor — sistematik referans mekanizmasi yok"
+      },
+      {
+        "label": "Deger",
+        "value": "Otomatik referral teklifi = dusuk maliyetli yeni musteri kazanimi"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Memnun musteri tespiti sonrasi (yuksek puan veya yorum) Outbound ile referral teklifi gonderilir. Arkadasa ozel indirim kodu ve yonlendirene hediye olusturulur.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Memnun Musteri Tespiti",
         "goal": "Referral adayini bul",
         "badges": [
-          { "text": "Sistem (Analiz)", "color": "purple" },
-          { "text": "Tenant (CRM)", "color": "blue" }
+          {
+            "text": "Sistem (Analiz)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (CRM)",
+            "color": "blue"
+          }
         ],
         "content": "Islem sonrasi memnuniyet puani 4+ olan veya olumlu yorum yapan musteriler referral adayi olarak isaretlenir."
       },
@@ -31,8 +52,14 @@
         "title": "Referral Teklifi",
         "goal": "Kampanya gonder",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Template)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Template)",
+            "color": "green"
+          }
         ],
         "content": "Kisisel referral kodu ile arkadas getir teklifi gonderilir. Her iki tarafa da avantaj sunulur."
       }
@@ -44,60 +71,168 @@
       "title": "Islem Sonrasi Referral Teklifi",
       "description": "Memnun musteri islem sonrasi arkadas getir teklifi aliyor.",
       "tags": [
-        { "text": "Proaktif", "color": "purple" },
-        { "text": "Referral", "color": "green" }
+        {
+          "text": "Proaktif",
+          "color": "purple"
+        },
+        {
+          "text": "Referral",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Referral kampanya kurallari", "service": "Backend", "page": "Kampanya > Referral Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Referral indirimi (%10 gibi) ve yonlendirenin hediyesini (ucretsiz fon gibi) tanimlayin" },
-          { "text": "WhatsApp referral template'i", "service": "Backend", "page": "Mesaj Sablonlari > Referral Teklifi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli referral kampanya template'i olusturun" }
+          {
+            "text": "Referral kampanya kurallari",
+            "service": "Backend",
+            "page": "Kampanya > Referral Ayarlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Referral indirimi (%10 gibi) ve yonlendirenin hediyesini (ucretsiz fon gibi) tanimlayin"
+          },
+          {
+            "text": "WhatsApp referral template'i",
+            "service": "Backend",
+            "page": "Mesaj Sablonlari > Referral Teklifi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Meta onayli referral kampanya template'i olusturun"
+          }
         ],
         "provider": [
-          { "text": "Referral kod uretimi", "service": "Backend", "page": "Kampanya > Referral Kodlari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Musteri bazli benzersiz referral kodu uretimi hazir" },
-          { "text": "Memnuniyet bazli tetikleme", "service": "Automation", "page": "Trigger > Memnun Musteri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Memnuniyet anketi 4+ puan veya olumlu yorum sonrasi referral tetikleme hazir" }
+          {
+            "text": "Referral kod uretimi",
+            "service": "Backend",
+            "page": "Kampanya > Referral Kodlari",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Musteri bazli benzersiz referral kodu uretimi hazir"
+          },
+          {
+            "text": "Memnuniyet bazli tetikleme",
+            "service": "Automation",
+            "page": "Trigger > Memnun Musteri",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Memnuniyet anketi 4+ puan veya olumlu yorum sonrasi referral tetikleme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Memnun musteri tespit edildi: Elif Yilmaz — Memnuniyet puani 5/5, 'Cok memnunum, tesekkurler!' yorumu. Referral teklifi tetikleniyor." },
-        { "role": "bot", "content": "[Outbound Template — T+1 gun]\n\nMerhaba Elif! Bizi tercih ettiginiz icin tesekkur ederiz.\n\nMemnuniyetiniz bizi mutlu etti! Size ozel bir teklifimiz var:\n\nBir arkadasinizi getirin:\nArkadasiniza: Ilk islemde %15 indirim\nSize: Ucretsiz fon hediye!\n\nKisisel referral kodunuz: ELIF2026\n\nArkadasiniz randevu alirken bu kodu paylasmasi yeterli.\n\nArkadaslarinizla paylasir misiniz?" },
-        { "role": "user", "content": "Harika teklif! Arkadasima gonderecegim." },
-        { "role": "bot", "content": "Tesekkurler Elif! Arkadasiniz ELIF2026 kodu ile randevu aldiginda size otomatik bildirim gonderecegiz.\n\nUcretsiz fon hediyeniz hesabiniza tanimlanacak. Iyi gunler!" },
-        { "role": "system", "content": "Referral kodu aktif: ELIF2026. Musteri bilgilendirildi. Kod kullanim takibi baslatildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Memnun musteri tespit edildi: Elif Yilmaz — Memnuniyet puani 5/5, 'Cok memnunum, tesekkurler!' yorumu. Referral teklifi tetikleniyor."
+        },
+        {
+          "role": "bot",
+          "content": "[Outbound Template — T+1 gun]\n\nMerhaba Elif! Bizi tercih ettiginiz icin tesekkur ederiz.\n\nMemnuniyetiniz bizi mutlu etti! Size ozel bir teklifimiz var:\n\nBir arkadasinizi getirin:\nArkadasiniza: Ilk islemde %15 indirim\nSize: Ucretsiz fon hediye!\n\nKisisel referral kodunuz: ELIF2026\n\nArkadasiniz randevu alirken bu kodu paylasmasi yeterli.\n\nArkadaslarinizla paylasir misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Harika teklif! Arkadasima gonderecegim."
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler Elif! Arkadasiniz ELIF2026 kodu ile randevu aldiginda size otomatik bildirim gonderecegiz.\n\nUcretsiz fon hediyeniz hesabiniza tanimlanacak. Iyi gunler!"
+        },
+        {
+          "role": "system",
+          "content": "Referral kodu aktif: ELIF2026. Musteri bilgilendirildi. Kod kullanim takibi baslatildi."
+        }
+      ],
+      "aiPrompt": "\"Referral / Arkadas Getir\" senaryosu icin \"Islem Sonrasi Referral Teklifi\" akisini olustur.\n\nAciklama: Memnun musteri islem sonrasi arkadas getir teklifi aliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Memnun musteri tespit edildi: Elif Yilmaz — Memnuniyet puani 5/5, 'Cok memnunum, tesekkurler!' yorumu. Referral teklifi tetikleniyor.\n\n2. **message_text** — Mesaj gonder\n   text: \"[Outbound Template — T+1 gun]\n\nMerhaba Elif! Bizi tercih ettiginiz icin tesekkur ederiz.\n\nMemnuniyetiniz bizi mutlu etti! Size ozel bir teklifimiz var:\n\nBir arkadasinizi getirin:\nArkadasiniza: Ilk islemde %15 indirim\nSize: Ucretsiz fon hediye!\n\nKisisel referral kodunuz: ELIF2026\n\nArkadasiniz randevu alirken bu kodu paylasmasi yeterli.\n\nArkadaslarinizla paylasir misiniz?\"\n   Degiskenler: {{outbound_template_—_t+1_gun}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Harika teklif! Arkadasima gonderecegim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tesekkurler Elif! Arkadasiniz ELIF2026 kodu ile randevu aldiginda size otomatik bildirim gonderecegiz.\n\nUcretsiz fon hediyeniz hesabiniza tanimlanacak. Iyi gunler!\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Referral kodu aktif: ELIF2026. Musteri bilgilendirildi. Kod kullanim takibi baslatildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Referral Kod Kullanimi",
       "description": "Yeni musteri referral kodu ile randevu aliyor.",
       "tags": [
-        { "text": "Yeni Musteri", "color": "blue" },
-        { "text": "Referral", "color": "green" }
+        {
+          "text": "Yeni Musteri",
+          "color": "blue"
+        },
+        {
+          "text": "Referral",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [],
         "provider": [
-          { "text": "Referral kod dogrulama", "service": "Backend", "page": "Kampanya > Kod Dogrulama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Referral kodunu dogrulayip indirim uygulama hazir" }
+          {
+            "text": "Referral kod dogrulama",
+            "service": "Backend",
+            "page": "Kampanya > Kod Dogrulama",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Referral kodunu dogrulayip indirim uygulama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, arkadasim Elif'in referans koduyla randevu almak istiyorum. Kod: ELIF2026" },
-        { "role": "ai", "content": "Intent: Randevu + Referral Kod. Kod: ELIF2026. Dogrulama yapiliyor. Gecerli — Elif Yilmaz'in referansi." },
-        { "role": "bot", "content": "Hosgeldiniz! Elif Hanim'in referansi ile %15 indirim hakkiniz aktif.\n\nHangi islem icin randevu almak istersiniz? Musait tarihlerimiz:\n\nYarin 11:00 — Ayse Stilist\nYarin 14:00 — Selin Stilist\nCuma 10:00 — Zeynep Stilist" },
-        { "role": "user", "content": "Sac kesimi icin yarin 11 olsun" },
-        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nSac Kesimi — Ayse Stilist\nYarin, 11:00\nReferral indirimi: %15\n\nElif Hanim'e de ucretsiz fon hediyesi tanimlandi.\n\nGorusmek uzere!" },
-        { "role": "system", "content": "Referral donusumu: ELIF2026 kodu kullanildi. Yeni musteri kazanildi. Yonlendiren Elif'e ucretsiz fon hediyesi tanimlandi." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, arkadasim Elif'in referans koduyla randevu almak istiyorum. Kod: ELIF2026"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Randevu + Referral Kod. Kod: ELIF2026. Dogrulama yapiliyor. Gecerli — Elif Yilmaz'in referansi."
+        },
+        {
+          "role": "bot",
+          "content": "Hosgeldiniz! Elif Hanim'in referansi ile %15 indirim hakkiniz aktif.\n\nHangi islem icin randevu almak istersiniz? Musait tarihlerimiz:\n\nYarin 11:00 — Ayse Stilist\nYarin 14:00 — Selin Stilist\nCuma 10:00 — Zeynep Stilist"
+        },
+        {
+          "role": "user",
+          "content": "Sac kesimi icin yarin 11 olsun"
+        },
+        {
+          "role": "bot",
+          "content": "Randevunuz olusturuldu!\n\nSac Kesimi — Ayse Stilist\nYarin, 11:00\nReferral indirimi: %15\n\nElif Hanim'e de ucretsiz fon hediyesi tanimlandi.\n\nGorusmek uzere!"
+        },
+        {
+          "role": "system",
+          "content": "Referral donusumu: ELIF2026 kodu kullanildi. Yeni musteri kazanildi. Yonlendiren Elif'e ucretsiz fon hediyesi tanimlandi."
+        }
+      ],
+      "aiPrompt": "\"Referral / Arkadas Getir\" senaryosu icin \"Referral Kod Kullanimi\" akisini olustur.\n\nAciklama: Yeni musteri referral kodu ile randevu aliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, arkadasim Elif'in referans koduyla randevu almak istiyorum. Kod: ELIF2026\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Randevu + Referral Kod. Kod: ELIF2026. Dogrulama yapiliyor. Gecerli — Elif Yilmaz'in referansi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Hosgeldiniz! Elif Hanim'in referansi ile %15 indirim hakkiniz aktif.\n\nHangi islem icin randevu almak istersiniz? Musait tarihlerimiz:\n\nYarin 11:00 — Ayse Stilist\nYarin 14:00 — Selin Stilist\nCuma 10:00 — Zeynep Stilist\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Sac kesimi icin yarin 11 olsun\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Randevunuz olusturuldu!\n\nSac Kesimi — Ayse Stilist\nYarin, 11:00\nReferral indirimi: %15\n\nElif Hanim'e de ucretsiz fon hediyesi tanimlandi.\n\nGorusmek uzere!\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Referral donusumu: ELIF2026 kodu kullanildi. Yeni musteri kazanildi. Yonlendiren Elif'e ucretsiz fon hediyesi tanimlandi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Memnun musteri analizi + otomatik referral kod uretimi + Outbound kampanya. Kod kullanim takibi ve odul yonetimi.",
     "backend": [
-      { "title": "Referral Engine", "goal": "Referral Yonetimi", "content": "Referral kodu uretimi, dogrulama, indirim uygulama ve odul takibi." },
-      { "title": "Satisfaction Tracker", "goal": "Memnuniyet Takibi", "content": "Islem sonrasi memnuniyet puani toplama ve referral adayi isaretleme." }
+      {
+        "title": "Referral Engine",
+        "goal": "Referral Yonetimi",
+        "content": "Referral kodu uretimi, dogrulama, indirim uygulama ve odul takibi."
+      },
+      {
+        "title": "Satisfaction Tracker",
+        "goal": "Memnuniyet Takibi",
+        "content": "Islem sonrasi memnuniyet puani toplama ve referral adayi isaretleme."
+      }
     ],
     "apis": [
-      { "title": "Referral Code API", "goal": "Kod Yonetimi", "content": "Referral kodu olusturma, dogrulama ve kullanim istatistigi API'si." },
-      { "title": "Reward API", "goal": "Odul Yonetimi", "content": "Referral sonrasi her iki tarafa odul tanimlama ve kullanim takip API'si." }
+      {
+        "title": "Referral Code API",
+        "goal": "Kod Yonetimi",
+        "content": "Referral kodu olusturma, dogrulama ve kullanim istatistigi API'si."
+      },
+      {
+        "title": "Reward API",
+        "goal": "Odul Yonetimi",
+        "content": "Referral sonrasi her iki tarafa odul tanimlama ve kullanim takip API'si."
+      }
     ]
   },
   "impact": {
@@ -106,9 +241,29 @@
     "resultLabel": "Yeni Musteri Geliri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyReferralsSent", "label": "Aylik Referral Gonderimi", "default": 40, "hint": "Referral teklifi gonderilen musteri sayisi", "editable": true },
-      { "key": "referralConversion", "label": "Referral Donusum", "default": 20, "suffix": "%", "hint": "Referral kodunu kullanan yeni musteri orani", "editable": true },
-      { "key": "newCustomerFirstVisit", "label": "Ilk Ziyaret Degeri", "default": 600, "suffix": "TL", "hint": "Yeni musterinin ilk ziyaret harcamasi", "editable": true }
+      {
+        "key": "monthlyReferralsSent",
+        "label": "Aylik Referral Gonderimi",
+        "default": 40,
+        "hint": "Referral teklifi gonderilen musteri sayisi",
+        "editable": true
+      },
+      {
+        "key": "referralConversion",
+        "label": "Referral Donusum",
+        "default": 20,
+        "suffix": "%",
+        "hint": "Referral kodunu kullanan yeni musteri orani",
+        "editable": true
+      },
+      {
+        "key": "newCustomerFirstVisit",
+        "label": "Ilk Ziyaret Degeri",
+        "default": 600,
+        "suffix": "TL",
+        "hint": "Yeni musterinin ilk ziyaret harcamasi",
+        "editable": true
+      }
     ],
     "formula": "monthlyReferralsSent * (referralConversion / 100) * newCustomerFirstVisit",
     "formulaDisplay": null

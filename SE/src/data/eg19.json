@@ -8,13 +8,28 @@
   "description": "Ust uste devamsizlik yapan ogrenciye ve velisine otomatik uyari. 2. devamsizlikta ogrenciye, 3. devamsizlikta veliye alert gondererek erken mudahale saglayan proaktif senaryo.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Okul)" },
-      { "label": "Sorun", "value": "Devamsiz ogrenci fark edilmiyor, mudahale geciyor — ogrenci kursu birakiyor" },
-      { "label": "Deger", "value": "Erken devamsizlik uyarisi ile ogrenciyi geri kazan, birakma oranini dusur" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Okul)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Devamsiz ogrenci fark edilmiyor, mudahale geciyor — ogrenci kursu birakiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Erken devamsizlik uyarisi ile ogrenciyi geri kazan, birakma oranini dusur"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Yoklama sistemi devamsizlik esigini astiginda Outbound Engine otomatik uyari gonderir. 2. devamsizlik ogrenciye, 3. devamsizlik veliye.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Devamsizlik Tespiti",
         "goal": "Devamsizlik esigini izle",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Yoklama)", "color": "blue" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Yoklama)",
+            "color": "blue"
+          }
         ],
         "content": "Yoklama sistemi ust uste devamsizliklari sayar. 2. ve 3. devamsizlikta tetikleme yapar."
       },
@@ -31,8 +52,14 @@
         "title": "Ogrenci Uyarisi (2. Devamsizlik)",
         "goal": "Ogrenciye hatirlat",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Template)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Template)",
+            "color": "green"
+          }
         ],
         "content": "2. ust uste devamsizlikta ogrenciye sicak bir hatirlatma mesaji gonderilir."
       },
@@ -40,8 +67,14 @@
         "title": "Veli Bildirimi (3. Devamsizlik)",
         "goal": "Aileyi bilgilendir",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Veli Bilgisi)", "color": "amber" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Veli Bilgisi)",
+            "color": "amber"
+          }
         ],
         "content": "3. ust uste devamsizlikta veliye bilgilendirme mesaji gonderilir ve koordinore eskalasyon yapilir."
       }
@@ -53,38 +86,115 @@
       "title": "Kademeli Devamsizlik Uyarisi",
       "description": "2. devamsizlikta ogrenciye, 3. devamsizlikta veliye otomatik mesaj.",
       "tags": [
-        { "text": "Proaktif", "color": "green" },
-        { "text": "Devam Takibi", "color": "amber" }
+        {
+          "text": "Proaktif",
+          "color": "green"
+        },
+        {
+          "text": "Devam Takibi",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Yoklama sistemi entegrasyonu", "service": "Backend", "page": "Egitim > Yoklama Entegrasyonu", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "Yoklama verilerinin sisteme aktarilmasi icin entegrasyon kurun" },
-          { "text": "Veli iletisim bilgileri", "service": "Backend", "page": "CRM > Veli Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Her ogrenci icin veli telefon numarasinin kayitli olmasi gerekir" }
+          {
+            "text": "Yoklama sistemi entegrasyonu",
+            "service": "Backend",
+            "page": "Egitim > Yoklama Entegrasyonu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C1",
+            "hint": "Yoklama verilerinin sisteme aktarilmasi icin entegrasyon kurun"
+          },
+          {
+            "text": "Veli iletisim bilgileri",
+            "service": "Backend",
+            "page": "CRM > Veli Bilgileri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Her ogrenci icin veli telefon numarasinin kayitli olmasi gerekir"
+          }
         ],
         "provider": [
-          { "text": "Devamsizlik sayac motoru", "service": "Automation", "page": "Otomasyon > Devamsizlik Kurallari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ust uste devamsizlik sayaci ve esik tetikleme hazir" },
-          { "text": "Kademeli mesaj sablonlari", "service": "Outbound", "page": "Sablonlar > Devamsizlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ogrenci ve veli icin farkli mesaj sablonlari hazir" }
+          {
+            "text": "Devamsizlik sayac motoru",
+            "service": "Automation",
+            "page": "Otomasyon > Devamsizlik Kurallari",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Ust uste devamsizlik sayaci ve esik tetikleme hazir"
+          },
+          {
+            "text": "Kademeli mesaj sablonlari",
+            "service": "Outbound",
+            "page": "Sablonlar > Devamsizlik",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Ogrenci ve veli icin farkli mesaj sablonlari hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Devamsizlik tetikleme: Ogrenci Cem K. — B1 Ingilizce. 2. ust uste devamsizlik. Ogrenciye uyari gonderilecek." },
-        { "role": "bot", "content": "Merhaba Cem! Son 2 derse katilmadiginizi fark ettik. Sizi ozledik!\n\nDersler her Sali-Persembe 19:00'da devam ediyor. Bir sorun varsa bize yazabilirsiniz, yardimci olmaktan memnuniyet duyariz.\n\nGelecek ders: Persembe, 19:00 — Sizi bekliyoruz!" },
-        { "role": "system", "content": "3. ust uste devamsizlik: Ogrenci Cem K. Veli bildirim tetiklendi." },
-        { "role": "bot", "content": "Sayin Kemal Bey, ogretmenciniz Cem'in B1 Ingilizce kursunda son 3 derse katilmadignii bildirmek isteriz.\n\nCem'in ders programi: Sali-Persembe 19:00-20:30\nSon katildigi ders: 4 Subat\n\nBir sorun oldugunu dusunuyorsaniz bize ulasabilirsiniz. Koordinatorumuz da sizinle iletisime gececektir." },
-        { "role": "user", "content": "Tesekkurler, hastaydi. Gelecek hafta baslayacak tekrar." },
-        { "role": "system", "content": "Veli geri donus: Saglik sorunu. Ogrenci gelecek hafta devam edecek. Koordinore bilgi iletildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Devamsizlik tetikleme: Ogrenci Cem K. — B1 Ingilizce. 2. ust uste devamsizlik. Ogrenciye uyari gonderilecek."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Cem! Son 2 derse katilmadiginizi fark ettik. Sizi ozledik!\n\nDersler her Sali-Persembe 19:00'da devam ediyor. Bir sorun varsa bize yazabilirsiniz, yardimci olmaktan memnuniyet duyariz.\n\nGelecek ders: Persembe, 19:00 — Sizi bekliyoruz!"
+        },
+        {
+          "role": "system",
+          "content": "3. ust uste devamsizlik: Ogrenci Cem K. Veli bildirim tetiklendi."
+        },
+        {
+          "role": "bot",
+          "content": "Sayin Kemal Bey, ogretmenciniz Cem'in B1 Ingilizce kursunda son 3 derse katilmadignii bildirmek isteriz.\n\nCem'in ders programi: Sali-Persembe 19:00-20:30\nSon katildigi ders: 4 Subat\n\nBir sorun oldugunu dusunuyorsaniz bize ulasabilirsiniz. Koordinatorumuz da sizinle iletisime gececektir."
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler, hastaydi. Gelecek hafta baslayacak tekrar."
+        },
+        {
+          "role": "system",
+          "content": "Veli geri donus: Saglik sorunu. Ogrenci gelecek hafta devam edecek. Koordinore bilgi iletildi."
+        }
+      ],
+      "aiPrompt": "\"Devam Takibi Hatirlatma\" senaryosu icin \"Kademeli Devamsizlik Uyarisi\" akisini olustur.\n\nAciklama: 2. devamsizlikta ogrenciye, 3. devamsizlikta veliye otomatik mesaj.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Devamsizlik tetikleme: Ogrenci Cem K. — B1 Ingilizce. 2. ust uste devamsizlik. Ogrenciye uyari gonderilecek.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba Cem! Son 2 derse katilmadiginizi fark ettik. Sizi ozledik!\n\nDersler her Sali-Persembe 19:00'da devam ediyor. Bir sorun varsa bize yazabilirsiniz, yardimci olmaktan memnuniyet duyariz.\n\nGelecek ders: Persembe, 19:00 — Sizi bekliyoruz!\"\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: 3. ust uste devamsizlik: Ogrenci Cem K. Veli bildirim tetiklendi.\n\n4. **message_text** — Mesaj gonder\n   text: \"Sayin Kemal Bey, ogretmenciniz Cem'in B1 Ingilizce kursunda son 3 derse katilmadignii bildirmek isteriz.\n\nCem'in ders programi: Sali-Persembe 19:00-20:30\nSon katildigi ders: 4 Subat\n\nBir sorun oldugunu dusunuyorsaniz bize ulasabilirsiniz. Koordinatorumuz da sizinle iletisime gececektir.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler, hastaydi. Gelecek hafta baslayacak tekrar.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Veli geri donus: Saglik sorunu. Ogrenci gelecek hafta devam edecek. Koordinore bilgi iletildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Yoklama entegrasyonu + Otomasyon motoru + Outbound Engine ile calisir. Kademeli devamsizlik sayaci ve ust uste devamsizlik kontrolu.",
     "backend": [
-      { "title": "Attendance Counter", "goal": "Devamsizlik Sayaci", "content": "Yoklama verisinden ust uste devamsizlik sayar. 2 ve 3 esik degerlerinde tetikleme yapar." },
-      { "title": "Parent Notification Engine", "goal": "Veli Bildirimi", "content": "3. devamsizlikta veliye otomatik bildirim gonderir ve koordinore eskalasyon yapar." }
+      {
+        "title": "Attendance Counter",
+        "goal": "Devamsizlik Sayaci",
+        "content": "Yoklama verisinden ust uste devamsizlik sayar. 2 ve 3 esik degerlerinde tetikleme yapar."
+      },
+      {
+        "title": "Parent Notification Engine",
+        "goal": "Veli Bildirimi",
+        "content": "3. devamsizlikta veliye otomatik bildirim gonderir ve koordinore eskalasyon yapar."
+      }
     ],
     "apis": [
-      { "title": "Attendance Integration API", "goal": "Yoklama Verisi", "content": "Yoklama sisteminden ders katilim verisini alir ve devamsizlik sayacini gunceller." },
-      { "title": "Outbound Alert API", "goal": "Uyari Gonderimi", "content": "Kademeli uyari mesajlarini ogrenci ve veliye WhatsApp ile gonderir." }
+      {
+        "title": "Attendance Integration API",
+        "goal": "Yoklama Verisi",
+        "content": "Yoklama sisteminden ders katilim verisini alir ve devamsizlik sayacini gunceller."
+      },
+      {
+        "title": "Outbound Alert API",
+        "goal": "Uyari Gonderimi",
+        "content": "Kademeli uyari mesajlarini ogrenci ve veliye WhatsApp ile gonderir."
+      }
     ]
   },
   "impact": {
@@ -93,9 +203,29 @@
     "resultLabel": "Onlenen Kayip (Donem Basi)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "studentsWithAbsence", "label": "Devamsiz Ogrenci", "default": 20, "hint": "Donemde 3+ devamsizlik yapan ogrenci sayisi", "editable": true },
-      { "key": "retentionRate", "label": "Geri Kazanma Orani", "default": 50, "suffix": "%", "hint": "Uyari sonrasi derslere donen ogrenci orani", "editable": true },
-      { "key": "avgCourseValue", "label": "Ort. Kurs Degeri", "default": 6000, "suffix": "TL", "hint": "Ogrenci basina kalan donem geliri", "editable": true }
+      {
+        "key": "studentsWithAbsence",
+        "label": "Devamsiz Ogrenci",
+        "default": 20,
+        "hint": "Donemde 3+ devamsizlik yapan ogrenci sayisi",
+        "editable": true
+      },
+      {
+        "key": "retentionRate",
+        "label": "Geri Kazanma Orani",
+        "default": 50,
+        "suffix": "%",
+        "hint": "Uyari sonrasi derslere donen ogrenci orani",
+        "editable": true
+      },
+      {
+        "key": "avgCourseValue",
+        "label": "Ort. Kurs Degeri",
+        "default": 6000,
+        "suffix": "TL",
+        "hint": "Ogrenci basina kalan donem geliri",
+        "editable": true
+      }
     ],
     "formula": "studentsWithAbsence * (retentionRate / 100) * avgCourseValue",
     "formulaDisplay": null

@@ -8,15 +8,36 @@
   "description": "Mesaj bekleme suresi asildiginda sistematik bir eskalasyon mekanizmasi olmadigi icin musteriler cevapsiz kaliyor. Tenant bazli SLA tanimlari, kademeliuyari sistemi (uyari, eskalasyon, emergency routing) ve otomatik failover ile hicbir mesaj kaybolmaz.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — SLA taahhudunde bulunan, coklu agent calisan isletmeler" },
-      { "label": "Sorun", "value": "Mesaj bekleme suresi asildiginda hicbir mekanizma tetiklenmiyor; musteriler saatlerce cevapsiz kaliyor" },
-      { "label": "Deger", "value": "SLA uyum orani %99+ + musteri memnuniyeti + operasyonel gorunurluk" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — SLA taahhudunde bulunan, coklu agent calisan isletmeler"
+      },
+      {
+        "label": "Sorun",
+        "value": "Mesaj bekleme suresi asildiginda hicbir mekanizma tetiklenmiyor; musteriler saatlerce cevapsiz kaliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "SLA uyum orani %99+ + musteri memnuniyeti + operasyonel gorunurluk"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Smart Routing (C2)", "color": "amber" },
-      { "name": "Analytics Dashboard (C4)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "green" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Smart Routing (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "Analytics Dashboard (C4)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "green"
+      }
     ],
     "servicesNote": "SLA Watchdog servisi her mesajin bekleme suresini izler. Kademeli eskalasyon: uyari push → supervisor eskalasyon → emergency routing (AI veya baska agent). Tenant bazli SLA kurallari.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "SLA Tanimi",
         "goal": "Tenant bazli SLA kurallari olustur",
         "badges": [
-          { "text": "Sistem (SLA Engine)", "color": "purple" },
-          { "text": "Tenant (Sure Kurali)", "color": "blue" }
+          {
+            "text": "Sistem (SLA Engine)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Sure Kurali)",
+            "color": "blue"
+          }
         ],
         "content": "Tenant bazli SLA sureleri tanimlanir: genel (30 dk), VIP (10 dk), acil (5 dk). Kategori, musteri segmenti ve saat dilimine gore farkli SLA desteklenir."
       },
@@ -33,8 +60,14 @@
         "title": "Kademeli Eskalasyon",
         "goal": "Zamaninda mudahale sansa",
         "badges": [
-          { "text": "Sistem (Eskalasyon)", "color": "purple" },
-          { "text": "Tenant (Kural Zinciri)", "color": "amber" }
+          {
+            "text": "Sistem (Eskalasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kural Zinciri)",
+            "color": "amber"
+          }
         ],
         "content": "Seviye 1 (%70): Agent'a uyari. Seviye 2 (%90): Supervisor'a eskalasyon. Seviye 3 (%100): Emergency routing — baska agent veya AI devralir."
       },
@@ -42,8 +75,14 @@
         "title": "Emergency Failover",
         "goal": "Son care olarak cevapsiz birakma",
         "badges": [
-          { "text": "Sistem (Failover)", "color": "purple" },
-          { "text": "Tenant (Backup Plan)", "color": "red" }
+          {
+            "text": "Sistem (Failover)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Backup Plan)",
+            "color": "red"
+          }
         ],
         "content": "SLA %100 asildiginda emergency plan devreye girer: 1) Baska musait agent'a at, 2) Agent yoksa AI otomatik cevap, 3) Musteri bilgilendirme mesaji gonder."
       }
@@ -55,67 +94,199 @@
       "title": "Kademeli Eskalasyon Akisi",
       "description": "Mesaj bekleme suresi asildikca kademeli eskalasyon tetikleniyor.",
       "tags": [
-        { "text": "SLA Izleme", "color": "blue" },
-        { "text": "Kademeli Eskalasyon", "color": "amber" }
+        {
+          "text": "SLA Izleme",
+          "color": "blue"
+        },
+        {
+          "text": "Kademeli Eskalasyon",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Tenant bazli SLA suresi tanimi", "service": "Backend", "page": "SLA Ayarlari > Sure Tanimlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Genel, VIP ve acil SLA surelerini dakika cinsinden tanimlayin" },
-          { "text": "Eskalasyon zinciri tanimi", "service": "Backend", "page": "Eskalasyon > Zincir Tanimlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Seviye 1, 2, 3 icin sorumlu kisi/ekipleri tanimlayin" }
+          {
+            "text": "Tenant bazli SLA suresi tanimi",
+            "service": "Backend",
+            "page": "SLA Ayarlari > Sure Tanimlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Genel, VIP ve acil SLA surelerini dakika cinsinden tanimlayin"
+          },
+          {
+            "text": "Eskalasyon zinciri tanimi",
+            "service": "Backend",
+            "page": "Eskalasyon > Zincir Tanimlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Seviye 1, 2, 3 icin sorumlu kisi/ekipleri tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "SLA watchdog zamanlayicisi", "service": "Backend", "page": "SLA Motoru > Watchdog", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Her mesajin SLA suresini dakika bazinda izleyen zamanlayici hazir" },
-          { "text": "Eskalasyon motoru", "service": "Backend", "page": "Eskalasyon > Kademeli Tetikleme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Kademeli eskalasyon tetikleme ve bildirim sistemi hazir" }
+          {
+            "text": "SLA watchdog zamanlayicisi",
+            "service": "Backend",
+            "page": "SLA Motoru > Watchdog",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Her mesajin SLA suresini dakika bazinda izleyen zamanlayici hazir"
+          },
+          {
+            "text": "Eskalasyon motoru",
+            "service": "Backend",
+            "page": "Eskalasyon > Kademeli Tetikleme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Kademeli eskalasyon tetikleme ve bildirim sistemi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, siparisimle ilgili bir sorun var." },
-        { "role": "system", "content": "Mesaj alindi. SLA baslatildi: 30 dakika. Atanan agent: Ahmet." },
-        { "role": "system", "content": "Dakika 21 (SLA %70) — SEVIYE 1: Agent Ahmet'e uyari push gonderildi." },
-        { "role": "system", "content": "Dakika 27 (SLA %90) — SEVIYE 2: Supervisor Murat'a eskalasyon. 'Ahmet 27 dk cevap vermedi, mudahale gerekli.'" },
-        { "role": "system", "content": "Dakika 30 (SLA %100) — SEVIYE 3: EMERGENCY ROUTING. Agent Selin'e yeniden ataniyor." },
-        { "role": "bot", "content": "[Agent Selin devralir]\n\nMerhaba, gecikme icin ozur dilerim. Ben Selin, hemen sizinle ilgileniyorum. Siparisizle ilgili sorunu anlatir misiniz?" },
-        { "role": "user", "content": "Siparis numaram 45678, yanlis urun geldi." },
-        { "role": "bot", "content": "Anliyorum, hemen kontrol ediyorum. Yanlis urunu degistirmek icin gerekli islemi baslatiyorum." },
-        { "role": "system", "content": "SLA sonuc: Failover basarili. Musteri 31. dakikada cevap aldi. Ihlal: minimum (1 dk)." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, siparisimle ilgili bir sorun var."
+        },
+        {
+          "role": "system",
+          "content": "Mesaj alindi. SLA baslatildi: 30 dakika. Atanan agent: Ahmet."
+        },
+        {
+          "role": "system",
+          "content": "Dakika 21 (SLA %70) — SEVIYE 1: Agent Ahmet'e uyari push gonderildi."
+        },
+        {
+          "role": "system",
+          "content": "Dakika 27 (SLA %90) — SEVIYE 2: Supervisor Murat'a eskalasyon. 'Ahmet 27 dk cevap vermedi, mudahale gerekli.'"
+        },
+        {
+          "role": "system",
+          "content": "Dakika 30 (SLA %100) — SEVIYE 3: EMERGENCY ROUTING. Agent Selin'e yeniden ataniyor."
+        },
+        {
+          "role": "bot",
+          "content": "[Agent Selin devralir]\n\nMerhaba, gecikme icin ozur dilerim. Ben Selin, hemen sizinle ilgileniyorum. Siparisizle ilgili sorunu anlatir misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Siparis numaram 45678, yanlis urun geldi."
+        },
+        {
+          "role": "bot",
+          "content": "Anliyorum, hemen kontrol ediyorum. Yanlis urunu degistirmek icin gerekli islemi baslatiyorum."
+        },
+        {
+          "role": "system",
+          "content": "SLA sonuc: Failover basarili. Musteri 31. dakikada cevap aldi. Ihlal: minimum (1 dk)."
+        }
+      ],
+      "aiPrompt": "\"SLA Watchdog / Failover\" senaryosu icin \"Kademeli Eskalasyon Akisi\" akisini olustur.\n\nAciklama: Mesaj bekleme suresi asildikca kademeli eskalasyon tetikleniyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, siparisimle ilgili bir sorun var.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **action_delay** — 30 dk bekle\n   seconds: 300\n   Not: Mesaj alindi. SLA baslatildi: 30 dakika. Atanan agent: Ahmet.\n\n4. **utility_set_variable** — Alert durumu kaydet\n   variable_name: \"alert_status\"\n   value: \"Dakika 21 (SLA %70) — SEVIYE 1: Agent Ahmet'e uyari push gonderildi.\"\n\n5. **utility_set_variable** — Alert durumu kaydet\n   variable_name: \"alert_status\"\n   value: \"Dakika 27 (SLA %90) — SEVIYE 2: Supervisor Murat'a eskalasyon. 'Ahmet 27 dk cevap vermedi, mudahale gerekli.'\"\n\n6. **utility_set_variable** — Durum guncelle\n   Deger: Dakika 30 (SLA %100) — SEVIYE 3: EMERGENCY ROUTING. Agent Selin'e yeniden ataniyor.\n\n7. **message_text** — Mesaj gonder\n   text: \"[Agent Selin devralir]\n\nMerhaba, gecikme icin ozur dilerim. Ben Selin, hemen sizinle ilgileniyorum. Siparisizle ilgili sorunu anlatir misiniz?\"\n   Degiskenler: {{agent_selin_devralir}}\n\n8. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Siparis numaram 45678, yanlis urun geldi.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n9. **message_text** — Mesaj gonder\n   text: \"Anliyorum, hemen kontrol ediyorum. Yanlis urunu degistirmek icin gerekli islemi baslatiyorum.\"\n\n10. **utility_note** — Akis sonuc notu\n   text: \"SLA sonuc: Failover basarili. Musteri 31. dakikada cevap aldi. Ihlal: minimum (1 dk).\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Gece Saati — AI Failover",
       "description": "Gece saatinde hicbir agent aktif degil, AI failover devreye giriyor.",
       "tags": [
-        { "text": "AI Failover", "color": "green" },
-        { "text": "Gece Modu", "color": "gray" }
+        {
+          "text": "AI Failover",
+          "color": "green"
+        },
+        {
+          "text": "Gece Modu",
+          "color": "gray"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Gece modu AI cevap politikasi", "service": "Backend", "page": "SLA Ayarlari > Gece Modu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Agent olmayan saatlerde AI'nin hangi konularda cevap verebilecegini tanimlayin" }
+          {
+            "text": "Gece modu AI cevap politikasi",
+            "service": "Backend",
+            "page": "SLA Ayarlari > Gece Modu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Agent olmayan saatlerde AI'nin hangi konularda cevap verebilecegini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "AI otomatik cevap motoru", "service": "AgentAI", "page": "Failover > AI Cevap", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Agent yokken AI otomatik cevap ve randevu/bilgilendirme akisi hazir" }
+          {
+            "text": "AI otomatik cevap motoru",
+            "service": "AgentAI",
+            "page": "Failover > AI Cevap",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Agent yokken AI otomatik cevap ve randevu/bilgilendirme akisi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, iade islemim hakkinda bilgi almak istiyorum." },
-        { "role": "system", "content": "Saat 02:00 — Aktif Agent: 0. SLA: 30 dakika. Emergency plan: AI Failover." },
-        { "role": "system", "content": "Dakika 1 — Hicbir agent musait degil. EMERGENCY: AI Failover devreye girdi." },
-        { "role": "bot", "content": "Merhaba! Su an mesai saatleri disindayiz. Iade isleminiz hakkinda size yardimci olayim.\n\nIade numaraniz veya siparis numaranizi paylasir misiniz? Durumu sorgulayabilirim." },
-        { "role": "user", "content": "Siparis 78901" },
-        { "role": "bot", "content": "Siparis #78901 icin iade talebiniz 18 Subat'ta alinmis. Durum: Depo kontrolunde. Tahmini tamamlanma: 2 is gunu.\n\nBaska bir sorunuz varsa yazabilirsiniz. Detayli konular icin yarin 09:00'da temsilcimiz sizinle iletisime gececek." },
-        { "role": "system", "content": "AI Failover basarili: Musteri 1 dakikada cevap aldi. SLA ihlali onlendi. Sabah agent takibi icin not olusturuldu." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, iade islemim hakkinda bilgi almak istiyorum."
+        },
+        {
+          "role": "system",
+          "content": "Saat 02:00 — Aktif Agent: 0. SLA: 30 dakika. Emergency plan: AI Failover."
+        },
+        {
+          "role": "system",
+          "content": "Dakika 1 — Hicbir agent musait degil. EMERGENCY: AI Failover devreye girdi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Su an mesai saatleri disindayiz. Iade isleminiz hakkinda size yardimci olayim.\n\nIade numaraniz veya siparis numaranizi paylasir misiniz? Durumu sorgulayabilirim."
+        },
+        {
+          "role": "user",
+          "content": "Siparis 78901"
+        },
+        {
+          "role": "bot",
+          "content": "Siparis #78901 icin iade talebiniz 18 Subat'ta alinmis. Durum: Depo kontrolunde. Tahmini tamamlanma: 2 is gunu.\n\nBaska bir sorunuz varsa yazabilirsiniz. Detayli konular icin yarin 09:00'da temsilcimiz sizinle iletisime gececek."
+        },
+        {
+          "role": "system",
+          "content": "AI Failover basarili: Musteri 1 dakikada cevap aldi. SLA ihlali onlendi. Sabah agent takibi icin not olusturuldu."
+        }
+      ],
+      "aiPrompt": "\"SLA Watchdog / Failover\" senaryosu icin \"Gece Saati — AI Failover\" akisini olustur.\n\nAciklama: Gece saatinde hicbir agent aktif degil, AI failover devreye giriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, iade islemim hakkinda bilgi almak istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **action_delay** — 30 dk bekle\n   seconds: 300\n   Not: Saat 02:00 — Aktif Agent: 0. SLA: 30 dakika. Emergency plan: AI Failover.\n\n4. **utility_set_variable** — Durum guncelle\n   Deger: Dakika 1 — Hicbir agent musait degil. EMERGENCY: AI Failover devreye girdi.\n\n5. **message_text** — Mesaj gonder\n   text: \"Merhaba! Su an mesai saatleri disindayiz. Iade isleminiz hakkinda size yardimci olayim.\n\nIade numaraniz veya siparis numaranizi paylasir misiniz? Durumu sorgulayabilirim.\"\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Siparis 78901\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Siparis #78901 icin iade talebiniz 18 Subat'ta alinmis. Durum: Depo kontrolunde. Tahmini tamamlanma: 2 is gunu.\n\nBaska bir sorunuz varsa yazabilirsiniz. Detayli konular icin yarin 09:00'da temsilcimiz sizinle iletisime gececek.\"\n\n8. **action_delay** — 1 dk bekle\n   seconds: 60\n   Not: AI Failover basarili: Musteri 1 dakikada cevap aldi. SLA ihlali onlendi. Sabah agent takibi icin not olusturuldu.\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "SLA Watchdog her dakika calisir ve tum bekleyen mesajlarin SLA durumunu kontrol eder. Kademeli eskalasyon ve failover mekanizmasi tenant bazli kurallara gore calisan bir state machine ile yonetilir.",
     "backend": [
-      { "title": "SLA Watchdog Service", "goal": "Sure Takibi", "content": "Her mesajin SLA suresini izler. %70, %90, %100 esiklerinde farkli aksiyon tetikler. Tenant/segment/saat dilimi bazli kurallar." },
-      { "title": "Emergency Routing Engine", "goal": "Failover Yonetimi", "content": "SLA %100 asildiginda sirasiyla: baska agent, AI failover, musteri bilgilendirme aksiyonlarindan uygun olani uygular." }
+      {
+        "title": "SLA Watchdog Service",
+        "goal": "Sure Takibi",
+        "content": "Her mesajin SLA suresini izler. %70, %90, %100 esiklerinde farkli aksiyon tetikler. Tenant/segment/saat dilimi bazli kurallar."
+      },
+      {
+        "title": "Emergency Routing Engine",
+        "goal": "Failover Yonetimi",
+        "content": "SLA %100 asildiginda sirasiyla: baska agent, AI failover, musteri bilgilendirme aksiyonlarindan uygun olani uygular."
+      }
     ],
     "apis": [
-      { "title": "SLA Status API", "goal": "Durum Sorgulama", "content": "Tum aktif mesajlarin SLA durumlarini, kalan sureyi ve risk seviyesini sorgulama." },
-      { "title": "Escalation Action API", "goal": "Eskalasyon Tetikleme", "content": "Kademeli eskalasyon aksiyonlarini tetikler: uyari, supervisor bildirimi, emergency routing." }
+      {
+        "title": "SLA Status API",
+        "goal": "Durum Sorgulama",
+        "content": "Tum aktif mesajlarin SLA durumlarini, kalan sureyi ve risk seviyesini sorgulama."
+      },
+      {
+        "title": "Escalation Action API",
+        "goal": "Eskalasyon Tetikleme",
+        "content": "Kademeli eskalasyon aksiyonlarini tetikler: uyari, supervisor bildirimi, emergency routing."
+      }
     ]
   },
   "impact": {
@@ -124,9 +295,29 @@
     "resultLabel": "Korunan Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyMessages", "label": "Gunluk Toplam Mesaj", "default": 200, "hint": "Gunluk gelen toplam musteri mesaji", "editable": true },
-      { "key": "breachRateWithout", "label": "Watchdog Olmadan Ihlal Orani", "default": 15, "suffix": "%", "hint": "SLA watchdog olmadan ihlal yuzdesi", "editable": true },
-      { "key": "revenuePerCustomer", "label": "Musteri Basina Gelir", "default": 500, "suffix": "TL", "hint": "Cevapsiz kalan musterinin temsil ettigi aylik gelir", "editable": true }
+      {
+        "key": "dailyMessages",
+        "label": "Gunluk Toplam Mesaj",
+        "default": 200,
+        "hint": "Gunluk gelen toplam musteri mesaji",
+        "editable": true
+      },
+      {
+        "key": "breachRateWithout",
+        "label": "Watchdog Olmadan Ihlal Orani",
+        "default": 15,
+        "suffix": "%",
+        "hint": "SLA watchdog olmadan ihlal yuzdesi",
+        "editable": true
+      },
+      {
+        "key": "revenuePerCustomer",
+        "label": "Musteri Basina Gelir",
+        "default": 500,
+        "suffix": "TL",
+        "hint": "Cevapsiz kalan musterinin temsil ettigi aylik gelir",
+        "editable": true
+      }
     ],
     "formula": "dailyMessages * (breachRateWithout / 100) * revenuePerCustomer * 0.1 * 30",
     "formulaDisplay": null

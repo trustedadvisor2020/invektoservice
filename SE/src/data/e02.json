@@ -8,14 +8,32 @@
   "description": "Iade kodu alan musteriye hangi kargoya verecegini, teslim noktasini ve sureci otomatik aciklayan sistem. Agent'in tekrar tekrar ayni bilgiyi vermesini onler.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
-      { "label": "Sorun", "value": "Musteri iade kodu aldiktan sonra ne yapacagini bilmiyor — agent'e tekrar yaziyor" },
-      { "label": "Deger", "value": "Otomatik yonlendirme ile iade sureci hizlanir, musteri memnuniyeti artar" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Tum Platformlar)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteri iade kodu aldiktan sonra ne yapacagini bilmiyor — agent'e tekrar yaziyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Otomatik yonlendirme ile iade sureci hizlanir, musteri memnuniyeti artar"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI iade kodu intent'ini tespit eder, platform bazli kargo firmasi ve en yakin teslim noktasini Knowledge Base'den cekar.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Iade Intent Tespiti",
         "goal": "Iade sorusunu tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'iade kodu', 'kargoya nasil veririm', 'iade etmek istiyorum' gibi intent'leri tespit eder."
       },
@@ -32,8 +56,14 @@
         "title": "Kargo Firmasi Eslestirme",
         "goal": "Dogru kargo firmasini bul",
         "badges": [
-          { "text": "Sistem (API)", "color": "purple" },
-          { "text": "Tenant (Platform)", "color": "amber" }
+          {
+            "text": "Sistem (API)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Platform)",
+            "color": "amber"
+          }
         ],
         "content": "Platform ve iade koduna gore anlasmalı kargo firmasini ve teslim noktalarini belirler."
       },
@@ -41,8 +71,14 @@
         "title": "Adim Adim Rehber",
         "goal": "Musteriyi yonlendir",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Prosedur)", "color": "green" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Prosedur)",
+            "color": "green"
+          }
         ],
         "content": "Paketleme talimatlari, kargo firmasina teslim adimlari ve beklenen iade suresi bilgisi gonderilir."
       }
@@ -54,62 +90,185 @@
       "title": "Standart Iade Kodu Yonlendirme",
       "description": "Musteri iade kodunu aldi, kargoya nereye verecegini soruyor.",
       "tags": [
-        { "text": "Iade", "color": "amber" },
-        { "text": "Kargo Yonlendirme", "color": "blue" }
+        {
+          "text": "Iade",
+          "color": "amber"
+        },
+        {
+          "text": "Kargo Yonlendirme",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Platform iade politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Iade Politikalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her platform icin iade sureci ve kargo firmasi bilgisini Knowledge Base'e yukleyin" },
-          { "text": "Kargo teslim noktalari", "service": "Knowledge", "page": "Dokuman Bankasi > Kargo Noktalari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Sik kullanilan kargo teslim nokta listesini yukleyin" }
+          {
+            "text": "Platform iade politikasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Iade Politikalari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Her platform icin iade sureci ve kargo firmasi bilgisini Knowledge Base'e yukleyin"
+          },
+          {
+            "text": "Kargo teslim noktalari",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kargo Noktalari",
+            "status": "setup",
+            "priority": "recommended",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Sik kullanilan kargo teslim nokta listesini yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Iade intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Iade", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Iade kodu ve kargo yonlendirme intent'i hazir" },
-          { "text": "Knowledge RAG cevap uretimi", "service": "Knowledge", "page": "RAG Engine > Iade Rehberi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Platform bazli iade rehberi RAG ile sunulur" }
+          {
+            "text": "Iade intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Iade",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Iade kodu ve kargo yonlendirme intent'i hazir"
+          },
+          {
+            "text": "Knowledge RAG cevap uretimi",
+            "service": "Knowledge",
+            "page": "RAG Engine > Iade Rehberi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Platform bazli iade rehberi RAG ile sunulur"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Iade kodu aldim, hangi kargoya verecegim?" },
-        { "role": "ai", "content": "Intent: Iade Kargo Yonlendirme. Platform: Trendyol. Anlasmalı Kargo: Yurtici." },
-        { "role": "bot", "content": "Iade kodunuz icin:\n\n📦 Kargo Firmasi: Yurtici Kargo\n📍 En yakin teslim noktasi: [Konum bazli oneri]\n📋 Iade kodu: Kargo gorevlisine soyleyebilirsiniz\n⏰ Teslim suresi: Kargoya verdikten sonra 3-5 is gunu\n\nPaketleme: Urunu orijinal kutusunda, etiketleri cikmamis sekilde gonderin." },
-        { "role": "user", "content": "Peki orijinal kutu yoksa?" },
-        { "role": "bot", "content": "Orijinal kutu yoksa herhangi bir kutuya guvenli sekilde paketleyebilirsiniz. Onemli olan urunun hasar gormemesidir. Iade kodu kargoda gecerli olacaktir." },
-        { "role": "system", "content": "Otomatik cozum: Iade kargo yonlendirme tamamlandi. Agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Iade kodu aldim, hangi kargoya verecegim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Iade Kargo Yonlendirme. Platform: Trendyol. Anlasmalı Kargo: Yurtici."
+        },
+        {
+          "role": "bot",
+          "content": "Iade kodunuz icin:\n\n📦 Kargo Firmasi: Yurtici Kargo\n📍 En yakin teslim noktasi: [Konum bazli oneri]\n📋 Iade kodu: Kargo gorevlisine soyleyebilirsiniz\n⏰ Teslim suresi: Kargoya verdikten sonra 3-5 is gunu\n\nPaketleme: Urunu orijinal kutusunda, etiketleri cikmamis sekilde gonderin."
+        },
+        {
+          "role": "user",
+          "content": "Peki orijinal kutu yoksa?"
+        },
+        {
+          "role": "bot",
+          "content": "Orijinal kutu yoksa herhangi bir kutuya guvenli sekilde paketleyebilirsiniz. Onemli olan urunun hasar gormemesidir. Iade kodu kargoda gecerli olacaktir."
+        },
+        {
+          "role": "system",
+          "content": "Otomatik cozum: Iade kargo yonlendirme tamamlandi. Agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Iade Kodu & Kargo Yonlendirme\" senaryosu icin \"Standart Iade Kodu Yonlendirme\" akisini olustur.\n\nAciklama: Musteri iade kodunu aldi, kargoya nereye verecegini soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Iade kodu aldim, hangi kargoya verecegim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Iade Kargo Yonlendirme. Platform: Trendyol. Anlasmalı Kargo: Yurtici.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Iade kodunuz icin:\n\n📦 Kargo Firmasi: Yurtici Kargo\n📍 En yakin teslim noktasi: [Konum bazli oneri]\n📋 Iade kodu: Kargo gorevlisine soyleyebilirsiniz\n⏰ Teslim suresi: Kargoya verdikten sonra 3-5 is gunu\n\nPaketleme: Urunu orijinal kutusunda, etiketleri cikmamis sekilde gonderin.\"\n   Degiskenler: {{konum_bazli_oneri}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Peki orijinal kutu yoksa?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Orijinal kutu yoksa herhangi bir kutuya guvenli sekilde paketleyebilirsiniz. Onemli olan urunun hasar gormemesidir. Iade kodu kargoda gecerli olacaktir.\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Otomatik cozum: Iade kargo yonlendirme tamamlandi. Agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Farkli Platform — Farkli Kargo",
       "description": "Her platformun farkli anlasmalı kargosu var, musteri karistiriyor.",
       "tags": [
-        { "text": "Coklu Platform", "color": "purple" },
-        { "text": "Iade", "color": "amber" }
+        {
+          "text": "Coklu Platform",
+          "color": "purple"
+        },
+        {
+          "text": "Iade",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Platform-kargo eslestirme tablosu", "service": "Knowledge", "page": "Dokuman Bankasi > Platform Kargo Eslestirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Hangi platformda hangi kargo firmasi anlasmalı — tabloyu olusturun" }
+          {
+            "text": "Platform-kargo eslestirme tablosu",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Platform Kargo Eslestirme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Hangi platformda hangi kargo firmasi anlasmalı — tabloyu olusturun"
+          }
         ],
         "provider": [
-          { "text": "Platform tespit algoritmasi", "service": "AgentAI", "page": "Intent Tespiti > Platform Tespit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Siparis numarasi formatindan platform otomatik tespiti hazir" },
-          { "text": "Siparis API entegrasyonu", "service": "Integrations", "page": "E-ticaret > Siparis API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform bazli siparis sorgulama hazir" }
+          {
+            "text": "Platform tespit algoritmasi",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Platform Tespit",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Siparis numarasi formatindan platform otomatik tespiti hazir"
+          },
+          {
+            "text": "Siparis API entegrasyonu",
+            "service": "Integrations",
+            "page": "E-ticaret > Siparis API",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Platform bazli siparis sorgulama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Iade kodumu aldim ama Hepsiburada mi Trendyol mu hatirlamiyorum, hangi kargoya versem?" },
-        { "role": "ai", "content": "Intent: Iade Kargo. Platform: Belirsiz. Telefon eslestirme ile son iadeleri kontrol ediliyor." },
-        { "role": "bot", "content": "Hesabinizda 1 aktif iade buldum:\n\n🔄 Platform: Hepsiburada\n📦 Urun: Philips Kulaklik\n🚚 Kargo: Aras Kargo (Hepsiburada anlasmalı)\n\nEn yakin Aras Kargo subesi: [Konum oneri]. Iade kodunuzu kargo gorevlisine soyleyerek teslim edebilirsiniz." },
-        { "role": "system", "content": "Otomatik cozum: Platform tespiti + dogru kargo yonlendirmesi. Agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Iade kodumu aldim ama Hepsiburada mi Trendyol mu hatirlamiyorum, hangi kargoya versem?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Iade Kargo. Platform: Belirsiz. Telefon eslestirme ile son iadeleri kontrol ediliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Hesabinizda 1 aktif iade buldum:\n\n🔄 Platform: Hepsiburada\n📦 Urun: Philips Kulaklik\n🚚 Kargo: Aras Kargo (Hepsiburada anlasmalı)\n\nEn yakin Aras Kargo subesi: [Konum oneri]. Iade kodunuzu kargo gorevlisine soyleyerek teslim edebilirsiniz."
+        },
+        {
+          "role": "system",
+          "content": "Otomatik cozum: Platform tespiti + dogru kargo yonlendirmesi. Agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Iade Kodu & Kargo Yonlendirme\" senaryosu icin \"Farkli Platform — Farkli Kargo\" akisini olustur.\n\nAciklama: Her platformun farkli anlasmalı kargosu var, musteri karistiriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Iade kodumu aldim ama Hepsiburada mi Trendyol mu hatirlamiyorum, hangi kargoya versem?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Iade Kargo. Platform: Belirsiz. Telefon eslestirme ile son iadeleri kontrol ediliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Hesabinizda 1 aktif iade buldum:\n\n🔄 Platform: Hepsiburada\n📦 Urun: Philips Kulaklik\n🚚 Kargo: Aras Kargo (Hepsiburada anlasmalı)\n\nEn yakin Aras Kargo subesi: [Konum oneri]. Iade kodunuzu kargo gorevlisine soyleyerek teslim edebilirsiniz.\"\n   Degiskenler: {{konum_oneri}}\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Otomatik cozum: Platform tespiti + dogru kargo yonlendirmesi. Agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Knowledge RAG + E-ticaret API birlesimiyle calisir. Platform bazli iade proseduru Knowledge Base'den cekilir, siparis eslestirmesi API ile yapilir.",
     "backend": [
-      { "title": "Return Code Resolver", "goal": "Iade Kodu Cozumleme", "content": "Iade kodundan platform ve anlasmalı kargo firmasini tespit eder. Musteri konumuna gore en yakin teslim noktasini onerir." },
-      { "title": "Knowledge RAG", "goal": "Prosedur Bilgisi", "content": "Platform bazli iade paketleme talimatlari, sureler ve ozel kosullar Knowledge Base'den cekilir." }
+      {
+        "title": "Return Code Resolver",
+        "goal": "Iade Kodu Cozumleme",
+        "content": "Iade kodundan platform ve anlasmalı kargo firmasini tespit eder. Musteri konumuna gore en yakin teslim noktasini onerir."
+      },
+      {
+        "title": "Knowledge RAG",
+        "goal": "Prosedur Bilgisi",
+        "content": "Platform bazli iade paketleme talimatlari, sureler ve ozel kosullar Knowledge Base'den cekilir."
+      }
     ],
     "apis": [
-      { "title": "E-ticaret Platform API", "goal": "Iade Durumu", "content": "Trendyol, Hepsiburada, Amazon iade durumu ve kargo eslestirmesi." },
-      { "title": "Kargo Lokasyon API", "goal": "Teslim Noktasi", "content": "Musteri konumuna en yakin kargo subesi/teslim noktasi bulma." }
+      {
+        "title": "E-ticaret Platform API",
+        "goal": "Iade Durumu",
+        "content": "Trendyol, Hepsiburada, Amazon iade durumu ve kargo eslestirmesi."
+      },
+      {
+        "title": "Kargo Lokasyon API",
+        "goal": "Teslim Noktasi",
+        "content": "Musteri konumuna en yakin kargo subesi/teslim noktasi bulma."
+      }
     ]
   },
   "impact": {
@@ -118,9 +277,28 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyReturnQueries", "label": "Gunluk Iade Sorusu", "default": 20, "hint": "Iade kodu/kargo yonlendirme mesaji", "editable": true },
-      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 4, "hint": "Agent'in harcadigi sure", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+      {
+        "key": "dailyReturnQueries",
+        "label": "Gunluk Iade Sorusu",
+        "default": 20,
+        "hint": "Iade kodu/kargo yonlendirme mesaji",
+        "editable": true
+      },
+      {
+        "key": "minutesPerQuery",
+        "label": "Soru Basina Dakika",
+        "default": 4,
+        "hint": "Agent'in harcadigi sure",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "dailyReturnQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
     "formulaDisplay": null

@@ -8,13 +8,28 @@
   "description": "Instagram otomasyon limitelerine takilmayi onleyen, rate limiting kurallari ile IG API limitlerini asmadan verimli DM otomasyonu saglayan sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Instagram Otomasyon)" },
-      { "label": "Sorun", "value": "Agresif IG DM otomasyonu API limitine takiliyor — hesap geici olarak engelleniyor" },
-      { "label": "Deger", "value": "Akilli rate limiting ile hesap guvenligini koruyarak %100 uptime saglaniyor" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Instagram Otomasyon)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Agresif IG DM otomasyonu API limitine takiliyor — hesap geici olarak engelleniyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Akilli rate limiting ile hesap guvenligini koruyarak %100 uptime saglaniyor"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Rate limiting kurallari ile IG API limitlerini asma riski ortadan kaldirilir.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Rate Limit Izleme",
         "goal": "API kullanim limitlerini izle",
         "badges": [
-          { "text": "Sistem (Monitoring)", "color": "purple" },
-          { "text": "Tenant (IG Hesap)", "color": "pink" }
+          {
+            "text": "Sistem (Monitoring)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (IG Hesap)",
+            "color": "pink"
+          }
         ],
         "content": "Sistem IG API cagri sayisini gercek zamanli izler, limite yaklasinca otomasyonu yavaslatir."
       },
@@ -31,8 +52,14 @@
         "title": "Akilli Kuyruk Yonetimi",
         "goal": "Mesaj gonderimini optimize et",
         "badges": [
-          { "text": "Sistem (Queue)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (Queue)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Mesajlar oncelik sirasina gore kuyruge alinir, limit asilmadan gondegonderilir."
       }
@@ -44,59 +71,160 @@
       "title": "Rate Limit Uyarisi ve Kuyruk Yonetimi",
       "description": "IG API limiti %80'e ulastiginda sistem otomatik yavaslatma yapiyor.",
       "tags": [
-        { "text": "Rate Limit", "color": "red" },
-        { "text": "Instagram", "color": "pink" }
+        {
+          "text": "Rate Limit",
+          "color": "red"
+        },
+        {
+          "text": "Instagram",
+          "color": "pink"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Instagram Business hesap baglantisi", "service": "Backend", "page": "Kanal Yonetimi > Instagram", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram Business hesabinizi baglayarak DM otomasyonunu aktif edin" }
+          {
+            "text": "Instagram Business hesap baglantisi",
+            "service": "Backend",
+            "page": "Kanal Yonetimi > Instagram",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Instagram Business hesabinizi baglayarak DM otomasyonunu aktif edin"
+          }
         ],
         "provider": [
-          { "text": "Rate limit izleme modulu", "service": "Backend", "page": "Sistem > Rate Limiter", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "IG API rate limit sayacini takip eden modul hazir" },
-          { "text": "Oncelikli kuyruk sistemi", "service": "Backend", "page": "Sistem > Mesaj Kuyrugu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Mesaj onceliklendirme ve kuyruk yonetimi hazir" }
+          {
+            "text": "Rate limit izleme modulu",
+            "service": "Backend",
+            "page": "Sistem > Rate Limiter",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "IG API rate limit sayacini takip eden modul hazir"
+          },
+          {
+            "text": "Oncelikli kuyruk sistemi",
+            "service": "Backend",
+            "page": "Sistem > Mesaj Kuyrugu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Mesaj onceliklendirme ve kuyruk yonetimi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "IG API Kullanim: %80 (192/240 cagri/saat). Rate limit uyarisi tetiklendi. Yavaslatma modu aktif." },
-        { "role": "ai", "content": "Rate limit esigi asildi. Otomasyon hizi dusurulecek. Oncelik: Aktif konusmalara yanit > Yeni lead DM > Toplu gonderim." },
-        { "role": "system", "content": "Mesaj kuyrugu yeniden siraldi:\n1. Aktif 3 konusmaya yanit (yuksek oncelik)\n2. 5 yeni lead DM'i (orta oncelik, 30sn aralikla)\n3. 12 toplu bildirim (dusuk oncelik, sonraki saat dilimine ertelendi)" },
-        { "role": "system", "content": "IG API Kullanim: %65 (156/240 cagri/saat). Yavaslatma basarili. Normal hiza donuluyor." }
-      ]
+        {
+          "role": "system",
+          "content": "IG API Kullanim: %80 (192/240 cagri/saat). Rate limit uyarisi tetiklendi. Yavaslatma modu aktif."
+        },
+        {
+          "role": "ai",
+          "content": "Rate limit esigi asildi. Otomasyon hizi dusurulecek. Oncelik: Aktif konusmalara yanit > Yeni lead DM > Toplu gonderim."
+        },
+        {
+          "role": "system",
+          "content": "Mesaj kuyrugu yeniden siraldi:\n1. Aktif 3 konusmaya yanit (yuksek oncelik)\n2. 5 yeni lead DM'i (orta oncelik, 30sn aralikla)\n3. 12 toplu bildirim (dusuk oncelik, sonraki saat dilimine ertelendi)"
+        },
+        {
+          "role": "system",
+          "content": "IG API Kullanim: %65 (156/240 cagri/saat). Yavaslatma basarili. Normal hiza donuluyor."
+        }
+      ],
+      "aiPrompt": "\"Spam / Yanlis Tetik: IG Limitleri\" senaryosu icin \"Rate Limit Uyarisi ve Kuyruk Yonetimi\" akisini olustur.\n\nAciklama: IG API limiti %80'e ulastiginda sistem otomatik yavaslatma yapiyor.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: IG API Kullanim: %80 (192/240 cagri/saat). Rate limit uyarisi tetiklendi. Yavaslatma modu aktif.\n\n2. **ai_intent** — Niyet tespiti\n   Analiz: Rate limit esigi asildi. Otomasyon hizi dusurulecek. Oncelik: Aktif konusmalara yanit > Yeni lead DM > Toplu gonderim.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: Mesaj kuyrugu yeniden siraldi:\n1. Aktif 3 konusmaya yanit (yuksek oncelik)\n2. 5 yeni lead DM'i (orta oncelik, 30sn aralikla)\n3. 12 toplu bildirim (dusuk oncelik, sonraki saat dilimine ertelendi)\n\n4. **utility_note** — Akis sonuc notu\n   text: \"IG API Kullanim: %65 (156/240 cagri/saat). Yavaslatma basarili. Normal hiza donuluyor.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Yanlis Tetik Onleme",
       "description": "Spam veya yanlis tetiklenen otomasyon mesajlarini filtreleme.",
       "tags": [
-        { "text": "Spam Filtre", "color": "amber" },
-        { "text": "Tetik Kurali", "color": "blue" }
+        {
+          "text": "Spam Filtre",
+          "color": "amber"
+        },
+        {
+          "text": "Tetik Kurali",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Otomasyon tetik kurallari tanimlama", "service": "Automation", "page": "Tetikleyiciler > IG DM Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Hangi anahtar kelimelerin otomasyonu tetikleyecegini tanimlayin" }
+          {
+            "text": "Otomasyon tetik kurallari tanimlama",
+            "service": "Automation",
+            "page": "Tetikleyiciler > IG DM Kurallari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C9",
+            "hint": "Hangi anahtar kelimelerin otomasyonu tetikleyecegini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Spam dedektoru", "service": "AgentAI", "page": "Filtreler > Spam Tespit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Spam, bot ve irrelevant mesaj tespiti hazir" }
+          {
+            "text": "Spam dedektoru",
+            "service": "AgentAI",
+            "page": "Filtreler > Spam Tespit",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Spam, bot ve irrelevant mesaj tespiti hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "hahaha cok guzel foto" },
-        { "role": "ai", "content": "Mesaj analizi: Sosyal yorum, ticari intent YOK. Spam skoru: 0.15 (esik: 0.4). Sonuc: Otomasyon tetiklenmeyecek." },
-        { "role": "system", "content": "Mesaj filtrelendi. Otomasyon tetiklenmedi. Gereksiz API cagrisi onlendi." },
-        { "role": "user", "content": "Fiyatlariniz nedir?" },
-        { "role": "ai", "content": "Mesaj analizi: Ticari intent YUKSEK. Intent: fiyat_sorusu. Spam skoru: 0.02. Sonuc: Otomasyon tetiklenecek." },
-        { "role": "bot", "content": "Merhaba! Hangi islem icin fiyat bilgisi almak istersiniz?\n\n💉 Botox\n💋 Dolgu\n✨ Lazer\n\nDetayli bilgi icin yazabilirsiniz!" }
-      ]
+        {
+          "role": "user",
+          "content": "hahaha cok guzel foto"
+        },
+        {
+          "role": "ai",
+          "content": "Mesaj analizi: Sosyal yorum, ticari intent YOK. Spam skoru: 0.15 (esik: 0.4). Sonuc: Otomasyon tetiklenmeyecek."
+        },
+        {
+          "role": "system",
+          "content": "Mesaj filtrelendi. Otomasyon tetiklenmedi. Gereksiz API cagrisi onlendi."
+        },
+        {
+          "role": "user",
+          "content": "Fiyatlariniz nedir?"
+        },
+        {
+          "role": "ai",
+          "content": "Mesaj analizi: Ticari intent YUKSEK. Intent: fiyat_sorusu. Spam skoru: 0.02. Sonuc: Otomasyon tetiklenecek."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Hangi islem icin fiyat bilgisi almak istersiniz?\n\n💉 Botox\n💋 Dolgu\n✨ Lazer\n\nDetayli bilgi icin yazabilirsiniz!"
+        }
+      ],
+      "aiPrompt": "\"Spam / Yanlis Tetik: IG Limitleri\" senaryosu icin \"Yanlis Tetik Onleme\" akisini olustur.\n\nAciklama: Spam veya yanlis tetiklenen otomasyon mesajlarini filtreleme.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **utility_set_variable** — Musteri medya yuklemesini kaydet\n   variable_name: \"customer_media\"\n   Not: Onceki message_text'in yanit beklemesi gerekir\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Mesaj analizi: Sosyal yorum, ticari intent YOK. Spam skoru: 0.15 (esik: 0.4). Sonuc: Otomasyon tetiklenmeyecek.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **action_api_call** — Dis servis cagrisi\n   Islem: Mesaj filtrelendi. Otomasyon tetiklenmedi. Gereksiz API cagrisi onlendi.\n   Basarili → sonraki node | Hata → action_handoff\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Fiyatlariniz nedir?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Mesaj analizi: Ticari intent YUKSEK. Intent: fiyat_sorusu. Spam skoru: 0.02. Sonuc: Otomasyon tetiklenecek.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Merhaba! Hangi islem icin fiyat bilgisi almak istersiniz?\n\n💉 Botox\n💋 Dolgu\n✨ Lazer\n\nDetayli bilgi icin yazabilirsiniz!\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo IG API Rate Limiter + Akilli Kuyruk + Spam Filtre ile calisir.",
     "backend": [
-      { "title": "Rate Limiter Module", "goal": "API Limit Yonetimi", "content": "IG API cagri sayisini izler, esik degerlerine gore otomasyonu yavaslatir veya durdurur." },
-      { "title": "Priority Queue Manager", "goal": "Kuyruk Yonetimi", "content": "Mesajlari oncelik sirasina gore kuyrugea alir ve limit dahilinde gonderir." }
+      {
+        "title": "Rate Limiter Module",
+        "goal": "API Limit Yonetimi",
+        "content": "IG API cagri sayisini izler, esik degerlerine gore otomasyonu yavaslatir veya durdurur."
+      },
+      {
+        "title": "Priority Queue Manager",
+        "goal": "Kuyruk Yonetimi",
+        "content": "Mesajlari oncelik sirasina gore kuyrugea alir ve limit dahilinde gonderir."
+      }
     ],
     "apis": [
-      { "title": "Instagram Graph API", "goal": "DM Yonetimi", "content": "IG DM mesajlarinin alinmasi ve gonderilmesi, rate limit header takibi." }
+      {
+        "title": "Instagram Graph API",
+        "goal": "DM Yonetimi",
+        "content": "IG DM mesajlarinin alinmasi ve gonderilmesi, rate limit header takibi."
+      }
     ]
   },
   "impact": {
@@ -105,9 +233,29 @@
     "resultLabel": "Korunan Lead Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyIGLeads", "label": "Aylik IG Lead", "default": 50, "hint": "Instagram'dan gelen lead sayisi", "editable": true },
-      { "key": "blockageLossRate", "label": "Engel Kayip Orani", "default": 30, "prefix": "%", "hint": "Hesap engeli sirasinda kaybedilen lead orani", "editable": true },
-      { "key": "avgLeadValue", "label": "Ort. Lead Degeri", "default": 3000, "suffix": "TL", "hint": "Ortalama lead'in klinige getirdigi deger", "editable": true }
+      {
+        "key": "monthlyIGLeads",
+        "label": "Aylik IG Lead",
+        "default": 50,
+        "hint": "Instagram'dan gelen lead sayisi",
+        "editable": true
+      },
+      {
+        "key": "blockageLossRate",
+        "label": "Engel Kayip Orani",
+        "default": 30,
+        "prefix": "%",
+        "hint": "Hesap engeli sirasinda kaybedilen lead orani",
+        "editable": true
+      },
+      {
+        "key": "avgLeadValue",
+        "label": "Ort. Lead Degeri",
+        "default": 3000,
+        "suffix": "TL",
+        "hint": "Ortalama lead'in klinige getirdigi deger",
+        "editable": true
+      }
     ],
     "formula": "monthlyIGLeads * (blockageLossRate / 100) * avgLeadValue",
     "formulaDisplay": null

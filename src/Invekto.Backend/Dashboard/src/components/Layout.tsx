@@ -52,6 +52,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // — Tenant: Çalışma Alanı —
   { path: '/',                label: 'Kontrol Paneli',   tenantLabel: 'Ana Sayfa', icon: LayoutDashboard, section: 'Çalışma Alanı' },
   { path: '/flow-builder', label: 'Flow Builder', tenantLabel: 'Flow Builder', icon: GitBranch,    feature: 'FlowBuilder' },
+  { path: '/flow-templates', label: 'Sablon Galerisi', tenantLabel: 'Sablon Galerisi', icon: LayoutTemplate, feature: 'FlowBuilder' },
   { path: '/knowledge',       label: 'Bilgi Bankasi',    icon: BookOpen,     feature: 'Knowledge' },
   // — Tenant: Pazarlama —
   { path: '/campaigns',       label: 'Kampanyalar',      icon: Megaphone,    feature: 'Outbound', section: 'Pazarlama' },

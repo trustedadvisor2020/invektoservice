@@ -8,13 +8,28 @@
   "description": "Kargo ucretinin iade edilip edilmeyecegini soran musteriye AI platform bazli iade politikasini Knowledge Base'den cekerr ve aciklar.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (WooCommerce, D2C)" },
-      { "label": "Sorun", "value": "Kargo ucreti iadesi politikasi platforma gore degisir — agent her seferinde arastirmak zorunda" },
-      { "label": "Deger", "value": "Aninda politika bilgisi ile musteri memnuniyeti ve agent verimliligi artar" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (WooCommerce, D2C)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kargo ucreti iadesi politikasi platforma gore degisir — agent her seferinde arastirmak zorunda"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda politika bilgisi ile musteri memnuniyeti ve agent verimliligi artar"
+      }
     ],
     "services": [
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI iade sebebi ve platforma gore kargo ucreti iadesi politikasini Knowledge Base'den cekerr.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Politika Kontrolu",
         "goal": "Kargo iadesi var mi?",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Politika)", "color": "green" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Politika)",
+            "color": "green"
+          }
         ],
         "content": "Iade sebebi, platform ve kosullara gore kargo ucreti iadesi durumu belirlenir."
       },
@@ -31,8 +52,14 @@
         "title": "Bilgilendirme",
         "goal": "Musteriye acikla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Iletisim)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Iletisim)",
+            "color": "blue"
+          }
         ],
         "content": "Kargo ucreti iadesi yapilip yapilmayacagi net olarak aciklanir."
       }
@@ -44,32 +71,77 @@
       "title": "Kargo Ucreti Iade Sorusu",
       "description": "Musteri iade yapacak, kargo ucretini geri alabilir mi soruyor.",
       "tags": [
-        { "text": "Kargo Ucreti", "color": "amber" },
-        { "text": "Iade Politikasi", "color": "blue" }
+        {
+          "text": "Kargo Ucreti",
+          "color": "amber"
+        },
+        {
+          "text": "Iade Politikasi",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kargo ucreti iade politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Kargo Iade Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Platform ve iade sebebi bazli kargo ucreti iade kosullarini tanimlayin" }
+          {
+            "text": "Kargo ucreti iade politikasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kargo Iade Politikasi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Platform ve iade sebebi bazli kargo ucreti iade kosullarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Politika RAG", "service": "Knowledge", "page": "RAG Engine > Kargo Iade", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kargo ucreti iade politikasi Knowledge Base'den sunulur" }
+          {
+            "text": "Politika RAG",
+            "service": "Knowledge",
+            "page": "RAG Engine > Kargo Iade",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Kargo ucreti iade politikasi Knowledge Base'den sunulur"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Kargo ucretini iade eder misiniz?" },
-        { "role": "ai", "content": "Intent: Kargo Ucreti Iadesi. Iade Sebebi: Kusurlu urun. Politika: Kusurlu → kargo iade EDILIR." },
-        { "role": "bot", "content": "Iade sebebinize gore kargo ucreti durumu:\n\n✅ Kusurlu/yanlis urun → Kargo ucreti iade edilir\n⚠️ Cayma hakki (fikrini degistirme) → Kargo ucreti musteriye aittir\n\nSizin iadeniz kusurlu urun sebebiyle oldugu icin kargo ucreti de iade edilecektir!\n\nIade tutari: Urun + kargo = toplam iade." },
-        { "role": "system", "content": "Kargo ucreti iade bilgisi verildi. Musteri bilgilendirildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Kargo ucretini iade eder misiniz?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kargo Ucreti Iadesi. Iade Sebebi: Kusurlu urun. Politika: Kusurlu → kargo iade EDILIR."
+        },
+        {
+          "role": "bot",
+          "content": "Iade sebebinize gore kargo ucreti durumu:\n\n✅ Kusurlu/yanlis urun → Kargo ucreti iade edilir\n⚠️ Cayma hakki (fikrini degistirme) → Kargo ucreti musteriye aittir\n\nSizin iadeniz kusurlu urun sebebiyle oldugu icin kargo ucreti de iade edilecektir!\n\nIade tutari: Urun + kargo = toplam iade."
+        },
+        {
+          "role": "system",
+          "content": "Kargo ucreti iade bilgisi verildi. Musteri bilgilendirildi."
+        }
+      ],
+      "aiPrompt": "\"Kargo Ucreti Iadesi Bilgilendirme\" senaryosu icin \"Kargo Ucreti Iade Sorusu\" akisini olustur.\n\nAciklama: Musteri iade yapacak, kargo ucretini geri alabilir mi soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kargo ucretini iade eder misiniz?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kargo Ucreti Iadesi. Iade Sebebi: Kusurlu urun. Politika: Kusurlu → kargo iade EDILIR.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Iade sebebinize gore kargo ucreti durumu:\n\n✅ Kusurlu/yanlis urun → Kargo ucreti iade edilir\n⚠️ Cayma hakki (fikrini degistirme) → Kargo ucreti musteriye aittir\n\nSizin iadeniz kusurlu urun sebebiyle oldugu icin kargo ucreti de iade edilecektir!\n\nIade tutari: Urun + kargo = toplam iade.\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Kargo ucreti iade bilgisi verildi. Musteri bilgilendirildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo tamamen Knowledge RAG ile calisir. Iade sebebi ve platform bazli kargo ucreti politikasi cekilir.",
     "backend": [
-      { "title": "Knowledge RAG", "goal": "Politika Bilgisi", "content": "Iade sebebi ve platforma gore kargo ucreti iade kosullari." }
+      {
+        "title": "Knowledge RAG",
+        "goal": "Politika Bilgisi",
+        "content": "Iade sebebi ve platforma gore kargo ucreti iade kosullari."
+      }
     ],
     "apis": [
-      { "title": "E-ticaret Platform API", "goal": "Iade Bilgisi", "content": "Iade sebebi ve siparis detayi ile politika eslestirme." }
+      {
+        "title": "E-ticaret Platform API",
+        "goal": "Iade Bilgisi",
+        "content": "Iade sebebi ve siparis detayi ile politika eslestirme."
+      }
     ]
   },
   "impact": {
@@ -78,9 +150,28 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyShippingFeeQueries", "label": "Aylik Kargo Sorusu", "default": 15, "hint": "Kargo ucreti iade sorusu", "editable": true },
-      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 5, "hint": "Agent'in harcadigi sure", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+      {
+        "key": "monthlyShippingFeeQueries",
+        "label": "Aylik Kargo Sorusu",
+        "default": 15,
+        "hint": "Kargo ucreti iade sorusu",
+        "editable": true
+      },
+      {
+        "key": "minutesPerQuery",
+        "label": "Soru Basina Dakika",
+        "default": 5,
+        "hint": "Agent'in harcadigi sure",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "monthlyShippingFeeQueries * minutesPerQuery * (agentHourlyCost / 60)",
     "formulaDisplay": null

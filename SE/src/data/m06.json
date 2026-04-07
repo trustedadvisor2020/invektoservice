@@ -8,13 +8,28 @@
   "description": "Otel odasi, klinik bekleme salonu, restoran masasi veya magaza girisine yerlestirilen QR kod ile musteriler tek tarama ile WhatsApp sohbetini baslatir. Tenant bazli unique QR link olusturulur, ilk mesajda KVKK uyumlu opt-in alinir. Proaktif musteri kazanim kanali.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otelcilik, Saglik, Restoran, Perakende — Fiziksel mekan sahibi isletmeler" },
-      { "label": "Sorun", "value": "Musteriler iletisim icin telefon numarasi aramak, web sitesine girmek veya form doldurmak istemiyor" },
-      { "label": "Deger", "value": "Sifir surtumlmu musteri erisimi + opt-in toplama + aninda iletisim baslangici" }
+      {
+        "label": "Sektor",
+        "value": "Otelcilik, Saglik, Restoran, Perakende — Fiziksel mekan sahibi isletmeler"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteriler iletisim icin telefon numarasi aramak, web sitesine girmek veya form doldurmak istemiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Sifir surtumlmu musteri erisimi + opt-in toplama + aninda iletisim baslangici"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Tenant bazli unique WhatsApp deep link iceren QR kodlar olusturulur. Musteri QR'i tarayinca WhatsApp acilir, on tanimli mesajla sohbet baslar. Ilk mesajda opt-in alinir. Proaktif musteri kazanim kanali.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "QR Kod Olusturma",
         "goal": "Tenant bazli unique link uret",
         "badges": [
-          { "text": "Sistem (QR Generator)", "color": "purple" },
-          { "text": "Tenant (WhatsApp Hatti)", "color": "green" }
+          {
+            "text": "Sistem (QR Generator)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (WhatsApp Hatti)",
+            "color": "green"
+          }
         ],
         "content": "Her tenant icin unique WhatsApp deep link (wa.me/numara?text=...) olusturulur. QR kod indirilip fiziksel mekanlara yerlestirilir."
       },
@@ -31,8 +52,14 @@
         "title": "Ilk Mesaj + Opt-in",
         "goal": "Iletisimi baslat ve onam al",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (KVKK Metni)", "color": "amber" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (KVKK Metni)",
+            "color": "amber"
+          }
         ],
         "content": "Musteri QR tarayinca on tanimli mesaj gonderilir. Sistem otomatik olarak karsilama mesaji + KVKK onam metni sunar. Musteri 'EVET' yazarak opt-in verir."
       },
@@ -40,8 +67,14 @@
         "title": "Kanal Aktiflestirme",
         "goal": "Musteriye hizmet sunmaya basla",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Hizmet)", "color": "blue" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Hizmet)",
+            "color": "blue"
+          }
         ],
         "content": "Opt-in alindiktan sonra musteri uygun departmana yonlendirilir. Otel: oda servisi, klinik: randevu, restoran: menu/siparis."
       }
@@ -53,67 +86,199 @@
       "title": "Otel Odasi QR — Oda Servisi",
       "description": "Otel misafiri odadaki QR kodu tarayarak oda servisi istiyor.",
       "tags": [
-        { "text": "QR Tarama", "color": "purple" },
-        { "text": "Opt-in", "color": "green" }
+        {
+          "text": "QR Tarama",
+          "color": "purple"
+        },
+        {
+          "text": "Opt-in",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "WhatsApp Business hatti", "service": "Backend", "page": "Kanal Ayarlari > WhatsApp", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp Business API hattinizi sisteme tanimlayin" },
-          { "text": "QR kod baski ve yerlestirme", "service": "Knowledge", "page": "QR Kod Yonetimi > Tasarim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "QR kodlari indirip otel odalarina, lobby'ye ve resepsiyona yerlestirin" }
+          {
+            "text": "WhatsApp Business hatti",
+            "service": "Backend",
+            "page": "Kanal Ayarlari > WhatsApp",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "WhatsApp Business API hattinizi sisteme tanimlayin"
+          },
+          {
+            "text": "QR kod baski ve yerlestirme",
+            "service": "Knowledge",
+            "page": "QR Kod Yonetimi > Tasarim",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "QR kodlari indirip otel odalarina, lobby'ye ve resepsiyona yerlestirin"
+          }
         ],
         "provider": [
-          { "text": "QR kod uretici", "service": "Backend", "page": "QR Kod Motoru > Olustur", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tenant bazli unique QR kod olusturma sistemi hazir" },
-          { "text": "Opt-in otomasyon akisi", "service": "Automation", "page": "Karsilama > QR Opt-in", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Ilk mesajda otomatik KVKK onam toplama akisi hazir" }
+          {
+            "text": "QR kod uretici",
+            "service": "Backend",
+            "page": "QR Kod Motoru > Olustur",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Tenant bazli unique QR kod olusturma sistemi hazir"
+          },
+          {
+            "text": "Opt-in otomasyon akisi",
+            "service": "Automation",
+            "page": "Karsilama > QR Opt-in",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Ilk mesajda otomatik KVKK onam toplama akisi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Misafir otel odasindaki QR kodu tarar → WhatsApp acilir → On tanimli mesaj: 'Merhaba, Grand Hotel'e hosgeldiniz! Oda 412'" },
-        { "role": "user", "content": "Merhaba, Grand Hotel'e hosgeldiniz! Oda 412" },
-        { "role": "bot", "content": "Hosgeldiniz! Grand Hotel olarak size en iyi hizmeti sunmak istiyoruz. Devam edebilmemiz icin kisisel verilerin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir. Onaylamak icin EVET yazin. Detay: [KVKK Linki]" },
-        { "role": "user", "content": "EVET" },
-        { "role": "bot", "content": "Tesekkurler! Onaminiz kaydedildi. Size nasil yardimci olabilirim?\n\n1. Oda Servisi\n2. Temizlik Talebi\n3. Restoran Rezervasyonu\n4. Transfer / Taksi\n5. Diger" },
-        { "role": "user", "content": "1" },
-        { "role": "bot", "content": "Oda servisi menumuzu gonderiyorum. Sectiginiz urunleri numaralari ile yazmaniz yeterli. Tahmini teslimat: 25-35 dakika." }
-      ]
+        {
+          "role": "system",
+          "content": "Misafir otel odasindaki QR kodu tarar → WhatsApp acilir → On tanimli mesaj: 'Merhaba, Grand Hotel'e hosgeldiniz! Oda 412'"
+        },
+        {
+          "role": "user",
+          "content": "Merhaba, Grand Hotel'e hosgeldiniz! Oda 412"
+        },
+        {
+          "role": "bot",
+          "content": "Hosgeldiniz! Grand Hotel olarak size en iyi hizmeti sunmak istiyoruz. Devam edebilmemiz icin kisisel verilerin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir. Onaylamak icin EVET yazin. Detay: [KVKK Linki]"
+        },
+        {
+          "role": "user",
+          "content": "EVET"
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler! Onaminiz kaydedildi. Size nasil yardimci olabilirim?\n\n1. Oda Servisi\n2. Temizlik Talebi\n3. Restoran Rezervasyonu\n4. Transfer / Taksi\n5. Diger"
+        },
+        {
+          "role": "user",
+          "content": "1"
+        },
+        {
+          "role": "bot",
+          "content": "Oda servisi menumuzu gonderiyorum. Sectiginiz urunleri numaralari ile yazmaniz yeterli. Tahmini teslimat: 25-35 dakika."
+        }
+      ],
+      "aiPrompt": "\"QR Kod ile Hizli WhatsApp Erisimi\" senaryosu icin \"Otel Odasi QR — Oda Servisi\" akisini olustur.\n\nAciklama: Otel misafiri odadaki QR kodu tarayarak oda servisi istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Misafir otel odasindaki QR kodu tarar → WhatsApp acilir → On tanimli mesaj: 'Merhaba, Grand Hotel'e hosgeldiniz! Oda 412'\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, Grand Hotel'e hosgeldiniz! Oda 412\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **message_text** — Mesaj gonder\n   text: \"Hosgeldiniz! Grand Hotel olarak size en iyi hizmeti sunmak istiyoruz. Devam edebilmemiz icin kisisel verilerin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir. Onaylamak icin EVET yazin. Detay: [KVKK Linki]\"\n   Degiskenler: {{kvkk_linki}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"EVET\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Tesekkurler! Onaminiz kaydedildi. Size nasil yardimci olabilirim?\n\n1. Oda Servisi\n2. Temizlik Talebi\n3. Restoran Rezervasyonu\n4. Transfer / Taksi\n5. Diger\"\n\n   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)\n\n6. **message_text** — Mesaj gonder\n   text: \"Oda servisi menumuzu gonderiyorum. Sectiginiz urunleri numaralari ile yazmaniz yeterli. Tahmini teslimat: 25-35 dakika.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Klinik Bekleme Salonu QR — Randevu",
       "description": "Hasta klinik bekleme salonundaki QR'i tarayarak randevu aliyor.",
       "tags": [
-        { "text": "QR Tarama", "color": "purple" },
-        { "text": "Randevu", "color": "blue" }
+        {
+          "text": "QR Tarama",
+          "color": "purple"
+        },
+        {
+          "text": "Randevu",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Doktor musaitlik takvimi", "service": "Backend", "page": "Randevu Yonetimi > Takvim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Doktor calisma saatlerini ve musait slotlari tanimlayin" }
+          {
+            "text": "Doktor musaitlik takvimi",
+            "service": "Backend",
+            "page": "Randevu Yonetimi > Takvim",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Doktor calisma saatlerini ve musait slotlari tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Randevu otomasyon akisi", "service": "Automation", "page": "Randevu > Otomatik Planlama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "AI destekli randevu planlama akisi hazir" }
+          {
+            "text": "Randevu otomasyon akisi",
+            "service": "Automation",
+            "page": "Randevu > Otomatik Planlama",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "AI destekli randevu planlama akisi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Hasta bekleme salonundaki QR'i tarar → WhatsApp acilir → 'Saglam Klinik randevu'" },
-        { "role": "user", "content": "Saglam Klinik randevu" },
-        { "role": "bot", "content": "Saglam Klinik'e hosgeldiniz! Kisisel verilerinizin islenmesi icin onayiniz gerekmektedir. Onaylamak icin EVET yazin." },
-        { "role": "user", "content": "EVET" },
-        { "role": "bot", "content": "Tesekkurler! Hangi bolumden randevu almak istersiniz?\n\n1. Dahiliye\n2. Ortopedi\n3. Goz\n4. KBB\n5. Diger" },
-        { "role": "user", "content": "2" },
-        { "role": "bot", "content": "Ortopedi icin musait saatler:\n\n- Bugun 15:30 — Dr. Ayse Yilmaz\n- Yarin 10:00 — Dr. Ayse Yilmaz\n- Yarin 14:00 — Dr. Kemal Oz\n\nHangisini tercih edersiniz?" },
-        { "role": "user", "content": "Yarin 10:00" },
-        { "role": "bot", "content": "Randevunuz olusturuldu: Yarin 10:00 — Dr. Ayse Yilmaz, Ortopedi. Randevu oncesi hatirlatma mesaji gonderecegiz. Gecmis olsun!" }
-      ]
+        {
+          "role": "system",
+          "content": "Hasta bekleme salonundaki QR'i tarar → WhatsApp acilir → 'Saglam Klinik randevu'"
+        },
+        {
+          "role": "user",
+          "content": "Saglam Klinik randevu"
+        },
+        {
+          "role": "bot",
+          "content": "Saglam Klinik'e hosgeldiniz! Kisisel verilerinizin islenmesi icin onayiniz gerekmektedir. Onaylamak icin EVET yazin."
+        },
+        {
+          "role": "user",
+          "content": "EVET"
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler! Hangi bolumden randevu almak istersiniz?\n\n1. Dahiliye\n2. Ortopedi\n3. Goz\n4. KBB\n5. Diger"
+        },
+        {
+          "role": "user",
+          "content": "2"
+        },
+        {
+          "role": "bot",
+          "content": "Ortopedi icin musait saatler:\n\n- Bugun 15:30 — Dr. Ayse Yilmaz\n- Yarin 10:00 — Dr. Ayse Yilmaz\n- Yarin 14:00 — Dr. Kemal Oz\n\nHangisini tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Yarin 10:00"
+        },
+        {
+          "role": "bot",
+          "content": "Randevunuz olusturuldu: Yarin 10:00 — Dr. Ayse Yilmaz, Ortopedi. Randevu oncesi hatirlatma mesaji gonderecegiz. Gecmis olsun!"
+        }
+      ],
+      "aiPrompt": "\"QR Kod ile Hizli WhatsApp Erisimi\" senaryosu icin \"Klinik Bekleme Salonu QR — Randevu\" akisini olustur.\n\nAciklama: Hasta klinik bekleme salonundaki QR'i tarayarak randevu aliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Hasta bekleme salonundaki QR'i tarar → WhatsApp acilir → 'Saglam Klinik randevu'\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Saglam Klinik randevu\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **message_text** — Mesaj gonder\n   text: \"Saglam Klinik'e hosgeldiniz! Kisisel verilerinizin islenmesi icin onayiniz gerekmektedir. Onaylamak icin EVET yazin.\"\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"EVET\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Tesekkurler! Hangi bolumden randevu almak istersiniz?\n\n1. Dahiliye\n2. Ortopedi\n3. Goz\n4. KBB\n5. Diger\"\n\n   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)\n\n6. **message_menu** — Secenekli mesaj\n   Mesaj: \"Ortopedi icin musait saatler:\n\n- Bugun 15:30 — Dr. Ayse Yilmaz\n- Yarin 10:00 — Dr. Ayse Yilmaz\n- Yarin 14:00 — Dr. Kemal Oz\n\nHangisini tercih edersiniz?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Yarin 10:00\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **message_text** — Mesaj gonder\n   text: \"Randevunuz olusturuldu: Yarin 10:00 — Dr. Ayse Yilmaz, Ortopedi. Randevu oncesi hatirlatma mesaji gonderecegiz. Gecmis olsun!\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "QR kodlar wa.me deep link formatinda olusturulur. Tenant bazli parametreler URL'e eklenir. Opt-in kayitlari KVKK uyumlu olarak veritabaninda saklanir.",
     "backend": [
-      { "title": "QR Code Generator", "goal": "Unique Link Olusturma", "content": "Tenant, lokasyon ve departman bazli parametreli WhatsApp deep link ve QR kod olusturur. PNG/SVG formatinda indirilebilir." },
-      { "title": "Consent Manager", "goal": "Opt-in Kayit", "content": "Ilk mesajda KVKK onam alinir, tarih ve icerik ile birlikte veritabanina kaydedilir. STOP ile iptal destegi." }
+      {
+        "title": "QR Code Generator",
+        "goal": "Unique Link Olusturma",
+        "content": "Tenant, lokasyon ve departman bazli parametreli WhatsApp deep link ve QR kod olusturur. PNG/SVG formatinda indirilebilir."
+      },
+      {
+        "title": "Consent Manager",
+        "goal": "Opt-in Kayit",
+        "content": "Ilk mesajda KVKK onam alinir, tarih ve icerik ile birlikte veritabanina kaydedilir. STOP ile iptal destegi."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Deep Link API", "goal": "QR Yonlendirme", "content": "wa.me formatinda parametreli deep link olusturma. Lokasyon ve departman bilgisi URL'e gomulur." },
-      { "title": "Opt-in Tracking API", "goal": "Onam Takibi", "content": "Musteri onam durumunu sorgulama, guncelleme ve audit trail olusturma." }
+      {
+        "title": "WhatsApp Deep Link API",
+        "goal": "QR Yonlendirme",
+        "content": "wa.me formatinda parametreli deep link olusturma. Lokasyon ve departman bilgisi URL'e gomulur."
+      },
+      {
+        "title": "Opt-in Tracking API",
+        "goal": "Onam Takibi",
+        "content": "Musteri onam durumunu sorgulama, guncelleme ve audit trail olusturma."
+      }
     ]
   },
   "impact": {
@@ -122,9 +287,29 @@
     "resultLabel": "Kazanilan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyQrScans", "label": "Gunluk QR Tarama", "default": 20, "hint": "Tum lokasyonlardan gunluk toplam QR tarama sayisi", "editable": true },
-      { "key": "optInRate", "label": "Opt-in Orani", "default": 70, "suffix": "%", "hint": "QR tarayan musterilerin opt-in verme yuzdesi", "editable": true },
-      { "key": "avgCustomerValue", "label": "Musteri Basina Deger", "default": 300, "suffix": "TL", "hint": "Yeni musteri basina ortalama aylik harcama", "editable": true }
+      {
+        "key": "dailyQrScans",
+        "label": "Gunluk QR Tarama",
+        "default": 20,
+        "hint": "Tum lokasyonlardan gunluk toplam QR tarama sayisi",
+        "editable": true
+      },
+      {
+        "key": "optInRate",
+        "label": "Opt-in Orani",
+        "default": 70,
+        "suffix": "%",
+        "hint": "QR tarayan musterilerin opt-in verme yuzdesi",
+        "editable": true
+      },
+      {
+        "key": "avgCustomerValue",
+        "label": "Musteri Basina Deger",
+        "default": 300,
+        "suffix": "TL",
+        "hint": "Yeni musteri basina ortalama aylik harcama",
+        "editable": true
+      }
     ],
     "formula": "dailyQrScans * (optInRate / 100) * avgCustomerValue * 30",
     "formulaDisplay": null

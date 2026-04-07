@@ -8,27 +8,55 @@
   "description": "Gece 00:00-01:00 arasi 45K+ mesaj, aksam 19:00-23:00 arasi 40-49K/saat. Mevcut cevap: 'mesai disi' sablonu (1,618 kez). AI 7/24 gercek cevap verir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Instagram reklamlarindan gece traffic alan)" },
-      { "label": "Sorun", "value": "45K gece mesajina 'mesai dışındadır' sablonu gonderiliyor. Musteri ertesi gune kadar kaybolur" },
-      { "label": "Deger", "value": "7/24 cevap = gece musterilerini yakalama = %10+ conversion artisi" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Instagram reklamlarindan gece traffic alan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "45K gece mesajina 'mesai dışındadır' sablonu gonderiliyor. Musteri ertesi gune kadar kaybolur"
+      },
+      {
+        "label": "Deger",
+        "value": "7/24 cevap = gece musterilerini yakalama = %10+ conversion artisi"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "Unified Inbox (C1)", "color": "blue" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Mesai saatleri disinda AI tam yetkili cevap verir: urun bilgi, beden onerisi, siparis baslatma. Human handoff sadece karmasik sikayet icin.",
     "steps": [
       {
         "title": "Mesai Disi Tespit",
         "goal": "Saat + agent durumu kontrol",
-        "badges": [{ "text": "1,618 Sablon", "color": "rose" }],
+        "badges": [
+          {
+            "text": "1,618 Sablon",
+            "color": "rose"
+          }
+        ],
         "content": "Canli temsilci yoksa AI devralir. Mesai disi sablonu yerine gercek cevap verir."
       },
       {
         "title": "AI Tam Yetki",
         "goal": "Gercek cevap ver",
-        "badges": [{ "text": "7/24", "color": "emerald" }],
+        "badges": [
+          {
+            "text": "7/24",
+            "color": "emerald"
+          }
+        ],
         "content": "Urun bilgi, fiyat, beden, siparis bilgi toplama. Sadece iade/sikayet icin ertesi gune yonlendir."
       }
     ]
@@ -38,30 +66,84 @@
       "id": "flow-1",
       "title": "Gece 23:00 — AI Siparis Alma",
       "description": "Gece musterisi fiyat sorar, AI urun karti gonderir ve siparis alir.",
-      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "7/24", "color": "purple" }],
+      "tags": [
+        {
+          "text": "Saha Dogrulanmis",
+          "color": "emerald"
+        },
+        {
+          "text": "7/24",
+          "color": "purple"
+        }
+      ],
       "requirements": {
         "client": [
-          { "text": "AI mesai disi yetkisi", "service": "Backend", "page": "Ayarlar > AI Yetki > Mesai Disi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesai disi saatlerinde AI'in siparis almasina izin verin" }
+          {
+            "text": "AI mesai disi yetkisi",
+            "service": "Backend",
+            "page": "Ayarlar > AI Yetki > Mesai Disi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Mesai disi saatlerinde AI'in siparis almasina izin verin"
+          }
         ],
         "provider": [
-          { "text": "7/24 AI agent", "service": "AgentAI", "page": "Agent > Mesai Disi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesai disinda tam yetkili AI" }
+          {
+            "text": "7/24 AI agent",
+            "service": "AgentAI",
+            "page": "Agent > Mesai Disi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Mesai disinda tam yetkili AI"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba bu ürün ne kadar" },
-        { "role": "ai", "content": "Saat: 23:15. Canli agent yok. AI devreye giriyor. Intent: fiyat_sorma." },
-        { "role": "bot", "content": "Merhaba! Hoş geldiniz 🌸\n\n4856 Lara Palazzo Eşofman Takım\n•1599,99 TL •36-44 Beden •3 renk\n\nOnline ödemede kargo ücretsiz ♥\nSipariş oluşturmak ister misiniz?" },
-        { "role": "user", "content": "Evet 42 beden bordo kapıda nakit" },
-        { "role": "bot", "content": "Harika! 💕 Sipariş bilgilerinizi alabilir miyim?\n\n✅ Ad Soyad\n✅ Telefon\n✅ Adres (il/ilçe dahil)\n✅ Mail (opsiyonel)" },
-        { "role": "system", "content": "Gece 23:15 siparis akisi basarili baslatildi. Mesai disi sablon gonderilMEDI." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba bu ürün ne kadar"
+        },
+        {
+          "role": "ai",
+          "content": "Saat: 23:15. Canli agent yok. AI devreye giriyor. Intent: fiyat_sorma."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Hoş geldiniz 🌸\n\n4856 Lara Palazzo Eşofman Takım\n•1599,99 TL •36-44 Beden •3 renk\n\nOnline ödemede kargo ücretsiz ♥\nSipariş oluşturmak ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Evet 42 beden bordo kapıda nakit"
+        },
+        {
+          "role": "bot",
+          "content": "Harika! 💕 Sipariş bilgilerinizi alabilir miyim?\n\n✅ Ad Soyad\n✅ Telefon\n✅ Adres (il/ilçe dahil)\n✅ Mail (opsiyonel)"
+        },
+        {
+          "role": "system",
+          "content": "Gece 23:15 siparis akisi basarili baslatildi. Mesai disi sablon gonderilMEDI."
+        }
+      ],
+      "aiPrompt": "\"Gece Yarisi / 7-24 Otomasyon\" senaryosu icin \"Gece 23:00 — AI Siparis Alma\" akisini olustur.\n\nAciklama: Gece musterisi fiyat sorar, AI urun karti gonderir ve siparis alir.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba bu ürün ne kadar\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Saat: 23:15. Canli agent yok. AI devreye giriyor. Intent: fiyat_sorma.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Hoş geldiniz 🌸\n\n4856 Lara Palazzo Eşofman Takım\n•1599,99 TL •36-44 Beden •3 renk\n\nOnline ödemede kargo ücretsiz ♥\nSipariş oluşturmak ister misiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Evet 42 beden bordo kapıda nakit\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Harika! 💕 Sipariş bilgilerinizi alabilir miyim?\n\n✅ Ad Soyad\n✅ Telefon\n✅ Adres (il/ilçe dahil)\n✅ Mail (opsiyonel)\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Gece 23:15 siparis akisi basarili baslatildi. Mesai disi sablon gonderilMEDI.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Mesai disinda 1,618 'mesai disidir' sablonu yerine AI gercek cevap verir. Gece traffic'i icin buyuk firsat.",
     "backend": [
-      { "title": "Agent Availability Checker", "goal": "Temsilci Durumu", "content": "Canli agent var mi kontrol eder. Yoksa AI tam yetkiyle devralir." },
-      { "title": "Night Mode AI", "goal": "Gece Modu", "content": "Mesai disinda AI fiyat, beden, siparis akisini yonetir. Sikayet/iade → ertesi gune yonlendirir." }
+      {
+        "title": "Agent Availability Checker",
+        "goal": "Temsilci Durumu",
+        "content": "Canli agent var mi kontrol eder. Yoksa AI tam yetkiyle devralir."
+      },
+      {
+        "title": "Night Mode AI",
+        "goal": "Gece Modu",
+        "content": "Mesai disinda AI fiyat, beden, siparis akisini yonetir. Sikayet/iade → ertesi gune yonlendirir."
+      }
     ],
     "apis": []
   },
@@ -71,9 +153,27 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "nightCustomers", "label": "Gece Musterisi", "default": 80, "hint": "Mesai disi gelen musteri sayisi", "editable": true },
-      { "key": "conversionRate", "label": "Donusum", "default": 10, "prefix": "%", "editable": true },
-      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 1000, "suffix": "TL", "editable": true }
+      {
+        "key": "nightCustomers",
+        "label": "Gece Musterisi",
+        "default": 80,
+        "hint": "Mesai disi gelen musteri sayisi",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum",
+        "default": 10,
+        "prefix": "%",
+        "editable": true
+      },
+      {
+        "key": "avgOrderValue",
+        "label": "Ort. Siparis",
+        "default": 1000,
+        "suffix": "TL",
+        "editable": true
+      }
     ],
     "formula": "nightCustomers * (conversionRate / 100) * avgOrderValue",
     "formulaDisplay": null

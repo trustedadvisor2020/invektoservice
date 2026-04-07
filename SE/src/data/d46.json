@@ -8,15 +8,36 @@
   "description": "Mesai disinda gelen mesajlara AI ile 7/24 otomatik cevap veren, acil vakalari yonlendiren, diger mesajlara mesai saatlerinde donecegini bildiren sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
-      { "label": "Sorun", "value": "Mesai disi gelen mesajlar sabaha kadar cevapsiz kaliyor — hasta baska klinige gidiyor" },
-      { "label": "Deger", "value": "7/24 otomatik cevap ile hasta kaybedilmez, acil vakalar dogrudan yonlendirilir" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Tum Klinikler)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Mesai disi gelen mesajlar sabaha kadar cevapsiz kaliyor — hasta baska klinige gidiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "7/24 otomatik cevap ile hasta kaybedilmez, acil vakalar dogrudan yonlendirilir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI mesai disi mesajlari algilar, acil vakalari ayirir ve otomatik cevap verir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Mesai Disi Tespit",
         "goal": "Zamani kontrol et",
         "badges": [
-          { "text": "Sistem (Zaman)", "color": "purple" },
-          { "text": "Tenant (Mesai)", "color": "blue" }
+          {
+            "text": "Sistem (Zaman)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Mesai)",
+            "color": "blue"
+          }
         ],
         "content": "Mesaj saati kontrol edilir. Mesai disi ise otomatik cevap akisi baslatilir."
       },
@@ -33,8 +60,14 @@
         "title": "Akilli Yanitlama",
         "goal": "Uygun cevap ver",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Acil vaka → acil klinik yonlendirmesi. Normal → mesai saatlerinde donecegimiz bilgisi."
       }
@@ -46,33 +79,82 @@
       "title": "Gece Mesaji — Otomatik Cevap",
       "description": "Hasta gece randevu sorusu gonderiyor, otomatik cevap veriliyor.",
       "tags": [
-        { "text": "Mesai Disi", "color": "gray" },
-        { "text": "Otomatik", "color": "green" }
+        {
+          "text": "Mesai Disi",
+          "color": "gray"
+        },
+        {
+          "text": "Otomatik",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Mesai saatleri tanimi", "service": "Backend", "page": "Ayarlar > Calisma Saatleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Klinik calisma saatlerini tanimlayin" }
+          {
+            "text": "Mesai saatleri tanimi",
+            "service": "Backend",
+            "page": "Ayarlar > Calisma Saatleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Klinik calisma saatlerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Mesai disi otomatik cevap", "service": "AgentAI", "page": "AI > Mesai Disi Cevap", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Mesai disi otomatik cevap ve acil vaka ayirma hazir" }
+          {
+            "text": "Mesai disi otomatik cevap",
+            "service": "AgentAI",
+            "page": "AI > Mesai Disi Cevap",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Mesai disi otomatik cevap ve acil vaka ayirma hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Randevu almak istiyorum." },
-        { "role": "ai", "content": "Saat: 22:30. Mesai disi. Intent: Randevu. Acil degil — otomatik cevap verilecek." },
-        { "role": "bot", "content": "Merhaba! Su an mesai saatleri disindayiz 🕐\n\n📅 Calisma saatlerimiz: Hafta ici 09:00-19:00, Cumartesi 10:00-16:00\n\nRandevu talebiniZi aldik! Yarin sabah ilk is size donecegiz.\n\n⚠️ Acil dis agrisi mi var? Bize yazin, sizi yonlendirelim!" },
-        { "role": "system", "content": "Mesai disi otomatik cevap gonderildi. Randevu talebi sabah kuyruguna eklendi." }
-      ]
+        {
+          "role": "user",
+          "content": "Randevu almak istiyorum."
+        },
+        {
+          "role": "ai",
+          "content": "Saat: 22:30. Mesai disi. Intent: Randevu. Acil degil — otomatik cevap verilecek."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Su an mesai saatleri disindayiz 🕐\n\n📅 Calisma saatlerimiz: Hafta ici 09:00-19:00, Cumartesi 10:00-16:00\n\nRandevu talebiniZi aldik! Yarin sabah ilk is size donecegiz.\n\n⚠️ Acil dis agrisi mi var? Bize yazin, sizi yonlendirelim!"
+        },
+        {
+          "role": "system",
+          "content": "Mesai disi otomatik cevap gonderildi. Randevu talebi sabah kuyruguna eklendi."
+        }
+      ],
+      "aiPrompt": "\"Gece/Hafta Sonu Otomatik Cevap\" senaryosu icin \"Gece Mesaji — Otomatik Cevap\" akisini olustur.\n\nAciklama: Hasta gece randevu sorusu gonderiyor, otomatik cevap veriliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Randevu almak istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Saat: 22:30. Mesai disi. Intent: Randevu. Acil degil — otomatik cevap verilecek.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Su an mesai saatleri disindayiz 🕐\n\n📅 Calisma saatlerimiz: Hafta ici 09:00-19:00, Cumartesi 10:00-16:00\n\nRandevu talebiniZi aldik! Yarin sabah ilk is size donecegiz.\n\n⚠️ Acil dis agrisi mi var? Bize yazin, sizi yonlendirelim!\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Mesai disi otomatik cevap gonderildi. Randevu talebi sabah kuyruguna eklendi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Mesai Saati Kontrolu + Otomatik Cevap birlesimiyle calisir.",
     "backend": [
-      { "title": "Business Hours Checker", "goal": "Mesai Kontrolu", "content": "Mesaj saatini klinik calisma saatleriyle karsilastirir." },
-      { "title": "After Hours Responder", "goal": "Otomatik Cevap", "content": "Mesai disi mesajlara akilli otomatik cevap verir ve acil vakalari ayirir." }
+      {
+        "title": "Business Hours Checker",
+        "goal": "Mesai Kontrolu",
+        "content": "Mesaj saatini klinik calisma saatleriyle karsilastirir."
+      },
+      {
+        "title": "After Hours Responder",
+        "goal": "Otomatik Cevap",
+        "content": "Mesai disi mesajlara akilli otomatik cevap verir ve acil vakalari ayirir."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Business API", "goal": "Mesaj Gonderim", "content": "Otomatik cevap mesaji gonderimi." }
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Mesaj Gonderim",
+        "content": "Otomatik cevap mesaji gonderimi."
+      }
     ]
   },
   "impact": {
@@ -81,9 +163,29 @@
     "resultLabel": "Kurtarilan Lead Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyAfterHoursMessages", "label": "Aylik Mesai Disi Mesaj", "default": 25, "hint": "Mesai disinda gelen mesaj sayisi", "editable": true },
-      { "key": "leadSaveRate", "label": "Kurtarma Orani", "default": 40, "prefix": "%", "hint": "Otomatik cevap ile tutulan lead", "editable": true },
-      { "key": "avgLeadValue", "label": "Lead Degeri", "default": 3000, "suffix": "TL", "hint": "Ortalama hasta degeri", "editable": true }
+      {
+        "key": "monthlyAfterHoursMessages",
+        "label": "Aylik Mesai Disi Mesaj",
+        "default": 25,
+        "hint": "Mesai disinda gelen mesaj sayisi",
+        "editable": true
+      },
+      {
+        "key": "leadSaveRate",
+        "label": "Kurtarma Orani",
+        "default": 40,
+        "prefix": "%",
+        "hint": "Otomatik cevap ile tutulan lead",
+        "editable": true
+      },
+      {
+        "key": "avgLeadValue",
+        "label": "Lead Degeri",
+        "default": 3000,
+        "suffix": "TL",
+        "hint": "Ortalama hasta degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyAfterHoursMessages * (leadSaveRate / 100) * avgLeadValue",
     "formulaDisplay": null

@@ -8,14 +8,32 @@
   "description": "Hasta fotograflari saglik verisi kapsaminda KVKK riski tasiyor. AI KVKK uyarisi verir, guvenli depolama protokolunu uygular ve onam surecini yonetir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Fotograf Kullanan)" },
-      { "label": "Sorun", "value": "Before/after fotograflar KVKK kapsaminda saglik verisi — WhatsApp'ta paylasim hukuki risk" },
-      { "label": "Deger", "value": "AI ile KVKK uyumlu foto yonetimi — hukuki risk sifirlanir, guvenli arsivleme" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Fotograf Kullanan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Before/after fotograflar KVKK kapsaminda saglik verisi — WhatsApp'ta paylasim hukuki risk"
+      },
+      {
+        "label": "Deger",
+        "value": "AI ile KVKK uyumlu foto yonetimi — hukuki risk sifirlanir, guvenli arsivleme"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Security (C5)", "color": "red" },
-      { "name": "Enterprise Security (C6)", "color": "red" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Security (C5)",
+        "color": "red"
+      },
+      {
+        "name": "Enterprise Security (C6)",
+        "color": "red"
+      }
     ],
     "servicesNote": "AI fotograf paylasiminda KVKK riskini tespit eder, guvenli depolama + onam sureci baslatir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "KVKK Risk Tespiti",
         "goal": "Saglik verisi kontrolu",
         "badges": [
-          { "text": "Sistem (Security)", "color": "red" },
-          { "text": "Tenant (Hukuk)", "color": "amber" }
+          {
+            "text": "Sistem (Security)",
+            "color": "red"
+          },
+          {
+            "text": "Tenant (Hukuk)",
+            "color": "amber"
+          }
         ],
         "content": "AI fotograf/video iceriginin saglik verisi kapsaminda olup olmadigini tespit eder."
       },
@@ -32,8 +56,14 @@
         "title": "Guvenli Protokol",
         "goal": "KVKK uyumlu islem",
         "badges": [
-          { "text": "Sistem (Encryption)", "color": "red" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (Encryption)",
+            "color": "red"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Onam formu gonderilir, fotograf sifrelenerek guvenli sunucuda saklanir, WA'dan silinir."
       }
@@ -45,39 +75,125 @@
       "title": "Hasta Before/After Foto Gonderiyor",
       "description": "Hasta WhatsApp'tan tedavi oncesi fotograf gonderiyor, KVKK sureci baslatiliyor.",
       "tags": [
-        { "text": "KVKK", "color": "red" },
-        { "text": "Saglik Verisi", "color": "amber" }
+        {
+          "text": "KVKK",
+          "color": "red"
+        },
+        {
+          "text": "Saglik Verisi",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "KVKK onam form template'i", "service": "Knowledge", "page": "Dokuman Bankasi > KVKK Formlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C5", "hint": "Saglik verisi isleme onam formunu hazirlayin ve sisteme yukleyin" },
-          { "text": "Guvenli depolama alani", "service": "Backend", "page": "Ayarlar > Guvenli Depolama", "status": "setup", "priority": "required", "effort": "medium", "capability": "C6", "hint": "Sifrelenmis fotograf depolama alanini yapilandirin" }
+          {
+            "text": "KVKK onam form template'i",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > KVKK Formlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C5",
+            "hint": "Saglik verisi isleme onam formunu hazirlayin ve sisteme yukleyin"
+          },
+          {
+            "text": "Guvenli depolama alani",
+            "service": "Backend",
+            "page": "Ayarlar > Guvenli Depolama",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C6",
+            "hint": "Sifrelenmis fotograf depolama alanini yapilandirin"
+          }
         ],
         "provider": [
-          { "text": "Saglik verisi tespit motoru", "service": "AgentAI", "page": "KVKK > Veri Siniflandirma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Fotograf/video iceriginin saglik verisi siniflandirmasi hazir" },
-          { "text": "Onam formu gonderim otomasyonu", "service": "Automation", "page": "Is Akislari > KVKK Onam", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "Saglik verisi tespitinde otomatik onam sureci hazir" },
-          { "text": "Sifrelenmis depolama", "service": "Backend", "page": "Security > Encryption", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "AES-256 sifreleme ile guvenli foto depolama hazir" }
+          {
+            "text": "Saglik verisi tespit motoru",
+            "service": "AgentAI",
+            "page": "KVKK > Veri Siniflandirma",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "Fotograf/video iceriginin saglik verisi siniflandirmasi hazir"
+          },
+          {
+            "text": "Onam formu gonderim otomasyonu",
+            "service": "Automation",
+            "page": "Is Akislari > KVKK Onam",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C6",
+            "hint": "Saglik verisi tespitinde otomatik onam sureci hazir"
+          },
+          {
+            "text": "Sifrelenmis depolama",
+            "service": "Backend",
+            "page": "Security > Encryption",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C6",
+            "hint": "AES-256 sifreleme ile guvenli foto depolama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "[Fotograf gonderdi] Dr. Selin, dudaklarimin son halini gonderiyorum." },
-        { "role": "ai", "content": "KVKK Alert: Saglik verisi tespiti — medikal fotograf. Onam kontrolu baslatiliyor." },
-        { "role": "bot", "content": "Fotografinizi aldik! \ud83d\ude4f\n\n\u26a0\ufe0f Bilgilendirme: Bu fotograf saglik verisi kapsaminda KVKK ile korunmaktadir.\n\nGuvenliginiz icin:\n1\ufe0f\u20e3 Fotografiniz sifrelenerek guvenli sunucumuza aktarilacak\n2\ufe0f\u20e3 WhatsApp sohbetinden otomatik silinecek\n3\ufe0f\u20e3 Sadece doktorunuz erisebilecek\n\n\ud83d\udcdd Lutfen KVKK onam formunu onaylayin:\n\ud83d\udd17 [Dijital Onam Formu]" },
-        { "role": "user", "content": "Onayladim." },
-        { "role": "bot", "content": "Tesekkurler! Onaminiz kaydedildi. \u2705\n\n\ud83d\udd12 Fotografiniz guvenle saklanmistir.\n\ud83d\udc68\u200d\u2695\ufe0f Dr. Selin inceleyip size donecek.\n\nBaska bir sorunuz var mi?" },
-        { "role": "system", "content": "KVKK onam alindi. Fotograf AES-256 ile sifrelendi. Guvenli depoya aktarildi. WA'dan silindi." }
-      ]
+        {
+          "role": "user",
+          "content": "[Fotograf gonderdi] Dr. Selin, dudaklarimin son halini gonderiyorum."
+        },
+        {
+          "role": "ai",
+          "content": "KVKK Alert: Saglik verisi tespiti — medikal fotograf. Onam kontrolu baslatiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Fotografinizi aldik! 🙏\n\n⚠️ Bilgilendirme: Bu fotograf saglik verisi kapsaminda KVKK ile korunmaktadir.\n\nGuvenliginiz icin:\n1️⃣ Fotografiniz sifrelenerek guvenli sunucumuza aktarilacak\n2️⃣ WhatsApp sohbetinden otomatik silinecek\n3️⃣ Sadece doktorunuz erisebilecek\n\n📝 Lutfen KVKK onam formunu onaylayin:\n🔗 [Dijital Onam Formu]"
+        },
+        {
+          "role": "user",
+          "content": "Onayladim."
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler! Onaminiz kaydedildi. ✅\n\n🔒 Fotografiniz guvenle saklanmistir.\n👨‍⚕️ Dr. Selin inceleyip size donecek.\n\nBaska bir sorunuz var mi?"
+        },
+        {
+          "role": "system",
+          "content": "KVKK onam alindi. Fotograf AES-256 ile sifrelendi. Guvenli depoya aktarildi. WA'dan silindi."
+        }
+      ],
+      "aiPrompt": "\"KVKK: Foto/Video Saglik Verisi\" senaryosu icin \"Hasta Before/After Foto Gonderiyor\" akisini olustur.\n\nAciklama: Hasta WhatsApp'tan tedavi oncesi fotograf gonderiyor, KVKK sureci baslatiliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **utility_set_variable** — Musteri medya yuklemesini kaydet\n   variable_name: \"customer_media\"\n   Not: Onceki message_text'in yanit beklemesi gerekir\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: KVKK Alert: Saglik verisi tespiti — medikal fotograf. Onam kontrolu baslatiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Fotografinizi aldik! 🙏\n\n⚠️ Bilgilendirme: Bu fotograf saglik verisi kapsaminda KVKK ile korunmaktadir.\n\nGuvenliginiz icin:\n1️⃣ Fotografiniz sifrelenerek guvenli sunucumuza aktarilacak\n2️⃣ WhatsApp sohbetinden otomatik silinecek\n3️⃣ Sadece doktorunuz erisebilecek\n\n📝 Lutfen KVKK onam formunu onaylayin:\n🔗 [Dijital Onam Formu]\"\n   Her secenek icin ayri cikis handle'i olustur\n   Degiskenler: {{dijital_onam_formu}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Onayladim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Tesekkurler! Onaminiz kaydedildi. ✅\n\n🔒 Fotografiniz guvenle saklanmistir.\n👨‍⚕️ Dr. Selin inceleyip size donecek.\n\nBaska bir sorunuz var mi?\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"KVKK onam alindi. Fotograf AES-256 ile sifrelendi. Guvenli depoya aktarildi. WA'dan silindi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo KVKK uyumlu saglik verisi yonetimi + sifrelenmis depolama ile calisir.",
     "backend": [
-      { "title": "Health Data Classifier", "goal": "Veri Siniflandirma", "content": "Gelen medya dosyalarini KVKK saglik verisi kapsaminda siniflandirir." },
-      { "title": "Secure Storage", "goal": "Guvenli Depolama", "content": "AES-256 sifreleme ile medikal fotograflari guvenli sunucuda depolar." },
-      { "title": "Consent Manager", "goal": "Onam Yonetimi", "content": "Dijital KVKK onam formunu gonderir, onay kaydini tutar ve denetim izi olusturur." }
+      {
+        "title": "Health Data Classifier",
+        "goal": "Veri Siniflandirma",
+        "content": "Gelen medya dosyalarini KVKK saglik verisi kapsaminda siniflandirir."
+      },
+      {
+        "title": "Secure Storage",
+        "goal": "Guvenli Depolama",
+        "content": "AES-256 sifreleme ile medikal fotograflari guvenli sunucuda depolar."
+      },
+      {
+        "title": "Consent Manager",
+        "goal": "Onam Yonetimi",
+        "content": "Dijital KVKK onam formunu gonderir, onay kaydini tutar ve denetim izi olusturur."
+      }
     ],
     "apis": [
-      { "title": "KVKK Compliance API", "goal": "Uyumluluk", "content": "Saglik verisi siniflandirma, onam kaydi ve denetim raporu uretimi." }
+      {
+        "title": "KVKK Compliance API",
+        "goal": "Uyumluluk",
+        "content": "Saglik verisi siniflandirma, onam kaydi ve denetim raporu uretimi."
+      }
     ]
   },
   "impact": {
@@ -86,9 +202,29 @@
     "resultLabel": "Korunan Risk Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyMedicalPhotos", "label": "Aylik Medikal Fotograf", "default": 50, "hint": "Hasta tarafindan gonderilen tedavi fotografi", "editable": true },
-      { "key": "complianceRate", "label": "Uyumluluk Orani", "default": 95, "prefix": "%", "hint": "KVKK uyumlu islenen fotograf orani", "editable": true },
-      { "key": "avgRiskCostPerPhoto", "label": "Fotograf Basina Risk", "default": 500, "suffix": "TL", "hint": "Uyumsuz her fotograf icin tahmini hukuki risk", "editable": true }
+      {
+        "key": "monthlyMedicalPhotos",
+        "label": "Aylik Medikal Fotograf",
+        "default": 50,
+        "hint": "Hasta tarafindan gonderilen tedavi fotografi",
+        "editable": true
+      },
+      {
+        "key": "complianceRate",
+        "label": "Uyumluluk Orani",
+        "default": 95,
+        "prefix": "%",
+        "hint": "KVKK uyumlu islenen fotograf orani",
+        "editable": true
+      },
+      {
+        "key": "avgRiskCostPerPhoto",
+        "label": "Fotograf Basina Risk",
+        "default": 500,
+        "suffix": "TL",
+        "hint": "Uyumsuz her fotograf icin tahmini hukuki risk",
+        "editable": true
+      }
     ],
     "formula": "monthlyMedicalPhotos * (complianceRate / 100) * avgRiskCostPerPhoto",
     "formulaDisplay": null

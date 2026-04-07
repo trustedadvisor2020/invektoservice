@@ -8,15 +8,36 @@
   "description": "Tekrarlayan satin alma/ziyaretleri otomatik abonelik teklifine cevirip, duzenli gelir akisi (recurring revenue) olusturan ve musteri yasam boyu degerini artiran sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler (E-ticaret, Saglik, Estetik, Otel, Guzellik, Egitim)" },
-      { "label": "Sorun", "value": "Musteri her seferinde yeniden karar veriyor (surtunme)" },
-      { "label": "Deger", "value": "Abonelik musterisi 2-3x daha degerli (LTV artisi %40-60)" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler (E-ticaret, Saglik, Estetik, Otel, Guzellik, Egitim)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteri her seferinde yeniden karar veriyor (surtunme)"
+      },
+      {
+        "label": "Deger",
+        "value": "Abonelik musterisi 2-3x daha degerli (LTV artisi %40-60)"
+      }
     ],
     "services": [
-      { "name": "Pattern Detection AI", "color": "blue" },
-      { "name": "Outbound Engine", "color": "green" },
-      { "name": "Revenue Agent (C10)", "color": "purple" },
-      { "name": "Tier Management", "color": "amber" }
+      {
+        "name": "Pattern Detection AI",
+        "color": "blue"
+      },
+      {
+        "name": "Outbound Engine",
+        "color": "green"
+      },
+      {
+        "name": "Revenue Agent (C10)",
+        "color": "purple"
+      },
+      {
+        "name": "Tier Management",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI tekrarlayan satin alma pattern'ini tespit eder (3+ kez ayni urunu alan). Otomatik abonelik teklifi + tier yonetimi.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Pattern Tespiti",
         "goal": "Duzenli musteriyi bul",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (CRM Verisi)", "color": "amber" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (CRM Verisi)",
+            "color": "amber"
+          }
         ],
         "content": "AI, satin alma gecmisini analiz eder. 3+ kez ayni urun/hizmet alan musteri tespit edilir."
       },
@@ -33,8 +60,14 @@
         "title": "Abonelik Teklifi",
         "goal": "Recurring gelire cevir",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Paket Fiyat)", "color": "blue" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Paket Fiyat)",
+            "color": "blue"
+          }
         ],
         "content": "'Aylik otomatik gonderim ister misiniz? %10 indirimli' veya 'Yillik bakim paketi: 6 seans + kontrol = paket fiyat.'"
       },
@@ -42,8 +75,14 @@
         "title": "Tier Yonetimi",
         "goal": "Sadakati odullendir",
         "badges": [
-          { "text": "Sistem (Tier)", "color": "purple" },
-          { "text": "Tenant (Kurallar)", "color": "green" }
+          {
+            "text": "Sistem (Tier)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kurallar)",
+            "color": "green"
+          }
         ],
         "content": "5. satin alma → Gold uye (%15 indirim). 10. satin alma → Platinum (%20 indirim). Tier upgrade bildirimi."
       },
@@ -51,8 +90,14 @@
         "title": "Yenileme Hatirlatma",
         "goal": "Churn'u onle",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Zamanlama)", "color": "amber" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Zamanlama)",
+            "color": "amber"
+          }
         ],
         "content": "Abonelik sona ermeden 7 gun once: 'Paketiniz sona eriyor, yenilemek ister misiniz?'"
       }
@@ -64,90 +109,283 @@
       "title": "E-ticaret: Otomatik Gonderim",
       "description": "Duzenli ayni urunu alan musteriye abonelik kutusu teklifi.",
       "tags": [
-        { "text": "E-ticaret", "color": "blue" },
-        { "text": "Abonelik Kutusu", "color": "green" }
+        {
+          "text": "E-ticaret",
+          "color": "blue"
+        },
+        {
+          "text": "Abonelik Kutusu",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Abonelik urun secenekleri", "service": "Backend", "page": "Urun Katalogu > Abonelik Urunleri", "status": "setup", "priority": "required", "effort": "medium", "capability": "C10", "hint": "Abonelik secenegi sunulacak urunleri tanimlayin" },
-          { "text": "Kargo lojistik anlasmasi", "service": "Integrations", "page": "Kargo Entegrasyonlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Duzenli gonderim icin kargo firmasiyla anlasma yapin" }
+          {
+            "text": "Abonelik urun secenekleri",
+            "service": "Backend",
+            "page": "Urun Katalogu > Abonelik Urunleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C10",
+            "hint": "Abonelik secenegi sunulacak urunleri tanimlayin"
+          },
+          {
+            "text": "Kargo lojistik anlasmasi",
+            "service": "Integrations",
+            "page": "Kargo Entegrasyonlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C11",
+            "hint": "Duzenli gonderim icin kargo firmasiyla anlasma yapin"
+          }
         ],
         "provider": [
-          { "text": "Satin alma pattern tespiti", "service": "ChatAnalysis", "page": "Pattern Detection > Satin Alma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "AI tekrarlayan satin alma pattern tespiti hazir" },
-          { "text": "Otomatik siparis olusturma", "service": "Automation", "page": "Is Akislari > Otomatik Siparis", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Abonelik bazli otomatik siparis olusturma hazir" }
+          {
+            "text": "Satin alma pattern tespiti",
+            "service": "ChatAnalysis",
+            "page": "Pattern Detection > Satin Alma",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "AI tekrarlayan satin alma pattern tespiti hazir"
+          },
+          {
+            "text": "Otomatik siparis olusturma",
+            "service": "Automation",
+            "page": "Is Akislari > Otomatik Siparis",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C9",
+            "hint": "Abonelik bazli otomatik siparis olusturma hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Pattern Tespit: Musteri son 3 ayda 3 kez ayni kremi aldi." },
-        { "role": "bot", "content": "Merhaba [Ad]! Duzenli olarak [Urun Adi] aldiginizi goruyoruz. Aylik otomatik gonderim ile %10 indirimli alsaniz nasil olur? Her ay kapiniza gelsin!" },
-        { "role": "user", "content": "Iyi fikir, nasil calisiyor?" },
-        { "role": "bot", "content": "Her ay otomatik olarak [Urun] kargoya verilir. Istediginiz zaman iptal edebilirsiniz. Normal fiyat 299 TL, abonelik fiyat 269 TL/ay. Baslatmak ister misiniz?" },
-        { "role": "user", "content": "Olur, baslatalim." },
-        { "role": "system", "content": "Abonelik Olusturuldu: [Urun] / Aylik / 269 TL. Recurring Revenue +269 TL/ay." }
-      ]
+        {
+          "role": "system",
+          "content": "Pattern Tespit: Musteri son 3 ayda 3 kez ayni kremi aldi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad]! Duzenli olarak [Urun Adi] aldiginizi goruyoruz. Aylik otomatik gonderim ile %10 indirimli alsaniz nasil olur? Her ay kapiniza gelsin!"
+        },
+        {
+          "role": "user",
+          "content": "Iyi fikir, nasil calisiyor?"
+        },
+        {
+          "role": "bot",
+          "content": "Her ay otomatik olarak [Urun] kargoya verilir. Istediginiz zaman iptal edebilirsiniz. Normal fiyat 299 TL, abonelik fiyat 269 TL/ay. Baslatmak ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Olur, baslatalim."
+        },
+        {
+          "role": "system",
+          "content": "Abonelik Olusturuldu: [Urun] / Aylik / 269 TL. Recurring Revenue +269 TL/ay."
+        }
+      ],
+      "aiPrompt": "\"Abonelik / Uyelik Modeli\" senaryosu icin \"E-ticaret: Otomatik Gonderim\" akisini olustur.\n\nAciklama: Duzenli ayni urunu alan musteriye abonelik kutusu teklifi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Pattern Tespit: Musteri son 3 ayda 3 kez ayni kremi aldi.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad]! Duzenli olarak [Urun Adi] aldiginizi goruyoruz. Aylik otomatik gonderim ile %10 indirimli alsaniz nasil olur? Her ay kapiniza gelsin!\"\n   Degiskenler: {{ad}}, {{urun_adi}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Iyi fikir, nasil calisiyor?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Her ay otomatik olarak [Urun] kargoya verilir. Istediginiz zaman iptal edebilirsiniz. Normal fiyat 299 TL, abonelik fiyat 269 TL/ay. Baslatmak ister misiniz?\"\n   Degiskenler: {{urun}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Olur, baslatalim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Abonelik Olusturuldu: [Urun] / Aylik / 269 TL. Recurring Revenue +269 TL/ay.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Klinik: Yillik Bakim Paketi",
       "description": "Duzenli kontrol yaptiran hastaya yillik uyelik teklifi.",
       "tags": [
-        { "text": "Saglik", "color": "green" },
-        { "text": "Yillik Paket", "color": "purple" }
+        {
+          "text": "Saglik",
+          "color": "green"
+        },
+        {
+          "text": "Yillik Paket",
+          "color": "purple"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Bakim paketi fiyatlandirmasi", "service": "Backend", "page": "Kampanya Yonetimi > Paket Fiyatlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C10", "hint": "Yillik bakim paketi icerigi ve fiyatini tanimlayin" },
-          { "text": "Randevu takvim sistemi", "service": "Backend", "page": "Randevu Takvimi > Ayarlar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Paket dahili randevulari otomatik planlanir" }
+          {
+            "text": "Bakim paketi fiyatlandirmasi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Paket Fiyatlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C10",
+            "hint": "Yillik bakim paketi icerigi ve fiyatini tanimlayin"
+          },
+          {
+            "text": "Randevu takvim sistemi",
+            "service": "Backend",
+            "page": "Randevu Takvimi > Ayarlar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Paket dahili randevulari otomatik planlanir"
+          }
         ],
         "provider": [
-          { "text": "Ziyaret pattern tespiti", "service": "ChatAnalysis", "page": "Pattern Detection > Ziyaret", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Hasta ziyaret frekansi analizi hazir" },
-          { "text": "Paket yonetim sistemi", "service": "Backend", "page": "Kampanya Yonetimi > Paket Yonetimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Paket olusturma, takip ve yenileme hazir" }
+          {
+            "text": "Ziyaret pattern tespiti",
+            "service": "ChatAnalysis",
+            "page": "Pattern Detection > Ziyaret",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Hasta ziyaret frekansi analizi hazir"
+          },
+          {
+            "text": "Paket yonetim sistemi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Paket Yonetimi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Paket olusturma, takip ve yenileme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Pattern Tespit: Hasta son 1 yilda 2 kez dis tasi temizligi yaptirdi." },
-        { "role": "bot", "content": "Merhaba [Ad]! Duzenli dis bakiminiz icin yillik paket onerimiz var: 2 dis tasi temizligi + 1 kontrol + %15 indirim. Toplam 4.500 TL yerine 3.800 TL. Ilgilenir misiniz?" },
-        { "role": "user", "content": "Detay verir misiniz?" },
-        { "role": "bot", "content": "Paket icerigi: 6 ayda 1 dis tasi temizligi (2 adet) + yillik kapsamli kontrol + oncelikli randevu. Taksit secenegi de var. Paketi baslatmak ister misiniz?" },
-        { "role": "user", "content": "Tamam, baslatayim." },
-        { "role": "system", "content": "Uyelik Paketi Olusturuldu: Yillik Dis Bakimi / 3.800 TL. Recurring Revenue aktif." }
-      ]
+        {
+          "role": "system",
+          "content": "Pattern Tespit: Hasta son 1 yilda 2 kez dis tasi temizligi yaptirdi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad]! Duzenli dis bakiminiz icin yillik paket onerimiz var: 2 dis tasi temizligi + 1 kontrol + %15 indirim. Toplam 4.500 TL yerine 3.800 TL. Ilgilenir misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Detay verir misiniz?"
+        },
+        {
+          "role": "bot",
+          "content": "Paket icerigi: 6 ayda 1 dis tasi temizligi (2 adet) + yillik kapsamli kontrol + oncelikli randevu. Taksit secenegi de var. Paketi baslatmak ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Tamam, baslatayim."
+        },
+        {
+          "role": "system",
+          "content": "Uyelik Paketi Olusturuldu: Yillik Dis Bakimi / 3.800 TL. Recurring Revenue aktif."
+        }
+      ],
+      "aiPrompt": "\"Abonelik / Uyelik Modeli\" senaryosu icin \"Klinik: Yillik Bakim Paketi\" akisini olustur.\n\nAciklama: Duzenli kontrol yaptiran hastaya yillik uyelik teklifi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Pattern Tespit: Hasta son 1 yilda 2 kez dis tasi temizligi yaptirdi.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad]! Duzenli dis bakiminiz icin yillik paket onerimiz var: 2 dis tasi temizligi + 1 kontrol + %15 indirim. Toplam 4.500 TL yerine 3.800 TL. Ilgilenir misiniz?\"\n   Degiskenler: {{ad}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Detay verir misiniz?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Paket icerigi: 6 ayda 1 dis tasi temizligi (2 adet) + yillik kapsamli kontrol + oncelikli randevu. Taksit secenegi de var. Paketi baslatmak ister misiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tamam, baslatayim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Uyelik Paketi Olusturuldu: Yillik Dis Bakimi / 3.800 TL. Recurring Revenue aktif.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-3",
       "title": "Tier Upgrade Bildirimi",
       "description": "Musteri 5. satin alimini yapti, Gold uyelik kazandi.",
       "tags": [
-        { "text": "Tier Upgrade", "color": "amber" },
-        { "text": "Sadakat", "color": "green" }
+        {
+          "text": "Tier Upgrade",
+          "color": "amber"
+        },
+        {
+          "text": "Sadakat",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Tier tanimlari ve indirimleri", "service": "Backend", "page": "Kampanya Yonetimi > Tier Kurallari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Silver/Gold/Platinum tier kosullarini ve indirim oranlarini tanimlayin" },
-          { "text": "Ozel avantajlar", "service": "Backend", "page": "Kampanya Yonetimi > Tier Avantajlari", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C10", "hint": "Her tier icin ozel avantajlari tanimlayin" }
+          {
+            "text": "Tier tanimlari ve indirimleri",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Tier Kurallari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Silver/Gold/Platinum tier kosullarini ve indirim oranlarini tanimlayin"
+          },
+          {
+            "text": "Ozel avantajlar",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Tier Avantajlari",
+            "status": "setup",
+            "priority": "recommended",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Her tier icin ozel avantajlari tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Satin alma sayaci", "service": "ChatAnalysis", "page": "Pattern Detection > Frekans", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Musteri satin alma sayaci ve tier hesaplamasi hazir" },
-          { "text": "Tier yonetim sistemi", "service": "Backend", "page": "Kampanya Yonetimi > Tier Sistemi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Otomatik tier upgrade ve bildirim hazir" }
+          {
+            "text": "Satin alma sayaci",
+            "service": "ChatAnalysis",
+            "page": "Pattern Detection > Frekans",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Musteri satin alma sayaci ve tier hesaplamasi hazir"
+          },
+          {
+            "text": "Tier yonetim sistemi",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Tier Sistemi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Otomatik tier upgrade ve bildirim hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Musteri 5. satin alimini yapti. Tier: Silver → Gold." },
-        { "role": "bot", "content": "Tebrikler [Ad]! 5. alisverisinis kutlu olsun. Gold Uye oldunuz! Artik tum alisverislerinizde %15 indirim + ucretsiz kargo + oncelikli destek. Keyifli alisverisler!" },
-        { "role": "user", "content": "Vay, harika! Tesekkurler." },
-        { "role": "system", "content": "Tier Upgrade: Silver → Gold. Indirim: %15. Ucretsiz kargo aktif." }
-      ]
+        {
+          "role": "system",
+          "content": "Musteri 5. satin alimini yapti. Tier: Silver → Gold."
+        },
+        {
+          "role": "bot",
+          "content": "Tebrikler [Ad]! 5. alisverisinis kutlu olsun. Gold Uye oldunuz! Artik tum alisverislerinizde %15 indirim + ucretsiz kargo + oncelikli destek. Keyifli alisverisler!"
+        },
+        {
+          "role": "user",
+          "content": "Vay, harika! Tesekkurler."
+        },
+        {
+          "role": "system",
+          "content": "Tier Upgrade: Silver → Gold. Indirim: %15. Ucretsiz kargo aktif."
+        }
+      ],
+      "aiPrompt": "\"Abonelik / Uyelik Modeli\" senaryosu icin \"Tier Upgrade Bildirimi\" akisini olustur.\n\nAciklama: Musteri 5. satin alimini yapti, Gold uyelik kazandi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Musteri 5. satin alimini yapti. Tier: Silver → Gold.\n\n2. **message_text** — Mesaj gonder\n   text: \"Tebrikler [Ad]! 5. alisverisinis kutlu olsun. Gold Uye oldunuz! Artik tum alisverislerinizde %15 indirim + ucretsiz kargo + oncelikli destek. Keyifli alisverisler!\"\n   Degiskenler: {{ad}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Vay, harika! Tesekkurler.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **utility_note** — Akis sonuc notu\n   text: \"Tier Upgrade: Silver → Gold. Indirim: %15. Ucretsiz kargo aktif.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Pattern Detection AI + Outbound Engine birlesimiyle calisir. Satin alma/ziyaret frekansi analiz edilir ve uygun zamanda abonelik teklifi sunulur.",
     "backend": [
-      { "title": "Pattern Detection AI", "goal": "Tekrar Tespiti", "content": "Satin alma gecmisi, ziyaret frekansi ve urun tercihi analizi. 3+ tekrar → abonelik adayi." },
-      { "title": "Subscription Manager", "goal": "Abonelik Yonetimi", "content": "Abonelik olusturma, yenileme, iptal, tier upgrade islemleri. Otomatik billing entegrasyonu." }
+      {
+        "title": "Pattern Detection AI",
+        "goal": "Tekrar Tespiti",
+        "content": "Satin alma gecmisi, ziyaret frekansi ve urun tercihi analizi. 3+ tekrar → abonelik adayi."
+      },
+      {
+        "title": "Subscription Manager",
+        "goal": "Abonelik Yonetimi",
+        "content": "Abonelik olusturma, yenileme, iptal, tier upgrade islemleri. Otomatik billing entegrasyonu."
+      }
     ],
     "apis": [
-      { "title": "Payment API", "goal": "Otomatik Odeme", "content": "Tekrarlayan odeme islemi. Taksit, otomatik yenileme destegi." },
-      { "title": "Outbound Engine", "goal": "Teklif + Hatirlatma", "content": "Abonelik teklifi, yenileme hatirlatmasi ve tier upgrade bildirimi." }
+      {
+        "title": "Payment API",
+        "goal": "Otomatik Odeme",
+        "content": "Tekrarlayan odeme islemi. Taksit, otomatik yenileme destegi."
+      },
+      {
+        "title": "Outbound Engine",
+        "goal": "Teklif + Hatirlatma",
+        "content": "Abonelik teklifi, yenileme hatirlatmasi ve tier upgrade bildirimi."
+      }
     ]
   },
   "impact": {
@@ -156,9 +394,29 @@
     "resultLabel": "Recurring Revenue (Aylik)",
     "subscriptionCost": 5000,
     "inputs": [
-      { "key": "regularCustomers", "label": "Duzenli Musteri", "default": 100, "hint": "3+ kez alan musteri", "editable": true },
-      { "key": "subscriptionRate", "label": "Gecis Orani", "default": 20, "prefix": "%", "hint": "Abonelige gecen oran", "editable": true },
-      { "key": "avgMonthlyValue", "label": "Ort. Aylik Deger", "default": 500, "suffix": "TL", "hint": "Abonelik aylik geliri", "editable": true }
+      {
+        "key": "regularCustomers",
+        "label": "Duzenli Musteri",
+        "default": 100,
+        "hint": "3+ kez alan musteri",
+        "editable": true
+      },
+      {
+        "key": "subscriptionRate",
+        "label": "Gecis Orani",
+        "default": 20,
+        "prefix": "%",
+        "hint": "Abonelige gecen oran",
+        "editable": true
+      },
+      {
+        "key": "avgMonthlyValue",
+        "label": "Ort. Aylik Deger",
+        "default": 500,
+        "suffix": "TL",
+        "hint": "Abonelik aylik geliri",
+        "editable": true
+      }
     ],
     "formula": "regularCustomers * (subscriptionRate / 100) * avgMonthlyValue",
     "formulaDisplay": null

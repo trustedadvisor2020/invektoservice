@@ -8,15 +8,36 @@
   "description": "Kargo takipte 'teslim edildi' gorunuyor ama musteri almadiysa, AI kargo firmasi ile iletisim protokolunu baslatir, tutanak/arastirma sureci olusturur.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
-      { "label": "Sorun", "value": "Teslim edildi ama gelmedi = en stresli musteri deneyimi — %80 eskalasyona donuyor" },
-      { "label": "Deger", "value": "Hizli arastirma basllatma ile musteri guveni korunur" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Tum Platformlar)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Teslim edildi ama gelmedi = en stresli musteri deneyimi — %80 eskalasyona donuyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Hizli arastirma basllatma ile musteri guveni korunur"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "E-com Integration (C11)", "color": "amber" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Knowledge RAG (C7)", "color": "green" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "E-com Integration (C11)",
+        "color": "amber"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      }
     ],
     "servicesNote": "AI kargo durumunu sorgular, teslim bilgisini dogrular. Uyumsuzluk varsa kargo firmasi ile arastirma sureci otomatik baslatilir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Durum Dogrulama",
         "goal": "Kargo durumunu kontrol et",
         "badges": [
-          { "text": "Sistem (API)", "color": "purple" },
-          { "text": "Tenant (Kargo)", "color": "amber" }
+          {
+            "text": "Sistem (API)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kargo)",
+            "color": "amber"
+          }
         ],
         "content": "Kargo API'sinden teslim detayi cekilir: tarih, saat, teslim alan kisi, imza durumu."
       },
@@ -33,8 +60,14 @@
         "title": "Arastirma Basllatma",
         "goal": "Kargo firmasina bildir",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Prosedur)", "color": "blue" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Prosedur)",
+            "color": "blue"
+          }
         ],
         "content": "Teslim tutarsizligi tespit edilirse kargo firmasina otomatik arastirma talebi gonderilir."
       },
@@ -42,8 +75,14 @@
         "title": "Musteri Bilgilendirme",
         "goal": "Surecii anlt",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Iletisim)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Iletisim)",
+            "color": "green"
+          }
         ],
         "content": "Musteriye arastirma sureci ve beklenen sonuc suresi hakkinda bilgi verilir."
       }
@@ -55,40 +94,123 @@
       "title": "Teslim Edildi — Musteri Almadi",
       "description": "Kargo takipte teslim gorunuyor ama musteri urunu almamis.",
       "tags": [
-        { "text": "Kayip Kargo", "color": "rose" },
-        { "text": "Arastirma", "color": "amber" }
+        {
+          "text": "Kayip Kargo",
+          "color": "rose"
+        },
+        {
+          "text": "Arastirma",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kargo arastirma proseduru", "service": "Knowledge", "page": "Dokuman Bankasi > Kargo Arastirma", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kargo firmasi bazli arastirma adimlarini ve surelerini tanimlayin" },
-          { "text": "Eskalasyon yetkisi", "service": "Backend", "page": "Ekip Yonetimi > Kargo Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Kayip kargo eskalasyonlarini yonetecek yetkiliyi tanimlayin" }
+          {
+            "text": "Kargo arastirma proseduru",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kargo Arastirma",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Kargo firmasi bazli arastirma adimlarini ve surelerini tanimlayin"
+          },
+          {
+            "text": "Eskalasyon yetkisi",
+            "service": "Backend",
+            "page": "Ekip Yonetimi > Kargo Eskalasyon",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Kayip kargo eskalasyonlarini yonetecek yetkiliyi tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Kargo durum sorgulama", "service": "Integrations", "page": "Kargo > Teslim Detayi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Teslim tarihi, saati ve alan kisi bilgisi cekilir" },
-          { "text": "Arastirma is akisi", "service": "Automation", "page": "Is Akislari > Kargo Arastirma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Kargo arastirma talebi otomatik olusturma hazir" }
+          {
+            "text": "Kargo durum sorgulama",
+            "service": "Integrations",
+            "page": "Kargo > Teslim Detayi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Teslim tarihi, saati ve alan kisi bilgisi cekilir"
+          },
+          {
+            "text": "Arastirma is akisi",
+            "service": "Automation",
+            "page": "Is Akislari > Kargo Arastirma",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C9",
+            "hint": "Kargo arastirma talebi otomatik olusturma hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Teslim edildi yaziyor ama gelmedi! Kapimda bile durmadilar!" },
-        { "role": "ai", "content": "Intent: Teslim Uyumsuzlugu. Kargo: Yurtici. Teslim Tarihi: Bugun 11:23. Teslim Alan: 'Komsu'. UYUMSUZLUK." },
-        { "role": "bot", "content": "Anliyorum, bu cok sinir bozucu bir durum. Hemen kontrol ettim:\n\n📦 Kargo durumu: Teslim edildi (bugun 11:23)\n👤 Teslim alan: 'Komsu' olarak kaydedilmis\n\nKomsunuza birakılmis olabilir mi? Eger hayirsa hemen kargo firmasina arastirma talebi acayim." },
-        { "role": "user", "content": "Komsuma sormadim ama normal de kapima birakiyorlardi." },
-        { "role": "bot", "content": "Once komsunuza bir sorar misiniz? Eger komsnuzda da yoksa:\n\n1️⃣ Kargo firmasina arastirma talebi aciyorum\n2️⃣ Sonuc: 3-5 is gunu\n3️⃣ Bulunamazsa tam iade yapilacak\n\nKomsu kontrolu sonrasi bana yazin, hemen islem yapalim." },
-        { "role": "user", "content": "Komsuda yokmus, bulamadim." },
-        { "role": "bot", "content": "Arastirma talebini simdi actim!\n\n🔍 Arastirma No: KA-78901\n⏰ Sonuc suresi: 3-5 is gunu\n📱 Sizi bilgilendireccegim\n\nBulunamazsa tam iade + telafi yapilacak. Endiselenmeyin!" },
-        { "role": "system", "content": "Kargo arastirma talebi acildi. 3-5 is gunu takip. Bulunamazsa otomatik iade tetiklenecek." }
-      ]
+        {
+          "role": "user",
+          "content": "Teslim edildi yaziyor ama gelmedi! Kapimda bile durmadilar!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Teslim Uyumsuzlugu. Kargo: Yurtici. Teslim Tarihi: Bugun 11:23. Teslim Alan: 'Komsu'. UYUMSUZLUK."
+        },
+        {
+          "role": "bot",
+          "content": "Anliyorum, bu cok sinir bozucu bir durum. Hemen kontrol ettim:\n\n📦 Kargo durumu: Teslim edildi (bugun 11:23)\n👤 Teslim alan: 'Komsu' olarak kaydedilmis\n\nKomsunuza birakılmis olabilir mi? Eger hayirsa hemen kargo firmasina arastirma talebi acayim."
+        },
+        {
+          "role": "user",
+          "content": "Komsuma sormadim ama normal de kapima birakiyorlardi."
+        },
+        {
+          "role": "bot",
+          "content": "Once komsunuza bir sorar misiniz? Eger komsnuzda da yoksa:\n\n1️⃣ Kargo firmasina arastirma talebi aciyorum\n2️⃣ Sonuc: 3-5 is gunu\n3️⃣ Bulunamazsa tam iade yapilacak\n\nKomsu kontrolu sonrasi bana yazin, hemen islem yapalim."
+        },
+        {
+          "role": "user",
+          "content": "Komsuda yokmus, bulamadim."
+        },
+        {
+          "role": "bot",
+          "content": "Arastirma talebini simdi actim!\n\n🔍 Arastirma No: KA-78901\n⏰ Sonuc suresi: 3-5 is gunu\n📱 Sizi bilgilendireccegim\n\nBulunamazsa tam iade + telafi yapilacak. Endiselenmeyin!"
+        },
+        {
+          "role": "system",
+          "content": "Kargo arastirma talebi acildi. 3-5 is gunu takip. Bulunamazsa otomatik iade tetiklenecek."
+        }
+      ],
+      "aiPrompt": "\"Teslim Edildi Ama Gelmedi Cozumu\" senaryosu icin \"Teslim Edildi — Musteri Almadi\" akisini olustur.\n\nAciklama: Kargo takipte teslim gorunuyor ama musteri urunu almamis.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Teslim edildi yaziyor ama gelmedi! Kapimda bile durmadilar!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Teslim Uyumsuzlugu. Kargo: Yurtici. Teslim Tarihi: Bugun 11:23. Teslim Alan: 'Komsu'. UYUMSUZLUK.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Anliyorum, bu cok sinir bozucu bir durum. Hemen kontrol ettim:\n\n📦 Kargo durumu: Teslim edildi (bugun 11:23)\n👤 Teslim alan: 'Komsu' olarak kaydedilmis\n\nKomsunuza birakılmis olabilir mi? Eger hayirsa hemen kargo firmasina arastirma talebi acayim.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Komsuma sormadim ama normal de kapima birakiyorlardi.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_menu** — Secenekli mesaj\n   Mesaj: \"Once komsunuza bir sorar misiniz? Eger komsnuzda da yoksa:\n\n1️⃣ Kargo firmasina arastirma talebi aciyorum\n2️⃣ Sonuc: 3-5 is gunu\n3️⃣ Bulunamazsa tam iade yapilacak\n\nKomsu kontrolu sonrasi bana yazin, hemen islem yapalim.\"\n   Her secenek icin ayri cikis handle'i olustur\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Komsuda yokmus, bulamadim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **message_text** — Mesaj gonder\n   text: \"Arastirma talebini simdi actim!\n\n🔍 Arastirma No: KA-78901\n⏰ Sonuc suresi: 3-5 is gunu\n📱 Sizi bilgilendireccegim\n\nBulunamazsa tam iade + telafi yapilacak. Endiselenmeyin!\"\n\n9. **utility_note** — Akis sonuc notu\n   text: \"Kargo arastirma talebi acildi. 3-5 is gunu takip. Bulunamazsa otomatik iade tetiklenecek.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Kargo API + Automation birlesimiyle calisir. Teslim bilgisi dogrulanir, uyumsuzluk varsa arastirma otomatik baslatilir.",
     "backend": [
-      { "title": "Delivery Verifier", "goal": "Teslim Dogrulama", "content": "Kargo API'sinden teslim detayini cekerr: tarih, saat, alan kisi, imza. Musteri adres bilgisiyle karsilastirir." },
-      { "title": "Investigation Tracker", "goal": "Arastirma Takibi", "content": "Kargo arastirma talebini olusturur, durumunu takip eder, sonuca gore otomatik aksiyon alir." }
+      {
+        "title": "Delivery Verifier",
+        "goal": "Teslim Dogrulama",
+        "content": "Kargo API'sinden teslim detayini cekerr: tarih, saat, alan kisi, imza. Musteri adres bilgisiyle karsilastirir."
+      },
+      {
+        "title": "Investigation Tracker",
+        "goal": "Arastirma Takibi",
+        "content": "Kargo arastirma talebini olusturur, durumunu takip eder, sonuca gore otomatik aksiyon alir."
+      }
     ],
     "apis": [
-      { "title": "Kargo API", "goal": "Teslim Detayi", "content": "Teslim tarihi, saati, alan kisi ve imza bilgisi. Arastirma talebi olusturma." },
-      { "title": "Notification API", "goal": "Bilgilendirme", "content": "Arastirma durumu degistiginde musteri ve agent'e otomatik bildirim." }
+      {
+        "title": "Kargo API",
+        "goal": "Teslim Detayi",
+        "content": "Teslim tarihi, saati, alan kisi ve imza bilgisi. Arastirma talebi olusturma."
+      },
+      {
+        "title": "Notification API",
+        "goal": "Bilgilendirme",
+        "content": "Arastirma durumu degistiginde musteri ve agent'e otomatik bildirim."
+      }
     ]
   },
   "impact": {
@@ -97,9 +219,29 @@
     "resultLabel": "Korunan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyDeliveryDisputes", "label": "Aylik Teslim Sorunu", "default": 10, "hint": "Teslim edildi ama gelmedi", "editable": true },
-      { "key": "avgOrderValue", "label": "Ort. Siparis Degeri", "default": 500, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true },
-      { "key": "resolutionRate", "label": "Cozum Orani", "default": 80, "prefix": "%", "hint": "Basarili cozum orani", "editable": true }
+      {
+        "key": "monthlyDeliveryDisputes",
+        "label": "Aylik Teslim Sorunu",
+        "default": 10,
+        "hint": "Teslim edildi ama gelmedi",
+        "editable": true
+      },
+      {
+        "key": "avgOrderValue",
+        "label": "Ort. Siparis Degeri",
+        "default": 500,
+        "suffix": "TL",
+        "hint": "Ortalama siparis tutari",
+        "editable": true
+      },
+      {
+        "key": "resolutionRate",
+        "label": "Cozum Orani",
+        "default": 80,
+        "prefix": "%",
+        "hint": "Basarili cozum orani",
+        "editable": true
+      }
     ],
     "formula": "monthlyDeliveryDisputes * avgOrderValue * (resolutionRate / 100)",
     "formulaDisplay": null

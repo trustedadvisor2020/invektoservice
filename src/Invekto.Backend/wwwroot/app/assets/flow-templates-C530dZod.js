@@ -1,0 +1,11034 @@
+const i={ecommerce:"E-Ticaret",dental:"Dis Klinigi",aesthetic:"Estetik Klinik",hotel:"Otel / Turizm",beauty:"Guzellik Salonu",education:"Egitim",mobile:"Mobil Uygulama",universal:"Evrensel",crossSector:"Evrensel",health:"Saglik"},e=[{id:"a52",title:"Before/After Fotograf Istegi",description:"Before/after fotograf gormek isteyen potansiyel hastaya AI ile uygun gorselleri gonderen ve guven olusturarak randevuya yonlendiren sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A52: Before/After Fotograf Paylasimi",description:"Lead dolgu before/after gormek istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Before/After Talebi. Islem tipi sorulacak."}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! Hangi islem icin before/after gormek istersiniz?
+
+💉 Dolgu (dudak, elmacik kemigi)
+💎 Botox
+✨ Lazer cilt yenileme
+👃 Burun estetigi`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Iste dudak dolgusu sonuclarimiz! 💋
+
+[Before/After Foto 1]
+[Before/After Foto 2]
+[Before/After Foto 3]
+
+🎁 Ucretsiz konsultasyon ile size ozel plan cikaralim!
+📅 Randevu ayarlayalim mi?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Before/after gorselleri gonderildi. Randevu teklifi yapildi."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_ai_intent_3",source:"utility_set_variable_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Before/After Fotograf Istegi" senaryosu icin "Before/After Fotograf Paylasimi" akisini olustur.
+
+Aciklama: Lead dolgu before/after gormek istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Before/After Talebi. Islem tipi sorulacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Hangi islem icin before/after gormek istersiniz?
+
+💉 Dolgu (dudak, elmacik kemigi)
+💎 Botox
+✨ Lazer cilt yenileme
+👃 Burun estetigi"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dudak dolgusu."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Iste dudak dolgusu sonuclarimiz! 💋
+
+[Before/After Foto 1]
+[Before/After Foto 2]
+[Before/After Foto 3]
+
+🎁 Ucretsiz konsultasyon ile size ozel plan cikaralim!
+📅 Randevu ayarlayalim mi?"
+   Degiskenler: {{before/after_foto_1}}, {{before/after_foto_2}}, {{before/after_foto_3}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Before/after gorselleri gonderildi. Randevu teklifi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Before/After","Guven"]},{id:"a65",title:"Coklu Personel: Cakisan Cevaplar",description:"Birden fazla personel ayni lead'e farkli cevap veriyor. C2 Routing ile lead bazli agent atamasi yapilarak cakisma onlenir, tek elden iletisim saglanir.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A65: Ayni Lead'e Iki Farkli Cevap Sorunu",description:"Iki personel ayni lead'e farkli fiyat bilgisi veriyor, C2 ile cozum."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"C2 Routing: Lead atandi — Agent: Melis (Satis). Lock aktif. Diger personel salt-okunur."}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`[Melis cevapliyor]
+
+Merhaba! Burun estetigi hakkinda bilgi vereyim:
+
+👃 Burun Estetigi: 45.000 - 75.000 TL
+👨‍⚕️ Doktor: Prof. Dr. Ahmet Yilmaz
+📅 Konsultasyon: Ucretsiz
+
+Detayli bilgi icin randevu ayarlayalim mi?`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"NOT: Personel 'Seda' bu lead'e cevap yazmaya calisti — C2 tarafindan engellendi. Bildirim: 'Bu lead Melis'e atanmis.'"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_menu_7",type:"message_menu",position:{x:300,y:950},data:{label:"Menu",text:`[Melis devam ediyor]
+
+Harika! Prof. Dr. Ahmet Yilmaz icin konsultasyon slotlari:
+
+📅 Sali 14:00
+📅 Persembe 10:00
+
+Hangisi size uygun?`,options:[]}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Tek muhatap (Melis) ile tutarli iletisim saglandi. Cakisma onlendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_utility_set_variable_3",source:"ai_intent_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_message_text_4",source:"utility_set_variable_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_ai_intent_6",source:"utility_set_variable_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_menu_7",source:"ai_intent_6",target:"message_menu_7"},{id:"e_message_menu_7_utility_note_8",source:"message_menu_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Coklu Personel: Cakisan Cevaplar" senaryosu icin "Ayni Lead'e Iki Farkli Cevap Sorunu" akisini olustur.
+
+Aciklama: Iki personel ayni lead'e farkli fiyat bilgisi veriyor, C2 ile cozum.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, burun estetigi fiyati nedir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: C2 Routing: Lead atandi — Agent: Melis (Satis). Lock aktif. Diger personel salt-okunur.
+
+4. **message_text** — Mesaj gonder
+   text: "[Melis cevapliyor]
+
+Merhaba! Burun estetigi hakkinda bilgi vereyim:
+
+👃 Burun Estetigi: 45.000 - 75.000 TL
+👨‍⚕️ Doktor: Prof. Dr. Ahmet Yilmaz
+📅 Konsultasyon: Ucretsiz
+
+Detayli bilgi icin randevu ayarlayalim mi?"
+   Degiskenler: {{melis_cevapliyor}}
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: NOT: Personel 'Seda' bu lead'e cevap yazmaya calisti — C2 tarafindan engellendi. Bildirim: 'Bu lead Melis'e atanmis.'
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Konsultasyona gelmek istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_menu** — Secenekli mesaj
+   Mesaj: "[Melis devam ediyor]
+
+Harika! Prof. Dr. Ahmet Yilmaz icin konsultasyon slotlari:
+
+📅 Sali 14:00
+📅 Persembe 10:00
+
+Hangisi size uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+   Degiskenler: {{melis_devam_ediyor}}
+
+8. **utility_note** — Akis sonuc notu
+   text: "Tek muhatap (Melis) ile tutarli iletisim saglandi. Cakisma onlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Cakisma","Routing"]},{id:"a53",title:"DM → WhatsApp Gecis Kaybi",description:"Instagram DM'den WhatsApp'a geciste kaybolan lead'leri tek tikla gecis linki ile onleyen, lead surekliligi saglayan sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A53: IG DM → WA Tek Tik Gecis",description:"Lead IG DM'den WA'ya gecmek istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: WA Gecis Talebi. Pre-filled link olusturul"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Hemen! Tek tikla WhatsApp'tan bize ulasin:
+
+👉 [wa.me/905XXXXXXXX?text=Merhaba,%20IG%20uzerinden%20geliyorum]
+
+Linke tikladiginizda direkt bizimle konusmaya baslayabilirsiniz 💬`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"WA gecis linki gonderildi. Lead kaybi onlendi. IG → WA context aktarildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"DM → WhatsApp Gecis Kaybi" senaryosu icin "IG DM → WA Tek Tik Gecis" akisini olustur.
+
+Aciklama: Lead IG DM'den WA'ya gecmek istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Numaranizi atin, WhatsApp'tan yazayim."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: WA Gecis Talebi. Pre-filled link olusturulacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Hemen! Tek tikla WhatsApp'tan bize ulasin:
+
+👉 [wa.me/905XXXXXXXX?text=Merhaba,%20IG%20uzerinden%20geliyorum]
+
+Linke tikladiginizda direkt bizimle konusmaya baslayabilirsiniz 💬"
+   Degiskenler: {{wa.me/905xxxxxxxx?text=merhaba,%20ig%20uzerinden%20geliyorum}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "WA gecis linki gonderildi. Lead kaybi onlendi. IG → WA context aktarildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Kanal Gecis","Lead Koruma"]},{id:"a66",title:"Doktor Onayi Gereken Lead'ler",description:"Bazi estetik islemler icin doktor degerlendirmesi gerekiyor. AI on degerlendirme yapar, hasta dosyasini doktora iletir, onay sonrasi randevu olusturur.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A66: Burun Estetigi — Doktor Degerlendirmesi",description:"Hasta burun estetigi istiyor, doktor on degerlendirmesi gerekli."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Cerrahi Islem Talebi — Rinoplasti. Doktor "}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Burun estetigi icin once doktorumuzun degerlendirmesi gerekiyor. Size birkaC soru sorayim:
+
+1️⃣ Daha once burun ameliyati oldinuz mu?
+2️⃣ Nefes alma sorununuz var mi?
+3️⃣ Herhangi bir alerjiniz veya kronik hastaligiz var mi?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Tesekkurler! Son olarak degerlendirme icin lutfen:
+
+📸 3 fotograf gonderin:
+• Ondan (duz baki)
+• Sag profil
+• Sol profil
+
+Doktorumuz 24 saat icinde degerlendirmesini yapacak.`}},{id:"utility_set_variable_7",type:"utility_set_variable",position:{x:300,y:950},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"On degerlendirme tamamlandi. Hasta dosyasi hazirla"}},{id:"utility_set_variable_9",type:"utility_set_variable",position:{x:300,y:1250},data:{label:"Durum",variable_name:"status",value_expression:"Doktor onayi alindi. Hasta bilgilendirilecek ve konsultasyon randevusu teklif edilecek."}},{id:"message_menu_10",type:"message_menu",position:{x:300,y:1400},data:{label:"Menu",text:`Harika haber! Prof. Dr. Ahmet dosyanizi inceledi ve konsultasyona uygun gordu. ✅
+
+Konsultasyon randevusu icin musait gunler:
+
+📅 Sali 14:00 — Prof. Dr. Ahmet
+📅 Persembe 16:00 — Prof. Dr. Ahmet
+
+Hangisi size uygun?`,options:[]}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_set_variable_7",source:"message_text_6",target:"utility_set_variable_7"},{id:"e_utility_set_variable_7_ai_intent_8",source:"utility_set_variable_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_utility_set_variable_9",source:"ai_intent_8",target:"utility_set_variable_9"},{id:"e_utility_set_variable_9_message_menu_10",source:"utility_set_variable_9",target:"message_menu_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Doktor Onayi Gereken Lead'ler" senaryosu icin "Burun Estetigi — Doktor Degerlendirmesi" akisini olustur.
+
+Aciklama: Hasta burun estetigi istiyor, doktor on degerlendirmesi gerekli.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Burun estetigi yaptirmak istiyorum. Neler yapmam gerekiyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Cerrahi Islem Talebi — Rinoplasti. Doktor onayi gerekli. On degerlendirme baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Burun estetigi icin once doktorumuzun degerlendirmesi gerekiyor. Size birkaC soru sorayim:
+
+1️⃣ Daha once burun ameliyati oldinuz mu?
+2️⃣ Nefes alma sorununuz var mi?
+3️⃣ Herhangi bir alerjiniz veya kronik hastaligiz var mi?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hayir ilk kez olacak, nefes sorunu yok, alerjim yok."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Son olarak degerlendirme icin lutfen:
+
+📸 3 fotograf gonderin:
+• Ondan (duz baki)
+• Sag profil
+• Sol profil
+
+Doktorumuz 24 saat icinde degerlendirmesini yapacak."
+
+7. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+8. **ai_intent** — Niyet tespiti
+   Analiz: On degerlendirme tamamlandi. Hasta dosyasi hazirlandi. Prof. Dr. Ahmet'e iletiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+9. **utility_set_variable** — Durum guncelle
+   Deger: Doktor onayi alindi. Hasta bilgilendirilecek ve konsultasyon randevusu teklif edilecek.
+
+10. **message_menu** — Secenekli mesaj
+   Mesaj: "Harika haber! Prof. Dr. Ahmet dosyanizi inceledi ve konsultasyona uygun gordu. ✅
+
+Konsultasyon randevusu icin musait gunler:
+
+📅 Sali 14:00 — Prof. Dr. Ahmet
+📅 Persembe 16:00 — Prof. Dr. Ahmet
+
+Hangisi size uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["Doktor Onayi","Cerrahi"]},{id:"a70",title:"Doktorla Konusmak Istiyorum Baskisi",description:"Dogrudan doktorla konusmak isteyen hastanin talebini AI'in once yanitlamaya calismasi, gercekten tibbi konsultasyon gerekliyse doktora yonlendirmesi.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A70: Genel Soru — AI Cevapliyor",description:"Hasta doktorla konusmak istiyor ama sorusu genel bilgi nitelginde."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Doktor Talebi + Genel Bilgi Sorusu. Sinifl"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Sorunuzu hemen cevaplayabilirim!
+
+💉 Botox islemi ortalama 15-20 dakika surer.
+📋 Etkisi 3-5 gun icerisinde tam olarak ortaya cikar.
+⏳ Etki suresi: 4-6 ay
+
+Baska merak ettiginiz bir konu var mi? Tibbi bir detay sormak isterseniz sizi doktorumuzla baglayabilirim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Harika! Botox icin musait slotlarimiz:
+
+🗓️ Persembe 14:00 — Dr. Selin
+🗓️ Cuma 11:00 — Dr. Selin
+
+Hangisi size uygun?`,options:[]}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Doktor talebi AI tarafindan cozuldu. Eskalasyon yapilmadi. Hasta randevu akisina yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_menu_6",source:"ai_intent_5",target:"message_menu_6"},{id:"e_message_menu_6_utility_note_7",source:"message_menu_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Doktorla Konusmak Istiyorum Baskisi" senaryosu icin "Genel Soru — AI Cevapliyor" akisini olustur.
+
+Aciklama: Hasta doktorla konusmak istiyor ama sorusu genel bilgi nitelginde.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Doktorla konusmak istiyorum, botox ne kadar suruyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Doktor Talebi + Genel Bilgi Sorusu. Siniflandirma: Genel (tibbi konsultasyon gerektirmiyor). AI yanit verecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Sorunuzu hemen cevaplayabilirim!
+
+💉 Botox islemi ortalama 15-20 dakika surer.
+📋 Etkisi 3-5 gun icerisinde tam olarak ortaya cikar.
+⏳ Etki suresi: 4-6 ay
+
+Baska merak ettiginiz bir konu var mi? Tibbi bir detay sormak isterseniz sizi doktorumuzla baglayabilirim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, anladim. Randevu almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Harika! Botox icin musait slotlarimiz:
+
+🗓️ Persembe 14:00 — Dr. Selin
+🗓️ Cuma 11:00 — Dr. Selin
+
+Hangisi size uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **utility_note** — Akis sonuc notu
+   text: "Doktor talebi AI tarafindan cozuldu. Eskalasyon yapilmadi. Hasta randevu akisina yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Doktor Talebi","AI Cozum"]},{id:"a59",title:"Fiyat Pazarligi + Kampanya",description:"Hasta fiyat indirimi veya kampanya soruyor. AI mevcut kampanyalari sunar, ozel teklif yetkisi varsa sunar, yoksa personele yonlendirir.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A59: Botox Fiyat Pazarligi",description:"Hasta botox fiyatini pahali buluyor ve indirim istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Pazarligi — Botox. Rakip fiyat refer"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Anliyorum! Size ozel bir teklifimiz var:
+
+🌟 Su an gecerli kampanyamiz:
+• Botox + Dudak Dolgu Kombine: %15 indirim
+• Toplam: 4.250 TL yerine 3.600 TL
+
+⏰ Kampanya 28 Subat'a kadar gecerli!
+
+💡 Ayrica ilk seansta ucretsiz cilt analizi hediye.
+
+📅 Bu firsattan yararlanmak ister misiniz? Randevu ayarlayalim!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Sadece botox icin de ozel teklifimiz var:
+
+💉 Botox (tek bolge): 5.000 TL → 4.500 TL
+🎁 Ek avantaj: 2. seans %10 indirimli
+
+✅ Bu fiyat sadece bu hafta gecerli.
+
+Randevu almak ister misiniz?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Kampanya teklifi sunuldu. Lead randevu adimina yonlendirildi. Indirim yetkisi dahilinde."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fiyat Pazarligi + Kampanya" senaryosu icin "Botox Fiyat Pazarligi" akisini olustur.
+
+Aciklama: Hasta botox fiyatini pahali buluyor ve indirim istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Botox 5000 TL cok pahali, baska yerde 3500'e yapiyorlar. Indirim var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Pazarligi — Botox. Rakip fiyat referansi var. Aktif kampanya kontrol ediliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Anliyorum! Size ozel bir teklifimiz var:
+
+🌟 Su an gecerli kampanyamiz:
+• Botox + Dudak Dolgu Kombine: %15 indirim
+• Toplam: 4.250 TL yerine 3.600 TL
+
+⏰ Kampanya 28 Subat'a kadar gecerli!
+
+💡 Ayrica ilk seansta ucretsiz cilt analizi hediye.
+
+📅 Bu firsattan yararlanmak ister misiniz? Randevu ayarlayalim!"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sadece botox icin indirim olur mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Sadece botox icin de ozel teklifimiz var:
+
+💉 Botox (tek bolge): 5.000 TL → 4.500 TL
+🎁 Ek avantaj: 2. seans %10 indirimli
+
+✅ Bu fiyat sadece bu hafta gecerli.
+
+Randevu almak ister misiniz?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Kampanya teklifi sunuldu. Lead randevu adimina yonlendirildi. Indirim yetkisi dahilinde."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Pazarlik","Kampanya"]},{id:"a75",title:"Hasta Verisi Saklama/Silme",description:"KVKK kapsaminda hasta verisi saklama sureleri ve silme taleplerinin AI tarafindan yonetilmesi, otomatik veri silme prosedurlerinin baslatilmasi.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A75: KVKK Veri Silme Talebi",description:"Hasta KVKK kapsaminda tum kisisel verilerinin silinmesini talep ediyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: KVKK Veri Silme Talebi. Oncelik: YUKSEK. Y"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`KVKK kapsamindaki veri silme talebinizi aldik.
+
+🔒 Guvenliginiz icin kimlik dogrulama gereklidir:
+
+1. Ad-Soyad
+2. TC Kimlik No (son 4 hane)
+3. Kayitli telefon numarasi
+
+Bu bilgileri paylasir misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Kimliginiz dogrulandi. Ayse Hanim, veri silme talebiniz isleme alindi.
+
+📋 Silme Kapsami:
+• Kisisel bilgiler (ad, TC, iletisim)
+• Randevu gecmisi
+• Tedavi kayitlari
+• WhatsApp sohbet gecmisi
+• Riza kayitlari
+
+⚠️ Yasal saklama zorunlulugu olan tibbi kayitlar (Saglik Bakanligi duzenlenmesi) 20 yil boyunca saklanmak zorundadir.
+
+⏳ Talebiniz en gec 30 gun icerisinde tamamlanacaktir.
+📧 Islem tamamlandiginda bilgilendirileceksiniz.
+
+Onayliyor musunuz?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"KVKK silme proseduru baslatildi. Talep ID: KVKK-2026-0342. Kimlik dogrulandi. Kapsam belirlendi. Yasal saklama istisnalari uygulanacak. Hedef tamamlanma: 30 gun."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Hasta Verisi Saklama/Silme" senaryosu icin "KVKK Veri Silme Talebi" akisini olustur.
+
+Aciklama: Hasta KVKK kapsaminda tum kisisel verilerinin silinmesini talep ediyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "KVKK kapsaminda tum kisisel verilerimin silinmesini talep ediyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: KVKK Veri Silme Talebi. Oncelik: YUKSEK. Yasal sure: 30 gun. Kimlik dogrulama gerekli.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "KVKK kapsamindaki veri silme talebinizi aldik.
+
+🔒 Guvenliginiz icin kimlik dogrulama gereklidir:
+
+1. Ad-Soyad
+2. TC Kimlik No (son 4 hane)
+3. Kayitli telefon numarasi
+
+Bu bilgileri paylasir misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ayse Yilmaz, TC son 4: 7842, telefon: 0532 XXX XX XX"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Kimliginiz dogrulandi. Ayse Hanim, veri silme talebiniz isleme alindi.
+
+📋 Silme Kapsami:
+• Kisisel bilgiler (ad, TC, iletisim)
+• Randevu gecmisi
+• Tedavi kayitlari
+• WhatsApp sohbet gecmisi
+• Riza kayitlari
+
+⚠️ Yasal saklama zorunlulugu olan tibbi kayitlar (Saglik Bakanligi duzenlenmesi) 20 yil boyunca saklanmak zorundadir.
+
+⏳ Talebiniz en gec 30 gun icerisinde tamamlanacaktir.
+📧 Islem tamamlandiginda bilgilendirileceksiniz.
+
+Onayliyor musunuz?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, onayliyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "KVKK silme proseduru baslatildi. Talep ID: KVKK-2026-0342. Kimlik dogrulandi. Kapsam belirlendi. Yasal saklama istisnalari uygulanacak. Hedef tamamlanma: 30 gun."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["KVKK","Veri Silme"]},{id:"a51",title:"IG DM: Fiyat Nedir? (Botox/Dolgu)",description:"Instagram DM'den botox veya dolgu fiyati soran lead'i AI ile yakalayan, fiyat araligi sunup WhatsApp'a gecirerek randevuya donusturen sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A51: IG DM — Botox Fiyat Sorusu",description:"Lead Instagram'dan botox fiyati soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Talebi — Botox. Kanal: Instagram DM."}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Botox fiyat bilgisi:
+
+💉 Botox (bolge bazli): 3.000 - 6.000 TL
+📍 Tam fiyat uygulama bolgesine gore degisir
+
+🎁 Ucretsiz konsultasyon ile size ozel fiyat verelim!
+
+Detayli bilgi icin WhatsApp'tan devam edelim:
+👉 [WhatsApp link]`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Lead yakalandi. IG DM → WA gecis linki gonderildi. Attribution: Instagram."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"IG DM: Fiyat Nedir? (Botox/Dolgu)" senaryosu icin "IG DM — Botox Fiyat Sorusu" akisini olustur.
+
+Aciklama: Lead Instagram'dan botox fiyati soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Botox fiyat nedir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Talebi — Botox. Kanal: Instagram DM. Attribution kaydedildi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Botox fiyat bilgisi:
+
+💉 Botox (bolge bazli): 3.000 - 6.000 TL
+📍 Tam fiyat uygulama bolgesine gore degisir
+
+🎁 Ucretsiz konsultasyon ile size ozel fiyat verelim!
+
+Detayli bilgi icin WhatsApp'tan devam edelim:
+👉 [WhatsApp link]"
+   Degiskenler: {{whatsapp_link}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "Lead yakalandi. IG DM → WA gecis linki gonderildi. Attribution: Instagram."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Instagram","Fiyat"]},{id:"a57",title:"Islem Sonrasi Sikayet: Sislik/Morarma",description:"Estetik islem sonrasi sislik veya morarma ile panik yapan hastanin durumunu AI ile triage eden, normal ise rehber gonderen, anormal ise doktora alert gonderen sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A57: Islem Sonrasi Sislik — Normal",description:"Hasta dolgu sonrasi sislikten sikayet ediyor, normal post-op bulgusu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Post-Op Sikayet — Sislik. Islem: Dudak dol"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Endiselenmeyin! Birkaç soru sorayim:
+
+1️⃣ Islem ne zaman yapildi?
+2️⃣ Sislik sadece islem bolgesinde mi?
+3️⃣ Ates veya siddetli agri var mi?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Severity: NORMAL. Dudak dolgusu sonrasi 24-72 saat"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Bu tamamen normal! Dudak dolgusu sonrasi 24-72 saat sislik beklenir 🙏
+
+Bakim onerileri:
+🧊 Soguk kompres: 10 dk arallarla
+💊 Gerekirse agri kesici
+🚫 24 saat makyaj yapmayin
+🚫 3 gun sicak icecek icmeyin
+
+💡 Sislik 3-5 gunde tamamen iner.
+⚠️ Ates veya artan agri olursa hemen bizi arayin!`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Normal post-op — bakim rehberi gonderildi. Hasta rahatlatildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Islem Sonrasi Sikayet: Sislik/Morarma" senaryosu icin "Islem Sonrasi Sislik — Normal" akisini olustur.
+
+Aciklama: Hasta dolgu sonrasi sislikten sikayet ediyor, normal post-op bulgusu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Islemden sonra cok sistim, normal mi?!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Post-Op Sikayet — Sislik. Islem: Dudak dolgusu (dun). Severity sorulari baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Endiselenmeyin! Birkaç soru sorayim:
+
+1️⃣ Islem ne zaman yapildi?
+2️⃣ Sislik sadece islem bolgesinde mi?
+3️⃣ Ates veya siddetli agri var mi?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dun yapildi, sadece dudaklarimda, ates yok."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Severity: NORMAL. Dudak dolgusu sonrasi 24-72 saat sislik beklenen post-op bulgusi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Bu tamamen normal! Dudak dolgusu sonrasi 24-72 saat sislik beklenir 🙏
+
+Bakim onerileri:
+🧊 Soguk kompres: 10 dk arallarla
+💊 Gerekirse agri kesici
+🚫 24 saat makyaj yapmayin
+🚫 3 gun sicak icecek icmeyin
+
+💡 Sislik 3-5 gunde tamamen iner.
+⚠️ Ates veya artan agri olursa hemen bizi arayin!"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Normal post-op — bakim rehberi gonderildi. Hasta rahatlatildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Post-Op","Normal"]},{id:"a69",title:"Islem Takvimi: Yogun Gunlerde Slot",description:"Yogun gunlerde randevu slotu bulamayan hastalara AI ile alternatif slotlar sunan, bekleme listesi olusturan ve iptal durumunda otomatik bildirim gonderen sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A69: Cumartesi Dolu — Alternatif Slot Sunumu",description:"Hasta cumartesi randevu istiyor ama tum slotlar dolu. AI alternatif gunler sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Randevu Talebi. Gun: Cumartesi. Islem: Laz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Malesef bu cumartesi tum lazer epilasyon slotlari dolu.
+
+En yakin musait zamanlar:
+🗓️ Pazar 11:00 — Dr. Ayse
+🗓️ Pazartesi 15:00 — Dr. Ayse
+🗓️ Gelecek Cumartesi 09:00 — Dr. Ayse
+
+Bu saatlerden biri uygun mu? Ya da bu cumartesi icin bekleme listesine ekleyeyim mi?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Sizi bu cumartesi lazer epilasyon icin bekleme listesine ekledim.
+
+📋 Bekleme Listesi Siraniz: #3
+🔔 Slot acildiginda aninda WhatsApp'tan bilgilendirileceksiniz.
+
+Ayrica gelecek cumartesi 09:00'u simdilik rezerve etmek ister misiniz?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Hasta bekleme listesine eklendi. Slot: Cumartesi, Lazer Epilasyon, Dr. Ayse. Bildirim tetikleyici aktif."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Islem Takvimi: Yogun Gunlerde Slot" senaryosu icin "Cumartesi Dolu — Alternatif Slot Sunumu" akisini olustur.
+
+Aciklama: Hasta cumartesi randevu istiyor ama tum slotlar dolu. AI alternatif gunler sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu cumartesi lazer epilasyon icin randevu alabilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Randevu Talebi. Gun: Cumartesi. Islem: Lazer Epilasyon. Slot kontrolu yapiliyor...
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Malesef bu cumartesi tum lazer epilasyon slotlari dolu.
+
+En yakin musait zamanlar:
+🗓️ Pazar 11:00 — Dr. Ayse
+🗓️ Pazartesi 15:00 — Dr. Ayse
+🗓️ Gelecek Cumartesi 09:00 — Dr. Ayse
+
+Bu saatlerden biri uygun mu? Ya da bu cumartesi icin bekleme listesine ekleyeyim mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cumartesi icin bekleme listesine ekleyin."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Sizi bu cumartesi lazer epilasyon icin bekleme listesine ekledim.
+
+📋 Bekleme Listesi Siraniz: #3
+🔔 Slot acildiginda aninda WhatsApp'tan bilgilendirileceksiniz.
+
+Ayrica gelecek cumartesi 09:00'u simdilik rezerve etmek ister misiniz?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Hasta bekleme listesine eklendi. Slot: Cumartesi, Lazer Epilasyon, Dr. Ayse. Bildirim tetikleyici aktif."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Randevu","Yogun Gun"]},{id:"a62",title:"KVKK: Foto/Video Saglik Verisi",description:"Hasta fotograflari saglik verisi kapsaminda KVKK riski tasiyor. AI KVKK uyarisi verir, guvenli depolama protokolunu uygular ve onam surecini yonetir.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A62: Hasta Before/After Foto Gonderiyor",description:"Hasta WhatsApp'tan tedavi oncesi fotograf gonderiyor, KVKK sureci baslatiliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"KVKK Alert: Saglik verisi tespiti — medikal fotogr"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Fotografinizi aldik! 🙏
+
+⚠️ Bilgilendirme: Bu fotograf saglik verisi kapsaminda KVKK ile korunmaktadir.
+
+Guvenliginiz icin:
+1️⃣ Fotografiniz sifrelenerek guvenli sunucumuza aktarilacak
+2️⃣ WhatsApp sohbetinden otomatik silinecek
+3️⃣ Sadece doktorunuz erisebilecek
+
+📝 Lutfen KVKK onam formunu onaylayin:
+🔗 [Dijital Onam Formu]`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Tesekkurler! Onaminiz kaydedildi. ✅
+
+🔒 Fotografiniz guvenle saklanmistir.
+👨‍⚕️ Dr. Selin inceleyip size donecek.
+
+Baska bir sorunuz var mi?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"KVKK onam alindi. Fotograf AES-256 ile sifrelendi. Guvenli depoya aktarildi. WA'dan silindi."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_ai_intent_3",source:"utility_set_variable_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"KVKK: Foto/Video Saglik Verisi" senaryosu icin "Hasta Before/After Foto Gonderiyor" akisini olustur.
+
+Aciklama: Hasta WhatsApp'tan tedavi oncesi fotograf gonderiyor, KVKK sureci baslatiliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: KVKK Alert: Saglik verisi tespiti — medikal fotograf. Onam kontrolu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Fotografinizi aldik! 🙏
+
+⚠️ Bilgilendirme: Bu fotograf saglik verisi kapsaminda KVKK ile korunmaktadir.
+
+Guvenliginiz icin:
+1️⃣ Fotografiniz sifrelenerek guvenli sunucumuza aktarilacak
+2️⃣ WhatsApp sohbetinden otomatik silinecek
+3️⃣ Sadece doktorunuz erisebilecek
+
+📝 Lutfen KVKK onam formunu onaylayin:
+🔗 [Dijital Onam Formu]"
+   Her secenek icin ayri cikis handle'i olustur
+   Degiskenler: {{dijital_onam_formu}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Onayladim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Onaminiz kaydedildi. ✅
+
+🔒 Fotografiniz guvenle saklanmistir.
+👨‍⚕️ Dr. Selin inceleyip size donecek.
+
+Baska bir sorunuz var mi?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "KVKK onam alindi. Fotograf AES-256 ile sifrelendi. Guvenli depoya aktarildi. WA'dan silindi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["KVKK","Saglik Verisi"]},{id:"a64",title:"Mesaj Penceresi Kapandi — Follow-up",description:"24 saat WhatsApp mesaj penceresi kapandiktan sonra follow-up gerekli. AI uygun template secer ve onaylanmis mesaj sablonuyla iletisimi devam ettirir.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A64: Randevu Almadan Sessizlesen Lead",description:"Lead fiyat bilgisi aldi ama randevu almadan 24 saat gecti."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"24h pencere kapandi. Lead: Ayse K. Son mesaj: Boto"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Lead durumu: Fiyat aldi, randevu almadi. Uygun tem"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`[WA Template Mesaji]
+
+Merhaba Ayse Hanim! 😊
+
+Botox hakkinda bilgi almistiniz. Size ozel kampanyamiz hala gecerli:
+
+🎁 Bu hafta randevu alin, %10 indirim kazanin!
+
+Randevunuzu hemen ayarlamak icin yaziN:
+👉 'RANDEVU' yazin`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"message_menu_5",type:"message_menu",position:{x:300,y:650},data:{label:"Menu",text:`Harika! Botox icin musait slotlarimiz:
+
+📅 Persembe 15:00 — Dr. Selin
+📅 Cuma 11:00 — Dr. Selin
+
+Hangisi uygun?`,options:[]}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Template follow-up basarili. Lead yeniden aktif. Randevu surecine yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_message_text_3",source:"ai_intent_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_menu_5",source:"ai_intent_4",target:"message_menu_5"},{id:"e_message_menu_5_utility_note_6",source:"message_menu_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Mesaj Penceresi Kapandi — Follow-up" senaryosu icin "Randevu Almadan Sessizlesen Lead" akisini olustur.
+
+Aciklama: Lead fiyat bilgisi aldi ama randevu almadan 24 saat gecti.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: 24h pencere kapandi. Lead: Ayse K. Son mesaj: Botox fiyat bilgisi verildi, randevu alinmadi.
+
+2. **ai_intent** — Niyet tespiti
+   Analiz: Lead durumu: Fiyat aldi, randevu almadi. Uygun template: 'Randevu Hatirlatma + Kampanya'. Kisisellestirilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+3. **message_text** — Mesaj gonder
+   text: "[WA Template Mesaji]
+
+Merhaba Ayse Hanim! 😊
+
+Botox hakkinda bilgi almistiniz. Size ozel kampanyamiz hala gecerli:
+
+🎁 Bu hafta randevu alin, %10 indirim kazanin!
+
+Randevunuzu hemen ayarlamak icin yaziN:
+👉 'RANDEVU' yazin"
+   Degiskenler: {{wa_template_mesaji}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "RANDEVU"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **message_menu** — Secenekli mesaj
+   Mesaj: "Harika! Botox icin musait slotlarimiz:
+
+📅 Persembe 15:00 — Dr. Selin
+📅 Cuma 11:00 — Dr. Selin
+
+Hangisi uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+6. **utility_note** — Akis sonuc notu
+   text: "Template follow-up basarili. Lead yeniden aktif. Randevu surecine yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Follow-up","24h Pencere"]},{id:"a68",title:"Odeme Linki + Taksit Sorusu",description:"Estetik islem icin odeme yapmak isteyen hastanin taksit seceneklerini sorgulamasi, AI'in banka bazli taksit tablosunu sunmasi ve aninda odeme linki gondermesi.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A68: Dolgu Islem Bedeli Taksitlendirme",description:"Hasta dudak dolgusu icin taksit seceneklerini soruyor ve odeme yapmak istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Odeme + Taksit Sorusu. Islem: Dudak Dolgus"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii ki! Dudak dolgusu islemimiz 8.500 TL'dir. Taksit secenekleriniz:
+
+🏦 Yapi Kredi: 3 taksit (2.833 TL/ay)
+🏦 Garanti: 6 taksit (1.475 TL/ay)
+🏦 Is Bankasi: 9 taksit (1.028 TL/ay)
+🏦 Ziraat: 12 taksit (792 TL/ay)
+
+Hangi taksit secenegini tercih edersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Garanti Bankasi 6 taksit secildi (6 x 1.475 TL).
+
+Odeme linkiniz:
+🔗 [Guvenli Odeme — 8.500 TL / 6 Taksit]
+
+Link 30 dakika gecerlidir. Odeme sonrasi randevunuz icin size donecegiz!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Odeme linki gonderildi. Beklenen: 8.500 TL, Garanti 6 taksit. Lead durumu: odeme-bekleniyor."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Odeme Linki + Taksit Sorusu" senaryosu icin "Dolgu Islem Bedeli Taksitlendirme" akisini olustur.
+
+Aciklama: Hasta dudak dolgusu icin taksit seceneklerini soruyor ve odeme yapmak istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dudak dolgusu yaptirmak istiyorum ama taksit yapabiliyor musunuz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Odeme + Taksit Sorusu. Islem: Dudak Dolgusu. Taksit tablosu hazirlanacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii ki! Dudak dolgusu islemimiz 8.500 TL'dir. Taksit secenekleriniz:
+
+🏦 Yapi Kredi: 3 taksit (2.833 TL/ay)
+🏦 Garanti: 6 taksit (1.475 TL/ay)
+🏦 Is Bankasi: 9 taksit (1.028 TL/ay)
+🏦 Ziraat: 12 taksit (792 TL/ay)
+
+Hangi taksit secenegini tercih edersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "6 taksit olsun Garanti ile."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Garanti Bankasi 6 taksit secildi (6 x 1.475 TL).
+
+Odeme linkiniz:
+🔗 [Guvenli Odeme — 8.500 TL / 6 Taksit]
+
+Link 30 dakika gecerlidir. Odeme sonrasi randevunuz icin size donecegiz!"
+   Degiskenler: {{guvenli_odeme_—_8.500_tl_/_6_taksit}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Odeme linki gonderildi. Beklenen: 8.500 TL, Garanti 6 taksit. Lead durumu: odeme-bekleniyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Odeme","Taksit"]},{id:"a71",title:"On Degerlendirme Formu",description:"Estetik islem oncesi hasta bilgi ve on degerlendirme formunun AI tarafindan gonderilmesi, doldurulan formun doktora otomatik iletilmesi.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A71: Rinoplasti On Degerlendirme Formu",description:"Rinoplasti randevusu kesinlesen hastaya on degerlendirme formu gonderiliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Randevu kesinlesti: Carsamba 14:00, Rinoplasti Kon"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba! Carsamba gunu saat 14:00'teki rinoplasti konsultasyon randevunuz kesinlesti.
+
+📋 Randevunuzdan en iyi verimi almak icin asagidaki on degerlendirme formunu doldurmanizi rica ederiz:
+
+🔗 [On Degerlendirme Formu — Rinoplasti]
+
+Form icerigi:
+• Saglik gecmisiniz
+• Kullandiginiz ilaclar
+• Alerji bilgileri
+• Beklentileriniz
+
+Formu randevudan en gec 24 saat once doldurmaniz yeterli.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Formunuzu aldik, tesekkur ederiz!
+
+✅ On degerlendirme formunuz Dr. Mehmet'e iletildi.
+📅 Randevunuz: Carsamba 14:00
+
+Doktorumuz formunuzu inceleyerek randevunuza hazirlikli gelecek. Randevu oncesi herhangi bir sorunuz olursa yazabilirsiniz.`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"On degerlendirme formu dolduruldu. Doktor bilgilendirildi. Form hasta dosyasina eklendi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"On Degerlendirme Formu" senaryosu icin "Rinoplasti On Degerlendirme Formu" akisini olustur.
+
+Aciklama: Rinoplasti randevusu kesinlesen hastaya on degerlendirme formu gonderiliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Randevu kesinlesti: Carsamba 14:00, Rinoplasti Konsultasyon, Dr. Mehmet. On degerlendirme formu tetikleniyor.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba! Carsamba gunu saat 14:00'teki rinoplasti konsultasyon randevunuz kesinlesti.
+
+📋 Randevunuzdan en iyi verimi almak icin asagidaki on degerlendirme formunu doldurmanizi rica ederiz:
+
+🔗 [On Degerlendirme Formu — Rinoplasti]
+
+Form icerigi:
+• Saglik gecmisiniz
+• Kullandiginiz ilaclar
+• Alerji bilgileri
+• Beklentileriniz
+
+Formu randevudan en gec 24 saat once doldurmaniz yeterli."
+   Degiskenler: {{on_degerlendirme_formu_—_rinoplasti}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Formu doldurdum."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Formunuzu aldik, tesekkur ederiz!
+
+✅ On degerlendirme formunuz Dr. Mehmet'e iletildi.
+📅 Randevunuz: Carsamba 14:00
+
+Doktorumuz formunuzu inceleyerek randevunuza hazirlikli gelecek. Randevu oncesi herhangi bir sorunuz olursa yazabilirsiniz."
+
+5. **utility_note** — Akis sonuc notu
+   text: "On degerlendirme formu dolduruldu. Doktor bilgilendirildi. Form hasta dosyasina eklendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["On Degerlendirme","Form"]},{id:"a58",title:"Paket Satis: Lazer 6 Seans",description:"Hasta seans paketi hakkinda bilgi istiyor. AI paket detaylari + taksit bilgisi + randevu yonlendirmesi yapar, paket satisini mesajlasma uzerinden tamamlar.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A58: Lazer Epilasyon 6 Seans Paketi",description:"Hasta lazer epilasyon paketi hakkinda bilgi ve fiyat soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Paket Satis Talebi — Lazer Epilasyon. Pake"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Lazer epilasyon paketlerimiz:
+
+✨ 6 Seans Full Body: 18.000 TL
+✨ 6 Seans Yuz + Bikini: 9.000 TL
+✨ 6 Seans Tek Bolge: 4.500 TL
+
+💳 Taksit Secenekleri:
+• 3 taksit: %0 faiz
+• 6 taksit: %0 faiz
+• 9 taksit: kucuk fark
+
+Hangi paket ilginizi cekti?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika secim! Full Body 6 Seans detaylari:
+
+💰 Toplam: 18.000 TL
+💳 6 Taksit: 3.000 TL/ay (%0 faiz)
+📅 Seanslar: 4-6 hafta arayla
+✅ Alexandrite + Nd:YAG cift dalga boyu
+
+Odeme linkiniz:
+🔗 [Guvenli Odeme — 18.000 TL / 6 Taksit]
+
+Odeme sonrasi ilk seans randevunuzu hemen ayarlayalim!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Odeme alindi. Paket aktif edildi. Ilk seans randevusu olusturuldu: Persembe 11:00."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Paket Satis: Lazer 6 Seans" senaryosu icin "Lazer Epilasyon 6 Seans Paketi" akisini olustur.
+
+Aciklama: Hasta lazer epilasyon paketi hakkinda bilgi ve fiyat soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Lazer epilasyon paket fiyatlariniz nedir? Taksit var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Paket Satis Talebi — Lazer Epilasyon. Paket + taksit bilgisi sunulacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Lazer epilasyon paketlerimiz:
+
+✨ 6 Seans Full Body: 18.000 TL
+✨ 6 Seans Yuz + Bikini: 9.000 TL
+✨ 6 Seans Tek Bolge: 4.500 TL
+
+💳 Taksit Secenekleri:
+• 3 taksit: %0 faiz
+• 6 taksit: %0 faiz
+• 9 taksit: kucuk fark
+
+Hangi paket ilginizi cekti?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Full body 6 seans, 6 taksit olur mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika secim! Full Body 6 Seans detaylari:
+
+💰 Toplam: 18.000 TL
+💳 6 Taksit: 3.000 TL/ay (%0 faiz)
+📅 Seanslar: 4-6 hafta arayla
+✅ Alexandrite + Nd:YAG cift dalga boyu
+
+Odeme linkiniz:
+🔗 [Guvenli Odeme — 18.000 TL / 6 Taksit]
+
+Odeme sonrasi ilk seans randevunuzu hemen ayarlayalim!"
+   Degiskenler: {{guvenli_odeme_—_18.000_tl_/_6_taksit}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Odeme alindi. Paket aktif edildi. Ilk seans randevusu olusturuldu: Persembe 11:00."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Paket Satis","Lazer"]},{id:"a54",title:"Randevu Planlama + Kapora",description:"Estetik islem icin randevu almak ve kapora odemek isteyen lead'e AI ile slot sunan, odeme linki gonderen ve randevuyu kesinlestiren sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A54: Botox Randevu + Kapora",description:"Lead botox icin randevu almak ve kapora odemek istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Randevu + Kapora. Islem tipi sorulacak."}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Tabii! Hangi islem icin randevu almak istiyorsunuz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Botox icin musait slotlarimiz:
+
+🗓️ Carsamba 14:00 — Dr. Selin
+🗓️ Cuma 10:00 — Dr. Selin
+🗓️ Gelecek Salı 16:00 — Dr. Selin
+
+💰 Kapora: 1.000 TL (islemden dusulecek)
+
+Hangisi uygun?`,options:[]}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Odeme linkiniz:
+🔗 [Guvenli Odeme Linki — 1.000 TL]
+
+Odeme sonrasi randevunuz otomatik kesinlesecek!`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Odeme alindi. Randevu kesinlestirildi: Cuma 10:00, Dr. Selin, Botox."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_menu_6",source:"ai_intent_5",target:"message_menu_6"},{id:"e_message_menu_6_ai_intent_7",source:"message_menu_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Randevu Planlama + Kapora" senaryosu icin "Botox Randevu + Kapora" akisini olustur.
+
+Aciklama: Lead botox icin randevu almak ve kapora odemek istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevu almak istiyorum, kapora odeyebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Randevu + Kapora. Islem tipi sorulacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Hangi islem icin randevu almak istiyorsunuz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Botox."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Botox icin musait slotlarimiz:
+
+🗓️ Carsamba 14:00 — Dr. Selin
+🗓️ Cuma 10:00 — Dr. Selin
+🗓️ Gelecek Salı 16:00 — Dr. Selin
+
+💰 Kapora: 1.000 TL (islemden dusulecek)
+
+Hangisi uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cuma 10:00 olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Odeme linkiniz:
+🔗 [Guvenli Odeme Linki — 1.000 TL]
+
+Odeme sonrasi randevunuz otomatik kesinlesecek!"
+   Degiskenler: {{guvenli_odeme_linki_—_1.000_tl}}
+
+9. **utility_note** — Akis sonuc notu
+   text: "Odeme alindi. Randevu kesinlestirildi: Cuma 10:00, Dr. Selin, Botox."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Randevu","Kapora"]},{id:"a63",title:"Reklam Kaynagi: Click-to-WA Lead",description:"Click-to-WhatsApp reklamindan gelen lead'i yakalayan, UTM/kampanya bilgisini kaydeden ve lead kaynagini otomatik etiketleyen sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A63: Instagram Reklam — Lazer Epilasyon Lead",description:"Instagram Click-to-WA reklamina tiklayan lead otomatik yakalaniyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Attribution: Instagram Ad > Lazer Kampanyasi (utm_"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Hosgeldiniz! 🌟 Lazer epilasyon kampanyamizi gordunuz, harika!
+
+Subat ayi ozel kampanyamiz:
+✨ 6 Seans Full Body: 18.000 TL → 14.400 TL (%20 indirim)
+✨ 6 Seans Bikini: 4.500 TL → 3.600 TL (%20 indirim)
+
+⏰ Kampanya 28 Subat'a kadar gecerli!
+
+📅 Ucretsiz cilt analizi icin randevu ayarlayalim mi?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! Full Body Lazer icin musait slotlar:
+
+📅 Carsamba 14:00 — Teknisyen Elif
+📅 Cuma 11:00 — Teknisyen Elif
+
+✅ Ilk seans ucretsiz cilt analizi dahil.
+
+Hangi gun uygun?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Lead yakalandi. Attribution: Instagram Ad — lazer_feb26. Randevu surecine yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Reklam Kaynagi: Click-to-WA Lead" senaryosu icin "Instagram Reklam — Lazer Epilasyon Lead" akisini olustur.
+
+Aciklama: Instagram Click-to-WA reklamina tiklayan lead otomatik yakalaniyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, reklamda gordugum lazer kampanyasi hakkinda bilgi almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Attribution: Instagram Ad > Lazer Kampanyasi (utm_campaign=lazer_feb26, utm_source=instagram). Lead etiketlendi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Hosgeldiniz! 🌟 Lazer epilasyon kampanyamizi gordunuz, harika!
+
+Subat ayi ozel kampanyamiz:
+✨ 6 Seans Full Body: 18.000 TL → 14.400 TL (%20 indirim)
+✨ 6 Seans Bikini: 4.500 TL → 3.600 TL (%20 indirim)
+
+⏰ Kampanya 28 Subat'a kadar gecerli!
+
+📅 Ucretsiz cilt analizi icin randevu ayarlayalim mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Full body icin randevu almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Full Body Lazer icin musait slotlar:
+
+📅 Carsamba 14:00 — Teknisyen Elif
+📅 Cuma 11:00 — Teknisyen Elif
+
+✅ Ilk seans ucretsiz cilt analizi dahil.
+
+Hangi gun uygun?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Lead yakalandi. Attribution: Instagram Ad — lazer_feb26. Randevu surecine yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Reklam","Attribution"]},{id:"a74",title:"Spam / Yanlis Tetik: IG Limitleri",description:"Instagram otomasyon limitelerine takilmayi onleyen, rate limiting kurallari ile IG API limitlerini asmadan verimli DM otomasyonu saglayan sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A74: Rate Limit Uyarisi ve Kuyruk Yonetimi",description:"IG API limiti %80'e ulastiginda sistem otomatik yavaslatma yapiyor."},nodes:[{id:"webhook_trigger_1",type:"webhook_trigger",position:{x:300,y:50},data:{label:"IG API Kullanim: %80 (192/240 cagri/saat). Rate li"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Rate limit esigi asildi. Otomasyon hizi dusurulece"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:`Mesaj kuyrugu yeniden siraldi:
+1. Aktif 3 konusmaya yanit (yuksek oncelik)
+2. 5 yeni lead DM'i (orta oncelik, 30sn aralikla)
+3. 12 toplu bildirim (dusuk oncelik, sonraki saat dilimine ertelendi)`}},{id:"utility_note_4",type:"utility_note",position:{x:300,y:500},data:{label:"Sonuc",text:"IG API Kullanim: %65 (156/240 cagri/saat). Yavaslatma basarili. Normal hiza donuluyor."}}],edges:[{id:"e_webhook_trigger_1_ai_intent_2",source:"webhook_trigger_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_utility_set_variable_3",source:"ai_intent_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_utility_note_4",source:"utility_set_variable_3",target:"utility_note_4"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Spam / Yanlis Tetik: IG Limitleri" senaryosu icin "Rate Limit Uyarisi ve Kuyruk Yonetimi" akisini olustur.
+
+Aciklama: IG API limiti %80'e ulastiginda sistem otomatik yavaslatma yapiyor.
+
+## Node Zinciri
+
+1. **webhook_trigger** — Dis sistem olayi tetikler
+   Olay: IG API Kullanim: %80 (192/240 cagri/saat). Rate limit uyarisi tetiklendi. Yavaslatma modu aktif.
+
+2. **ai_intent** — Niyet tespiti
+   Analiz: Rate limit esigi asildi. Otomasyon hizi dusurulecek. Oncelik: Aktif konusmalara yanit > Yeni lead DM > Toplu gonderim.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: Mesaj kuyrugu yeniden siraldi:
+1. Aktif 3 konusmaya yanit (yuksek oncelik)
+2. 5 yeni lead DM'i (orta oncelik, 30sn aralikla)
+3. 12 toplu bildirim (dusuk oncelik, sonraki saat dilimine ertelendi)
+
+4. **utility_note** — Akis sonuc notu
+   text: "IG API Kullanim: %65 (156/240 cagri/saat). Yavaslatma basarili. Normal hiza donuluyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:4,tags:["Rate Limit","Instagram"]},{id:"a56",title:"Uygunluk / Kontrendikasyon",description:"Estetik islem icin uygun olup olmadigini soran hastaya AI ile Knowledge Base'den kontrendikasyon bilgisi cekerek guvenli yonlendirme yapan sistem.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A56: Hamilelikte Botox Sorusu",description:"Hasta hamile olsa botox yaptirip yaptiramayacagini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kontrendikasyon Sorgusu — Hamilelik + Boto"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Onemli soru, cevapliyorum!
+
+⚠️ Hamilelik doneminde botox ONERILMEZ.
+
+Neden:
+• Botulinum toksini bebeğe etkileri yeterince arastirilmamistir
+• Emzirme doneminde de tavsiye edilmez
+• Dogum sonrasi 6 ay beklemek onerilir
+
+💡 Kesin karar icin doktorumuzla gorusmeniZi oneririz.
+📅 Ucretsiz konsultasyon randevusu ayarlayalim mi?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Kontrendikasyon bilgisi sunuldu. Doktor konsultasyon randevusu teklif edildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Uygunluk / Kontrendikasyon" senaryosu icin "Hamilelikte Botox Sorusu" akisini olustur.
+
+Aciklama: Hasta hamile olsa botox yaptirip yaptiramayacagini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hamile olsam botox yaptirabilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kontrendikasyon Sorgusu — Hamilelik + Botox. Knowledge Base'den bilgi cekilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Onemli soru, cevapliyorum!
+
+⚠️ Hamilelik doneminde botox ONERILMEZ.
+
+Neden:
+• Botulinum toksini bebeğe etkileri yeterince arastirilmamistir
+• Emzirme doneminde de tavsiye edilmez
+• Dogum sonrasi 6 ay beklemek onerilir
+
+💡 Kesin karar icin doktorumuzla gorusmeniZi oneririz.
+📅 Ucretsiz konsultasyon randevusu ayarlayalim mi?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Kontrendikasyon bilgisi sunuldu. Doktor konsultasyon randevusu teklif edildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Kontrendikasyon","Guvenlik"]},{id:"a60",title:"Yorum/Sikayet Yonetimi (Sosyal Kanit)",description:"Hasta yorum birakmak veya sikayet iletmek istiyor. Memnun hasta icin yorum linki gonderilir, memnuniyetsiz hasta icin eskalasyon ve cozum sureci baslatilir.",category:"ESTETIK KLINIK",niche:"aesthetic",flowConfig:{version:2,metadata:{name:"A60: Memnun Hasta — Yorum Yonlendirme",description:"Hasta islemden memnun, tesekkur ediyor. AI yorum linki gonderiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Sentiment: POZITIF. Memnuniyet seviyesi yuksek. Yo"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Cok sevindik! Dr. Selin'e iletiriz 😊
+
+Deneyiminizi diger hastalarla da paylasmak ister misiniz?
+
+⭐ Google'da yorum birakin:
+🔗 [Google Maps Yorum Linki]
+
+📸 Instagram'da bizi etiketleyin:
+@klinikadiniz
+
+Yorumunuz bizi cok mutlu eder!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika, cok tesekkur ederiz! 🙏
+
+Bir sonraki kontrolunuz icin sizi arariz. Herhangi bir sorunuz olursa bize yazabilirsiniz.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Yorum linki gonderildi. Hasta CRM'de 'memnun + yorum bekliyor' olarak isaretlendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_sentiment_3",source:"ai_intent_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_text_4",source:"ai_sentiment_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yorum/Sikayet Yonetimi (Sosyal Kanit)" senaryosu icin "Memnun Hasta — Yorum Yonlendirme" akisini olustur.
+
+Aciklama: Hasta islemden memnun, tesekkur ediyor. AI yorum linki gonderiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dudak dolgum harika oldu, cok memnunum! Tesekkurler Dr. Selin'e."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Sentiment: POZITIF. Memnuniyet seviyesi yuksek. Yorum yonlendirmesi baslatiliyor.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_text** — Mesaj gonder
+   text: "Cok sevindik! Dr. Selin'e iletiriz 😊
+
+Deneyiminizi diger hastalarla da paylasmak ister misiniz?
+
+⭐ Google'da yorum birakin:
+🔗 [Google Maps Yorum Linki]
+
+📸 Instagram'da bizi etiketleyin:
+@klinikadiniz
+
+Yorumunuz bizi cok mutlu eder!"
+   Degiskenler: {{google_maps_yorum_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tabii, simdi yazarim!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika, cok tesekkur ederiz! 🙏
+
+Bir sonraki kontrolunuz icin sizi arariz. Herhangi bir sorunuz olursa bize yazabilirsiniz."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Yorum linki gonderildi. Hasta CRM'de 'memnun + yorum bekliyor' olarak isaretlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Yorum","Sosyal Kanit"]},{id:"gu11",title:"Abonelik / Uyelik Paketi",description:"Duzenli gelen musteri sadakat hissetmiyor ve rakip salona gecebiliyor. AI tekrarlayan ziyaret patterini tespit eder ve kisisellestirilmis uyelik teklifi gonderir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU11: Proaktif Uyelik Teklifi",description:"Duzenli gelen musteri tespit edilerek uyelik paketi teklif ediliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Tekrar musteri tespiti: Zeynep Demir — Son 3 ayda "}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Outbound Template — Kisisel Uyelik Teklifi]
+
+Merhaba Zeynep! Sizi sik sik gorunce cok mutlu oluyoruz.
+
+Size ozel bir teklifimiz var:
+
+Aylik Sac Bakim Uyeligi — 1.100 TL/ay
+(Normal harcamaniz: ~1.400 TL/ay)
+
+Dahil olan islemler:
+- 1x Sac Kesimi
+- 1x Fon
+- %15 diger islemlerde indirim
+- Oncelikli randevu hakki
+
+Aylik 300 TL tasarruf edin!
+
+Ilgileniyorum demek icin 'EVET' yazin.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Harika! Aylik Sac Bakim Uyeligi detaylari:
+
+Aylik ucret: 1.100 TL
+Taahhut: Minimum 3 ay
+Baslangic: Hemen veya gelecek ayin basi
+
+Dahil hizmetler:
+- Her ay 1 sac kesimi (istediginiz stilist)
+- Her ay 1 fon (kisa/orta/uzun)
+- Tum diger islemlerde %15 indirim
+- Oncelikli randevu (bekleme yok)
+- Ucretsiz bakim danismanligi
+
+Baslamak ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Uyeliginiz 1 Mart'tan itibaren aktif olacak!
+
+Ilk randevunuzu simdi alalim mi? Mart ayi icin sac kesimi ve fon?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Uyelik olusturuldu: Zeynep Demir, Aylik Sac Bakim, 1.100 TL/ay, 3 ay taahhut. Garanti gelir: 3.300 TL."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Abonelik / Uyelik Paketi" senaryosu icin "Proaktif Uyelik Teklifi" akisini olustur.
+
+Aciklama: Duzenli gelen musteri tespit edilerek uyelik paketi teklif ediliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Tekrar musteri tespiti: Zeynep Demir — Son 3 ayda 5 ziyaret (3x sac kesimi, 2x fon). Aylik ortalama harcama: 1.400 TL. Uyelik adayi olarak isaretlendi.
+
+2. **message_text** — Mesaj gonder
+   text: "[Outbound Template — Kisisel Uyelik Teklifi]
+
+Merhaba Zeynep! Sizi sik sik gorunce cok mutlu oluyoruz.
+
+Size ozel bir teklifimiz var:
+
+Aylik Sac Bakim Uyeligi — 1.100 TL/ay
+(Normal harcamaniz: ~1.400 TL/ay)
+
+Dahil olan islemler:
+- 1x Sac Kesimi
+- 1x Fon
+- %15 diger islemlerde indirim
+- Oncelikli randevu hakki
+
+Aylik 300 TL tasarruf edin!
+
+Ilgileniyorum demek icin 'EVET' yazin."
+   Degiskenler: {{outbound_template_—_kisisel_uyelik_teklifi}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "EVET, ilgileniyorum! Detay verir misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Harika! Aylik Sac Bakim Uyeligi detaylari:
+
+Aylik ucret: 1.100 TL
+Taahhut: Minimum 3 ay
+Baslangic: Hemen veya gelecek ayin basi
+
+Dahil hizmetler:
+- Her ay 1 sac kesimi (istediginiz stilist)
+- Her ay 1 fon (kisa/orta/uzun)
+- Tum diger islemlerde %15 indirim
+- Oncelikli randevu (bekleme yok)
+- Ucretsiz bakim danismanligi
+
+Baslamak ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Gelecek ayin basindan baslayalim"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Uyeliginiz 1 Mart'tan itibaren aktif olacak!
+
+Ilk randevunuzu simdi alalim mi? Mart ayi icin sac kesimi ve fon?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Uyelik olusturuldu: Zeynep Demir, Aylik Sac Bakim, 1.100 TL/ay, 3 ay taahhut. Garanti gelir: 3.300 TL."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Proaktif","Sadakat"]},{id:"gu19",title:"Alerjik Reaksiyon / Sorun Bildirimi",description:"Boyama sonrasi alerjik reaksiyon yasayan musteri mesaj atiyor ama normal kuyrukta bekliyor. AI alerji intent'ini tespit eder, ACIL flag atar ve salon sahibine aninda bildirim gonderir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU19: Boya Sonrasi Alerjik Reaksiyon",description:"Musteri sac boyamasindan sonra kasinti ve kizariklik bildiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"ACIL Intent: Alerjik Reaksiyon. Anahtar kelimeler:"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Durumunuzu cok ciddiye aliyoruz ve hemen yardimci olacagiz.
+
+Ilk olarak:
+1. Kasintili bolgeyi kasimayin
+2. Soguk kompres uygulayin
+3. Varsa antialerjik (Zyrtec, Aerius) alin
+
+Salon yetkilimiz simdi sizinle iletisime gececek. Eger sisme gogse veya bogaziniza yayilirsa hemen 112'yi arayin.
+
+Sizi aramamizi ister misiniz?`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"ACIL BILDIRIM: Salon sahibi Ayse Hanim'a WhatsApp + SMS gonderildi. Musteri: [Ad], Islem: Dip boyama, Urun: [Marka X, Seri: ABC123]. Reaksiyon: Kasinti + kizariklik."}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Salon sahibimiz Ayse Hanim sizi 5 dakika icinde arayacak.
+
+Bu arada belirti takibi:
+- Sisme artiyorsa → 112
+- Nefes darligi varsa → 112
+- Sadece kizariklik/kasinti ise → antialerjik + soguk kompres
+
+Sizin icin buradayiz, merak etmeyin.`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Salon sahibi musteri ile gorustu. Durum takibe alindi. Kullanilan urun batch'i kaydedildi. Hukuki koruma dosyasi olusturuldu."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_ai_intent_6",source:"utility_set_variable_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Alerjik Reaksiyon / Sorun Bildirimi" senaryosu icin "Boya Sonrasi Alerjik Reaksiyon" akisini olustur.
+
+Aciklama: Musteri sac boyamasindan sonra kasinti ve kizariklik bildiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dun sac boyattim, bu sabah basimda cok kasinti var ve ensemde kizarikliklar cikti. Ne yapmaliyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: ACIL Intent: Alerjik Reaksiyon. Anahtar kelimeler: kasinti, kizariklik. Son islem: Dip boyama (dun). Kullanilan urun: [Boya Markasi X]. ACIL flag atandi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Durumunuzu cok ciddiye aliyoruz ve hemen yardimci olacagiz.
+
+Ilk olarak:
+1. Kasintili bolgeyi kasimayin
+2. Soguk kompres uygulayin
+3. Varsa antialerjik (Zyrtec, Aerius) alin
+
+Salon yetkilimiz simdi sizinle iletisime gececek. Eger sisme gogse veya bogaziniza yayilirsa hemen 112'yi arayin.
+
+Sizi aramamizi ister misiniz?"
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: ACIL BILDIRIM: Salon sahibi Ayse Hanim'a WhatsApp + SMS gonderildi. Musteri: [Ad], Islem: Dip boyama, Urun: [Marka X, Seri: ABC123]. Reaksiyon: Kasinti + kizariklik.
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet lutfen arayin, biraz endiseleniyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Salon sahibimiz Ayse Hanim sizi 5 dakika icinde arayacak.
+
+Bu arada belirti takibi:
+- Sisme artiyorsa → 112
+- Nefes darligi varsa → 112
+- Sadece kizariklik/kasinti ise → antialerjik + soguk kompres
+
+Sizin icin buradayiz, merak etmeyin."
+
+8. **utility_note** — Akis sonuc notu
+   text: "Salon sahibi musteri ile gorustu. Durum takibe alindi. Kullanilan urun batch'i kaydedildi. Hukuki koruma dosyasi olusturuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["ACIL","Saglik"]},{id:"gu04",title:"Bekleme Suresi Sorgulama",description:"Randevusuz gelen veya erken gelen musteri bekleme suresini soruyor. Sistem mevcut randevu takviminden tahmini bekleme suresini hesaplar ve randevu almaya yonlendirir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU04: Walk-in Bekleme Sorusu",description:"Randevusuz musteri salona gelmeden bekleme suresini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Bekleme Suresi. Islem: Sac Kesimi. Randevu"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Merhaba! Su an salon yogunlugumuz orta seviyede.
+
+Sac kesimi icin tahmini bekleme: ~25 dakika
+
+Hemen gelirseniz sizi siraniza alabiliriz. Ya da beklemeden islem yaptirmak icin su saatlere randevu alabilirsiniz:
+
+14:30 — Mehmet Stilist
+15:00 — Zeynep Stilist
+
+Hangisini tercih edersiniz?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! Sizi bekliyoruz. Geldiginizde resepsiyona adinizi soyleyip bekleyebilirsiniz.
+
+Bir dahaki sefere randevu alarak bekleme olmadan islem yaptirabilirsiniz.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Walk-in musteri bilgilendirildi. Randevu yonlendirmesi yapildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Bekleme Suresi Sorgulama" senaryosu icin "Walk-in Bekleme Sorusu" akisini olustur.
+
+Aciklama: Randevusuz musteri salona gelmeden bekleme suresini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, randevum yok ama sac kesimi yaptirmak istiyorum. Ne kadar beklerim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Bekleme Suresi. Islem: Sac Kesimi. Randevu durumu: Walk-in. Takvim kontrol ediliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Merhaba! Su an salon yogunlugumuz orta seviyede.
+
+Sac kesimi icin tahmini bekleme: ~25 dakika
+
+Hemen gelirseniz sizi siraniza alabiliriz. Ya da beklemeden islem yaptirmak icin su saatlere randevu alabilirsiniz:
+
+14:30 — Mehmet Stilist
+15:00 — Zeynep Stilist
+
+Hangisini tercih edersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Geleyim o zaman, 25 dk beklerim"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Sizi bekliyoruz. Geldiginizde resepsiyona adinizi soyleyip bekleyebilirsiniz.
+
+Bir dahaki sefere randevu alarak bekleme olmadan islem yaptirabilirsiniz."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Walk-in musteri bilgilendirildi. Randevu yonlendirmesi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Walk-in","Bekleme"]},{id:"gu17",title:"Coklu Hizmet Paketi",description:"Musteri sac + makyaj + cilt bakimi gibi birden fazla hizmet istiyor ama paket fiyat ve uygun kombinasyon bilgisi manuel veriliyor. AI paket onerisi + indirimli kombinasyon hesaplama ile hizli cozum.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU17: Dugune Hazirlık Paketi",description:"Musteri dugun icin sac + makyaj + cilt bakimi istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Coklu Hizmet Talebi. Hizmetler: Sac (gelin"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tebrikler, ne guzel bir haber! Dugun hazirlik paketimiz tam size gore:
+
+Gelin Paketi:
+Gelin Saci: 2.500 TL
+Gelin Makyaji: 1.800 TL
+Cilt Bakimi (Deep Clean): 800 TL
+
+Tekil toplam: 5.100 TL
+Paket fiyati: 4.335 TL (%15 paket indirimi)
+Tasarruf: 765 TL
+
+Toplam sure: ~4 saat
+Oneri: Dugun gunu sabah 07:00'de baslamak
+
+Randevu ayarlamak ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`8 Mart Cumartesi icin gelin paketi randevunuz:
+
+Baslangic: 07:00
+Cilt Bakimi: 07:00 - 08:00
+Sac: 08:00 - 10:00
+Makyaj: 10:00 - 11:30
+
+Toplam: 4.335 TL (Gelin Paketi)
+
+Onemli: Bir gun once prova makyaj oneriyoruz (ucretsiz). Cuma 7 Mart 15:00 uygun mu?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Paket randevusu olusturuldu. Prova + dugun gunu. Toplam: 4.335 TL. Musteri sepet buyumesi: %70 (tekil hizmete kiyasla)."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Coklu Hizmet Paketi" senaryosu icin "Dugune Hazirlık Paketi" akisini olustur.
+
+Aciklama: Musteri dugun icin sac + makyaj + cilt bakimi istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "2 hafta sonra dugunum var. Sac, makyaj ve cilt bakimi hepsini yaptirmak istiyorum. Paket fiyatiniz var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Coklu Hizmet Talebi. Hizmetler: Sac (gelin saci), Makyaj (gelin makyaji), Cilt Bakimi. Ozel gun: Dugun. Paket indirim kurali uygulanacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tebrikler, ne guzel bir haber! Dugun hazirlik paketimiz tam size gore:
+
+Gelin Paketi:
+Gelin Saci: 2.500 TL
+Gelin Makyaji: 1.800 TL
+Cilt Bakimi (Deep Clean): 800 TL
+
+Tekil toplam: 5.100 TL
+Paket fiyati: 4.335 TL (%15 paket indirimi)
+Tasarruf: 765 TL
+
+Toplam sure: ~4 saat
+Oneri: Dugun gunu sabah 07:00'de baslamak
+
+Randevu ayarlamak ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, 8 Mart Cumartesi olabilir mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "8 Mart Cumartesi icin gelin paketi randevunuz:
+
+Baslangic: 07:00
+Cilt Bakimi: 07:00 - 08:00
+Sac: 08:00 - 10:00
+Makyaj: 10:00 - 11:30
+
+Toplam: 4.335 TL (Gelin Paketi)
+
+Onemli: Bir gun once prova makyaj oneriyoruz (ucretsiz). Cuma 7 Mart 15:00 uygun mu?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Super, prova da olsun"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "Paket randevusu olusturuldu. Prova + dugun gunu. Toplam: 4.335 TL. Musteri sepet buyumesi: %70 (tekil hizmete kiyasla)."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Paket","Ozel Gun"]},{id:"gu02",title:"Fiyat Sorgulama",description:"Sac uzunluguna, islem turune ve kullanilan malzemeye gore degisen fiyatlar musterileri sasirtiyor. AI dinamik fiyat araligini bilgisiyle sunar ve uygun randevuya yonlendirir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU02: Standart Fiyat Sorusu",description:"Musteri belirli bir islemin fiyatini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Sorgulama. Islem: Sac Boyama. Parame"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Sac boyama fiyatlarimiz sac uzunluguna gore degisir:
+
+Kisa sac: 800 — 1.200 TL
+Orta sac: 1.200 — 1.800 TL
+Uzun sac: 1.800 — 2.500 TL
+
+Fiyatlar standart boya malzemesi icindir. Profesyonel markalar icin ek ucret uygulanabilir.
+
+Sac uzunlugunuz nedir? Size daha net bilgi vereyim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Orta sac + profesyonel boya icin fiyat araligimiz:
+1.500 — 2.200 TL
+
+Kesin fiyat salon incelemesinde belirlenir.
+
+Bu hafta musait saatlerimiz var, randevu almak ister misiniz?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Fiyat bilgisi verildi. Musteri randevu yonlendirmesine alindi. Donusum takibi baslatildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fiyat Sorgulama" senaryosu icin "Standart Fiyat Sorusu" akisini olustur.
+
+Aciklama: Musteri belirli bir islemin fiyatini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sac boyama ne kadar?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Sorgulama. Islem: Sac Boyama. Parametreler: Uzunluk belirsiz, malzeme belirsiz.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Sac boyama fiyatlarimiz sac uzunluguna gore degisir:
+
+Kisa sac: 800 — 1.200 TL
+Orta sac: 1.200 — 1.800 TL
+Uzun sac: 1.800 — 2.500 TL
+
+Fiyatlar standart boya malzemesi icindir. Profesyonel markalar icin ek ucret uygulanabilir.
+
+Sac uzunlugunuz nedir? Size daha net bilgi vereyim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Orta uzunlukta, profesyonel boya istiyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Orta sac + profesyonel boya icin fiyat araligimiz:
+1.500 — 2.200 TL
+
+Kesin fiyat salon incelemesinde belirlenir.
+
+Bu hafta musait saatlerimiz var, randevu almak ister misiniz?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Fiyat bilgisi verildi. Musteri randevu yonlendirmesine alindi. Donusum takibi baslatildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Fiyat","Otomatik"]},{id:"gu25",title:"Franchise / Coklu Sube Yonetimi",description:"Zincir salon subeleri arasinda musteri cakismasi ve yanlis yonlendirme yasaniyor. Routing ile konuma gore dogru subeye otomatik yonlendirme ve merkezi yonetim sistemi.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU25: Konum Bazli Sube Yonlendirme",description:"Musteri randevu almak istiyor, en yakin subeye yonlendiriliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Randevu Talebi. Konum bilgisi: Kadikoy. Su"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Kadikoy'e en yakin subemiz:
+
+Guzellik Merkezi — Kadikoy Sube
+Adres: Caferaga Mah. Moda Cad. No:42
+Calisma Saatleri: 09:00-20:00 (Pazartesi-Cumartesi)
+
+Sac boyama icin musait slotlar:
+Yarin Carsamba: 10:00, 14:30
+Persembe: 11:00, 16:00
+
+Hangi gun ve saat uygun olur?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Sube: Guzellik Merkezi — Kadikoy
+Hizmet: Sac Boyama
+Tarih: Carsamba, 14:30
+Adres: Caferaga Mah. Moda Cad. No:42
+
+Yol tarifi: [Google Maps link]
+
+Randevunuzdan 1 gun once hatirlatma gonderecegiz!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Konum bazli routing basarili. Kadikoy sube takvimi guncellendi. Merkezi panele yansitildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Franchise / Coklu Sube Yonetimi" senaryosu icin "Konum Bazli Sube Yonlendirme" akisini olustur.
+
+Aciklama: Musteri randevu almak istiyor, en yakin subeye yonlendiriliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, sac boyama randevusu almak istiyorum. Kadikoy'e yakin bir subeniz var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Randevu Talebi. Konum bilgisi: Kadikoy. Sube eslestirme: Kadikoy Sube. Routing baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Kadikoy'e en yakin subemiz:
+
+Guzellik Merkezi — Kadikoy Sube
+Adres: Caferaga Mah. Moda Cad. No:42
+Calisma Saatleri: 09:00-20:00 (Pazartesi-Cumartesi)
+
+Sac boyama icin musait slotlar:
+Yarin Carsamba: 10:00, 14:30
+Persembe: 11:00, 16:00
+
+Hangi gun ve saat uygun olur?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Carsamba 14:30 olsun"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Sube: Guzellik Merkezi — Kadikoy
+Hizmet: Sac Boyama
+Tarih: Carsamba, 14:30
+Adres: Caferaga Mah. Moda Cad. No:42
+
+Yol tarifi: [Google Maps link]
+
+Randevunuzdan 1 gun once hatirlatma gonderecegiz!"
+   Degiskenler: {{google_maps_link}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Konum bazli routing basarili. Kadikoy sube takvimi guncellendi. Merkezi panele yansitildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Routing","Coklu Sube"]},{id:"gu15",title:"Frekans Hatirlatma",description:"Sac boyama 6 haftada bir yapilmali ama hatirlatma yok, musteri unutuyor veya rakibe gidiyor. Son islem tarihi + hizmet frekansi bazli Outbound trigger ile proaktif hatirlatma sistemi.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU15: Dip Boyama Frekans Hatirlatmasi",description:"Son dip boyamadan 5.5 hafta gecti, hatirlatma tetikleniyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Otomasyon tetiklendi: Zeynep Kaya — son dip boyama"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Zeynep Hanim!
+
+Son dip boyamanizin uzerinden yaklasik 5.5 hafta gecti. Diplerinizdeki fark belirginlesmeden randevunuzu planlamak ister misiniz?
+
+Bu hafta musait slotlarimiz:
+Persembe 14:00, 16:30
+Cuma 10:00, 13:00
+
+Hemen rezervasyon yapalim mi?`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Tarih: Persembe, 16:30
+Hizmet: Dip Boyama
+Kuafor: Selin Hanim
+
+Randevunuzdan 1 gun once hatirlatma gonderecegiz. Gorusmek uzere!`}},{id:"action_delay_5",type:"action_delay",position:{x:300,y:650},data:{label:"12 dk bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_action_delay_5",source:"message_text_4",target:"action_delay_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Frekans Hatirlatma" senaryosu icin "Dip Boyama Frekans Hatirlatmasi" akisini olustur.
+
+Aciklama: Son dip boyamadan 5.5 hafta gecti, hatirlatma tetikleniyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Otomasyon tetiklendi: Zeynep Kaya — son dip boyama 38 gun once (kural: 42 gun). Hatirlatma 4 gun once gonderiliyor.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Zeynep Hanim!
+
+Son dip boyamanizin uzerinden yaklasik 5.5 hafta gecti. Diplerinizdeki fark belirginlesmeden randevunuzu planlamak ister misiniz?
+
+Bu hafta musait slotlarimiz:
+Persembe 14:00, 16:30
+Cuma 10:00, 13:00
+
+Hemen rezervasyon yapalim mi?"
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Persembe 16:30 uygun"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Tarih: Persembe, 16:30
+Hizmet: Dip Boyama
+Kuafor: Selin Hanim
+
+Randevunuzdan 1 gun once hatirlatma gonderecegiz. Gorusmek uzere!"
+
+5. **action_delay** — 12 dk bekle
+   seconds: 300
+   Not: Frekans hatirlatmasi basarili. Musteri yanit suresi: 12 dakika. Randevu olusturuldu.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Frekans"]},{id:"gu10",title:"Gelin Paketi / Ozel Gun",description:"Gelin adayi veya ozel gun icin paket icerigi, fiyat ve musaitlik soruyor. Knowledge base'den gelin paketi detaylari sunulur, kisisellestirilmis teklif olusturulur.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU10: Gelin Paketi Sorgulama",description:"Gelin adayi dugun icin paket bilgisi istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Gelin Paketi Sorgulama. Dugun tarihi: Hazi"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tebrikler! Dugun hazirliklariniz icin size yardimci olalim.
+
+Gelin paketlerimiz:
+
+Standart Paket — 8.000 TL
+- Gelin saci + makyaj (dugun gunu)
+- 1 deneme randevusu
+- Sure: ~3 saat
+
+Premium Paket — 12.000 TL
+- Gelin saci + makyaj (dugun gunu)
+- Kina gecesi saci + makyaj
+- 2 deneme randevusu
+- Cilt bakimi (dugundan 1 hafta once)
+- Sure: ~5 saat (dugun gunu)
+
+VIP Paket — 18.000 TL
+- Tum Premium icerik
+- Nisan saci + makyaj
+- 3 deneme randevusu
+- 3 seans cilt bakimi
+- Ozel stil danismanligi
+
+Hangi paket ilginizi cekti? Detayli bilgi ve portfolyomuzu paylasabilirim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Premium paket cok tercih edilen secenegimiz!
+
+Isle portfolyomuzdan ornekler:
+[Gorsel 1: Sac modeli ornegi]
+[Gorsel 2: Makyaj ornegi]
+[Gorsel 3: Genel gorunum]
+
+Deneme randevusu almak ister misiniz? Boylece sac ve makyaj stilinizi birlikte belirleyelim.
+
+Musait tarihlerimiz:
+Cumartesi 10:00
+Pazar 11:00
+
+Kapora: 2.000 TL (toplam ucrete dahil)`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Gelin deneme randevunuz olusturuldu!
+
+Premium Gelin Paketi — Deneme Randevusu
+Cumartesi, 10:00
+Sure: ~2 saat
+Kapora: 2.000 TL (salonda odenecek)
+
+Ilham verici bir gorusme olacak! Begendiginiz sac ve makyaj orneklerini getirirseniz harika olur.`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Gelin paketi deneme randevusu olusturuldu. Yuksek degerli lead: 12.000 TL potansiyel. Salon yoneticisine bildirim gonderildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Gelin Paketi / Ozel Gun" senaryosu icin "Gelin Paketi Sorgulama" akisini olustur.
+
+Aciklama: Gelin adayi dugun icin paket bilgisi istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, haziran ayinda dugunum var. Gelin paketi hakkinda bilgi alabilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Gelin Paketi Sorgulama. Dugun tarihi: Haziran. Paket bilgileri cekilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tebrikler! Dugun hazirliklariniz icin size yardimci olalim.
+
+Gelin paketlerimiz:
+
+Standart Paket — 8.000 TL
+- Gelin saci + makyaj (dugun gunu)
+- 1 deneme randevusu
+- Sure: ~3 saat
+
+Premium Paket — 12.000 TL
+- Gelin saci + makyaj (dugun gunu)
+- Kina gecesi saci + makyaj
+- 2 deneme randevusu
+- Cilt bakimi (dugundan 1 hafta once)
+- Sure: ~5 saat (dugun gunu)
+
+VIP Paket — 18.000 TL
+- Tum Premium icerik
+- Nisan saci + makyaj
+- 3 deneme randevusu
+- 3 seans cilt bakimi
+- Ozel stil danismanligi
+
+Hangi paket ilginizi cekti? Detayli bilgi ve portfolyomuzu paylasabilirim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Premium paket guzel gorunuyor. Portfolyonuzu gorebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Premium paket cok tercih edilen secenegimiz!
+
+Isle portfolyomuzdan ornekler:
+[Gorsel 1: Sac modeli ornegi]
+[Gorsel 2: Makyaj ornegi]
+[Gorsel 3: Genel gorunum]
+
+Deneme randevusu almak ister misiniz? Boylece sac ve makyaj stilinizi birlikte belirleyelim.
+
+Musait tarihlerimiz:
+Cumartesi 10:00
+Pazar 11:00
+
+Kapora: 2.000 TL (toplam ucrete dahil)"
+   Degiskenler: {{gorsel_1:_sac_modeli_ornegi}}, {{gorsel_2:_makyaj_ornegi}}, {{gorsel_3:_genel_gorunum}}
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cumartesi 10 uygun"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Gelin deneme randevunuz olusturuldu!
+
+Premium Gelin Paketi — Deneme Randevusu
+Cumartesi, 10:00
+Sure: ~2 saat
+Kapora: 2.000 TL (salonda odenecek)
+
+Ilham verici bir gorusme olacak! Begendiginiz sac ve makyaj orneklerini getirirseniz harika olur."
+
+9. **utility_note** — Akis sonuc notu
+   text: "Gelin paketi deneme randevusu olusturuldu. Yuksek degerli lead: 12.000 TL potansiyel. Salon yoneticisine bildirim gonderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Gelin","Paket"]},{id:"gu23",title:"Grup Randevusu (Kina Gecesi, Dogum Gunu)",description:"Kina gecesi, dogum gunu veya mezuniyet icin buyuk grup randevusu koordinasyonu zor. AI grup randevusu intent'ini tespit eder, kisi sayisi ve hizmetleri sorar, kapasite kontrolu yapar.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU23: Kina Gecesi Grup Randevusu",description:"8 kisilik kina gecesi grubu icin sac + makyaj randevusu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Grup Randevusu. Etkinlik: Kina Gecesi. Kis"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tebrikler, kina geceniz kutlu olsun!
+
+8 kisi icin sac + makyaj — cok guzel bir plan!
+
+Birkaс bilgi alabilir miyim?
+1. Hangi tarihi dusunuyorsunuz?
+2. Kina gecesi saat kacta baslayacak? (Hazirligin bitmesi gereken saat)
+3. Gelin adayi icin ozel bir stil tercihiniz var mi?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Kapasite kontrolu: 15 Mart Cumartesi. 8 kisi x sac"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`15 Mart Cumartesi icin kapasite uygun!
+
+Kina Gecesi Paket Plani (8 kisi):
+
+Gelin Adayi (Ozel):
+Ozel Kina Saci + Ozel Makyaj: 2.000 TL
+
+7 Davetli:
+Sac + Makyaj: 1.200 TL/kisi x 7 = 8.400 TL
+
+Toplam: 10.400 TL
+Grup Indirimi (%15): -1.560 TL
+Paket Fiyati: 8.840 TL
+
+Zaman Plani:
+13:00 — Baslangic (4 personel ayni anda)
+17:30 — Tum islemler tamamlanir
+18:00 — Son kontroller
+19:00 — Kina gecesine hazir!
+
+Onaylamak ister misiniz?`}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"Yanit Analiz"}},{id:"message_text_9",type:"message_text",position:{x:300,y:1250},data:{label:"Mesaj",text:`Grup randevunuz olusturuldu!
+
+Etkinlik: Kina Gecesi
+Tarih: 15 Mart Cumartesi, 13:00-18:00
+Kisi: 8 (1 gelin adayi + 7 davetli)
+Toplam: 8.840 TL
+
+1 hafta once detay mesaji gonderecegiz: kisi isim listesi ve ozel isteklerinizi alacagiz.
+
+Muhtesem bir gece olacak!`}},{id:"utility_note_10",type:"utility_note",position:{x:300,y:1400},data:{label:"Sonuc",text:"Grup randevusu olusturuldu. 4 personel bloklandi. Kapasite guncellendi. T-7 hatirlatma kuyruge alindi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_ai_intent_8",source:"message_text_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_message_text_9",source:"ai_intent_8",target:"message_text_9"},{id:"e_message_text_9_utility_note_10",source:"message_text_9",target:"utility_note_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Grup Randevusu (Kina Gecesi, Dogum Gunu)" senaryosu icin "Kina Gecesi Grup Randevusu" akisini olustur.
+
+Aciklama: 8 kisilik kina gecesi grubu icin sac + makyaj randevusu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhabalar, kina gecemiz icin 8 kisilik randevu almak istiyoruz. Sac ve makyaj yaptirmak istiyoruz."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Grup Randevusu. Etkinlik: Kina Gecesi. Kisi: 8. Hizmetler: Sac + Makyaj. Kapasite kontrolu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tebrikler, kina geceniz kutlu olsun!
+
+8 kisi icin sac + makyaj — cok guzel bir plan!
+
+Birkaс bilgi alabilir miyim?
+1. Hangi tarihi dusunuyorsunuz?
+2. Kina gecesi saat kacta baslayacak? (Hazirligin bitmesi gereken saat)
+3. Gelin adayi icin ozel bir stil tercihiniz var mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "15 Mart Cumartesi. Aksam 19:00'da basliyor, o saate hazir olmaliyiz. Gelin adayimiz icin ozel bir sey istiyoruz."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Kapasite kontrolu: 15 Mart Cumartesi. 8 kisi x sac + makyaj = ~16 islem. Gerekli personel: 4 (2'ser kisi halinde). Baslangic: 13:00. Salon kapasitesi: Uygun.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "15 Mart Cumartesi icin kapasite uygun!
+
+Kina Gecesi Paket Plani (8 kisi):
+
+Gelin Adayi (Ozel):
+Ozel Kina Saci + Ozel Makyaj: 2.000 TL
+
+7 Davetli:
+Sac + Makyaj: 1.200 TL/kisi x 7 = 8.400 TL
+
+Toplam: 10.400 TL
+Grup Indirimi (%15): -1.560 TL
+Paket Fiyati: 8.840 TL
+
+Zaman Plani:
+13:00 — Baslangic (4 personel ayni anda)
+17:30 — Tum islemler tamamlanir
+18:00 — Son kontroller
+19:00 — Kina gecesine hazir!
+
+Onaylamak ister misiniz?"
+
+8. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Harika, onayliyoruz!"
+   high_confidence → devam | low_confidence → action_handoff
+
+9. **message_text** — Mesaj gonder
+   text: "Grup randevunuz olusturuldu!
+
+Etkinlik: Kina Gecesi
+Tarih: 15 Mart Cumartesi, 13:00-18:00
+Kisi: 8 (1 gelin adayi + 7 davetli)
+Toplam: 8.840 TL
+
+1 hafta once detay mesaji gonderecegiz: kisi isim listesi ve ozel isteklerinizi alacagiz.
+
+Muhtesem bir gece olacak!"
+
+10. **utility_note** — Akis sonuc notu
+   text: "Grup randevusu olusturuldu. 4 personel bloklandi. Kapasite guncellendi. T-7 hatirlatma kuyruge alindi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["Grup","Kina"]},{id:"gu24",title:"Instagram DM Lead Yonetimi",description:"Story ve reel DM'leri gec cevaplanıyor, potansiyel musteriler kaybolur. Unified Inbox ile IG DM'leri tek panelde toplamak ve AI hizli cevap ile lead'leri randevuya donusturmek.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU24: Story Yaniti ile Fiyat Sorusu",description:"Musteri salona ait story'ye yanit vererek fiyat soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Kanal: Instagram DM (Story Reply). Intent: Fiyat S"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tesekkurler! Balyaj sonuclarimizi begendigenize sevindik.
+
+Balyaj fiyatlarimiz:
+Klasik Balyaj: 1.500 - 2.000 TL
+Baby Light Balyaj: 1.800 - 2.500 TL
+
+(Fiyat sac uzunluguna gore degisir)
+
+Ucretsiz konsultasyon ile size en uygun stili ve kesin fiyati belirleyelim!
+
+Randevu almak ister misiniz?
+Hizli randevu icin WhatsApp: [WA link]`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! Bu hafta musait slotlar:
+
+Carsamba: 10:00, 14:00
+Persembe: 11:00, 15:00
+Cumartesi: 09:00, 13:00
+
+Balyaj islemi yaklasik 2-3 saat surmektedir.
+Hangi gun ve saat uygun olur?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Hizmet: Balyaj Konsultasyon + Uygulama
+Tarih: Cumartesi, 13:00
+Sure: ~2.5 saat
+
+WhatsApp'tan detayli bilgi ve hatirlatma gonderecegiz:
+[WA link]
+
+Gorusmek uzere!`}},{id:"action_delay_9",type:"action_delay",position:{x:300,y:1250},data:{label:"4 saat bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_action_delay_9",source:"message_text_8",target:"action_delay_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Instagram DM Lead Yonetimi" senaryosu icin "Story Yaniti ile Fiyat Sorusu" akisini olustur.
+
+Aciklama: Musteri salona ait story'ye yanit vererek fiyat soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "[IG Story yaniti] Cok guzel olmus! Balyaj fiyati ne kadar?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Kanal: Instagram DM (Story Reply). Intent: Fiyat Sorusu. Hizmet: Balyaj. Lead potansiyeli: YUKSEK.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Balyaj sonuclarimizi begendigenize sevindik.
+
+Balyaj fiyatlarimiz:
+Klasik Balyaj: 1.500 - 2.000 TL
+Baby Light Balyaj: 1.800 - 2.500 TL
+
+(Fiyat sac uzunluguna gore degisir)
+
+Ucretsiz konsultasyon ile size en uygun stili ve kesin fiyati belirleyelim!
+
+Randevu almak ister misiniz?
+Hizli randevu icin WhatsApp: [WA link]"
+   Degiskenler: {{wa_link}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevu almak istiyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Bu hafta musait slotlar:
+
+Carsamba: 10:00, 14:00
+Persembe: 11:00, 15:00
+Cumartesi: 09:00, 13:00
+
+Balyaj islemi yaklasik 2-3 saat surmektedir.
+Hangi gun ve saat uygun olur?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cumartesi 13:00 olsun"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Hizmet: Balyaj Konsultasyon + Uygulama
+Tarih: Cumartesi, 13:00
+Sure: ~2.5 saat
+
+WhatsApp'tan detayli bilgi ve hatirlatma gonderecegiz:
+[WA link]
+
+Gorusmek uzere!"
+   Degiskenler: {{wa_link}}
+
+9. **action_delay** — 4 saat bekle
+   seconds: 300
+   Not: IG DM lead donusumu basarili. Yanit suresi: 45 saniye (manuel ortalama: 4 saat). Lead -> Randevu donusumu tamamlandi.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Instagram","Lead"]},{id:"gu07",title:"Islem Sonrasi Bakim Talimatlari",description:"Sac boyama, keratin veya kimyasal islem sonrasi bakim talimatlari sozlu veriliyor ve musteri unutuyor. Islem tamamlaninca otomatik olarak detayli bakim talimati mesaji gonderilir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU07: Sac Boyama Sonrasi Bakim",description:"Sac boyama islemi tamamlandi — otomatik bakim talimati gonderiliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Islem tamamlandi: Sac Boyama (Profesyonel). Muster"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Outbound Template — Sac Boyama Bakim Talimati]
+
+Merhaba Defne! Islem tamamlandi, renginiz harika gorunuyor!
+
+Sac boyama sonrasi bakim rehberiniz:
+
+Ilk 48 saat: Saclarinizi yikamaktan kacinin
+Sampuan: Sulfatsiz sampuan kullanin
+Sicaklik: Sicak su yerine ilik su tercih edin
+Sac kurutma: Dusuk isida kullanin
+Guneş: Uzun sureli gunes isigindan koruyun
+
+Boya ömrü icin ayda 1 parlatma islemi oneriyoruz.
+
+Sorulariniz icin bize yazabilirsiniz!`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"action_delay_4",type:"action_delay",position:{x:300,y:500},data:{label:"30 gun bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_action_delay_4",source:"ai_intent_3",target:"action_delay_4"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Islem Sonrasi Bakim Talimatlari" senaryosu icin "Sac Boyama Sonrasi Bakim" akisini olustur.
+
+Aciklama: Sac boyama islemi tamamlandi — otomatik bakim talimati gonderiliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Islem tamamlandi: Sac Boyama (Profesyonel). Musteri: Defne Arslan. Stilist: Selin. Bakim talimati tetikleniyor.
+
+2. **message_text** — Mesaj gonder
+   text: "[Outbound Template — Sac Boyama Bakim Talimati]
+
+Merhaba Defne! Islem tamamlandi, renginiz harika gorunuyor!
+
+Sac boyama sonrasi bakim rehberiniz:
+
+Ilk 48 saat: Saclarinizi yikamaktan kacinin
+Sampuan: Sulfatsiz sampuan kullanin
+Sicaklik: Sicak su yerine ilik su tercih edin
+Sac kurutma: Dusuk isida kullanin
+Guneş: Uzun sureli gunes isigindan koruyun
+
+Boya ömrü icin ayda 1 parlatma islemi oneriyoruz.
+
+Sorulariniz icin bize yazabilirsiniz!"
+   Degiskenler: {{outbound_template_—_sac_boyama_bakim_talimati}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, cok faydali oldu!"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **action_delay** — 30 gun bekle
+   seconds: 300
+   Not: Bakim talimati gonderildi. Musteri memnun. Sonraki randevu yonlendirmesi icin T+30 gun hatirlatma zamanlandi.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:4,tags:["Proaktif","Bakim"]},{id:"gu14",title:"Kampanya / Indirim Bildirimi",description:"Kampanyalar sadece Instagram'da paylasiliyor, mevcut musterilere ulasamiyor. Outbound broadcast ile segment bazli kampanya mesaji gonderimi — dogru kampanyayi dogru musteriye ulastiran proaktif sistem.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU14: Sac Bakimi Kampanyasi Broadcast",description:"Sac bakimi hizmetlerinde %30 indirim kampanyasinin hedefli musterilere gonderimi."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Salon sahibi yeni kampanya olusturdu: Sac Bakimi %"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:"Segment filtrelendi: 186 musteri eslesti. Broadcast kuyruklandi."}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Merhaba Ayse Hanim! Size ozel bir haberimiz var:
+
+Sac Bakimi Haftasi basliyor! Tum sac bakim islemlerinde %30 indirim.
+
+Gecerlilik: 15-28 Subat
+Keratin, Botoks, Bakim Maskesi dahil!
+
+Randevu icin hemen yazin veya 'RANDEVU' yazip gonderin.`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Harika! Sac bakimi icin musait gunlerimiz:
+
+Sali 18 Subat — 14:00, 16:00
+Carsamba 19 Subat — 10:00, 11:30
+
+Hangi gun ve saat uygun olur?`}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Tarih: Sali 18 Subat, 14:00
+Hizmet: Sac Bakimi (%30 indirimli)
+Salon: Guzellik Merkezi
+
+Gorulmek uzere!`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Kampanya sonucu: 186 mesaj gonderildi. 42 cevap (%22.6). 28 randevu (%15.1 donusum)."}}],edges:[{id:"e_outbound_trigger_1_utility_set_variable_2",source:"outbound_trigger_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_message_text_3",source:"utility_set_variable_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kampanya / Indirim Bildirimi" senaryosu icin "Sac Bakimi Kampanyasi Broadcast" akisini olustur.
+
+Aciklama: Sac bakimi hizmetlerinde %30 indirim kampanyasinin hedefli musterilere gonderimi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Salon sahibi yeni kampanya olusturdu: Sac Bakimi %30 indirim, 15-28 Subat arasi gecerli. Hedef: Son 3 ayda sac bakimi yaptiran musteriler.
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: Segment filtrelendi: 186 musteri eslesti. Broadcast kuyruklandi.
+
+3. **message_text** — Mesaj gonder
+   text: "Merhaba Ayse Hanim! Size ozel bir haberimiz var:
+
+Sac Bakimi Haftasi basliyor! Tum sac bakim islemlerinde %30 indirim.
+
+Gecerlilik: 15-28 Subat
+Keratin, Botoks, Bakim Maskesi dahil!
+
+Randevu icin hemen yazin veya 'RANDEVU' yazip gonderin."
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "RANDEVU"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Harika! Sac bakimi icin musait gunlerimiz:
+
+Sali 18 Subat — 14:00, 16:00
+Carsamba 19 Subat — 10:00, 11:30
+
+Hangi gun ve saat uygun olur?"
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sali 14:00 olsun"
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Tarih: Sali 18 Subat, 14:00
+Hizmet: Sac Bakimi (%30 indirimli)
+Salon: Guzellik Merkezi
+
+Gorulmek uzere!"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Kampanya sonucu: 186 mesaj gonderildi. 42 cevap (%22.6). 28 randevu (%15.1 donusum)."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Proaktif","Kampanya"]},{id:"gu03",title:"Kuafor / Stilist Secimi",description:"Musteri uzmanlik alani, cinsiyet tercihi veya deneyim bazinda stilist soruyor ancak resepsiyon tum stilistlerin uzmanliklarini ezbere bilmiyor. AI Knowledge base'den eslestirme yaparak en uygun stilisti onerir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU03: Uzmanlik Bazli Stilist Arama",description:"Musteri belirli bir islem icin uzman stilist soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Stilist Secimi. Kriter: Balyaj uzmani, uzu"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Balyaj konusunda uzman stilistlerimiz:
+
+1. Selin — 8 yil deneyim, balyaj sertifikali
+   Musteri puani: 4.9/5
+   En yakin musait: Yarin 11:00
+
+2. Derya — 5 yil deneyim, renk uzmani
+   Musteri puani: 4.7/5
+   En yakin musait: Cuma 14:00
+
+Hangisi ile devam etmek istersiniz?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Balyaj — Selin Stilist
+Tarih: Yarin, 11:00
+Tahmini Sure: ~2 saat
+
+Selin'in portfolyosunu gormek isterseniz: [portfolyo linki]
+
+Randevunuzdan once saclarinizi yikamadan gelmenizi oneririz.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Stilist eslestirme tamamlandi. Randevu olusturuldu. Hatirlatma zamanlandi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kuafor / Stilist Secimi" senaryosu icin "Uzmanlik Bazli Stilist Arama" akisini olustur.
+
+Aciklama: Musteri belirli bir islem icin uzman stilist soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Balyaj konusunda tecrubeli bir stilist var mi? Uzun sacim var."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Stilist Secimi. Kriter: Balyaj uzmani, uzun sac deneyimi. Knowledge base'de arama yapiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Balyaj konusunda uzman stilistlerimiz:
+
+1. Selin — 8 yil deneyim, balyaj sertifikali
+   Musteri puani: 4.9/5
+   En yakin musait: Yarin 11:00
+
+2. Derya — 5 yil deneyim, renk uzmani
+   Musteri puani: 4.7/5
+   En yakin musait: Cuma 14:00
+
+Hangisi ile devam etmek istersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Selin ile yarin 11'e alalim"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Balyaj — Selin Stilist
+Tarih: Yarin, 11:00
+Tahmini Sure: ~2 saat
+
+Selin'in portfolyosunu gormek isterseniz: [portfolyo linki]
+
+Randevunuzdan once saclarinizi yikamadan gelmenizi oneririz."
+   Degiskenler: {{portfolyo_linki}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Stilist eslestirme tamamlandi. Randevu olusturuldu. Hatirlatma zamanlandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Eslestirme","Stilist"]},{id:"gu20",title:"KVKK: Fotograf Cekimi / Before-After",description:"Before/after fotograflarini sosyal medyada paylasirken KVKK onam eksik. Islem oncesi otomatik onam mesaji gondererek hukuki koruma saglayan ve dijital onay kaydı tutan sistem.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU20: Randevu Oncesi KVKK Onam Mesaji",description:"Yarin randevusu olan musteriye otomatik fotograf onam mesaji gonderimi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Otomasyon tetiklendi: Yarin saat 14:00 randevusu o"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Melis Hanim!
+
+Yarınki randevunuz icin heyecanlaniyoruz!
+
+Islem oncesi ve sonrasi sonuclari fotograf ile kayit altina almak istiyoruz. Bu fotograflari sosyal medyamizda (Instagram, Facebook) paylasabilmemiz icin onayiniz gerekli.
+
+KVKK Aydinlatma Metni: [Link]
+
+Onay veriyorsaniz 'ONAY' yazin.
+Onay vermiyorsaniz 'HAYIR' yazin.
+
+Fotograf cekimi istege baglidir, onay vermemeniz hizmet kalitenizi etkilemez.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tesekkurler Melis Hanim! Onayiniz kayit altina alindi.
+
+Onay Tarihi: 19.02.2026 14:32
+Kapsam: Before/After fotograf cekimi ve sosyal medya paylasimi
+
+Istediginiz zaman onayinizi geri cekmek icin 'IPTAL' yazabilirsiniz.
+
+Yarin gorusmek uzere!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Dijital onam kaydedildi: Melis Celik, +90 5xx xxx xxxx, 19.02.2026 14:32. Paylasim etiketi: ONAY."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"KVKK: Fotograf Cekimi / Before-After" senaryosu icin "Randevu Oncesi KVKK Onam Mesaji" akisini olustur.
+
+Aciklama: Yarin randevusu olan musteriye otomatik fotograf onam mesaji gonderimi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Otomasyon tetiklendi: Yarin saat 14:00 randevusu olan Melis Celik icin KVKK onam mesaji gonderiliyor.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Melis Hanim!
+
+Yarınki randevunuz icin heyecanlaniyoruz!
+
+Islem oncesi ve sonrasi sonuclari fotograf ile kayit altina almak istiyoruz. Bu fotograflari sosyal medyamizda (Instagram, Facebook) paylasabilmemiz icin onayiniz gerekli.
+
+KVKK Aydinlatma Metni: [Link]
+
+Onay veriyorsaniz 'ONAY' yazin.
+Onay vermiyorsaniz 'HAYIR' yazin.
+
+Fotograf cekimi istege baglidir, onay vermemeniz hizmet kalitenizi etkilemez."
+   Degiskenler: {{link}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "ONAY"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tesekkurler Melis Hanim! Onayiniz kayit altina alindi.
+
+Onay Tarihi: 19.02.2026 14:32
+Kapsam: Before/After fotograf cekimi ve sosyal medya paylasimi
+
+Istediginiz zaman onayinizi geri cekmek icin 'IPTAL' yazabilirsiniz.
+
+Yarin gorusmek uzere!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Dijital onam kaydedildi: Melis Celik, +90 5xx xxx xxxx, 19.02.2026 14:32. Paylasim etiketi: ONAY."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["KVKK","Otomatik"]},{id:"gu21",title:"Mevsimsel Trend Oneri",description:"Sezonluk trendler (yaz sarisi, kis bakimi, bahar renkler) musterilerle paylasilamiyor, sadece sosyal medyada icerik uretiliyor. Outbound sezonluk kampanya + AI kisisel oneri ile proaktif trend paylasimi.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU21: Bahar Sezonu Trend Onerisi",description:"Bahar sezonu baslangicinda musteri profiline gore kisisellestirılmis trend onerisi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Sezon degisimi tetiklendi: Bahar 2026. AI musteri "}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:"Musteri: Ebru Sahin. Profil: Koyu sac, son 4 islem dip boyama (siyah). AI onerisi: Cikolata kahverengi balyaj trendi."}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Merhaba Ebru Hanim!
+
+Bahar geldi, yeni sezon trendleri harika! Size ozel bir onerimiz var:
+
+Bu bahar en cok talep edilen trend: Cikolata Balyaj! Koyu saclariniza muhtesem isiltı katar.
+
+[Referans gorsel]
+
+Bahar lansmanina ozel %20 indirimle deneyin!
+Normal: 2.000 TL → Lansman: 1.600 TL
+
+Randevu almak ister misiniz?`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Anliyorum Ebru Hanim! Cikolata balyajin guzelligi tam da bu — saclarinizi cok acmadan dogal bir geçis sagliyor.
+
+Size daha yakin tonlarla soft bir balyaj uygulamasi yapabiliriz. Sonuc dogal ve zarif olacak.
+
+[Soft balyaj referans gorsel]
+
+Bu stili denemek ister misiniz?`}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Harika secim! Musait slotlar:
+
+Sali 11 Mart: 10:00, 14:00
+Persembe 13 Mart: 11:00
+
+Balyaj islemi yaklasik 2.5 saat surecek.
+Fiyat: 1.600 TL (Bahar Lansman)
+
+Hangi gun uygun?`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Trend onerisi basarili. Yeni hizmet denemesi: Balyaj (ilk kez). Kampanya donusumu: 1 randevu."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_message_text_3",source:"utility_set_variable_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Mevsimsel Trend Oneri" senaryosu icin "Bahar Sezonu Trend Onerisi" akisini olustur.
+
+Aciklama: Bahar sezonu baslangicinda musteri profiline gore kisisellestirılmis trend onerisi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Sezon degisimi tetiklendi: Bahar 2026. AI musteri profillerini tarıyor ve kisisel trend onerileri hazirlıyor.
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: Musteri: Ebru Sahin. Profil: Koyu sac, son 4 islem dip boyama (siyah). AI onerisi: Cikolata kahverengi balyaj trendi.
+
+3. **message_text** — Mesaj gonder
+   text: "Merhaba Ebru Hanim!
+
+Bahar geldi, yeni sezon trendleri harika! Size ozel bir onerimiz var:
+
+Bu bahar en cok talep edilen trend: Cikolata Balyaj! Koyu saclariniza muhtesem isiltı katar.
+
+[Referans gorsel]
+
+Bahar lansmanina ozel %20 indirimle deneyin!
+Normal: 2.000 TL → Lansman: 1.600 TL
+
+Randevu almak ister misiniz?"
+   Degiskenler: {{referans_gorsel}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cok guzel gorunuyor! Ama sacimi cok acmak istemiyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Anliyorum Ebru Hanim! Cikolata balyajin guzelligi tam da bu — saclarinizi cok acmadan dogal bir geçis sagliyor.
+
+Size daha yakin tonlarla soft bir balyaj uygulamasi yapabiliriz. Sonuc dogal ve zarif olacak.
+
+[Soft balyaj referans gorsel]
+
+Bu stili denemek ister misiniz?"
+   Degiskenler: {{soft_balyaj_referans_gorsel}}
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu cok daha iyi, randevu alalim"
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Harika secim! Musait slotlar:
+
+Sali 11 Mart: 10:00, 14:00
+Persembe 13 Mart: 11:00
+
+Balyaj islemi yaklasik 2.5 saat surecek.
+Fiyat: 1.600 TL (Bahar Lansman)
+
+Hangi gun uygun?"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Trend onerisi basarili. Yeni hizmet denemesi: Balyaj (ilk kez). Kampanya donusumu: 1 randevu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Proaktif","Trend"]},{id:"gu06",title:"No-Show / Iptal Yonetimi",description:"No-show orani %15-20 arasinda seyrediyor ve salon gelir kaybi yasiyor. R-1 gun ve R-2 saat hatirlatma mesajlari ile onay istenerek no-show orani minimuma indirilir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU06: Basarili Hatirlatma — Onay",description:"Musteri hatirlatma mesajina 'Onayliyorum' diyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"R-1 gun hatirlatma tetiklendi: Yarin 14:00 — Sac K"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Outbound Template]
+
+Merhaba Elif! Randevunuzu hatirlatalim:
+
+Sac Kesimi
+Yarin, 14:00
+Stilist: Ayse
+
+Onaylıyor musunuz?
+[Onayliyorum] [Degistirmek Istiyorum]`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Randevunuz onaylandi! Yarin 14:00'te sizi bekliyoruz.
+
+2 saat once tekrar hatirlatacagiz. Iyi gunler!`}},{id:"action_delay_5",type:"action_delay",position:{x:300,y:650},data:{label:"2 saat bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_action_delay_5",source:"message_text_4",target:"action_delay_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"No-Show / Iptal Yonetimi" senaryosu icin "Basarili Hatirlatma — Onay" akisini olustur.
+
+Aciklama: Musteri hatirlatma mesajina 'Onayliyorum' diyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: R-1 gun hatirlatma tetiklendi: Yarin 14:00 — Sac Kesimi, Ayse Stilist. Musteri: Elif Yilmaz.
+
+2. **message_text** — Mesaj gonder
+   text: "[Outbound Template]
+
+Merhaba Elif! Randevunuzu hatirlatalim:
+
+Sac Kesimi
+Yarin, 14:00
+Stilist: Ayse
+
+Onaylıyor musunuz?
+[Onayliyorum] [Degistirmek Istiyorum]"
+   Degiskenler: {{outbound_template}}, {{onayliyorum}}, {{degistirmek_istiyorum}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Onayliyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Randevunuz onaylandi! Yarin 14:00'te sizi bekliyoruz.
+
+2 saat once tekrar hatirlatacagiz. Iyi gunler!"
+
+5. **action_delay** — 2 saat bekle
+   seconds: 300
+   Not: Randevu onaylandi. R-2 saat hatirlatma zamanlandi. No-show riski dusuk.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Hatirlatma"]},{id:"gu22",title:"Online Urun Magazasi",description:"Musteri salonda kullanilan bakim urununu online siparis etmek istiyor ama salon fiziksel satis yapiyor. WhatsApp uzerinden urun katalogu, siparis ve odeme linki ile dijital satis kanali.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU22: Bakim Urunu Tekrar Siparisi",description:"Musteri daha once salonda kullandigi sac maskesini tekrar almak istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Urun Siparisi. Musteri gecmis islemi: Sac "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Gecen seferkindeki urun:
+
+Keratin Repair Sac Maskesi — 500ml
+Marka: Olaplex No.3
+Fiyat: 850 TL
+
+Stok: Mevcut
+Kargo: Ucretsiz (aynı gun gonderim)
+
+Siparis vermek ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Siparisiniz hazirlaniyor!
+
+Olaplex No.3 Sac Maskesi 500ml: 850 TL
+Kargo: Ucretsiz
+Toplam: 850 TL
+
+Asagidaki linkten odemenizi tamamlayabilirsiniz:
+[Odeme Linki]
+
+Odeme sonrasi kargo takip numaranizi gonderecegiz.`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Odemeniz onaylandi, tesekkurler!
+
+Siparis No: #GU-2026-0142
+Urun: Olaplex No.3 Sac Maskesi 500ml
+Kargo: Yurtici Kargo
+Tahmini Teslimat: 2-3 is gunu
+
+Kargoya verildliginde takip numaranizi gonderecegiz!`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Siparis tamamlandi. Odeme onaylandi. Kargo hazirlik bildirimi salon sahibine gonderildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Online Urun Magazasi" senaryosu icin "Bakim Urunu Tekrar Siparisi" akisini olustur.
+
+Aciklama: Musteri daha once salonda kullandigi sac maskesini tekrar almak istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Gecen sefer sac maskesi almistim, cok begendim. Ayni urunden tekrar siparis verebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Urun Siparisi. Musteri gecmis islemi: Sac Maskesi. Knowledge Base urun eslestirme yapiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Gecen seferkindeki urun:
+
+Keratin Repair Sac Maskesi — 500ml
+Marka: Olaplex No.3
+Fiyat: 850 TL
+
+Stok: Mevcut
+Kargo: Ucretsiz (aynı gun gonderim)
+
+Siparis vermek ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, siparis vermek istiyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Siparisiniz hazirlaniyor!
+
+Olaplex No.3 Sac Maskesi 500ml: 850 TL
+Kargo: Ucretsiz
+Toplam: 850 TL
+
+Asagidaki linkten odemenizi tamamlayabilirsiniz:
+[Odeme Linki]
+
+Odeme sonrasi kargo takip numaranizi gonderecegiz."
+   Degiskenler: {{odeme_linki}}
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Odemeyi yaptim"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Odemeniz onaylandi, tesekkurler!
+
+Siparis No: #GU-2026-0142
+Urun: Olaplex No.3 Sac Maskesi 500ml
+Kargo: Yurtici Kargo
+Tahmini Teslimat: 2-3 is gunu
+
+Kargoya verildliginde takip numaranizi gonderecegiz!"
+
+9. **utility_note** — Akis sonuc notu
+   text: "Siparis tamamlandi. Odeme onaylandi. Kargo hazirlik bildirimi salon sahibine gonderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Siparis","Urun"]},{id:"gu16",title:"Personel Mesai / Calisma Gunleri",description:"Musteri belirli bir kuaforun hangi gunler calistigini soruyor ama bu bilgi her seferinde manuel cevaplanmak zorunda. Knowledge base'e personel mesai bilgisi tanimlanarak AI otomatik cevap verir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU16: Belirli Kuafor Calisma Gunu Sorgusu",description:"Musteri favori kuaforunun hangi gunler calistigini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Personel Mesai Sorgusu. Personel: Selin. K"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Selin Hanim'in calisma programi:
+
+Sali: 09:00 - 18:00
+Carsamba: 09:00 - 18:00
+Persembe: 09:00 - 18:00
+Cuma: 09:00 - 20:00
+Cumartesi: 09:00 - 17:00
+
+Uzmanlik Alanlari: Sac Kesim, Dip Boyama, Keratin
+
+Selin Hanim ile randevu almak ister misiniz? Musait slotlari gorebilirim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Selin Hanim'in bu Cuma musait saatleri:
+
+17:00 - Sac Kesim (45 dk)
+17:30 - Dip Boyama (1.5 saat)
+18:00 - Kesim (45 dk)
+
+Hangi hizmeti ve saati tercih edersiniz?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Kuafor: Selin Hanim
+Tarih: Cuma, 17:30
+Hizmet: Dip Boyama (1.5 saat)
+
+Randevunuzdan 1 gun once hatirlatma gonderecegiz!`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Otomatik cozum: Knowledge Base ile personel mesai bilgisi verildi, randevu olusturuldu. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Personel Mesai / Calisma Gunleri" senaryosu icin "Belirli Kuafor Calisma Gunu Sorgusu" akisini olustur.
+
+Aciklama: Musteri favori kuaforunun hangi gunler calistigini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Selin Hanim hangi gunler calisiyor? Onunla randevu almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Personel Mesai Sorgusu. Personel: Selin. Knowledge Base eslestirme yapiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Selin Hanim'in calisma programi:
+
+Sali: 09:00 - 18:00
+Carsamba: 09:00 - 18:00
+Persembe: 09:00 - 18:00
+Cuma: 09:00 - 20:00
+Cumartesi: 09:00 - 17:00
+
+Uzmanlik Alanlari: Sac Kesim, Dip Boyama, Keratin
+
+Selin Hanim ile randevu almak ister misiniz? Musait slotlari gorebilirim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cuma aksama dogru olabilir mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Selin Hanim'in bu Cuma musait saatleri:
+
+17:00 - Sac Kesim (45 dk)
+17:30 - Dip Boyama (1.5 saat)
+18:00 - Kesim (45 dk)
+
+Hangi hizmeti ve saati tercih edersiniz?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "17:30 dip boyama"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Kuafor: Selin Hanim
+Tarih: Cuma, 17:30
+Hizmet: Dip Boyama (1.5 saat)
+
+Randevunuzdan 1 gun once hatirlatma gonderecegiz!"
+
+9. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Knowledge Base ile personel mesai bilgisi verildi, randevu olusturuldu. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Otomatik","Bilgi"]},{id:"gu01",title:"Randevu Alma / Degistirme / Iptal",description:"Resepsiyon yogun saatlerde telefonlara yetisemiyor, randevu cakismalari olusuyor ve musteriler bekletiliyor. AI musait slotlari aninda sunar, Automation ile randevu onay mesaji gonderir ve takvimi gunceller.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU01: Yeni Randevu Alma",description:"Musteri WhatsApp uzerinden yeni randevu almak istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Randevu Alma. Islem: Sac Kesimi. Tarih: Ya"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Yarin icin sac kesimi musait saatlerimiz:
+
+1. 10:00 — Ayse Stilist
+2. 11:30 — Mehmet Stilist
+3. 14:00 — Ayse Stilist
+4. 16:00 — Zeynep Stilist
+
+Hangi saati tercih edersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Randevunuz olusturuldu!
+
+Sac Kesimi
+Tarih: Yarin, 14:00
+Stilist: Ayse
+Sure: ~30 dakika
+
+Randevunuzdan 2 saat once hatirlatma mesaji gonderecegiz. Degisiklik icin buradan yazabilirsiniz.`}},{id:"action_delay_7",type:"action_delay",position:{x:300,y:950},data:{label:"2 saat bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_action_delay_7",source:"message_text_6",target:"action_delay_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Randevu Alma / Degistirme / Iptal" senaryosu icin "Yeni Randevu Alma" akisini olustur.
+
+Aciklama: Musteri WhatsApp uzerinden yeni randevu almak istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, yarin icin sac kesimi randevusu almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Randevu Alma. Islem: Sac Kesimi. Tarih: Yarin. Musait slotlar kontrol ediliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Yarin icin sac kesimi musait saatlerimiz:
+
+1. 10:00 — Ayse Stilist
+2. 11:30 — Mehmet Stilist
+3. 14:00 — Ayse Stilist
+4. 16:00 — Zeynep Stilist
+
+Hangi saati tercih edersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "14:00 olsun lutfen"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu!
+
+Sac Kesimi
+Tarih: Yarin, 14:00
+Stilist: Ayse
+Sure: ~30 dakika
+
+Randevunuzdan 2 saat once hatirlatma mesaji gonderecegiz. Degisiklik icin buradan yazabilirsiniz."
+
+7. **action_delay** — 2 saat bekle
+   seconds: 300
+   Not: Randevu takvime islendi. R-2 saat hatirlatma zamanlandi. Stiliste bildirim gonderildi.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Randevu"]},{id:"gu12",title:"Referral / Arkadas Getir",description:"Memnun musteri arkadaslarini yonlendirebilir ama sistematik bir teklif yapilmiyor. Islem sonrasi Outbound ile arkadas getir kampanyasi gonderilerek organik buyume saglanir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU12: Islem Sonrasi Referral Teklifi",description:"Memnun musteri islem sonrasi arkadas getir teklifi aliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Memnun musteri tespit edildi: Elif Yilmaz — Memnun"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Outbound Template — T+1 gun]
+
+Merhaba Elif! Bizi tercih ettiginiz icin tesekkur ederiz.
+
+Memnuniyetiniz bizi mutlu etti! Size ozel bir teklifimiz var:
+
+Bir arkadasinizi getirin:
+Arkadasiniza: Ilk islemde %15 indirim
+Size: Ucretsiz fon hediye!
+
+Kisisel referral kodunuz: ELIF2026
+
+Arkadasiniz randevu alirken bu kodu paylasmasi yeterli.
+
+Arkadaslarinizla paylasir misiniz?`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tesekkurler Elif! Arkadasiniz ELIF2026 kodu ile randevu aldiginda size otomatik bildirim gonderecegiz.
+
+Ucretsiz fon hediyeniz hesabiniza tanimlanacak. Iyi gunler!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Referral kodu aktif: ELIF2026. Musteri bilgilendirildi. Kod kullanim takibi baslatildi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Referral / Arkadas Getir" senaryosu icin "Islem Sonrasi Referral Teklifi" akisini olustur.
+
+Aciklama: Memnun musteri islem sonrasi arkadas getir teklifi aliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Memnun musteri tespit edildi: Elif Yilmaz — Memnuniyet puani 5/5, 'Cok memnunum, tesekkurler!' yorumu. Referral teklifi tetikleniyor.
+
+2. **message_text** — Mesaj gonder
+   text: "[Outbound Template — T+1 gun]
+
+Merhaba Elif! Bizi tercih ettiginiz icin tesekkur ederiz.
+
+Memnuniyetiniz bizi mutlu etti! Size ozel bir teklifimiz var:
+
+Bir arkadasinizi getirin:
+Arkadasiniza: Ilk islemde %15 indirim
+Size: Ucretsiz fon hediye!
+
+Kisisel referral kodunuz: ELIF2026
+
+Arkadasiniz randevu alirken bu kodu paylasmasi yeterli.
+
+Arkadaslarinizla paylasir misiniz?"
+   Degiskenler: {{outbound_template_—_t+1_gun}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Harika teklif! Arkadasima gonderecegim."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tesekkurler Elif! Arkadasiniz ELIF2026 kodu ile randevu aldiginda size otomatik bildirim gonderecegiz.
+
+Ucretsiz fon hediyeniz hesabiniza tanimlanacak. Iyi gunler!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Referral kodu aktif: ELIF2026. Musteri bilgilendirildi. Kod kullanim takibi baslatildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Referral"]},{id:"gu08",title:"Sikayet: Begenmeme / Hata",description:"Musteri sac rengi, kesim sekli veya manikur sonucundan memnun degil ve sikayette bulunuyor. AI sikayet intent'ini tespit eder, empati template'i ile yaklasir ve duzeltme randevusu olusturur.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU08: Sac Rengi Sikayeti",description:"Musteri sac boyama sonucu beklediginden farkli ciktigini bildiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Intent: Sikayet (Sac Boyama). Sentiment: Negatif. "}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Cok uzgunum, sizin icin bu durumu anliyorum. Beklediginiz sonucu alamamaniz bizi de uzuyor.
+
+Sizi en kisa surede duzeltme icin davet etmek istiyoruz — tamamen ucretsiz olarak:
+
+1. Yarin 10:00 — Selin Stilist (ayni stilist)
+2. Yarin 14:00 — Derya Stilist (baska stilist)
+
+Hangisini tercih edersiniz? Dilerseniz salon yoneticimiz ile de gorusebilirsiniz.`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Duzeltme randevunuz olusturuldu:
+
+Sac Renk Duzeltme — Derya Stilist
+Yarin, 14:00
+Ucret: Ucretsiz
+
+Derya sizinle ilgilenecek ve istediginiz tonu elde edeceksiniz. Tekrar uzur dileriz.
+
+Baska bir konuda yardimci olabilir miyim?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Sikayet kaydedildi. Oncelikli duzeltme randevusu olusturuldu. Salon yoneticisine bildirim gonderildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_sentiment_3",source:"ai_intent_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_menu_4",source:"ai_sentiment_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sikayet: Begenmeme / Hata" senaryosu icin "Sac Rengi Sikayeti" akisini olustur.
+
+Aciklama: Musteri sac boyama sonucu beklediginden farkli ciktigini bildiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bugunku sac boyama hic bekledigim gibi olmadi. Cok koyu olmus, ben daha acik ton istemistim."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Intent: Sikayet (Sac Boyama). Sentiment: Negatif. Oncelik: Yuksek. Empati template tetikleniyor.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Cok uzgunum, sizin icin bu durumu anliyorum. Beklediginiz sonucu alamamaniz bizi de uzuyor.
+
+Sizi en kisa surede duzeltme icin davet etmek istiyoruz — tamamen ucretsiz olarak:
+
+1. Yarin 10:00 — Selin Stilist (ayni stilist)
+2. Yarin 14:00 — Derya Stilist (baska stilist)
+
+Hangisini tercih edersiniz? Dilerseniz salon yoneticimiz ile de gorusebilirsiniz."
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Derya ile yarin 14'e alalim"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Duzeltme randevunuz olusturuldu:
+
+Sac Renk Duzeltme — Derya Stilist
+Yarin, 14:00
+Ucret: Ucretsiz
+
+Derya sizinle ilgilenecek ve istediginiz tonu elde edeceksiniz. Tekrar uzur dileriz.
+
+Baska bir konuda yardimci olabilir miyim?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Sikayet kaydedildi. Oncelikli duzeltme randevusu olusturuldu. Salon yoneticisine bildirim gonderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Sikayet","Duzeltme"]},{id:"gu05",title:"Son Dakika Bosluk Bildirimi",description:"Randevu iptali olunca acilan slot bos kaliyor ve gelir kaybi yasiyor. Outbound Engine ile bekleme listesindeki musterilere aninda bildirim gonderilerek bos slot doldurulur.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU05: Iptal Sonrasi Otomatik Bildirim",description:"Musteri randevusunu iptal etti, acilan slot bekleme listesine bildirildi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Randevu iptali algilandi: Bugun 14:00 — Sac Boyama"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Outbound Template — 3 bekleme listesi musterisine]
+
+Merhaba [Ad]! Bugun 14:00'te Selin Stilist ile bos bir slot acildi.
+
+Islem: Sac Boyama
+Tarih: Bugun, 14:00
+Stilist: Selin
+
+Randevu almak icin 'EVET' yazin!`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Harika! Randevunuz kesinlesti:
+
+Sac Boyama — Selin Stilist
+Bugun, 14:00
+
+Salonumuza bekleriz!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Bos slot dolduruldu. 3 musteriden 1'i kabul etti. Gelir kaybi onlendi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Son Dakika Bosluk Bildirimi" senaryosu icin "Iptal Sonrasi Otomatik Bildirim" akisini olustur.
+
+Aciklama: Musteri randevusunu iptal etti, acilan slot bekleme listesine bildirildi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Randevu iptali algilandi: Bugun 14:00 — Sac Boyama slotu (Selin Stilist). Bekleme listesi: 3 musteri, son 30 gun randevusu: 12 musteri.
+
+2. **message_text** — Mesaj gonder
+   text: "[Outbound Template — 3 bekleme listesi musterisine]
+
+Merhaba [Ad]! Bugun 14:00'te Selin Stilist ile bos bir slot acildi.
+
+Islem: Sac Boyama
+Tarih: Bugun, 14:00
+Stilist: Selin
+
+Randevu almak icin 'EVET' yazin!"
+   Degiskenler: {{outbound_template_—_3_bekleme_listesi_musterisine}}, {{ad}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "EVET"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Harika! Randevunuz kesinlesti:
+
+Sac Boyama — Selin Stilist
+Bugun, 14:00
+
+Salonumuza bekleriz!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Bos slot dolduruldu. 3 musteriden 1'i kabul etti. Gelir kaybi onlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Outbound"]},{id:"gu09",title:"Urun Satisi (Bakim Urunleri)",description:"Musteri salonda kullanilan sampuan, bakim yagi veya cilt bakimi urunlerini satin almak istiyor. Knowledge base uzerinden urun katalogu sunulur ve siparis yonlendirmesi yapilir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU09: Spesifik Urun Sorusu",description:"Musteri salonda kullanilan belirli bir urunu sormak istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Urun Satisi. Musteri son ziyaret: 15 Subat"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Son ziyaretinizde kullanilan sampuan:
+
+Olaplex No.4 Bond Maintenance Sampuan
+Hacim: 250ml
+Fiyat: 850 TL
+Stok: Mevcut
+
+Ayrica tavsiye edilen tamamlayici urunler:
+- Olaplex No.5 Sac Kremi — 750 TL
+- Olaplex No.7 Sac Yagi — 650 TL
+
+Siparis vermek ister misiniz? Sonraki randevunuzda hazir eder veya kargo ile gonderebiliriz.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Siparisniniz alindi!
+
+Olaplex No.4 Sampuan — 850 TL
+Olaplex No.7 Sac Yagi — 650 TL
+Toplam: 1.500 TL
+
+Sonraki randevunuzda hazir olacak. Odeme salonda yapilacaktir.
+
+Baska bir sey ister misiniz?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Urun siparisi olusturuldu. Sonraki randevuda teslim edilecek. Ek gelir: 1.500 TL."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Urun Satisi (Bakim Urunleri)" senaryosu icin "Spesifik Urun Sorusu" akisini olustur.
+
+Aciklama: Musteri salonda kullanilan belirli bir urunu sormak istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Gecen geldigimde saclarima surdugunuz o sampuani almak istiyorum, adi neydi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Urun Satisi. Musteri son ziyaret: 15 Subat. Kullanilan urunler kontrol ediliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Son ziyaretinizde kullanilan sampuan:
+
+Olaplex No.4 Bond Maintenance Sampuan
+Hacim: 250ml
+Fiyat: 850 TL
+Stok: Mevcut
+
+Ayrica tavsiye edilen tamamlayici urunler:
+- Olaplex No.5 Sac Kremi — 750 TL
+- Olaplex No.7 Sac Yagi — 650 TL
+
+Siparis vermek ister misiniz? Sonraki randevunuzda hazir eder veya kargo ile gonderebiliriz."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sampuan ve sac yagini alayim, randevumda hazirlayın"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Siparisniniz alindi!
+
+Olaplex No.4 Sampuan — 850 TL
+Olaplex No.7 Sac Yagi — 650 TL
+Toplam: 1.500 TL
+
+Sonraki randevunuzda hazir olacak. Odeme salonda yapilacaktir.
+
+Baska bir sey ister misiniz?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Urun siparisi olusturuldu. Sonraki randevuda teslim edilecek. Ek gelir: 1.500 TL."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Urun","Satis"]},{id:"gu18",title:"VIP Musteri Yonetimi",description:"Ayda 3+ kez gelen ve yuksek harcama yapan musteriler tanimlanamıyor, ozel muamele yapılamiyor. AI frekans + harcama analizi ile otomatik VIP scoring ve proaktif ozel teklifler.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU18: Otomatik VIP Terfisi",description:"Musteri VIP esigine ulasti, otomatik bilgilendirme ve ayricalik sunumu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"AI Analiz: Derya Ozturk — Son 3 ay: 11 ziyaret, to"}},{id:"message_menu_2",type:"message_menu",position:{x:300,y:200},data:{label:"Menu",text:`Merhaba Derya Hanim! Size cok guzel bir haberimiz var:
+
+Siz artik VIP musterimizsiniz! Sadakatiniz icin tesekkur ederiz.
+
+VIP Ayricaliklarniz:
+Oncelikli randevu hakki
+Tum hizmetlerde %10 surekli indirim
+Ucretsiz saç bakım urunleri (ayda 1)
+Ozel gun surprizleri
+
+Bundan sonra her randevunuzda VIP avantajlariniz otomatik uygulanacak!`,options:[]}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`VIP musterimiz olarak size oncelikli slotlar ayirdik:
+
+Yarin Carsamba: 10:00 (VIP slot)
+Persembe: 14:00, 16:00 (VIP slot)
+
+Dip boyama: 1.200 TL → VIP fiyat: 1.080 TL (%10 indirim)
+
+Hangi gun uygun?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"VIP randevu olusturuldu. VIP indirim otomatik uygulandi. Oncelikli slot atandi."}}],edges:[{id:"e_trigger_start_1_message_menu_2",source:"trigger_start_1",target:"message_menu_2"},{id:"e_message_menu_2_ai_intent_3",source:"message_menu_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"VIP Musteri Yonetimi" senaryosu icin "Otomatik VIP Terfisi" akisini olustur.
+
+Aciklama: Musteri VIP esigine ulasti, otomatik bilgilendirme ve ayricalik sunumu.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: AI Analiz: Derya Ozturk — Son 3 ay: 11 ziyaret, toplam harcama 8.400 TL. VIP esigi asildi (3+ ziyaret/ay, 2000+ TL/ay). VIP terfisi tetikleniyor.
+
+2. **message_menu** — Secenekli mesaj
+   Mesaj: "Merhaba Derya Hanim! Size cok guzel bir haberimiz var:
+
+Siz artik VIP musterimizsiniz! Sadakatiniz icin tesekkur ederiz.
+
+VIP Ayricaliklarniz:
+Oncelikli randevu hakki
+Tum hizmetlerde %10 surekli indirim
+Ucretsiz saç bakım urunleri (ayda 1)
+Ozel gun surprizleri
+
+Bundan sonra her randevunuzda VIP avantajlariniz otomatik uygulanacak!"
+   Her secenek icin ayri cikis handle'i olustur
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Vay, cok tesekkur ederim! Bu hafta sac boyama yaptirmak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "VIP musterimiz olarak size oncelikli slotlar ayirdik:
+
+Yarin Carsamba: 10:00 (VIP slot)
+Persembe: 14:00, 16:00 (VIP slot)
+
+Dip boyama: 1.200 TL → VIP fiyat: 1.080 TL (%10 indirim)
+
+Hangi gun uygun?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Yarin 10:00 olsun"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "VIP randevu olusturuldu. VIP indirim otomatik uygulandi. Oncelikli slot atandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Proaktif","VIP"]},{id:"gu13",title:"Yorum / Review Isteme",description:"Sistematik yorum toplama yapilmiyor ve Google'da yeterli puan yok. Islem sonrasi T+1 gun memnuniyet anketi ve Google yorum linki gonderilerek online itibar guclendirilir.",category:"GUZELLIK SALONU",niche:"beauty",flowConfig:{version:2,metadata:{name:"GU13: Memnun Musteri — Google Yorum",description:"Musteri yuksek puan veriyor ve Google yorumuna yonlendiriliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"T+1 anket tetiklendi: Sinem Aksoy — Dunku islem: S"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Outbound Template — T+1 gun]
+
+Merhaba Sinem! Dun salonumuza geldiginiz icin tesekkurler.
+
+Deneyiminizi puanlar misiniz?
+
+[1] [2] [3] [4] [5]
+
+(5 = Mukemmel)`}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Cok tesekkurler! Mukemmel puaniniz bizi cok mutlu etti!
+
+Deneyiminizi Google'da da paylasir misiniz? Yeni musterilerimizin karar vermesinde cok yardimci oluyor.
+
+Google Yorum: [Google Review Linki]
+
+30 saniyenizi alir ve bize cok deger katar!`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Cok tesekkur ederiz Sinem! Yorumunuz bize buyuk destek.
+
+Sizi tekrar gorunce mutlu olacagiz. Iyi gunler!`}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Memnuniyet: 5/5. Google yorum linki gonderildi. Musteri yorum yazdigini bildirdi. Online itibar guclendirildi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_message_text_3",source:"message_text_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_utility_note_6",source:"message_text_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yorum / Review Isteme" senaryosu icin "Memnun Musteri — Google Yorum" akisini olustur.
+
+Aciklama: Musteri yuksek puan veriyor ve Google yorumuna yonlendiriliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: T+1 anket tetiklendi: Sinem Aksoy — Dunku islem: Sac Kesimi + Fon, Stilist: Ayse. Anket gonderiliyor.
+
+2. **message_text** — Mesaj gonder
+   text: "[Outbound Template — T+1 gun]
+
+Merhaba Sinem! Dun salonumuza geldiginiz icin tesekkurler.
+
+Deneyiminizi puanlar misiniz?
+
+[1] [2] [3] [4] [5]
+
+(5 = Mukemmel)"
+   Degiskenler: {{outbound_template_—_t+1_gun}}, {{1}}, {{2}}, {{3}}, {{4}}, {{5}}
+
+   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)
+
+3. **message_text** — Mesaj gonder
+   text: "Cok tesekkurler! Mukemmel puaniniz bizi cok mutlu etti!
+
+Deneyiminizi Google'da da paylasir misiniz? Yeni musterilerimizin karar vermesinde cok yardimci oluyor.
+
+Google Yorum: [Google Review Linki]
+
+30 saniyenizi alir ve bize cok deger katar!"
+   Degiskenler: {{google_review_linki}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Yazdim! Cok memnunum gercekten."
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Cok tesekkur ederiz Sinem! Yorumunuz bize buyuk destek.
+
+Sizi tekrar gorunce mutlu olacagiz. Iyi gunler!"
+
+6. **utility_note** — Akis sonuc notu
+   text: "Memnuniyet: 5/5. Google yorum linki gonderildi. Musteri yorum yazdigini bildirdi. Online itibar guclendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Proaktif","Review"]},{id:"cs02",title:"AI → Insan Handoff (Eskalasyon)",description:"AI'nin cozemedigi veya hassas konularda konusmayi insana devretme mekanizmasi. Confidence esigi altinda kalan cevaplar, belirli intent'ler ve 3+ mesaj dongusune giren konusmalar otomatik olarak tum context ile birlikte insan agent'a aktarilir.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS02: Confidence Dusuk — Otomatik Handoff",description:"AI soruya dogru cevap veremiyor, confidence esik altinda."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Sozlesme Degisikligi. Confidence: %35. Ned"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Bu konuda size en dogru bilgiyi verebilmek icin sizi uzman temsilcimize yonlendiriyorum. Lutfen kisa bir sure bekleyin, tum konusma gecmisiniz aktarilacak."}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"HANDOFF: Konusma #4521 → Agent Selin'e atandi. Context aktarimi: 1 mesaj, musteri profili, AI analizi (hukuki konu, confidence %35)."}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`[Agent Selin devralir]
+
+Merhaba, ben Selin. Sozlesmenizin 3. maddesindeki ceza kosulu hakkinda yardimci olacagim. Sozlesme numaranizi paylasir misiniz?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:"Tesekkurler. Sozlesmenizi inceliyorum. Bu degisiklik icin hukuk departmanimizin onayiyla size yarin detayli donus yapacagim."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_text_6",source:"utility_set_variable_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"AI → Insan Handoff (Eskalasyon)" senaryosu icin "Confidence Dusuk — Otomatik Handoff" akisini olustur.
+
+Aciklama: AI soruya dogru cevap veremiyor, confidence esik altinda.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Gecen yilki sozlesmemdeki 3. maddedeki ceza kosulunu degistirmek istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Sozlesme Degisikligi. Confidence: %35. Neden: Hukuki konu, spesifik madde referansi. HANDOFF TETIKLENDI.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Bu konuda size en dogru bilgiyi verebilmek icin sizi uzman temsilcimize yonlendiriyorum. Lutfen kisa bir sure bekleyin, tum konusma gecmisiniz aktarilacak."
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: HANDOFF: Konusma #4521 → Agent Selin'e atandi. Context aktarimi: 1 mesaj, musteri profili, AI analizi (hukuki konu, confidence %35).
+
+6. **message_text** — Mesaj gonder
+   text: "[Agent Selin devralir]
+
+Merhaba, ben Selin. Sozlesmenizin 3. maddesindeki ceza kosulu hakkinda yardimci olacagim. Sozlesme numaranizi paylasir misiniz?"
+   Degiskenler: {{agent_selin_devralir}}
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "SZL-2025-1234"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Tesekkurler. Sozlesmenizi inceliyorum. Bu degisiklik icin hukuk departmanimizin onayiyla size yarin detayli donus yapacagim."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Dusuk Confidence","Handoff"]},{id:"cs03",title:"AI Hallucination Guardrail",description:"AI'nin tibbi, finansal veya hukuki konularda yanlis bilgi uretme (hallucination) riskine karsi koruma mekanizmasi. Konu bazli guardrail kurallari, confidence routing ve otomatik insan handoff ile AI hatalari onlenir.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS03: Tibbi Soru Guardrail",description:"Hasta AI'ya tibbi teshis soruyor, guardrail devreye giriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Konu Siniflandirma: TIBBI (kirmizi). Alt kategori:"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Bu belirtiler onemli ve bir saglik profesyoneli tarafindan degerlendirilmelidir. AI olarak tibbi teshis koyamam ve ilac oneremem.
+
+ACIL DURUMDA: Hemen 112'yi arayin.
+
+Sizi doktor/hemsire ekibimize yonlendiriyorum. Lutfen kisa sure bekleyin.`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"GUARDRAIL HANDOFF: Tibbi konu, teshis/tedavi talebi. Konusma → Saglik personeline atandi."}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`[Hemsire devralir]
+
+Merhaba, ben Hemsire Elif. Belirtilerinizi duydum. Gogus agriniz ne zaman basladi ve nefes darliginiz surekli mi?`}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_text_6",source:"utility_set_variable_5",target:"message_text_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"AI Hallucination Guardrail" senaryosu icin "Tibbi Soru Guardrail" akisini olustur.
+
+Aciklama: Hasta AI'ya tibbi teshis soruyor, guardrail devreye giriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Gogsum agriyor ve nefes darligim var. Bu kalp krizi mi? Ne ilac almaliyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Konu Siniflandirma: TIBBI (kirmizi). Alt kategori: Teshis + Tedavi Talebi. Guardrail: AKTIF. AI cevap ENGELLENDI. Insan handoff tetikleniyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Bu belirtiler onemli ve bir saglik profesyoneli tarafindan degerlendirilmelidir. AI olarak tibbi teshis koyamam ve ilac oneremem.
+
+ACIL DURUMDA: Hemen 112'yi arayin.
+
+Sizi doktor/hemsire ekibimize yonlendiriyorum. Lutfen kisa sure bekleyin."
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: GUARDRAIL HANDOFF: Tibbi konu, teshis/tedavi talebi. Konusma → Saglik personeline atandi.
+
+6. **message_text** — Mesaj gonder
+   text: "[Hemsire devralir]
+
+Merhaba, ben Hemsire Elif. Belirtilerinizi duydum. Gogus agriniz ne zaman basladi ve nefes darliginiz surekli mi?"
+   Degiskenler: {{hemsire_devralir}}
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Tibbi Guardrail","Insan Handoff"]},{id:"cs05",title:"Churn Sinyali Tespiti",description:"Musteri acikca sikayet etmeden once verilen terk sinyallerini tespit etme sistemi. AI, pasif-agresif mesaj tonunu, iletisim frekans dususunu ve davranis kaliplari degisikligini analiz ederek churn risk uyarisi olusturur.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS05: Pasif-Agresif Ton Tespiti",description:"Musteri acikca sikayet etmiyor ama mesaj tonu degismis."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Musteri Profili: Mega Market — 2 yildir musteri, a"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:`Son 3 ay mesaj ton analizi:
+- 3 ay once: 'Harika hizmet, tesekkurler!' (Pozitif: %92)
+- 2 ay once: 'Tamam.' (Notr: %55)
+- Bu ay: 'Baskasina bakiyorum artik.' (Negatif: %78)`}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:`Churn Sinyal Tespiti:
+1. Ton degisimi: Pozitif → N`}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Alert",variable_name:"alert_status",value_expression:"CHURN UYARISI → Account Manager Deniz: 'Mega Market churn riski 85/100. Son 3 ayda ton ve frekans ciddi dusus. Hemen iletisim kurun!'"}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"Otomatik Retention Aksiyonu: %15 ozel indirim teklifi + kisisel arama gorevlendirildi."}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`[Account Manager arar]
+
+Mega Market ekibine merhaba, ben Deniz. Sizin icin ozel bir teklif hazirlandi. Mevcut paketinize %15 indirim + ucretsiz 1 ay ek hizmet sunmak istiyoruz. Gorusebilir miyiz?`}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_ai_sentiment_3",source:"utility_set_variable_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_utility_set_variable_4",source:"ai_sentiment_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_utility_set_variable_5",source:"utility_set_variable_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_text_6",source:"utility_set_variable_5",target:"message_text_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Churn Sinyali Tespiti" senaryosu icin "Pasif-Agresif Ton Tespiti" akisini olustur.
+
+Aciklama: Musteri acikca sikayet etmiyor ama mesaj tonu degismis.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Musteri Profili: Mega Market — 2 yildir musteri, aylik 15.000 TL harcama.
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: Son 3 ay mesaj ton analizi:
+- 3 ay once: 'Harika hizmet, tesekkurler!' (Pozitif: %92)
+- 2 ay once: 'Tamam.' (Notr: %55)
+- Bu ay: 'Baskasina bakiyorum artik.' (Negatif: %78)
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Churn Sinyal Tespiti:
+1. Ton degisimi: Pozitif → Notr → Negatif (3 ay trend)
+2. Frekans: Haftalik 5 mesaj → aylik 1 mesaj
+3. Anahtar kelime: 'baskasina bakiyorum'
+
+Churn Risk Skoru: 85/100 — YUKSEK RISK
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "CHURN UYARISI → Account Manager Deniz: 'Mega Market churn riski 85/100. Son 3 ayda ton ve frekans ciddi dusus. Hemen iletisim kurun!'"
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: Otomatik Retention Aksiyonu: %15 ozel indirim teklifi + kisisel arama gorevlendirildi.
+
+6. **message_text** — Mesaj gonder
+   text: "[Account Manager arar]
+
+Mega Market ekibine merhaba, ben Deniz. Sizin icin ozel bir teklif hazirlandi. Mevcut paketinize %15 indirim + ucretsiz 1 ay ek hizmet sunmak istiyoruz. Gorusebilir miyiz?"
+   Degiskenler: {{account_manager_arar}}
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Ton Analizi","Churn Risk"]},{id:"cs08",title:"Compliance Otomasyonu (KVKK/GDPR)",description:"Kisisel veri isleme sureclerinde sistematik compliance eksikligi: onam kayitlari tutulmuyor, veri silme/erisim talepleri takip edilmiyor, audit trail yok. Consent flow, opt-in log, audit trail ve veri silme/erisim otomasyonu ile tam KVKK/GDPR uyumu.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS08: Veri Silme Talebi (Unutulma Hakki)",description:"Musteri kisisel verilerinin silinmesini talep ediyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Veri Silme Talebi (DSAR). KVKK Madde 7: Un"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Talebiniz alinmistir. KVKK kapsaminda veri silme talebinizi isleme aliyoruz.
+
+Talep No: DSAR-2026-0089
+Basvuru Tarihi: 20 Subat 2026
+Yasal Sure: 30 gun
+
+Kimlik dogrulama icin TC kimlik numaranizin son 4 hanesini paylasir misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_set_variable_6",type:"utility_set_variable",position:{x:300,y:800},data:{label:"Durum",variable_name:"status",value_expression:"Kimlik dogrulamasi basarili. DSAR-2026-0089 isleme alindi. DPO'ya onay bildirimi gonderildi."}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Kimliginiz dogrulandi. Talebiniz isleme alindi ve yasal sure icinde (en gec 22 Mart 2026) tamamlanacaktir. Islem tamamlandiginda size bildirim gonderecegiz.
+
+Silinecek veri kategorileri: iletisim bilgileri, konusma gecmisi, siparis gecmisi.`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"AUDIT TRAIL: DSAR-2026-0089 | Talep: Veri Silme | Musteri: +905xxxxxxxxx | Dogrulama: Basarili | DPO Onay: Bekliyor | Yasal Sure: 30 gun"}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_set_variable_6",source:"ai_intent_5",target:"utility_set_variable_6"},{id:"e_utility_set_variable_6_message_text_7",source:"utility_set_variable_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Compliance Otomasyonu (KVKK/GDPR)" senaryosu icin "Veri Silme Talebi (Unutulma Hakki)" akisini olustur.
+
+Aciklama: Musteri kisisel verilerinin silinmesini talep ediyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "KVKK kapsaminda tum kisisel verilerimin silinmesini talep ediyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Veri Silme Talebi (DSAR). KVKK Madde 7: Unutulma Hakki. Otomatik DSAR akisi baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Talebiniz alinmistir. KVKK kapsaminda veri silme talebinizi isleme aliyoruz.
+
+Talep No: DSAR-2026-0089
+Basvuru Tarihi: 20 Subat 2026
+Yasal Sure: 30 gun
+
+Kimlik dogrulama icin TC kimlik numaranizin son 4 hanesini paylasir misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "3456"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_set_variable** — Durum guncelle
+   Deger: Kimlik dogrulamasi basarili. DSAR-2026-0089 isleme alindi. DPO'ya onay bildirimi gonderildi.
+
+7. **message_text** — Mesaj gonder
+   text: "Kimliginiz dogrulandi. Talebiniz isleme alindi ve yasal sure icinde (en gec 22 Mart 2026) tamamlanacaktir. Islem tamamlandiginda size bildirim gonderecegiz.
+
+Silinecek veri kategorileri: iletisim bilgileri, konusma gecmisi, siparis gecmisi."
+
+8. **utility_note** — Akis sonuc notu
+   text: "AUDIT TRAIL: DSAR-2026-0089 | Talep: Veri Silme | Musteri: +905xxxxxxxxx | Dogrulama: Basarili | DPO Onay: Bekliyor | Yasal Sure: 30 gun"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["KVKK","Veri Silme"]},{id:"cs01",title:"Opt-in Toplama ve Onam Yonetimi",description:"WhatsApp Business Policy geregi musterilerden mesaj gonderim onami (opt-in) alinmasi zorunludur. Bu senaryo coklu kanaldan opt-in toplama, onam kayitlarinin saklanmasi ve STOP komutuyla aninda abonelik iptali (unsubscribe) sureclerini yonetir.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS01: WhatsApp Ilk Mesajda Opt-in",description:"Musteri ilk kez WhatsApp'tan yaziyor, opt-in alinmasi gerekiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Hosgeldiniz! Size en iyi hizmeti sunabilmemiz icin kisisel verilerinizin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir.
+
+Kisisel verileriniz 6698 sayili KVKK kapsaminda islenmektedir. Detay: [KVKK Linki]
+
+Onaylamak icin EVET, reddetmek icin HAYIR yazin.`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Opt-in Kaydedildi: Tarih: 2026-02-20 14:35, Kanal: WhatsApp, Musteri: +905xxxxxxxxx, Onam: EVET"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Tesekkurler, onaminiz kaydedildi! Size nasil yardimci olabilirim? Urunlerimiz, fiyatlar veya kampanyalar hakkinda bilgi verebilirim."}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:"Su an aktif kampanyalarimiz: [Kampanya detaylari]. Begendiginiz urun varsa detayli bilgi verebilirim."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_message_text_3",source:"ai_intent_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_utility_note_5",source:"ai_intent_4",target:"utility_note_5"},{id:"e_utility_note_5_message_text_6",source:"utility_note_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Opt-in Toplama ve Onam Yonetimi" senaryosu icin "WhatsApp Ilk Mesajda Opt-in" akisini olustur.
+
+Aciklama: Musteri ilk kez WhatsApp'tan yaziyor, opt-in alinmasi gerekiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, urunleriniz hakkinda bilgi almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **message_text** — Mesaj gonder
+   text: "Hosgeldiniz! Size en iyi hizmeti sunabilmemiz icin kisisel verilerinizin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir.
+
+Kisisel verileriniz 6698 sayili KVKK kapsaminda islenmektedir. Detay: [KVKK Linki]
+
+Onaylamak icin EVET, reddetmek icin HAYIR yazin."
+   Degiskenler: {{kvkk_linki}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "EVET"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **utility_note** — Akis sonuc notu
+   text: "Opt-in Kaydedildi: Tarih: 2026-02-20 14:35, Kanal: WhatsApp, Musteri: +905xxxxxxxxx, Onam: EVET"
+
+6. **message_text** — Mesaj gonder
+   text: "Tesekkurler, onaminiz kaydedildi! Size nasil yardimci olabilirim? Urunlerimiz, fiyatlar veya kampanyalar hakkinda bilgi verebilirim."
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kampanyalar neler?"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Su an aktif kampanyalarimiz: [Kampanya detaylari]. Begendiginiz urun varsa detayli bilgi verebilirim."
+   Degiskenler: {{kampanya_detaylari}}
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Opt-in","KVKK Uyum"]},{id:"cs07",title:"Revenue Attribution",description:"Satisin hangi kanaldan geldigini ve AI mi insan temsilci mi kapattigini bilmek mumkun degil. Conversion tracking, AI vs Human flag ve kanal bazli ROI raporlamasi ile her satisin kaynaGi net olarak izlenir.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS07: AI Satisi — Attribution Kaydı",description:"Musteri WhatsApp'tan AI chatbot ile alisveris yapiyor, satis AI'ya atfediliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Tracking: Kanal=WhatsApp, Temsilci=AI, Etkileşim=U"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba! 14 Ayar Altin Kolye su an 12.500 TL. Bu hafta sonu ozel %10 indirimle 11.250 TL. Sepete ekleyeyim mi?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Harika secim! Odeme linkiniz: [Link]. Odeme tamamlaninca kargo bilgisini hemen paylasacagim."}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:`CONVERSION KAYDEDILDI:
+- Satis Tutari: 11.250 TL
+- Kanal: WhatsApp
+- Temsilci: AI (otonom satis)
+- Attribution: Last Touch = AI/WhatsApp
+- Musteri: Ilk satis`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Revenue Dashboard guncellendi: AI WhatsApp satislari +11.250 TL."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"},{id:"e_utility_note_8_utility_note_9",source:"utility_note_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Revenue Attribution" senaryosu icin "AI Satisi — Attribution Kaydı" akisini olustur.
+
+Aciklama: Musteri WhatsApp'tan AI chatbot ile alisveris yapiyor, satis AI'ya atfediliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, su altin kolye kac TL?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Tracking: Kanal=WhatsApp, Temsilci=AI, Etkileşim=Urun Sorusu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! 14 Ayar Altin Kolye su an 12.500 TL. Bu hafta sonu ozel %10 indirimle 11.250 TL. Sepete ekleyeyim mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, satin almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika secim! Odeme linkiniz: [Link]. Odeme tamamlaninca kargo bilgisini hemen paylasacagim."
+   Degiskenler: {{link}}
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "[Odeme tamamlandi]"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "CONVERSION KAYDEDILDI:
+- Satis Tutari: 11.250 TL
+- Kanal: WhatsApp
+- Temsilci: AI (otonom satis)
+- Attribution: Last Touch = AI/WhatsApp
+- Musteri: Ilk satis"
+
+9. **utility_note** — Akis sonuc notu
+   text: "Revenue Dashboard guncellendi: AI WhatsApp satislari +11.250 TL."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["AI Satis","Attribution"]},{id:"cs04",title:"SLA Watchdog / Failover",description:"Mesaj bekleme suresi asildiginda sistematik bir eskalasyon mekanizmasi olmadigi icin musteriler cevapsiz kaliyor. Tenant bazli SLA tanimlari, kademeliuyari sistemi (uyari, eskalasyon, emergency routing) ve otomatik failover ile hicbir mesaj kaybolmaz.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS04: Kademeli Eskalasyon Akisi",description:"Mesaj bekleme suresi asildikca kademeli eskalasyon tetikleniyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"action_delay_3",type:"action_delay",position:{x:300,y:350},data:{label:"30 dk bekle",seconds:300}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Alert",variable_name:"alert_status",value_expression:"Dakika 21 (SLA %70) — SEVIYE 1: Agent Ahmet'e uyari push gonderildi."}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Alert",variable_name:"alert_status",value_expression:"Dakika 27 (SLA %90) — SEVIYE 2: Supervisor Murat'a eskalasyon. 'Ahmet 27 dk cevap vermedi, mudahale gerekli.'"}},{id:"utility_set_variable_6",type:"utility_set_variable",position:{x:300,y:800},data:{label:"Durum",variable_name:"status",value_expression:"Dakika 30 (SLA %100) — SEVIYE 3: EMERGENCY ROUTING. Agent Selin'e yeniden ataniyor."}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`[Agent Selin devralir]
+
+Merhaba, gecikme icin ozur dilerim. Ben Selin, hemen sizinle ilgileniyorum. Siparisizle ilgili sorunu anlatir misiniz?`}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"Yanit Analiz"}},{id:"message_text_9",type:"message_text",position:{x:300,y:1250},data:{label:"Mesaj",text:"Anliyorum, hemen kontrol ediyorum. Yanlis urunu degistirmek icin gerekli islemi baslatiyorum."}},{id:"utility_note_10",type:"utility_note",position:{x:300,y:1400},data:{label:"Sonuc",text:"SLA sonuc: Failover basarili. Musteri 31. dakikada cevap aldi. Ihlal: minimum (1 dk)."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_action_delay_3",source:"ai_intent_2",target:"action_delay_3"},{id:"e_action_delay_3_utility_set_variable_4",source:"action_delay_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_utility_set_variable_5",source:"utility_set_variable_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_utility_set_variable_6",source:"utility_set_variable_5",target:"utility_set_variable_6"},{id:"e_utility_set_variable_6_message_text_7",source:"utility_set_variable_6",target:"message_text_7"},{id:"e_message_text_7_ai_intent_8",source:"message_text_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_message_text_9",source:"ai_intent_8",target:"message_text_9"},{id:"e_message_text_9_utility_note_10",source:"message_text_9",target:"utility_note_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"SLA Watchdog / Failover" senaryosu icin "Kademeli Eskalasyon Akisi" akisini olustur.
+
+Aciklama: Mesaj bekleme suresi asildikca kademeli eskalasyon tetikleniyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, siparisimle ilgili bir sorun var."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **action_delay** — 30 dk bekle
+   seconds: 300
+   Not: Mesaj alindi. SLA baslatildi: 30 dakika. Atanan agent: Ahmet.
+
+4. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "Dakika 21 (SLA %70) — SEVIYE 1: Agent Ahmet'e uyari push gonderildi."
+
+5. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "Dakika 27 (SLA %90) — SEVIYE 2: Supervisor Murat'a eskalasyon. 'Ahmet 27 dk cevap vermedi, mudahale gerekli.'"
+
+6. **utility_set_variable** — Durum guncelle
+   Deger: Dakika 30 (SLA %100) — SEVIYE 3: EMERGENCY ROUTING. Agent Selin'e yeniden ataniyor.
+
+7. **message_text** — Mesaj gonder
+   text: "[Agent Selin devralir]
+
+Merhaba, gecikme icin ozur dilerim. Ben Selin, hemen sizinle ilgileniyorum. Siparisizle ilgili sorunu anlatir misiniz?"
+   Degiskenler: {{agent_selin_devralir}}
+
+8. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Siparis numaram 45678, yanlis urun geldi."
+   high_confidence → devam | low_confidence → action_handoff
+
+9. **message_text** — Mesaj gonder
+   text: "Anliyorum, hemen kontrol ediyorum. Yanlis urunu degistirmek icin gerekli islemi baslatiyorum."
+
+10. **utility_note** — Akis sonuc notu
+   text: "SLA sonuc: Failover basarili. Musteri 31. dakikada cevap aldi. Ihlal: minimum (1 dk)."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["SLA Izleme","Kademeli Eskalasyon"]},{id:"cs06",title:"Unified Customer Timeline",description:"Farkli kanallardan (WhatsApp, telefon, e-posta, sosyal medya) gelen tum musteri etkileşimleri tek bir kronolojik zaman cizelgesinde goruntulenemiyor. Kanal eslestirme, kimlik birlestirme ve kronolojik timeline ile 360 derece musteri gorunumu.",category:"CROSS-SECTOR KRITIK",niche:"crossSector",flowConfig:{version:2,metadata:{name:"CS06: Coklu Kanal Musteri — Timeline Gorunumu",description:"Musteri farkli kanallardan iletisime gecmis, agent tum gecmisi gorur."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"Musteri Tespiti: Ali Yilmaz (+905xxxxxxxxx). Identity Merge: 3 kanal eslesmis."}},{id:"action_api_call_4",type:"action_api_call",position:{x:300,y:500},data:{label:"API Cagrisi",method:"GET",url:"",response_variable:"api_result"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Context Ozeti: Ali Bey 12 Sub'da fiyat sordu, 14 S"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Merhaba Ali Bey! 14 Subat'taki telefonla verdiginiz siparis hakkinda mi sormak istiyorsunuz? Biliyorum 18'inde Instagram'dan da teslimatla ilgili yazmistiniz. Siparisiz su an dagitim merkezinde, yarin teslim edilecek."}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:"Tum gorusmelerinizi tek ekranda goruyorum, tekrar anlatmaniza gerek yok. Baska bir sorunuz var mi?"}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_utility_set_variable_3",source:"ai_intent_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_action_api_call_4",source:"utility_set_variable_3",target:"action_api_call_4"},{id:"e_action_api_call_4_ai_intent_5",source:"action_api_call_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Unified Customer Timeline" senaryosu icin "Coklu Kanal Musteri — Timeline Gorunumu" akisini olustur.
+
+Aciklama: Musteri farkli kanallardan iletisime gecmis, agent tum gecmisi gorur.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, gecen hafta aradigim konu hakkinda bilgi almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: Musteri Tespiti: Ali Yilmaz (+905xxxxxxxxx). Identity Merge: 3 kanal eslesmis.
+
+4. **action_api_call** — Dis servis cagrisi
+   Islem: TIMELINE YUKLENDI:
+- 12 Sub: WhatsApp — 'Urun fiyat sorusu' (AI cevapladi)
+- 14 Sub: Telefon — 3:45 dk arama, 'Siparis olusturma' (Agent Mehmet)
+- 15 Sub: E-posta — 'Fatura talebi' (Otomatik gonderildi)
+- 18 Sub: Instagram DM — 'Teslimat sorusu' (AI cevapladi)
+- 20 Sub: WhatsApp — SIMDI
+   Basarili → sonraki node | Hata → action_handoff
+
+5. **ai_intent** — Niyet tespiti
+   Analiz: Context Ozeti: Ali Bey 12 Sub'da fiyat sordu, 14 Sub'da telefonla siparis verdi, 15 Sub'da fatura istedi, 18 Sub'da teslimat sordu. Simdi muhtemelen teslimat veya siparis takip soruyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Merhaba Ali Bey! 14 Subat'taki telefonla verdiginiz siparis hakkinda mi sormak istiyorsunuz? Biliyorum 18'inde Instagram'dan da teslimatla ilgili yazmistiniz. Siparisiz su an dagitim merkezinde, yarin teslim edilecek."
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, tam da onu soracaktim. Nereden bildiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Tum gorusmelerinizi tek ekranda goruyorum, tekrar anlatmaniza gerek yok. Baska bir sorunuz var mi?"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Timeline","Coklu Kanal"]},{id:"d30",title:"Acil Agri: Gece Mesaji / Triage",description:"Gece veya mesai disinda acil dis agrisi ile yazan hastanin durumunu AI ile triage eden, hafif vakalari ev bakimi ile yonlendiren, agir vakalari acil klinige yonlendiren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D30: Gece Acil — Hafif Vaka",description:"Hasta gece dis agrisi ile yaziyor, durum hafif — ev bakimi oneriliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Acil Dis Agrisi. Saat: 23:45. Severity sor"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Gecmis olsun! Size yardimci olayim. Birkaç soru sormam gerekiyor:
+
+1️⃣ Agri ne zaman basladi?
+2️⃣ Sislik var mi?
+3️⃣ Ates var mi?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Severity: HAFIF. Sislik yok, ates yok, 2 saat. Ev "}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Durumunuz acil degil gibi gorunuyor ama rahatsiz edici oldugunu anliyorum.
+
+Su an yapabilecekleriniz:
+💊 Agri kesici: Ibuprofen 400mg
+🧊 Soguk kompres: Yanak disina 15 dk
+🚫 Sicak yiyecek/icecek icmeyin
+
+📅 Yarin icin acil randevu ayarlayalim mi? Ilk saat 09:00 musait.`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Hafif vaka — ev bakimi rehberi gonderildi. Ertesi gun randevu teklif edildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Acil Agri: Gece Mesaji / Triage" senaryosu icin "Gece Acil — Hafif Vaka" akisini olustur.
+
+Aciklama: Hasta gece dis agrisi ile yaziyor, durum hafif — ev bakimi oneriliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Disim cok agriyor, ne yapabilirim? Acil durum!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Acil Dis Agrisi. Saat: 23:45. Severity sorulari baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Gecmis olsun! Size yardimci olayim. Birkaç soru sormam gerekiyor:
+
+1️⃣ Agri ne zaman basladi?
+2️⃣ Sislik var mi?
+3️⃣ Ates var mi?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "2 saat once basladi, sislik yok, ates yok."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Severity: HAFIF. Sislik yok, ates yok, 2 saat. Ev bakimi uygun.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Durumunuz acil degil gibi gorunuyor ama rahatsiz edici oldugunu anliyorum.
+
+Su an yapabilecekleriniz:
+💊 Agri kesici: Ibuprofen 400mg
+🧊 Soguk kompres: Yanak disina 15 dk
+🚫 Sicak yiyecek/icecek icmeyin
+
+📅 Yarin icin acil randevu ayarlayalim mi? Ilk saat 09:00 musait."
+
+8. **utility_note** — Akis sonuc notu
+   text: "Hafif vaka — ev bakimi rehberi gonderildi. Ertesi gun randevu teklif edildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Acil","Hafif"]},{id:"d38",title:"Cocuk Hasta: Korku Yonetimi",description:"Cocugu dis doktorundan korkan ebeveynlere AI ile cocuk dostu yaklasim bilgisi sunan ve uygun pedodontist yonlendirmesi yapan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D38: Cocuk Korku — Pedodonti Yonlendirme",description:"Ebeveyn cocugunu dis doktoruna gotururken yardim istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Cocuk Hasta — Dis Korkusu. Pedodonti yonle"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Anliyoruz! Cocuklarda dis korkusu cok yaygin, endiselenmeyin 🙏
+
+Klinigimizde cocuk dis uzmanimiz (pedodontist) var:
+
+👩‍⚕️ Dr. Zeynep — Cocuk Dis Uzmani
+🎮 Cocuk dostu muayene odasi
+🎨 Oyun alani ve odul sistemi
+
+💡 Ipuclari:
+• Randevu oncesi 'dis perisi' hikayesi anlatabilirsiniz
+• Ilk ziyaret taninma amacli — islem yapilmaz
+• Pozitif dil kullanin: 'Agri' yerine 'geldigik'
+
+Dr. Zeynep'e randevu ayarlayalim mi?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Cocuk hasta — pedodonti yonlendirmesi yapildi. Ebeveyn bilgilendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Cocuk Hasta: Korku Yonetimi" senaryosu icin "Cocuk Korku — Pedodonti Yonlendirme" akisini olustur.
+
+Aciklama: Ebeveyn cocugunu dis doktoruna gotururken yardim istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cocugum dis doktorundan korkuyor, yardimci olabilir misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Cocuk Hasta — Dis Korkusu. Pedodonti yonlendirmesi uygun.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Anliyoruz! Cocuklarda dis korkusu cok yaygin, endiselenmeyin 🙏
+
+Klinigimizde cocuk dis uzmanimiz (pedodontist) var:
+
+👩‍⚕️ Dr. Zeynep — Cocuk Dis Uzmani
+🎮 Cocuk dostu muayene odasi
+🎨 Oyun alani ve odul sistemi
+
+💡 Ipuclari:
+• Randevu oncesi 'dis perisi' hikayesi anlatabilirsiniz
+• Ilk ziyaret taninma amacli — islem yapilmaz
+• Pozitif dil kullanin: 'Agri' yerine 'geldigik'
+
+Dr. Zeynep'e randevu ayarlayalim mi?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Cocuk hasta — pedodonti yonlendirmesi yapildi. Ebeveyn bilgilendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Cocuk","Pedodonti"]},{id:"d41",title:"Dis Beyazlatma Kampanyasi: IG Lead",description:"Instagram dis beyazlatma kampanyasindan gelen lead'leri AI ile yakalayan, kampanya detaylarini sunan ve randevuya yonlendiren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D41: IG Beyazlatma Kampanyasi Lead",description:"Instagram kampanyasindan gelen hasta beyazlatma hakkinda bilgi istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kampanya Sorgusu — Dis Beyazlatma. Kaynak:"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Evet! Dis beyazlatma kampanyamiz devam ediyor ✨
+
+💎 Profesyonel Dis Beyazlatma
+💰 Kampanya fiyati: 2.500 TL (normal: 4.000 TL)
+📅 Gecerlilik: Subat sonuna kadar
+⏱️ Islem suresi: 45 dakika
+
+🎁 Kampanyadan yararlanmak icin randevu ayarlayalim mi?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Harika! Bu haftaki musait slotlar:
+
+🗓️ Carsamba 15:00
+🗓️ Persembe 11:00
+🗓️ Cuma 14:00
+
+Hangisi size uygun?`,options:[]}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Kampanya lead'i randevuya yonlendirildi. IG attribution kaydedildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_menu_6",source:"ai_intent_5",target:"message_menu_6"},{id:"e_message_menu_6_utility_note_7",source:"message_menu_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Dis Beyazlatma Kampanyasi: IG Lead" senaryosu icin "IG Beyazlatma Kampanyasi Lead" akisini olustur.
+
+Aciklama: Instagram kampanyasindan gelen hasta beyazlatma hakkinda bilgi istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dis beyazlatma kampanyaniz var miydi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kampanya Sorgusu — Dis Beyazlatma. Kaynak: Instagram. Attribution kaydedildi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Evet! Dis beyazlatma kampanyamiz devam ediyor ✨
+
+💎 Profesyonel Dis Beyazlatma
+💰 Kampanya fiyati: 2.500 TL (normal: 4.000 TL)
+📅 Gecerlilik: Subat sonuna kadar
+⏱️ Islem suresi: 45 dakika
+
+🎁 Kampanyadan yararlanmak icin randevu ayarlayalim mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, randevu alalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Harika! Bu haftaki musait slotlar:
+
+🗓️ Carsamba 15:00
+🗓️ Persembe 11:00
+🗓️ Cuma 14:00
+
+Hangisi size uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **utility_note** — Akis sonuc notu
+   text: "Kampanya lead'i randevuya yonlendirildi. IG attribution kaydedildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Instagram","Kampanya"]},{id:"d42",title:"Doktor Mesgul: On Buro Cevap Veremiyor",description:"Resepsiyonist yogun veya mesgulken biriken mesajlara AI ile otomatik ilk cevap veren ve sikca sorulan sorulari aninda yanitlayan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D42: Yogun Saatler — AI Ilk Cevap",description:"Resepsiyonist yogun, AI mesajlari otomatik yanitliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: FAQ — Calisma Saatleri. Knowledge Base'den"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Klinigimize hosgeldiniz 🙏
+
+Calisma saatlerimiz:
+🕐 Hafta ici: 09:00 - 19:00
+🕐 Cumartesi: 10:00 - 16:00
+🚫 Pazar: Kapali
+
+Randevu almak ister misiniz?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"FAQ otomatik yanitlandi. Resepsiyonist devreye girmeden cozuldu."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Doktor Mesgul: On Buro Cevap Veremiyor" senaryosu icin "Yogun Saatler — AI Ilk Cevap" akisini olustur.
+
+Aciklama: Resepsiyonist yogun, AI mesajlari otomatik yanitliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhabalar, calisma saatleriniz nedir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: FAQ — Calisma Saatleri. Knowledge Base'den cekilecek. Resepsiyonist yogun — AI cevap verecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Klinigimize hosgeldiniz 🙏
+
+Calisma saatlerimiz:
+🕐 Hafta ici: 09:00 - 19:00
+🕐 Cumartesi: 10:00 - 16:00
+🚫 Pazar: Kapali
+
+Randevu almak ister misiniz?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "FAQ otomatik yanitlandi. Resepsiyonist devreye girmeden cozuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Yogunluk","Otomatik"]},{id:"d46",title:"Gece/Hafta Sonu Otomatik Cevap",description:"Mesai disinda gelen mesajlara AI ile 7/24 otomatik cevap veren, acil vakalari yonlendiren, diger mesajlara mesai saatlerinde donecegini bildiren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D46: Gece Mesaji — Otomatik Cevap",description:"Hasta gece randevu sorusu gonderiyor, otomatik cevap veriliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Saat: 22:30. Mesai disi. Intent: Randevu. Acil deg"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Su an mesai saatleri disindayiz 🕐
+
+📅 Calisma saatlerimiz: Hafta ici 09:00-19:00, Cumartesi 10:00-16:00
+
+Randevu talebiniZi aldik! Yarin sabah ilk is size donecegiz.
+
+⚠️ Acil dis agrisi mi var? Bize yazin, sizi yonlendirelim!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Mesai disi otomatik cevap gonderildi. Randevu talebi sabah kuyruguna eklendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Gece/Hafta Sonu Otomatik Cevap" senaryosu icin "Gece Mesaji — Otomatik Cevap" akisini olustur.
+
+Aciklama: Hasta gece randevu sorusu gonderiyor, otomatik cevap veriliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevu almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Saat: 22:30. Mesai disi. Intent: Randevu. Acil degil — otomatik cevap verilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Su an mesai saatleri disindayiz 🕐
+
+📅 Calisma saatlerimiz: Hafta ici 09:00-19:00, Cumartesi 10:00-16:00
+
+Randevu talebiniZi aldik! Yarin sabah ilk is size donecegiz.
+
+⚠️ Acil dis agrisi mi var? Bize yazin, sizi yonlendirelim!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Mesai disi otomatik cevap gonderildi. Randevu talebi sabah kuyruguna eklendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Mesai Disi","Otomatik"]},{id:"d44",title:"Hasta Fotograflari Cihazda Kaliyor",description:"Hasta fotograflarinin kisisel cihazlarda kalmasini onleyen, merkezi ve KVKK uyumlu foto arsivleme sistemi.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D44: Fotograf Merkezi Arsivleme",description:"Hasta WA'dan fotograf gonderiyor, merkezi arsive aktariliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Hasta [Ad] fotograf gonderdi (WA). Otomatik arsivl"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:"Fotograf sifrelendi ve merkezi depolama alanina aktarildi. Hasta dosyasina baglandi."}},{id:"utility_note_3",type:"utility_note",position:{x:300,y:350},data:{label:"Sonuc",text:"Kisisel cihazdaki kopya temizleme uyarisi agent'e gonderildi."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_utility_note_3",source:"utility_set_variable_2",target:"utility_note_3"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Hasta Fotograflari Cihazda Kaliyor" senaryosu icin "Fotograf Merkezi Arsivleme" akisini olustur.
+
+Aciklama: Hasta WA'dan fotograf gonderiyor, merkezi arsive aktariliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Hasta [Ad] fotograf gonderdi (WA). Otomatik arsivleme baslatildi.
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: Fotograf sifrelendi ve merkezi depolama alanina aktarildi. Hasta dosyasina baglandi.
+
+3. **utility_note** — Akis sonuc notu
+   text: "Kisisel cihazdaki kopya temizleme uyarisi agent'e gonderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:3,tags:["Fotograf","KVKK"]},{id:"d33",title:"Hasta Kimlik/Rapor — KVKK Riski",description:"WhatsApp uzerinden kimlik veya saglik raporu gonderen hastalarin verilerini KVKK uyumlu sekilde yoneten, guvenli depolama protokolune yonlendiren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D33: Kimlik Fotografi — KVKK Yonetimi",description:"Hasta kimlik fotografini WhatsApp'tan gonderiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"KVKK ALERT: Hassas veri tespiti — TC Kimlik fotogr"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Kimlik bilginiZi aldim, tesekkurler!
+
+🔒 Veriniiz KVKK uyumlu guvenli alanda saklanacak.
+
+Bilgilendirme:
+• Veriniiz sifrelenmis depolama alaninda tutulur
+• Sadece yetkili saglik personeli erisebilir
+• Tedavi sonrasi silinmesini talep edebilirsiniz
+
+Baska bir sey gondermeniz gerekiyor mu?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Hassas veri guvenli depolamaya aktarildi. KVKK log kaydedildi. WhatsApp gecici kopya temizlendi."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_ai_intent_3",source:"utility_set_variable_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Hasta Kimlik/Rapor — KVKK Riski" senaryosu icin "Kimlik Fotografi — KVKK Yonetimi" akisini olustur.
+
+Aciklama: Hasta kimlik fotografini WhatsApp'tan gonderiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: KVKK ALERT: Hassas veri tespiti — TC Kimlik fotografi. Guvenli depolama protokolu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Kimlik bilginiZi aldim, tesekkurler!
+
+🔒 Veriniiz KVKK uyumlu guvenli alanda saklanacak.
+
+Bilgilendirme:
+• Veriniiz sifrelenmis depolama alaninda tutulur
+• Sadece yetkili saglik personeli erisebilir
+• Tedavi sonrasi silinmesini talep edebilirsiniz
+
+Baska bir sey gondermeniz gerekiyor mu?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Hassas veri guvenli depolamaya aktarildi. KVKK log kaydedildi. WhatsApp gecici kopya temizlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["KVKK","Hassas Veri"]},{id:"d49",title:"Hekim Notlari + Etiketli Raporlama",description:"Doktor notlarini ve etiketleri hasta iletisim gecmisine baglayan, etiket bazli raporlama ureten sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D49: Etiketli Hasta Raporu",description:"Klinik yoneticisi etiket bazli hasta iletisim raporunu inceliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:`Aylik etiket raporu olusturuldu.
+
+Etiket dagilimi:`}},{id:"utility_note_2",type:"utility_note",position:{x:300,y:200},data:{label:"Sonuc",text:`QA Mining sonuclari:
+- Sikayet orani: %8
+- Memnuniyet: %92
+- Ortalama yanit suresi: 2.5 dk
+- En sik sorun: Randevu degisikligi`}},{id:"utility_note_3",type:"utility_note",position:{x:300,y:350},data:{label:"Sonuc",text:"Rapor dashboard ve e-posta ile yoneticiye sunuldu."}}],edges:[{id:"e_trigger_start_1_utility_note_2",source:"trigger_start_1",target:"utility_note_2"},{id:"e_utility_note_2_utility_note_3",source:"utility_note_2",target:"utility_note_3"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Hekim Notlari + Etiketli Raporlama" senaryosu icin "Etiketli Hasta Raporu" akisini olustur.
+
+Aciklama: Klinik yoneticisi etiket bazli hasta iletisim raporunu inceliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Aylik etiket raporu olusturuldu.
+
+Etiket dagilimi:
+- Implant: 45 konusma
+- Dolgu: 32 konusma
+- Beyazlatma: 28 konusma
+- Ortodonti: 18 konusma
+
+2. **utility_note** — Akis sonuc notu
+   text: "QA Mining sonuclari:
+- Sikayet orani: %8
+- Memnuniyet: %92
+- Ortalama yanit suresi: 2.5 dk
+- En sik sorun: Randevu degisikligi"
+
+3. **utility_note** — Akis sonuc notu
+   text: "Rapor dashboard ve e-posta ile yoneticiye sunuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:3,tags:["Raporlama","Etiket"]},{id:"d48",title:"Iade/Iptal: Kapora Geri Isteme",description:"Randevusunu iptal edip kaporasini geri isteyen hastanin talebini AI ile iptal politikasina gore yoneten ve iade surecini baslatan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D48: Kapora Iade Talebi",description:"Hasta randevuyu iptal edip kapora iadesini istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kapora Iade Talebi. Randevu: Yarin 14:00. "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Randevunuz iptal edildi.
+
+Kapora iade bilgisi:
+💰 Kapora: 500 TL
+📋 Iade kosulu: 24 saat once iptal ✅
+💳 Iade: 3-5 is gunu icinde kartiniza
+
+Baska bir zamanda randevu ayarlamak isterseniz bize yazin!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Randevu iptal edildi. Kapora iade sureci baslatildi. Bos slot bekleme listesine acildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade/Iptal: Kapora Geri Isteme" senaryosu icin "Kapora Iade Talebi" akisini olustur.
+
+Aciklama: Hasta randevuyu iptal edip kapora iadesini istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevumu iptal ettim, kaporami geri alabilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kapora Iade Talebi. Randevu: Yarin 14:00. Kapora: 500 TL. Iptal suresi: 24+ saat once — UYGUN.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Randevunuz iptal edildi.
+
+Kapora iade bilgisi:
+💰 Kapora: 500 TL
+📋 Iade kosulu: 24 saat once iptal ✅
+💳 Iade: 3-5 is gunu icinde kartiniza
+
+Baska bir zamanda randevu ayarlamak isterseniz bize yazin!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Randevu iptal edildi. Kapora iade sureci baslatildi. Bos slot bekleme listesine acildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Iptal","Iade"]},{id:"d27",title:"IG DM Fiyat Talebi (Foto ile)",description:"Instagram DM'den fotograf gondererek fiyat soran hastayi AI ile yakalayan, fotografli fiyat talebini randevu yonlendirmesine ceviren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D27: IG DM Fotograf ile Fiyat Sorusu",description:"Hasta dis fotosu gondererek fiyat soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Talebi (Fotografli). Kanal: Instagra"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Fotografinizi aldik, tesekkurler 🙏
+
+Kesin fiyat icin muayene gerekli ama size bir aralik verelim:
+
+💎 Zirkonyum kaplama: 3.500-6.000 TL/dis
+✨ Dis beyazlatma: 2.000-4.000 TL
+
+🎁 Ucretsiz ilk muayene ile kesin fiyat verelim!
+
+Randevu icin WhatsApp'tan devam edelim mi?
+👉 [WhatsApp link]`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Lead yakalandi. IG DM → WA gecis linki gonderildi. Randevu yonlendirmesi yapildi."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_ai_intent_3",source:"utility_set_variable_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"IG DM Fiyat Talebi (Foto ile)" senaryosu icin "IG DM Fotograf ile Fiyat Sorusu" akisini olustur.
+
+Aciklama: Hasta dis fotosu gondererek fiyat soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Talebi (Fotografli). Kanal: Instagram DM. Tedavi tahmini: Dis beyazlatma / Zirkonyum.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Fotografinizi aldik, tesekkurler 🙏
+
+Kesin fiyat icin muayene gerekli ama size bir aralik verelim:
+
+💎 Zirkonyum kaplama: 3.500-6.000 TL/dis
+✨ Dis beyazlatma: 2.000-4.000 TL
+
+🎁 Ucretsiz ilk muayene ile kesin fiyat verelim!
+
+Randevu icin WhatsApp'tan devam edelim mi?
+👉 [WhatsApp link]"
+   Degiskenler: {{whatsapp_link}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "Lead yakalandi. IG DM → WA gecis linki gonderildi. Randevu yonlendirmesi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Instagram","Fiyat"]},{id:"d47",title:"Ikinci Gorus: Onceki Tetkikler",description:"Baska klinikten gelen hasta tetkik dosyalarini AI ile toplayan, doktora ileten ve konsultasyon randevusu olusturan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D47: Ikinci Gorus — Dosya Toplama",description:"Hasta baska klinikten tetkik sonuclarini gonderiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Ikinci Gorus Talebi. Tetkik dosyasi toplam"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii, memnuniyetle degerlendiririz!
+
+Lutfen su dosyalari gonderin:
+📄 Panoramik rontgen
+📄 Onceki tedavi raporu (varsa)
+📄 Tetkik sonuclari
+
+Dosyalarinizi bu mesaja yanit olarak gonderebilirsiniz.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Dosyalariniz alindi! ✅
+
+📋 Dr. Mehmet'e iletilecek ve on degerlendirme yapilacak.
+📅 Konsultasyon randevusu icin sizi araiyalim mi?
+
+Genellikle 1-2 is gunu icinde on degerlendirme tamamlanir.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Tetkik dosyalari arsivlendi. Dr. Mehmet'e iletildi. Konsultasyon randevusu teklifi yapildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Ikinci Gorus: Onceki Tetkikler" senaryosu icin "Ikinci Gorus — Dosya Toplama" akisini olustur.
+
+Aciklama: Hasta baska klinikten tetkik sonuclarini gonderiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Baska klinikten tetkik sonuclarim var, degerlendirir misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Ikinci Gorus Talebi. Tetkik dosyasi toplama akisi baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii, memnuniyetle degerlendiririz!
+
+Lutfen su dosyalari gonderin:
+📄 Panoramik rontgen
+📄 Onceki tedavi raporu (varsa)
+📄 Tetkik sonuclari
+
+Dosyalarinizi bu mesaja yanit olarak gonderebilirsiniz."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "[Rontgen ve rapor dosyalari gonderiyor]"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Dosyalariniz alindi! ✅
+
+📋 Dr. Mehmet'e iletilecek ve on degerlendirme yapilacak.
+📅 Konsultasyon randevusu icin sizi araiyalim mi?
+
+Genellikle 1-2 is gunu icinde on degerlendirme tamamlanir."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Tetkik dosyalari arsivlendi. Dr. Mehmet'e iletildi. Konsultasyon randevusu teklifi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Ikinci Gorus","Tetkik"]},{id:"d39",title:"Mesaj Kayit / Raporlama",description:"WhatsApp mesajlarini merkezi olarak kaydeden, agent performansi ve hasta iletisim raporlari ureten mesaj arsivleme sistemi.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D39: Mesaj Arsivi ve Rapor",description:"Klinik yoneticisi haftalik iletisim raporunu inceliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Haftalik rapor olusturuldu. Agent: 3, Toplam mesaj"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:`Rapor detaylari:
+- Agent Ayse: 120 mesaj, 2.8 dk ort.
+- Agent Fatma: 85 mesaj, 3.5 dk ort.
+- Agent Ali: 40 mesaj, 4.1 dk ort.
+
+Hasta memnuniyet: %92`}},{id:"utility_note_3",type:"utility_note",position:{x:300,y:350},data:{label:"Sonuc",text:"Rapor yoneticiye e-posta ve dashboard uzerinden sunuldu."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_utility_note_3",source:"utility_set_variable_2",target:"utility_note_3"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Mesaj Kayit / Raporlama" senaryosu icin "Mesaj Arsivi ve Rapor" akisini olustur.
+
+Aciklama: Klinik yoneticisi haftalik iletisim raporunu inceliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Haftalik rapor olusturuldu. Agent: 3, Toplam mesaj: 245, Ort. yanit suresi: 3.2 dk.
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: Rapor detaylari:
+- Agent Ayse: 120 mesaj, 2.8 dk ort.
+- Agent Fatma: 85 mesaj, 3.5 dk ort.
+- Agent Ali: 40 mesaj, 4.1 dk ort.
+
+Hasta memnuniyet: %92
+
+3. **utility_note** — Akis sonuc notu
+   text: "Rapor yoneticiye e-posta ve dashboard uzerinden sunuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:3,tags:["Raporlama","Arsiv"]},{id:"d36",title:"Odeme/Kapora: Rezervasyon Linki",description:"Randevu icin kapora odemek isteyen hastaya AI ile odeme linki olusturan, kapora alindiktan sonra randevuyu kesinlestiren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D36: Kapora Odeme ile Randevu",description:"Hasta kapora odeyerek randevusunu kesinlestiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kapora Odeme. Randevu: Implant konsultasyo"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! Randevunuzu kapora ile kesinlestirelim:
+
+📅 Cuma 14:00 — Implant Konsultasyonu
+💰 Kapora: 500 TL
+
+Odeme linki:
+🔗 [Guvenli Odeme Linki]
+
+Odeme sonrasi randevunuz otomatik kesinlesecek!`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"Odeme alindi: 500 TL. Randevu kesinlestirildi. Onay mesaji gonderildi."}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Odemeniz alindi! Randevunuz kesinlesti ✅
+
+📅 Cuma 14:00
+👨‍⚕️ Dr. Mehmet — Implant Konsultasyonu
+💰 Kapora: 500 TL (tedaviden dusulecek)
+
+Gorulmek uzere!`}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_text_6",source:"utility_set_variable_5",target:"message_text_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Odeme/Kapora: Rezervasyon Linki" senaryosu icin "Kapora Odeme ile Randevu" akisini olustur.
+
+Aciklama: Hasta kapora odeyerek randevusunu kesinlestiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevu icin kapora odeyebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kapora Odeme. Randevu: Implant konsultasyonu. Kapora: 500 TL.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Randevunuzu kapora ile kesinlestirelim:
+
+📅 Cuma 14:00 — Implant Konsultasyonu
+💰 Kapora: 500 TL
+
+Odeme linki:
+🔗 [Guvenli Odeme Linki]
+
+Odeme sonrasi randevunuz otomatik kesinlesecek!"
+   Degiskenler: {{guvenli_odeme_linki}}
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: Odeme alindi: 500 TL. Randevu kesinlestirildi. Onay mesaji gonderildi.
+
+6. **message_text** — Mesaj gonder
+   text: "Odemeniz alindi! Randevunuz kesinlesti ✅
+
+📅 Cuma 14:00
+👨‍⚕️ Dr. Mehmet — Implant Konsultasyonu
+💰 Kapora: 500 TL (tedaviden dusulecek)
+
+Gorulmek uzere!"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Kapora","Randevu"]},{id:"d28",title:"Randevu Alma: Saat ve Doktor Secimi",description:"WhatsApp'tan randevu almak isteyen hastaya AI ile musait slotlari sunan, doktor tercihini alan ve randevu olusturan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D28: WhatsApp'tan Randevu Alma",description:"Hasta WhatsApp'tan randevu almak istiyor, AI musait slotlari sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Randevu Alma. Tercih: Bu hafta. Musait slo"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Tabii! Bu haftaki musait slotlarimiz:
+
+🗓️ Carsamba 14:00 — Dr. Ayse (Genel)
+🗓️ Persembe 10:00 — Dr. Mehmet (Ortodonti)
+🗓️ Cuma 16:00 — Dr. Ayse (Genel)
+
+Hangisi size uygun?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Randevunuz olusturuldu! ✅
+
+📅 Carsamba, 14:00
+👩‍⚕️ Dr. Ayse
+📍 [Klinik Adresi]
+
+⏰ Randevunuzdan 1 gun once hatirlatma mesaji gonderecegiz.
+
+Gelmeden once: Kimlik ve varsa onceki röntgenlerinizi getirin.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Randevu olusturuldu. Hatirlatma zamanlayicisi kuruldu (R-1 gun)."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Randevu Alma: Saat ve Doktor Secimi" senaryosu icin "WhatsApp'tan Randevu Alma" akisini olustur.
+
+Aciklama: Hasta WhatsApp'tan randevu almak istiyor, AI musait slotlari sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevu almak istiyorum, bu hafta musait misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Randevu Alma. Tercih: Bu hafta. Musait slotlar kontrol ediliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Tabii! Bu haftaki musait slotlarimiz:
+
+🗓️ Carsamba 14:00 — Dr. Ayse (Genel)
+🗓️ Persembe 10:00 — Dr. Mehmet (Ortodonti)
+🗓️ Cuma 16:00 — Dr. Ayse (Genel)
+
+Hangisi size uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Carsamba 14:00 olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu! ✅
+
+📅 Carsamba, 14:00
+👩‍⚕️ Dr. Ayse
+📍 [Klinik Adresi]
+
+⏰ Randevunuzdan 1 gun once hatirlatma mesaji gonderecegiz.
+
+Gelmeden once: Kimlik ve varsa onceki röntgenlerinizi getirin."
+   Degiskenler: {{klinik_adresi}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Randevu olusturuldu. Hatirlatma zamanlayicisi kuruldu (R-1 gun)."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Randevu","Otomatik"]},{id:"d40",title:"Randevu Iptal/Erteleme Yogunlugu",description:"Yogun iptal ve erteleme taleplerini AI ile yoneten, alternatif slot sunan ve bosluk olusan slotlari bekleme listesinden dolduran sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D40: Randevu Erteleme + Bos Slot Doldurma",description:"Hasta erteleme istiyor, bos kalan slot bekleme listesinden dolduruluyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Randevu Erteleme. Mevcut randevu: Yarin 10"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Tabii! Mevcut randevunuz: Yarin 10:00
+
+Alternatif slotlar:
+🗓️ Persembe 14:00
+🗓️ Cuma 11:00
+🗓️ Gelecek Pazartesi 09:30
+
+Hangisi uygun?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Randevunuz guncellendi! ✅
+
+📅 Cuma 11:00
+👩‍⚕️ Dr. Ayse
+
+Gorulmek uzere!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Randevu ertelendi. Yarin 10:00 slotu bos kaldi. Bekleme listesinden 2 hastaya bildirim gonderildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Randevu Iptal/Erteleme Yogunlugu" senaryosu icin "Randevu Erteleme + Bos Slot Doldurma" akisini olustur.
+
+Aciklama: Hasta erteleme istiyor, bos kalan slot bekleme listesinden dolduruluyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Randevumu erteleyebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Randevu Erteleme. Mevcut randevu: Yarin 10:00. Alternatif slotlar kontrol ediliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Tabii! Mevcut randevunuz: Yarin 10:00
+
+Alternatif slotlar:
+🗓️ Persembe 14:00
+🗓️ Cuma 11:00
+🗓️ Gelecek Pazartesi 09:30
+
+Hangisi uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cuma 11:00 olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz guncellendi! ✅
+
+📅 Cuma 11:00
+👩‍⚕️ Dr. Ayse
+
+Gorulmek uzere!"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Randevu ertelendi. Yarin 10:00 slotu bos kaldi. Bekleme listesinden 2 hastaya bildirim gonderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Erteleme","Bekleme Listesi"]},{id:"d37",title:"Sigorta / Ozel Saglik Anlasmasi",description:"Ozel saglik sigortasi veya anlasmali kurum sorusunu AI ile yanitlayan, anlasma listesinden uygunluk kontrolu yapan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D37: Sigorta Sorgusu — Anlasmali",description:"Hasta sigortasini soruyor, anlasmali oldugu tespit ediliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Sigorta Sorgusu. Hangi sigorta oldugu soru"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Tabii, kontrol edelim! Hangi sigorta firmasiniz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Sigorta: Allianz. Kontrol: ANLASMALI. Kapsam: Dis "}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Harika haber! Allianz ile anlasmaliyiz ✅
+
+🏥 Kapsam: Dis tedavileri (yillik limit dahilinde)
+📋 Gerekli evrak: Sigorta karti + Kimlik
+💡 Provizyon kontrolu randevu gununde yapilir
+
+Randevu ayarlayalim mi?`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Sigorta uygunlugu dogrulandi. Randevu teklifi yapildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sigorta / Ozel Saglik Anlasmasi" senaryosu icin "Sigorta Sorgusu — Anlasmali" akisini olustur.
+
+Aciklama: Hasta sigortasini soruyor, anlasmali oldugu tespit ediliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ozel saglik sigortam var, anlasmali misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Sigorta Sorgusu. Hangi sigorta oldugu sorulacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii, kontrol edelim! Hangi sigorta firmasiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Allianz ozel saglik."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Sigorta: Allianz. Kontrol: ANLASMALI. Kapsam: Dis tedavisi (limit dahilinde).
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Harika haber! Allianz ile anlasmaliyiz ✅
+
+🏥 Kapsam: Dis tedavileri (yillik limit dahilinde)
+📋 Gerekli evrak: Sigorta karti + Kimlik
+💡 Provizyon kontrolu randevu gununde yapilir
+
+Randevu ayarlayalim mi?"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Sigorta uygunlugu dogrulandi. Randevu teklifi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Sigorta","Anlasmali"]},{id:"d35",title:"Sikayet: Dolgu Dustu, Tekrar Randevu",description:"Dolgusu dusen hastanin sikayetini AI ile de-eskalasyon mesajiyla yoneten, acil randevu olusturan ve doktoru bilgilendiren sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D35: Dolgu Dustu — Acil Randevu",description:"Hasta dolgusu dustugunu bildiriyor, acil randevu olusturuluyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Sikayet — Dolgu Dusme. De-eskalasyon + Aci"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Cok uzgunuz! Bu durumu hemen cozelim.
+
+🦷 Dolgunuzun dusme sebebini doktorumuz inceleyecek.
+📅 Yarin icin acil randevu ayarliyorum.
+
+Musait zamaniniz:
+🕐 09:30 — Dr. Mehmet
+🕐 11:00 — Dr. Mehmet
+
+Hangisi uygun?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Randevunuz olusturuldu! ✅
+
+📅 Yarin 09:30
+👨‍⚕️ Dr. Mehmet
+🦷 Dolgu yenileme
+
+💡 Garanti kapsamindaysa ucretsiz yenilenecektir.
+
+Gecmis olsun!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Acil randevu olusturuldu. Dr. Mehmet bilgilendirildi. Hasta garanti durumu kontrol edilecek."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sikayet: Dolgu Dustu, Tekrar Randevu" senaryosu icin "Dolgu Dustu — Acil Randevu" akisini olustur.
+
+Aciklama: Hasta dolgusu dustugunu bildiriyor, acil randevu olusturuluyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dolgum dustu, tekrar gelmem lazim!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Sikayet — Dolgu Dusme. De-eskalasyon + Acil randevu akisi baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Cok uzgunuz! Bu durumu hemen cozelim.
+
+🦷 Dolgunuzun dusme sebebini doktorumuz inceleyecek.
+📅 Yarin icin acil randevu ayarliyorum.
+
+Musait zamaniniz:
+🕐 09:30 — Dr. Mehmet
+🕐 11:00 — Dr. Mehmet
+
+Hangisi uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "09:30 olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu! ✅
+
+📅 Yarin 09:30
+👨‍⚕️ Dr. Mehmet
+🦷 Dolgu yenileme
+
+💡 Garanti kapsamindaysa ucretsiz yenilenecektir.
+
+Gecmis olsun!"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Acil randevu olusturuldu. Dr. Mehmet bilgilendirildi. Hasta garanti durumu kontrol edilecek."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Sikayet","Acil Randevu"]},{id:"d31",title:"Tedavi Plani: Surec Anlatimi",description:"Tedavi planini ve seans sayisini soran hastaya AI ile Knowledge Base'den tedavi tipi bazli standart plan bilgisini sunan sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D31: Tedavi Plani Sorusu",description:"Hasta implant tedavi planini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Tedavi Plani Sorgusu. Mevcut tedavi: Impla"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Implant tedavi planiniZ hakkinda bilgi:
+
+📋 Toplam surec: 3-6 ay
+
+1️⃣ Ilk seans: Muayene + röntgen + planlama
+2️⃣ Implant yerlestirme: Cerrahi islem (1 saat)
+3️⃣ Iyilesme sureci: 2-4 ay
+4️⃣ Olcu alma: Protez hazirlik
+5️⃣ Protez yerlestirme: Son seans
+
+💡 Kisisel planiniz muayene sonrasi netlesiR.
+
+Muayene randevusu ayarlayalim mi?`,options:[]}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Tedavi plan bilgisi sunuldu. Randevu teklifi yapildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_utility_note_5",source:"message_menu_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Tedavi Plani: Surec Anlatimi" senaryosu icin "Tedavi Plani Sorusu" akisini olustur.
+
+Aciklama: Hasta implant tedavi planini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tedavi kac seans surecek? Ne yapilacak?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Tedavi Plani Sorgusu. Mevcut tedavi: Implant. Knowledge Base'den plan cekilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Implant tedavi planiniZ hakkinda bilgi:
+
+📋 Toplam surec: 3-6 ay
+
+1️⃣ Ilk seans: Muayene + röntgen + planlama
+2️⃣ Implant yerlestirme: Cerrahi islem (1 saat)
+3️⃣ Iyilesme sureci: 2-4 ay
+4️⃣ Olcu alma: Protez hazirlik
+5️⃣ Protez yerlestirme: Son seans
+
+💡 Kisisel planiniz muayene sonrasi netlesiR.
+
+Muayene randevusu ayarlayalim mi?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **utility_note** — Akis sonuc notu
+   text: "Tedavi plan bilgisi sunuldu. Randevu teklifi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Tedavi Plani","Bilgi"]},{id:"d43",title:"Yanlis Bilgi: Fiyat/Plan Tutarsizligi",description:"Farkli temsilcilerin farkli fiyat veya plan bildirmesi sorununu Knowledge Base ile tek kaynak cevap vererek cözen sistem.",category:"DIS KLINIGI",niche:"dental",flowConfig:{version:2,metadata:{name:"D43: Fiyat Tutarsizligi — Tek Kaynak Cozum",description:"Hasta farkli fiyat soyledigini bildiriyor, AI Knowledge Base'den dogru fiyati sunar."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Tutarsizligi Sikayeti. Knowledge Bas"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Ozur dileriz, karisilik olmus olabilir. Guncel fiyat listemiz:
+
+💰 Zirkonyum kaplama: 4.500-6.000 TL/dis
+💰 Implant: 12.000-18.000 TL
+💰 Kanal tedavisi: 2.500-4.000 TL
+
+📋 Kesin fiyat muayene sonrasi belirlenir.
+
+Muayene randevusu ayarlayalim mi?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Fiyat bilgisi Knowledge Base'den cekildi. Tutarsizlik giderildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yanlis Bilgi: Fiyat/Plan Tutarsizligi" senaryosu icin "Fiyat Tutarsizligi — Tek Kaynak Cozum" akisini olustur.
+
+Aciklama: Hasta farkli fiyat soyledigini bildiriyor, AI Knowledge Base'den dogru fiyati sunar.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Baska biri farkli fiyat soyledi!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Tutarsizligi Sikayeti. Knowledge Base'den guncel fiyat cekilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Ozur dileriz, karisilik olmus olabilir. Guncel fiyat listemiz:
+
+💰 Zirkonyum kaplama: 4.500-6.000 TL/dis
+💰 Implant: 12.000-18.000 TL
+💰 Kanal tedavisi: 2.500-4.000 TL
+
+📋 Kesin fiyat muayene sonrasi belirlenir.
+
+Muayene randevusu ayarlayalim mi?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Fiyat bilgisi Knowledge Base'den cekildi. Tutarsizlik giderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Tutarsizlik","Tek Kaynak"]},{id:"e09",title:"Adres Degisikligi & Teslimat Yonetimi",description:"Siparis adresini veya teslimat saatini degistirmek isteyen musterinin talebini AI ile yoneten, kargoya verilip verilmedigini kontrol eden ve uygun aksiyonu alan sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E09: Kargoya Verilmeden Adres Degisikligi",description:"Siparis henuz hazirlaniyor, adres guncellenebilir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Adres Degisikligi. Siparis: #445566. Durum"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Tabii! Siparisiniiz henuz hazirlaniyor, adres degisikligi yapabiliriz. Yeni teslimat adresinizi yazabilir misiniz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Adresiniz guncellendi!
+
+📍 Yeni adres: Kadikoy, Bagdat Caddesi No: 123, Daire 4
+📦 Siparis: #445566
+
+Teslimat plana gore devam edecek.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Adres guncellendi. Siparis normal akisinda devam ediyor."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Adres Degisikligi & Teslimat Yonetimi" senaryosu icin "Kargoya Verilmeden Adres Degisikligi" akisini olustur.
+
+Aciklama: Siparis henuz hazirlaniyor, adres guncellenebilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Adresimi degistirmek istiyorum, mumkun mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Adres Degisikligi. Siparis: #445566. Durum: Hazirlaniyor. Degisiklik: MUMKUN.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Siparisiniiz henuz hazirlaniyor, adres degisikligi yapabiliriz. Yeni teslimat adresinizi yazabilir misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kadikoy, Bagdat Caddesi No: 123, Daire 4"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Adresiniz guncellendi!
+
+📍 Yeni adres: Kadikoy, Bagdat Caddesi No: 123, Daire 4
+📦 Siparis: #445566
+
+Teslimat plana gore devam edecek."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Adres guncellendi. Siparis normal akisinda devam ediyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Adres Degisikligi","Basarili"]},{id:"e11",title:"Beden & Urun Uyum Danismanligi",description:"Instagram DM veya WhatsApp'tan gelen beden/urun uyumu sorularini AI Knowledge Base'den beden tablosu cekerek kisisellestirilmis cevap verir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E11: IG DM Beden Sorusu",description:"Instagram DM'den gelen beden uyumu sorusu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Beden Sorusu. Urun: Ceket. Boy: 1.75. Kilo"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`1.75 boy ve 78 kilo icin bu cekettte:
+
+📏 Onerilen beden: L
+📐 Gogus: L = 104-108 cm
+📐 Omuz: L = 46 cm
+
+L beden size uygun gorunuyor! Rahat bir kesim tercih ederseniz XL de deneyebilirsiniz.
+
+Siparis vermek ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Beden danismanligi tamamlandi. Musteri L beden siparis veriyor. Dounusum basarili."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Beden & Urun Uyum Danismanligi" senaryosu icin "IG DM Beden Sorusu" akisini olustur.
+
+Aciklama: Instagram DM'den gelen beden uyumu sorusu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu ceket L bedene uyar mi? 1.75 boyum, 78 kiloyum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Beden Sorusu. Urun: Ceket. Boy: 1.75. Kilo: 78. Beden tablosu cekiliiyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "1.75 boy ve 78 kilo icin bu cekettte:
+
+📏 Onerilen beden: L
+📐 Gogus: L = 104-108 cm
+📐 Omuz: L = 46 cm
+
+L beden size uygun gorunuyor! Rahat bir kesim tercih ederseniz XL de deneyebilirsiniz.
+
+Siparis vermek ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam L alayim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Beden danismanligi tamamlandi. Musteri L beden siparis veriyor. Dounusum basarili."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Instagram","Beden"]},{id:"e23",title:"Coklu Agent Cakisma Onleme",description:"Ayni WhatsApp hattindan birden fazla musteriye cevap veren agent'lerin cakismasini C2 Routing ile onleyen, musteri bazli agent atamasi yapan sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E23: Agent Cakisma Onleme",description:"Iki agent ayni musteriye cevap yazmaya calisiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Musteri [Ad] — Agent Ayse'ye atanmis. Agent Mehmet"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Alert",variable_name:"alert_status",value_expression:"CAKISMA UYARISI: Agent Mehmet'e bildirim: 'Bu musteri Agent Ayse'ye atanmis. Devam etmek icin Agent Ayse'den devralma yapmaniz gerekir.'"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:"Merhaba [Ad]! Ben Ayse, size yardimci oluyorum. Sorunuzu dinliyorum."}},{id:"utility_note_4",type:"utility_note",position:{x:300,y:500},data:{label:"Sonuc",text:"Cakisma onlendi. Musteri tek agent ile gorusmeye devam ediyor."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_message_text_3",source:"utility_set_variable_2",target:"message_text_3"},{id:"e_message_text_3_utility_note_4",source:"message_text_3",target:"utility_note_4"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Coklu Agent Cakisma Onleme" senaryosu icin "Agent Cakisma Onleme" akisini olustur.
+
+Aciklama: Iki agent ayni musteriye cevap yazmaya calisiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Musteri [Ad] — Agent Ayse'ye atanmis. Agent Mehmet de yazmaya calisiyor.
+
+2. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "CAKISMA UYARISI: Agent Mehmet'e bildirim: 'Bu musteri Agent Ayse'ye atanmis. Devam etmek icin Agent Ayse'den devralma yapmaniz gerekir.'"
+
+3. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Ben Ayse, size yardimci oluyorum. Sorunuzu dinliyorum."
+   Degiskenler: {{ad}}
+
+4. **utility_note** — Akis sonuc notu
+   text: "Cakisma onlendi. Musteri tek agent ile gorusmeye devam ediyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:4,tags:["Cakisma","Routing"]},{id:"e20",title:"Coklu Kanal Esitleme (Trendyol Express + WA)",description:"Trendyol Express, WhatsApp ve diger kanallardan gelen mesajlari eslestirip musteri tekrar bilgi vermek zorunda kalmadan tek noktadan yoneten sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E20: Trendyol'dan Arandi + WA'dan Yazdi",description:"Musteri once Trendyol'dan arandi, sonra WhatsApp'tan yazdi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Musteri [Ad] — dun Trendyol'dan aranmis, bugun Wha"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Musteri eslestirme: BASARILI. Gecmis: Dun Trendyol"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba [Ad]! Dunku gorussmenizi goruyorum — kargo gecikme sorununuz icin uzgunuz. Durumu tekrar kontrol ediyorum...
+
+Guncel durum: Kargonuz bugun dagitima cikti! Tahmini teslimat: Bugun 14:00-18:00.
+
+Tekrar bilgi vermenize gerek kalmasin diye tum gorusme gecmisiniz burada.`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Kanal esitleme basarili. Musteri tekrar bilgi vermek zorunda kalmadi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Coklu Kanal Esitleme (Trendyol Express + WA)" senaryosu icin "Trendyol'dan Arandi + WA'dan Yazdi" akisini olustur.
+
+Aciklama: Musteri once Trendyol'dan arandi, sonra WhatsApp'tan yazdi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Musteri [Ad] — dun Trendyol'dan aranmis, bugun WhatsApp'tan yazdi. Gecmis: Kargo sorunu.
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Trendyol'dan aramisllar, WhatsApp'tan da yazdim. Kargo sorunum hala cozulmedi."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Musteri eslestirme: BASARILI. Gecmis: Dun Trendyol aramasi — kargo gecikme sikayeti. Context aktarildi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Dunku gorussmenizi goruyorum — kargo gecikme sorununuz icin uzgunuz. Durumu tekrar kontrol ediyorum...
+
+Guncel durum: Kargonuz bugun dagitima cikti! Tahmini teslimat: Bugun 14:00-18:00.
+
+Tekrar bilgi vermenize gerek kalmasin diye tum gorusme gecmisiniz burada."
+   Degiskenler: {{ad}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "Kanal esitleme basarili. Musteri tekrar bilgi vermek zorunda kalmadi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Coklu Kanal","Esitleme"]},{id:"eb04",title:"Cross-Platform Siparis Eslestirme",description:"Trendyol, Hepsiburada gibi farkli platformlardan satin alan musterinin WhatsApp'tan yazdginda telefon numarasindan siparisini otomatik bulan sistem.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB04: Coklu Platform Siparis Tespiti",description:"Musteri WA'dan yazdi, AI birden fazla platformdaki siparislerini buldu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Siparis Sorgusu. Telefon: +90 555 XXX. Pla"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Merhaba! 2 aktif siparisiniiz buldum:
+
+1️⃣ Trendyol #TR-445566 — Spor Ayakkabi (Kargoda)
+2️⃣ Hepsiburada #HB-778899 — Bluetooth Kulaklik (Hazirlaniyor)
+
+Hangisi hakkinda bilgi almak istiyorsunuz?`,options:[]}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Trendyol siparisiniiz:
+
+📦 #TR-445566 — Spor Ayakkabi
+🚚 Durum: Dagitimda
+📍 Tahmini teslim: Bugun 14:00-18:00
+
+Baska bir sorunuz var mi?`}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_message_text_5",source:"message_menu_4",target:"message_text_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Cross-Platform Siparis Eslestirme" senaryosu icin "Coklu Platform Siparis Tespiti" akisini olustur.
+
+Aciklama: Musteri WA'dan yazdi, AI birden fazla platformdaki siparislerini buldu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Siparisim hakkinda bilgi almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Siparis Sorgusu. Telefon: +90 555 XXX. Platformlar taranıyor... Trendyol: 1 siparis, Hepsiburada: 1 siparis.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Merhaba! 2 aktif siparisiniiz buldum:
+
+1️⃣ Trendyol #TR-445566 — Spor Ayakkabi (Kargoda)
+2️⃣ Hepsiburada #HB-778899 — Bluetooth Kulaklik (Hazirlaniyor)
+
+Hangisi hakkinda bilgi almak istiyorsunuz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)
+
+5. **message_text** — Mesaj gonder
+   text: "Trendyol siparisiniiz:
+
+📦 #TR-445566 — Spor Ayakkabi
+🚚 Durum: Dagitimda
+📍 Tahmini teslim: Bugun 14:00-18:00
+
+Baska bir sorunuz var mi?"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Cross-Platform","Eslestirme"]},{id:"fv04",title:"Degisim Bakiye Yonetimi",description:"14,537 degisim istegi + 9,104 bakiye bildirimi. Musteri urunu iade edip bakiye alir, yeni urun secer, fark + kargo hesaplanir. AI bu sureci otomatize eder.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV04: Standart Degisim Akisi",description:"Bakiye bildirimi → yeni urun secimi → fark + kargo → siparis onay."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Degisim kargosu ulasti. Urun: 4282 Hirka (899,99 T"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`899,99 TL Bakiyeniz bulunmaktadır 🌸 Değişim kargonuz bize ulaştı.
+
+Değişim yapmak istediğiniz ürünün görselini buradan paylaşır mısınız?`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Intent: degisim_urun_secimi. IG link → Urun: 4856 "}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`4856 Lara Palazzo Eşofman Takım — 1599,99 TL
+
+Bakiyeniz: 899,99 TL
+700 TL fark + 99,99 TL kargo ödemeniz olacaktır.
+
+Bu tutarı nasıl ödemek istersiniz? (Havale/Kapıda nakit/kart)`}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Siparişinizi oluşturdum mutlu günlerde giymenizi dilerim 🤗❤️
+
+4856 Palazzo - Bordo - 42 Beden
+Fark: 700 TL + Kargo: 99,99 TL = Kapıda 799,99 TL`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Degisim tamamlandi. Bakiye + fark + kargo otomatik hesaplandi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_ai_intent_4",source:"ai_intent_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Degisim Bakiye Yonetimi" senaryosu icin "Standart Degisim Akisi" akisini olustur.
+
+Aciklama: Bakiye bildirimi → yeni urun secimi → fark + kargo → siparis onay.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Degisim kargosu ulasti. Urun: 4282 Hirka (899,99 TL). Bakiye olusturuldu.
+
+2. **message_text** — Mesaj gonder
+   text: "899,99 TL Bakiyeniz bulunmaktadır 🌸 Değişim kargonuz bize ulaştı.
+
+Değişim yapmak istediğiniz ürünün görselini buradan paylaşır mısınız?"
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "https://www.instagram.com/reel/DSF7h7HCJak/"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **ai_intent** — Niyet tespiti
+   Analiz: Intent: degisim_urun_secimi. IG link → Urun: 4856 Palazzo (1599,99 TL). Fark: 700 TL.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "4856 Lara Palazzo Eşofman Takım — 1599,99 TL
+
+Bakiyeniz: 899,99 TL
+700 TL fark + 99,99 TL kargo ödemeniz olacaktır.
+
+Bu tutarı nasıl ödemek istersiniz? (Havale/Kapıda nakit/kart)"
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kapıda nakit 42 beden bordo"
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Siparişinizi oluşturdum mutlu günlerde giymenizi dilerim 🤗❤️
+
+4856 Palazzo - Bordo - 42 Beden
+Fark: 700 TL + Kargo: 99,99 TL = Kapıda 799,99 TL"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Degisim tamamlandi. Bakiye + fark + kargo otomatik hesaplandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Saha Dogrulanmis","14K+ Degisim"]},{id:"fv08",title:"Duplike Mesaj Onleme",description:"127,802 duplike mesaj tespit edildi. Temsilciler ayni sablonu 2-3 kez arka arkaya gonderiyor. AI mesaj gondermeden once duplike kontrol yapar.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV08: Duplike Sablon Engelleme",description:"Temsilci ayni sablonu tekrar gondermeye calisir, sistem uyarir."},nodes:[{id:"action_handoff_1",type:"action_handoff",position:{x:300,y:50},data:{label:"Agent Devir",summary_template:"[Siparis onay sablonu gonderdi]"}},{id:"action_handoff_2",type:"action_handoff",position:{x:300,y:200},data:{label:"Agent Devir",summary_template:"[Ayni sablonu tekrar gonderiyor — DUPLIKE]"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"⚠️ Bu mesaj az önce gönderildi. Tekrar göndermek istiyor musunuz?"}},{id:"utility_note_4",type:"utility_note",position:{x:300,y:500},data:{label:"Sonuc",text:"Duplike engellendi. Musteri temiz iletisim aldi."}}],edges:[{id:"e_action_handoff_1_action_handoff_2",source:"action_handoff_1",target:"action_handoff_2"},{id:"e_action_handoff_2_utility_set_variable_3",source:"action_handoff_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_utility_note_4",source:"utility_set_variable_3",target:"utility_note_4"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Duplike Mesaj Onleme" senaryosu icin "Duplike Sablon Engelleme" akisini olustur.
+
+Aciklama: Temsilci ayni sablonu tekrar gondermeye calisir, sistem uyarir.
+
+## Node Zinciri
+
+1. **action_handoff** — Canli agent'a devret
+   summary_template: "[Siparis onay sablonu gonderdi]"
+   (Terminal node — akis burada biter)
+
+2. **action_handoff** — Canli agent'a devret
+   summary_template: "[Ayni sablonu tekrar gonderiyor — DUPLIKE]"
+   (Terminal node — akis burada biter)
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: ⚠️ Bu mesaj az önce gönderildi. Tekrar göndermek istiyor musunuz?
+
+4. **utility_note** — Akis sonuc notu
+   text: "Duplike engellendi. Musteri temiz iletisim aldi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:4,tags:["Kalite","127K Sorun"]},{id:"e08",title:"Fatura & Kurumsal Fatura Otomasyonu",description:"Bireysel veya kurumsal fatura talebini AI ile otomatik yoneten, gerekli bilgileri toplayan ve B2B sinyallerini VIP olarak etiketleyen sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E08: Kurumsal Fatura Talebi",description:"Musteri kurumsal fatura istiyor, B2B potansiyeli var."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Intent: Kurumsal Fatura. B2B Sinyal: POZITIF. VIP "}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Evet, kurumsal fatura kesebiliriz! Lutfen su bilgileri paylasin:
+
+1️⃣ Firma adi
+2️⃣ Vergi numarasi
+3️⃣ Vergi dairesi
+4️⃣ Fatura adresi`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Tesekkurler! Bilgilerinizi aldim:
+
+🏢 ABC Teknoloji Ltd. Sti.
+📋 VN: 1234567890
+🏛️ VD: Kadikoy
+
+Kurumsal faturaniz 1 is gunu icinde duzenleneceek. Mail adresinize gonderelim mi?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Kurumsal fatura talebi muhasabeye iletildi. Musteri VIP/B2B olarak etiketlendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_sentiment_3",source:"ai_intent_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_menu_4",source:"ai_sentiment_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fatura & Kurumsal Fatura Otomasyonu" senaryosu icin "Kurumsal Fatura Talebi" akisini olustur.
+
+Aciklama: Musteri kurumsal fatura istiyor, B2B potansiyeli var.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kurumsal fatura keser misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Intent: Kurumsal Fatura. B2B Sinyal: POZITIF. VIP etiket ataniyor.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Evet, kurumsal fatura kesebiliriz! Lutfen su bilgileri paylasin:
+
+1️⃣ Firma adi
+2️⃣ Vergi numarasi
+3️⃣ Vergi dairesi
+4️⃣ Fatura adresi"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "ABC Teknoloji Ltd. Sti. VN: 1234567890 VD: Kadikoy"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Bilgilerinizi aldim:
+
+🏢 ABC Teknoloji Ltd. Sti.
+📋 VN: 1234567890
+🏛️ VD: Kadikoy
+
+Kurumsal faturaniz 1 is gunu icinde duzenleneceek. Mail adresinize gonderelim mi?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Kurumsal fatura talebi muhasabeye iletildi. Musteri VIP/B2B olarak etiketlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Kurumsal","B2B Sinyal"]},{id:"fv01",title:"Fiyat Sorusuna Aninda Urun Karti",description:"En sik musteri niyeti: tek kelime 'Fiyat' veya 'Ne kadar'. AI urun intent'ini tespit edip Knowledge Base'den urun kartini aninda gonderir. 94,434 gercek mesajda dogrulanmis.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV01: Tek Kelime Fiyat Sorusu",description:"Musteri 'Fiyat' veya 'Ne kadar' yazar — en sik gorulen form."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: fiyat_sorma. Baglam: Onceki mesajda IG lin"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`4856 Lara payetli palazzo paça eşofman takım
+•Kampanyalı fiyatımız 1599,99 TL
+•36'dan Başlayıp 44 Bedene kadar
+•Premium seri, kaliteli Modal Kumaş
+•Esnekliği fazladır
+•3 renk seçeneği (haki-siyah-bordo)
+
+Online kredi kartı & havale ödemelerinde kargo ücretsizdir ♥
+Siparişinizi hemen birlikte oluşturalım 💕`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Evet, 42 beden mevcut! 🌸 Sipariş oluşturmamız için bilgilerinizi paylaşır mısınız?
+
+✅ Ad Soyad
+✅ Telefon
+✅ Adres
+✅ Ödeme şekli (kapıda nakit/kart veya havale)`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Fiyat sorusu → urun karti → siparis akisina gecildi. Conversion sureci baslatildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fiyat Sorusuna Aninda Urun Karti" senaryosu icin "Tek Kelime Fiyat Sorusu" akisini olustur.
+
+Aciklama: Musteri 'Fiyat' veya 'Ne kadar' yazar — en sik gorulen form.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Fiyat"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: fiyat_sorma. Baglam: Onceki mesajda IG linki paylasdi → Urun: 4856 Lara Palazzo.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "4856 Lara payetli palazzo paça eşofman takım
+•Kampanyalı fiyatımız 1599,99 TL
+•36'dan Başlayıp 44 Bedene kadar
+•Premium seri, kaliteli Modal Kumaş
+•Esnekliği fazladır
+•3 renk seçeneği (haki-siyah-bordo)
+
+Online kredi kartı & havale ödemelerinde kargo ücretsizdir ♥
+Siparişinizi hemen birlikte oluşturalım 💕"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "42 beden var mı?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Evet, 42 beden mevcut! 🌸 Sipariş oluşturmamız için bilgilerinizi paylaşır mısınız?
+
+✅ Ad Soyad
+✅ Telefon
+✅ Adres
+✅ Ödeme şekli (kapıda nakit/kart veya havale)"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Fiyat sorusu → urun karti → siparis akisina gecildi. Conversion sureci baslatildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Saha Dogrulanmis","94K+ Mesaj"]},{id:"eb07",title:"Fraud / Dolandiricilik Suphesi",description:"Yetkisiz siparis veya hesap ele gecirme suphesiyle panik halinde yazan musteriyi normal kuyrugu bypass ederek acil agent routing'e yonlendiren sistem.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB07: Hesap Ele Gecirme — Acil Mudahale",description:"Musteri hesabinin ele gecirdigini bildiriyor, acil mudahale gerekli."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"ACIL — Intent: Fraud Suphesi. Hesap ele gecirme. O"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Bu durumu cok ciddiye aliyoruz! Sizi hemen guvenlik ekibimize yonlendiriyorum.
+
+🔒 Hesabiniiz gecici olarak donduruluyor
+👤 Yetkili temsilci saniyeler icinde size donecek
+
+Lutfen hazirda bekleyin.`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Alert",variable_name:"alert_status",value_expression:"Fraud alert tetiklendi. Hesap donduruuldu. Acil agent atandi. Kuyruk bypass yapildi."}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Merhaba [Ad], ben guvenlik ekibinden Mehmet. Hesabiniizi inceliyorum.
+
+Su adimda ilerliyoruz:
+1️⃣ Son 24 saat islemleri kontrol ediliyor
+2️⃣ Yetkisiz siparis(ler) iptal ediliyor
+3️⃣ Sifre sifirlama linki gonderecegim
+
+Su an guvendesiniz, endiselenmeyin!`,options:[]}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_menu_6",source:"utility_set_variable_5",target:"message_menu_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fraud / Dolandiricilik Suphesi" senaryosu icin "Hesap Ele Gecirme — Acil Mudahale" akisini olustur.
+
+Aciklama: Musteri hesabinin ele gecirdigini bildiriyor, acil mudahale gerekli.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu siparisi ben vermedim! Hesabim calindi!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: ACIL — Intent: Fraud Suphesi. Hesap ele gecirme. Oncelik: KRITIK. Normal kuyruk bypass.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Bu durumu cok ciddiye aliyoruz! Sizi hemen guvenlik ekibimize yonlendiriyorum.
+
+🔒 Hesabiniiz gecici olarak donduruluyor
+👤 Yetkili temsilci saniyeler icinde size donecek
+
+Lutfen hazirda bekleyin."
+
+5. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "Fraud alert tetiklendi. Hesap donduruuldu. Acil agent atandi. Kuyruk bypass yapildi."
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Merhaba [Ad], ben guvenlik ekibinden Mehmet. Hesabiniizi inceliyorum.
+
+Su adimda ilerliyoruz:
+1️⃣ Son 24 saat islemleri kontrol ediliyor
+2️⃣ Yetkisiz siparis(ler) iptal ediliyor
+3️⃣ Sifre sifirlama linki gonderecegim
+
+Su an guvendesiniz, endiselenmeyin!"
+   Her secenek icin ayri cikis handle'i olustur
+   Degiskenler: {{ad}}
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Fraud","Acil"]},{id:"eb06",title:"Garanti ve Teknik Servis Yonlendirme",description:"Urun arizasinda garanti kapsamini kontrol eden, teknik servis bilgisini Knowledge Base'den ceken ve musteriyi dogru surece yonlendiren sistem.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB06: Garanti Kapsaminda — Servis Yonlendirme",description:"Urun garanti kapsaminda, teknik servise yonlendiriliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Garanti Sorgusu. Siparis: #112233. Urun: K"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Kontrol ettim! Uruniniiz garanti kapsaminda:
+
+🔧 Urun: Kablosuz Kulaklik
+📅 Garanti: 2 yil (4/24 ay)
+✅ Kapsam: AKTIF
+
+En yakin yetkili servis:
+📍 [Marka] Servis Kadikoy
+📞 0216 XXX XX XX
+📍 Adres: Bagdat Cad. No: 45
+
+Fatura ve urunle birlikte basvurabilirsiniz!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Garanti bilgisi verildi. Musteri yetkili servise yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Garanti ve Teknik Servis Yonlendirme" senaryosu icin "Garanti Kapsaminda — Servis Yonlendirme" akisini olustur.
+
+Aciklama: Urun garanti kapsaminda, teknik servise yonlendiriliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Urun bozuldu, garanti kapsaminda mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Garanti Sorgusu. Siparis: #112233. Urun: Kablosuz Kulaklik. Satin alma: 4 ay once. Garanti: 2 yil. Kapsam: EVET.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Kontrol ettim! Uruniniiz garanti kapsaminda:
+
+🔧 Urun: Kablosuz Kulaklik
+📅 Garanti: 2 yil (4/24 ay)
+✅ Kapsam: AKTIF
+
+En yakin yetkili servis:
+📍 [Marka] Servis Kadikoy
+📞 0216 XXX XX XX
+📍 Adres: Bagdat Cad. No: 45
+
+Fatura ve urunle birlikte basvurabilirsiniz!"
+   Degiskenler: {{marka}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "Garanti bilgisi verildi. Musteri yetkili servise yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Garanti","Servis"]},{id:"fv09",title:"Gece Yarisi / 7-24 Otomasyon",description:"Gece 00:00-01:00 arasi 45K+ mesaj, aksam 19:00-23:00 arasi 40-49K/saat. Mevcut cevap: 'mesai disi' sablonu (1,618 kez). AI 7/24 gercek cevap verir.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV09: Gece 23:00 — AI Siparis Alma",description:"Gece musterisi fiyat sorar, AI urun karti gonderir ve siparis alir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Saat: 23:15. Canli agent yok. AI devreye giriyor. "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Hoş geldiniz 🌸
+
+4856 Lara Palazzo Eşofman Takım
+•1599,99 TL •36-44 Beden •3 renk
+
+Online ödemede kargo ücretsiz ♥
+Sipariş oluşturmak ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! 💕 Sipariş bilgilerinizi alabilir miyim?
+
+✅ Ad Soyad
+✅ Telefon
+✅ Adres (il/ilçe dahil)
+✅ Mail (opsiyonel)`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Gece 23:15 siparis akisi basarili baslatildi. Mesai disi sablon gonderilMEDI."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Gece Yarisi / 7-24 Otomasyon" senaryosu icin "Gece 23:00 — AI Siparis Alma" akisini olustur.
+
+Aciklama: Gece musterisi fiyat sorar, AI urun karti gonderir ve siparis alir.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba bu ürün ne kadar"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Saat: 23:15. Canli agent yok. AI devreye giriyor. Intent: fiyat_sorma.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Hoş geldiniz 🌸
+
+4856 Lara Palazzo Eşofman Takım
+•1599,99 TL •36-44 Beden •3 renk
+
+Online ödemede kargo ücretsiz ♥
+Sipariş oluşturmak ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet 42 beden bordo kapıda nakit"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! 💕 Sipariş bilgilerinizi alabilir miyim?
+
+✅ Ad Soyad
+✅ Telefon
+✅ Adres (il/ilçe dahil)
+✅ Mail (opsiyonel)"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Gece 23:15 siparis akisi basarili baslatildi. Mesai disi sablon gonderilMEDI."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Saha Dogrulanmis","7/24"]},{id:"e18",title:"Gel-Al Noktasi Kapali Yonlendirme",description:"Iade teslim noktasina ulasamayan musteriye AI en yakin alternatif teslim noktasini bulur ve yonlendirir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E18: Teslim Noktasi Kapali",description:"Musteri iade teslim noktasina gittiginde kapali buldu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Teslim Noktasi Kapali. Kargo: Aras. Bolge:"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Uzgunuz! En yakin alternatif teslim noktalari:
+
+📍 Aras Kargo — Bagdat Cad. Subesi (1.2 km)
+   Saat: 09:00-18:00
+📍 Aras Kargo — Fenerbahce Subesi (2.1 km)
+   Saat: 09:00-19:00
+
+Iade kodunuz her iki subede de gecerlidir. Baska yardimci olabilir miyim?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Alternatif teslim noktasi yonlendirmesi yapildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Gel-Al Noktasi Kapali Yonlendirme" senaryosu icin "Teslim Noktasi Kapali" akisini olustur.
+
+Aciklama: Musteri iade teslim noktasina gittiginde kapali buldu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Gel-Al noktasi kapali, iade urunu teslim edemiyorum!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Teslim Noktasi Kapali. Kargo: Aras. Bolge: Kadikoy. Alternatif aranıyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Uzgunuz! En yakin alternatif teslim noktalari:
+
+📍 Aras Kargo — Bagdat Cad. Subesi (1.2 km)
+   Saat: 09:00-18:00
+📍 Aras Kargo — Fenerbahce Subesi (2.1 km)
+   Saat: 09:00-19:00
+
+Iade kodunuz her iki subede de gecerlidir. Baska yardimci olabilir miyim?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Alternatif teslim noktasi yonlendirmesi yapildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Gel-Al","Alternatif"]},{id:"fv03",title:"Gelismis Beden Danismanligi",description:"76,570 beden mesaji analiz edildi. Musteriler boy+kilo, vucut tarifi, kalip sorusu ve esnek mi sorusu ile geliyor. E11'in gelismis versiyonu — gercek saha kaliplarini kapsiyyor.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV03: Fizik Tarifli Beden Sorusu",description:"Musteri boy+kilo veriyor, AI beden hesapliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: beden_sorma (fizik tarifli). Musteri 48 be"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`48 beden giyiyorsanız bu üründe 44 beden (en büyük beden) tercih edebilirsiniz 🌸
+
+Ürünümüz esnek Modal kumaştır, 48 bedene rahat oturur.
+
+Emin olmazsanız değişim hakkınız bulunmaktadır 💕
+
+Sipariş oluşturalım mı?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Beden danismanligi basarili. 48→44 eslestirmesi + esneklik bilgisi + degisim guvencesi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Gelismis Beden Danismanligi" senaryosu icin "Fizik Tarifli Beden Sorusu" akisini olustur.
+
+Aciklama: Musteri boy+kilo veriyor, AI beden hesapliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "48 beden giyiyorum sizce kaç beden olsun"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: beden_sorma (fizik tarifli). Musteri 48 beden giyiyor. Urun: onceki baglamdan 4856 Palazzo.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "48 beden giyiyorsanız bu üründe 44 beden (en büyük beden) tercih edebilirsiniz 🌸
+
+Ürünümüz esnek Modal kumaştır, 48 bedene rahat oturur.
+
+Emin olmazsanız değişim hakkınız bulunmaktadır 💕
+
+Sipariş oluşturalım mı?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam 44 alayım"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Beden danismanligi basarili. 48→44 eslestirmesi + esneklik bilgisi + degisim guvencesi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Saha Dogrulanmis","En Sik"]},{id:"e07",title:"Hasarli Kargo Tutanak Yonetimi",description:"Paket hasarli geldiginde AI hasar prosedurunu anlatir, tutanak formunu gonderir ve fotograf kanitini toplar. Tum surec otomatik yonetilir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E07: Hasarli Paket — Tutanak ile Teslim Alma",description:"Musteri hasarli paketi teslim almadan tutanak tutmak istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Hasarli Kargo. Kargo: MNG. Prosedur: Tutan"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Cok uzgunuz! Hasarli kargo icin su adimlari izleyin:
+
+1️⃣ Paketi ACMADAN fotograflayin (4 aci)
+2️⃣ Kargo gorevlisinden tutanak isteyin
+3️⃣ Tutanak + fotograflari bana gonderin
+4️⃣ Degisim/iade surecini hemen baslatalim
+
+Kargo gorevlisi gittiyse de endiselenmeyin, fotograflarla devam edebiliriz.`,options:[]}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Fotograflar alindi! Hasar net goruluyor. Secenekleriniz:
+
+🔄 Yeni urun gonderimi (2-3 is gunu)
+💰 Tam iade (3-5 is gunu)
+
+Hangisini tercih edersiniz?`,options:[]}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Degisim sureci baslatildi. Hasar kaniti dosyalandi. Kargo firmasina hasar raporu iletildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_utility_set_variable_5",source:"message_menu_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_menu_6",source:"utility_set_variable_5",target:"message_menu_6"},{id:"e_message_menu_6_ai_intent_7",source:"message_menu_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Hasarli Kargo Tutanak Yonetimi" senaryosu icin "Hasarli Paket — Tutanak ile Teslim Alma" akisini olustur.
+
+Aciklama: Musteri hasarli paketi teslim almadan tutanak tutmak istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kargo paketi hasarli geldi, tutanak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Hasarli Kargo. Kargo: MNG. Prosedur: Tutanak + Fotograf.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Cok uzgunuz! Hasarli kargo icin su adimlari izleyin:
+
+1️⃣ Paketi ACMADAN fotograflayin (4 aci)
+2️⃣ Kargo gorevlisinden tutanak isteyin
+3️⃣ Tutanak + fotograflari bana gonderin
+4️⃣ Degisim/iade surecini hemen baslatalim
+
+Kargo gorevlisi gittiyse de endiselenmeyin, fotograflarla devam edebiliriz."
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Fotograflar alindi! Hasar net goruluyor. Secenekleriniz:
+
+🔄 Yeni urun gonderimi (2-3 is gunu)
+💰 Tam iade (3-5 is gunu)
+
+Hangisini tercih edersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Yeni urun gonderin."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "Degisim sureci baslatildi. Hasar kaniti dosyalandi. Kargo firmasina hasar raporu iletildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Hasarli Kargo","Tutanak"]},{id:"s3",title:"Iade Cevirme",description:"Iade taleplerini AI ile analiz edip, cozulebilir iadelerde alternatif sunarak (degisim, kupon, egitim) iade maliyetinden kurtaran akilli sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"S3: Beden Sorunu → Degisim",description:"Musteri beden kucuk/buyuk oldugu icin iade istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Iade Talebi. Sebep: Beden. Aksiyon: Degisi"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Anliyoruz! Beden sorunu icin degisim yapabiliriz, kargo bizden. Bir ust beden (L yerine XL) gondermemizi ister misiniz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"XL bedeniniz hazirlandi! Yeni urun kargoya verilince size bildirim gelecek. Mevcut urunu de kargo geldiginde geri verebilirsiniz."}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Iade Onlendi — Degisim ile Cozuldu. Kurtarilan: 150 TL"}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade Cevirme" senaryosu icin "Beden Sorunu → Degisim" akisini olustur.
+
+Aciklama: Musteri beden kucuk/buyuk oldugu icin iade istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, iade etmek istiyorum. Beden kucuk geldi."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Iade Talebi. Sebep: Beden. Aksiyon: Degisim Onerisi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Anliyoruz! Beden sorunu icin degisim yapabiliriz, kargo bizden. Bir ust beden (L yerine XL) gondermemizi ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Olur, XL gonderseniz iyi olur."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "XL bedeniniz hazirlandi! Yeni urun kargoya verilince size bildirim gelecek. Mevcut urunu de kargo geldiginde geri verebilirsiniz."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Iade Onlendi — Degisim ile Cozuldu. Kurtarilan: 150 TL"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Degisim","Kargo Bizden"]},{id:"e02",title:"Iade Kodu & Kargo Yonlendirme",description:"Iade kodu alan musteriye hangi kargoya verecegini, teslim noktasini ve sureci otomatik aciklayan sistem. Agent'in tekrar tekrar ayni bilgiyi vermesini onler.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E02: Standart Iade Kodu Yonlendirme",description:"Musteri iade kodunu aldi, kargoya nereye verecegini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Iade Kargo Yonlendirme. Platform: Trendyol"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Iade kodunuz icin:
+
+📦 Kargo Firmasi: Yurtici Kargo
+📍 En yakin teslim noktasi: [Konum bazli oneri]
+📋 Iade kodu: Kargo gorevlisine soyleyebilirsiniz
+⏰ Teslim suresi: Kargoya verdikten sonra 3-5 is gunu
+
+Paketleme: Urunu orijinal kutusunda, etiketleri cikmamis sekilde gonderin.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Orijinal kutu yoksa herhangi bir kutuya guvenli sekilde paketleyebilirsiniz. Onemli olan urunun hasar gormemesidir. Iade kodu kargoda gecerli olacaktir."}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Iade kargo yonlendirme tamamlandi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade Kodu & Kargo Yonlendirme" senaryosu icin "Standart Iade Kodu Yonlendirme" akisini olustur.
+
+Aciklama: Musteri iade kodunu aldi, kargoya nereye verecegini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Iade kodu aldim, hangi kargoya verecegim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Iade Kargo Yonlendirme. Platform: Trendyol. Anlasmalı Kargo: Yurtici.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Iade kodunuz icin:
+
+📦 Kargo Firmasi: Yurtici Kargo
+📍 En yakin teslim noktasi: [Konum bazli oneri]
+📋 Iade kodu: Kargo gorevlisine soyleyebilirsiniz
+⏰ Teslim suresi: Kargoya verdikten sonra 3-5 is gunu
+
+Paketleme: Urunu orijinal kutusunda, etiketleri cikmamis sekilde gonderin."
+   Degiskenler: {{konum_bazli_oneri}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Peki orijinal kutu yoksa?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Orijinal kutu yoksa herhangi bir kutuya guvenli sekilde paketleyebilirsiniz. Onemli olan urunun hasar gormemesidir. Iade kodu kargoda gecerli olacaktir."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Iade kargo yonlendirme tamamlandi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Iade","Kargo Yonlendirme"]},{id:"e03",title:"Iade Red Yonetimi & De-Eskalasyon",description:"Iade reddi ile kizgin musteri geldiginde AI de-eskalasyon cevap onerisi sunar, dogru surec metni verir ve kriz akisini standartlastirir. Platform bazli iade politikasi bilgisi ile donatilmistir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E03: Iade Reddi — Urun Acilmis",description:"Musteri urunu acmadim diyor ama platform iade reddetti."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Sentiment: KIZGIN (9/10). Eskalasyon Riski: YUKSEK"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Cok uzgunuz! Iade reddi sizi hayal kiriklgina ugrattiysa haklisiniz. Hemen durumu inceliyoruz.
+
+Siparis numaranizi paylasir misiniz? Red sebebini beraber inceleyelim ve en hizli cozumu bulalim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Siparis: 456789. Platform: Trendyol. Red Sebebi: '"}},{id:"message_menu_7",type:"message_menu",position:{x:300,y:950},data:{label:"Menu",text:`Inceledim! Red sebebi 'kullanim izi' olarak belirtilmis. Ama endiselenmeyin — itiraz hakkiniz var:
+
+1️⃣ Urunu fotograflayin (etiket + kutu)
+2️⃣ Fotograflari bana gonderin
+3️⃣ Itiraz basvurusunu sizin adniza yapayim
+
+Genelde 3-5 is gununde sonuclanir. Baslayalim mi?`,options:[]}},{id:"utility_set_variable_8",type:"utility_set_variable",position:{x:300,y:1100},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"De-eskalasyon basarili. Musteri sakinlestirildi. Itiraz sureci baslatildi. Sikayetvar riski onlendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_sentiment_3",source:"ai_intent_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_text_4",source:"ai_sentiment_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_menu_7",source:"ai_intent_6",target:"message_menu_7"},{id:"e_message_menu_7_utility_set_variable_8",source:"message_menu_7",target:"utility_set_variable_8"},{id:"e_utility_set_variable_8_utility_note_9",source:"utility_set_variable_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade Red Yonetimi & De-Eskalasyon" senaryosu icin "Iade Reddi — Urun Acilmis" akisini olustur.
+
+Aciklama: Musteri urunu acmadim diyor ama platform iade reddetti.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Iadem reddedildi, urunu hic acmadim! Parami vermiyorsunuz. Sikayetvar'a yazacagim!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Sentiment: KIZGIN (9/10). Eskalasyon Riski: YUKSEK. Anahtar: 'Sikayetvar'. De-eskalasyon aktif.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_text** — Mesaj gonder
+   text: "Cok uzgunuz! Iade reddi sizi hayal kiriklgina ugrattiysa haklisiniz. Hemen durumu inceliyoruz.
+
+Siparis numaranizi paylasir misiniz? Red sebebini beraber inceleyelim ve en hizli cozumu bulalim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Siparis 456789. Urun aynen kutusunda, acmadim bile."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Siparis: 456789. Platform: Trendyol. Red Sebebi: 'Kullanim izi'. Itiraz hakki: MEVCUT.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_menu** — Secenekli mesaj
+   Mesaj: "Inceledim! Red sebebi 'kullanim izi' olarak belirtilmis. Ama endiselenmeyin — itiraz hakkiniz var:
+
+1️⃣ Urunu fotograflayin (etiket + kutu)
+2️⃣ Fotograflari bana gonderin
+3️⃣ Itiraz basvurusunu sizin adniza yapayim
+
+Genelde 3-5 is gununde sonuclanir. Baslayalim mi?"
+   Her secenek icin ayri cikis handle'i olustur
+
+8. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+9. **utility_note** — Akis sonuc notu
+   text: "De-eskalasyon basarili. Musteri sakinlestirildi. Itiraz sureci baslatildi. Sikayetvar riski onlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Eskalasyon","De-Eskalasyon"]},{id:"e17",title:"Iade Sureci Takibi & Bilgilendirme",description:"Iade baslatildi ama surec ne kadar surecek sorusuna AI platform ve kargo firmasina gore tahmini sure verir, sureci takip eder.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E17: Iade Sureci Takibi",description:"Musteri iade surecinin ne kadar sureceginii soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Iade Surec Takibi. Platform: Hepsiburada. "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Iade durumunuz:
+
+📦 Kargo: Teslim edildi ✅
+🔍 Durum: Kontrol bekliyor
+⏰ Tahmini kontrol suresi: 2-3 is gunu
+💰 Onay sonrasi iade: 3-5 is gunu (kartiniza)
+
+Toplam tahmini sure: 5-8 is gunu
+
+Durum degistiginde size bilgi verecegim!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Iade surec bilgisi verildi. Proaktif bildirim ayarlandi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade Sureci Takibi & Bilgilendirme" senaryosu icin "Iade Sureci Takibi" akisini olustur.
+
+Aciklama: Musteri iade surecinin ne kadar sureceginii soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Iadem kac gunde tamamlanir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Iade Surec Takibi. Platform: Hepsiburada. Iade Durumu: Kargo teslim edildi, kontrol bekliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Iade durumunuz:
+
+📦 Kargo: Teslim edildi ✅
+🔍 Durum: Kontrol bekliyor
+⏰ Tahmini kontrol suresi: 2-3 is gunu
+💰 Onay sonrasi iade: 3-5 is gunu (kartiniza)
+
+Toplam tahmini sure: 5-8 is gunu
+
+Durum degistiginde size bilgi verecegim!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Iade surec bilgisi verildi. Proaktif bildirim ayarlandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Iade Takip","Sure Bilgisi"]},{id:"e16",title:"Iade Suresi & 15 Gun Kurali Bilgilendirme",description:"Iade suresi hakkinda bilgi isteyen musteriye AI platform bazli iade politikasini Knowledge Base'den cekerr ve aninda sunar.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E16: Standart Iade Suresi Sorusu",description:"Musteri iade suresi hakkinda bilgi istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Iade Suresi. Platform: Trendyol. Satin Alm"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Iade sureniz hakkinda bilgi:
+
+📋 Platform: Trendyol
+⏰ Yasal iade suresi: 14 gun (cayma hakki)
+📅 Satin alma: 8 gun once
+⏳ Kalan sure: 6 gun
+
+📌 Iade kosullari:
+- Urun kullanilmamis olmali
+- Etiketler cikmamis olmali
+- Orijinal paketinde olmali
+
+Iade baslatmak ister misiniz?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Iade suresi bilgisi verildi. Musteri bilgilendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade Suresi & 15 Gun Kurali Bilgilendirme" senaryosu icin "Standart Iade Suresi Sorusu" akisini olustur.
+
+Aciklama: Musteri iade suresi hakkinda bilgi istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Iade suresi kac gun? 15 gun kurali ne?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Iade Suresi. Platform: Trendyol. Satin Alma: 8 gun once. Kalan: 7 gun.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Iade sureniz hakkinda bilgi:
+
+📋 Platform: Trendyol
+⏰ Yasal iade suresi: 14 gun (cayma hakki)
+📅 Satin alma: 8 gun once
+⏳ Kalan sure: 6 gun
+
+📌 Iade kosullari:
+- Urun kullanilmamis olmali
+- Etiketler cikmamis olmali
+- Orijinal paketinde olmali
+
+Iade baslatmak ister misiniz?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Iade suresi bilgisi verildi. Musteri bilgilendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Iade Suresi","Bilgilendirme"]},{id:"fv05",title:"Indirimli Urun Iade Red — De-eskalasyon",description:"7,384 iade red mesaji → eskalasyon dongusu. 'Indirimli urunlerde iade yok' dendiginde musteri sinirlanip 'tuketici haklari', 'CIMER' tehditi yapiyor. AI empati + alternatif ile eskalasyonu onler.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV05: Indirimli Urun Iade → Empati → Degisim",description:"Saha verisindeki en sik eskalasyon paterni icin AI cozumu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: iade_istegi + sikayet (Seviye 2). Urun ind"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Anlıyorum, bu durum sizi üzmüştür 🙏 Kargo ücreti konusundaki endişenizi çok iyi anlıyorum.
+
+Size şu alternatifleri sunabiliriz:
+1️⃣ Farklı bir ürünle değişim — kargo ücretsiz, bakiyeniz: 674,99 TL
+2️⃣ İade süreci — yasal haklarınız çerçevesinde değerlendirme
+
+Hangi seçeneği tercih edersiniz?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Musteri iade konusunda israrli. Frustration Seviye"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Talebinizi not aldım. İade işleminiz için sizi müşteri hizmetleri yetkilimize yönlendiriyorum, en kısa sürede çözüm sağlanacaktır 🙏"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Human handoff tetiklendi. Eskalasyon dongusu 2 mesajda kesilerek insana devredildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Indirimli Urun Iade Red — De-eskalasyon" senaryosu icin "Indirimli Urun Iade → Empati → Degisim" akisini olustur.
+
+Aciklama: Saha verisindeki en sik eskalasyon paterni icin AI cozumu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ürün iade edeceğim zaman da 65 TL kargo parası verdim siz şimdi bana 609 TL göndereceğiz diyorsunuz bu nasıl bir hesaptır"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: iade_istegi + sikayet (Seviye 2). Urun indirimli. Kargo ucreti sikayeti var. De-eskalasyon modu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Anlıyorum, bu durum sizi üzmüştür 🙏 Kargo ücreti konusundaki endişenizi çok iyi anlıyorum.
+
+Size şu alternatifleri sunabiliriz:
+1️⃣ Farklı bir ürünle değişim — kargo ücretsiz, bakiyeniz: 674,99 TL
+2️⃣ İade süreci — yasal haklarınız çerçevesinde değerlendirme
+
+Hangi seçeneği tercih edersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sadece para iademi istiyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Musteri iade konusunda israrli. Frustration Seviye 3. Human handoff onerisi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Talebinizi not aldım. İade işleminiz için sizi müşteri hizmetleri yetkilimize yönlendiriyorum, en kısa sürede çözüm sağlanacaktır 🙏"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Human handoff tetiklendi. Eskalasyon dongusu 2 mesajda kesilerek insana devredildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Eskalasyon Onleme","Saha Dogrulanmis"]},{id:"eb02",title:"Influencer / Affiliate Attribution",description:"WhatsApp uzerinden paylasilan influencer kampanya kodlarinin takibini yapan, hangi influencer'in ne kadar satis yaptigi olcumleyen attribution sistemi.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB02: Influencer Kod Kullanimi",description:"Musteri influencer'dan aldigi indirim kodunu kullaniyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Influencer Kod Kullanimi. Influencer: @Gul"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! @GulStyle'in indirim kodu:
+
+🏷️ Kod: GULSTYLE20
+💰 Indirim: %20
+📅 Gecerlilik: 28 Subat'a kadar
+
+Siparis verirken kupon alanina GULSTYLE20 yazmaniz yeterli!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Influencer attribution kaydedildi: @GulStyle -> Musteri [Ad]. Kampanya tracking aktif."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Influencer / Affiliate Attribution" senaryosu icin "Influencer Kod Kullanimi" akisini olustur.
+
+Aciklama: Musteri influencer'dan aldigi indirim kodunu kullaniyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kod neydi? X influencer'in kodunu kullanmak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Influencer Kod Kullanimi. Influencer: @GulStyle. Kod: GULSTYLE20. Indirim: %20.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! @GulStyle'in indirim kodu:
+
+🏷️ Kod: GULSTYLE20
+💰 Indirim: %20
+📅 Gecerlilik: 28 Subat'a kadar
+
+Siparis verirken kupon alanina GULSTYLE20 yazmaniz yeterli!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Influencer attribution kaydedildi: @GulStyle -> Musteri [Ad]. Kampanya tracking aktif."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Influencer","Kod"]},{id:"fv02",title:"Instagram Link → Urun Tanima",description:"Musteri Instagram reel/post linki paylasiyor ama temsilci gorseli goremiyor — 16,442 kez 'gorsel gorunmuyor' mesaji gonderilmis. AI linki parse edip urunu otomatik taniir.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV02: IG Reel Linki ile Urun Sorma",description:"Musteri Instagram reel linkini atiyor, AI urunu otomatik tanir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: urun_link_paylasimi. IG Reel tespit edildi"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Bu ürünü bulduk! 🌸
+
+4856 Lara payetli palazzo paça eşofman takım
+•Kampanyalı fiyatımız 1599,99 TL
+•36-44 Beden
+•3 renk (haki-siyah-bordo)
+
+Sipariş vermek ister misiniz? 💕`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"IG link → urun tanima → siparis akisi. Gorsel gorunmuyor problemi bypass edildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Instagram Link → Urun Tanima" senaryosu icin "IG Reel Linki ile Urun Sorma" akisini olustur.
+
+Aciklama: Musteri Instagram reel linkini atiyor, AI urunu otomatik tanir.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "https://www.instagram.com/reel/DKZnKjhImI2/?igsh=MWx1Z3BmaHR1dWRxYQ=="
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: urun_link_paylasimi. IG Reel tespit edildi. Post meta: 'Lara Palazzo Esofman'. Urun eslestirme: 4856.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Bu ürünü bulduk! 🌸
+
+4856 Lara payetli palazzo paça eşofman takım
+•Kampanyalı fiyatımız 1599,99 TL
+•36-44 Beden
+•3 renk (haki-siyah-bordo)
+
+Sipariş vermek ister misiniz? 💕"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet bordo 42 beden"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "IG link → urun tanima → siparis akisi. Gorsel gorunmuyor problemi bypass edildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Saha Dogrulanmis","7K+ Link"]},{id:"e10",title:"Kampanya Fiyat Farki & Kupon Cozumu",description:"Kampanya fiyati yansimadi veya kupon calismadi diyen musteri icin AI siparis ve kampanya verisini karsilastirir, fark varsa cozum sunar.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E10: Kampanya Fiyati Yansimaadi",description:"Musteri kampanyali fiyat beklerken normal fiyat odedi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Farki. Siparis: #556677. Odenen: 399"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Kontrol ettim! Kampanya koosullari:
+
+🏷️ Kampanya: %25 Indirim
+📋 Kosul: Minimum 500 TL sepet tutari
+🛒 Sepetiniz: 399 TL (kosul altinda)
+
+Maalesef sepet tutari minimum kosulun altinda kaldigi icin indirim uygulanamamis. Sepetinize bir urun daha eklerseniz indirim otomatik uygulanir.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Fiyat farki aciklandi. Kampanya kosulu karslanmamis. Musteri bilgilendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kampanya Fiyat Farki & Kupon Cozumu" senaryosu icin "Kampanya Fiyati Yansimaadi" akisini olustur.
+
+Aciklama: Musteri kampanyali fiyat beklerken normal fiyat odedi.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kampanyali aldim ama fiyat farki yansimadi! 299 TL yerine 399 TL odedim."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Farki. Siparis: #556677. Odenen: 399 TL. Kampanya: Min 500 TL sepet. Kampanya UYGULANMADI (min tutar altinda).
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Kontrol ettim! Kampanya koosullari:
+
+🏷️ Kampanya: %25 Indirim
+📋 Kosul: Minimum 500 TL sepet tutari
+🛒 Sepetiniz: 399 TL (kosul altinda)
+
+Maalesef sepet tutari minimum kosulun altinda kaldigi icin indirim uygulanamamis. Sepetinize bir urun daha eklerseniz indirim otomatik uygulanir."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Anladim, tesekkurler."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Fiyat farki aciklandi. Kampanya kosulu karslanmamis. Musteri bilgilendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Fiyat Farki","Kampanya"]},{id:"e01",title:"Kargo Takip Otomasyonu",description:"Musteri kargo takip bilgisi istediginde AI siparis numarasini eslestirir ve takip linkini aninda gonderir. En sik gelen soru tipini (%40) tamamen otomatiklestiren sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E01: Standart Kargo Takip Sorusu",description:"Musteri siparis numarasi vererek kargo durumunu soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kargo Takip. Siparis No: 12345678. Platfor"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Siparisinisin durumu:
+
+📦 Siparis: #12345678
+🚚 Kargo: Yurtici Kargo
+📍 Durum: Dagitima cikti
+📅 Tahmini Teslimat: Bugun 14:00-18:00
+
+Takip linki: [Yurtici Takip Linki]`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Otomatik cozum: Kargo takip bilgisi gonderildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kargo Takip Otomasyonu" senaryosu icin "Standart Kargo Takip Sorusu" akisini olustur.
+
+Aciklama: Musteri siparis numarasi vererek kargo durumunu soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kargom nerede? Takip linki atar misin? Siparis numaram 12345678."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kargo Takip. Siparis No: 12345678. Platform: Trendyol. Kargo: Yurtici.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Siparisinisin durumu:
+
+📦 Siparis: #12345678
+🚚 Kargo: Yurtici Kargo
+📍 Durum: Dagitima cikti
+📅 Tahmini Teslimat: Bugun 14:00-18:00
+
+Takip linki: [Yurtici Takip Linki]"
+   Degiskenler: {{yurtici_takip_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Kargo takip bilgisi gonderildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Otomatik","Kargo Takip"]},{id:"e22",title:"Kargo Ucreti Iadesi Bilgilendirme",description:"Kargo ucretinin iade edilip edilmeyecegini soran musteriye AI platform bazli iade politikasini Knowledge Base'den cekerr ve aciklar.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E22: Kargo Ucreti Iade Sorusu",description:"Musteri iade yapacak, kargo ucretini geri alabilir mi soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kargo Ucreti Iadesi. Iade Sebebi: Kusurlu "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Iade sebebinize gore kargo ucreti durumu:
+
+✅ Kusurlu/yanlis urun → Kargo ucreti iade edilir
+⚠️ Cayma hakki (fikrini degistirme) → Kargo ucreti musteriye aittir
+
+Sizin iadeniz kusurlu urun sebebiyle oldugu icin kargo ucreti de iade edilecektir!
+
+Iade tutari: Urun + kargo = toplam iade.`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Kargo ucreti iade bilgisi verildi. Musteri bilgilendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kargo Ucreti Iadesi Bilgilendirme" senaryosu icin "Kargo Ucreti Iade Sorusu" akisini olustur.
+
+Aciklama: Musteri iade yapacak, kargo ucretini geri alabilir mi soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kargo ucretini iade eder misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kargo Ucreti Iadesi. Iade Sebebi: Kusurlu urun. Politika: Kusurlu → kargo iade EDILIR.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Iade sebebinize gore kargo ucreti durumu:
+
+✅ Kusurlu/yanlis urun → Kargo ucreti iade edilir
+⚠️ Cayma hakki (fikrini degistirme) → Kargo ucreti musteriye aittir
+
+Sizin iadeniz kusurlu urun sebebiyle oldugu icin kargo ucreti de iade edilecektir!
+
+Iade tutari: Urun + kargo = toplam iade."
+
+5. **utility_note** — Akis sonuc notu
+   text: "Kargo ucreti iade bilgisi verildi. Musteri bilgilendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Kargo Ucreti","Iade Politikasi"]},{id:"fv11",title:"Kargo Ucretsiz Motivasyon",description:"49,430 kez 'online odemede kargo ucretsiz' mesaji gonderilmis. Bu mesajin gonderildigi konusmalarda conversion %18 iken gonderilmeyenlerde %9. AI her konusmada stratejik olarak kullanir.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV11: Kargo Ucretsiz ile Online Odemeye Yonlendirme",description:"Kapida nakit isteyen musteriye ucretsiz kargo ile online odeme motivasyonu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Tabii, kapıda nakit ödeme mevcut 🌸
+
+Kapıda ödeme: +99,99 TL kargo ücreti
+
+💡 Bilgi: Online kredi kartı veya havale ile ödemenizde kargo tamamen ücretsizdir ♥
+
+Hangi ödeme yöntemini tercih edersiniz?`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Kargo ucretsiz motivasyonu basarili. Musteri kapida nakitten havaleye gecti. 99,99 TL kargo tasarrufu."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_message_text_3",source:"ai_intent_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_utility_note_5",source:"ai_intent_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kargo Ucretsiz Motivasyon" senaryosu icin "Kargo Ucretsiz ile Online Odemeye Yonlendirme" akisini olustur.
+
+Aciklama: Kapida nakit isteyen musteriye ucretsiz kargo ile online odeme motivasyonu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kapıda nakit ödeme yapıcam"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **message_text** — Mesaj gonder
+   text: "Tabii, kapıda nakit ödeme mevcut 🌸
+
+Kapıda ödeme: +99,99 TL kargo ücreti
+
+💡 Bilgi: Online kredi kartı veya havale ile ödemenizde kargo tamamen ücretsizdir ♥
+
+Hangi ödeme yöntemini tercih edersiniz?"
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "O zaman havale yapayım"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **utility_note** — Akis sonuc notu
+   text: "Kargo ucretsiz motivasyonu basarili. Musteri kapida nakitten havaleye gecti. 99,99 TL kargo tasarrufu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Saha Dogrulanmis","2x Conversion"]},{id:"e24",title:"Kayip Iade Paketi Arastirma",description:"Iade kargo kodu okunmadi veya paket kayboldu durumlarinda AI kargo arastirma surecini baslatir ve musteriye takip bilgisi verir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E24: Iade Paketi Kayip",description:"Musteri iade paketini kargoya verdi ama takipte gorünmuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kayip Iade Paketi. Iade: #556677. Son karg"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Kontrol ettim! Iade paketinizin durumu:
+
+📦 Iade: #556677
+📍 Son durum: Kargoya kabul (10 gun once)
+⚠️ Sonraki hareket kaydedilmemis
+
+Hemen kargo firmasina arastirma talebi aciyorum. Sonuc: 3-5 is gunu.
+
+Paket bulunamazsa tam iade yapilacak, endiselenmeyin!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Kargo arastirma talebi acildi. Musteri bilgilendirildi. Takip notu ayarlandi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kayip Iade Paketi Arastirma" senaryosu icin "Iade Paketi Kayip" akisini olustur.
+
+Aciklama: Musteri iade paketini kargoya verdi ama takipte gorünmuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Iade paketim kayboldu, kargo kodu okunmadi!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kayip Iade Paketi. Iade: #556677. Son kargo durumu: 'Kabul edildi' — 10 gun once. Sonrasi YOK.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Kontrol ettim! Iade paketinizin durumu:
+
+📦 Iade: #556677
+📍 Son durum: Kargoya kabul (10 gun once)
+⚠️ Sonraki hareket kaydedilmemis
+
+Hemen kargo firmasina arastirma talebi aciyorum. Sonuc: 3-5 is gunu.
+
+Paket bulunamazsa tam iade yapilacak, endiselenmeyin!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Kargo arastirma talebi acildi. Musteri bilgilendirildi. Takip notu ayarlandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Kayip Paket","Arastirma"]},{id:"e04",title:"Kusurlu Urun Degisim/Iade Akisi",description:"Kusurlu urun alan musterinin sorununu AI ile hizla kategorilendiren, degisim veya iade akisini otomatik baslatan ve kanit toplama surecini yoneten sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E04: Kusurlu Urun — Degisim",description:"Musteri kusurlu urun aldi, stokta yedek var, degisim yapiliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kusurlu Urun. Kusur Tipi: Fiziksel hasar ("}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Cok uzgunuz! Kusurlu urun gondermemiz kabul edilemez. Hemen cozelim.
+
+Lutfen fermuarin kirik oldugunu gosteren bir fotograf gonderir misiniz? Kanit aldiktan sonra degisim surecini aninda baslatalim.`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Fotograf alindi. Kusur dogrulandi: Kirik fermuar. "}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Tesekkurler! Kusur dogrulandi. Degisim surecini baslattim:
+
+🔄 Yeni urun: Yarin kargoya verilecek
+📦 Kusurlu urunu iade etmenize GEREK YOK
+🚚 Tahmini teslimat: 2-3 is gunu
+
+Takip numaranizi paylasacagim.`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Degisim sureci baslatildi. Kusurlu urun iade gerekmeden yeni urun gonderilecek. Musteri memnun."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_ai_intent_6",source:"utility_set_variable_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kusurlu Urun Degisim/Iade Akisi" senaryosu icin "Kusurlu Urun — Degisim" akisini olustur.
+
+Aciklama: Musteri kusurlu urun aldi, stokta yedek var, degisim yapiliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kusurlu urun geldi, fermuar kirik! Degisim istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kusurlu Urun. Kusur Tipi: Fiziksel hasar (fermuar). Aksiyon: Kanit toplama.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Cok uzgunuz! Kusurlu urun gondermemiz kabul edilemez. Hemen cozelim.
+
+Lutfen fermuarin kirik oldugunu gosteren bir fotograf gonderir misiniz? Kanit aldiktan sonra degisim surecini aninda baslatalim."
+
+5. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Fotograf alindi. Kusur dogrulandi: Kirik fermuar. Stok kontrolu: MEVCUT. Degisim uygun.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Kusur dogrulandi. Degisim surecini baslattim:
+
+🔄 Yeni urun: Yarin kargoya verilecek
+📦 Kusurlu urunu iade etmenize GEREK YOK
+🚚 Tahmini teslimat: 2-3 is gunu
+
+Takip numaranizi paylasacagim."
+
+8. **utility_note** — Akis sonuc notu
+   text: "Degisim sureci baslatildi. Kusurlu urun iade gerekmeden yeni urun gonderilecek. Musteri memnun."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Kusurlu","Degisim"]},{id:"fv12",title:"Memnuniyet → Review Yonlendirme",description:"49,323 memnuniyet mesaji var ama sadece 1,838 kez review istegi gonderilmis (%3.7). Memnun musterinin %96'sindan review istenmemis. AI teslimat sonrasi memnuniyet → review akisini otomatize eder.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV12: Memnuniyet Mesaji → Aninda Review",description:"Musteri 'cok begendim' dediginde AI aninda review istegi gonderir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: memnuniyet (yuksek). Review istegi firsati"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Çok sevindik! Sağlıkla güzel günlerde giymenizi dileriz 💗
+
+Güzel düşüncenizi Instagram sayfamızda paylaşırsanız çok mutlu oluruz. Aramıza yeni katılan takipçilerimizin bize güven duymasına destek sağlamış olursunuz 🌺
+
+https://www.instagram.com/ebrumoda`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Memnuniyet → review istegi basarili. Sosyal kanit toplama firsati degerlendiirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Memnuniyet → Review Yonlendirme" senaryosu icin "Memnuniyet Mesaji → Aninda Review" akisini olustur.
+
+Aciklama: Musteri 'cok begendim' dediginde AI aninda review istegi gonderir.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ürünüm geldi çok beğendim çok güzeeelllllllll🙏🌸"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: memnuniyet (yuksek). Review istegi firsati.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Çok sevindik! Sağlıkla güzel günlerde giymenizi dileriz 💗
+
+Güzel düşüncenizi Instagram sayfamızda paylaşırsanız çok mutlu oluruz. Aramıza yeni katılan takipçilerimizin bize güven duymasına destek sağlamış olursunuz 🌺
+
+https://www.instagram.com/ebrumoda"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Memnuniyet → review istegi basarili. Sosyal kanit toplama firsati degerlendiirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Saha Dogrulanmis","Sosyal Kanit"]},{id:"s1",title:"Negatif Yorum Kurtarma",description:"Pazaryerlerinde (Trendyol, Hepsiburada) dusuk puanli yorumlari aninda tespit edip, musteriyle WhatsApp uzerinden iletisime gecerek sorunu cozen otonom sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"S1: Gec Teslimat / Hasarli Urun",description:"Musteri kargodan sikayetci. Urun kirik geldi."},nodes:[{id:"webhook_trigger_1",type:"webhook_trigger",position:{x:300,y:50},data:{label:'Trendyol API: 1 Yildiz Yorum Tespit Edildi ("Urun '}},{id:"ai_sentiment_2",type:"ai_sentiment",position:{x:300,y:200},data:{label:"Analiz: Negatif - Kargo Hasari. Aksiyon: Telafi Mo"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:"Merhaba [Ad], siparisinin hasarli ulastigini uzulerek ogrendik. Hemen telafi etmek istiyoruz. Kirik urunun fotografini iletirseniz aninda yenisini gondeelim."}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:"Tesekkurler. Yeni urununuzu Yurt ici Kargo [Kod] ile kargoladik. Bu aksaklik icin ozur dileriz."}},{id:"action_delay_6",type:"action_delay",position:{x:300,y:800},data:{label:"3 gun bekle",seconds:300}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Merhaba, yeni urununuz saglam ulasti mi? Memnun kaldiyseniz yorumunuzu guncelleyerek bize destek olabilirsiniz."}}],edges:[{id:"e_webhook_trigger_1_ai_sentiment_2",source:"webhook_trigger_1",target:"ai_sentiment_2",sourceHandle:"positive"},{id:"e_ai_sentiment_2_message_text_3",source:"ai_sentiment_2",target:"message_text_3"},{id:"e_message_text_3_utility_set_variable_4",source:"message_text_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_message_text_5",source:"utility_set_variable_4",target:"message_text_5"},{id:"e_message_text_5_action_delay_6",source:"message_text_5",target:"action_delay_6"},{id:"e_action_delay_6_message_text_7",source:"action_delay_6",target:"message_text_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Negatif Yorum Kurtarma" senaryosu icin "Gec Teslimat / Hasarli Urun" akisini olustur.
+
+Aciklama: Musteri kargodan sikayetci. Urun kirik geldi.
+
+## Node Zinciri
+
+1. **webhook_trigger** — Dis sistem olayi tetikler
+   Olay: Trendyol API: 1 Yildiz Yorum Tespit Edildi ("Urun kirik geldi, rezalet")
+
+2. **ai_sentiment** — Duygu analizi
+   Analiz: Analiz: Negatif - Kargo Hasari. Aksiyon: Telafi Modu.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+3. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad], siparisinin hasarli ulastigini uzulerek ogrendik. Hemen telafi etmek istiyoruz. Kirik urunun fotografini iletirseniz aninda yenisini gondeelim."
+   Degiskenler: {{ad}}
+
+4. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+5. **message_text** — Mesaj gonder
+   text: "Tesekkurler. Yeni urununuzu Yurt ici Kargo [Kod] ile kargoladik. Bu aksaklik icin ozur dileriz."
+   Degiskenler: {{kod}}
+
+6. **action_delay** — 3 gun bekle
+   seconds: 300
+   Not: T+3 Gun: Teslimat Basarili.
+
+7. **message_text** — Mesaj gonder
+   text: "Merhaba, yeni urununuz saglam ulasti mi? Memnun kaldiyseniz yorumunuzu guncelleyerek bize destek olabilirsiniz."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik Yanit","WhatsApp"]},{id:"e21",title:"Odeme Basarisiz & Link Yenileme",description:"Shopify veya diger platformlarda odeme gecmeyen musteriye AI yeni odeme linki olusturur veya alternatif odeme yontemi sunar.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E21: Odeme Linki Yenileme",description:"Musteri odeme linkinin calismadigini bildiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Odeme Basarisiz. Siparis: #112233. Hata: L"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! Yeni odeme linkiniz hazir:
+
+💳 Tutar: 599 TL
+🔗 [Odeme Linki] (30 dk gecerli)
+
+Kredi karti ile sorun yasarsaniz alternatif olarak havale/EFT de yapabilirsiniz.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Odeme basarili. Siparis onaylandi. Kurtarilan satis: 599 TL."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Odeme Basarisiz & Link Yenileme" senaryosu icin "Odeme Linki Yenileme" akisini olustur.
+
+Aciklama: Musteri odeme linkinin calismadigini bildiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Odeme gecmedi, link tekrar atar misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Odeme Basarisiz. Siparis: #112233. Hata: Link suresi dolmus. Yeni link olusturuluyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Yeni odeme linkiniz hazir:
+
+💳 Tutar: 599 TL
+🔗 [Odeme Linki] (30 dk gecerli)
+
+Kredi karti ile sorun yasarsaniz alternatif olarak havale/EFT de yapabilirsiniz."
+   Degiskenler: {{odeme_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Odeme yaptim!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Odeme basarili. Siparis onaylandi. Kurtarilan satis: 599 TL."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Odeme","Link Yenileme"]},{id:"e13",title:"Odeme Secenekleri & IBAN Bilgilendirme",description:"Kapida odeme, havale/EFT, taksit gibi odeme seceneklerini AI Knowledge Base'den cekerr ve musteriye aninda sunar.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E13: Kapida Odeme & IBAN Sorusu",description:"Musteri odeme seceneklerini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Odeme Secenekleri. Alt-intent: Kapida odem"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Odeme seceneklerimiz:
+
+💳 Kredi Karti: 2, 3, 6 taksit
+🏦 Havale/EFT:
+   Banka: Garanti BBVA
+   IBAN: TR12 3456 7890 1234 5678 9012 34
+   Hesap Sahibi: ABC Ticaret Ltd.
+🚚 Kapida Odeme: +15 TL (sadece nakit)
+
+Hangi yontemi tercih edersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Havale yaptiktan sonra dekont fotografini bana gonderir misiniz? Siparisinizi hemen onaylayalim!"}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Odeme bilgisi verildi. Musteri havale secti. Dekont bekleniyor."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Odeme Secenekleri & IBAN Bilgilendirme" senaryosu icin "Kapida Odeme & IBAN Sorusu" akisini olustur.
+
+Aciklama: Musteri odeme seceneklerini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kapida odeme var mi? IBAN atin."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Odeme Secenekleri. Alt-intent: Kapida odeme + IBAN.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Odeme seceneklerimiz:
+
+💳 Kredi Karti: 2, 3, 6 taksit
+🏦 Havale/EFT:
+   Banka: Garanti BBVA
+   IBAN: TR12 3456 7890 1234 5678 9012 34
+   Hesap Sahibi: ABC Ticaret Ltd.
+🚚 Kapida Odeme: +15 TL (sadece nakit)
+
+Hangi yontemi tercih edersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Havale yapacagim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Havale yaptiktan sonra dekont fotografini bana gonderir misiniz? Siparisinizi hemen onaylayalim!"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Odeme bilgisi verildi. Musteri havale secti. Dekont bekleniyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Odeme","Bilgilendirme"]},{id:"e19",title:"Platform Kargo Gecikmesi Yonetimi",description:"Hepsiburada, Trendyol gibi platformlarda kargo geciken siparislerde AI durumu sorgular, gecikme sebebini acikar ve musteriye bilgi verir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E19: Hepsiburada Kargo Gecikmesi",description:"Hepsiburada siparisinde kargo 5 gundur gelmedi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kargo Gecikmesi. Platform: Hepsiburada. Si"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Kontrol ettim! Siparisiniizin durumu:
+
+📦 Siparis: #334455
+🚚 Kargo: MNG Kargo
+📍 Son durum: Transfer merkezinde (Istanbul)
+⏰ Beklenen teslimat: 2 gun once
+📅 Yeni tahmini: Yarin
+
+Gecikme kargo firmasinin yogunlugundan kaynakli. Yarin teslim edilmezse hemen iade/iptal islemine gecebiliriz.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Gecikme bilgilendirmesi yapildi. T+1 takip notu ayarlandi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Platform Kargo Gecikmesi Yonetimi" senaryosu icin "Hepsiburada Kargo Gecikmesi" akisini olustur.
+
+Aciklama: Hepsiburada siparisinde kargo 5 gundur gelmedi.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hepsiburada siparisim 5 gundur gelmedi!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kargo Gecikmesi. Platform: Hepsiburada. Siparis: #334455. Beklenen: 3 gun. Gecen: 5 gun. Gecikme: 2 gun.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Kontrol ettim! Siparisiniizin durumu:
+
+📦 Siparis: #334455
+🚚 Kargo: MNG Kargo
+📍 Son durum: Transfer merkezinde (Istanbul)
+⏰ Beklenen teslimat: 2 gun once
+📅 Yeni tahmini: Yarin
+
+Gecikme kargo firmasinin yogunlugundan kaynakli. Yarin teslim edilmezse hemen iade/iptal islemine gecebiliriz."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam, yarina kadar bekliyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Gecikme bilgilendirmesi yapildi. T+1 takip notu ayarlandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Gecikme","Hepsiburada"]},{id:"eb03",title:"Proaktif Siparis Durum Guncelleme",description:"Kargo gecikmesi veya stok sorunu oldugunda musteriyi bekletmeden proaktif bilgilendirme yapan, Outbound Engine ile otomatik durum guncelleme gonderen sistem.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB03: Kargo Gecikmesi — Proaktif Bilgilendirme",description:"Kargo gecikti, musteri henuz sikyet etmeden bilgilendirilyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Kargo gecikme tespiti: Siparis #889900 — Tahmini t"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`[Template Mesaj]
+Merhaba [Ad]! Siparisiniiz hakkinda bilgilendirme:
+
+📦 Siparis #889900
+⏰ Tahmini teslim: Yarin
+📍 Durum: Dagitim merkezinde
+
+Gecikme icin ozur dileriz. Teslimat sonrasi bildirim gonderecegiz!`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"utility_note_4",type:"utility_note",position:{x:300,y:500},data:{label:"Sonuc",text:"Musteri proaktif bilgilendirildi. Sikayet onlendi. Pozitif deneyim kaydedildi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_utility_note_4",source:"ai_intent_3",target:"utility_note_4"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Proaktif Siparis Durum Guncelleme" senaryosu icin "Kargo Gecikmesi — Proaktif Bilgilendirme" akisini olustur.
+
+Aciklama: Kargo gecikti, musteri henuz sikyet etmeden bilgilendirilyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Kargo gecikme tespiti: Siparis #889900 — Tahmini teslim: Dun. Gercek durum: Dagitimda degil. Gecikme: +1 gun.
+
+2. **message_text** — Mesaj gonder
+   text: "[Template Mesaj]
+Merhaba [Ad]! Siparisiniiz hakkinda bilgilendirme:
+
+📦 Siparis #889900
+⏰ Tahmini teslim: Yarin
+📍 Durum: Dagitim merkezinde
+
+Gecikme icin ozur dileriz. Teslimat sonrasi bildirim gonderecegiz!"
+   Degiskenler: {{template_mesaj}}, {{ad}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, bilgilendirme icin."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **utility_note** — Akis sonuc notu
+   text: "Musteri proaktif bilgilendirildi. Sikayet onlendi. Pozitif deneyim kaydedildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:4,tags:["Gecikme","Proaktif"]},{id:"s2",title:"Satis Oncesi Urun Sorulari",description:"WhatsApp ve Instagram DM'den gelen urun sorularini AI Knowledge Base ile aninda yanitlayarak cevap suresini dakikalardan saniyelere dusuren ve donusum oranini artiran akilli satis asistani.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"S2: Beden / Olcu Sorusu",description:"Musteri urunun bedeninin kendisine uyup uymayacagini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Beden Sorusu. Knowledge Base sorgulanıyor "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba! Bu ceket XL bedene uygundur. Olculer: Gogus: 112cm, Boy: 74cm, Kol: 65cm. 1.82 boy ve 90 kilo icin XL tam olacaktir."}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Intent: Urun Ozellik. Knowledge Base → Urun karti "}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"%100 polyester, su itici kaplama. Ruzgar gecirmez. Musterilerimizden 4.6/5 puan almis. Siparis vermek ister misiniz? Bugun kargolayabiliriz!"}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"Yanit Analiz"}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Donusum Basarili — Yanit Suresi: 28 saniye"}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_ai_intent_8",source:"message_text_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_utility_note_9",source:"ai_intent_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Satis Oncesi Urun Sorulari" senaryosu icin "Beden / Olcu Sorusu" akisini olustur.
+
+Aciklama: Musteri urunun bedeninin kendisine uyup uymayacagini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, bu ceket XL bedene uyar mi? Boy 1.82, kilo 90."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Beden Sorusu. Knowledge Base sorgulanıyor → Urun #4521 Beden Tablosu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Bu ceket XL bedene uygundur. Olculer: Gogus: 112cm, Boy: 74cm, Kol: 65cm. 1.82 boy ve 90 kilo icin XL tam olacaktir."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kumasi nasil, kaliteli mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Urun Ozellik. Knowledge Base → Urun karti detaylari.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "%100 polyester, su itici kaplama. Ruzgar gecirmez. Musterilerimizden 4.6/5 puan almis. Siparis vermek ister misiniz? Bugun kargolayabiliriz!"
+
+8. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam, siparis veriyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+9. **utility_note** — Akis sonuc notu
+   text: "Donusum Basarili — Yanit Suresi: 28 saniye"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["AI Yanit","Knowledge RAG"]},{id:"e14",title:"Sepet Terk Follow-Up Otomasyonu",description:"Sepeti doldurup tamamlamayan musteriye Outbound Engine ile otomatik hatirlatma mesaji + indirim teklifi gonderekr sepet kurtarma oranini artiran sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E14: Standart Sepet Hatirlatma",description:"T+1 saat basit hatirlatma, T+24 saat indirim teklifi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Sepet Terk: Musteri [Ad] — 1 saat once sepeti terk"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba [Ad]! Sepetinizde 2 urun bekliyoor:
+
+🛒 Nike Ayakkabi — 450 TL
+🛒 Adidas Corap — 200 TL
+
+Siparisi tamamlamak ister misiniz? [Sepete Don Linki]`}},{id:"action_delay_3",type:"action_delay",position:{x:300,y:350},data:{label:"24 saat bekle",seconds:300}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Sepetinizdeki urunler hala sizi bekliyor! Size ozel %10 indirim kodunuz:
+
+🎁 SEPET10 — Bugun gecerli
+🛒 Toplam: 650 TL → 585 TL
+
+[Sepete Don + Indirim Uygula]`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Sepet Kurtarildi! Siparis: #998877. Tutar: 585 TL. Sepet kurtarma basarili."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_action_delay_3",source:"message_text_2",target:"action_delay_3"},{id:"e_action_delay_3_message_text_4",source:"action_delay_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sepet Terk Follow-Up Otomasyonu" senaryosu icin "Standart Sepet Hatirlatma" akisini olustur.
+
+Aciklama: T+1 saat basit hatirlatma, T+24 saat indirim teklifi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Sepet Terk: Musteri [Ad] — 1 saat once sepeti terk etti. Sepet: 2 urun, 650 TL.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Sepetinizde 2 urun bekliyoor:
+
+🛒 Nike Ayakkabi — 450 TL
+🛒 Adidas Corap — 200 TL
+
+Siparisi tamamlamak ister misiniz? [Sepete Don Linki]"
+   Degiskenler: {{ad}}, {{sepete_don_linki}}
+
+3. **action_delay** — 24 saat bekle
+   seconds: 300
+   Not: T+24 Saat: Musteri henuz tamamlamamis.
+
+4. **message_text** — Mesaj gonder
+   text: "Sepetinizdeki urunler hala sizi bekliyor! Size ozel %10 indirim kodunuz:
+
+🎁 SEPET10 — Bugun gecerli
+🛒 Toplam: 650 TL → 585 TL
+
+[Sepete Don + Indirim Uygula]"
+   Degiskenler: {{sepete_don_+_indirim_uygula}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam, siparis veriyorum!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Sepet Kurtarildi! Siparis: #998877. Tutar: 585 TL. Sepet kurtarma basarili."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Sepet Terk","Follow-Up"]},{id:"fv06",title:"Sessiz Musteri Follow-Up",description:"85,612 kayip konusma: urun gosterildi ama siparis verilmedi. Medyan 4 mesaj vs basarili sipariste 33 mesaj. 30dk sonra follow-up = en buyuk conversion firsati.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV06: 30dk Follow-Up → Musteri Donusu",description:"Sessiz kalan musteriye 30dk sonra follow-up gonderdilir."},nodes:[{id:"message_text_1",type:"message_text",position:{x:300,y:50},data:{label:"Mesaj",text:`4856 Lara Palazzo Eşofman Takım
+•1599,99 TL •36-44 Beden •3 renk
+Online ödemede kargo ücretsiz ♥`}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:"T+30dk: Musteri cevap vermedi. Follow-up tetikleniyor."}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Beğendiniz mi? 🌸 Beden, renk veya başka bir sorunuz varsa yardımcı olalım.
+
+Stoklarımız hızla tükeniyor, gecikmemenizi öneririz 💕`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Evet, 42 beden bordo mevcut! 🌸
+Sipariş oluşturmamız için bilgilerinizi paylaşır mısınız?`}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Follow-up basarili! Sessiz musteri dondu ve siparis akisina gecildi."}}],edges:[{id:"e_message_text_1_utility_set_variable_2",source:"message_text_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_message_text_3",source:"utility_set_variable_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_utility_note_6",source:"message_text_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sessiz Musteri Follow-Up" senaryosu icin "30dk Follow-Up → Musteri Donusu" akisini olustur.
+
+Aciklama: Sessiz kalan musteriye 30dk sonra follow-up gonderdilir.
+
+## Node Zinciri
+
+1. **message_text** — Mesaj gonder
+   text: "4856 Lara Palazzo Eşofman Takım
+•1599,99 TL •36-44 Beden •3 renk
+Online ödemede kargo ücretsiz ♥"
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: T+30dk: Musteri cevap vermedi. Follow-up tetikleniyor.
+
+3. **message_text** — Mesaj gonder
+   text: "Beğendiniz mi? 🌸 Beden, renk veya başka bir sorunuz varsa yardımcı olalım.
+
+Stoklarımız hızla tükeniyor, gecikmemenizi öneririz 💕"
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet beğendim 42 beden bordo var mı?"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Evet, 42 beden bordo mevcut! 🌸
+Sipariş oluşturmamız için bilgilerinizi paylaşır mısınız?"
+
+6. **utility_note** — Akis sonuc notu
+   text: "Follow-up basarili! Sessiz musteri dondu ve siparis akisina gecildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Saha Dogrulanmis","85K Firsat"]},{id:"eb05",title:"Sikayetvar / BTK Eskalasyon Yonetimi",description:"Musteri Sikayetvar'a sikayet dustugunde veya BTK'ya basvurdugunda gec fark edilmesini onleyen, proaktif WA cozum mesaji gonderen eskalasyon yonetim sistemi.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB05: Sikayetvar Case — Proaktif Cozum",description:"Musteri Sikayetvar'a sikayet yazmis, ekip proaktif cozum sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"ESKALASYON ALERT: Musteri [Ad] Sikayetvar'a sikaye"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba [Ad]! Ben [Firma] musteri iliskileri yoneticisiyim.
+
+Sikayetiniizi gorduk ve cok uzgunuz. Iade talebiniiz hakkinda hemen cozum sunmak istiyoruz.
+
+💰 Iadeniz: 1.250 TL
+⏰ Hemen isleme aliyoruz — 2 is gunu icinde kartiniZa yansiyacak.
+
+Bu konuda baska bir endiseniiz var mi?`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Anliyorum! Iadenizi oncelikli isleme aldim:
+
+✅ Iade onaylandi: 1.250 TL
+💳 Kartiniza yansiM: 1-2 is gunu
+🎁 Ozur hediyesi: Sonraki alisveris icin %10 indirim kodu
+
+Her adimda sizi bilgilendirecegiz.`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Iade hizlandirildi. Musteri memnun. Sikayetvar case kapanma surecinde."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sikayetvar / BTK Eskalasyon Yonetimi" senaryosu icin "Sikayetvar Case — Proaktif Cozum" akisini olustur.
+
+Aciklama: Musteri Sikayetvar'a sikayet yazmis, ekip proaktif cozum sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: ESKALASYON ALERT: Musteri [Ad] Sikayetvar'a sikayet yazdi. Konu: Iade islenmedi (15 gun). Oncelik: YUKSEK.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Ben [Firma] musteri iliskileri yoneticisiyim.
+
+Sikayetiniizi gorduk ve cok uzgunuz. Iade talebiniiz hakkinda hemen cozum sunmak istiyoruz.
+
+💰 Iadeniz: 1.250 TL
+⏰ Hemen isleme aliyoruz — 2 is gunu icinde kartiniZa yansiyacak.
+
+Bu konuda baska bir endiseniiz var mi?"
+   Degiskenler: {{ad}}, {{firma}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet en kisa surede paramı istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Anliyorum! Iadenizi oncelikli isleme aldim:
+
+✅ Iade onaylandi: 1.250 TL
+💳 Kartiniza yansiM: 1-2 is gunu
+🎁 Ozur hediyesi: Sonraki alisveris icin %10 indirim kodu
+
+Her adimda sizi bilgilendirecegiz."
+
+5. **utility_note** — Akis sonuc notu
+   text: "Iade hizlandirildi. Musteri memnun. Sikayetvar case kapanma surecinde."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Sikayetvar","Eskalasyon"]},{id:"fv10",title:"Siparis Bilgi Toplama Akisi",description:"20,004 siparis bilgi istegi mesaji. Temsilci ad, soyad, telefon, adres, beden, mail, odeme yontemi topluyor. AI bu sureci yapisal olarak yonetir, eksik bilgileri otomatik sorar.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV10: Tek Mesajda Bilgi Toplama",description:"Musteri tum bilgiyi tek mesajda gonderiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Harika! Siparişinizi hemen oluşturalım 💕
+
+✅ Ad Soyad
+✅ Telefon
+✅ Beden
+✅ Açık Adres (Mah, Sok, No, İl, İlçe)
+✅ Mail (opsiyonel)
+✅ Ödeme şekli (kapıda nakit/kart veya havale)`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Parse: Ad=Günnaz Özdil, Adres=Yunuseli mah. 2 Defn"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Teşekkürler Günnaz Hanım 🌸
+
+📋 Siparişiniz:
+• 4367 Kadife Elbise - Siyah - 38 Beden
+• Kapıda nakit (+99,99 TL kargo)
+• Adres: Yunuseli Mah. 2 Defne Sok. No:5 Osmangazi/Bursa
+
+Telefon numaranızı da alabilir miyim? 📞`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Siparişinizi oluşturdum mutlu günlerde giymenizi dilerim 🤗❤️
+Aras kargodan SMS ile takip numarası gelecektir.`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Siparis bilgi toplama tamamlandi. 3 mesajda tum bilgiler alindi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_message_text_3",source:"ai_intent_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_ai_intent_5",source:"ai_intent_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Siparis Bilgi Toplama Akisi" senaryosu icin "Tek Mesajda Bilgi Toplama" akisini olustur.
+
+Aciklama: Musteri tum bilgiyi tek mesajda gonderiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Almak istiyorum"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **message_text** — Mesaj gonder
+   text: "Harika! Siparişinizi hemen oluşturalım 💕
+
+✅ Ad Soyad
+✅ Telefon
+✅ Beden
+✅ Açık Adres (Mah, Sok, No, İl, İlçe)
+✅ Mail (opsiyonel)
+✅ Ödeme şekli (kapıda nakit/kart veya havale)"
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Günnaz Özdil Yunuseli mahallesi 2 defne sokak no 5 Bursa Osmangazi kapıda nakit 38 beden siyah 4367"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **ai_intent** — Niyet tespiti
+   Analiz: Parse: Ad=Günnaz Özdil, Adres=Yunuseli mah. 2 Defne sok. No:5 Osmangazi/Bursa, Odeme=Kapıda nakit, Beden=38, Renk=Siyah, Urun=4367. Eksik: Telefon, Mail.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Teşekkürler Günnaz Hanım 🌸
+
+📋 Siparişiniz:
+• 4367 Kadife Elbise - Siyah - 38 Beden
+• Kapıda nakit (+99,99 TL kargo)
+• Adres: Yunuseli Mah. 2 Defne Sok. No:5 Osmangazi/Bursa
+
+Telefon numaranızı da alabilir miyim? 📞"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "05464961018"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Siparişinizi oluşturdum mutlu günlerde giymenizi dilerim 🤗❤️
+Aras kargodan SMS ile takip numarası gelecektir."
+
+9. **utility_note** — Akis sonuc notu
+   text: "Siparis bilgi toplama tamamlandi. 3 mesajda tum bilgiler alindi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Saha Dogrulanmis"]},{id:"s4",title:"Siparis Sonrasi Proaktif Satis",description:"Teslimattan sonra cross-sell/upsell onerileri ile musteri yasam boyu degerini artiran proaktif satis sistemi. Outbound Engine ile calisir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"S4: Cross-Sell: Tamamlayici Urun",description:"Telefon kilifi alan musteriye ekran koruyucu onerisi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Teslimattan 2 gun sonra. Urun: Telefon Kilifi. Bun"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:"Merhaba [Ad]! Telefon kilifiniz ulasti mi? Bu kilirla en cok tercih edilen ekran koruyucumuz su an %15 indirimli. Ilgilenir misiniz?"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"[Urun gorseli] Temperli cam, parmak izi birakmayan kaplama. Normal fiyat 199 TL, size ozel 169 TL. Siparis vermek ister misiniz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Cross-Sell Basarili — EK GELIR: 169 TL. Kaynak: Post-Purchase Outbound."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_utility_set_variable_3",source:"message_text_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_message_text_4",source:"utility_set_variable_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Siparis Sonrasi Proaktif Satis" senaryosu icin "Cross-Sell: Tamamlayici Urun" akisini olustur.
+
+Aciklama: Telefon kilifi alan musteriye ekran koruyucu onerisi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Teslimattan 2 gun sonra. Urun: Telefon Kilifi. Bundle Kural: kilif → ekran koruyucu.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Telefon kilifiniz ulasti mi? Bu kilirla en cok tercih edilen ekran koruyucumuz su an %15 indirimli. Ilgilenir misiniz?"
+   Degiskenler: {{ad}}
+
+3. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+4. **message_text** — Mesaj gonder
+   text: "[Urun gorseli] Temperli cam, parmak izi birakmayan kaplama. Normal fiyat 199 TL, size ozel 169 TL. Siparis vermek ister misiniz?"
+   Degiskenler: {{urun_gorseli}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Olur, siparis veriyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Cross-Sell Basarili — EK GELIR: 169 TL. Kaynak: Post-Purchase Outbound."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Cross-Sell","Bundle"]},{id:"eb01",title:"Stok Bildirim (Back-in-Stock)",description:"Stokta olmayan urun icin haber isteyen musteriyi kaydedip, stok girisi oldugunda Outbound Engine ile otomatik WhatsApp bildirimi gonderen sistem.",category:"E-TICARET EK",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"EB01: Stok Yok — Bekleme Listesi",description:"Musteri stokta olmayan urun icin bildirim istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Back-in-Stock Talebi. Urun: SKU-4455 (Kirm"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! Sizi bekleme listesine ekledim:
+
+👗 Kirmizi Elbise (M beden)
+🔔 Stok geldiginde WhatsApp'tan haber verecegiz!
+
+Baska begendiginiz bir urun var mi?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Musteri bekleme listesine eklendi. Stok webhook dinlemede."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Stok Bildirim (Back-in-Stock)" senaryosu icin "Stok Yok — Bekleme Listesi" akisini olustur.
+
+Aciklama: Musteri stokta olmayan urun icin bildirim istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu urun gelince haber verin."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Back-in-Stock Talebi. Urun: SKU-4455 (Kirmizi Elbise, M beden). Stok durumu: YOK.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Sizi bekleme listesine ekledim:
+
+👗 Kirmizi Elbise (M beden)
+🔔 Stok geldiginde WhatsApp'tan haber verecegiz!
+
+Baska begendiginiz bir urun var mi?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Musteri bekleme listesine eklendi. Stok webhook dinlemede."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Stok Yok","Bekleme"]},{id:"e12",title:"Stok Durumu & Bildirim Sistemi",description:"Urunun stokta olup olmadigini gercek zamanli sorgulayan, yoksa ne zaman gelecegini bildiren ve stok bildirimi icin kayit alan sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E12: Stokta Var — Aninda Bilgi",description:"Urun stokta, musteri aninda bilgilendirilir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Stok Sorgulama. Urun tespiti: Son gorulen/"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Evet, urun stokta! 📦
+
+Mevcut stok: 12 adet
+Kargo suresi: 1-2 is gunu
+
+Hemen siparis vermek ister misiniz?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Stok bilgisi verildi. Musteri satin almaya yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Stok Durumu & Bildirim Sistemi" senaryosu icin "Stokta Var — Aninda Bilgi" akisini olustur.
+
+Aciklama: Urun stokta, musteri aninda bilgilendirilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu urun stokta var mi? Ne zaman gelir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Stok Sorgulama. Urun tespiti: Son gorulen/link bazli. Stok: MEVCUT (12 adet).
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Evet, urun stokta! 📦
+
+Mevcut stok: 12 adet
+Kargo suresi: 1-2 is gunu
+
+Hemen siparis vermek ister misiniz?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Stok bilgisi verildi. Musteri satin almaya yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Stok Var","Aninda Cevap"]},{id:"e06",title:"Teslim Edildi Ama Gelmedi Cozumu",description:"Kargo takipte 'teslim edildi' gorunuyor ama musteri almadiysa, AI kargo firmasi ile iletisim protokolunu baslatir, tutanak/arastirma sureci olusturur.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E06: Teslim Edildi — Musteri Almadi",description:"Kargo takipte teslim gorunuyor ama musteri urunu almamis."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Teslim Uyumsuzlugu. Kargo: Yurtici. Teslim"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Anliyorum, bu cok sinir bozucu bir durum. Hemen kontrol ettim:
+
+📦 Kargo durumu: Teslim edildi (bugun 11:23)
+👤 Teslim alan: 'Komsu' olarak kaydedilmis
+
+Komsunuza birakılmis olabilir mi? Eger hayirsa hemen kargo firmasina arastirma talebi acayim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Once komsunuza bir sorar misiniz? Eger komsnuzda da yoksa:
+
+1️⃣ Kargo firmasina arastirma talebi aciyorum
+2️⃣ Sonuc: 3-5 is gunu
+3️⃣ Bulunamazsa tam iade yapilacak
+
+Komsu kontrolu sonrasi bana yazin, hemen islem yapalim.`,options:[]}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Arastirma talebini simdi actim!
+
+🔍 Arastirma No: KA-78901
+⏰ Sonuc suresi: 3-5 is gunu
+📱 Sizi bilgilendireccegim
+
+Bulunamazsa tam iade + telafi yapilacak. Endiselenmeyin!`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Kargo arastirma talebi acildi. 3-5 is gunu takip. Bulunamazsa otomatik iade tetiklenecek."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_menu_6",source:"ai_intent_5",target:"message_menu_6"},{id:"e_message_menu_6_ai_intent_7",source:"message_menu_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Teslim Edildi Ama Gelmedi Cozumu" senaryosu icin "Teslim Edildi — Musteri Almadi" akisini olustur.
+
+Aciklama: Kargo takipte teslim gorunuyor ama musteri urunu almamis.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Teslim edildi yaziyor ama gelmedi! Kapimda bile durmadilar!"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Teslim Uyumsuzlugu. Kargo: Yurtici. Teslim Tarihi: Bugun 11:23. Teslim Alan: 'Komsu'. UYUMSUZLUK.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Anliyorum, bu cok sinir bozucu bir durum. Hemen kontrol ettim:
+
+📦 Kargo durumu: Teslim edildi (bugun 11:23)
+👤 Teslim alan: 'Komsu' olarak kaydedilmis
+
+Komsunuza birakılmis olabilir mi? Eger hayirsa hemen kargo firmasina arastirma talebi acayim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Komsuma sormadim ama normal de kapima birakiyorlardi."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Once komsunuza bir sorar misiniz? Eger komsnuzda da yoksa:
+
+1️⃣ Kargo firmasina arastirma talebi aciyorum
+2️⃣ Sonuc: 3-5 is gunu
+3️⃣ Bulunamazsa tam iade yapilacak
+
+Komsu kontrolu sonrasi bana yazin, hemen islem yapalim."
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Komsuda yokmus, bulamadim."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Arastirma talebini simdi actim!
+
+🔍 Arastirma No: KA-78901
+⏰ Sonuc suresi: 3-5 is gunu
+📱 Sizi bilgilendireccegim
+
+Bulunamazsa tam iade + telafi yapilacak. Endiselenmeyin!"
+
+9. **utility_note** — Akis sonuc notu
+   text: "Kargo arastirma talebi acildi. 3-5 is gunu takip. Bulunamazsa otomatik iade tetiklenecek."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Kayip Kargo","Arastirma"]},{id:"s5",title:"Toplu/B2B Lead Tespiti",description:"WhatsApp mesajlarinda gizlenen B2B sinyallerini (toplu siparis, kurumsal fatura, bayilik) otomatik tespit edip VIP olarak etiketleyen ve satis ekibine yonlendiren sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"S5: Toplu Siparis Talebi",description:"Musteri 50+ adet siparis vermek istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"B2B SINYAL TESPIT: 'toplu', '50 adet'. Lead Degeri"}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Alert",variable_name:"alert_status",value_expression:"ALERT: Satis Mudurune bildirim gonderildi. Tahmini siparis degeri: 25.000 TL"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:"Merhaba! Toplu siparisler icin ozel fiyatlarimiz var. Hemen ilgili arkadasimiz sizinle iletisime gececek. Kac adet ve hangi urunu dusunuyorsunuz?"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Tesekkurler! Bilgileri satis ekibimize ilettim. En gec 1 saat icinde size ozel teklif hazirlayacaklar."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_utility_set_variable_4",source:"ai_intent_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_message_text_5",source:"utility_set_variable_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Toplu/B2B Lead Tespiti" senaryosu icin "Toplu Siparis Talebi" akisini olustur.
+
+Aciklama: Musteri 50+ adet siparis vermek istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, 50 adet siparis vermek istiyorum. Toplu fiyat var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: B2B SINYAL TESPIT: 'toplu', '50 adet'. Lead Degeri: YUKSEK. VIP Etiket atandi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "ALERT: Satis Mudurune bildirim gonderildi. Tahmini siparis degeri: 25.000 TL"
+
+5. **message_text** — Mesaj gonder
+   text: "Merhaba! Toplu siparisler icin ozel fiyatlarimiz var. Hemen ilgili arkadasimiz sizinle iletisime gececek. Kac adet ve hangi urunu dusunuyorsunuz?"
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "50 adet X modeli ve 30 adet Y modeli."
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Bilgileri satis ekibimize ilettim. En gec 1 saat icinde size ozel teklif hazirlayacaklar."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["B2B Lead","VIP"]},{id:"e15",title:"Urun Aciklama Uyumsuzlugu Yonetimi",description:"Gelen urun ile aciklama/gorsel uyusmayinca AI de-eskalasyon yapar, kanit toplar ve musteri lehine cozum akisi baslatir.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E15: Gorsel Uyumsuzlugu",description:"Urun fotografi ile gelen urun farkli gorunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Intent: Urun Uyumsuzlugu. Tip: Malzeme farki. Sent"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Cok uzgunuz! Urun aciklamasiyla gelen urunun farkli olmasi kabul edilemez. Hemen cozelim.
+
+Gelen urunun bir fotografini ceker misiniz? Ozellikle malzeme farki gorulen kismi net cekerseniz sureci hizlandiririz.`}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Tesekkurler! Farki net goruyoruz. Size seceneklr:
+
+1️⃣ Tam iade (3-5 is gunu)
+2️⃣ Kismi iade (%30 fark iadesi + urun sizde kalsin)
+3️⃣ Farkli urunle degisim
+
+Hangisini tercih edersiniz?`,options:[]}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Kismi iade secildi. %30 fark iadesi baslatildi. Musteri memnun ayrildi."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_ai_sentiment_3",source:"utility_set_variable_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_text_4",source:"ai_sentiment_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_menu_6",source:"utility_set_variable_5",target:"message_menu_6"},{id:"e_message_menu_6_utility_note_7",source:"message_menu_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Urun Aciklama Uyumsuzlugu Yonetimi" senaryosu icin "Gorsel Uyumsuzlugu" akisini olustur.
+
+Aciklama: Urun fotografi ile gelen urun farkli gorunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Intent: Urun Uyumsuzlugu. Tip: Malzeme farki. Sentiment: KIZGIN (8/10). De-eskalasyon aktif.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_text** — Mesaj gonder
+   text: "Cok uzgunuz! Urun aciklamasiyla gelen urunun farkli olmasi kabul edilemez. Hemen cozelim.
+
+Gelen urunun bir fotografini ceker misiniz? Ozellikle malzeme farki gorulen kismi net cekerseniz sureci hizlandiririz."
+
+5. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Tesekkurler! Farki net goruyoruz. Size seceneklr:
+
+1️⃣ Tam iade (3-5 is gunu)
+2️⃣ Kismi iade (%30 fark iadesi + urun sizde kalsin)
+3️⃣ Farkli urunle degisim
+
+Hangisini tercih edersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)
+
+7. **utility_note** — Akis sonuc notu
+   text: "Kismi iade secildi. %30 fark iadesi baslatildi. Musteri memnun ayrildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Uyumsuzluk","Kanit Toplama"]},{id:"e25",title:"WhatsApp 24h Pencere Yonetimi",description:"WhatsApp Business 24 saat mesaj penceresi kapandiginda AI uygun utility template secerr ve musteriye bilgi gonderir. Pencere kurali ihlalini onler.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E25: Pencere Kapandi — Template Gonderim",description:"24 saat penceresi kapanmis, agent template ile devam etmek istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"24h Pencere KAPANDI: Musteri [Ad] — son mesaj 26 s"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Pencere: KAPALI. Konusma baglami: Siparis durum so"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`[Template Mesaj]
+Merhaba [Ad]! Siparisiniiz hakkinda guncelleme:
+
+📦 Siparis #112233 kargoya verildi!
+🚚 Takip: [link]
+
+Sorulariniz icin bu mesaji yanritlayabilirsiniz.`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"action_delay_5",type:"action_delay",position:{x:300,y:650},data:{label:"24 saat bekle",seconds:300}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Tahmini teslimat: Yarin 10:00-14:00 arasi. Iyi gunler!"}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_message_text_3",source:"ai_intent_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_action_delay_5",source:"ai_intent_4",target:"action_delay_5"},{id:"e_action_delay_5_message_text_6",source:"action_delay_5",target:"message_text_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"WhatsApp 24h Pencere Yonetimi" senaryosu icin "Pencere Kapandi — Template Gonderim" akisini olustur.
+
+Aciklama: 24 saat penceresi kapanmis, agent template ile devam etmek istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: 24h Pencere KAPANDI: Musteri [Ad] — son mesaj 26 saat once.
+
+2. **ai_intent** — Niyet tespiti
+   Analiz: Pencere: KAPALI. Konusma baglami: Siparis durum sorgusu. Uygun template: 'Siparis Guncelleme' (utility).
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+3. **message_text** — Mesaj gonder
+   text: "[Template Mesaj]
+Merhaba [Ad]! Siparisiniiz hakkinda guncelleme:
+
+📦 Siparis #112233 kargoya verildi!
+🚚 Takip: [link]
+
+Sorulariniz icin bu mesaji yanritlayabilirsiniz."
+   Degiskenler: {{template_mesaj}}, {{ad}}, {{link}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, ne zaman gelir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **action_delay** — 24 saat bekle
+   seconds: 300
+   Not: Pencere ACILDI (musteri yanit verdi). Serbest mesaj aktif — 24 saat gecerli.
+
+6. **message_text** — Mesaj gonder
+   text: "Tahmini teslimat: Yarin 10:00-14:00 arasi. Iyi gunler!"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["24h Pencere","Template"]},{id:"fv07",title:"Yabanci Dil Musteri Destegi",description:"577+ yabanci dil mesaji (Arapca 461, Rusca 92, Fransizca 24). Temsilciler Turkce sablonla cevap veriyor. AI dil algilama + temel cevap = yeni musteri segmenti.",category:"SAHA DOGRULANMIS",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"FV07: Arapca Musteri — Dil Tespiti",description:"Turkiye'de yasayan Arapca konusan musteri."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Dil: Arapca. Intent: fiyat_sorma. Urun: onceki bag"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`مرحباً! 🌸
+
+فستان 4367 قطيفة
+•السعر: 1599,99 ليرة تركية
+•المقاسات: 36-46
+•الألوان: أحمر، أسود
+
+الشحن مجاني للدفع الإلكتروني ♥
+هل تريدين الطلب؟`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Arapca dil tespiti basarili. Siparis akisi Arapca devam ediyor."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yabanci Dil Musteri Destegi" senaryosu icin "Arapca Musteri — Dil Tespiti" akisini olustur.
+
+Aciklama: Turkiye'de yasayan Arapca konusan musteri.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "مرحبا، كم سعر هذا الفستان؟"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Dil: Arapca. Intent: fiyat_sorma. Urun: onceki baglamdan elbise.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "مرحباً! 🌸
+
+فستان 4367 قطيفة
+•السعر: 1599,99 ليرة تركية
+•المقاسات: 36-46
+•الألوان: أحمر، أسود
+
+الشحن مجاني للدفع الإلكتروني ♥
+هل تريدين الطلب؟"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "نعم، مقاس 42"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Arapca dil tespiti basarili. Siparis akisi Arapca devam ediyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Cok Dilli","461 AR Mesaj"]},{id:"e05",title:"Yanlis Urun / Eksik Parca Cozumu",description:"Yanlis urun veya eksik parca gelen musterinin siparis verisini AI ile karsilastiran, hatanin kaynagini tespit eden ve degisim surecini otomatik baslatan sistem.",category:"E-TICARET OTOMASYONU",niche:"ecommerce",flowConfig:{version:2,metadata:{name:"E05: Yanlis Urun Geldi",description:"Siparis edilen ile gelen urun farkli."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Yanlis Urun. Siparis: #334455. Siparis Ice"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Cok ozur dileriz! Siparisiniizi kontrol ettim:
+
+✅ Siparis ettiginiz: Mavi Tisort (L)
+❌ Gelen: Siyah Tisort
+
+Hata bizde. Dogru urununuzu hemen gondermek icin:
+1️⃣ Gelen urunun bir fotografini ceker misiniz?
+2️⃣ Yanlis urunu iade etmenize GEREK YOK`,options:[]}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Medya",variable_name:"customer_media",value_expression:"{{__last_input}}"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Dogrulandi! Mavi Tisort (L) yarin kargoya verilecek. Tahmini teslimat: 2-3 gun.
+
+Ozur hediyesi olarak sonraki alisverisiniizde %10 indirim kodunuz: OZUR10`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Yanlis urun degisimi baslatildi. Dogru urun kargoya hazırlaniyor. Telafi kodu tanimlandi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_utility_set_variable_5",source:"message_menu_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_text_6",source:"utility_set_variable_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yanlis Urun / Eksik Parca Cozumu" senaryosu icin "Yanlis Urun Geldi" akisini olustur.
+
+Aciklama: Siparis edilen ile gelen urun farkli.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Yanlis urun geldi, ben bunu siparis etmedim! Mavi tisort siparis ettim, siyah geldi."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Yanlis Urun. Siparis: #334455. Siparis Icerigi: Mavi Tisort (L). Musteri Bildirimi: Siyah geldi. UYUMSUZLUK TESPIT.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Cok ozur dileriz! Siparisiniizi kontrol ettim:
+
+✅ Siparis ettiginiz: Mavi Tisort (L)
+❌ Gelen: Siyah Tisort
+
+Hata bizde. Dogru urununuzu hemen gondermek icin:
+1️⃣ Gelen urunun bir fotografini ceker misiniz?
+2️⃣ Yanlis urunu iade etmenize GEREK YOK"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **utility_set_variable** — Musteri medya yuklemesini kaydet
+   variable_name: "customer_media"
+   Not: Onceki message_text'in yanit beklemesi gerekir
+
+6. **message_text** — Mesaj gonder
+   text: "Dogrulandi! Mavi Tisort (L) yarin kargoya verilecek. Tahmini teslimat: 2-3 gun.
+
+Ozur hediyesi olarak sonraki alisverisiniizde %10 indirim kodunuz: OZUR10"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Yanlis urun degisimi baslatildi. Dogru urun kargoya hazırlaniyor. Telafi kodu tanimlandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Yanlis Urun","Degisim"]},{id:"eg25",title:"Coklu Kurs / Paket Secenekleri",description:"Birden fazla kurs almak isteyen musteriye AI ile paket onerisi ve indirimli kombinasyon sunan senaryo. Knowledge Base kurs katalogu ve paket fiyat bilgisi saglar.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG25: Coklu Kurs Paket Talebi",description:"Musteri 2 kurs birden almak istiyor, AI paket indirim onerisi sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Coklu Kurs / Paket Talebi. Kurslar: Ingili"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Birden fazla dil kursu almak harika bir karar. Size ozel paket seceenklerimiz:
+
+Paket A: Ingilizce + Almanca (Standart)
+Ingilizce B1: 7.500 TL
+Almanca A1: 6.500 TL
+Toplam: 14.000 TL
+Paket Indirim: %15
+Paket Fiyat: 11.900 TL (2.100 TL tasarruf)
+
+Paket B: Ingilizce + Almanca + Ispanyolca
+Toplam: 20.500 TL
+Paket Indirim: %20
+Paket Fiyat: 16.400 TL (4.100 TL tasarruf)
+
+Hangi paket ilginizi cekiyor?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Evet! Paket A detaylari:
+
+Ingilizce B1: Sali-Persembe 18:00-19:30 (Mart-Mayis)
+Almanca A1: Carsamba-Cuma 18:00-19:30 (Mart-Mayis)
+
+Gunler cakismiyor, rahatca iki kursa birden devam edebilirsiniz.
+
+Paket A Ozet:
+2 kurs, 3 ay, 11.900 TL (2.100 TL tasarruf)
+Odeme: Tek seferde veya 3 taksit
+
+Kayit icin devam etmek ister misiniz?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Harika! Paket kaydiniz olusturuluyor:
+
+Ingilizce B1 + Almanca A1 Paketi
+Toplam: 11.900 TL
+Odeme: 3 taksit x 3.967 TL
+Baslangic: Mart 2026
+
+Kayit linki ve odeme bilgilerini gonderiyorum: [Kayit Linki]
+
+Sorulariniz icin her zaman yazabilirsiniz!`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Paket kayit olusturuldu: Ingilizce B1 + Almanca A1. Toplam: 11.900 TL (3 taksit). Ogrenci kayit surecine yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Coklu Kurs / Paket Secenekleri" senaryosu icin "Coklu Kurs Paket Talebi" akisini olustur.
+
+Aciklama: Musteri 2 kurs birden almak istiyor, AI paket indirim onerisi sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, hem Ingilizce hem de Almanca kursu almak istiyorum. Paket indirim var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Coklu Kurs / Paket Talebi. Kurslar: Ingilizce + Almanca. Knowledge Base sorgusu: paket kombinasyonu + indirim orani.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Birden fazla dil kursu almak harika bir karar. Size ozel paket seceenklerimiz:
+
+Paket A: Ingilizce + Almanca (Standart)
+Ingilizce B1: 7.500 TL
+Almanca A1: 6.500 TL
+Toplam: 14.000 TL
+Paket Indirim: %15
+Paket Fiyat: 11.900 TL (2.100 TL tasarruf)
+
+Paket B: Ingilizce + Almanca + Ispanyolca
+Toplam: 20.500 TL
+Paket Indirim: %20
+Paket Fiyat: 16.400 TL (4.100 TL tasarruf)
+
+Hangi paket ilginizi cekiyor?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Paket A guzel gorunuyor. Ayni donemde mi basliyor ikisi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Evet! Paket A detaylari:
+
+Ingilizce B1: Sali-Persembe 18:00-19:30 (Mart-Mayis)
+Almanca A1: Carsamba-Cuma 18:00-19:30 (Mart-Mayis)
+
+Gunler cakismiyor, rahatca iki kursa birden devam edebilirsiniz.
+
+Paket A Ozet:
+2 kurs, 3 ay, 11.900 TL (2.100 TL tasarruf)
+Odeme: Tek seferde veya 3 taksit
+
+Kayit icin devam etmek ister misiniz?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "3 taksitle kayit olmak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Harika! Paket kaydiniz olusturuluyor:
+
+Ingilizce B1 + Almanca A1 Paketi
+Toplam: 11.900 TL
+Odeme: 3 taksit x 3.967 TL
+Baslangic: Mart 2026
+
+Kayit linki ve odeme bilgilerini gonderiyorum: [Kayit Linki]
+
+Sorulariniz icin her zaman yazabilirsiniz!"
+   Degiskenler: {{kayit_linki}}
+
+9. **utility_note** — Akis sonuc notu
+   text: "Paket kayit olusturuldu: Ingilizce B1 + Almanca A1. Toplam: 11.900 TL (3 taksit). Ogrenci kayit surecine yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Paket","Cross-Sell"]},{id:"eg09",title:"Ders Materyali / Not Paylasimi",description:"Kacirdigi dersin notlarini veya materyallerini isteyen ogrenciye Automation flow ile dosya gonderimi yapilir. Knowledge Base'deki ders materyalleri otomatik paylasılir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG09: Kacirilan Ders Materyali Talebi",description:"Ogrenci kacirdigi dersin notlarini ve materyallerini istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Ders Materyali Talebi. Ogrenci: Telefon es"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! Dun aksamki dersinizin materyallerini gonderiyorum:
+
+Ingilizce B1 — 19 Subat 2026 (Carsamba)
+Konu: Unit 8 — Passive Voice
+
+Materyaller:
+1. Ders notu (PDF): [Dosya indirme linki]
+2. Calisma yapraqi (PDF): [Dosya indirme linki]
+3. Dinleme dosyasi (MP3): [Dosya indirme linki]
+
+Odev: Sayfa 45-46, Alistirma 1-3
+Teslim: Gelecek Carsamba
+
+Sorunuz olursa yazabilirsiniz!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Otomatik cozum: Kacirilan dersin materyalleri + odev bilgisi Knowledge Base'den cekilip gonderildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Ders Materyali / Not Paylasimi" senaryosu icin "Kacirilan Ders Materyali Talebi" akisini olustur.
+
+Aciklama: Ogrenci kacirdigi dersin notlarini ve materyallerini istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dun aksam derse gelemedim. Ders notlarini gonderebilir misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Ders Materyali Talebi. Ogrenci: Telefon eslestirme. Tarih: Dun aksam. Knowledge Base materyal arama.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Dun aksamki dersinizin materyallerini gonderiyorum:
+
+Ingilizce B1 — 19 Subat 2026 (Carsamba)
+Konu: Unit 8 — Passive Voice
+
+Materyaller:
+1. Ders notu (PDF): [Dosya indirme linki]
+2. Calisma yapraqi (PDF): [Dosya indirme linki]
+3. Dinleme dosyasi (MP3): [Dosya indirme linki]
+
+Odev: Sayfa 45-46, Alistirma 1-3
+Teslim: Gelecek Carsamba
+
+Sorunuz olursa yazabilirsiniz!"
+   Degiskenler: {{dosya_indirme_linki}}, {{dosya_indirme_linki}}, {{dosya_indirme_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, cok yardimci oldu!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Kacirilan dersin materyalleri + odev bilgisi Knowledge Base'den cekilip gonderildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Otomatik","Materyal Paylasimi"]},{id:"eg03",title:"Ders Programi / Saat Sorgulama",description:"Hafta sonu veya aksam dersi olup olmadigi, ders saatleri ve program degisiklikleri sorularina AI aninda yanit verir. Knowledge Base'den guncel program ve kontenjan bilgisi cekilir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG03: Aksam / Hafta Sonu Program Sorgusu",description:"Calisan bir ogrenci aksam veya hafta sonu ders programini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Ders Programi. Tercih: Aksam saatleri. Kno"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii! Aksam gruplarimiz calisan ogrenciler icin cok uygun:
+
+Ingilizce Aksam Gruplari:
+- Grup A: Pazartesi-Carsamba-Cuma 19:00-21:00 (3 kisi kaldi)
+- Grup B: Sali-Persembe 18:30-21:00 (5 kisi kaldi)
+
+Almanca Aksam Grubu:
+- Pazartesi-Carsamba 19:30-21:30 (7 kisi kaldi)
+
+Hafta Sonu Gruplari:
+- Cumartesi 10:00-13:00 (Ingilizce, 4 kisi kaldi)
+- Pazar 14:00-17:00 (Ingilizce, 8 kisi kaldi)
+
+Hangi program size uygun? Detay vereyim.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika secim! Sali-Persembe 18:30-21:00 Ingilizce Aksam Grubu B:
+
+- Kontenjan: 5 kisi kaldi
+- Baslangic: 5 Mart 2026
+- Egitmen: Deniz Hoca (Cambridge sertifikali)
+- Ucret: 10.500 TL (3 taksit mumkun)
+
+Online kayit: [Kayit Formu]
+Yer ayirtmak icin on-kayit: [On-Kayit]`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Aksam programi + kontenjan + kayit yonlendirmesi yapildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Ders Programi / Saat Sorgulama" senaryosu icin "Aksam / Hafta Sonu Program Sorgusu" akisini olustur.
+
+Aciklama: Calisan bir ogrenci aksam veya hafta sonu ders programini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Is cikisi ders almak istiyorum. Aksam gruplari var mi? Saat kacta basliyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Ders Programi. Tercih: Aksam saatleri. Knowledge Base sorgusu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii! Aksam gruplarimiz calisan ogrenciler icin cok uygun:
+
+Ingilizce Aksam Gruplari:
+- Grup A: Pazartesi-Carsamba-Cuma 19:00-21:00 (3 kisi kaldi)
+- Grup B: Sali-Persembe 18:30-21:00 (5 kisi kaldi)
+
+Almanca Aksam Grubu:
+- Pazartesi-Carsamba 19:30-21:30 (7 kisi kaldi)
+
+Hafta Sonu Gruplari:
+- Cumartesi 10:00-13:00 (Ingilizce, 4 kisi kaldi)
+- Pazar 14:00-17:00 (Ingilizce, 8 kisi kaldi)
+
+Hangi program size uygun? Detay vereyim."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sali-Persembe aksam grubu uygun. Kayit nasil yapilir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika secim! Sali-Persembe 18:30-21:00 Ingilizce Aksam Grubu B:
+
+- Kontenjan: 5 kisi kaldi
+- Baslangic: 5 Mart 2026
+- Egitmen: Deniz Hoca (Cambridge sertifikali)
+- Ucret: 10.500 TL (3 taksit mumkun)
+
+Online kayit: [Kayit Formu]
+Yer ayirtmak icin on-kayit: [On-Kayit]"
+   Degiskenler: {{kayit_formu}}, {{on-kayit}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Aksam programi + kontenjan + kayit yonlendirmesi yapildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Program Bilgisi"]},{id:"eg19",title:"Devam Takibi Hatirlatma",description:"Ust uste devamsizlik yapan ogrenciye ve velisine otomatik uyari. 2. devamsizlikta ogrenciye, 3. devamsizlikta veliye alert gondererek erken mudahale saglayan proaktif senaryo.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG19: Kademeli Devamsizlik Uyarisi",description:"2. devamsizlikta ogrenciye, 3. devamsizlikta veliye otomatik mesaj."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Devamsizlik tetikleme: Ogrenci Cem K. — B1 Ingiliz"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Cem! Son 2 derse katilmadiginizi fark ettik. Sizi ozledik!
+
+Dersler her Sali-Persembe 19:00'da devam ediyor. Bir sorun varsa bize yazabilirsiniz, yardimci olmaktan memnuniyet duyariz.
+
+Gelecek ders: Persembe, 19:00 — Sizi bekliyoruz!`}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"3. ust uste devamsizlik: Ogrenci Cem K. Veli bildirim tetiklendi."}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Sayin Kemal Bey, ogretmenciniz Cem'in B1 Ingilizce kursunda son 3 derse katilmadignii bildirmek isteriz.
+
+Cem'in ders programi: Sali-Persembe 19:00-20:30
+Son katildigi ders: 4 Subat
+
+Bir sorun oldugunu dusunuyorsaniz bize ulasabilirsiniz. Koordinatorumuz da sizinle iletisime gececektir.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Veli geri donus: Saglik sorunu. Ogrenci gelecek hafta devam edecek. Koordinore bilgi iletildi."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_utility_set_variable_3",source:"message_text_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_message_text_4",source:"utility_set_variable_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Devam Takibi Hatirlatma" senaryosu icin "Kademeli Devamsizlik Uyarisi" akisini olustur.
+
+Aciklama: 2. devamsizlikta ogrenciye, 3. devamsizlikta veliye otomatik mesaj.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Devamsizlik tetikleme: Ogrenci Cem K. — B1 Ingilizce. 2. ust uste devamsizlik. Ogrenciye uyari gonderilecek.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Cem! Son 2 derse katilmadiginizi fark ettik. Sizi ozledik!
+
+Dersler her Sali-Persembe 19:00'da devam ediyor. Bir sorun varsa bize yazabilirsiniz, yardimci olmaktan memnuniyet duyariz.
+
+Gelecek ders: Persembe, 19:00 — Sizi bekliyoruz!"
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: 3. ust uste devamsizlik: Ogrenci Cem K. Veli bildirim tetiklendi.
+
+4. **message_text** — Mesaj gonder
+   text: "Sayin Kemal Bey, ogretmenciniz Cem'in B1 Ingilizce kursunda son 3 derse katilmadignii bildirmek isteriz.
+
+Cem'in ders programi: Sali-Persembe 19:00-20:30
+Son katildigi ders: 4 Subat
+
+Bir sorun oldugunu dusunuyorsaniz bize ulasabilirsiniz. Koordinatorumuz da sizinle iletisime gececektir."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, hastaydi. Gelecek hafta baslayacak tekrar."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Veli geri donus: Saglik sorunu. Ogrenci gelecek hafta devam edecek. Koordinore bilgi iletildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Proaktif","Devam Takibi"]},{id:"eg06",title:"Devamsizlik Bildirimi",description:"Ogrenci derse gelemeyecegini WhatsApp uzerinden bildiriyor. AI devamsizlik intent'ini algilar, kaydeder ve telafi dersi teklif eder. Devamsizlik takibi otomatiklesir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG06: Devamsizlik Bildirimi ve Telafi",description:"Ogrenci derse gelemeyecegini bildiriyor, AI kayit yapip telafi teklif ediyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Devamsizlik Bildirimi. Ogrenci: Telefon es"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Bildiriminiz alindi! Bugunun devamsizligi kaydedildi.
+
+Bilgileriniz:
+- Ders: Ingilizce B1 Aksam Grubu
+- Tarih: 20 Subat 2026 (Persembe)
+- Kalan devamsizlik hakkiniz: 3/5
+
+Telafi icin musait saatler:
+- Cumartesi 14:00-16:00 (Ayni konu)
+- Pazartesi 17:00-19:00 (Farkli grup ile)
+
+Hangi zamani tercih edersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Cumartesi 14:00-16:00 telafi dersiniz kaydedildi!
+
+Hatirlatma: Cumartesi 13:30'da mesaj gonderecegiz.
+Konu: Unit 7 — Present Perfect
+Yer: Sinif 3B
+
+Gecmis olsun, gorusuruz!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Devamsizlik kaydedildi + telafi zamani secildi + hatirlatma planlandi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Devamsizlik Bildirimi" senaryosu icin "Devamsizlik Bildirimi ve Telafi" akisini olustur.
+
+Aciklama: Ogrenci derse gelemeyecegini bildiriyor, AI kayit yapip telafi teklif ediyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hocam bugun aksam derse gelemiyorum, is toplantim var. Kayit yapar misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Devamsizlik Bildirimi. Ogrenci: Telefon eslestirme. Tarih: Bugun aksam. Kayit isleniyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Bildiriminiz alindi! Bugunun devamsizligi kaydedildi.
+
+Bilgileriniz:
+- Ders: Ingilizce B1 Aksam Grubu
+- Tarih: 20 Subat 2026 (Persembe)
+- Kalan devamsizlik hakkiniz: 3/5
+
+Telafi icin musait saatler:
+- Cumartesi 14:00-16:00 (Ayni konu)
+- Pazartesi 17:00-19:00 (Farkli grup ile)
+
+Hangi zamani tercih edersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cumartesi uygun olur."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Cumartesi 14:00-16:00 telafi dersiniz kaydedildi!
+
+Hatirlatma: Cumartesi 13:30'da mesaj gonderecegiz.
+Konu: Unit 7 — Present Perfect
+Yer: Sinif 3B
+
+Gecmis olsun, gorusuruz!"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Devamsizlik kaydedildi + telafi zamani secildi + hatirlatma planlandi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Devamsizlik"]},{id:"eg04",title:"Egitmen / Ogretmen Bilgisi",description:"Kursu verecek egitmenin nitelikleri, deneyimi ve sertifikalari hakkinda bilgi sorularina AI aninda yanit verir. Knowledge Base'den egitmen profil bilgileri cekilir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG04: Egitmen Profil Sorgulama",description:"Ogrenci veya veli belirli bir kursun egitmeni hakkinda bilgi soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Egitmen Bilgisi. Kurs: Ingilizce B1. Knowl"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Ingilizce B1 kursunuzun egitmeni:
+
+Selin Yilmaz
+- Egitim: Istanbul Universitesi Ingiliz Dili ve Edebiyati
+- Sertifikalar: CELTA, DELTA, IELTS Trainer
+- Deneyim: 8 yil (4 yili kurumsalda)
+- Uzmanlik: Konusma ve dinleme becerileri
+- Ogrenci Memnuniyeti: %94
+
+Selin Hoca, ozellikle konusma pratigiyle taninan, interaktif ders isleme yontemini benimseyen deneyimli bir egitmendir.
+
+Baska sorunuz var mi?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! Ingilizce B1 kursu icin kayit:
+
+Hemen kayit: [Online Kayit Formu]
+Telefon: 0212 555 12 34
+
+Selin Hoca'nin grubu hizla doluyor, 6 kontenjan kaldi!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Egitmen profili sunuldu + kayit yonlendirmesi yapildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Egitmen / Ogretmen Bilgisi" senaryosu icin "Egitmen Profil Sorgulama" akisini olustur.
+
+Aciklama: Ogrenci veya veli belirli bir kursun egitmeni hakkinda bilgi soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ingilizce B1 kursunun hocasi kim olacak? Deneyimi nedir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Egitmen Bilgisi. Kurs: Ingilizce B1. Knowledge Base egitmen profili sorgusu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Ingilizce B1 kursunuzun egitmeni:
+
+Selin Yilmaz
+- Egitim: Istanbul Universitesi Ingiliz Dili ve Edebiyati
+- Sertifikalar: CELTA, DELTA, IELTS Trainer
+- Deneyim: 8 yil (4 yili kurumsalda)
+- Uzmanlik: Konusma ve dinleme becerileri
+- Ogrenci Memnuniyeti: %94
+
+Selin Hoca, ozellikle konusma pratigiyle taninan, interaktif ders isleme yontemini benimseyen deneyimli bir egitmendir.
+
+Baska sorunuz var mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cok iyi, tesekkurler. Kayit yaptirmak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Ingilizce B1 kursu icin kayit:
+
+Hemen kayit: [Online Kayit Formu]
+Telefon: 0212 555 12 34
+
+Selin Hoca'nin grubu hizla doluyor, 6 kontenjan kaldi!"
+   Degiskenler: {{online_kayit_formu}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Egitmen profili sunuldu + kayit yonlendirmesi yapildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Egitmen Bilgisi"]},{id:"eg02",title:"Fiyat / Ucret Sorgulama",description:"Kurs fiyati, taksit secenekleri ve erken kayit indirimi sorulari AI tarafindan aninda cevaplanir. Kurs+seviye intent tespiti ile dogru fiyat bilgisi ve aktif kampanyalar sunulur.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG02: Kurs Fiyat ve Taksit Sorgusu",description:"Ogrenci belirli bir kursun fiyatini ve taksit seceneklerini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Sorgulama. Kurs: Almanca. Taksit bil"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Almanca kurslarimizin guncel fiyatlari:
+
+Almanca A1 Baslangic:
+- Pesinat: 9.800 TL
+- 3 Taksit: 3 x 3.500 TL = 10.500 TL
+- 6 Taksit: 6 x 1.850 TL = 11.100 TL
+
+Almanca A2 Orta:
+- Pesinat: 10.500 TL
+- 3 Taksit: 3 x 3.800 TL = 11.400 TL
+
+Erken kayit indirimi (28 Subat'a kadar): %15 indirim!
+A1 pesinat: 8.330 TL
+
+Detayli bilgi veya kayit icin: [Kayit Formu]`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Evet! Erken kayit indirimi ile taksit secenegi birlikte kullanilabilir:
+
+Almanca A1 + Erken Kayit + 3 Taksit:
+- 3 x 2.975 TL = 8.925 TL (toplam)
+- Normal 3 taksit: 10.500 TL
+- Tasarrufunuz: 1.575 TL
+
+Son gun: 28 Subat 2026
+Kayit icin: [Online Kayit] veya 0212 555 12 34`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Fiyat listesi + taksit secenekleri + erken kayit kombinasyonu sunuldu. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fiyat / Ucret Sorgulama" senaryosu icin "Kurs Fiyat ve Taksit Sorgusu" akisini olustur.
+
+Aciklama: Ogrenci belirli bir kursun fiyatini ve taksit seceneklerini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Almanca kursu ne kadar? Taksit yapiliyor mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Sorgulama. Kurs: Almanca. Taksit bilgisi isteniyor. Knowledge Base sorgusu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Almanca kurslarimizin guncel fiyatlari:
+
+Almanca A1 Baslangic:
+- Pesinat: 9.800 TL
+- 3 Taksit: 3 x 3.500 TL = 10.500 TL
+- 6 Taksit: 6 x 1.850 TL = 11.100 TL
+
+Almanca A2 Orta:
+- Pesinat: 10.500 TL
+- 3 Taksit: 3 x 3.800 TL = 11.400 TL
+
+Erken kayit indirimi (28 Subat'a kadar): %15 indirim!
+A1 pesinat: 8.330 TL
+
+Detayli bilgi veya kayit icin: [Kayit Formu]"
+   Degiskenler: {{kayit_formu}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Erken kayit ile 3 taksit birlikte olur mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Evet! Erken kayit indirimi ile taksit secenegi birlikte kullanilabilir:
+
+Almanca A1 + Erken Kayit + 3 Taksit:
+- 3 x 2.975 TL = 8.925 TL (toplam)
+- Normal 3 taksit: 10.500 TL
+- Tasarrufunuz: 1.575 TL
+
+Son gun: 28 Subat 2026
+Kayit icin: [Online Kayit] veya 0212 555 12 34"
+   Degiskenler: {{online_kayit}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Fiyat listesi + taksit secenekleri + erken kayit kombinasyonu sunuldu. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Fiyat Bilgisi"]},{id:"eg08",title:"Iade / Cayma / Kurs Birakma",description:"Kursu birakmak isteyen veya ucret iadesi talep eden ogrenciye AI iade politikasini Knowledge Base'den ceker ve cayma prosedurunu adim adim iletir. Hassas konuda dogru bilgilendirme saglanir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG08: Kurs Birakma ve Iade Talebi",description:"Ogrenci kursu birakmak ve ucret iadesi almak istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kurs Birakma / Iade. Kurs: Almanca. Knowle"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Anladim, size iade politikamiz hakkinda bilgi vereyim:
+
+Iade Kosullari:
+- Kurs baslamadan once: %100 iade (tam iade)
+- Ilk 1 hafta icinde: %90 iade (%10 idari kesinti)
+- 2-4 hafta arasi: %50 iade
+- 4 hafta sonrasi: Iade yapilmaz
+
+Sizin durumunuz icin:
+Kayit tarihiniz ve kursun baslangic tarihine gore iade oraniniz belirlenir.
+
+Sureci baslatmak icin:
+1. Cayma dilekcesini doldurun: [Dilekce Ornegi]
+2. Subemize teslim edin veya e-posta gonderin
+3. Iade 10 is gunu icinde hesabiniza yansir
+
+Sureci baslatmamizi ister misiniz, yoksa baska bir cozum dusunur musunuz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Ilk 1 hafta icinde oldugunuz icin %90 iade hakkiniz var.
+
+Iade tutari: 10.500 TL x %90 = 9.450 TL
+Kesinti: 1.050 TL (idari masraf)
+
+Sureci baslatmak icin:
+1. Cayma dilekcesini indirin: [Dilekce PDF]
+2. Doldurduktan sonra iade@kurum.com adresine gonderin
+3. 3 is gunu icinde onay maili alacaksiniz
+4. Onay sonrasi 7 is gunu icinde hesabiniza yatar
+
+Bu konuda bir yetkilimizle gorusmek isterseniz sizi yonlendirebilirim.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Iade politikasi + tutar hesabi + prosedur adımlari iletildi. Hassas konu oldugundan agent devir secenegi sunuldu."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Iade / Cayma / Kurs Birakma" senaryosu icin "Kurs Birakma ve Iade Talebi" akisini olustur.
+
+Aciklama: Ogrenci kursu birakmak ve ucret iadesi almak istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Almanca kursumu birakmak istiyorum. Paramı geri alabilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kurs Birakma / Iade. Kurs: Almanca. Knowledge Base iade politikasi sorgusu. Hassas konu — dikkatli bilgilendirme.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Anladim, size iade politikamiz hakkinda bilgi vereyim:
+
+Iade Kosullari:
+- Kurs baslamadan once: %100 iade (tam iade)
+- Ilk 1 hafta icinde: %90 iade (%10 idari kesinti)
+- 2-4 hafta arasi: %50 iade
+- 4 hafta sonrasi: Iade yapilmaz
+
+Sizin durumunuz icin:
+Kayit tarihiniz ve kursun baslangic tarihine gore iade oraniniz belirlenir.
+
+Sureci baslatmak icin:
+1. Cayma dilekcesini doldurun: [Dilekce Ornegi]
+2. Subemize teslim edin veya e-posta gonderin
+3. Iade 10 is gunu icinde hesabiniza yansir
+
+Sureci baslatmamizi ister misiniz, yoksa baska bir cozum dusunur musunuz?"
+   Degiskenler: {{dilekce_ornegi}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kurs baslayali 1 hafta oldu. Islemi baslatmak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Ilk 1 hafta icinde oldugunuz icin %90 iade hakkiniz var.
+
+Iade tutari: 10.500 TL x %90 = 9.450 TL
+Kesinti: 1.050 TL (idari masraf)
+
+Sureci baslatmak icin:
+1. Cayma dilekcesini indirin: [Dilekce PDF]
+2. Doldurduktan sonra iade@kurum.com adresine gonderin
+3. 3 is gunu icinde onay maili alacaksiniz
+4. Onay sonrasi 7 is gunu icinde hesabiniza yatar
+
+Bu konuda bir yetkilimizle gorusmek isterseniz sizi yonlendirebilirim."
+   Degiskenler: {{dilekce_pdf}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Iade politikasi + tutar hesabi + prosedur adımlari iletildi. Hassas konu oldugundan agent devir secenegi sunuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Hassas Konu","Iade Politikasi"]},{id:"eg15",title:"Kampanya / Erken Kayit Indirimi",description:"Yeni donem oncesi gecmis ogrencilere hedefli erken kayit kampanyasi. Outbound Engine ile segmentli broadcast gonderimi yaparak erken kayit oranini artiran proaktif senaryo.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG15: Erken Kayit Kampanya Akisi",description:"Gecmis donem ogrencilerine Outbound ile erken kayit teklifi gonderimi."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Kampanya tetiklendi: Yeni donem erken kayit — hede"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Ahmet Bey! Gecen donem B1 Ingilizce kursunuzu basariyla tamamladiniz. Yeni donem B2 kurslari 15 Mart'ta basliyor.
+
+Erken kayit firsati: %15 indirim (Son tarih: 1 Mart)
+
+Devam etmek ister misiniz? Detayli bilgi icin 'BILGI' yazin.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`B2 Ingilizce Kursu Detaylari:
+
+Sure: 3 ay (Mart-Mayis)
+Gunler: Sali-Persembe 19:00-20:30
+Ucret: 8.500 TL (Erken kayit: 7.225 TL)
+Son Erken Kayit: 1 Mart
+
+Kayit icin: [Kayit Linki]
+Sorulariniz icin bu mesaja yanit verin.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Lead donusum: Erken kayit. Ogrenci: Ahmet Y. — B2 Ingilizce, erken kayit indirimli. Kayit surecine yonlendirildi."}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kampanya / Erken Kayit Indirimi" senaryosu icin "Erken Kayit Kampanya Akisi" akisini olustur.
+
+Aciklama: Gecmis donem ogrencilerine Outbound ile erken kayit teklifi gonderimi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Kampanya tetiklendi: Yeni donem erken kayit — hedef segment: Gecmis donem B1-B2 ogrencileri (127 kisi).
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Ahmet Bey! Gecen donem B1 Ingilizce kursunuzu basariyla tamamladiniz. Yeni donem B2 kurslari 15 Mart'ta basliyor.
+
+Erken kayit firsati: %15 indirim (Son tarih: 1 Mart)
+
+Devam etmek ister misiniz? Detayli bilgi icin 'BILGI' yazin."
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "BILGI"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "B2 Ingilizce Kursu Detaylari:
+
+Sure: 3 ay (Mart-Mayis)
+Gunler: Sali-Persembe 19:00-20:30
+Ucret: 8.500 TL (Erken kayit: 7.225 TL)
+Son Erken Kayit: 1 Mart
+
+Kayit icin: [Kayit Linki]
+Sorulariniz icin bu mesaja yanit verin."
+   Degiskenler: {{kayit_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kayit olmak istiyorum, odemeyi nasil yapabilirim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Lead donusum: Erken kayit. Ogrenci: Ahmet Y. — B2 Ingilizce, erken kayit indirimli. Kayit surecine yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Proaktif","Kampanya"]},{id:"eg20",title:"Kariyer Koclugu / Is Bulma Destegi",description:"Kursun is bulma destegi, kariyer danismanligi ve partner sirket bilgisi sorularini AI ile aninda yanitlayan senaryo. Knowledge Base kariyer bilgisi ve partner listesi sunar.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG20: Is Bulma Destegi Sorusu",description:"Potansiyel ogrenci kurs sonrasi kariyer destegi hakkinda bilgi aliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kariyer Sorusu. Kurs: Full Stack Web. Know"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Harika bir soru. Full Stack Web Gelistirme kursumuzun kariyer verileri:
+
+Mezun Istihdam Orani: %82 (kurs bitiminden 3 ay icinde)
+Ortalama Baslangic Maasi: 45.000 TL/ay
+Partner Sirketlerimiz: Trendyol, Getir, Insider, Peak Games
+
+Mezun Basari Hikayesi:
+'6 aylik kurs sonrasi Insider'da Junior Developer olarak basladin.' — Ayse K. (2025 Mezunu)
+
+Daha fazla bilgi ister misiniz yoksa kayit surecine gecmek mi istersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Garanti is yerlestirme sunmuyoruz ancak partner sirketlerimizle aktif is birligi yapiyoruz:
+
+Kariyer Destegimiz:
+- CV ve portfolyo hazirlama atolyesi
+- Teknik mulakat simulasyonu
+- Partner sirketlere dogrudan aday yonlendirme
+- Mezun ag etkinlikleri (ayda 1)
+
+Partner sirketlerimiz mezunlarimizi oncelikli degerlendiriyor. Kariyer danismanlarimizla gorusmek isterseniz sizi yonlendirebilirim.`,options:[]}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Lead donusum: Kariyer sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Full Stack Web."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_menu_6",source:"ai_intent_5",target:"message_menu_6"},{id:"e_message_menu_6_ai_intent_7",source:"message_menu_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kariyer Koclugu / Is Bulma Destegi" senaryosu icin "Is Bulma Destegi Sorusu" akisini olustur.
+
+Aciklama: Potansiyel ogrenci kurs sonrasi kariyer destegi hakkinda bilgi aliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, Full Stack Web Gelistirme kursunuzu dusunuyorum. Bu kursla gercekten is bulabilir miyim? Mezunlariniz ne yapiyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kariyer Sorusu. Kurs: Full Stack Web. Knowledge Base sorgusu: istihdam orani + mezun bilgisi + partner sirketler.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Harika bir soru. Full Stack Web Gelistirme kursumuzun kariyer verileri:
+
+Mezun Istihdam Orani: %82 (kurs bitiminden 3 ay icinde)
+Ortalama Baslangic Maasi: 45.000 TL/ay
+Partner Sirketlerimiz: Trendyol, Getir, Insider, Peak Games
+
+Mezun Basari Hikayesi:
+'6 aylik kurs sonrasi Insider'da Junior Developer olarak basladin.' — Ayse K. (2025 Mezunu)
+
+Daha fazla bilgi ister misiniz yoksa kayit surecine gecmek mi istersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Partner sirketlerle garanti is mi veriyorsunuz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Garanti is yerlestirme sunmuyoruz ancak partner sirketlerimizle aktif is birligi yapiyoruz:
+
+Kariyer Destegimiz:
+- CV ve portfolyo hazirlama atolyesi
+- Teknik mulakat simulasyonu
+- Partner sirketlere dogrudan aday yonlendirme
+- Mezun ag etkinlikleri (ayda 1)
+
+Partner sirketlerimiz mezunlarimizi oncelikli degerlendiriyor. Kariyer danismanlarimizla gorusmek isterseniz sizi yonlendirebilirim."
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cok guzel, kayit olmak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "Lead donusum: Kariyer sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Full Stack Web."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Kariyer","Knowledge Base"]},{id:"eg01",title:"Kayit / Basvuru Sureci",description:"Kayit doneminde gunluk 30-50 arasi gelen tekrar eden sorulari AI otomatik karsilar. Kurs kaydi, gerekli belgeler, fiyat bilgisi ve donem tarihleri aninda iletilir. Agent yuku minimuma iner.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG01: Yeni Kayit Basvurusu",description:"Ogrenci ilk kez kurs kaydina basvuruyor, AI tum bilgileri aninda iletiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Kurs Kaydi. Kurs: Ingilizce. Knowledge Bas"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Merhaba! Ingilizce kurslarimiza hos geldiniz. Size hemen bilgi vereyim:
+
+Ingilizce Genel Kurs (A1-C1):
+- Donem Baslangici: 3 Mart 2026
+- Sure: 4 ay (haftada 3 gun)
+- Ucret: 12.500 TL (erken kayit: 10.500 TL)
+- Kontenjan: 8 kisi kaldi
+
+Gerekli Belgeler:
+- Kimlik fotokopisi
+- 1 adet vesikalik fotograf
+- Seviye belirleme testi sonucu
+
+Online kayit formu: [Kayit Linki]
+Detayli bilgi icin bizi arayin: 0212 555 12 34`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Erken kayit indirimi 20 Subat 2026 tarihine kadar gecerlidir. Bu tarihe kadar kayit yaptirmaniz halinde 2.000 TL indirimden faydalanirsiniz.
+
+Hemen kayit formunu doldurmak ister misiniz? [Online Kayit Formu]`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Kayit bilgisi + belge listesi + erken kayit detayi iletildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kayit / Basvuru Sureci" senaryosu icin "Yeni Kayit Basvurusu" akisini olustur.
+
+Aciklama: Ogrenci ilk kez kurs kaydina basvuruyor, AI tum bilgileri aninda iletiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, Ingilizce kursunuza kayit olmak istiyorum. Nasil basvurabilirim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Kurs Kaydi. Kurs: Ingilizce. Knowledge Base sorgusu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Merhaba! Ingilizce kurslarimiza hos geldiniz. Size hemen bilgi vereyim:
+
+Ingilizce Genel Kurs (A1-C1):
+- Donem Baslangici: 3 Mart 2026
+- Sure: 4 ay (haftada 3 gun)
+- Ucret: 12.500 TL (erken kayit: 10.500 TL)
+- Kontenjan: 8 kisi kaldi
+
+Gerekli Belgeler:
+- Kimlik fotokopisi
+- 1 adet vesikalik fotograf
+- Seviye belirleme testi sonucu
+
+Online kayit formu: [Kayit Linki]
+Detayli bilgi icin bizi arayin: 0212 555 12 34"
+   Her secenek icin ayri cikis handle'i olustur
+   Degiskenler: {{kayit_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Erken kayit ne zamana kadar gecerli?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Erken kayit indirimi 20 Subat 2026 tarihine kadar gecerlidir. Bu tarihe kadar kayit yaptirmaniz halinde 2.000 TL indirimden faydalanirsiniz.
+
+Hemen kayit formunu doldurmak ister misiniz? [Online Kayit Formu]"
+   Degiskenler: {{online_kayit_formu}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Kayit bilgisi + belge listesi + erken kayit detayi iletildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Kayit"]},{id:"eg14",title:"Kurs Degisikligi / Transfer",description:"Ogrenci mevcut kursundan baska bir gruba veya programa gecmek istiyor. AI transfer intent'ini tespit edip musait grup bilgisi sunarak sureci hizlandiran senaryo.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG14: Standart Grup Transfer Talebi",description:"Ogrenci mevcut grubundan baska bir saatteki gruba gecmek istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Grup Transfer Talebi. Mevcut: Sali-Persemb"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba Elif Hanim! Grup degisikligi talebinizi aldim. B1 seviyesinde su gruplarda kontenjan mevcut:
+
+1. Pazartesi-Carsamba 19:00-20:30 (3 kontenjan)
+2. Cumartesi 10:00-13:00 (5 kontenjan)
+
+Hangi secenegi tercih edersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Harika! Pazartesi-Carsamba 19:00-20:30 grubuna transfer talebinizi olusturdun. Koordinatorumuz en gec yarin sizi bilgilendirecektir. Yeni grubunuza gelecek hafta baslamis olacaksiniz."}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Transfer talebi olusturuldu. Koordinore bildirim gonderildi. Ogrenci: Elif K. — B1 Sali-Persembe -> Pazartesi-Carsamba."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Kurs Degisikligi / Transfer" senaryosu icin "Standart Grup Transfer Talebi" akisini olustur.
+
+Aciklama: Ogrenci mevcut grubundan baska bir saatteki gruba gecmek istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, su an Sali-Persembe grubundayim ama is saatlerim degisti. Baska bir gruba gecebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Grup Transfer Talebi. Mevcut: Sali-Persembe. Seviye: B1. Musait gruplar sorgulanacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba Elif Hanim! Grup degisikligi talebinizi aldim. B1 seviyesinde su gruplarda kontenjan mevcut:
+
+1. Pazartesi-Carsamba 19:00-20:30 (3 kontenjan)
+2. Cumartesi 10:00-13:00 (5 kontenjan)
+
+Hangi secenegi tercih edersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Pazartesi-Carsamba grubu uygun olur."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Pazartesi-Carsamba 19:00-20:30 grubuna transfer talebinizi olusturdun. Koordinatorumuz en gec yarin sizi bilgilendirecektir. Yeni grubunuza gelecek hafta baslamis olacaksiniz."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Transfer talebi olusturuldu. Koordinore bildirim gonderildi. Ogrenci: Elif K. — B1 Sali-Persembe -> Pazartesi-Carsamba."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Transfer","Grup Degisikligi"]},{id:"eg23",title:"KVKK: Cocuk Verisi Ozel Koruma",description:"18 yas alti ogrenciler icin KVKK ozel koruma gereksinimleri. Kayit surecinde veliye otomatik KVKK onam mesaji gondererek yasal uyumlulugu saglayan senaryo.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG23: Cocuk Ogrenci KVKK Onam Akisi",description:"14 yasindaki ogrenci kaydi icin veliden KVKK onami alinmasi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Yeni kayit: Ogrenci Ege T. — Dogum tarihi: 15.03.2"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Sayin Ayse Hanim, ogrencisiniz Ege icin Robotik Kodlama kursuna kayit talebinizi aldik.
+
+Ege 18 yasindan kucuk oldugu icin KVKK kapsaminda veli onaminiz gerekmektedir.
+
+Islenecek veriler:
+- Ad, soyad, dogum tarihi
+- Ders katilim kaydi
+- Odev ve proje dosyalari
+- Fotograf (sinif ici etkinlik)
+
+Amac: Egitim hizmeti sunumu
+Sure: Kurs suresi + 1 yil
+
+Onaylamak icin 'ONAY', reddetmek icin 'RET' yazin.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tesekkur ederiz Ayse Hanim! KVKK onaminiz basariyla kaydedildi.
+
+Onam Detaylari:
+Ogrenci: Ege T.
+Veli: Ayse T.
+Onam Tarihi: 20.02.2026
+Onam Referans No: KVKK-2026-0412
+
+Ege'nin Robotik Kodlama kursuna kaydi tamamlanmistir. Kurs detaylari ve odeme bilgisi ayrica gonderilecektir.
+
+Onam geri cekmek isterseniz her zaman bu mesaja 'IPTAL' yazabilirsiniz.`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"KVKK cocuk onami kaydedildi. Veli: Ayse T. Ogrenci: Ege T. Referans: KVKK-2026-0412. Kayit sureci devam edebilir."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"KVKK: Cocuk Verisi Ozel Koruma" senaryosu icin "Cocuk Ogrenci KVKK Onam Akisi" akisini olustur.
+
+Aciklama: 14 yasindaki ogrenci kaydi icin veliden KVKK onami alinmasi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Yeni kayit: Ogrenci Ege T. — Dogum tarihi: 15.03.2012 (14 yas). 18 yas alti KVKK cocuk koruma akisi tetiklendi.
+
+2. **message_text** — Mesaj gonder
+   text: "Sayin Ayse Hanim, ogrencisiniz Ege icin Robotik Kodlama kursuna kayit talebinizi aldik.
+
+Ege 18 yasindan kucuk oldugu icin KVKK kapsaminda veli onaminiz gerekmektedir.
+
+Islenecek veriler:
+- Ad, soyad, dogum tarihi
+- Ders katilim kaydi
+- Odev ve proje dosyalari
+- Fotograf (sinif ici etkinlik)
+
+Amac: Egitim hizmeti sunumu
+Sure: Kurs suresi + 1 yil
+
+Onaylamak icin 'ONAY', reddetmek icin 'RET' yazin."
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "ONAY"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tesekkur ederiz Ayse Hanim! KVKK onaminiz basariyla kaydedildi.
+
+Onam Detaylari:
+Ogrenci: Ege T.
+Veli: Ayse T.
+Onam Tarihi: 20.02.2026
+Onam Referans No: KVKK-2026-0412
+
+Ege'nin Robotik Kodlama kursuna kaydi tamamlanmistir. Kurs detaylari ve odeme bilgisi ayrica gonderilecektir.
+
+Onam geri cekmek isterseniz her zaman bu mesaja 'IPTAL' yazabilirsiniz."
+
+5. **utility_note** — Akis sonuc notu
+   text: "KVKK cocuk onami kaydedildi. Veli: Ayse T. Ogrenci: Ege T. Referans: KVKK-2026-0412. Kayit sureci devam edebilir."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["KVKK","Cocuk Koruma"]},{id:"eg21",title:"Mezun Takibi / Alumni",description:"Mezunlarla iletisimin kopmasini onleyen proaktif senaryo. Outbound Engine ile periyodik iletisim, yeni kurs davetleri ve etkinlik bilgilendirmesi gonderilerek mezun sadakati korunur.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG21: Mezun Yeni Kurs Davet Akisi",description:"Gecmis mezunlara yeni donem kurs davetiyesi ve ozel indirim sunumu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Alumni iletisim zamanlayicisi tetiklendi: Q1 2026 "}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Deniz Bey! Sizinle gorusmeyeli uzun oldu. Dijital Pazarlama kursumuzun mezunu olarak haberimiz var:
+
+Yeni Kurslarimiz:
+- Ileri SEO Stratejileri (Mart 2026)
+- Performance Marketing (Nisan 2026)
+
+Mezun Ozel Indirim: %20
+Kod: ALUMNI2026
+
+Detayli bilgi icin 'BILGI' yazin.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Ileri SEO Stratejileri Kursu:
+
+Sure: 8 hafta (Mart-Nisan)
+Gunler: Carsamba 19:00-21:00
+Ucret: 6.500 TL (Alumni fiyat: 5.200 TL)
+Egitmen: Fatih Y. (10 yil deneyim, Google Certified)
+Onkosul: Dijital Pazarlama Temelleri (sizde mevcut)
+
+Kayit: [Kayit Linki]
+Alumni kodunuz: ALUMNI2026
+
+Sorulariniz icin bu mesaja yanit verin!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Alumni iletisim: Deniz A. — Ileri SEO ilgi gosterdi. Follow-up: 7 gun sonra hatirlatma."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Mezun Takibi / Alumni" senaryosu icin "Mezun Yeni Kurs Davet Akisi" akisini olustur.
+
+Aciklama: Gecmis mezunlara yeni donem kurs davetiyesi ve ozel indirim sunumu.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Alumni iletisim zamanlayicisi tetiklendi: Q1 2026 — 210 mezuna yeni donem bilgilendirme gonderilecek.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Deniz Bey! Sizinle gorusmeyeli uzun oldu. Dijital Pazarlama kursumuzun mezunu olarak haberimiz var:
+
+Yeni Kurslarimiz:
+- Ileri SEO Stratejileri (Mart 2026)
+- Performance Marketing (Nisan 2026)
+
+Mezun Ozel Indirim: %20
+Kod: ALUMNI2026
+
+Detayli bilgi icin 'BILGI' yazin."
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "BILGI"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Ileri SEO Stratejileri Kursu:
+
+Sure: 8 hafta (Mart-Nisan)
+Gunler: Carsamba 19:00-21:00
+Ucret: 6.500 TL (Alumni fiyat: 5.200 TL)
+Egitmen: Fatih Y. (10 yil deneyim, Google Certified)
+Onkosul: Dijital Pazarlama Temelleri (sizde mevcut)
+
+Kayit: [Kayit Linki]
+Alumni kodunuz: ALUMNI2026
+
+Sorulariniz icin bu mesaja yanit verin!"
+   Degiskenler: {{kayit_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Dusunecegim, tesekkurler."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Alumni iletisim: Deniz A. — Ileri SEO ilgi gosterdi. Follow-up: 7 gun sonra hatirlatma."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Proaktif","Alumni"]},{id:"eg07",title:"Odeme Plani / Taksit",description:"Taksit secenekleri, odeme yontemleri ve vadeler hakkinda gelen sorulara AI aninda yanit verir. Odeme secenekleri ve online odeme linki otomatik sunulur.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG07: Taksit ve Odeme Yontemi Sorgusu",description:"Ogrenci taksit seceneklerini ve odeme yontemlerini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Odeme Plani / Taksit. Kurs: Ingilizce. Kno"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Ingilizce kursu odeme secenekleri:
+
+Pesinat (Tek cekim):
+- Tutar: 10.500 TL (%5 pesinat indirimi)
+
+Taksit Secenekleri:
+- 2 Taksit: 2 x 5.500 TL = 11.000 TL
+- 3 Taksit: 3 x 3.800 TL = 11.400 TL
+- 6 Taksit: 6 x 1.950 TL = 11.700 TL
+
+Odeme Yontemleri:
+- Kredi Karti (Visa, Mastercard, Troy)
+- Banka Havale / EFT
+- Online Odeme: [Odeme Linki]
+
+Hangi secenegi tercih edersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`3 taksit seceneginiz hazirlandi!
+
+Odeme Ozeti:
+- Kurs: Ingilizce Genel
+- Plan: 3 x 3.800 TL (aylik)
+- 1. Taksit: Kayit sirasinda
+- 2. Taksit: 1 ay sonra
+- 3. Taksit: 2 ay sonra
+
+Kredi karti ile online odeme: [Odeme Sayfasi]
+Sorunuz olursa bize yazin!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Taksit secenekleri + odeme yontemi + online odeme linki iletildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Odeme Plani / Taksit" senaryosu icin "Taksit ve Odeme Yontemi Sorgusu" akisini olustur.
+
+Aciklama: Ogrenci taksit seceneklerini ve odeme yontemlerini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ingilizce kursunun taksit secenekleri neler? Kredi karti ile odeyebilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Odeme Plani / Taksit. Kurs: Ingilizce. Knowledge Base odeme bilgisi sorgusu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Ingilizce kursu odeme secenekleri:
+
+Pesinat (Tek cekim):
+- Tutar: 10.500 TL (%5 pesinat indirimi)
+
+Taksit Secenekleri:
+- 2 Taksit: 2 x 5.500 TL = 11.000 TL
+- 3 Taksit: 3 x 3.800 TL = 11.400 TL
+- 6 Taksit: 6 x 1.950 TL = 11.700 TL
+
+Odeme Yontemleri:
+- Kredi Karti (Visa, Mastercard, Troy)
+- Banka Havale / EFT
+- Online Odeme: [Odeme Linki]
+
+Hangi secenegi tercih edersiniz?"
+   Degiskenler: {{odeme_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "3 taksit ile kredi karti olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "3 taksit seceneginiz hazirlandi!
+
+Odeme Ozeti:
+- Kurs: Ingilizce Genel
+- Plan: 3 x 3.800 TL (aylik)
+- 1. Taksit: Kayit sirasinda
+- 2. Taksit: 1 ay sonra
+- 3. Taksit: 2 ay sonra
+
+Kredi karti ile online odeme: [Odeme Sayfasi]
+Sorunuz olursa bize yazin!"
+   Degiskenler: {{odeme_sayfasi}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Taksit secenekleri + odeme yontemi + online odeme linki iletildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Odeme Bilgisi"]},{id:"eg12",title:"Online Ders Teknik Destek",description:"Online derse baglanmakta sorun yasayan ogrenciye AI teknik sorun intent'ini algilar ve adim adim cozum rehberi sunar. Zoom, Google Meet veya platform erisim sorunlari hizla cozulur.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG12: Zoom Baglanti Sorunu Cozumu",description:"Ogrenci Zoom uzerinden derse baglanamiyor, AI adim adim cozum sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Teknik Destek — Zoom baglanti sorunu. Ogre"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Hemen yardimci olayim! Zoom baglanti sorunu icin su adimlari deneyin:
+
+1. Zoom uygulamasini tamamen kapatin ve yeniden acin
+2. Internet baglantinizi kontrol edin (Wi-Fi'yi kapatıp acin)
+3. Bu yeni linki deneyin: [Yedek Zoom Linki]
+
+Hala giremiyorsaniz:
+4. Zoom'u tarayicidan acmayi deneyin: [Web Linki]
+5. Meeting ID: 123 456 7890
+6. Sifre: abc123
+
+Hangisini denediginizi yazin, adim adim yonlendirelim.`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! Dersiniz devam ediyor, iyi dersler!
+
+Ipucu: Bir sonraki ders icin Zoom uygulamasini guncellemenizi oneririz. Guncel surum baglanti sorunlarini azaltir.
+
+Tekrar sorun yasarsaniz bize yazin.`}},{id:"action_delay_7",type:"action_delay",position:{x:300,y:950},data:{label:"2 dk bekle",seconds:120}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_action_delay_7",source:"message_text_6",target:"action_delay_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Online Ders Teknik Destek" senaryosu icin "Zoom Baglanti Sorunu Cozumu" akisini olustur.
+
+Aciklama: Ogrenci Zoom uzerinden derse baglanamiyor, AI adim adim cozum sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Derse giremiyorum, Zoom linki calismıyor. Yardim eder misiniz?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Teknik Destek — Zoom baglanti sorunu. Ogrenci: Telefon eslestirme. Sinif: Ingilizce B1 Aksam. Knowledge Base Zoom cozum rehberi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Hemen yardimci olayim! Zoom baglanti sorunu icin su adimlari deneyin:
+
+1. Zoom uygulamasini tamamen kapatin ve yeniden acin
+2. Internet baglantinizi kontrol edin (Wi-Fi'yi kapatıp acin)
+3. Bu yeni linki deneyin: [Yedek Zoom Linki]
+
+Hala giremiyorsaniz:
+4. Zoom'u tarayicidan acmayi deneyin: [Web Linki]
+5. Meeting ID: 123 456 7890
+6. Sifre: abc123
+
+Hangisini denediginizi yazin, adim adim yonlendirelim."
+   Her secenek icin ayri cikis handle'i olustur
+   Degiskenler: {{yedek_zoom_linki}}, {{web_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Yedek link ile girebildim, tesekkurler!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Dersiniz devam ediyor, iyi dersler!
+
+Ipucu: Bir sonraki ders icin Zoom uygulamasini guncellemenizi oneririz. Guncel surum baglanti sorunlarini azaltir.
+
+Tekrar sorun yasarsaniz bize yazin."
+
+7. **action_delay** — 2 dk bekle
+   seconds: 120
+   Not: Otomatik cozum: Zoom baglanti sorunu yedek link ile cozuldu. Agent mudahalesi gerekmedi. Cozum suresi: 2 dakika.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Teknik Destek"]},{id:"eg22",title:"Ozel Ders Talebi",description:"Birebir ozel ders isteyen musteriye AI ile musait egitmen, saat ve fiyat bilgisi sunarak hizli teklif olusturan senaryo. Knowledge Base egitmen musaitlik verisi saglar.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG22: Birebir Ozel Ders Talebi",description:"Musteri birebir Ingilizce dersi istiyor, AI musait egitmen ve fiyat bilgisi sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Ozel Ders Talebi. Konu: Ingilizce. Seviye:"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Birebir Ingilizce dersi icin harika bir secim. Intermediate seviyede musait egitmenlerimiz:
+
+1. Sarah T. (Native Speaker, 5 yil deneyim)
+   Musait: Pazartesi 18:00, Carsamba 18:00
+   Ucret: 800 TL/ders (60 dk)
+
+2. Emre K. (CELTA Sertifikali, 8 yil deneyim)
+   Musait: Sali 19:00, Persembe 19:00
+   Ucret: 650 TL/ders (60 dk)
+
+Hangi egitmen ve saatler size uygun?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika secim! Emre K. ile programiniz:
+
+Plan: Haftada 2 ders (Sali + Persembe, 19:00-20:00)
+Ucret: 650 TL/ders x 8 ders/ay = 5.200 TL/ay
+Baslangic: Gelecek Sali
+
+Ilk dersi onaylamak ister misiniz? Odeme bilgilerini paylasayim.`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Ozel ders kaydi olusturuldu: Ogrenci -> Emre K. ile B1-B2 Ingilizce. Sali-Persembe 19:00. 650 TL/ders. Egitmene bildirim gonderildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Ozel Ders Talebi" senaryosu icin "Birebir Ozel Ders Talebi" akisini olustur.
+
+Aciklama: Musteri birebir Ingilizce dersi istiyor, AI musait egitmen ve fiyat bilgisi sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, birebir Ingilizce dersi almak istiyorum. Intermediate seviyedeyim, haftada 2 gun olabilir mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Ozel Ders Talebi. Konu: Ingilizce. Seviye: Intermediate (B1-B2). Siklik: Hafta 2. Musait egitmenler sorgulanacak.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Birebir Ingilizce dersi icin harika bir secim. Intermediate seviyede musait egitmenlerimiz:
+
+1. Sarah T. (Native Speaker, 5 yil deneyim)
+   Musait: Pazartesi 18:00, Carsamba 18:00
+   Ucret: 800 TL/ders (60 dk)
+
+2. Emre K. (CELTA Sertifikali, 8 yil deneyim)
+   Musait: Sali 19:00, Persembe 19:00
+   Ucret: 650 TL/ders (60 dk)
+
+Hangi egitmen ve saatler size uygun?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Emre Hoca ile Sali ve Persembe 19:00 olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika secim! Emre K. ile programiniz:
+
+Plan: Haftada 2 ders (Sali + Persembe, 19:00-20:00)
+Ucret: 650 TL/ders x 8 ders/ay = 5.200 TL/ay
+Baslangic: Gelecek Sali
+
+Ilk dersi onaylamak ister misiniz? Odeme bilgilerini paylasayim."
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Onayliyorum, baslayalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "Ozel ders kaydi olusturuldu: Ogrenci -> Emre K. ile B1-B2 Ingilizce. Sali-Persembe 19:00. 650 TL/ders. Egitmene bildirim gonderildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Ozel Ders","Aninda Teklif"]},{id:"eg16",title:"Referral / Arkadas Getir Indirimi",description:"Mevcut ogrencilerden arkadas yonlendirmesi ile yeni kayit kazanma. Donem sonu Outbound ile referans teklifi gonderilerek sozlu tavsiyeyi olculebilir hale getiren proaktif senaryo.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG16: Donem Sonu Referans Kampanyasi",description:"Memnun ogrenciye referans kodu gonderimi ve yeni kayit takibi."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Donem sonu referans kampanyasi tetiklendi: Memnuni"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Zeynep Hanim! Bu donem Grafik Tasarim kursunu basariyla tamamladiniz, tebrikler!
+
+Bir arkadasinizi yonlendirin, her ikiniz %10 indirim kazanin!
+
+Sizin referans kodunuz: ZEYNEP2026
+Bu kodu arkadasinizla paylasin, kayit sirasinda kullansin yeter.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Evet! Arkadasiniz ZEYNEP2026 koduyla kayit olursa:
+
+Arkadasiniz: Kayit ucretinde %10 indirim
+Siz: Gelecek donem ucretinizde %10 indirim
+
+Kod 30 gun gecerlidir. Birden fazla arkadasinizi da yonlendirebilirsiniz — her biri icin ayri indirim kazanirsiniz!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Referans kodu: ZEYNEP2026 aktif. 30 gun gecerlilik. Takip baslatildi."}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Referral / Arkadas Getir Indirimi" senaryosu icin "Donem Sonu Referans Kampanyasi" akisini olustur.
+
+Aciklama: Memnun ogrenciye referans kodu gonderimi ve yeni kayit takibi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Donem sonu referans kampanyasi tetiklendi: Memnuniyet skoru 4+ olan 85 ogrenci segmenti.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Zeynep Hanim! Bu donem Grafik Tasarim kursunu basariyla tamamladiniz, tebrikler!
+
+Bir arkadasinizi yonlendirin, her ikiniz %10 indirim kazanin!
+
+Sizin referans kodunuz: ZEYNEP2026
+Bu kodu arkadasinizla paylasin, kayit sirasinda kullansin yeter."
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Harika, arkdasima soyleyecegim! Indirim gelecek donem mi gecerli?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Evet! Arkadasiniz ZEYNEP2026 koduyla kayit olursa:
+
+Arkadasiniz: Kayit ucretinde %10 indirim
+Siz: Gelecek donem ucretinizde %10 indirim
+
+Kod 30 gun gecerlidir. Birden fazla arkadasinizi da yonlendirebilirsiniz — her biri icin ayri indirim kazanirsiniz!"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Referans kodu: ZEYNEP2026 aktif. 30 gun gecerlilik. Takip baslatildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Referral"]},{id:"eg13",title:"Sertifika / Diploma Sorgulama",description:"Sertifika tipi, MEB onay durumu, uluslararasi gecerlilik ve teslim sureci hakkinda gelen sorulara AI aninda yanit verir. Knowledge Base'den sertifika bilgileri cekilir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG13: Sertifika Tipi ve MEB Onay Sorgusu",description:"Ogrenci sertifika tipi ve MEB onayi hakkinda bilgi soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Sertifika Sorgulama. MEB onay durumu isten"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Evet! Kurs sonunda sertifika verilir. Sertifika tiplerimiz:
+
+Kurum Sertifikasi:
+- Tum kurslarda verilir
+- Devam orani %80+ ve basari notu 60+ gerekli
+- Teslim: Kurs bitiminden 1 hafta sonra
+- Dijital + basili kopya
+
+MEB Onayli Sertifika:
+- Sadece MEB onayli programlarda (Ingilizce, Almanca, Bilgisayar)
+- MEB sinavi basari sarti var
+- Teslim: MEB islemlerinden sonra 2-3 hafta
+- Resmi gecerlilik: Devlet kurumlari, is basvurulari
+
+Uluslararasi Gecerlilik:
+- Cambridge, Goethe gibi uluslararasi sinavlara hazirlık yapilir
+- Uluslararasi sertifika icin ayrica sinava girilmesi gerekir
+
+Hangi sertifika tipi hakkinda detay istersiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`MEB Onayli Sertifika Sureci:
+
+1. Devam Sarti: Kursa %80 devam etmis olmaniz gerekir
+2. Kurum Sinavi: Kurs sonu sinavinda en az 70/100 almanız gerekir
+3. MEB Sinavi: MEB tarafindan yapilan yazili sinava girmeniz gerekir
+4. Basari: MEB sinavini da gecmeniz halinde sertifika duzenlenir
+
+MEB Sinav Tarihi: Donem sonunda (Haziran 2026)
+Sinav Ucreti: Ucretsiz (kurs ucretine dahil)
+Sertifika Teslim: MEB islemleri sonrasi 2-3 hafta
+
+Kurs kaydinda MEB onayli programa kayit secenegini isaretlemeniz yeterli.
+Kayit: [Kayit Formu]`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Sertifika tipleri + MEB onay sureci + detayli kosullar iletildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sertifika / Diploma Sorgulama" senaryosu icin "Sertifika Tipi ve MEB Onay Sorgusu" akisini olustur.
+
+Aciklama: Ogrenci sertifika tipi ve MEB onayi hakkinda bilgi soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kurs bitince sertifika veriliyor mu? MEB onayli mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Sertifika Sorgulama. MEB onay durumu isteniyor. Knowledge Base sertifika bilgisi sorgusu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Evet! Kurs sonunda sertifika verilir. Sertifika tiplerimiz:
+
+Kurum Sertifikasi:
+- Tum kurslarda verilir
+- Devam orani %80+ ve basari notu 60+ gerekli
+- Teslim: Kurs bitiminden 1 hafta sonra
+- Dijital + basili kopya
+
+MEB Onayli Sertifika:
+- Sadece MEB onayli programlarda (Ingilizce, Almanca, Bilgisayar)
+- MEB sinavi basari sarti var
+- Teslim: MEB islemlerinden sonra 2-3 hafta
+- Resmi gecerlilik: Devlet kurumlari, is basvurulari
+
+Uluslararasi Gecerlilik:
+- Cambridge, Goethe gibi uluslararasi sinavlara hazirlık yapilir
+- Uluslararasi sertifika icin ayrica sinava girilmesi gerekir
+
+Hangi sertifika tipi hakkinda detay istersiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "MEB onayli sertifika icin ne yapmam gerekiyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "MEB Onayli Sertifika Sureci:
+
+1. Devam Sarti: Kursa %80 devam etmis olmaniz gerekir
+2. Kurum Sinavi: Kurs sonu sinavinda en az 70/100 almanız gerekir
+3. MEB Sinavi: MEB tarafindan yapilan yazili sinava girmeniz gerekir
+4. Basari: MEB sinavini da gecmeniz halinde sertifika duzenlenir
+
+MEB Sinav Tarihi: Donem sonunda (Haziran 2026)
+Sinav Ucreti: Ucretsiz (kurs ucretine dahil)
+Sertifika Teslim: MEB islemleri sonrasi 2-3 hafta
+
+Kurs kaydinda MEB onayli programa kayit secenegini isaretlemeniz yeterli.
+Kayit: [Kayit Formu]"
+   Degiskenler: {{kayit_formu}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Sertifika tipleri + MEB onay sureci + detayli kosullar iletildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Sertifika Bilgisi"]},{id:"eg05",title:"Seviye Belirleme",description:"Hangi seviyeye girmesi gerektigini soran ogrenciye Automation flow ile online seviye belirleme testi linki gonderilir. Test sonucuna gore uygun sinif otomatik onerilir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG05: Seviye Belirleme Test Akisi",description:"Ogrenci seviyesini bilmiyor, AI test linki gonderip sonuca gore sinif oneriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Seviye Belirleme. Dil: Ingilizce. Automati"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Seviyenizi belirlemek cok kolay! 15 dakikalik ucretsiz online testimizi cozebilirsiniz:
+
+Ingilizce Seviye Testi: [Online Test Linki]
+
+- Sure: 15 dakika
+- Soru Sayisi: 40
+- Sonuc: Aninda ekranda gorunur
+- Parcalar: Gramer, kelime bilgisi, okuma anlama
+
+Testi tamamladiginizda sonucunuzu buraya yazin, size uygun sinifi onerelim!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Tebrikler! B1 (Orta) seviyesindesiniz. Size uygun siniflar:
+
+Ingilizce B1 Gruplari:
+- Hafta ici: Pazartesi-Carsamba-Cuma 10:00-12:00 (5 kisi kaldi)
+- Aksam: Sali-Persembe 19:00-21:00 (3 kisi kaldi)
+- Hafta sonu: Cumartesi 10:00-13:00 (7 kisi kaldi)
+
+B1 seviyesinde konusma pratigi ve gramer pekistirmesine odaklanilir.
+
+Hangi program size uygun? Kayit icin: [Kayit Formu]`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Seviye testi + sonuc degerlendirme + sinif onerisi tamamlandi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Seviye Belirleme" senaryosu icin "Seviye Belirleme Test Akisi" akisini olustur.
+
+Aciklama: Ogrenci seviyesini bilmiyor, AI test linki gonderip sonuca gore sinif oneriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ingilizce kursuna baslayacagim ama seviyemi bilmiyorum. Nasil anlayabilirim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Seviye Belirleme. Dil: Ingilizce. Automation flow: Online test linki gonderilecek.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Seviyenizi belirlemek cok kolay! 15 dakikalik ucretsiz online testimizi cozebilirsiniz:
+
+Ingilizce Seviye Testi: [Online Test Linki]
+
+- Sure: 15 dakika
+- Soru Sayisi: 40
+- Sonuc: Aninda ekranda gorunur
+- Parcalar: Gramer, kelime bilgisi, okuma anlama
+
+Testi tamamladiginizda sonucunuzu buraya yazin, size uygun sinifi onerelim!"
+   Degiskenler: {{online_test_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Testi cozdum, B1 seviyesi cikmis."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Tebrikler! B1 (Orta) seviyesindesiniz. Size uygun siniflar:
+
+Ingilizce B1 Gruplari:
+- Hafta ici: Pazartesi-Carsamba-Cuma 10:00-12:00 (5 kisi kaldi)
+- Aksam: Sali-Persembe 19:00-21:00 (3 kisi kaldi)
+- Hafta sonu: Cumartesi 10:00-13:00 (7 kisi kaldi)
+
+B1 seviyesinde konusma pratigi ve gramer pekistirmesine odaklanilir.
+
+Hangi program size uygun? Kayit icin: [Kayit Formu]"
+   Degiskenler: {{kayit_formu}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Seviye testi + sonuc degerlendirme + sinif onerisi tamamlandi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomasyon","Seviye Testi"]},{id:"eg17",title:"Sikayet / Memnuniyetsizlik",description:"Ogrenci veya veli egitmen, icerik veya hizmetten memnuniyetsiz. AI sikayet intent'ini tespit edip empatiyle karsilik verir, gerektiginde koordinatore yonlendirir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG17: Egitmen Memnuniyetsizligi Sikayeti",description:"Ogrenci egitmeninden memnun degil, dersler verimli gecmiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Intent: Sikayet (Egitmen). Duygu: Negatif (skor: -"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba Burak Bey, derslerden memnun olmamaniz bizi cok uzdu. Geri bildiriminiz bizim icin cok degerli.
+
+Sorunuzu daha iyi anlayabilmem icin:
+- Hangi kurs ve egitmenden bahsediyorsunuz?
+- Ne zamandir bu sorunu yasiyorsunuz?
+
+Detaylari paylasirseniz en kisa surede cozum uretecegiz.`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Anliyorum Burak Bey, 3 haftadir suregelen bir sorun bu. Geri bildiriminizi egitim koordinatorumuze ilettim.
+
+Koordinatorumuz en gec yarin sizi arayarak cozum onerileri sunacak. Grup degisikligi veya egitmen degisikligi gibi secenekleri birlikte degerlendireceksiniz.
+
+Memnuniyetiniz bizim icin onceliklidir.`}},{id:"action_delay_7",type:"action_delay",position:{x:300,y:950},data:{label:"24 saat bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_sentiment_3",source:"ai_intent_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_text_4",source:"ai_sentiment_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_action_delay_7",source:"message_text_6",target:"action_delay_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sikayet / Memnuniyetsizlik" senaryosu icin "Egitmen Memnuniyetsizligi Sikayeti" akisini olustur.
+
+Aciklama: Ogrenci egitmeninden memnun degil, dersler verimli gecmiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hocadan hic memnun degilim, derslerde sadece kitaptan okuyor, hicbir sey anlayamiyorum. Bu paraya degmiyor."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Intent: Sikayet (Egitmen). Duygu: Negatif (skor: -0.8). Kategori: Egitmen performansi. Eskalasyon: EVET.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba Burak Bey, derslerden memnun olmamaniz bizi cok uzdu. Geri bildiriminiz bizim icin cok degerli.
+
+Sorunuzu daha iyi anlayabilmem icin:
+- Hangi kurs ve egitmenden bahsediyorsunuz?
+- Ne zamandir bu sorunu yasiyorsunuz?
+
+Detaylari paylasirseniz en kisa surede cozum uretecegiz."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "B1 Ingilizce, Mehmet Hoca. 3 haftadir boyle, siniftaki herkes ayni fikirdee."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Anliyorum Burak Bey, 3 haftadir suregelen bir sorun bu. Geri bildiriminizi egitim koordinatorumuze ilettim.
+
+Koordinatorumuz en gec yarin sizi arayarak cozum onerileri sunacak. Grup degisikligi veya egitmen degisikligi gibi secenekleri birlikte degerlendireceksiniz.
+
+Memnuniyetiniz bizim icin onceliklidir."
+
+7. **action_delay** — 24 saat bekle
+   seconds: 300
+   Not: Eskalasyon olusturuldu: Sikayet #4412. Ogrenci: Burak M. — B1 Ingilizce, Egitmen Mehmet. Koordinore bildirim gonderildi. SLA: 24 saat.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Sikayet","Eskalasyon"]},{id:"eg10",title:"Sinav / Degerlendirme Sonuclari",description:"Sinav sonuclari yayinlandiginda Outbound bildirim ile ogrencilere proaktif olarak iletilir. Ogrenciler sonuclarini sormak zorunda kalmaz, sistem otomatik bilgilendirir.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG10: Proaktif Sinav Sonuc Bildirimi",description:"Sinav sonuclari yayinlandiginda ogrencilere otomatik bildirim gonderilir."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Tetikleme: Egitmen Ingilizce B1 ara sinav sonuclar"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Zeynep! Ingilizce B1 ara sinav sonucunuz aciklandi:
+
+Sinav: Ara Sinav (Subat 2026)
+Notunuz: 82/100
+Sinif Ortalamasi: 74/100
+Siralamaniz: 3/15
+
+Tebrikler! Ortalamanin uzerinde basarili bir performans gosterdiniz.
+
+Detayli degerlendirme icin egitmeninizle gorusebilirsiniz.
+Sorunuz varsa bize yazin!`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Detayli analiz:
+
+- Gramer: 20/25 (Guclu)
+- Kelime Bilgisi: 18/25 (Guclu)
+- Okuma Anlama: 22/25 (Cok Iyi)
+- Dinleme: 22/25 (Cok Iyi)
+
+Oneriler:
+- Gramer parcasinda Conditional Sentences konusunu tekrar edin
+- Ek calisma materyali: [Conditional Calisma PDF]
+
+Basarilarinizin devamini diliyoruz!`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Proaktif bildirim: Sinav sonucu + detayli analiz + calisma onerisi iletildi. Ogrenci sorma ihtiyaci duymadan bilgilendirildi."}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sinav / Degerlendirme Sonuclari" senaryosu icin "Proaktif Sinav Sonuc Bildirimi" akisini olustur.
+
+Aciklama: Sinav sonuclari yayinlandiginda ogrencilere otomatik bildirim gonderilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Tetikleme: Egitmen Ingilizce B1 ara sinav sonuclarini sisteme girdi. Outbound bildirim baslatiliyor.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Zeynep! Ingilizce B1 ara sinav sonucunuz aciklandi:
+
+Sinav: Ara Sinav (Subat 2026)
+Notunuz: 82/100
+Sinif Ortalamasi: 74/100
+Siralamaniz: 3/15
+
+Tebrikler! Ortalamanin uzerinde basarili bir performans gosterdiniz.
+
+Detayli degerlendirme icin egitmeninizle gorusebilirsiniz.
+Sorunuz varsa bize yazin!"
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler! Hangi konulardan eksigim var?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Detayli analiz:
+
+- Gramer: 20/25 (Guclu)
+- Kelime Bilgisi: 18/25 (Guclu)
+- Okuma Anlama: 22/25 (Cok Iyi)
+- Dinleme: 22/25 (Cok Iyi)
+
+Oneriler:
+- Gramer parcasinda Conditional Sentences konusunu tekrar edin
+- Ek calisma materyali: [Conditional Calisma PDF]
+
+Basarilarinizin devamini diliyoruz!"
+   Degiskenler: {{conditional_calisma_pdf}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "Proaktif bildirim: Sinav sonucu + detayli analiz + calisma onerisi iletildi. Ogrenci sorma ihtiyaci duymadan bilgilendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Sinav Sonucu"]},{id:"eg24",title:"Staj / Pratik Sorgulama",description:"Kurs suresinde veya sonrasinda staj imkani soran potansiyel ogrenciye AI ile staj bilgisi ve partner sirket listesi sunan senaryo. Knowledge Base staj programi detaylarini saglar.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG24: Kurs Oncesi Staj Imkani Sorusu",description:"Potansiyel ogrenci kursa kayit oncesi staj programi hakkinda bilgi aliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Staj Sorgulama. Kurs: Veri Bilimi. Knowled"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Veri Bilimi kursumuzda staj programimiz mevcut. Detaylar:
+
+Staj Programi:
+Sure: Kursun son 4 haftasi (toplam 160 saat)
+Format: Hibrit (uzaktan + ofis)
+Kosul: Kursun ilk 8 haftasini basariyla tamamlama
+
+Partner Sirketlerimiz:
+- Turkcell — Data Analyst Stajyer
+- Migros — BI Stajyer
+- Aselsan — Veri Muhendisligi Stajyer
+- KocSistem — ML Stajyer
+
+Staj kontenjan sinirli (donem basi 10 kisi). Daha fazla bilgi ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Staj yerlestirme partner sirketlerle birlikte yapilir, garanti degil ancak basari oranimiz yuksek:
+
+Gecmis Donem Verileri:
+- Basvuranlarinin %85'i staja yerlesti
+- Stajyerlerin %40'i staj sirasinda is teklifi aldi
+
+Basvuru Onceligi:
+1. Kurs basarisi (odev ve proje notlari)
+2. Portfolyo kalitesi
+3. Mulakat performansi
+
+Staj icin basvuru kurs basladiktan 6 hafta sonra acilir. Erken kayit yapsaniz staj kontenjanindan da emin olursunuz.
+
+Kursa kayit olmak ister misiniz?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Lead donusum: Staj sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Veri Bilimi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_utility_note_8",source:"ai_intent_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Staj / Pratik Sorgulama" senaryosu icin "Kurs Oncesi Staj Imkani Sorusu" akisini olustur.
+
+Aciklama: Potansiyel ogrenci kursa kayit oncesi staj programi hakkinda bilgi aliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhabalar, Veri Bilimi kursunuzu inceliyorum. Kurs suresinde staj imkani var mi? Pratik yapma sansi oluyor mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Staj Sorgulama. Kurs: Veri Bilimi. Knowledge Base sorgusu: staj programi + partner sirketler + kosullar.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Veri Bilimi kursumuzda staj programimiz mevcut. Detaylar:
+
+Staj Programi:
+Sure: Kursun son 4 haftasi (toplam 160 saat)
+Format: Hibrit (uzaktan + ofis)
+Kosul: Kursun ilk 8 haftasini basariyla tamamlama
+
+Partner Sirketlerimiz:
+- Turkcell — Data Analyst Stajyer
+- Migros — BI Stajyer
+- Aselsan — Veri Muhendisligi Stajyer
+- KocSistem — ML Stajyer
+
+Staj kontenjan sinirli (donem basi 10 kisi). Daha fazla bilgi ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Staj garantili mi? Herkes gidebiliyor mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Staj yerlestirme partner sirketlerle birlikte yapilir, garanti degil ancak basari oranimiz yuksek:
+
+Gecmis Donem Verileri:
+- Basvuranlarinin %85'i staja yerlesti
+- Stajyerlerin %40'i staj sirasinda is teklifi aldi
+
+Basvuru Onceligi:
+1. Kurs basarisi (odev ve proje notlari)
+2. Portfolyo kalitesi
+3. Mulakat performansi
+
+Staj icin basvuru kurs basladiktan 6 hafta sonra acilir. Erken kayit yapsaniz staj kontenjanindan da emin olursunuz.
+
+Kursa kayit olmak ister misiniz?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, kayit surecini baslatalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **utility_note** — Akis sonuc notu
+   text: "Lead donusum: Staj sorusu -> Kayit. Potansiyel ogrenci kayit surecine yonlendirildi. Kurs: Veri Bilimi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Staj","Knowledge Base"]},{id:"eg11",title:"Veli Iletisimi",description:"Veliler cocuklarinin devam durumu ve performansini soruyor. Outbound ile aylik devam+performans ozeti proaktif gonderilir. Veli memnuniyeti ve guveni artar.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG11: Proaktif Aylik Veli Raporu",description:"Her ay sonunda velilere cocuklarinin devam ve performans raporu otomatik gonderilir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Tetikleme: Ay sonu rapor donemi. Ingilizce cocuk g"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Ayse Hanim! Ogrenciniz Efe'nin Subat 2026 aylik raporu:
+
+Ingilizce A2 Cocuk Grubu
+
+Devam Durumu:
+- Toplam ders: 12
+- Katildigi: 11
+- Devam orani: %92
+
+Performans:
+- Ara sinav: 78/100
+- Odev tamamlama: %95
+- Ders katilimi: Cok iyi
+
+Egitmen Notu: Efe konusma becerilerinde buyuk gelisim gosteriyor. Kelime calismalarına daha fazla zaman ayirmasini oneriyorum.
+
+Sorunuz olursa bize yazin!`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Efe 12 Subat Carsamba gunu derse katilmadi. O gun telafi dersi yapilmamis.
+
+Telafi icin musait saatler:
+- Cumartesi 15:00-16:00
+- Sali 17:00-18:00
+
+Telafi ayarlamami ister misiniz?`}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Proaktif bildirim: Aylik veli raporu + devam detayi + telafi secenegi sunuldu. Veli memnun, guven olusturuldu."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Veli Iletisimi" senaryosu icin "Proaktif Aylik Veli Raporu" akisini olustur.
+
+Aciklama: Her ay sonunda velilere cocuklarinin devam ve performans raporu otomatik gonderilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Tetikleme: Ay sonu rapor donemi. Ingilizce cocuk grubu velilerine aylik rapor gonderiliyor.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Ayse Hanim! Ogrenciniz Efe'nin Subat 2026 aylik raporu:
+
+Ingilizce A2 Cocuk Grubu
+
+Devam Durumu:
+- Toplam ders: 12
+- Katildigi: 11
+- Devam orani: %92
+
+Performans:
+- Ara sinav: 78/100
+- Odev tamamlama: %95
+- Ders katilimi: Cok iyi
+
+Egitmen Notu: Efe konusma becerilerinde buyuk gelisim gosteriyor. Kelime calismalarına daha fazla zaman ayirmasini oneriyorum.
+
+Sorunuz olursa bize yazin!"
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler. Efe'nin devamsizlik yaptigi gun hangisiydi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Efe 12 Subat Carsamba gunu derse katilmadi. O gun telafi dersi yapilmamis.
+
+Telafi icin musait saatler:
+- Cumartesi 15:00-16:00
+- Sali 17:00-18:00
+
+Telafi ayarlamami ister misiniz?"
+
+5. **utility_note** — Akis sonuc notu
+   text: "Proaktif bildirim: Aylik veli raporu + devam detayi + telafi secenegi sunuldu. Veli memnun, guven olusturuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Veli Raporu"]},{id:"eg18",title:"Yorum / Review Isteme",description:"Donem sonunda sistematik yorum toplama. Outbound ile memnuniyet anketi gonderilip pozitif yanitlara Google yorum linki sunularak online itibar guclendiren proaktif senaryo.",category:"EGITIM",niche:"education",flowConfig:{version:2,metadata:{name:"EG18: Donem Sonu Yorum Toplama Akisi",description:"Memnuniyet anketi + pozitif yanita Google yorum yonlendirme."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Donem sonu anket kampanyasi tetiklendi: 95 ogrenci"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Selin Hanim! Bu donem A2 Ingilizce kursunuz tamamlandi. Deneyiminizi merak ediyoruz.
+
+Kursumuzdan ne kadar memnunsunuz?
+1 - Hic memnun degilim
+2 - Az memnunum
+3 - Orta
+4 - Memnunum
+5 - Cok memnunum
+
+Bir rakam yazmaniz yeterli!`}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Harika, cok tesekkur ederiz Selin Hanim! Memnuniyetiniz bizi cok mutlu etti.
+
+Bizi Google'da da destekler misiniz? Yorumunuz yeni ogrencilere ilham olacak:
+
+[Google Yorum Linki]
+
+30 saniyenizi alir ve bize cok yardimci olur!`}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Yorum yonlendirmesi basarili: Selin H. — 5 puan, Google yorum linkine tikladi."}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_message_text_3",source:"message_text_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_utility_note_5",source:"ai_intent_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yorum / Review Isteme" senaryosu icin "Donem Sonu Yorum Toplama Akisi" akisini olustur.
+
+Aciklama: Memnuniyet anketi + pozitif yanita Google yorum yonlendirme.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Donem sonu anket kampanyasi tetiklendi: 95 ogrenciye memnuniyet anketi gonderildi.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Selin Hanim! Bu donem A2 Ingilizce kursunuz tamamlandi. Deneyiminizi merak ediyoruz.
+
+Kursumuzdan ne kadar memnunsunuz?
+1 - Hic memnun degilim
+2 - Az memnunum
+3 - Orta
+4 - Memnunum
+5 - Cok memnunum
+
+Bir rakam yazmaniz yeterli!"
+
+   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)
+
+3. **message_text** — Mesaj gonder
+   text: "Harika, cok tesekkur ederiz Selin Hanim! Memnuniyetiniz bizi cok mutlu etti.
+
+Bizi Google'da da destekler misiniz? Yorumunuz yeni ogrencilere ilham olacak:
+
+[Google Yorum Linki]
+
+30 saniyenizi alir ve bize cok yardimci olur!"
+   Degiskenler: {{google_yorum_linki}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tabii, simdi yaziyorum!"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **utility_note** — Akis sonuc notu
+   text: "Yorum yonlendirmesi basarili: Selin H. — 5 puan, Google yorum linkine tikladi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Proaktif","Review"]},{id:"sb03",title:"Coklu Klinik / Sube Yonetimi",description:"Hasta hangi subede hangi doktorun calistigini veya en yakin subeyi soruyor. Knowledge Base'deki doktor-sube eslestirmesi ile AI konuma gore dogru yonlendirme yapar ve randevu akisina baglar.",category:"SAGLIK EK",niche:"health",flowConfig:{version:2,metadata:{name:"SB03: Doktor Hangi Subede Calisyor?",description:"Hasta belirli bir doktorun hangi subede ve hangi gunlerde calistigini soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Doktor Program Sorgusu. Doktor: Dr. Mehmet"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Dr. Mehmet Yilmaz'in Kadikoy subemizdeki calisma programi:
+
+Pazartesi: 09:00 - 17:00
+Carsamba: 09:00 - 17:00
+Cuma: 09:00 - 13:00
+
+Adres: Kadikoy Mah. Bagdat Cad. No:45, Kadikoy/Istanbul
+Telefon: 0216 345 67 89
+
+Dr. Mehmet'ten randevu almak ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_menu_6",type:"message_menu",position:{x:300,y:800},data:{label:"Menu",text:`Tabii! Dr. Mehmet Yilmaz - Kadikoy Subesi
+Carsamba gunluk musait saatler:
+
+1. 10:00
+2. 11:30
+3. 14:00
+4. 15:30
+
+Hangisi size uygun?`,options:[]}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Knowledge Base eslestirmesi basarili. Hasta Kadikoy subesi, Carsamba gunu icin randevu akisina yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_menu_6",source:"ai_intent_5",target:"message_menu_6"},{id:"e_message_menu_6_utility_note_7",source:"message_menu_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Coklu Klinik / Sube Yonetimi" senaryosu icin "Doktor Hangi Subede Calisyor?" akisini olustur.
+
+Aciklama: Hasta belirli bir doktorun hangi subede ve hangi gunlerde calistigini soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Kadikoy subenizde Dr. Mehmet hangi gunler calisiyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Doktor Program Sorgusu. Doktor: Dr. Mehmet. Sube: Kadikoy. Knowledge Base sorgulanyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Dr. Mehmet Yilmaz'in Kadikoy subemizdeki calisma programi:
+
+Pazartesi: 09:00 - 17:00
+Carsamba: 09:00 - 17:00
+Cuma: 09:00 - 13:00
+
+Adres: Kadikoy Mah. Bagdat Cad. No:45, Kadikoy/Istanbul
+Telefon: 0216 345 67 89
+
+Dr. Mehmet'ten randevu almak ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Carsamba icin randevu alabilir miyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_menu** — Secenekli mesaj
+   Mesaj: "Tabii! Dr. Mehmet Yilmaz - Kadikoy Subesi
+Carsamba gunluk musait saatler:
+
+1. 10:00
+2. 11:30
+3. 14:00
+4. 15:30
+
+Hangisi size uygun?"
+   Her secenek icin ayri cikis handle'i olustur
+
+7. **utility_note** — Akis sonuc notu
+   text: "Knowledge Base eslestirmesi basarili. Hasta Kadikoy subesi, Carsamba gunu icin randevu akisina yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Doktor Arama","Sube Bilgisi"]},{id:"s6",title:"Fiyat → Randevu Donusumu",description:"Dis kliniklerine gelen fiyat sorularini direkt fiyat vermek yerine ucretsiz muayene randevusuna yonlendiren AI sistemi. Klinige gelen hastanin %70'i tedavi olur.",category:"SAGLIK OTOMASYONU",niche:"health",flowConfig:{version:2,metadata:{name:"S6: Implant Fiyat Sorusu",description:"Hasta implant fiyati soruyor, randevuya yonlendirilir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fiyat Sorusu (Implant). Strateji: Randevu "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba! Implant tedavisi hastaya gore farklilik gosterir. Size dogru bilgi verebilmemiz icin ucretsiz muayene randevusu oneriyoruz. Bu hafta Carsamba 14:00 veya Cuma 10:00 uygun mu?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_set_variable_6",type:"utility_set_variable",position:{x:300,y:800},data:{label:"Durum",variable_name:"status",value_expression:"Randevu Olusturuldu: Carsamba 14:00. Hatirlatma zinciri aktif."}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Harika! Carsamba 14:00'te sizi bekliyoruz. Adresimiz: [Klinik Adresi]. Hatirlatma mesaji gonderecegiz."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_set_variable_6",source:"ai_intent_5",target:"utility_set_variable_6"},{id:"e_utility_set_variable_6_message_text_7",source:"utility_set_variable_6",target:"message_text_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fiyat → Randevu Donusumu" senaryosu icin "Implant Fiyat Sorusu" akisini olustur.
+
+Aciklama: Hasta implant fiyati soruyor, randevuya yonlendirilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, dis implant kac lira?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Sorusu (Implant). Strateji: Randevu Yonlendirme.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Implant tedavisi hastaya gore farklilik gosterir. Size dogru bilgi verebilmemiz icin ucretsiz muayene randevusu oneriyoruz. Bu hafta Carsamba 14:00 veya Cuma 10:00 uygun mu?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Carsamba olur."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_set_variable** — Durum guncelle
+   Deger: Randevu Olusturuldu: Carsamba 14:00. Hatirlatma zinciri aktif.
+
+7. **message_text** — Mesaj gonder
+   text: "Harika! Carsamba 14:00'te sizi bekliyoruz. Adresimiz: [Klinik Adresi]. Hatirlatma mesaji gonderecegiz."
+   Degiskenler: {{klinik_adresi}}
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Fiyat → Randevu","Dis Klinigi"]},{id:"s10",title:"Google Yorum + Referans Motoru",description:"Tedavi sonrasi memnuniyet anketi + Google yorum ricasi + referans programi ile kliniklerin online itibarini sistematik olarak yoneten motor.",category:"SAGLIK OTOMASYONU",niche:"health",flowConfig:{version:2,metadata:{name:"S10: Memnun Hasta → Google Yorum",description:"Hasta memnun, Google yoruma yonlendirilir."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"T+3 Gun: Memnuniyet anketi tetiklendi."}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:"Merhaba [Ad]! Tedavinizden memnun kaldiniz mi? Bize 1-5 arasi puan verir misiniz?"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Cok mutlu olduk! Deneyiminizi Google'da paylasmak ister misiniz? Yorumunuz bize cok degerli: [Google Yorum Linki]"}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Puan: 5/5. Google yorum linki gonderildi. Beklenen etki: +1 olumlu yorum."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_note_5",source:"message_text_4",target:"utility_note_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Google Yorum + Referans Motoru" senaryosu icin "Memnun Hasta → Google Yorum" akisini olustur.
+
+Aciklama: Hasta memnun, Google yoruma yonlendirilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: T+3 Gun: Memnuniyet anketi tetiklendi.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Tedavinizden memnun kaldiniz mi? Bize 1-5 arasi puan verir misiniz?"
+   Degiskenler: {{ad}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "5 puan, cok memnunum!"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Cok mutlu olduk! Deneyiminizi Google'da paylasmak ister misiniz? Yorumunuz bize cok degerli: [Google Yorum Linki]"
+   Degiskenler: {{google_yorum_linki}}
+
+5. **utility_note** — Akis sonuc notu
+   text: "Puan: 5/5. Google yorum linki gonderildi. Beklenen etki: +1 olumlu yorum."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Olumlu","Google Yorum"]},{id:"s9",title:"Medikal Turizm Lead Yonetimi",description:"Istanbul'daki kliniklere Ingilizce/Arapca/Rusca gelen yuksek degerli medikal turizm lead'lerini 7/24 AI ile karsilayan, on degerlendirme yapan ve follow-up zinciri ile randevuya donusturen sistem.",category:"SAGLIK OTOMASYONU",niche:"health",flowConfig:{version:2,metadata:{name:"S9: Ingilizce Lead — Sac Ekimi",description:"Ingiltere'den gelen sac ekimi sorusu."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Language: English. Intent: Price + Hair Transplant"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Thank you for your interest! To give you an accurate quote, we need:
+1. A photo of your current hair situation
+2. Your general health condition
+3. When are you planning to visit Istanbul?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Photo received. Pre-assessment: Norwood 3-4. Estim"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Based on your photo, we recommend FUE 3000-3500 grafts. Our all-inclusive package: $2,500 (hotel 3 nights + airport transfer + PRP). Shall I schedule a video consultation with our doctor?"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Hot Lead: UK patient, March timeline, $2,500 package. Doctor notified."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Medikal Turizm Lead Yonetimi" senaryosu icin "Ingilizce Lead — Sac Ekimi" akisini olustur.
+
+Aciklama: Ingiltere'den gelen sac ekimi sorusu.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hi, how much for hair transplant? FUE 3000 grafts."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Language: English. Intent: Price + Hair Transplant. Lead Score: HIGH.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Thank you for your interest! To give you an accurate quote, we need:
+1. A photo of your current hair situation
+2. Your general health condition
+3. When are you planning to visit Istanbul?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Here's my photo [image]. I'm healthy. Planning for March."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Photo received. Pre-assessment: Norwood 3-4. Estimated: 3000-3500 grafts. Lead READY.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Based on your photo, we recommend FUE 3000-3500 grafts. Our all-inclusive package: $2,500 (hotel 3 nights + airport transfer + PRP). Shall I schedule a video consultation with our doctor?"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Hot Lead: UK patient, March timeline, $2,500 package. Doctor notified."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["English","Hair Transplant"]},{id:"s7",title:"No-Show Onleme",description:"Randevu hatirlatma zinciri ile no-show oranini %25'ten %12'ye dusuren, bos koltukları bekleme listesinden dolduran otonom sistem.",category:"SAGLIK OTOMASYONU",niche:"health",flowConfig:{version:2,metadata:{name:"S7: Normal Hatirlatma → Onay",description:"Hasta hatirlatma alir ve onaylar."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"R-1 Gun: Randevu hatirlatma tetiklendi."}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:"Merhaba [Ad]! Yarin saat 14:00'te randevunuz var. Onayliyor musunuz? Evet / Hayir"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"action_delay_4",type:"action_delay",position:{x:300,y:500},data:{label:"2 saat bekle",seconds:300}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:"Harika! 2 saat once bir hatirlatma daha gonderecegiz. Adresimiz: [Klinik Adresi]. Gorusmek uzere!"}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_action_delay_4",source:"ai_intent_3",target:"action_delay_4"},{id:"e_action_delay_4_message_text_5",source:"action_delay_4",target:"message_text_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"No-Show Onleme" senaryosu icin "Normal Hatirlatma → Onay" akisini olustur.
+
+Aciklama: Hasta hatirlatma alir ve onaylar.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: R-1 Gun: Randevu hatirlatma tetiklendi.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Yarin saat 14:00'te randevunuz var. Onayliyor musunuz? Evet / Hayir"
+   Degiskenler: {{ad}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, gelecegim."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **action_delay** — 2 saat bekle
+   seconds: 300
+   Not: Onay alindi. R-2 Saat hatirlatma planlandiı.
+
+5. **message_text** — Mesaj gonder
+   text: "Harika! 2 saat once bir hatirlatma daha gonderecegiz. Adresimiz: [Klinik Adresi]. Gorusmek uzere!"
+   Degiskenler: {{klinik_adresi}}
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Hatirlatma","Basarili Onay"]},{id:"sb05",title:"Recete / Ilac Sorgulari",description:"Hasta recete durumu veya ilac dozaj sorusuyla tekrar tekrar ariyor. Knowledge Base'den recete durumu ve eczane bilgisi aninda sunulur. Dozaj degisikligi veya ilac onerisi yapilmaz, bu tur sorular mutlaka doktora yonlendirilir.",category:"SAGLIK EK",niche:"health",flowConfig:{version:2,metadata:{name:"SB05: Recete Durum Sorgusu",description:"Hasta recetesinin yazilip yazilmadigini ve e-recete kodunu soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Recete Durum Sorgusu. Hasta: Son muayene k"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba Mehmet Bey! Recete durumunuzu kontrol ediyorum.
+
+Receteniz yazilmis durumda:
+Doktor: Dr. Elif Yildiz
+Tarih: 19 Subat 2026
+E-Recete Kodu: A1B2-C3D4-E5F6
+
+Ilaclarinizi herhangi bir eczaneden e-recete kodunuz ile alabilirsiniz. En yakin nobetci eczane:
+
+Gul Eczanesi - Ataturk Cad. No:12
+Telefon: 0212 555 12 34
+Calisma: 24 saat (nobetci)
+
+Baska bir sorunuz var mi?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Recete durumu basariyla bildirildi. Otomatik cozum — agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Recete / Ilac Sorgulari" senaryosu icin "Recete Durum Sorgusu" akisini olustur.
+
+Aciklama: Hasta recetesinin yazilip yazilmadigini ve e-recete kodunu soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, dun muayene oldum. Recetemi yazdniz mi? Ilaci nereden alacagim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Recete Durum Sorgusu. Hasta: Son muayene kaydi eslestiriliyor. Tibbi olmayan soru — otomatik cevaplanabilir.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba Mehmet Bey! Recete durumunuzu kontrol ediyorum.
+
+Receteniz yazilmis durumda:
+Doktor: Dr. Elif Yildiz
+Tarih: 19 Subat 2026
+E-Recete Kodu: A1B2-C3D4-E5F6
+
+Ilaclarinizi herhangi bir eczaneden e-recete kodunuz ile alabilirsiniz. En yakin nobetci eczane:
+
+Gul Eczanesi - Ataturk Cad. No:12
+Telefon: 0212 555 12 34
+Calisma: 24 saat (nobetci)
+
+Baska bir sorunuz var mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, cok sagolun!"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Recete durumu basariyla bildirildi. Otomatik cozum — agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Recete","E-Recete"]},{id:"sb02",title:"Sigorta Provizyon On Kontrol",description:"Hasta sigortasinin tedaviyi karsilayip karsilamdigini WhatsApp uzerinden soruyor. AI police numarasi ve TC kimlik bilgilerini toplayarak provizyon sorgusuna hazir hale getiriyor ve hasta koordinatorune iletiyor.",category:"SAGLIK EK",niche:"health",flowConfig:{version:2,metadata:{name:"SB02: Sigorta Kapsam Sorgusu",description:"Hasta tedavinin sigorta kapsaminda olup olmadigini soruyor. AI bilgi toplayip koordinatore yonlendiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Sigorta Kapsam Sorgusu. Tedavi: Implant. S"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Sigorta kapsamini kontrol edebilmemiz icin birkac bilgiye ihtiyacimiz var:
+
+1. TC Kimlik Numaraniz?
+2. Sigorta sirketiniz?
+3. Police numaraniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Form tamamlandi. TC: 12345678901, Sirket: Anadolu "}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Tesekkurler! Bilgilerinizi aldik.
+
+Anadolu Sigorta ile anlasmamiz bulunmaktadir. Implant tedavileri genellikle belirli limitler dahilinde karsilanmaktadir.
+
+Kesin kapsam ve katilim payi bilgisi icin provizyon sorgusu yapilmasi gerekiyor. Hasta koordinatorumuz en kisa surede size donecektir.
+
+Tahmini donuc suresi: 1-2 is gunu.`}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Sigorta provizyon talebi olusturuldu. Hasta koordinatoru Zeynep'e atandi. Bilgiler CRM'e kaydedildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sigorta Provizyon On Kontrol" senaryosu icin "Sigorta Kapsam Sorgusu" akisini olustur.
+
+Aciklama: Hasta tedavinin sigorta kapsaminda olup olmadigini soruyor. AI bilgi toplayip koordinatore yonlendiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, implant tedavisi yaptirmak istiyorum. Sigortam bunu karsiliyor mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Sigorta Kapsam Sorgusu. Tedavi: Implant. Sigorta bilgileri eksik — form tetikleniyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Sigorta kapsamini kontrol edebilmemiz icin birkac bilgiye ihtiyacimiz var:
+
+1. TC Kimlik Numaraniz?
+2. Sigorta sirketiniz?
+3. Police numaraniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "TC: 12345678901, Anadolu Sigorta, police no: ANS-2025-789456"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Form tamamlandi. TC: 12345678901, Sirket: Anadolu Sigorta, Police: ANS-2025-789456, Tedavi: Implant.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Bilgilerinizi aldik.
+
+Anadolu Sigorta ile anlasmamiz bulunmaktadir. Implant tedavileri genellikle belirli limitler dahilinde karsilanmaktadir.
+
+Kesin kapsam ve katilim payi bilgisi icin provizyon sorgusu yapilmasi gerekiyor. Hasta koordinatorumuz en kisa surede size donecektir.
+
+Tahmini donuc suresi: 1-2 is gunu."
+
+8. **utility_note** — Akis sonuc notu
+   text: "Sigorta provizyon talebi olusturuldu. Hasta koordinatoru Zeynep'e atandi. Bilgiler CRM'e kaydedildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Sigorta","Provizyon"]},{id:"sb04",title:"Tedavi Oncesi Hazirlik Talimatlari",description:"Ameliyat veya islem oncesi aclik, ilac kesme ve refakatci talimatlari sozlu veriliyor, hasta unutuyor veya yanlis anlyor. T-3, T-1 gun ve tedavi sabahi otomatik mesaj zinciri ile hastanin hazirlik sureci garanti altina alinir.",category:"SAGLIK EK",niche:"health",flowConfig:{version:2,metadata:{name:"SB04: T-3 Hazirlik Talimatlari Gonderimi",description:"Ameliyattan 3 gun once genel hazirlik talimatlari otomatik gonderiliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Randevu #R-5521 (Dis Implant Ameliyati, Dr. Ahmet "}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Fatma Hanim, 25 Subat Sali gunku dis implant operasyonunuz icin hazirlik bilgileri:
+
+Beslenme:
+- Ameliyattan 8 saat once yeme-icmeyi kesin
+- Son yemek: 24 Subat Pazartesi 02:00'ye kadar
+
+Ilaclar:
+- Kan sulandrci kullaniyorsaniz doktorunuza dansin
+- Ameliyat sabahi ilaclarinizi almayin (doktor onaylamazsa)
+
+Genel:
+- Refakatci getirmeniz zorunludur
+- Rahat kiyafet giyin
+- Degerli esya getirmeyin
+
+Bu bilgileri okuduysaniz 'TAMAM' yazin.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Intent: Hazirlik Sorusu (Ilac). Konu: Kan sulandir"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Kan sulandirici kullanimi ameliyat oncesi onemli bir konudur. Bu karari doktorunuz vermesi gerekir.
+
+Dr. Ahmet Kara'nin asistanini sizinle iletisime gecirecegiz. En kisa surede donec yapilacaktir.
+
+Lutfen ilaci doktor talimati olmadan kesmeyin.`}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Talimatlar okundu. Ilac sorusu doktor asistanina eskalasyon yapildi. T-1 hatirlatma planlanmis."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_ai_intent_4",source:"ai_intent_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_utility_note_6",source:"message_text_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Tedavi Oncesi Hazirlik Talimatlari" senaryosu icin "T-3 Hazirlik Talimatlari Gonderimi" akisini olustur.
+
+Aciklama: Ameliyattan 3 gun once genel hazirlik talimatlari otomatik gonderiliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Randevu #R-5521 (Dis Implant Ameliyati, Dr. Ahmet Kara, 25 Subat Sali 10:00). T-3 tetiklendi.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Fatma Hanim, 25 Subat Sali gunku dis implant operasyonunuz icin hazirlik bilgileri:
+
+Beslenme:
+- Ameliyattan 8 saat once yeme-icmeyi kesin
+- Son yemek: 24 Subat Pazartesi 02:00'ye kadar
+
+Ilaclar:
+- Kan sulandrci kullaniyorsaniz doktorunuza dansin
+- Ameliyat sabahi ilaclarinizi almayin (doktor onaylamazsa)
+
+Genel:
+- Refakatci getirmeniz zorunludur
+- Rahat kiyafet giyin
+- Degerli esya getirmeyin
+
+Bu bilgileri okuduysaniz 'TAMAM' yazin."
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "TAMAM. Peki kan sulandirici kullaniyorum, ne yapmaliyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Hazirlik Sorusu (Ilac). Konu: Kan sulandirici. Tibbi karar gerektiriyor — doktora yonlendir.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Kan sulandirici kullanimi ameliyat oncesi onemli bir konudur. Bu karari doktorunuz vermesi gerekir.
+
+Dr. Ahmet Kara'nin asistanini sizinle iletisime gecirecegiz. En kisa surede donec yapilacaktir.
+
+Lutfen ilaci doktor talimati olmadan kesmeyin."
+
+6. **utility_note** — Akis sonuc notu
+   text: "Talimatlar okundu. Ilac sorusu doktor asistanina eskalasyon yapildi. T-1 hatirlatma planlanmis."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["T-3 Hatirlatma","Hazirlik"]},{id:"sb01",title:"Tedavi Plani Onay Akisi",description:"Doktor tedavi planini hastaya gonderdikten sonra hasta onay vermediginde takip yapilmiyor. T+1, T+3, T+7 outbound follow-up zinciri ile tedavi planinin onayi sistematik olarak takip edilir ve onay orani arttirilir.",category:"SAGLIK EK",niche:"health",flowConfig:{version:2,metadata:{name:"SB01: T+1 Hatirlatma — Hasta Tereddutlu",description:"Tedavi plani gonderildikten 1 gun sonra hasta hala onay vermedi. Outbound nazik hatirlatma gonderiyor."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Tedavi plani #TP-2841 (Implant + Zirkonyum Kaplama"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Ayse Hanim, Dr. Mehmet Yilmaz'in hazirladi tedavi planinizi aldniz mi?
+
+Tedavi Plani: Implant (2 adet) + Zirkonyum Kaplama (6 adet)
+Toplam: 42.000 TL
+Taksit: 12 ay x 3.500 TL
+
+Sorulariniz varsa size yardimci olalim.`}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_4",type:"ai_sentiment",position:{x:300,y:500},data:{label:"Intent: Tereddut (Fiyat Endisesi). Sentiment: Nega"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Anliyorum Ayse Hanim, bu onemli bir karar. Tedavi planinizdaki implant ve kaplamalar icin farkli odeme secenekleri mevcut.
+
+Isterseniz hasta koordinatorumuz sizi arayip detayli bilgi versin. Size uygun bir zaman var mi?`}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_ai_sentiment_4",source:"ai_intent_3",target:"ai_sentiment_4",sourceHandle:"positive"},{id:"e_ai_sentiment_4_message_text_5",source:"ai_sentiment_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Tedavi Plani Onay Akisi" senaryosu icin "T+1 Hatirlatma — Hasta Tereddutlu" akisini olustur.
+
+Aciklama: Tedavi plani gonderildikten 1 gun sonra hasta hala onay vermedi. Outbound nazik hatirlatma gonderiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Tedavi plani #TP-2841 (Implant + Zirkonyum Kaplama) hastaya gonderildi. 24 saat gecti, onay yok. Outbound T+1 tetiklendi.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Ayse Hanim, Dr. Mehmet Yilmaz'in hazirladi tedavi planinizi aldniz mi?
+
+Tedavi Plani: Implant (2 adet) + Zirkonyum Kaplama (6 adet)
+Toplam: 42.000 TL
+Taksit: 12 ay x 3.500 TL
+
+Sorulariniz varsa size yardimci olalim."
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet aldim ama biraz dusunmem lazim. Fiyat yuksek gibi geldi."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **ai_sentiment** — Duygu analizi
+   Analiz: Intent: Tereddut (Fiyat Endisesi). Sentiment: Negatif-Notr. Eskalasyon: Hasta koordinatoru bilgilendirilsin.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+5. **message_text** — Mesaj gonder
+   text: "Anliyorum Ayse Hanim, bu onemli bir karar. Tedavi planinizdaki implant ve kaplamalar icin farkli odeme secenekleri mevcut.
+
+Isterseniz hasta koordinatorumuz sizi arayip detayli bilgi versin. Size uygun bir zaman var mi?"
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Yarin ogleden sonra musait olurum."
+   high_confidence → devam | low_confidence → action_handoff
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["Outbound T+1","Tedavi Plani"]},{id:"s8",title:"Tedavi Sonrasi Takip",description:"Ameliyat/tedavi sonrasi standart sorulari AI ile otomatik yanitlayan, acil durumlarda doktora alert gonderen ve kontrol randevusu planlayan takip sistemi.",category:"SAGLIK OTOMASYONU",niche:"health",flowConfig:{version:2,metadata:{name:"S8: Implant Sonrasi Takip",description:"Implant ameliyati sonrasi otomatik rehber ve takip."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"T+0: Implant ameliyati tamamlandi. Post-op rehber "}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Ameliyatiniz basariyla tamamlandi! Ilk 24 saat rehberiniz:
+- Hafif sislik normaldir
+- Soguk kompres uygulayin
+- [Ilac adi] 8 saatte bir alin
+- Sert gida yemeyin
+- Acil durumda: [telefon]`}},{id:"action_delay_3",type:"action_delay",position:{x:300,y:350},data:{label:"1 gun bekle",seconds:300}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba [Ad], bugun kendinizi nasil hissediyorsunuz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Standart Soru: Sislik (T+1). Cevap: Normal. Kaynak"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"48 saate kadar hafif sislik normaldir. Soguk kompres uygulamaya devam edin. Sislik artarsa veya ates cikarsa hemen bizi arayin."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_action_delay_3",source:"message_text_2",target:"action_delay_3"},{id:"e_action_delay_3_message_text_4",source:"action_delay_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Tedavi Sonrasi Takip" senaryosu icin "Implant Sonrasi Takip" akisini olustur.
+
+Aciklama: Implant ameliyati sonrasi otomatik rehber ve takip.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: T+0: Implant ameliyati tamamlandi. Post-op rehber tetiklendi.
+
+2. **message_text** — Mesaj gonder
+   text: "Ameliyatiniz basariyla tamamlandi! Ilk 24 saat rehberiniz:
+- Hafif sislik normaldir
+- Soguk kompres uygulayin
+- [Ilac adi] 8 saatte bir alin
+- Sert gida yemeyin
+- Acil durumda: [telefon]"
+   Degiskenler: {{ilac_adi}}, {{telefon}}
+
+3. **action_delay** — 1 gun bekle
+   seconds: 300
+   Not: T+1 Gun: Durum kontrolu tetiklendi.
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad], bugun kendinizi nasil hissediyorsunuz?"
+   Degiskenler: {{ad}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Sislik var, normal mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Standart Soru: Sislik (T+1). Cevap: Normal. Kaynak: Implant Post-Op Rehberi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "48 saate kadar hafif sislik normaldir. Soguk kompres uygulamaya devam edin. Sislik artarsa veya ates cikarsa hemen bizi arayin."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Implant","Post-Op"]},{id:"o02",title:"Check-in Bilgilendirme",description:"Misafir check-in saati, otel adresi ve ulasim bilgilerini soruyor. Chatbot %100 otomatik olarak adres, harita linki ve shuttle bilgisiyle cevap verir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O02: Check-in Saati ve Adres Sorusu",description:"Misafir check-in saati ve otel adresini soruyor. Chatbot otomatik bilgi veriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Check-in Bilgi. Knowledge Base sorgusu: Ch"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Hos geldiniz! Iste check-in bilgileriniz:
+
+Check-in: 14:00'den itibaren
+Check-out: 12:00'ye kadar
+
+Adresimiz: Barbaros Bulvari No:45, Besiktas/Istanbul
+Google Maps: [Harita Linki]
+
+Sorulariniz icin 7/24 buradayiz!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Evet! Istanbul Havalimani'ndan shuttle hizmetimiz mevcuttur:
+
+Ucret: 350 TL/kisi (tek yon)
+Sure: Yaklasik 45 dakika
+Rezarvasyon: En az 24 saat onceden
+
+Shuttle rezervasyonu icin ucus bilgilerinizi (tarih, saat, ucus no) paylasin, hemen ayarlayalim.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Knowledge Base ile check-in bilgisi ve shuttle detaylari verildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Check-in Bilgilendirme" senaryosu icin "Check-in Saati ve Adres Sorusu" akisini olustur.
+
+Aciklama: Misafir check-in saati ve otel adresini soruyor. Chatbot otomatik bilgi veriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, yarin check-in yapacagiz. Saat kacta gelebiliriz? Otelin adresi nedir?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Check-in Bilgi. Knowledge Base sorgusu: Check-in saati + adres + harita.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Hos geldiniz! Iste check-in bilgileriniz:
+
+Check-in: 14:00'den itibaren
+Check-out: 12:00'ye kadar
+
+Adresimiz: Barbaros Bulvari No:45, Besiktas/Istanbul
+Google Maps: [Harita Linki]
+
+Sorulariniz icin 7/24 buradayiz!"
+   Degiskenler: {{harita_linki}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Havaalanidan shuttle var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Evet! Istanbul Havalimani'ndan shuttle hizmetimiz mevcuttur:
+
+Ucret: 350 TL/kisi (tek yon)
+Sure: Yaklasik 45 dakika
+Rezarvasyon: En az 24 saat onceden
+
+Shuttle rezervasyonu icin ucus bilgilerinizi (tarih, saat, ucus no) paylasin, hemen ayarlayalim."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Knowledge Base ile check-in bilgisi ve shuttle detaylari verildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Tam Otomatik","FAQ"]},{id:"o07",title:"Check-out Sonrasi Yorum Rica",description:"Check-out sonrasi misafire memnuniyet anketi gonderilir. 4-5 puan veren misafirlere Google yorum linki iletilir, 1-3 puan verenlere eskalasyon uygulanir. Proaktif outbound senaryo.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O07: Memnun Misafir — Yorum Yonlendirmesi",description:"Check-out sonrasi memnun misafire anket gonderilir, yuksek puan sonrasi Google yorum linki iletilir."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"PMS Event: Check-out tamamlandi. Misafir: Ayse Yil"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:`Merhaba Ayse Hanim! Bizimle konakladiginiz icin tesekkur ederiz. Deneyiminizi kisa bir puanla degerlendirmenizi rica edebilir miyiz?
+
+1-5 arasi bir puan verin (1: Cok kotu — 5: Mukemmel)`}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:`Cok tesekkur ederiz! Mukemmel puaniniz bizi cok mutlu etti!
+
+Deneyiminizi diger misafirlerle de paylasmaniz bizim icin cok degerli olur. Google'da 30 saniyede yorum birakabilirsiniz:
+
+[Google Yorum Linki]
+
+Tekrar bekleriz, iyi gunler dileriz!`}},{id:"utility_note_4",type:"utility_note",position:{x:300,y:500},data:{label:"Sonuc",text:"Outbound basarili: 5/5 puan alindi. Google yorum linki gonderildi. Yorum donusum takibi baslatildi."}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_message_text_3",source:"message_text_2",target:"message_text_3"},{id:"e_message_text_3_utility_note_4",source:"message_text_3",target:"utility_note_4"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Check-out Sonrasi Yorum Rica" senaryosu icin "Memnun Misafir — Yorum Yonlendirmesi" akisini olustur.
+
+Aciklama: Check-out sonrasi memnun misafire anket gonderilir, yuksek puan sonrasi Google yorum linki iletilir.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: PMS Event: Check-out tamamlandi. Misafir: Ayse Yilmaz. Oda: 302. Konaklama: 3 gece. T+1 gun outbound planlandı.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Ayse Hanim! Bizimle konakladiginiz icin tesekkur ederiz. Deneyiminizi kisa bir puanla degerlendirmenizi rica edebilir miyiz?
+
+1-5 arasi bir puan verin (1: Cok kotu — 5: Mukemmel)"
+
+   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)
+
+3. **message_text** — Mesaj gonder
+   text: "Cok tesekkur ederiz! Mukemmel puaniniz bizi cok mutlu etti!
+
+Deneyiminizi diger misafirlerle de paylasmaniz bizim icin cok degerli olur. Google'da 30 saniyede yorum birakabilirsiniz:
+
+[Google Yorum Linki]
+
+Tekrar bekleriz, iyi gunler dileriz!"
+   Degiskenler: {{google_yorum_linki}}
+
+4. **utility_note** — Akis sonuc notu
+   text: "Outbound basarili: 5/5 puan alindi. Google yorum linki gonderildi. Yorum donusum takibi baslatildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:4,tags:["Proaktif Outbound","Yorum Yonetimi"]},{id:"o15",title:"Fatura / Odeme Sorunlari",description:"Misafir faturada hata, ekstra ucret veya odeme sorunlari ile geliyor. AI fatura politikasini aninda aciklar, detayli doküm sunar. Cozulemeyen konularda muhasebe departmanina otomatik eskalasyon yapilir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O15: Ekstra Ucret Sorgusu",description:"Misafir faturada beklemedigi ucretleri soruyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Fatura Sorgusu. Kategori: Ekstra Ucret. Mi"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba! Faturanizi inceliyorum. Oda numaranizi paylasir misiniz lutfen?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"PMS Sorgu: Oda 218, Mehmet Yilmaz. Fatura kalemler"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Mehmet Bey, faturanizi inceledim. 350 TL'lik ekstra ucretinizin detayi:
+
+- Minibar: 2x Bira — 120 TL
+- Spa Havlu Kullanimi — 230 TL
+
+Minibar tuketimi otomatik sensor ile kaydedilmektedir. Spa havlusu ucreti ise spa alaninda kullanilan ozel havlularin iade edilmemesi durumunda uygulanan standart ucrettir. 
+
+Bir itiraziniz varsa muhasebe ekibimize yonlendirebilirim.`}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"Yanit Analiz"}},{id:"message_text_9",type:"message_text",position:{x:300,y:1250},data:{label:"Mesaj",text:"Anladim, konuyu muhasebe ekibimize iletiyorum. Spa ekibinden teyit alindiginda faturaniz guncellenecek ve size bilgi verecegiz. En gec 2 saat icerisinde donus yapilacaktir."}},{id:"utility_note_10",type:"utility_note",position:{x:300,y:1400},data:{label:"Sonuc",text:"Eskalasyon: Muhasebe #FA-2024-0092. Konu: Spa havlu ucreti itiraz. Spa ekibinden dogrulama bekleniyor."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_ai_intent_8",source:"message_text_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_message_text_9",source:"ai_intent_8",target:"message_text_9"},{id:"e_message_text_9_utility_note_10",source:"message_text_9",target:"utility_note_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Fatura / Odeme Sorunlari" senaryosu icin "Ekstra Ucret Sorgusu" akisini olustur.
+
+Aciklama: Misafir faturada beklemedigi ucretleri soruyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Faturamda 350 TL ekstra ucret var, bu ne icin?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fatura Sorgusu. Kategori: Ekstra Ucret. Misafir profili ve fatura detayi gerekli.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Faturanizi inceliyorum. Oda numaranizi paylasir misiniz lutfen?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Oda 218, Mehmet Yilmaz."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: PMS Sorgu: Oda 218, Mehmet Yilmaz. Fatura kalemleri: Minibar 2x Bira (120 TL), Spa Havlu Kaybi (230 TL). Toplam ekstra: 350 TL.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Mehmet Bey, faturanizi inceledim. 350 TL'lik ekstra ucretinizin detayi:
+
+- Minibar: 2x Bira — 120 TL
+- Spa Havlu Kullanimi — 230 TL
+
+Minibar tuketimi otomatik sensor ile kaydedilmektedir. Spa havlusu ucreti ise spa alaninda kullanilan ozel havlularin iade edilmemesi durumunda uygulanan standart ucrettir. 
+
+Bir itiraziniz varsa muhasebe ekibimize yonlendirebilirim."
+
+8. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Spa havlusunu odaya biraktim, iade ettim aslinda."
+   high_confidence → devam | low_confidence → action_handoff
+
+9. **message_text** — Mesaj gonder
+   text: "Anladim, konuyu muhasebe ekibimize iletiyorum. Spa ekibinden teyit alindiginda faturaniz guncellenecek ve size bilgi verecegiz. En gec 2 saat icerisinde donus yapilacaktir."
+
+10. **utility_note** — Akis sonuc notu
+   text: "Eskalasyon: Muhasebe #FA-2024-0092. Konu: Spa havlu ucreti itiraz. Spa ekibinden dogrulama bekleniyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["Fatura","Aciklama"]},{id:"o09",title:"Grup / Kurumsal Rezervasyon",description:"Buyuk grup veya kurumsal rezervasyon talebi geldiginde AI VIP flag ile isleme alir, ozel fiyat teklifi icin satis ekibine aninda alert gonderir ve misafiri bilgilendirir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O09: Kurumsal Toplanti Rezervasyonu",description:"Bir firma 40 kisilik kurumsal toplanti ve konaklama talebi goruyor. AI VIP flag atiyor ve satis ekibini bilgilendiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Grup/Kurumsal Rezervasyon. Kisi: 40. Tarih"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Kurumsal toplantiniz icin sizi agirlamaktan mutluluk duyariz.
+
+Otelimizde 40 kisilik grup icin uygun seceneklerimiz:
+
+Toplanti Salonu: Bogazici Salon (60 kisi kapasiteli, projeksiyon + ses sistemi)
+Konaklama: 20 adet cift kisilik oda (40 kisi)
+Tarih: 10-12 Nisan — on kontrol yapildi, musaitlik mevcut
+
+Sirketinize ozel fiyat teklifi hazirlamamiz icin satis temsilcimiz en gec 1 saat icinde sizinle iletisime gececek.
+
+Bu arada, toplantiniz icin ozel istekleriniz var mi? (Ara ikramlar, gala yemegi, teknik ekipman vb.)`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Notlarimi aldim:
+
+- Konferans tipi oturma duzeni (Bogazici Salon)
+- 2. gun gala yemegi (aksam 19:00)
+- Her gun 2 ara ikram (sabah 10:30 + ogleden sonra 15:00)
+
+Tum bu detaylari satis temsilcimiz Selim Bey'e ilettim. Sizin icin en uygun fiyat teklifini hazırlayacak. Kisa surede donus yapacaktir.
+
+Baska bir sorunuz var mi?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"VIP Eskalasyon: 40 kisilik kurumsal talep. Satis ekibine (Selim Bey) alert gonderildi. Talep detaylari: 10-12 Nisan, toplanti salonu, 20 oda, gala yemegi, ikramlar."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Grup / Kurumsal Rezervasyon" senaryosu icin "Kurumsal Toplanti Rezervasyonu" akisini olustur.
+
+Aciklama: Bir firma 40 kisilik kurumsal toplanti ve konaklama talebi goruyor. AI VIP flag atiyor ve satis ekibini bilgilendiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, sirketimiz icin 40 kisilik bir toplanti planliyor. 10-12 Nisan arasi toplanti salonu ve konaklama ayarlanabilir mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Grup/Kurumsal Rezervasyon. Kisi: 40. Tarih: 10-12 Nisan. VIP FLAG atandi. Satis ekibi alert tetiklendi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Kurumsal toplantiniz icin sizi agirlamaktan mutluluk duyariz.
+
+Otelimizde 40 kisilik grup icin uygun seceneklerimiz:
+
+Toplanti Salonu: Bogazici Salon (60 kisi kapasiteli, projeksiyon + ses sistemi)
+Konaklama: 20 adet cift kisilik oda (40 kisi)
+Tarih: 10-12 Nisan — on kontrol yapildi, musaitlik mevcut
+
+Sirketinize ozel fiyat teklifi hazirlamamiz icin satis temsilcimiz en gec 1 saat icinde sizinle iletisime gececek.
+
+Bu arada, toplantiniz icin ozel istekleriniz var mi? (Ara ikramlar, gala yemegi, teknik ekipman vb.)"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, ikinci gun icin gala yemegi ve her gun ara ikram olsa iyi olur. Ayrica konferans tipi oturma duzeni istiyoruz."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Notlarimi aldim:
+
+- Konferans tipi oturma duzeni (Bogazici Salon)
+- 2. gun gala yemegi (aksam 19:00)
+- Her gun 2 ara ikram (sabah 10:30 + ogleden sonra 15:00)
+
+Tum bu detaylari satis temsilcimiz Selim Bey'e ilettim. Sizin icin en uygun fiyat teklifini hazırlayacak. Kisa surede donus yapacaktir.
+
+Baska bir sorunuz var mi?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "VIP Eskalasyon: 40 kisilik kurumsal talep. Satis ekibine (Selim Bey) alert gonderildi. Talep detaylari: 10-12 Nisan, toplanti salonu, 20 oda, gala yemegi, ikramlar."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["VIP","Satis Eskalasyonu"]},{id:"o12",title:"Housekeeping Talebi (In-Stay)",description:"Misafir konaklama sirasinda temizlik, havlu degisimi veya eksik malzeme talebi iletir. AI talep tipini otomatik siniflandirir ve ilgili housekeeping departmanina routing yapar. Is emri ve tahmini sure misafire bildirilir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O12: Oda Temizligi ve Havlu Degisimi",description:"Misafir temizlik ve havlu degisimi talep ediyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Housekeeping Talebi. Oda: 507. Kategori: T"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba! Oda 507 icin temizlik ve ekstra havlu talebinizi aldik. Kat hizmetleri ekibimiz en gec 30 dakika icinde odanizda olacak. Size uygun bir saat var mi yoksa simdi gelebilirler mi?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Tamam, ekibimiz yola cikti! Tahmini varis: 15-20 dakika. Temizlik sirasinda odada olmaniz gerekmez, isterseniz doneceginiz saati belirtebilirsiniz."}},{id:"utility_set_variable_7",type:"utility_set_variable",position:{x:300,y:950},data:{label:"Durum",variable_name:"status",value_expression:"Is emri #HK-2024-1293 olusturuldu. Kat 5 ekibine atandi. Durum: Devam Ediyor."}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:"Oda 507 temizliginiz tamamlandi, ekstra havlulariniz da yerlestirildi. Her sey yolunda mi?"}},{id:"ai_intent_9",type:"ai_intent",position:{x:300,y:1250},data:{label:"Yanit Analiz"}},{id:"utility_note_10",type:"utility_note",position:{x:300,y:1400},data:{label:"Sonuc",text:"Is emri #HK-2024-1293 kapatildi. Misafir memnuniyet: Pozitif."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_set_variable_7",source:"message_text_6",target:"utility_set_variable_7"},{id:"e_utility_set_variable_7_message_text_8",source:"utility_set_variable_7",target:"message_text_8"},{id:"e_message_text_8_ai_intent_9",source:"message_text_8",target:"ai_intent_9",sourceHandle:"high_confidence"},{id:"e_ai_intent_9_utility_note_10",source:"ai_intent_9",target:"utility_note_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Housekeeping Talebi (In-Stay)" senaryosu icin "Oda Temizligi ve Havlu Degisimi" akisini olustur.
+
+Aciklama: Misafir temizlik ve havlu degisimi talep ediyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhabalar, 507 numarali oda. Temizlik yapilmadi bugun, ayrica ekstra havlu lazim."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Housekeeping Talebi. Oda: 507. Kategori: Temizlik + Havlu Degisimi. Oncelik: Normal.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Oda 507 icin temizlik ve ekstra havlu talebinizi aldik. Kat hizmetleri ekibimiz en gec 30 dakika icinde odanizda olacak. Size uygun bir saat var mi yoksa simdi gelebilirler mi?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Simdi gelsinler, odadayiz."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Tamam, ekibimiz yola cikti! Tahmini varis: 15-20 dakika. Temizlik sirasinda odada olmaniz gerekmez, isterseniz doneceginiz saati belirtebilirsiniz."
+
+7. **utility_set_variable** — Durum guncelle
+   Deger: Is emri #HK-2024-1293 olusturuldu. Kat 5 ekibine atandi. Durum: Devam Ediyor.
+
+8. **message_text** — Mesaj gonder
+   text: "Oda 507 temizliginiz tamamlandi, ekstra havlulariniz da yerlestirildi. Her sey yolunda mi?"
+
+9. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Harika olmus, tesekkurler!"
+   high_confidence → devam | low_confidence → action_handoff
+
+10. **utility_note** — Akis sonuc notu
+   text: "Is emri #HK-2024-1293 kapatildi. Misafir memnuniyet: Pozitif."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["In-Stay","Housekeeping"]},{id:"o14",title:"Late Check-out / Early Check-in",description:"Misafir gec cikis veya erken giris talep ediyor. AI template ile oda musaitligini kontrol eder, ucretli ve ucretsiz secenek sunar. Sadik misafirlere otomatik complimentary late check-out onerisi yapilir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O14: Late Check-out Talebi",description:"Misafir aksamki ucusu icin gec cikis talep ediyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Late Check-out. Oda: 415. Mevcut check-out"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Merhaba! Oda 415 icin gec cikis seceneklerimiz:
+
+1. 14:00'e kadar — 600 TL (yarim gun ucreti)
+2. 18:00'e kadar — 1.200 TL (tam gun ucreti)
+
+Maalesef bugun icin 18:00 sonrasi musait degiliz. Hangisini tercih edersiniz?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Onaylandi! Check-out saatiniz 14:00 olarak guncellendi. Ucret (600 TL) oda hesabiniza eklendi. Havaalani transferi icin de yardimci olabilir miyiz?"}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:"Otel - Havalimani VIP transfer: 800 TL (sedan) veya 1.200 TL (minivan). Saat 16:30 civarinda ayarlayalim mi?"}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Late check-out onaylandi: Oda 415, 14:00. PMS guncellendi. Housekeeping: 14:30 olarak yeniden zamanlandı. Upsell firsati: Transfer."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Late Check-out / Early Check-in" senaryosu icin "Late Check-out Talebi" akisini olustur.
+
+Aciklama: Misafir aksamki ucusu icin gec cikis talep ediyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, ucusumuz aksam 20:00'de. Gec cikis yapabilir miyiz? Oda 415."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Late Check-out. Oda: 415. Mevcut check-out: 12:00. PMS kontrolu: Sonraki giris 16:00 — 14:00'e kadar musait. Misafir durumu: Ilk konaklama.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Merhaba! Oda 415 icin gec cikis seceneklerimiz:
+
+1. 14:00'e kadar — 600 TL (yarim gun ucreti)
+2. 18:00'e kadar — 1.200 TL (tam gun ucreti)
+
+Maalesef bugun icin 18:00 sonrasi musait degiliz. Hangisini tercih edersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "14:00 yeterli olur. Onaylayalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Onaylandi! Check-out saatiniz 14:00 olarak guncellendi. Ucret (600 TL) oda hesabiniza eklendi. Havaalani transferi icin de yardimci olabilir miyiz?"
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Transfer ne kadar?"
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Otel - Havalimani VIP transfer: 800 TL (sedan) veya 1.200 TL (minivan). Saat 16:30 civarinda ayarlayalim mi?"
+
+9. **utility_note** — Akis sonuc notu
+   text: "Late check-out onaylandi: Oda 415, 14:00. PMS guncellendi. Housekeeping: 14:30 olarak yeniden zamanlandı. Upsell firsati: Transfer."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Check-out","Ucretli Secenek"]},{id:"o04",title:"Misafir Sikayeti (Oda, Gurultu, Ariza)",description:"Misafir oda arizasi, temizlik eksikligi veya gurultu sikayeti bildiriyor. AI empati ile karsilik verir, ilgili departmana aninda yonlendirir ve cozum sonrasi memnuniyet anketi gonderir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O04: Oda Arizasi Sikayeti",description:"Misafir klima arizasi bildiriyor. AI empati gosteriyor, teknik servise yonlendiriyor ve takip ediyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Sikayet — Oda Arizasi (Klima). Oncelik: YU"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Cok uzgunuz, bu durumdan dolayi ozur dileriz! Teknik ekibimize aninda bildirdim, en gec 15 dakika icinde odaniza gelecekler.
+
+Bu surece kadar lobimizde serin bir icecek ikram etmemizi ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Kesinlikle, en kisa surede cozulecek. Teknik ekibimiz yola cikti. Sizi bilgilendirmeye devam edecegim."}},{id:"action_delay_7",type:"action_delay",position:{x:300,y:950},data:{label:"15 dk bekle",seconds:300}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Merhaba, klimanizin onarildigini ogrendim. Her sey yolunda mi simdi? Yasadiginiz rahatsizlik icin tekrar ozur dileriz.
+
+Deneyiminizi degerlendirmeniz icin kucuk bir anketimiz var: [Anket Linki]`}},{id:"action_delay_9",type:"action_delay",position:{x:300,y:1250},data:{label:"12 dk bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_action_delay_7",source:"message_text_6",target:"action_delay_7"},{id:"e_action_delay_7_message_text_8",source:"action_delay_7",target:"message_text_8"},{id:"e_message_text_8_action_delay_9",source:"message_text_8",target:"action_delay_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Misafir Sikayeti (Oda, Gurultu, Ariza)" senaryosu icin "Oda Arizasi Sikayeti" akisini olustur.
+
+Aciklama: Misafir klima arizasi bildiriyor. AI empati gosteriyor, teknik servise yonlendiriyor ve takip ediyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Odanin klimasi calismiyor, cok sicak! Hemen bir seyler yapin lutfen."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Sikayet — Oda Arizasi (Klima). Oncelik: YUKSEK. Departman: Teknik Servis. Empati modu.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Cok uzgunuz, bu durumdan dolayi ozur dileriz! Teknik ekibimize aninda bildirdim, en gec 15 dakika icinde odaniza gelecekler.
+
+Bu surece kadar lobimizde serin bir icecek ikram etmemizi ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam, bekliyorum. Ama bir an once cozulsin."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Kesinlikle, en kisa surede cozulecek. Teknik ekibimiz yola cikti. Sizi bilgilendirmeye devam edecegim."
+
+7. **action_delay** — 15 dk bekle
+   seconds: 300
+   Not: Teknik servis bildirimi gonderildi. SLA: 15 dakika. Eskalasyon: Aktif.
+
+8. **message_text** — Mesaj gonder
+   text: "Merhaba, klimanizin onarildigini ogrendim. Her sey yolunda mi simdi? Yasadiginiz rahatsizlik icin tekrar ozur dileriz.
+
+Deneyiminizi degerlendirmeniz icin kucuk bir anketimiz var: [Anket Linki]"
+   Degiskenler: {{anket_linki}}
+
+9. **action_delay** — 12 dk bekle
+   seconds: 300
+   Not: Sikayet cozuldu. Memnuniyet anketi gonderildi. Cozum suresi: 12 dakika (SLA icinde).
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["Acil","Teknik Servis"]},{id:"o01",title:"Oda Fiyati ve Musaitlik Sorusu",description:"Misafir belirli tarihler icin oda musaitligi ve fiyat soruyor. AI sezonluk fiyatlandirma ve PMS entegrasyonu ile gercek zamanli musaitlik bilgisi sunarak aninda cevap verir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O01: Standart Fiyat ve Musaitlik Sorusu",description:"Misafir belirli tarihler icin oda fiyati ve musaitlik soruyor, AI aninda cevap veriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Oda Musaitlik + Fiyat. Tarih: 15-18 Temmuz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! 15-18 Temmuz tarihleri icin musaitlik durumumuz:
+
+Standart Oda (2 kisi): 2.800 TL/gece — Musait
+Deluxe Oda (2 kisi): 3.600 TL/gece — Musait
+Suite (2 kisi): 5.200 TL/gece — Son 1 oda
+
+3 gece toplam: 8.400 TL'den baslayan fiyatlarla.
+
+Kahvalti dahildir. Hemen rezervasyon yapmak ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Evet, Deluxe odalarimiz deniz manzaralidir. 28 m2, king-size yatak, balkon ve minibar mevcuttur.
+
+3 gece Deluxe Oda toplam: 10.800 TL (kahvalti dahil).
+
+Rezervasyon icin su linkten ilerleyebilirsiniz: [Rezervasyon Linki]
+Ya da size yardimci olmami ister misiniz?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: PMS musaitlik + Knowledge fiyat tablosu ile misafir bilgilendirildi. Rezervasyon linkine yonlendirildi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Oda Fiyati ve Musaitlik Sorusu" senaryosu icin "Standart Fiyat ve Musaitlik Sorusu" akisini olustur.
+
+Aciklama: Misafir belirli tarihler icin oda fiyati ve musaitlik soruyor, AI aninda cevap veriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, 15-18 Temmuz arasi 2 kisilik odaniz musait mi? Gecelik fiyat ne kadar?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Oda Musaitlik + Fiyat. Tarih: 15-18 Temmuz (3 gece). Kisi: 2. Oda Tipi: Standart/Deluxe. PMS sorgusu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! 15-18 Temmuz tarihleri icin musaitlik durumumuz:
+
+Standart Oda (2 kisi): 2.800 TL/gece — Musait
+Deluxe Oda (2 kisi): 3.600 TL/gece — Musait
+Suite (2 kisi): 5.200 TL/gece — Son 1 oda
+
+3 gece toplam: 8.400 TL'den baslayan fiyatlarla.
+
+Kahvalti dahildir. Hemen rezervasyon yapmak ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Deluxe Oda guzel gorunuyor. Deniz manzarali mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Evet, Deluxe odalarimiz deniz manzaralidir. 28 m2, king-size yatak, balkon ve minibar mevcuttur.
+
+3 gece Deluxe Oda toplam: 10.800 TL (kahvalti dahil).
+
+Rezervasyon icin su linkten ilerleyebilirsiniz: [Rezervasyon Linki]
+Ya da size yardimci olmami ister misiniz?"
+   Degiskenler: {{rezervasyon_linki}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: PMS musaitlik + Knowledge fiyat tablosu ile misafir bilgilendirildi. Rezervasyon linkine yonlendirildi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","PMS Entegrasyon"]},{id:"o11",title:"Oda Servisi Siparisi (In-Stay)",description:"Misafir konaklama sirasinda WhatsApp uzerinden yiyecek/icecek siparisi verir. AI menuyu gonderir, siparis detaylarini toplar, onay alir ve tahmini teslimat suresini bildirir. Mutfak departmanina otomatik is emri olusturulur.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O11: Gece Oda Servisi Siparisi",description:"Misafir gece geç saatte oda servisi siparisi veriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Oda Servisi Talebi. Oda: 312. Saat: 23:15 "}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Oda 312 icin gece oda servisi menumuz: 
+
+1. Kulup Sandvic — 320 TL
+2. Sezar Salata — 280 TL
+3. Margherita Pizza — 350 TL
+4. Burger & Patates — 380 TL
+5. Meyve Tabagi — 220 TL
+
+Icecekler: Su, Kola, Meyve Suyu, Bira, Sarap
+
+Siparisini almaya hazirim!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Parsing: 1x Kulup Sandvic, 1x Margherita Pizza, 2x"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Siparisiniz:
+- 1x Kulup Sandvic (mayonezsiz) — 320 TL
+- 1x Margherita Pizza — 350 TL
+- 2x Kola — 2x 40 TL
+
+Toplam: 750 TL (oda hesabina eklenecek)
+Tahmini teslimat: 25-30 dakika
+
+Onayliyor musunuz?`}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"Yanit Analiz"}},{id:"message_text_9",type:"message_text",position:{x:300,y:1250},data:{label:"Mesaj",text:"Siparisiz onaylandi! Oda 312'ye yaklasik 25 dakika icinde teslim edilecek. Afiyet olsun!"}},{id:"utility_note_10",type:"utility_note",position:{x:300,y:1400},data:{label:"Sonuc",text:"Is emri olusturuldu: #RS-2024-0847. Mutfak departmanina iletildi. Alerji notu: MAYONEZ YOK."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_ai_intent_8",source:"message_text_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_message_text_9",source:"ai_intent_8",target:"message_text_9"},{id:"e_message_text_9_utility_note_10",source:"message_text_9",target:"utility_note_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Oda Servisi Siparisi (In-Stay)" senaryosu icin "Gece Oda Servisi Siparisi" akisini olustur.
+
+Aciklama: Misafir gece geç saatte oda servisi siparisi veriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, oda servisi menusu var mi? 312 numarali odadayiz."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Oda Servisi Talebi. Oda: 312. Saat: 23:15 — Gece menusu aktif.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Oda 312 icin gece oda servisi menumuz: 
+
+1. Kulup Sandvic — 320 TL
+2. Sezar Salata — 280 TL
+3. Margherita Pizza — 350 TL
+4. Burger & Patates — 380 TL
+5. Meyve Tabagi — 220 TL
+
+Icecekler: Su, Kola, Meyve Suyu, Bira, Sarap
+
+Siparisini almaya hazirim!"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "1 kulup sandvic, 1 pizza ve 2 kola lutfen. Mayonez alerjim var."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Parsing: 1x Kulup Sandvic, 1x Margherita Pizza, 2x Kola. Alerji notu: Mayonez. Toplam: 990 TL.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Siparisiniz:
+- 1x Kulup Sandvic (mayonezsiz) — 320 TL
+- 1x Margherita Pizza — 350 TL
+- 2x Kola — 2x 40 TL
+
+Toplam: 750 TL (oda hesabina eklenecek)
+Tahmini teslimat: 25-30 dakika
+
+Onayliyor musunuz?"
+
+8. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Onay, tesekkurler!"
+   high_confidence → devam | low_confidence → action_handoff
+
+9. **message_text** — Mesaj gonder
+   text: "Siparisiz onaylandi! Oda 312'ye yaklasik 25 dakika icinde teslim edilecek. Afiyet olsun!"
+
+10. **utility_note** — Akis sonuc notu
+   text: "Is emri olusturuldu: #RS-2024-0847. Mutfak departmanina iletildi. Alerji notu: MAYONEZ YOK."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["In-Stay","Oda Servisi"]},{id:"o03",title:"Oda Yukseltme / Ekstra Hizmet",description:"Misafir ust kategori oda veya spa paketi gibi ekstra hizmetler istiyor. AI upsell onerisi sunar, PMS uzerinden musaitlik kontrolu yapar ve satis firsatini degerlendirerek gelir artisi saglar.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O03: Oda Upgrade Talebi",description:"Misafir mevcut odasindan daha buyuk bir oda istiyor. AI PMS kontrolu ile secenekleri sunuyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Oda Upgrade. Mevcut: Standart. Hedef: Suit"}},{id:"message_menu_4",type:"message_menu",position:{x:300,y:500},data:{label:"Menu",text:`Tabii ki! Konaklamaniz icin Suite odamizi kontrol ettim:
+
+Suite Oda (55 m2, jakuzi, deniz manzarasi)
+Fark: +1.600 TL/gece
+Kalan 2 geceniz icin toplam fark: 3.200 TL
+
+Ayrica size ozel bir onerimiz var: Suite + Spa Paketi birlikte alinirsa %20 indirim — toplam fark: 4.100 TL (spa dahil).
+
+Hangisini tercih edersiniz?`,options:[]}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika secim! Suite + Spa paketiniz onaylandi.
+
+Yeni odaniz: Suite 401 (4. kat, deniz manzarasi)
+Spa randevunuz: Yarin 16:00 — Bali Masaji (50 dk)
+
+Oda kartinizi resepsiyondan yenileyebilirsiniz. Keyifli tatiller dileriz!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Upsell basarili: Standart -> Suite + Spa. Ek gelir: 4.100 TL. PMS guncellendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_menu_4",source:"ai_intent_3",target:"message_menu_4"},{id:"e_message_menu_4_ai_intent_5",source:"message_menu_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Oda Yukseltme / Ekstra Hizmet" senaryosu icin "Oda Upgrade Talebi" akisini olustur.
+
+Aciklama: Misafir mevcut odasindan daha buyuk bir oda istiyor. AI PMS kontrolu ile secenekleri sunuyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, su an standart odamiz var ama suite'e gecmek istiyoruz. Mumkun mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Oda Upgrade. Mevcut: Standart. Hedef: Suite. PMS kontrolu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_menu** — Secenekli mesaj
+   Mesaj: "Tabii ki! Konaklamaniz icin Suite odamizi kontrol ettim:
+
+Suite Oda (55 m2, jakuzi, deniz manzarasi)
+Fark: +1.600 TL/gece
+Kalan 2 geceniz icin toplam fark: 3.200 TL
+
+Ayrica size ozel bir onerimiz var: Suite + Spa Paketi birlikte alinirsa %20 indirim — toplam fark: 4.100 TL (spa dahil).
+
+Hangisini tercih edersiniz?"
+   Her secenek icin ayri cikis handle'i olustur
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Suite + Spa paketi cok guzel, onu alalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika secim! Suite + Spa paketiniz onaylandi.
+
+Yeni odaniz: Suite 401 (4. kat, deniz manzarasi)
+Spa randevunuz: Yarin 16:00 — Bali Masaji (50 dk)
+
+Oda kartinizi resepsiyondan yenileyebilirsiniz. Keyifli tatiller dileriz!"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Upsell basarili: Standart -> Suite + Spa. Ek gelir: 4.100 TL. PMS guncellendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Upsell","PMS Entegrasyon"]},{id:"o16",title:"OTA Mesaj Entegrasyonu (Booking/Expedia)",description:"Booking.com ve Expedia mesajlari ayri panellerden yonetiliyor, cevap suresi uzuyor ve mesajlar kayboluyor. Unified Inbox entegrasyonu ile tum OTA kanallari tek panelden yonetilir, AI otomatik cevap onerisi sunar.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O16: Booking.com Misafir Sorusu",description:"Booking uzerinden gelen misafir sorusu Unified Inbox'ta cevaplanıyor."},nodes:[{id:"webhook_trigger_1",type:"webhook_trigger",position:{x:300,y:50},data:{label:"Booking.com API: Yeni misafir mesaji alindi. Rezer"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Kanal: Booking.com. Dil: Ingilizce. Intent: Otel b"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`[AI Onerisi - Agent onayina hazir]
+
+Dear Anna, thank you for your message!
+
+Yes, we have a private beach exclusively for our guests — sunbeds and umbrellas are complimentary.
+
+Regarding breakfast: Your reservation includes our open buffet breakfast served daily from 07:00 to 10:30.
+
+We look forward to welcoming you!
+Best regards`}},{id:"action_delay_5",type:"action_delay",position:{x:300,y:650},data:{label:"14 dk bekle",seconds:300}}],edges:[{id:"e_webhook_trigger_1_ai_intent_2",source:"webhook_trigger_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_action_delay_5",source:"message_text_4",target:"action_delay_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"OTA Mesaj Entegrasyonu (Booking/Expedia)" senaryosu icin "Booking.com Misafir Sorusu" akisini olustur.
+
+Aciklama: Booking uzerinden gelen misafir sorusu Unified Inbox'ta cevaplanıyor.
+
+## Node Zinciri
+
+1. **webhook_trigger** — Dis sistem olayi tetikler
+   Olay: Booking.com API: Yeni misafir mesaji alindi. Rezervasyon #B-98274. Misafir: Anna Mueller (Almanya).
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hello, does the hotel have a private beach? Is breakfast included in my reservation?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Kanal: Booking.com. Dil: Ingilizce. Intent: Otel bilgisi (kumsal + kahvalti). Knowledge Base'den cevap hazirlanıyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "[AI Onerisi - Agent onayina hazir]
+
+Dear Anna, thank you for your message!
+
+Yes, we have a private beach exclusively for our guests — sunbeds and umbrellas are complimentary.
+
+Regarding breakfast: Your reservation includes our open buffet breakfast served daily from 07:00 to 10:30.
+
+We look forward to welcoming you!
+Best regards"
+   Degiskenler: {{ai_onerisi_-_agent_onayina_hazir}}
+
+5. **action_delay** — 14 dk bekle
+   seconds: 300
+   Not: Agent 'Gonder' butonuna tikladi. Yanit Booking.com API uzerinden misafire iletildi. SLA: 2 saat 14 dakika (limit: 24 saat).
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["OTA","Booking.com"]},{id:"o17",title:"Ozel Gun / Kutlama Organizasyonu",description:"Misafir surpriz dogum gunu, balayi veya yildonumu organizasyonu talep ediyor. AI kutlama intent'ini tespit ederek VIP etiket atar, koordinator yonlendirmesi yapar ve ozel duzenlemeleri organize eder.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O17: Surpriz Dogum Gunu Organizasyonu",description:"Misafir esine surpriz dogum gunu planliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: OZEL GUN — Dogum Gunu Surprizi. VIP etiket"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Ne guzel bir surpriz! Sizin icin ozel bir kutlama hazirlamamiz bizi cok mutlu eder. Detaylari planlayabilmemiz icin sizi Guest Relations ekibimizden Selin Hanim'a yonlendiriyorum. Birlikte muhtesem bir surpriz hazirlayacagiz!"}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"VIP etiket atandi. Konusma Guest Relations Selin'e devredildi. Tum mesaj gecmisi aktarildi."}},{id:"action_handoff_6",type:"action_handoff",position:{x:300,y:800},data:{label:"Agent Devir",summary_template:`Merhaba! Ben Selin, esinin dogum gunu icin harika bir surpriz hazirlayalim! Birlikte planlayalim:
+
+1. Pasta: Cikolatali mi, meyveli mi tercih edersiniz? (Standart 6 kisilik)
+2. Balon & Susleme: Gul altin + beyaz tema onerimiz var
+3. Cicek: Gul buketi veya kucuk masa duzenleme
+4. Ekstra: Sampanya siparisi veya ozel akşam yemegi
+
+Butceniz ve tercihleriniz nelerdir?`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"action_handoff_8",type:"action_handoff",position:{x:300,y:1100},data:{label:"Agent Devir",summary_template:`Harika secimler! Plan:
+
+- Cikolatali Dogum Gunu Pastasi (6 kisilik) — 850 TL
+- Gul Altin + Beyaz Balon Susleme — 1.200 TL
+- 21'li Kirmizi Gul Buketi — 750 TL
+- 'Iyi ki Dogdun' yazili kart (ucretsiz)
+
+Toplam: 2.800 TL
+
+Yarin saat kacta odanizdan ayrilacaksiniz? O zaman hazirlayalim.`}},{id:"ai_intent_9",type:"ai_intent",position:{x:300,y:1250},data:{label:"Yanit Analiz"}},{id:"action_handoff_10",type:"action_handoff",position:{x:300,y:1400},data:{label:"Agent Devir",summary_template:"Mukemmel! 17:00-18:30 arasi oda hazirligi tamamlanmis olacak. Odaya dondugunuzde surpriz hazir olacak! Iyi eglenceler dilerim, esine mutlu yillar!"}},{id:"utility_note_11",type:"utility_note",position:{x:300,y:1550},data:{label:"Sonuc",text:"Is emirleri olusturuldu: Pastane #PO-0142 (pasta yarin 16:00), Housekeeping #HK-0294 (susleme 17:00), Cicekci #FL-0089 (gul buketi 17:00). VIP notu: Surpriz — odaya giris 17:00-18:30."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_utility_set_variable_5",source:"message_text_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_action_handoff_6",source:"utility_set_variable_5",target:"action_handoff_6"},{id:"e_action_handoff_6_ai_intent_7",source:"action_handoff_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_action_handoff_8",source:"ai_intent_7",target:"action_handoff_8"},{id:"e_action_handoff_8_ai_intent_9",source:"action_handoff_8",target:"ai_intent_9",sourceHandle:"high_confidence"},{id:"e_ai_intent_9_action_handoff_10",source:"ai_intent_9",target:"action_handoff_10"},{id:"e_action_handoff_10_utility_note_11",source:"action_handoff_10",target:"utility_note_11"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Ozel Gun / Kutlama Organizasyonu" senaryosu icin "Surpriz Dogum Gunu Organizasyonu" akisini olustur.
+
+Aciklama: Misafir esine surpriz dogum gunu planliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, esimin dogum gunu yarin. Odada surpriz bir sey yapabilir misiniz? Pasta ve balon olsa harika olur."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: OZEL GUN — Dogum Gunu Surprizi. VIP etiket ataniyor. Koordinatore yonlendirme gerekli.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Ne guzel bir surpriz! Sizin icin ozel bir kutlama hazirlamamiz bizi cok mutlu eder. Detaylari planlayabilmemiz icin sizi Guest Relations ekibimizden Selin Hanim'a yonlendiriyorum. Birlikte muhtesem bir surpriz hazirlayacagiz!"
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: VIP etiket atandi. Konusma Guest Relations Selin'e devredildi. Tum mesaj gecmisi aktarildi.
+
+6. **action_handoff** — Canli agent'a devret
+   summary_template: "Merhaba! Ben Selin, esinin dogum gunu icin harika bir surpriz hazirlayalim! Birlikte planlayalim:
+
+1. Pasta: Cikolatali mi, meyveli mi tercih edersiniz? (Standart 6 kisilik)
+2. Balon & Susleme: Gul altin + beyaz tema onerimiz var
+3. Cicek: Gul buketi veya kucuk masa duzenleme
+4. Ekstra: Sampanya siparisi veya ozel akşam yemegi
+
+Butceniz ve tercihleriniz nelerdir?"
+   (Terminal node — akis burada biter)
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Cikolatali pasta, balon susleme ve bir gul buketi yeterli. Butce 3000 TL civari olsun."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **action_handoff** — Canli agent'a devret
+   summary_template: "Harika secimler! Plan:
+
+- Cikolatali Dogum Gunu Pastasi (6 kisilik) — 850 TL
+- Gul Altin + Beyaz Balon Susleme — 1.200 TL
+- 21'li Kirmizi Gul Buketi — 750 TL
+- 'Iyi ki Dogdun' yazili kart (ucretsiz)
+
+Toplam: 2.800 TL
+
+Yarin saat kacta odanizdan ayrilacaksiniz? O zaman hazirlayalim."
+   (Terminal node — akis burada biter)
+
+9. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "17:00'de aksam yemegine gidecegiz, o sirada yapabilirsiniz."
+   high_confidence → devam | low_confidence → action_handoff
+
+10. **action_handoff** — Canli agent'a devret
+   summary_template: "Mukemmel! 17:00-18:30 arasi oda hazirligi tamamlanmis olacak. Odaya dondugunuzde surpriz hazir olacak! Iyi eglenceler dilerim, esine mutlu yillar!"
+   (Terminal node — akis burada biter)
+
+11. **utility_note** — Akis sonuc notu
+   text: "Is emirleri olusturuldu: Pastane #PO-0142 (pasta yarin 16:00), Housekeeping #HK-0294 (susleme 17:00), Cicekci #FL-0089 (gul buketi 17:00). VIP notu: Surpriz — odaya giris 17:00-18:30."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:11,tags:["VIP","Dogum Gunu"]},{id:"o05",title:"Rezervasyon Iptal / Degisiklik",description:"Misafir rezervasyon tarihini ertelemek veya iptal etmek istiyor. AI iptal politikasini Knowledge Base'den cekerek kurallar dahilinde islem yapar veya agent'a yonlendirir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O05: Tarih Degisikligi Talebi",description:"Misafir rezervasyon tarihini ertelemek istiyor. AI politika kontrolu yaparak uygun tarih buluyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Tarih Degisikligi. Mevcut: 20-23 Mart. Yen"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Tabii ki! Rezervasyonunuzu kontrol ettim:
+
+Mevcut: 20-23 Mart (3 gece, Deluxe Oda)
+Yeni tarih: 27-30 Mart
+
+Politikamiza gore 48 saatten fazla suresi oldugu icin degisiklik UCRETSIZ!
+
+27-30 Mart'ta Deluxe odamiz musait. Degisikligi onaylamamizi ister misiniz?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Rezervasyonunuz guncellendi!
+
+Yeni tarih: 27-30 Mart (3 gece)
+Oda: Deluxe Oda
+Toplam: 10.800 TL (degisiklik yok)
+
+Onay e-postaniz gonderildi. Keyifli tatiller dileriz!`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Tarih degisikligi basarili. PMS guncellendi. Ucretsiz degisiklik — politika dahilinde otomatik islem."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Rezervasyon Iptal / Degisiklik" senaryosu icin "Tarih Degisikligi Talebi" akisini olustur.
+
+Aciklama: Misafir rezervasyon tarihini ertelemek istiyor. AI politika kontrolu yaparak uygun tarih buluyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, 20-23 Mart rezervasyonum var ama 27-30 Mart'a ertelemek istiyorum. Mumkun mu?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Tarih Degisikligi. Mevcut: 20-23 Mart. Yeni: 27-30 Mart. Politika kontrolu: 48 saat oncesi — ucretsiz degisiklik.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Tabii ki! Rezervasyonunuzu kontrol ettim:
+
+Mevcut: 20-23 Mart (3 gece, Deluxe Oda)
+Yeni tarih: 27-30 Mart
+
+Politikamiza gore 48 saatten fazla suresi oldugu icin degisiklik UCRETSIZ!
+
+27-30 Mart'ta Deluxe odamiz musait. Degisikligi onaylamamizi ister misiniz?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, lutfen onaylayin."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Rezervasyonunuz guncellendi!
+
+Yeni tarih: 27-30 Mart (3 gece)
+Oda: Deluxe Oda
+Toplam: 10.800 TL (degisiklik yok)
+
+Onay e-postaniz gonderildi. Keyifli tatiller dileriz!"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Tarih degisikligi basarili. PMS guncellendi. Ucretsiz degisiklik — politika dahilinde otomatik islem."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Otomatik","Tarih Degisikligi"]},{id:"o10",title:"Sezonluk Kampanya / Early Bird",description:"Otel yaz sezonu kampanyasini gecmis misafirlere WhatsApp uzerinden segment bazli duyuran proaktif outbound sistemi. Erken rezervasyon indirimi, sadakat segmenti ve OTA yerine direkt kanal tesvik edilerek komisyon tasarrufu saglanir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O10: Sadik Misafir Early Bird Kampanyasi",description:"2+ kez konaklayan misafire ozel erken rezervasyon indirimi."},nodes:[{id:"outbound_trigger_1",type:"outbound_trigger",position:{x:300,y:50},data:{label:"Outbound Engine: 'Sadik Misafir' segmenti secildi "}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:"Merhaba Ahmet Bey, gecen yaz bizimle gecirdiginiz guzel gunleri hatirliyoruz! Bu yaz icin size ozel %20 erken rezervasyon indirimimiz var. 15 Haziran - 15 Eylul arasi tum oda tipleri icin gecerli. Detaylar icin yanit verin!"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Intent: Rezervasyon Sorgusu. Segment: Sadik Misafi"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:"Temmuz 1-7 arasi deniz manzarali Superior odamiz musait! Early bird fiyatimiz: gecelik 4.800 TL yerine 3.840 TL (7 gece toplam 26.880 TL). Rezervasyonu simdi olusturmami ister misiniz?"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Evet, acik bufe kahvalti dahildir! Rezervasyonunuz olusturuldu: 1-7 Temmuz, Superior Deniz Manzarali, 2 kisi. Onay ve odeme linkiniz: [link]. Sizleri yeniden agirlayacagimiz icin cok heyecanliyiz!"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Rezervasyon tamamlandi. CRM'de misafir profili guncellendi. Kampanya donusum orani: %12.8."}}],edges:[{id:"e_outbound_trigger_1_message_text_2",source:"outbound_trigger_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_ai_intent_4",source:"ai_intent_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sezonluk Kampanya / Early Bird" senaryosu icin "Sadik Misafir Early Bird Kampanyasi" akisini olustur.
+
+Aciklama: 2+ kez konaklayan misafire ozel erken rezervasyon indirimi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Outbound Engine: 'Sadik Misafir' segmenti secildi — 342 misafir. Template: Yaz Early Bird %20.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba Ahmet Bey, gecen yaz bizimle gecirdiginiz guzel gunleri hatirliyoruz! Bu yaz icin size ozel %20 erken rezervasyon indirimimiz var. 15 Haziran - 15 Eylul arasi tum oda tipleri icin gecerli. Detaylar icin yanit verin!"
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, temmuz basi icin deniz manzarali oda musait mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Rezervasyon Sorgusu. Segment: Sadik Misafir. Aksiyon: Musaitlik kontrolu + fiyat teklifi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Temmuz 1-7 arasi deniz manzarali Superior odamiz musait! Early bird fiyatimiz: gecelik 4.800 TL yerine 3.840 TL (7 gece toplam 26.880 TL). Rezervasyonu simdi olusturmami ister misiniz?"
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Harika, kesinlestirelim. Kahvalti dahil mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Evet, acik bufe kahvalti dahildir! Rezervasyonunuz olusturuldu: 1-7 Temmuz, Superior Deniz Manzarali, 2 kisi. Onay ve odeme linkiniz: [link]. Sizleri yeniden agirlayacagimiz icin cok heyecanliyiz!"
+   Degiskenler: {{link}}
+
+8. **utility_note** — Akis sonuc notu
+   text: "Rezervasyon tamamlandi. CRM'de misafir profili guncellendi. Kampanya donusum orani: %12.8."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Outbound","Proaktif"]},{id:"o08",title:"Shuttle / Transfer Rezervasyonu",description:"Misafir havaalani shuttle veya transfer bilgisi soruyor ve rezervasyon yaptirmak istiyor. Chatbot FAQ ile detaylari veriyor, template uzerinden ucus bilgilerini alarak shuttle ayarliyor.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O08: Shuttle Bilgi ve Rezervasyon",description:"Misafir shuttle bilgisi soruyor ve WhatsApp uzerinden hemen rezervasyon yaptiriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Shuttle Bilgi. Knowledge Base sorgusu: Shu"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Evet, havalimani shuttle hizmetimiz mevcuttur:
+
+Istanbul Havalimani (IST) Shuttle:
+Ucret: 350 TL/kisi (tek yon)
+Sure: Yaklasik 45 dakika
+Calısma Saatleri: 06:00 — 23:00
+
+Sabiha Gokcen (SAW) Shuttle:
+Ucret: 250 TL/kisi (tek yon)
+Sure: Yaklasik 30 dakika
+
+Shuttle ayartmak ister misiniz? Ucus bilgilerinizi paylasmaniz yeterli!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Harika! Shuttle rezervasyonunuz olusturuldu:
+
+Tarih: Yarin
+Havalimani: Istanbul (IST)
+Varis Saati: 14:30
+Kisi: 2
+Toplam Ucret: 700 TL
+
+Soforumuz isminizin yazili oldugu tabela ile cikis kapisinda sizi karsilayacak. Ucus numaranizi paylasin, olasi gecikmelerde sizi takip edelim.`}},{id:"ai_intent_7",type:"ai_intent",position:{x:300,y:950},data:{label:"Yanit Analiz"}},{id:"message_text_8",type:"message_text",position:{x:300,y:1100},data:{label:"Mesaj",text:`Tesekkurler! Ucus TK 1234 ile kaydinizi olusturduk. Soforumuz sizi karsilayacak.
+
+Iyi yolculuklar, gorusmek uzere!`}},{id:"utility_note_9",type:"utility_note",position:{x:300,y:1250},data:{label:"Sonuc",text:"Shuttle rezervasyonu olusturuldu. Operasyon ekibine bildirim gonderildi. Ucus takibi aktif."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_ai_intent_7",source:"message_text_6",target:"ai_intent_7",sourceHandle:"high_confidence"},{id:"e_ai_intent_7_message_text_8",source:"ai_intent_7",target:"message_text_8"},{id:"e_message_text_8_utility_note_9",source:"message_text_8",target:"utility_note_9"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Shuttle / Transfer Rezervasyonu" senaryosu icin "Shuttle Bilgi ve Rezervasyon" akisini olustur.
+
+Aciklama: Misafir shuttle bilgisi soruyor ve WhatsApp uzerinden hemen rezervasyon yaptiriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, havalimani shuttle hizmetiniz var mi? Fiyati ne kadar?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Shuttle Bilgi. Knowledge Base sorgusu: Shuttle detaylari.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Evet, havalimani shuttle hizmetimiz mevcuttur:
+
+Istanbul Havalimani (IST) Shuttle:
+Ucret: 350 TL/kisi (tek yon)
+Sure: Yaklasik 45 dakika
+Calısma Saatleri: 06:00 — 23:00
+
+Sabiha Gokcen (SAW) Shuttle:
+Ucret: 250 TL/kisi (tek yon)
+Sure: Yaklasik 30 dakika
+
+Shuttle ayartmak ister misiniz? Ucus bilgilerinizi paylasmaniz yeterli!"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Evet, Istanbul Havalimani'ndan gelecegiz. Yarin saat 14:30'da iniyoruz, 2 kisi."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Harika! Shuttle rezervasyonunuz olusturuldu:
+
+Tarih: Yarin
+Havalimani: Istanbul (IST)
+Varis Saati: 14:30
+Kisi: 2
+Toplam Ucret: 700 TL
+
+Soforumuz isminizin yazili oldugu tabela ile cikis kapisinda sizi karsilayacak. Ucus numaranizi paylasin, olasi gecikmelerde sizi takip edelim."
+
+7. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Ucus numaram TK 1234."
+   high_confidence → devam | low_confidence → action_handoff
+
+8. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Ucus TK 1234 ile kaydinizi olusturduk. Soforumuz sizi karsilayacak.
+
+Iyi yolculuklar, gorusmek uzere!"
+
+9. **utility_note** — Akis sonuc notu
+   text: "Shuttle rezervasyonu olusturuldu. Operasyon ekibine bildirim gonderildi. Ucus takibi aktif."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:9,tags:["FAQ + Rezervasyon","Otomatik"]},{id:"o13",title:"Spa / Restoran Rezervasyonu (In-Stay)",description:"Misafir konaklama sirasinda spa randevusu veya restoran masa rezervasyonu yapar. AI template ile tercih bilgilerini toplar, musait slotlari sunar ve onay verir. Slot yonetimi ile cakisma onlenir.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O13: Spa Randevusu ve Upsell",description:"Misafir spa randevusu aliyor, AI paket onerisi yapıyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Intent: Spa Randevusu. Hizmet: Masaj. Tarih: Yarin"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Merhaba! Spa merkezimizde su masaj seceneklerimiz var:
+
+1. Aromaterapi Masaj (50 dk) — 1.200 TL
+2. Bali Masaji (60 dk) — 1.500 TL
+3. Hot Stone Masaj (60 dk) — 1.400 TL
+4. Cift Masaji (60 dk, 2 kisi) — 2.400 TL
+
+Hangi turu tercih edersiniz ve saat tercihiniz nedir?`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Slot kontrolu: Yarin 14:00 — Musait. Upsell firsat"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:`Harika, yarin 14:00 Aromaterapi Masaj icin yerimiz musait! 
+
+Size ozel onerimiz: Hamam + Aromaterapi paketi sadece 1.600 TL (ayri ayri 1.750 TL). Masajdan once hamam deneyimi masajin etkisini iki katina cikarir. Paket ister misiniz?`}},{id:"ai_intent_8",type:"ai_intent",position:{x:300,y:1100},data:{label:"Yanit Analiz"}},{id:"message_text_9",type:"message_text",position:{x:300,y:1250},data:{label:"Mesaj",text:`Randevunuz kesinlesti!
+
+Hamam + Aromaterapi Masaj Paketi
+Tarih: Yarin 14:00
+Sure: Toplam 90 dakika
+Ucret: 1.600 TL (oda hesabina eklenecek)
+
+13:45'te Spa merkezimize gelmenizi rica ederiz. Randevudan 1 saat once hatirlatma mesaji gonderecegiz. Keyifli bir deneyim diliyoruz!`}},{id:"utility_note_10",type:"utility_note",position:{x:300,y:1400},data:{label:"Sonuc",text:"Spa rezervasyonu olusturuldu: #SPA-2024-0412. Hatirlatma: Yarin 13:00. Upsell basarili: +400 TL."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_ai_intent_6",source:"ai_intent_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_ai_intent_8",source:"message_text_7",target:"ai_intent_8",sourceHandle:"high_confidence"},{id:"e_ai_intent_8_message_text_9",source:"ai_intent_8",target:"message_text_9"},{id:"e_message_text_9_utility_note_10",source:"message_text_9",target:"utility_note_10"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Spa / Restoran Rezervasyonu (In-Stay)" senaryosu icin "Spa Randevusu ve Upsell" akisini olustur.
+
+Aciklama: Misafir spa randevusu aliyor, AI paket onerisi yapıyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, yarin icin spa randevusu almak istiyorum. Masaj var mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Spa Randevusu. Hizmet: Masaj. Tarih: Yarin. Detay gerekli: Saat, tur tercihi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba! Spa merkezimizde su masaj seceneklerimiz var:
+
+1. Aromaterapi Masaj (50 dk) — 1.200 TL
+2. Bali Masaji (60 dk) — 1.500 TL
+3. Hot Stone Masaj (60 dk) — 1.400 TL
+4. Cift Masaji (60 dk, 2 kisi) — 2.400 TL
+
+Hangi turu tercih edersiniz ve saat tercihiniz nedir?"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Aromaterapi masaj, saat 14:00 civari olabilir mi?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **ai_intent** — Niyet tespiti
+   Analiz: Slot kontrolu: Yarin 14:00 — Musait. Upsell firsati: Hamam + Masaj paketi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Harika, yarin 14:00 Aromaterapi Masaj icin yerimiz musait! 
+
+Size ozel onerimiz: Hamam + Aromaterapi paketi sadece 1.600 TL (ayri ayri 1.750 TL). Masajdan once hamam deneyimi masajin etkisini iki katina cikarir. Paket ister misiniz?"
+
+8. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Paket olsun, cok guzel!"
+   high_confidence → devam | low_confidence → action_handoff
+
+9. **message_text** — Mesaj gonder
+   text: "Randevunuz kesinlesti!
+
+Hamam + Aromaterapi Masaj Paketi
+Tarih: Yarin 14:00
+Sure: Toplam 90 dakika
+Ucret: 1.600 TL (oda hesabina eklenecek)
+
+13:45'te Spa merkezimize gelmenizi rica ederiz. Randevudan 1 saat once hatirlatma mesaji gonderecegiz. Keyifli bir deneyim diliyoruz!"
+
+10. **utility_note** — Akis sonuc notu
+   text: "Spa rezervasyonu olusturuldu: #SPA-2024-0412. Hatirlatma: Yarin 13:00. Upsell basarili: +400 TL."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:10,tags:["In-Stay","Spa"]},{id:"o06",title:"Yabanci Misafir (EN/DE/RU)",description:"Yabanci dilde mesaj gonderen misafirler icin AI otomatik dil algilama ve cok dilli destek sunar. Ingilizce, Almanca, Rusca ve diger dillerde akici iletisim kurulur.",category:"OTEL / TURIZM",niche:"hotel",flowConfig:{version:2,metadata:{name:"O06: Ingilizce Misafir — Genel Bilgi Sorusu",description:"Ingilizce yazan misafir otel hizmetleri hakkinda bilgi istiyor. AI Ingilizce cevap veriyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Language: English. Intent: Hotel Amenities (Pool +"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:`Hello! Welcome to our hotel! Here's the information you need:
+
+Pool: Open daily from 08:00 to 20:00 (heated outdoor pool + indoor pool)
+Breakfast: Served from 07:00 to 10:30 at the main restaurant (open buffet)
+
+We also have a spa center and fitness room available for our guests. Looking forward to welcoming you tomorrow!`}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`Yes, we do! Our airport shuttle details:
+
+Pickup: Istanbul Airport (IST)
+Price: 350 TL per person (one way)
+Duration: Approximately 45 minutes
+Booking: Please share your flight number and arrival time, and we'll arrange it for you.
+
+Would you like to book a shuttle?`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Otomatik cozum: Ingilizce mesaj algilandi, Ingilizce cevap verildi. Knowledge Base'den bilgi cekildi. Agent mudahalesi gerekmedi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Yabanci Misafir (EN/DE/RU)" senaryosu icin "Ingilizce Misafir — Genel Bilgi Sorusu" akisini olustur.
+
+Aciklama: Ingilizce yazan misafir otel hizmetleri hakkinda bilgi istiyor. AI Ingilizce cevap veriyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Hello! We're arriving tomorrow. Is there a pool and what time does breakfast start?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Language: English. Intent: Hotel Amenities (Pool + Breakfast). Knowledge Base sorgusu baslatiliyor.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Hello! Welcome to our hotel! Here's the information you need:
+
+Pool: Open daily from 08:00 to 20:00 (heated outdoor pool + indoor pool)
+Breakfast: Served from 07:00 to 10:30 at the main restaurant (open buffet)
+
+We also have a spa center and fitness room available for our guests. Looking forward to welcoming you tomorrow!"
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Great, thank you! One more thing — do you have airport shuttle service?"
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Yes, we do! Our airport shuttle details:
+
+Pickup: Istanbul Airport (IST)
+Price: 350 TL per person (one way)
+Duration: Approximately 45 minutes
+Booking: Please share your flight number and arrival time, and we'll arrange it for you.
+
+Would you like to book a shuttle?"
+
+7. **utility_note** — Akis sonuc notu
+   text: "Otomatik cozum: Ingilizce mesaj algilandi, Ingilizce cevap verildi. Knowledge Base'den bilgi cekildi. Agent mudahalesi gerekmedi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Multi-Language","Otomatik"]},{id:"m02",title:"Acil Mesaj Push Notification",description:"SLA ihlali yaklasirken veya VIP musteriden acil etiketli mesaj geldiginde bilgisayar basinda olmayan temsilciye mobil push notification gonderilir. Proaktif uyari sistemi sayesinde hicbir kritik mesaj cevapsiz kalmaz.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M02: SLA Breach Yaklasirken Push",description:"Mesaj 25 dakikadir cevap bekliyor, SLA limiti 30 dakika."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"action_delay_3",type:"action_delay",position:{x:300,y:350},data:{label:"30 dk bekle",seconds:300}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Alert",variable_name:"alert_status",value_expression:"SLA Uyari: %83 (25/30 dk). Temsilci Ahmet hala cevrimdisi. Push Notification gonderiliyor."}},{id:"utility_set_variable_5",type:"utility_set_variable",position:{x:300,y:650},data:{label:"Durum",variable_name:"status",value_expression:"PUSH → Ahmet'in telefonu: 'ACIL — Musteri Ali Yilmaz 25 dk bekliyor! SLA: 5 dk kaldi. Dokunun ve cevaplayin.'"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:`[Ahmet push'a dokunur, mobil uygulamadan cevaplayir]
+
+Merhaba Ali Bey, gecikme icin ozur dilerim. Siparis durumunuzu hemen kontrol ediyorum. 2 dakika icinde detayli bilgi verecegim.`}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"SLA durumu: Zamaninda cevaplandi (27/30 dk). Ihlal onlendi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_action_delay_3",source:"ai_intent_2",target:"action_delay_3"},{id:"e_action_delay_3_utility_set_variable_4",source:"action_delay_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_utility_set_variable_5",source:"utility_set_variable_4",target:"utility_set_variable_5"},{id:"e_utility_set_variable_5_message_text_6",source:"utility_set_variable_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Acil Mesaj Push Notification" senaryosu icin "SLA Breach Yaklasirken Push" akisini olustur.
+
+Aciklama: Mesaj 25 dakikadir cevap bekliyor, SLA limiti 30 dakika.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, siparis durumumu ogrenmek istiyorum. Acil lazim."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **action_delay** — 30 dk bekle
+   seconds: 300
+   Not: Mesaj alindi. SLA Zamanlayicisi baslatildi: 30 dakika. Atanan temsilci: Ahmet (cevrimdisi).
+
+4. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "SLA Uyari: %83 (25/30 dk). Temsilci Ahmet hala cevrimdisi. Push Notification gonderiliyor."
+
+5. **utility_set_variable** — Durum guncelle
+   Deger: PUSH → Ahmet'in telefonu: 'ACIL — Musteri Ali Yilmaz 25 dk bekliyor! SLA: 5 dk kaldi. Dokunun ve cevaplayin.'
+
+6. **message_text** — Mesaj gonder
+   text: "[Ahmet push'a dokunur, mobil uygulamadan cevaplayir]
+
+Merhaba Ali Bey, gecikme icin ozur dilerim. Siparis durumunuzu hemen kontrol ediyorum. 2 dakika icinde detayli bilgi verecegim."
+   Degiskenler: {{ahmet_push'a_dokunur,_mobil_uygulamadan_cevaplayir}}
+
+7. **utility_note** — Akis sonuc notu
+   text: "SLA durumu: Zamaninda cevaplandi (27/30 dk). Ihlal onlendi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["SLA Uyari","Push Bildirim"]},{id:"m07",title:"Cevrimdisi Mod (Offline Drafting)",description:"Saha calisani internet erisimi olmayan bolgelerde calisiyor. Invekto Mobil ile onceki mesajlar cevrimdisi okunabilir, cevap taslaklari kaydedilir ve internet baglantisi geldiginde otomatik olarak gonderilir. Proaktif senkronizasyon sistemi.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M07: Saha Ziyaretinde Offline Cevaplama",description:"Teknisyen kirsal alanda internet olmadan musteri mesajlarini cevaplayiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Saat 08:00 — Teknisyen ofisten cikmadan once senkr"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Durum",variable_name:"status",value_expression:"Saat 10:30 — Kirsal alan, internet yok. Offline Mode aktif."}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"[Teknisyen mobil uygulamada onceki mesajlari okur → 3 musteriye cevap taslagi yazar]"}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Durum",variable_name:"status",value_expression:"Taslak 1: 'Mehmet Bey, ariza kontrolunu tamamladik. Parca degisimi gerekiyor, yarin gelecegiz.'"}},{id:"utility_note_5",type:"utility_note",position:{x:300,y:650},data:{label:"Sonuc",text:"Taslak 2: 'Ayse Hanim, bakim tamamlandi. Faturanizi mail adresinize gonderdik.'"}},{id:"utility_set_variable_6",type:"utility_set_variable",position:{x:300,y:800},data:{label:"Durum",variable_name:"status",value_expression:"Taslak 3: 'Ali Bey, saha incelemesi icin persembe gunu 14:00 uygun mu?'"}},{id:"utility_set_variable_7",type:"utility_set_variable",position:{x:300,y:950},data:{label:"Durum",variable_name:"status",value_expression:"Saat 13:00 — Sehre donus, internet baglantisi tespit edildi. Otomatik gonderim basliyor..."}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"3/3 mesaj basariyla gonderildi. Kuyruk bos. Yeni gelen 7 mesaj senkronize ediliyor."}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_utility_set_variable_3",source:"utility_set_variable_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_utility_set_variable_4",source:"utility_set_variable_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_utility_note_5",source:"utility_set_variable_4",target:"utility_note_5"},{id:"e_utility_note_5_utility_set_variable_6",source:"utility_note_5",target:"utility_set_variable_6"},{id:"e_utility_set_variable_6_utility_set_variable_7",source:"utility_set_variable_6",target:"utility_set_variable_7"},{id:"e_utility_set_variable_7_utility_note_8",source:"utility_set_variable_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Cevrimdisi Mod (Offline Drafting)" senaryosu icin "Saha Ziyaretinde Offline Cevaplama" akisini olustur.
+
+Aciklama: Teknisyen kirsal alanda internet olmadan musteri mesajlarini cevaplayiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Saat 08:00 — Teknisyen ofisten cikmadan once senkronizasyon: 45 aktif konusma, 12 sablon yerel depolamaya alindi.
+
+2. **utility_set_variable** — Durum guncelle
+   Deger: Saat 10:30 — Kirsal alan, internet yok. Offline Mode aktif.
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: [Teknisyen mobil uygulamada onceki mesajlari okur → 3 musteriye cevap taslagi yazar]
+
+4. **utility_set_variable** — Durum guncelle
+   Deger: Taslak 1: 'Mehmet Bey, ariza kontrolunu tamamladik. Parca degisimi gerekiyor, yarin gelecegiz.'
+
+5. **utility_note** — Akis sonuc notu
+   text: "Taslak 2: 'Ayse Hanim, bakim tamamlandi. Faturanizi mail adresinize gonderdik.'"
+
+6. **utility_set_variable** — Durum guncelle
+   Deger: Taslak 3: 'Ali Bey, saha incelemesi icin persembe gunu 14:00 uygun mu?'
+
+7. **utility_set_variable** — Durum guncelle
+   Deger: Saat 13:00 — Sehre donus, internet baglantisi tespit edildi. Otomatik gonderim basliyor...
+
+8. **utility_note** — Akis sonuc notu
+   text: "3/3 mesaj basariyla gonderildi. Kuyruk bos. Yeni gelen 7 mesaj senkronize ediliyor."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Cevrimdisi","Otomatik Senkronizasyon"]},{id:"m04",title:"Doktor Mesai Disi Acil Triage",description:"Hasta gece veya mesai disi saatlerde sorunuyla yaziyor; doktor kisisel telefonundan cevap vermek zorunda. AI on cevap ile hasta rahatlatilir, sadece gercekten acil etiketli vakalar doktorun telefonuna push notification olarak iletilir.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M04: Gece Rutin Sikayet — AI Yatistirma",description:"Hasta gece hafif bir sikayetle yaziyor, acil degil."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_sentiment_3",type:"ai_sentiment",position:{x:300,y:350},data:{label:"Triage Analizi: Bas agrisi (kronik, 3+ gun). Acili"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Merhaba, mesajiniz icin tesekkurler. Doktorumuz su an mesai disinda. Bas agrinizin birkac gundur surmesi doktorumuzun sizi detayli degerlendirmesini gerektirir. Yarin sabah 09:00'da randevu olusturabilir miyim? Bu arada bol su icin ve ekran suresini azaltin. Ani siddetli agri, kusma veya gorme bulanikligi olursa HEMEN 112'yi arayin."}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Randevunuz olusturuldu: Yarin 09:00 — Dr. Mehmet Kaya. Gecmis olsun, iyi geceler."}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Doktor rahatsiz edilmedi. AI triage basarili: rutin vaka yatistirildi, randevu olusturuldu."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_sentiment_3",source:"ai_intent_2",target:"ai_sentiment_3",sourceHandle:"positive"},{id:"e_ai_sentiment_3_message_text_4",source:"ai_sentiment_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_message_text_6",source:"ai_intent_5",target:"message_text_6"},{id:"e_message_text_6_utility_note_7",source:"message_text_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Doktor Mesai Disi Acil Triage" senaryosu icin "Gece Rutin Sikayet — AI Yatistirma" akisini olustur.
+
+Aciklama: Hasta gece hafif bir sikayetle yaziyor, acil degil.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Doktor bey, birkac gundur basim agriyor. Ibuprofen aliyorum ama gecmiyor. Ne yapmaliyim?"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_sentiment** — Duygu analizi
+   Analiz: Triage Analizi: Bas agrisi (kronik, 3+ gun). Aciliyet: YESIL (Rutin). Kirmizi bayrak yok (ani baslangiç, kusma, gorme kaybi). AI on cevap olusturuluyor.
+   Cikislar: positive → devam | negative → eskalasyon | neutral → devam
+
+4. **message_text** — Mesaj gonder
+   text: "Merhaba, mesajiniz icin tesekkurler. Doktorumuz su an mesai disinda. Bas agrinizin birkac gundur surmesi doktorumuzun sizi detayli degerlendirmesini gerektirir. Yarin sabah 09:00'da randevu olusturabilir miyim? Bu arada bol su icin ve ekran suresini azaltin. Ani siddetli agri, kusma veya gorme bulanikligi olursa HEMEN 112'yi arayin."
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam, yarin randevu alalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu: Yarin 09:00 — Dr. Mehmet Kaya. Gecmis olsun, iyi geceler."
+
+7. **utility_note** — Akis sonuc notu
+   text: "Doktor rahatsiz edilmedi. AI triage basarili: rutin vaka yatistirildi, randevu olusturuldu."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["AI Triage","Otomatik Cevap"]},{id:"m06",title:"QR Kod ile Hizli WhatsApp Erisimi",description:"Otel odasi, klinik bekleme salonu, restoran masasi veya magaza girisine yerlestirilen QR kod ile musteriler tek tarama ile WhatsApp sohbetini baslatir. Tenant bazli unique QR link olusturulur, ilk mesajda KVKK uyumlu opt-in alinir. Proaktif musteri kazanim kanali.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M06: Otel Odasi QR — Oda Servisi",description:"Otel misafiri odadaki QR kodu tarayarak oda servisi istiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Misafir otel odasindaki QR kodu tarar → WhatsApp a"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"message_text_3",type:"message_text",position:{x:300,y:350},data:{label:"Mesaj",text:"Hosgeldiniz! Grand Hotel olarak size en iyi hizmeti sunmak istiyoruz. Devam edebilmemiz icin kisisel verilerin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir. Onaylamak icin EVET yazin. Detay: [KVKK Linki]"}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Yanit Analiz"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`Tesekkurler! Onaminiz kaydedildi. Size nasil yardimci olabilirim?
+
+1. Oda Servisi
+2. Temizlik Talebi
+3. Restoran Rezervasyonu
+4. Transfer / Taksi
+5. Diger`}},{id:"message_text_6",type:"message_text",position:{x:300,y:800},data:{label:"Mesaj",text:"Oda servisi menumuzu gonderiyorum. Sectiginiz urunleri numaralari ile yazmaniz yeterli. Tahmini teslimat: 25-35 dakika."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_message_text_3",source:"ai_intent_2",target:"message_text_3"},{id:"e_message_text_3_ai_intent_4",source:"message_text_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_message_text_6",source:"message_text_5",target:"message_text_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"QR Kod ile Hizli WhatsApp Erisimi" senaryosu icin "Otel Odasi QR — Oda Servisi" akisini olustur.
+
+Aciklama: Otel misafiri odadaki QR kodu tarayarak oda servisi istiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Misafir otel odasindaki QR kodu tarar → WhatsApp acilir → On tanimli mesaj: 'Merhaba, Grand Hotel'e hosgeldiniz! Oda 412'
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, Grand Hotel'e hosgeldiniz! Oda 412"
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **message_text** — Mesaj gonder
+   text: "Hosgeldiniz! Grand Hotel olarak size en iyi hizmeti sunmak istiyoruz. Devam edebilmemiz icin kisisel verilerin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir. Onaylamak icin EVET yazin. Detay: [KVKK Linki]"
+   Degiskenler: {{kvkk_linki}}
+
+4. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "EVET"
+   high_confidence → devam | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Tesekkurler! Onaminiz kaydedildi. Size nasil yardimci olabilirim?
+
+1. Oda Servisi
+2. Temizlik Talebi
+3. Restoran Rezervasyonu
+4. Transfer / Taksi
+5. Diger"
+
+   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)
+
+6. **message_text** — Mesaj gonder
+   text: "Oda servisi menumuzu gonderiyorum. Sectiginiz urunleri numaralari ile yazmaniz yeterli. Tahmini teslimat: 25-35 dakika."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["QR Tarama","Opt-in"]},{id:"m01",title:"Sahada / Evde Mesaj Yonetimi",description:"Masabasinda degilken VIP lead veya acil mesaj geldiginde Invekto Mobil push bildirimi gonderir, AI cevap onerisi sunar ve tek dokunusta cevaplama imkani saglar. Sahada veya evde olan temsilciler hicbir firsati kacirmaz.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M01: VIP Lead Sahada Yakalama",description:"Temsilci disarida iken VIP musteriden acil mesaj geliyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"VIP Musteri Tespiti: Kurumsal Lead, 50 kullanici. Push Bildirim gonderiliyor."}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Intent: Fiyat Talebi. Musteri Tipi: VIP Kurumsal. "}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`[Temsilci mobil push alir → AI onerisini gorur → tek dokunusla onaylar]
+
+Merhaba! Bizi tercih ettiginiz icin tesekkurler. 50 kullanicilik kurumsal paketimiz icin ozel fiyat teklifimizi hemen hazirliyorum. Yarin sabah sizinle gorusme ayarlayabilir miyiz?`}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Randevunuz olusturuldu: Yarin 10:00. Detayli teklifi gorusme oncesinde ileteceqim. Iyi gunler!"}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_utility_set_variable_3",source:"ai_intent_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_ai_intent_4",source:"utility_set_variable_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Sahada / Evde Mesaj Yonetimi" senaryosu icin "VIP Lead Sahada Yakalama" akisini olustur.
+
+Aciklama: Temsilci disarida iken VIP musteriden acil mesaj geliyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Merhaba, gecen hafta gorustugumuz kurumsal paketi degerlendirdik. 50 kullanici icin fiyat almak istiyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: VIP Musteri Tespiti: Kurumsal Lead, 50 kullanici. Push Bildirim gonderiliyor.
+
+4. **ai_intent** — Niyet tespiti
+   Analiz: Intent: Fiyat Talebi. Musteri Tipi: VIP Kurumsal. Oneri: Kurumsal 50 kullanici paket detayi + ozel indirim bilgisi.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "[Temsilci mobil push alir → AI onerisini gorur → tek dokunusla onaylar]
+
+Merhaba! Bizi tercih ettiginiz icin tesekkurler. 50 kullanicilik kurumsal paketimiz icin ozel fiyat teklifimizi hemen hazirliyorum. Yarin sabah sizinle gorusme ayarlayabilir miyiz?"
+   Degiskenler: {{temsilci_mobil_push_alir_→_ai_onerisini_gorur_→_tek_dokunusla_onaylar}}
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Harika, yarin 10:00 uygun."
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Randevunuz olusturuldu: Yarin 10:00. Detayli teklifi gorusme oncesinde ileteceqim. Iyi gunler!"
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Mobil Push","AI Oneri"]},{id:"m05",title:"Satici Hareket Halinde Siparis Yonetimi",description:"Depo, fuar veya saha ziyaretinde dizustu bilgisayar acamayan satici temsilci icin mobil siparis yonetimi. Konusma listesi, AI siparis onerisi, tek dokunusla cevaplama ve siparis karti olusturma tek ekranda.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M05: Fuar Sirasinda Siparis Alma",description:"Satici fuarda standda iken musteri WhatsApp'tan toplu siparis gonderiyor."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Baslangic"}},{id:"ai_intent_2",type:"ai_intent",position:{x:300,y:200},data:{label:"Yanit Analiz"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Siparis Cikarimi: 3 kalem. 1) Coca-Cola 330ml x50 "}},{id:"utility_set_variable_4",type:"utility_set_variable",position:{x:300,y:500},data:{label:"Durum",variable_name:"status",value_expression:"Stok Durumu: Coca-Cola ✓ (120 kasa), Erikli Su ✓ (85 kasa), Lay's ✓ (45 kasa). Tum urunler mevcut."}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:`[Satici mobil ekranda AI'nin hazirladigi siparis kartini gorur → kontrol eder → tek dokunusla onaylar]
+
+Merhaba! Siparisini aldim:
+
+- Coca-Cola 330ml x50 kasa — 7.500 TL
+- Erikli Su 1.5L x30 kasa — 2.700 TL
+- Lay's Klasik x20 kasa — 4.000 TL
+
+Toplam: 14.200 TL (KDV dahil)
+Teslimat: Yarin sabah 08:00-10:00
+
+Onayliyor musunuz?`}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"message_text_7",type:"message_text",position:{x:300,y:950},data:{label:"Mesaj",text:"Siparisiz onaylandi! Takip numaraniz: SP-2024-4582. Yarin sabah 08:00-10:00 arasinda teslimat yapilacak. Tesekkurler!"}},{id:"utility_note_8",type:"utility_note",position:{x:300,y:1100},data:{label:"Sonuc",text:"Siparis karti olusturuldu. Depo'ya otomatik bildirim gonderildi. Satici fuardan ayrilmadan siparis tamamlandi."}}],edges:[{id:"e_trigger_start_1_ai_intent_2",source:"trigger_start_1",target:"ai_intent_2",sourceHandle:"high_confidence"},{id:"e_ai_intent_2_ai_intent_3",source:"ai_intent_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_utility_set_variable_4",source:"ai_intent_3",target:"utility_set_variable_4"},{id:"e_utility_set_variable_4_message_text_5",source:"utility_set_variable_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_message_text_7",source:"ai_intent_6",target:"message_text_7"},{id:"e_message_text_7_utility_note_8",source:"message_text_7",target:"utility_note_8"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Satici Hareket Halinde Siparis Yonetimi" senaryosu icin "Fuar Sirasinda Siparis Alma" akisini olustur.
+
+Aciklama: Satici fuarda standda iken musteri WhatsApp'tan toplu siparis gonderiyor.
+
+## Node Zinciri
+
+1. **trigger_start** — Musteri mesaji ile akis baslar
+
+2. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Selam, bize acil 50 kasa Coca-Cola 330ml, 30 kasa Erikli Su 1.5L ve 20 kasa Lay's Klasik gonder. Yarin sabaha lazim."
+   high_confidence → devam | low_confidence → action_handoff
+
+3. **ai_intent** — Niyet tespiti
+   Analiz: Siparis Cikarimi: 3 kalem. 1) Coca-Cola 330ml x50 kasa 2) Erikli Su 1.5L x30 kasa 3) Lay's Klasik x20 kasa. Teslimat: Yarin sabah. Stok kontrolu yapiliyor...
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+4. **utility_set_variable** — Durum guncelle
+   Deger: Stok Durumu: Coca-Cola ✓ (120 kasa), Erikli Su ✓ (85 kasa), Lay's ✓ (45 kasa). Tum urunler mevcut.
+
+5. **message_text** — Mesaj gonder
+   text: "[Satici mobil ekranda AI'nin hazirladigi siparis kartini gorur → kontrol eder → tek dokunusla onaylar]
+
+Merhaba! Siparisini aldim:
+
+- Coca-Cola 330ml x50 kasa — 7.500 TL
+- Erikli Su 1.5L x30 kasa — 2.700 TL
+- Lay's Klasik x20 kasa — 4.000 TL
+
+Toplam: 14.200 TL (KDV dahil)
+Teslimat: Yarin sabah 08:00-10:00
+
+Onayliyor musunuz?"
+   Degiskenler: {{satici_mobil_ekranda_ai'nin_hazirladigi_siparis_kartini_gorur_→_kontrol_eder_→_tek_dokunusla_onaylar}}
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tamam onayliyorum."
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **message_text** — Mesaj gonder
+   text: "Siparisiz onaylandi! Takip numaraniz: SP-2024-4582. Yarin sabah 08:00-10:00 arasinda teslimat yapilacak. Tesekkurler!"
+
+8. **utility_note** — Akis sonuc notu
+   text: "Siparis karti olusturuldu. Depo'ya otomatik bildirim gonderildi. Satici fuardan ayrilmadan siparis tamamlandi."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:8,tags:["Mobil Siparis","AI Cikarim"]},{id:"m03",title:"Supervisor Sahada Ekip Izleme",description:"Disaridayken ekip performansini goremeyen supervisor icin mobil dashboard. Bekleyen mesaj sayisi, ortalama yanit suresi, aktif agent durumu tek ekranda. Proaktif uyarilarla sorunlar buyumeden mudahale.",category:"MOBIL UYGULAMA",niche:"mobile",flowConfig:{version:2,metadata:{name:"M03: Kuyruk Birikiyor — Supervisor Disarida",description:"Supervisor toplantida iken mesaj kuyrugu kritik seviyeye ulasti."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Saat 14:00 — Kuyruk: 15 mesaj (esik: 10). Ort. Yan"}},{id:"utility_set_variable_2",type:"utility_set_variable",position:{x:300,y:200},data:{label:"Alert",variable_name:"alert_status",value_expression:"PUSH → Supervisor Murat: 'UYARI — Kuyruk 15 mesaja ulasti! 3 agent cevrimdisi. Hemen kontrol edin.'"}},{id:"utility_set_variable_3",type:"utility_set_variable",position:{x:300,y:350},data:{label:"Durum",variable_name:"status",value_expression:"[Supervisor mobil dashboard'u acar → Canli metrikleri gorur]"}},{id:"action_api_call_4",type:"action_api_call",position:{x:300,y:500},data:{label:"API Cagrisi",method:"GET",url:"",response_variable:"api_result"}},{id:"action_delay_5",type:"action_delay",position:{x:300,y:650},data:{label:"15 dk bekle",seconds:300}}],edges:[{id:"e_trigger_start_1_utility_set_variable_2",source:"trigger_start_1",target:"utility_set_variable_2"},{id:"e_utility_set_variable_2_utility_set_variable_3",source:"utility_set_variable_2",target:"utility_set_variable_3"},{id:"e_utility_set_variable_3_action_api_call_4",source:"utility_set_variable_3",target:"action_api_call_4"},{id:"e_action_api_call_4_action_delay_5",source:"action_api_call_4",target:"action_delay_5"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Supervisor Sahada Ekip Izleme" senaryosu icin "Kuyruk Birikiyor — Supervisor Disarida" akisini olustur.
+
+Aciklama: Supervisor toplantida iken mesaj kuyrugu kritik seviyeye ulasti.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Saat 14:00 — Kuyruk: 15 mesaj (esik: 10). Ort. Yanit: 12 dk (SLA: 15 dk). Aktif Agent: 2/5.
+
+2. **utility_set_variable** — Alert durumu kaydet
+   variable_name: "alert_status"
+   value: "PUSH → Supervisor Murat: 'UYARI — Kuyruk 15 mesaja ulasti! 3 agent cevrimdisi. Hemen kontrol edin.'"
+
+3. **utility_set_variable** — Durum guncelle
+   Deger: [Supervisor mobil dashboard'u acar → Canli metrikleri gorur]
+
+4. **action_api_call** — Dis servis cagrisi
+   Islem: Supervisor Aksiyonu: Agent Zeynep ve Can'i mobil uzerinden aktif duruma cekti. Kuyruk dagitimi yeniden yapildi.
+   Basarili → sonraki node | Hata → action_handoff
+
+5. **action_delay** — 15 dk bekle
+   seconds: 300
+   Not: 15 dakika sonra — Kuyruk: 3 mesaj. Ort. Yanit: 8 dk. Aktif Agent: 4/5. Durum: Normal.
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:5,tags:["Mobil Dashboard","Anomali Uyarisi"]},{id:"s11",title:"Abonelik / Uyelik Modeli",description:"Tekrarlayan satin alma/ziyaretleri otomatik abonelik teklifine cevirip, duzenli gelir akisi (recurring revenue) olusturan ve musteri yasam boyu degerini artiran sistem.",category:"EVRENSEL",niche:"universal",flowConfig:{version:2,metadata:{name:"S11: E-ticaret: Otomatik Gonderim",description:"Duzenli ayni urunu alan musteriye abonelik kutusu teklifi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"Pattern Tespit: Musteri son 3 ayda 3 kez ayni krem"}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:"Merhaba [Ad]! Duzenli olarak [Urun Adi] aldiginizi goruyoruz. Aylik otomatik gonderim ile %10 indirimli alsaniz nasil olur? Her ay kapiniza gelsin!"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"message_text_4",type:"message_text",position:{x:300,y:500},data:{label:"Mesaj",text:"Her ay otomatik olarak [Urun] kargoya verilir. Istediginiz zaman iptal edebilirsiniz. Normal fiyat 299 TL, abonelik fiyat 269 TL/ay. Baslatmak ister misiniz?"}},{id:"ai_intent_5",type:"ai_intent",position:{x:300,y:650},data:{label:"Yanit Analiz"}},{id:"utility_note_6",type:"utility_note",position:{x:300,y:800},data:{label:"Sonuc",text:"Abonelik Olusturuldu: [Urun] / Aylik / 269 TL. Recurring Revenue +269 TL/ay."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_message_text_4",source:"ai_intent_3",target:"message_text_4"},{id:"e_message_text_4_ai_intent_5",source:"message_text_4",target:"ai_intent_5",sourceHandle:"high_confidence"},{id:"e_ai_intent_5_utility_note_6",source:"ai_intent_5",target:"utility_note_6"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Abonelik / Uyelik Modeli" senaryosu icin "E-ticaret: Otomatik Gonderim" akisini olustur.
+
+Aciklama: Duzenli ayni urunu alan musteriye abonelik kutusu teklifi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: Pattern Tespit: Musteri son 3 ayda 3 kez ayni kremi aldi.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Duzenli olarak [Urun Adi] aldiginizi goruyoruz. Aylik otomatik gonderim ile %10 indirimli alsaniz nasil olur? Her ay kapiniza gelsin!"
+   Degiskenler: {{ad}}, {{urun_adi}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Iyi fikir, nasil calisiyor?"
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **message_text** — Mesaj gonder
+   text: "Her ay otomatik olarak [Urun] kargoya verilir. Istediginiz zaman iptal edebilirsiniz. Normal fiyat 299 TL, abonelik fiyat 269 TL/ay. Baslatmak ister misiniz?"
+   Degiskenler: {{urun}}
+
+5. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Olur, baslatalim."
+   high_confidence → devam | low_confidence → action_handoff
+
+6. **utility_note** — Akis sonuc notu
+   text: "Abonelik Olusturuldu: [Urun] / Aylik / 269 TL. Recurring Revenue +269 TL/ay."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:6,tags:["E-ticaret","Abonelik Kutusu"]},{id:"s12",title:"Churn Prevention / Win-back",description:"Sessiz churn'u AI ile tespit edip (frekans dususu, negatif sentiment, cevapsizlik), risk seviyesine gore otomatik kurtarma aksiyonu alan ve kayip musterileri win-back kampanyasi ile geri kazanan sistem.",category:"EVRENSEL",niche:"universal",flowConfig:{version:2,metadata:{name:"S12: Frekans Dususu → Kurtarma",description:"Her ay siparis veren musteri 45 gundur almadi."},nodes:[{id:"trigger_start_1",type:"trigger_start",position:{x:300,y:50},data:{label:"CHURN ALERT: Musteri [Ad] — son 45 gundur siparis "}},{id:"message_text_2",type:"message_text",position:{x:300,y:200},data:{label:"Mesaj",text:"Merhaba [Ad]! Sizi ozledik! Son siparisinizdeki [Urun]'i begendiniz mi? Size ozel %20 indirim kodunuz: HOSGELDIN20"}},{id:"ai_intent_3",type:"ai_intent",position:{x:300,y:350},data:{label:"Yanit Analiz"}},{id:"ai_intent_4",type:"ai_intent",position:{x:300,y:500},data:{label:"Churn Sebebi Tespit: Fiyat hassasiyeti. Aksiyon: K"}},{id:"message_text_5",type:"message_text",position:{x:300,y:650},data:{label:"Mesaj",text:"Anliyoruz! Size ozel bir fiyat olusturabilriz. [Urun] icin: 399 TL yerine 319 TL (sadece sizin icin gecerli). Ilgilenir misiniz?"}},{id:"ai_intent_6",type:"ai_intent",position:{x:300,y:800},data:{label:"Yanit Analiz"}},{id:"utility_note_7",type:"utility_note",position:{x:300,y:950},data:{label:"Sonuc",text:"Churn KURTARILDI. Musteri aktif listeye geri alindi. Kurtarilan LTV: ~6.000 TL/yil."}}],edges:[{id:"e_trigger_start_1_message_text_2",source:"trigger_start_1",target:"message_text_2"},{id:"e_message_text_2_ai_intent_3",source:"message_text_2",target:"ai_intent_3",sourceHandle:"high_confidence"},{id:"e_ai_intent_3_ai_intent_4",source:"ai_intent_3",target:"ai_intent_4",sourceHandle:"high_confidence"},{id:"e_ai_intent_4_message_text_5",source:"ai_intent_4",target:"message_text_5"},{id:"e_message_text_5_ai_intent_6",source:"message_text_5",target:"ai_intent_6",sourceHandle:"high_confidence"},{id:"e_ai_intent_6_utility_note_7",source:"ai_intent_6",target:"utility_note_7"}],settings:{off_hours_message:"Su anda mesai saatleri disindayiz.",unknown_input_message:"Anlayamadim. Lutfen gecerli bir secenek girin.",handoff_confidence_threshold:.5,session_timeout_minutes:30,max_loop_count:10}},aiPrompt:`"Churn Prevention / Win-back" senaryosu icin "Frekans Dususu → Kurtarma" akisini olustur.
+
+Aciklama: Her ay siparis veren musteri 45 gundur almadi.
+
+## Node Zinciri
+
+1. **trigger_start** — Akis baslangici
+   Tetikleyici olay: CHURN ALERT: Musteri [Ad] — son 45 gundur siparis yok. Onceki frekans: ayda 2 siparis. Risk: HIGH.
+
+2. **message_text** — Mesaj gonder
+   text: "Merhaba [Ad]! Sizi ozledik! Son siparisinizdeki [Urun]'i begendiniz mi? Size ozel %20 indirim kodunuz: HOSGELDIN20"
+   Degiskenler: {{ad}}, {{urun}}
+
+3. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Tesekkurler, aslinda fiyatlar biraz artmisti."
+   high_confidence → devam | low_confidence → action_handoff
+
+4. **ai_intent** — Niyet tespiti
+   Analiz: Churn Sebebi Tespit: Fiyat hassasiyeti. Aksiyon: Kisisellestirilmis teklif.
+   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff
+
+5. **message_text** — Mesaj gonder
+   text: "Anliyoruz! Size ozel bir fiyat olusturabilriz. [Urun] icin: 399 TL yerine 319 TL (sadece sizin icin gecerli). Ilgilenir misiniz?"
+   Degiskenler: {{urun}}
+
+6. **ai_intent** — Musteri yanitini analiz et
+   Beklenen yanit: "Bu fiyat cok iyi, siparis veriyorum!"
+   high_confidence → devam | low_confidence → action_handoff
+
+7. **utility_note** — Akis sonuc notu
+   text: "Churn KURTARILDI. Musteri aktif listeye geri alindi. Kurtarilan LTV: ~6.000 TL/yil."
+
+## Hata Yonetimi
+- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder
+- Bilinmeyen yanit: ai_intent low_confidence → action_handoff
+- API hatasi: action_api_call error handle → action_handoff
+
+## Flow Ayarlari
+- session_timeout_minutes: 1440
+- handoff_confidence_threshold: 0.5
+- max_loop_count: 3
+`,nodeCount:7,tags:["Churn Risk","Proaktif Kurtarma"]}];export{e as FLOW_TEMPLATES,i as NICHE_LABELS};

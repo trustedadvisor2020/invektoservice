@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Smartphone, Info, Zap, BookOpen, ArrowUpRight, AlertTriangle, XCircle, Lightbulb, ShieldCheck } from 'lucide-react';
+import { CheckCircle, Smartphone, Info, Zap, BookOpen, ArrowUpRight, AlertTriangle, XCircle, Lightbulb, ShieldCheck, Copy, Check, Wand2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import Badge from './Badge';
 import Step from './Step';
@@ -88,6 +88,74 @@ const RequirementItem = ({ req, bulletColor }) => {
     );
 };
 
+const AiPromptTab = ({ flows, scenarioId }) => {
+    const [activePrompt, setActivePrompt] = useState(0);
+    const [copiedIdx, setCopiedIdx] = useState(null);
+
+    const handleCopy = (text, idx) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopiedIdx(idx);
+            setTimeout(() => setCopiedIdx(null), 2000);
+        });
+    };
+
+    const promptFlows = flows.filter(f => f.aiPrompt);
+
+    return (
+        <div className="animate-fade-in space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+                <Wand2 size={24} className="text-brand-600" />
+                <h2 className="text-2xl font-extrabold text-t-primary">Flow Designer Promptlari</h2>
+                <span className="text-sm text-t-muted">Her akis icin AI flow designer'a verilecek talimat</span>
+            </div>
+
+            {/* Flow selector */}
+            <div className="flex flex-wrap gap-3">
+                {promptFlows.map((flow, idx) => (
+                    <button
+                        key={flow.id || idx}
+                        onClick={() => setActivePrompt(idx)}
+                        className={`px-5 py-3 rounded-xl text-base font-bold transition-all shadow-sm border ${activePrompt === idx
+                            ? 'bg-brand-600 text-white border-brand-600 shadow-lg ring-4 ring-brand-100'
+                            : 'bg-surface text-t-secondary border-brand-100 hover:bg-brand-50 hover:border-brand-300'}`}
+                    >
+                        {idx + 1}. {flow.title}
+                    </button>
+                ))}
+            </div>
+
+            {/* Prompt display */}
+            {promptFlows[activePrompt] && (
+                <div className="relative">
+                    <div className="absolute top-4 right-4 z-10">
+                        <button
+                            onClick={() => handleCopy(promptFlows[activePrompt].aiPrompt, activePrompt)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 transition-colors shadow-lg"
+                        >
+                            {copiedIdx === activePrompt ? (
+                                <><Check size={16} /> Kopyalandi</>
+                            ) : (
+                                <><Copy size={16} /> Kopyala</>
+                            )}
+                        </button>
+                    </div>
+                    <div className="bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden">
+                        <div className="px-6 py-3 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+                            <Wand2 size={16} className="text-brand-400" />
+                            <span className="text-sm font-bold text-gray-300">
+                                {scenarioId.toUpperCase()} / {promptFlows[activePrompt].title}
+                            </span>
+                        </div>
+                        <pre className="p-6 pr-20 text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-[70vh] overflow-y-auto">
+                            {promptFlows[activePrompt].aiPrompt}
+                        </pre>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ScenarioPage = ({ data }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [activeFlow, setActiveFlow] = useState(0);
@@ -110,11 +178,14 @@ const ScenarioPage = ({ data }) => {
 
     const { id, title, subtitle, phase, category, description, overview, flows = [], tech, impact } = data;
 
+    const hasAiPrompts = flows.some(f => f.aiPrompt);
+
     const tabs = [
         { key: 'overview', label: 'GENEL BAKIS' },
         { key: 'scenarios', label: `SENARYO AKISLARI (${flows.length})` },
         { key: 'tech', label: 'TEKNIK DETAYLAR' },
         { key: 'test', label: 'TEST' },
+        ...(hasAiPrompts ? [{ key: 'aiPrompt', label: 'AI PROMPT' }] : []),
     ];
 
     return (
@@ -371,6 +442,11 @@ const ScenarioPage = ({ data }) => {
             {/* Tab: Test */}
             {activeTab === 'test' && (
                 <TestTab data={data} />
+            )}
+
+            {/* Tab: AI Prompt */}
+            {activeTab === 'aiPrompt' && hasAiPrompts && (
+                <AiPromptTab flows={flows} scenarioId={id} />
             )}
 
             {/* Acceptance Criteria & Business Metadata */}

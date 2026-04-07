@@ -8,14 +8,32 @@
   "description": "Hepsiburada, Trendyol gibi platformlarda kargo geciken siparislerde AI durumu sorgular, gecikme sebebini acikar ve musteriye bilgi verir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Marketplace — Hepsiburada, Trendyol)" },
-      { "label": "Sorun", "value": "Kargo gecikmesi en sik sikayet sebebi — musteri panik yaparak mesaj atiyor" },
-      { "label": "Deger", "value": "Proaktif gecikme bilgilendirmesi ile eskalasyon onlenir" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Marketplace — Hepsiburada, Trendyol)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kargo gecikmesi en sik sikayet sebebi — musteri panik yaparak mesaj atiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Proaktif gecikme bilgilendirmesi ile eskalasyon onlenir"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "E-com Integration (C11)", "color": "amber" },
-      { "name": "Outbound Engine (C10)", "color": "green" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "E-com Integration (C11)",
+        "color": "amber"
+      },
+      {
+        "name": "Outbound Engine (C10)",
+        "color": "green"
+      }
     ],
     "servicesNote": "AI kargo durumunu sorgular, gecikme sebebini belirler ve musteriye aciklayici bilgi verir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Gecikme Tespiti",
         "goal": "Gecikme sebebini bul",
         "badges": [
-          { "text": "Sistem (API)", "color": "purple" },
-          { "text": "Tenant (Kargo)", "color": "amber" }
+          {
+            "text": "Sistem (API)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kargo)",
+            "color": "amber"
+          }
         ],
         "content": "Kargo API'sinden son durum cekilir. Beklenen teslimat ile karsilastirilir."
       },
@@ -32,8 +56,14 @@
         "title": "Bilgilendirme",
         "goal": "Musteriye acikla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Iletisim)", "color": "green" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Iletisim)",
+            "color": "green"
+          }
         ],
         "content": "Gecikme sebebi + yeni tahmini teslimat tarihi + alternatiifler sunulur."
       }
@@ -45,36 +75,101 @@
       "title": "Hepsiburada Kargo Gecikmesi",
       "description": "Hepsiburada siparisinde kargo 5 gundur gelmedi.",
       "tags": [
-        { "text": "Gecikme", "color": "rose" },
-        { "text": "Hepsiburada", "color": "blue" }
+        {
+          "text": "Gecikme",
+          "color": "rose"
+        },
+        {
+          "text": "Hepsiburada",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Platform siparis API", "service": "Integrations", "page": "E-ticaret > Hepsiburada API", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Hepsiburada Merchant API erisimi gerekir" }
+          {
+            "text": "Platform siparis API",
+            "service": "Integrations",
+            "page": "E-ticaret > Hepsiburada API",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Hepsiburada Merchant API erisimi gerekir"
+          }
         ],
         "provider": [
-          { "text": "Gecikme analizi", "service": "AgentAI", "page": "Siparis Analizi > Gecikme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Beklenen vs gercek teslimat karsilastirmasi hazir" },
-          { "text": "Kargo durumu sorgulama", "service": "Integrations", "page": "Kargo > Durum", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Gercek zamanli kargo durum sorgulama hazir" }
+          {
+            "text": "Gecikme analizi",
+            "service": "AgentAI",
+            "page": "Siparis Analizi > Gecikme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Beklenen vs gercek teslimat karsilastirmasi hazir"
+          },
+          {
+            "text": "Kargo durumu sorgulama",
+            "service": "Integrations",
+            "page": "Kargo > Durum",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Gercek zamanli kargo durum sorgulama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Hepsiburada siparisim 5 gundur gelmedi!" },
-        { "role": "ai", "content": "Intent: Kargo Gecikmesi. Platform: Hepsiburada. Siparis: #334455. Beklenen: 3 gun. Gecen: 5 gun. Gecikme: 2 gun." },
-        { "role": "bot", "content": "Kontrol ettim! Siparisiniizin durumu:\n\n📦 Siparis: #334455\n🚚 Kargo: MNG Kargo\n📍 Son durum: Transfer merkezinde (Istanbul)\n⏰ Beklenen teslimat: 2 gun once\n📅 Yeni tahmini: Yarin\n\nGecikme kargo firmasinin yogunlugundan kaynakli. Yarin teslim edilmezse hemen iade/iptal islemine gecebiliriz." },
-        { "role": "user", "content": "Tamam, yarina kadar bekliyorum." },
-        { "role": "system", "content": "Gecikme bilgilendirmesi yapildi. T+1 takip notu ayarlandi." }
-      ]
+        {
+          "role": "user",
+          "content": "Hepsiburada siparisim 5 gundur gelmedi!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kargo Gecikmesi. Platform: Hepsiburada. Siparis: #334455. Beklenen: 3 gun. Gecen: 5 gun. Gecikme: 2 gun."
+        },
+        {
+          "role": "bot",
+          "content": "Kontrol ettim! Siparisiniizin durumu:\n\n📦 Siparis: #334455\n🚚 Kargo: MNG Kargo\n📍 Son durum: Transfer merkezinde (Istanbul)\n⏰ Beklenen teslimat: 2 gun once\n📅 Yeni tahmini: Yarin\n\nGecikme kargo firmasinin yogunlugundan kaynakli. Yarin teslim edilmezse hemen iade/iptal islemine gecebiliriz."
+        },
+        {
+          "role": "user",
+          "content": "Tamam, yarina kadar bekliyorum."
+        },
+        {
+          "role": "system",
+          "content": "Gecikme bilgilendirmesi yapildi. T+1 takip notu ayarlandi."
+        }
+      ],
+      "aiPrompt": "\"Platform Kargo Gecikmesi Yonetimi\" senaryosu icin \"Hepsiburada Kargo Gecikmesi\" akisini olustur.\n\nAciklama: Hepsiburada siparisinde kargo 5 gundur gelmedi.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Hepsiburada siparisim 5 gundur gelmedi!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kargo Gecikmesi. Platform: Hepsiburada. Siparis: #334455. Beklenen: 3 gun. Gecen: 5 gun. Gecikme: 2 gun.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Kontrol ettim! Siparisiniizin durumu:\n\n📦 Siparis: #334455\n🚚 Kargo: MNG Kargo\n📍 Son durum: Transfer merkezinde (Istanbul)\n⏰ Beklenen teslimat: 2 gun once\n📅 Yeni tahmini: Yarin\n\nGecikme kargo firmasinin yogunlugundan kaynakli. Yarin teslim edilmezse hemen iade/iptal islemine gecebiliriz.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tamam, yarina kadar bekliyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Gecikme bilgilendirmesi yapildi. T+1 takip notu ayarlandi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo E-ticaret API + Kargo API birlesiminde calisir. Gecikme tespiti ve yeni tahmini sure hesaplanir.",
     "backend": [
-      { "title": "Delay Detector", "goal": "Gecikme Tespiti", "content": "Beklenen teslimat tarihi ile gercek durumu karsilastirir. Gecikme sebebini kategorize eder." },
-      { "title": "ETA Recalculator", "goal": "Sure Guncelleme", "content": "Geciken siparisler icin yeni tahmini teslimat suresi hesaplar." }
+      {
+        "title": "Delay Detector",
+        "goal": "Gecikme Tespiti",
+        "content": "Beklenen teslimat tarihi ile gercek durumu karsilastirir. Gecikme sebebini kategorize eder."
+      },
+      {
+        "title": "ETA Recalculator",
+        "goal": "Sure Guncelleme",
+        "content": "Geciken siparisler icin yeni tahmini teslimat suresi hesaplar."
+      }
     ],
     "apis": [
-      { "title": "E-ticaret Platform API", "goal": "Siparis Durumu", "content": "Siparis detayi, beklenen teslimat ve gercek kargo durumu." },
-      { "title": "Kargo API", "goal": "Gercek Zamanli Takip", "content": "Kargo firmasi API ile son konum ve durum bilgisi." }
+      {
+        "title": "E-ticaret Platform API",
+        "goal": "Siparis Durumu",
+        "content": "Siparis detayi, beklenen teslimat ve gercek kargo durumu."
+      },
+      {
+        "title": "Kargo API",
+        "goal": "Gercek Zamanli Takip",
+        "content": "Kargo firmasi API ile son konum ve durum bilgisi."
+      }
     ]
   },
   "impact": {
@@ -83,9 +178,29 @@
     "resultLabel": "Onlenen Sikayet (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyDelays", "label": "Aylik Gecikme", "default": 20, "hint": "Geciken siparis sayisi", "editable": true },
-      { "key": "escalationRate", "label": "Eskalasyon Orani", "default": 50, "prefix": "%", "hint": "Sikayete donusme orani", "editable": true },
-      { "key": "escalationCost", "label": "Sikayet Maliyeti", "default": 200, "suffix": "TL", "hint": "Sikayet yonetim maliyeti", "editable": true }
+      {
+        "key": "monthlyDelays",
+        "label": "Aylik Gecikme",
+        "default": 20,
+        "hint": "Geciken siparis sayisi",
+        "editable": true
+      },
+      {
+        "key": "escalationRate",
+        "label": "Eskalasyon Orani",
+        "default": 50,
+        "prefix": "%",
+        "hint": "Sikayete donusme orani",
+        "editable": true
+      },
+      {
+        "key": "escalationCost",
+        "label": "Sikayet Maliyeti",
+        "default": 200,
+        "suffix": "TL",
+        "hint": "Sikayet yonetim maliyeti",
+        "editable": true
+      }
     ],
     "formula": "monthlyDelays * (escalationRate / 100) * escalationCost * 0.7",
     "formulaDisplay": null

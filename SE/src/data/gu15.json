@@ -8,13 +8,28 @@
   "description": "Sac boyama 6 haftada bir yapilmali ama hatirlatma yok, musteri unutuyor veya rakibe gidiyor. Son islem tarihi + hizmet frekansi bazli Outbound trigger ile proaktif hatirlatma sistemi.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Guzellik Salonu (Tekrarli Hizmet Yonetimi)" },
-      { "label": "Sorun", "value": "Musteriler ideal hizmet frekansini unutuyor — dip boyama gec kaliniyor, keratinin suresi doluyor" },
-      { "label": "Deger", "value": "Proaktif hatirlatma ile musteri sadakatini artirma ve tekrar ziyaret oranini %40 yukseltme" }
+      {
+        "label": "Sektor",
+        "value": "Guzellik Salonu (Tekrarli Hizmet Yonetimi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteriler ideal hizmet frekansini unutuyor — dip boyama gec kaliniyor, keratinin suresi doluyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Proaktif hatirlatma ile musteri sadakatini artirma ve tekrar ziyaret oranini %40 yukseltme"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Son islem tarihi ve hizmet bazli ideal frekans bilgisi kullanilarak Outbound tetikleyici ile otomatik hatirlatma mesaji gonderilir.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Frekans Hesaplama",
         "goal": "Hatirlatma zamanini belirle",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Hizmet Kurali)", "color": "amber" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Hizmet Kurali)",
+            "color": "amber"
+          }
         ],
         "content": "Her hizmet icin ideal tekrar frekansi tanimlanir: Dip boyama 6 hafta, keratin 3 ay, cilt bakimi 4 hafta. Sistem son islem tarihinden itibaren geri sayim baslatir."
       },
@@ -31,8 +52,14 @@
         "title": "Tetikleme",
         "goal": "Dogru zamanda hatirlatma",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (WA Hatti)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (WA Hatti)",
+            "color": "green"
+          }
         ],
         "content": "Frekans suresi dolmadan 3-5 gun once otomatik WhatsApp hatirlatma mesaji gonderilir."
       },
@@ -40,8 +67,14 @@
         "title": "Randevu Donusumu",
         "goal": "Hatirlatmayi randevuya cevir",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Takvim)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Takvim)",
+            "color": "blue"
+          }
         ],
         "content": "Musteri yanit verdiginde AI musait slotlari sunarak hizli randevu olusturur."
       }
@@ -53,61 +86,174 @@
       "title": "Dip Boyama Frekans Hatirlatmasi",
       "description": "Son dip boyamadan 5.5 hafta gecti, hatirlatma tetikleniyor.",
       "tags": [
-        { "text": "Proaktif", "color": "green" },
-        { "text": "Frekans", "color": "amber" }
+        {
+          "text": "Proaktif",
+          "color": "green"
+        },
+        {
+          "text": "Frekans",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Hizmet bazli frekans tanimlari", "service": "Backend", "page": "Hizmet Yonetimi > Frekans Ayarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Her hizmet kategorisi icin ideal tekrar suresini gun olarak girin" },
-          { "text": "Musteri islem gecmisi", "service": "Backend", "page": "CRM > Islem Gecmisi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Yapilan islemlerin tarih ve tur bilgisi kayit altinda olmali" }
+          {
+            "text": "Hizmet bazli frekans tanimlari",
+            "service": "Backend",
+            "page": "Hizmet Yonetimi > Frekans Ayarlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Her hizmet kategorisi icin ideal tekrar suresini gun olarak girin"
+          },
+          {
+            "text": "Musteri islem gecmisi",
+            "service": "Backend",
+            "page": "CRM > Islem Gecmisi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Yapilan islemlerin tarih ve tur bilgisi kayit altinda olmali"
+          }
         ],
         "provider": [
-          { "text": "Frekans bazli otomasyon tetikleyicisi", "service": "Automation", "page": "Otomasyon > Frekans Tetikleyicileri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Son islem + frekans kurali bazli otomatik tetikleme hazir" },
-          { "text": "Hatirlatma template mesaji", "service": "Outbound", "page": "Template Yonetimi > Hatirlatma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Meta onaylanmis hatirlatma sablonu hazir" }
+          {
+            "text": "Frekans bazli otomasyon tetikleyicisi",
+            "service": "Automation",
+            "page": "Otomasyon > Frekans Tetikleyicileri",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Son islem + frekans kurali bazli otomatik tetikleme hazir"
+          },
+          {
+            "text": "Hatirlatma template mesaji",
+            "service": "Outbound",
+            "page": "Template Yonetimi > Hatirlatma",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Meta onaylanmis hatirlatma sablonu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Otomasyon tetiklendi: Zeynep Kaya — son dip boyama 38 gun once (kural: 42 gun). Hatirlatma 4 gun once gonderiliyor." },
-        { "role": "bot", "content": "Merhaba Zeynep Hanim!\n\nSon dip boyamanizin uzerinden yaklasik 5.5 hafta gecti. Diplerinizdeki fark belirginlesmeden randevunuzu planlamak ister misiniz?\n\nBu hafta musait slotlarimiz:\nPersembe 14:00, 16:30\nCuma 10:00, 13:00\n\nHemen rezervasyon yapalim mi?" },
-        { "role": "user", "content": "Persembe 16:30 uygun" },
-        { "role": "bot", "content": "Randevunuz olusturuldu!\n\nTarih: Persembe, 16:30\nHizmet: Dip Boyama\nKuafor: Selin Hanim\n\nRandevunuzdan 1 gun once hatirlatma gonderecegiz. Gorusmek uzere!" },
-        { "role": "system", "content": "Frekans hatirlatmasi basarili. Musteri yanit suresi: 12 dakika. Randevu olusturuldu." }
-      ]
+        {
+          "role": "system",
+          "content": "Otomasyon tetiklendi: Zeynep Kaya — son dip boyama 38 gun once (kural: 42 gun). Hatirlatma 4 gun once gonderiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Zeynep Hanim!\n\nSon dip boyamanizin uzerinden yaklasik 5.5 hafta gecti. Diplerinizdeki fark belirginlesmeden randevunuzu planlamak ister misiniz?\n\nBu hafta musait slotlarimiz:\nPersembe 14:00, 16:30\nCuma 10:00, 13:00\n\nHemen rezervasyon yapalim mi?"
+        },
+        {
+          "role": "user",
+          "content": "Persembe 16:30 uygun"
+        },
+        {
+          "role": "bot",
+          "content": "Randevunuz olusturuldu!\n\nTarih: Persembe, 16:30\nHizmet: Dip Boyama\nKuafor: Selin Hanim\n\nRandevunuzdan 1 gun once hatirlatma gonderecegiz. Gorusmek uzere!"
+        },
+        {
+          "role": "system",
+          "content": "Frekans hatirlatmasi basarili. Musteri yanit suresi: 12 dakika. Randevu olusturuldu."
+        }
+      ],
+      "aiPrompt": "\"Frekans Hatirlatma\" senaryosu icin \"Dip Boyama Frekans Hatirlatmasi\" akisini olustur.\n\nAciklama: Son dip boyamadan 5.5 hafta gecti, hatirlatma tetikleniyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Otomasyon tetiklendi: Zeynep Kaya — son dip boyama 38 gun once (kural: 42 gun). Hatirlatma 4 gun once gonderiliyor.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba Zeynep Hanim!\n\nSon dip boyamanizin uzerinden yaklasik 5.5 hafta gecti. Diplerinizdeki fark belirginlesmeden randevunuzu planlamak ister misiniz?\n\nBu hafta musait slotlarimiz:\nPersembe 14:00, 16:30\nCuma 10:00, 13:00\n\nHemen rezervasyon yapalim mi?\"\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Persembe 16:30 uygun\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Randevunuz olusturuldu!\n\nTarih: Persembe, 16:30\nHizmet: Dip Boyama\nKuafor: Selin Hanim\n\nRandevunuzdan 1 gun once hatirlatma gonderecegiz. Gorusmek uzere!\"\n\n5. **action_delay** — 12 dk bekle\n   seconds: 300\n   Not: Frekans hatirlatmasi basarili. Musteri yanit suresi: 12 dakika. Randevu olusturuldu.\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Keratin Bakim Suresi Dolumu",
       "description": "Keratin bakim suresi 3 ay dolmak uzere, yenileme hatirlatmasi.",
       "tags": [
-        { "text": "Proaktif", "color": "green" },
-        { "text": "Bakim", "color": "blue" }
+        {
+          "text": "Proaktif",
+          "color": "green"
+        },
+        {
+          "text": "Bakim",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Keratin islem kaydi", "service": "Backend", "page": "CRM > Islem Gecmisi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Keratin islem tarihi ve kullanilan urun bilgisi kayitli olmali" }
+          {
+            "text": "Keratin islem kaydi",
+            "service": "Backend",
+            "page": "CRM > Islem Gecmisi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Keratin islem tarihi ve kullanilan urun bilgisi kayitli olmali"
+          }
         ],
         "provider": [
-          { "text": "Uzun donem frekans takibi", "service": "Automation", "page": "Otomasyon > Uzun Donem Tetikleyiciler", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "90+ gun frekansli islemler icin uzun donem tetikleyici hazir" }
+          {
+            "text": "Uzun donem frekans takibi",
+            "service": "Automation",
+            "page": "Otomasyon > Uzun Donem Tetikleyiciler",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "90+ gun frekansli islemler icin uzun donem tetikleyici hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Otomasyon tetiklendi: Elif Arslan — son keratin 82 gun once (kural: 90 gun). Yenileme hatirlatmasi." },
-        { "role": "bot", "content": "Merhaba Elif Hanim!\n\nKeratin bakiminizin suresi dolmak uzere. Etkinligini kaybetmeden yeniletmenizi oneririz.\n\nErken yenileme avantaji: Saclariniz hic mat donem yasanmadan parlak kalir!\n\nBu hafta veya gelecek hafta musait misiniz?" },
-        { "role": "user", "content": "Gelecek hafta olabilir, fiyati ne kadardi?" },
-        { "role": "bot", "content": "Keratin bakim fiyatimiz 2.500 TL.\n\nAyrica tekrar gelen musterilerimize %10 sadakat indirimi uyguluyoruz: 2.250 TL\n\nGelecek hafta musait gunlerimiz:\nSali 11:00, 14:00\nPersembe 10:00, 15:00\n\nHangisi uygun olur?" },
-        { "role": "user", "content": "Sali 14 olsun" },
-        { "role": "system", "content": "Randevu olusturuldu. Keratin yenileme — Sali 14:00. Sadakat indirimi uygulandi." }
-      ]
+        {
+          "role": "system",
+          "content": "Otomasyon tetiklendi: Elif Arslan — son keratin 82 gun once (kural: 90 gun). Yenileme hatirlatmasi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Elif Hanim!\n\nKeratin bakiminizin suresi dolmak uzere. Etkinligini kaybetmeden yeniletmenizi oneririz.\n\nErken yenileme avantaji: Saclariniz hic mat donem yasanmadan parlak kalir!\n\nBu hafta veya gelecek hafta musait misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Gelecek hafta olabilir, fiyati ne kadardi?"
+        },
+        {
+          "role": "bot",
+          "content": "Keratin bakim fiyatimiz 2.500 TL.\n\nAyrica tekrar gelen musterilerimize %10 sadakat indirimi uyguluyoruz: 2.250 TL\n\nGelecek hafta musait gunlerimiz:\nSali 11:00, 14:00\nPersembe 10:00, 15:00\n\nHangisi uygun olur?"
+        },
+        {
+          "role": "user",
+          "content": "Sali 14 olsun"
+        },
+        {
+          "role": "system",
+          "content": "Randevu olusturuldu. Keratin yenileme — Sali 14:00. Sadakat indirimi uygulandi."
+        }
+      ],
+      "aiPrompt": "\"Frekans Hatirlatma\" senaryosu icin \"Keratin Bakim Suresi Dolumu\" akisini olustur.\n\nAciklama: Keratin bakim suresi 3 ay dolmak uzere, yenileme hatirlatmasi.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Otomasyon tetiklendi: Elif Arslan — son keratin 82 gun once (kural: 90 gun). Yenileme hatirlatmasi.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba Elif Hanim!\n\nKeratin bakiminizin suresi dolmak uzere. Etkinligini kaybetmeden yeniletmenizi oneririz.\n\nErken yenileme avantaji: Saclariniz hic mat donem yasanmadan parlak kalir!\n\nBu hafta veya gelecek hafta musait misiniz?\"\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Gelecek hafta olabilir, fiyati ne kadardi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Keratin bakim fiyatimiz 2.500 TL.\n\nAyrica tekrar gelen musterilerimize %10 sadakat indirimi uyguluyoruz: 2.250 TL\n\nGelecek hafta musait gunlerimiz:\nSali 11:00, 14:00\nPersembe 10:00, 15:00\n\nHangisi uygun olur?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Sali 14 olsun\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Randevu olusturuldu. Keratin yenileme — Sali 14:00. Sadakat indirimi uygulandi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Frekans bazli otomasyon sistemi her gece batch job ile butun musteri islem kayitlarini tarar ve yaklasan frekans esiklerini tespit eder.",
     "backend": [
-      { "title": "Frequency Calculator", "goal": "Frekans Hesaplama", "content": "Hizmet bazli ideal frekans kurallarini musteri islem gecmisiyle eslestirerek hatirlatma zamanini hesaplar." },
-      { "title": "Reminder Scheduler", "goal": "Hatirlatma Zamanlama", "content": "Frekans esiginden X gun once (yapilandirma ile) otomatik mesaj kuyruklayan batch job." }
+      {
+        "title": "Frequency Calculator",
+        "goal": "Frekans Hesaplama",
+        "content": "Hizmet bazli ideal frekans kurallarini musteri islem gecmisiyle eslestirerek hatirlatma zamanini hesaplar."
+      },
+      {
+        "title": "Reminder Scheduler",
+        "goal": "Hatirlatma Zamanlama",
+        "content": "Frekans esiginden X gun once (yapilandirma ile) otomatik mesaj kuyruklayan batch job."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Business API", "goal": "Hatirlatma Gonderimi", "content": "Meta onaylanmis template mesajlari ile frekans bazli hatirlatma gonderimi." }
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Hatirlatma Gonderimi",
+        "content": "Meta onaylanmis template mesajlari ile frekans bazli hatirlatma gonderimi."
+      }
     ]
   },
   "impact": {
@@ -116,9 +262,29 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyEligibleCustomers", "label": "Aylik Hatirlatma Gonderilen Musteri", "default": 80, "hint": "Frekansi dolan musteri sayisi", "editable": true },
-      { "key": "returnRate", "label": "Geri Donus Orani", "default": 35, "prefix": "%", "hint": "Hatirlatma sonrasi randevu alan oran", "editable": true },
-      { "key": "avgServiceValue", "label": "Ort. Hizmet Bedeli", "default": 1200, "suffix": "TL", "hint": "Ortalama islem tutari", "editable": true }
+      {
+        "key": "monthlyEligibleCustomers",
+        "label": "Aylik Hatirlatma Gonderilen Musteri",
+        "default": 80,
+        "hint": "Frekansi dolan musteri sayisi",
+        "editable": true
+      },
+      {
+        "key": "returnRate",
+        "label": "Geri Donus Orani",
+        "default": 35,
+        "prefix": "%",
+        "hint": "Hatirlatma sonrasi randevu alan oran",
+        "editable": true
+      },
+      {
+        "key": "avgServiceValue",
+        "label": "Ort. Hizmet Bedeli",
+        "default": 1200,
+        "suffix": "TL",
+        "hint": "Ortalama islem tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlyEligibleCustomers * (returnRate / 100) * avgServiceValue",
     "formulaDisplay": null

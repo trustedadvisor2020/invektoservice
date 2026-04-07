@@ -5,12 +5,12 @@
 
 ## Last Update
 
-- **Date:** 2026-04-06
-- **Status:** DONE. Translation Gemma 4 migration + LLM anti-leak patch (4 servis).
-- **Last Task:** (1) TranslationService Gemma 4 primary + Haiku fallback. Google AI Studio API entegrasyonu. (2) System prompt anti-leak fix — chain-of-thought sızıntısı ve devrik çeviri düzeltildi. (3) WebChat AIReplyService, Automation ChunkSummarizer, Marketing TourismResponseGenerator prompt'larına anti-leak kuralları eklendi. (4) 4 servis deploy (Backend, WebChat, Automation, Marketing). (5) Translation cache temizlendi.
-- **Files Changed:** EDIT: TranslationService.cs (Gemma primary + Haiku fallback + prompt fix), appsettings.json (Google section), AIReplyService.cs (anti-leak), ChunkSummarizer.cs (anti-leak + dil algılama), TourismResponseGenerator.cs (anti-leak + katalog dışı tedavi yasağı)
+- **Date:** 2026-04-07
+- **Status:** DONE. Flow Template Gallery — 182 SE senaryo → FlowConfigV2 şablon, Dashboard galeri sayfası + modal + AI wizard auto-open.
+- **Last Task:** (1) SE JSON → FlowConfigV2 converter script (generate-flow-templates.cjs). (2) 182 şablon static TypeScript data (flow-templates.ts). (3) FlowTemplateGalleryPage — sektör filtresi + arama + kartlar. (4) FlowListPage "Yeni Flow" → şablon seçim modalı. (5) FlowEditorPage şablon yüklenince AI wizard otomatik açılır. (6) SE ScenarioPage.jsx'e "AI PROMPT" sekmesi (flow designer promptları). (7) SE flow'lara aiPrompt alanı (generate-ai-prompts.cjs).
+- **Files Changed:** NEW: SE/scripts/generate-flow-templates.cjs, SE/scripts/generate-ai-prompts.cjs, Dashboard/src/data/flow-templates.ts, Dashboard/src/pages/FlowTemplateGalleryPage.tsx. EDIT: Dashboard/src/components/Layout.tsx (+nav), Dashboard/src/App.tsx (+route), Dashboard/src/pages/flow-builder/FlowListPage.tsx (template modal), Dashboard/src/pages/flow-builder/FlowEditorPage.tsx (AI wizard auto-open), Dashboard/package.json (+gen:templates), SE/src/components/ScenarioPage.jsx (AI PROMPT tab), SE/src/data/*.json (182 files — aiPrompt field).
 - **Next Task:** PKT-13 Faz 1 (Lead Scoring)
-- **Strateji:** LLM prompt hardening done → PKT-13
+- **Strateji:** Template gallery done → PKT-13 veya template DB migration (Phase 2 hibrit)
 
 ## Execution Queue
 
@@ -22,6 +22,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-07 | Flow Template Gallery: 182 SE senaryo → FlowConfigV2 converter + static data. Dashboard galeri sayfası (/flow-templates) + FlowListPage şablon modal + FlowEditorPage AI wizard auto-open. SE AI PROMPT sekmesi. |
 | 2026-04-06 | Translation Gemma 4 migration + LLM anti-leak patch. TranslationService: Gemma 4 primary (Google AI Studio) + Haiku fallback. System prompt hardening: chain-of-thought sızıntısı fix, devrik çeviri fix, 4 servise anti-leak kuralları (WebChat, Automation, Marketing, Backend). 4 servis deploy. |
 | 2026-04-01 | HOTFIX: Translate 401 fix + tenant auto-provision. JWT middleware bypass, inma_code kolonu (migration 009), ResolveTranslateTenantAsync (string code → auto-provision tenant_registry), 3x Backend deploy. Voila tenant_id=14120748 otomatik oluşturuldu. |
 | 2026-03-27 | PKT-11 Faz 1: VoiceAI MVP. Invekto.VoiceAI microservice (port 7114), Whisper API STT, VoiceTranscriptionService orchestrator, Backend proxy + health + discovery. 15 files, 1161 insertions. Codex iter 1 Q FORCE PASS (CQ5 fixed, CQ11/Q1/CQ10/CQ12 false positive). |

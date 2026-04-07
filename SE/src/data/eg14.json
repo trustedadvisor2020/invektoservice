@@ -8,14 +8,32 @@
   "description": "Ogrenci mevcut kursundan baska bir gruba veya programa gecmek istiyor. AI transfer intent'ini tespit edip musait grup bilgisi sunarak sureci hizlandiran senaryo.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Akademi)" },
-      { "label": "Sorun", "value": "Ogrenci transfer talebi telefonla geliyor, musait grup bilgisi aninda verilemiyor — ogrenci bekliyor veya vazgeciyor" },
-      { "label": "Deger", "value": "AI aninda musait grup onerisi sunarak transfer surecini hizlandirir, ogrenci kaybini onler" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Akademi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Ogrenci transfer talebi telefonla geliyor, musait grup bilgisi aninda verilemiyor — ogrenci bekliyor veya vazgeciyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI aninda musait grup onerisi sunarak transfer surecini hizlandirir, ogrenci kaybini onler"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI transfer intent'ini yakalar, Knowledge Base'den musait grup ve saat bilgisini ceker, ogrenciye uygun secenekleri sunar.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Transfer Talebi Algilama",
         "goal": "Transfer intent'ini tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (CRM)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (CRM)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'grup degistirmek istiyorum', 'baska saatte ders var mi', 'transfer olabilir miyim' gibi ifadeleri otomatik tespit eder."
       },
@@ -32,8 +56,14 @@
         "title": "Musait Grup Sorgulama",
         "goal": "Uygun alternatifleri bul",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Takvim)", "color": "amber" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Takvim)",
+            "color": "amber"
+          }
         ],
         "content": "Knowledge Base'den ogrencinin seviyesine uygun, kontenjan acik gruplarin gun/saat bilgisi cekilir."
       },
@@ -41,8 +71,14 @@
         "title": "Transfer Onay ve Bilgilendirme",
         "goal": "Sureci tamamla",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Koordinator)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Koordinator)",
+            "color": "green"
+          }
         ],
         "content": "Ogrenci secimini yapar, koordinatore bildirim gider, yeni gruba kayit islemi baslatilir."
       }
@@ -54,39 +90,125 @@
       "title": "Standart Grup Transfer Talebi",
       "description": "Ogrenci mevcut grubundan baska bir saatteki gruba gecmek istiyor.",
       "tags": [
-        { "text": "Transfer", "color": "amber" },
-        { "text": "Grup Degisikligi", "color": "blue" }
+        {
+          "text": "Transfer",
+          "color": "amber"
+        },
+        {
+          "text": "Grup Degisikligi",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Grup ve kontenjan bilgileri", "service": "Knowledge", "page": "Egitim > Grup Tanimlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Her grup icin seviye, gun/saat, kontenjan ve mevcut ogrenci sayisini girin" },
-          { "text": "Transfer politikasi kurallari", "service": "Knowledge", "page": "Egitim > Transfer Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Transfer icin son tarih, ucret farki gibi kurallari tanimlayin" }
+          {
+            "text": "Grup ve kontenjan bilgileri",
+            "service": "Knowledge",
+            "page": "Egitim > Grup Tanimlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Her grup icin seviye, gun/saat, kontenjan ve mevcut ogrenci sayisini girin"
+          },
+          {
+            "text": "Transfer politikasi kurallari",
+            "service": "Knowledge",
+            "page": "Egitim > Transfer Politikasi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Transfer icin son tarih, ucret farki gibi kurallari tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Transfer intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Egitim", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Grup degisikligi / transfer intent'i varsayilan olarak tanimli" },
-          { "text": "Musait grup sorgulama", "service": "Knowledge", "page": "Knowledge Base > Grup Bilgileri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Seviyeye gore musait gruplari filtreleme hazir" },
-          { "text": "Koordinator bildirim sablonu", "service": "Backend", "page": "Bildirimler > Transfer Talepleri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Transfer talebi koordinatore otomatik iletilir" }
+          {
+            "text": "Transfer intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Egitim",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Grup degisikligi / transfer intent'i varsayilan olarak tanimli"
+          },
+          {
+            "text": "Musait grup sorgulama",
+            "service": "Knowledge",
+            "page": "Knowledge Base > Grup Bilgileri",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Seviyeye gore musait gruplari filtreleme hazir"
+          },
+          {
+            "text": "Koordinator bildirim sablonu",
+            "service": "Backend",
+            "page": "Bildirimler > Transfer Talepleri",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Transfer talebi koordinatore otomatik iletilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, su an Sali-Persembe grubundayim ama is saatlerim degisti. Baska bir gruba gecebilir miyim?" },
-        { "role": "ai", "content": "Intent: Grup Transfer Talebi. Mevcut: Sali-Persembe. Seviye: B1. Musait gruplar sorgulanacak." },
-        { "role": "bot", "content": "Merhaba Elif Hanim! Grup degisikligi talebinizi aldim. B1 seviyesinde su gruplarda kontenjan mevcut:\n\n1. Pazartesi-Carsamba 19:00-20:30 (3 kontenjan)\n2. Cumartesi 10:00-13:00 (5 kontenjan)\n\nHangi secenegi tercih edersiniz?" },
-        { "role": "user", "content": "Pazartesi-Carsamba grubu uygun olur." },
-        { "role": "bot", "content": "Harika! Pazartesi-Carsamba 19:00-20:30 grubuna transfer talebinizi olusturdun. Koordinatorumuz en gec yarin sizi bilgilendirecektir. Yeni grubunuza gelecek hafta baslamis olacaksiniz." },
-        { "role": "system", "content": "Transfer talebi olusturuldu. Koordinore bildirim gonderildi. Ogrenci: Elif K. — B1 Sali-Persembe -> Pazartesi-Carsamba." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, su an Sali-Persembe grubundayim ama is saatlerim degisti. Baska bir gruba gecebilir miyim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Grup Transfer Talebi. Mevcut: Sali-Persembe. Seviye: B1. Musait gruplar sorgulanacak."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Elif Hanim! Grup degisikligi talebinizi aldim. B1 seviyesinde su gruplarda kontenjan mevcut:\n\n1. Pazartesi-Carsamba 19:00-20:30 (3 kontenjan)\n2. Cumartesi 10:00-13:00 (5 kontenjan)\n\nHangi secenegi tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Pazartesi-Carsamba grubu uygun olur."
+        },
+        {
+          "role": "bot",
+          "content": "Harika! Pazartesi-Carsamba 19:00-20:30 grubuna transfer talebinizi olusturdun. Koordinatorumuz en gec yarin sizi bilgilendirecektir. Yeni grubunuza gelecek hafta baslamis olacaksiniz."
+        },
+        {
+          "role": "system",
+          "content": "Transfer talebi olusturuldu. Koordinore bildirim gonderildi. Ogrenci: Elif K. — B1 Sali-Persembe -> Pazartesi-Carsamba."
+        }
+      ],
+      "aiPrompt": "\"Kurs Degisikligi / Transfer\" senaryosu icin \"Standart Grup Transfer Talebi\" akisini olustur.\n\nAciklama: Ogrenci mevcut grubundan baska bir saatteki gruba gecmek istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, su an Sali-Persembe grubundayim ama is saatlerim degisti. Baska bir gruba gecebilir miyim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Grup Transfer Talebi. Mevcut: Sali-Persembe. Seviye: B1. Musait gruplar sorgulanacak.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba Elif Hanim! Grup degisikligi talebinizi aldim. B1 seviyesinde su gruplarda kontenjan mevcut:\n\n1. Pazartesi-Carsamba 19:00-20:30 (3 kontenjan)\n2. Cumartesi 10:00-13:00 (5 kontenjan)\n\nHangi secenegi tercih edersiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Pazartesi-Carsamba grubu uygun olur.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Harika! Pazartesi-Carsamba 19:00-20:30 grubuna transfer talebinizi olusturdun. Koordinatorumuz en gec yarin sizi bilgilendirecektir. Yeni grubunuza gelecek hafta baslamis olacaksiniz.\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Transfer talebi olusturuldu. Koordinore bildirim gonderildi. Ogrenci: Elif K. — B1 Sali-Persembe -> Pazartesi-Carsamba.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI intent tespiti + Knowledge Base grup bilgisi ile calisir. Transfer talebi koordinatore otomatik iletilir.",
     "backend": [
-      { "title": "Transfer Request Handler", "goal": "Talep Yonetimi", "content": "Transfer talebini kaydeder, mevcut ve hedef grup bilgisini eslestirir, koordinatore bildirim gonderir." },
-      { "title": "Group Availability Engine", "goal": "Kontenjan Kontrolu", "content": "Seviyeye gore musait gruplari, kontenjan durumunu ve gun/saat bilgisini sorgular." }
+      {
+        "title": "Transfer Request Handler",
+        "goal": "Talep Yonetimi",
+        "content": "Transfer talebini kaydeder, mevcut ve hedef grup bilgisini eslestirir, koordinatore bildirim gonderir."
+      },
+      {
+        "title": "Group Availability Engine",
+        "goal": "Kontenjan Kontrolu",
+        "content": "Seviyeye gore musait gruplari, kontenjan durumunu ve gun/saat bilgisini sorgular."
+      }
     ],
     "apis": [
-      { "title": "Knowledge Base API", "goal": "Grup Bilgisi", "content": "Grup tanimlari, seviye eslesmesi, kontenjan durumu ve takvim bilgisi sorgulama." },
-      { "title": "Notification API", "goal": "Koordinator Bildirimi", "content": "Transfer talebi olusturuldugunda koordinatore WhatsApp/email bildirim gonderimi." }
+      {
+        "title": "Knowledge Base API",
+        "goal": "Grup Bilgisi",
+        "content": "Grup tanimlari, seviye eslesmesi, kontenjan durumu ve takvim bilgisi sorgulama."
+      },
+      {
+        "title": "Notification API",
+        "goal": "Koordinator Bildirimi",
+        "content": "Transfer talebi olusturuldugunda koordinatore WhatsApp/email bildirim gonderimi."
+      }
     ]
   },
   "impact": {
@@ -95,9 +217,29 @@
     "resultLabel": "Kurtarilan Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyTransferRequests", "label": "Aylik Transfer Talebi", "default": 15, "hint": "Aylik gelen transfer talebi sayisi", "editable": true },
-      { "key": "retentionRate", "label": "Tutma Orani", "default": 80, "suffix": "%", "hint": "Hizli transfer ile tutulan ogrenci orani", "editable": true },
-      { "key": "avgCourseRevenue", "label": "Ort. Kurs Geliri", "default": 5000, "suffix": "TL", "hint": "Ogrenci basina ortalama donem geliri", "editable": true }
+      {
+        "key": "monthlyTransferRequests",
+        "label": "Aylik Transfer Talebi",
+        "default": 15,
+        "hint": "Aylik gelen transfer talebi sayisi",
+        "editable": true
+      },
+      {
+        "key": "retentionRate",
+        "label": "Tutma Orani",
+        "default": 80,
+        "suffix": "%",
+        "hint": "Hizli transfer ile tutulan ogrenci orani",
+        "editable": true
+      },
+      {
+        "key": "avgCourseRevenue",
+        "label": "Ort. Kurs Geliri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "Ogrenci basina ortalama donem geliri",
+        "editable": true
+      }
     ],
     "formula": "monthlyTransferRequests * (retentionRate / 100) * avgCourseRevenue",
     "formulaDisplay": null

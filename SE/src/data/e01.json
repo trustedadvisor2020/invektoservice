@@ -8,15 +8,36 @@
   "description": "Musteri kargo takip bilgisi istediginde AI siparis numarasini eslestirir ve takip linkini aninda gonderir. En sik gelen soru tipini (%40) tamamen otomatiklestiren sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar — Trendyol, Hepsiburada, Shopify, WooCommerce)" },
-      { "label": "Sorun", "value": "Kargo nerede? sorusu tum mesajlarin %40'i — agent'ler tekrar tekrar ayni bilgiyi veriyor" },
-      { "label": "Deger", "value": "Aninda cevap = musteri memnuniyeti + agent zamanini degerli islere kaydirma" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Tum Platformlar — Trendyol, Hepsiburada, Shopify, WooCommerce)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kargo nerede? sorusu tum mesajlarin %40'i — agent'ler tekrar tekrar ayni bilgiyi veriyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda cevap = musteri memnuniyeti + agent zamanini degerli islere kaydirma"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "E-com Integration (C11)", "color": "amber" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "E-com Integration (C11)",
+        "color": "amber"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Siparis API entegrasyonu ile gercek zamanli kargo durumu cekilir. AI musteri mesajindan siparis numarasini cikarir veya telefon numarasindan son siparisi eslestirir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Mesaj Algilama",
         "goal": "Kargo sorusunu tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'kargom nerede', 'takip linki', 'ne zaman gelir' gibi intent'leri otomatik tespit eder."
       },
@@ -33,8 +60,14 @@
         "title": "Siparis Eslestirme",
         "goal": "Dogru siparisi bul",
         "badges": [
-          { "text": "Sistem (API)", "color": "purple" },
-          { "text": "Tenant (Platform)", "color": "amber" }
+          {
+            "text": "Sistem (API)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Platform)",
+            "color": "amber"
+          }
         ],
         "content": "Musteri telefon numarasindan veya siparis numarasindan dogru kaydi bulur. Birden fazla siparis varsa liste sunar."
       },
@@ -42,8 +75,14 @@
         "title": "Takip Bilgisi Gonderimi",
         "goal": "Aninda bilgilendir",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Kargo Firmasi)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kargo Firmasi)",
+            "color": "green"
+          }
         ],
         "content": "Kargo firmasi, takip numarasi ve takip linki ile birlikte tahmini teslimat tarihini gonderir."
       }
@@ -55,63 +94,189 @@
       "title": "Standart Kargo Takip Sorusu",
       "description": "Musteri siparis numarasi vererek kargo durumunu soruyor.",
       "tags": [
-        { "text": "Otomatik", "color": "green" },
-        { "text": "Kargo Takip", "color": "blue" }
+        {
+          "text": "Otomatik",
+          "color": "green"
+        },
+        {
+          "text": "Kargo Takip",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kargo firmasi API anahtari", "service": "Integrations", "page": "Kargo Entegrasyonlari > API Anahtarlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Kargo firmasi panelinden API anahtarini alin ve entegrasyon sayfasina girin" },
-          { "text": "Siparis-kargo eslestirme", "service": "Backend", "page": "Siparis Yonetimi > Kargo Eslestirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform siparislerinin kargo takip numaralariyla eslesmesi gerekir" }
+          {
+            "text": "Kargo firmasi API anahtari",
+            "service": "Integrations",
+            "page": "Kargo Entegrasyonlari > API Anahtarlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Kargo firmasi panelinden API anahtarini alin ve entegrasyon sayfasina girin"
+          },
+          {
+            "text": "Siparis-kargo eslestirme",
+            "service": "Backend",
+            "page": "Siparis Yonetimi > Kargo Eslestirme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Platform siparislerinin kargo takip numaralariyla eslesmesi gerekir"
+          }
         ],
         "provider": [
-          { "text": "Kargo intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Kargo", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kargo takip intent'i varsayilan olarak tanimli" },
-          { "text": "Siparis API entegrasyonu", "service": "Integrations", "page": "E-ticaret > Siparis API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Trendyol, Hepsiburada, Shopify siparis cekim API'si hazir" }
+          {
+            "text": "Kargo intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Kargo",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Kargo takip intent'i varsayilan olarak tanimli"
+          },
+          {
+            "text": "Siparis API entegrasyonu",
+            "service": "Integrations",
+            "page": "E-ticaret > Siparis API",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Trendyol, Hepsiburada, Shopify siparis cekim API'si hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Kargom nerede? Takip linki atar misin? Siparis numaram 12345678." },
-        { "role": "ai", "content": "Intent: Kargo Takip. Siparis No: 12345678. Platform: Trendyol. Kargo: Yurtici." },
-        { "role": "bot", "content": "Merhaba! Siparisinisin durumu:\n\n📦 Siparis: #12345678\n🚚 Kargo: Yurtici Kargo\n📍 Durum: Dagitima cikti\n📅 Tahmini Teslimat: Bugun 14:00-18:00\n\nTakip linki: [Yurtici Takip Linki]" },
-        { "role": "user", "content": "Tesekkurler!" },
-        { "role": "system", "content": "Otomatik cozum: Kargo takip bilgisi gonderildi. Agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Kargom nerede? Takip linki atar misin? Siparis numaram 12345678."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kargo Takip. Siparis No: 12345678. Platform: Trendyol. Kargo: Yurtici."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Siparisinisin durumu:\n\n📦 Siparis: #12345678\n🚚 Kargo: Yurtici Kargo\n📍 Durum: Dagitima cikti\n📅 Tahmini Teslimat: Bugun 14:00-18:00\n\nTakip linki: [Yurtici Takip Linki]"
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler!"
+        },
+        {
+          "role": "system",
+          "content": "Otomatik cozum: Kargo takip bilgisi gonderildi. Agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Kargo Takip Otomasyonu\" senaryosu icin \"Standart Kargo Takip Sorusu\" akisini olustur.\n\nAciklama: Musteri siparis numarasi vererek kargo durumunu soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kargom nerede? Takip linki atar misin? Siparis numaram 12345678.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kargo Takip. Siparis No: 12345678. Platform: Trendyol. Kargo: Yurtici.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Siparisinisin durumu:\n\n📦 Siparis: #12345678\n🚚 Kargo: Yurtici Kargo\n📍 Durum: Dagitima cikti\n📅 Tahmini Teslimat: Bugun 14:00-18:00\n\nTakip linki: [Yurtici Takip Linki]\"\n   Degiskenler: {{yurtici_takip_linki}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Otomatik cozum: Kargo takip bilgisi gonderildi. Agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Siparis Numarasi Olmadan Sorgulama",
       "description": "Musteri siparis numarasi vermeden kargo soruyor, AI telefon numarasindan eslestirir.",
       "tags": [
-        { "text": "Akilli Eslestirme", "color": "purple" },
-        { "text": "Kargo Takip", "color": "blue" }
+        {
+          "text": "Akilli Eslestirme",
+          "color": "purple"
+        },
+        {
+          "text": "Kargo Takip",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Musteri telefon-siparis eslestirmesi", "service": "Backend", "page": "CRM > Musteri Profili", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Musteri telefon numarasi ile siparis kayitlarinin eslesmesi gerekir" }
+          {
+            "text": "Musteri telefon-siparis eslestirmesi",
+            "service": "Backend",
+            "page": "CRM > Musteri Profili",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Musteri telefon numarasi ile siparis kayitlarinin eslesmesi gerekir"
+          }
         ],
         "provider": [
-          { "text": "Telefon bazli siparis arama", "service": "Integrations", "page": "E-ticaret > Musteri Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Telefon numarasindan son siparisleri listeleme hazir" },
-          { "text": "Coklu siparis secim akisi", "service": "AgentAI", "page": "Dialog Akislari > Siparis Secimi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Birden fazla siparis varsa musteri secimi icin dialog akisi hazir" }
+          {
+            "text": "Telefon bazli siparis arama",
+            "service": "Integrations",
+            "page": "E-ticaret > Musteri Eslestirme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Telefon numarasindan son siparisleri listeleme hazir"
+          },
+          {
+            "text": "Coklu siparis secim akisi",
+            "service": "AgentAI",
+            "page": "Dialog Akislari > Siparis Secimi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Birden fazla siparis varsa musteri secimi icin dialog akisi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Kargom ne zaman gelecek?" },
-        { "role": "ai", "content": "Intent: Kargo Takip. Siparis No: YOK. Telefon eslestirme baslatiliyor." },
-        { "role": "bot", "content": "Merhaba! Hesabinizda 2 aktif siparis buldum:\n\n1️⃣ #98765 — Nike Ayakkabi (Kargoda)\n2️⃣ #98770 — Samsung Kilif (Hazirlaniyor)\n\nHangisi hakkinda bilgi almak istersiniz?" },
-        { "role": "user", "content": "1 numara" },
-        { "role": "bot", "content": "📦 Siparis: #98765 — Nike Ayakkabi\n🚚 Kargo: Aras Kargo\n📍 Durum: Transfer merkezinde\n📅 Tahmini Teslimat: Yarin\n\nTakip linki: [Aras Takip Linki]" },
-        { "role": "system", "content": "Otomatik cozum: Telefon eslestirme + siparis secimi + kargo bilgisi. Agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Kargom ne zaman gelecek?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kargo Takip. Siparis No: YOK. Telefon eslestirme baslatiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Hesabinizda 2 aktif siparis buldum:\n\n1️⃣ #98765 — Nike Ayakkabi (Kargoda)\n2️⃣ #98770 — Samsung Kilif (Hazirlaniyor)\n\nHangisi hakkinda bilgi almak istersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "1 numara"
+        },
+        {
+          "role": "bot",
+          "content": "📦 Siparis: #98765 — Nike Ayakkabi\n🚚 Kargo: Aras Kargo\n📍 Durum: Transfer merkezinde\n📅 Tahmini Teslimat: Yarin\n\nTakip linki: [Aras Takip Linki]"
+        },
+        {
+          "role": "system",
+          "content": "Otomatik cozum: Telefon eslestirme + siparis secimi + kargo bilgisi. Agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Kargo Takip Otomasyonu\" senaryosu icin \"Siparis Numarasi Olmadan Sorgulama\" akisini olustur.\n\nAciklama: Musteri siparis numarasi vermeden kargo soruyor, AI telefon numarasindan eslestirir.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kargom ne zaman gelecek?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kargo Takip. Siparis No: YOK. Telefon eslestirme baslatiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Merhaba! Hesabinizda 2 aktif siparis buldum:\n\n1️⃣ #98765 — Nike Ayakkabi (Kargoda)\n2️⃣ #98770 — Samsung Kilif (Hazirlaniyor)\n\nHangisi hakkinda bilgi almak istersiniz?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)\n\n5. **message_text** — Mesaj gonder\n   text: \"📦 Siparis: #98765 — Nike Ayakkabi\n🚚 Kargo: Aras Kargo\n📍 Durum: Transfer merkezinde\n📅 Tahmini Teslimat: Yarin\n\nTakip linki: [Aras Takip Linki]\"\n   Degiskenler: {{aras_takip_linki}}\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Otomatik cozum: Telefon eslestirme + siparis secimi + kargo bilgisi. Agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo tamamen otomatik calisir. Kargo API'leri ile gercek zamanli durum cekilir. Musteri eslestirmesi telefon numarasi veya siparis numarasi uzerinden yapilir.",
     "backend": [
-      { "title": "Order Lookup Service", "goal": "Siparis Eslestirme", "content": "Telefon numarasi veya siparis ID ile platform API'lerinden siparis detayi cekilir. Coklu platform destegi." },
-      { "title": "Shipment Tracker", "goal": "Kargo Durumu", "content": "Yurtici, Aras, MNG, Surat, PTT kargo API'leri ile gercek zamanli takip bilgisi." }
+      {
+        "title": "Order Lookup Service",
+        "goal": "Siparis Eslestirme",
+        "content": "Telefon numarasi veya siparis ID ile platform API'lerinden siparis detayi cekilir. Coklu platform destegi."
+      },
+      {
+        "title": "Shipment Tracker",
+        "goal": "Kargo Durumu",
+        "content": "Yurtici, Aras, MNG, Surat, PTT kargo API'leri ile gercek zamanli takip bilgisi."
+      }
     ],
     "apis": [
-      { "title": "E-ticaret Platform API", "goal": "Siparis Verisi", "content": "Trendyol Seller API, Hepsiburada Merchant API, Shopify Orders API ile siparis ve kargo bilgisi cekilir." },
-      { "title": "Kargo Firma API", "goal": "Takip Bilgisi", "content": "Kargo firmalarinin tracking API'si ile gercek zamanli konum ve teslimat tahmini." }
+      {
+        "title": "E-ticaret Platform API",
+        "goal": "Siparis Verisi",
+        "content": "Trendyol Seller API, Hepsiburada Merchant API, Shopify Orders API ile siparis ve kargo bilgisi cekilir."
+      },
+      {
+        "title": "Kargo Firma API",
+        "goal": "Takip Bilgisi",
+        "content": "Kargo firmalarinin tracking API'si ile gercek zamanli konum ve teslimat tahmini."
+      }
     ]
   },
   "impact": {
@@ -120,9 +285,28 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyTrackingQueries", "label": "Gunluk Kargo Sorusu", "default": 50, "hint": "Ortalama gunluk kargo takip mesaji", "editable": true },
-      { "key": "minutesPerQuery", "label": "Soru Basina Dakika", "default": 3, "hint": "Agent'in harcadigi sure", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+      {
+        "key": "dailyTrackingQueries",
+        "label": "Gunluk Kargo Sorusu",
+        "default": 50,
+        "hint": "Ortalama gunluk kargo takip mesaji",
+        "editable": true
+      },
+      {
+        "key": "minutesPerQuery",
+        "label": "Soru Basina Dakika",
+        "default": 3,
+        "hint": "Agent'in harcadigi sure",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "dailyTrackingQueries * minutesPerQuery * (agentHourlyCost / 60) * 30",
     "formulaDisplay": null

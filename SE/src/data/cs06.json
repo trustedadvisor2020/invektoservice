@@ -8,14 +8,32 @@
   "description": "Farkli kanallardan (WhatsApp, telefon, e-posta, sosyal medya) gelen tum musteri etkileşimleri tek bir kronolojik zaman cizelgesinde goruntulenemiyor. Kanal eslestirme, kimlik birlestirme ve kronolojik timeline ile 360 derece musteri gorunumu.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — Coklu kanaldan musteri iletisimi yapan her isletme" },
-      { "label": "Sorun", "value": "Musteri farkli kanallardan yazdiginda agent onceki etkileşimleri goremiyor, musteri ayni seyi tekrar anlatmak zorunda" },
-      { "label": "Deger", "value": "360 derece musteri gorunumu + surekli deneyim + agent verimliligi" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — Coklu kanaldan musteri iletisimi yapan her isletme"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteri farkli kanallardan yazdiginda agent onceki etkileşimleri goremiyor, musteri ayni seyi tekrar anlatmak zorunda"
+      },
+      {
+        "label": "Deger",
+        "value": "360 derece musteri gorunumu + surekli deneyim + agent verimliligi"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Analytics Dashboard (C4)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "green" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Analytics Dashboard (C4)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "green"
+      }
     ],
     "servicesNote": "Telefon, e-posta, WhatsApp ve sosyal medya kanallarindan gelen etkileşimler musteri bazinda birlestirilerek kronolojik timeline olusturulur. Agent tek ekrandan tum gecmisi gorur.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Kimlik Eslestirme",
         "goal": "Kanallar arasi musterileri birlestir",
         "badges": [
-          { "text": "Sistem (Identity Merge)", "color": "purple" },
-          { "text": "Tenant (Kanal Verisi)", "color": "blue" }
+          {
+            "text": "Sistem (Identity Merge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal Verisi)",
+            "color": "blue"
+          }
         ],
         "content": "Telefon numarasi, e-posta adresi veya musteri ID uzerinden farkli kanallardaki profilleri birlestirir. Otomatik eslestirme + manuel onay destegi."
       },
@@ -32,8 +56,14 @@
         "title": "Timeline Olusturma",
         "goal": "Kronolojik etkileşim cizelgesi",
         "badges": [
-          { "text": "Sistem (Timeline Engine)", "color": "purple" },
-          { "text": "Tenant (Kanal Renkleri)", "color": "amber" }
+          {
+            "text": "Sistem (Timeline Engine)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal Renkleri)",
+            "color": "amber"
+          }
         ],
         "content": "Tum kanallardan gelen mesajlar, aramalar, e-postalar ve sosyal medya etkileşimleri tarih sirasina gore tek bir zaman cizelgesinde listelenir."
       },
@@ -41,8 +71,14 @@
         "title": "Context Sunumu",
         "goal": "Agent'a otomatik bilgi sun",
         "badges": [
-          { "text": "Sistem (Context Panel)", "color": "purple" },
-          { "text": "Tenant (Gorunum Ayari)", "color": "green" }
+          {
+            "text": "Sistem (Context Panel)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Gorunum Ayari)",
+            "color": "green"
+          }
         ],
         "content": "Musteri yazdiginda agent ekraninda otomatik olarak timeline acilir. Son 5 etkileşim, toplam etkileşim sayisi ve AI ozeti gosterilir."
       }
@@ -54,62 +90,179 @@
       "title": "Coklu Kanal Musteri — Timeline Gorunumu",
       "description": "Musteri farkli kanallardan iletisime gecmis, agent tum gecmisi gorur.",
       "tags": [
-        { "text": "Timeline", "color": "blue" },
-        { "text": "Coklu Kanal", "color": "green" }
+        {
+          "text": "Timeline",
+          "color": "blue"
+        },
+        {
+          "text": "Coklu Kanal",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Coklu kanal entegrasyonu", "service": "Backend", "page": "Kanal Ayarlari > Entegrasyonlar", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "WhatsApp, telefon, e-posta ve sosyal medya kanallarini sisteme baglayin" },
-          { "text": "Musteri kimlik eslestirme kurallari", "service": "Backend", "page": "CRM > Kimlik Birlestirme", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Telefon/e-posta bazli otomatik eslestirme kurallarini yapilandirin" }
+          {
+            "text": "Coklu kanal entegrasyonu",
+            "service": "Backend",
+            "page": "Kanal Ayarlari > Entegrasyonlar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C1",
+            "hint": "WhatsApp, telefon, e-posta ve sosyal medya kanallarini sisteme baglayin"
+          },
+          {
+            "text": "Musteri kimlik eslestirme kurallari",
+            "service": "Backend",
+            "page": "CRM > Kimlik Birlestirme",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Telefon/e-posta bazli otomatik eslestirme kurallarini yapilandirin"
+          }
         ],
         "provider": [
-          { "text": "Identity merge motoru", "service": "Backend", "page": "CRM > Identity Merge Engine", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Coklu kanal kimlik birlestirme algoritmalari hazir" },
-          { "text": "Timeline gorunum API", "service": "Backend", "page": "Timeline > API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Kronolojik etkileşim listesi API'si hazir" }
+          {
+            "text": "Identity merge motoru",
+            "service": "Backend",
+            "page": "CRM > Identity Merge Engine",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Coklu kanal kimlik birlestirme algoritmalari hazir"
+          },
+          {
+            "text": "Timeline gorunum API",
+            "service": "Backend",
+            "page": "Timeline > API",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Kronolojik etkileşim listesi API'si hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, gecen hafta aradigim konu hakkinda bilgi almak istiyorum." },
-        { "role": "system", "content": "Musteri Tespiti: Ali Yilmaz (+905xxxxxxxxx). Identity Merge: 3 kanal eslesmis." },
-        { "role": "system", "content": "TIMELINE YUKLENDI:\n- 12 Sub: WhatsApp — 'Urun fiyat sorusu' (AI cevapladi)\n- 14 Sub: Telefon — 3:45 dk arama, 'Siparis olusturma' (Agent Mehmet)\n- 15 Sub: E-posta — 'Fatura talebi' (Otomatik gonderildi)\n- 18 Sub: Instagram DM — 'Teslimat sorusu' (AI cevapladi)\n- 20 Sub: WhatsApp — SIMDI" },
-        { "role": "ai", "content": "Context Ozeti: Ali Bey 12 Sub'da fiyat sordu, 14 Sub'da telefonla siparis verdi, 15 Sub'da fatura istedi, 18 Sub'da teslimat sordu. Simdi muhtemelen teslimat veya siparis takip soruyor." },
-        { "role": "bot", "content": "Merhaba Ali Bey! 14 Subat'taki telefonla verdiginiz siparis hakkinda mi sormak istiyorsunuz? Biliyorum 18'inde Instagram'dan da teslimatla ilgili yazmistiniz. Siparisiz su an dagitim merkezinde, yarin teslim edilecek." },
-        { "role": "user", "content": "Evet, tam da onu soracaktim. Nereden bildiniz?" },
-        { "role": "bot", "content": "Tum gorusmelerinizi tek ekranda goruyorum, tekrar anlatmaniza gerek yok. Baska bir sorunuz var mi?" }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, gecen hafta aradigim konu hakkinda bilgi almak istiyorum."
+        },
+        {
+          "role": "system",
+          "content": "Musteri Tespiti: Ali Yilmaz (+905xxxxxxxxx). Identity Merge: 3 kanal eslesmis."
+        },
+        {
+          "role": "system",
+          "content": "TIMELINE YUKLENDI:\n- 12 Sub: WhatsApp — 'Urun fiyat sorusu' (AI cevapladi)\n- 14 Sub: Telefon — 3:45 dk arama, 'Siparis olusturma' (Agent Mehmet)\n- 15 Sub: E-posta — 'Fatura talebi' (Otomatik gonderildi)\n- 18 Sub: Instagram DM — 'Teslimat sorusu' (AI cevapladi)\n- 20 Sub: WhatsApp — SIMDI"
+        },
+        {
+          "role": "ai",
+          "content": "Context Ozeti: Ali Bey 12 Sub'da fiyat sordu, 14 Sub'da telefonla siparis verdi, 15 Sub'da fatura istedi, 18 Sub'da teslimat sordu. Simdi muhtemelen teslimat veya siparis takip soruyor."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Ali Bey! 14 Subat'taki telefonla verdiginiz siparis hakkinda mi sormak istiyorsunuz? Biliyorum 18'inde Instagram'dan da teslimatla ilgili yazmistiniz. Siparisiz su an dagitim merkezinde, yarin teslim edilecek."
+        },
+        {
+          "role": "user",
+          "content": "Evet, tam da onu soracaktim. Nereden bildiniz?"
+        },
+        {
+          "role": "bot",
+          "content": "Tum gorusmelerinizi tek ekranda goruyorum, tekrar anlatmaniza gerek yok. Baska bir sorunuz var mi?"
+        }
+      ],
+      "aiPrompt": "\"Unified Customer Timeline\" senaryosu icin \"Coklu Kanal Musteri — Timeline Gorunumu\" akisini olustur.\n\nAciklama: Musteri farkli kanallardan iletisime gecmis, agent tum gecmisi gorur.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, gecen hafta aradigim konu hakkinda bilgi almak istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: Musteri Tespiti: Ali Yilmaz (+905xxxxxxxxx). Identity Merge: 3 kanal eslesmis.\n\n4. **action_api_call** — Dis servis cagrisi\n   Islem: TIMELINE YUKLENDI:\n- 12 Sub: WhatsApp — 'Urun fiyat sorusu' (AI cevapladi)\n- 14 Sub: Telefon — 3:45 dk arama, 'Siparis olusturma' (Agent Mehmet)\n- 15 Sub: E-posta — 'Fatura talebi' (Otomatik gonderildi)\n- 18 Sub: Instagram DM — 'Teslimat sorusu' (AI cevapladi)\n- 20 Sub: WhatsApp — SIMDI\n   Basarili → sonraki node | Hata → action_handoff\n\n5. **ai_intent** — Niyet tespiti\n   Analiz: Context Ozeti: Ali Bey 12 Sub'da fiyat sordu, 14 Sub'da telefonla siparis verdi, 15 Sub'da fatura istedi, 18 Sub'da teslimat sordu. Simdi muhtemelen teslimat veya siparis takip soruyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Merhaba Ali Bey! 14 Subat'taki telefonla verdiginiz siparis hakkinda mi sormak istiyorsunuz? Biliyorum 18'inde Instagram'dan da teslimatla ilgili yazmistiniz. Siparisiz su an dagitim merkezinde, yarin teslim edilecek.\"\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Evet, tam da onu soracaktim. Nereden bildiniz?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **message_text** — Mesaj gonder\n   text: \"Tum gorusmelerinizi tek ekranda goruyorum, tekrar anlatmaniza gerek yok. Baska bir sorunuz var mi?\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Kimlik Birlestirme — Yeni Kanal Tespiti",
       "description": "Bilinen musteri yeni bir kanaldan yaziyor, sistem otomatik eslestiriyor.",
       "tags": [
-        { "text": "Kimlik Birlestirme", "color": "purple" },
-        { "text": "Otomatik Eslestirme", "color": "blue" }
+        {
+          "text": "Kimlik Birlestirme",
+          "color": "purple"
+        },
+        {
+          "text": "Otomatik Eslestirme",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Musteri iletisim bilgileri", "service": "Backend", "page": "CRM > Musteri Profilleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Musteri telefon, e-posta ve sosyal medya bilgilerini CRM'e girin" }
+          {
+            "text": "Musteri iletisim bilgileri",
+            "service": "Backend",
+            "page": "CRM > Musteri Profilleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Musteri telefon, e-posta ve sosyal medya bilgilerini CRM'e girin"
+          }
         ],
         "provider": [
-          { "text": "Otomatik kimlik eslestirme", "service": "Backend", "page": "CRM > Auto-Match", "status": "ready", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Yeni kanaldan gelen musteri telefon/e-posta ile otomatik eslenir" }
+          {
+            "text": "Otomatik kimlik eslestirme",
+            "service": "Backend",
+            "page": "CRM > Auto-Match",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Yeni kanaldan gelen musteri telefon/e-posta ile otomatik eslenir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "E-posta'dan yeni mesaj: fatma.demir@email.com — 'Aboneligimi yukseltmek istiyorum.'" },
-        { "role": "system", "content": "Identity Merge: E-posta eslestirme → Fatma Demir, WhatsApp profili mevcut (+905yyyyyyyyy). Kanal birlestirme yapildi." },
-        { "role": "system", "content": "Timeline guncellendi: Fatma Demir'in WhatsApp gecmisi (15 etkileşim) + yeni e-posta etkileşimi birlesti." },
-        { "role": "bot", "content": "[Agent e-postayi acar, yan panelde tam timeline gorur]\n\nMerhaba Fatma Hanim, abonelik yukseltme talebiniz icin tesekkurler. Mevcut Gold paketinizi Platinum'a yukseltmek istiyorsunuz saniyorum. WhatsApp'tan gecen ay konustugumuz ek ozellikler de Platinum'a dahil. Devam edelim mi?" }
-      ]
+        {
+          "role": "system",
+          "content": "E-posta'dan yeni mesaj: fatma.demir@email.com — 'Aboneligimi yukseltmek istiyorum.'"
+        },
+        {
+          "role": "system",
+          "content": "Identity Merge: E-posta eslestirme → Fatma Demir, WhatsApp profili mevcut (+905yyyyyyyyy). Kanal birlestirme yapildi."
+        },
+        {
+          "role": "system",
+          "content": "Timeline guncellendi: Fatma Demir'in WhatsApp gecmisi (15 etkileşim) + yeni e-posta etkileşimi birlesti."
+        },
+        {
+          "role": "bot",
+          "content": "[Agent e-postayi acar, yan panelde tam timeline gorur]\n\nMerhaba Fatma Hanim, abonelik yukseltme talebiniz icin tesekkurler. Mevcut Gold paketinizi Platinum'a yukseltmek istiyorsunuz saniyorum. WhatsApp'tan gecen ay konustugumuz ek ozellikler de Platinum'a dahil. Devam edelim mi?"
+        }
+      ],
+      "aiPrompt": "\"Unified Customer Timeline\" senaryosu icin \"Kimlik Birlestirme — Yeni Kanal Tespiti\" akisini olustur.\n\nAciklama: Bilinen musteri yeni bir kanaldan yaziyor, sistem otomatik eslestiriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: E-posta'dan yeni mesaj: fatma.demir@email.com — 'Aboneligimi yukseltmek istiyorum.'\n\n2. **action_api_call** — Dis servis cagrisi\n   Islem: Identity Merge: E-posta eslestirme → Fatma Demir, WhatsApp profili mevcut (+905yyyyyyyyy). Kanal birlestirme yapildi.\n   Basarili → sonraki node | Hata → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: Timeline guncellendi: Fatma Demir'in WhatsApp gecmisi (15 etkileşim) + yeni e-posta etkileşimi birlesti.\n\n4. **message_text** — Mesaj gonder\n   text: \"[Agent e-postayi acar, yan panelde tam timeline gorur]\n\nMerhaba Fatma Hanim, abonelik yukseltme talebiniz icin tesekkurler. Mevcut Gold paketinizi Platinum'a yukseltmek istiyorsunuz saniyorum. WhatsApp'tan gecen ay konustugumuz ek ozellikler de Platinum'a dahil. Devam edelim mi?\"\n   Degiskenler: {{agent_e-postayi_acar,_yan_panelde_tam_timeline_gorur}}\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Identity merge motoru telefon numarasi, e-posta ve sosyal medya ID'lerini kullanarak farkli kanallardaki profilleri birlestirir. Timeline motoru tum etkileşimleri kronolojik olarak birlesik gorunume alir.",
     "backend": [
-      { "title": "Identity Merge Engine", "goal": "Profil Birlestirme", "content": "Telefon, e-posta ve platform ID'leri uzerinden farkli kanallardaki musteri profillerini otomatik birlestirir. Belirsiz eslesmelerde agent onayı ister." },
-      { "title": "Timeline Aggregator", "goal": "Kronolojik Birlestirme", "content": "Tum kanallardan gelen etkileşimleri tarih sirasina gore tek bir liste halinde sunar. Kanal bazli renk kodlama ve filtreleme destegi." }
+      {
+        "title": "Identity Merge Engine",
+        "goal": "Profil Birlestirme",
+        "content": "Telefon, e-posta ve platform ID'leri uzerinden farkli kanallardaki musteri profillerini otomatik birlestirir. Belirsiz eslesmelerde agent onayı ister."
+      },
+      {
+        "title": "Timeline Aggregator",
+        "goal": "Kronolojik Birlestirme",
+        "content": "Tum kanallardan gelen etkileşimleri tarih sirasina gore tek bir liste halinde sunar. Kanal bazli renk kodlama ve filtreleme destegi."
+      }
     ],
     "apis": [
-      { "title": "Customer Timeline API", "goal": "Timeline Sorgulama", "content": "Musteri bazinda tum etkileşimleri kronolojik listeyle dondurur. Kanal filtresi, tarih araligi ve sayfalama destegi." },
-      { "title": "Identity Match API", "goal": "Kimlik Eslestirme", "content": "Yeni gelen iletisim bilgisiyle mevcut profilleri eslestirme ve birlestirme onerisi." }
+      {
+        "title": "Customer Timeline API",
+        "goal": "Timeline Sorgulama",
+        "content": "Musteri bazinda tum etkileşimleri kronolojik listeyle dondurur. Kanal filtresi, tarih araligi ve sayfalama destegi."
+      },
+      {
+        "title": "Identity Match API",
+        "goal": "Kimlik Eslestirme",
+        "content": "Yeni gelen iletisim bilgisiyle mevcut profilleri eslestirme ve birlestirme onerisi."
+      }
     ]
   },
   "impact": {
@@ -118,9 +271,29 @@
     "resultLabel": "Tasarruf + Iyilestirme (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyMultiChannelCustomers", "label": "Gunluk Coklu Kanal Musteri", "default": 30, "hint": "Birden fazla kanaldan iletisime gecen gunluk musteri sayisi", "editable": true },
-      { "key": "minutesSavedPerCustomer", "label": "Musteri Basina Tasarruf", "default": 5, "suffix": "dk", "hint": "Timeline ile kazanilan gecmis arastirma suresi", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent'in saatlik ucreti", "editable": true }
+      {
+        "key": "dailyMultiChannelCustomers",
+        "label": "Gunluk Coklu Kanal Musteri",
+        "default": 30,
+        "hint": "Birden fazla kanaldan iletisime gecen gunluk musteri sayisi",
+        "editable": true
+      },
+      {
+        "key": "minutesSavedPerCustomer",
+        "label": "Musteri Basina Tasarruf",
+        "default": 5,
+        "suffix": "dk",
+        "hint": "Timeline ile kazanilan gecmis arastirma suresi",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent'in saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "dailyMultiChannelCustomers * minutesSavedPerCustomer * (agentHourlyCost / 60) * 30",
     "formulaDisplay": null

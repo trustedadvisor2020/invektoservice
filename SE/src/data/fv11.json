@@ -8,20 +8,40 @@
   "description": "49,430 kez 'online odemede kargo ucretsiz' mesaji gonderilmis. Bu mesajin gonderildigi konusmalarda conversion %18 iken gonderilmeyenlerde %9. AI her konusmada stratejik olarak kullanir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Kargo ucreti fark yaratan)" },
-      { "label": "Sorun", "value": "Kapida odeme = +99,99 TL kargo. Online odeme = ucretsiz. Bu fark vurgulandiginda conversion 2x" },
-      { "label": "Deger", "value": "Tutarli kargo ucretsiz vurgusu = %8 conversion artisi" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Kargo ucreti fark yaratan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kapida odeme = +99,99 TL kargo. Online odeme = ucretsiz. Bu fark vurgulandiginda conversion 2x"
+      },
+      {
+        "label": "Deger",
+        "value": "Tutarli kargo ucretsiz vurgusu = %8 conversion artisi"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "AI urun karti gonderiminden hemen sonra kargo ucretsiz mesajini otomatik ekler. Kapida odeme tercih eden musteriye motivasyon olarak kullanir.",
     "steps": [
       {
         "title": "Urun Karti + Kargo Bilgisi",
         "goal": "Her urun kartinda kargo bilgisi",
-        "badges": [{ "text": "49K Mesaj", "color": "emerald" }],
+        "badges": [
+          {
+            "text": "49K Mesaj",
+            "color": "emerald"
+          }
+        ],
         "content": "Urun kartindan hemen sonra: 'Online kredi kartı & havale ödemelerinde kargo ücretsizdir ♥'"
       }
     ]
@@ -31,25 +51,60 @@
       "id": "flow-1",
       "title": "Kargo Ucretsiz ile Online Odemeye Yonlendirme",
       "description": "Kapida nakit isteyen musteriye ucretsiz kargo ile online odeme motivasyonu.",
-      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "2x Conversion", "color": "blue" }],
+      "tags": [
+        {
+          "text": "Saha Dogrulanmis",
+          "color": "emerald"
+        },
+        {
+          "text": "2x Conversion",
+          "color": "blue"
+        }
+      ],
       "requirements": {
         "client": [
-          { "text": "Kargo ucretsiz kosulu", "service": "Knowledge", "page": "Politikalar > Kargo", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Hangi odeme yontemlerinde kargo ucretsiz" }
+          {
+            "text": "Kargo ucretsiz kosulu",
+            "service": "Knowledge",
+            "page": "Politikalar > Kargo",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Hangi odeme yontemlerinde kargo ucretsiz"
+          }
         ],
         "provider": []
       },
       "steps": [
-        { "role": "user", "content": "Kapıda nakit ödeme yapıcam" },
-        { "role": "bot", "content": "Tabii, kapıda nakit ödeme mevcut 🌸\n\nKapıda ödeme: +99,99 TL kargo ücreti\n\n💡 Bilgi: Online kredi kartı veya havale ile ödemenizde kargo tamamen ücretsizdir ♥\n\nHangi ödeme yöntemini tercih edersiniz?" },
-        { "role": "user", "content": "O zaman havale yapayım" },
-        { "role": "system", "content": "Kargo ucretsiz motivasyonu basarili. Musteri kapida nakitten havaleye gecti. 99,99 TL kargo tasarrufu." }
-      ]
+        {
+          "role": "user",
+          "content": "Kapıda nakit ödeme yapıcam"
+        },
+        {
+          "role": "bot",
+          "content": "Tabii, kapıda nakit ödeme mevcut 🌸\n\nKapıda ödeme: +99,99 TL kargo ücreti\n\n💡 Bilgi: Online kredi kartı veya havale ile ödemenizde kargo tamamen ücretsizdir ♥\n\nHangi ödeme yöntemini tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "O zaman havale yapayım"
+        },
+        {
+          "role": "system",
+          "content": "Kargo ucretsiz motivasyonu basarili. Musteri kapida nakitten havaleye gecti. 99,99 TL kargo tasarrufu."
+        }
+      ],
+      "aiPrompt": "\"Kargo Ucretsiz Motivasyon\" senaryosu icin \"Kargo Ucretsiz ile Online Odemeye Yonlendirme\" akisini olustur.\n\nAciklama: Kapida nakit isteyen musteriye ucretsiz kargo ile online odeme motivasyonu.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kapıda nakit ödeme yapıcam\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **message_text** — Mesaj gonder\n   text: \"Tabii, kapıda nakit ödeme mevcut 🌸\n\nKapıda ödeme: +99,99 TL kargo ücreti\n\n💡 Bilgi: Online kredi kartı veya havale ile ödemenizde kargo tamamen ücretsizdir ♥\n\nHangi ödeme yöntemini tercih edersiniz?\"\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"O zaman havale yapayım\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Kargo ucretsiz motivasyonu basarili. Musteri kapida nakitten havaleye gecti. 99,99 TL kargo tasarrufu.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Saha verisinde kargo ucretsiz vurgulanan konusmalarda conversion %18 vs %9. AI bu mesaji her konusmada stratejik kullanir.",
     "backend": [
-      { "title": "Shipping Cost Advisor", "goal": "Kargo Bilgisi", "content": "Odeme yontemine gore kargo ucreti hesaplar ve ucretsiz secenek varsa vurgular." }
+      {
+        "title": "Shipping Cost Advisor",
+        "goal": "Kargo Bilgisi",
+        "content": "Odeme yontemine gore kargo ucreti hesaplar ve ucretsiz secenek varsa vurgular."
+      }
     ],
     "apis": []
   },
@@ -59,9 +114,27 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyConversations", "label": "Aylik Konusma", "default": 300, "hint": "Urun gosterilen konusma", "editable": true },
-      { "key": "conversionLift", "label": "Conversion Artisi", "default": 8, "prefix": "%", "editable": true },
-      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 1000, "suffix": "TL", "editable": true }
+      {
+        "key": "monthlyConversations",
+        "label": "Aylik Konusma",
+        "default": 300,
+        "hint": "Urun gosterilen konusma",
+        "editable": true
+      },
+      {
+        "key": "conversionLift",
+        "label": "Conversion Artisi",
+        "default": 8,
+        "prefix": "%",
+        "editable": true
+      },
+      {
+        "key": "avgOrderValue",
+        "label": "Ort. Siparis",
+        "default": 1000,
+        "suffix": "TL",
+        "editable": true
+      }
     ],
     "formula": "monthlyConversations * (conversionLift / 100) * avgOrderValue",
     "formulaDisplay": null

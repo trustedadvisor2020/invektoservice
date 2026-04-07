@@ -8,13 +8,28 @@
   "description": "Donem sonunda sistematik yorum toplama. Outbound ile memnuniyet anketi gonderilip pozitif yanitlara Google yorum linki sunularak online itibar guclendiren proaktif senaryo.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Egitim)" },
-      { "label": "Sorun", "value": "Memnun ogrenciler yorum birakmiyor — online gorununluk dusuk, yeni ogrenci kazanimi zorlasiyor" },
-      { "label": "Deger", "value": "Sistematik yorum toplama ile Google puanini yukselt, organik kayit oranini artir" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Kurs Merkezi, Ozel Egitim)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Memnun ogrenciler yorum birakmiyor — online gorununluk dusuk, yeni ogrenci kazanimi zorlasiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Sistematik yorum toplama ile Google puanini yukselt, organik kayit oranini artir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "Donem sonu Outbound memnuniyet anketi gonderir. 4-5 puan verenlere otomatik Google yorum linki sunulur.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Memnuniyet Anketi Gonderimi",
         "goal": "Ogrenci memnuniyetini olc",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Anket)", "color": "green" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Anket)",
+            "color": "green"
+          }
         ],
         "content": "Donem sonu tum ogrencilere kisa memnuniyet anketi (1-5 puan) gonderilir."
       },
@@ -31,8 +52,14 @@
         "title": "Pozitif Yanitlara Yorum Talebi",
         "goal": "Google yorum linki sun",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Google)", "color": "blue" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Google)",
+            "color": "blue"
+          }
         ],
         "content": "4-5 puan veren ogrencilere otomatik olarak Google yorum linki ve tesekkur mesaji gonderilir."
       },
@@ -40,8 +67,14 @@
         "title": "Negatif Yanitlara Mudahale",
         "goal": "Memnuniyetsizi kurtar",
         "badges": [
-          { "text": "Sistem (Eskalasyon)", "color": "purple" },
-          { "text": "Tenant (Koordinator)", "color": "amber" }
+          {
+            "text": "Sistem (Eskalasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Koordinator)",
+            "color": "amber"
+          }
         ],
         "content": "1-2 puan verenlere empati mesaji gonderilip koordinatore eskalasyon yapilir."
       }
@@ -53,38 +86,115 @@
       "title": "Donem Sonu Yorum Toplama Akisi",
       "description": "Memnuniyet anketi + pozitif yanita Google yorum yonlendirme.",
       "tags": [
-        { "text": "Proaktif", "color": "green" },
-        { "text": "Review", "color": "blue" }
+        {
+          "text": "Proaktif",
+          "color": "green"
+        },
+        {
+          "text": "Review",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Google yorum linki", "service": "Knowledge", "page": "Kurum Bilgileri > Google Business", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Google Business sayfanizin yorum linkini ekleyin" },
-          { "text": "Anket sablon onay", "service": "Backend", "page": "Sablonlar > Memnuniyet Anketi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "WhatsApp Business onaylu anket sablonunu hazirlatin" }
+          {
+            "text": "Google yorum linki",
+            "service": "Knowledge",
+            "page": "Kurum Bilgileri > Google Business",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Google Business sayfanizin yorum linkini ekleyin"
+          },
+          {
+            "text": "Anket sablon onay",
+            "service": "Backend",
+            "page": "Sablonlar > Memnuniyet Anketi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "WhatsApp Business onaylu anket sablonunu hazirlatin"
+          }
         ],
         "provider": [
-          { "text": "Outbound anket gonderimi", "service": "Outbound", "page": "Kampanya > Anket", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Donem sonu toplu anket gonderimi hazir" },
-          { "text": "Puan bazli otomatik yanit", "service": "Automation", "page": "Otomasyon > Anket Yanit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Puan araligina gore farkli otomatik yanit akislari hazir" }
+          {
+            "text": "Outbound anket gonderimi",
+            "service": "Outbound",
+            "page": "Kampanya > Anket",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Donem sonu toplu anket gonderimi hazir"
+          },
+          {
+            "text": "Puan bazli otomatik yanit",
+            "service": "Automation",
+            "page": "Otomasyon > Anket Yanit",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Puan araligina gore farkli otomatik yanit akislari hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Donem sonu anket kampanyasi tetiklendi: 95 ogrenciye memnuniyet anketi gonderildi." },
-        { "role": "bot", "content": "Merhaba Selin Hanim! Bu donem A2 Ingilizce kursunuz tamamlandi. Deneyiminizi merak ediyoruz.\n\nKursumuzdan ne kadar memnunsunuz?\n1 - Hic memnun degilim\n2 - Az memnunum\n3 - Orta\n4 - Memnunum\n5 - Cok memnunum\n\nBir rakam yazmaniz yeterli!" },
-        { "role": "user", "content": "5" },
-        { "role": "bot", "content": "Harika, cok tesekkur ederiz Selin Hanim! Memnuniyetiniz bizi cok mutlu etti.\n\nBizi Google'da da destekler misiniz? Yorumunuz yeni ogrencilere ilham olacak:\n\n[Google Yorum Linki]\n\n30 saniyenizi alir ve bize cok yardimci olur!" },
-        { "role": "user", "content": "Tabii, simdi yaziyorum!" },
-        { "role": "system", "content": "Yorum yonlendirmesi basarili: Selin H. — 5 puan, Google yorum linkine tikladi." }
-      ]
+        {
+          "role": "system",
+          "content": "Donem sonu anket kampanyasi tetiklendi: 95 ogrenciye memnuniyet anketi gonderildi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Selin Hanim! Bu donem A2 Ingilizce kursunuz tamamlandi. Deneyiminizi merak ediyoruz.\n\nKursumuzdan ne kadar memnunsunuz?\n1 - Hic memnun degilim\n2 - Az memnunum\n3 - Orta\n4 - Memnunum\n5 - Cok memnunum\n\nBir rakam yazmaniz yeterli!"
+        },
+        {
+          "role": "user",
+          "content": "5"
+        },
+        {
+          "role": "bot",
+          "content": "Harika, cok tesekkur ederiz Selin Hanim! Memnuniyetiniz bizi cok mutlu etti.\n\nBizi Google'da da destekler misiniz? Yorumunuz yeni ogrencilere ilham olacak:\n\n[Google Yorum Linki]\n\n30 saniyenizi alir ve bize cok yardimci olur!"
+        },
+        {
+          "role": "user",
+          "content": "Tabii, simdi yaziyorum!"
+        },
+        {
+          "role": "system",
+          "content": "Yorum yonlendirmesi basarili: Selin H. — 5 puan, Google yorum linkine tikladi."
+        }
+      ],
+      "aiPrompt": "\"Yorum / Review Isteme\" senaryosu icin \"Donem Sonu Yorum Toplama Akisi\" akisini olustur.\n\nAciklama: Memnuniyet anketi + pozitif yanita Google yorum yonlendirme.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Donem sonu anket kampanyasi tetiklendi: 95 ogrenciye memnuniyet anketi gonderildi.\n\n2. **message_text** — Mesaj gonder\n   text: \"Merhaba Selin Hanim! Bu donem A2 Ingilizce kursunuz tamamlandi. Deneyiminizi merak ediyoruz.\n\nKursumuzdan ne kadar memnunsunuz?\n1 - Hic memnun degilim\n2 - Az memnunum\n3 - Orta\n4 - Memnunum\n5 - Cok memnunum\n\nBir rakam yazmaniz yeterli!\"\n\n   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)\n\n3. **message_text** — Mesaj gonder\n   text: \"Harika, cok tesekkur ederiz Selin Hanim! Memnuniyetiniz bizi cok mutlu etti.\n\nBizi Google'da da destekler misiniz? Yorumunuz yeni ogrencilere ilham olacak:\n\n[Google Yorum Linki]\n\n30 saniyenizi alir ve bize cok yardimci olur!\"\n   Degiskenler: {{google_yorum_linki}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tabii, simdi yaziyorum!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Yorum yonlendirmesi basarili: Selin H. — 5 puan, Google yorum linkine tikladi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Outbound Engine anket + kosula bagli otomatik yanit akisi ile calisir. Puan bazli segmentasyon ve Google yorum yonlendirme.",
     "backend": [
-      { "title": "Survey Engine", "goal": "Anket Yonetimi", "content": "Memnuniyet anketini gonderir, yanitlari toplar ve puan bazli segmentasyon yapar." },
-      { "title": "Review Funnel", "goal": "Yorum Yonlendirme", "content": "Yuksek puan veren ogrencilere Google yorum linki gonderir, tiklama ve yorum takibi yapar." }
+      {
+        "title": "Survey Engine",
+        "goal": "Anket Yonetimi",
+        "content": "Memnuniyet anketini gonderir, yanitlari toplar ve puan bazli segmentasyon yapar."
+      },
+      {
+        "title": "Review Funnel",
+        "goal": "Yorum Yonlendirme",
+        "content": "Yuksek puan veren ogrencilere Google yorum linki gonderir, tiklama ve yorum takibi yapar."
+      }
     ],
     "apis": [
-      { "title": "Outbound Survey API", "goal": "Anket Gonderimi", "content": "WhatsApp Business API ile interaktif anket gonderimi ve yanit toplama." },
-      { "title": "Google Business API", "goal": "Yorum Takibi", "content": "Google yorum linkinin olusturulmasi ve tiklama istatistiklerinin izlenmesi." }
+      {
+        "title": "Outbound Survey API",
+        "goal": "Anket Gonderimi",
+        "content": "WhatsApp Business API ile interaktif anket gonderimi ve yanit toplama."
+      },
+      {
+        "title": "Google Business API",
+        "goal": "Yorum Takibi",
+        "content": "Google yorum linkinin olusturulmasi ve tiklama istatistiklerinin izlenmesi."
+      }
     ]
   },
   "impact": {
@@ -93,9 +203,29 @@
     "resultLabel": "Ek Organik Kayit Geliri (Donem Basi)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "surveysSent", "label": "Anket Gonderilen", "default": 100, "hint": "Anket gonderilen ogrenci sayisi", "editable": true },
-      { "key": "reviewRate", "label": "Yorum Orani", "default": 20, "suffix": "%", "hint": "Google'a yorum birakan ogrenci orani", "editable": true },
-      { "key": "revenuePerReview", "label": "Yorum Basina Gelir", "default": 1500, "suffix": "TL", "hint": "Her yorum basina tahmini organik kayit geliri", "editable": true }
+      {
+        "key": "surveysSent",
+        "label": "Anket Gonderilen",
+        "default": 100,
+        "hint": "Anket gonderilen ogrenci sayisi",
+        "editable": true
+      },
+      {
+        "key": "reviewRate",
+        "label": "Yorum Orani",
+        "default": 20,
+        "suffix": "%",
+        "hint": "Google'a yorum birakan ogrenci orani",
+        "editable": true
+      },
+      {
+        "key": "revenuePerReview",
+        "label": "Yorum Basina Gelir",
+        "default": 1500,
+        "suffix": "TL",
+        "hint": "Her yorum basina tahmini organik kayit geliri",
+        "editable": true
+      }
     ],
     "formula": "surveysSent * (reviewRate / 100) * revenuePerReview",
     "formulaDisplay": null

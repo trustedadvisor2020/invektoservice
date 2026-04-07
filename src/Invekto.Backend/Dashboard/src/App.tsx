@@ -32,6 +32,7 @@ const IntentManagementPage = lazy(() => import('./pages/IntentManagementPage').t
 const RevenueIntelligencePage = lazy(() => import('./pages/RevenueIntelligencePage').then(m => ({ default: m.RevenueIntelligencePage })));
 const RiTemplateManagementPage = lazy(() => import('./pages/RiTemplateManagementPage').then(m => ({ default: m.RiTemplateManagementPage })));
 const FlowMonitorPage = lazy(() => import('./pages/FlowMonitorPage').then(m => ({ default: m.FlowMonitorPage })));
+const FlowTemplateGalleryPage = lazy(() => import('./pages/FlowTemplateGalleryPage').then(m => ({ default: m.FlowTemplateGalleryPage })));
 const RescueDashboardPage = lazy(() => import('./pages/RescueDashboardPage').then(m => ({ default: m.RescueDashboardPage })));
 
 function ProtectedRoute() {
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="/flow-builder" element={<Suspense><FlowListPage /></Suspense>} />
         <Route path="/flow-builder/editor/:flowId" element={<Suspense><FlowEditorPage /></Suspense>} />
         <Route path="/flow-builder/wizard/:flowId" element={<Suspense><WizardPage /></Suspense>} />
+        <Route path="/flow-templates" element={<Suspense><FlowTemplateGalleryPage /></Suspense>} />
         <Route path="/flow-monitor" element={<Suspense><FlowMonitorPage /></Suspense>} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />

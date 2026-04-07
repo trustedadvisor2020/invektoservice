@@ -8,15 +8,36 @@
   "description": "Cocugu dis doktorundan korkan ebeveynlere AI ile cocuk dostu yaklasim bilgisi sunan ve uygun pedodontist yonlendirmesi yapan sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Pedodonti Hizmeti Veren)" },
-      { "label": "Sorun", "value": "Cocuk dis korkusu ebeveyn icin buyuk stres — yanlis yaklasim cocugu daha cok korkutur" },
-      { "label": "Deger", "value": "Cocuk dostu yaklasim bilgisi ile ebeveyn rahatlatilir, doğru doktor eslestirmesi yapilir" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Pedodonti Hizmeti Veren)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Cocuk dis korkusu ebeveyn icin buyuk stres — yanlis yaklasim cocugu daha cok korkutur"
+      },
+      {
+        "label": "Deger",
+        "value": "Cocuk dostu yaklasim bilgisi ile ebeveyn rahatlatilir, doğru doktor eslestirmesi yapilir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI cocuk hasta intent'ini tespit eder, cocuk dostu yaklasim rehberi sunar ve pedodonti uzmani yonlendirmesi yapar.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Intent Tespiti",
         "goal": "Cocuk hasta belirle",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Pedodonti)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Pedodonti)",
+            "color": "blue"
+          }
         ],
         "content": "AI mesajdan cocuk hasta ve korku durumunu tespit eder."
       },
@@ -33,8 +60,14 @@
         "title": "Uzman Yonlendirme",
         "goal": "Pedodontiste yonlendir",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Doktor)", "color": "green" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Doktor)",
+            "color": "green"
+          }
         ],
         "content": "Cocuk hastalar icin uzman pedodontiste randevu yonlendirmesi yapilir."
       }
@@ -46,33 +79,82 @@
       "title": "Cocuk Korku — Pedodonti Yonlendirme",
       "description": "Ebeveyn cocugunu dis doktoruna gotururken yardim istiyor.",
       "tags": [
-        { "text": "Cocuk", "color": "blue" },
-        { "text": "Pedodonti", "color": "green" }
+        {
+          "text": "Cocuk",
+          "color": "blue"
+        },
+        {
+          "text": "Pedodonti",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Cocuk yaklasim rehberi", "service": "Knowledge", "page": "Dokuman Bankasi > Pedodonti Rehber", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Cocuk dis korkusu yonetimi ve ebeveyn bilgilendirme rehberi yukleyin" }
+          {
+            "text": "Cocuk yaklasim rehberi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Pedodonti Rehber",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Cocuk dis korkusu yonetimi ve ebeveyn bilgilendirme rehberi yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Cocuk hasta intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Cocuk Hasta", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Cocuk hasta ve korku yonetimi intent'i hazir" }
+          {
+            "text": "Cocuk hasta intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Cocuk Hasta",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Cocuk hasta ve korku yonetimi intent'i hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Cocugum dis doktorundan korkuyor, yardimci olabilir misiniz?" },
-        { "role": "ai", "content": "Intent: Cocuk Hasta — Dis Korkusu. Pedodonti yonlendirmesi uygun." },
-        { "role": "bot", "content": "Anliyoruz! Cocuklarda dis korkusu cok yaygin, endiselenmeyin 🙏\n\nKlinigimizde cocuk dis uzmanimiz (pedodontist) var:\n\n👩‍⚕️ Dr. Zeynep — Cocuk Dis Uzmani\n🎮 Cocuk dostu muayene odasi\n🎨 Oyun alani ve odul sistemi\n\n💡 Ipuclari:\n• Randevu oncesi 'dis perisi' hikayesi anlatabilirsiniz\n• Ilk ziyaret taninma amacli — islem yapilmaz\n• Pozitif dil kullanin: 'Agri' yerine 'geldigik'\n\nDr. Zeynep'e randevu ayarlayalim mi?" },
-        { "role": "system", "content": "Cocuk hasta — pedodonti yonlendirmesi yapildi. Ebeveyn bilgilendirildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Cocugum dis doktorundan korkuyor, yardimci olabilir misiniz?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Cocuk Hasta — Dis Korkusu. Pedodonti yonlendirmesi uygun."
+        },
+        {
+          "role": "bot",
+          "content": "Anliyoruz! Cocuklarda dis korkusu cok yaygin, endiselenmeyin 🙏\n\nKlinigimizde cocuk dis uzmanimiz (pedodontist) var:\n\n👩‍⚕️ Dr. Zeynep — Cocuk Dis Uzmani\n🎮 Cocuk dostu muayene odasi\n🎨 Oyun alani ve odul sistemi\n\n💡 Ipuclari:\n• Randevu oncesi 'dis perisi' hikayesi anlatabilirsiniz\n• Ilk ziyaret taninma amacli — islem yapilmaz\n• Pozitif dil kullanin: 'Agri' yerine 'geldigik'\n\nDr. Zeynep'e randevu ayarlayalim mi?"
+        },
+        {
+          "role": "system",
+          "content": "Cocuk hasta — pedodonti yonlendirmesi yapildi. Ebeveyn bilgilendirildi."
+        }
+      ],
+      "aiPrompt": "\"Cocuk Hasta: Korku Yonetimi\" senaryosu icin \"Cocuk Korku — Pedodonti Yonlendirme\" akisini olustur.\n\nAciklama: Ebeveyn cocugunu dis doktoruna gotururken yardim istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Cocugum dis doktorundan korkuyor, yardimci olabilir misiniz?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Cocuk Hasta — Dis Korkusu. Pedodonti yonlendirmesi uygun.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Anliyoruz! Cocuklarda dis korkusu cok yaygin, endiselenmeyin 🙏\n\nKlinigimizde cocuk dis uzmanimiz (pedodontist) var:\n\n👩‍⚕️ Dr. Zeynep — Cocuk Dis Uzmani\n🎮 Cocuk dostu muayene odasi\n🎨 Oyun alani ve odul sistemi\n\n💡 Ipuclari:\n• Randevu oncesi 'dis perisi' hikayesi anlatabilirsiniz\n• Ilk ziyaret taninma amacli — islem yapilmaz\n• Pozitif dil kullanin: 'Agri' yerine 'geldigik'\n\nDr. Zeynep'e randevu ayarlayalim mi?\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Cocuk hasta — pedodonti yonlendirmesi yapildi. Ebeveyn bilgilendirildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI intent tespiti + Knowledge Base birlesimiyle calisir. Cocuk hasta yonetimi ve pedodonti yonlendirme.",
     "backend": [
-      { "title": "Pediatric Intent Detector", "goal": "Cocuk Hasta Tespiti", "content": "Mesajdan cocuk hasta ve korku durumunu tespit eder." },
-      { "title": "Specialist Router", "goal": "Uzman Yonlendirme", "content": "Cocuk hastalar icin pedodonti uzmanina yonlendirme yapar." }
+      {
+        "title": "Pediatric Intent Detector",
+        "goal": "Cocuk Hasta Tespiti",
+        "content": "Mesajdan cocuk hasta ve korku durumunu tespit eder."
+      },
+      {
+        "title": "Specialist Router",
+        "goal": "Uzman Yonlendirme",
+        "content": "Cocuk hastalar icin pedodonti uzmanina yonlendirme yapar."
+      }
     ],
     "apis": [
-      { "title": "Knowledge RAG API", "goal": "Rehber Bilgisi", "content": "Cocuk dis korkusu yonetimi ve ebeveyn bilgilendirme rehberi." }
+      {
+        "title": "Knowledge RAG API",
+        "goal": "Rehber Bilgisi",
+        "content": "Cocuk dis korkusu yonetimi ve ebeveyn bilgilendirme rehberi."
+      }
     ]
   },
   "impact": {
@@ -81,9 +163,29 @@
     "resultLabel": "Kazanilan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyPediatricLeads", "label": "Aylik Cocuk Hasta Lead", "default": 10, "hint": "Cocuk hasta talep sayisi", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 60, "prefix": "%", "hint": "Randevuya donusen cocuk hasta", "editable": true },
-      { "key": "avgPediatricValue", "label": "Cocuk Tedavi Degeri", "default": 2000, "suffix": "TL", "hint": "Ortalama cocuk tedavi tutari", "editable": true }
+      {
+        "key": "monthlyPediatricLeads",
+        "label": "Aylik Cocuk Hasta Lead",
+        "default": 10,
+        "hint": "Cocuk hasta talep sayisi",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 60,
+        "prefix": "%",
+        "hint": "Randevuya donusen cocuk hasta",
+        "editable": true
+      },
+      {
+        "key": "avgPediatricValue",
+        "label": "Cocuk Tedavi Degeri",
+        "default": 2000,
+        "suffix": "TL",
+        "hint": "Ortalama cocuk tedavi tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlyPediatricLeads * (conversionRate / 100) * avgPediatricValue",
     "formulaDisplay": null

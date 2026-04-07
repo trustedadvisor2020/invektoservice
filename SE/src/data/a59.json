@@ -8,15 +8,36 @@
   "description": "Hasta fiyat indirimi veya kampanya soruyor. AI mevcut kampanyalari sunar, ozel teklif yetkisi varsa sunar, yoksa personele yonlendirir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Rekabetci Pazar)" },
-      { "label": "Sorun", "value": "Fiyat pazarligi yapan lead hemen rakibe gidiyor — kampanya bilgisi gec iletiliyor" },
-      { "label": "Deger", "value": "AI aninda kampanya sunar, ozel teklif yetkisi ile lead kaybini onler" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Rekabetci Pazar)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Fiyat pazarligi yapan lead hemen rakibe gidiyor — kampanya bilgisi gec iletiliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI aninda kampanya sunar, ozel teklif yetkisi ile lead kaybini onler"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI fiyat pazarligi intent'ini tespit eder, aktif kampanyalari sunar ve yetki dahilinde ozel teklif olusturur.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Kampanya Tespiti",
         "goal": "Mevcut kampanyayi bul",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "green" },
-          { "text": "Tenant (Kampanya)", "color": "amber" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "green"
+          },
+          {
+            "text": "Tenant (Kampanya)",
+            "color": "amber"
+          }
         ],
         "content": "AI aktif kampanyalari ve indirim kurallarini Knowledge Base'den cekar."
       },
@@ -33,8 +60,14 @@
         "title": "Teklif Sunumu",
         "goal": "Lead'i ikna et",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Satis)", "color": "green" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Satis)",
+            "color": "green"
+          }
         ],
         "content": "Uygun kampanya varsa sunulur, yoksa sinirli sureli ozel teklif veya personel yonlendirmesi yapilir."
       }
@@ -46,60 +79,170 @@
       "title": "Botox Fiyat Pazarligi",
       "description": "Hasta botox fiyatini pahali buluyor ve indirim istiyor.",
       "tags": [
-        { "text": "Pazarlik", "color": "amber" },
-        { "text": "Kampanya", "color": "green" }
+        {
+          "text": "Pazarlik",
+          "color": "amber"
+        },
+        {
+          "text": "Kampanya",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Aktif kampanya listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Kampanyalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Guncel kampanya, indirim orani ve gecerlilik tarihlerini tanimlayin" },
-          { "text": "Indirim yetki kurallari", "service": "Backend", "page": "Ayarlar > Indirim Politikasi", "status": "setup", "priority": "recommended", "effort": "medium", "capability": "C8", "hint": "AI'in verebilecegi max indirim orani ve kosullarini belirleyin" }
+          {
+            "text": "Aktif kampanya listesi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kampanyalar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Guncel kampanya, indirim orani ve gecerlilik tarihlerini tanimlayin"
+          },
+          {
+            "text": "Indirim yetki kurallari",
+            "service": "Backend",
+            "page": "Ayarlar > Indirim Politikasi",
+            "status": "setup",
+            "priority": "recommended",
+            "effort": "medium",
+            "capability": "C8",
+            "hint": "AI'in verebilecegi max indirim orani ve kosullarini belirleyin"
+          }
         ],
         "provider": [
-          { "text": "Pazarlik intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Fiyat Pazarlik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fiyat pazarligi ve indirim talebi intent'i hazir" },
-          { "text": "Kampanya template gonderimi", "service": "Backend", "page": "Template > Kampanya Mesaji", "status": "ready", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Kampanya detay mesaji template'i hazir" }
+          {
+            "text": "Pazarlik intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Fiyat Pazarlik",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Fiyat pazarligi ve indirim talebi intent'i hazir"
+          },
+          {
+            "text": "Kampanya template gonderimi",
+            "service": "Backend",
+            "page": "Template > Kampanya Mesaji",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Kampanya detay mesaji template'i hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Botox 5000 TL cok pahali, baska yerde 3500'e yapiyorlar. Indirim var mi?" },
-        { "role": "ai", "content": "Intent: Fiyat Pazarligi — Botox. Rakip fiyat referansi var. Aktif kampanya kontrol ediliyor." },
-        { "role": "bot", "content": "Anliyorum! Size ozel bir teklifimiz var:\n\n\ud83c\udf1f Su an gecerli kampanyamiz:\n\u2022 Botox + Dudak Dolgu Kombine: %15 indirim\n\u2022 Toplam: 4.250 TL yerine 3.600 TL\n\n\u23f0 Kampanya 28 Subat'a kadar gecerli!\n\n\ud83d\udca1 Ayrica ilk seansta ucretsiz cilt analizi hediye.\n\n\ud83d\udcc5 Bu firsattan yararlanmak ister misiniz? Randevu ayarlayalim!" },
-        { "role": "user", "content": "Sadece botox icin indirim olur mu?" },
-        { "role": "bot", "content": "Sadece botox icin de ozel teklifimiz var:\n\n\ud83d\udc89 Botox (tek bolge): 5.000 TL \u2192 4.500 TL\n\ud83c\udf81 Ek avantaj: 2. seans %10 indirimli\n\n\u2705 Bu fiyat sadece bu hafta gecerli.\n\nRandevu almak ister misiniz?" },
-        { "role": "system", "content": "Kampanya teklifi sunuldu. Lead randevu adimina yonlendirildi. Indirim yetkisi dahilinde." }
-      ]
+        {
+          "role": "user",
+          "content": "Botox 5000 TL cok pahali, baska yerde 3500'e yapiyorlar. Indirim var mi?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Fiyat Pazarligi — Botox. Rakip fiyat referansi var. Aktif kampanya kontrol ediliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Anliyorum! Size ozel bir teklifimiz var:\n\n🌟 Su an gecerli kampanyamiz:\n• Botox + Dudak Dolgu Kombine: %15 indirim\n• Toplam: 4.250 TL yerine 3.600 TL\n\n⏰ Kampanya 28 Subat'a kadar gecerli!\n\n💡 Ayrica ilk seansta ucretsiz cilt analizi hediye.\n\n📅 Bu firsattan yararlanmak ister misiniz? Randevu ayarlayalim!"
+        },
+        {
+          "role": "user",
+          "content": "Sadece botox icin indirim olur mu?"
+        },
+        {
+          "role": "bot",
+          "content": "Sadece botox icin de ozel teklifimiz var:\n\n💉 Botox (tek bolge): 5.000 TL → 4.500 TL\n🎁 Ek avantaj: 2. seans %10 indirimli\n\n✅ Bu fiyat sadece bu hafta gecerli.\n\nRandevu almak ister misiniz?"
+        },
+        {
+          "role": "system",
+          "content": "Kampanya teklifi sunuldu. Lead randevu adimina yonlendirildi. Indirim yetkisi dahilinde."
+        }
+      ],
+      "aiPrompt": "\"Fiyat Pazarligi + Kampanya\" senaryosu icin \"Botox Fiyat Pazarligi\" akisini olustur.\n\nAciklama: Hasta botox fiyatini pahali buluyor ve indirim istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Botox 5000 TL cok pahali, baska yerde 3500'e yapiyorlar. Indirim var mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Fiyat Pazarligi — Botox. Rakip fiyat referansi var. Aktif kampanya kontrol ediliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Anliyorum! Size ozel bir teklifimiz var:\n\n🌟 Su an gecerli kampanyamiz:\n• Botox + Dudak Dolgu Kombine: %15 indirim\n• Toplam: 4.250 TL yerine 3.600 TL\n\n⏰ Kampanya 28 Subat'a kadar gecerli!\n\n💡 Ayrica ilk seansta ucretsiz cilt analizi hediye.\n\n📅 Bu firsattan yararlanmak ister misiniz? Randevu ayarlayalim!\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Sadece botox icin indirim olur mu?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Sadece botox icin de ozel teklifimiz var:\n\n💉 Botox (tek bolge): 5.000 TL → 4.500 TL\n🎁 Ek avantaj: 2. seans %10 indirimli\n\n✅ Bu fiyat sadece bu hafta gecerli.\n\nRandevu almak ister misiniz?\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Kampanya teklifi sunuldu. Lead randevu adimina yonlendirildi. Indirim yetkisi dahilinde.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Yetki Disi Indirim Talebi",
       "description": "Hasta AI'in yetki sinirini asan bir indirim talep ediyor.",
       "tags": [
-        { "text": "Eskalasyon", "color": "red" },
-        { "text": "Yetki", "color": "amber" }
+        {
+          "text": "Eskalasyon",
+          "color": "red"
+        },
+        {
+          "text": "Yetki",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Eskalasyon kurallari", "service": "Backend", "page": "Ayarlar > Eskalasyon Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "AI yetki siniri asiminda hangi personele yonlendirilecegini belirleyin" }
+          {
+            "text": "Eskalasyon kurallari",
+            "service": "Backend",
+            "page": "Ayarlar > Eskalasyon Politikasi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "AI yetki siniri asiminda hangi personele yonlendirilecegini belirleyin"
+          }
         ],
         "provider": [
-          { "text": "Yetki kontrol mekanizmasi", "service": "AgentAI", "page": "Yetki > Indirim Limiti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI indirim yetki siniri kontrolu hazir" }
+          {
+            "text": "Yetki kontrol mekanizmasi",
+            "service": "AgentAI",
+            "page": "Yetki > Indirim Limiti",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "AI indirim yetki siniri kontrolu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "3000 TL'ye yaparsaniz hemen gelirim, baska turlu rakibe giderim." },
-        { "role": "ai", "content": "Intent: Agresif Pazarlik. Talep edilen fiyat yetki sinirinin altinda. Eskalasyon gerekli." },
-        { "role": "bot", "content": "Sizin icin en iyi teklifi sunmak istiyorum!\n\n\ud83d\udcde Satis koordinatorumuz Ayse Hanim 15 dakika icinde size ozel bir teklif ile donecek.\n\n\u2705 Numaranizi kaydettim, kesinlikle aranicaksiniz.\n\n\ud83d\udca1 Ipucu: Kombine paketlerde cok daha avantajli fiyatlar sunabiliyoruz!" },
-        { "role": "system", "content": "Yetki asimi — satis koordinatorune eskalasyon yapildi. Lead bilgileri aktarildi." }
-      ]
+        {
+          "role": "user",
+          "content": "3000 TL'ye yaparsaniz hemen gelirim, baska turlu rakibe giderim."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Agresif Pazarlik. Talep edilen fiyat yetki sinirinin altinda. Eskalasyon gerekli."
+        },
+        {
+          "role": "bot",
+          "content": "Sizin icin en iyi teklifi sunmak istiyorum!\n\n📞 Satis koordinatorumuz Ayse Hanim 15 dakika icinde size ozel bir teklif ile donecek.\n\n✅ Numaranizi kaydettim, kesinlikle aranicaksiniz.\n\n💡 Ipucu: Kombine paketlerde cok daha avantajli fiyatlar sunabiliyoruz!"
+        },
+        {
+          "role": "system",
+          "content": "Yetki asimi — satis koordinatorune eskalasyon yapildi. Lead bilgileri aktarildi."
+        }
+      ],
+      "aiPrompt": "\"Fiyat Pazarligi + Kampanya\" senaryosu icin \"Yetki Disi Indirim Talebi\" akisini olustur.\n\nAciklama: Hasta AI'in yetki sinirini asan bir indirim talep ediyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"3000 TL'ye yaparsaniz hemen gelirim, baska turlu rakibe giderim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Agresif Pazarlik. Talep edilen fiyat yetki sinirinin altinda. Eskalasyon gerekli.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Sizin icin en iyi teklifi sunmak istiyorum!\n\n📞 Satis koordinatorumuz Ayse Hanim 15 dakika icinde size ozel bir teklif ile donecek.\n\n✅ Numaranizi kaydettim, kesinlikle aranicaksiniz.\n\n💡 Ipucu: Kombine paketlerde cok daha avantajli fiyatlar sunabiliyoruz!\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Yetki asimi — satis koordinatorune eskalasyon yapildi. Lead bilgileri aktarildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI kampanya bilgisi + yetki bazli indirim + eskalasyon mekanizmasi ile calisir.",
     "backend": [
-      { "title": "Campaign Engine", "goal": "Kampanya Yonetimi", "content": "Aktif kampanyalari, indirim oranlarini ve gecerlilik tarihlerini yonetir." },
-      { "title": "Discount Authority", "goal": "Yetki Kontrolu", "content": "AI'in verebilecegi max indirim oranini kontrol eder, asimda eskalasyon tetikler." }
+      {
+        "title": "Campaign Engine",
+        "goal": "Kampanya Yonetimi",
+        "content": "Aktif kampanyalari, indirim oranlarini ve gecerlilik tarihlerini yonetir."
+      },
+      {
+        "title": "Discount Authority",
+        "goal": "Yetki Kontrolu",
+        "content": "AI'in verebilecegi max indirim oranini kontrol eder, asimda eskalasyon tetikler."
+      }
     ],
     "apis": [
-      { "title": "Campaign API", "goal": "Kampanya Bilgisi", "content": "Aktif kampanya listesi ve islem bazli indirim kurallari." }
+      {
+        "title": "Campaign API",
+        "goal": "Kampanya Bilgisi",
+        "content": "Aktif kampanya listesi ve islem bazli indirim kurallari."
+      }
     ]
   },
   "impact": {
@@ -108,9 +251,29 @@
     "resultLabel": "Kampanya Geliri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyPriceLeads", "label": "Aylik Pazarlik Yapan Lead", "default": 25, "hint": "Fiyat indirimi veya kampanya soran lead", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 40, "prefix": "%", "hint": "Kampanya ile randevuya donusen lead", "editable": true },
-      { "key": "avgDiscountedValue", "label": "Ort. Kampanyali Islem", "default": 4500, "suffix": "TL", "hint": "Indirimli ortalama islem tutari", "editable": true }
+      {
+        "key": "monthlyPriceLeads",
+        "label": "Aylik Pazarlik Yapan Lead",
+        "default": 25,
+        "hint": "Fiyat indirimi veya kampanya soran lead",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 40,
+        "prefix": "%",
+        "hint": "Kampanya ile randevuya donusen lead",
+        "editable": true
+      },
+      {
+        "key": "avgDiscountedValue",
+        "label": "Ort. Kampanyali Islem",
+        "default": 4500,
+        "suffix": "TL",
+        "hint": "Indirimli ortalama islem tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlyPriceLeads * (conversionRate / 100) * avgDiscountedValue",
     "formulaDisplay": null

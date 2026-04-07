@@ -7,9 +7,10 @@ import {
   ShoppingBag, MessageCircleHeart, Headphones, CalendarCheck,
   Package, CreditCard, HelpCircle, Megaphone, Star, Bell,
   UserCheck, PhoneCall, Workflow, Search, Plus, Sparkles,
-  Pencil, Copy, Pause, Play, Trash2, X, Phone,
+  Pencil, Copy, Pause, Play, Trash2, X, Phone, GitBranch, LayoutTemplate,
   type LucideIcon,
 } from 'lucide-react';
+import { FLOW_TEMPLATES, NICHE_LABELS, type FlowTemplate } from '../../data/flow-templates';
 
 /* ── Flow Icon Mapper ──────────────────────────────────────── */
 
@@ -75,6 +76,9 @@ export function FlowListPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<FlowSummary | null>(null);
   const [wizardLoading, setWizardLoading] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateCreating, setTemplateCreating] = useState<string | null>(null);
 
   const fetchFlows = useCallback(async () => {
     if (!tenantId) return;
@@ -93,9 +97,30 @@ export function FlowListPage() {
   useEffect(() => { fetchFlows(); }, [fetchFlows]);
 
   const openNewDialog = () => {
+    setTemplateSearch('');
+    setTemplateCreating(null);
+    setShowTemplateModal(true);
+  };
+
+  const openBlankDialog = () => {
+    setShowTemplateModal(false);
     setNewFlowName('');
     setNewFlowError(null);
     setShowNewDialog(true);
+  };
+
+  const handleCreateFromTemplate = async (tpl: FlowTemplate) => {
+    if (!tenantId || templateCreating) return;
+    setTemplateCreating(tpl.id);
+    try {
+      const config = { ...tpl.flowConfig, metadata: { ...tpl.flowConfig.metadata, name: tpl.title } };
+      const created = await api.createFlow(tenantId, { flow_name: tpl.title, flow_config: config });
+      setShowTemplateModal(false);
+      navigate(`/flow-builder/editor/${created.flow_id}?template=${tpl.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sablon olusturma basarisiz');
+      setTemplateCreating(null);
+    }
   };
 
   const handleCreate = async () => {
@@ -522,6 +547,89 @@ export function FlowListPage() {
               >
                 Evet, Sil
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Template Selection Modal ── */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => !templateCreating && setShowTemplateModal(false)}>
+          <div
+            className="bg-white border border-navy-100 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-elevated flow-card-enter"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-navy-50">
+              <h2 className="text-lg font-display font-semibold text-navy-900">Yeni Flow Olustur</h2>
+              <button
+                onClick={() => setShowTemplateModal(false)}
+                disabled={!!templateCreating}
+                className="p-1.5 rounded-lg text-navy-300 hover:text-navy-500 hover:bg-navy-50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Blank + Search */}
+            <div className="px-5 pt-4 pb-3 space-y-3 border-b border-navy-50">
+              <button
+                onClick={openBlankDialog}
+                className="w-full flex items-center gap-3 px-4 py-3 border-2 border-dashed border-navy-200 rounded-xl text-navy-500 hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50/30 transition-all"
+              >
+                <Plus className="w-5 h-5" strokeWidth={2} />
+                <span className="text-sm font-medium">Bos Akis Olustur</span>
+              </button>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-300" />
+                <input
+                  type="text"
+                  placeholder="Sablon ara..."
+                  value={templateSearch}
+                  onChange={e => setTemplateSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-navy-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Template Grid */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="grid grid-cols-2 gap-3">
+                {FLOW_TEMPLATES
+                  .filter(t => {
+                    if (!templateSearch) return true;
+                    const q = templateSearch.toLowerCase();
+                    return t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q);
+                  })
+                  .slice(0, 40)
+                  .map(tpl => (
+                    <button
+                      key={tpl.id}
+                      onClick={() => handleCreateFromTemplate(tpl)}
+                      disabled={!!templateCreating}
+                      className="text-left p-3 border border-navy-100 rounded-xl hover:border-brand-300 hover:bg-brand-50/20 transition-all disabled:opacity-50 group"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <GitBranch className="w-3.5 h-3.5 text-brand-500" />
+                        <span className="text-[10px] font-bold uppercase text-navy-400">
+                          {NICHE_LABELS[tpl.niche] || tpl.niche}
+                        </span>
+                        <span className="text-[10px] text-navy-300 ml-auto">{tpl.nodeCount} node</span>
+                      </div>
+                      <p className="text-sm font-semibold text-navy-800 line-clamp-1 group-hover:text-brand-700 transition-colors">
+                        {templateCreating === tpl.id ? 'Olusturuluyor...' : tpl.title}
+                      </p>
+                      <p className="text-[11px] text-navy-400 line-clamp-1 mt-0.5">{tpl.description}</p>
+                    </button>
+                  ))}
+              </div>
+              {templateSearch && FLOW_TEMPLATES.filter(t => t.title.toLowerCase().includes(templateSearch.toLowerCase()) || t.description.toLowerCase().includes(templateSearch.toLowerCase())).length === 0 && (
+                <div className="text-center py-10">
+                  <LayoutTemplate className="w-8 h-8 text-navy-200 mx-auto mb-2" />
+                  <p className="text-sm text-navy-400">Eslesen sablon bulunamadi</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

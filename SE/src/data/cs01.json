@@ -8,14 +8,32 @@
   "description": "WhatsApp Business Policy geregi musterilerden mesaj gonderim onami (opt-in) alinmasi zorunludur. Bu senaryo coklu kanaldan opt-in toplama, onam kayitlarinin saklanmasi ve STOP komutuyla aninda abonelik iptali (unsubscribe) sureclerini yonetir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — WhatsApp Business API kullanan her isletme" },
-      { "label": "Sorun", "value": "Onam alinmadan mesaj gonderimi WA hesabinin banlanmasina yol acar; opt-in kayitlari tutulmuyor" },
-      { "label": "Deger", "value": "WA hesap guvenligi + KVKK/GDPR uyumu + musteri guveni + yasal koruma" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — WhatsApp Business API kullanan her isletme"
+      },
+      {
+        "label": "Sorun",
+        "value": "Onam alinmadan mesaj gonderimi WA hesabinin banlanmasina yol acar; opt-in kayitlari tutulmuyor"
+      },
+      {
+        "label": "Deger",
+        "value": "WA hesap guvenligi + KVKK/GDPR uyumu + musteri guveni + yasal koruma"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Automation Engine (C5)", "color": "red" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Automation Engine (C5)",
+        "color": "red"
+      }
     ],
     "servicesNote": "Coklu kanaldan (QR, web formu, WhatsApp ilk mesaj, SMS) opt-in toplanir. Onam kayitlari tarih, kanal ve icerikle birlikte saklanir. STOP komutu aninda isler.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Opt-in Toplama",
         "goal": "Coklu kanaldan onam al",
         "badges": [
-          { "text": "Sistem (Multi-Channel)", "color": "purple" },
-          { "text": "Tenant (Onam Metni)", "color": "blue" }
+          {
+            "text": "Sistem (Multi-Channel)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Onam Metni)",
+            "color": "blue"
+          }
         ],
         "content": "QR kod, web formu, WhatsApp ilk mesaj veya SMS uzerinden musteri opt-in alir. Her kanal icin KVKK uyumlu acik riza metni sunulur."
       },
@@ -32,8 +56,14 @@
         "title": "Onam Kaydi",
         "goal": "Tarih, kanal ve icerigi sakla",
         "badges": [
-          { "text": "Sistem (Audit Trail)", "color": "purple" },
-          { "text": "Tenant (KVKK)", "color": "amber" }
+          {
+            "text": "Sistem (Audit Trail)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (KVKK)",
+            "color": "amber"
+          }
         ],
         "content": "Her opt-in kaydi: tarih, saat, kanal, IP/cihaz bilgisi, gosterilen metin ve musteri onay yaniti ile birlikte veritabaninda saklanir."
       },
@@ -41,8 +71,14 @@
         "title": "Unsubscribe (STOP)",
         "goal": "Aninda abonelik iptali",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (STOP Mesaji)", "color": "red" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (STOP Mesaji)",
+            "color": "red"
+          }
         ],
         "content": "Musteri STOP, IPTAL veya ABONELIKTEN CIK yazdiqinda aninda opt-out kaydedilir ve onay mesaji gonderilir. Bundan sonra pazarlama mesaji gonderilmez."
       }
@@ -54,62 +90,179 @@
       "title": "WhatsApp Ilk Mesajda Opt-in",
       "description": "Musteri ilk kez WhatsApp'tan yaziyor, opt-in alinmasi gerekiyor.",
       "tags": [
-        { "text": "Opt-in", "color": "green" },
-        { "text": "KVKK Uyum", "color": "blue" }
+        {
+          "text": "Opt-in",
+          "color": "green"
+        },
+        {
+          "text": "KVKK Uyum",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "KVKK aydinlatma metni", "service": "Knowledge", "page": "Dokuman Bankasi > KVKK Metinleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Hukuk danismaninizdan onaylanmis KVKK aydinlatma metnini yukleyin" },
-          { "text": "Opt-in sablon mesaji", "service": "Backend", "page": "Sablon Yonetimi > Onam Sablonlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Musteri karsilama ve onam toplama sablonunu olusturun" }
+          {
+            "text": "KVKK aydinlatma metni",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > KVKK Metinleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Hukuk danismaninizdan onaylanmis KVKK aydinlatma metnini yukleyin"
+          },
+          {
+            "text": "Opt-in sablon mesaji",
+            "service": "Backend",
+            "page": "Sablon Yonetimi > Onam Sablonlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Musteri karsilama ve onam toplama sablonunu olusturun"
+          }
         ],
         "provider": [
-          { "text": "Otomatik opt-in akisi", "service": "Automation", "page": "Karsilama > Opt-in Flow", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Ilk mesajda otomatik opt-in toplama akisi hazir" },
-          { "text": "Onam veritabani", "service": "Backend", "page": "Consent Manager > Kayit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Onam kayitlari audit trail ile veritabaninda saklanir" }
+          {
+            "text": "Otomatik opt-in akisi",
+            "service": "Automation",
+            "page": "Karsilama > Opt-in Flow",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "Ilk mesajda otomatik opt-in toplama akisi hazir"
+          },
+          {
+            "text": "Onam veritabani",
+            "service": "Backend",
+            "page": "Consent Manager > Kayit",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Onam kayitlari audit trail ile veritabaninda saklanir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, urunleriniz hakkinda bilgi almak istiyorum." },
-        { "role": "bot", "content": "Hosgeldiniz! Size en iyi hizmeti sunabilmemiz icin kisisel verilerinizin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir.\n\nKisisel verileriniz 6698 sayili KVKK kapsaminda islenmektedir. Detay: [KVKK Linki]\n\nOnaylamak icin EVET, reddetmek icin HAYIR yazin." },
-        { "role": "user", "content": "EVET" },
-        { "role": "system", "content": "Opt-in Kaydedildi: Tarih: 2026-02-20 14:35, Kanal: WhatsApp, Musteri: +905xxxxxxxxx, Onam: EVET" },
-        { "role": "bot", "content": "Tesekkurler, onaminiz kaydedildi! Size nasil yardimci olabilirim? Urunlerimiz, fiyatlar veya kampanyalar hakkinda bilgi verebilirim." },
-        { "role": "user", "content": "Kampanyalar neler?" },
-        { "role": "bot", "content": "Su an aktif kampanyalarimiz: [Kampanya detaylari]. Begendiginiz urun varsa detayli bilgi verebilirim." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, urunleriniz hakkinda bilgi almak istiyorum."
+        },
+        {
+          "role": "bot",
+          "content": "Hosgeldiniz! Size en iyi hizmeti sunabilmemiz icin kisisel verilerinizin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir.\n\nKisisel verileriniz 6698 sayili KVKK kapsaminda islenmektedir. Detay: [KVKK Linki]\n\nOnaylamak icin EVET, reddetmek icin HAYIR yazin."
+        },
+        {
+          "role": "user",
+          "content": "EVET"
+        },
+        {
+          "role": "system",
+          "content": "Opt-in Kaydedildi: Tarih: 2026-02-20 14:35, Kanal: WhatsApp, Musteri: +905xxxxxxxxx, Onam: EVET"
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler, onaminiz kaydedildi! Size nasil yardimci olabilirim? Urunlerimiz, fiyatlar veya kampanyalar hakkinda bilgi verebilirim."
+        },
+        {
+          "role": "user",
+          "content": "Kampanyalar neler?"
+        },
+        {
+          "role": "bot",
+          "content": "Su an aktif kampanyalarimiz: [Kampanya detaylari]. Begendiginiz urun varsa detayli bilgi verebilirim."
+        }
+      ],
+      "aiPrompt": "\"Opt-in Toplama ve Onam Yonetimi\" senaryosu icin \"WhatsApp Ilk Mesajda Opt-in\" akisini olustur.\n\nAciklama: Musteri ilk kez WhatsApp'tan yaziyor, opt-in alinmasi gerekiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, urunleriniz hakkinda bilgi almak istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **message_text** — Mesaj gonder\n   text: \"Hosgeldiniz! Size en iyi hizmeti sunabilmemiz icin kisisel verilerinizin islenmesine iliskin aydinlatma metnimizi onaylamaniz gerekmektedir.\n\nKisisel verileriniz 6698 sayili KVKK kapsaminda islenmektedir. Detay: [KVKK Linki]\n\nOnaylamak icin EVET, reddetmek icin HAYIR yazin.\"\n   Degiskenler: {{kvkk_linki}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"EVET\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Opt-in Kaydedildi: Tarih: 2026-02-20 14:35, Kanal: WhatsApp, Musteri: +905xxxxxxxxx, Onam: EVET\"\n\n6. **message_text** — Mesaj gonder\n   text: \"Tesekkurler, onaminiz kaydedildi! Size nasil yardimci olabilirim? Urunlerimiz, fiyatlar veya kampanyalar hakkinda bilgi verebilirim.\"\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kampanyalar neler?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **message_text** — Mesaj gonder\n   text: \"Su an aktif kampanyalarimiz: [Kampanya detaylari]. Begendiginiz urun varsa detayli bilgi verebilirim.\"\n   Degiskenler: {{kampanya_detaylari}}\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "STOP ile Abonelik Iptali",
       "description": "Musteri artik mesaj almak istemiyor ve STOP yaziyor.",
       "tags": [
-        { "text": "Unsubscribe", "color": "red" },
-        { "text": "Aninda Islem", "color": "amber" }
+        {
+          "text": "Unsubscribe",
+          "color": "red"
+        },
+        {
+          "text": "Aninda Islem",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "STOP mesaj sablonu", "service": "Backend", "page": "Sablon Yonetimi > Unsubscribe", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Abonelik iptali onay mesaji sablonunu yapilandirin" }
+          {
+            "text": "STOP mesaj sablonu",
+            "service": "Backend",
+            "page": "Sablon Yonetimi > Unsubscribe",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Abonelik iptali onay mesaji sablonunu yapilandirin"
+          }
         ],
         "provider": [
-          { "text": "STOP komut algilama", "service": "Automation", "page": "Unsubscribe > Komut Tespiti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "STOP, IPTAL, DUR, ABONELIKTEN CIK komutlari otomatik algilanir" }
+          {
+            "text": "STOP komut algilama",
+            "service": "Automation",
+            "page": "Unsubscribe > Komut Tespiti",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "STOP, IPTAL, DUR, ABONELIKTEN CIK komutlari otomatik algilanir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "STOP" },
-        { "role": "system", "content": "Unsubscribe tespiti: STOP komutu. Musteri: +905xxxxxxxxx. Opt-out isleniyor." },
-        { "role": "bot", "content": "Aboneliginiz iptal edilmistir. Bundan sonra tarafimizdan pazarlama mesaji almayacaksiniz. Tekrar abone olmak isterseniz istediginiz zaman bize BASLAT yazabilirsiniz. Iyi gunler." },
-        { "role": "system", "content": "Opt-out Kaydedildi: Tarih: 2026-02-20 16:10, Musteri: +905xxxxxxxxx, Durum: OPT-OUT, Pazarlama Mesaji: ENGELLENDI" }
-      ]
+        {
+          "role": "user",
+          "content": "STOP"
+        },
+        {
+          "role": "system",
+          "content": "Unsubscribe tespiti: STOP komutu. Musteri: +905xxxxxxxxx. Opt-out isleniyor."
+        },
+        {
+          "role": "bot",
+          "content": "Aboneliginiz iptal edilmistir. Bundan sonra tarafimizdan pazarlama mesaji almayacaksiniz. Tekrar abone olmak isterseniz istediginiz zaman bize BASLAT yazabilirsiniz. Iyi gunler."
+        },
+        {
+          "role": "system",
+          "content": "Opt-out Kaydedildi: Tarih: 2026-02-20 16:10, Musteri: +905xxxxxxxxx, Durum: OPT-OUT, Pazarlama Mesaji: ENGELLENDI"
+        }
+      ],
+      "aiPrompt": "\"Opt-in Toplama ve Onam Yonetimi\" senaryosu icin \"STOP ile Abonelik Iptali\" akisini olustur.\n\nAciklama: Musteri artik mesaj almak istemiyor ve STOP yaziyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"STOP\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: Unsubscribe tespiti: STOP komutu. Musteri: +905xxxxxxxxx. Opt-out isleniyor.\n\n4. **message_text** — Mesaj gonder\n   text: \"Aboneliginiz iptal edilmistir. Bundan sonra tarafimizdan pazarlama mesaji almayacaksiniz. Tekrar abone olmak isterseniz istediginiz zaman bize BASLAT yazabilirsiniz. Iyi gunler.\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Opt-out Kaydedildi: Tarih: 2026-02-20 16:10, Musteri: +905xxxxxxxxx, Durum: OPT-OUT, Pazarlama Mesaji: ENGELLENDI\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Opt-in/opt-out kayitlari immutable audit trail olarak saklanir. STOP komutlari keyword matching ile aninda algilanir. Tum kanallardan toplanan onamlar merkezi veritabaninda birlestirilir.",
     "backend": [
-      { "title": "Consent Management Service", "goal": "Onam Yonetimi", "content": "Opt-in ve opt-out kayitlarini tarih, kanal, metin ve musteri bilgisiyle birlikte immutable olarak saklar. KVKK audit trail olusturur." },
-      { "title": "Keyword Detection Engine", "goal": "Komut Algilama", "content": "STOP, IPTAL, BASLAT gibi anahtar kelimeleri aninda algilar ve ilgili otomasyon akisini tetikler." }
+      {
+        "title": "Consent Management Service",
+        "goal": "Onam Yonetimi",
+        "content": "Opt-in ve opt-out kayitlarini tarih, kanal, metin ve musteri bilgisiyle birlikte immutable olarak saklar. KVKK audit trail olusturur."
+      },
+      {
+        "title": "Keyword Detection Engine",
+        "goal": "Komut Algilama",
+        "content": "STOP, IPTAL, BASLAT gibi anahtar kelimeleri aninda algilar ve ilgili otomasyon akisini tetikler."
+      }
     ],
     "apis": [
-      { "title": "Consent API", "goal": "Onam Sorgulama", "content": "Musteri bazinda opt-in/opt-out durumunu sorgulama, guncelleme ve gecmisi listeleme." },
-      { "title": "Audit Trail API", "goal": "Denetim Kaydi", "content": "KVKK/GDPR denetimi icin tum onam islemlerinin kronolojik listesi." }
+      {
+        "title": "Consent API",
+        "goal": "Onam Sorgulama",
+        "content": "Musteri bazinda opt-in/opt-out durumunu sorgulama, guncelleme ve gecmisi listeleme."
+      },
+      {
+        "title": "Audit Trail API",
+        "goal": "Denetim Kaydi",
+        "content": "KVKK/GDPR denetimi icin tum onam islemlerinin kronolojik listesi."
+      }
     ]
   },
   "impact": {
@@ -118,9 +271,29 @@
     "resultLabel": "Korunan Risk Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyOutboundMessages", "label": "Aylik Giden Mesaj", "default": 5000, "hint": "Aylik gonderilen toplam WhatsApp mesaji", "editable": true },
-      { "key": "banRiskWithout", "label": "Opt-in Olmadan Ban Riski", "default": 25, "suffix": "%", "hint": "Opt-in yonetimi olmadan hesap banlanma riski", "editable": true },
-      { "key": "businessLossIfBanned", "label": "Ban Durumunda Kayip", "default": 50000, "suffix": "TL", "hint": "WA hesabi kapanirsa aylik gelir kaybi", "editable": true }
+      {
+        "key": "monthlyOutboundMessages",
+        "label": "Aylik Giden Mesaj",
+        "default": 5000,
+        "hint": "Aylik gonderilen toplam WhatsApp mesaji",
+        "editable": true
+      },
+      {
+        "key": "banRiskWithout",
+        "label": "Opt-in Olmadan Ban Riski",
+        "default": 25,
+        "suffix": "%",
+        "hint": "Opt-in yonetimi olmadan hesap banlanma riski",
+        "editable": true
+      },
+      {
+        "key": "businessLossIfBanned",
+        "label": "Ban Durumunda Kayip",
+        "default": 50000,
+        "suffix": "TL",
+        "hint": "WA hesabi kapanirsa aylik gelir kaybi",
+        "editable": true
+      }
     ],
     "formula": "(banRiskWithout / 100) * businessLossIfBanned",
     "formulaDisplay": null

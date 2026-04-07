@@ -8,15 +8,36 @@
   "description": "Kargo gecikmesi veya stok sorunu oldugunda musteriyi bekletmeden proaktif bilgilendirme yapan, Outbound Engine ile otomatik durum guncelleme gonderen sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
-      { "label": "Sorun", "value": "Kargo gecikmesi oldugunda musteri sikayet edene kadar bilgilendirilmiyor" },
-      { "label": "Deger", "value": "Proaktif bilgilendirme ile musteri sikayeti onlenir, guven artar" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Tum Platformlar)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kargo gecikmesi oldugunda musteri sikayet edene kadar bilgilendirilmiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Proaktif bilgilendirme ile musteri sikayeti onlenir, guven artar"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "E-com Integration (C11)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "E-com Integration (C11)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "Kargo durumu webhook'u degisiklikleri izler. Gecikme tespitinde Outbound Engine proaktif bilgilendirme gonderir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Gecikme Tespiti",
         "goal": "Anormallik bul",
         "badges": [
-          { "text": "Sistem (Webhook)", "color": "purple" },
-          { "text": "Tenant (Kargo)", "color": "amber" }
+          {
+            "text": "Sistem (Webhook)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kargo)",
+            "color": "amber"
+          }
         ],
         "content": "Kargo durum webhook'u izlenir. Tahmini teslim tarihinden sapma tespit edilir."
       },
@@ -33,8 +60,14 @@
         "title": "Proaktif Bildirim",
         "goal": "Musteriyi bilgilendir",
         "badges": [
-          { "text": "Sistem (Outbound)", "color": "purple" },
-          { "text": "Tenant (Template)", "color": "blue" }
+          {
+            "text": "Sistem (Outbound)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Template)",
+            "color": "blue"
+          }
         ],
         "content": "Gecikme veya sorun tespitinde template mesaj ile musteri proaktif olarak bilgilendirilir."
       }
@@ -46,36 +79,107 @@
       "title": "Kargo Gecikmesi — Proaktif Bilgilendirme",
       "description": "Kargo gecikti, musteri henuz sikyet etmeden bilgilendirilyor.",
       "tags": [
-        { "text": "Gecikme", "color": "amber" },
-        { "text": "Proaktif", "color": "green" }
+        {
+          "text": "Gecikme",
+          "color": "amber"
+        },
+        {
+          "text": "Proaktif",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kargo webhook entegrasyonu", "service": "Integrations", "page": "Kargo > Durum Webhook", "status": "setup", "priority": "required", "effort": "medium", "capability": "C11", "hint": "Kargo durum degisikliklerini izleyen webhook tanimlayin" },
-          { "text": "Gecikme bildirim template'i", "service": "Backend", "page": "Mesaj Sablonlari > Kargo Bildirim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Meta onayli kargo gecikme bildirimi template'i olusturun" }
+          {
+            "text": "Kargo webhook entegrasyonu",
+            "service": "Integrations",
+            "page": "Kargo > Durum Webhook",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C11",
+            "hint": "Kargo durum degisikliklerini izleyen webhook tanimlayin"
+          },
+          {
+            "text": "Gecikme bildirim template'i",
+            "service": "Backend",
+            "page": "Mesaj Sablonlari > Kargo Bildirim",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Meta onayli kargo gecikme bildirimi template'i olusturun"
+          }
         ],
         "provider": [
-          { "text": "Gecikme tespit motoru", "service": "Automation", "page": "Is Akislari > Kargo Izleme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C9", "hint": "Tahmini teslim tarihinden sapma otomatik tespit edilir" },
-          { "text": "Outbound tetikleme", "service": "Outbound", "page": "Trigger > Kargo Gecikme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Gecikme tespitinde otomatik bildirim gonderimi hazir" }
+          {
+            "text": "Gecikme tespit motoru",
+            "service": "Automation",
+            "page": "Is Akislari > Kargo Izleme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C9",
+            "hint": "Tahmini teslim tarihinden sapma otomatik tespit edilir"
+          },
+          {
+            "text": "Outbound tetikleme",
+            "service": "Outbound",
+            "page": "Trigger > Kargo Gecikme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Gecikme tespitinde otomatik bildirim gonderimi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Kargo gecikme tespiti: Siparis #889900 — Tahmini teslim: Dun. Gercek durum: Dagitimda degil. Gecikme: +1 gun." },
-        { "role": "bot", "content": "[Template Mesaj]\nMerhaba [Ad]! Siparisiniiz hakkinda bilgilendirme:\n\n📦 Siparis #889900\n⏰ Tahmini teslim: Yarin\n📍 Durum: Dagitim merkezinde\n\nGecikme icin ozur dileriz. Teslimat sonrasi bildirim gonderecegiz!" },
-        { "role": "user", "content": "Tesekkurler, bilgilendirme icin." },
-        { "role": "system", "content": "Musteri proaktif bilgilendirildi. Sikayet onlendi. Pozitif deneyim kaydedildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Kargo gecikme tespiti: Siparis #889900 — Tahmini teslim: Dun. Gercek durum: Dagitimda degil. Gecikme: +1 gun."
+        },
+        {
+          "role": "bot",
+          "content": "[Template Mesaj]\nMerhaba [Ad]! Siparisiniiz hakkinda bilgilendirme:\n\n📦 Siparis #889900\n⏰ Tahmini teslim: Yarin\n📍 Durum: Dagitim merkezinde\n\nGecikme icin ozur dileriz. Teslimat sonrasi bildirim gonderecegiz!"
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler, bilgilendirme icin."
+        },
+        {
+          "role": "system",
+          "content": "Musteri proaktif bilgilendirildi. Sikayet onlendi. Pozitif deneyim kaydedildi."
+        }
+      ],
+      "aiPrompt": "\"Proaktif Siparis Durum Guncelleme\" senaryosu icin \"Kargo Gecikmesi — Proaktif Bilgilendirme\" akisini olustur.\n\nAciklama: Kargo gecikti, musteri henuz sikyet etmeden bilgilendirilyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Kargo gecikme tespiti: Siparis #889900 — Tahmini teslim: Dun. Gercek durum: Dagitimda degil. Gecikme: +1 gun.\n\n2. **message_text** — Mesaj gonder\n   text: \"[Template Mesaj]\nMerhaba [Ad]! Siparisiniiz hakkinda bilgilendirme:\n\n📦 Siparis #889900\n⏰ Tahmini teslim: Yarin\n📍 Durum: Dagitim merkezinde\n\nGecikme icin ozur dileriz. Teslimat sonrasi bildirim gonderecegiz!\"\n   Degiskenler: {{template_mesaj}}, {{ad}}\n\n3. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler, bilgilendirme icin.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n4. **utility_note** — Akis sonuc notu\n   text: \"Musteri proaktif bilgilendirildi. Sikayet onlendi. Pozitif deneyim kaydedildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Kargo Webhook + Outbound Engine birlesimiyle calisir. Gecikme ve anomali tespiti ile proaktif musteri bilgilendirme.",
     "backend": [
-      { "title": "Shipment Monitor", "goal": "Kargo Izleme", "content": "Kargo durum webhook'larini dinler, tahmini teslim ile gercek durumu karsilastirir." },
-      { "title": "Proactive Notifier", "goal": "Proaktif Bildirim", "content": "Gecikme veya anomali tespitinde uygun template ile Outbound mesaj tetikler." }
+      {
+        "title": "Shipment Monitor",
+        "goal": "Kargo Izleme",
+        "content": "Kargo durum webhook'larini dinler, tahmini teslim ile gercek durumu karsilastirir."
+      },
+      {
+        "title": "Proactive Notifier",
+        "goal": "Proaktif Bildirim",
+        "content": "Gecikme veya anomali tespitinde uygun template ile Outbound mesaj tetikler."
+      }
     ],
     "apis": [
-      { "title": "Kargo API", "goal": "Durum Takibi", "content": "Kargo durum webhook ve gercek zamanli takip bilgisi." },
-      { "title": "WhatsApp Business API", "goal": "Template Gonderim", "content": "Proaktif bilgilendirme template mesaji gonderimi." }
+      {
+        "title": "Kargo API",
+        "goal": "Durum Takibi",
+        "content": "Kargo durum webhook ve gercek zamanli takip bilgisi."
+      },
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Template Gonderim",
+        "content": "Proaktif bilgilendirme template mesaji gonderimi."
+      }
     ]
   },
   "impact": {
@@ -84,9 +188,29 @@
     "resultLabel": "Onlenen Sikayet Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyDelays", "label": "Aylik Gecikme", "default": 30, "hint": "Kargo gecikme vakasi", "editable": true },
-      { "key": "complaintPreventionRate", "label": "Onleme Orani", "default": 70, "prefix": "%", "hint": "Proaktif bildirim ile onlenen sikayet", "editable": true },
-      { "key": "complaintCost", "label": "Sikayet Maliyeti", "default": 150, "suffix": "TL", "hint": "Sikayet yonetim maliyeti", "editable": true }
+      {
+        "key": "monthlyDelays",
+        "label": "Aylik Gecikme",
+        "default": 30,
+        "hint": "Kargo gecikme vakasi",
+        "editable": true
+      },
+      {
+        "key": "complaintPreventionRate",
+        "label": "Onleme Orani",
+        "default": 70,
+        "prefix": "%",
+        "hint": "Proaktif bildirim ile onlenen sikayet",
+        "editable": true
+      },
+      {
+        "key": "complaintCost",
+        "label": "Sikayet Maliyeti",
+        "default": 150,
+        "suffix": "TL",
+        "hint": "Sikayet yonetim maliyeti",
+        "editable": true
+      }
     ],
     "formula": "monthlyDelays * (complaintPreventionRate / 100) * complaintCost",
     "formulaDisplay": null

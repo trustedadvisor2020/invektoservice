@@ -8,13 +8,28 @@
   "description": "Birden fazla personel ayni lead'e farkli cevap veriyor. C2 Routing ile lead bazli agent atamasi yapilarak cakisma onlenir, tek elden iletisim saglanir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Coklu Personel)" },
-      { "label": "Sorun", "value": "2-3 kisi ayni hastaya farkli bilgi veriyor — hasta kafasi karisiyor, guven kayboluyor" },
-      { "label": "Deger", "value": "Lead bazli agent atamasi ile tek muhatap, tutarli iletisim ve profesyonel deneyim" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Coklu Personel)"
+      },
+      {
+        "label": "Sorun",
+        "value": "2-3 kisi ayni hastaya farkli bilgi veriyor — hasta kafasi karisiyor, guven kayboluyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Lead bazli agent atamasi ile tek muhatap, tutarli iletisim ve profesyonel deneyim"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "C2 Routing ile her lead'e tek agent atanir, cakisan cevaplar onlenir ve iletisim tutarliligi saglanir.",
     "steps": [
@@ -22,8 +37,14 @@
         "title": "Lead Atamasi",
         "goal": "Tek muhatap belirle",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Ekip)", "color": "blue" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Ekip)",
+            "color": "blue"
+          }
         ],
         "content": "Yeni lead geldiginde C2 otomatik olarak musait ve uygun agent'a atar."
       },
@@ -31,8 +52,14 @@
         "title": "Cakisma Korumasi",
         "goal": "Diger personeli engelle",
         "badges": [
-          { "text": "Sistem (Lock)", "color": "purple" },
-          { "text": "Tenant (Kural)", "color": "amber" }
+          {
+            "text": "Sistem (Lock)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kural)",
+            "color": "amber"
+          }
         ],
         "content": "Atanmis lead'e baska personelin mudahale etmesi engellenir, gerektiginde devir yapilir."
       }
@@ -44,37 +71,104 @@
       "title": "Ayni Lead'e Iki Farkli Cevap Sorunu",
       "description": "Iki personel ayni lead'e farkli fiyat bilgisi veriyor, C2 ile cozum.",
       "tags": [
-        { "text": "Cakisma", "color": "red" },
-        { "text": "Routing", "color": "blue" }
+        {
+          "text": "Cakisma",
+          "color": "red"
+        },
+        {
+          "text": "Routing",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Personel listesi ve rolleri", "service": "Backend", "page": "Ekip > Personel Tanimlama", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Satis personelini ve uzmanlik alanlarini tanimlayin" }
+          {
+            "text": "Personel listesi ve rolleri",
+            "service": "Backend",
+            "page": "Ekip > Personel Tanimlama",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Satis personelini ve uzmanlik alanlarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Otomatik lead atama motoru", "service": "Backend", "page": "Routing > Lead Atama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Round-robin veya uzmanlik bazli otomatik lead atama hazir" },
-          { "text": "Lead kilit mekanizmasi", "service": "Backend", "page": "Routing > Lead Lock", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Atanmis lead'e baska agent'in mudahalesini engelleyen kilit sistemi hazir" }
+          {
+            "text": "Otomatik lead atama motoru",
+            "service": "Backend",
+            "page": "Routing > Lead Atama",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Round-robin veya uzmanlik bazli otomatik lead atama hazir"
+          },
+          {
+            "text": "Lead kilit mekanizmasi",
+            "service": "Backend",
+            "page": "Routing > Lead Lock",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Atanmis lead'e baska agent'in mudahalesini engelleyen kilit sistemi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, burun estetigi fiyati nedir?" },
-        { "role": "system", "content": "C2 Routing: Lead atandi — Agent: Melis (Satis). Lock aktif. Diger personel salt-okunur." },
-        { "role": "bot", "content": "[Melis cevapliyor]\n\nMerhaba! Burun estetigi hakkinda bilgi vereyim:\n\n\ud83d\udc43 Burun Estetigi: 45.000 - 75.000 TL\n\ud83d\udc68\u200d\u2695\ufe0f Doktor: Prof. Dr. Ahmet Yilmaz\n\ud83d\udcc5 Konsultasyon: Ucretsiz\n\nDetayli bilgi icin randevu ayarlayalim mi?" },
-        { "role": "system", "content": "NOT: Personel 'Seda' bu lead'e cevap yazmaya calisti — C2 tarafindan engellendi. Bildirim: 'Bu lead Melis'e atanmis.'" },
-        { "role": "user", "content": "Konsultasyona gelmek istiyorum." },
-        { "role": "bot", "content": "[Melis devam ediyor]\n\nHarika! Prof. Dr. Ahmet Yilmaz icin konsultasyon slotlari:\n\n\ud83d\udcc5 Sali 14:00\n\ud83d\udcc5 Persembe 10:00\n\nHangisi size uygun?" },
-        { "role": "system", "content": "Tek muhatap (Melis) ile tutarli iletisim saglandi. Cakisma onlendi." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, burun estetigi fiyati nedir?"
+        },
+        {
+          "role": "system",
+          "content": "C2 Routing: Lead atandi — Agent: Melis (Satis). Lock aktif. Diger personel salt-okunur."
+        },
+        {
+          "role": "bot",
+          "content": "[Melis cevapliyor]\n\nMerhaba! Burun estetigi hakkinda bilgi vereyim:\n\n👃 Burun Estetigi: 45.000 - 75.000 TL\n👨‍⚕️ Doktor: Prof. Dr. Ahmet Yilmaz\n📅 Konsultasyon: Ucretsiz\n\nDetayli bilgi icin randevu ayarlayalim mi?"
+        },
+        {
+          "role": "system",
+          "content": "NOT: Personel 'Seda' bu lead'e cevap yazmaya calisti — C2 tarafindan engellendi. Bildirim: 'Bu lead Melis'e atanmis.'"
+        },
+        {
+          "role": "user",
+          "content": "Konsultasyona gelmek istiyorum."
+        },
+        {
+          "role": "bot",
+          "content": "[Melis devam ediyor]\n\nHarika! Prof. Dr. Ahmet Yilmaz icin konsultasyon slotlari:\n\n📅 Sali 14:00\n📅 Persembe 10:00\n\nHangisi size uygun?"
+        },
+        {
+          "role": "system",
+          "content": "Tek muhatap (Melis) ile tutarli iletisim saglandi. Cakisma onlendi."
+        }
+      ],
+      "aiPrompt": "\"Coklu Personel: Cakisan Cevaplar\" senaryosu icin \"Ayni Lead'e Iki Farkli Cevap Sorunu\" akisini olustur.\n\nAciklama: Iki personel ayni lead'e farkli fiyat bilgisi veriyor, C2 ile cozum.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, burun estetigi fiyati nedir?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **utility_set_variable** — Durum guncelle\n   Deger: C2 Routing: Lead atandi — Agent: Melis (Satis). Lock aktif. Diger personel salt-okunur.\n\n4. **message_text** — Mesaj gonder\n   text: \"[Melis cevapliyor]\n\nMerhaba! Burun estetigi hakkinda bilgi vereyim:\n\n👃 Burun Estetigi: 45.000 - 75.000 TL\n👨‍⚕️ Doktor: Prof. Dr. Ahmet Yilmaz\n📅 Konsultasyon: Ucretsiz\n\nDetayli bilgi icin randevu ayarlayalim mi?\"\n   Degiskenler: {{melis_cevapliyor}}\n\n5. **utility_set_variable** — Durum guncelle\n   Deger: NOT: Personel 'Seda' bu lead'e cevap yazmaya calisti — C2 tarafindan engellendi. Bildirim: 'Bu lead Melis'e atanmis.'\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Konsultasyona gelmek istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **message_menu** — Secenekli mesaj\n   Mesaj: \"[Melis devam ediyor]\n\nHarika! Prof. Dr. Ahmet Yilmaz icin konsultasyon slotlari:\n\n📅 Sali 14:00\n📅 Persembe 10:00\n\nHangisi size uygun?\"\n   Her secenek icin ayri cikis handle'i olustur\n   Degiskenler: {{melis_devam_ediyor}}\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Tek muhatap (Melis) ile tutarli iletisim saglandi. Cakisma onlendi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo C2 Routing lead atama + lead lock mekanizmasi ile calisir.",
     "backend": [
-      { "title": "Lead Assignment Engine", "goal": "Otomatik Atama", "content": "Round-robin, uzmanlik veya yukleme bazli lead atama motoru." },
-      { "title": "Collision Guard", "goal": "Cakisma Onleme", "content": "Atanmis lead'e baska personelin mudahalesini engeller, gerektiginde devir sureci baslatir." }
+      {
+        "title": "Lead Assignment Engine",
+        "goal": "Otomatik Atama",
+        "content": "Round-robin, uzmanlik veya yukleme bazli lead atama motoru."
+      },
+      {
+        "title": "Collision Guard",
+        "goal": "Cakisma Onleme",
+        "content": "Atanmis lead'e baska personelin mudahalesini engeller, gerektiginde devir sureci baslatir."
+      }
     ],
     "apis": [
-      { "title": "Routing API", "goal": "Atama Yonetimi", "content": "Lead atama, devir ve lock durumu yonetimi." }
+      {
+        "title": "Routing API",
+        "goal": "Atama Yonetimi",
+        "content": "Lead atama, devir ve lock durumu yonetimi."
+      }
     ]
   },
   "impact": {
@@ -83,9 +177,29 @@
     "resultLabel": "Verimlilik Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyLeads", "label": "Aylik Toplam Lead", "default": 50, "hint": "Birden fazla personelin erisebilecegi lead", "editable": true },
-      { "key": "collisionPreventionRate", "label": "Onlenen Cakisma", "default": 40, "prefix": "%", "hint": "Routing ile onlenen cakisma orani", "editable": true },
-      { "key": "avgSavedValue", "label": "Cakisma Basina Kayip", "default": 3000, "suffix": "TL", "hint": "Her cakismanin neden olacagi tahmini kayip", "editable": true }
+      {
+        "key": "monthlyLeads",
+        "label": "Aylik Toplam Lead",
+        "default": 50,
+        "hint": "Birden fazla personelin erisebilecegi lead",
+        "editable": true
+      },
+      {
+        "key": "collisionPreventionRate",
+        "label": "Onlenen Cakisma",
+        "default": 40,
+        "prefix": "%",
+        "hint": "Routing ile onlenen cakisma orani",
+        "editable": true
+      },
+      {
+        "key": "avgSavedValue",
+        "label": "Cakisma Basina Kayip",
+        "default": 3000,
+        "suffix": "TL",
+        "hint": "Her cakismanin neden olacagi tahmini kayip",
+        "editable": true
+      }
     ],
     "formula": "monthlyLeads * (collisionPreventionRate / 100) * avgSavedValue",
     "formulaDisplay": null

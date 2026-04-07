@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gen:templates": "node ../../../SE/scripts/generate-flow-templates.cjs"
   },
   "dependencies": {
     "@xyflow/react": "^12.6.0",

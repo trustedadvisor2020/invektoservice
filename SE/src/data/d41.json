@@ -8,16 +8,40 @@
   "description": "Instagram dis beyazlatma kampanyasindan gelen lead'leri AI ile yakalayan, kampanya detaylarini sunan ve randevuya yonlendiren sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Instagram Kampanya Kullanan)" },
-      { "label": "Sorun", "value": "IG kampanyasindan gelen DM'ler gec cevaplaniyor — lead'ler kaybolyor" },
-      { "label": "Deger", "value": "Aninda kampanya bilgisi + randevu yonlendirme ile lead donusumu artar" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Instagram Kampanya Kullanan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "IG kampanyasindan gelen DM'ler gec cevaplaniyor — lead'ler kaybolyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda kampanya bilgisi + randevu yonlendirme ile lead donusumu artar"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "Ads Attribution (C12)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "Ads Attribution (C12)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI kampanya lead'ini tespit eder, C12 Attribution ile kaynak takibi yapar ve randevuya yonlendirir.",
     "steps": [
@@ -25,8 +49,14 @@
         "title": "Lead Yakalama",
         "goal": "Kampanya lead'ini tespit et",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kampanya)", "color": "pink" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kampanya)",
+            "color": "pink"
+          }
         ],
         "content": "AI Instagram kampanyasindan gelen lead'i tespit eder ve kaynak etiketler."
       },
@@ -34,8 +64,14 @@
         "title": "Randevu Yonlendirme",
         "goal": "Lead'i donustur",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Kampanya bilgisi ve ozel fiyat sunularak randevu ayarlanir."
       }
@@ -47,36 +83,100 @@
       "title": "IG Beyazlatma Kampanyasi Lead",
       "description": "Instagram kampanyasindan gelen hasta beyazlatma hakkinda bilgi istiyor.",
       "tags": [
-        { "text": "Instagram", "color": "pink" },
-        { "text": "Kampanya", "color": "green" }
+        {
+          "text": "Instagram",
+          "color": "pink"
+        },
+        {
+          "text": "Kampanya",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kampanya icerigi ve fiyat", "service": "Knowledge", "page": "Dokuman Bankasi > Kampanyalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Aktif kampanya detaylari ve ozel fiyatlarini tanimlayin" }
+          {
+            "text": "Kampanya icerigi ve fiyat",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kampanyalar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Aktif kampanya detaylari ve ozel fiyatlarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Kampanya lead tespiti", "service": "AgentAI", "page": "Intent Tespiti > Kampanya", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kampanya sorusu intent'i ve kaynak tespiti hazir" },
-          { "text": "Attribution tracking", "service": "Backend", "page": "Analytics > Kampanya Attribution", "status": "ready", "priority": "required", "effort": "easy", "capability": "C12", "hint": "IG kampanya kaynagi otomatik etiketleme hazir" }
+          {
+            "text": "Kampanya lead tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Kampanya",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Kampanya sorusu intent'i ve kaynak tespiti hazir"
+          },
+          {
+            "text": "Attribution tracking",
+            "service": "Backend",
+            "page": "Analytics > Kampanya Attribution",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C12",
+            "hint": "IG kampanya kaynagi otomatik etiketleme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Dis beyazlatma kampanyaniz var miydi?" },
-        { "role": "ai", "content": "Intent: Kampanya Sorgusu — Dis Beyazlatma. Kaynak: Instagram. Attribution kaydedildi." },
-        { "role": "bot", "content": "Evet! Dis beyazlatma kampanyamiz devam ediyor ✨\n\n💎 Profesyonel Dis Beyazlatma\n💰 Kampanya fiyati: 2.500 TL (normal: 4.000 TL)\n📅 Gecerlilik: Subat sonuna kadar\n⏱️ Islem suresi: 45 dakika\n\n🎁 Kampanyadan yararlanmak icin randevu ayarlayalim mi?" },
-        { "role": "user", "content": "Evet, randevu alalim." },
-        { "role": "bot", "content": "Harika! Bu haftaki musait slotlar:\n\n🗓️ Carsamba 15:00\n🗓️ Persembe 11:00\n🗓️ Cuma 14:00\n\nHangisi size uygun?" },
-        { "role": "system", "content": "Kampanya lead'i randevuya yonlendirildi. IG attribution kaydedildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Dis beyazlatma kampanyaniz var miydi?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kampanya Sorgusu — Dis Beyazlatma. Kaynak: Instagram. Attribution kaydedildi."
+        },
+        {
+          "role": "bot",
+          "content": "Evet! Dis beyazlatma kampanyamiz devam ediyor ✨\n\n💎 Profesyonel Dis Beyazlatma\n💰 Kampanya fiyati: 2.500 TL (normal: 4.000 TL)\n📅 Gecerlilik: Subat sonuna kadar\n⏱️ Islem suresi: 45 dakika\n\n🎁 Kampanyadan yararlanmak icin randevu ayarlayalim mi?"
+        },
+        {
+          "role": "user",
+          "content": "Evet, randevu alalim."
+        },
+        {
+          "role": "bot",
+          "content": "Harika! Bu haftaki musait slotlar:\n\n🗓️ Carsamba 15:00\n🗓️ Persembe 11:00\n🗓️ Cuma 14:00\n\nHangisi size uygun?"
+        },
+        {
+          "role": "system",
+          "content": "Kampanya lead'i randevuya yonlendirildi. IG attribution kaydedildi."
+        }
+      ],
+      "aiPrompt": "\"Dis Beyazlatma Kampanyasi: IG Lead\" senaryosu icin \"IG Beyazlatma Kampanyasi Lead\" akisini olustur.\n\nAciklama: Instagram kampanyasindan gelen hasta beyazlatma hakkinda bilgi istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Dis beyazlatma kampanyaniz var miydi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kampanya Sorgusu — Dis Beyazlatma. Kaynak: Instagram. Attribution kaydedildi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Evet! Dis beyazlatma kampanyamiz devam ediyor ✨\n\n💎 Profesyonel Dis Beyazlatma\n💰 Kampanya fiyati: 2.500 TL (normal: 4.000 TL)\n📅 Gecerlilik: Subat sonuna kadar\n⏱️ Islem suresi: 45 dakika\n\n🎁 Kampanyadan yararlanmak icin randevu ayarlayalim mi?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Evet, randevu alalim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_menu** — Secenekli mesaj\n   Mesaj: \"Harika! Bu haftaki musait slotlar:\n\n🗓️ Carsamba 15:00\n🗓️ Persembe 11:00\n🗓️ Cuma 14:00\n\nHangisi size uygun?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Kampanya lead'i randevuya yonlendirildi. IG attribution kaydedildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo IG Lead Capture + Attribution + Randevu birlesimiyle calisir.",
     "backend": [
-      { "title": "Campaign Lead Catcher", "goal": "Lead Yakalama", "content": "Instagram kampanyasindan gelen lead'leri tespit eder ve kaynak etiketler." },
-      { "title": "Campaign Attribution", "goal": "Kaynak Izleme", "content": "Kampanya kaynagi, donusum ve gelir attribution verileri." }
+      {
+        "title": "Campaign Lead Catcher",
+        "goal": "Lead Yakalama",
+        "content": "Instagram kampanyasindan gelen lead'leri tespit eder ve kaynak etiketler."
+      },
+      {
+        "title": "Campaign Attribution",
+        "goal": "Kaynak Izleme",
+        "content": "Kampanya kaynagi, donusum ve gelir attribution verileri."
+      }
     ],
     "apis": [
-      { "title": "Instagram Messaging API", "goal": "DM Yonetimi", "content": "IG DM mesajlarinin Unified Inbox'a alinmasi." }
+      {
+        "title": "Instagram Messaging API",
+        "goal": "DM Yonetimi",
+        "content": "IG DM mesajlarinin Unified Inbox'a alinmasi."
+      }
     ]
   },
   "impact": {
@@ -85,9 +185,29 @@
     "resultLabel": "Kampanya Geliri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyIGCampaignLeads", "label": "Aylik IG Kampanya Lead", "default": 15, "hint": "Instagram'dan gelen kampanya sorusu", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 50, "prefix": "%", "hint": "Randevuya donusen lead", "editable": true },
-      { "key": "campaignPrice", "label": "Kampanya Fiyati", "default": 2500, "suffix": "TL", "hint": "Kampanya tedavi fiyati", "editable": true }
+      {
+        "key": "monthlyIGCampaignLeads",
+        "label": "Aylik IG Kampanya Lead",
+        "default": 15,
+        "hint": "Instagram'dan gelen kampanya sorusu",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 50,
+        "prefix": "%",
+        "hint": "Randevuya donusen lead",
+        "editable": true
+      },
+      {
+        "key": "campaignPrice",
+        "label": "Kampanya Fiyati",
+        "default": 2500,
+        "suffix": "TL",
+        "hint": "Kampanya tedavi fiyati",
+        "editable": true
+      }
     ],
     "formula": "monthlyIGCampaignLeads * (conversionRate / 100) * campaignPrice",
     "formulaDisplay": null

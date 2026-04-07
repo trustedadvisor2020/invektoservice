@@ -8,14 +8,32 @@
   "description": "Hangi seviyeye girmesi gerektigini soran ogrenciye Automation flow ile online seviye belirleme testi linki gonderilir. Test sonucuna gore uygun sinif otomatik onerilir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Egitim Kurumu (Dil Okulu, Yabanci Dil Akademisi)" },
-      { "label": "Sorun", "value": "Ogrenciler hangi seviyeye gireceklerini bilmiyor — agent telefonda veya yuz yuze test yapmak zorunda kaliyor" },
-      { "label": "Deger", "value": "Online test + otomatik sinif onerisi = agent zamani kazanir, ogrenci aninda sonuc alir" }
+      {
+        "label": "Sektor",
+        "value": "Egitim Kurumu (Dil Okulu, Yabanci Dil Akademisi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Ogrenciler hangi seviyeye gireceklerini bilmiyor — agent telefonda veya yuz yuze test yapmak zorunda kaliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Online test + otomatik sinif onerisi = agent zamani kazanir, ogrenci aninda sonuc alir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI seviye belirleme intent'ini algilar, Automation flow ile online test linki gonderir. Test tamamlandiginda sonuc otomatik degerlendirilir ve uygun sinif onerilir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Seviye Intent Tespiti",
         "goal": "Test ihtiyacini tani",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'hangi seviyedeyim', 'test yapmam lazim mi', 'nereden baslayacagimi bilmiyorum' gibi intent'leri tespit eder."
       },
@@ -32,8 +56,14 @@
         "title": "Test Linki Gonderimi",
         "goal": "Online testi baslat",
         "badges": [
-          { "text": "Sistem (Automation)", "color": "purple" },
-          { "text": "Tenant (Test)", "color": "amber" }
+          {
+            "text": "Sistem (Automation)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Test)",
+            "color": "amber"
+          }
         ],
         "content": "Ogrenciye kurs diline ozel online seviye belirleme testi linki gonderilir. Test 10-15 dakikada tamamlanir."
       },
@@ -41,8 +71,14 @@
         "title": "Sonuc ve Sinif Onerisi",
         "goal": "Uygun sinifi oner",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Sinif)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Sinif)",
+            "color": "green"
+          }
         ],
         "content": "Test sonucuna gore seviye belirlenir ve o seviyedeki musait siniflar kontenjan bilgisiyle birlikte sunulur."
       }
@@ -54,37 +90,105 @@
       "title": "Seviye Belirleme Test Akisi",
       "description": "Ogrenci seviyesini bilmiyor, AI test linki gonderip sonuca gore sinif oneriyor.",
       "tags": [
-        { "text": "Otomasyon", "color": "green" },
-        { "text": "Seviye Testi", "color": "purple" }
+        {
+          "text": "Otomasyon",
+          "color": "green"
+        },
+        {
+          "text": "Seviye Testi",
+          "color": "purple"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Online seviye testi", "service": "Knowledge", "page": "Bilgi Bankasi > Seviye Testleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her dil icin online seviye belirleme testi linkini tanimlayin" }
+          {
+            "text": "Online seviye testi",
+            "service": "Knowledge",
+            "page": "Bilgi Bankasi > Seviye Testleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Her dil icin online seviye belirleme testi linkini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Seviye intent algilama", "service": "AgentAI", "page": "Intent Tespiti > Seviye", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Seviye belirleme intent'i varsayilan olarak tanimli" },
-          { "text": "Test sonuc degerlendirme", "service": "AgentAI", "page": "Otomasyon > Test Sonuc Akisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Test sonucuna gore seviye eslestirme ve sinif onerisi hazir" }
+          {
+            "text": "Seviye intent algilama",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Seviye",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Seviye belirleme intent'i varsayilan olarak tanimli"
+          },
+          {
+            "text": "Test sonuc degerlendirme",
+            "service": "AgentAI",
+            "page": "Otomasyon > Test Sonuc Akisi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Test sonucuna gore seviye eslestirme ve sinif onerisi hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Ingilizce kursuna baslayacagim ama seviyemi bilmiyorum. Nasil anlayabilirim?" },
-        { "role": "ai", "content": "Intent: Seviye Belirleme. Dil: Ingilizce. Automation flow: Online test linki gonderilecek." },
-        { "role": "bot", "content": "Seviyenizi belirlemek cok kolay! 15 dakikalik ucretsiz online testimizi cozebilirsiniz:\n\nIngilizce Seviye Testi: [Online Test Linki]\n\n- Sure: 15 dakika\n- Soru Sayisi: 40\n- Sonuc: Aninda ekranda gorunur\n- Parcalar: Gramer, kelime bilgisi, okuma anlama\n\nTesti tamamladiginizda sonucunuzu buraya yazin, size uygun sinifi onerelim!" },
-        { "role": "user", "content": "Testi cozdum, B1 seviyesi cikmis." },
-        { "role": "bot", "content": "Tebrikler! B1 (Orta) seviyesindesiniz. Size uygun siniflar:\n\nIngilizce B1 Gruplari:\n- Hafta ici: Pazartesi-Carsamba-Cuma 10:00-12:00 (5 kisi kaldi)\n- Aksam: Sali-Persembe 19:00-21:00 (3 kisi kaldi)\n- Hafta sonu: Cumartesi 10:00-13:00 (7 kisi kaldi)\n\nB1 seviyesinde konusma pratigi ve gramer pekistirmesine odaklanilir.\n\nHangi program size uygun? Kayit icin: [Kayit Formu]" },
-        { "role": "system", "content": "Otomatik cozum: Seviye testi + sonuc degerlendirme + sinif onerisi tamamlandi. Agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Ingilizce kursuna baslayacagim ama seviyemi bilmiyorum. Nasil anlayabilirim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Seviye Belirleme. Dil: Ingilizce. Automation flow: Online test linki gonderilecek."
+        },
+        {
+          "role": "bot",
+          "content": "Seviyenizi belirlemek cok kolay! 15 dakikalik ucretsiz online testimizi cozebilirsiniz:\n\nIngilizce Seviye Testi: [Online Test Linki]\n\n- Sure: 15 dakika\n- Soru Sayisi: 40\n- Sonuc: Aninda ekranda gorunur\n- Parcalar: Gramer, kelime bilgisi, okuma anlama\n\nTesti tamamladiginizda sonucunuzu buraya yazin, size uygun sinifi onerelim!"
+        },
+        {
+          "role": "user",
+          "content": "Testi cozdum, B1 seviyesi cikmis."
+        },
+        {
+          "role": "bot",
+          "content": "Tebrikler! B1 (Orta) seviyesindesiniz. Size uygun siniflar:\n\nIngilizce B1 Gruplari:\n- Hafta ici: Pazartesi-Carsamba-Cuma 10:00-12:00 (5 kisi kaldi)\n- Aksam: Sali-Persembe 19:00-21:00 (3 kisi kaldi)\n- Hafta sonu: Cumartesi 10:00-13:00 (7 kisi kaldi)\n\nB1 seviyesinde konusma pratigi ve gramer pekistirmesine odaklanilir.\n\nHangi program size uygun? Kayit icin: [Kayit Formu]"
+        },
+        {
+          "role": "system",
+          "content": "Otomatik cozum: Seviye testi + sonuc degerlendirme + sinif onerisi tamamlandi. Agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Seviye Belirleme\" senaryosu icin \"Seviye Belirleme Test Akisi\" akisini olustur.\n\nAciklama: Ogrenci seviyesini bilmiyor, AI test linki gonderip sonuca gore sinif oneriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Ingilizce kursuna baslayacagim ama seviyemi bilmiyorum. Nasil anlayabilirim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Seviye Belirleme. Dil: Ingilizce. Automation flow: Online test linki gonderilecek.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Seviyenizi belirlemek cok kolay! 15 dakikalik ucretsiz online testimizi cozebilirsiniz:\n\nIngilizce Seviye Testi: [Online Test Linki]\n\n- Sure: 15 dakika\n- Soru Sayisi: 40\n- Sonuc: Aninda ekranda gorunur\n- Parcalar: Gramer, kelime bilgisi, okuma anlama\n\nTesti tamamladiginizda sonucunuzu buraya yazin, size uygun sinifi onerelim!\"\n   Degiskenler: {{online_test_linki}}\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Testi cozdum, B1 seviyesi cikmis.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Tebrikler! B1 (Orta) seviyesindesiniz. Size uygun siniflar:\n\nIngilizce B1 Gruplari:\n- Hafta ici: Pazartesi-Carsamba-Cuma 10:00-12:00 (5 kisi kaldi)\n- Aksam: Sali-Persembe 19:00-21:00 (3 kisi kaldi)\n- Hafta sonu: Cumartesi 10:00-13:00 (7 kisi kaldi)\n\nB1 seviyesinde konusma pratigi ve gramer pekistirmesine odaklanilir.\n\nHangi program size uygun? Kayit icin: [Kayit Formu]\"\n   Degiskenler: {{kayit_formu}}\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Otomatik cozum: Seviye testi + sonuc degerlendirme + sinif onerisi tamamlandi. Agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Seviye belirleme testleri harici platform uzerinden yonetilir. Test sonuclari Automation flow ile otomatik islenir ve sinif onerisi yapilir.",
     "backend": [
-      { "title": "Level Assessment Flow", "goal": "Seviye Belirleme Akisi", "content": "Online test linki gonderme, sonuc alma ve seviye-sinif eslestirmesi. CEFR (A1-C2) standartlarini kullanir." },
-      { "title": "Class Recommendation Engine", "goal": "Sinif Onerisi", "content": "Seviye sonucuna gore musait siniflari filtreler ve kontenjan bilgisiyle birlikte listeler." }
+      {
+        "title": "Level Assessment Flow",
+        "goal": "Seviye Belirleme Akisi",
+        "content": "Online test linki gonderme, sonuc alma ve seviye-sinif eslestirmesi. CEFR (A1-C2) standartlarini kullanir."
+      },
+      {
+        "title": "Class Recommendation Engine",
+        "goal": "Sinif Onerisi",
+        "content": "Seviye sonucuna gore musait siniflari filtreler ve kontenjan bilgisiyle birlikte listeler."
+      }
     ],
     "apis": [
-      { "title": "Assessment Platform API", "goal": "Test Sonucu", "content": "Online test platformundan sonuc cekilir. Seviye skoru CEFR standartlarina gore degerlendirilir." },
-      { "title": "Class Matching API", "goal": "Sinif Eslestirme", "content": "Seviye sonucuna gore uygun siniflari listeler. Kontenjan ve program bilgisi ile birlikte doner." }
+      {
+        "title": "Assessment Platform API",
+        "goal": "Test Sonucu",
+        "content": "Online test platformundan sonuc cekilir. Seviye skoru CEFR standartlarina gore degerlendirilir."
+      },
+      {
+        "title": "Class Matching API",
+        "goal": "Sinif Eslestirme",
+        "content": "Seviye sonucuna gore uygun siniflari listeler. Kontenjan ve program bilgisi ile birlikte doner."
+      }
     ]
   },
   "impact": {
@@ -93,9 +197,28 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyLevelQueries", "label": "Gunluk Seviye Sorusu", "default": 8, "hint": "Gunluk ortalama seviye belirleme talebi", "editable": true },
-      { "key": "minutesPerAssessment", "label": "Degerlendirme Basina Dakika", "default": 15, "hint": "Agent'in yuz yuze seviye testi icin harcadigi sure", "editable": true },
-      { "key": "agentHourlyCost", "label": "Agent Saatlik Maliyet", "default": 100, "suffix": "TL", "hint": "Agent saatlik ucreti", "editable": true }
+      {
+        "key": "dailyLevelQueries",
+        "label": "Gunluk Seviye Sorusu",
+        "default": 8,
+        "hint": "Gunluk ortalama seviye belirleme talebi",
+        "editable": true
+      },
+      {
+        "key": "minutesPerAssessment",
+        "label": "Degerlendirme Basina Dakika",
+        "default": 15,
+        "hint": "Agent'in yuz yuze seviye testi icin harcadigi sure",
+        "editable": true
+      },
+      {
+        "key": "agentHourlyCost",
+        "label": "Agent Saatlik Maliyet",
+        "default": 100,
+        "suffix": "TL",
+        "hint": "Agent saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "dailyLevelQueries * minutesPerAssessment * (agentHourlyCost / 60) * 30",
     "formulaDisplay": null

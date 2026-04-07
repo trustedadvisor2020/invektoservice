@@ -8,14 +8,32 @@
   "description": "Hasta fotograflarinin kisisel cihazlarda kalmasini onleyen, merkezi ve KVKK uyumlu foto arsivleme sistemi.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
-      { "label": "Sorun", "value": "Hasta fotograflari personel telefonlarinda kaliyor — data loss ve KVKK ihlal riski" },
-      { "label": "Deger", "value": "Merkezi sifrelenmis depolama ile veri guvenligi ve yasal uyumluluk saglanir" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Tum Klinikler)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Hasta fotograflari personel telefonlarinda kaliyor — data loss ve KVKK ihlal riski"
+      },
+      {
+        "label": "Deger",
+        "value": "Merkezi sifrelenmis depolama ile veri guvenligi ve yasal uyumluluk saglanir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Security (C5)", "color": "red" },
-      { "name": "Enterprise Security (C6)", "color": "red" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Security (C5)",
+        "color": "red"
+      },
+      {
+        "name": "Enterprise Security (C6)",
+        "color": "red"
+      }
     ],
     "servicesNote": "C1 uzerinden gelen fotograflar otomatik olarak merkezi sifrelenmis depolama alanina yonlendirilir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Merkezi Depolama",
         "goal": "Fotograflari guvenle sakla",
         "badges": [
-          { "text": "Sistem (Storage)", "color": "red" },
-          { "text": "Tenant (KVKK)", "color": "rose" }
+          {
+            "text": "Sistem (Storage)",
+            "color": "red"
+          },
+          {
+            "text": "Tenant (KVKK)",
+            "color": "rose"
+          }
         ],
         "content": "WA uzerinden gelen hasta fotograflari merkezi sifrelenmis depolama alanina otomatik aktarilir."
       },
@@ -32,8 +56,14 @@
         "title": "Erisim Kontrolu",
         "goal": "Yetkili erisim",
         "badges": [
-          { "text": "Sistem (Security)", "color": "red" },
-          { "text": "Tenant (Yetki)", "color": "blue" }
+          {
+            "text": "Sistem (Security)",
+            "color": "red"
+          },
+          {
+            "text": "Tenant (Yetki)",
+            "color": "blue"
+          }
         ],
         "content": "Sadece yetkili saglik personeli fotograflara erisebilir, tum erisimler loglanir."
       }
@@ -45,33 +75,88 @@
       "title": "Fotograf Merkezi Arsivleme",
       "description": "Hasta WA'dan fotograf gonderiyor, merkezi arsive aktariliyor.",
       "tags": [
-        { "text": "Fotograf", "color": "blue" },
-        { "text": "KVKK", "color": "red" }
+        {
+          "text": "Fotograf",
+          "color": "blue"
+        },
+        {
+          "text": "KVKK",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Fotograf saklama politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Veri Saklama", "status": "setup", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Hasta fotografi saklama suresi ve kosullarini tanimlayin" }
+          {
+            "text": "Fotograf saklama politikasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Veri Saklama",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "Hasta fotografi saklama suresi ve kosullarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Sifrelenmis depolama", "service": "Backend", "page": "Guvenlik > Foto Arsiv", "status": "ready", "priority": "required", "effort": "easy", "capability": "C6", "hint": "AES-256 sifrelenmis merkezi foto depolama hazir" },
-          { "text": "Erisim loglama", "service": "Backend", "page": "Guvenlik > Erisim Log", "status": "ready", "priority": "required", "effort": "easy", "capability": "C5", "hint": "Fotograf erisim loglama ve denetim hazir" }
+          {
+            "text": "Sifrelenmis depolama",
+            "service": "Backend",
+            "page": "Guvenlik > Foto Arsiv",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C6",
+            "hint": "AES-256 sifrelenmis merkezi foto depolama hazir"
+          },
+          {
+            "text": "Erisim loglama",
+            "service": "Backend",
+            "page": "Guvenlik > Erisim Log",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C5",
+            "hint": "Fotograf erisim loglama ve denetim hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Hasta [Ad] fotograf gonderdi (WA). Otomatik arsivleme baslatildi." },
-        { "role": "system", "content": "Fotograf sifrelendi ve merkezi depolama alanina aktarildi. Hasta dosyasina baglandi." },
-        { "role": "system", "content": "Kisisel cihazdaki kopya temizleme uyarisi agent'e gonderildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Hasta [Ad] fotograf gonderdi (WA). Otomatik arsivleme baslatildi."
+        },
+        {
+          "role": "system",
+          "content": "Fotograf sifrelendi ve merkezi depolama alanina aktarildi. Hasta dosyasina baglandi."
+        },
+        {
+          "role": "system",
+          "content": "Kisisel cihazdaki kopya temizleme uyarisi agent'e gonderildi."
+        }
+      ],
+      "aiPrompt": "\"Hasta Fotograflari Cihazda Kaliyor\" senaryosu icin \"Fotograf Merkezi Arsivleme\" akisini olustur.\n\nAciklama: Hasta WA'dan fotograf gonderiyor, merkezi arsive aktariliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Hasta [Ad] fotograf gonderdi (WA). Otomatik arsivleme baslatildi.\n\n2. **utility_set_variable** — Durum guncelle\n   Deger: Fotograf sifrelendi ve merkezi depolama alanina aktarildi. Hasta dosyasina baglandi.\n\n3. **utility_note** — Akis sonuc notu\n   text: \"Kisisel cihazdaki kopya temizleme uyarisi agent'e gonderildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Merkezi Depolama + KVKK Compliance birlesimiyle calisir.",
     "backend": [
-      { "title": "Photo Archiver", "goal": "Fotograf Arsivleme", "content": "WA'dan gelen fotograflari otomatik olarak sifrelenmis merkezi depolamaya aktarir." },
-      { "title": "Access Controller", "goal": "Erisim Kontrolu", "content": "Rol bazli erisim kontrolu ve tum erisimlerin loglanmasi." }
+      {
+        "title": "Photo Archiver",
+        "goal": "Fotograf Arsivleme",
+        "content": "WA'dan gelen fotograflari otomatik olarak sifrelenmis merkezi depolamaya aktarir."
+      },
+      {
+        "title": "Access Controller",
+        "goal": "Erisim Kontrolu",
+        "content": "Rol bazli erisim kontrolu ve tum erisimlerin loglanmasi."
+      }
     ],
     "apis": [
-      { "title": "Secure Storage API", "goal": "Depolama", "content": "Sifrelenmis dosya yukleme, erisim ve silme islemleri." }
+      {
+        "title": "Secure Storage API",
+        "goal": "Depolama",
+        "content": "Sifrelenmis dosya yukleme, erisim ve silme islemleri."
+      }
     ]
   },
   "impact": {
@@ -80,8 +165,21 @@
     "resultLabel": "Onlenen Risk Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyPhotos", "label": "Aylik Hasta Fotografi", "default": 50, "hint": "WA uzerinden gelen hasta fotografi", "editable": true },
-      { "key": "dataLossRisk", "label": "Kayip Riski", "default": 200, "suffix": "TL", "hint": "Foto basina veri kaybi/KVKK riski", "editable": true }
+      {
+        "key": "monthlyPhotos",
+        "label": "Aylik Hasta Fotografi",
+        "default": 50,
+        "hint": "WA uzerinden gelen hasta fotografi",
+        "editable": true
+      },
+      {
+        "key": "dataLossRisk",
+        "label": "Kayip Riski",
+        "default": 200,
+        "suffix": "TL",
+        "hint": "Foto basina veri kaybi/KVKK riski",
+        "editable": true
+      }
     ],
     "formula": "monthlyPhotos * dataLossRisk",
     "formulaDisplay": null

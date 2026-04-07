@@ -8,15 +8,36 @@
   "description": "Farkli temsilcilerin farkli fiyat veya plan bildirmesi sorununu Knowledge Base ile tek kaynak cevap vererek cözen sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Coklu Personel)" },
-      { "label": "Sorun", "value": "Her personel farkli fiyat soyluyor — hasta guvensizlik hissediyor" },
-      { "label": "Deger", "value": "Tek kaynak (Knowledge Base) ile tutarli bilgi sunulur, guven artar" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Coklu Personel)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Her personel farkli fiyat soyluyor — hasta guvensizlik hissediyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Tek kaynak (Knowledge Base) ile tutarli bilgi sunulur, guven artar"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI tum fiyat ve tedavi bilgisini Knowledge Base'den cekar. Personel kendi bilgisinden degil, tek kaynaktan cevap verir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Tek Kaynak Bilgi",
         "goal": "Tutarli cevap ver",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "green" },
-          { "text": "Tenant (Fiyat)", "color": "blue" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "green"
+          },
+          {
+            "text": "Tenant (Fiyat)",
+            "color": "blue"
+          }
         ],
         "content": "Tum fiyat ve plan bilgileri Knowledge Base'den cekilir — personel kendi yorumunu katmaz."
       },
@@ -33,8 +60,14 @@
         "title": "Tutarsizlik Onleme",
         "goal": "Farkliligi tespit et",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kalite)", "color": "amber" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kalite)",
+            "color": "amber"
+          }
         ],
         "content": "AI onceki mesajlarla tutarsizlik tespit ederse uyari verir."
       }
@@ -46,33 +79,82 @@
       "title": "Fiyat Tutarsizligi — Tek Kaynak Cozum",
       "description": "Hasta farkli fiyat soyledigini bildiriyor, AI Knowledge Base'den dogru fiyati sunar.",
       "tags": [
-        { "text": "Tutarsizlik", "color": "rose" },
-        { "text": "Tek Kaynak", "color": "green" }
+        {
+          "text": "Tutarsizlik",
+          "color": "rose"
+        },
+        {
+          "text": "Tek Kaynak",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Guncel fiyat listesi", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Tedavi bazli guncel fiyat listesini yukleyin ve duzenli guncelleyin" }
+          {
+            "text": "Guncel fiyat listesi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Fiyat Listesi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Tedavi bazli guncel fiyat listesini yukleyin ve duzenli guncelleyin"
+          }
         ],
         "provider": [
-          { "text": "Knowledge bazli cevap motoru", "service": "Knowledge", "page": "RAG > Fiyat Bilgisi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Fiyat sorularinda Knowledge Base tek kaynak olarak kullanilir" }
+          {
+            "text": "Knowledge bazli cevap motoru",
+            "service": "Knowledge",
+            "page": "RAG > Fiyat Bilgisi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Fiyat sorularinda Knowledge Base tek kaynak olarak kullanilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Baska biri farkli fiyat soyledi!" },
-        { "role": "ai", "content": "Intent: Fiyat Tutarsizligi Sikayeti. Knowledge Base'den guncel fiyat cekilecek." },
-        { "role": "bot", "content": "Ozur dileriz, karisilik olmus olabilir. Guncel fiyat listemiz:\n\n💰 Zirkonyum kaplama: 4.500-6.000 TL/dis\n💰 Implant: 12.000-18.000 TL\n💰 Kanal tedavisi: 2.500-4.000 TL\n\n📋 Kesin fiyat muayene sonrasi belirlenir.\n\nMuayene randevusu ayarlayalim mi?" },
-        { "role": "system", "content": "Fiyat bilgisi Knowledge Base'den cekildi. Tutarsizlik giderildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Baska biri farkli fiyat soyledi!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Fiyat Tutarsizligi Sikayeti. Knowledge Base'den guncel fiyat cekilecek."
+        },
+        {
+          "role": "bot",
+          "content": "Ozur dileriz, karisilik olmus olabilir. Guncel fiyat listemiz:\n\n💰 Zirkonyum kaplama: 4.500-6.000 TL/dis\n💰 Implant: 12.000-18.000 TL\n💰 Kanal tedavisi: 2.500-4.000 TL\n\n📋 Kesin fiyat muayene sonrasi belirlenir.\n\nMuayene randevusu ayarlayalim mi?"
+        },
+        {
+          "role": "system",
+          "content": "Fiyat bilgisi Knowledge Base'den cekildi. Tutarsizlik giderildi."
+        }
+      ],
+      "aiPrompt": "\"Yanlis Bilgi: Fiyat/Plan Tutarsizligi\" senaryosu icin \"Fiyat Tutarsizligi — Tek Kaynak Cozum\" akisini olustur.\n\nAciklama: Hasta farkli fiyat soyledigini bildiriyor, AI Knowledge Base'den dogru fiyati sunar.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Baska biri farkli fiyat soyledi!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Fiyat Tutarsizligi Sikayeti. Knowledge Base'den guncel fiyat cekilecek.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Ozur dileriz, karisilik olmus olabilir. Guncel fiyat listemiz:\n\n💰 Zirkonyum kaplama: 4.500-6.000 TL/dis\n💰 Implant: 12.000-18.000 TL\n💰 Kanal tedavisi: 2.500-4.000 TL\n\n📋 Kesin fiyat muayene sonrasi belirlenir.\n\nMuayene randevusu ayarlayalim mi?\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Fiyat bilgisi Knowledge Base'den cekildi. Tutarsizlik giderildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Knowledge Base tek kaynak prensibi ile calisir. Fiyat ve plan tutarsizligi onleme.",
     "backend": [
-      { "title": "Single Source Enforcer", "goal": "Tek Kaynak", "content": "Tum bilgi sorularinda Knowledge Base tek kaynak olarak kullanilmasini zorlar." },
-      { "title": "Consistency Checker", "goal": "Tutarlilik Kontrolu", "content": "Onceki mesajlarla tutarsizlik tespit eder ve uyari verir." }
+      {
+        "title": "Single Source Enforcer",
+        "goal": "Tek Kaynak",
+        "content": "Tum bilgi sorularinda Knowledge Base tek kaynak olarak kullanilmasini zorlar."
+      },
+      {
+        "title": "Consistency Checker",
+        "goal": "Tutarlilik Kontrolu",
+        "content": "Onceki mesajlarla tutarsizlik tespit eder ve uyari verir."
+      }
     ],
     "apis": [
-      { "title": "Knowledge RAG API", "goal": "Bilgi Cekme", "content": "Guncel fiyat ve tedavi bilgileri tek kaynaktan cekilir." }
+      {
+        "title": "Knowledge RAG API",
+        "goal": "Bilgi Cekme",
+        "content": "Guncel fiyat ve tedavi bilgileri tek kaynaktan cekilir."
+      }
     ]
   },
   "impact": {
@@ -81,9 +163,29 @@
     "resultLabel": "Korunan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyInconsistencies", "label": "Aylik Tutarsizlik", "default": 8, "hint": "Farkli bilgi soylenen vaka", "editable": true },
-      { "key": "lostPatientRate", "label": "Kayip Orani", "default": 30, "prefix": "%", "hint": "Tutarsizlik nedeniyle kaybedilen hasta", "editable": true },
-      { "key": "avgPatientValue", "label": "Hasta Degeri", "default": 5000, "suffix": "TL", "hint": "Kaybedilen hasta degeri", "editable": true }
+      {
+        "key": "monthlyInconsistencies",
+        "label": "Aylik Tutarsizlik",
+        "default": 8,
+        "hint": "Farkli bilgi soylenen vaka",
+        "editable": true
+      },
+      {
+        "key": "lostPatientRate",
+        "label": "Kayip Orani",
+        "default": 30,
+        "prefix": "%",
+        "hint": "Tutarsizlik nedeniyle kaybedilen hasta",
+        "editable": true
+      },
+      {
+        "key": "avgPatientValue",
+        "label": "Hasta Degeri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "Kaybedilen hasta degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyInconsistencies * (lostPatientRate / 100) * avgPatientValue",
     "formulaDisplay": null

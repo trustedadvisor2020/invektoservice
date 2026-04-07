@@ -8,15 +8,36 @@
   "description": "Randevusunu iptal edip kaporasini geri isteyen hastanin talebini AI ile iptal politikasina gore yoneten ve iade surecini baslatan sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Kapora Sistemi Kullanan)" },
-      { "label": "Sorun", "value": "Kapora iade talebi hassas konu — yanlis iletisim hasta kaybina yol acar" },
-      { "label": "Deger", "value": "Net iptal politikasi ile seffaf iletisim — hasta guveni korunur" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Kapora Sistemi Kullanan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kapora iade talebi hassas konu — yanlis iletisim hasta kaybina yol acar"
+      },
+      {
+        "label": "Deger",
+        "value": "Net iptal politikasi ile seffaf iletisim — hasta guveni korunur"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Revenue Agent (C10)", "color": "green" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Revenue Agent (C10)",
+        "color": "green"
+      }
     ],
     "servicesNote": "AI iptal intent'ini tespit eder, iptal politikasini acikar ve iade sureci baslatir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Politika Kontrolu",
         "goal": "Iade uygun mu?",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "green" },
-          { "text": "Tenant (Politika)", "color": "blue" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "green"
+          },
+          {
+            "text": "Tenant (Politika)",
+            "color": "blue"
+          }
         ],
         "content": "Iptal zamani ve politikaya gore kapora iade uygunlugu kontrol edilir."
       },
@@ -33,8 +60,14 @@
         "title": "Iade Sureci",
         "goal": "Iadeyi baslaT",
         "badges": [
-          { "text": "Sistem (Odeme)", "color": "purple" },
-          { "text": "Tenant (Muhasebe)", "color": "green" }
+          {
+            "text": "Sistem (Odeme)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Muhasebe)",
+            "color": "green"
+          }
         ],
         "content": "Uygunsa iade sureci baslatilir, degilse politika aciklanir."
       }
@@ -46,34 +79,92 @@
       "title": "Kapora Iade Talebi",
       "description": "Hasta randevuyu iptal edip kapora iadesini istiyor.",
       "tags": [
-        { "text": "Iptal", "color": "rose" },
-        { "text": "Iade", "color": "amber" }
+        {
+          "text": "Iptal",
+          "color": "rose"
+        },
+        {
+          "text": "Iade",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Iptal ve iade politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Iptal Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kapora iade kosullarini ve sure kurallarini tanimlayin" }
+          {
+            "text": "Iptal ve iade politikasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Iptal Politikasi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Kapora iade kosullarini ve sure kurallarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Iptal intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Iptal/Iade", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Randevu iptal ve kapora iade intent'i hazir" },
-          { "text": "Otomatik iade basllatma", "service": "Backend", "page": "Odeme > Iade Islemi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C10", "hint": "Kapora iade sureci otomatik baslatma hazir" }
+          {
+            "text": "Iptal intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Iptal/Iade",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Randevu iptal ve kapora iade intent'i hazir"
+          },
+          {
+            "text": "Otomatik iade basllatma",
+            "service": "Backend",
+            "page": "Odeme > Iade Islemi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Kapora iade sureci otomatik baslatma hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Randevumu iptal ettim, kaporami geri alabilir miyim?" },
-        { "role": "ai", "content": "Intent: Kapora Iade Talebi. Randevu: Yarin 14:00. Kapora: 500 TL. Iptal suresi: 24+ saat once — UYGUN." },
-        { "role": "bot", "content": "Randevunuz iptal edildi.\n\nKapora iade bilgisi:\n💰 Kapora: 500 TL\n📋 Iade kosulu: 24 saat once iptal ✅\n💳 Iade: 3-5 is gunu icinde kartiniza\n\nBaska bir zamanda randevu ayarlamak isterseniz bize yazin!" },
-        { "role": "system", "content": "Randevu iptal edildi. Kapora iade sureci baslatildi. Bos slot bekleme listesine acildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Randevumu iptal ettim, kaporami geri alabilir miyim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kapora Iade Talebi. Randevu: Yarin 14:00. Kapora: 500 TL. Iptal suresi: 24+ saat once — UYGUN."
+        },
+        {
+          "role": "bot",
+          "content": "Randevunuz iptal edildi.\n\nKapora iade bilgisi:\n💰 Kapora: 500 TL\n📋 Iade kosulu: 24 saat once iptal ✅\n💳 Iade: 3-5 is gunu icinde kartiniza\n\nBaska bir zamanda randevu ayarlamak isterseniz bize yazin!"
+        },
+        {
+          "role": "system",
+          "content": "Randevu iptal edildi. Kapora iade sureci baslatildi. Bos slot bekleme listesine acildi."
+        }
+      ],
+      "aiPrompt": "\"Iade/Iptal: Kapora Geri Isteme\" senaryosu icin \"Kapora Iade Talebi\" akisini olustur.\n\nAciklama: Hasta randevuyu iptal edip kapora iadesini istiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Randevumu iptal ettim, kaporami geri alabilir miyim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kapora Iade Talebi. Randevu: Yarin 14:00. Kapora: 500 TL. Iptal suresi: 24+ saat once — UYGUN.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Randevunuz iptal edildi.\n\nKapora iade bilgisi:\n💰 Kapora: 500 TL\n📋 Iade kosulu: 24 saat once iptal ✅\n💳 Iade: 3-5 is gunu icinde kartiniza\n\nBaska bir zamanda randevu ayarlamak isterseniz bize yazin!\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Randevu iptal edildi. Kapora iade sureci baslatildi. Bos slot bekleme listesine acildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo Iptal Politikasi + Odeme Iade birlesimiyle calisir.",
     "backend": [
-      { "title": "Cancellation Policy Checker", "goal": "Politika Kontrolu", "content": "Iptal zamani ve politikaya gore kapora iade uygunlugunu belirler." },
-      { "title": "Refund Processor", "goal": "Iade Islemi", "content": "Kapora iade surecini odeme saglayici uzerinden baslatir." }
+      {
+        "title": "Cancellation Policy Checker",
+        "goal": "Politika Kontrolu",
+        "content": "Iptal zamani ve politikaya gore kapora iade uygunlugunu belirler."
+      },
+      {
+        "title": "Refund Processor",
+        "goal": "Iade Islemi",
+        "content": "Kapora iade surecini odeme saglayici uzerinden baslatir."
+      }
     ],
     "apis": [
-      { "title": "Payment Gateway API", "goal": "Iade Islemi", "content": "Kapora iade islemi ve durum takibi." }
+      {
+        "title": "Payment Gateway API",
+        "goal": "Iade Islemi",
+        "content": "Kapora iade islemi ve durum takibi."
+      }
     ]
   },
   "impact": {
@@ -82,9 +173,29 @@
     "resultLabel": "Korunan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyCancellations", "label": "Aylik Iptal", "default": 5, "hint": "Kapora iade talebi", "editable": true },
-      { "key": "retentionRate", "label": "Geri Donus Orani", "default": 40, "prefix": "%", "hint": "Gelecekte tekrar gelen hasta", "editable": true },
-      { "key": "avgPatientValue", "label": "Hasta Degeri", "default": 5000, "suffix": "TL", "hint": "Gelecek tedavi degeri", "editable": true }
+      {
+        "key": "monthlyCancellations",
+        "label": "Aylik Iptal",
+        "default": 5,
+        "hint": "Kapora iade talebi",
+        "editable": true
+      },
+      {
+        "key": "retentionRate",
+        "label": "Geri Donus Orani",
+        "default": 40,
+        "prefix": "%",
+        "hint": "Gelecekte tekrar gelen hasta",
+        "editable": true
+      },
+      {
+        "key": "avgPatientValue",
+        "label": "Hasta Degeri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "Gelecek tedavi degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyCancellations * (retentionRate / 100) * avgPatientValue",
     "formulaDisplay": null

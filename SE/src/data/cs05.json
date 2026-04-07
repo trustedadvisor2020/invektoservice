@@ -8,14 +8,32 @@
   "description": "Musteri acikca sikayet etmeden once verilen terk sinyallerini tespit etme sistemi. AI, pasif-agresif mesaj tonunu, iletisim frekans dususunu ve davranis kaliplari degisikligini analiz ederek churn risk uyarisi olusturur.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — Abonelik modeli, tekrar satis veya uzun sureli musteri iliskisi olan isletmeler" },
-      { "label": "Sorun", "value": "Musteriler ayrilmadan once genellikle sinyal verir ama bu sinyaller gozden kacar" },
-      { "label": "Deger", "value": "Erken mudahale ile churn onleme + musteri yasam boyu degerini koruma" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — Abonelik modeli, tekrar satis veya uzun sureli musteri iliskisi olan isletmeler"
+      },
+      {
+        "label": "Sorun",
+        "value": "Musteriler ayrilmadan once genellikle sinyal verir ama bu sinyaller gozden kacar"
+      },
+      {
+        "label": "Deger",
+        "value": "Erken mudahale ile churn onleme + musteri yasam boyu degerini koruma"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "green" },
-      { "name": "Analytics Dashboard (C4)", "color": "green" },
-      { "name": "Chat Analysis (C13)", "color": "blue" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "green"
+      },
+      {
+        "name": "Analytics Dashboard (C4)",
+        "color": "green"
+      },
+      {
+        "name": "Chat Analysis (C13)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "AI, konusma tonunu, iletisim sikligini ve davranis kaliplarini analiz eder. Risk skoru hesaplar ve esik asildiginda otomatik uyari olusturur.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Sinyal Toplama",
         "goal": "Terk gostergelerini tespit et",
         "badges": [
-          { "text": "Sistem (AI Analiz)", "color": "purple" },
-          { "text": "Tenant (Sinyal Tanimi)", "color": "blue" }
+          {
+            "text": "Sistem (AI Analiz)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Sinyal Tanimi)",
+            "color": "blue"
+          }
         ],
         "content": "Uc tip sinyal izlenir: 1) Ton degisimi (pasif-agresif, mesafeli), 2) Frekans dususu (haftalik yazandan ayda 1'e), 3) Davranis kaliplari (iptal sayfasi ziyareti, fatura sikayeti)."
       },
@@ -32,8 +56,14 @@
         "title": "Risk Skorlama",
         "goal": "Churn olasiligini hesapla",
         "badges": [
-          { "text": "Sistem (Skor Motoru)", "color": "purple" },
-          { "text": "Tenant (Agirlik)", "color": "amber" }
+          {
+            "text": "Sistem (Skor Motoru)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Agirlik)",
+            "color": "amber"
+          }
         ],
         "content": "Her musteri icin 0-100 arasi churn risk skoru hesaplanir. Sinyallerin agirliklari tenant bazli ayarlanabilir. 70+ skor = yuksek risk."
       },
@@ -41,8 +71,14 @@
         "title": "Erken Uyari + Aksiyon",
         "goal": "Kaybi onle",
         "badges": [
-          { "text": "Sistem (Alert)", "color": "purple" },
-          { "text": "Tenant (Retention Plani)", "color": "green" }
+          {
+            "text": "Sistem (Alert)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Retention Plani)",
+            "color": "green"
+          }
         ],
         "content": "Yuksek riskli musteriler icin otomatik uyari olusturulur. Retention aksiyonlari: ozel teklif, memnuniyet anketi, kisisel iletisim atamasi."
       }
@@ -54,62 +90,179 @@
       "title": "Pasif-Agresif Ton Tespiti",
       "description": "Musteri acikca sikayet etmiyor ama mesaj tonu degismis.",
       "tags": [
-        { "text": "Ton Analizi", "color": "amber" },
-        { "text": "Churn Risk", "color": "red" }
+        {
+          "text": "Ton Analizi",
+          "color": "amber"
+        },
+        {
+          "text": "Churn Risk",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Churn risk esik degerleri", "service": "Backend", "page": "Churn Ayarlari > Risk Esikleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Dusuk/orta/yuksek risk icin skor araligini belirleyin (varsayilan: 0-40/40-70/70-100)" },
-          { "text": "Retention aksiyon plani", "service": "Backend", "page": "Churn Ayarlari > Retention Aksiyonlari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C4", "hint": "Risk seviyesine gore uygulanacak aksiyonlari tanimlayin (ozel teklif, arama, anket)" }
+          {
+            "text": "Churn risk esik degerleri",
+            "service": "Backend",
+            "page": "Churn Ayarlari > Risk Esikleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Dusuk/orta/yuksek risk icin skor araligini belirleyin (varsayilan: 0-40/40-70/70-100)"
+          },
+          {
+            "text": "Retention aksiyon plani",
+            "service": "Backend",
+            "page": "Churn Ayarlari > Retention Aksiyonlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C4",
+            "hint": "Risk seviyesine gore uygulanacak aksiyonlari tanimlayin (ozel teklif, arama, anket)"
+          }
         ],
         "provider": [
-          { "text": "Sentiment trend analizi", "service": "AgentAI", "page": "Chat Analysis > Trend", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Musteri bazinda zaman serisi sentiment analizi hazir" },
-          { "text": "Churn risk skorlama motoru", "service": "Backend", "page": "Churn Engine > Skorlama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Coklu sinyal bazli churn risk skoru hesaplama hazir" }
+          {
+            "text": "Sentiment trend analizi",
+            "service": "AgentAI",
+            "page": "Chat Analysis > Trend",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Musteri bazinda zaman serisi sentiment analizi hazir"
+          },
+          {
+            "text": "Churn risk skorlama motoru",
+            "service": "Backend",
+            "page": "Churn Engine > Skorlama",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Coklu sinyal bazli churn risk skoru hesaplama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Musteri Profili: Mega Market — 2 yildir musteri, aylik 15.000 TL harcama." },
-        { "role": "system", "content": "Son 3 ay mesaj ton analizi:\n- 3 ay once: 'Harika hizmet, tesekkurler!' (Pozitif: %92)\n- 2 ay once: 'Tamam.' (Notr: %55)\n- Bu ay: 'Baskasina bakiyorum artik.' (Negatif: %78)" },
-        { "role": "ai", "content": "Churn Sinyal Tespiti:\n1. Ton degisimi: Pozitif → Notr → Negatif (3 ay trend)\n2. Frekans: Haftalik 5 mesaj → aylik 1 mesaj\n3. Anahtar kelime: 'baskasina bakiyorum'\n\nChurn Risk Skoru: 85/100 — YUKSEK RISK" },
-        { "role": "system", "content": "CHURN UYARISI → Account Manager Deniz: 'Mega Market churn riski 85/100. Son 3 ayda ton ve frekans ciddi dusus. Hemen iletisim kurun!'" },
-        { "role": "system", "content": "Otomatik Retention Aksiyonu: %15 ozel indirim teklifi + kisisel arama gorevlendirildi." },
-        { "role": "bot", "content": "[Account Manager arar]\n\nMega Market ekibine merhaba, ben Deniz. Sizin icin ozel bir teklif hazirlandi. Mevcut paketinize %15 indirim + ucretsiz 1 ay ek hizmet sunmak istiyoruz. Gorusebilir miyiz?" }
-      ]
+        {
+          "role": "system",
+          "content": "Musteri Profili: Mega Market — 2 yildir musteri, aylik 15.000 TL harcama."
+        },
+        {
+          "role": "system",
+          "content": "Son 3 ay mesaj ton analizi:\n- 3 ay once: 'Harika hizmet, tesekkurler!' (Pozitif: %92)\n- 2 ay once: 'Tamam.' (Notr: %55)\n- Bu ay: 'Baskasina bakiyorum artik.' (Negatif: %78)"
+        },
+        {
+          "role": "ai",
+          "content": "Churn Sinyal Tespiti:\n1. Ton degisimi: Pozitif → Notr → Negatif (3 ay trend)\n2. Frekans: Haftalik 5 mesaj → aylik 1 mesaj\n3. Anahtar kelime: 'baskasina bakiyorum'\n\nChurn Risk Skoru: 85/100 — YUKSEK RISK"
+        },
+        {
+          "role": "system",
+          "content": "CHURN UYARISI → Account Manager Deniz: 'Mega Market churn riski 85/100. Son 3 ayda ton ve frekans ciddi dusus. Hemen iletisim kurun!'"
+        },
+        {
+          "role": "system",
+          "content": "Otomatik Retention Aksiyonu: %15 ozel indirim teklifi + kisisel arama gorevlendirildi."
+        },
+        {
+          "role": "bot",
+          "content": "[Account Manager arar]\n\nMega Market ekibine merhaba, ben Deniz. Sizin icin ozel bir teklif hazirlandi. Mevcut paketinize %15 indirim + ucretsiz 1 ay ek hizmet sunmak istiyoruz. Gorusebilir miyiz?"
+        }
+      ],
+      "aiPrompt": "\"Churn Sinyali Tespiti\" senaryosu icin \"Pasif-Agresif Ton Tespiti\" akisini olustur.\n\nAciklama: Musteri acikca sikayet etmiyor ama mesaj tonu degismis.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Musteri Profili: Mega Market — 2 yildir musteri, aylik 15.000 TL harcama.\n\n2. **utility_set_variable** — Durum guncelle\n   Deger: Son 3 ay mesaj ton analizi:\n- 3 ay once: 'Harika hizmet, tesekkurler!' (Pozitif: %92)\n- 2 ay once: 'Tamam.' (Notr: %55)\n- Bu ay: 'Baskasina bakiyorum artik.' (Negatif: %78)\n\n3. **ai_sentiment** — Duygu analizi\n   Analiz: Churn Sinyal Tespiti:\n1. Ton degisimi: Pozitif → Notr → Negatif (3 ay trend)\n2. Frekans: Haftalik 5 mesaj → aylik 1 mesaj\n3. Anahtar kelime: 'baskasina bakiyorum'\n\nChurn Risk Skoru: 85/100 — YUKSEK RISK\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n4. **utility_set_variable** — Alert durumu kaydet\n   variable_name: \"alert_status\"\n   value: \"CHURN UYARISI → Account Manager Deniz: 'Mega Market churn riski 85/100. Son 3 ayda ton ve frekans ciddi dusus. Hemen iletisim kurun!'\"\n\n5. **utility_set_variable** — Durum guncelle\n   Deger: Otomatik Retention Aksiyonu: %15 ozel indirim teklifi + kisisel arama gorevlendirildi.\n\n6. **message_text** — Mesaj gonder\n   text: \"[Account Manager arar]\n\nMega Market ekibine merhaba, ben Deniz. Sizin icin ozel bir teklif hazirlandi. Mevcut paketinize %15 indirim + ucretsiz 1 ay ek hizmet sunmak istiyoruz. Gorusebilir miyiz?\"\n   Degiskenler: {{account_manager_arar}}\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Iletisim Frekans Dususu",
       "description": "Duzzenli yazan musteri sessizlesti, sistem bunu tespit ediyor.",
       "tags": [
-        { "text": "Frekans Analizi", "color": "blue" },
-        { "text": "Proaktif Iletisim", "color": "green" }
+        {
+          "text": "Frekans Analizi",
+          "color": "blue"
+        },
+        {
+          "text": "Proaktif Iletisim",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Musteri iletisim gecmisi verisi", "service": "Backend", "page": "CRM > Iletisim Gecmisi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Musteri bazinda iletisim sikliginin izlenebilmesi icin gecmis verinin olmasi gerekir" }
+          {
+            "text": "Musteri iletisim gecmisi verisi",
+            "service": "Backend",
+            "page": "CRM > Iletisim Gecmisi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Musteri bazinda iletisim sikliginin izlenebilmesi icin gecmis verinin olmasi gerekir"
+          }
         ],
         "provider": [
-          { "text": "Frekans anomali tespiti", "service": "Backend", "page": "Churn Engine > Frekans Analizi", "status": "ready", "priority": "required", "effort": "easy", "capability": "C13", "hint": "Musteri iletisim sikligindaki anormal dususleri otomatik tespit eder" }
+          {
+            "text": "Frekans anomali tespiti",
+            "service": "Backend",
+            "page": "Churn Engine > Frekans Analizi",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C13",
+            "hint": "Musteri iletisim sikligindaki anormal dususleri otomatik tespit eder"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Musteri: Aylin Dis Klinigi — 1 yildir musteri, normalde haftada 3+ mesaj." },
-        { "role": "system", "content": "Frekans Analizi: Son 30 gunde 0 mesaj. Onceki 30 gunde 2 mesaj. Normal: 12+ mesaj/ay." },
-        { "role": "ai", "content": "Churn Sinyali: Iletisim frekans dususu. Normal: 12/ay → Su an: 0/ay. Dusus orani: %100. Churn Risk Skoru: 72/100." },
-        { "role": "system", "content": "CHURN UYARISI → Temsilci: 'Aylin Dis Klinigi 30 gundur sessiz. Risk: 72/100. Proaktif iletisim oneriliyor.'" },
-        { "role": "bot", "content": "[Temsilci proaktif iletisim baslatir]\n\nMerhaba Aylin Hanim, bir suredir sizden haber alamadik. Her sey yolunda mi? Hizmetimizle ilgili iyilestirebilecegimiz bir konu varsa duymak isteriz. Kisa bir gorusme ayarlayabilir miyiz?" }
-      ]
+        {
+          "role": "system",
+          "content": "Musteri: Aylin Dis Klinigi — 1 yildir musteri, normalde haftada 3+ mesaj."
+        },
+        {
+          "role": "system",
+          "content": "Frekans Analizi: Son 30 gunde 0 mesaj. Onceki 30 gunde 2 mesaj. Normal: 12+ mesaj/ay."
+        },
+        {
+          "role": "ai",
+          "content": "Churn Sinyali: Iletisim frekans dususu. Normal: 12/ay → Su an: 0/ay. Dusus orani: %100. Churn Risk Skoru: 72/100."
+        },
+        {
+          "role": "system",
+          "content": "CHURN UYARISI → Temsilci: 'Aylin Dis Klinigi 30 gundur sessiz. Risk: 72/100. Proaktif iletisim oneriliyor.'"
+        },
+        {
+          "role": "bot",
+          "content": "[Temsilci proaktif iletisim baslatir]\n\nMerhaba Aylin Hanim, bir suredir sizden haber alamadik. Her sey yolunda mi? Hizmetimizle ilgili iyilestirebilecegimiz bir konu varsa duymak isteriz. Kisa bir gorusme ayarlayabilir miyiz?"
+        }
+      ],
+      "aiPrompt": "\"Churn Sinyali Tespiti\" senaryosu icin \"Iletisim Frekans Dususu\" akisini olustur.\n\nAciklama: Duzzenli yazan musteri sessizlesti, sistem bunu tespit ediyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Akis baslangici\n   Tetikleyici olay: Musteri: Aylin Dis Klinigi — 1 yildir musteri, normalde haftada 3+ mesaj.\n\n2. **utility_set_variable** — Durum guncelle\n   Deger: Frekans Analizi: Son 30 gunde 0 mesaj. Onceki 30 gunde 2 mesaj. Normal: 12+ mesaj/ay.\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Churn Sinyali: Iletisim frekans dususu. Normal: 12/ay → Su an: 0/ay. Dusus orani: %100. Churn Risk Skoru: 72/100.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **utility_set_variable** — Alert durumu kaydet\n   variable_name: \"alert_status\"\n   value: \"CHURN UYARISI → Temsilci: 'Aylin Dis Klinigi 30 gundur sessiz. Risk: 72/100. Proaktif iletisim oneriliyor.'\"\n\n5. **message_text** — Mesaj gonder\n   text: \"[Temsilci proaktif iletisim baslatir]\n\nMerhaba Aylin Hanim, bir suredir sizden haber alamadik. Her sey yolunda mi? Hizmetimizle ilgili iyilestirebilecegimiz bir konu varsa duymak isteriz. Kisa bir gorusme ayarlayabilir miyiz?\"\n   Degiskenler: {{temsilci_proaktif_iletisim_baslatir}}\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Churn tespiti coklu sinyal analizi uzerine kuruludur. Sentiment trend, iletisim frekans ve davranis kaliplari birlesik bir skor olusturur. Makine ogrenmesi modeli gecmis churn verilerinden egitilir.",
     "backend": [
-      { "title": "Churn Prediction Engine", "goal": "Risk Tahmini", "content": "Coklu sinyal (ton, frekans, davranis) agirlıkli skor ile musteri bazinda churn olasiligini hesaplar. Tenant bazli agirlik ayari destekler." },
-      { "title": "Retention Action Manager", "goal": "Otomatik Aksiyon", "content": "Risk seviyesine gore otomatik retention aksiyonlarini tetikler: ozel teklif, anket, kisisel arama atama." }
+      {
+        "title": "Churn Prediction Engine",
+        "goal": "Risk Tahmini",
+        "content": "Coklu sinyal (ton, frekans, davranis) agirlıkli skor ile musteri bazinda churn olasiligini hesaplar. Tenant bazli agirlik ayari destekler."
+      },
+      {
+        "title": "Retention Action Manager",
+        "goal": "Otomatik Aksiyon",
+        "content": "Risk seviyesine gore otomatik retention aksiyonlarini tetikler: ozel teklif, anket, kisisel arama atama."
+      }
     ],
     "apis": [
-      { "title": "Churn Risk API", "goal": "Risk Sorgulama", "content": "Musteri bazinda churn risk skoru, sinyal detaylari ve trend bilgisini sorgulama." },
-      { "title": "Retention Campaign API", "goal": "Kampanya Tetikleme", "content": "Risk skoruna gore otomatik retention kampanyasi baslatma ve sonuclarini takip etme." }
+      {
+        "title": "Churn Risk API",
+        "goal": "Risk Sorgulama",
+        "content": "Musteri bazinda churn risk skoru, sinyal detaylari ve trend bilgisini sorgulama."
+      },
+      {
+        "title": "Retention Campaign API",
+        "goal": "Kampanya Tetikleme",
+        "content": "Risk skoruna gore otomatik retention kampanyasi baslatma ve sonuclarini takip etme."
+      }
     ]
   },
   "impact": {
@@ -118,9 +271,29 @@
     "resultLabel": "Kurtarilan Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyChurnCustomers", "label": "Aylik Churn Riski Musteri", "default": 10, "hint": "Aylik churn riski yuksek musteri sayisi", "editable": true },
-      { "key": "retentionRate", "label": "Kurtarma Orani", "default": 35, "suffix": "%", "hint": "Erken mudahale ile kurtarilan musteri yuzdesi", "editable": true },
-      { "key": "avgMonthlyRevenue", "label": "Musteri Aylik Geliri", "default": 5000, "suffix": "TL", "hint": "Risk altindaki musterinin ortalama aylik harcamasi", "editable": true }
+      {
+        "key": "monthlyChurnCustomers",
+        "label": "Aylik Churn Riski Musteri",
+        "default": 10,
+        "hint": "Aylik churn riski yuksek musteri sayisi",
+        "editable": true
+      },
+      {
+        "key": "retentionRate",
+        "label": "Kurtarma Orani",
+        "default": 35,
+        "suffix": "%",
+        "hint": "Erken mudahale ile kurtarilan musteri yuzdesi",
+        "editable": true
+      },
+      {
+        "key": "avgMonthlyRevenue",
+        "label": "Musteri Aylik Geliri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "Risk altindaki musterinin ortalama aylik harcamasi",
+        "editable": true
+      }
     ],
     "formula": "monthlyChurnCustomers * (retentionRate / 100) * avgMonthlyRevenue",
     "formulaDisplay": null

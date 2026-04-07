@@ -8,15 +8,36 @@
   "description": "Gece veya mesai disinda acil dis agrisi ile yazan hastanin durumunu AI ile triage eden, hafif vakalari ev bakimi ile yonlendiren, agir vakalari acil klinige yonlendiren sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Dis Klinigi (Tum Klinikler)" },
-      { "label": "Sorun", "value": "Gece gelen acil mesajlara sabaha kadar cevap verilemiyor — hasta baska kliniğe gidiyor" },
-      { "label": "Deger", "value": "7/24 triage ile hasta guvenle yonlendirilir, acil vakalar kaybedilmez" }
+      {
+        "label": "Sektor",
+        "value": "Dis Klinigi (Tum Klinikler)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Gece gelen acil mesajlara sabaha kadar cevap verilemiyor — hasta baska kliniğe gidiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "7/24 triage ile hasta guvenle yonlendirilir, acil vakalar kaybedilmez"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI acil agri intent'ini tespit eder, severity belirler ve uygun yonlendirme yapar.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Severity Tespiti",
         "goal": "Aciliyeti belirle",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Triage)", "color": "rose" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Triage)",
+            "color": "rose"
+          }
         ],
         "content": "AI hasta mesajindan agri siddetini ve aciliyet seviyesini belirler."
       },
@@ -33,8 +60,14 @@
         "title": "Yonlendirme",
         "goal": "Dogru aksiyona yonlendir",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Hafif vaka → ev bakimi rehberi, agir vaka → acil klinik yonlendirmesi."
       }
@@ -46,59 +79,154 @@
       "title": "Gece Acil — Hafif Vaka",
       "description": "Hasta gece dis agrisi ile yaziyor, durum hafif — ev bakimi oneriliyor.",
       "tags": [
-        { "text": "Acil", "color": "rose" },
-        { "text": "Hafif", "color": "green" }
+        {
+          "text": "Acil",
+          "color": "rose"
+        },
+        {
+          "text": "Hafif",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Acil bakim rehberi", "service": "Knowledge", "page": "Dokuman Bankasi > Acil Bakim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Dis agrisi icin ev bakimi ve ilk yardim rehberini yukleyin" }
+          {
+            "text": "Acil bakim rehberi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Acil Bakim",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Dis agrisi icin ev bakimi ve ilk yardim rehberini yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Triage intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Acil Agri", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Acil agri severity tespiti ve triage intent'i hazir" }
+          {
+            "text": "Triage intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Acil Agri",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Acil agri severity tespiti ve triage intent'i hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Disim cok agriyor, ne yapabilirim? Acil durum!" },
-        { "role": "ai", "content": "Intent: Acil Dis Agrisi. Saat: 23:45. Severity sorulari baslatiliyor." },
-        { "role": "bot", "content": "Gecmis olsun! Size yardimci olayim. Birkaç soru sormam gerekiyor:\n\n1️⃣ Agri ne zaman basladi?\n2️⃣ Sislik var mi?\n3️⃣ Ates var mi?" },
-        { "role": "user", "content": "2 saat once basladi, sislik yok, ates yok." },
-        { "role": "ai", "content": "Severity: HAFIF. Sislik yok, ates yok, 2 saat. Ev bakimi uygun." },
-        { "role": "bot", "content": "Durumunuz acil degil gibi gorunuyor ama rahatsiz edici oldugunu anliyorum.\n\nSu an yapabilecekleriniz:\n💊 Agri kesici: Ibuprofen 400mg\n🧊 Soguk kompres: Yanak disina 15 dk\n🚫 Sicak yiyecek/icecek icmeyin\n\n📅 Yarin icin acil randevu ayarlayalim mi? Ilk saat 09:00 musait." },
-        { "role": "system", "content": "Hafif vaka — ev bakimi rehberi gonderildi. Ertesi gun randevu teklif edildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Disim cok agriyor, ne yapabilirim? Acil durum!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Acil Dis Agrisi. Saat: 23:45. Severity sorulari baslatiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Gecmis olsun! Size yardimci olayim. Birkaç soru sormam gerekiyor:\n\n1️⃣ Agri ne zaman basladi?\n2️⃣ Sislik var mi?\n3️⃣ Ates var mi?"
+        },
+        {
+          "role": "user",
+          "content": "2 saat once basladi, sislik yok, ates yok."
+        },
+        {
+          "role": "ai",
+          "content": "Severity: HAFIF. Sislik yok, ates yok, 2 saat. Ev bakimi uygun."
+        },
+        {
+          "role": "bot",
+          "content": "Durumunuz acil degil gibi gorunuyor ama rahatsiz edici oldugunu anliyorum.\n\nSu an yapabilecekleriniz:\n💊 Agri kesici: Ibuprofen 400mg\n🧊 Soguk kompres: Yanak disina 15 dk\n🚫 Sicak yiyecek/icecek icmeyin\n\n📅 Yarin icin acil randevu ayarlayalim mi? Ilk saat 09:00 musait."
+        },
+        {
+          "role": "system",
+          "content": "Hafif vaka — ev bakimi rehberi gonderildi. Ertesi gun randevu teklif edildi."
+        }
+      ],
+      "aiPrompt": "\"Acil Agri: Gece Mesaji / Triage\" senaryosu icin \"Gece Acil — Hafif Vaka\" akisini olustur.\n\nAciklama: Hasta gece dis agrisi ile yaziyor, durum hafif — ev bakimi oneriliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Disim cok agriyor, ne yapabilirim? Acil durum!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Acil Dis Agrisi. Saat: 23:45. Severity sorulari baslatiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Gecmis olsun! Size yardimci olayim. Birkaç soru sormam gerekiyor:\n\n1️⃣ Agri ne zaman basladi?\n2️⃣ Sislik var mi?\n3️⃣ Ates var mi?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"2 saat once basladi, sislik yok, ates yok.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Severity: HAFIF. Sislik yok, ates yok, 2 saat. Ev bakimi uygun.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Durumunuz acil degil gibi gorunuyor ama rahatsiz edici oldugunu anliyorum.\n\nSu an yapabilecekleriniz:\n💊 Agri kesici: Ibuprofen 400mg\n🧊 Soguk kompres: Yanak disina 15 dk\n🚫 Sicak yiyecek/icecek icmeyin\n\n📅 Yarin icin acil randevu ayarlayalim mi? Ilk saat 09:00 musait.\"\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Hafif vaka — ev bakimi rehberi gonderildi. Ertesi gun randevu teklif edildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Gece Acil — Agir Vaka",
       "description": "Hasta siddetli agri ve sislik bildiriyor, acil yonlendirme gerekli.",
       "tags": [
-        { "text": "Acil", "color": "rose" },
-        { "text": "Agir", "color": "red" }
+        {
+          "text": "Acil",
+          "color": "rose"
+        },
+        {
+          "text": "Agir",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Acil klinik bilgileri", "service": "Knowledge", "page": "Dokuman Bankasi > Acil Servisler", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "7/24 acil dis klinigi adres ve telefonlarini yukleyin" }
+          {
+            "text": "Acil klinik bilgileri",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Acil Servisler",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "7/24 acil dis klinigi adres ve telefonlarini yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Acil routing", "service": "Backend", "page": "Routing > Acil Yonlendirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Agir vakalarda doktor alert ve acil yonlendirme hazir" }
+          {
+            "text": "Acil routing",
+            "service": "Backend",
+            "page": "Routing > Acil Yonlendirme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Agir vakalarda doktor alert ve acil yonlendirme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Yuzum sisti, ates var, dayanamiyorum!" },
-        { "role": "ai", "content": "Severity: AGIR. Sislik + ates = enfeksiyon riski. Acil yonlendirme gerekli." },
-        { "role": "bot", "content": "⚠️ Durumunuz acil gorunuyor! Sislik ve ates enfeksiyon belirtisi olabilir.\n\nHemen gidin:\n🏥 [En Yakin Acil Dis] — 7/24 Acik\n📍 [Adres]\n📞 [Telefon]\n\n⏰ Yarin bizi arayin, durumunuzu takip edelim.\n\nGecmis olsun, dikkatli olun! 🙏" },
-        { "role": "system", "content": "Agir vaka — acil klinik yonlendirmesi yapildi. Doktor bilgilendirildi. Ertesi gun takip notu olusturuldu." }
-      ]
+        {
+          "role": "user",
+          "content": "Yuzum sisti, ates var, dayanamiyorum!"
+        },
+        {
+          "role": "ai",
+          "content": "Severity: AGIR. Sislik + ates = enfeksiyon riski. Acil yonlendirme gerekli."
+        },
+        {
+          "role": "bot",
+          "content": "⚠️ Durumunuz acil gorunuyor! Sislik ve ates enfeksiyon belirtisi olabilir.\n\nHemen gidin:\n🏥 [En Yakin Acil Dis] — 7/24 Acik\n📍 [Adres]\n📞 [Telefon]\n\n⏰ Yarin bizi arayin, durumunuzu takip edelim.\n\nGecmis olsun, dikkatli olun! 🙏"
+        },
+        {
+          "role": "system",
+          "content": "Agir vaka — acil klinik yonlendirmesi yapildi. Doktor bilgilendirildi. Ertesi gun takip notu olusturuldu."
+        }
+      ],
+      "aiPrompt": "\"Acil Agri: Gece Mesaji / Triage\" senaryosu icin \"Gece Acil — Agir Vaka\" akisini olustur.\n\nAciklama: Hasta siddetli agri ve sislik bildiriyor, acil yonlendirme gerekli.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Yuzum sisti, ates var, dayanamiyorum!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Severity: AGIR. Sislik + ates = enfeksiyon riski. Acil yonlendirme gerekli.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"⚠️ Durumunuz acil gorunuyor! Sislik ve ates enfeksiyon belirtisi olabilir.\n\nHemen gidin:\n🏥 [En Yakin Acil Dis] — 7/24 Acik\n📍 [Adres]\n📞 [Telefon]\n\n⏰ Yarin bizi arayin, durumunuzu takip edelim.\n\nGecmis olsun, dikkatli olun! 🙏\"\n   Degiskenler: {{en_yakin_acil_dis}}, {{adres}}, {{telefon}}\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Agir vaka — acil klinik yonlendirmesi yapildi. Doktor bilgilendirildi. Ertesi gun takip notu olusturuldu.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI triage + Knowledge Base birlesimiyle calisir. Gece mesajlarinda severity bazli yonlendirme.",
     "backend": [
-      { "title": "Triage Engine", "goal": "Severity Belirleme", "content": "Hasta semptomlarindan agri siddeti, sislik ve ates durumuna gore severity belirler." },
-      { "title": "Emergency Router", "goal": "Acil Yonlendirme", "content": "Agir vakalarda en yakin acil dis klinigi bilgisini sunar ve doktor alert gonderir." }
+      {
+        "title": "Triage Engine",
+        "goal": "Severity Belirleme",
+        "content": "Hasta semptomlarindan agri siddeti, sislik ve ates durumuna gore severity belirler."
+      },
+      {
+        "title": "Emergency Router",
+        "goal": "Acil Yonlendirme",
+        "content": "Agir vakalarda en yakin acil dis klinigi bilgisini sunar ve doktor alert gonderir."
+      }
     ],
     "apis": [
-      { "title": "Knowledge RAG API", "goal": "Bakim Bilgisi", "content": "Ev bakimi rehberi ve acil klinik bilgileri RAG ile cekilir." }
+      {
+        "title": "Knowledge RAG API",
+        "goal": "Bakim Bilgisi",
+        "content": "Ev bakimi rehberi ve acil klinik bilgileri RAG ile cekilir."
+      }
     ]
   },
   "impact": {
@@ -107,9 +235,29 @@
     "resultLabel": "Korunan Hasta Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyNightMessages", "label": "Aylik Gece Mesaji", "default": 15, "hint": "Mesai disi gelen acil mesaj", "editable": true },
-      { "key": "retentionRate", "label": "Tutma Orani", "default": 60, "prefix": "%", "hint": "Dogru yonlendirme ile tutulan hasta", "editable": true },
-      { "key": "avgPatientValue", "label": "Hasta Degeri", "default": 4000, "suffix": "TL", "hint": "Ortalama hasta tedavi degeri", "editable": true }
+      {
+        "key": "monthlyNightMessages",
+        "label": "Aylik Gece Mesaji",
+        "default": 15,
+        "hint": "Mesai disi gelen acil mesaj",
+        "editable": true
+      },
+      {
+        "key": "retentionRate",
+        "label": "Tutma Orani",
+        "default": 60,
+        "prefix": "%",
+        "hint": "Dogru yonlendirme ile tutulan hasta",
+        "editable": true
+      },
+      {
+        "key": "avgPatientValue",
+        "label": "Hasta Degeri",
+        "default": 4000,
+        "suffix": "TL",
+        "hint": "Ortalama hasta tedavi degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyNightMessages * (retentionRate / 100) * avgPatientValue",
     "formulaDisplay": null

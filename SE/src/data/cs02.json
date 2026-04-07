@@ -8,14 +8,32 @@
   "description": "AI'nin cozemedigi veya hassas konularda konusmayi insana devretme mekanizmasi. Confidence esigi altinda kalan cevaplar, belirli intent'ler ve 3+ mesaj dongusune giren konusmalar otomatik olarak tum context ile birlikte insan agent'a aktarilir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Tum Sektorler — AI chatbot kullanan her isletme" },
-      { "label": "Sorun", "value": "AI yanlis veya yetersiz cevap verdiginde musteri sinirlanir; hassas konularda AI riski yuksek" },
-      { "label": "Deger", "value": "Musteri memnuniyeti koruma + AI hata riski azaltma + hassas konularda insan kontrolu" }
+      {
+        "label": "Sektor",
+        "value": "Tum Sektorler — AI chatbot kullanan her isletme"
+      },
+      {
+        "label": "Sorun",
+        "value": "AI yanlis veya yetersiz cevap verdiginde musteri sinirlanir; hassas konularda AI riski yuksek"
+      },
+      {
+        "label": "Deger",
+        "value": "Musteri memnuniyeti koruma + AI hata riski azaltma + hassas konularda insan kontrolu"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Smart Routing (C2)", "color": "amber" },
-      { "name": "AI Agent Assist (C8)", "color": "green" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Smart Routing (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "green"
+      }
     ],
     "servicesNote": "AI her cevabini confidence skoru ile degerlendirir. Esik altinda kalan, hassas intent iceren veya donguye giren konusmalar tum gecmisle birlikte insan agent'a devredilir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Confidence Degerlendirme",
         "goal": "AI'nin guven seviyesini olc",
         "badges": [
-          { "text": "Sistem (AI Confidence)", "color": "purple" },
-          { "text": "Tenant (Esik Degeri)", "color": "amber" }
+          {
+            "text": "Sistem (AI Confidence)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Esik Degeri)",
+            "color": "amber"
+          }
         ],
         "content": "AI her cevap oncesinde confidence skoru hesaplar. Tenant bazli esik degeri (ornegin %70) altinda kalan cevaplar handoff tetikler."
       },
@@ -32,8 +56,14 @@
         "title": "Handoff Tetikleme",
         "goal": "Dogru zamanda devret",
         "badges": [
-          { "text": "Sistem (Kural Motoru)", "color": "purple" },
-          { "text": "Tenant (Intent Listesi)", "color": "blue" }
+          {
+            "text": "Sistem (Kural Motoru)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Intent Listesi)",
+            "color": "blue"
+          }
         ],
         "content": "Uc tetikleme kosulu: 1) Confidence esik altinda, 2) Hassas intent tespiti (iptal, sikayet, hukuki), 3) 3+ mesaj dongusunde cozum bulunamadi."
       },
@@ -41,8 +71,14 @@
         "title": "Context Aktarimi",
         "goal": "Agent'a tam bilgi ver",
         "badges": [
-          { "text": "Sistem (Context Transfer)", "color": "purple" },
-          { "text": "Tenant (Agent Pool)", "color": "green" }
+          {
+            "text": "Sistem (Context Transfer)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Agent Pool)",
+            "color": "green"
+          }
         ],
         "content": "Konusma gecmisi, musteri profili, AI analizi ve handoff nedeni insan agent'in ekranina aktarilir. Musteri tekrar anlatmak zorunda kalmaz."
       }
@@ -54,68 +90,203 @@
       "title": "Confidence Dusuk — Otomatik Handoff",
       "description": "AI soruya dogru cevap veremiyor, confidence esik altinda.",
       "tags": [
-        { "text": "Dusuk Confidence", "color": "amber" },
-        { "text": "Handoff", "color": "blue" }
+        {
+          "text": "Dusuk Confidence",
+          "color": "amber"
+        },
+        {
+          "text": "Handoff",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Confidence esik degeri ayari", "service": "Backend", "page": "AI Ayarlari > Handoff Esikleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "AI handoff confidence esigini yuzde olarak belirleyin (varsayilan: %70)" },
-          { "text": "Handoff agent havuzu", "service": "Backend", "page": "Ekip Yonetimi > Handoff Rotasyonu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Handoff konusmalarini alacak agent'lari ve siralarini tanimlayin" }
+          {
+            "text": "Confidence esik degeri ayari",
+            "service": "Backend",
+            "page": "AI Ayarlari > Handoff Esikleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "AI handoff confidence esigini yuzde olarak belirleyin (varsayilan: %70)"
+          },
+          {
+            "text": "Handoff agent havuzu",
+            "service": "Backend",
+            "page": "Ekip Yonetimi > Handoff Rotasyonu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Handoff konusmalarini alacak agent'lari ve siralarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Confidence skorlama motoru", "service": "AgentAI", "page": "Confidence > Skorlama", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Her AI cevabi icin confidence skoru hesaplama hazir" },
-          { "text": "Context transfer mekanizmasi", "service": "Backend", "page": "Handoff > Context Transfer", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Konusma gecmisi ve AI analizi agent ekranina aktarilir" }
+          {
+            "text": "Confidence skorlama motoru",
+            "service": "AgentAI",
+            "page": "Confidence > Skorlama",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Her AI cevabi icin confidence skoru hesaplama hazir"
+          },
+          {
+            "text": "Context transfer mekanizmasi",
+            "service": "Backend",
+            "page": "Handoff > Context Transfer",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Konusma gecmisi ve AI analizi agent ekranina aktarilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Gecen yilki sozlesmemdeki 3. maddedeki ceza kosulunu degistirmek istiyorum." },
-        { "role": "ai", "content": "Intent: Sozlesme Degisikligi. Confidence: %35. Neden: Hukuki konu, spesifik madde referansi. HANDOFF TETIKLENDI." },
-        { "role": "bot", "content": "Bu konuda size en dogru bilgiyi verebilmek icin sizi uzman temsilcimize yonlendiriyorum. Lutfen kisa bir sure bekleyin, tum konusma gecmisiniz aktarilacak." },
-        { "role": "system", "content": "HANDOFF: Konusma #4521 → Agent Selin'e atandi. Context aktarimi: 1 mesaj, musteri profili, AI analizi (hukuki konu, confidence %35)." },
-        { "role": "bot", "content": "[Agent Selin devralir]\n\nMerhaba, ben Selin. Sozlesmenizin 3. maddesindeki ceza kosulu hakkinda yardimci olacagim. Sozlesme numaranizi paylasir misiniz?" },
-        { "role": "user", "content": "SZL-2025-1234" },
-        { "role": "bot", "content": "Tesekkurler. Sozlesmenizi inceliyorum. Bu degisiklik icin hukuk departmanimizin onayiyla size yarin detayli donus yapacagim." }
-      ]
+        {
+          "role": "user",
+          "content": "Gecen yilki sozlesmemdeki 3. maddedeki ceza kosulunu degistirmek istiyorum."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Sozlesme Degisikligi. Confidence: %35. Neden: Hukuki konu, spesifik madde referansi. HANDOFF TETIKLENDI."
+        },
+        {
+          "role": "bot",
+          "content": "Bu konuda size en dogru bilgiyi verebilmek icin sizi uzman temsilcimize yonlendiriyorum. Lutfen kisa bir sure bekleyin, tum konusma gecmisiniz aktarilacak."
+        },
+        {
+          "role": "system",
+          "content": "HANDOFF: Konusma #4521 → Agent Selin'e atandi. Context aktarimi: 1 mesaj, musteri profili, AI analizi (hukuki konu, confidence %35)."
+        },
+        {
+          "role": "bot",
+          "content": "[Agent Selin devralir]\n\nMerhaba, ben Selin. Sozlesmenizin 3. maddesindeki ceza kosulu hakkinda yardimci olacagim. Sozlesme numaranizi paylasir misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "SZL-2025-1234"
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler. Sozlesmenizi inceliyorum. Bu degisiklik icin hukuk departmanimizin onayiyla size yarin detayli donus yapacagim."
+        }
+      ],
+      "aiPrompt": "\"AI → Insan Handoff (Eskalasyon)\" senaryosu icin \"Confidence Dusuk — Otomatik Handoff\" akisini olustur.\n\nAciklama: AI soruya dogru cevap veremiyor, confidence esik altinda.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Gecen yilki sozlesmemdeki 3. maddedeki ceza kosulunu degistirmek istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Sozlesme Degisikligi. Confidence: %35. Neden: Hukuki konu, spesifik madde referansi. HANDOFF TETIKLENDI.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Bu konuda size en dogru bilgiyi verebilmek icin sizi uzman temsilcimize yonlendiriyorum. Lutfen kisa bir sure bekleyin, tum konusma gecmisiniz aktarilacak.\"\n\n5. **utility_set_variable** — Durum guncelle\n   Deger: HANDOFF: Konusma #4521 → Agent Selin'e atandi. Context aktarimi: 1 mesaj, musteri profili, AI analizi (hukuki konu, confidence %35).\n\n6. **message_text** — Mesaj gonder\n   text: \"[Agent Selin devralir]\n\nMerhaba, ben Selin. Sozlesmenizin 3. maddesindeki ceza kosulu hakkinda yardimci olacagim. Sozlesme numaranizi paylasir misiniz?\"\n   Degiskenler: {{agent_selin_devralir}}\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"SZL-2025-1234\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **message_text** — Mesaj gonder\n   text: \"Tesekkurler. Sozlesmenizi inceliyorum. Bu degisiklik icin hukuk departmanimizin onayiyla size yarin detayli donus yapacagim.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "3+ Mesaj Dongusu — Cozumsuzluk Handoff",
       "description": "AI 3 mesajdir soruyu cozemiyor, musteri sinirlanmaya basliyor.",
       "tags": [
-        { "text": "Dongu Tespiti", "color": "red" },
-        { "text": "Eskalasyon", "color": "amber" }
+        {
+          "text": "Dongu Tespiti",
+          "color": "red"
+        },
+        {
+          "text": "Eskalasyon",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Dongu esik sayisi", "service": "Backend", "page": "AI Ayarlari > Dongu Limiti", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kac mesaj sonra handoff tetiklenecegini belirleyin (varsayilan: 3)" }
+          {
+            "text": "Dongu esik sayisi",
+            "service": "Backend",
+            "page": "AI Ayarlari > Dongu Limiti",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Kac mesaj sonra handoff tetiklenecegini belirleyin (varsayilan: 3)"
+          }
         ],
         "provider": [
-          { "text": "Konusma dongu tespiti", "service": "AgentAI", "page": "Dialog Analizi > Dongu Tespiti", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tekrar eden sorular ve cozumsuz mesaj dongulerini otomatik tespit eder" }
+          {
+            "text": "Konusma dongu tespiti",
+            "service": "AgentAI",
+            "page": "Dialog Analizi > Dongu Tespiti",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Tekrar eden sorular ve cozumsuz mesaj dongulerini otomatik tespit eder"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Faturami neden 2 kez odedim?" },
-        { "role": "ai", "content": "Intent: Mukerrer Odeme. Confidence: %60. Cevap onerisi sunuluyor." },
-        { "role": "bot", "content": "Odeme gecmisinizi kontrol ettim. Son odemeniz 15 Subat'ta 450 TL olarak gorukuyor. Farkli bir odeme mi gorunuyor?" },
-        { "role": "user", "content": "Hayir, 2 tane 450 TL cekildi. Banka ekstremde 2 tane var!" },
-        { "role": "ai", "content": "Intent: Mukerrer Odeme (tekrar). Confidence: %48. Dongu sayaci: 2." },
-        { "role": "bot", "content": "Anliyorum endiselerinizi. Sistemimizde tek odeme goruyorum ama bankanizda 2 islem gorunuyorsa bu bazen gecici provizyon olabilir. 24 saat icinde duzelir." },
-        { "role": "user", "content": "24 saat gecti, hala 2 tane duruyor! Bu ne bicim musteri hizmeti?!" },
-        { "role": "ai", "content": "Dongu Tespiti: 3. mesaj, cozumsuz, musteri sinirli. HANDOFF TETIKLENDI." },
-        { "role": "bot", "content": "Haklisiniz, bu konuda uzman bir arkadasimiz sizinle ilgilenecek. Tum gorusme gecmisinizi aktariyorum, tekrar anlatmaniza gerek kalmayacak." },
-        { "role": "system", "content": "HANDOFF: Konusma #4522 → Agent Emre. Context: Mukerrer odeme sikayeti, 3 mesaj cozumsuz, musteri sinirli. Oncelik: Yuksek." }
-      ]
+        {
+          "role": "user",
+          "content": "Faturami neden 2 kez odedim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Mukerrer Odeme. Confidence: %60. Cevap onerisi sunuluyor."
+        },
+        {
+          "role": "bot",
+          "content": "Odeme gecmisinizi kontrol ettim. Son odemeniz 15 Subat'ta 450 TL olarak gorukuyor. Farkli bir odeme mi gorunuyor?"
+        },
+        {
+          "role": "user",
+          "content": "Hayir, 2 tane 450 TL cekildi. Banka ekstremde 2 tane var!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Mukerrer Odeme (tekrar). Confidence: %48. Dongu sayaci: 2."
+        },
+        {
+          "role": "bot",
+          "content": "Anliyorum endiselerinizi. Sistemimizde tek odeme goruyorum ama bankanizda 2 islem gorunuyorsa bu bazen gecici provizyon olabilir. 24 saat icinde duzelir."
+        },
+        {
+          "role": "user",
+          "content": "24 saat gecti, hala 2 tane duruyor! Bu ne bicim musteri hizmeti?!"
+        },
+        {
+          "role": "ai",
+          "content": "Dongu Tespiti: 3. mesaj, cozumsuz, musteri sinirli. HANDOFF TETIKLENDI."
+        },
+        {
+          "role": "bot",
+          "content": "Haklisiniz, bu konuda uzman bir arkadasimiz sizinle ilgilenecek. Tum gorusme gecmisinizi aktariyorum, tekrar anlatmaniza gerek kalmayacak."
+        },
+        {
+          "role": "system",
+          "content": "HANDOFF: Konusma #4522 → Agent Emre. Context: Mukerrer odeme sikayeti, 3 mesaj cozumsuz, musteri sinirli. Oncelik: Yuksek."
+        }
+      ],
+      "aiPrompt": "\"AI → Insan Handoff (Eskalasyon)\" senaryosu icin \"3+ Mesaj Dongusu — Cozumsuzluk Handoff\" akisini olustur.\n\nAciklama: AI 3 mesajdir soruyu cozemiyor, musteri sinirlanmaya basliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Faturami neden 2 kez odedim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Mukerrer Odeme. Confidence: %60. Cevap onerisi sunuluyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Odeme gecmisinizi kontrol ettim. Son odemeniz 15 Subat'ta 450 TL olarak gorukuyor. Farkli bir odeme mi gorunuyor?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Hayir, 2 tane 450 TL cekildi. Banka ekstremde 2 tane var!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Mukerrer Odeme (tekrar). Confidence: %48. Dongu sayaci: 2.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Anliyorum endiselerinizi. Sistemimizde tek odeme goruyorum ama bankanizda 2 islem gorunuyorsa bu bazen gecici provizyon olabilir. 24 saat icinde duzelir.\"\n\n8. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"24 saat gecti, hala 2 tane duruyor! Bu ne bicim musteri hizmeti?!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n9. **ai_intent** — Niyet tespiti\n   Analiz: Dongu Tespiti: 3. mesaj, cozumsuz, musteri sinirli. HANDOFF TETIKLENDI.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n10. **message_text** — Mesaj gonder\n   text: \"Haklisiniz, bu konuda uzman bir arkadasimiz sizinle ilgilenecek. Tum gorusme gecmisinizi aktariyorum, tekrar anlatmaniza gerek kalmayacak.\"\n\n11. **utility_note** — Akis sonuc notu\n   text: \"HANDOFF: Konusma #4522 → Agent Emre. Context: Mukerrer odeme sikayeti, 3 mesaj cozumsuz, musteri sinirli. Oncelik: Yuksek.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Confidence skorlama, intent siniflandirma ve dongu tespiti AI motoru tarafindan gercek zamanli yapilir. Handoff islemi sifir veri kaybiyla tum context'i agent'a aktarir.",
     "backend": [
-      { "title": "Handoff Decision Engine", "goal": "Devir Karari", "content": "Confidence esigi, hassas intent listesi ve dongu sayaci — uc kosuldan herhangi biri saglandiginda handoff tetikler." },
-      { "title": "Context Transfer Service", "goal": "Bilgi Aktarimi", "content": "Konusma gecmisi, musteri profili, AI analizi, sentiment skoru ve handoff nedenini agent ekranina aktarir." }
+      {
+        "title": "Handoff Decision Engine",
+        "goal": "Devir Karari",
+        "content": "Confidence esigi, hassas intent listesi ve dongu sayaci — uc kosuldan herhangi biri saglandiginda handoff tetikler."
+      },
+      {
+        "title": "Context Transfer Service",
+        "goal": "Bilgi Aktarimi",
+        "content": "Konusma gecmisi, musteri profili, AI analizi, sentiment skoru ve handoff nedenini agent ekranina aktarir."
+      }
     ],
     "apis": [
-      { "title": "Confidence Scoring API", "goal": "Guven Olcumu", "content": "Her AI cevabi icin 0-100 arasi confidence skoru hesaplar. Esik kontrolu yapar." },
-      { "title": "Handoff Trigger API", "goal": "Devir Tetikleme", "content": "Handoff kararini tetikler, uygun agent'i secer ve context aktarimini baslatir." }
+      {
+        "title": "Confidence Scoring API",
+        "goal": "Guven Olcumu",
+        "content": "Her AI cevabi icin 0-100 arasi confidence skoru hesaplar. Esik kontrolu yapar."
+      },
+      {
+        "title": "Handoff Trigger API",
+        "goal": "Devir Tetikleme",
+        "content": "Handoff kararini tetikler, uygun agent'i secer ve context aktarimini baslatir."
+      }
     ]
   },
   "impact": {
@@ -124,9 +295,29 @@
     "resultLabel": "Korunan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyHandoffs", "label": "Gunluk Handoff Sayisi", "default": 15, "hint": "AI'dan insana devredilen gunluk konusma sayisi", "editable": true },
-      { "key": "churnPreventionRate", "label": "Kayip Onleme Orani", "default": 60, "suffix": "%", "hint": "Handoff ile kurtarilan musteri yuzdesi", "editable": true },
-      { "key": "avgCustomerLTV", "label": "Musteri Yasam Degeri", "default": 2000, "suffix": "TL", "hint": "Ortalama musteri yasam boyu degeri", "editable": true }
+      {
+        "key": "dailyHandoffs",
+        "label": "Gunluk Handoff Sayisi",
+        "default": 15,
+        "hint": "AI'dan insana devredilen gunluk konusma sayisi",
+        "editable": true
+      },
+      {
+        "key": "churnPreventionRate",
+        "label": "Kayip Onleme Orani",
+        "default": 60,
+        "suffix": "%",
+        "hint": "Handoff ile kurtarilan musteri yuzdesi",
+        "editable": true
+      },
+      {
+        "key": "avgCustomerLTV",
+        "label": "Musteri Yasam Degeri",
+        "default": 2000,
+        "suffix": "TL",
+        "hint": "Ortalama musteri yasam boyu degeri",
+        "editable": true
+      }
     ],
     "formula": "dailyHandoffs * (churnPreventionRate / 100) * avgCustomerLTV * 0.1 * 30",
     "formulaDisplay": null

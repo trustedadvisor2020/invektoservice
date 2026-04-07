@@ -8,27 +8,59 @@
   "description": "76,570 beden mesaji analiz edildi. Musteriler boy+kilo, vucut tarifi, kalip sorusu ve esnek mi sorusu ile geliyor. E11'in gelismis versiyonu — gercek saha kaliplarini kapsiyyor.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Giyim — ozellikle kadin giyim)" },
-      { "label": "Sorun", "value": "76K+ beden mesaji. Musteriler boy/kilo, vucut tarifi ('goguslerim buyuk', 'yeni dogum yaptim'), kalip ('dar mi bol mu') ile soruyor" },
-      { "label": "Deger", "value": "Dogru beden onerisi siparis oranini 9x artiriyor (%72 vs %8 — saha verisi)" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Giyim — ozellikle kadin giyim)"
+      },
+      {
+        "label": "Sorun",
+        "value": "76K+ beden mesaji. Musteriler boy/kilo, vucut tarifi ('goguslerim buyuk', 'yeni dogum yaptim'), kalip ('dar mi bol mu') ile soruyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Dogru beden onerisi siparis oranini 9x artiriyor (%72 vs %8 — saha verisi)"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "Unified Inbox (C1)", "color": "blue" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "AI beden sorusunu 4 alt kategoride tanir: direkt beden, fizik tarifli, vucut detayli, kalip sorusu. Her biri icin farkli cevap stratejisi.",
     "steps": [
       {
         "title": "Beden Sorusu Siniflandirma",
         "goal": "4 alt kategoriden birini belirle",
-        "badges": [{ "text": "76K Mesaj", "color": "emerald" }, { "text": "4 Alt Kategori", "color": "blue" }],
+        "badges": [
+          {
+            "text": "76K Mesaj",
+            "color": "emerald"
+          },
+          {
+            "text": "4 Alt Kategori",
+            "color": "blue"
+          }
+        ],
         "content": "1) Direkt beden: '38 beden var mi?' → Stok kontrol + onay. 2) Fizik tarifli: 'Boyum 170 kilom 85' → Boy/kilo tablosu. 3) Vucut detayli: 'Goguslerim buyuk arada kaldim' → Empatik + detayli oneri. 4) Kalip sorusu: 'Dar kalip mi?' → Urun kalip bilgisi."
       },
       {
         "title": "Kisisellestirilmis Oneri",
         "goal": "Kesin beden onerisi sun",
-        "badges": [{ "text": "Conversion 9x", "color": "emerald" }],
+        "badges": [
+          {
+            "text": "Conversion 9x",
+            "color": "emerald"
+          }
+        ],
         "content": "AI boy+kilo + urun kalip bilgisi + beden tablosu birlestirerek kesin oneri sunar. Belirsizlik varsa: 'Arada kalırsanız X bedeni tercih edin, değişim hakkınız var.'"
       }
     ]
@@ -38,50 +70,136 @@
       "id": "flow-1",
       "title": "Fizik Tarifli Beden Sorusu",
       "description": "Musteri boy+kilo veriyor, AI beden hesapliyor.",
-      "tags": [{ "text": "Saha Dogrulanmis", "color": "emerald" }, { "text": "En Sik", "color": "blue" }],
+      "tags": [
+        {
+          "text": "Saha Dogrulanmis",
+          "color": "emerald"
+        },
+        {
+          "text": "En Sik",
+          "color": "blue"
+        }
+      ],
       "requirements": {
         "client": [
-          { "text": "Urun beden tablolari", "service": "Knowledge", "page": "Dokuman Bankasi > Beden Tablolari", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Her urun icin beden tablosu + kalip bilgisi (dar/standart/bol)" }
+          {
+            "text": "Urun beden tablolari",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Beden Tablolari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C7",
+            "hint": "Her urun icin beden tablosu + kalip bilgisi (dar/standart/bol)"
+          }
         ],
         "provider": [
-          { "text": "Beden hesaplama AI", "service": "AgentAI", "page": "Cevap Motoru > Beden", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Boy+kilo+kalip ile beden onerisi" }
+          {
+            "text": "Beden hesaplama AI",
+            "service": "AgentAI",
+            "page": "Cevap Motoru > Beden",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Boy+kilo+kalip ile beden onerisi"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "48 beden giyiyorum sizce kaç beden olsun" },
-        { "role": "ai", "content": "Intent: beden_sorma (fizik tarifli). Musteri 48 beden giyiyor. Urun: onceki baglamdan 4856 Palazzo." },
-        { "role": "bot", "content": "48 beden giyiyorsanız bu üründe 44 beden (en büyük beden) tercih edebilirsiniz 🌸\n\nÜrünümüz esnek Modal kumaştır, 48 bedene rahat oturur.\n\nEmin olmazsanız değişim hakkınız bulunmaktadır 💕\n\nSipariş oluşturalım mı?" },
-        { "role": "user", "content": "Tamam 44 alayım" },
-        { "role": "system", "content": "Beden danismanligi basarili. 48→44 eslestirmesi + esneklik bilgisi + degisim guvencesi." }
-      ]
+        {
+          "role": "user",
+          "content": "48 beden giyiyorum sizce kaç beden olsun"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: beden_sorma (fizik tarifli). Musteri 48 beden giyiyor. Urun: onceki baglamdan 4856 Palazzo."
+        },
+        {
+          "role": "bot",
+          "content": "48 beden giyiyorsanız bu üründe 44 beden (en büyük beden) tercih edebilirsiniz 🌸\n\nÜrünümüz esnek Modal kumaştır, 48 bedene rahat oturur.\n\nEmin olmazsanız değişim hakkınız bulunmaktadır 💕\n\nSipariş oluşturalım mı?"
+        },
+        {
+          "role": "user",
+          "content": "Tamam 44 alayım"
+        },
+        {
+          "role": "system",
+          "content": "Beden danismanligi basarili. 48→44 eslestirmesi + esneklik bilgisi + degisim guvencesi."
+        }
+      ],
+      "aiPrompt": "\"Gelismis Beden Danismanligi\" senaryosu icin \"Fizik Tarifli Beden Sorusu\" akisini olustur.\n\nAciklama: Musteri boy+kilo veriyor, AI beden hesapliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"48 beden giyiyorum sizce kaç beden olsun\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: beden_sorma (fizik tarifli). Musteri 48 beden giyiyor. Urun: onceki baglamdan 4856 Palazzo.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"48 beden giyiyorsanız bu üründe 44 beden (en büyük beden) tercih edebilirsiniz 🌸\n\nÜrünümüz esnek Modal kumaştır, 48 bedene rahat oturur.\n\nEmin olmazsanız değişim hakkınız bulunmaktadır 💕\n\nSipariş oluşturalım mı?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tamam 44 alayım\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Beden danismanligi basarili. 48→44 eslestirmesi + esneklik bilgisi + degisim guvencesi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Vucut Detayli Hassas Soru",
       "description": "Musteri vucut detayi paylasiyor ('goguslerim buyuk', 'yeni dogum yaptim'). Empatik ve detayli cevap gerekli.",
-      "tags": [{ "text": "Hassas", "color": "rose" }, { "text": "Empatik", "color": "purple" }],
+      "tags": [
+        {
+          "text": "Hassas",
+          "color": "rose"
+        },
+        {
+          "text": "Empatik",
+          "color": "purple"
+        }
+      ],
       "requirements": {
         "client": [],
         "provider": [
-          { "text": "Empatik beden AI", "service": "AgentAI", "page": "Cevap Motoru > Hassas Beden", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Vucut hassasiyetine dikkat eden empatik cevap" }
+          {
+            "text": "Empatik beden AI",
+            "service": "AgentAI",
+            "page": "Cevap Motoru > Hassas Beden",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Vucut hassasiyetine dikkat eden empatik cevap"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Yeni doğum yaptım göbeğim var biraz 84 kiloyum pantolunumun bedeni 36 ve 38 hangı bedeni almalıyım göbeğim de var biraz" },
-        { "role": "ai", "content": "Intent: beden_sorma (vucut detayli + hassas). Kilo: 84. Mevcut: 36-38. Gebe sonrasi." },
-        { "role": "bot", "content": "84 kilo ve rahat bir kalıp tercih etmeniz için 42 beden önerebilirim 🌸\n\nÜrünümüz esnek kumaştır, vücuda güzel oturur. Rahat hissetmeniz bizim için önemli 💕\n\nEmin olmazsanız değişim yapabiliriz, hiç endişelenmeyin." },
-        { "role": "system", "content": "Hassas vucut sorusu empatik karsilandi. Degisim guvencesi ile guven verildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Yeni doğum yaptım göbeğim var biraz 84 kiloyum pantolunumun bedeni 36 ve 38 hangı bedeni almalıyım göbeğim de var biraz"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: beden_sorma (vucut detayli + hassas). Kilo: 84. Mevcut: 36-38. Gebe sonrasi."
+        },
+        {
+          "role": "bot",
+          "content": "84 kilo ve rahat bir kalıp tercih etmeniz için 42 beden önerebilirim 🌸\n\nÜrünümüz esnek kumaştır, vücuda güzel oturur. Rahat hissetmeniz bizim için önemli 💕\n\nEmin olmazsanız değişim yapabiliriz, hiç endişelenmeyin."
+        },
+        {
+          "role": "system",
+          "content": "Hassas vucut sorusu empatik karsilandi. Degisim guvencesi ile guven verildi."
+        }
+      ],
+      "aiPrompt": "\"Gelismis Beden Danismanligi\" senaryosu icin \"Vucut Detayli Hassas Soru\" akisini olustur.\n\nAciklama: Musteri vucut detayi paylasiyor ('goguslerim buyuk', 'yeni dogum yaptim'). Empatik ve detayli cevap gerekli.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Yeni doğum yaptım göbeğim var biraz 84 kiloyum pantolunumun bedeni 36 ve 38 hangı bedeni almalıyım göbeğim de var biraz\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: beden_sorma (vucut detayli + hassas). Kilo: 84. Mevcut: 36-38. Gebe sonrasi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"84 kilo ve rahat bir kalıp tercih etmeniz için 42 beden önerebilirim 🌸\n\nÜrünümüz esnek kumaştır, vücuda güzel oturur. Rahat hissetmeniz bizim için önemli 💕\n\nEmin olmazsanız değişim yapabiliriz, hiç endişelenmeyin.\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Hassas vucut sorusu empatik karsilandi. Degisim guvencesi ile guven verildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "E11'in gelismis versiyonu. 76K beden mesajindan turetilen 4 alt kategori ile calisiir. Empatik ton + degisim guvencesi = conversion artisi.",
     "backend": [
-      { "title": "Advanced Size Engine", "goal": "Gelismis Beden Hesaplama", "content": "Boy, kilo, mevcut beden, kalip tercihi ve urun bazli beden tablosu birlestirerek onerrii." },
-      { "title": "Sensitivity Filter", "goal": "Hassas Icerik Filtresi", "content": "Vucut detayli sorularda empatik ton + hassasiyet kontrolu." }
+      {
+        "title": "Advanced Size Engine",
+        "goal": "Gelismis Beden Hesaplama",
+        "content": "Boy, kilo, mevcut beden, kalip tercihi ve urun bazli beden tablosu birlestirerek onerrii."
+      },
+      {
+        "title": "Sensitivity Filter",
+        "goal": "Hassas Icerik Filtresi",
+        "content": "Vucut detayli sorularda empatik ton + hassasiyet kontrolu."
+      }
     ],
     "apis": [
-      { "title": "Product Catalog API", "goal": "Beden Tablosu", "content": "Urun bazli beden, kalip (dar/standart/bol), kumas esnekligi bilgisi." }
+      {
+        "title": "Product Catalog API",
+        "goal": "Beden Tablosu",
+        "content": "Urun bazli beden, kalip (dar/standart/bol), kumas esnekligi bilgisi."
+      }
     ]
   },
   "impact": {
@@ -90,9 +208,29 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlySizeQueries", "label": "Aylik Beden Sorusu", "default": 200, "hint": "Beden sorusu sayisi", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 25, "prefix": "%", "hint": "Beden sonrasi siparis orani", "editable": true },
-      { "key": "avgOrderValue", "label": "Ort. Siparis", "default": 1000, "suffix": "TL", "hint": "Ortalama siparis tutari", "editable": true }
+      {
+        "key": "monthlySizeQueries",
+        "label": "Aylik Beden Sorusu",
+        "default": 200,
+        "hint": "Beden sorusu sayisi",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 25,
+        "prefix": "%",
+        "hint": "Beden sonrasi siparis orani",
+        "editable": true
+      },
+      {
+        "key": "avgOrderValue",
+        "label": "Ort. Siparis",
+        "default": 1000,
+        "suffix": "TL",
+        "hint": "Ortalama siparis tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlySizeQueries * (conversionRate / 100) * avgOrderValue",
     "formulaDisplay": null

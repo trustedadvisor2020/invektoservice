@@ -8,15 +8,36 @@
   "description": "Misafir surpriz dogum gunu, balayi veya yildonumu organizasyonu talep ediyor. AI kutlama intent'ini tespit ederek VIP etiket atar, koordinator yonlendirmesi yapar ve ozel duzenlemeleri organize eder.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otel / Turizm (Boutique, Resort, Lux Segment)" },
-      { "label": "Sorun", "value": "Ozel gun talepleri resepsiyonda kayboluyor, departmanlar arasi koordinasyon zayif, misafir beklentisi karsilanmiyor" },
-      { "label": "Deger", "value": "VIP misafir deneyimi, yuksek memnuniyet ve sadakat, sosyal medya paylasimi ile organik tanitim" }
+      {
+        "label": "Sektor",
+        "value": "Otel / Turizm (Boutique, Resort, Lux Segment)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Ozel gun talepleri resepsiyonda kayboluyor, departmanlar arasi koordinasyon zayif, misafir beklentisi karsilanmiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "VIP misafir deneyimi, yuksek memnuniyet ve sadakat, sosyal medya paylasimi ile organik tanitim"
+      }
     ],
     "services": [
-      { "name": "WhatsApp Business API (C1)", "color": "green" },
-      { "name": "Akilli Yonlendirme (C2)", "color": "amber" },
-      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
-      { "name": "AI Karar Motoru (C8)", "color": "red" }
+      {
+        "name": "WhatsApp Business API (C1)",
+        "color": "green"
+      },
+      {
+        "name": "Akilli Yonlendirme (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "AI Cevap Motoru (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Karar Motoru (C8)",
+        "color": "red"
+      }
     ],
     "servicesNote": "AI kutlama intent'ini algilar, VIP etiketi atar ve ozel gun koordinatorune yonlendirir. Departmanlar arasi is emirleri otomatik olusturulur.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Intent Tespiti (Detection)",
         "goal": "Kutlama niyetini yakala",
         "badges": [
-          { "text": "Sistem (AI NLP)", "color": "purple" },
-          { "text": "Tenant (Misafir Profili)", "color": "blue" }
+          {
+            "text": "Sistem (AI NLP)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Misafir Profili)",
+            "color": "blue"
+          }
         ],
         "content": "AI mesajdaki 'dogum gunu', 'balayi', 'yildonumu', 'surpriz' gibi anahtar kelimeleri tespit eder. Misafir profiline VIP/Ozel Gun etiketi eklenir."
       },
@@ -33,8 +60,14 @@
         "title": "Koordinator Yonlendirme (Routing)",
         "goal": "Uzman kisiyi devreye al",
         "badges": [
-          { "text": "Sistem (Smart Routing)", "color": "purple" },
-          { "text": "Tenant (Koordinator)", "color": "amber" }
+          {
+            "text": "Sistem (Smart Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Koordinator)",
+            "color": "amber"
+          }
         ],
         "content": "Ozel gun talebi tespit edildiginde konusma Guest Relations / VIP koordinatore devredilir. Tum mesaj gecmisi aktarilir."
       },
@@ -42,8 +75,14 @@
         "title": "Organizasyon Planlama (Planning)",
         "goal": "Detaylari planla ve onayla",
         "badges": [
-          { "text": "Koordinator (Insan)", "color": "green" },
-          { "text": "Tenant (Hizmetler)", "color": "amber" }
+          {
+            "text": "Koordinator (Insan)",
+            "color": "green"
+          },
+          {
+            "text": "Tenant (Hizmetler)",
+            "color": "amber"
+          }
         ],
         "content": "Koordinator misafirle detaylari netlestirir: pasta tercihi, cicek duzenleme, oda susleme, ozel menu. Butce ve zaman belirlenir."
       },
@@ -51,8 +90,14 @@
         "title": "Uygulama & Takip (Execution)",
         "goal": "Departmanlari koordine et",
         "badges": [
-          { "text": "Sistem (Is Emirleri)", "color": "purple" },
-          { "text": "Tenant (Departmanlar)", "color": "red" }
+          {
+            "text": "Sistem (Is Emirleri)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Departmanlar)",
+            "color": "red"
+          }
         ],
         "content": "Pasta -> Pastane, Cicek -> Housekeeping, Susleme -> Dekorasyon ekibine is emirleri olusturulur. Kutlama gunu hatirlatma mesaji gonderilir."
       }
@@ -64,68 +109,203 @@
       "title": "Surpriz Dogum Gunu Organizasyonu",
       "description": "Misafir esine surpriz dogum gunu planliyor.",
       "tags": [
-        { "text": "VIP", "color": "purple" },
-        { "text": "Dogum Gunu", "color": "amber" }
+        {
+          "text": "VIP",
+          "color": "purple"
+        },
+        {
+          "text": "Dogum Gunu",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Ozel gun organizasyon paket fiyatlari", "service": "Knowledge", "page": "Hizmetler > Ozel Gun Paketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Pasta, cicek, balon, susleme paket seceneklerini ve fiyatlarini tanimlayin" },
-          { "text": "Guest Relations / VIP koordinator atamasi", "service": "Backend", "page": "Ekip Yonetimi > VIP Koordinator", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Ozel gun taleplerine atanacak koordinator kisisini belirleyin" }
+          {
+            "text": "Ozel gun organizasyon paket fiyatlari",
+            "service": "Knowledge",
+            "page": "Hizmetler > Ozel Gun Paketleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Pasta, cicek, balon, susleme paket seceneklerini ve fiyatlarini tanimlayin"
+          },
+          {
+            "text": "Guest Relations / VIP koordinator atamasi",
+            "service": "Backend",
+            "page": "Ekip Yonetimi > VIP Koordinator",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Ozel gun taleplerine atanacak koordinator kisisini belirleyin"
+          }
         ],
         "provider": [
-          { "text": "Kutlama intent algilama AI modulu", "service": "AgentAI", "page": "Prompt Sablonlari > Ozel Gun Intent", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Dogum gunu, balayi, yildonumu intent'lerini otomatik tespit eder" },
-          { "text": "Coklu departman is emri olusturma", "service": "Automation", "page": "Is Emri Yonetimi > Multi-Departman", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Tek talepten birden fazla departmana es zamanli is emri duser" }
+          {
+            "text": "Kutlama intent algilama AI modulu",
+            "service": "AgentAI",
+            "page": "Prompt Sablonlari > Ozel Gun Intent",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Dogum gunu, balayi, yildonumu intent'lerini otomatik tespit eder"
+          },
+          {
+            "text": "Coklu departman is emri olusturma",
+            "service": "Automation",
+            "page": "Is Emri Yonetimi > Multi-Departman",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Tek talepten birden fazla departmana es zamanli is emri duser"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, esimin dogum gunu yarin. Odada surpriz bir sey yapabilir misiniz? Pasta ve balon olsa harika olur." },
-        { "role": "ai", "content": "Intent: OZEL GUN — Dogum Gunu Surprizi. VIP etiket ataniyor. Koordinatore yonlendirme gerekli." },
-        { "role": "bot", "content": "Ne guzel bir surpriz! Sizin icin ozel bir kutlama hazirlamamiz bizi cok mutlu eder. Detaylari planlayabilmemiz icin sizi Guest Relations ekibimizden Selin Hanim'a yonlendiriyorum. Birlikte muhtesem bir surpriz hazirlayacagiz!" },
-        { "role": "system", "content": "VIP etiket atandi. Konusma Guest Relations Selin'e devredildi. Tum mesaj gecmisi aktarildi." },
-        { "role": "agent", "content": "Merhaba! Ben Selin, esinin dogum gunu icin harika bir surpriz hazirlayalim! Birlikte planlayalim:\n\n1. Pasta: Cikolatali mi, meyveli mi tercih edersiniz? (Standart 6 kisilik)\n2. Balon & Susleme: Gul altin + beyaz tema onerimiz var\n3. Cicek: Gul buketi veya kucuk masa duzenleme\n4. Ekstra: Sampanya siparisi veya ozel akşam yemegi\n\nButceniz ve tercihleriniz nelerdir?" },
-        { "role": "user", "content": "Cikolatali pasta, balon susleme ve bir gul buketi yeterli. Butce 3000 TL civari olsun." },
-        { "role": "agent", "content": "Harika secimler! Plan:\n\n- Cikolatali Dogum Gunu Pastasi (6 kisilik) — 850 TL\n- Gul Altin + Beyaz Balon Susleme — 1.200 TL\n- 21'li Kirmizi Gul Buketi — 750 TL\n- 'Iyi ki Dogdun' yazili kart (ucretsiz)\n\nToplam: 2.800 TL\n\nYarin saat kacta odanizdan ayrilacaksiniz? O zaman hazirlayalim." },
-        { "role": "user", "content": "17:00'de aksam yemegine gidecegiz, o sirada yapabilirsiniz." },
-        { "role": "agent", "content": "Mukemmel! 17:00-18:30 arasi oda hazirligi tamamlanmis olacak. Odaya dondugunuzde surpriz hazir olacak! Iyi eglenceler dilerim, esine mutlu yillar!" },
-        { "role": "system", "content": "Is emirleri olusturuldu: Pastane #PO-0142 (pasta yarin 16:00), Housekeeping #HK-0294 (susleme 17:00), Cicekci #FL-0089 (gul buketi 17:00). VIP notu: Surpriz — odaya giris 17:00-18:30." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, esimin dogum gunu yarin. Odada surpriz bir sey yapabilir misiniz? Pasta ve balon olsa harika olur."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: OZEL GUN — Dogum Gunu Surprizi. VIP etiket ataniyor. Koordinatore yonlendirme gerekli."
+        },
+        {
+          "role": "bot",
+          "content": "Ne guzel bir surpriz! Sizin icin ozel bir kutlama hazirlamamiz bizi cok mutlu eder. Detaylari planlayabilmemiz icin sizi Guest Relations ekibimizden Selin Hanim'a yonlendiriyorum. Birlikte muhtesem bir surpriz hazirlayacagiz!"
+        },
+        {
+          "role": "system",
+          "content": "VIP etiket atandi. Konusma Guest Relations Selin'e devredildi. Tum mesaj gecmisi aktarildi."
+        },
+        {
+          "role": "agent",
+          "content": "Merhaba! Ben Selin, esinin dogum gunu icin harika bir surpriz hazirlayalim! Birlikte planlayalim:\n\n1. Pasta: Cikolatali mi, meyveli mi tercih edersiniz? (Standart 6 kisilik)\n2. Balon & Susleme: Gul altin + beyaz tema onerimiz var\n3. Cicek: Gul buketi veya kucuk masa duzenleme\n4. Ekstra: Sampanya siparisi veya ozel akşam yemegi\n\nButceniz ve tercihleriniz nelerdir?"
+        },
+        {
+          "role": "user",
+          "content": "Cikolatali pasta, balon susleme ve bir gul buketi yeterli. Butce 3000 TL civari olsun."
+        },
+        {
+          "role": "agent",
+          "content": "Harika secimler! Plan:\n\n- Cikolatali Dogum Gunu Pastasi (6 kisilik) — 850 TL\n- Gul Altin + Beyaz Balon Susleme — 1.200 TL\n- 21'li Kirmizi Gul Buketi — 750 TL\n- 'Iyi ki Dogdun' yazili kart (ucretsiz)\n\nToplam: 2.800 TL\n\nYarin saat kacta odanizdan ayrilacaksiniz? O zaman hazirlayalim."
+        },
+        {
+          "role": "user",
+          "content": "17:00'de aksam yemegine gidecegiz, o sirada yapabilirsiniz."
+        },
+        {
+          "role": "agent",
+          "content": "Mukemmel! 17:00-18:30 arasi oda hazirligi tamamlanmis olacak. Odaya dondugunuzde surpriz hazir olacak! Iyi eglenceler dilerim, esine mutlu yillar!"
+        },
+        {
+          "role": "system",
+          "content": "Is emirleri olusturuldu: Pastane #PO-0142 (pasta yarin 16:00), Housekeeping #HK-0294 (susleme 17:00), Cicekci #FL-0089 (gul buketi 17:00). VIP notu: Surpriz — odaya giris 17:00-18:30."
+        }
+      ],
+      "aiPrompt": "\"Ozel Gun / Kutlama Organizasyonu\" senaryosu icin \"Surpriz Dogum Gunu Organizasyonu\" akisini olustur.\n\nAciklama: Misafir esine surpriz dogum gunu planliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, esimin dogum gunu yarin. Odada surpriz bir sey yapabilir misiniz? Pasta ve balon olsa harika olur.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: OZEL GUN — Dogum Gunu Surprizi. VIP etiket ataniyor. Koordinatore yonlendirme gerekli.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Ne guzel bir surpriz! Sizin icin ozel bir kutlama hazirlamamiz bizi cok mutlu eder. Detaylari planlayabilmemiz icin sizi Guest Relations ekibimizden Selin Hanim'a yonlendiriyorum. Birlikte muhtesem bir surpriz hazirlayacagiz!\"\n\n5. **utility_set_variable** — Durum guncelle\n   Deger: VIP etiket atandi. Konusma Guest Relations Selin'e devredildi. Tum mesaj gecmisi aktarildi.\n\n6. **action_handoff** — Canli agent'a devret\n   summary_template: \"Merhaba! Ben Selin, esinin dogum gunu icin harika bir surpriz hazirlayalim! Birlikte planlayalim:\n\n1. Pasta: Cikolatali mi, meyveli mi tercih edersiniz? (Standart 6 kisilik)\n2. Balon & Susleme: Gul altin + beyaz tema onerimiz var\n3. Cicek: Gul buketi veya kucuk masa duzenleme\n4. Ekstra: Sampanya siparisi veya ozel akşam yemegi\n\nButceniz ve tercihleriniz nelerdir?\"\n   (Terminal node — akis burada biter)\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Cikolatali pasta, balon susleme ve bir gul buketi yeterli. Butce 3000 TL civari olsun.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **action_handoff** — Canli agent'a devret\n   summary_template: \"Harika secimler! Plan:\n\n- Cikolatali Dogum Gunu Pastasi (6 kisilik) — 850 TL\n- Gul Altin + Beyaz Balon Susleme — 1.200 TL\n- 21'li Kirmizi Gul Buketi — 750 TL\n- 'Iyi ki Dogdun' yazili kart (ucretsiz)\n\nToplam: 2.800 TL\n\nYarin saat kacta odanizdan ayrilacaksiniz? O zaman hazirlayalim.\"\n   (Terminal node — akis burada biter)\n\n9. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"17:00'de aksam yemegine gidecegiz, o sirada yapabilirsiniz.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n10. **action_handoff** — Canli agent'a devret\n   summary_template: \"Mukemmel! 17:00-18:30 arasi oda hazirligi tamamlanmis olacak. Odaya dondugunuzde surpriz hazir olacak! Iyi eglenceler dilerim, esine mutlu yillar!\"\n   (Terminal node — akis burada biter)\n\n11. **utility_note** — Akis sonuc notu\n   text: \"Is emirleri olusturuldu: Pastane #PO-0142 (pasta yarin 16:00), Housekeeping #HK-0294 (susleme 17:00), Cicekci #FL-0089 (gul buketi 17:00). VIP notu: Surpriz — odaya giris 17:00-18:30.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Balayi Duzenleme",
       "description": "Yeni evli cift icin balayi odasi hazirlanmasi.",
       "tags": [
-        { "text": "VIP", "color": "purple" },
-        { "text": "Balayi", "color": "red" }
+        {
+          "text": "VIP",
+          "color": "purple"
+        },
+        {
+          "text": "Balayi",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Balayi paketi tanimlari", "service": "Knowledge", "page": "Hizmetler > Balayi Paketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Balayi paketi icerikleri: gul yapragi, sampanya, ozel kahvalti vb." }
+          {
+            "text": "Balayi paketi tanimlari",
+            "service": "Knowledge",
+            "page": "Hizmetler > Balayi Paketleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Balayi paketi icerikleri: gul yapragi, sampanya, ozel kahvalti vb."
+          }
         ],
         "provider": [
-          { "text": "VIP oda hazirligi is emri sablonu", "service": "Automation", "page": "Is Emri Sablonlari > VIP", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Balayi odasi hazirligi icin standart is emri sablonu hazir" }
+          {
+            "text": "VIP oda hazirligi is emri sablonu",
+            "service": "Automation",
+            "page": "Is Emri Sablonlari > VIP",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Balayi odasi hazirligi icin standart is emri sablonu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Biz yeni evlendik, balayi icin gelecegiz. Odamizda ozel bir sey olabilir mi?" },
-        { "role": "ai", "content": "Intent: OZEL GUN — Balayi. VIP etiket ataniyor. Balayi paketi onerisi hazirlanacak." },
-        { "role": "bot", "content": "Tebrikler! Yeni hayatinizin ilk tatilini bizimle gecirecek olmaniz bizi onurlandirir. Sizi VIP misafir koordinatorumuze yonlendiriyorum — unutulmaz bir balayi deneyimi hazirlayalim!" },
-        { "role": "agent", "content": "Tebrikler! Balayi paket seceneklerimiz:\n\n1. Romantik Paket — 2.500 TL (Gul yapragi susleme + sampanya + cikolata)\n2. Premium Balayi — 5.000 TL (Romantik + ozel aksam yemegi + spa masaji)\n3. Ultimate Balayi — 8.000 TL (Premium + tekne turu + fotografci)\n\nHangisi ilginizi ceker?" },
-        { "role": "user", "content": "Premium balayi paketi olsun!" },
-        { "role": "agent", "content": "Muhtesem secim! Premium Balayi Paketiniz:\n\n- Gul yapragi ile oda suslemesi\n- Sampanya + Belcika cikolatasi\n- 2 kisilik ozel aksam yemegi (teras restoran)\n- 60 dk cift masaji (spa)\n\nVarisinizdan 2 saat once oda hazirlanmis olacak. Guzel bir baslangic olsun!" },
-        { "role": "system", "content": "Balayi paketi onaylandi: #VIP-BL-0034. Is emirleri: Housekeeping (susleme), F&B (sampanya + cikolata), Restoran (ozel masa), Spa (cift masaji). Toplam: 5.000 TL." }
-      ]
+        {
+          "role": "user",
+          "content": "Biz yeni evlendik, balayi icin gelecegiz. Odamizda ozel bir sey olabilir mi?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: OZEL GUN — Balayi. VIP etiket ataniyor. Balayi paketi onerisi hazirlanacak."
+        },
+        {
+          "role": "bot",
+          "content": "Tebrikler! Yeni hayatinizin ilk tatilini bizimle gecirecek olmaniz bizi onurlandirir. Sizi VIP misafir koordinatorumuze yonlendiriyorum — unutulmaz bir balayi deneyimi hazirlayalim!"
+        },
+        {
+          "role": "agent",
+          "content": "Tebrikler! Balayi paket seceneklerimiz:\n\n1. Romantik Paket — 2.500 TL (Gul yapragi susleme + sampanya + cikolata)\n2. Premium Balayi — 5.000 TL (Romantik + ozel aksam yemegi + spa masaji)\n3. Ultimate Balayi — 8.000 TL (Premium + tekne turu + fotografci)\n\nHangisi ilginizi ceker?"
+        },
+        {
+          "role": "user",
+          "content": "Premium balayi paketi olsun!"
+        },
+        {
+          "role": "agent",
+          "content": "Muhtesem secim! Premium Balayi Paketiniz:\n\n- Gul yapragi ile oda suslemesi\n- Sampanya + Belcika cikolatasi\n- 2 kisilik ozel aksam yemegi (teras restoran)\n- 60 dk cift masaji (spa)\n\nVarisinizdan 2 saat once oda hazirlanmis olacak. Guzel bir baslangic olsun!"
+        },
+        {
+          "role": "system",
+          "content": "Balayi paketi onaylandi: #VIP-BL-0034. Is emirleri: Housekeeping (susleme), F&B (sampanya + cikolata), Restoran (ozel masa), Spa (cift masaji). Toplam: 5.000 TL."
+        }
+      ],
+      "aiPrompt": "\"Ozel Gun / Kutlama Organizasyonu\" senaryosu icin \"Balayi Duzenleme\" akisini olustur.\n\nAciklama: Yeni evli cift icin balayi odasi hazirlanmasi.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Biz yeni evlendik, balayi icin gelecegiz. Odamizda ozel bir sey olabilir mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: OZEL GUN — Balayi. VIP etiket ataniyor. Balayi paketi onerisi hazirlanacak.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tebrikler! Yeni hayatinizin ilk tatilini bizimle gecirecek olmaniz bizi onurlandirir. Sizi VIP misafir koordinatorumuze yonlendiriyorum — unutulmaz bir balayi deneyimi hazirlayalim!\"\n\n5. **action_handoff** — Canli agent'a devret\n   summary_template: \"Tebrikler! Balayi paket seceneklerimiz:\n\n1. Romantik Paket — 2.500 TL (Gul yapragi susleme + sampanya + cikolata)\n2. Premium Balayi — 5.000 TL (Romantik + ozel aksam yemegi + spa masaji)\n3. Ultimate Balayi — 8.000 TL (Premium + tekne turu + fotografci)\n\nHangisi ilginizi ceker?\"\n   (Terminal node — akis burada biter)\n\n6. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Premium balayi paketi olsun!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n7. **action_handoff** — Canli agent'a devret\n   summary_template: \"Muhtesem secim! Premium Balayi Paketiniz:\n\n- Gul yapragi ile oda suslemesi\n- Sampanya + Belcika cikolatasi\n- 2 kisilik ozel aksam yemegi (teras restoran)\n- 60 dk cift masaji (spa)\n\nVarisinizdan 2 saat once oda hazirlanmis olacak. Guzel bir baslangic olsun!\"\n   (Terminal node — akis burada biter)\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Balayi paketi onaylandi: #VIP-BL-0034. Is emirleri: Housekeeping (susleme), F&B (sampanya + cikolata), Restoran (ozel masa), Spa (cift masaji). Toplam: 5.000 TL.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Ozel gun talepleri AI intent algilama ile yakalanir, VIP etiket atanir ve koordinator devralir. Coklu departman is emirleri otomatik olusturulur.",
     "backend": [
-      { "title": "Intent Detector", "goal": "Kutlama Tespiti", "content": "Dogum gunu, balayi, yildonumu, evlilik teklifi gibi ozel gun intent'lerini NLP ile algilar." },
-      { "title": "Multi-Dept Work Order", "goal": "Koordinasyon", "content": "Tek talepten pastane, housekeeping, cicekci, restoran gibi birden fazla departmana es zamanli is emri olusturur." }
+      {
+        "title": "Intent Detector",
+        "goal": "Kutlama Tespiti",
+        "content": "Dogum gunu, balayi, yildonumu, evlilik teklifi gibi ozel gun intent'lerini NLP ile algilar."
+      },
+      {
+        "title": "Multi-Dept Work Order",
+        "goal": "Koordinasyon",
+        "content": "Tek talepten pastane, housekeeping, cicekci, restoran gibi birden fazla departmana es zamanli is emri olusturur."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Business API", "goal": "Misafir Iletisimi", "content": "Intent algilama, koordinator devri ve bilgilendirme mesajlari WhatsApp uzerinden." },
-      { "title": "PMS VIP API", "goal": "Misafir Profili", "content": "Misafir profiline VIP etiketi ve ozel notlar eklenir. Oda hazirligi zamanlayicisi tetiklenir." }
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Misafir Iletisimi",
+        "content": "Intent algilama, koordinator devri ve bilgilendirme mesajlari WhatsApp uzerinden."
+      },
+      {
+        "title": "PMS VIP API",
+        "goal": "Misafir Profili",
+        "content": "Misafir profiline VIP etiketi ve ozel notlar eklenir. Oda hazirligi zamanlayicisi tetiklenir."
+      }
     ]
   },
   "impact": {
@@ -134,9 +314,27 @@
     "resultLabel": "Aylik Ozel Gun Ek Geliri",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlySpecialRequests", "label": "Aylik Ozel Gun Talebi", "default": 30, "hint": "Dogum gunu, balayi, yildonumu gibi talepler", "editable": true },
-      { "key": "conversionRate", "label": "Paket Kabul Orani", "default": 65, "hint": "Teklif edilen paketleri kabul eden oran (%)", "editable": true },
-      { "key": "avgPackageValue", "label": "Ortalama Paket Degeri", "default": 3500, "hint": "TL cinsinden ortalama ozel gun paketi", "editable": true }
+      {
+        "key": "monthlySpecialRequests",
+        "label": "Aylik Ozel Gun Talebi",
+        "default": 30,
+        "hint": "Dogum gunu, balayi, yildonumu gibi talepler",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Paket Kabul Orani",
+        "default": 65,
+        "hint": "Teklif edilen paketleri kabul eden oran (%)",
+        "editable": true
+      },
+      {
+        "key": "avgPackageValue",
+        "label": "Ortalama Paket Degeri",
+        "default": 3500,
+        "hint": "TL cinsinden ortalama ozel gun paketi",
+        "editable": true
+      }
     ],
     "formula": "Math.round(monthlySpecialRequests * (conversionRate / 100)) * avgPackageValue",
     "formulaDisplay": null

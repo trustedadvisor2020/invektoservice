@@ -8,16 +8,40 @@
   "description": "Booking.com ve Expedia mesajlari ayri panellerden yonetiliyor, cevap suresi uzuyor ve mesajlar kayboluyor. Unified Inbox entegrasyonu ile tum OTA kanallari tek panelden yonetilir, AI otomatik cevap onerisi sunar.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otel / Turizm (OTA Entegreli Oteller)" },
-      { "label": "Sorun", "value": "Booking, Expedia, Airbnb mesajlari farkli panellerde, cevap suresi SLA'yi asiyor, mesaj kaciriliyor" },
-      { "label": "Deger", "value": "Tek panelden tum OTA yonetimi, SLA uyumlulugu, AI destekli hizli yanitlama" }
+      {
+        "label": "Sektor",
+        "value": "Otel / Turizm (OTA Entegreli Oteller)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Booking, Expedia, Airbnb mesajlari farkli panellerde, cevap suresi SLA'yi asiyor, mesaj kaciriliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Tek panelden tum OTA yonetimi, SLA uyumlulugu, AI destekli hizli yanitlama"
+      }
     ],
     "services": [
-      { "name": "WhatsApp Business API (C1)", "color": "green" },
-      { "name": "Akilli Yonlendirme (C2)", "color": "amber" },
-      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
-      { "name": "Knowledge Base (C7)", "color": "purple" },
-      { "name": "AI Karar Motoru (C8)", "color": "red" }
+      {
+        "name": "WhatsApp Business API (C1)",
+        "color": "green"
+      },
+      {
+        "name": "Akilli Yonlendirme (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "AI Cevap Motoru (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge Base (C7)",
+        "color": "purple"
+      },
+      {
+        "name": "AI Karar Motoru (C8)",
+        "color": "red"
+      }
     ],
     "servicesNote": "OTA mesaj API'leri Unified Inbox'a entegre edilir. Gelen mesajlar kanal etiketi ile goruntulenır ve AI otomatik cevap onerisi uretir.",
     "steps": [
@@ -25,8 +49,14 @@
         "title": "Kanal Entegrasyonu (Setup)",
         "goal": "OTA kanallarini bagla",
         "badges": [
-          { "text": "Sistem (API Entegrasyon)", "color": "purple" },
-          { "text": "Tenant (OTA Hesaplari)", "color": "amber" }
+          {
+            "text": "Sistem (API Entegrasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (OTA Hesaplari)",
+            "color": "amber"
+          }
         ],
         "content": "Booking.com Partner API, Expedia Partner Central ve Airbnb Host API ile mesaj kanallari entegre edilir. Tum mesajlar Unified Inbox'a akar."
       },
@@ -34,8 +64,14 @@
         "title": "Mesaj Yonetimi (Inbox)",
         "goal": "Tek panelden yanit ver",
         "badges": [
-          { "text": "Sistem (Unified Inbox)", "color": "purple" },
-          { "text": "Tenant (Agent Ekibi)", "color": "blue" }
+          {
+            "text": "Sistem (Unified Inbox)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Agent Ekibi)",
+            "color": "blue"
+          }
         ],
         "content": "Booking, Expedia, Airbnb ve WhatsApp mesajlari tek gorunumde listelenir. Kanal etiketi ve SLA sayaci goruntulenir."
       },
@@ -43,8 +79,14 @@
         "title": "AI Yanit Onerisi (Assist)",
         "goal": "Hizli ve dogru yanit",
         "badges": [
-          { "text": "Sistem (AI Engine)", "color": "purple" },
-          { "text": "Tenant (Otel Bilgisi)", "color": "green" }
+          {
+            "text": "Sistem (AI Engine)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Otel Bilgisi)",
+            "color": "green"
+          }
         ],
         "content": "AI her gelen mesaj icin Knowledge Base'den yanit onerisi uretir. Agent tek tikla gonderir veya duzenler."
       },
@@ -52,8 +94,14 @@
         "title": "SLA Takibi & Raporlama (Monitor)",
         "goal": "Cevap surelerini izle",
         "badges": [
-          { "text": "Sistem (SLA Watchdog)", "color": "purple" },
-          { "text": "Tenant (SLA Kurallari)", "color": "red" }
+          {
+            "text": "Sistem (SLA Watchdog)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (SLA Kurallari)",
+            "color": "red"
+          }
         ],
         "content": "Booking.com 24 saat SLA kuralina uyum izlenir. SLA yaklasinca otomatik uyari, asilinca eskalasyon tetiklenir."
       }
@@ -65,61 +113,175 @@
       "title": "Booking.com Misafir Sorusu",
       "description": "Booking uzerinden gelen misafir sorusu Unified Inbox'ta cevaplanıyor.",
       "tags": [
-        { "text": "OTA", "color": "amber" },
-        { "text": "Booking.com", "color": "blue" }
+        {
+          "text": "OTA",
+          "color": "amber"
+        },
+        {
+          "text": "Booking.com",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Booking.com Partner API erisim bilgileri", "service": "Integrations", "page": "Kanal Entegrasyonlari > Booking.com", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "Booking.com Connectivity Partner basvurusu ve API key alinmasi gerekir" },
-          { "text": "OTA SSS dokumani (park, kahvalti, wifi vb.)", "service": "Knowledge", "page": "Dokuman Bankasi > OTA SSS", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "OTA'lardan sikca sorulan sorularin yanitlarini Knowledge Base'e ekleyin" }
+          {
+            "text": "Booking.com Partner API erisim bilgileri",
+            "service": "Integrations",
+            "page": "Kanal Entegrasyonlari > Booking.com",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C1",
+            "hint": "Booking.com Connectivity Partner basvurusu ve API key alinmasi gerekir"
+          },
+          {
+            "text": "OTA SSS dokumani (park, kahvalti, wifi vb.)",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > OTA SSS",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "OTA'lardan sikca sorulan sorularin yanitlarini Knowledge Base'e ekleyin"
+          }
         ],
         "provider": [
-          { "text": "Unified Inbox OTA kanal modulu", "service": "Backend", "page": "Kanal Yonetimi > OTA Entegrasyonu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Booking.com mesaj API'si Unified Inbox'a entegre — sistemde hazir" },
-          { "text": "OTA mesaj yanit AI promptu", "service": "AgentAI", "page": "Prompt Sablonlari > OTA Yanit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "OTA platform kurallarına uyumlu yanit uretme promptu hazir" }
+          {
+            "text": "Unified Inbox OTA kanal modulu",
+            "service": "Backend",
+            "page": "Kanal Yonetimi > OTA Entegrasyonu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Booking.com mesaj API'si Unified Inbox'a entegre — sistemde hazir"
+          },
+          {
+            "text": "OTA mesaj yanit AI promptu",
+            "service": "AgentAI",
+            "page": "Prompt Sablonlari > OTA Yanit",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "OTA platform kurallarına uyumlu yanit uretme promptu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Booking.com API: Yeni misafir mesaji alindi. Rezervasyon #B-98274. Misafir: Anna Mueller (Almanya)." },
-        { "role": "user", "content": "Hello, does the hotel have a private beach? Is breakfast included in my reservation?" },
-        { "role": "ai", "content": "Kanal: Booking.com. Dil: Ingilizce. Intent: Otel bilgisi (kumsal + kahvalti). Knowledge Base'den cevap hazirlanıyor." },
-        { "role": "bot", "content": "[AI Onerisi - Agent onayina hazir]\n\nDear Anna, thank you for your message!\n\nYes, we have a private beach exclusively for our guests — sunbeds and umbrellas are complimentary.\n\nRegarding breakfast: Your reservation includes our open buffet breakfast served daily from 07:00 to 10:30.\n\nWe look forward to welcoming you!\nBest regards" },
-        { "role": "system", "content": "Agent 'Gonder' butonuna tikladi. Yanit Booking.com API uzerinden misafire iletildi. SLA: 2 saat 14 dakika (limit: 24 saat)." }
-      ]
+        {
+          "role": "system",
+          "content": "Booking.com API: Yeni misafir mesaji alindi. Rezervasyon #B-98274. Misafir: Anna Mueller (Almanya)."
+        },
+        {
+          "role": "user",
+          "content": "Hello, does the hotel have a private beach? Is breakfast included in my reservation?"
+        },
+        {
+          "role": "ai",
+          "content": "Kanal: Booking.com. Dil: Ingilizce. Intent: Otel bilgisi (kumsal + kahvalti). Knowledge Base'den cevap hazirlanıyor."
+        },
+        {
+          "role": "bot",
+          "content": "[AI Onerisi - Agent onayina hazir]\n\nDear Anna, thank you for your message!\n\nYes, we have a private beach exclusively for our guests — sunbeds and umbrellas are complimentary.\n\nRegarding breakfast: Your reservation includes our open buffet breakfast served daily from 07:00 to 10:30.\n\nWe look forward to welcoming you!\nBest regards"
+        },
+        {
+          "role": "system",
+          "content": "Agent 'Gonder' butonuna tikladi. Yanit Booking.com API uzerinden misafire iletildi. SLA: 2 saat 14 dakika (limit: 24 saat)."
+        }
+      ],
+      "aiPrompt": "\"OTA Mesaj Entegrasyonu (Booking/Expedia)\" senaryosu icin \"Booking.com Misafir Sorusu\" akisini olustur.\n\nAciklama: Booking uzerinden gelen misafir sorusu Unified Inbox'ta cevaplanıyor.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Booking.com API: Yeni misafir mesaji alindi. Rezervasyon #B-98274. Misafir: Anna Mueller (Almanya).\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Hello, does the hotel have a private beach? Is breakfast included in my reservation?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Kanal: Booking.com. Dil: Ingilizce. Intent: Otel bilgisi (kumsal + kahvalti). Knowledge Base'den cevap hazirlanıyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"[AI Onerisi - Agent onayina hazir]\n\nDear Anna, thank you for your message!\n\nYes, we have a private beach exclusively for our guests — sunbeds and umbrellas are complimentary.\n\nRegarding breakfast: Your reservation includes our open buffet breakfast served daily from 07:00 to 10:30.\n\nWe look forward to welcoming you!\nBest regards\"\n   Degiskenler: {{ai_onerisi_-_agent_onayina_hazir}}\n\n5. **action_delay** — 14 dk bekle\n   seconds: 300\n   Not: Agent 'Gonder' butonuna tikladi. Yanit Booking.com API uzerinden misafire iletildi. SLA: 2 saat 14 dakika (limit: 24 saat).\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Expedia Rezervasyon Degisikligi",
       "description": "Expedia uzerinden gelen tarih degisikligi talebi.",
       "tags": [
-        { "text": "OTA", "color": "amber" },
-        { "text": "Expedia", "color": "green" }
+        {
+          "text": "OTA",
+          "color": "amber"
+        },
+        {
+          "text": "Expedia",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Expedia Partner Central API erisimi", "service": "Integrations", "page": "Kanal Entegrasyonlari > Expedia", "status": "setup", "priority": "required", "effort": "medium", "capability": "C1", "hint": "Expedia Partner Central uzerinden mesaj API erisimi saglanmalidir" }
+          {
+            "text": "Expedia Partner Central API erisimi",
+            "service": "Integrations",
+            "page": "Kanal Entegrasyonlari > Expedia",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C1",
+            "hint": "Expedia Partner Central uzerinden mesaj API erisimi saglanmalidir"
+          }
         ],
         "provider": [
-          { "text": "OTA degisiklik politika akisi", "service": "AgentAI", "page": "Prompt Sablonlari > OTA Degisiklik", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Platform bazli degisiklik/iptal politikasini otomatik sunar" }
+          {
+            "text": "OTA degisiklik politika akisi",
+            "service": "AgentAI",
+            "page": "Prompt Sablonlari > OTA Degisiklik",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Platform bazli degisiklik/iptal politikasini otomatik sunar"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Expedia API: Yeni misafir mesaji. Rezervasyon #EX-44521. Misafir: James Wilson (ABD)." },
-        { "role": "user", "content": "Hi, I need to change my dates from March 15-18 to March 22-25. Is that possible?" },
-        { "role": "ai", "content": "Kanal: Expedia. Intent: Tarih degisikligi. PMS kontrolu: Mart 22-25 musait. Politika: Degisiklik ucretsiz (7+ gun oncesi)." },
-        { "role": "bot", "content": "[AI Onerisi]\n\nHi James! Great news — we have availability for March 22-25 and since your change is more than 7 days before check-in, there's no modification fee.\n\nI'll process the date change through Expedia. You'll receive an updated confirmation email shortly.\n\nLooking forward to your stay!" },
-        { "role": "system", "content": "Agent onayladi. Expedia API uzerinden tarih degisikligi islendi. PMS guncellendi. Misafire Expedia onay e-postasi gonderildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Expedia API: Yeni misafir mesaji. Rezervasyon #EX-44521. Misafir: James Wilson (ABD)."
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need to change my dates from March 15-18 to March 22-25. Is that possible?"
+        },
+        {
+          "role": "ai",
+          "content": "Kanal: Expedia. Intent: Tarih degisikligi. PMS kontrolu: Mart 22-25 musait. Politika: Degisiklik ucretsiz (7+ gun oncesi)."
+        },
+        {
+          "role": "bot",
+          "content": "[AI Onerisi]\n\nHi James! Great news — we have availability for March 22-25 and since your change is more than 7 days before check-in, there's no modification fee.\n\nI'll process the date change through Expedia. You'll receive an updated confirmation email shortly.\n\nLooking forward to your stay!"
+        },
+        {
+          "role": "system",
+          "content": "Agent onayladi. Expedia API uzerinden tarih degisikligi islendi. PMS guncellendi. Misafire Expedia onay e-postasi gonderildi."
+        }
+      ],
+      "aiPrompt": "\"OTA Mesaj Entegrasyonu (Booking/Expedia)\" senaryosu icin \"Expedia Rezervasyon Degisikligi\" akisini olustur.\n\nAciklama: Expedia uzerinden gelen tarih degisikligi talebi.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Expedia API: Yeni misafir mesaji. Rezervasyon #EX-44521. Misafir: James Wilson (ABD).\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Hi, I need to change my dates from March 15-18 to March 22-25. Is that possible?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Kanal: Expedia. Intent: Tarih degisikligi. PMS kontrolu: Mart 22-25 musait. Politika: Degisiklik ucretsiz (7+ gun oncesi).\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"[AI Onerisi]\n\nHi James! Great news — we have availability for March 22-25 and since your change is more than 7 days before check-in, there's no modification fee.\n\nI'll process the date change through Expedia. You'll receive an updated confirmation email shortly.\n\nLooking forward to your stay!\"\n   Degiskenler: {{ai_onerisi}}\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Agent onayladi. Expedia API uzerinden tarih degisikligi islendi. PMS guncellendi. Misafire Expedia onay e-postasi gonderildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "OTA mesaj API'leri Unified Inbox'a entegre edilerek tum kanallar tek gorunumden yonetilir. SLA watchdog ile cevap suresi izlenir.",
     "backend": [
-      { "title": "Channel Aggregator", "goal": "Kanal Birlestirme", "content": "Booking.com, Expedia, Airbnb mesaj API'leri tek Inbox'a akar. Kanal etiketi ve rezervasyon bilgisi otomatik eslenir." },
-      { "title": "SLA Watchdog", "goal": "Sure Takibi", "content": "Her OTA kanalinin SLA kuralina gore sayac tutar. Yaklasinca uyari, asilinca eskalasyon." }
+      {
+        "title": "Channel Aggregator",
+        "goal": "Kanal Birlestirme",
+        "content": "Booking.com, Expedia, Airbnb mesaj API'leri tek Inbox'a akar. Kanal etiketi ve rezervasyon bilgisi otomatik eslenir."
+      },
+      {
+        "title": "SLA Watchdog",
+        "goal": "Sure Takibi",
+        "content": "Her OTA kanalinin SLA kuralina gore sayac tutar. Yaklasinca uyari, asilinca eskalasyon."
+      }
     ],
     "apis": [
-      { "title": "Booking.com Partner API", "goal": "Mesaj Entegrasyonu", "content": "Booking.com misafir mesajlarini okuma ve yanit gonderme." },
-      { "title": "Expedia Partner Central API", "goal": "Mesaj Entegrasyonu", "content": "Expedia misafir mesajlarini okuma ve yanit gonderme." }
+      {
+        "title": "Booking.com Partner API",
+        "goal": "Mesaj Entegrasyonu",
+        "content": "Booking.com misafir mesajlarini okuma ve yanit gonderme."
+      },
+      {
+        "title": "Expedia Partner Central API",
+        "goal": "Mesaj Entegrasyonu",
+        "content": "Expedia misafir mesajlarini okuma ve yanit gonderme."
+      }
     ]
   },
   "impact": {
@@ -128,9 +290,27 @@
     "resultLabel": "Aylik Kazanilan OTA Puan Artisi",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyOtaMessages", "label": "Aylik OTA Mesaj Sayisi", "default": 400, "hint": "Booking + Expedia + Airbnb toplam gelen mesaj", "editable": true },
-      { "key": "missedRate", "label": "Kacirilan Mesaj Orani (Onceki)", "default": 15, "hint": "Entegrasyon oncesi cevapsiz kalan mesaj orani (%)", "editable": true },
-      { "key": "avgBookingValue", "label": "Ortalama Rezervasyon Degeri", "default": 8000, "hint": "TL cinsinden ortalama OTA rezervasyon tutari", "editable": true }
+      {
+        "key": "monthlyOtaMessages",
+        "label": "Aylik OTA Mesaj Sayisi",
+        "default": 400,
+        "hint": "Booking + Expedia + Airbnb toplam gelen mesaj",
+        "editable": true
+      },
+      {
+        "key": "missedRate",
+        "label": "Kacirilan Mesaj Orani (Onceki)",
+        "default": 15,
+        "hint": "Entegrasyon oncesi cevapsiz kalan mesaj orani (%)",
+        "editable": true
+      },
+      {
+        "key": "avgBookingValue",
+        "label": "Ortalama Rezervasyon Degeri",
+        "default": 8000,
+        "hint": "TL cinsinden ortalama OTA rezervasyon tutari",
+        "editable": true
+      }
     ],
     "formula": "Math.round(monthlyOtaMessages * (missedRate / 100) * 0.3) * avgBookingValue",
     "formulaDisplay": null

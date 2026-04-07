@@ -8,16 +8,40 @@
   "description": "Misafir konaklama sirasinda spa randevusu veya restoran masa rezervasyonu yapar. AI template ile tercih bilgilerini toplar, musait slotlari sunar ve onay verir. Slot yonetimi ile cakisma onlenir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otel / Turizm (Resort, Spa Otelleri, Butik Oteller)" },
-      { "label": "Sorun", "value": "Spa ve restoran rezervasyonlari resepsiyon uzerinden yavaş ilerliyor, slot cakismalari oluyor" },
-      { "label": "Deger", "value": "Anlik slot kontrolu, otomatik rezervasyon, upsell firsati artisi" }
+      {
+        "label": "Sektor",
+        "value": "Otel / Turizm (Resort, Spa Otelleri, Butik Oteller)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Spa ve restoran rezervasyonlari resepsiyon uzerinden yavaş ilerliyor, slot cakismalari oluyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Anlik slot kontrolu, otomatik rezervasyon, upsell firsati artisi"
+      }
     ],
     "services": [
-      { "name": "WhatsApp Business API (C1)", "color": "green" },
-      { "name": "Akilli Yonlendirme (C2)", "color": "amber" },
-      { "name": "AI Cevap Motoru (C3)", "color": "blue" },
-      { "name": "Knowledge Base (C7)", "color": "purple" },
-      { "name": "AI Karar Motoru (C8)", "color": "red" }
+      {
+        "name": "WhatsApp Business API (C1)",
+        "color": "green"
+      },
+      {
+        "name": "Akilli Yonlendirme (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "AI Cevap Motoru (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge Base (C7)",
+        "color": "purple"
+      },
+      {
+        "name": "AI Karar Motoru (C8)",
+        "color": "red"
+      }
     ],
     "servicesNote": "AI misafir tercihlerini toplar, slot musaitligini kontrol eder ve onay mesaji gonderir. Knowledge Base'den menu ve hizmet bilgileri cekilir.",
     "steps": [
@@ -25,8 +49,14 @@
         "title": "Tercih Toplama (Collection)",
         "goal": "Misafirin isteklerini anla",
         "badges": [
-          { "text": "Sistem (Template Flow)", "color": "purple" },
-          { "text": "Tenant (Hizmet Bilgisi)", "color": "amber" }
+          {
+            "text": "Sistem (Template Flow)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Hizmet Bilgisi)",
+            "color": "amber"
+          }
         ],
         "content": "AI misafire hizmet turu (spa/restoran), tarih, saat ve kisi sayisi sorar. Spa icin islem tercihi, restoran icin ozel istek (pencere kenari, dogum gunu vb.) bilgisi toplanir."
       },
@@ -34,8 +64,14 @@
         "title": "Musaitlik Kontrolu (Availability)",
         "goal": "Uygun slotlari sun",
         "badges": [
-          { "text": "Sistem (Slot Engine)", "color": "purple" },
-          { "text": "Tenant (Kapasite)", "color": "blue" }
+          {
+            "text": "Sistem (Slot Engine)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kapasite)",
+            "color": "blue"
+          }
         ],
         "content": "Istenen tarih ve saatte musait slotlar kontrol edilir. Musait degilse en yakin alternatif saatler onerilir."
       },
@@ -43,8 +79,14 @@
         "title": "Onay & Hatirlatma (Confirmation)",
         "goal": "Rezervasyonu kesinlestir",
         "badges": [
-          { "text": "Sistem (Otomatik)", "color": "purple" },
-          { "text": "Tenant (Politika)", "color": "green" }
+          {
+            "text": "Sistem (Otomatik)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Politika)",
+            "color": "green"
+          }
         ],
         "content": "Misafir slotu onayladiginda rezervasyon kesinlesir. Randevudan 1 saat once hatirlatma mesaji gonderilir."
       },
@@ -52,8 +94,14 @@
         "title": "Upsell Firsati (Revenue)",
         "goal": "Ek hizmet onerisi",
         "badges": [
-          { "text": "Sistem (AI Oneri)", "color": "purple" },
-          { "text": "Tenant (Paketler)", "color": "amber" }
+          {
+            "text": "Sistem (AI Oneri)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Paketler)",
+            "color": "amber"
+          }
         ],
         "content": "Spa rezervasyonunda masaj + hamam paketi, restoran rezervasyonunda ozel menu veya sarap eslik secenegi onerilir."
       }
@@ -65,69 +113,213 @@
       "title": "Spa Randevusu ve Upsell",
       "description": "Misafir spa randevusu aliyor, AI paket onerisi yapıyor.",
       "tags": [
-        { "text": "In-Stay", "color": "blue" },
-        { "text": "Spa", "color": "purple" }
+        {
+          "text": "In-Stay",
+          "color": "blue"
+        },
+        {
+          "text": "Spa",
+          "color": "purple"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Spa hizmet listesi ve fiyatlari", "service": "Knowledge", "page": "Hizmetler > Spa Menu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Masaj turleri, hamam, cilt bakimi vb. hizmetleri fiyatlariyla ekleyin" },
-          { "text": "Spa calisma saatleri ve kapasite bilgisi", "service": "Backend", "page": "Slot Yonetimi > Spa", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Terapist sayisi ve slot surelerini tanimlayin" }
+          {
+            "text": "Spa hizmet listesi ve fiyatlari",
+            "service": "Knowledge",
+            "page": "Hizmetler > Spa Menu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Masaj turleri, hamam, cilt bakimi vb. hizmetleri fiyatlariyla ekleyin"
+          },
+          {
+            "text": "Spa calisma saatleri ve kapasite bilgisi",
+            "service": "Backend",
+            "page": "Slot Yonetimi > Spa",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C7",
+            "hint": "Terapist sayisi ve slot surelerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Slot musaitlik kontrolu ve rezervasyon motoru", "service": "Automation", "page": "Rezervasyon Modulu > Spa Slotlari", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Gercek zamanli slot kontrolu ve cakisma onleme hazir" },
-          { "text": "Upsell onerisi AI promptu", "service": "AgentAI", "page": "Prompt Sablonlari > Spa Upsell", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tercih bazli paket onerisi otomatik uygulanir" }
+          {
+            "text": "Slot musaitlik kontrolu ve rezervasyon motoru",
+            "service": "Automation",
+            "page": "Rezervasyon Modulu > Spa Slotlari",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Gercek zamanli slot kontrolu ve cakisma onleme hazir"
+          },
+          {
+            "text": "Upsell onerisi AI promptu",
+            "service": "AgentAI",
+            "page": "Prompt Sablonlari > Spa Upsell",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Tercih bazli paket onerisi otomatik uygulanir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, yarin icin spa randevusu almak istiyorum. Masaj var mi?" },
-        { "role": "ai", "content": "Intent: Spa Randevusu. Hizmet: Masaj. Tarih: Yarin. Detay gerekli: Saat, tur tercihi." },
-        { "role": "bot", "content": "Merhaba! Spa merkezimizde su masaj seceneklerimiz var:\n\n1. Aromaterapi Masaj (50 dk) — 1.200 TL\n2. Bali Masaji (60 dk) — 1.500 TL\n3. Hot Stone Masaj (60 dk) — 1.400 TL\n4. Cift Masaji (60 dk, 2 kisi) — 2.400 TL\n\nHangi turu tercih edersiniz ve saat tercihiniz nedir?" },
-        { "role": "user", "content": "Aromaterapi masaj, saat 14:00 civari olabilir mi?" },
-        { "role": "ai", "content": "Slot kontrolu: Yarin 14:00 — Musait. Upsell firsati: Hamam + Masaj paketi." },
-        { "role": "bot", "content": "Harika, yarin 14:00 Aromaterapi Masaj icin yerimiz musait! \n\nSize ozel onerimiz: Hamam + Aromaterapi paketi sadece 1.600 TL (ayri ayri 1.750 TL). Masajdan once hamam deneyimi masajin etkisini iki katina cikarir. Paket ister misiniz?" },
-        { "role": "user", "content": "Paket olsun, cok guzel!" },
-        { "role": "bot", "content": "Randevunuz kesinlesti!\n\nHamam + Aromaterapi Masaj Paketi\nTarih: Yarin 14:00\nSure: Toplam 90 dakika\nUcret: 1.600 TL (oda hesabina eklenecek)\n\n13:45'te Spa merkezimize gelmenizi rica ederiz. Randevudan 1 saat once hatirlatma mesaji gonderecegiz. Keyifli bir deneyim diliyoruz!" },
-        { "role": "system", "content": "Spa rezervasyonu olusturuldu: #SPA-2024-0412. Hatirlatma: Yarin 13:00. Upsell basarili: +400 TL." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, yarin icin spa randevusu almak istiyorum. Masaj var mi?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Spa Randevusu. Hizmet: Masaj. Tarih: Yarin. Detay gerekli: Saat, tur tercihi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Spa merkezimizde su masaj seceneklerimiz var:\n\n1. Aromaterapi Masaj (50 dk) — 1.200 TL\n2. Bali Masaji (60 dk) — 1.500 TL\n3. Hot Stone Masaj (60 dk) — 1.400 TL\n4. Cift Masaji (60 dk, 2 kisi) — 2.400 TL\n\nHangi turu tercih edersiniz ve saat tercihiniz nedir?"
+        },
+        {
+          "role": "user",
+          "content": "Aromaterapi masaj, saat 14:00 civari olabilir mi?"
+        },
+        {
+          "role": "ai",
+          "content": "Slot kontrolu: Yarin 14:00 — Musait. Upsell firsati: Hamam + Masaj paketi."
+        },
+        {
+          "role": "bot",
+          "content": "Harika, yarin 14:00 Aromaterapi Masaj icin yerimiz musait! \n\nSize ozel onerimiz: Hamam + Aromaterapi paketi sadece 1.600 TL (ayri ayri 1.750 TL). Masajdan once hamam deneyimi masajin etkisini iki katina cikarir. Paket ister misiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Paket olsun, cok guzel!"
+        },
+        {
+          "role": "bot",
+          "content": "Randevunuz kesinlesti!\n\nHamam + Aromaterapi Masaj Paketi\nTarih: Yarin 14:00\nSure: Toplam 90 dakika\nUcret: 1.600 TL (oda hesabina eklenecek)\n\n13:45'te Spa merkezimize gelmenizi rica ederiz. Randevudan 1 saat once hatirlatma mesaji gonderecegiz. Keyifli bir deneyim diliyoruz!"
+        },
+        {
+          "role": "system",
+          "content": "Spa rezervasyonu olusturuldu: #SPA-2024-0412. Hatirlatma: Yarin 13:00. Upsell basarili: +400 TL."
+        }
+      ],
+      "aiPrompt": "\"Spa / Restoran Rezervasyonu (In-Stay)\" senaryosu icin \"Spa Randevusu ve Upsell\" akisini olustur.\n\nAciklama: Misafir spa randevusu aliyor, AI paket onerisi yapıyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, yarin icin spa randevusu almak istiyorum. Masaj var mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Spa Randevusu. Hizmet: Masaj. Tarih: Yarin. Detay gerekli: Saat, tur tercihi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Spa merkezimizde su masaj seceneklerimiz var:\n\n1. Aromaterapi Masaj (50 dk) — 1.200 TL\n2. Bali Masaji (60 dk) — 1.500 TL\n3. Hot Stone Masaj (60 dk) — 1.400 TL\n4. Cift Masaji (60 dk, 2 kisi) — 2.400 TL\n\nHangi turu tercih edersiniz ve saat tercihiniz nedir?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Aromaterapi masaj, saat 14:00 civari olabilir mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Slot kontrolu: Yarin 14:00 — Musait. Upsell firsati: Hamam + Masaj paketi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Harika, yarin 14:00 Aromaterapi Masaj icin yerimiz musait! \n\nSize ozel onerimiz: Hamam + Aromaterapi paketi sadece 1.600 TL (ayri ayri 1.750 TL). Masajdan once hamam deneyimi masajin etkisini iki katina cikarir. Paket ister misiniz?\"\n\n8. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Paket olsun, cok guzel!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n9. **message_text** — Mesaj gonder\n   text: \"Randevunuz kesinlesti!\n\nHamam + Aromaterapi Masaj Paketi\nTarih: Yarin 14:00\nSure: Toplam 90 dakika\nUcret: 1.600 TL (oda hesabina eklenecek)\n\n13:45'te Spa merkezimize gelmenizi rica ederiz. Randevudan 1 saat once hatirlatma mesaji gonderecegiz. Keyifli bir deneyim diliyoruz!\"\n\n10. **utility_note** — Akis sonuc notu\n   text: \"Spa rezervasyonu olusturuldu: #SPA-2024-0412. Hatirlatma: Yarin 13:00. Upsell basarili: +400 TL.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Restoran Masa Rezervasyonu",
       "description": "Misafir aksam yemegi icin masa ayirtiyor.",
       "tags": [
-        { "text": "In-Stay", "color": "blue" },
-        { "text": "Restoran", "color": "amber" }
+        {
+          "text": "In-Stay",
+          "color": "blue"
+        },
+        {
+          "text": "Restoran",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Restoran calisma saatleri ve masa kapasitesi", "service": "Knowledge", "page": "Hizmetler > Restoran Bilgileri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her restoranin calisma saati, masa sayisi ve oturma duzeni" },
-          { "text": "Ozel menu ve sarap listesi (opsiyonel)", "service": "Knowledge", "page": "Dokuman Bankasi > Restoran Menu", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Tasting menu, chef's table gibi ozel secenekleri tanimlayin" }
+          {
+            "text": "Restoran calisma saatleri ve masa kapasitesi",
+            "service": "Knowledge",
+            "page": "Hizmetler > Restoran Bilgileri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Her restoranin calisma saati, masa sayisi ve oturma duzeni"
+          },
+          {
+            "text": "Ozel menu ve sarap listesi (opsiyonel)",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Restoran Menu",
+            "status": "setup",
+            "priority": "recommended",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Tasting menu, chef's table gibi ozel secenekleri tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Masa rezervasyon slot modulu", "service": "Automation", "page": "Rezervasyon Modulu > Restoran", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Masa bazli musaitlik ve cakisma kontrolu hazir" }
+          {
+            "text": "Masa rezervasyon slot modulu",
+            "service": "Automation",
+            "page": "Rezervasyon Modulu > Restoran",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Masa bazli musaitlik ve cakisma kontrolu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Bu aksam 4 kisilik masa ayirtabilir miyim? Pencere kenari olursa harika olur." },
-        { "role": "ai", "content": "Intent: Restoran Rezervasyonu. Kisi: 4. Tercih: Pencere kenari. Saat gerekli." },
-        { "role": "bot", "content": "Tabii! Bu aksam icin restoran seceneklerimiz:\n\n1. Teras Restoran (Deniz manzarali) — 19:00, 20:30 musait\n2. Ana Restoran (Ic mekan) — 19:00, 20:00, 21:00 musait\n\nHangi restoran ve saati tercih edersiniz?" },
-        { "role": "user", "content": "Teras 20:30 olsun." },
-        { "role": "bot", "content": "Teras Restoran, 4 kisi, 20:30 — pencere kenari masa ayrildi! Ozel bir vesilesi var mi? (Dogum gunu, yildonumu vb. — ozel susleme hazirlayabiliriz.)" },
-        { "role": "user", "content": "Esimin dogum gunu! Pasta surpizi olabilir mi?" },
-        { "role": "bot", "content": "Cok guzel! Dogum gunu pastasi hazirlattiriyoruz (ucretsiz). Masaniz ozel olarak suslenecek. 20:30'da Teras Restoran'da bekliyoruz. Mutlu yillar efendim'e!" },
-        { "role": "system", "content": "Restoran rezervasyonu: #RST-2024-0188. VIP notu: Dogum gunu pastasi + susleme. F&B yoneticisi bilgilendirildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Bu aksam 4 kisilik masa ayirtabilir miyim? Pencere kenari olursa harika olur."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Restoran Rezervasyonu. Kisi: 4. Tercih: Pencere kenari. Saat gerekli."
+        },
+        {
+          "role": "bot",
+          "content": "Tabii! Bu aksam icin restoran seceneklerimiz:\n\n1. Teras Restoran (Deniz manzarali) — 19:00, 20:30 musait\n2. Ana Restoran (Ic mekan) — 19:00, 20:00, 21:00 musait\n\nHangi restoran ve saati tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Teras 20:30 olsun."
+        },
+        {
+          "role": "bot",
+          "content": "Teras Restoran, 4 kisi, 20:30 — pencere kenari masa ayrildi! Ozel bir vesilesi var mi? (Dogum gunu, yildonumu vb. — ozel susleme hazirlayabiliriz.)"
+        },
+        {
+          "role": "user",
+          "content": "Esimin dogum gunu! Pasta surpizi olabilir mi?"
+        },
+        {
+          "role": "bot",
+          "content": "Cok guzel! Dogum gunu pastasi hazirlattiriyoruz (ucretsiz). Masaniz ozel olarak suslenecek. 20:30'da Teras Restoran'da bekliyoruz. Mutlu yillar efendim'e!"
+        },
+        {
+          "role": "system",
+          "content": "Restoran rezervasyonu: #RST-2024-0188. VIP notu: Dogum gunu pastasi + susleme. F&B yoneticisi bilgilendirildi."
+        }
+      ],
+      "aiPrompt": "\"Spa / Restoran Rezervasyonu (In-Stay)\" senaryosu icin \"Restoran Masa Rezervasyonu\" akisini olustur.\n\nAciklama: Misafir aksam yemegi icin masa ayirtiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Bu aksam 4 kisilik masa ayirtabilir miyim? Pencere kenari olursa harika olur.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Restoran Rezervasyonu. Kisi: 4. Tercih: Pencere kenari. Saat gerekli.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Tabii! Bu aksam icin restoran seceneklerimiz:\n\n1. Teras Restoran (Deniz manzarali) — 19:00, 20:30 musait\n2. Ana Restoran (Ic mekan) — 19:00, 20:00, 21:00 musait\n\nHangi restoran ve saati tercih edersiniz?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Teras 20:30 olsun.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Teras Restoran, 4 kisi, 20:30 — pencere kenari masa ayrildi! Ozel bir vesilesi var mi? (Dogum gunu, yildonumu vb. — ozel susleme hazirlayabiliriz.)\"\n\n7. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Esimin dogum gunu! Pasta surpizi olabilir mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n8. **message_text** — Mesaj gonder\n   text: \"Cok guzel! Dogum gunu pastasi hazirlattiriyoruz (ucretsiz). Masaniz ozel olarak suslenecek. 20:30'da Teras Restoran'da bekliyoruz. Mutlu yillar efendim'e!\"\n\n9. **utility_note** — Akis sonuc notu\n   text: \"Restoran rezervasyonu: #RST-2024-0188. VIP notu: Dogum gunu pastasi + susleme. F&B yoneticisi bilgilendirildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Spa ve restoran rezervasyonlari slot bazli musaitlik kontrolu ile yonetilir. AI tercih toplama, slot oneri ve upsell islemlerini otomatik yapar.",
     "backend": [
-      { "title": "Slot Manager", "goal": "Musaitlik Yonetimi", "content": "Gercek zamanli slot kontrolu, cakisma onleme ve otomatik hatirlatma zamanlayicisi." },
-      { "title": "Upsell Engine", "goal": "Gelir Optimizasyonu", "content": "Misafir tercihine gore paket ve ek hizmet onerisi. Basarili upsell izleme ve raporlama." }
+      {
+        "title": "Slot Manager",
+        "goal": "Musaitlik Yonetimi",
+        "content": "Gercek zamanli slot kontrolu, cakisma onleme ve otomatik hatirlatma zamanlayicisi."
+      },
+      {
+        "title": "Upsell Engine",
+        "goal": "Gelir Optimizasyonu",
+        "content": "Misafir tercihine gore paket ve ek hizmet onerisi. Basarili upsell izleme ve raporlama."
+      }
     ],
     "apis": [
-      { "title": "WhatsApp Business API", "goal": "Misafir Iletisimi", "content": "Tercih toplama, slot sunma, onay ve hatirlatma mesajlari WhatsApp uzerinden." },
-      { "title": "PMS / Booking Engine", "goal": "Slot Senkronizasyonu", "content": "Otel PMS'i veya booking engine ile slot verisi senkronize edilir." }
+      {
+        "title": "WhatsApp Business API",
+        "goal": "Misafir Iletisimi",
+        "content": "Tercih toplama, slot sunma, onay ve hatirlatma mesajlari WhatsApp uzerinden."
+      },
+      {
+        "title": "PMS / Booking Engine",
+        "goal": "Slot Senkronizasyonu",
+        "content": "Otel PMS'i veya booking engine ile slot verisi senkronize edilir."
+      }
     ]
   },
   "impact": {
@@ -136,10 +328,34 @@
     "resultLabel": "Aylik Ek Gelir (Upsell Dahil)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyBookings", "label": "Aylik Rezervasyon Sayisi", "default": 200, "hint": "Spa + restoran toplam WhatsApp rezervasyonu", "editable": true },
-      { "key": "avgBookingValue", "label": "Ortalama Rezervasyon Tutari", "default": 1200, "hint": "TL cinsinden ortalama harcama", "editable": true },
-      { "key": "upsellRate", "label": "Upsell Orani", "default": 25, "hint": "Paket/ek hizmet kabul eden oran (%)", "editable": true },
-      { "key": "upsellValue", "label": "Ortalama Upsell Tutari", "default": 400, "hint": "TL cinsinden ek hizmet degeri", "editable": true }
+      {
+        "key": "monthlyBookings",
+        "label": "Aylik Rezervasyon Sayisi",
+        "default": 200,
+        "hint": "Spa + restoran toplam WhatsApp rezervasyonu",
+        "editable": true
+      },
+      {
+        "key": "avgBookingValue",
+        "label": "Ortalama Rezervasyon Tutari",
+        "default": 1200,
+        "hint": "TL cinsinden ortalama harcama",
+        "editable": true
+      },
+      {
+        "key": "upsellRate",
+        "label": "Upsell Orani",
+        "default": 25,
+        "hint": "Paket/ek hizmet kabul eden oran (%)",
+        "editable": true
+      },
+      {
+        "key": "upsellValue",
+        "label": "Ortalama Upsell Tutari",
+        "default": 400,
+        "hint": "TL cinsinden ek hizmet degeri",
+        "editable": true
+      }
     ],
     "formula": "(monthlyBookings * avgBookingValue) + Math.round(monthlyBookings * (upsellRate / 100)) * upsellValue",
     "formulaDisplay": null

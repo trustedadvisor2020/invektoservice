@@ -8,15 +8,36 @@
   "description": "Sac uzunluguna, islem turune ve kullanilan malzemeye gore degisen fiyatlar musterileri sasirtiyor. AI dinamik fiyat araligini bilgisiyle sunar ve uygun randevuya yonlendirir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)" },
-      { "label": "Sorun", "value": "Fiyatlar sac uzunlugu, malzeme ve islem kombinasyonuna gore degisiyor — telefonda net bilgi verilemiyor" },
-      { "label": "Deger", "value": "Aninda dinamik fiyat araligi + randevu yonlendirmesi = donusum artisi" }
+      {
+        "label": "Sektor",
+        "value": "Guzellik Salonu (Kuafor, Cilt Bakimi, Tirnak Bakimi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Fiyatlar sac uzunlugu, malzeme ve islem kombinasyonuna gore degisiyor — telefonda net bilgi verilemiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda dinamik fiyat araligi + randevu yonlendirmesi = donusum artisi"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "AI Intent & Slot (C2)", "color": "amber" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Intent & Slot (C2)",
+        "color": "amber"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI fiyat sorusunu tespit eder, Knowledge base'den islem bazli fiyat araligini cekar. Dinamik parametreler (uzunluk, malzeme) ile fiyati daraltir ve randevu onerisi sunar.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Fiyat Intent Tespiti",
         "goal": "Ne soruldugunu anla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Fiyat)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Fiyat)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'ne kadar', 'fiyati ne', 'ucret bilgisi' gibi sorgulari fiyat intent'i olarak tespit eder."
       },
@@ -33,8 +60,14 @@
         "title": "Dinamik Fiyat Hesaplama",
         "goal": "Dogru araligi sun",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Hizmet)", "color": "amber" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Hizmet)",
+            "color": "amber"
+          }
         ],
         "content": "Sac uzunlugu, islem turu ve malzeme tercihine gore Knowledge base'den fiyat araligi cekilir."
       },
@@ -42,8 +75,14 @@
         "title": "Randevu Yonlendirmesi",
         "goal": "Donusumu sagla",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Randevu)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Randevu)",
+            "color": "green"
+          }
         ],
         "content": "Fiyat bilgisi verildikten sonra musaitlik gosterilerek randevu alinmasi tesvik edilir."
       }
@@ -55,61 +94,175 @@
       "title": "Standart Fiyat Sorusu",
       "description": "Musteri belirli bir islemin fiyatini soruyor.",
       "tags": [
-        { "text": "Fiyat", "color": "blue" },
-        { "text": "Otomatik", "color": "green" }
+        {
+          "text": "Fiyat",
+          "color": "blue"
+        },
+        {
+          "text": "Otomatik",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Hizmet fiyat tablosu", "service": "Knowledge", "page": "Hizmet Katalogu > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Her islem icin uzunluk/tur bazli fiyat araligini Knowledge base'e girin" },
-          { "text": "Malzeme fiyat farklari", "service": "Knowledge", "page": "Hizmet Katalogu > Malzeme Ekstra", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Profesyonel boya, keratin gibi malzeme ekstra ucretlerini tanimlayin" }
+          {
+            "text": "Hizmet fiyat tablosu",
+            "service": "Knowledge",
+            "page": "Hizmet Katalogu > Fiyat Listesi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Her islem icin uzunluk/tur bazli fiyat araligini Knowledge base'e girin"
+          },
+          {
+            "text": "Malzeme fiyat farklari",
+            "service": "Knowledge",
+            "page": "Hizmet Katalogu > Malzeme Ekstra",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Profesyonel boya, keratin gibi malzeme ekstra ucretlerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Fiyat intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Fiyat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Fiyat sorgulama intent'i varsayilan olarak tanimli" },
-          { "text": "Knowledge base fiyat cekim", "service": "Knowledge", "page": "RAG > Fiyat Katalogu", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Fiyat bilgisi RAG ile otomatik cekilir" }
+          {
+            "text": "Fiyat intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Fiyat",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Fiyat sorgulama intent'i varsayilan olarak tanimli"
+          },
+          {
+            "text": "Knowledge base fiyat cekim",
+            "service": "Knowledge",
+            "page": "RAG > Fiyat Katalogu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Fiyat bilgisi RAG ile otomatik cekilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Sac boyama ne kadar?" },
-        { "role": "ai", "content": "Intent: Fiyat Sorgulama. Islem: Sac Boyama. Parametreler: Uzunluk belirsiz, malzeme belirsiz." },
-        { "role": "bot", "content": "Sac boyama fiyatlarimiz sac uzunluguna gore degisir:\n\nKisa sac: 800 — 1.200 TL\nOrta sac: 1.200 — 1.800 TL\nUzun sac: 1.800 — 2.500 TL\n\nFiyatlar standart boya malzemesi icindir. Profesyonel markalar icin ek ucret uygulanabilir.\n\nSac uzunlugunuz nedir? Size daha net bilgi vereyim." },
-        { "role": "user", "content": "Orta uzunlukta, profesyonel boya istiyorum" },
-        { "role": "bot", "content": "Orta sac + profesyonel boya icin fiyat araligimiz:\n1.500 — 2.200 TL\n\nKesin fiyat salon incelemesinde belirlenir.\n\nBu hafta musait saatlerimiz var, randevu almak ister misiniz?" },
-        { "role": "system", "content": "Fiyat bilgisi verildi. Musteri randevu yonlendirmesine alindi. Donusum takibi baslatildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Sac boyama ne kadar?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Fiyat Sorgulama. Islem: Sac Boyama. Parametreler: Uzunluk belirsiz, malzeme belirsiz."
+        },
+        {
+          "role": "bot",
+          "content": "Sac boyama fiyatlarimiz sac uzunluguna gore degisir:\n\nKisa sac: 800 — 1.200 TL\nOrta sac: 1.200 — 1.800 TL\nUzun sac: 1.800 — 2.500 TL\n\nFiyatlar standart boya malzemesi icindir. Profesyonel markalar icin ek ucret uygulanabilir.\n\nSac uzunlugunuz nedir? Size daha net bilgi vereyim."
+        },
+        {
+          "role": "user",
+          "content": "Orta uzunlukta, profesyonel boya istiyorum"
+        },
+        {
+          "role": "bot",
+          "content": "Orta sac + profesyonel boya icin fiyat araligimiz:\n1.500 — 2.200 TL\n\nKesin fiyat salon incelemesinde belirlenir.\n\nBu hafta musait saatlerimiz var, randevu almak ister misiniz?"
+        },
+        {
+          "role": "system",
+          "content": "Fiyat bilgisi verildi. Musteri randevu yonlendirmesine alindi. Donusum takibi baslatildi."
+        }
+      ],
+      "aiPrompt": "\"Fiyat Sorgulama\" senaryosu icin \"Standart Fiyat Sorusu\" akisini olustur.\n\nAciklama: Musteri belirli bir islemin fiyatini soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Sac boyama ne kadar?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Fiyat Sorgulama. Islem: Sac Boyama. Parametreler: Uzunluk belirsiz, malzeme belirsiz.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Sac boyama fiyatlarimiz sac uzunluguna gore degisir:\n\nKisa sac: 800 — 1.200 TL\nOrta sac: 1.200 — 1.800 TL\nUzun sac: 1.800 — 2.500 TL\n\nFiyatlar standart boya malzemesi icindir. Profesyonel markalar icin ek ucret uygulanabilir.\n\nSac uzunlugunuz nedir? Size daha net bilgi vereyim.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Orta uzunlukta, profesyonel boya istiyorum\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Orta sac + profesyonel boya icin fiyat araligimiz:\n1.500 — 2.200 TL\n\nKesin fiyat salon incelemesinde belirlenir.\n\nBu hafta musait saatlerimiz var, randevu almak ister misiniz?\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Fiyat bilgisi verildi. Musteri randevu yonlendirmesine alindi. Donusum takibi baslatildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Coklu Islem Fiyat Sorusu",
       "description": "Musteri birden fazla islem icin toplu fiyat soruyor.",
       "tags": [
-        { "text": "Paket", "color": "purple" },
-        { "text": "Fiyat", "color": "blue" }
+        {
+          "text": "Paket",
+          "color": "purple"
+        },
+        {
+          "text": "Fiyat",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Paket fiyat tanimlari", "service": "Knowledge", "page": "Hizmet Katalogu > Paket Fiyatlar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kombinasyon islemler icin indirimli paket fiyatlarini tanimlayin" }
+          {
+            "text": "Paket fiyat tanimlari",
+            "service": "Knowledge",
+            "page": "Hizmet Katalogu > Paket Fiyatlar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Kombinasyon islemler icin indirimli paket fiyatlarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Coklu islem fiyat hesaplama", "service": "AgentAI", "page": "Dialog Akislari > Paket Fiyat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Birden fazla islem icin toplam fiyat hesaplama hazir" }
+          {
+            "text": "Coklu islem fiyat hesaplama",
+            "service": "AgentAI",
+            "page": "Dialog Akislari > Paket Fiyat",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Birden fazla islem icin toplam fiyat hesaplama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Sac kesimi + fon + manikur yaptirmak istiyorum, toplam ne tutar?" },
-        { "role": "ai", "content": "Intent: Coklu Fiyat Sorgulama. Islemler: Sac Kesimi, Fon, Manikur. Paket kontrolu yapiliyor." },
-        { "role": "bot", "content": "Islem detaylari:\n\nSac Kesimi: 250 — 400 TL\nFon: 300 — 500 TL\nManikur: 200 — 350 TL\n\nToplam aralik: 750 — 1.250 TL\n\nGuzel haber: 3 islem birlikte yaptirinca %10 paket indirimi uygulanir!\nIndirimli toplam: 675 — 1.125 TL\n\nGun icin randevu olusturalim mi?" },
-        { "role": "system", "content": "Paket indirimi uygulanarak fiyat bilgisi verildi. Randevu yonlendirmesi yapildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Sac kesimi + fon + manikur yaptirmak istiyorum, toplam ne tutar?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Coklu Fiyat Sorgulama. Islemler: Sac Kesimi, Fon, Manikur. Paket kontrolu yapiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Islem detaylari:\n\nSac Kesimi: 250 — 400 TL\nFon: 300 — 500 TL\nManikur: 200 — 350 TL\n\nToplam aralik: 750 — 1.250 TL\n\nGuzel haber: 3 islem birlikte yaptirinca %10 paket indirimi uygulanir!\nIndirimli toplam: 675 — 1.125 TL\n\nGun icin randevu olusturalim mi?"
+        },
+        {
+          "role": "system",
+          "content": "Paket indirimi uygulanarak fiyat bilgisi verildi. Randevu yonlendirmesi yapildi."
+        }
+      ],
+      "aiPrompt": "\"Fiyat Sorgulama\" senaryosu icin \"Coklu Islem Fiyat Sorusu\" akisini olustur.\n\nAciklama: Musteri birden fazla islem icin toplu fiyat soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Sac kesimi + fon + manikur yaptirmak istiyorum, toplam ne tutar?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Coklu Fiyat Sorgulama. Islemler: Sac Kesimi, Fon, Manikur. Paket kontrolu yapiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Islem detaylari:\n\nSac Kesimi: 250 — 400 TL\nFon: 300 — 500 TL\nManikur: 200 — 350 TL\n\nToplam aralik: 750 — 1.250 TL\n\nGuzel haber: 3 islem birlikte yaptirinca %10 paket indirimi uygulanir!\nIndirimli toplam: 675 — 1.125 TL\n\nGun icin randevu olusturalim mi?\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Paket indirimi uygulanarak fiyat bilgisi verildi. Randevu yonlendirmesi yapildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Fiyat bilgileri Knowledge base'den cekilir. Uzunluk, malzeme ve kombinasyon parametreleri ile dinamik fiyat araligi hesaplanir.",
     "backend": [
-      { "title": "Price Catalog Service", "goal": "Fiyat Katalogu", "content": "Islem, uzunluk ve malzeme bazli dinamik fiyat tablosu. Paket indirimi hesaplama." },
-      { "title": "Conversion Tracker", "goal": "Donusum Takibi", "content": "Fiyat sorgusu sonrasi randevu donusum oranini takip eder." }
+      {
+        "title": "Price Catalog Service",
+        "goal": "Fiyat Katalogu",
+        "content": "Islem, uzunluk ve malzeme bazli dinamik fiyat tablosu. Paket indirimi hesaplama."
+      },
+      {
+        "title": "Conversion Tracker",
+        "goal": "Donusum Takibi",
+        "content": "Fiyat sorgusu sonrasi randevu donusum oranini takip eder."
+      }
     ],
     "apis": [
-      { "title": "Price Query API", "goal": "Fiyat Sorgulama", "content": "Islem turu, parametreler ve kombinasyonlara gore fiyat araligi donduren API." },
-      { "title": "Package Calculator API", "goal": "Paket Hesaplama", "content": "Coklu islem kombinasyonlari icin indirimli paket fiyati hesaplayan API." }
+      {
+        "title": "Price Query API",
+        "goal": "Fiyat Sorgulama",
+        "content": "Islem turu, parametreler ve kombinasyonlara gore fiyat araligi donduren API."
+      },
+      {
+        "title": "Package Calculator API",
+        "goal": "Paket Hesaplama",
+        "content": "Coklu islem kombinasyonlari icin indirimli paket fiyati hesaplayan API."
+      }
     ]
   },
   "impact": {
@@ -118,9 +271,29 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "dailyPriceQueries", "label": "Gunluk Fiyat Sorusu", "default": 20, "hint": "WhatsApp uzerinden gelen gunluk fiyat sorusu", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 25, "suffix": "%", "hint": "Fiyat sonrasi randevu alma orani", "editable": true },
-      { "key": "avgServiceValue", "label": "Ort. Islem Tutari", "default": 800, "suffix": "TL", "hint": "Ortalama islem ucreti", "editable": true }
+      {
+        "key": "dailyPriceQueries",
+        "label": "Gunluk Fiyat Sorusu",
+        "default": 20,
+        "hint": "WhatsApp uzerinden gelen gunluk fiyat sorusu",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 25,
+        "suffix": "%",
+        "hint": "Fiyat sonrasi randevu alma orani",
+        "editable": true
+      },
+      {
+        "key": "avgServiceValue",
+        "label": "Ort. Islem Tutari",
+        "default": 800,
+        "suffix": "TL",
+        "hint": "Ortalama islem ucreti",
+        "editable": true
+      }
     ],
     "formula": "dailyPriceQueries * (conversionRate / 100) * avgServiceValue * 30",
     "formulaDisplay": null

@@ -8,16 +8,40 @@
   "description": "Instagram DM'den botox veya dolgu fiyati soran lead'i AI ile yakalayan, fiyat araligi sunup WhatsApp'a gecirerek randevuya donusturen sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Instagram Kullanan)" },
-      { "label": "Sorun", "value": "IG DM'den gelen fiyat sorulari gec cevaplaniyor — lead rakibe gidiyor" },
-      { "label": "Deger", "value": "Aninda fiyat bilgisi + WA gecis ile lead yakalanir ve randevuya donusur" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Instagram Kullanan)"
+      },
+      {
+        "label": "Sorun",
+        "value": "IG DM'den gelen fiyat sorulari gec cevaplaniyor — lead rakibe gidiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda fiyat bilgisi + WA gecis ile lead yakalanir ve randevuya donusur"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "Ads Attribution (C12)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "Ads Attribution (C12)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI IG DM'den gelen fiyat talebini tespit eder, fiyat araligi sunar ve WA'ya gecis linki gonderir.",
     "steps": [
@@ -25,8 +49,14 @@
         "title": "Lead Yakalama",
         "goal": "Fiyat intent'ini tespit et",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (IG)", "color": "pink" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (IG)",
+            "color": "pink"
+          }
         ],
         "content": "AI Instagram DM'den gelen botox/dolgu fiyat talebini tespit eder."
       },
@@ -34,8 +64,14 @@
         "title": "WA Gecis",
         "goal": "Lead'i WhatsApp'a tasi",
         "badges": [
-          { "text": "Sistem (Kanal)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (Kanal)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "Fiyat araligi verildikten sonra detayli bilgi icin WA gecis linki gonderilir."
       }
@@ -47,34 +83,92 @@
       "title": "IG DM — Botox Fiyat Sorusu",
       "description": "Lead Instagram'dan botox fiyati soruyor.",
       "tags": [
-        { "text": "Instagram", "color": "pink" },
-        { "text": "Fiyat", "color": "blue" }
+        {
+          "text": "Instagram",
+          "color": "pink"
+        },
+        {
+          "text": "Fiyat",
+          "color": "blue"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Islem fiyat araliklari", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Listesi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Botox, dolgu, lazer vb. islem fiyat araliklarini tanimlayin" }
+          {
+            "text": "Islem fiyat araliklari",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Fiyat Listesi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Botox, dolgu, lazer vb. islem fiyat araliklarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "IG DM fiyat intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Estetik Fiyat", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Botox/dolgu fiyat talebi intent'i hazir" },
-          { "text": "IG → WA gecis linki", "service": "Backend", "page": "Kanal Yonetimi > IG-WA Kopru", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Instagram'dan WhatsApp'a tek tikla gecis hazir" }
+          {
+            "text": "IG DM fiyat intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Estetik Fiyat",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Botox/dolgu fiyat talebi intent'i hazir"
+          },
+          {
+            "text": "IG → WA gecis linki",
+            "service": "Backend",
+            "page": "Kanal Yonetimi > IG-WA Kopru",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Instagram'dan WhatsApp'a tek tikla gecis hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Botox fiyat nedir?" },
-        { "role": "ai", "content": "Intent: Fiyat Talebi — Botox. Kanal: Instagram DM. Attribution kaydedildi." },
-        { "role": "bot", "content": "Merhaba! Botox fiyat bilgisi:\n\n💉 Botox (bolge bazli): 3.000 - 6.000 TL\n📍 Tam fiyat uygulama bolgesine gore degisir\n\n🎁 Ucretsiz konsultasyon ile size ozel fiyat verelim!\n\nDetayli bilgi icin WhatsApp'tan devam edelim:\n👉 [WhatsApp link]" },
-        { "role": "system", "content": "Lead yakalandi. IG DM → WA gecis linki gonderildi. Attribution: Instagram." }
-      ]
+        {
+          "role": "user",
+          "content": "Botox fiyat nedir?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Fiyat Talebi — Botox. Kanal: Instagram DM. Attribution kaydedildi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Botox fiyat bilgisi:\n\n💉 Botox (bolge bazli): 3.000 - 6.000 TL\n📍 Tam fiyat uygulama bolgesine gore degisir\n\n🎁 Ucretsiz konsultasyon ile size ozel fiyat verelim!\n\nDetayli bilgi icin WhatsApp'tan devam edelim:\n👉 [WhatsApp link]"
+        },
+        {
+          "role": "system",
+          "content": "Lead yakalandi. IG DM → WA gecis linki gonderildi. Attribution: Instagram."
+        }
+      ],
+      "aiPrompt": "\"IG DM: Fiyat Nedir? (Botox/Dolgu)\" senaryosu icin \"IG DM — Botox Fiyat Sorusu\" akisini olustur.\n\nAciklama: Lead Instagram'dan botox fiyati soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Botox fiyat nedir?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Fiyat Talebi — Botox. Kanal: Instagram DM. Attribution kaydedildi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Botox fiyat bilgisi:\n\n💉 Botox (bolge bazli): 3.000 - 6.000 TL\n📍 Tam fiyat uygulama bolgesine gore degisir\n\n🎁 Ucretsiz konsultasyon ile size ozel fiyat verelim!\n\nDetayli bilgi icin WhatsApp'tan devam edelim:\n👉 [WhatsApp link]\"\n   Degiskenler: {{whatsapp_link}}\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Lead yakalandi. IG DM → WA gecis linki gonderildi. Attribution: Instagram.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo IG DM entegrasyonu + AI intent tespiti + Attribution ile calisir.",
     "backend": [
-      { "title": "IG Lead Catcher", "goal": "Lead Yakalama", "content": "IG DM'den gelen estetik islem taleplerini tespit eder ve etiketler." },
-      { "title": "Channel Bridge", "goal": "Kanal Gecisi", "content": "IG DM'den WA'ya gecis linki olusturur ve lead surekliligi saglar." }
+      {
+        "title": "IG Lead Catcher",
+        "goal": "Lead Yakalama",
+        "content": "IG DM'den gelen estetik islem taleplerini tespit eder ve etiketler."
+      },
+      {
+        "title": "Channel Bridge",
+        "goal": "Kanal Gecisi",
+        "content": "IG DM'den WA'ya gecis linki olusturur ve lead surekliligi saglar."
+      }
     ],
     "apis": [
-      { "title": "Instagram Messaging API", "goal": "DM Yonetimi", "content": "IG DM mesajlarinin Unified Inbox'a alinmasi." }
+      {
+        "title": "Instagram Messaging API",
+        "goal": "DM Yonetimi",
+        "content": "IG DM mesajlarinin Unified Inbox'a alinmasi."
+      }
     ]
   },
   "impact": {
@@ -83,9 +177,29 @@
     "resultLabel": "Lead Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyIGLeads", "label": "Aylik IG Lead", "default": 30, "hint": "Instagram'dan gelen fiyat sorusu", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani", "default": 35, "prefix": "%", "hint": "Randevuya donusen lead", "editable": true },
-      { "key": "avgTreatmentValue", "label": "Ort. Islem Degeri", "default": 5000, "suffix": "TL", "hint": "Ortalama estetik islem tutari", "editable": true }
+      {
+        "key": "monthlyIGLeads",
+        "label": "Aylik IG Lead",
+        "default": 30,
+        "hint": "Instagram'dan gelen fiyat sorusu",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani",
+        "default": 35,
+        "prefix": "%",
+        "hint": "Randevuya donusen lead",
+        "editable": true
+      },
+      {
+        "key": "avgTreatmentValue",
+        "label": "Ort. Islem Degeri",
+        "default": 5000,
+        "suffix": "TL",
+        "hint": "Ortalama estetik islem tutari",
+        "editable": true
+      }
     ],
     "formula": "monthlyIGLeads * (conversionRate / 100) * avgTreatmentValue",
     "formulaDisplay": null

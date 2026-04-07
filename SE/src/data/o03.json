@@ -8,16 +8,40 @@
   "description": "Misafir ust kategori oda veya spa paketi gibi ekstra hizmetler istiyor. AI upsell onerisi sunar, PMS uzerinden musaitlik kontrolu yapar ve satis firsatini degerlendirerek gelir artisi saglar.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otel / Turizm (Resort, Butik Otel, Spa Otelleri)" },
-      { "label": "Sorun", "value": "Misafirlerin upgrade ve ek hizmet talepleri resepsiyona ulasana kadar firsatlar kaciriliyor — proaktif upsell yapilmiyor" },
-      { "label": "Deger", "value": "AI destekli upsell = misafir basina gelir artisi + kisisellestirilmis deneyim" }
+      {
+        "label": "Sektor",
+        "value": "Otel / Turizm (Resort, Butik Otel, Spa Otelleri)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Misafirlerin upgrade ve ek hizmet talepleri resepsiyona ulasana kadar firsatlar kaciriliyor — proaktif upsell yapilmiyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI destekli upsell = misafir basina gelir artisi + kisisellestirilmis deneyim"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Human Handoff (C2)", "color": "red" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "Knowledge Base (C7)", "color": "green" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Human Handoff (C2)",
+        "color": "red"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge Base (C7)",
+        "color": "green"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI misafirin mevcut rezervasyonunu analiz ederek upgrade ve ek hizmet onerileri sunar. PMS ile musaitlik kontrolu yapilir, fiyat farki hesaplanir.",
     "steps": [
@@ -25,8 +49,14 @@
         "title": "Talep Algilama",
         "goal": "Upgrade/ek hizmet intent tespiti",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, 'oda degistirmek istiyorum', 'suite mumkun mu', 'spa paketi var mi' gibi intent'leri otomatik tespit eder."
       },
@@ -34,8 +64,14 @@
         "title": "Musaitlik ve Fiyat Kontrolu",
         "goal": "PMS sorgusu",
         "badges": [
-          { "text": "Sistem (API)", "color": "purple" },
-          { "text": "Tenant (PMS)", "color": "amber" }
+          {
+            "text": "Sistem (API)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (PMS)",
+            "color": "amber"
+          }
         ],
         "content": "PMS sistemi uzerinden ust kategori oda musaitligi kontrol edilir. Fiyat farki hesaplanir."
       },
@@ -43,8 +79,14 @@
         "title": "Upsell Onerisi",
         "goal": "Gelir artisi firsati",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Paketler)", "color": "green" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Paketler)",
+            "color": "green"
+          }
         ],
         "content": "AI mevcut rezervasyona uygun upgrade secenekleri ve ek hizmet paketleri (spa, romantik paket, vb.) onerisi sunar."
       }
@@ -56,38 +98,115 @@
       "title": "Oda Upgrade Talebi",
       "description": "Misafir mevcut odasindan daha buyuk bir oda istiyor. AI PMS kontrolu ile secenekleri sunuyor.",
       "tags": [
-        { "text": "Upsell", "color": "amber" },
-        { "text": "PMS Entegrasyon", "color": "purple" }
+        {
+          "text": "Upsell",
+          "color": "amber"
+        },
+        {
+          "text": "PMS Entegrasyon",
+          "color": "purple"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "PMS API erisim bilgileri", "service": "Integrations", "page": "Otel Entegrasyonlari > PMS Baglantisi", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "PMS sisteminden oda musaitlik ve fiyat bilgisi cekilecektir" },
-          { "text": "Upgrade fiyat politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Fiyat Politikalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Oda tipleri arasi fiyat farklari ve upgrade kurallari tanimlanmali" },
-          { "text": "Ek hizmet katalogu (spa, tur, paket)", "service": "Knowledge", "page": "Dokuman Bankasi > Hizmet Katalogu", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Sunulan ek hizmetleri, fiyatlarini ve aciklamalarini yukleyin" }
+          {
+            "text": "PMS API erisim bilgileri",
+            "service": "Integrations",
+            "page": "Otel Entegrasyonlari > PMS Baglantisi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C7",
+            "hint": "PMS sisteminden oda musaitlik ve fiyat bilgisi cekilecektir"
+          },
+          {
+            "text": "Upgrade fiyat politikasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Fiyat Politikalari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Oda tipleri arasi fiyat farklari ve upgrade kurallari tanimlanmali"
+          },
+          {
+            "text": "Ek hizmet katalogu (spa, tur, paket)",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Hizmet Katalogu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Sunulan ek hizmetleri, fiyatlarini ve aciklamalarini yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Upgrade intent ve upsell mantigi", "service": "AgentAI", "page": "Dialog Akislari > Upsell", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Upgrade talebi algilandiginda PMS sorgusu ve fiyat karsilastirmasi otomatik yapilir" }
+          {
+            "text": "Upgrade intent ve upsell mantigi",
+            "service": "AgentAI",
+            "page": "Dialog Akislari > Upsell",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Upgrade talebi algilandiginda PMS sorgusu ve fiyat karsilastirmasi otomatik yapilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, su an standart odamiz var ama suite'e gecmek istiyoruz. Mumkun mu?" },
-        { "role": "ai", "content": "Intent: Oda Upgrade. Mevcut: Standart. Hedef: Suite. PMS kontrolu baslatiliyor." },
-        { "role": "bot", "content": "Tabii ki! Konaklamaniz icin Suite odamizi kontrol ettim:\n\nSuite Oda (55 m2, jakuzi, deniz manzarasi)\nFark: +1.600 TL/gece\nKalan 2 geceniz icin toplam fark: 3.200 TL\n\nAyrica size ozel bir onerimiz var: Suite + Spa Paketi birlikte alinirsa %20 indirim — toplam fark: 4.100 TL (spa dahil).\n\nHangisini tercih edersiniz?" },
-        { "role": "user", "content": "Suite + Spa paketi cok guzel, onu alalim." },
-        { "role": "bot", "content": "Harika secim! Suite + Spa paketiniz onaylandi.\n\nYeni odaniz: Suite 401 (4. kat, deniz manzarasi)\nSpa randevunuz: Yarin 16:00 — Bali Masaji (50 dk)\n\nOda kartinizi resepsiyondan yenileyebilirsiniz. Keyifli tatiller dileriz!" },
-        { "role": "system", "content": "Upsell basarili: Standart -> Suite + Spa. Ek gelir: 4.100 TL. PMS guncellendi." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, su an standart odamiz var ama suite'e gecmek istiyoruz. Mumkun mu?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Oda Upgrade. Mevcut: Standart. Hedef: Suite. PMS kontrolu baslatiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Tabii ki! Konaklamaniz icin Suite odamizi kontrol ettim:\n\nSuite Oda (55 m2, jakuzi, deniz manzarasi)\nFark: +1.600 TL/gece\nKalan 2 geceniz icin toplam fark: 3.200 TL\n\nAyrica size ozel bir onerimiz var: Suite + Spa Paketi birlikte alinirsa %20 indirim — toplam fark: 4.100 TL (spa dahil).\n\nHangisini tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "Suite + Spa paketi cok guzel, onu alalim."
+        },
+        {
+          "role": "bot",
+          "content": "Harika secim! Suite + Spa paketiniz onaylandi.\n\nYeni odaniz: Suite 401 (4. kat, deniz manzarasi)\nSpa randevunuz: Yarin 16:00 — Bali Masaji (50 dk)\n\nOda kartinizi resepsiyondan yenileyebilirsiniz. Keyifli tatiller dileriz!"
+        },
+        {
+          "role": "system",
+          "content": "Upsell basarili: Standart -> Suite + Spa. Ek gelir: 4.100 TL. PMS guncellendi."
+        }
+      ],
+      "aiPrompt": "\"Oda Yukseltme / Ekstra Hizmet\" senaryosu icin \"Oda Upgrade Talebi\" akisini olustur.\n\nAciklama: Misafir mevcut odasindan daha buyuk bir oda istiyor. AI PMS kontrolu ile secenekleri sunuyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, su an standart odamiz var ama suite'e gecmek istiyoruz. Mumkun mu?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Oda Upgrade. Mevcut: Standart. Hedef: Suite. PMS kontrolu baslatiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Tabii ki! Konaklamaniz icin Suite odamizi kontrol ettim:\n\nSuite Oda (55 m2, jakuzi, deniz manzarasi)\nFark: +1.600 TL/gece\nKalan 2 geceniz icin toplam fark: 3.200 TL\n\nAyrica size ozel bir onerimiz var: Suite + Spa Paketi birlikte alinirsa %20 indirim — toplam fark: 4.100 TL (spa dahil).\n\nHangisini tercih edersiniz?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Suite + Spa paketi cok guzel, onu alalim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Harika secim! Suite + Spa paketiniz onaylandi.\n\nYeni odaniz: Suite 401 (4. kat, deniz manzarasi)\nSpa randevunuz: Yarin 16:00 — Bali Masaji (50 dk)\n\nOda kartinizi resepsiyondan yenileyebilirsiniz. Keyifli tatiller dileriz!\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Upsell basarili: Standart -> Suite + Spa. Ek gelir: 4.100 TL. PMS guncellendi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "PMS entegrasyonu ile mevcut rezervasyon ve musait ust kategori odalar sorgulanir. AI, misafir profiline gore en uygun upsell onerisini secer.",
     "backend": [
-      { "title": "Reservation Lookup", "goal": "Mevcut Rezervasyon", "content": "Misafirin telefon numarasindan aktif rezervasyonu bulunur. Oda tipi, tarih araligi ve odeme durumu cekilir." },
-      { "title": "Upsell Engine", "goal": "Akilli Oneri", "content": "Mevcut oda tipi, musaitlik ve misafir segmentine gore en karli upgrade + ek hizmet kombinasyonunu hesaplar." }
+      {
+        "title": "Reservation Lookup",
+        "goal": "Mevcut Rezervasyon",
+        "content": "Misafirin telefon numarasindan aktif rezervasyonu bulunur. Oda tipi, tarih araligi ve odeme durumu cekilir."
+      },
+      {
+        "title": "Upsell Engine",
+        "goal": "Akilli Oneri",
+        "content": "Mevcut oda tipi, musaitlik ve misafir segmentine gore en karli upgrade + ek hizmet kombinasyonunu hesaplar."
+      }
     ],
     "apis": [
-      { "title": "PMS Reservation API", "goal": "Rezervasyon Yonetimi", "content": "Mevcut rezervasyonu sorgular, oda degisikligi yapar ve fiyat farkini hesaplar." },
-      { "title": "Service Catalog API", "goal": "Ek Hizmetler", "content": "Spa, restoran, tur gibi ek hizmetlerin musaitlik ve fiyat bilgisini sunar." }
+      {
+        "title": "PMS Reservation API",
+        "goal": "Rezervasyon Yonetimi",
+        "content": "Mevcut rezervasyonu sorgular, oda degisikligi yapar ve fiyat farkini hesaplar."
+      },
+      {
+        "title": "Service Catalog API",
+        "goal": "Ek Hizmetler",
+        "content": "Spa, restoran, tur gibi ek hizmetlerin musaitlik ve fiyat bilgisini sunar."
+      }
     ]
   },
   "impact": {
@@ -96,9 +215,28 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyReservations", "label": "Aylik Rezervasyon", "default": 400, "hint": "Aylik toplam konaklama sayisi", "editable": true },
-      { "key": "upsellRate", "label": "Upsell Orani (%)", "default": 12, "hint": "Misafirlerin upgrade/ek hizmet kabul orani", "editable": true },
-      { "key": "avgUpsellValue", "label": "Ortalama Upsell Tutari", "default": 2500, "suffix": "TL", "hint": "Upgrade veya ek hizmet basina ortalama ek gelir", "editable": true }
+      {
+        "key": "monthlyReservations",
+        "label": "Aylik Rezervasyon",
+        "default": 400,
+        "hint": "Aylik toplam konaklama sayisi",
+        "editable": true
+      },
+      {
+        "key": "upsellRate",
+        "label": "Upsell Orani (%)",
+        "default": 12,
+        "hint": "Misafirlerin upgrade/ek hizmet kabul orani",
+        "editable": true
+      },
+      {
+        "key": "avgUpsellValue",
+        "label": "Ortalama Upsell Tutari",
+        "default": 2500,
+        "suffix": "TL",
+        "hint": "Upgrade veya ek hizmet basina ortalama ek gelir",
+        "editable": true
+      }
     ],
     "formula": "monthlyReservations * (upsellRate / 100) * avgUpsellValue",
     "formulaDisplay": null

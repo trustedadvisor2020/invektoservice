@@ -8,15 +8,36 @@
   "description": "Buyuk grup veya kurumsal rezervasyon talebi geldiginde AI VIP flag ile isleme alir, ozel fiyat teklifi icin satis ekibine aninda alert gonderir ve misafiri bilgilendirir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Otel / Turizm (Konferans Otelleri, Buyuk Resort, Sehir Otelleri)" },
-      { "label": "Sorun", "value": "Grup rezervasyon talepleri standart chatbot akisinda kayboluyor — yuksek degerli firsatlar kaciriliyor" },
-      { "label": "Deger", "value": "VIP eskalasyon + hizli satis ekibi mudahalesi = yuksek degerli rezervasyonlarin yakalanmasi" }
+      {
+        "label": "Sektor",
+        "value": "Otel / Turizm (Konferans Otelleri, Buyuk Resort, Sehir Otelleri)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Grup rezervasyon talepleri standart chatbot akisinda kayboluyor — yuksek degerli firsatlar kaciriliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "VIP eskalasyon + hizli satis ekibi mudahalesi = yuksek degerli rezervasyonlarin yakalanmasi"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Human Handoff (C2)", "color": "red" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Human Handoff (C2)",
+        "color": "red"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI grup rezervasyon talebini tespit ederek VIP flag atar. Satis ekibine aninda alert gonderilir. Misafir ilk bilgilendirme mesajiyla elde tutulurken satis temsilcisi devreye girer.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Talep Algilama",
         "goal": "Grup/kurumsal intent tespiti",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI, '30 kisilik grup', 'kurumsal toplanti', 'konferans salonu', 'sirket etkinligi' gibi intent'leri tespit eder ve VIP flag atar."
       },
@@ -33,8 +60,14 @@
         "title": "VIP Eskalasyon",
         "goal": "Satis ekibini bilgilendir",
         "badges": [
-          { "text": "Sistem (Alert)", "color": "purple" },
-          { "text": "Tenant (Satis Ekibi)", "color": "red" }
+          {
+            "text": "Sistem (Alert)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Satis Ekibi)",
+            "color": "red"
+          }
         ],
         "content": "Grup talebi tespit edildiginde satis ekibine aninda bildirim gonderilir. Talep detaylari (kisi sayisi, tarih, ozel istekler) ozetlenir."
       },
@@ -42,8 +75,14 @@
         "title": "On Bilgilendirme",
         "goal": "Misafiri elde tut",
         "badges": [
-          { "text": "Sistem (Template)", "color": "purple" },
-          { "text": "Tenant (Grup Paketleri)", "color": "green" }
+          {
+            "text": "Sistem (Template)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Grup Paketleri)",
+            "color": "green"
+          }
         ],
         "content": "Misafire otelin grup kapasitesi, toplanti salonu secenekleri ve genel bilgiler verilir. Ozel fiyat icin satis temsilcisinin aramasinin bekletilir."
       }
@@ -55,39 +94,125 @@
       "title": "Kurumsal Toplanti Rezervasyonu",
       "description": "Bir firma 40 kisilik kurumsal toplanti ve konaklama talebi goruyor. AI VIP flag atiyor ve satis ekibini bilgilendiriyor.",
       "tags": [
-        { "text": "VIP", "color": "amber" },
-        { "text": "Satis Eskalasyonu", "color": "red" }
+        {
+          "text": "VIP",
+          "color": "amber"
+        },
+        {
+          "text": "Satis Eskalasyonu",
+          "color": "red"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Satis ekibi iletisim bilgileri", "service": "Backend", "page": "Ekip Yonetimi > Satis Departmani", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Grup ve kurumsal taleplerde bilgilendirilecek satis temsilcisi bilgilerini tanimlayin" },
-          { "text": "Grup paket ve fiyat bilgisi", "service": "Knowledge", "page": "Dokuman Bankasi > Grup Paketleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Toplanti salonu kapasiteleri, grup indirimleri ve kurumsal paket bilgilerini yukleyin" },
-          { "text": "Toplanti salonu teknik ozellikleri", "service": "Knowledge", "page": "Dokuman Bankasi > Toplanti Salonlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Salon kapasiteleri, teknik donanimlar (projeksiyon, ses sistemi vb.) ve duzenleme secenekleri" }
+          {
+            "text": "Satis ekibi iletisim bilgileri",
+            "service": "Backend",
+            "page": "Ekip Yonetimi > Satis Departmani",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Grup ve kurumsal taleplerde bilgilendirilecek satis temsilcisi bilgilerini tanimlayin"
+          },
+          {
+            "text": "Grup paket ve fiyat bilgisi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Grup Paketleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Toplanti salonu kapasiteleri, grup indirimleri ve kurumsal paket bilgilerini yukleyin"
+          },
+          {
+            "text": "Toplanti salonu teknik ozellikleri",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Toplanti Salonlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Salon kapasiteleri, teknik donanimlar (projeksiyon, ses sistemi vb.) ve duzenleme secenekleri"
+          }
         ],
         "provider": [
-          { "text": "Grup/kurumsal intent tespiti ve VIP flag", "service": "AgentAI", "page": "Intent Tespiti > VIP Tespit", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "10+ kisi, sirket adi, toplanti/konferans anahtar kelimeleri VIP olarak flaglenir" },
-          { "text": "Satis ekibi alert sistemi", "service": "Backend", "page": "Bildirim Ayarlari > VIP Alert", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "VIP flag atildiginda satis ekibine aninda bildirim gonderilir" }
+          {
+            "text": "Grup/kurumsal intent tespiti ve VIP flag",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > VIP Tespit",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "10+ kisi, sirket adi, toplanti/konferans anahtar kelimeleri VIP olarak flaglenir"
+          },
+          {
+            "text": "Satis ekibi alert sistemi",
+            "service": "Backend",
+            "page": "Bildirim Ayarlari > VIP Alert",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "VIP flag atildiginda satis ekibine aninda bildirim gonderilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, sirketimiz icin 40 kisilik bir toplanti planliyor. 10-12 Nisan arasi toplanti salonu ve konaklama ayarlanabilir mi?" },
-        { "role": "ai", "content": "Intent: Grup/Kurumsal Rezervasyon. Kisi: 40. Tarih: 10-12 Nisan. VIP FLAG atandi. Satis ekibi alert tetiklendi." },
-        { "role": "bot", "content": "Merhaba! Kurumsal toplantiniz icin sizi agirlamaktan mutluluk duyariz.\n\nOtelimizde 40 kisilik grup icin uygun seceneklerimiz:\n\nToplanti Salonu: Bogazici Salon (60 kisi kapasiteli, projeksiyon + ses sistemi)\nKonaklama: 20 adet cift kisilik oda (40 kisi)\nTarih: 10-12 Nisan — on kontrol yapildi, musaitlik mevcut\n\nSirketinize ozel fiyat teklifi hazirlamamiz icin satis temsilcimiz en gec 1 saat icinde sizinle iletisime gececek.\n\nBu arada, toplantiniz icin ozel istekleriniz var mi? (Ara ikramlar, gala yemegi, teknik ekipman vb.)" },
-        { "role": "user", "content": "Evet, ikinci gun icin gala yemegi ve her gun ara ikram olsa iyi olur. Ayrica konferans tipi oturma duzeni istiyoruz." },
-        { "role": "bot", "content": "Notlarimi aldim:\n\n- Konferans tipi oturma duzeni (Bogazici Salon)\n- 2. gun gala yemegi (aksam 19:00)\n- Her gun 2 ara ikram (sabah 10:30 + ogleden sonra 15:00)\n\nTum bu detaylari satis temsilcimiz Selim Bey'e ilettim. Sizin icin en uygun fiyat teklifini hazırlayacak. Kisa surede donus yapacaktir.\n\nBaska bir sorunuz var mi?" },
-        { "role": "system", "content": "VIP Eskalasyon: 40 kisilik kurumsal talep. Satis ekibine (Selim Bey) alert gonderildi. Talep detaylari: 10-12 Nisan, toplanti salonu, 20 oda, gala yemegi, ikramlar." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, sirketimiz icin 40 kisilik bir toplanti planliyor. 10-12 Nisan arasi toplanti salonu ve konaklama ayarlanabilir mi?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Grup/Kurumsal Rezervasyon. Kisi: 40. Tarih: 10-12 Nisan. VIP FLAG atandi. Satis ekibi alert tetiklendi."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba! Kurumsal toplantiniz icin sizi agirlamaktan mutluluk duyariz.\n\nOtelimizde 40 kisilik grup icin uygun seceneklerimiz:\n\nToplanti Salonu: Bogazici Salon (60 kisi kapasiteli, projeksiyon + ses sistemi)\nKonaklama: 20 adet cift kisilik oda (40 kisi)\nTarih: 10-12 Nisan — on kontrol yapildi, musaitlik mevcut\n\nSirketinize ozel fiyat teklifi hazirlamamiz icin satis temsilcimiz en gec 1 saat icinde sizinle iletisime gececek.\n\nBu arada, toplantiniz icin ozel istekleriniz var mi? (Ara ikramlar, gala yemegi, teknik ekipman vb.)"
+        },
+        {
+          "role": "user",
+          "content": "Evet, ikinci gun icin gala yemegi ve her gun ara ikram olsa iyi olur. Ayrica konferans tipi oturma duzeni istiyoruz."
+        },
+        {
+          "role": "bot",
+          "content": "Notlarimi aldim:\n\n- Konferans tipi oturma duzeni (Bogazici Salon)\n- 2. gun gala yemegi (aksam 19:00)\n- Her gun 2 ara ikram (sabah 10:30 + ogleden sonra 15:00)\n\nTum bu detaylari satis temsilcimiz Selim Bey'e ilettim. Sizin icin en uygun fiyat teklifini hazırlayacak. Kisa surede donus yapacaktir.\n\nBaska bir sorunuz var mi?"
+        },
+        {
+          "role": "system",
+          "content": "VIP Eskalasyon: 40 kisilik kurumsal talep. Satis ekibine (Selim Bey) alert gonderildi. Talep detaylari: 10-12 Nisan, toplanti salonu, 20 oda, gala yemegi, ikramlar."
+        }
+      ],
+      "aiPrompt": "\"Grup / Kurumsal Rezervasyon\" senaryosu icin \"Kurumsal Toplanti Rezervasyonu\" akisini olustur.\n\nAciklama: Bir firma 40 kisilik kurumsal toplanti ve konaklama talebi goruyor. AI VIP flag atiyor ve satis ekibini bilgilendiriyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, sirketimiz icin 40 kisilik bir toplanti planliyor. 10-12 Nisan arasi toplanti salonu ve konaklama ayarlanabilir mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Grup/Kurumsal Rezervasyon. Kisi: 40. Tarih: 10-12 Nisan. VIP FLAG atandi. Satis ekibi alert tetiklendi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba! Kurumsal toplantiniz icin sizi agirlamaktan mutluluk duyariz.\n\nOtelimizde 40 kisilik grup icin uygun seceneklerimiz:\n\nToplanti Salonu: Bogazici Salon (60 kisi kapasiteli, projeksiyon + ses sistemi)\nKonaklama: 20 adet cift kisilik oda (40 kisi)\nTarih: 10-12 Nisan — on kontrol yapildi, musaitlik mevcut\n\nSirketinize ozel fiyat teklifi hazirlamamiz icin satis temsilcimiz en gec 1 saat icinde sizinle iletisime gececek.\n\nBu arada, toplantiniz icin ozel istekleriniz var mi? (Ara ikramlar, gala yemegi, teknik ekipman vb.)\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Evet, ikinci gun icin gala yemegi ve her gun ara ikram olsa iyi olur. Ayrica konferans tipi oturma duzeni istiyoruz.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_text** — Mesaj gonder\n   text: \"Notlarimi aldim:\n\n- Konferans tipi oturma duzeni (Bogazici Salon)\n- 2. gun gala yemegi (aksam 19:00)\n- Her gun 2 ara ikram (sabah 10:30 + ogleden sonra 15:00)\n\nTum bu detaylari satis temsilcimiz Selim Bey'e ilettim. Sizin icin en uygun fiyat teklifini hazırlayacak. Kisa surede donus yapacaktir.\n\nBaska bir sorunuz var mi?\"\n\n7. **utility_note** — Akis sonuc notu\n   text: \"VIP Eskalasyon: 40 kisilik kurumsal talep. Satis ekibine (Selim Bey) alert gonderildi. Talep detaylari: 10-12 Nisan, toplanti salonu, 20 oda, gala yemegi, ikramlar.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "AI grup boyutu, kurumsal terminoloji ve toplanti ihtiyaclarindan VIP talebini tespit eder. Satis ekibine aninda alert gonderilirken misafir on bilgilendirme ile elde tutulur.",
     "backend": [
-      { "title": "VIP Lead Detector", "goal": "Yuksek Deger Tespiti", "content": "Kisi sayisi (10+), sirket adi, toplanti/konferans kelimeleri ve tarih bilgisi analiz edilerek VIP flag atilir." },
-      { "title": "Sales Alert System", "goal": "Satis Ekibi Bildirimi", "content": "VIP flag atildiginda satis temsilcisine SMS, e-posta ve uygulama icinden aninda bildirim gonderir. Talep ozeti eklenir." }
+      {
+        "title": "VIP Lead Detector",
+        "goal": "Yuksek Deger Tespiti",
+        "content": "Kisi sayisi (10+), sirket adi, toplanti/konferans kelimeleri ve tarih bilgisi analiz edilerek VIP flag atilir."
+      },
+      {
+        "title": "Sales Alert System",
+        "goal": "Satis Ekibi Bildirimi",
+        "content": "VIP flag atildiginda satis temsilcisine SMS, e-posta ve uygulama icinden aninda bildirim gonderir. Talep ozeti eklenir."
+      }
     ],
     "apis": [
-      { "title": "Notification API", "goal": "Satis Alert", "content": "VIP talep tespit edildiginde satis ekibine coklu kanaldan (SMS + e-posta + push) aninda bildirim." },
-      { "title": "Knowledge Base API", "goal": "Grup Bilgileri", "content": "Toplanti salonu kapasiteleri, grup paketleri, teknik donanim ve catering seceneklerini AI'a sunar." }
+      {
+        "title": "Notification API",
+        "goal": "Satis Alert",
+        "content": "VIP talep tespit edildiginde satis ekibine coklu kanaldan (SMS + e-posta + push) aninda bildirim."
+      },
+      {
+        "title": "Knowledge Base API",
+        "goal": "Grup Bilgileri",
+        "content": "Toplanti salonu kapasiteleri, grup paketleri, teknik donanim ve catering seceneklerini AI'a sunar."
+      }
     ]
   },
   "impact": {
@@ -96,9 +221,28 @@
     "resultLabel": "Ek Gelir (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyGroupInquiries", "label": "Aylik Grup Talebi", "default": 8, "hint": "WhatsApp uzerinden gelen aylik grup/kurumsal talep", "editable": true },
-      { "key": "conversionRate", "label": "Donusum Orani (%)", "default": 40, "hint": "Hizli eskalasyonla satisa donus orani", "editable": true },
-      { "key": "avgGroupValue", "label": "Ort. Grup Rez. Tutari", "default": 120000, "suffix": "TL", "hint": "Grup/kurumsal rezervasyon basina ortalama gelir", "editable": true }
+      {
+        "key": "monthlyGroupInquiries",
+        "label": "Aylik Grup Talebi",
+        "default": 8,
+        "hint": "WhatsApp uzerinden gelen aylik grup/kurumsal talep",
+        "editable": true
+      },
+      {
+        "key": "conversionRate",
+        "label": "Donusum Orani (%)",
+        "default": 40,
+        "hint": "Hizli eskalasyonla satisa donus orani",
+        "editable": true
+      },
+      {
+        "key": "avgGroupValue",
+        "label": "Ort. Grup Rez. Tutari",
+        "default": 120000,
+        "suffix": "TL",
+        "hint": "Grup/kurumsal rezervasyon basina ortalama gelir",
+        "editable": true
+      }
     ],
     "formula": "monthlyGroupInquiries * (conversionRate / 100) * avgGroupValue",
     "formulaDisplay": null

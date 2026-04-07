@@ -8,15 +8,36 @@
   "description": "Kusurlu urun alan musterinin sorununu AI ile hizla kategorilendiren, degisim veya iade akisini otomatik baslatan ve kanit toplama surecini yoneten sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Tum Platformlar)" },
-      { "label": "Sorun", "value": "Kusurlu urun sikayetlerinde yanlis yonlendirme sik — degisim mi iade mi karari gecikmeli" },
-      { "label": "Deger", "value": "Hizli cozum ile musteri guveni korunur, tekrar satin alma orani artar" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Tum Platformlar)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Kusurlu urun sikayetlerinde yanlis yonlendirme sik — degisim mi iade mi karari gecikmeli"
+      },
+      {
+        "label": "Deger",
+        "value": "Hizli cozum ile musteri guveni korunur, tekrar satin alma orani artar"
+      }
     ],
     "services": [
-      { "name": "AI Agent Assist (C8)", "color": "amber" },
-      { "name": "Knowledge RAG (C7)", "color": "green" },
-      { "name": "E-com Integration (C11)", "color": "amber" },
-      { "name": "Routing (C2)", "color": "blue" }
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      },
+      {
+        "name": "Knowledge RAG (C7)",
+        "color": "green"
+      },
+      {
+        "name": "E-com Integration (C11)",
+        "color": "amber"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      }
     ],
     "servicesNote": "AI kusur tipini sorar, fotograf kanitini toplar ve urun kategorisine gore degisim/iade akisini belirler.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Kusur Tespiti",
         "goal": "Sorunu kategorillendir",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kategori)", "color": "amber" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kategori)",
+            "color": "amber"
+          }
         ],
         "content": "AI musteri mesajindan kusur tipini anlar: fiziksel hasar, uretim hatasi, eksik parca vb."
       },
@@ -33,8 +60,14 @@
         "title": "Kanit Toplama",
         "goal": "Fotograf/video al",
         "badges": [
-          { "text": "Sistem (Form)", "color": "purple" },
-          { "text": "Tenant (Prosedur)", "color": "blue" }
+          {
+            "text": "Sistem (Form)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Prosedur)",
+            "color": "blue"
+          }
         ],
         "content": "Mustteriden kusuru gosteren fotograf istenir. AI fotografi degerlendirerek sureci hizlandirir."
       },
@@ -42,8 +75,14 @@
         "title": "Cozum Akisi",
         "goal": "Degisim veya iade basalt",
         "badges": [
-          { "text": "Sistem (Otomasyon)", "color": "purple" },
-          { "text": "Tenant (Stok)", "color": "green" }
+          {
+            "text": "Sistem (Otomasyon)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Stok)",
+            "color": "green"
+          }
         ],
         "content": "Stokta varsa degisim, yoksa iade + indirim kodu. Surec otomatik baslatilir."
       }
@@ -55,65 +94,197 @@
       "title": "Kusurlu Urun — Degisim",
       "description": "Musteri kusurlu urun aldi, stokta yedek var, degisim yapiliyor.",
       "tags": [
-        { "text": "Kusurlu", "color": "rose" },
-        { "text": "Degisim", "color": "green" }
+        {
+          "text": "Kusurlu",
+          "color": "rose"
+        },
+        {
+          "text": "Degisim",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Degisim stok kontrolu", "service": "Backend", "page": "Urun Katalogu > Stok Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Degisim icin yedek stok durumunun kontrol edilebilmesi gerekir" },
-          { "text": "Kusur kategorileri", "service": "Knowledge", "page": "Dokuman Bankasi > Kusur Tanimlari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun kategorisine gore kusur tipllerini tanimlayin" }
+          {
+            "text": "Degisim stok kontrolu",
+            "service": "Backend",
+            "page": "Urun Katalogu > Stok Yonetimi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Degisim icin yedek stok durumunun kontrol edilebilmesi gerekir"
+          },
+          {
+            "text": "Kusur kategorileri",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Kusur Tanimlari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Urun kategorisine gore kusur tipllerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Kusur intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Kusur", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Kusurlu urun intent ve kusur tipi tespiti hazir" },
-          { "text": "Stok sorgulama API", "service": "Integrations", "page": "E-ticaret > Stok API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Gercek zamanli stok sorgulama entegrasyonu hazir" }
+          {
+            "text": "Kusur intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Kusur",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Kusurlu urun intent ve kusur tipi tespiti hazir"
+          },
+          {
+            "text": "Stok sorgulama API",
+            "service": "Integrations",
+            "page": "E-ticaret > Stok API",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Gercek zamanli stok sorgulama entegrasyonu hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Kusurlu urun geldi, fermuar kirik! Degisim istiyorum." },
-        { "role": "ai", "content": "Intent: Kusurlu Urun. Kusur Tipi: Fiziksel hasar (fermuar). Aksiyon: Kanit toplama." },
-        { "role": "bot", "content": "Cok uzgunuz! Kusurlu urun gondermemiz kabul edilemez. Hemen cozelim.\n\nLutfen fermuarin kirik oldugunu gosteren bir fotograf gonderir misiniz? Kanit aldiktan sonra degisim surecini aninda baslatalim." },
-        { "role": "user", "content": "[Fotograf gonderiyor]" },
-        { "role": "ai", "content": "Fotograf alindi. Kusur dogrulandi: Kirik fermuar. Stok kontrolu: MEVCUT. Degisim uygun." },
-        { "role": "bot", "content": "Tesekkurler! Kusur dogrulandi. Degisim surecini baslattim:\n\n🔄 Yeni urun: Yarin kargoya verilecek\n📦 Kusurlu urunu iade etmenize GEREK YOK\n🚚 Tahmini teslimat: 2-3 is gunu\n\nTakip numaranizi paylasacagim." },
-        { "role": "system", "content": "Degisim sureci baslatildi. Kusurlu urun iade gerekmeden yeni urun gonderilecek. Musteri memnun." }
-      ]
+        {
+          "role": "user",
+          "content": "Kusurlu urun geldi, fermuar kirik! Degisim istiyorum."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Kusurlu Urun. Kusur Tipi: Fiziksel hasar (fermuar). Aksiyon: Kanit toplama."
+        },
+        {
+          "role": "bot",
+          "content": "Cok uzgunuz! Kusurlu urun gondermemiz kabul edilemez. Hemen cozelim.\n\nLutfen fermuarin kirik oldugunu gosteren bir fotograf gonderir misiniz? Kanit aldiktan sonra degisim surecini aninda baslatalim."
+        },
+        {
+          "role": "user",
+          "content": "[Fotograf gonderiyor]"
+        },
+        {
+          "role": "ai",
+          "content": "Fotograf alindi. Kusur dogrulandi: Kirik fermuar. Stok kontrolu: MEVCUT. Degisim uygun."
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler! Kusur dogrulandi. Degisim surecini baslattim:\n\n🔄 Yeni urun: Yarin kargoya verilecek\n📦 Kusurlu urunu iade etmenize GEREK YOK\n🚚 Tahmini teslimat: 2-3 is gunu\n\nTakip numaranizi paylasacagim."
+        },
+        {
+          "role": "system",
+          "content": "Degisim sureci baslatildi. Kusurlu urun iade gerekmeden yeni urun gonderilecek. Musteri memnun."
+        }
+      ],
+      "aiPrompt": "\"Kusurlu Urun Degisim/Iade Akisi\" senaryosu icin \"Kusurlu Urun — Degisim\" akisini olustur.\n\nAciklama: Musteri kusurlu urun aldi, stokta yedek var, degisim yapiliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kusurlu urun geldi, fermuar kirik! Degisim istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Kusurlu Urun. Kusur Tipi: Fiziksel hasar (fermuar). Aksiyon: Kanit toplama.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Cok uzgunuz! Kusurlu urun gondermemiz kabul edilemez. Hemen cozelim.\n\nLutfen fermuarin kirik oldugunu gosteren bir fotograf gonderir misiniz? Kanit aldiktan sonra degisim surecini aninda baslatalim.\"\n\n5. **utility_set_variable** — Musteri medya yuklemesini kaydet\n   variable_name: \"customer_media\"\n   Not: Onceki message_text'in yanit beklemesi gerekir\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Fotograf alindi. Kusur dogrulandi: Kirik fermuar. Stok kontrolu: MEVCUT. Degisim uygun.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Tesekkurler! Kusur dogrulandi. Degisim surecini baslattim:\n\n🔄 Yeni urun: Yarin kargoya verilecek\n📦 Kusurlu urunu iade etmenize GEREK YOK\n🚚 Tahmini teslimat: 2-3 is gunu\n\nTakip numaranizi paylasacagim.\"\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Degisim sureci baslatildi. Kusurlu urun iade gerekmeden yeni urun gonderilecek. Musteri memnun.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Kusurlu Urun — Stok Yok, Iade",
       "description": "Urun kusurlu ama stokta yedek yok, iade + telafi sunuluyor.",
       "tags": [
-        { "text": "Kusurlu", "color": "rose" },
-        { "text": "Iade + Telafi", "color": "amber" }
+        {
+          "text": "Kusurlu",
+          "color": "rose"
+        },
+        {
+          "text": "Iade + Telafi",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Telafi politikasi", "service": "Knowledge", "page": "Dokuman Bankasi > Telafi Politikasi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Kusurlu urun icin sunulacak telafi seceneklerini tanimlayin" }
+          {
+            "text": "Telafi politikasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Telafi Politikasi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Kusurlu urun icin sunulacak telafi seceneklerini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Otomatik iade basllatma", "service": "Integrations", "page": "E-ticaret > Iade API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Platform API uzerinden otomatik iade basllatma hazir" },
-          { "text": "Indirim kodu olusturma", "service": "Backend", "page": "Kampanya Yonetimi > Kupon Olustur", "status": "ready", "priority": "recommended", "effort": "easy", "capability": "C10", "hint": "Telafi amaclı indirim kodu otomatik olusturma hazir" }
+          {
+            "text": "Otomatik iade basllatma",
+            "service": "Integrations",
+            "page": "E-ticaret > Iade API",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Platform API uzerinden otomatik iade basllatma hazir"
+          },
+          {
+            "text": "Indirim kodu olusturma",
+            "service": "Backend",
+            "page": "Kampanya Yonetimi > Kupon Olustur",
+            "status": "ready",
+            "priority": "recommended",
+            "effort": "easy",
+            "capability": "C10",
+            "hint": "Telafi amaclı indirim kodu otomatik olusturma hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Kusurlu urun geldi, degisim mi iade mi?" },
-        { "role": "ai", "content": "Stok kontrolu: YOK. Alternatif: Iade + telafi teklifi." },
-        { "role": "bot", "content": "Cok ozur dileriz! Maalesef su an stokta yedek bulunmuyor. Size iki secenek sunabiliriz:\n\n1️⃣ Tam iade + %15 indirim kodu (sonraki alisverisinizde)\n2️⃣ Farkli renk/model ile degisim\n\nHangisini tercih edersiniz?" },
-        { "role": "user", "content": "1 numara, iade + indirim olsun." },
-        { "role": "bot", "content": "Hemen isleme aldim!\n\n💰 Iade: 3-5 is gunu icinde kartiniza\n🎁 Indirim kodunuz: OZUR15\n\nBir daha boyle bir sorun yasamamaniz icin kalite kontrolumuzu siklastirdik. Tekrar tesekkurler!" },
-        { "role": "system", "content": "Iade baslatildi + telafi kodu olusturuldu. Musteri memnun ayrildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Kusurlu urun geldi, degisim mi iade mi?"
+        },
+        {
+          "role": "ai",
+          "content": "Stok kontrolu: YOK. Alternatif: Iade + telafi teklifi."
+        },
+        {
+          "role": "bot",
+          "content": "Cok ozur dileriz! Maalesef su an stokta yedek bulunmuyor. Size iki secenek sunabiliriz:\n\n1️⃣ Tam iade + %15 indirim kodu (sonraki alisverisinizde)\n2️⃣ Farkli renk/model ile degisim\n\nHangisini tercih edersiniz?"
+        },
+        {
+          "role": "user",
+          "content": "1 numara, iade + indirim olsun."
+        },
+        {
+          "role": "bot",
+          "content": "Hemen isleme aldim!\n\n💰 Iade: 3-5 is gunu icinde kartiniza\n🎁 Indirim kodunuz: OZUR15\n\nBir daha boyle bir sorun yasamamaniz icin kalite kontrolumuzu siklastirdik. Tekrar tesekkurler!"
+        },
+        {
+          "role": "system",
+          "content": "Iade baslatildi + telafi kodu olusturuldu. Musteri memnun ayrildi."
+        }
+      ],
+      "aiPrompt": "\"Kusurlu Urun Degisim/Iade Akisi\" senaryosu icin \"Kusurlu Urun — Stok Yok, Iade\" akisini olustur.\n\nAciklama: Urun kusurlu ama stokta yedek yok, iade + telafi sunuluyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Kusurlu urun geldi, degisim mi iade mi?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Stok kontrolu: YOK. Alternatif: Iade + telafi teklifi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Cok ozur dileriz! Maalesef su an stokta yedek bulunmuyor. Size iki secenek sunabiliriz:\n\n1️⃣ Tam iade + %15 indirim kodu (sonraki alisverisinizde)\n2️⃣ Farkli renk/model ile degisim\n\nHangisini tercih edersiniz?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n   (Onceki message_menu'nun secim handle'i bu yaniti yonlendirir)\n\n5. **message_text** — Mesaj gonder\n   text: \"Hemen isleme aldim!\n\n💰 Iade: 3-5 is gunu icinde kartiniza\n🎁 Indirim kodunuz: OZUR15\n\nBir daha boyle bir sorun yasamamaniz icin kalite kontrolumuzu siklastirdik. Tekrar tesekkurler!\"\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Iade baslatildi + telafi kodu olusturuldu. Musteri memnun ayrildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI kusur tespiti + stok kontrolu + otomatik iade birlesiminde calisir. Fotograf ile kanit toplama sureci standartlastirilmistir.",
     "backend": [
-      { "title": "Defect Classifier", "goal": "Kusur Kategorilendirme", "content": "AI mesaj analizi + fotograf degerlendirme ile kusur tipini belirler. Fiziksel hasar, uretim hatasi, eksik parca vb." },
-      { "title": "Resolution Engine", "goal": "Cozum Belirleme", "content": "Stok durumu, kusur tipi ve musteri gecmisine gore degisim/iade/telafi akisini otomatik belirler." }
+      {
+        "title": "Defect Classifier",
+        "goal": "Kusur Kategorilendirme",
+        "content": "AI mesaj analizi + fotograf degerlendirme ile kusur tipini belirler. Fiziksel hasar, uretim hatasi, eksik parca vb."
+      },
+      {
+        "title": "Resolution Engine",
+        "goal": "Cozum Belirleme",
+        "content": "Stok durumu, kusur tipi ve musteri gecmisine gore degisim/iade/telafi akisini otomatik belirler."
+      }
     ],
     "apis": [
-      { "title": "E-ticaret Platform API", "goal": "Siparis + Iade", "content": "Siparis detayi cekilir, iade veya degisim sureci platform API uzerinden baslatilir." },
-      { "title": "Stok API", "goal": "Yedek Kontrolu", "content": "Degisim icin ayni urunden stok durumu gercek zamanli kontrol edilir." }
+      {
+        "title": "E-ticaret Platform API",
+        "goal": "Siparis + Iade",
+        "content": "Siparis detayi cekilir, iade veya degisim sureci platform API uzerinden baslatilir."
+      },
+      {
+        "title": "Stok API",
+        "goal": "Yedek Kontrolu",
+        "content": "Degisim icin ayni urunden stok durumu gercek zamanli kontrol edilir."
+      }
     ]
   },
   "impact": {
@@ -122,9 +293,29 @@
     "resultLabel": "Korunan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyDefects", "label": "Aylik Kusur Sikayeti", "default": 25, "hint": "Kusurlu urun bildirimi", "editable": true },
-      { "key": "retentionRate", "label": "Kurtarma Orani", "default": 70, "prefix": "%", "hint": "Hizli cozumle tutulan musteri", "editable": true },
-      { "key": "avgCustomerLTV", "label": "Musteri LTV", "default": 2000, "suffix": "TL", "hint": "Yillik musteri degeri", "editable": true }
+      {
+        "key": "monthlyDefects",
+        "label": "Aylik Kusur Sikayeti",
+        "default": 25,
+        "hint": "Kusurlu urun bildirimi",
+        "editable": true
+      },
+      {
+        "key": "retentionRate",
+        "label": "Kurtarma Orani",
+        "default": 70,
+        "prefix": "%",
+        "hint": "Hizli cozumle tutulan musteri",
+        "editable": true
+      },
+      {
+        "key": "avgCustomerLTV",
+        "label": "Musteri LTV",
+        "default": 2000,
+        "suffix": "TL",
+        "hint": "Yillik musteri degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyDefects * (retentionRate / 100) * (avgCustomerLTV / 12)",
     "formulaDisplay": null

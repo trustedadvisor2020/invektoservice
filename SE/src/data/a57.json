@@ -8,15 +8,36 @@
   "description": "Estetik islem sonrasi sislik veya morarma ile panik yapan hastanin durumunu AI ile triage eden, normal ise rehber gonderen, anormal ise doktora alert gonderen sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Tum Klinikler)" },
-      { "label": "Sorun", "value": "Islem sonrasi sislik/morarma normal ama hasta paniklyor — gec cevap guven kaybina yol acar" },
-      { "label": "Deger", "value": "Aninda triage ile hasta rahatlatilir veya gercek sorun hizla tespit edilir" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Tum Klinikler)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Islem sonrasi sislik/morarma normal ama hasta paniklyor — gec cevap guven kaybina yol acar"
+      },
+      {
+        "label": "Deger",
+        "value": "Aninda triage ile hasta rahatlatilir veya gercek sorun hizla tespit edilir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI islem sonrasi sikayet intent'ini tespit eder, severity belirler ve uygun yonlendirme yapar.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Severity Tespiti",
         "goal": "Normal mi anormal mi?",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Saglik)", "color": "rose" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Saglik)",
+            "color": "rose"
+          }
         ],
         "content": "AI semptomlardan severity belirler: normal post-op vs potansiyel komplikasyon."
       },
@@ -33,8 +60,14 @@
         "title": "Yonlendirme",
         "goal": "Uygun aksiyonu al",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Doktor)", "color": "blue" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Doktor)",
+            "color": "blue"
+          }
         ],
         "content": "Normal → bakim rehberi. Anormal → doktor alert + acil randevu."
       }
@@ -46,36 +79,94 @@
       "title": "Islem Sonrasi Sislik — Normal",
       "description": "Hasta dolgu sonrasi sislikten sikayet ediyor, normal post-op bulgusu.",
       "tags": [
-        { "text": "Post-Op", "color": "amber" },
-        { "text": "Normal", "color": "green" }
+        {
+          "text": "Post-Op",
+          "color": "amber"
+        },
+        {
+          "text": "Normal",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Islem sonrasi bakim rehberi", "service": "Knowledge", "page": "Dokuman Bankasi > Post-Op Bakim", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Islem bazli normal post-op bulgulari ve bakim rehberini yukleyin" }
+          {
+            "text": "Islem sonrasi bakim rehberi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Post-Op Bakim",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Islem bazli normal post-op bulgulari ve bakim rehberini yukleyin"
+          }
         ],
         "provider": [
-          { "text": "Post-op sikayet triage", "service": "AgentAI", "page": "Intent Tespiti > Post-Op", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Islem sonrasi sikayet triage ve severity tespiti hazir" }
+          {
+            "text": "Post-op sikayet triage",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Post-Op",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Islem sonrasi sikayet triage ve severity tespiti hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Islemden sonra cok sistim, normal mi?!" },
-        { "role": "ai", "content": "Intent: Post-Op Sikayet — Sislik. Islem: Dudak dolgusu (dun). Severity sorulari baslatiliyor." },
-        { "role": "bot", "content": "Endiselenmeyin! Birkaç soru sorayim:\n\n1️⃣ Islem ne zaman yapildi?\n2️⃣ Sislik sadece islem bolgesinde mi?\n3️⃣ Ates veya siddetli agri var mi?" },
-        { "role": "user", "content": "Dun yapildi, sadece dudaklarimda, ates yok." },
-        { "role": "ai", "content": "Severity: NORMAL. Dudak dolgusu sonrasi 24-72 saat sislik beklenen post-op bulgusi." },
-        { "role": "bot", "content": "Bu tamamen normal! Dudak dolgusu sonrasi 24-72 saat sislik beklenir 🙏\n\nBakim onerileri:\n🧊 Soguk kompres: 10 dk arallarla\n💊 Gerekirse agri kesici\n🚫 24 saat makyaj yapmayin\n🚫 3 gun sicak icecek icmeyin\n\n💡 Sislik 3-5 gunde tamamen iner.\n⚠️ Ates veya artan agri olursa hemen bizi arayin!" },
-        { "role": "system", "content": "Normal post-op — bakim rehberi gonderildi. Hasta rahatlatildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Islemden sonra cok sistim, normal mi?!"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Post-Op Sikayet — Sislik. Islem: Dudak dolgusu (dun). Severity sorulari baslatiliyor."
+        },
+        {
+          "role": "bot",
+          "content": "Endiselenmeyin! Birkaç soru sorayim:\n\n1️⃣ Islem ne zaman yapildi?\n2️⃣ Sislik sadece islem bolgesinde mi?\n3️⃣ Ates veya siddetli agri var mi?"
+        },
+        {
+          "role": "user",
+          "content": "Dun yapildi, sadece dudaklarimda, ates yok."
+        },
+        {
+          "role": "ai",
+          "content": "Severity: NORMAL. Dudak dolgusu sonrasi 24-72 saat sislik beklenen post-op bulgusi."
+        },
+        {
+          "role": "bot",
+          "content": "Bu tamamen normal! Dudak dolgusu sonrasi 24-72 saat sislik beklenir 🙏\n\nBakim onerileri:\n🧊 Soguk kompres: 10 dk arallarla\n💊 Gerekirse agri kesici\n🚫 24 saat makyaj yapmayin\n🚫 3 gun sicak icecek icmeyin\n\n💡 Sislik 3-5 gunde tamamen iner.\n⚠️ Ates veya artan agri olursa hemen bizi arayin!"
+        },
+        {
+          "role": "system",
+          "content": "Normal post-op — bakim rehberi gonderildi. Hasta rahatlatildi."
+        }
+      ],
+      "aiPrompt": "\"Islem Sonrasi Sikayet: Sislik/Morarma\" senaryosu icin \"Islem Sonrasi Sislik — Normal\" akisini olustur.\n\nAciklama: Hasta dolgu sonrasi sislikten sikayet ediyor, normal post-op bulgusu.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Islemden sonra cok sistim, normal mi?!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Post-Op Sikayet — Sislik. Islem: Dudak dolgusu (dun). Severity sorulari baslatiliyor.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_menu** — Secenekli mesaj\n   Mesaj: \"Endiselenmeyin! Birkaç soru sorayim:\n\n1️⃣ Islem ne zaman yapildi?\n2️⃣ Sislik sadece islem bolgesinde mi?\n3️⃣ Ates veya siddetli agri var mi?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Dun yapildi, sadece dudaklarimda, ates yok.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **ai_intent** — Niyet tespiti\n   Analiz: Severity: NORMAL. Dudak dolgusu sonrasi 24-72 saat sislik beklenen post-op bulgusi.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n7. **message_text** — Mesaj gonder\n   text: \"Bu tamamen normal! Dudak dolgusu sonrasi 24-72 saat sislik beklenir 🙏\n\nBakim onerileri:\n🧊 Soguk kompres: 10 dk arallarla\n💊 Gerekirse agri kesici\n🚫 24 saat makyaj yapmayin\n🚫 3 gun sicak icecek icmeyin\n\n💡 Sislik 3-5 gunde tamamen iner.\n⚠️ Ates veya artan agri olursa hemen bizi arayin!\"\n\n8. **utility_note** — Akis sonuc notu\n   text: \"Normal post-op — bakim rehberi gonderildi. Hasta rahatlatildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI Triage + Knowledge Base birlesimiyle calisir. Post-op sikayet yonetimi.",
     "backend": [
-      { "title": "Post-Op Triage", "goal": "Severity Tespiti", "content": "Islem tipi, sure ve semptomlardan post-op severity belirler." },
-      { "title": "Doctor Alert", "goal": "Doktor Bildirimi", "content": "Anormal bulgu tespitinde doktora acil bildirim gonderir." }
+      {
+        "title": "Post-Op Triage",
+        "goal": "Severity Tespiti",
+        "content": "Islem tipi, sure ve semptomlardan post-op severity belirler."
+      },
+      {
+        "title": "Doctor Alert",
+        "goal": "Doktor Bildirimi",
+        "content": "Anormal bulgu tespitinde doktora acil bildirim gonderir."
+      }
     ],
     "apis": [
-      { "title": "Knowledge RAG API", "goal": "Bakim Bilgisi", "content": "Islem bazli post-op bakim rehberi ve normal bulgu listesi." }
+      {
+        "title": "Knowledge RAG API",
+        "goal": "Bakim Bilgisi",
+        "content": "Islem bazli post-op bakim rehberi ve normal bulgu listesi."
+      }
     ]
   },
   "impact": {
@@ -84,9 +175,29 @@
     "resultLabel": "Memnuniyet Degeri (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyPostOpComplaints", "label": "Aylik Post-Op Sikayet", "default": 20, "hint": "Islem sonrasi sikayet/soru", "editable": true },
-      { "key": "retentionBoost", "label": "Tutma Artisi", "default": 30, "prefix": "%", "hint": "Hizli destek ile artan tekrar ziyaret", "editable": true },
-      { "key": "avgRepeatValue", "label": "Tekrar Ziyaret Degeri", "default": 4000, "suffix": "TL", "hint": "Tekrar gelen hasta islem degeri", "editable": true }
+      {
+        "key": "monthlyPostOpComplaints",
+        "label": "Aylik Post-Op Sikayet",
+        "default": 20,
+        "hint": "Islem sonrasi sikayet/soru",
+        "editable": true
+      },
+      {
+        "key": "retentionBoost",
+        "label": "Tutma Artisi",
+        "default": 30,
+        "prefix": "%",
+        "hint": "Hizli destek ile artan tekrar ziyaret",
+        "editable": true
+      },
+      {
+        "key": "avgRepeatValue",
+        "label": "Tekrar Ziyaret Degeri",
+        "default": 4000,
+        "suffix": "TL",
+        "hint": "Tekrar gelen hasta islem degeri",
+        "editable": true
+      }
     ],
     "formula": "monthlyPostOpComplaints * (retentionBoost / 100) * avgRepeatValue",
     "formulaDisplay": null

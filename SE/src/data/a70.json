@@ -8,15 +8,36 @@
   "description": "Dogrudan doktorla konusmak isteyen hastanin talebini AI'in once yanitlamaya calismasi, gercekten tibbi konsultasyon gerekliyse doktora yonlendirmesi.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Estetik Klinik (Doktor Talebi)" },
-      { "label": "Sorun", "value": "Her hasta doktorla konusmak istiyor — doktorun zamani verimsiz kullaniliyor" },
-      { "label": "Deger", "value": "AI %70 soruyu doktora gerek kalmadan cozuyor, doktor sadece tibbi vakalara odaklaniyor" }
+      {
+        "label": "Sektor",
+        "value": "Estetik Klinik (Doktor Talebi)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Her hasta doktorla konusmak istiyor — doktorun zamani verimsiz kullaniliyor"
+      },
+      {
+        "label": "Deger",
+        "value": "AI %70 soruyu doktora gerek kalmadan cozuyor, doktor sadece tibbi vakalara odaklaniyor"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Routing (C2)", "color": "blue" },
-      { "name": "Templates (C3)", "color": "blue" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Routing (C2)",
+        "color": "blue"
+      },
+      {
+        "name": "Templates (C3)",
+        "color": "blue"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI hastanin sorusunu analiz eder, genel sorulari yanitlar, tibbi durumda doktora yonlendirir.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Soru Analizi",
         "goal": "Hastanin gercek ihtiyacini anla",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Klinik)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Klinik)",
+            "color": "blue"
+          }
         ],
         "content": "AI hastanin sorusunun tibbi mi yoksa genel bilgi mi oldugunu analiz eder."
       },
@@ -33,8 +60,14 @@
         "title": "Akilli Yonlendirme",
         "goal": "Dogru kanala yonlendir",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Doktor)", "color": "amber" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Doktor)",
+            "color": "amber"
+          }
         ],
         "content": "Genel sorular AI tarafindan cevaplanir. Tibbi konsultasyon gerektiren durumlar doktora iletilir."
       }
@@ -46,59 +79,160 @@
       "title": "Genel Soru — AI Cevapliyor",
       "description": "Hasta doktorla konusmak istiyor ama sorusu genel bilgi nitelginde.",
       "tags": [
-        { "text": "Doktor Talebi", "color": "amber" },
-        { "text": "AI Cozum", "color": "green" }
+        {
+          "text": "Doktor Talebi",
+          "color": "amber"
+        },
+        {
+          "text": "AI Cozum",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "SSS ve islem bilgi bankasi", "service": "Knowledge", "page": "Dokuman Bankasi > SSS", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Sik sorulan sorulari ve islem detaylarini ekleyin" }
+          {
+            "text": "SSS ve islem bilgi bankasi",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > SSS",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Sik sorulan sorulari ve islem detaylarini ekleyin"
+          }
         ],
         "provider": [
-          { "text": "Tibbi/genel soru siniflandirmasi", "service": "AgentAI", "page": "Intent Tespiti > Tibbi Siniflandirma", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Tibbi vs genel soru ayirimi hazir" },
-          { "text": "Doktor eskalasyon akisi", "service": "Backend", "page": "Routing > Doktor Eskalasyon", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Tibbi sorularda doktora yonlendirme hazir" }
+          {
+            "text": "Tibbi/genel soru siniflandirmasi",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Tibbi Siniflandirma",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Tibbi vs genel soru ayirimi hazir"
+          },
+          {
+            "text": "Doktor eskalasyon akisi",
+            "service": "Backend",
+            "page": "Routing > Doktor Eskalasyon",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Tibbi sorularda doktora yonlendirme hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Doktorla konusmak istiyorum, botox ne kadar suruyor?" },
-        { "role": "ai", "content": "Intent: Doktor Talebi + Genel Bilgi Sorusu. Siniflandirma: Genel (tibbi konsultasyon gerektirmiyor). AI yanit verecek." },
-        { "role": "bot", "content": "Sorunuzu hemen cevaplayabilirim!\n\n💉 Botox islemi ortalama 15-20 dakika surer.\n📋 Etkisi 3-5 gun icerisinde tam olarak ortaya cikar.\n⏳ Etki suresi: 4-6 ay\n\nBaska merak ettiginiz bir konu var mi? Tibbi bir detay sormak isterseniz sizi doktorumuzla baglayabilirim." },
-        { "role": "user", "content": "Tesekkurler, anladim. Randevu almak istiyorum." },
-        { "role": "bot", "content": "Harika! Botox icin musait slotlarimiz:\n\n🗓️ Persembe 14:00 — Dr. Selin\n🗓️ Cuma 11:00 — Dr. Selin\n\nHangisi size uygun?" },
-        { "role": "system", "content": "Doktor talebi AI tarafindan cozuldu. Eskalasyon yapilmadi. Hasta randevu akisina yonlendirildi." }
-      ]
+        {
+          "role": "user",
+          "content": "Doktorla konusmak istiyorum, botox ne kadar suruyor?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Doktor Talebi + Genel Bilgi Sorusu. Siniflandirma: Genel (tibbi konsultasyon gerektirmiyor). AI yanit verecek."
+        },
+        {
+          "role": "bot",
+          "content": "Sorunuzu hemen cevaplayabilirim!\n\n💉 Botox islemi ortalama 15-20 dakika surer.\n📋 Etkisi 3-5 gun icerisinde tam olarak ortaya cikar.\n⏳ Etki suresi: 4-6 ay\n\nBaska merak ettiginiz bir konu var mi? Tibbi bir detay sormak isterseniz sizi doktorumuzla baglayabilirim."
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler, anladim. Randevu almak istiyorum."
+        },
+        {
+          "role": "bot",
+          "content": "Harika! Botox icin musait slotlarimiz:\n\n🗓️ Persembe 14:00 — Dr. Selin\n🗓️ Cuma 11:00 — Dr. Selin\n\nHangisi size uygun?"
+        },
+        {
+          "role": "system",
+          "content": "Doktor talebi AI tarafindan cozuldu. Eskalasyon yapilmadi. Hasta randevu akisina yonlendirildi."
+        }
+      ],
+      "aiPrompt": "\"Doktorla Konusmak Istiyorum Baskisi\" senaryosu icin \"Genel Soru — AI Cevapliyor\" akisini olustur.\n\nAciklama: Hasta doktorla konusmak istiyor ama sorusu genel bilgi nitelginde.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Doktorla konusmak istiyorum, botox ne kadar suruyor?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Doktor Talebi + Genel Bilgi Sorusu. Siniflandirma: Genel (tibbi konsultasyon gerektirmiyor). AI yanit verecek.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Sorunuzu hemen cevaplayabilirim!\n\n💉 Botox islemi ortalama 15-20 dakika surer.\n📋 Etkisi 3-5 gun icerisinde tam olarak ortaya cikar.\n⏳ Etki suresi: 4-6 ay\n\nBaska merak ettiginiz bir konu var mi? Tibbi bir detay sormak isterseniz sizi doktorumuzla baglayabilirim.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler, anladim. Randevu almak istiyorum.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **message_menu** — Secenekli mesaj\n   Mesaj: \"Harika! Botox icin musait slotlarimiz:\n\n🗓️ Persembe 14:00 — Dr. Selin\n🗓️ Cuma 11:00 — Dr. Selin\n\nHangisi size uygun?\"\n   Her secenek icin ayri cikis handle'i olustur\n\n7. **utility_note** — Akis sonuc notu\n   text: \"Doktor talebi AI tarafindan cozuldu. Eskalasyon yapilmadi. Hasta randevu akisina yonlendirildi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Tibbi Soru — Doktora Yonlendirme",
       "description": "Hasta tibbi bir endisesini paylasyor, AI doktora eskalasyon yapiyor.",
       "tags": [
-        { "text": "Tibbi Soru", "color": "red" },
-        { "text": "Eskalasyon", "color": "amber" }
+        {
+          "text": "Tibbi Soru",
+          "color": "red"
+        },
+        {
+          "text": "Eskalasyon",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Doktor musaitlik takvimi", "service": "Appointments", "page": "Takvim > Doktor Konsultasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C4", "hint": "Doktorun mesaj yanitlama saatlerini belirleyin" }
+          {
+            "text": "Doktor musaitlik takvimi",
+            "service": "Appointments",
+            "page": "Takvim > Doktor Konsultasyon",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C4",
+            "hint": "Doktorun mesaj yanitlama saatlerini belirleyin"
+          }
         ],
         "provider": [
-          { "text": "Acil eskalasyon mekanizmasi", "service": "Backend", "page": "Routing > Acil Eskalasyon", "status": "ready", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Tibbi eskalasyon bildirimi doktora aninda iletilir" }
+          {
+            "text": "Acil eskalasyon mekanizmasi",
+            "service": "Backend",
+            "page": "Routing > Acil Eskalasyon",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Tibbi eskalasyon bildirimi doktora aninda iletilir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Doktorla konusmam lazim, gecen yaptirdigim dolgudan sonra sislik oldu ve 3 gundur gecmiyor." },
-        { "role": "ai", "content": "Intent: Tibbi Endise — Islem Sonrasi Komplikasyon. Siniflandirma: TIBBI (doktor eskalasyonu gerekli). Oncelik: YUKSEK." },
-        { "role": "bot", "content": "Durumunuzu anliyorum ve endiselenmeniz cok normal. Bu tibbi bir degerlendirme gerektiriyor.\n\n👨‍⚕️ Doktorumuz en kisa surede size donecek.\n📋 Bilgilerinizi doktora ilettim.\n\nAcil bir durum hissederseniz klinigin acil hattini arayabilirsiniz: 0212 XXX XX XX" },
-        { "role": "system", "content": "Tibbi eskalasyon yapildi. Doktor bilgilendirildi. Oncelik: YUKSEK. Beklenen yanit suresi: 30 dk." }
-      ]
+        {
+          "role": "user",
+          "content": "Doktorla konusmam lazim, gecen yaptirdigim dolgudan sonra sislik oldu ve 3 gundur gecmiyor."
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Tibbi Endise — Islem Sonrasi Komplikasyon. Siniflandirma: TIBBI (doktor eskalasyonu gerekli). Oncelik: YUKSEK."
+        },
+        {
+          "role": "bot",
+          "content": "Durumunuzu anliyorum ve endiselenmeniz cok normal. Bu tibbi bir degerlendirme gerektiriyor.\n\n👨‍⚕️ Doktorumuz en kisa surede size donecek.\n📋 Bilgilerinizi doktora ilettim.\n\nAcil bir durum hissederseniz klinigin acil hattini arayabilirsiniz: 0212 XXX XX XX"
+        },
+        {
+          "role": "system",
+          "content": "Tibbi eskalasyon yapildi. Doktor bilgilendirildi. Oncelik: YUKSEK. Beklenen yanit suresi: 30 dk."
+        }
+      ],
+      "aiPrompt": "\"Doktorla Konusmak Istiyorum Baskisi\" senaryosu icin \"Tibbi Soru — Doktora Yonlendirme\" akisini olustur.\n\nAciklama: Hasta tibbi bir endisesini paylasyor, AI doktora eskalasyon yapiyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Doktorla konusmam lazim, gecen yaptirdigim dolgudan sonra sislik oldu ve 3 gundur gecmiyor.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Tibbi Endise — Islem Sonrasi Komplikasyon. Siniflandirma: TIBBI (doktor eskalasyonu gerekli). Oncelik: YUKSEK.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Durumunuzu anliyorum ve endiselenmeniz cok normal. Bu tibbi bir degerlendirme gerektiriyor.\n\n👨‍⚕️ Doktorumuz en kisa surede size donecek.\n📋 Bilgilerinizi doktora ilettim.\n\nAcil bir durum hissederseniz klinigin acil hattini arayabilirsiniz: 0212 XXX XX XX\"\n\n5. **utility_note** — Akis sonuc notu\n   text: \"Tibbi eskalasyon yapildi. Doktor bilgilendirildi. Oncelik: YUKSEK. Beklenen yanit suresi: 30 dk.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo AI Siniflandirma + Akilli Routing + Doktor Eskalasyon ile calisir.",
     "backend": [
-      { "title": "Medical Triage Classifier", "goal": "Soru Siniflandirma", "content": "Gelen soruyu tibbi/genel olarak siniflandirir, tibbi onceligi belirler." },
-      { "title": "Doctor Escalation Router", "goal": "Doktor Yonlendirme", "content": "Tibbi sorulari doktorun mesaj kuyrugunna ekler ve bildirim gonderir." }
+      {
+        "title": "Medical Triage Classifier",
+        "goal": "Soru Siniflandirma",
+        "content": "Gelen soruyu tibbi/genel olarak siniflandirir, tibbi onceligi belirler."
+      },
+      {
+        "title": "Doctor Escalation Router",
+        "goal": "Doktor Yonlendirme",
+        "content": "Tibbi sorulari doktorun mesaj kuyrugunna ekler ve bildirim gonderir."
+      }
     ],
     "apis": [
-      { "title": "Agent Classification API", "goal": "AI Siniflandirma", "content": "Hasta mesajini intent ve tibbi oncelik acisinden siniflandirir." }
+      {
+        "title": "Agent Classification API",
+        "goal": "AI Siniflandirma",
+        "content": "Hasta mesajini intent ve tibbi oncelik acisinden siniflandirir."
+      }
     ]
   },
   "impact": {
@@ -107,10 +241,36 @@
     "resultLabel": "Kurtarilan Deger (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyDoctorRequests", "label": "Aylik Doktor Talebi", "default": 60, "hint": "Doktorla konusmak isteyen hasta sayisi", "editable": true },
-      { "key": "aiResolutionRate", "label": "AI Cozum Orani", "default": 70, "prefix": "%", "hint": "AI'in doktora gerek kalmadan cozdugu oran", "editable": true },
-      { "key": "doctorHourlyValue", "label": "Doktor Saat Degeri", "default": 2000, "suffix": "TL", "hint": "Doktorun saatlik ekonomik degeri", "editable": true },
-      { "key": "avgMinutesPerQuery", "label": "Ort. Mesaj Suresi (dk)", "default": 10, "hint": "Doktorun bir mesaja harcadigi sure", "editable": true }
+      {
+        "key": "monthlyDoctorRequests",
+        "label": "Aylik Doktor Talebi",
+        "default": 60,
+        "hint": "Doktorla konusmak isteyen hasta sayisi",
+        "editable": true
+      },
+      {
+        "key": "aiResolutionRate",
+        "label": "AI Cozum Orani",
+        "default": 70,
+        "prefix": "%",
+        "hint": "AI'in doktora gerek kalmadan cozdugu oran",
+        "editable": true
+      },
+      {
+        "key": "doctorHourlyValue",
+        "label": "Doktor Saat Degeri",
+        "default": 2000,
+        "suffix": "TL",
+        "hint": "Doktorun saatlik ekonomik degeri",
+        "editable": true
+      },
+      {
+        "key": "avgMinutesPerQuery",
+        "label": "Ort. Mesaj Suresi (dk)",
+        "default": 10,
+        "hint": "Doktorun bir mesaja harcadigi sure",
+        "editable": true
+      }
     ],
     "formula": "monthlyDoctorRequests * (aiResolutionRate / 100) * (avgMinutesPerQuery / 60) * doctorHourlyValue",
     "formulaDisplay": null

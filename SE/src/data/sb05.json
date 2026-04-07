@@ -8,14 +8,32 @@
   "description": "Hasta recete durumu veya ilac dozaj sorusuyla tekrar tekrar ariyor. Knowledge Base'den recete durumu ve eczane bilgisi aninda sunulur. Dozaj degisikligi veya ilac onerisi yapilmaz, bu tur sorular mutlaka doktora yonlendirilir.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "Saglik Kurulusu (Poliklinik, Aile Hekimligi, Hastane)" },
-      { "label": "Sorun", "value": "Hasta recete durumu ve ilac bilgisi icin tekrar tekrar ariyor — sekreter ayni bilgiyi defa veriyor" },
-      { "label": "Deger", "value": "Recete durum sorgulari otomatiklestrilir, tibbi sorular guvenli sekilde doktora yonlendirilir" }
+      {
+        "label": "Sektor",
+        "value": "Saglik Kurulusu (Poliklinik, Aile Hekimligi, Hastane)"
+      },
+      {
+        "label": "Sorun",
+        "value": "Hasta recete durumu ve ilac bilgisi icin tekrar tekrar ariyor — sekreter ayni bilgiyi defa veriyor"
+      },
+      {
+        "label": "Deger",
+        "value": "Recete durum sorgulari otomatiklestrilir, tibbi sorular guvenli sekilde doktora yonlendirilir"
+      }
     ],
     "services": [
-      { "name": "Unified Inbox (C1)", "color": "blue" },
-      { "name": "Knowledge Base (C7)", "color": "amber" },
-      { "name": "AI Agent Assist (C8)", "color": "amber" }
+      {
+        "name": "Unified Inbox (C1)",
+        "color": "blue"
+      },
+      {
+        "name": "Knowledge Base (C7)",
+        "color": "amber"
+      },
+      {
+        "name": "AI Agent Assist (C8)",
+        "color": "amber"
+      }
     ],
     "servicesNote": "AI recete durumu ve ilac bilgisi intent'lerini ayirt eder. Recete durum sorgusu Knowledge Base'den cevaplanir. Dozaj ve ilac degisikligi sorulari kesinlikle doktora yonlendirilir.",
     "steps": [
@@ -23,8 +41,14 @@
         "title": "Soru Siniflandirma",
         "goal": "Recete vs. tibbi soru ayirimi",
         "badges": [
-          { "text": "Sistem (AI)", "color": "purple" },
-          { "text": "Tenant (Kanal)", "color": "blue" }
+          {
+            "text": "Sistem (AI)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Kanal)",
+            "color": "blue"
+          }
         ],
         "content": "AI recete durumu sorusunu tibbi ilac sorusundan ayirt eder. Recete durumu otomatik cevaplanir, tibbi sorular doktora yonlendirilir."
       },
@@ -32,8 +56,14 @@
         "title": "Bilgi Sunumu",
         "goal": "Recete durumu bilgilendir",
         "badges": [
-          { "text": "Sistem (Knowledge)", "color": "purple" },
-          { "text": "Tenant (Eczane)", "color": "green" }
+          {
+            "text": "Sistem (Knowledge)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Eczane)",
+            "color": "green"
+          }
         ],
         "content": "Knowledge Base'den recete durumu (yazildi/yazilmadi), e-recete kodu ve en yakin eczane bilgisi sunulur."
       },
@@ -41,8 +71,14 @@
         "title": "Guvenli Yonlendirme",
         "goal": "Tibbi soruyu doktora ilet",
         "badges": [
-          { "text": "Sistem (Routing)", "color": "purple" },
-          { "text": "Tenant (Doktor)", "color": "red" }
+          {
+            "text": "Sistem (Routing)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Doktor)",
+            "color": "red"
+          }
         ],
         "content": "Dozaj, yan etki veya ilac degisikligi sorularinda 'Bu soruyu doktorunuz cevaplayabilir' mesaji ile guvenli yonlendirme yapilir."
       }
@@ -54,61 +90,175 @@
       "title": "Recete Durum Sorgusu",
       "description": "Hasta recetesinin yazilip yazilmadigini ve e-recete kodunu soruyor.",
       "tags": [
-        { "text": "Recete", "color": "blue" },
-        { "text": "E-Recete", "color": "green" }
+        {
+          "text": "Recete",
+          "color": "blue"
+        },
+        {
+          "text": "E-Recete",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Recete durum bilgi bankasi", "service": "Knowledge", "page": "Knowledge Base > Recete Durumu", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Hasta bazli recete durumu ve e-recete kodlarini Knowledge Base'e aktarin" },
-          { "text": "Eczane bilgi listesi", "service": "Knowledge", "page": "Knowledge Base > Eczane Bilgileri", "status": "setup", "priority": "optional", "effort": "easy", "capability": "C7", "hint": "Yakin eczane adresleri ve nobetci eczane bilgisini ekleyin" }
+          {
+            "text": "Recete durum bilgi bankasi",
+            "service": "Knowledge",
+            "page": "Knowledge Base > Recete Durumu",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C7",
+            "hint": "Hasta bazli recete durumu ve e-recete kodlarini Knowledge Base'e aktarin"
+          },
+          {
+            "text": "Eczane bilgi listesi",
+            "service": "Knowledge",
+            "page": "Knowledge Base > Eczane Bilgileri",
+            "status": "setup",
+            "priority": "optional",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Yakin eczane adresleri ve nobetci eczane bilgisini ekleyin"
+          }
         ],
         "provider": [
-          { "text": "Recete intent tespiti", "service": "AgentAI", "page": "Intent Tespiti > Recete", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Recete durumu ve ilac sorgulama intent'leri tanimli" },
-          { "text": "Knowledge Base arama", "service": "Knowledge", "page": "Arama > Recete Eslestirme", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "TC kimlik veya hasta ID ile recete durumu sorgulama hazir" }
+          {
+            "text": "Recete intent tespiti",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Recete",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Recete durumu ve ilac sorgulama intent'leri tanimli"
+          },
+          {
+            "text": "Knowledge Base arama",
+            "service": "Knowledge",
+            "page": "Arama > Recete Eslestirme",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "TC kimlik veya hasta ID ile recete durumu sorgulama hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Merhaba, dun muayene oldum. Recetemi yazdniz mi? Ilaci nereden alacagim?" },
-        { "role": "ai", "content": "Intent: Recete Durum Sorgusu. Hasta: Son muayene kaydi eslestiriliyor. Tibbi olmayan soru — otomatik cevaplanabilir." },
-        { "role": "bot", "content": "Merhaba Mehmet Bey! Recete durumunuzu kontrol ediyorum.\n\nReceteniz yazilmis durumda:\nDoktor: Dr. Elif Yildiz\nTarih: 19 Subat 2026\nE-Recete Kodu: A1B2-C3D4-E5F6\n\nIlaclarinizi herhangi bir eczaneden e-recete kodunuz ile alabilirsiniz. En yakin nobetci eczane:\n\nGul Eczanesi - Ataturk Cad. No:12\nTelefon: 0212 555 12 34\nCalisma: 24 saat (nobetci)\n\nBaska bir sorunuz var mi?" },
-        { "role": "user", "content": "Tesekkurler, cok sagolun!" },
-        { "role": "system", "content": "Recete durumu basariyla bildirildi. Otomatik cozum — agent mudahalesi gerekmedi." }
-      ]
+        {
+          "role": "user",
+          "content": "Merhaba, dun muayene oldum. Recetemi yazdniz mi? Ilaci nereden alacagim?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Recete Durum Sorgusu. Hasta: Son muayene kaydi eslestiriliyor. Tibbi olmayan soru — otomatik cevaplanabilir."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba Mehmet Bey! Recete durumunuzu kontrol ediyorum.\n\nReceteniz yazilmis durumda:\nDoktor: Dr. Elif Yildiz\nTarih: 19 Subat 2026\nE-Recete Kodu: A1B2-C3D4-E5F6\n\nIlaclarinizi herhangi bir eczaneden e-recete kodunuz ile alabilirsiniz. En yakin nobetci eczane:\n\nGul Eczanesi - Ataturk Cad. No:12\nTelefon: 0212 555 12 34\nCalisma: 24 saat (nobetci)\n\nBaska bir sorunuz var mi?"
+        },
+        {
+          "role": "user",
+          "content": "Tesekkurler, cok sagolun!"
+        },
+        {
+          "role": "system",
+          "content": "Recete durumu basariyla bildirildi. Otomatik cozum — agent mudahalesi gerekmedi."
+        }
+      ],
+      "aiPrompt": "\"Recete / Ilac Sorgulari\" senaryosu icin \"Recete Durum Sorgusu\" akisini olustur.\n\nAciklama: Hasta recetesinin yazilip yazilmadigini ve e-recete kodunu soruyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Merhaba, dun muayene oldum. Recetemi yazdniz mi? Ilaci nereden alacagim?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Recete Durum Sorgusu. Hasta: Son muayene kaydi eslestiriliyor. Tibbi olmayan soru — otomatik cevaplanabilir.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Merhaba Mehmet Bey! Recete durumunuzu kontrol ediyorum.\n\nReceteniz yazilmis durumda:\nDoktor: Dr. Elif Yildiz\nTarih: 19 Subat 2026\nE-Recete Kodu: A1B2-C3D4-E5F6\n\nIlaclarinizi herhangi bir eczaneden e-recete kodunuz ile alabilirsiniz. En yakin nobetci eczane:\n\nGul Eczanesi - Ataturk Cad. No:12\nTelefon: 0212 555 12 34\nCalisma: 24 saat (nobetci)\n\nBaska bir sorunuz var mi?\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tesekkurler, cok sagolun!\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Recete durumu basariyla bildirildi. Otomatik cozum — agent mudahalesi gerekmedi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Dozaj / Ilac Degisikligi Sorusu",
       "description": "Hasta ilac dozaj bilgisi veya degisiklik soruyor. Tibbi karar gerektirdigi icin doktora yonlendiriliyor.",
       "tags": [
-        { "text": "Tibbi Soru", "color": "red" },
-        { "text": "Doktor Yonlendirme", "color": "amber" }
+        {
+          "text": "Tibbi Soru",
+          "color": "red"
+        },
+        {
+          "text": "Doktor Yonlendirme",
+          "color": "amber"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Doktor iletisim routing kurallari", "service": "Backend", "page": "Routing > Tibbi Sorular", "status": "setup", "priority": "required", "effort": "easy", "capability": "C1", "hint": "Tibbi sorularin doktor veya hemsireye yonlendirilme kurallarini tanimlayin" }
+          {
+            "text": "Doktor iletisim routing kurallari",
+            "service": "Backend",
+            "page": "Routing > Tibbi Sorular",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "Tibbi sorularin doktor veya hemsireye yonlendirilme kurallarini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Tibbi soru siniflandirma", "service": "AgentAI", "page": "Intent Tespiti > Tibbi Karar", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Dozaj, yan etki, ilac degisikligi gibi tibbi karar gerektiren sorulari tespit eder" }
+          {
+            "text": "Tibbi soru siniflandirma",
+            "service": "AgentAI",
+            "page": "Intent Tespiti > Tibbi Karar",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Dozaj, yan etki, ilac degisikligi gibi tibbi karar gerektiren sorulari tespit eder"
+          }
         ]
       },
       "steps": [
-        { "role": "user", "content": "Doktor tansiyon ilaci yazdi ama basdönmesi yapyor. Dozu dusursem olur mu?" },
-        { "role": "ai", "content": "Intent: Tibbi Soru (Dozaj Degisikligi). Kategori: TIBBI KARAR GEREKLI. Otomatik cevaplama YASAK — doktora yonlendir." },
-        { "role": "bot", "content": "Mehmet Bey, ilac dozaj degisikligi tibbi bir karar gerektirdigi icin bu soruyu doktorunuzun cevaplamasn gerekir.\n\nOnemli: Doktor talimati olmadan ilac dozunuzu degistirmeyin.\n\nDr. Elif Yildiz'in asistanina mesajinizi iletiyorum. En ksa surede size donuec yapilacaktir.\n\nAcil bir durumunuz varsa 112'yi arayabilirsiniz." },
-        { "role": "user", "content": "Tamam, bekleyecegim." },
-        { "role": "system", "content": "Tibbi soru doktor asistanina eskalasyon yapildi. Hasta bilgilendirildi. Guvenli yonlendirme tamamlandi." }
-      ]
+        {
+          "role": "user",
+          "content": "Doktor tansiyon ilaci yazdi ama basdönmesi yapyor. Dozu dusursem olur mu?"
+        },
+        {
+          "role": "ai",
+          "content": "Intent: Tibbi Soru (Dozaj Degisikligi). Kategori: TIBBI KARAR GEREKLI. Otomatik cevaplama YASAK — doktora yonlendir."
+        },
+        {
+          "role": "bot",
+          "content": "Mehmet Bey, ilac dozaj degisikligi tibbi bir karar gerektirdigi icin bu soruyu doktorunuzun cevaplamasn gerekir.\n\nOnemli: Doktor talimati olmadan ilac dozunuzu degistirmeyin.\n\nDr. Elif Yildiz'in asistanina mesajinizi iletiyorum. En ksa surede size donuec yapilacaktir.\n\nAcil bir durumunuz varsa 112'yi arayabilirsiniz."
+        },
+        {
+          "role": "user",
+          "content": "Tamam, bekleyecegim."
+        },
+        {
+          "role": "system",
+          "content": "Tibbi soru doktor asistanina eskalasyon yapildi. Hasta bilgilendirildi. Guvenli yonlendirme tamamlandi."
+        }
+      ],
+      "aiPrompt": "\"Recete / Ilac Sorgulari\" senaryosu icin \"Dozaj / Ilac Degisikligi Sorusu\" akisini olustur.\n\nAciklama: Hasta ilac dozaj bilgisi veya degisiklik soruyor. Tibbi karar gerektirdigi icin doktora yonlendiriliyor.\n\n## Node Zinciri\n\n1. **trigger_start** — Musteri mesaji ile akis baslar\n\n2. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Doktor tansiyon ilaci yazdi ama basdönmesi yapyor. Dozu dusursem olur mu?\"\n   high_confidence → devam | low_confidence → action_handoff\n\n3. **ai_intent** — Niyet tespiti\n   Analiz: Intent: Tibbi Soru (Dozaj Degisikligi). Kategori: TIBBI KARAR GEREKLI. Otomatik cevaplama YASAK — doktora yonlendir.\n   Cikislar: high_confidence → ilgili dal | low_confidence → action_handoff\n\n4. **message_text** — Mesaj gonder\n   text: \"Mehmet Bey, ilac dozaj degisikligi tibbi bir karar gerektirdigi icin bu soruyu doktorunuzun cevaplamasn gerekir.\n\nOnemli: Doktor talimati olmadan ilac dozunuzu degistirmeyin.\n\nDr. Elif Yildiz'in asistanina mesajinizi iletiyorum. En ksa surede size donuec yapilacaktir.\n\nAcil bir durumunuz varsa 112'yi arayabilirsiniz.\"\n\n5. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tamam, bekleyecegim.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n6. **utility_note** — Akis sonuc notu\n   text: \"Tibbi soru doktor asistanina eskalasyon yapildi. Hasta bilgilendirildi. Guvenli yonlendirme tamamlandi.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryoda TIBBI GUVENLIK en kritik konudur. AI recete durumu gibi idari sorulari cevaplayabilir ancak dozaj, yan etki ve ilac degisikligi gibi tibbi karar gerektiren sorularda ASLA oneri yapmaz, doktora yonlendirir.",
     "backend": [
-      { "title": "Prescription Status Checker", "goal": "Recete Durum Kontrolu", "content": "Hasta ID veya TC kimlik ile recete durumunu (yazildi/beklemede) ve e-recete kodunu sorgular." },
-      { "title": "Medical Question Router", "goal": "Tibbi Soru Yonlendirme", "content": "Tibbi karar gerektiren sorulari tespit eder ve ilgili doktor/hemsireye guvenli eskalasyon yapar. Otomatik cevaplama engelleyici." }
+      {
+        "title": "Prescription Status Checker",
+        "goal": "Recete Durum Kontrolu",
+        "content": "Hasta ID veya TC kimlik ile recete durumunu (yazildi/beklemede) ve e-recete kodunu sorgular."
+      },
+      {
+        "title": "Medical Question Router",
+        "goal": "Tibbi Soru Yonlendirme",
+        "content": "Tibbi karar gerektiren sorulari tespit eder ve ilgili doktor/hemsireye guvenli eskalasyon yapar. Otomatik cevaplama engelleyici."
+      }
     ],
     "apis": [
-      { "title": "Knowledge Base API", "goal": "Recete Bilgisi", "content": "Hasta bazli recete durumu, e-recete kodu ve eczane bilgisi sorgulama." },
-      { "title": "CRM Routing API", "goal": "Doktor Yonlendirme", "content": "Tibbi soru eskalasyonunu ilgili doktor veya asistana atama ve bildirim gonderme." }
+      {
+        "title": "Knowledge Base API",
+        "goal": "Recete Bilgisi",
+        "content": "Hasta bazli recete durumu, e-recete kodu ve eczane bilgisi sorgulama."
+      },
+      {
+        "title": "CRM Routing API",
+        "goal": "Doktor Yonlendirme",
+        "content": "Tibbi soru eskalasyonunu ilgili doktor veya asistana atama ve bildirim gonderme."
+      }
     ]
   },
   "impact": {
@@ -117,9 +267,29 @@
     "resultLabel": "Tasarruf (Aylik)",
     "subscriptionCost": 3000,
     "inputs": [
-      { "key": "monthlyPrescriptionQueries", "label": "Aylik Recete Sorgusu", "default": 100, "hint": "Recete durumu soran hasta sayisi", "editable": true },
-      { "key": "minutesPerCall", "label": "Arama Basina Sure", "default": 5, "suffix": "dk", "hint": "Sekreter telefon gorusmesi suresi", "editable": true },
-      { "key": "secretaryHourlyCost", "label": "Sekreter Saatlik Maliyet", "default": 80, "suffix": "TL", "hint": "Sekreter saatlik ucreti", "editable": true }
+      {
+        "key": "monthlyPrescriptionQueries",
+        "label": "Aylik Recete Sorgusu",
+        "default": 100,
+        "hint": "Recete durumu soran hasta sayisi",
+        "editable": true
+      },
+      {
+        "key": "minutesPerCall",
+        "label": "Arama Basina Sure",
+        "default": 5,
+        "suffix": "dk",
+        "hint": "Sekreter telefon gorusmesi suresi",
+        "editable": true
+      },
+      {
+        "key": "secretaryHourlyCost",
+        "label": "Sekreter Saatlik Maliyet",
+        "default": 80,
+        "suffix": "TL",
+        "hint": "Sekreter saatlik ucreti",
+        "editable": true
+      }
     ],
     "formula": "monthlyPrescriptionQueries * minutesPerCall * (secretaryHourlyCost / 60)",
     "formulaDisplay": null

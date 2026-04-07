@@ -8,15 +8,36 @@
   "description": "Pazaryerlerinde (Trendyol, Hepsiburada) dusuk puanli yorumlari aninda tespit edip, musteriyle WhatsApp uzerinden iletisime gecerek sorunu cozen otonom sistem.",
   "overview": {
     "audience": [
-      { "label": "Sektor", "value": "E-Ticaret (Pazaryeri Saticilari)" },
-      { "label": "Platformlar", "value": "Trendyol, Hepsiburada, Amazon TR" },
-      { "label": "Hedef", "value": "Yuksek hacimli (gunluk 50+ kargo) saticilar" }
+      {
+        "label": "Sektor",
+        "value": "E-Ticaret (Pazaryeri Saticilari)"
+      },
+      {
+        "label": "Platformlar",
+        "value": "Trendyol, Hepsiburada, Amazon TR"
+      },
+      {
+        "label": "Hedef",
+        "value": "Yuksek hacimli (gunluk 50+ kargo) saticilar"
+      }
     ],
     "services": [
-      { "name": "Trendyol API", "color": "amber" },
-      { "name": "WhatsApp Business API", "color": "green" },
-      { "name": "AI Sentiment Engine", "color": "blue" },
-      { "name": "CRM Database", "color": "purple" }
+      {
+        "name": "Trendyol API",
+        "color": "amber"
+      },
+      {
+        "name": "WhatsApp Business API",
+        "color": "green"
+      },
+      {
+        "name": "AI Sentiment Engine",
+        "color": "blue"
+      },
+      {
+        "name": "CRM Database",
+        "color": "purple"
+      }
     ],
     "servicesNote": "Bu servisler birbiriyle asenkron olarak haberlesir ve tam otonom bir yapi olusturur.",
     "steps": [
@@ -24,8 +45,14 @@
         "title": "Tespit (Detection)",
         "goal": "Negatif yorumu yakala",
         "badges": [
-          { "text": "Sistem (Otomatik)", "color": "purple" },
-          { "text": "Tenant (API Key)", "color": "amber" }
+          {
+            "text": "Sistem (Otomatik)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (API Key)",
+            "color": "amber"
+          }
         ],
         "content": "Trendyol API /products/reviews endpoint'i her 15 dakikada bir taranir. 1-3 yildizli yorumlar filtrelenir."
       },
@@ -33,8 +60,14 @@
         "title": "Eslestirme (Matching)",
         "goal": "Musteri telefonunu bul",
         "badges": [
-          { "text": "Sistem (Algoritma)", "color": "purple" },
-          { "text": "Tenant (Veri Kaynagi)", "color": "blue" }
+          {
+            "text": "Sistem (Algoritma)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Veri Kaynagi)",
+            "color": "blue"
+          }
         ],
         "content": "Yorum yapan kisinin ismi ve tarihi ile siparis veritabani taranir. Fuzzy matching ile dogru telefon numarasi tespit edilir."
       },
@@ -42,8 +75,14 @@
         "title": "Analiz (Decision)",
         "goal": "Dogru aksiyonu planla",
         "badges": [
-          { "text": "Sistem (AI Model)", "color": "purple" },
-          { "text": "Tenant (Politika Dosyasi)", "color": "amber" }
+          {
+            "text": "Sistem (AI Model)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (Politika Dosyasi)",
+            "color": "amber"
+          }
         ],
         "content": "AI, yorumun icerigini okur (Kargo mu? Urun mu?) ve iade politikasina gore en uygun cozum onerisini (Iade/Degisim/Telafi) secer."
       },
@@ -51,8 +90,14 @@
         "title": "Aksiyon (Execution)",
         "goal": "Musteriyi geri kazan",
         "badges": [
-          { "text": "Sistem (Otonom)", "color": "purple" },
-          { "text": "Tenant (WhatsApp Hatti)", "color": "green" }
+          {
+            "text": "Sistem (Otonom)",
+            "color": "purple"
+          },
+          {
+            "text": "Tenant (WhatsApp Hatti)",
+            "color": "green"
+          }
         ],
         "content": "WhatsApp uzerinden musteriye ulasilir, sorun cozulur ve yorumun guncellenmesi rica edilir."
       }
@@ -64,137 +109,401 @@
       "title": "Gec Teslimat / Hasarli Urun",
       "description": "Musteri kargodan sikayetci. Urun kirik geldi.",
       "tags": [
-        { "text": "Otomatik Yanit", "color": "blue" },
-        { "text": "WhatsApp", "color": "green" }
+        {
+          "text": "Otomatik Yanit",
+          "color": "blue"
+        },
+        {
+          "text": "WhatsApp",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Yedek urun stogu", "service": "Backend", "page": "Urun Katalogu > Stok Yonetimi", "status": "setup", "priority": "required", "effort": "easy", "capability": "C11", "hint": "Envanter modulunde yedek urun miktarlarini guncel tutun" },
-          { "text": "Hizli kargo anlasmasi (MNG/Yurtici VIP)", "service": "Integrations", "page": "Kargo Entegrasyonlari", "status": "setup", "priority": "recommended", "effort": "medium", "capability": "C11", "hint": "Kargo firmasiyla VIP sozlesme yapilmasi gerekir" }
+          {
+            "text": "Yedek urun stogu",
+            "service": "Backend",
+            "page": "Urun Katalogu > Stok Yonetimi",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Envanter modulunde yedek urun miktarlarini guncel tutun"
+          },
+          {
+            "text": "Hizli kargo anlasmasi (MNG/Yurtici VIP)",
+            "service": "Integrations",
+            "page": "Kargo Entegrasyonlari",
+            "status": "setup",
+            "priority": "recommended",
+            "effort": "medium",
+            "capability": "C11",
+            "hint": "Kargo firmasiyla VIP sozlesme yapilmasi gerekir"
+          }
         ],
         "provider": [
-          { "text": "Hasar tanima promptu (Image Analysis opsiyonel)", "service": "AgentAI", "page": "Prompt Sablonlari > Gorsel Analiz", "status": "ready", "priority": "required", "effort": "easy", "capability": "C8", "hint": "Varsayilan hasar tanima promptu sistemde hazir, ozellestirilebilir" }
+          {
+            "text": "Hasar tanima promptu (Image Analysis opsiyonel)",
+            "service": "AgentAI",
+            "page": "Prompt Sablonlari > Gorsel Analiz",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C8",
+            "hint": "Varsayilan hasar tanima promptu sistemde hazir, ozellestirilebilir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Trendyol API: 1 Yildiz Yorum Tespit Edildi (\"Urun kirik geldi, rezalet\")" },
-        { "role": "ai", "content": "Analiz: Negatif - Kargo Hasari. Aksiyon: Telafi Modu." },
-        { "role": "bot", "content": "Merhaba [Ad], siparisinin hasarli ulastigini uzulerek ogrendik. Hemen telafi etmek istiyoruz. Kirik urunun fotografini iletirseniz aninda yenisini gondeelim." },
-        { "role": "user", "content": "[Fotograf gonderir]" },
-        { "role": "bot", "content": "Tesekkurler. Yeni urununuzu Yurt ici Kargo [Kod] ile kargoladik. Bu aksaklik icin ozur dileriz." },
-        { "role": "system", "content": "T+3 Gun: Teslimat Basarili." },
-        { "role": "bot", "content": "Merhaba, yeni urununuz saglam ulasti mi? Memnun kaldiyseniz yorumunuzu guncelleyerek bize destek olabilirsiniz." }
-      ]
+        {
+          "role": "system",
+          "content": "Trendyol API: 1 Yildiz Yorum Tespit Edildi (\"Urun kirik geldi, rezalet\")"
+        },
+        {
+          "role": "ai",
+          "content": "Analiz: Negatif - Kargo Hasari. Aksiyon: Telafi Modu."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad], siparisinin hasarli ulastigini uzulerek ogrendik. Hemen telafi etmek istiyoruz. Kirik urunun fotografini iletirseniz aninda yenisini gondeelim."
+        },
+        {
+          "role": "user",
+          "content": "[Fotograf gonderir]"
+        },
+        {
+          "role": "bot",
+          "content": "Tesekkurler. Yeni urununuzu Yurt ici Kargo [Kod] ile kargoladik. Bu aksaklik icin ozur dileriz."
+        },
+        {
+          "role": "system",
+          "content": "T+3 Gun: Teslimat Basarili."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba, yeni urununuz saglam ulasti mi? Memnun kaldiyseniz yorumunuzu guncelleyerek bize destek olabilirsiniz."
+        }
+      ],
+      "aiPrompt": "\"Negatif Yorum Kurtarma\" senaryosu icin \"Gec Teslimat / Hasarli Urun\" akisini olustur.\n\nAciklama: Musteri kargodan sikayetci. Urun kirik geldi.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Trendyol API: 1 Yildiz Yorum Tespit Edildi (\"Urun kirik geldi, rezalet\")\n\n2. **ai_sentiment** — Duygu analizi\n   Analiz: Analiz: Negatif - Kargo Hasari. Aksiyon: Telafi Modu.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n3. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad], siparisinin hasarli ulastigini uzulerek ogrendik. Hemen telafi etmek istiyoruz. Kirik urunun fotografini iletirseniz aninda yenisini gondeelim.\"\n   Degiskenler: {{ad}}\n\n4. **utility_set_variable** — Musteri medya yuklemesini kaydet\n   variable_name: \"customer_media\"\n   Not: Onceki message_text'in yanit beklemesi gerekir\n\n5. **message_text** — Mesaj gonder\n   text: \"Tesekkurler. Yeni urununuzu Yurt ici Kargo [Kod] ile kargoladik. Bu aksaklik icin ozur dileriz.\"\n   Degiskenler: {{kod}}\n\n6. **action_delay** — 3 gun bekle\n   seconds: 300\n   Not: T+3 Gun: Teslimat Basarili.\n\n7. **message_text** — Mesaj gonder\n   text: \"Merhaba, yeni urununuz saglam ulasti mi? Memnun kaldiyseniz yorumunuzu guncelleyerek bize destek olabilirsiniz.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-2",
       "title": "Yanlis Beden / Urun",
       "description": "Musteri yanlis urun geldigini belirtmis.",
       "tags": [
-        { "text": "Otomatik Yanit", "color": "blue" },
-        { "text": "WhatsApp", "color": "green" }
+        {
+          "text": "Otomatik Yanit",
+          "color": "blue"
+        },
+        {
+          "text": "WhatsApp",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Beden Tablosu Linki", "service": "Knowledge", "page": "Dokuman Bankasi > Urun Rehberleri", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urun bazinda beden/olcu tablosunu Knowledge Base'e yukleyin" },
-          { "text": "Esnek Iade Politikasi Onayi", "service": "Backend", "page": "Iade Politikalari", "status": "setup", "priority": "required", "effort": "easy", "capability": "C3", "hint": "Iade/degisim kosullarini tenant ayarlarindan tanimlayin" }
+          {
+            "text": "Beden Tablosu Linki",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Urun Rehberleri",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Urun bazinda beden/olcu tablosunu Knowledge Base'e yukleyin"
+          },
+          {
+            "text": "Esnek Iade Politikasi Onayi",
+            "service": "Backend",
+            "page": "Iade Politikalari",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C3",
+            "hint": "Iade/degisim kosullarini tenant ayarlarindan tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Beden eslestirme mantigi (L -> XL donusumu)", "service": "AgentAI", "page": "Eslestirme Kurallari > Beden Tablosu", "status": "ready", "priority": "required", "effort": "medium", "capability": "C8", "hint": "AI beden donusturme tablosunu otomatik kullanir, ozel kurallar eklenebilir" }
+          {
+            "text": "Beden eslestirme mantigi (L -> XL donusumu)",
+            "service": "AgentAI",
+            "page": "Eslestirme Kurallari > Beden Tablosu",
+            "status": "ready",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C8",
+            "hint": "AI beden donusturme tablosunu otomatik kullanir, ozel kurallar eklenebilir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Trendyol API: 2 Yildiz Yorum (\"XL istedim L geldi\")" },
-        { "role": "ai", "content": "Analiz: Operasyon Hatasi. Aksiyon: Degisim." },
-        { "role": "bot", "content": "Selamlar [Ad], bir karisiklik olmus, cok uzgunuz! Yanlis urunu geri gondermenize gerek yok, size hediye kalsin. Dogru bedeni hemen kargoluyoruz." },
-        { "role": "user", "content": "Gercekten mi? Cok tesekkurler." },
-        { "role": "bot", "content": "Rica ederiz, asil biz mahcubuz. Memnuniyetiniz bizim icin onemli. (Yorum revize ricasi)" }
-      ]
+        {
+          "role": "system",
+          "content": "Trendyol API: 2 Yildiz Yorum (\"XL istedim L geldi\")"
+        },
+        {
+          "role": "ai",
+          "content": "Analiz: Operasyon Hatasi. Aksiyon: Degisim."
+        },
+        {
+          "role": "bot",
+          "content": "Selamlar [Ad], bir karisiklik olmus, cok uzgunuz! Yanlis urunu geri gondermenize gerek yok, size hediye kalsin. Dogru bedeni hemen kargoluyoruz."
+        },
+        {
+          "role": "user",
+          "content": "Gercekten mi? Cok tesekkurler."
+        },
+        {
+          "role": "bot",
+          "content": "Rica ederiz, asil biz mahcubuz. Memnuniyetiniz bizim icin onemli. (Yorum revize ricasi)"
+        }
+      ],
+      "aiPrompt": "\"Negatif Yorum Kurtarma\" senaryosu icin \"Yanlis Beden / Urun\" akisini olustur.\n\nAciklama: Musteri yanlis urun geldigini belirtmis.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Trendyol API: 2 Yildiz Yorum (\"XL istedim L geldi\")\n\n2. **ai_sentiment** — Duygu analizi\n   Analiz: Analiz: Operasyon Hatasi. Aksiyon: Degisim.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n3. **message_text** — Mesaj gonder\n   text: \"Selamlar [Ad], bir karisiklik olmus, cok uzgunuz! Yanlis urunu geri gondermenize gerek yok, size hediye kalsin. Dogru bedeni hemen kargoluyoruz.\"\n   Degiskenler: {{ad}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Gercekten mi? Cok tesekkurler.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Rica ederiz, asil biz mahcubuz. Memnuniyetiniz bizim icin onemli. (Yorum revize ricasi)\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-3",
       "title": "Urun Orijinallik Suphesi",
       "description": "Musteri urunun sahte oldugunu iddia ediyor.",
       "tags": [
-        { "text": "Otomatik Yanit", "color": "blue" },
-        { "text": "WhatsApp", "color": "green" }
+        {
+          "text": "Otomatik Yanit",
+          "color": "blue"
+        },
+        {
+          "text": "WhatsApp",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Yetkili Satici Belgesi (PDF)", "service": "Knowledge", "page": "Dokuman Bankasi > Sertifikalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Yetkili bayilik/distributor belgesini PDF olarak yukleyin" },
-          { "text": "Fatura Silsilesi", "service": "Backend", "page": "Belge Yonetimi > Faturalar", "status": "setup", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Urunun alis faturasindan musteriye kadar iz surulecek belgeler" },
-          { "text": "UTS Sorgu Linki", "service": "Integrations", "page": "Dis Servis Linkleri", "status": "optional", "priority": "recommended", "effort": "easy", "capability": "C11", "hint": "Ilac/kozmetik urunlerinde UTS dogrulama linki (opsiyonel)" }
+          {
+            "text": "Yetkili Satici Belgesi (PDF)",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > Sertifikalar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Yetkili bayilik/distributor belgesini PDF olarak yukleyin"
+          },
+          {
+            "text": "Fatura Silsilesi",
+            "service": "Backend",
+            "page": "Belge Yonetimi > Faturalar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Urunun alis faturasindan musteriye kadar iz surulecek belgeler"
+          },
+          {
+            "text": "UTS Sorgu Linki",
+            "service": "Integrations",
+            "page": "Dis Servis Linkleri",
+            "status": "optional",
+            "priority": "recommended",
+            "effort": "easy",
+            "capability": "C11",
+            "hint": "Ilac/kozmetik urunlerinde UTS dogrulama linki (opsiyonel)"
+          }
         ],
         "provider": [
-          { "text": "Belge gonderme servisi (Media Message)", "service": "Integrations", "page": "WhatsApp Media API", "status": "ready", "priority": "required", "effort": "easy", "capability": "C1", "hint": "WhatsApp Business API uzerinden PDF/gorsel gonderimi — sistemde hazir" }
+          {
+            "text": "Belge gonderme servisi (Media Message)",
+            "service": "Integrations",
+            "page": "WhatsApp Media API",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C1",
+            "hint": "WhatsApp Business API uzerinden PDF/gorsel gonderimi — sistemde hazir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Trendyol API: 1 Yildiz (\"Urun sahte, barkodu okunmuyor\")" },
-        { "role": "ai", "content": "Analiz: Guven Sorunu (Kritik). Aksiyon: Kanit Sunma." },
-        { "role": "bot", "content": "Merhaba [Ad], endisenizi anliyoruz. Urunlerimiz %100 orijinaldir ve distributor garantilidir. Iste yetkili satici belgemiz ve urunun fatura silsilesi: [Belge.pdf]. Barkodu UTS sisteminden su linkten sorgulayabilirsiniz." },
-        { "role": "user", "content": "Tamam kontrol ettim, sorun yokmus." },
-        { "role": "bot", "content": "Iciniz rahat olsun. Yanlis anlasilmayi duzeltmek adina yorumunuzu guncellerseniz cok seviniriz." }
-      ]
+        {
+          "role": "system",
+          "content": "Trendyol API: 1 Yildiz (\"Urun sahte, barkodu okunmuyor\")"
+        },
+        {
+          "role": "ai",
+          "content": "Analiz: Guven Sorunu (Kritik). Aksiyon: Kanit Sunma."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba [Ad], endisenizi anliyoruz. Urunlerimiz %100 orijinaldir ve distributor garantilidir. Iste yetkili satici belgemiz ve urunun fatura silsilesi: [Belge.pdf]. Barkodu UTS sisteminden su linkten sorgulayabilirsiniz."
+        },
+        {
+          "role": "user",
+          "content": "Tamam kontrol ettim, sorun yokmus."
+        },
+        {
+          "role": "bot",
+          "content": "Iciniz rahat olsun. Yanlis anlasilmayi duzeltmek adina yorumunuzu guncellerseniz cok seviniriz."
+        }
+      ],
+      "aiPrompt": "\"Negatif Yorum Kurtarma\" senaryosu icin \"Urun Orijinallik Suphesi\" akisini olustur.\n\nAciklama: Musteri urunun sahte oldugunu iddia ediyor.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Trendyol API: 1 Yildiz (\"Urun sahte, barkodu okunmuyor\")\n\n2. **ai_sentiment** — Duygu analizi\n   Analiz: Analiz: Guven Sorunu (Kritik). Aksiyon: Kanit Sunma.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n3. **message_text** — Mesaj gonder\n   text: \"Merhaba [Ad], endisenizi anliyoruz. Urunlerimiz %100 orijinaldir ve distributor garantilidir. Iste yetkili satici belgemiz ve urunun fatura silsilesi: [Belge.pdf]. Barkodu UTS sisteminden su linkten sorgulayabilirsiniz.\"\n   Degiskenler: {{ad}}, {{belge.pdf}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Tamam kontrol ettim, sorun yokmus.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Iciniz rahat olsun. Yanlis anlasilmayi duzeltmek adina yorumunuzu guncellerseniz cok seviniriz.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-4",
       "title": "Memnuniyetsizlik",
       "description": "Musteri urunu kullanamadi, bozuk sandi.",
       "tags": [
-        { "text": "Otomatik Yanit", "color": "blue" },
-        { "text": "WhatsApp", "color": "green" }
+        {
+          "text": "Otomatik Yanit",
+          "color": "blue"
+        },
+        {
+          "text": "WhatsApp",
+          "color": "green"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Kullanim Kilavuzu Videosu (Youtube/Drive)", "service": "Knowledge", "page": "Medya Kutuphanesi > Videolar", "status": "setup", "priority": "required", "effort": "medium", "capability": "C7", "hint": "Urun bazinda kullanim videolarini Youtube/Drive'a yukleyip linkleyin" },
-          { "text": "SSS Dokumani", "service": "Knowledge", "page": "Dokuman Bankasi > SSS", "status": "setup", "priority": "recommended", "effort": "easy", "capability": "C7", "hint": "Sikca sorulan sorulari Knowledge Base'e ekleyin" }
+          {
+            "text": "Kullanim Kilavuzu Videosu (Youtube/Drive)",
+            "service": "Knowledge",
+            "page": "Medya Kutuphanesi > Videolar",
+            "status": "setup",
+            "priority": "required",
+            "effort": "medium",
+            "capability": "C7",
+            "hint": "Urun bazinda kullanim videolarini Youtube/Drive'a yukleyip linkleyin"
+          },
+          {
+            "text": "SSS Dokumani",
+            "service": "Knowledge",
+            "page": "Dokuman Bankasi > SSS",
+            "status": "setup",
+            "priority": "recommended",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Sikca sorulan sorulari Knowledge Base'e ekleyin"
+          }
         ],
         "provider": [
-          { "text": "Video linki veritabani", "service": "Knowledge", "page": "Medya Kutuphanesi > Videolar", "status": "ready", "priority": "required", "effort": "easy", "capability": "C7", "hint": "Medya kutuphanesi hazir — satici video yukleyince otomatik eslenir" }
+          {
+            "text": "Video linki veritabani",
+            "service": "Knowledge",
+            "page": "Medya Kutuphanesi > Videolar",
+            "status": "ready",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C7",
+            "hint": "Medya kutuphanesi hazir — satici video yukleyince otomatik eslenir"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Trendyol API: 2 Yildiz (\"Calismiyor, bozuk\")" },
-        { "role": "ai", "content": "Analiz: Kullanim Hatasi Ihtimali. Aksiyon: Egitim." },
-        { "role": "bot", "content": "Merhaba, urunle ilgili sorun yasadiginizi gorduk. Genellikle [Dugme]'ye basili tutulmadiginda bu durum yasanabiliyor. Su kisa videomuzu izleyip dener misiniz? [Video Link]" },
-        { "role": "user", "content": "Ah evet, simdi calisti. Tesekkurler." },
-        { "role": "bot", "content": "Harika! Keyifli kullanimlar dileriz. Yildiz sayimizi yukseltirseniz bizi cok mutlu edersiniz." }
-      ]
+        {
+          "role": "system",
+          "content": "Trendyol API: 2 Yildiz (\"Calismiyor, bozuk\")"
+        },
+        {
+          "role": "ai",
+          "content": "Analiz: Kullanim Hatasi Ihtimali. Aksiyon: Egitim."
+        },
+        {
+          "role": "bot",
+          "content": "Merhaba, urunle ilgili sorun yasadiginizi gorduk. Genellikle [Dugme]'ye basili tutulmadiginda bu durum yasanabiliyor. Su kisa videomuzu izleyip dener misiniz? [Video Link]"
+        },
+        {
+          "role": "user",
+          "content": "Ah evet, simdi calisti. Tesekkurler."
+        },
+        {
+          "role": "bot",
+          "content": "Harika! Keyifli kullanimlar dileriz. Yildiz sayimizi yukseltirseniz bizi cok mutlu edersiniz."
+        }
+      ],
+      "aiPrompt": "\"Negatif Yorum Kurtarma\" senaryosu icin \"Memnuniyetsizlik\" akisini olustur.\n\nAciklama: Musteri urunu kullanamadi, bozuk sandi.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Trendyol API: 2 Yildiz (\"Calismiyor, bozuk\")\n\n2. **ai_sentiment** — Duygu analizi\n   Analiz: Analiz: Kullanim Hatasi Ihtimali. Aksiyon: Egitim.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n3. **message_text** — Mesaj gonder\n   text: \"Merhaba, urunle ilgili sorun yasadiginizi gorduk. Genellikle [Dugme]'ye basili tutulmadiginda bu durum yasanabiliyor. Su kisa videomuzu izleyip dener misiniz? [Video Link]\"\n   Degiskenler: {{dugme}}, {{video_link}}\n\n4. **ai_intent** — Musteri yanitini analiz et\n   Beklenen yanit: \"Ah evet, simdi calisti. Tesekkurler.\"\n   high_confidence → devam | low_confidence → action_handoff\n\n5. **message_text** — Mesaj gonder\n   text: \"Harika! Keyifli kullanimlar dileriz. Yildiz sayimizi yukseltirseniz bizi cok mutlu edersiniz.\"\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     },
     {
       "id": "flow-5",
       "title": "Rakip / Spam",
       "description": "Gercek olmayan, tutarsiz siparis/yorum.",
       "tags": [
-        { "text": "Anomali Tespit", "color": "amber" },
-        { "text": "Manuel Kontrol", "color": "gray" }
+        {
+          "text": "Anomali Tespit",
+          "color": "amber"
+        },
+        {
+          "text": "Manuel Kontrol",
+          "color": "gray"
+        }
       ],
       "requirements": {
         "client": [
-          { "text": "Satici Destek Ekibi Irtibati", "service": "Backend", "page": "Ekip Yonetimi > Eskalasyon", "status": "setup", "priority": "required", "effort": "easy", "capability": "C2", "hint": "Eskalasyon akisinda haber verilecek kisi/ekip bilgisini tanimlayin" }
+          {
+            "text": "Satici Destek Ekibi Irtibati",
+            "service": "Backend",
+            "page": "Ekip Yonetimi > Eskalasyon",
+            "status": "setup",
+            "priority": "required",
+            "effort": "easy",
+            "capability": "C2",
+            "hint": "Eskalasyon akisinda haber verilecek kisi/ekip bilgisini tanimlayin"
+          }
         ],
         "provider": [
-          { "text": "Anomali tespit algoritmasi (Isim eslesmeme kontrolu)", "service": "ChatAnalysis", "page": "Anomali Kurallari", "status": "ready", "priority": "required", "effort": "technical", "capability": "C13", "hint": "Yorum-siparis isim/tarih tutarsizliklarini otomatik tespit eder" }
+          {
+            "text": "Anomali tespit algoritmasi (Isim eslesmeme kontrolu)",
+            "service": "ChatAnalysis",
+            "page": "Anomali Kurallari",
+            "status": "ready",
+            "priority": "required",
+            "effort": "technical",
+            "capability": "C13",
+            "hint": "Yorum-siparis isim/tarih tutarsizliklarini otomatik tespit eder"
+          }
         ]
       },
       "steps": [
-        { "role": "system", "content": "Trendyol API: 1 Yildiz (\"Berbat sakin almayin\")" },
-        { "role": "ai", "content": "Analiz: Siparis eslesmedi / Anomali. Aksiyon: Insan Kontrolu." },
-        { "role": "system", "content": "ALERT: Eslesmyen telefondan/kisiden yorum. Agent incelemesi gerekli." },
-        { "role": "agent", "content": "Manuel Kontrol: Siparis no yok. Trendyol Satici Destege \"Haksiz Rekabet\" bildirimi acildi." }
-      ]
+        {
+          "role": "system",
+          "content": "Trendyol API: 1 Yildiz (\"Berbat sakin almayin\")"
+        },
+        {
+          "role": "ai",
+          "content": "Analiz: Siparis eslesmedi / Anomali. Aksiyon: Insan Kontrolu."
+        },
+        {
+          "role": "system",
+          "content": "ALERT: Eslesmyen telefondan/kisiden yorum. Agent incelemesi gerekli."
+        },
+        {
+          "role": "agent",
+          "content": "Manuel Kontrol: Siparis no yok. Trendyol Satici Destege \"Haksiz Rekabet\" bildirimi acildi."
+        }
+      ],
+      "aiPrompt": "\"Negatif Yorum Kurtarma\" senaryosu icin \"Rakip / Spam\" akisini olustur.\n\nAciklama: Gercek olmayan, tutarsiz siparis/yorum.\n\n## Node Zinciri\n\n1. **webhook_trigger** — Dis sistem olayi tetikler\n   Olay: Trendyol API: 1 Yildiz (\"Berbat sakin almayin\")\n\n2. **ai_sentiment** — Duygu analizi\n   Analiz: Analiz: Siparis eslesmedi / Anomali. Aksiyon: Insan Kontrolu.\n   Cikislar: positive → devam | negative → eskalasyon | neutral → devam\n\n3. **utility_set_variable** — Alert durumu kaydet\n   variable_name: \"alert_status\"\n   value: \"ALERT: Eslesmyen telefondan/kisiden yorum. Agent incelemesi gerekli.\"\n\n4. **action_handoff** — Canli agent'a devret\n   summary_template: \"Manuel Kontrol: Siparis no yok. Trendyol Satici Destege \"Haksiz Rekabet\" bildirimi acildi.\"\n   (Terminal node — akis burada biter)\n\n## Hata Yonetimi\n- Timeout (yanit gelmezse): 24 saat sonra hatirlatma message_text gonder\n- Bilinmeyen yanit: ai_intent low_confidence → action_handoff\n- API hatasi: action_api_call error handle → action_handoff\n\n## Flow Ayarlari\n- session_timeout_minutes: 1440\n- handoff_confidence_threshold: 0.5\n- max_loop_count: 3\n"
     }
   ],
   "tech": {
     "note": "Bu senaryo tamamen asenkron calisir. Node.js backend uzerinde calisan Cron Job modulleri ve Queue sistemi (Redis) ile yonetilir.",
     "backend": [
-      { "title": "Cron Job Service", "goal": "Zamanli Gorevler", "content": "Node.js servisi, her 15 dakikada bir calisarak yeni verileri ceker." },
-      { "title": "Queue Manager", "goal": "Yuk Dengeleme", "content": "Redis kuyruk sistemi ile anlik binlerce yorum gelse bile sistem cokmeden sirayla isler." }
+      {
+        "title": "Cron Job Service",
+        "goal": "Zamanli Gorevler",
+        "content": "Node.js servisi, her 15 dakikada bir calisarak yeni verileri ceker."
+      },
+      {
+        "title": "Queue Manager",
+        "goal": "Yuk Dengeleme",
+        "content": "Redis kuyruk sistemi ile anlik binlerce yorum gelse bile sistem cokmeden sirayla isler."
+      }
     ],
     "apis": [
-      { "title": "Trendyol Seller API", "goal": "Veri Kaynagi", "content": "Oauth2 protokolu ile guvenli baglanti." },
-      { "title": "OpenAI GPT-4", "goal": "Zeka & Karar", "content": "Sentiment analysis ve cevap uretimi icin kullanilir." }
+      {
+        "title": "Trendyol Seller API",
+        "goal": "Veri Kaynagi",
+        "content": "Oauth2 protokolu ile guvenli baglanti."
+      },
+      {
+        "title": "OpenAI GPT-4",
+        "goal": "Zeka & Karar",
+        "content": "Sentiment analysis ve cevap uretimi icin kullanilir."
+      }
     ]
   },
   "impact": {
@@ -203,9 +512,31 @@
     "resultLabel": "Kurtarilan (%30)",
     "subscriptionCost": 5000,
     "inputs": [
-      { "key": "dailyOrders", "label": "Gunluk Siparis", "default": 200, "hint": "Ortalama kargo sayisi", "editable": true },
-      { "key": "errorRate", "label": "Hata Orani", "default": 0.5, "prefix": "%", "step": 0.1, "min": 0.1, "editable": true, "hint": "Negatif yorum orani" },
-      { "key": "avgBasket", "label": "Sepet Ortalamasi", "default": 1200, "suffix": "TL", "editable": true, "hint": "x 4 etkilenen musteri" }
+      {
+        "key": "dailyOrders",
+        "label": "Gunluk Siparis",
+        "default": 200,
+        "hint": "Ortalama kargo sayisi",
+        "editable": true
+      },
+      {
+        "key": "errorRate",
+        "label": "Hata Orani",
+        "default": 0.5,
+        "prefix": "%",
+        "step": 0.1,
+        "min": 0.1,
+        "editable": true,
+        "hint": "Negatif yorum orani"
+      },
+      {
+        "key": "avgBasket",
+        "label": "Sepet Ortalamasi",
+        "default": 1200,
+        "suffix": "TL",
+        "editable": true,
+        "hint": "x 4 etkilenen musteri"
+      }
     ],
     "formula": "Math.max(1, Math.round(dailyOrders * (errorRate / 100))) * 4 * avgBasket * 30 * 0.3",
     "formulaDisplay": null
