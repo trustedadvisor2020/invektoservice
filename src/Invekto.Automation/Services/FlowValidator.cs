@@ -11,12 +11,12 @@ public sealed class FlowValidator
 {
     private static readonly HashSet<string> TerminalTypes = new(StringComparer.Ordinal)
     {
-        "action_handoff"
+        "action_handoff", "action_assign_group"
     };
 
     private static readonly HashSet<string> NoOutputTypes = new(StringComparer.Ordinal)
     {
-        "action_handoff", "utility_note"
+        "action_handoff", "action_assign_group", "utility_note"
     };
 
     private static readonly HashSet<string> WaitTypes = new(StringComparer.Ordinal)
@@ -101,7 +101,17 @@ public sealed class FlowValidator
             }
         }
 
-        // 4b. logic_condition: value is required unless operator is "is_empty"
+        // 4b. message_menu: options must not be empty array
+        foreach (var node in graph.AllNodes.Where(n => n.Type == "message_menu"))
+        {
+            var optionsJson = node.GetData("options");
+            if (string.IsNullOrEmpty(optionsJson) || optionsJson == "[]")
+            {
+                errors.Add($"Menu secenekleri bos — node '{node.GetData("label", node.Id)}' ({node.Id}): en az 1 secenek ekleyin veya node tipini 'message_text' olarak degistirin");
+            }
+        }
+
+        // 4c. logic_condition: value is required unless operator is "is_empty"
         foreach (var node in graph.AllNodes.Where(n => n.Type == "logic_condition"))
         {
             var op = node.GetData("operator");

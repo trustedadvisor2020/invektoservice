@@ -600,8 +600,8 @@ app.MapPost("/api/v1/flows/{tenantId:int}", async (int tenantId, HttpContext ctx
     }
 });
 
-// PUT /api/v1/flows/{tenantId}/{flowId} — Update flow config
-app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+// PUT /api/v1/flows/{tenantId}/{flowId} — Update flow config (with health score)
+app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, FlowValidator validator, JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
 
@@ -642,7 +642,35 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
             jsonLogger.StepError($"[{ErrorCodes.AutomationVersionCreateFailed}] Flow version creation DB error for flow {flowId}: {versionEx.Message}", requestId);
         }
 
-        jsonLogger.StepInfo($"Flow updated for tenant {tenantId}: flow_id={flowId}", requestId);
+        // Non-blocking validation: calculate health score for response
+        int healthScore = 0;
+        string[] healthIssues = Array.Empty<string>();
+        int healthErrors = 0;
+        int healthWarnings = 0;
+        try
+        {
+            var health = validator.CalculateHealthScore(flowConfig!);
+            healthScore = health.Score;
+            healthIssues = health.Issues.ToArray();
+            healthErrors = health.ErrorCount;
+            healthWarnings = health.WarningCount;
+            if (healthErrors > 0)
+                jsonLogger.StepWarn($"Flow {flowId} saved with {healthErrors} error(s), {healthWarnings} warning(s), health={healthScore}", requestId);
+        }
+        catch (JsonException valEx)
+        {
+            jsonLogger.StepWarn($"Flow {flowId} health score calculation failed (JSON parse): {valEx.Message}", requestId);
+        }
+        catch (InvalidOperationException valEx)
+        {
+            jsonLogger.StepWarn($"Flow {flowId} health score calculation failed (graph build): {valEx.Message}", requestId);
+        }
+        catch (ArgumentException valEx)
+        {
+            jsonLogger.StepWarn($"Flow {flowId} health score calculation failed (argument): {valEx.Message}", requestId);
+        }
+
+        jsonLogger.StepInfo($"Flow updated for tenant {tenantId}: flow_id={flowId}, health={healthScore}", requestId);
 
         // Sync instance-flow mapping from trigger_start node (non-fatal)
         try
@@ -676,7 +704,17 @@ app.MapPut("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, int
             jsonLogger.StepError($"Instance mapping sync failed for flow {flowId}: {syncEx.Message}", requestId);
         }
 
-        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "updated", current_version = newVersion });
+        return Results.Ok(new
+        {
+            flow_id = flowId,
+            tenant_id = tenantId,
+            status = "updated",
+            current_version = newVersion,
+            health_score = healthScore,
+            health_errors = healthErrors,
+            health_warnings = healthWarnings,
+            health_issues = healthIssues
+        });
     }
     catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "23505")
     {
@@ -722,8 +760,8 @@ app.MapDelete("/api/v1/flows/{tenantId:int}/{flowId:int}", async (int tenantId, 
     }
 });
 
-// POST /api/v1/flows/{tenantId}/{flowId}/activate — Activate flow (deactivate others)
-app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/activate", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, JsonLinesLogger jsonLogger) =>
+// POST /api/v1/flows/{tenantId}/{flowId}/activate — Activate flow (validation gate: errors block activation)
+app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/activate", async (int tenantId, int flowId, HttpContext ctx, AutomationRepository repo, FlowValidator validator, JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
 
@@ -733,12 +771,38 @@ app.MapPost("/api/v1/flows/{tenantId:int}/{flowId:int}/activate", async (int ten
 
     try
     {
+        // Fetch flow config to validate before activation
+        var flow = await repo.GetFlowByIdAsync(tenantId, flowId);
+        if (flow == null)
+            return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
+
+        // Validation gate: block activation if flow has errors
+        var validation = validator.Validate(flow.FlowConfigJson);
+        if (!validation.IsValid)
+        {
+            jsonLogger.StepWarn($"Flow {flowId} activation blocked: {validation.Errors.Count} error(s)", requestId);
+            var healthScore = Math.Max(100 - Math.Min(validation.Errors.Count * 15, 60) - Math.Min(validation.Warnings.Count * 5, 30), 0);
+            var details = $"errors={validation.Errors.Count}, warnings={validation.Warnings.Count}, health_score={healthScore}; {string.Join("; ", validation.Errors)}";
+            return Results.Json(ErrorResponse.Create(
+                ErrorCodes.AutomationFlowValidationFailed,
+                $"Akis aktif edilemez — {validation.Errors.Count} hata bulundu. Once hatalari duzeltip tekrar deneyin.",
+                requestId,
+                details
+            ), statusCode: 422);
+        }
+
         var activated = await repo.ActivateFlowAsync(tenantId, flowId);
         if (!activated)
             return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowNotFoundById, "Belirtilen chatbot akisi bulunamadi", requestId), statusCode: 404);
 
-        jsonLogger.StepInfo($"Flow activated for tenant {tenantId}: flow_id={flowId}", requestId);
-        return Results.Ok(new { flow_id = flowId, tenant_id = tenantId, status = "activated" });
+        jsonLogger.StepInfo($"Flow activated for tenant {tenantId}: flow_id={flowId}, warnings={validation.Warnings.Count}", requestId);
+        return Results.Ok(new
+        {
+            flow_id = flowId,
+            tenant_id = tenantId,
+            status = "activated",
+            warnings = validation.Warnings
+        });
     }
     catch (Exception ex)
     {

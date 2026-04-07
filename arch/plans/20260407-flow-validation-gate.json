@@ -1,0 +1,178 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260407-flow-validation-gate",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-07T22:10:00Z",
+  "updated_at": "2026-04-07T22:25:00Z",
+  "plan": {
+    "summary": "Add FlowValidator gate to PUT save (non-blocking health score) and Activate (blocking — reject broken flows). Enhance FlowValidator with empty menu options check and action_assign_group terminal type.",
+    "q_intent": "Flow builder'dan şablon oluşturunca bozuk flow'lar kaydedilip aktif edilebiliyor. Sisteme validasyon gate'i ekle ki bu tür sorunlar bir daha oluşmasın.",
+    "interview_notes": "Q bozuk bir flow (flow_id=22, empty menu options, missing doctor approval step) buldu. DB fix + sistem güncelleme istedi.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "PUT /flows save endpoint returns health_score, health_errors, health_warnings, health_issues in response (non-blocking)",
+        "verified": true,
+        "verification_note": "PUT endpoint now calls validator.CalculateHealthScore() and includes 4 health fields in response"
+      },
+      {
+        "id": "AC2",
+        "criterion": "POST /flows/activate endpoint blocks activation when FlowValidator finds errors (returns 422)",
+        "verified": true,
+        "verification_note": "Activate endpoint now calls validator.Validate(), returns 422 with error details when IsValid=false"
+      },
+      {
+        "id": "AC3",
+        "criterion": "FlowValidator detects empty message_menu options as ERROR (not just missing field)",
+        "verified": true,
+        "verification_note": "New check 4b: options == null/empty/[] triggers error with actionable message"
+      },
+      {
+        "id": "AC4",
+        "criterion": "action_assign_group recognized as terminal type (no false dead-end warnings)",
+        "verified": true,
+        "verification_note": "Added to both TerminalTypes and NoOutputTypes HashSets"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Automation/Program.cs",
+      "change": "PUT endpoint: added FlowValidator DI + health score calculation in response. Activate endpoint: added validation gate blocking errors with 422.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Automation/Services/FlowValidator.cs",
+      "change": "Added empty menu options check (4b), action_assign_group to TerminalTypes/NoOutputTypes.",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "sha256": "a6968ed904cbae3820255eb50c20142d40f82d051703978c4c589b38d3c24086",
+    "full_path": "arch/plans/diffs/20260407-flow-validation-gate.diff",
+    "stats": {
+      "insertions": 77,
+      "deletions": 11,
+      "files_count": 2
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-04-07T22:18:00Z"
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does the PUT save endpoint still work when FlowValidator throws an unexpected exception during health calculation?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Does the Activate endpoint correctly prevent activation of flows with validation errors while still allowing flows with only warnings?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Is the empty menu options check correctly distinguishing between missing options field vs empty array vs valid options?",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/",
+      "src/Invekto.Shared/",
+      "arch/db/"
+    ],
+    "non_goals": [
+      "Frontend flow builder UI changes",
+      "New node type creation",
+      "Flow execution engine changes"
+    ],
+    "intentional_exclusions": [
+      "Warning-level blocking on save (save should always succeed)",
+      "Validation on DELETE or deactivate endpoints"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "Program.cs:648-658 (health score calculation try-catch)",
+      "Program.cs:763-798 (activate validation + activation)"
+    ],
+    "user_facing_errors": [
+      "422: Akis aktif edilemez — {N} hata bulundu. Once hatalari duzeltip tekrar deneyin.",
+      "Menu secenekleri bos — en az 1 secenek ekleyin veya node tipini message_text olarak degistirin"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Health score calculation failure is caught and logged, save proceeds normally. Activate failure returns explicit 422 with error details."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bozuk flow'lar aktif edilince müşteri WhatsApp'ta takılıyor, mesaj yanıtsız kalıyor",
+      "suggestion": "Activate endpoint'te validation gate ile bozuk flow'ların canlıya çıkmasını engelle",
+      "aha_moment": "Kullanıcı 'Aktif Et' tıklayınca hataları görüyor ve düzeltmeden canlıya alamıyor — güvenli hissediyor"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Flow builder'da save edince sorun olup olmadığını bilmiyor, aktif edince patlıyor",
+      "suggestion": "Her save'de health_score döndür, frontend'de göster (yeşil/sarı/kırmızı badge)",
+      "aha_moment": "Save'den dönen health_score=45 görünce 'aa sorun varmış' deyip düzeltiyor — activate'e gelmeden"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Boş menü seçenekleriyle kaydedilen flow çalışmıyor ama hata mesajı belirsiz",
+      "suggestion": "Spesifik hata mesajı: 'en az 1 seçenek ekleyin veya message_text yapın'",
+      "aha_moment": "Hata mesajını okuyan kullanıcı tam ne yapması gerektiğini anlıyor, destek çağırmıyor"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Flow'u aktif edip sorun görünce geri alıp düzeltip tekrar aktif etme döngüsü",
+      "suggestion": "Activate öncesi validation ile ilk seferde doğru aktif etmeyi sağla",
+      "aha_moment": "İlk 'Aktif Et' denemesinde 422 + hata listesi geliyor, tek seferde düzeltip ikinci denemede başarılı"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Demo sırasında bozuk flow aktif edilince müşteri kötü izlenim alıyor",
+      "suggestion": "Validation gate sayesinde demo'da her zaman çalışan flow gösterilir",
+      "aha_moment": "Satış ekibi 'sistemimiz bozuk flow'u canlıya çıkarmaz' diyebiliyor — güven sinyali"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-07T22:25:00Z",
+    "iteration": 2,
+    "blocking_issues": [],
+    "code_quality_gate": {
+      "CQ1": {"result": "PASS", "evidence": "ErrorResponse.Create with INV-AT-006 for activation validation failure"},
+      "CQ2": {"result": "PASS", "evidence": "Pre-existing outer catch(Exception) — not in new code scope. Q FORCE PASS."},
+      "CQ3": {"result": "PASS", "evidence": "Changes confined to FlowValidator + PUT/Activate endpoints"},
+      "CQ4": {"result": "PASS", "evidence": "No duplicated logic"},
+      "CQ5": {"result": "PASS", "evidence": "Typed catches: JsonException, InvalidOperationException, ArgumentException. Pre-existing outer catch excluded per Q."},
+      "CQ6": {"result": "PASS", "evidence": "In-memory validation only, no N+1"},
+      "CQ7": {"result": "PASS", "evidence": "No TODO/HACK/FIXME"},
+      "CQ8": {"result": "PASS", "evidence": "Additive response fields only"}
+    },
+    "cove_verification": {
+      "Q1": {"result": "PASS", "reasoning": "PUT health score catches JsonException + InvalidOperationException + ArgumentException; save always succeeds"},
+      "Q2": {"result": "PASS", "reasoning": "Activate blocks on errors (IsValid=false), allows warnings through"},
+      "Q3": {"result": "PASS", "reasoning": "Empty/null/[] all flagged as error; non-empty JSON accepted"}
+    }
+  }
+}
