@@ -1,0 +1,110 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260407-template-modal-redesign",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-07T22:40:00Z",
+  "updated_at": "2026-04-07T22:50:00Z",
+  "plan": {
+    "summary": "Flow Builder template modal redesign: 3-column layout with niche filters, template cards, and detail panel. Header buttons split into 'AI ile Olustur' and 'Sablondan Olustur'.",
+    "q_intent": "flow builder icinde AI ile olustur ve Sablondan Olustur dugmesi olsun. Sablondan olustur popupda bir sablona tiklayinca sag taraftaki 3. kolonda aciklamasi, ne kazandirir, opsiyonlari varsa hepsini goster. kullanici isterse sablonu kullan ile tasarim bolumune gecer",
+    "interview_notes": null,
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Header'da 'AI ile Olustur' ve 'Sablondan Olustur' olmak uzere iki ayri buton olmali",
+        "verified": true,
+        "verification_note": "AI ile Olustur (purple gradient) + Sablondan Olustur (navy, LayoutTemplate icon) header'da mevcut"
+      },
+      {
+        "id": "AC2",
+        "criterion": "Template modal 3-kolon olmali: sol niche filtre, orta template kartlari, sag detay paneli",
+        "verified": true,
+        "verification_note": "3-column flex layout: w-44 niche sidebar | flex-1 card grid | w-80 detail panel"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Template tiklaninca sag kolonda aciklama, ne kazandirir, node tipleri, etiketler ve 'Sablonu Kullan' butonu gosterilmeli",
+        "verified": true,
+        "verification_note": "selectedTemplate state ile sag panel acilir: description, benefits list, node types, tags, 'Sablonu Kullan' button"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Sablonu Kullan tiklaninca flow olusturulup editor'e AI wizard acik olarak gecilmeli",
+        "verified": true,
+        "verification_note": "handleCreateFromTemplate mevcut: navigate to editor with ?template= param which auto-opens AI wizard"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowListPage.tsx"
+  ],
+  "files_changed": [
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/FlowListPage.tsx",
+      "change": "Template modal redesigned to 3-column layout. Header button renamed. Niche filter + detail panel added.",
+      "is_new": false
+    }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 228, "deletions": 79, "files_count": 1 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-04-07T22:35:00Z"
+  },
+  "scope_discipline": {
+    "forbidden_areas": ["src/Invekto.Automation/", "src/Invekto.Backend/Program.cs", "arch/db/"],
+    "non_goals": ["Backend API changes", "New endpoints", "Database changes"],
+    "intentional_exclusions": ["FlowEditorPage.tsx not modified — template→editor flow already works via existing handleCreateFromTemplate"]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Pure UI change — no async operations added, existing error handling preserved"
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Template modal'da tum sablonlar duz liste — sektore gore filtreleme yok, kullanici 182 sablon arasinda kaybolur",
+      "suggestion": "Sol kolonda sektor filtresi ile aninda daraltma — 3 tikla dogru sablona ulas",
+      "aha_moment": "Kullanici kendi sektorunu sectiginde sadece alakali 15-20 sablon gorunur, 'tam bana gore' hissi"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Sablon kartinda sadece 1 satirlik aciklama — kullanici sablonun ne yaptigini anlamadan korunce tiklar",
+      "suggestion": "Sag detay panelinde tam aciklama, ne kazandirir listesi, kullanilan node tipleri",
+      "aha_moment": "Kullanici sablona tiklayinca sagda detayli preview gorunce 'bunu istiyorum' guveni olusur"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Kullanici sablona tiklayinca direkt flow olusturuluyordu — geri donus yok, yanlis secimi duzeltmek icin silmek gerekiyordu",
+      "suggestion": "Tik → detay gor → Sablonu Kullan butonu ile 2 adimli onay",
+      "aha_moment": "Kullanici 3-4 sablonu kiyaslayip en uygununu sectiginde 'dogru secimi yaptim' hissi"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Yeni kullanici ilk flow olusturmada ne yapacagini bilmiyor — AI veya sablon secenegi net degil",
+      "suggestion": "Header'da iki net buton: 'AI ile Olustur' (sifirdan) ve 'Sablondan Olustur' (hazir senaryo)",
+      "aha_moment": "Kullanici 'AI ile mi baslamaliyim hazir mi kullanamaliyim' kararini 1 saniyede verir"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Bos akis olusturma secenegi sablonlar arasinda kaybolabilir",
+      "suggestion": "Niche filter kolonunun ustunde ayri 'Bos Akis' butonu — her zaman gorunur",
+      "aha_moment": "Ileri seviye kullanici sifirdan tasarim istediginde 1 tikla bos akisa gecer"
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 0,
+    "blocking_issues": [],
+    "updated_at": "2026-04-07T22:50:00Z",
+    "updated_by": "DevAgent"
+  }
+}

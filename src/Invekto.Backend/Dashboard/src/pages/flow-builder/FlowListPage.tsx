@@ -79,6 +79,8 @@ export function FlowListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateCreating, setTemplateCreating] = useState<string | null>(null);
+  const [selectedNiche, setSelectedNiche] = useState<string>('all');
+  const [selectedTemplate, setSelectedTemplate] = useState<FlowTemplate | null>(null);
 
   const fetchFlows = useCallback(async () => {
     if (!tenantId) return;
@@ -99,6 +101,8 @@ export function FlowListPage() {
   const openNewDialog = () => {
     setTemplateSearch('');
     setTemplateCreating(null);
+    setSelectedNiche('all');
+    setSelectedTemplate(null);
     setShowTemplateModal(true);
   };
 
@@ -310,8 +314,8 @@ export function FlowListPage() {
               onClick={openNewDialog}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-lg transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-              Yeni Flow
+              <LayoutTemplate className="w-3.5 h-3.5" />
+              Sablondan Olustur
             </button>
           </div>
         </div>
@@ -359,8 +363,8 @@ export function FlowListPage() {
                 onClick={openNewDialog}
                 className="flex items-center gap-1.5 px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                Bos Flow
+                <LayoutTemplate className="w-3.5 h-3.5" />
+                Sablondan Olustur
               </button>
             </div>
           </div>
@@ -552,88 +556,233 @@ export function FlowListPage() {
         </div>
       )}
 
-      {/* ── Template Selection Modal ── */}
-      {showTemplateModal && (
-        <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => !templateCreating && setShowTemplateModal(false)}>
-          <div
-            className="bg-white border border-navy-100 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-elevated flow-card-enter"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-navy-50">
-              <h2 className="text-lg font-display font-semibold text-navy-900">Yeni Flow Olustur</h2>
-              <button
-                onClick={() => setShowTemplateModal(false)}
-                disabled={!!templateCreating}
-                className="p-1.5 rounded-lg text-navy-300 hover:text-navy-500 hover:bg-navy-50 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* ── Template Selection Modal (3-column) ── */}
+      {showTemplateModal && (() => {
+        const niches = Array.from(new Set(FLOW_TEMPLATES.map(t => t.niche)));
+        const filteredTemplates = FLOW_TEMPLATES.filter(t => {
+          const matchNiche = selectedNiche === 'all' || t.niche === selectedNiche;
+          if (!templateSearch) return matchNiche;
+          const q = templateSearch.toLowerCase();
+          return matchNiche && (t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q));
+        });
+        const nodeTypes = selectedTemplate
+          ? Array.from(new Set(selectedTemplate.flowConfig.nodes.map(n => n.type))).filter(t => t !== 'trigger_start')
+          : [];
 
-            {/* Blank + Search */}
-            <div className="px-5 pt-4 pb-3 space-y-3 border-b border-navy-50">
-              <button
-                onClick={openBlankDialog}
-                className="w-full flex items-center gap-3 px-4 py-3 border-2 border-dashed border-navy-200 rounded-xl text-navy-500 hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50/30 transition-all"
-              >
-                <Plus className="w-5 h-5" strokeWidth={2} />
-                <span className="text-sm font-medium">Bos Akis Olustur</span>
-              </button>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-300" />
-                <input
-                  type="text"
-                  placeholder="Sablon ara..."
-                  value={templateSearch}
-                  onChange={e => setTemplateSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-navy-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent"
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {/* Template Grid */}
-            <div className="flex-1 overflow-y-auto p-5">
-              <div className="grid grid-cols-2 gap-3">
-                {FLOW_TEMPLATES
-                  .filter(t => {
-                    if (!templateSearch) return true;
-                    const q = templateSearch.toLowerCase();
-                    return t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q);
-                  })
-                  .slice(0, 40)
-                  .map(tpl => (
-                    <button
-                      key={tpl.id}
-                      onClick={() => handleCreateFromTemplate(tpl)}
-                      disabled={!!templateCreating}
-                      className="text-left p-3 border border-navy-100 rounded-xl hover:border-brand-300 hover:bg-brand-50/20 transition-all disabled:opacity-50 group"
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <GitBranch className="w-3.5 h-3.5 text-brand-500" />
-                        <span className="text-[10px] font-bold uppercase text-navy-400">
-                          {NICHE_LABELS[tpl.niche] || tpl.niche}
-                        </span>
-                        <span className="text-[10px] text-navy-300 ml-auto">{tpl.nodeCount} node</span>
-                      </div>
-                      <p className="text-sm font-semibold text-navy-800 line-clamp-1 group-hover:text-brand-700 transition-colors">
-                        {templateCreating === tpl.id ? 'Olusturuluyor...' : tpl.title}
-                      </p>
-                      <p className="text-[11px] text-navy-400 line-clamp-1 mt-0.5">{tpl.description}</p>
-                    </button>
-                  ))}
-              </div>
-              {templateSearch && FLOW_TEMPLATES.filter(t => t.title.toLowerCase().includes(templateSearch.toLowerCase()) || t.description.toLowerCase().includes(templateSearch.toLowerCase())).length === 0 && (
-                <div className="text-center py-10">
-                  <LayoutTemplate className="w-8 h-8 text-navy-200 mx-auto mb-2" />
-                  <p className="text-sm text-navy-400">Eslesen sablon bulunamadi</p>
+        return (
+          <div className="fixed inset-0 bg-navy-900/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => !templateCreating && setShowTemplateModal(false)}>
+            <div
+              className="bg-white border border-navy-100 rounded-2xl w-full max-w-5xl h-[82vh] flex flex-col shadow-elevated flow-card-enter"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-navy-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center">
+                    <LayoutTemplate className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-display font-semibold text-navy-900">Sablondan Olustur</h2>
+                    <p className="text-xs text-navy-400">{FLOW_TEMPLATES.length} hazir sablon</p>
+                  </div>
                 </div>
-              )}
+                <button
+                  onClick={() => setShowTemplateModal(false)}
+                  disabled={!!templateCreating}
+                  className="p-1.5 rounded-lg text-navy-300 hover:text-navy-500 hover:bg-navy-50 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 3-Column Body */}
+              <div className="flex-1 flex min-h-0">
+                {/* Col 1: Niche Filters */}
+                <div className="w-44 flex-shrink-0 border-r border-navy-100 py-3 px-3 overflow-y-auto">
+                  <button
+                    onClick={openBlankDialog}
+                    className="w-full flex items-center gap-2 px-3 py-2 mb-3 border-2 border-dashed border-navy-200 rounded-lg text-navy-500 hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50/30 transition-all text-xs font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+                    Bos Akis
+                  </button>
+                  <p className="text-[10px] font-bold uppercase text-navy-300 px-2 mb-1.5">Sektor</p>
+                  <button
+                    onClick={() => { setSelectedNiche('all'); setSelectedTemplate(null); }}
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors mb-0.5 ${selectedNiche === 'all' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-navy-500 hover:bg-navy-50'}`}
+                  >
+                    Tumunu Goster
+                  </button>
+                  {niches.map(niche => {
+                    const count = FLOW_TEMPLATES.filter(t => t.niche === niche).length;
+                    return (
+                      <button
+                        key={niche}
+                        onClick={() => { setSelectedNiche(niche); setSelectedTemplate(null); }}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors mb-0.5 flex items-center justify-between ${selectedNiche === niche ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-navy-500 hover:bg-navy-50'}`}
+                      >
+                        <span>{NICHE_LABELS[niche] || niche}</span>
+                        <span className="text-[10px] text-navy-300">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Col 2: Template Cards */}
+                <div className={`flex-1 flex flex-col min-w-0 border-r border-navy-100 ${selectedTemplate ? '' : 'border-r-0'}`}>
+                  {/* Search */}
+                  <div className="px-4 py-3 border-b border-navy-50">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-300" />
+                      <input
+                        type="text"
+                        placeholder="Sablon ara..."
+                        value={templateSearch}
+                        onChange={e => { setTemplateSearch(e.target.value); setSelectedTemplate(null); }}
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-navy-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cards */}
+                  <div className="flex-1 overflow-y-auto p-4">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {filteredTemplates.slice(0, 60).map(tpl => (
+                        <button
+                          key={tpl.id}
+                          onClick={() => setSelectedTemplate(tpl)}
+                          disabled={!!templateCreating}
+                          className={`text-left p-3 border rounded-xl transition-all disabled:opacity-50 group ${
+                            selectedTemplate?.id === tpl.id
+                              ? 'border-brand-400 bg-brand-50/40 ring-1 ring-brand-200'
+                              : 'border-navy-100 hover:border-brand-300 hover:bg-brand-50/20'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <GitBranch className="w-3 h-3 text-brand-500 flex-shrink-0" />
+                            <span className="text-[10px] font-bold uppercase text-navy-400 truncate">
+                              {NICHE_LABELS[tpl.niche] || tpl.niche}
+                            </span>
+                            <span className="text-[10px] text-navy-300 ml-auto flex-shrink-0">{tpl.nodeCount} node</span>
+                          </div>
+                          <p className="text-sm font-semibold text-navy-800 line-clamp-1 group-hover:text-brand-700 transition-colors">
+                            {tpl.title}
+                          </p>
+                          <p className="text-[11px] text-navy-400 line-clamp-2 mt-0.5 leading-relaxed">{tpl.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                    {filteredTemplates.length === 0 && (
+                      <div className="text-center py-14">
+                        <LayoutTemplate className="w-8 h-8 text-navy-200 mx-auto mb-2" />
+                        <p className="text-sm text-navy-400">Eslesen sablon bulunamadi</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Col 3: Detail Panel */}
+                {selectedTemplate && (
+                  <div className="w-80 flex-shrink-0 flex flex-col overflow-y-auto">
+                    <div className="p-5 flex-1">
+                      {/* Title & badge */}
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center flex-shrink-0">
+                          <GitBranch className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-base font-display font-bold text-navy-900 leading-snug">{selectedTemplate.title}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold uppercase text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+                              {NICHE_LABELS[selectedTemplate.niche] || selectedTemplate.niche}
+                            </span>
+                            <span className="text-[10px] text-navy-400">{selectedTemplate.nodeCount} node</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="mb-5">
+                        <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Aciklama</h4>
+                        <p className="text-sm text-navy-600 leading-relaxed">{selectedTemplate.description}</p>
+                      </div>
+
+                      {/* Benefits */}
+                      <div className="mb-5">
+                        <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Ne Kazandirir</h4>
+                        <ul className="space-y-1.5">
+                          <li className="flex items-start gap-2 text-sm text-navy-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+                            Hazir akis — sifirdan tasarim gerektirmez
+                          </li>
+                          <li className="flex items-start gap-2 text-sm text-navy-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+                            {selectedTemplate.nodeCount} adimlik senaryo kurulumu
+                          </li>
+                          <li className="flex items-start gap-2 text-sm text-navy-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+                            AI Wizard ile sektorunuze ozellestirilir
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Node Types */}
+                      {nodeTypes.length > 0 && (
+                        <div className="mb-5">
+                          <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Kullanilan Node'lar</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {nodeTypes.map(t => (
+                              <span key={t} className="text-[10px] px-2 py-0.5 bg-navy-50 text-navy-500 rounded-full border border-navy-100">
+                                {t.replace(/_/g, ' ')}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tags */}
+                      {selectedTemplate.tags.length > 0 && (
+                        <div className="mb-5">
+                          <h4 className="text-xs font-bold uppercase text-navy-400 mb-1.5">Etiketler</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedTemplate.tags.map(tag => (
+                              <span key={tag} className="text-[10px] px-2 py-0.5 bg-brand-50 text-brand-600 rounded-full">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="p-5 pt-0 mt-auto">
+                      <button
+                        onClick={() => handleCreateFromTemplate(selectedTemplate)}
+                        disabled={!!templateCreating}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                      >
+                        {templateCreating === selectedTemplate.id ? (
+                          'Olusturuluyor...'
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Sablonu Kullan
+                          </>
+                        )}
+                      </button>
+                      <p className="text-[10px] text-navy-400 text-center mt-2">
+                        Sablon yuklenecek ve AI Wizard ile ozellestirmeye hazir olacak
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
