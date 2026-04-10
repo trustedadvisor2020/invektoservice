@@ -25,6 +25,21 @@
             "type": "command",
             "command": "powershell -NoProfile -NonInteractive -File .claude/hooks/invariant-check.ps1",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -NonInteractive -File .claude/hooks/check-shared-microservice.ps1",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__invekto-ops__server-upload|mcp__invekto-ops__server-exec",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -NonInteractive -File .claude/hooks/deploy-verify.ps1",
+            "timeout": 10
           }
         ]
       }

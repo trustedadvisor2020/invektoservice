@@ -1,4 +1,4 @@
-<!-- VERSION: 5.5 | UPDATED: 2026-04-10 | AI-layer consistency sweep: phantom skill cleanup, bootstrap align, LOW=Codex zorunlu -->
+<!-- VERSION: 5.6 | UPDATED: 2026-04-11 | TONIVA auto parity port: review-policy v3.2, /evolve + /instinct-status, code-simplifier, service-isolation-checker, check-shared-microservice + deploy-verify hooks -->
 <!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> MCP Codex -> Commit -->
 <!-- HARITA YAKLAŞIMI: Bu dosya kisa tutuluyor, detaylar INVEKTO_BASE.prompt.md + arch/ dosyalarinda. -->
 # InvektoServices
@@ -97,6 +97,8 @@ Her session basladiginda otomatik:
 - `INVEKTO_DEV_AGENT.prompt.md` — Implementation (self-review + MCP Codex)
 - `INVEKTO_AUDIT_AGENT.prompt.md` — Codebase audit (Q triggers manually)
 - `build-runner.md`, `db-query.md` — Helper agents (haiku)
+- `code-simplifier.md` — Karmaşık kodu refactor eder (opus, manuel çağır)
+- `service-isolation-checker.md` — Mikro servis izolasyonu doğrular (haiku, Shared değiştiğinde manuel çağır)
 
 **Local Commands** (`.claude/commands/`, slash-invoked):
 - `/brief` — Session brief (okur: lessons-learned + session-memory)
@@ -105,6 +107,8 @@ Her session basladiginda otomatik:
 - `/chat-export` — Sohbet export
 - `/sync-check` — Arch/kod senkronizasyon kontrolü
 - `/test-ui` — UI testing (Playwright)
+- `/evolve` — Yüksek confidence pattern'i skill'e dönüştürür
+- `/instinct-status` — Öğrenilmiş pattern'lerin özetini gösterir
 
 **Global Skills** (`~/.claude/skills/`, repo'da değil — kullanıcı seviyesi):
 `auto`, `rev`, `wrap`, `aha`, `push`, `learn`, `session-prompt`.
@@ -118,6 +122,8 @@ Bu skill'ler tüm projelerde ortak çalışır, local karşılığı YOKTUR.
 |-------|-------|-------|----------|
 | Build gerekli (kod degisikligi sonrasi) | `build-runner` | haiku | Sadece `dotnet build` komutlari |
 | DB sorgusu gerekli (Postgres) | `db-query` | haiku | **SADECE SELECT** — write YASAK |
+| Shared/DTO veya cross-service dokunulduysa | `service-isolation-checker` | haiku | Read-only; isolation ihlali tespit |
+| Karmaşık kod refactor gerekli | `code-simplifier` | opus | Behavior-preserving refactor |
 
 > **ADVISORY, enforce DEGIL:** Bu agent'lar hook ile otomatik cagrilmaz. Gerektiginde Claude Code manuel `Agent` tool'u ile spawn eder. Duruma gore agent davranisi secilir.
 
@@ -128,14 +134,17 @@ Ana context sadece sonuclari alir, arastirma detaylarini degil.
 
 ## Hooks (Mekanik Zorlama)
 
-`.claude/hooks/` altinda 2 lokal hook aktif + 1 global hook:
+`.claude/hooks/` altinda 5 lokal hook aktif + 1 global hook + 1 opsiyonel:
 
 | Hook | Tetikleme | Davranis |
 |------|-----------|----------|
 | `session-init.ps1` | SessionStart | Non-blocking - kritik dosya hatirlatma, workflow durumu |
 | `build-reminder.ps1` | PostToolUse: Edit/Write (.cs) | Non-blocking - build hatirlatmasi + remediation inject |
 | `invariant-check.ps1` | PostToolUse: Edit/Write (.sql/.cs) | Non-blocking - snake_case, error code, isolation kontrol |
+| `check-shared-microservice.ps1` | PostToolUse: Edit/Write | Non-blocking - Shared/DTO veya cross-service uyarısı |
+| `deploy-verify.ps1` | PostToolUse: invekto-ops server-upload/exec | Non-blocking - production path, NSSM, dev-forbidden kontroller |
 | `~/.claude/hooks/secret-scan.ps1` | PreToolUse: Bash (GLOBAL) | **BLOCKING** (exit 2) - secret tespit ederse engeller |
+| `dotnet-check.sh` | (opsiyonel, bağlı değil) | Real dotnet build per-service (yavaş, Q isterse settings.json'a ekle) |
 
 ## Workflow Reference
 

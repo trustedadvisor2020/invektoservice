@@ -1,0 +1,87 @@
+# InvektoServices Architecture Files Reference
+# This file is the single source of truth for required architecture files.
+# All slash commands (/auto, /rev, /codex, /brief) should read these files before executing.
+#
+# Last updated: 2026-04-11
+# Total critical files: ~35
+
+# ============================================
+# CORE ARCHITECTURE
+# ============================================
+arch/README.md
+arch/env.md
+arch/errors.md
+arch/logging.md
+arch/endpoints.md
+arch/auth-architecture.md
+arch/tenant-isolation.md
+arch/review-policy.md
+arch/quality-grades.md
+arch/q-ops-checklist.md
+arch/codex-context.md
+arch/ops-dashboard-convention.md
+
+# ============================================
+# CONTRACTS
+# ============================================
+arch/contracts/plan-schema.json
+arch/contracts/agentai-suggest.json
+arch/contracts/analytics-metrics.json
+arch/contracts/automation-flow.json
+arch/contracts/automation-flow-v2.json
+arch/contracts/chat-analysis.json
+arch/contracts/integration-callback.json
+arch/contracts/integration-webhook.json
+arch/contracts/knowledge-faq.json
+arch/contracts/knowledge-import.json
+arch/contracts/knowledge-search.json
+arch/contracts/knowledge-website.json
+arch/contracts/outbound-broadcast.json
+
+# ============================================
+# DATABASE SCHEMAS (per-service)
+# ============================================
+arch/db/agentai.sql
+arch/db/appointments.sql
+arch/db/automation.sql
+arch/db/backend-metrics.sql
+arch/db/integrations.sql
+arch/db/knowledge.sql
+arch/db/marketing.sql
+arch/db/message-log.sql
+arch/db/outbound.sql
+arch/db/voiceai.sql
+arch/db/webchat.sql
+arch/db/whatsapp-analytics.sql
+
+# ============================================
+# MIGRATIONS
+# ============================================
+# README is required, others loaded as needed
+arch/db/migrations/README.md
+
+# ============================================
+# SESSION TRACKING (auto workflow)
+# ============================================
+arch/session-memory.md
+arch/lessons-learned.md
+arch/instincts.md
+tracking/README.md
+
+# ============================================
+# USAGE NOTES
+# ============================================
+#
+# - Commands should read ALL files in sections 1-2 (Core, Contracts)
+# - DB schemas: Read per-service as needed based on task context
+# - Migrations: Read README.md + relevant migration based on task context
+# - Session tracking: Always read at session start (session-init hook reminds)
+# - If any required file is missing, commands MUST stop and report which files are missing
+# - Path format: relative to workspace root (c:\CRMs\InvektoServices\)
+#
+# Example validation check (bash):
+# while read -r file; do
+#   [[ "$file" =~ ^# ]] && continue
+#   [[ -z "$file" ]] && continue
+#   [[ ! -f "$file" ]] && echo "MISSING: $file"
+# done < .claude/shared/arch-files.txt

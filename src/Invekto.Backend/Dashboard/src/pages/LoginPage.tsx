@@ -137,18 +137,6 @@ export function LoginPage() {
             </Button>
           </form>
 
-          {mode === 'ops' && (
-            <div className="mt-5 pt-5 border-t border-navy-100/60">
-              <button
-                type="button"
-                onClick={handleQuickAdminLogin}
-                disabled={isLoading}
-                className="w-full text-xs py-2.5 rounded-lg bg-navy-50 hover:bg-navy-100 text-navy-500 font-medium disabled:opacity-40 transition-colors"
-              >
-                Super Admin Girisi
-              </button>
-            </div>
-          )}
 
           {mode === 'inma' && (
             <div className="mt-5 pt-5 border-t border-navy-100/60">

@@ -5,12 +5,12 @@
 
 ## Last Update
 
-- **Date:** 2026-04-07
-- **Status:** DONE. Simulation Türkçe karakter fix + dynamic fallback — MockIntentDetector ve AiIntentHandler düzeltmesi.
-- **Last Task:** (1) MockIntentDetector: Tüm keyword'ler Türkçe karakterle güncellendi (diş, şikayet, vb.), tr-TR CultureInfo ile lowercase/contains. (2) AiIntentHandler: Generic "kargo, fiyat, randevu" fallback kaldırıldı → BuildIntentExamples() ile flow'un custom intent'lerinden dinamik örnek üretimi.
-- **Files Changed:** EDIT: src/Invekto.Automation/Services/MockIntentDetector.cs, src/Invekto.Automation/Services/NodeHandlers/AiIntentHandler.cs
-- **Next Task:** PKT-13 Faz 1 (Lead Scoring)
-- **Strateji:** Template gallery done → PKT-13 veya template DB migration (Phase 2 hibrit)
+- **Date:** 2026-04-11
+- **Status:** DONE. Multi-theme consolidation commit — translation AI detect + 13-language LanguageDetector, WAA minimal API DI fix, wizard truncated-JSON repair, login cleanup, review-policy v3.2, instinct infra scaffold.
+- **Last Task:** (1) TranslationService: AI-powered language detection (Gemma primary, Claude fallback, heuristic last resort). DetectLanguageRequest: `message` field + ResolvedText (INMA compat). Backend DetectLanguageHandler uses ResolvedText. (2) LanguageDetector: Unicode script-based detection for 13 languages (ar/ru/ko/zh/ja/th/hi/ka/hy/el/he/tr/en). (3) ClaudeWizardService: truncated-JSON repair fallback for flowconfig/json blocks, action_ecommerce node guidance injection, debug logging. appsettings Claude:WizardModel → claude-sonnet-4-6 (stable alias). (4) WhatsAppAnalytics/Program.cs: [FromServices] attribute added to all minimal-API endpoints (DI binding ambiguity fix). (5) LoginPage: "Super Admin Girisi" quick button removed. (6) review-policy.md → v3.2 (TONIVA-aligned, PLAN_OUTDATED cascade, VQ minimums, microservice isolation category). (7) Plan JSONs: pkt12-review-rescue, pkt11-f1-voiceai, pkt12-f4-dashboard → status DONE + verdict + commit_sha. (8) .claude infra: code-simplifier agent, service-isolation-checker agent, /evolve, /instinct-status, deploy-verify hook, check-shared-microservice hook, arch/instincts.md scaffold, arch/knowledge/patterns.json.
+- **Files Changed:** EDIT: src/Invekto.Backend/{Program.cs,appsettings.json}, src/Invekto.Backend/Services/{TranslationService,ClaudeWizardService}.cs, src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx, src/Invekto.Shared/DTOs/Translation/TranslationDtos.cs, src/Invekto.Shared/Services/LanguageDetector.cs, src/Invekto.WhatsAppAnalytics/Program.cs, arch/review-policy.md, arch/plans/{20260326-pkt12-review-rescue,20260327-pkt11-f1-voiceai-mvp,20260327-pkt12-f4-dashboard}.json. ADD: .claude/agents/{code-simplifier,service-isolation-checker}.md, .claude/commands/{evolve,instinct-status}.md, .claude/hooks/{check-shared-microservice.ps1,deploy-verify.ps1,dotnet-check.sh}, arch/instincts.md, arch/knowledge/patterns.json.
+- **Build:** PASS (0 errors, 17 pre-existing warnings).
+- **Next Task:** PKT-13 Faz 1 (Lead Scoring) OR evolve instinct infra (populate patterns.json from lessons-learned via /learn).
 
 ## Execution Queue
 
@@ -22,6 +22,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-11 | Multi-theme consolidation: (1) Translation AI language detect (Gemma/Claude) + 13-language Unicode LanguageDetector + DTO `message` field (INMA compat) + Backend handler bug fix. (2) ClaudeWizardService truncated-JSON repair fallback + action_ecommerce guidance. (3) WhatsAppAnalytics minimal API `[FromServices]` DI fix (mass endpoint update). (4) LoginPage super-admin quick button cleanup. (5) review-policy → v3.2 (TONIVA-aligned). (6) Plan JSON status DONE backfill (pkt12 rescue, pkt11 voiceai, pkt12 f4 dashboard). (7) Instinct infra scaffold (.claude/agents + commands + hooks + arch/instincts.md + patterns.json). Build PASS. |
 | 2026-04-07 | Simulation Turkish char fix: MockIntentDetector tr-TR CultureInfo + Türkçe keyword'ler + diş sektörü synonym genişletme. AiIntentHandler dynamic fallback (custom intent'lerden örnek). |
 | 2026-04-07 | Flow Template Gallery: 182 SE senaryo → FlowConfigV2 converter + static data. Dashboard galeri sayfası (/flow-templates) + FlowListPage şablon modal + FlowEditorPage AI wizard auto-open. SE AI PROMPT sekmesi. |
 | 2026-04-06 | Translation Gemma 4 migration + LLM anti-leak patch. TranslationService: Gemma 4 primary (Google AI Studio) + Haiku fallback. System prompt hardening: chain-of-thought sızıntısı fix, devrik çeviri fix, 4 servise anti-leak kuralları (WebChat, Automation, Marketing, Backend). 4 servis deploy. |

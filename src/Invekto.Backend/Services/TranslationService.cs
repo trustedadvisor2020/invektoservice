@@ -114,8 +114,8 @@ public sealed class TranslationService
             _logger.StepError($"[{ErrorCodes.BackendTranslationCacheError}] Cache read error: {ex.Message}", "-");
         }
 
-        // Call Claude API
-        var sourceLang = LanguageDetector.Detect(request.Message);
+        // Detect source language via AI, then translate
+        var sourceLang = await DetectLanguageCodeAsync(request.Message, ct);
         var translatedText = await CallClaudeTranslateAsync(request.Message, sourceLang, targetLang, ct);
 
         // Save to cache (fire-and-forget, degrade on DB failure)
@@ -194,7 +194,7 @@ public sealed class TranslationService
         {
             try
             {
-                var sourceLang = LanguageDetector.Normalize(item.SourceLanguage) ?? LanguageDetector.Detect(item.Text);
+                var sourceLang = LanguageDetector.Normalize(item.SourceLanguage) ?? await DetectLanguageCodeAsync(item.Text, ct);
                 var translated = await CallClaudeTranslateAsync(item.Text, sourceLang, targetLang, ct);
                 apiCalls++;
 
@@ -268,70 +268,52 @@ public sealed class TranslationService
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException(ErrorCodes.BackendTranslationInvalidText);
 
-        // Quick heuristic first
-        var heuristicLang = LanguageDetector.Detect(text);
+        var detectedLang = await DetectLanguageCodeAsync(text, ct);
+        var confidence = text.Length < 5 ? "low" : text.Length < 20 ? "medium" : "high";
+        var langInfo = SupportedLanguages.FirstOrDefault(l => l.Code == detectedLang);
 
-        // For short texts or when heuristic is confident Turkish, skip Claude
-        if (text.Length < 20)
+        return new DetectLanguageResponse
         {
-            var langInfo = SupportedLanguages.FirstOrDefault(l => l.Code == heuristicLang);
-            return new DetectLanguageResponse
-            {
-                Language = heuristicLang,
-                LanguageName = langInfo?.Name ?? heuristicLang,
-                Confidence = "low"
-            };
-        }
+            Language = detectedLang,
+            LanguageName = langInfo?.Name ?? detectedLang,
+            Confidence = confidence
+        };
+    }
 
+    /// <summary>
+    /// AI-powered language detection: Gemma 4 primary, Claude Haiku fallback, heuristic last resort.
+    /// Returns ISO 639-1 code.
+    /// </summary>
+    private async Task<string> DetectLanguageCodeAsync(string text, CancellationToken ct)
+    {
+        // Very short texts: heuristic only (AI unreliable under 5 chars)
+        if (text.Length < 5)
+            return LanguageDetector.Detect(text);
+
+        var system = "You are a language detection engine. Reply with ONLY the ISO 639-1 two-letter code. No reasoning, no explanation, no extra text.";
         try
         {
-            var system = "You are a language detection engine. Reply with ONLY the ISO 639-1 two-letter code. No reasoning, no explanation, no extra text.";
-            var prompt = text;
             string response;
             if (!string.IsNullOrEmpty(_googleApiKey))
             {
-                try { response = await CallGemmaRawAsync(system, prompt, 10, ct); }
-                catch { response = await CallClaudeRawAsync(system, prompt, 10, ct); }
+                try { response = await CallGemmaRawAsync(system, text, 10, ct); }
+                catch { response = await CallClaudeRawAsync(system, text, 10, ct); }
             }
             else
             {
-                response = await CallClaudeRawAsync(system, prompt, 10, ct);
+                response = await CallClaudeRawAsync(system, text, 10, ct);
             }
-            var detectedLang = response.Trim().ToLowerInvariant();
 
-            // Validate the response is a 2-letter code
-            if (detectedLang.Length == 2 && detectedLang.All(char.IsLetter))
-            {
-                var langInfo = SupportedLanguages.FirstOrDefault(l => l.Code == detectedLang);
-                return new DetectLanguageResponse
-                {
-                    Language = detectedLang,
-                    LanguageName = langInfo?.Name ?? detectedLang,
-                    Confidence = "high"
-                };
-            }
+            var lang = response.Trim().ToLowerInvariant();
+            if (lang.Length == 2 && lang.All(char.IsLetter))
+                return lang;
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            _logger.StepError($"[{ErrorCodes.BackendTranslationDetectFailed}] Claude detect HTTP error, using heuristic: {ex.Message}", "-");
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.StepError($"[{ErrorCodes.BackendTranslationDetectFailed}] Claude detect empty response, using heuristic: {ex.Message}", "-");
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.StepError($"[{ErrorCodes.BackendTranslationDetectFailed}] Claude detect timed out, using heuristic", "-");
+            _logger.StepError($"[INV-TRANS-DETECT] AI detection failed, using heuristic: {ex.Message}", "-");
         }
 
-        // Fallback to heuristic
-        var fallbackInfo = SupportedLanguages.FirstOrDefault(l => l.Code == heuristicLang);
-        return new DetectLanguageResponse
-        {
-            Language = heuristicLang,
-            LanguageName = fallbackInfo?.Name ?? heuristicLang,
-            Confidence = "medium"
-        };
+        return LanguageDetector.Detect(text);
     }
 
     private static string BuildTranslationSystemPrompt(string targetName) =>

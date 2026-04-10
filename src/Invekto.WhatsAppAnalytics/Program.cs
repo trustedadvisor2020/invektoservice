@@ -10,6 +10,7 @@ using Invekto.WhatsAppAnalytics.Models;
 using Invekto.WhatsAppAnalytics.Services;
 using Invekto.WhatsAppAnalytics.Services.Benchmark;
 using Invekto.WhatsAppAnalytics.Services.Insights;
+using Microsoft.AspNetCore.Mvc;
 using Invekto.WhatsAppAnalytics.Services.Pipeline;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -307,7 +308,7 @@ static TenantContext? GetValidatedTenant(HttpContext ctx, int routeTenantId)
 
 app.MapGet("/health", () => Results.Ok(HealthResponse.Ok(ServiceConstants.WhatsAppAnalyticsServiceName)));
 
-app.MapGet("/ready", async (AnalyticsRepository repo) =>
+app.MapGet("/ready", async ([FromServices] AnalyticsRepository repo) =>
 {
     try
     {
@@ -329,10 +330,10 @@ app.MapGet("/ready", async (AnalyticsRepository repo) =>
 app.MapPost("/api/v1/wa/{tenantId:int}/upload", async (
     int tenantId,
     HttpContext ctx,
-    AnalyticsRepository repo,
+    [FromServices] AnalyticsRepository repo,
     CsvStreamReader csvReader,
-    AnalysisProcessingService processingService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] AnalysisProcessingService processingService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -439,9 +440,9 @@ app.MapPost("/api/v1/wa/{tenantId:int}/upload", async (
 app.MapPost("/api/v1/wa/{tenantId:int}/import-mssql", async (
     int tenantId,
     HttpContext ctx,
-    AnalyticsRepository repo,
-    AnalysisProcessingService processingService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] AnalyticsRepository repo,
+    [FromServices] AnalysisProcessingService processingService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -504,7 +505,7 @@ app.MapPost("/api/v1/wa/{tenantId:int}/import-mssql", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses", async (
     int tenantId,
     HttpContext ctx,
-    AnalyticsRepository repo,
+    [FromServices] AnalyticsRepository repo,
     int? page,
     int? limit) =>
 {
@@ -531,7 +532,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -556,8 +557,8 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
 app.MapDelete("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] AnalyticsRepository repo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -587,7 +588,7 @@ app.MapDelete("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/metadata", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -617,7 +618,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/metadata", async
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/intents", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -639,7 +640,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/intents", async 
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/sentiments", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -661,7 +662,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/sentiments", asy
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/products", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo,
+    [FromServices] AnalyticsRepository repo,
     int? limit) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -685,7 +686,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/products", async
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/prices", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo,
+    [FromServices] AnalyticsRepository repo,
     int? limit) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -709,7 +710,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/prices", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/faq-clusters", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo,
+    [FromServices] AnalyticsRepository repo,
     int? limit) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -733,7 +734,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/faq-clusters", a
 app.MapGet("/api/v1/wa/{tenantId:int}/analyses/{analysisId:int}/nlp-summary", async (
     int tenantId, int analysisId,
     HttpContext ctx,
-    AnalyticsRepository repo) =>
+    [FromServices] AnalyticsRepository repo) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -769,7 +770,7 @@ app.MapPost("/api/ops/benchmark/start", async (
     HttpContext ctx,
     BenchmarkRepository benchRepo,
     BenchmarkProcessingService? benchProcessor,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -920,7 +921,7 @@ app.MapPut("/api/ops/benchmark/{id:int}/ground-truth", async (
     int id,
     HttpContext ctx,
     BenchmarkRepository benchRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -951,9 +952,9 @@ app.MapPut("/api/ops/benchmark/{id:int}/ground-truth", async (
 // POST /api/ops/classify/batch — Start async batch classification
 app.MapPost("/api/ops/classify/batch", async (
     HttpContext ctx,
-    ConversationOutcomeRepository outcomeRepo,
+    [FromServices] ConversationOutcomeRepository outcomeRepo,
     BatchClassificationService? batchService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -999,7 +1000,7 @@ app.MapPost("/api/ops/classify/batch", async (
 app.MapGet("/api/ops/classify/batch/{id:int}", async (
     int id,
     HttpContext ctx,
-    ConversationOutcomeRepository outcomeRepo) =>
+    [FromServices] ConversationOutcomeRepository outcomeRepo) =>
 {
     if (!ValidateOpsKey(ctx)) return Results.StatusCode(401);
     var job = await outcomeRepo.GetBatchJobAsync(id);
@@ -1011,7 +1012,7 @@ app.MapGet("/api/ops/classify/batch/{id:int}", async (
 app.MapGet("/api/ops/outcomes/{tenantId:int}/distribution", async (
     int tenantId,
     HttpContext ctx,
-    ConversationOutcomeRepository outcomeRepo) =>
+    [FromServices] ConversationOutcomeRepository outcomeRepo) =>
 {
     if (!ValidateOpsKey(ctx)) return Results.StatusCode(401);
     var dist = await outcomeRepo.GetLabelDistributionAsync(tenantId);
@@ -1035,8 +1036,8 @@ app.MapGet("/api/ops/sectors", async (
 // POST /api/ops/insights/compute/response-time — Compute response time correlation
 app.MapPost("/api/ops/insights/compute/response-time", async (
     HttpContext ctx,
-    InsightResponseTimeService rtService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightResponseTimeService rtService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1075,7 +1076,7 @@ app.MapPost("/api/ops/insights/compute/response-time", async (
 app.MapGet("/api/ops/insights/response-time/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1104,8 +1105,8 @@ app.MapGet("/api/ops/insights/response-time/{tenantId:int}", async (
 // POST /api/ops/insights/compute/agent-leaderboard — Compute agent leaderboard metrics
 app.MapPost("/api/ops/insights/compute/agent-leaderboard", async (
     HttpContext ctx,
-    InsightAgentLeaderboardService alService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightAgentLeaderboardService alService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1140,7 +1141,7 @@ app.MapPost("/api/ops/insights/compute/agent-leaderboard", async (
 app.MapGet("/api/ops/insights/agent-leaderboard/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1169,8 +1170,8 @@ app.MapGet("/api/ops/insights/agent-leaderboard/{tenantId:int}", async (
 // POST /api/ops/insights/compute/rescue — Compute follow-up rescue candidates
 app.MapPost("/api/ops/insights/compute/rescue", async (
     HttpContext ctx,
-    InsightRescueService rescueService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightRescueService rescueService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1205,7 +1206,7 @@ app.MapPost("/api/ops/insights/compute/rescue", async (
 app.MapGet("/api/ops/insights/rescue/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1234,8 +1235,8 @@ app.MapGet("/api/ops/insights/rescue/{tenantId:int}", async (
 // POST /api/ops/insights/compute/demand-heatmap — Compute demand heatmap
 app.MapPost("/api/ops/insights/compute/demand-heatmap", async (
     HttpContext ctx,
-    InsightDemandHeatmapService dhService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightDemandHeatmapService dhService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1274,7 +1275,7 @@ app.MapPost("/api/ops/insights/compute/demand-heatmap", async (
 app.MapGet("/api/ops/insights/demand-heatmap/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1303,8 +1304,8 @@ app.MapGet("/api/ops/insights/demand-heatmap/{tenantId:int}", async (
 // POST /api/ops/insights/compute/revenue-attribution — Compute revenue attribution (RI-3.4)
 app.MapPost("/api/ops/insights/compute/revenue-attribution", async (
     HttpContext ctx,
-    InsightRevenueService revService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightRevenueService revService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1343,7 +1344,7 @@ app.MapPost("/api/ops/insights/compute/revenue-attribution", async (
 app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1376,8 +1377,8 @@ app.MapGet("/api/ops/insights/revenue-attribution/{tenantId:int}", async (
 // POST /api/ops/insights/compute/objection-map — Compute objection map (RI-3.5)
 app.MapPost("/api/ops/insights/compute/objection-map", async (
     HttpContext ctx,
-    InsightObjectionMapService objService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightObjectionMapService objService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1412,7 +1413,7 @@ app.MapPost("/api/ops/insights/compute/objection-map", async (
 app.MapGet("/api/ops/insights/objection-map/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1441,8 +1442,8 @@ app.MapGet("/api/ops/insights/objection-map/{tenantId:int}", async (
 // POST /api/ops/insights/compute/quality-score — Compute conversation quality scores (RI-3.7)
 app.MapPost("/api/ops/insights/compute/quality-score", async (
     HttpContext ctx,
-    InsightQualityService qsService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightQualityService qsService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1481,7 +1482,7 @@ app.MapPost("/api/ops/insights/compute/quality-score", async (
 app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1516,8 +1517,8 @@ app.MapGet("/api/ops/insights/quality-score/{tenantId:int}", async (
 // POST /api/ops/templates/mine — Mine templates for a sector (RI-4.1 through 4.6)
 app.MapPost("/api/ops/templates/mine", async (
     HttpContext ctx,
-    TemplateMiningService miningService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] TemplateMiningService miningService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1557,8 +1558,8 @@ app.MapPost("/api/ops/templates/mine", async (
 app.MapGet("/api/ops/templates/{sector}", async (
     string sector,
     HttpContext ctx,
-    TemplateRepository templateRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] TemplateRepository templateRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1592,8 +1593,8 @@ app.MapGet("/api/ops/templates/{sector}", async (
 // POST /api/ops/templates/mine-all — Mine templates for all (or selected) sectors
 app.MapPost("/api/ops/templates/mine-all", async (
     HttpContext ctx,
-    BulkOrchestrationService bulkService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] BulkOrchestrationService bulkService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1625,8 +1626,8 @@ app.MapPost("/api/ops/templates/mine-all", async (
 // GET /api/ops/templates/profiles — Get sector profiles (config + template counts)
 app.MapGet("/api/ops/templates/profiles", async (
     HttpContext ctx,
-    BulkOrchestrationService bulkService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] BulkOrchestrationService bulkService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     if (!ValidateOpsKey(ctx))
@@ -1654,8 +1655,8 @@ app.MapGet("/api/ops/templates/profiles", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/dashboard", async (
     int tenantId,
     HttpContext ctx,
-    RiDashboardService dashboardService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] RiDashboardService dashboardService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1685,8 +1686,8 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/dashboard", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/revenue", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1716,7 +1717,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/revenue", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/agents", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1739,7 +1740,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/agents", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/objections", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1762,7 +1763,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/objections", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/response-time", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1785,7 +1786,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/response-time", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/rescue", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1805,7 +1806,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/rescue", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/quality", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1828,7 +1829,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/quality", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/demand", async (
     int tenantId,
     HttpContext ctx,
-    InsightRepository insightRepo) =>
+    [FromServices] InsightRepository insightRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1851,7 +1852,7 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/demand", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/templates", async (
     int tenantId,
     HttpContext ctx,
-    TemplateRepository templateRepo) =>
+    [FromServices] TemplateRepository templateRepo) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1873,8 +1874,8 @@ app.MapPost("/api/v1/wa/{tenantId:int}/ri/templates/{type}", async (
     int tenantId,
     string type,
     HttpContext ctx,
-    TemplateRepository templateRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] TemplateRepository templateRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -1948,8 +1949,8 @@ app.MapPut("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
     string type,
     long id,
     HttpContext ctx,
-    TemplateRepository templateRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] TemplateRepository templateRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -2033,8 +2034,8 @@ app.MapDelete("/api/v1/wa/{tenantId:int}/ri/templates/{type}/{id:long}", async (
     string type,
     long id,
     HttpContext ctx,
-    TemplateRepository templateRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] TemplateRepository templateRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -2066,8 +2067,8 @@ app.MapPut("/api/v1/wa/{tenantId:int}/ri/rescue/{conversationId}/status", async 
     int tenantId,
     string conversationId,
     HttpContext ctx,
-    InsightRepository insightRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] InsightRepository insightRepo,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -2115,7 +2116,7 @@ app.MapPost("/api/v1/wa/{tenantId:int}/ri/feedback", async (
     int tenantId,
     HttpContext ctx,
     FeedbackRepository feedbackRepo,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -2156,7 +2157,7 @@ app.MapPost("/api/v1/wa/{tenantId:int}/ri/feedback", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/benchmarks", async (
     int tenantId,
     HttpContext ctx,
-    RiDashboardService dashboardService) =>
+    [FromServices] RiDashboardService dashboardService) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);
@@ -2177,8 +2178,8 @@ app.MapGet("/api/v1/wa/{tenantId:int}/ri/benchmarks", async (
 app.MapGet("/api/v1/wa/{tenantId:int}/ri/onboarding", async (
     int tenantId,
     HttpContext ctx,
-    OnboardingInsightService onboardingService,
-    JsonLinesLogger jsonLogger) =>
+    [FromServices] OnboardingInsightService onboardingService,
+    [FromServices] JsonLinesLogger jsonLogger) =>
 {
     var requestId = Guid.NewGuid().ToString("N");
     var tenant = GetValidatedTenant(ctx, tenantId);

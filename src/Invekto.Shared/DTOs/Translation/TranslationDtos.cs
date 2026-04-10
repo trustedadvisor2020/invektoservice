@@ -95,11 +95,19 @@ public sealed class BatchTranslateResultItem
 
 /// <summary>
 /// Dil algılama isteği.
+/// INMA "message" gönderir, standalone kullanımda "text" gönderilir — her ikisi de desteklenir.
 /// </summary>
 public sealed class DetectLanguageRequest
 {
     [JsonPropertyName("text")]
     public string Text { get; set; } = "";
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+
+    /// <summary>Text veya Message'dan hangisi doluysa onu döndürür.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ResolvedText => !string.IsNullOrWhiteSpace(Text) ? Text : Message;
 }
 
 /// <summary>

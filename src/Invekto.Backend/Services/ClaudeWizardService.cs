@@ -203,6 +203,12 @@ public sealed class ClaudeWizardService
         var prerequisites = flowConfig != null ? ExtractPrerequisites(flowConfig) : null;
         var options = ExtractOptions(fullResponse);
 
+        _logger.LogInformation("Wizard response: length={Length}, hasFlowConfig={HasConfig}, hasOptions={HasOptions}",
+            fullResponse.Length, flowConfig != null, options != null);
+        if (flowConfig == null && fullResponse.Contains("flowconfig"))
+            _logger.LogWarning("Wizard: flowconfig block found in text but ExtractFlowConfig returned null. Response tail: {Tail}",
+                fullResponse.Length > 500 ? fullResponse[^500..] : fullResponse);
+
         // Always strip code blocks from content so user sees clean text
         var cleanContent = StripCodeBlocks(fullResponse);
 
@@ -242,7 +248,7 @@ public sealed class ClaudeWizardService
     /// </summary>
     public string? ExtractFlowConfig(string response)
     {
-        // Try ```flowconfig block first (primary format)
+        // Try ```flowconfig block first (primary format) — with closing ```
         var match = Regex.Match(response, @"```flowconfig\s*([\s\S]*?)```", RegexOptions.Multiline);
         if (match.Success)
         {
@@ -258,7 +264,87 @@ public sealed class ClaudeWizardService
             if (result != null) return result;
         }
 
+        // Fallback 2: flowconfig block without closing ``` (truncated by max_tokens/timeout)
+        var unclosedMatch = Regex.Match(response, @"```flowconfig\s*([\s\S]+)", RegexOptions.Multiline);
+        if (unclosedMatch.Success)
+        {
+            var raw = unclosedMatch.Groups[1].Value.Trim();
+            // Try to repair: strip trailing ``` if partially present, then balance braces
+            raw = Regex.Replace(raw, @"`+$", "").Trim();
+            var repaired = RepairTruncatedJson(raw);
+            if (repaired != null)
+            {
+                var result = ValidateFlowConfigJson(repaired);
+                if (result != null)
+                {
+                    _logger.LogInformation("Wizard: extracted flowconfig from unclosed block (repaired truncated JSON)");
+                    return result;
+                }
+            }
+        }
+
+        // Fallback 3: unclosed ```json block with FlowConfigV2
+        var unclosedJsonMatch = Regex.Match(response, @"```json\s*([\s\S]+)", RegexOptions.Multiline);
+        if (unclosedJsonMatch.Success)
+        {
+            var raw = Regex.Replace(unclosedJsonMatch.Groups[1].Value.Trim(), @"`+$", "").Trim();
+            var repaired = RepairTruncatedJson(raw);
+            if (repaired != null)
+            {
+                var result = ValidateFlowConfigJson(repaired);
+                if (result != null)
+                {
+                    _logger.LogInformation("Wizard: extracted flowconfig from unclosed json block (repaired truncated JSON)");
+                    return result;
+                }
+            }
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Attempt to repair truncated JSON by closing unclosed braces/brackets.
+    /// Returns null if the JSON is too broken to repair.
+    /// </summary>
+    private static string? RepairTruncatedJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+
+        // Quick check: if it already parses, return as-is
+        try { using var _ = JsonDocument.Parse(json); return json; } catch { }
+
+        // Strip trailing comma, incomplete key/value
+        var trimmed = Regex.Replace(json, @",\s*$", "");
+        // Remove incomplete trailing string/key (e.g., `"some_key": "partial val`)
+        trimmed = Regex.Replace(trimmed, @",?\s*""[^""]*$", "");
+        // Remove trailing colon with incomplete value
+        trimmed = Regex.Replace(trimmed, @",?\s*""[^""]*""\s*:\s*""?[^""}\]]*$", "");
+
+        // Count open vs close braces/brackets
+        int braces = 0, brackets = 0;
+        bool inString = false;
+        char prev = '\0';
+        foreach (var c in trimmed)
+        {
+            if (c == '"' && prev != '\\') inString = !inString;
+            if (!inString)
+            {
+                if (c == '{') braces++;
+                else if (c == '}') braces--;
+                else if (c == '[') brackets++;
+                else if (c == ']') brackets--;
+            }
+            prev = c;
+        }
+
+        // Close unclosed brackets/braces
+        var sb = new StringBuilder(trimmed);
+        for (int i = 0; i < brackets; i++) sb.Append(']');
+        for (int i = 0; i < braces; i++) sb.Append('}');
+
+        var repaired = sb.ToString();
+        try { using var _ = JsonDocument.Parse(repaired); return repaired; } catch { return null; }
     }
 
     private string? ValidateFlowConfigJson(string json)
@@ -599,6 +685,7 @@ public sealed class ClaudeWizardService
         sb.AppendLine();
         sb.AppendLine("action_handoff: data: { label, summary_template }. Terminal node — baska node'a baglanmaz.");
         sb.AppendLine("action_api_call: data: { label, method, url, headers, body_template, response_variable, timeout_ms }. method: GET|POST|PUT|DELETE. Cikis: \"success\"/\"error\".");
+        sb.AppendLine("action_ecommerce: data: { label, provider, operation, filter_phone, filter_email, filter_search, filter_status, order_id, product_id, response_variable }. provider: \"ikas\" (veya diger e-ticaret platformu). operation: list_orders|get_order|list_products|get_product|list_customers|fulfill_order|update_order_status|refund_order_line. Cikis: \"success\"/\"error\". Sonuc response_variable'a (default: ecom_result) JSON olarak yazilir. ONEMLI: E-ticaret islemleri icin action_api_call DEGIL action_ecommerce kullan! Endpoint bilgisi otomatik — kullanicidan URL isteme.");
         sb.AppendLine("action_delay: data: { label, seconds }. seconds: 1-300.");
         sb.AppendLine();
         sb.AppendLine("utility_set_variable: data: { label, variable_name, value_expression }. {{degisken}} destekli.");
@@ -627,6 +714,7 @@ public sealed class ClaudeWizardService
         sb.AppendLine("   - wttr.in (sunucudan zaman asimi, erisilemez)");
         sb.AppendLine("4. API key gerektiren servisler icin kullaniciyi acikca bilgilendir ve prerequisite olarak belirt.");
         sb.AppendLine("5. Bilinmeyen bir API onereceksen, erisim riski hakkinda uyar.");
+        sb.AppendLine("6. E-TICARET ISLEMLERI (siparis, urun, kategori, musteri) icin action_api_call KULLANMA! Bunun yerine action_ecommerce node'u kullan. Bu node otomatik olarak tenant'in baglandigi e-ticaret platformuyla (ikas vb.) iletisim kurar. Endpoint URL, auth bilgileri OTOMATIK — kullanicidan API endpoint veya URL SORMA.");
         sb.AppendLine("NOT: Akis uretildikten sonra API URL'leri sunucudan OTOMATIK dogrulanir. Erisilemez API'ler tespit edilirse akis reddedilir.");
         sb.AppendLine("</api_guidelines>");
         sb.AppendLine();

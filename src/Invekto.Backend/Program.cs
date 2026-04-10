@@ -7299,12 +7299,12 @@ async Task<IResult> DetectLanguageHandler(HttpContext ctx, TranslationService tr
     try { request = await ctx.Request.ReadFromJsonAsync<DetectLanguageRequest>(); }
     catch (JsonException) { return Results.Json(new { error = ErrorCodes.GeneralValidation, message = "Geçersiz istek gövdesi." }, statusCode: 400); }
 
-    if (request == null || string.IsNullOrWhiteSpace(request.Text))
+    if (request == null || string.IsNullOrWhiteSpace(request.ResolvedText))
         return Results.Json(new { error = ErrorCodes.BackendTranslationInvalidText, message = "Metin boş olamaz." }, statusCode: 400);
 
     try
     {
-        var result = await translationService.DetectLanguageAsync(request.Text);
+        var result = await translationService.DetectLanguageAsync(request.ResolvedText);
         return Results.Ok(result);
     }
     catch (HttpRequestException ex)

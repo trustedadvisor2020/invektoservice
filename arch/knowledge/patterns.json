@@ -1,0 +1,7 @@
+{
+  "$schema": "./patterns.schema.json",
+  "version": "1.0",
+  "last_updated": "2026-04-11",
+  "description": "InvektoServices öğrenilmiş pattern veritabanı. /learn ve /evolve komutları bu dosyayı okur/yazar.",
+  "patterns": {}
+}
