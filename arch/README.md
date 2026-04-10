@@ -10,8 +10,7 @@ arch/
 ├── errors.md           # Error codes (INV-xxx)
 ├── env.md              # Environment variables
 ├── logging.md          # Loglama standartları
-├── session-memory.md   # Session durumu (runtime)
-├── active-work.md      # Devam eden işler
+├── session-memory.md   # Session durumu + execution queue + recently completed
 ├── lessons-learned.md  # Öğrenilen dersler
 ├── contracts/          # Data contracts
 │   └── plan-schema.json
@@ -58,6 +57,7 @@ shared/                 # Paylaşılan kod
 
 | Dosya | Amaç | Güncelleme |
 |-------|------|------------|
-| `session-memory.md` | Son durum | Her session sonunda |
-| `active-work.md` | Devam eden işler | İş başlayınca/bitince |
-| `lessons-learned.md` | Öğrenilen dersler | Q onayıyla |
+| `session-memory.md` | Son durum + Execution Queue + Recently Completed | Her session sonunda (`/wrap` step 2) |
+| `lessons-learned.md` | Öğrenilen dersler | Q onayıyla (`/learn`) |
+
+> **active-work.md KALDIRILDI** (shared engine v6.1, 2026-03-04). Execution queue ve recently completed bilgisi artık `session-memory.md` içinde. Eski `active-work.md` referansları (arch/plans/ içindeki historical JSON'lar) arşiv niteliğindedir, güncel truth değildir.

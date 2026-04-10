@@ -1,7 +1,7 @@
-<!-- VERSION: 5.4 | UPDATED: 2026-02-28 | Opus 4.6 Language Tuning | Persist After Compact -->
+<!-- VERSION: 5.5 | UPDATED: 2026-04-10 | AI-layer consistency sweep: phantom skill cleanup, bootstrap align, LOW=Codex zorunlu -->
 <!-- COMPACT SONRASI: Auto workflow aktif kalir. Interview -> Plan -> Dev -> Build -> /rev -> MCP Codex -> Commit -->
 <!-- HARITA YAKLAŞIMI: Bu dosya kisa tutuluyor, detaylar INVEKTO_BASE.prompt.md + arch/ dosyalarinda. -->
-# InvektoServis
+# InvektoServices
 
 Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 
@@ -9,11 +9,15 @@ Multi-tenant SaaS mikro servis platformu. .NET 8, PostgreSQL, React 18.
 
 Her session basladiginda otomatik:
 
-1. **Auto Workflow aktif:** auto.md kurallari gecerli
-2. **Kritik dosyalari oku:** `arch/session-memory.md`, `tracking/README.md`, `arch/lessons-learned.md`, `.claude/agents/INVEKTO_BASE.prompt.md`
+1. **Auto Workflow aktif** — global `auto` skill kurallari (`~/.claude/skills/auto`)
+2. **Kritik dosyalari oku (TEK STANDART LISTE, shared v6.1 uyumlu):**
+   - `arch/session-memory.md` (son durum + execution queue + recently completed)
+   - `tracking/README.md` (paket durumu)
+   - `arch/lessons-learned.md` (son 100 satir)
+   - `.claude/agents/INVEKTO_BASE.prompt.md` (global rules)
 3. **Interview ile basla:** AskUserQuestion ile gri noktalari coz
 
-Bu adimlar plan mode dahil her session icin gecerlidir.
+> **active-work.md KULLANILMIYOR** (shared v6.1, 2026-03-04). Execution queue session-memory.md icinde.
 
 ## Naming & Roles
 
@@ -37,8 +41,11 @@ Bu adimlar plan mode dahil her session icin gecerlidir.
 
 | Aspect | Dev PC | Production Server |
 |--------|--------|-------------------|
-| Path | `C:\CRMs\InvektoServices\` | `E:\InvektoServices\` |
-| Services | `dotnet run` | NSSM Windows Services |
+| Path | `C:\CRMs\InvektoServices\` | `C:\Invekto\{Service}\current\` |
+| NSSM binary | — | `C:\Invekto\nssm.exe` |
+| Services | `dotnet run` | NSSM Windows Services (`Invekto-{Service}`) |
+
+> **Not:** Eski `E:\InvektoServices\` path'i GEÇERSİZDİR (2026-04-10 cleanup). Tek gerçek deploy truth'u için `.claude/commands/deploy.md` ve `.claude/commands/deploy-info.md` oku.
 
 **Windows PowerShell:** Detayli kurallar `shared-lessons.md`'de.
 - `powershell -NoProfile -Command "..."` wrapper kullan
@@ -82,41 +89,37 @@ Bu adimlar plan mode dahil her session icin gecerlidir.
 | Codex review context | `arch/codex-context.md` |
 | Review policy | `arch/review-policy.md` |
 
-## Agents & Skills
+## Agents, Commands & Skills
 
-**Agents** (`.claude/agents/`):
-- `INVEKTO_BASE.prompt.md` - Global rules v5.2 (canonical source)
-- `INVEKTO_PLAN_AGENT.prompt.md` - Planning (interview + JSON plan)
-- `INVEKTO_DEV_AGENT.prompt.md` - Implementation (self-review + MCP Codex)
-- `INVEKTO_AUDIT_AGENT.prompt.md` - Codebase audit (Q triggers manually)
+**Local Agents** (`.claude/agents/`):
+- `INVEKTO_BASE.prompt.md` — Global rules (canonical source)
+- `INVEKTO_PLAN_AGENT.prompt.md` — Planning (interview + JSON plan)
+- `INVEKTO_DEV_AGENT.prompt.md` — Implementation (self-review + MCP Codex)
+- `INVEKTO_AUDIT_AGENT.prompt.md` — Codebase audit (Q triggers manually)
+- `build-runner.md`, `db-query.md` — Helper agents (haiku)
 
-**Skills** (`.claude/commands/`):
-- `auto.md` - Default workflow (otomatik, /auto yazmaya gerek yok)
-- `rev.md` - Review protocol (/rev, MCP automated)
-- `codex.md` - Manuel Codex review trigger (/codex, fallback)
-- `brief.md` - Session brief (/brief, session ozeti)
-- `deploy.md` - Deploy to production (/deploy, NSSM services)
-- `learn.md` - Session learnings (/learn)
-- `push.md` - Git push (/push, secret scan BLOCKING)
-- `aha.md` - Aha moment + fikir değerlendirme (/aha = UX iyileştirme, /eval = fikir değerlendirme — tek skill, iki mod)
-- `test-ui.md` - UI testing (/test-ui, Playwright)
-- `sync-check.md` - Arch/kod senkronizasyon kontrolu (/sync-check)
-- `wrap.md` - Phase kapama (/wrap: tracking + learn + push + prompt)
-- `session-prompt.md` - Session devam promptu (/session-prompt, sifir yan etki)
+**Local Commands** (`.claude/commands/`, slash-invoked):
+- `/brief` — Session brief (okur: lessons-learned + session-memory)
+- `/codex` — Manuel Codex review trigger (MCP fallback)
+- `/deploy` — Production deploy (NSSM services, 11 tenant)
+- `/chat-export` — Sohbet export
+- `/sync-check` — Arch/kod senkronizasyon kontrolü
+- `/test-ui` — UI testing (Playwright)
 
-## Sub-Agents (Otomatik Tetikleme)
+**Global Skills** (`~/.claude/skills/`, repo'da değil — kullanıcı seviyesi):
+`auto`, `rev`, `wrap`, `aha`, `push`, `learn`, `session-prompt`.
+Bu skill'ler tüm projelerde ortak çalışır, local karşılığı YOKTUR.
 
-**Q'nun agent adi hatirlamasina GEREK YOK!** Asagidaki durumlarda ilgili agent OTOMATIK cagrilmali:
+> **Referans:** `deploy-info.md` (commands/ içinde) deploy teknik detaylarını taşıyan reference-only dosyadır; primary komut `/deploy`dir.
 
-| Durum | Agent | Tetikleme |
-|-------|-------|-----------|
-| Build gerekli | `build-runner` | Kod degisikligi sonrasi |
-| DB sorgusu gerekli | `db-query` | Veri soruldugunda |
+## Sub-Agents (Advisory, manuel cagrilir)
 
-| Agent | Model | Guvenlik |
-|-------|-------|----------|
-| `build-runner` | haiku | Sadece dotnet build komutlari |
-| `db-query` | haiku | **SADECE SELECT** - write YASAK |
+| Durum | Agent | Model | Guvenlik |
+|-------|-------|-------|----------|
+| Build gerekli (kod degisikligi sonrasi) | `build-runner` | haiku | Sadece `dotnet build` komutlari |
+| DB sorgusu gerekli (Postgres) | `db-query` | haiku | **SADECE SELECT** — write YASAK |
+
+> **ADVISORY, enforce DEGIL:** Bu agent'lar hook ile otomatik cagrilmaz. Gerektiginde Claude Code manuel `Agent` tool'u ile spawn eder. Duruma gore agent davranisi secilir.
 
 ### Cross-Service Research
 

@@ -1,4 +1,8 @@
-# InvektoServices Deploy Info
+# InvektoServices Deploy Info (reference-only)
+
+> **⚠️ Reference-only.** Primary deploy komutu `/deploy` (aynı klasörde `deploy.md`). Bu dosya teknik detayları taşır: migration kuralı, SPA architecture, server credentials, yeni servis checklist.
+>
+> **Çelişki durumunda `deploy.md` kazanır** (deploy.md = command definition).
 
 On-demand referans — deploy, server bilgileri ve SPA architecture detayları.
 

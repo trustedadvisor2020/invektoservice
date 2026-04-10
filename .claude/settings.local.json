@@ -2,25 +2,30 @@
   "permissions": {
     "allow": [
       "Bash(*)",
+      "Skill(*)",
+      "SlashCommand(*)",
       "Edit",
       "Write",
       "Read(//c/**)",
+      "Read(//c/CRMs/InvektoServices/**)",
       "Read(//tmp/**)",
-      "Read(//c/CRMs/InvektoServis/**)",
       "WebFetch",
       "mcp__codex-review__*",
-      "mcp__invekto-postgres__query",
-      "mcp__invekto-postgres__pg-schema",
+      "mcp__invekto-postgres__*",
       "mcp__invekto-ops__server-exec",
       "mcp__invekto-ops__server-status",
       "mcp__invekto-ops__server-health",
       "mcp__invekto-ops__server-download",
       "mcp__invekto-ops__server-logs",
       "mcp__invekto-ops__server-deploy",
-      "mcp__invekto-ops__server-upload"
+      "mcp__invekto-ops__server-upload",
+      "mcp__customer-mssql__*",
+      "mcp__idea-consultant__*",
+      "mcp__idea-consultant-gemini__*"
     ],
     "additionalDirectories": [
-      "c:\\CRMs\\InvektoServis"
+      "c:\\CRMs\\InvektoServices",
+      "c:\\CRMs\\_shared\\mcp-servers\\codex-review"
     ]
   }
 }

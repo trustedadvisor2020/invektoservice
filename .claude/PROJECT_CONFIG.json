@@ -31,7 +31,8 @@
   "language": "en",
   "codex": {
     "mcp_tool": "mcp__codex-review__codex_review",
-    "model": "gpt-5.2-codex"
+    "model": "gpt-5.4",
+    "_model_source": "Tek kaynak: .mcp.json env.CODEX_MODEL. Aynı değer burada yansır."
   },
   "intent": {
     "trade_offs": {
