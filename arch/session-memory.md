@@ -6,18 +6,18 @@
 ## Last Update
 
 - **Date:** 2026-04-13
-- **Status:** G7 Hangfire Migration — spec + Faz 1 plan approved. Implementation /clear sonra yeni session'da.
-- **Last Task:** G7 planlama (SPEC-008 + Faz 1 plan JSON). Strangler rollout: Faz 1 altyapı + Reminder + FlowWaitResumer pilot; Faz 2-5 kalan 8 scheduler. Queue-per-service topology (her servis kendi Hangfire server, ortak PG storage). /hangfire dashboard Backend'te, superadmin-only. Queue consumer worker'lar (MessageSender/AnalysisProcessing/DocumentProcessing/BenchmarkProcessing/BatchClassification) + SimulationEngine out of scope (Hangfire fit değil).
-- **Files Changed (this session):** ADD: arch/specs/g7-hangfire-migration.md, tracking/g7-hangfire.md, arch/plans/20260413-g7-hangfire-faz1.json. EDIT: tracking/README.md, arch/session-memory.md.
-- **Build:** N/A (planning only).
-- **Next Task:** G7 Faz 1 implementation — NuGet adds (Hangfire.AspNetCore + Hangfire.PostgreSql) in Shared/Appointments/Automation/Backend csproj, new HangfireSetup.cs + SuperAdminDashboardFilter.cs in Shared/Hosting, ReminderJob + FlowWaitResumerJob, delete old IHostedService files, migration 011 (hangfire schema + grant), Backend /hangfire dashboard mount, 3 Program.cs wire-ups, ErrorCodes INV-JOB-001..005. Plan: arch/plans/20260413-g7-hangfire-faz1.json.
+- **Status:** G7 Faz 1 DONE. Codex iter 3 FORCE_PASS (Q). Migration 011 prod'a çalıştırıldı.
+- **Last Task:** G7 Faz 1 Hangfire migration — Shared HangfireSetup + SuperAdminDashboardFilter (PrivateAssets=all ile transitive izolasyon), migration 011 (hangfire schema + grants), ReminderJob (Appointments, cron */5 queue=appointments), FlowWaitResumerJob (Automation, Cron.Minutely queue=automation), Backend /hangfire dashboard mount (hangfireEnabled gate resolved Hangfire/PostgreSQL conn str), INV-JOB-001..005 error codes. Eski 2 IHostedService silindi.
+- **Files Changed (this session):** ADD: HangfireSetup.cs, SuperAdminDashboardFilter.cs, ReminderJob.cs, FlowWaitResumerJob.cs, 011-hangfire-schema.sql. MOD: 4 csproj, 3 Program.cs, ErrorCodes.cs, errors.md, .gitignore. DEL: ReminderSchedulerService.cs, FlowWaitResumerService.cs.
+- **Build:** PASS, 0 errors, 14 warnings (all pre-existing).
+- **Deploy Status:** Migration 011 prod'a çalıştırıldı (hangfire schema + grants + default privileges). Servis deploy'u (Appointments, Automation, Backend) Q'ya kaldı.
+- **Next Task:** Q deploy yapacak (3 servis: Appointments, Automation, Backend). Deploy sonrası: (a) /hangfire dashboard'a superadmin login ile doğrulama; (b) recurring job'ların son/next execution'ı dashboard'da görünüyor mu kontrol. Sonrası G7 Faz 2 plan JSON (Waitlist + TreatmentLifecycle Appointments).
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 3 | G7 Faz 1 Hangfire implementation | PLAN APPROVED | Plan: arch/plans/20260413-g7-hangfire-faz1.json — /clear sonra yeni session'da başla |
-| 3b | G7 Faz 2-5 (8 scheduler) | PENDING | Faz 1 PASS sonrası ayrı plan JSON'ları |
+| 3b | G7 Faz 2-5 (8 scheduler) | PENDING | Faz 1 DONE (commit). Faz 2: Waitlist + TreatmentLifecycle Appointments |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
 | 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
 | 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |
@@ -28,6 +28,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-13 | G7 Faz 1 Hangfire migration: Shared HangfireSetup (PrivateAssets=all) + SuperAdminDashboardFilter (tenant_id=0) + migration 011 (hangfire schema + default privileges) + ReminderJob (Appointments, queue=appointments, cron */5) + FlowWaitResumerJob (Automation, queue=automation, Cron.Minutely) + Backend /hangfire dashboard + INV-JOB-001..005. Old 2 IHostedService deleted. Build PASS, 14 warnings (all pre-existing). Codex iter 3 FORCE_PASS (Q — CoVe Q1-Q5 all PASS; remaining CQ gates PLAN_ASSUMPTION_WRONG: admin HTML UI ≠ API envelope). Migration prod'a çalıştırıldı. |
 | 2026-04-13 | G6 Flow state persistence: action_wait_until node + flow_execution_state table (migration 010 + canonical automation.sql) + FlowWaitRepository + FlowWaitResumerService (60s IHostedService) + orchestrator cancel-on-reply + public ResumeWaitAsync + GET /api/ops/flow-waits. 30g max clamp, INV-AT-058/059/060. 13 files +1043 -1. Codex PASS iter=2 (iter 0: diff görülmedi; iter 1: canonical schema + GRANT fix; iter 2: typed catches + typed response envelope). |
 | 2026-04-15 | UP0.1b Shared DTO consolidation: WapCrmMessage + WapCrmApiResponse<T> → Contracts/Inma/Dtos/, IncomingWebhookEvent + WebhookMessage → Contracts/Inma/Webhooks/. 5 caller using update (ChatAnalysis WapCrmClient, Backend Program/AttributionService, Automation Program/Orchestrator). JsonPropertyName byte-identical. Codex PASS iter=2. |
 | 2026-04-14 | G3 Template A/B rotation: ITemplateRotationService (Shared, FNV-1a stateless) + MessageTextHandler text_variants JSON array + ExecutionContext.ContactKey + orchestrator chatId/phone/flow fallback + node_trace variant_index/count. INV-AT-057 yeni error code. Codex PASS iter=2. |
