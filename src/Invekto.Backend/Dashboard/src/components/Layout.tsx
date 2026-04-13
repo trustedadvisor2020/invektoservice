@@ -145,10 +145,35 @@ export function Layout({ children }: LayoutProps) {
           key={item.path}
           type="button"
           title={collapsed ? item.label : undefined}
-          onClick={() => {
+          onClick={async () => {
+            // Two auth paths accepted by /ops/hangfire-login:
+            //  (1) INMA session -> JWT in localStorage.access_token as query param.
+            //  (2) Ops mode -> Basic Auth from sessionStorage.ops_auth as header.
             const t = localStorage.getItem('access_token');
-            if (!t) { alert('Oturum bulunamadı'); return; }
-            window.open('/ops/hangfire-login?token=' + encodeURIComponent(t), '_blank', 'noopener');
+            if (t) {
+              window.open('/ops/hangfire-login?token=' + encodeURIComponent(t), '_blank', 'noopener');
+              return;
+            }
+            const opsAuth = sessionStorage.getItem('ops_auth');
+            if (!opsAuth) { alert('Oturum bulunamadı (ne JWT ne Ops giriş)'); return; }
+            // Manual fetch so we can attach Authorization header; follow redirect, then navigate.
+            try {
+              const r = await fetch('/ops/hangfire-login', {
+                method: 'GET',
+                headers: { Authorization: 'Basic ' + opsAuth },
+                credentials: 'include',
+                redirect: 'manual',
+              });
+              // Cookie is set by the response; open the dashboard directly.
+              if (r.status === 401 || r.status === 403) {
+                const body = await r.text().catch(() => '');
+                alert('Hangfire girişi reddedildi: ' + (body || r.status));
+                return;
+              }
+              window.open('/hangfire', '_blank', 'noopener');
+            } catch (e) {
+              alert('Hangfire giriş hatası: ' + (e instanceof Error ? e.message : String(e)));
+            }
           }}
           className={cn(commonClasses, 'w-full text-left cursor-pointer bg-transparent')}
         >

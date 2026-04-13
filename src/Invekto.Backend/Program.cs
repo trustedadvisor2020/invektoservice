@@ -417,27 +417,43 @@ if (hangfireEnabled)
     // hits /ops/hangfire-login?token=<localStorage.access_token> first. This endpoint
     // validates the JWT (tenant_id=0 required) and issues an HttpOnly+Secure cookie
     // scoped to /hangfire, then 302-redirects there. No duplicate credential surface.
-    app.MapGet("/ops/hangfire-login", (HttpContext ctx, string? token, JwtValidator validator, JsonLinesLogger logger) =>
+    app.MapGet("/ops/hangfire-login", (HttpContext ctx, string? token, JwtValidator validator, JwtGenerator generator, JsonLinesLogger logger) =>
     {
-        if (string.IsNullOrEmpty(token))
-            return Results.BadRequest(new { error = "token query param required" });
+        // Accepts two auth paths:
+        //  (1) ?token=<jwt>  — tenant_id=0 JWT via localStorage (INMA-session flow).
+        //  (2) Authorization: Basic <base64(user:pass)> — Ops mode (sessionStorage.ops_auth).
+        // Valid either way, mint a short-lived superadmin JWT, drop it as an HttpOnly cookie
+        // scoped to /hangfire, then redirect. Filter reuses the same cookie.
+        string? issuedJwt = null;
+        string? denyReason = null;
 
-        TenantContext? tctx;
-        string? err;
-        try { (tctx, err) = validator.ValidateToken(token); }
-        catch (Exception ex) { tctx = null; err = ex.Message; }
-        if (tctx == null)
+        if (!string.IsNullOrEmpty(token))
         {
-            logger.SystemWarn($"[{ErrorCodes.JobDashboardUnauthorized}] hangfire-login rejected: {err}");
-            return Results.Json(new { error = err ?? "invalid token" }, statusCode: 401);
+            TenantContext? tctx;
+            string? err;
+            try { (tctx, err) = validator.ValidateToken(token); }
+            catch (Exception ex) { tctx = null; err = ex.Message; }
+            if (tctx == null) denyReason = $"token-invalid:{err}";
+            else if (tctx.TenantId != 0) denyReason = $"token-non-superadmin:tenant={tctx.TenantId}";
+            else issuedJwt = token;
         }
-        if (tctx.TenantId != 0)
+        else if (ValidateOpsAuth(ctx))
         {
-            logger.SystemWarn($"[{ErrorCodes.JobDashboardUnauthorized}] hangfire-login non-superadmin tenant={tctx.TenantId}");
-            return Results.Json(new { error = "superadmin required" }, statusCode: 403);
+            // Ops credentials verified; mint a 1-hour superadmin JWT (tenant_id=0).
+            issuedJwt = generator.GenerateServiceToken(0, TimeSpan.FromHours(1));
+        }
+        else
+        {
+            denyReason = "no-token-and-basic-auth-invalid";
         }
 
-        ctx.Response.Cookies.Append(SuperAdminDashboardFilter.CookieName, token, new CookieOptions
+        if (issuedJwt == null)
+        {
+            logger.SystemWarn($"[{ErrorCodes.JobDashboardUnauthorized}] hangfire-login rejected: {denyReason}");
+            return Results.Json(new { error = denyReason ?? "unauthorized" }, statusCode: 401);
+        }
+
+        ctx.Response.Cookies.Append(SuperAdminDashboardFilter.CookieName, issuedJwt, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
