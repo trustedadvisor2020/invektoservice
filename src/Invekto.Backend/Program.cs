@@ -9,6 +9,7 @@ using Invekto.Shared.Middleware;
 using Hangfire;
 using Invekto.Backend.Data;
 using Invekto.Backend.Services;
+using Invekto.Backend.Services.Jobs;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Hosting;
 using Invekto.Shared.Constants;
@@ -289,8 +290,7 @@ if (!string.IsNullOrEmpty(pgConnectionString))
 
     // PKT-3: AnalyticsRepository (singleton, thread-safe via connection pooling)
     builder.Services.AddSingleton<AnalyticsRepository>();
-    // PKT-3: MetricsAggregationService (IHostedService, 5min aggregation timer)
-    builder.Services.AddHostedService<MetricsAggregationService>();
+    // PKT-3 + G7 Faz 4: MetricsAggregationJob (Hangfire recurring, cron */5 min) — see below
 
     // GR-3.14: Attribution tracking (singleton, thread-safe via connection pooling)
     builder.Services.AddSingleton<AttributionRepository>();
@@ -311,9 +311,8 @@ if (!string.IsNullOrEmpty(pgConnectionString))
     // Onboarding status aggregation (PKT-2: computed from Knowledge + Automation + tenant_registry)
     builder.Services.AddSingleton<OnboardingStatusService>();
 
-    // Translation cache + cleanup (7-day TTL)
+    // Translation cache + G7 Faz 4 cleanup job (7-day TTL) — see Hangfire block below
     builder.Services.AddSingleton<TranslationCacheRepository>();
-    builder.Services.AddHostedService<TranslationCleanupService>();
 
 }
 
@@ -345,6 +344,9 @@ var hangfireEnabled = !string.IsNullOrEmpty(hangfireConnStr);
 if (hangfireEnabled)
 {
     builder.Services.AddInvektoHangfire("backend", hangfireConnStr);
+    // G7 Faz 4: Backend recurring jobs (TranslationCleanup + MetricsAggregation)
+    builder.Services.AddScoped<TranslationCleanupJob>();
+    builder.Services.AddScoped<MetricsAggregationJob>();
 }
 
 // QNB VPos — ödeme servisi
@@ -408,6 +410,21 @@ if (hangfireEnabled)
         Authorization = new[] { new SuperAdminDashboardFilter() },
         DisplayStorageConnectionString = false
     });
+
+    // G7 Faz 4: Recurring job registration (idempotent via AddOrUpdate)
+    var translationCleanupCron = builder.Configuration["TranslationCleanup:Cron"] ?? Cron.Hourly();
+    RecurringJob.AddOrUpdate<TranslationCleanupJob>(
+        "backend:translation-cleanup",
+        "backend",
+        j => j.RunAsync(CancellationToken.None),
+        translationCleanupCron);
+
+    var metricsAggregationCron = builder.Configuration["MetricsAggregation:Cron"] ?? "*/5 * * * *";
+    RecurringJob.AddOrUpdate<MetricsAggregationJob>(
+        "backend:metrics-aggregation",
+        "backend",
+        j => j.RunAsync(CancellationToken.None),
+        metricsAggregationCron);
 }
 else
 {
