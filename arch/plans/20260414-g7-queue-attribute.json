@@ -1,0 +1,130 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008-§12",
+  "slug": "20260414-g7-queue-attribute",
+  "risk": "LOW",
+  "status": "DONE",
+  "commit_sha": null,
+  "codex_verdict": "PASS",
+  "codex_iteration": 0,
+  "created_at": "2026-04-14T01:20:00Z",
+  "updated_at": "2026-04-14T01:20:00Z",
+  "plan": {
+    "summary": "G7 follow-up #2: Hangfire 1.8.14 + PostgreSql 1.20.10 `RecurringJob.AddOrUpdate<T>(id, queue, methodCall, cron)` 4-arg overload, Queue hash field'ını hangfire.hash satırına persist etmiyor — queue route runtime'da boşa düşüyor ve manuel UPDATE SQL gerektiriyordu. Fix: 10 job class'ına `[Queue(\"<service>\")]` attribute ekle ve call-site'ları 3-arg overload'a çevir. Hangfire `JobFilterAttribute` pipeline'ı dispatch sırasında attribute'u okur, hash persistence path'ine bağımlı değil. Queue mapping: appointments (3), automation (3), backend (2), integrations (1), waanalytics (1). Microservice isolation korunur; Backend leader, worker'lar kendi queue'larını tüketir.",
+    "q_intent": "Opsiyon (a) attribute yaklaşımı onaylandı — cleaner, library quirk'i bypass ediyor, future-proof. Call-site queue arg drop edildi (attribute authoritative). Migration gerekmiyor — attribute dispatch'te okunur.",
+    "interview_notes": "3 karar: (1) call-site queue arg drop — 4-arg -> 3-arg overload [seçildi]. (2) [Queue] placement: class-level [seçildi, tüm method'ları kapsar]. (3) hangfire.hash backfill: gerekmez [Hangfire JobFilter dispatch-time okur, hash persistence path bypass].",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "10 job class'ına `[Queue(\"<service>\")]` attribute eklenir: Appointments (Reminder/Waitlist/TreatmentLifecycle → \"appointments\"), Automation (FlowWaitResumer/CronScheduler/RescueFollowUp → \"automation\"), Backend (TranslationCleanup/MetricsAggregation → \"backend\"), Integrations (OrderSync → \"integrations\"), WhatsAppAnalytics (NightlyBatch → \"waanalytics\")",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "5 Program.cs call-site'ında `RecurringJob.AddOrUpdate<T>(id, queue, methodCall, cron)` → `RecurringJob.AddOrUpdate<T>(id, methodCall, cron)` — queue parametresi kaldırılır (attribute authoritative)",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Full solution build PASS 0 error; warning sayısı baseline 18 ile eşit (yeni warning yok)",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "Scope: sadece 10 job class + 5 Program.cs; başka dosya değişmez",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Appointments/Services/Jobs/ReminderJob.cs",
+    "src/Invekto.Appointments/Services/Jobs/WaitlistJob.cs",
+    "src/Invekto.Appointments/Services/Jobs/TreatmentLifecycleJob.cs",
+    "src/Invekto.Automation/Services/Jobs/FlowWaitResumerJob.cs",
+    "src/Invekto.Automation/Services/Jobs/CronSchedulerJob.cs",
+    "src/Invekto.Automation/Services/Jobs/RescueFollowUpJob.cs",
+    "src/Invekto.Backend/Services/Jobs/TranslationCleanupJob.cs",
+    "src/Invekto.Backend/Services/Jobs/MetricsAggregationJob.cs",
+    "src/Invekto.Integrations/Services/Jobs/OrderSyncJob.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Jobs/NightlyBatchJob.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Appointments/Services/Jobs/ReminderJob.cs", "change": "+[Queue(\"appointments\")]", "is_new": false },
+    { "path": "src/Invekto.Appointments/Services/Jobs/WaitlistJob.cs", "change": "+[Queue(\"appointments\")]", "is_new": false },
+    { "path": "src/Invekto.Appointments/Services/Jobs/TreatmentLifecycleJob.cs", "change": "+[Queue(\"appointments\")]", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/Jobs/FlowWaitResumerJob.cs", "change": "+[Queue(\"automation\")]", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/Jobs/CronSchedulerJob.cs", "change": "+[Queue(\"automation\")]", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/Jobs/RescueFollowUpJob.cs", "change": "+[Queue(\"automation\")]", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/Jobs/TranslationCleanupJob.cs", "change": "+[Queue(\"backend\")]", "is_new": false },
+    { "path": "src/Invekto.Backend/Services/Jobs/MetricsAggregationJob.cs", "change": "+[Queue(\"backend\")]", "is_new": false },
+    { "path": "src/Invekto.Integrations/Services/Jobs/OrderSyncJob.cs", "change": "+[Queue(\"integrations\")]", "is_new": false },
+    { "path": "src/Invekto.WhatsAppAnalytics/Services/Jobs/NightlyBatchJob.cs", "change": "+[Queue(\"waanalytics\")]", "is_new": false },
+    { "path": "src/Invekto.Appointments/Program.cs", "change": "RecurringJob.AddOrUpdate 4-arg -> 3-arg (3 call sites)", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "change": "RecurringJob.AddOrUpdate 4-arg -> 3-arg (3 call sites)", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "RecurringJob.AddOrUpdate 4-arg -> 3-arg (2 call sites)", "is_new": false },
+    { "path": "src/Invekto.Integrations/Program.cs", "change": "RecurringJob.AddOrUpdate 4-arg -> 3-arg (1 call site)", "is_new": false },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "change": "RecurringJob.AddOrUpdate 4-arg -> 3-arg (1 call site)", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "e2486ac2231e1f9bd181db6fec13611eddd37c0d1adb4801a4a58c96f0c4be86",
+    "full_path": "arch/plans/diffs/20260414-g7-queue-attribute.diff",
+    "stats": { "insertions": 20, "deletions": 10, "files_count": 15 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-14T01:22:00Z",
+    "duration_ms": 21480,
+    "output_tail": "Build succeeded. 18 Warning(s), 0 Error(s). Baseline preserved.",
+    "error_summary": null,
+    "services": ["Invekto.Appointments", "Invekto.Automation", "Invekto.Backend", "Invekto.Integrations", "Invekto.WhatsAppAnalytics"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Her 10 job class'ına `[Queue(\"<service>\")]` attribute eklendi mi ve queue string'i Program.cs'teki eski call-site queue arg'ı ile aynı mı?",
+      "category": "Scope",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "5 Program.cs'te `RecurringJob.AddOrUpdate<T>` çağrıları 4-arg'dan 3-arg'a çevrildi mi? (queue string parametresi kaldırıldı — attribute authoritative)",
+      "category": "Call-Site",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Job class'ların üzerindeki mevcut attribute'lar (örn. DisableConcurrentExecution) korundu mu? [Queue] sadece eklendi, diğerleri değişmedi mi?",
+      "category": "Regression",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Microservice isolation: hiçbir servis başka servisin queue'sunu tüketmeye başlamıyor — attribute sadece job class'ın ait olduğu servisin queue adını taşıyor (cross-service leak yok) — doğru mu?",
+      "category": "Isolation",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Scope: sadece 10 job class + 5 Program.cs dosyası değişti; Shared, DTO, error codes, arch/ değişmedi — doğru mu?",
+      "category": "Scope",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ]
+}

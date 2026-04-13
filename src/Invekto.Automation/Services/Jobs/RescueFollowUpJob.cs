@@ -14,6 +14,7 @@ namespace Invekto.Automation.Services.Jobs;
 ///
 /// Queue: <c>automation</c>. Recurring id: <c>automation:rescue-followup</c> (cron "0 */4 * * *").
 /// </summary>
+[Queue("automation")]
 [DisableConcurrentExecution(timeoutInSeconds: 600)]
 public sealed class RescueFollowUpJob
 {

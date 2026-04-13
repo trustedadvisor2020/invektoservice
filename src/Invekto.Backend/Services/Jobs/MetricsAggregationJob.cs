@@ -13,6 +13,7 @@ namespace Invekto.Backend.Services.Jobs;
 /// Per-tenant NpgsqlException is caught and logged (row-level isolation — one tenant failure
 /// does not stop others). Top-level failures bubble to Hangfire AutomaticRetry + INV-JOB-005.
 /// </summary>
+[Queue("backend")]
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class MetricsAggregationJob
 {

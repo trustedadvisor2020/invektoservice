@@ -12,6 +12,7 @@ namespace Invekto.Appointments.Services.Jobs;
 /// [DisableConcurrentExecution] replaces the prior Interlocked overlap guard; timeout 300s
 /// accommodates large batches (batch_size=50, each step makes an Outbound HTTP call).
 /// </summary>
+[Queue("appointments")]
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class TreatmentLifecycleJob
 {

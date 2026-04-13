@@ -131,7 +131,6 @@ _ = app.Services.GetRequiredService<LogCleanupService>();
 var reminderCron = builder.Configuration["Reminder:Cron"] ?? "*/5 * * * *";
 RecurringJob.AddOrUpdate<ReminderJob>(
     "appointments:reminder",
-    "appointments",
     j => j.RunAsync(CancellationToken.None),
     reminderCron);
 
@@ -139,14 +138,12 @@ RecurringJob.AddOrUpdate<ReminderJob>(
 var waitlistCron = builder.Configuration["Waitlist:Cron"] ?? "*/5 * * * *";
 RecurringJob.AddOrUpdate<WaitlistJob>(
     "appointments:waitlist",
-    "appointments",
     j => j.RunAsync(CancellationToken.None),
     waitlistCron);
 
 var lifecycleCron = builder.Configuration["Lifecycle:Cron"] ?? "*/5 * * * *";
 RecurringJob.AddOrUpdate<TreatmentLifecycleJob>(
     "appointments:treatment-lifecycle",
-    "appointments",
     j => j.RunAsync(CancellationToken.None),
     lifecycleCron);
 

@@ -22,6 +22,7 @@ namespace Invekto.Appointments.Services.Jobs;
 /// (cross-process advisory lock via PG storage) plus retry via
 /// <see cref="AutomaticRetryAttribute"/> defaults.
 /// </summary>
+[Queue("appointments")]
 [DisableConcurrentExecution(timeoutInSeconds: 30)]
 public sealed class ReminderJob
 {

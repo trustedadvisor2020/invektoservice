@@ -489,14 +489,12 @@ if (hangfireEnabled)
     var translationCleanupCron = builder.Configuration["TranslationCleanup:Cron"] ?? Cron.Hourly();
     RecurringJob.AddOrUpdate<TranslationCleanupJob>(
         "backend:translation-cleanup",
-        "backend",
         j => j.RunAsync(CancellationToken.None),
         translationCleanupCron);
 
     var metricsAggregationCron = builder.Configuration["MetricsAggregation:Cron"] ?? "*/5 * * * *";
     RecurringJob.AddOrUpdate<MetricsAggregationJob>(
         "backend:metrics-aggregation",
-        "backend",
         j => j.RunAsync(CancellationToken.None),
         metricsAggregationCron);
 }

@@ -125,7 +125,6 @@ app.UseAuthorization();
 var orderSyncCron = builder.Configuration["OrderSync:Cron"] ?? "*/5 * * * *";
 RecurringJob.AddOrUpdate<OrderSyncJob>(
     "integrations:order-sync",
-    "integrations",
     j => j.RunAsync(CancellationToken.None),
     orderSyncCron);
 

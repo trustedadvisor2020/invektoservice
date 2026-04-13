@@ -9,6 +9,7 @@ namespace Invekto.Appointments.Services.Jobs;
 ///
 /// Queue: <c>appointments</c>. Recurring id: <c>appointments:waitlist</c> (cron */5 min).
 /// </summary>
+[Queue("appointments")]
 [DisableConcurrentExecution(timeoutInSeconds: 30)]
 public sealed class WaitlistJob
 {

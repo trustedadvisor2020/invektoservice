@@ -271,7 +271,6 @@ _ = app.Services.GetRequiredService<LogCleanupService>();
 // G7: Register Hangfire recurring flow-wait resumer (cron minutely; idempotent)
 RecurringJob.AddOrUpdate<FlowWaitResumerJob>(
     "automation:flow-wait-resumer",
-    "automation",
     j => j.RunAsync(CancellationToken.None),
     Cron.Minutely());
 
@@ -279,14 +278,12 @@ RecurringJob.AddOrUpdate<FlowWaitResumerJob>(
 var cronSchedulerCron = builder.Configuration["CronScheduler:Cron"] ?? Cron.Minutely();
 RecurringJob.AddOrUpdate<CronSchedulerJob>(
     "automation:cron-scheduler",
-    "automation",
     j => j.RunAsync(CancellationToken.None),
     cronSchedulerCron);
 
 var rescueFollowUpCron = builder.Configuration["RescueFollowUp:Cron"] ?? "0 */4 * * *";
 RecurringJob.AddOrUpdate<RescueFollowUpJob>(
     "automation:rescue-followup",
-    "automation",
     j => j.RunAsync(CancellationToken.None),
     rescueFollowUpCron);
 

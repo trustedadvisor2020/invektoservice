@@ -14,6 +14,7 @@ namespace Invekto.Integrations.Services.Jobs;
 /// Per-account typed catches preserve row-level isolation (one marketplace failure does
 /// not stop others). Top-level failures bubble to Hangfire AutomaticRetry + INV-JOB-005.
 /// </summary>
+[Queue("integrations")]
 [DisableConcurrentExecution(timeoutInSeconds: 600)]
 public sealed class OrderSyncJob
 {

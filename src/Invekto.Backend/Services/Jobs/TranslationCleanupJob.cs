@@ -11,6 +11,7 @@ namespace Invekto.Backend.Services.Jobs;
 ///
 /// Queue: <c>backend</c>. Recurring id: <c>backend:translation-cleanup</c> (cron hourly).
 /// </summary>
+[Queue("backend")]
 [DisableConcurrentExecution(timeoutInSeconds: 60)]
 public sealed class TranslationCleanupJob
 {

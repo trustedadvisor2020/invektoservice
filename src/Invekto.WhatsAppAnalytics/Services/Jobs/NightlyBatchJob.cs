@@ -16,6 +16,7 @@ namespace Invekto.WhatsAppAnalytics.Services.Jobs;
 /// (cron <c>0 {RunHour} * * *</c>, built at startup from <see cref="NightlyBatchConfig.RunHour"/>).
 /// Config <c>Enabled=false</c> short-circuits the handler.
 /// </summary>
+[Queue("waanalytics")]
 [DisableConcurrentExecution(timeoutInSeconds: 3600)]
 public sealed class NightlyBatchJob
 {

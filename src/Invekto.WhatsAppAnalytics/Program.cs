@@ -297,7 +297,6 @@ if (mssqlConfigured)
     var nightlyCron = builder.Configuration["NightlyBatch:Cron"] ?? $"0 {nightlyCfg.RunHour} * * *";
     RecurringJob.AddOrUpdate<Invekto.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>(
         "waanalytics:nightly-batch",
-        "waanalytics",
         j => j.RunAsync(CancellationToken.None),
         nightlyCron);
 }

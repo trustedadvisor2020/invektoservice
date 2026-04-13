@@ -17,6 +17,7 @@ namespace Invekto.Automation.Services.Jobs;
 /// Registered as Singleton because <see cref="_lastFired"/> state must persist across invocations.
 /// Overlap prevention via <see cref="DisableConcurrentExecutionAttribute"/> (PG advisory lock).
 /// </summary>
+[Queue("automation")]
 [DisableConcurrentExecution(timeoutInSeconds: 60)]
 public sealed class CronSchedulerJob
 {

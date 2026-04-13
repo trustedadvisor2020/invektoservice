@@ -17,6 +17,7 @@ namespace Invekto.Automation.Services.Jobs;
 /// (<see cref="Cron.Minutely"/>). Cross-process overlap prevented by
 /// <see cref="DisableConcurrentExecutionAttribute"/> (PG advisory lock).
 /// </summary>
+[Queue("automation")]
 [DisableConcurrentExecution(timeoutInSeconds: 30)]
 public sealed class FlowWaitResumerJob
 {
