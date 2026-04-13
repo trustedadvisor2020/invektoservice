@@ -971,6 +971,7 @@ Toplam (kümülatif):             ARPU 2-3x artış potansiyeli   Phase 4 sonund
 | — | WebChat Customization | EVALUATED | Widget kişiselleştirme: color, logo, welcome_message. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
 | — | Domain Split (super vs crm) | EVALUATED | super.invekto.com (ops) vs crm.invekto.com (tenant) — IIS ARR + React routing. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
 | — | Pricing Page + Sign-up Form | EVALUATED | invekto.com gerçek plan fiyatları + demo/kayıt formu. Kaynak: [arch/docs/lansman/02-LANSMAN-ROADMAP.md](../arch/docs/lansman/02-LANSMAN-ROADMAP.md) |
+| — | Invekto.Scheduler ayrı mikroservis | IDEA | G7 follow-up. Backend'ten scheduler rolünü çıkar, ayrı queue-only servis. Backend'teki 4 compile-only ProjectReference kaldırılır. Kaynak: [arch/specs/g7-hangfire-migration.md](../arch/specs/g7-hangfire-migration.md) §12 |
 
 **Arşivlenen fikirler:** `tracking/ideas/archive/` — PKT'ye atanmış ve tracking dosyasına aktarılmış eski fikir dosyaları.
 

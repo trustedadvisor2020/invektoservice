@@ -2,11 +2,19 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Invekto.Shared\Invekto.Shared.csproj" />
+    <!-- G7 SCHEDULER HOST EXCEPTION - Backend runs sole Hangfire scheduler.
+         Compile-only references so RecurringJobScheduler can resolve job types.
+         Worker execution stays in each service's own process (queue filter).
+         See arch/specs/g7-hangfire-migration.md section 12 Exception. -->
+    <ProjectReference Include="..\Invekto.Appointments\Invekto.Appointments.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Invekto.Automation\Invekto.Automation.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Invekto.Integrations\Invekto.Integrations.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Invekto.WhatsAppAnalytics\Invekto.WhatsAppAnalytics.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Windows Service restart support -->
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
     <!-- INMA WaClient.Management SQL Server readonly access -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <!-- G7: Hangfire runtime + dashboard (Shared's refs are PrivateAssets=all; opt-in per consumer). -->
@@ -18,7 +26,29 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- G7 §12: referenced services' appsettings.json collide with Backend's own. Tolerate; Backend's files win. -->
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
+
+  <!-- G7 §12: strip other services' appsettings from Backend publish output (Backend keeps its own). -->
+  <Target Name="RemoveReferencedAppsettingsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="'%(Filename)%(Extension)' == 'appsettings.json' Or '%(Filename)%(Extension)' == 'appsettings.Production.json' Or '%(Filename)%(Extension)' == 'appsettings.Development.json'" />
+      <ResolvedFileToPublish Include="$(ProjectDir)appsettings.json" Condition="Exists('$(ProjectDir)appsettings.json')">
+        <RelativePath>appsettings.json</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(ProjectDir)appsettings.Production.json" Condition="Exists('$(ProjectDir)appsettings.Production.json')">
+        <RelativePath>appsettings.Production.json</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(ProjectDir)appsettings.Development.json" Condition="Exists('$(ProjectDir)appsettings.Development.json')">
+        <RelativePath>appsettings.Development.json</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 
   <!-- Include Postman collection in publish output -->
   <ItemGroup>

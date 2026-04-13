@@ -95,6 +95,8 @@ var user = await _otherServiceDb.GetUserAsync(userId);
 var user = await _httpClient.GetFromJsonAsync<UserDto>($"/api/users/{userId}");
 ```
 
+> **EXCEPTION (G7 Scheduler Host):** `Invekto.Backend.csproj` has compile-only `ProjectReference` (`PrivateAssets="all"`) to `Appointments`, `Automation`, `Integrations`, `WhatsAppAnalytics` so Hangfire leader scheduler can resolve recurring job types. Backend kodunda `using Invekto.<Service>...` YAZILMAZ — sadece DLL publish output'a kopyalanir. Yeni servis/job eklenirse Backend csproj guncellenmelidir. Detay: `arch/specs/g7-hangfire-migration.md` §12.
+
 ### Minimal Diff
 
 ```

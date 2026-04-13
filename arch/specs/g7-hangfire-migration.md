@@ -129,3 +129,20 @@ Hangfire (PostgreSql storage) bu problemleri cozer: persistent recurring job sta
 | Faz 5 | OrderSync + NightlyBatch | 0.5-1 gun | MEDIUM |
 
 Her faz ayri plan JSON + Codex review.
+
+## 12. Architectural Exception: Scheduler Host (2026-04-13)
+
+**Problem:** Faz 5 tamamlandiktan sonra production'da 9 recurring job'dan 7'si `Hangfire.Common.JobLoadException: Could not load the job` ile fail etti. Neden: Her servis kendi `IHostedService` startup'inda `RecurringJob.AddOrUpdate<T>(...)` cagiriyordu; Hangfire job definition'a job type'in assembly-qualified name'ini persist ediyor. Leader scheduler (Backend) her dakika due job'lari kuyruga yazmak icin `Type.GetType(assemblyQualifiedName)` yapiyor — Backend'in `bin/` klasorunde diger servislerin DLL'leri olmadigi icin resolve edemiyor ve job `throw` ediyor.
+
+**Karar:** Backend `.csproj` dosyasina `Appointments`, `Automation`, `Integrations`, `WhatsAppAnalytics` icin **compile-only `ProjectReference`** (`PrivateAssets="all"`) eklenir. Bu referanslar:
+
+- **Sadece DLL kopyalar** — Backend kodunda hicbir `using Invekto.Appointments...` YAZILMAZ. Code review ile enforce edilir.
+- **Runtime isolation korunur** — her servis hala kendi Windows servisinde calisir, kendi portunda dinler, kendi DB scope'una erisir.
+- **Queue filter** worker rolu izolasyonunu surdurur: Backend `BackgroundJobServer.Queues = ["backend"]` — diger kuyruklardaki is ogeleri ilgili servisin worker'ina gider.
+- **Scheduler rolu** yalnizca Backend'tedir (leader election zaten Hangfire PG advisory lock ile saglanir); scheduler due job'u kuyruga yazar, execute etmez.
+
+**Trade-off:** Backend publish output'una ~15 MB eklenir (4 servis DLL'leri). Bu, ayri `Invekto.Scheduler` mikroservisi kurmanin maliyetine kiyasla kabul edilebilir.
+
+**Ileride (Backlog):** Scheduler ayri bir `Invekto.Scheduler` servisine cekilebilir (queue-only, no HTTP endpoint). O zaman Backend referanslari kaldirilir, scheduler servisinin tum job referanslari olur. `tracking/roadmap.md` Backlog: "Invekto.Scheduler ayri mikroservis (G7 follow-up)".
+
+**CLAUDE.md / INVEKTO_BASE.prompt.md mikro servis izolasyon kurali bu tek istisna icin referans verir.** Yeni servis/job eklendiginde Backend csproj'a yeni `ProjectReference` eklenmezse ayni `JobLoadException` tekrar dogar — review checklist.
