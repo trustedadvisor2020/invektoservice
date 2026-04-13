@@ -110,6 +110,10 @@ Her session basladiginda otomatik:
 - `/evolve` — Yüksek confidence pattern'i skill'e dönüştürür
 - `/instinct-status` — Öğrenilmiş pattern'lerin özetini gösterir
 
+**Local Skills** (`.claude/skills/`, repo'da):
+- `rollout/SKILL.md` — Schema migration + multi-tenant backfill rollout (single Postgres, tenant_id scoped)
+- `code/`, `risk/`, `process/` — `/evolve` komutunun hedef klasörleri (henüz evolved pattern yok)
+
 **Global Skills** (`~/.claude/skills/`, repo'da değil — kullanıcı seviyesi):
 `auto`, `rev`, `wrap`, `aha`, `push`, `learn`, `session-prompt`.
 Bu skill'ler tüm projelerde ortak çalışır, local karşılığı YOKTUR.

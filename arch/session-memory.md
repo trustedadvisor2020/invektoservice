@@ -5,23 +5,34 @@
 
 ## Last Update
 
-- **Date:** 2026-04-11
-- **Status:** DONE. Multi-theme consolidation commit — translation AI detect + 13-language LanguageDetector, WAA minimal API DI fix, wizard truncated-JSON repair, login cleanup, review-policy v3.2, instinct infra scaffold.
-- **Last Task:** (1) TranslationService: AI-powered language detection (Gemma primary, Claude fallback, heuristic last resort). DetectLanguageRequest: `message` field + ResolvedText (INMA compat). Backend DetectLanguageHandler uses ResolvedText. (2) LanguageDetector: Unicode script-based detection for 13 languages (ar/ru/ko/zh/ja/th/hi/ka/hy/el/he/tr/en). (3) ClaudeWizardService: truncated-JSON repair fallback for flowconfig/json blocks, action_ecommerce node guidance injection, debug logging. appsettings Claude:WizardModel → claude-sonnet-4-6 (stable alias). (4) WhatsAppAnalytics/Program.cs: [FromServices] attribute added to all minimal-API endpoints (DI binding ambiguity fix). (5) LoginPage: "Super Admin Girisi" quick button removed. (6) review-policy.md → v3.2 (TONIVA-aligned, PLAN_OUTDATED cascade, VQ minimums, microservice isolation category). (7) Plan JSONs: pkt12-review-rescue, pkt11-f1-voiceai, pkt12-f4-dashboard → status DONE + verdict + commit_sha. (8) .claude infra: code-simplifier agent, service-isolation-checker agent, /evolve, /instinct-status, deploy-verify hook, check-shared-microservice hook, arch/instincts.md scaffold, arch/knowledge/patterns.json.
-- **Files Changed:** EDIT: src/Invekto.Backend/{Program.cs,appsettings.json}, src/Invekto.Backend/Services/{TranslationService,ClaudeWizardService}.cs, src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx, src/Invekto.Shared/DTOs/Translation/TranslationDtos.cs, src/Invekto.Shared/Services/LanguageDetector.cs, src/Invekto.WhatsAppAnalytics/Program.cs, arch/review-policy.md, arch/plans/{20260326-pkt12-review-rescue,20260327-pkt11-f1-voiceai-mvp,20260327-pkt12-f4-dashboard}.json. ADD: .claude/agents/{code-simplifier,service-isolation-checker}.md, .claude/commands/{evolve,instinct-status}.md, .claude/hooks/{check-shared-microservice.ps1,deploy-verify.ps1,dotnet-check.sh}, arch/instincts.md, arch/knowledge/patterns.json.
-- **Build:** PASS (0 errors, 17 pre-existing warnings).
-- **Next Task:** PKT-13 Faz 1 (Lead Scoring) OR evolve instinct infra (populate patterns.json from lessons-learned via /learn).
+- **Date:** 2026-04-13
+- **Status:** DONE. INMA↔INSE Unification Platform projesi kuruldu + UP0.1 (contract reorg) + UP0.6 (feature flag service) committed. Codex iteration=0 PASS (2/2 paket).
+- **Last Task:** (1) Dent Adavista müşteri analizi + tam plan (10 faz, DentAdavista/plan/). (2) INMA↔INSE unification platform kurumsal dokümantasyonu (arch/platform/inma-inse-unification/): topology, gap-matrix (42 feature), INMA feature audit (12 var, 30 yok/kısmi), INMA team kickoff brief (Angular 19 kod örnekleri + veri akış diyagramları ile), roadmap (P0/P1/P2), inse-current-state. (3) UP0.1 MVP: Backend inline WapCrm DTO'ları (WapCrmInstanceDto, WapCrmApiEnvelope, WapCrmRawInstance, WapCrmSettings) → Invekto.Shared/Contracts/Inma/Dtos/ canonical namespace. Codex PASS iter=0 (commit d4e753c). (4) UP0.6: IFeatureFlagService + InMemoryFeatureFlagService (IMemoryCache, 5dk TTL, closed-by-default, per-tenant+user key). DI registration + inma /exchange + /login endpoint'lerinde SetFeatures hook. Codex PASS iter=0 (commit 1ddb495). (5) Decisions.md: custom fields → INMA'nın 10 tenant field'ı kullanılacak (G4 iptal, 4-5g kazanç). Kanallar → INMA üzerinden WA+IG+Telegram (Email yok).
+- **Files Changed:** ADD: DentAdavista/plan/*.md (README, phase-0 to phase-9, customer-info, decisions, phase-0-audit-report, unified-platform-architecture), arch/platform/inma-inse-unification/{README, inma-feature-audit, gap-matrix, roadmap, inma-team-kickoff-brief, inse-current-state}.md, src/Invekto.Shared/Contracts/Inma/{README.md, Dtos/WapCrmInstance.cs, Dtos/WapCrmSettings.cs}, src/Invekto.Shared/Services/{IFeatureFlagService, InMemoryFeatureFlagService}.cs, arch/plans/20260413-up01-inma-contract-reorg.json, arch/plans/20260413-up06-feature-flag-service.json. EDIT: src/Invekto.Backend/{Program.cs (DI + exchange/login hooks), Data/InstanceRepository.cs, Data/TenantRegistryRepository.cs}.
+- **Build:** PASS (0 errors).
+- **Next Task:** G3 Template A/B rotation (1-2g, Dent için kritik) veya UP0.1b (mevcut Shared WapCrmMessage + IncomingWebhookEvent DTO'larını Contracts/Inma altına taşı, 10+ caller etkilenir).
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | PKT-13 Faz 1: Lead Scoring | PENDING | Marketing genişletme |
+| 1 | G3 Template A/B rotation | PENDING | 1-2g, Dent 46 welcome+FAQ varyantı için |
+| 2 | UP0.1b Shared DTO consolidation | PENDING | WapCrmMessage + IncomingWebhookEvent Contracts/Inma'ya, 10+ caller using update |
+| 3 | G7 Hangfire migration | PENDING | 5-7g platform yatırımı — ReminderSchedulerService replace |
+| 4 | G6 Flow state persistence | PENDING | 2-3g — 1.5 gün wait restart-safe |
+| 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
+| 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
+| 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |
+| 8 | Dent Adavista pilot Faz 1-9 | BLOCKED | Platform P0 sonrası |
+| 9 | PKT-13 Faz 1 Lead Scoring | PENDING | Marketing (Dent ile ilgisiz) |
 
 ## Recently Completed
 
 | Date | Task |
 |------|------|
+| 2026-04-13 | UP0.6 (feature flag service): IFeatureFlagService + InMemoryFeatureFlagService (Shared), IMemoryCache 5dk TTL, closed-by-default, per-(tenant,user) keyed. Backend DI + /inma/auth/exchange ve /login hooks. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit 1ddb495. |
+| 2026-04-13 | UP0.1 MVP (INMA contract reorg): Backend inline WapCrm DTO'ları Invekto.Shared.Contracts.Inma.Dtos namespace'ine taşındı. 3 yeni dosya, 3 Backend dosya using update. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit d4e753c. |
+| 2026-04-13 | INMA↔INSE Unification Platform kurumsal dokümanı: arch/platform/inma-inse-unification/ (README, topology, inma-feature-audit 42 feature, gap-matrix, roadmap P0-P2, inma-team-kickoff-brief Angular 19 kod örnekleriyle, inse-current-state). Dent Adavista pilot planı 10 faz. INMA 10 custom field kullanılacak → G4 iptal. |
 | 2026-04-11 | Multi-theme consolidation: (1) Translation AI language detect (Gemma/Claude) + 13-language Unicode LanguageDetector + DTO `message` field (INMA compat) + Backend handler bug fix. (2) ClaudeWizardService truncated-JSON repair fallback + action_ecommerce guidance. (3) WhatsAppAnalytics minimal API `[FromServices]` DI fix (mass endpoint update). (4) LoginPage super-admin quick button cleanup. (5) review-policy → v3.2 (TONIVA-aligned). (6) Plan JSON status DONE backfill (pkt12 rescue, pkt11 voiceai, pkt12 f4 dashboard). (7) Instinct infra scaffold (.claude/agents + commands + hooks + arch/instincts.md + patterns.json). Build PASS. |
 | 2026-04-07 | Simulation Turkish char fix: MockIntentDetector tr-TR CultureInfo + Türkçe keyword'ler + diş sektörü synonym genişletme. AiIntentHandler dynamic fallback (custom intent'lerden örnek). |
 | 2026-04-07 | Flow Template Gallery: 182 SE senaryo → FlowConfigV2 converter + static data. Dashboard galeri sayfası (/flow-templates) + FlowListPage şablon modal + FlowEditorPage AI wizard auto-open. SE AI PROMPT sekmesi. |
