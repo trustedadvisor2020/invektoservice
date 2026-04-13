@@ -24,7 +24,6 @@ var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
 var outboundUrl = builder.Configuration["Outbound:Url"] ?? "";
 var outboundTimeoutMs = builder.Configuration.GetValue<int>("Outbound:TimeoutMs", 10000);
-var lifecycleIntervalMs = builder.Configuration.GetValue<int>("Lifecycle:IntervalMs", 300_000);
 var lifecycleBatchSize = builder.Configuration.GetValue<int>("Lifecycle:BatchSize", 50);
 
 // Validate required config
@@ -91,25 +90,19 @@ var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuratio
 builder.Services.AddInvektoHangfire("appointments", hangfireConnStr);
 builder.Services.AddScoped<ReminderJob>();
 
-// GR-3.19: Register WaitlistService (IHostedService - expiration timer + cancel-flow hook)
-builder.Services.AddSingleton<WaitlistService>(sp =>
-    new WaitlistService(
-        sp.GetRequiredService<AppointmentsRepository>(),
-        sp.GetRequiredService<IHttpClientFactory>(),
-        sp.GetRequiredService<JwtGenerator>(),
-        sp.GetRequiredService<JsonLinesLogger>()));
-builder.Services.AddHostedService(sp => sp.GetRequiredService<WaitlistService>());
+// GR-3.19 + G7 Faz 2: WaitlistService (endpoint helper; tick moved to WaitlistJob)
+builder.Services.AddSingleton<WaitlistService>();
+builder.Services.AddScoped<WaitlistJob>();
 
-// GR-3.20/3.41/3.43: Register TreatmentLifecycleService (IHostedService)
+// GR-3.20/3.41/3.43 + G7 Faz 2: TreatmentLifecycleService (endpoint helper; tick moved to TreatmentLifecycleJob)
 builder.Services.AddSingleton<TreatmentLifecycleService>(sp =>
     new TreatmentLifecycleService(
         sp.GetRequiredService<AppointmentsRepository>(),
         sp.GetRequiredService<IHttpClientFactory>(),
         sp.GetRequiredService<JwtGenerator>(),
         sp.GetRequiredService<JsonLinesLogger>(),
-        lifecycleIntervalMs,
         lifecycleBatchSize));
-builder.Services.AddHostedService(sp => sp.GetRequiredService<TreatmentLifecycleService>());
+builder.Services.AddScoped<TreatmentLifecycleJob>();
 
 // GR-3.19: Calendar sync (mock for now, interface ready for Google Calendar)
 builder.Services.AddSingleton<ICalendarSyncService, MockCalendarSyncService>();
@@ -140,6 +133,21 @@ RecurringJob.AddOrUpdate<ReminderJob>(
     "appointments",
     j => j.RunAsync(CancellationToken.None),
     reminderCron);
+
+// G7 Faz 2: Waitlist expiration + TreatmentLifecycle step processing recurring jobs
+var waitlistCron = builder.Configuration["Waitlist:Cron"] ?? "*/5 * * * *";
+RecurringJob.AddOrUpdate<WaitlistJob>(
+    "appointments:waitlist",
+    "appointments",
+    j => j.RunAsync(CancellationToken.None),
+    waitlistCron);
+
+var lifecycleCron = builder.Configuration["Lifecycle:Cron"] ?? "*/5 * * * *";
+RecurringJob.AddOrUpdate<TreatmentLifecycleJob>(
+    "appointments:treatment-lifecycle",
+    "appointments",
+    j => j.RunAsync(CancellationToken.None),
+    lifecycleCron);
 
 // ============================================================
 // Health endpoints

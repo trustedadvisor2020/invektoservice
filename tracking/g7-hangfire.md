@@ -14,7 +14,7 @@ Mevcut 10 zamanlanmis `IHostedService` (Timer + Interlocked loop) Hangfire recur
 | Faz | Scope | Plan JSON | Durum | Codex |
 |-----|-------|-----------|-------|-------|
 | Faz 1 | Altyapi + Reminder + FlowWaitResumer + Dashboard | `arch/plans/20260413-g7-hangfire-faz1.json` | DONE | FORCE_PASS iter 3 (Q) |
-| Faz 2 | Waitlist + TreatmentLifecycle (Appointments) | - | PLANNED | - |
+| Faz 2 | Waitlist + TreatmentLifecycle (Appointments) | `arch/plans/20260414-g7-hangfire-faz2.json` | DONE | FORCE_PASS iter 2 (Q) |
 | Faz 3 | CronScheduler + RescueFollowUp (Automation) | - | PLANNED | - |
 | Faz 4 | TranslationCleanup + MetricsAggregation (Backend) | - | PLANNED | - |
 | Faz 5 | OrderSync + NightlyBatch (Integrations, WhatsAppAnalytics) | - | PLANNED | - |

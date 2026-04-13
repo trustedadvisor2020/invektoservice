@@ -1,56 +1,50 @@
 using Invekto.Appointments.Data;
 using Invekto.Shared.Auth;
+using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs.Appointments;
 using Invekto.Shared.Logging;
 
 namespace Invekto.Appointments.Services;
 
 /// <summary>
-/// GR-3.19: Waitlist background service.
-/// - Expires stale waitlist entries every 5 minutes.
-/// - Provides ProcessCancelledAppointment for inline cancel-flow integration.
-/// Pattern: same as ReminderSchedulerService (Interlocked overlap prevention).
+/// GR-3.19: Waitlist helper service.
+/// Provides <see cref="ProcessCancelledAppointmentAsync"/> for inline cancel-flow integration
+/// and <see cref="ExpireWaitlistEntriesAsync"/> invoked by the Hangfire recurring
+/// <see cref="Jobs.WaitlistJob"/> (G7 Faz 2). IHostedService scheduling removed — only the
+/// tick logic migrated; endpoint-invoked members remain here.
 /// </summary>
-public sealed class WaitlistService : IHostedService, IDisposable
+public sealed class WaitlistService
 {
     private readonly AppointmentsRepository _repo;
     private readonly IHttpClientFactory _httpFactory;
     private readonly JwtGenerator _jwtGen;
     private readonly JsonLinesLogger _logger;
-    private readonly int _intervalMs;
-
-    private Timer? _timer;
-    private int _isRunning;
 
     public WaitlistService(
         AppointmentsRepository repo,
         IHttpClientFactory httpFactory,
         JwtGenerator jwtGen,
-        JsonLinesLogger logger,
-        int intervalMs = 300_000) // 5 minutes default
+        JsonLinesLogger logger)
     {
         _repo = repo;
         _httpFactory = httpFactory;
         _jwtGen = jwtGen;
         _logger = logger;
-        _intervalMs = intervalMs;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Expires stale waitlist entries. Invoked by <see cref="Jobs.WaitlistJob"/> on cron */5 min.
+    /// Exceptions are NOT swallowed here — they bubble to Hangfire so AutomaticRetry (exponential
+    /// backoff) and the FinalFailureLogger filter (INV-JOB-005) can surface failures on the
+    /// dashboard. Matches Faz 1 ReminderJob pattern.
+    /// </summary>
+    public async Task<int> ExpireWaitlistEntriesAsync(CancellationToken ct = default)
     {
-        _logger.SystemInfo("WaitlistService started");
-        _timer = new Timer(OnTick, null, TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(_intervalMs));
-        return Task.CompletedTask;
+        var expired = await _repo.ExpireWaitlistEntriesAsync();
+        if (expired > 0)
+            _logger.StepInfo($"WaitlistJob: expired {expired} waitlist entries", "-");
+        return expired;
     }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.SystemInfo("WaitlistService stopping");
-        _timer?.Change(Timeout.Infinite, 0);
-        return Task.CompletedTask;
-    }
-
-    public void Dispose() => _timer?.Dispose();
 
     /// <summary>
     /// Called by cancel endpoint after successful cancellation.
@@ -70,47 +64,27 @@ public sealed class WaitlistService : IHostedService, IDisposable
 
             foreach (var entry in matches)
             {
-                // Mark as notified
                 await _repo.UpdateWaitlistStatusAsync(tenantId, entry.Id, "notified", ct);
-
-                // Fire-and-forget Outbound notification
                 _ = SendWaitlistNotificationAsync(tenantId, entry);
             }
         }
         catch (Npgsql.NpgsqlException ex)
         {
-            // Waitlist processing must never break the cancel flow
-            _logger.SystemWarn($"WaitlistService.ProcessCancelledAppointment DB error: {ex.Message}");
+            _logger.SystemWarn(
+                $"[{ErrorCodes.DatabaseConnectionFailed}] WaitlistService.ProcessCancelledAppointment DB error: {ex.Message}");
         }
         catch (HttpRequestException ex)
         {
-            _logger.SystemWarn($"WaitlistService.ProcessCancelledAppointment HTTP error: {ex.Message}");
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AppointmentOutboundUnavailable}] WaitlistService.ProcessCancelledAppointment HTTP error: {ex.Message}");
         }
     }
 
-    private async void OnTick(object? state)
-    {
-        if (Interlocked.CompareExchange(ref _isRunning, 1, 0) != 0)
-            return;
-
-        try
-        {
-            var expired = await _repo.ExpireWaitlistEntriesAsync();
-            if (expired > 0)
-            {
-                _logger.StepInfo($"WaitlistService: expired {expired} waitlist entries", "-");
-            }
-        }
-        catch (Npgsql.NpgsqlException ex)
-        {
-            _logger.SystemWarn($"WaitlistService tick failed: {ex.Message}");
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _isRunning, 0);
-        }
-    }
-
+    /// <summary>
+    /// Fire-and-forget notification dispatch — by design, the cancel endpoint response must not
+    /// wait on Outbound. Failures are best-effort logged with INV codes so ops can correlate
+    /// customer complaints to missed notifications; they are not surfaced to the caller.
+    /// </summary>
     private async Task SendWaitlistNotificationAsync(int tenantId, WaitlistDto entry)
     {
         try
@@ -142,11 +116,13 @@ public sealed class WaitlistService : IHostedService, IDisposable
         }
         catch (HttpRequestException ex)
         {
-            _logger.SystemWarn($"Waitlist notification HTTP error for entry {entry.Id}: {ex.Message}");
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AppointmentOutboundUnavailable}] Waitlist notification HTTP error for entry {entry.Id}: {ex.Message}");
         }
         catch (TaskCanceledException ex)
         {
-            _logger.SystemWarn($"Waitlist notification timeout for entry {entry.Id}: {ex.Message}");
+            _logger.SystemWarn(
+                $"[{ErrorCodes.AppointmentOutboundUnavailable}] Waitlist notification timeout for entry {entry.Id}: {ex.Message}");
         }
     }
 }
