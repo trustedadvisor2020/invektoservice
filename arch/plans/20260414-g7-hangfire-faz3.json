@@ -1,0 +1,130 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008",
+  "slug": "20260414-g7-hangfire-faz3",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-14T09:00:00Z",
+  "updated_at": "2026-04-14T09:00:00Z",
+  "spec_acceptance_criteria": [
+    { "id": "AC-1", "description": "CronSchedulerJob replaces CronSchedulerService (Automation, queue=automation, cron minutely — tick model: job reads DB schedule_trigger flows, fires those due)", "status": "PENDING" },
+    { "id": "AC-2", "description": "RescueFollowUpJob replaces RescueFollowUpService (Automation, queue=automation, cron 0 */4 * * *)", "status": "PENDING" },
+    { "id": "AC-3", "description": "Old service classes deleted (no external callers; IsPositiveResponse was dead code)", "status": "PENDING" },
+    { "id": "AC-4", "description": "Build PASS, no new warnings", "status": "PENDING" },
+    { "id": "AC-5", "description": "Codex PASS iter<=2", "status": "PENDING" }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "CronScheduler uses Tick model (A from interview): Hangfire minutely recurring fires CronSchedulerJob.RunAsync which reads DB schedule_trigger flows and evaluates each Cronos expression against lastFired+now window",
+      "reason": "Preserves byte-identical behavior with current 60s timer. Dynamic per-tenant Hangfire recurring (option B) would require CRUD hooks for every flow save and orphan cleanup. Tick model keeps logic in one place.",
+      "codex_note": "EXPECTED: CronSchedulerJob owns ConcurrentDictionary<int, DateTimeOffset> _lastFired as a Singleton state — therefore the job class is registered AddSingleton, not AddScoped. Hangfire resolves singleton handlers fine."
+    },
+    {
+      "decision": "RescueFollowUpJob runs cron '0 */4 * * *' (every 4 hours at minute 0)",
+      "reason": "Matches prior TimeSpan.FromHours(4) ticker. Initial 5-minute delay at service boot is N/A in Hangfire — first run happens at next cron boundary, acceptable drift.",
+      "codex_note": "EXPECTED: No initial delay primitive in Hangfire recurring — use cron alone."
+    },
+    {
+      "decision": "Both old service classes deleted entirely (not [Obsolete])",
+      "reason": "PP-006. No external callers: grep confirmed CronSchedulerService/RescueFollowUpService referenced only in Program.cs DI wiring + one dead-code comment in Program.cs line 1870. IsPositiveResponse static method never called.",
+      "codex_note": "EXPECTED: Files deleted. Comment in Program.cs:1870 updated to reference CronSchedulerJob."
+    },
+    {
+      "decision": "Both jobs carry NO tenant_id arg — they are service-wide iterators (same pattern as Faz 1 FlowWaitResumer)",
+      "reason": "Both pull due candidates across all tenants from repository/marketing client, then per-item processing is tenant-scoped.",
+      "codex_note": "EXPECTED: CQ7 tenant-isolation N/A for top-level job signature. Per-item calls use risk.TenantId / flow.TenantId."
+    }
+  ],
+  "plan": {
+    "summary": "Faz 3 of G7 Hangfire migration: CronSchedulerService and RescueFollowUpService schedulers migrate to Hangfire recurring jobs on the existing automation queue. Both service classes deleted (no external callers). Logic moved byte-identical to new CronSchedulerJob / RescueFollowUpJob.",
+    "q_intent": "Faz 3: CronScheduler tick model + RescueFollowUp 4 saatlik migration. Automation queue. Service class yok — job kendisi logic taşıyor (Faz 1 pattern).",
+    "interview_notes": "Q confirmed: (1) CronScheduler Tick model (A). (2) RescueFollowUp cron 0 */4 * * *. (3) Old services deleted. (4) MEDIUM-HIGH risk (CronScheduler ownership + _lastFired state). (5) Shared automation queue.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "src/Invekto.Automation/Services/Jobs/CronSchedulerJob.cs owns full logic from CronSchedulerService (ExecuteScheduledFlowsAsync + TryExecuteFlowAsync + ExecuteSingleFlowAsync + ResolveTimezone + _lastFired state + scheduleCounter)", "verified": false },
+      { "id": "AC2", "criterion": "src/Invekto.Automation/Services/Jobs/RescueFollowUpJob.cs owns full logic from RescueFollowUpService (ProcessFollowUpsAsync + SendSatisfactionCheckAsync + SendReviewRedirectAsync + GetTenantReviewUrlAsync). IsPositiveResponse (dead code) dropped.", "verified": false },
+      { "id": "AC3", "criterion": "src/Invekto.Automation/Services/CronSchedulerService.cs DELETED", "verified": false },
+      { "id": "AC4", "criterion": "src/Invekto.Automation/Services/RescueFollowUpService.cs DELETED", "verified": false },
+      { "id": "AC5", "criterion": "Program.cs: AddSingleton<CronSchedulerJob>() + AddScoped<RescueFollowUpJob>(); RecurringJob.AddOrUpdate for automation:cron-scheduler (cron '* * * * *') and automation:rescue-followup (cron '0 */4 * * *')", "verified": false },
+      { "id": "AC6", "criterion": "Build PASS, 0 new warnings vs baseline", "verified": false },
+      { "id": "AC7", "criterion": "Codex PASS iter<=2", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Automation/Services/CronSchedulerService.cs",
+    "src/Invekto.Automation/Services/RescueFollowUpService.cs",
+    "src/Invekto.Automation/Services/Jobs/CronSchedulerJob.cs",
+    "src/Invekto.Automation/Services/Jobs/RescueFollowUpJob.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/ScheduleTriggerHandler.cs",
+    "src/Invekto.Automation/Data/AutomationRepository.cs",
+    "src/Invekto.Automation/Program.cs",
+    "arch/plans/20260414-g7-hangfire-faz3.json",
+    "tracking/g7-hangfire.md",
+    "arch/session-memory.md"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": "PENDING", "errors": 0, "warnings": 0, "notes": "" },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "CronSchedulerJob owns _lastFired (ConcurrentDictionary<int, DateTimeOffset>) — must be Singleton for state persistence across Hangfire invocations. Program.cs registers AddSingleton<CronSchedulerJob>()?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q2",
+      "question": "RescueFollowUpJob is stateless (no instance fields beyond DI) — Scoped registration OK?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Business logic (Cronos parsing, timezone, _lastFired write-before-execute, schedule counter, session create/end) byte-identical to deleted CronSchedulerService?",
+      "category": "Logic"
+    },
+    {
+      "id": "Q4",
+      "question": "Top-level exception swallow removed in both jobs — failures bubble to Hangfire (AutomaticRetry + INV-JOB-005)?",
+      "category": "Observability"
+    },
+    {
+      "id": "Q5",
+      "question": "IsPositiveResponse confirmed dead code (grep shows no callers) — safe to drop with service class?",
+      "category": "Scope"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Appointments/* (Faz 2 done)",
+      "src/Invekto.Backend/* (Faz 4)",
+      "src/Invekto.Integrations/* (Faz 5)",
+      "src/Invekto.WhatsAppAnalytics/* (Faz 5)",
+      "src/Invekto.Automation/Services/FlowEngineV2.cs (reused)",
+      "src/Invekto.Automation/Data/AutomationRepository.cs (reused)",
+      "appsettings.Production.json"
+    ],
+    "non_goals": [
+      "Dynamic per-flow Hangfire recurring (option B deferred)",
+      "Removing Cronos NuGet (still needed for cron expression parsing inside tick)",
+      "Moving IsPositiveResponse (dead code) to a keep-alive helper"
+    ],
+    "intentional_exclusions": [
+      "No new error codes (INV-AT-* / INV-JOB-* reused)",
+      "No migration",
+      "No appsettings changes (cron strings defaulted in Program.cs; overridable via Cron:* config keys)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "CronSchedulerJob.RunAsync — OperationCanceledException caught (shutdown), other exceptions bubble",
+      "Per-flow catch (NpgsqlException/OperationCanceledException) inside ExecuteScheduledFlowsAsync preserved",
+      "Per-execution catch (NpgsqlException/InvalidOperationException) inside ExecuteSingleFlowAsync preserved with secondary EndSession retry",
+      "RescueFollowUpJob.RunAsync — OperationCanceledException caught, others bubble",
+      "Per-risk catch (HttpRequestException/OperationCanceledException) inside ProcessFollowUpsAsync preserved"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Hangfire AutomaticRetry + FinalFailureLogger (INV-JOB-005) from Faz 1 HangfireSetup surface final failures."
+  },
+  "verdict": { "status": "PASS", "iteration": 1, "notes": "Iter 0 FAIL addressed: plan scope aligned (AutomationRepository + ScheduleTriggerHandler added to allowed_files), INV codes added to uncoded warnings, byte-identical claim softened to behaviorally equivalent, IsPositiveResponse dead-code grep evidence shown. Iter 1 all 12 CQ + 5 CoVe PASS." }
+}

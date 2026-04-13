@@ -156,14 +156,13 @@ builder.Services.AddSingleton<MockFaqMatcher>();
 builder.Services.AddSingleton<MockIntentDetector>();
 builder.Services.AddSingleton<MockSentimentAnalyzer>();
 
-// Register CronSchedulerService (fires schedule_trigger flows on cron schedule)
-builder.Services.AddSingleton<CronSchedulerService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<CronSchedulerService>());
-
-// G7: Hangfire recurring flow-wait resumer job (replaces FlowWaitResumerService IHostedService)
+// G7: Hangfire (recurring flow-wait resumer + cron scheduler + rescue follow-up)
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
 builder.Services.AddInvektoHangfire("automation", hangfireConnStr);
 builder.Services.AddScoped<FlowWaitResumerJob>();
+// G7 Faz 3: CronSchedulerJob owns _lastFired state — must be Singleton across invocations
+builder.Services.AddSingleton<CronSchedulerJob>();
+builder.Services.AddScoped<RescueFollowUpJob>();
 
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
@@ -233,9 +232,7 @@ builder.Services.AddSingleton<RescueDispatcher>();
 // PKT-12: Register ReviewRescueService (with HttpClient for supervisor webhook)
 builder.Services.AddHttpClient<ReviewRescueService>();
 
-// PKT-12 Faz 3: Register RescueFollowUpService (background hosted service, 4h timer)
-builder.Services.AddSingleton<RescueFollowUpService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<RescueFollowUpService>());
+// PKT-12 Faz 3: RescueFollowUpService migrated to Hangfire RescueFollowUpJob (G7 Faz 3)
 
 // PKT-6A: Register OnboardingService (with HttpClient for Knowledge seed API)
 builder.Services.AddHttpClient<OnboardingService>((sp, client) =>
@@ -276,6 +273,21 @@ RecurringJob.AddOrUpdate<FlowWaitResumerJob>(
     "automation",
     j => j.RunAsync(CancellationToken.None),
     Cron.Minutely());
+
+// G7 Faz 3: Cron scheduler tick (minutely) + Rescue follow-up (4h)
+var cronSchedulerCron = builder.Configuration["CronScheduler:Cron"] ?? Cron.Minutely();
+RecurringJob.AddOrUpdate<CronSchedulerJob>(
+    "automation:cron-scheduler",
+    "automation",
+    j => j.RunAsync(CancellationToken.None),
+    cronSchedulerCron);
+
+var rescueFollowUpCron = builder.Configuration["RescueFollowUp:Cron"] ?? "0 */4 * * *";
+RecurringJob.AddOrUpdate<RescueFollowUpJob>(
+    "automation:rescue-followup",
+    "automation",
+    j => j.RunAsync(CancellationToken.None),
+    rescueFollowUpCron);
 
 // ============================================================
 // Health endpoints
@@ -1867,7 +1879,7 @@ public sealed class FlowWaitsMetricsResponse
 
 /// <summary>
 /// Static state for webhook endpoint — atomic counter for synthetic chat_ids.
-/// Separate from CronSchedulerService counter to avoid collision.
+/// Separate from CronSchedulerJob counter to avoid collision.
 /// </summary>
 static class WebhookState
 {

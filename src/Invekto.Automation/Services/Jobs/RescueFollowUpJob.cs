@@ -1,38 +1,28 @@
 using System.Text.Json;
+using Hangfire;
 using Invekto.Automation.Data;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 
-namespace Invekto.Automation.Services;
+namespace Invekto.Automation.Services.Jobs;
 
 /// <summary>
-/// PKT-12 Faz 3: Background service that sends follow-up messages after rescue.
-/// Timer fires every 4 hours.
+/// G7 Faz 3: Hangfire recurring job replacing <c>RescueFollowUpService</c>.
+/// Sends follow-up messages after rescue.
 /// Stage 1 (T+24h): "Memnun kaldınız mı?" satisfaction check.
 /// Stage 2 (T+48h): If customer responded positively, send review redirect link.
+///
+/// Queue: <c>automation</c>. Recurring id: <c>automation:rescue-followup</c> (cron "0 */4 * * *").
 /// </summary>
-public sealed class RescueFollowUpService : IHostedService, IDisposable
+[DisableConcurrentExecution(timeoutInSeconds: 600)]
+public sealed class RescueFollowUpJob
 {
     private readonly MarketingRescueClient _marketingClient;
     private readonly OutboundRescueClient _outboundClient;
     private readonly AutomationRepository _repo;
     private readonly JsonLinesLogger _logger;
 
-    private Timer? _timer;
-    private int _isRunning;
-
-    private static readonly TimeSpan TickInterval = TimeSpan.FromHours(4);
-
-    // Positive response keywords (Turkish)
-    private static readonly string[] PositiveKeywords =
-    [
-        "evet", "teşekkür", "tesekkur", "memnunum", "güzel", "guzel",
-        "iyi", "süper", "super", "harika", "tamam", "sağolun", "sagolun",
-        "çözüldü", "cozuldu", "halloldu", "tamamdır", "tamamdir",
-        "memnun kaldım", "memnun kaldim", "sorun kalmadı", "sorun kalmadi"
-    ];
-
-    public RescueFollowUpService(
+    public RescueFollowUpJob(
         MarketingRescueClient marketingClient,
         OutboundRescueClient outboundClient,
         AutomationRepository repo,
@@ -44,56 +34,17 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
         _logger = logger;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task RunAsync(CancellationToken ct = default)
     {
-        // Start after 5 minutes delay, then every 4 hours
-        _timer = new Timer(OnTimerTick, null, TimeSpan.FromMinutes(5), TickInterval);
-        _logger.SystemInfo("RescueFollowUpService started (interval: 4h)");
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        _timer?.Change(Timeout.Infinite, 0);
-        _logger.SystemInfo("RescueFollowUpService stopping");
-        return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
-    }
-
-    private void OnTimerTick(object? state)
-    {
-        if (Interlocked.CompareExchange(ref _isRunning, 1, 0) != 0)
-            return; // Previous tick still running
-
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                await ProcessFollowUpsAsync(CancellationToken.None);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.SystemWarn($"[{ErrorCodes.AutomationFollowUpQueryFailed}] RescueFollowUp tick cancelled");
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.SystemError($"[{ErrorCodes.AutomationFollowUpQueryFailed}] RescueFollowUp tick HTTP error: {ex.Message}");
-            }
-            catch (Npgsql.NpgsqlException ex)
-            {
-                _logger.SystemError($"[{ErrorCodes.AutomationFollowUpQueryFailed}] RescueFollowUp tick DB error: {ex.Message}");
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _isRunning, 0);
-            }
-        }).ContinueWith(
-            t => _logger.SystemError($"RescueFollowUp unhandled: {t.Exception?.GetBaseException().Message}"),
-            TaskContinuationOptions.OnlyOnFaulted);
+            await ProcessFollowUpsAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemInfo("RescueFollowUpJob: cancelled (graceful shutdown)");
+        }
+        // Other exceptions bubble to Hangfire (AutomaticRetry + INV-JOB-005 on final failure).
     }
 
     private async Task ProcessFollowUpsAsync(CancellationToken ct)
@@ -102,7 +53,7 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
         if (dueRisks.Count == 0)
             return;
 
-        _logger.SystemInfo($"RescueFollowUp: processing {dueRisks.Count} due risks");
+        _logger.SystemInfo($"RescueFollowUpJob: processing {dueRisks.Count} due risks");
 
         int satisfactionSent = 0, redirectSent = 0, errors = 0;
 
@@ -112,14 +63,12 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
             {
                 if (risk.FollowUpStatus == "none")
                 {
-                    // Stage 1: T+24h satisfaction check
                     var sent = await SendSatisfactionCheckAsync(risk, ct);
                     if (sent) satisfactionSent++;
                     else errors++;
                 }
                 else if (risk.FollowUpStatus == "satisfaction_sent" && risk.CustomerResponse == "satisfied")
                 {
-                    // Stage 2: T+48h review redirect
                     var sent = await SendReviewRedirectAsync(risk, ct);
                     if (sent) redirectSent++;
                     else errors++;
@@ -140,12 +89,9 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
         }
 
         _logger.SystemInfo(
-            $"RescueFollowUp: done — satisfaction_sent={satisfactionSent}, redirect_sent={redirectSent}, errors={errors}");
+            $"RescueFollowUpJob: done — satisfaction_sent={satisfactionSent}, redirect_sent={redirectSent}, errors={errors}");
     }
 
-    /// <summary>
-    /// Stage 1: Send "Memnun kaldınız mı?" message via Outbound.
-    /// </summary>
     private async Task<bool> SendSatisfactionCheckAsync(FollowUpDueItem risk, CancellationToken ct)
     {
         const string satisfactionMessage =
@@ -167,23 +113,19 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
             risk.TenantId, risk.Id, "satisfaction_sent", ct);
 
         _logger.StepInfo(
-            $"RescueFollowUp: satisfaction sent for risk {risk.Id}, tenant={risk.TenantId}, phone={risk.CustomerPhone}, msgId={messageId}",
+            $"RescueFollowUpJob: satisfaction sent for risk {risk.Id}, tenant={risk.TenantId}, phone={risk.CustomerPhone}, msgId={messageId}",
             "rescue-followup");
 
         return updated;
     }
 
-    /// <summary>
-    /// Stage 2: Send review redirect link (from tenant settings review_url).
-    /// </summary>
     private async Task<bool> SendReviewRedirectAsync(FollowUpDueItem risk, CancellationToken ct)
     {
         var reviewUrl = await GetTenantReviewUrlAsync(risk.TenantId, ct);
         if (string.IsNullOrWhiteSpace(reviewUrl))
         {
             _logger.SystemWarn(
-                $"RescueFollowUp: no review_url in settings for tenant {risk.TenantId}, skipping review redirect for risk {risk.Id}");
-            // Mark completed even without URL — don't retry forever
+                $"[{ErrorCodes.AutomationFollowUpQueryFailed}] RescueFollowUpJob: no review_url in settings for tenant {risk.TenantId}, skipping review redirect for risk {risk.Id}");
             await _marketingClient.UpdateFollowUpStatusAsync(risk.TenantId, risk.Id, "closed", ct);
             return true;
         }
@@ -208,15 +150,12 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
             risk.TenantId, risk.Id, "review_redirect_sent", ct);
 
         _logger.StepInfo(
-            $"RescueFollowUp: review redirect sent for risk {risk.Id}, tenant={risk.TenantId}, phone={risk.CustomerPhone}, url={reviewUrl}",
+            $"RescueFollowUpJob: review redirect sent for risk {risk.Id}, tenant={risk.TenantId}, phone={risk.CustomerPhone}, url={reviewUrl}",
             "rescue-followup");
 
         return updated;
     }
 
-    /// <summary>
-    /// Extract review_url from tenant settings_json.
-    /// </summary>
     private async Task<string?> GetTenantReviewUrlAsync(int tenantId, CancellationToken ct)
     {
         try
@@ -243,19 +182,5 @@ public sealed class RescueFollowUpService : IHostedService, IDisposable
                 $"[{ErrorCodes.AutomationFollowUpQueryFailed}] Failed to get tenant settings for tenant {tenantId}: {ex.Message}");
         }
         return null;
-    }
-
-    /// <summary>
-    /// Detect positive response from customer message using keyword matching.
-    /// Called externally by AutomationOrchestrator when a message arrives from a phone
-    /// with an active follow-up.
-    /// </summary>
-    public static bool IsPositiveResponse(string messageText)
-    {
-        if (string.IsNullOrWhiteSpace(messageText))
-            return false;
-
-        var normalized = messageText.ToLowerInvariant().Trim();
-        return PositiveKeywords.Any(kw => normalized.Contains(kw));
     }
 }
