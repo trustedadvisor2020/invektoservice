@@ -517,6 +517,10 @@
 | 2026-04-14 | Yeni error code secerken arch/errors.md range'i kontrol etmedim, INV-AT-053 zaten PKT-12'de kullaniliyordu | Yeni INV-xx-### eklemeden once `grep "INV-xx-" arch/errors.md \| tail -5` ile son kullanilani gor, sonraki bos numarayi sec |
 | 2026-04-14 | allowed_files listesinde FlowEngineV2.cs yoktu ama dev sirasinda edit ettim → Codex iter 0 CQ3 PLAN_OUTDATED | Plan yazarken "bu degisikligi hangi dosyada yapacagim?" cevabini TUM dosyalar icin ver, implementation baslamadan grep ile genisletmeli dosyalari tespit et |
 | 2026-04-14 | `phone!` null-forgiving operator Codex CQ5 fail (proje tamamen yasak) | IsNullOrEmpty kontrol sonrasi bile `!` kullanma; compiler null-state daralmiyor ama policy gereyi `!` kaldirilmali, gerekirse local variable'a assign et |
+| 2026-04-13 | Yeni DB tablosu eklerken sadece migration yazmak yetmiyor: Codex iter 1 CQ5/CQ11 FAIL — arch/db/{service}.sql canonical schema + GRANT ALL + sequence GRANT de eklenmeli | Yeni tablo checklist: (1) migrations/NNN-xxx.sql + GRANT + sequence GRANT (2) arch/db/{service}.sql canonical sonuna aynı tablo + GRANT (3) repository field'ları eşleştir |
+| 2026-04-13 | Codex iter 1 catch(Exception ex) CQ1/CQ5/CQ12 üçlü FAIL — 16 pre-existing bare catch olsa bile YENİ catch'lerde typed zorunlu | Yeni catch: NpgsqlException (DB) + JsonException (serialize) + OperationCanceledException (throw/shutdown) + HttpRequestException (callback) + InvalidOperationException (invalid state). Fallback catch(Exception) yok |
+| 2026-04-13 | Ops endpoint success=anonymous + failure=ErrorResponse envelope Codex CQ10 FAIL (response-shape inconsistency) | Success path da strongly-typed class/record kullan. Top-level statement dosyalarında class declaration `public partial class Program { }` SONRASINA koy (CS8803 error aksi halde) |
+| 2026-04-13 | MCP codex_review iter 0 git_diff param'ı boş + diff_file_path fallback Codex tarafından okunmadı → CQ'ler UNKNOWN/FAIL "insufficient evidence" | git_diff param'ına en az key code sections inline embed et (typed-catch örnekleri, SQL GRANT, endpoint response shape). Tam 55KB şart değil ama kritik snippet'ler şart |
 
 ---
 

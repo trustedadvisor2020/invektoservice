@@ -80,6 +80,8 @@ builder.Services.AddSingleton(pgFactory);
 
 // Register repository
 builder.Services.AddSingleton<AutomationRepository>();
+// G6: Flow wait state persistence
+builder.Services.AddSingleton<FlowWaitRepository>();
 
 // Register callback client
 var callbackSettings = builder.Configuration.GetSection("Integration:Callback").Get<CallbackSettings>() ?? new CallbackSettings();
@@ -115,6 +117,8 @@ builder.Services.AddSingleton<INodeHandler, CallFlowHandler>();
 builder.Services.AddSingleton<INodeHandler, LogicWorkingHoursHandler>();
 builder.Services.AddSingleton<INodeHandler, ActionAssignGroupHandler>();
 builder.Services.AddSingleton<INodeHandler, EcommerceHandler>();
+// G6: Long-wait node (persistent, restart-safe, separate from action_delay)
+builder.Services.AddSingleton<INodeHandler, ActionWaitUntilHandler>();
 
 // Register HttpClientFactory for ApiCallHandler
 builder.Services.AddHttpClient("ApiCallHandler");
@@ -152,6 +156,10 @@ builder.Services.AddSingleton<MockSentimentAnalyzer>();
 // Register CronSchedulerService (fires schedule_trigger flows on cron schedule)
 builder.Services.AddSingleton<CronSchedulerService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CronSchedulerService>());
+
+// G6: FlowWaitResumerService (60s timer, polls flow_execution_state for due rows, resumes via orchestrator)
+builder.Services.AddSingleton<FlowWaitResumerService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<FlowWaitResumerService>());
 
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
@@ -1755,6 +1763,39 @@ app.MapGet("/api/v1/flows/{tenantId:int}/onboarding-stats", async (int tenantId,
 });
 
 // ============================================================
+// G6: Flow wait state ops
+// ============================================================
+
+app.MapGet("/api/ops/flow-waits", async (FlowWaitRepository waitRepo, JsonLinesLogger jsonLogger, CancellationToken ct) =>
+{
+    try
+    {
+        // Overdue threshold: pending row whose resume_at is older than 5 minutes (resumer should have fired by now).
+        var metrics = await waitRepo.GetMetricsAsync(TimeSpan.FromMinutes(5), ct);
+        // Consistent response envelope: named record in both success and error paths.
+        var resp = new FlowWaitsMetricsResponse
+        {
+            pending_count = metrics.PendingCount,
+            overdue_count = metrics.OverdueCount,
+            failed_count = metrics.FailedCount,
+            overdue_threshold_seconds = 300
+        };
+        return Results.Ok(resp);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        jsonLogger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] /api/ops/flow-waits DB error: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowWaitPersistFailed, "flow-waits metrics fetch failed", "-"), statusCode: 500);
+    }
+    catch (InvalidOperationException ex)
+    {
+        jsonLogger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] /api/ops/flow-waits invalid state: {ex.Message}");
+        return Results.Json(ErrorResponse.Create(ErrorCodes.AutomationFlowWaitPersistFailed, "flow-waits metrics fetch failed", "-"), statusCode: 500);
+    }
+});
+
+
+// ============================================================
 // Endpoint discovery
 // ============================================================
 
@@ -1786,6 +1827,7 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/flows/{tenantId}/onboarding-stats", Description = "Onboarding stats (flow counts)", Auth = "Bearer JWT", Category = "Onboarding" },
         new() { Method = "GET", Path = "/health", Description = "Health check", Auth = "none", Category = "Health" },
         new() { Method = "GET", Path = "/ready", Description = "Readiness probe (DB check)", Auth = "none", Category = "Health" },
+        new() { Method = "GET", Path = "/api/ops/flow-waits", Description = "G6: Pending/overdue/failed long-wait counts", Auth = "none", Category = "Ops" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery (this)", Auth = "none", Category = "Ops" },
     };
 
@@ -1802,6 +1844,15 @@ app.Run();
 
 // Required for integration tests
 public partial class Program { }
+
+/// <summary>G6: Response envelope for GET /api/ops/flow-waits (snake_case JSON contract).</summary>
+public sealed class FlowWaitsMetricsResponse
+{
+    public long pending_count { get; init; }
+    public long overdue_count { get; init; }
+    public long failed_count { get; init; }
+    public int overdue_threshold_seconds { get; init; }
+}
 
 /// <summary>
 /// Static state for webhook endpoint — atomic counter for synthetic chat_ids.

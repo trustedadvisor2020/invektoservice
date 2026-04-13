@@ -168,6 +168,14 @@ public static class ErrorCodes
     public const string AutomationFollowUpQueryFailed = "INV-AT-055";      // Follow-up due query failed
     public const string AutomationFollowUpSendFailed = "INV-AT-056";       // Follow-up message send failed
 
+    // G3: Template A/B Rotation
+    public const string AutomationTemplateVariantInvalid = "INV-AT-057";   // text_variants JSON parse failed, fallback to text
+
+    // G6: Flow Wait Persistence
+    public const string AutomationFlowWaitPersistFailed = "INV-AT-058";    // flow_execution_state insert/update failed
+    public const string AutomationFlowWaitResumeFailed = "INV-AT-059";     // Resume from persisted wait state failed
+    public const string AutomationFlowWaitConfigInvalid = "INV-AT-060";    // action_wait_until node config invalid (no duration / out of bounds)
+
     // AgentAI errors (INV-AA-xxx)
     public const string AgentAIInvalidPayload = "INV-AA-001";
     public const string AgentAIReplyGenerationFailed = "INV-AA-002";

@@ -63,6 +63,13 @@ public sealed class NodeResult
     /// <summary>Pending input descriptor when Action=WaitForInput.</summary>
     public PendingInput? PendingInput { get; init; }
 
+    /// <summary>
+    /// G6: When Action=WaitPersist, the UTC timestamp at which the flow should resume.
+    /// Orchestrator persists the session snapshot + this timestamp to flow_execution_state.
+    /// FlowWaitResumerService polls and resumes at/after this time.
+    /// </summary>
+    public DateTimeOffset? WaitResumeAt { get; init; }
+
     /// <summary>Variables to merge into session state.</summary>
     public Dictionary<string, string>? VariableUpdates { get; init; }
 
@@ -85,7 +92,9 @@ public enum NodeAction
     /// <summary>End session (handoff, error, or explicit end).</summary>
     Terminal,
     /// <summary>Call a sub-flow. Engine returns to orchestrator for dispatch.</summary>
-    CallSubFlow
+    CallSubFlow,
+    /// <summary>G6: Persist session + pause for long wait (restart-safe). Orchestrator writes flow_execution_state row; resumer service re-enters flow at/after WaitResumeAt.</summary>
+    WaitPersist
 }
 
 /// <summary>

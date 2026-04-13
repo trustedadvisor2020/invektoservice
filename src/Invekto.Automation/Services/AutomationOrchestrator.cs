@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using Invekto.Automation.Data;
+using Invekto.Automation.Services.NodeHandlers;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Inma.Webhooks;
@@ -22,6 +23,7 @@ namespace Invekto.Automation.Services;
 public sealed class AutomationOrchestrator
 {
     private readonly AutomationRepository _repo;
+    private readonly FlowWaitRepository _waitRepo;
     private readonly FlowEngine _flowEngine;
     private readonly FlowEngineV2 _flowEngineV2;
     private readonly KnowledgeSearchClient _knowledgeSearchClient;
@@ -44,6 +46,7 @@ public sealed class AutomationOrchestrator
 
     public AutomationOrchestrator(
         AutomationRepository repo,
+        FlowWaitRepository waitRepo,
         FlowEngine flowEngine,
         FlowEngineV2 flowEngineV2,
         KnowledgeSearchClient knowledgeSearchClient,
@@ -57,6 +60,7 @@ public sealed class AutomationOrchestrator
         JsonLinesLogger logger)
     {
         _repo = repo;
+        _waitRepo = waitRepo;
         _flowEngine = flowEngine;
         _flowEngineV2 = flowEngineV2;
         _knowledgeSearchClient = knowledgeSearchClient;
@@ -377,6 +381,23 @@ public sealed class AutomationOrchestrator
 
             state.Variables["__last_input"] = messageText;
 
+            // G6: user reply during long wait → cancel pending wait row(s) so resumer won't fire later.
+            // Typed catches per CODEX UTANSIN doktrini (no bare catch(Exception)).
+            try
+            {
+                var cancelled = await _waitRepo.CancelPendingForChatAsync(tenantId, chatId, ct);
+                if (cancelled > 0)
+                    _logger.StepInfo($"G6: {cancelled} pending long-wait cancelled (user reply)", requestId);
+            }
+            catch (Npgsql.NpgsqlException ex)
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] CancelPendingForChatAsync DB error tenant={tenantId} chat={chatId}: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] CancelPendingForChatAsync invalid state tenant={tenantId} chat={chatId}: {ex.Message}");
+            }
+
             // Reset keyword: restart flow from beginning
             if (graph.Settings.ResetKeywords.Contains(messageText.Trim()))
             {
@@ -625,6 +646,45 @@ public sealed class AutomationOrchestrator
             break;
         }
 
+        // G6: Long-wait persistence. Engine non-terminal + WaitRequest set → snapshot session to flow_execution_state, return without sending messages (if any were queued, they are still dispatched below for UX continuity).
+        if (!result.IsTerminal && result.WaitRequest != null)
+        {
+            var waitOk = await PersistWaitAsync(
+                result.State, result.WaitRequest, tenantId, currentFlowId, chatId, phone, instanceId, callbackUrl, requestId, ct);
+
+            // Fire-and-forget exec log for trace visibility even when waiting
+            _ = LogFlowExecutionAsync(
+                state, result, graph, tenantId, rootFlowId, chatId, phone,
+                instanceId, messageText, pathSnapshotCount, requestId);
+
+            // Dispatch any queued pre-wait messages (e.g. "Mesajınızı aldık, 48 saat içinde dönüş yapacağız.")
+            if (result.Messages.Count > 0)
+            {
+                sw.Stop();
+                foreach (var msg in result.Messages)
+                {
+                    await SendCallbackAsync(requestId, tenantId, chatId, sequenceId,
+                        CallbackActions.SendMessage, msg, null, null, sw.ElapsedMilliseconds, callbackUrl, ct);
+                }
+            }
+
+            // Persist session so returning user (before resume) sees waiting state.
+            if (session != null)
+            {
+                var stateJson = SerializeV2State(result.State);
+                await _repo.UpdateSessionAsync(session.Id, "v2_active", stateJson, ct);
+            }
+
+            if (!waitOk)
+            {
+                // Persist failed → degrade to handoff so user is not silently stuck.
+                if (!sw.IsRunning) sw.Stop();
+                _ = SendHandoffAsync(requestId, tenantId, chatId, sequenceId,
+                    "Bekleme durumu kaydedilemedi", sw.ElapsedMilliseconds, callbackUrl, CancellationToken.None);
+            }
+            return true;
+        }
+
         // 4c. Fire-and-forget execution log
         _ = LogFlowExecutionAsync(
             state, result, graph, tenantId, rootFlowId, chatId, phone,
@@ -864,6 +924,200 @@ public sealed class AutomationOrchestrator
         catch (InvalidOperationException ex)
         {
             _logger.SystemWarn($"[{ErrorCodes.AutomationExecLogInsertFailed}] Execution log operation error for tenant {tenantId}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// G6: Persist engine WaitRequest → flow_execution_state row.
+    /// Returns true on success. Handler caller should degrade to handoff on false.
+    /// </summary>
+    private async Task<bool> PersistWaitAsync(
+        SessionStateV2 state, WaitRequest waitReq,
+        int tenantId, int flowId, string chatId, string? phone, string? instanceId,
+        string? callbackUrl, string requestId, CancellationToken ct)
+    {
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            var clampedResume = waitReq.ResumeAt > now.Add(ActionWaitUntilHandler.MaxWait)
+                ? now.Add(ActionWaitUntilHandler.MaxWait)
+                : waitReq.ResumeAt;
+            var maxWaitAt = now.Add(ActionWaitUntilHandler.MaxWait);
+
+            var stateJson = SerializeV2State(state);
+            var id = await _waitRepo.InsertPendingAsync(new PendingWaitRow
+            {
+                TenantId = tenantId,
+                FlowId = flowId,
+                ChatId = chatId,
+                Phone = phone,
+                InstanceId = string.IsNullOrEmpty(instanceId) ? null : instanceId,
+                NodeId = waitReq.NodeId,
+                ResumeAt = clampedResume,
+                MaxWaitAt = maxWaitAt,
+                SessionStateJson = stateJson,
+                CallbackUrl = callbackUrl
+            }, ct);
+
+            _logger.StepInfo($"G6: wait persisted id={id} resume_at={clampedResume:o} node={waitReq.NodeId}", requestId);
+            return id > 0;
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] PersistWaitAsync DB error tenant={tenantId} chat={chatId}: {ex.Message}");
+            return false;
+        }
+        catch (JsonException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] PersistWaitAsync state serialize failed tenant={tenantId} chat={chatId}: {ex.Message}");
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitPersistFailed}] PersistWaitAsync invalid state tenant={tenantId} chat={chatId}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// G6: Resume a flow from a persisted wait row. Called by FlowWaitResumerService.
+    /// Loads flow graph, deserializes session, executes engine from post-wait CurrentNodeId, dispatches messages/handoff.
+    /// Returns true on success, false if unrecoverable (caller marks row failed).
+    /// </summary>
+    public async Task<bool> ResumeWaitAsync(DueWaitRow row, CancellationToken ct)
+    {
+        var requestId = $"resume-{row.Id}";
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var flowDetail = await _repo.GetFlowByIdAsync(row.TenantId, row.FlowId, ct);
+            if (flowDetail == null)
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] Flow {row.FlowId} not found for resume row {row.Id}");
+                return false;
+            }
+
+            var graph = FlowGraphV2.Build(flowDetail.FlowConfigJson);
+            if (graph == null)
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] Flow {row.FlowId} graph build failed for resume row {row.Id}");
+                return false;
+            }
+
+            SessionStateV2? state;
+            try
+            {
+                state = JsonSerializer.Deserialize<SessionStateV2>(row.SessionStateJson, _jsonOptions);
+            }
+            catch (JsonException ex)
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] session_state deserialize failed row {row.Id}: {ex.Message}");
+                return false;
+            }
+
+            if (state == null || string.IsNullOrEmpty(state.CurrentNodeId))
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] row {row.Id} has null/empty CurrentNodeId after wait");
+                return false;
+            }
+
+            if (!graph.NodesById.ContainsKey(state.CurrentNodeId))
+            {
+                _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] row {row.Id} post-wait node '{state.CurrentNodeId}' no longer in graph (flow changed)");
+                return false;
+            }
+
+            state.Status = "active";
+            state.PendingInput = null;
+
+            string contactKey;
+            if (!string.IsNullOrEmpty(row.ChatId)) contactKey = row.ChatId;
+            else if (!string.IsNullOrEmpty(row.Phone)) contactKey = row.Phone!;
+            else contactKey = $"flow:{row.FlowId}";
+
+            var result = await _flowEngineV2.ExecuteAsync(graph, state, ct,
+                tenantId: row.TenantId, tenantIntents: null, tenantConfidenceThreshold: 0.5,
+                onMessage: null, contactKey: contactKey);
+
+            sw.Stop();
+
+            var sequenceId = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            foreach (var msg in result.Messages)
+            {
+                await SendCallbackAsync(requestId, row.TenantId, row.ChatId, sequenceId,
+                    CallbackActions.SendMessage, msg, null, null, sw.ElapsedMilliseconds, row.CallbackUrl, ct);
+            }
+
+            if (result.Messages.Count > 0)
+            {
+                await _repo.LogAutoReplyAsync(row.TenantId, row.ChatId, row.Phone, "__wait_resume",
+                    string.Join("\n\n", result.Messages), "v2_flow_resume", null, null, (int)sw.ElapsedMilliseconds, ct);
+            }
+
+            if (result.NeedsHandoff)
+            {
+                var summary = result.HandoffSummary ?? result.ErrorMessage ?? "wait-resume handoff";
+                await SendHandoffAsync(requestId, row.TenantId, row.ChatId, sequenceId,
+                    summary, sw.ElapsedMilliseconds, row.CallbackUrl, ct);
+            }
+            else if (result.NeedsAssignGroup && !string.IsNullOrWhiteSpace(result.AssignGroupId))
+            {
+                await SendAssignGroupAsync(requestId, row.TenantId, row.ChatId, sequenceId,
+                    result.AssignGroupId!, result.AssignGroupSummary ?? "Grup atamasi",
+                    sw.ElapsedMilliseconds, row.CallbackUrl, ct);
+            }
+
+            var session = await _repo.GetActiveSessionAsync(row.TenantId, row.ChatId, ct);
+            if (session != null)
+            {
+                if (result.IsTerminal)
+                {
+                    var endStatus = result.NeedsHandoff || result.NeedsAssignGroup ? "handed_off"
+                                  : (result.ErrorCode != null ? "error" : "completed");
+                    await _repo.EndSessionAsync(session.Id, endStatus, ct);
+                }
+                else
+                {
+                    var stateJson = SerializeV2State(result.State);
+                    await _repo.UpdateSessionAsync(session.Id, "v2_active", stateJson, ct);
+                }
+            }
+
+            if (!result.IsTerminal && result.WaitRequest != null)
+            {
+                await PersistWaitAsync(
+                    result.State, result.WaitRequest,
+                    row.TenantId, row.FlowId, row.ChatId, row.Phone, row.InstanceId,
+                    row.CallbackUrl, requestId, ct);
+            }
+
+            _logger.StepInfo($"G6: wait resumed id={row.Id} messages={result.Messages.Count} terminal={result.IsTerminal}", requestId, sw.ElapsedMilliseconds);
+            return true;
+        }
+        catch (Npgsql.NpgsqlException ex)
+        {
+            sw.Stop();
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] ResumeWaitAsync row {row.Id} DB error: {ex.Message}");
+            return false;
+        }
+        catch (JsonException ex)
+        {
+            sw.Stop();
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] ResumeWaitAsync row {row.Id} JSON error: {ex.Message}");
+            return false;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (InvalidOperationException ex)
+        {
+            sw.Stop();
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] ResumeWaitAsync row {row.Id} invalid state: {ex.Message}");
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            sw.Stop();
+            _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitResumeFailed}] ResumeWaitAsync row {row.Id} HTTP callback failed: {ex.Message}");
+            return false;
         }
     }
 

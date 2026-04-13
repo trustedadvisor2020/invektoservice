@@ -5,19 +5,18 @@
 
 ## Last Update
 
-- **Date:** 2026-04-15
-- **Status:** DONE. UP0.1b Shared DTO consolidation. WapCrmMessage + IncomingWebhookEvent → Invekto.Shared.Contracts.Inma.{Dtos,Webhooks}. Hard cut, 5 caller using update. Codex PASS iter=2.
-- **Last Task:** UP0.1b Shared DTO consolidation. (1) Move WapCrmMessage + WapCrmApiResponse<T> → Contracts/Inma/Dtos/WapCrmMessage.cs (namespace Invekto.Shared.Contracts.Inma.Dtos). (2) Move IncomingWebhookEvent + WebhookMessage → Contracts/Inma/Webhooks/IncomingWebhookEvent.cs (namespace Invekto.Shared.Contracts.Inma.Webhooks). (3) JsonPropertyName + property shapes byte-identical (97% similarity rename). (4) 5 caller using update: ChatAnalysis WapCrmClient, Backend Program, Backend AttributionService, Automation Program, Automation Orchestrator. Backend/AttributionService DTOs.Integration using korundu (OutgoingCallback, CallbackActions için). (5) Contracts/Inma/README.md UP0.1b checkbox tiklendi. Codex PASS iter=2 (iter 0: inline diff yoktu, diff_file_path Codex tarafından okunmadı → UNKNOWN; iter 1: CoVe questions yoktu + CQ8 cross-service exhaustive proof yoktu; iter 2: full inline diff + 3 CoVe + repo-wide grep kanıtı → PASS).
-- **Files Changed:** ADD: src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmMessage.cs (rename), src/Invekto.Shared/Contracts/Inma/Webhooks/IncomingWebhookEvent.cs (rename), arch/plans/20260415-up01b-shared-dto-consolidation.json. EDIT: src/Invekto.ChatAnalysis/Services/WapCrmClient.cs, src/Invekto.Backend/Program.cs, src/Invekto.Backend/Services/AttributionService.cs, src/Invekto.Automation/Program.cs, src/Invekto.Automation/Services/AutomationOrchestrator.cs, src/Invekto.Shared/Contracts/Inma/README.md. DELETE: src/Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs, src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs.
-- **Build:** PASS (0 errors, 13 warnings all pre-existing).
-- **Next Task:** G6 Flow state persistence (2-3g) veya G7 Hangfire migration (5-7g). INMA kickoff feedback geldiyse UP0.2/0.3/0.5.
+- **Date:** 2026-04-13
+- **Status:** DONE. G6 Flow state persistence — restart-safe long waits up to 30 days. Codex PASS iter=2 (12/12 CQ + 4/4 CoVe).
+- **Last Task:** G6 implementation. (1) Migration 010-flow-wait-state.sql + canonical schema in arch/db/automation.sql (GRANT ALL + sequence GRANT). (2) Yeni node: action_wait_until (30g max clamp, 5 duration formatı + ISO). (3) NodeAction.WaitPersist + NodeResult.WaitResumeAt + WaitRequest DTO. (4) FlowEngineV2 WaitPersist case: advance CurrentNodeId post-wait + emit WaitRequest. (5) FlowWaitRepository (Insert/GetDue/TryMarkResumed atomic/MarkFailed/CancelPendingForChat/GetMetrics). (6) FlowWaitResumerService IHostedService 60s timer Interlocked non-overlap batch=100. (7) AutomationOrchestrator: cancel-on-reply + PersistWaitAsync + public ResumeWaitAsync (tenant-scoped, typed catches). (8) GET /api/ops/flow-waits endpoint (FlowWaitsMetricsResponse strongly-typed). Iter 0 FAIL (diff görülmedi UNKNOWN); iter 1 FAIL (canonical schema + typed-catch); iter 2 PASS.
+- **Files Changed:** ADD: arch/db/migrations/010-flow-wait-state.sql, arch/plans/20260413-g6-flow-wait-persistence.json, src/Invekto.Automation/Data/FlowWaitRepository.cs, src/Invekto.Automation/Services/FlowWaitResumerService.cs, src/Invekto.Automation/Services/NodeHandlers/ActionWaitUntilHandler.cs. EDIT: arch/db/automation.sql, arch/errors.md, src/Invekto.Shared/Constants/ErrorCodes.cs, src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs, src/Invekto.Automation/Services/FlowEngineV2.cs, src/Invekto.Automation/Services/FlowValidator.cs, src/Invekto.Automation/Services/AutomationOrchestrator.cs, src/Invekto.Automation/Program.cs.
+- **Build:** PASS (0 errors, 16 warnings pre-existing).
+- **Next Task:** G7 Hangfire migration (5-7g) veya INMA kickoff feedback geldiyse UP0.2/0.3/0.5. Dent pilot Platform P0 sonrası.
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 3 | G7 Hangfire migration | PENDING | 5-7g platform yatırımı — ReminderSchedulerService replace |
-| 4 | G6 Flow state persistence | PENDING | 2-3g — 1.5 gün wait restart-safe |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
 | 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
 | 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |
@@ -28,6 +27,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-13 | G6 Flow state persistence: action_wait_until node + flow_execution_state table (migration 010 + canonical automation.sql) + FlowWaitRepository + FlowWaitResumerService (60s IHostedService) + orchestrator cancel-on-reply + public ResumeWaitAsync + GET /api/ops/flow-waits. 30g max clamp, INV-AT-058/059/060. 13 files +1043 -1. Codex PASS iter=2 (iter 0: diff görülmedi; iter 1: canonical schema + GRANT fix; iter 2: typed catches + typed response envelope). |
 | 2026-04-15 | UP0.1b Shared DTO consolidation: WapCrmMessage + WapCrmApiResponse<T> → Contracts/Inma/Dtos/, IncomingWebhookEvent + WebhookMessage → Contracts/Inma/Webhooks/. 5 caller using update (ChatAnalysis WapCrmClient, Backend Program/AttributionService, Automation Program/Orchestrator). JsonPropertyName byte-identical. Codex PASS iter=2. |
 | 2026-04-14 | G3 Template A/B rotation: ITemplateRotationService (Shared, FNV-1a stateless) + MessageTextHandler text_variants JSON array + ExecutionContext.ContactKey + orchestrator chatId/phone/flow fallback + node_trace variant_index/count. INV-AT-057 yeni error code. Codex PASS iter=2. |
 | 2026-04-13 | UP0.6 (feature flag service): IFeatureFlagService + InMemoryFeatureFlagService (Shared), IMemoryCache 5dk TTL, closed-by-default, per-(tenant,user) keyed. Backend DI + /inma/auth/exchange ve /login hooks. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit 1ddb495. |

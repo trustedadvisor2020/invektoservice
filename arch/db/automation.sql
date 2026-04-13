@@ -122,3 +122,41 @@ CREATE OR REPLACE TRIGGER trigger_faq_entries_updated_at
     BEFORE UPDATE ON faq_entries
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- G6: Flow Wait State Persistence (migration 010)
+-- Canonical schema source for flow_execution_state table.
+-- Applied in production via arch/db/migrations/010-flow-wait-state.sql
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS flow_execution_state (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       INTEGER     NOT NULL,
+    flow_id         INTEGER     NOT NULL,
+    chat_id         TEXT        NOT NULL,
+    phone           TEXT        NULL,
+    instance_id     TEXT        NULL,
+    node_id         TEXT        NOT NULL,
+    resume_at       TIMESTAMPTZ NOT NULL,
+    max_wait_at     TIMESTAMPTZ NOT NULL,
+    session_state   JSONB       NOT NULL,
+    callback_url    TEXT        NULL,
+    status          TEXT        NOT NULL DEFAULT 'pending', -- pending | resumed | cancelled | failed
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resumed_at      TIMESTAMPTZ NULL,
+    last_error      TEXT        NULL,
+    CONSTRAINT ck_flow_wait_status CHECK (status IN ('pending','resumed','cancelled','failed'))
+);
+
+CREATE INDEX IF NOT EXISTS ix_flow_wait_due
+    ON flow_execution_state (status, resume_at)
+    WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS ix_flow_wait_chat
+    ON flow_execution_state (tenant_id, chat_id, status);
+
+CREATE INDEX IF NOT EXISTS ix_flow_wait_created
+    ON flow_execution_state (created_at);
+
+GRANT ALL ON flow_execution_state TO invekto;
+GRANT USAGE, SELECT ON SEQUENCE flow_execution_state_id_seq TO invekto;

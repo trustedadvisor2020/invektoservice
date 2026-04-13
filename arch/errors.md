@@ -392,6 +392,17 @@ errors:
     description: message_text node has invalid text_variants JSON; falling back to single text field
     user_message: Sablon yuklenemedi, varsayilan mesaj kullanildi.
 
+  # G6: Flow Wait Persistence
+  - code: INV-AT-058
+    description: flow_execution_state row insert/update failed (DB error). Wait state could not be persisted.
+    user_message: Bekleme durumu kaydedilemedi.
+  - code: INV-AT-059
+    description: Resume from persisted wait state failed (deserialize / engine / callback error).
+    user_message: Bekleyen akis devam ettirilemedi.
+  - code: INV-AT-060
+    description: action_wait_until node config invalid (no duration provided, out-of-bounds, or unparseable).
+    user_message: Bekleme adimi yapilandirmasi gecersiz.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

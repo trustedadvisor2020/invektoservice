@@ -1,0 +1,130 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260413-g6-flow-wait-persistence",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-13T18:30:00Z",
+  "updated_at": "2026-04-13T19:10:00Z",
+  "plan": {
+    "summary": "G6: Flow state persistence. New action_wait_until node + flow_execution_state table + 60s FlowWaitResumerService enables restart-safe long waits (up to 30 days) for Dent rescue flows. User reply during wait cancels pending wait and continues normal flow.",
+    "q_intent": "G6 Flow state persistence (2-3g) — flow_execution_state tablosu, 1.5 gun wait restart-safe. Orta risk.",
+    "interview_notes": "Q kararları: (1) Yeni action_wait_until node (action_delay dokunulmayacak, ≤300sn in-memory kalır). (2) Scheduler CronSchedulerService pattern'i ile 60sn timer. (3) Yeni flow_execution_state tablosu (chat_sessions ayrı). (4) Edge case in-scope: user reply wait'i iptal eder + devam, max wait 30 gün, metrics endpoint (pending/overdue count). (5) OUT-of-scope: flow versioning snapshot (eski versiyonla devam).",
+    "acceptance_criteria": [
+      {"id": "AC1", "criterion": "action_wait_until node tipi eklenir; wait_seconds/wait_hours/wait_days/wait_until_iso config'lerinden birini okur, 30 günlük üst limit clamp uygular, 1sn altı reddeder (INV-AT-060).", "verified": false},
+      {"id": "AC2", "criterion": "flow_execution_state tablosu migration 010 ile oluşur (tenant_id, flow_id, chat_id, phone, instance_id, node_id, resume_at, session_state JSONB, status, created_at, resumed_at, max_wait_at). (status, resume_at) ve (tenant_id, chat_id, status) indeksleri var.", "verified": false},
+      {"id": "AC3", "criterion": "FlowWaitResumerService (IHostedService) 60sn timer ile status='pending' AND resume_at<=now() rows'larını fetch eder, her row için orchestrator.ResumeWaitAsync çağırır, başarı sonrası status='resumed'+resumed_at=now(); failure status='failed' (INV-AT-059). Process restart sonrası pending rows hâlâ resume edilir (restart-safe).", "verified": false},
+      {"id": "AC4", "criterion": "Wait sırasında user mesajı gelirse orchestrator önce FlowWaitRepository.CancelPendingForChatAsync çağırır (status='cancelled'), wait iptal olur, normal flow devam eder. Aynı chat_id için aynı anda tek active pending kaydı olabilir.", "verified": false},
+      {"id": "AC5", "criterion": "GET /ops/flow-waits endpoint'i SuperAdmin auth ile { pending_count, overdue_count (resume_at<now()-5dk AND status=pending) } döner.", "verified": false},
+      {"id": "AC6", "criterion": "Build PASS (full solution). FlowValidator action_wait_until node tipini tanır. Mevcut flows (action_delay içeren) regression yok.", "verified": false}
+    ]
+  },
+  "allowed_files": [
+    "arch/db/migrations/010-flow-wait-state.sql",
+    "arch/errors.md",
+    "arch/session-memory.md",
+    "arch/platform/inma-inse-unification/roadmap.md",
+    "arch/plans/20260413-g6-flow-wait-persistence.json",
+    "src/Invekto.Automation/Data/FlowWaitRepository.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/ActionWaitUntilHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/FlowWaitResumerService.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Services/FlowValidator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs"
+  ],
+  "files_changed": [
+    {"path": "arch/db/migrations/010-flow-wait-state.sql", "change": "NEW: flow_execution_state table + 3 indexes (status/resume_at, tenant/chat/status, created_at)", "is_new": true},
+    {"path": "arch/errors.md", "change": "INV-AT-058/059/060 added (G6 wait persist/resume/config errors)", "is_new": false},
+    {"path": "arch/plans/20260413-g6-flow-wait-persistence.json", "change": "Plan JSON (this file)", "is_new": true},
+    {"path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "INV-AT-057/058/059/060 const fields (additive, no breaking change)", "is_new": false},
+    {"path": "src/Invekto.Automation/Data/FlowWaitRepository.cs", "change": "NEW: Insert/GetDue/TryMarkResumed/MarkFailed/CancelPendingForChat/GetMetrics + 3 row DTOs", "is_new": true},
+    {"path": "src/Invekto.Automation/Services/FlowWaitResumerService.cs", "change": "NEW: IHostedService 60s timer, atomic claim, batch=100, non-overlapping ticks", "is_new": true},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/ActionWaitUntilHandler.cs", "change": "NEW: action_wait_until handler, 30g max clamp, 4 duration formats + ISO, simulation skip", "is_new": true},
+    {"path": "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs", "change": "NodeAction.WaitPersist enum value + NodeResult.WaitResumeAt", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "change": "WaitPersist case: advance CurrentNodeId post-wait, return WaitRequest in EngineStepResult", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/FlowValidator.cs", "change": "action_wait_until added to RequiredFields (label only; duration validated at runtime)", "is_new": false},
+    {"path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "change": "Inject FlowWaitRepository + cancel-on-reply path + PersistWaitAsync + public ResumeWaitAsync (used by resumer)", "is_new": false},
+    {"path": "src/Invekto.Automation/Program.cs", "change": "DI: FlowWaitRepository, ActionWaitUntilHandler, FlowWaitResumerService (HostedService) + GET /api/ops/flow-waits endpoint", "is_new": false}
+  ],
+  "git_diff": {
+    "sha256": "d0b7c79e4f4f2847ad44ac8f27cd26e16ad3ceed77e136612796f2c750c600d3",
+    "full_path": "arch/plans/diffs/20260413-g6-flow-wait-persistence.diff",
+    "stats": {"insertions": 927, "deletions": 1, "files_count": 12}
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-13T19:08:00Z",
+    "duration_ms": 5640,
+    "output_tail": "Build succeeded. 2 Warning(s) 0 Error(s). Both warnings pre-existing (NU1603 Marketing/Hosting.WindowsServices, CS8600 Orchestrator line 333).",
+    "services": ["Invekto.Shared", "Invekto.Automation"]
+  },
+  "verification_questions": [
+    {"id": "Q1", "question": "FlowWaitResumerService process restart sonrası pending wait rows'larını kaybetmeden resume edebiliyor mu (in-memory state yok, tek kaynak DB)?", "category": "Lifecycle"},
+    {"id": "Q2", "question": "User reply geldiğinde CancelPendingForChatAsync, ResumeWaitAsync ile race condition'a girmeden önce çağrılıyor mu (aynı chat için concurrent execution)?", "category": "Data"},
+    {"id": "Q3", "question": "30 gün max wait limit handler tarafında mı clamp ediliyor, yoksa sadece DB constraint mi (silent clamp vs. explicit reject)?", "category": "Process/Policy"},
+    {"id": "Q4", "question": "flow_execution_state tablosu tenant_id filter'ı olmadan sorgulanıyor mu (cross-tenant sızıntı riski)?", "category": "Auth"}
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Automation/Services/NodeHandlers/ActionDelayHandler.cs (değişmeyecek, ayrı node)",
+      "Hangfire entegrasyonu (G7 paketi)",
+      "CronSchedulerService (schedule_trigger için, wait ile karışmasın)",
+      "chat_sessions tablosu şema değişikliği"
+    ],
+    "non_goals": [
+      "Flow versioning snapshot (wait sırasında flow değişirse eski graph'la devam — OUT)",
+      "Wait node'da complex expression evaluation (sabit duration/timestamp yeterli)",
+      "Multiple concurrent waits per chat (MVP: tek active pending)",
+      "Dashboard UI for pending waits (ops endpoint yeterli)"
+    ],
+    "intentional_exclusions": [
+      "Retry policy on resume failure (failed status sonrası manual intervention)",
+      "Partitioning/archival (ilk release'de küçük hacim)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "FlowWaitResumerService.OnTimerTick: toplu fetch + per-row resume, row-level failure diğerlerini etkilemez",
+      "ActionWaitUntilHandler: config parse + clamp",
+      "AutomationOrchestrator.ResumeWaitAsync: session deserialize + engine execute"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Resume failure INV-AT-059 ile log'lanır + status='failed' + GET /ops/flow-waits overdue_count'a yansır. CancelPendingForChatAsync sonucu (rows affected) orchestrator tarafından log'lanır."
+  },
+  "aha_moments": [
+    {"category": "RELIABILITY", "user_pain": "Servis restart olduğunda yarım kalan rescue flow'ları kaybolur, 48 saat sonra satisfaction sorusu gönderilmez.", "suggestion": "flow_execution_state tablosu tek kaynak; restart sonrası FlowWaitResumerService pending rows'u otomatik resume eder.", "aha_moment": "Q: deploy ettim, 2 gün sonra satisfaction mesajları otomatik gitti → platform gerçekten restart-safe."},
+    {"category": "UX", "user_pain": "Kullanıcı bekleme sırasında mesaj yazarsa eski flow 2 gün sonra da devam edip user'ı şaşırtır.", "suggestion": "Incoming message CancelPendingForChatAsync tetikler, pending wait iptal olur, normal flow başlar.", "aha_moment": "Dent danışmanı: Hasta 6 saat sonra cevap verdi, sistem bekleme iptal etti direkt yeni konuşma akışına girdi."},
+    {"category": "SPEED", "user_pain": "Dev sırasında uzun wait'leri test etmek için saatlerce beklemek gerekir.", "suggestion": "Simulation mode'da action_wait_until ActionDelayHandler gibi instant skip + info mesajı.", "aha_moment": "Flow builder simülatöründe 1.5 günlük wait 0ms'de atlanır, test akar."},
+    {"category": "SUPPORT", "user_pain": "Support: 'Rescue mesajı gitmedi, neden?' — pending mi, failed mi, cancelled mi görünmüyor.", "suggestion": "GET /ops/flow-waits + flow_execution_log.trace entry'si her wait kararını kaydeder.", "aha_moment": "Support endpoint'e bakar: 'chat_id X için wait cancelled@14:22 (user reply)' — root cause 30sn'de bulunur."},
+    {"category": "RELIABILITY", "user_pain": "Sessiz bir bug 30 gün boyunca pending row biriktirirse tablo şişer.", "suggestion": "max_wait_at kolonu + GET /ops/flow-waits overdue_count; 30 gün üst limit handler'da reject (INV-AT-060).", "aha_moment": "Ops dashboard overdue=0 görüyor, tablo şişmiyor, backlog oluşmuyor."},
+    {"category": "SALES", "user_pain": "Dent pilot demo'sunda 'gerçekten 48 saat sonra mesaj atar mı?' sorusuna kanıt yok.", "suggestion": "DB'de flow_execution_state row'u + resumed_at timestamp'i kanıt olarak gösterilebilir.", "aha_moment": "Demo: 'İşte 47sa 59dk önce oluşturulan row, şimdi resumed_at damgası yedi' — satış kapandı."}
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-13T20:45:00Z",
+    "updated_at": "2026-04-13T20:45:00Z",
+    "iteration": 2,
+    "code_quality_gate": {
+      "CQ1": {"result": "PASS", "evidence": "typed catches at 3 new sites + SendHandoffAsync degrade on persist failure"},
+      "CQ2": {"result": "PASS", "evidence": "no silent swallow; MarkFailedAsync + logging on every path"},
+      "CQ3": {"result": "PASS", "evidence": "files match declared scope"},
+      "CQ4": {"result": "PASS", "evidence": "service-local handlers per execution point"},
+      "CQ5": {"result": "PASS", "evidence": "NpgsqlException typed catches + snake_case response"},
+      "CQ6": {"result": "PASS", "evidence": "batched GetDueAsync + TryMarkResumedAsync atomic + Interlocked gate"},
+      "CQ7": {"result": "PASS", "evidence": "no new TODO/HACK/FIXME"},
+      "CQ8": {"result": "PASS", "evidence": "additive: new table + error codes + NodeAction/NodeResult members"}
+    },
+    "cove_verification": {
+      "Q1": {"result": "PASS", "reasoning": "DB-only state + restart re-fetches due rows"},
+      "Q2": {"result": "PASS", "reasoning": "atomic UPDATE WHERE status=pending single-winner"},
+      "Q3": {"result": "PASS", "reasoning": "handler reject + orchestrator clamp defense-in-depth"},
+      "Q4": {"result": "PASS", "reasoning": "tenant filter on scoped queries; resumer scan service-internal"}
+    }
+  }
+}

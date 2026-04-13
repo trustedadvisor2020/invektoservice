@@ -277,6 +277,53 @@ public sealed class FlowEngineV2
                         IsTerminal = false,
                         SubFlowRequest = new SubFlowRequest { NodeId = currentNodeId }
                     };
+
+                case NodeAction.WaitPersist:
+                    // G6: Persist session + pause. Next resume target = first outgoing edge target.
+                    if (result.WaitResumeAt == null)
+                    {
+                        _logger.SystemWarn($"[{ErrorCodes.AutomationFlowWaitConfigInvalid}] action_wait_until node {currentNodeId} returned WaitPersist without WaitResumeAt");
+                        state.Status = "error";
+                        return new EngineStepResult
+                        {
+                            Messages = messages,
+                            State = state,
+                            IsTerminal = true,
+                            NeedsHandoff = true,
+                            ErrorCode = ErrorCodes.AutomationFlowWaitConfigInvalid,
+                            ErrorMessage = "Bekleme adimi yapilandirmasi gecersiz (resume_at yok)"
+                        };
+                    }
+
+                    // Advance CurrentNodeId to next-edge target so on resume the engine picks up AFTER the wait node.
+                    var waitEdges = graph.GetOutgoingEdges(currentNodeId);
+                    if (waitEdges.Count == 0)
+                    {
+                        // Dead-end wait: treat as completed session after resume (no-op flow).
+                        state.Status = "completed";
+                        state.PendingInput = null;
+                        return new EngineStepResult
+                        {
+                            Messages = messages,
+                            State = state,
+                            IsTerminal = true
+                        };
+                    }
+                    var waitNext = graph.GetTargetNode(waitEdges[0]);
+                    state.CurrentNodeId = waitNext?.Id ?? "";
+                    state.PendingInput = null;
+                    state.Status = "waiting_long";
+                    return new EngineStepResult
+                    {
+                        Messages = messages,
+                        State = state,
+                        IsTerminal = false,
+                        WaitRequest = new WaitRequest
+                        {
+                            NodeId = currentNodeId,
+                            ResumeAt = result.WaitResumeAt.Value
+                        }
+                    };
             }
         }
 
@@ -318,6 +365,20 @@ public sealed class EngineStepResult
     public string? ErrorMessage { get; init; }
     /// <summary>Non-null when engine hit a CallSubFlow node. Orchestrator should dispatch sub-flow.</summary>
     public SubFlowRequest? SubFlowRequest { get; init; }
+    /// <summary>G6: Non-null when engine hit an action_wait_until node. Orchestrator persists session and returns.</summary>
+    public WaitRequest? WaitRequest { get; init; }
+}
+
+/// <summary>
+/// G6: Request from engine to orchestrator: persist session snapshot + schedule resume.
+/// State.CurrentNodeId already advanced to the post-wait node (resume entry point).
+/// </summary>
+public sealed class WaitRequest
+{
+    /// <summary>The action_wait_until node ID that initiated the wait (for trace/ops).</summary>
+    public required string NodeId { get; init; }
+    /// <summary>UTC timestamp at/after which the flow should resume.</summary>
+    public required DateTimeOffset ResumeAt { get; init; }
 }
 
 /// <summary>

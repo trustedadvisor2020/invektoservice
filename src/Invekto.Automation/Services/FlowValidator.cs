@@ -37,6 +37,7 @@ public sealed class FlowValidator
         ["ai_faq"] = new[] { "label" },
         ["action_api_call"] = new[] { "label", "method", "url" },
         ["action_delay"] = new[] { "label", "seconds" },
+        ["action_wait_until"] = new[] { "label" }, // duration field validated at runtime (one of wait_until_iso/wait_days/wait_hours/wait_minutes/wait_seconds)
         ["utility_set_variable"] = new[] { "label", "variable_name", "value_expression" },
         ["ai_sentiment"] = new[] { "label" },
         ["webhook_trigger"] = new[] { "label" },
