@@ -8,6 +8,7 @@ using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
+using Invekto.Shared.Contracts.Inma.Webhooks;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.DTOs.Onboarding;
 using Invekto.Shared.DTOs.Returns;

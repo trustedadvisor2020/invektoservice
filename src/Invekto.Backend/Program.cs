@@ -11,6 +11,7 @@ using Invekto.Backend.Services;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Inma.Dtos;
+using Invekto.Shared.Contracts.Inma.Webhooks;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.DTOs.ChatAnalysis;

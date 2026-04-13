@@ -1,0 +1,158 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260415-up01b-shared-dto-consolidation",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-15T09:00:00Z",
+  "updated_at": "2026-04-15T09:30:00Z",
+  "plan": {
+    "summary": "Move WapCrmMessage/WapCrmApiResponse and IncomingWebhookEvent/WebhookMessage from legacy DTOs/* paths to Invekto.Shared.Contracts.Inma.{Dtos,Webhooks}, completing the UP0.1 INMA contract reorganization.",
+    "q_intent": "UP0.1b Shared DTO consolidation (1g): WapCrmMessage + IncomingWebhookEvent Contracts/Inma'ya, caller using update.",
+    "interview_notes": "Q decisions: (1) Webhook types -> Contracts/Inma/Webhooks/ subfolder per README plan, WapCrm types -> Contracts/Inma/Dtos/. (2) Hard cut, no backwards-compat alias. Old files deleted, all callers updated.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "WapCrmMessage + WapCrmApiResponse<T> live under namespace Invekto.Shared.Contracts.Inma.Dtos at src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmMessage.cs; old DTOs/ChatAnalysis/WapCrmMessage.cs deleted.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "IncomingWebhookEvent + WebhookMessage live under namespace Invekto.Shared.Contracts.Inma.Webhooks at src/Invekto.Shared/Contracts/Inma/Webhooks/IncomingWebhookEvent.cs; old DTOs/Integration/IncomingWebhookEvent.cs deleted.",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "All 5 caller files (WapCrmClient, Backend Program, Automation Program, AttributionService, AutomationOrchestrator) compile after using-statement update; no stale references to old namespaces remain.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "Full solution build PASS (0 errors). No JSON wire-format changes (JsonPropertyName preserved verbatim).",
+        "verified": true
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmMessage.cs",
+    "src/Invekto.Shared/Contracts/Inma/Webhooks/IncomingWebhookEvent.cs",
+    "src/Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs",
+    "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs",
+    "src/Invekto.ChatAnalysis/Services/WapCrmClient.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Services/AttributionService.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Shared/Contracts/Inma/README.md",
+    "arch/plans/20260415-up01b-shared-dto-consolidation.json",
+    "arch/session-memory.md",
+    "arch/platform/inma-inse-unification/roadmap.md",
+    "tracking/README.md"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmMessage.cs", "is_new": true, "change": "Moved from DTOs/ChatAnalysis/WapCrmMessage.cs; namespace -> Invekto.Shared.Contracts.Inma.Dtos."},
+    {"path": "src/Invekto.Shared/Contracts/Inma/Webhooks/IncomingWebhookEvent.cs", "is_new": true, "change": "Moved from DTOs/Integration/IncomingWebhookEvent.cs; namespace -> Invekto.Shared.Contracts.Inma.Webhooks."},
+    {"path": "src/Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs", "is_new": false, "deleted": true, "change": "Deleted (moved)."},
+    {"path": "src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs", "is_new": false, "deleted": true, "change": "Deleted (moved)."},
+    {"path": "src/Invekto.ChatAnalysis/Services/WapCrmClient.cs", "is_new": false, "change": "using DTOs.ChatAnalysis -> Contracts.Inma.Dtos."},
+    {"path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "Added using Contracts.Inma.Webhooks (DTOs.Integration retained for OutgoingCallback/CallbackActions)."},
+    {"path": "src/Invekto.Backend/Services/AttributionService.cs", "is_new": false, "change": "Added using Contracts.Inma.Webhooks for WebhookMessage."},
+    {"path": "src/Invekto.Automation/Program.cs", "is_new": false, "change": "Added using Contracts.Inma.Webhooks."},
+    {"path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "is_new": false, "change": "Added using Contracts.Inma.Webhooks for WebhookMessage."},
+    {"path": "arch/plans/20260415-up01b-shared-dto-consolidation.json", "is_new": true, "change": "Plan JSON."}
+  ],
+  "git_diff": {
+    "sha256": "f68071090b5bd11ffa9e5ce61cae56fef817448ceecf2ad20d93361482f633a2",
+    "full_path": "arch/plans/diffs/20260415-up01b-shared-dto-consolidation.diff",
+    "stats": {
+      "insertions": 125,
+      "deletions": 3,
+      "files_count": 8
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-15T09:25:00Z",
+    "duration_ms": 12790,
+    "output_tail": "13 Warning(s) / 0 Error(s) - all warnings pre-existing (NU1603, CS1998, CA1416, xUnit1013).",
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.ChatAnalysis", "Invekto.Automation"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Any JsonPropertyName attribute values (wire format must stay byte-identical)",
+      "DTO property shapes (no add/remove/rename)",
+      "Any service outside Backend/Automation/ChatAnalysis"
+    ],
+    "non_goals": [
+      "Adding new DTO fields",
+      "Refactoring caller business logic",
+      "Touching INMA wire contracts"
+    ],
+    "intentional_exclusions": [
+      "No backwards-compat type aliases (Q: hard cut)",
+      "Sibling DTOs in DTOs/ChatAnalysis (AnalysisCriterion etc.) and DTOs/Integration (OutgoingCallback, WebhookEventTypes) stay in place — out of UP0.1b scope"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Pure file move + namespace change. No runtime logic added or removed. Compile-time errors surface any miss; no try-catch involved."
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Are there any remaining references to the legacy fully-qualified types Invekto.Shared.DTOs.ChatAnalysis.WapCrmMessage / WapCrmApiResponse anywhere in the repo (src/, tests/, scripts/)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "Are there any remaining references to the legacy fully-qualified types Invekto.Shared.DTOs.Integration.IncomingWebhookEvent / WebhookMessage anywhere in the repo (src/, tests/, scripts/)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q3",
+      "question": "Were JsonPropertyName attribute values, property names, types, and getter/setter shapes preserved byte-for-byte in the moved files (i.e., zero wire-format change)?",
+      "category": "Process/Policy"
+    }
+  ],
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Inline INMA DTOs scattered across DTOs/ChatAnalysis and DTOs/Integration make it hard to spot wire-contract drift in PR review.",
+      "suggestion": "Single Contracts/Inma/ root with Dtos/ + Webhooks/ subfolders mirrors INMA-side organization.",
+      "aha_moment": "Reviewer opens Contracts/Inma/ and sees the entire INMA wire surface in one tree, no archeology needed."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Onboarding devs grep namespace by guess to find webhook payload shape.",
+      "suggestion": "Contracts/Inma/Webhooks/ — namespace == folder == purpose.",
+      "aha_moment": "New dev searches 'Inma.Webhooks' and lands on the exact file in seconds."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "DTO duplication risk if next dev adds a parallel WebhookMessage in Contracts/Inma/.",
+      "suggestion": "Hard cut migration removes old path immediately; no alias trap.",
+      "aha_moment": "Future PR cannot accidentally import the legacy version — it doesn't exist."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "When INMA changes a JsonPropertyName, support has to grep across two folder trees to confirm parity.",
+      "suggestion": "Co-locating WapCrm + Webhook DTOs under Contracts/Inma/ enables a single diff against INMA model docs.",
+      "aha_moment": "Compliance check becomes 'open one folder, compare', not multi-grep."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Q's mental model of 'INMA boundary' was scattered across 4 namespaces.",
+      "suggestion": "Invekto.Shared.Contracts.Inma.* is the only INMA boundary namespace going forward.",
+      "aha_moment": "Q reads code and instantly knows: if it's not under Contracts.Inma, it isn't an INMA wire contract."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-15T09:45:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-15T09:45:00Z",
+    "iteration": 2
+  }
+}

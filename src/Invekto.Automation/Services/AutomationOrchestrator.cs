@@ -4,6 +4,7 @@ using System.Text.Json;
 using Invekto.Automation.Data;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
+using Invekto.Shared.Contracts.Inma.Webhooks;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Integration;
 using Invekto.Shared.Logging;

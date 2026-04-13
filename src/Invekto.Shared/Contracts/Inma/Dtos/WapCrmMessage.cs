@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Invekto.Shared.DTOs.ChatAnalysis;
+namespace Invekto.Shared.Contracts.Inma.Dtos;
 
 /// <summary>
 /// WapCRM API response wrapper

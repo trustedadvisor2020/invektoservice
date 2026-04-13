@@ -17,11 +17,11 @@ Contracts/Inma/
 - ✅ `WapCrmInstanceDto`, `WapCrmApiEnvelope`, `WapCrmRawInstance` (önceden Backend/Data inline idi)
 - ✅ `WapCrmSettings` (önceden Backend/Data inline idi)
 
-**Sonraki iterasyon (UP0.1b):**
-- [ ] `Invekto.Shared.DTOs.ChatAnalysis.WapCrmMessage` + `WapCrmApiResponse<T>` → buraya taşı
-- [ ] `Invekto.Shared.DTOs.Integration.IncomingWebhookEvent` + `WebhookMessage` → `Webhooks/` altına
+**UP0.1b (2026-04-15, tamamlandı):**
+- ✅ `WapCrmMessage` + `WapCrmApiResponse<T>` → `Dtos/WapCrmMessage.cs` (namespace `Invekto.Shared.Contracts.Inma.Dtos`)
+- ✅ `IncomingWebhookEvent` + `WebhookMessage` → `Webhooks/IncomingWebhookEvent.cs` (namespace `Invekto.Shared.Contracts.Inma.Webhooks`)
 
-Namespace rename breaking change — tüm caller'ların `using` satırları güncellenecek. Ayrı paket.
+Hard cut — eski namespace'ler kaldırıldı, 5 caller dosyası `using` güncellendi (Backend Program/AttributionService, Automation Program/Orchestrator, ChatAnalysis WapCrmClient).
 
 ## Kural
 

@@ -1,3 +1,4 @@
+using Invekto.Shared.Contracts.Inma.Webhooks;
 using Invekto.Shared.DTOs.Attribution;
 using Invekto.Shared.DTOs.Integration;
 using Invekto.Shared.Logging;

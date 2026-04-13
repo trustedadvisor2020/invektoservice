@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Invekto.Shared.DTOs.Integration;
+namespace Invekto.Shared.Contracts.Inma.Webhooks;
 
 /// <summary>
 /// Webhook payload that INMA (Main App) sends to InvektoServis.

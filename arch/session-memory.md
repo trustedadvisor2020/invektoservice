@@ -5,18 +5,17 @@
 
 ## Last Update
 
-- **Date:** 2026-04-14
-- **Status:** DONE. G3 Template A/B rotation paketi. FlowConfigV2 message_text node'larina text_variants destegi (hash-based deterministik). Codex PASS iter=2.
-- **Last Task:** G3 Template A/B rotation. (1) Invekto.Shared: ITemplateRotationService + HashBasedTemplateRotationService (FNV-1a 32-bit, stateless, deterministik). (2) Invekto.Automation: MessageTextHandler text_variants JSON array destegi, INV-AT-057 invalid JSON fallback (log + text field). (3) ExecutionContext.ContactKey + FlowEngineV2 param propagation + AutomationOrchestrator fallback (chatId -> phone -> flow:{rootFlowId}). (4) node_trace JSONB'ye variant_index/variant_count enrichment (migration yok). (5) arch/errors.md INV-AT-057 kaydı. Codex PASS iter=2 (iter 0: allowed_files + fallback contract + error code çakışması; iter 1: `phone!` null-forgiving).
-- **Files Changed:** ADD: src/Invekto.Shared/Services/{ITemplateRotationService, HashBasedTemplateRotationService}.cs, arch/plans/20260414-g3-template-ab-rotation.json. EDIT: src/Invekto.Automation/{Program.cs (DI), Services/FlowEngineV2.cs (contactKey param), Services/NodeHandlers/INodeHandler.cs (ContactKey field), Services/NodeHandlers/MessageTextHandler.cs (variant support), Services/AutomationOrchestrator.cs (6 ExecuteAsync sites + trace enrichment + contactKey fallback)}, arch/errors.md (INV-AT-057).
-- **Build:** PASS (0 errors).
-- **Next Task:** UP0.1b Shared DTO consolidation (1g) veya G6 Flow state persistence (2-3g) veya G7 Hangfire migration (5-7g). INMA kickoff feedback geldiyse UP0.2/0.3/0.5.
+- **Date:** 2026-04-15
+- **Status:** DONE. UP0.1b Shared DTO consolidation. WapCrmMessage + IncomingWebhookEvent → Invekto.Shared.Contracts.Inma.{Dtos,Webhooks}. Hard cut, 5 caller using update. Codex PASS iter=2.
+- **Last Task:** UP0.1b Shared DTO consolidation. (1) Move WapCrmMessage + WapCrmApiResponse<T> → Contracts/Inma/Dtos/WapCrmMessage.cs (namespace Invekto.Shared.Contracts.Inma.Dtos). (2) Move IncomingWebhookEvent + WebhookMessage → Contracts/Inma/Webhooks/IncomingWebhookEvent.cs (namespace Invekto.Shared.Contracts.Inma.Webhooks). (3) JsonPropertyName + property shapes byte-identical (97% similarity rename). (4) 5 caller using update: ChatAnalysis WapCrmClient, Backend Program, Backend AttributionService, Automation Program, Automation Orchestrator. Backend/AttributionService DTOs.Integration using korundu (OutgoingCallback, CallbackActions için). (5) Contracts/Inma/README.md UP0.1b checkbox tiklendi. Codex PASS iter=2 (iter 0: inline diff yoktu, diff_file_path Codex tarafından okunmadı → UNKNOWN; iter 1: CoVe questions yoktu + CQ8 cross-service exhaustive proof yoktu; iter 2: full inline diff + 3 CoVe + repo-wide grep kanıtı → PASS).
+- **Files Changed:** ADD: src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmMessage.cs (rename), src/Invekto.Shared/Contracts/Inma/Webhooks/IncomingWebhookEvent.cs (rename), arch/plans/20260415-up01b-shared-dto-consolidation.json. EDIT: src/Invekto.ChatAnalysis/Services/WapCrmClient.cs, src/Invekto.Backend/Program.cs, src/Invekto.Backend/Services/AttributionService.cs, src/Invekto.Automation/Program.cs, src/Invekto.Automation/Services/AutomationOrchestrator.cs, src/Invekto.Shared/Contracts/Inma/README.md. DELETE: src/Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs, src/Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs.
+- **Build:** PASS (0 errors, 13 warnings all pre-existing).
+- **Next Task:** G6 Flow state persistence (2-3g) veya G7 Hangfire migration (5-7g). INMA kickoff feedback geldiyse UP0.2/0.3/0.5.
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | UP0.1b Shared DTO consolidation | PENDING | WapCrmMessage + IncomingWebhookEvent Contracts/Inma'ya, 10+ caller using update |
 | 3 | G7 Hangfire migration | PENDING | 5-7g platform yatırımı — ReminderSchedulerService replace |
 | 4 | G6 Flow state persistence | PENDING | 2-3g — 1.5 gün wait restart-safe |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
@@ -29,6 +28,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-15 | UP0.1b Shared DTO consolidation: WapCrmMessage + WapCrmApiResponse<T> → Contracts/Inma/Dtos/, IncomingWebhookEvent + WebhookMessage → Contracts/Inma/Webhooks/. 5 caller using update (ChatAnalysis WapCrmClient, Backend Program/AttributionService, Automation Program/Orchestrator). JsonPropertyName byte-identical. Codex PASS iter=2. |
 | 2026-04-14 | G3 Template A/B rotation: ITemplateRotationService (Shared, FNV-1a stateless) + MessageTextHandler text_variants JSON array + ExecutionContext.ContactKey + orchestrator chatId/phone/flow fallback + node_trace variant_index/count. INV-AT-057 yeni error code. Codex PASS iter=2. |
 | 2026-04-13 | UP0.6 (feature flag service): IFeatureFlagService + InMemoryFeatureFlagService (Shared), IMemoryCache 5dk TTL, closed-by-default, per-(tenant,user) keyed. Backend DI + /inma/auth/exchange ve /login hooks. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit 1ddb495. |
 | 2026-04-13 | UP0.1 MVP (INMA contract reorg): Backend inline WapCrm DTO'ları Invekto.Shared.Contracts.Inma.Dtos namespace'ine taşındı. 3 yeni dosya, 3 Backend dosya using update. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit d4e753c. |

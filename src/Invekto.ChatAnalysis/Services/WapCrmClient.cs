@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Invekto.Shared.Constants;
-using Invekto.Shared.DTOs.ChatAnalysis;
+using Invekto.Shared.Contracts.Inma.Dtos;
 
 namespace Invekto.ChatAnalysis.Services;
 
