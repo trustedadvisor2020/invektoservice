@@ -1,0 +1,133 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260413-up01-inma-contract-reorg",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-04-13T17:00:00Z",
+  "updated_at": "2026-04-13T17:11:00Z",
+  "plan": {
+    "summary": "UP0.1 MVP — INMA DTO'larını Invekto.Backend/Data inline tanımlarından Invekto.Shared/Contracts/Inma/Dtos/ altına taşı. Namespace: Invekto.Shared.Contracts.Inma.Dtos. Davranış değişikliği yok, sadece reorg.",
+    "q_intent": "INMA-INSE unification platform projesinin UP0.1 (Contract Discipline) paketi. INMA contract'larını tek canonical namespace altında topla, ileride INMA API genişlemesi için zemin hazırla.",
+    "interview_notes": "Q onayı: UP0.1 MVP scope sadece inline DTO taşıma. Mevcut Invekto.Shared.DTOs.ChatAnalysis.WapCrmMessage ve Invekto.Shared.DTOs.Integration.IncomingWebhookEvent taşınmıyor (UP0.1b ayrı iterasyon). Sebep: bu dosyaları taşımak 10+ caller'da using güncellemesi gerektirir, ayrı paket.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "WapCrmInstanceDto, WapCrmApiEnvelope, WapCrmRawInstance, WapCrmSettings sınıfları Invekto.Shared.Contracts.Inma.Dtos namespace'inde tanımlı",
+        "verified": true,
+        "verification_note": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmInstance.cs + WapCrmSettings.cs oluşturuldu"
+      },
+      {
+        "id": "AC2",
+        "criterion": "Invekto.Backend/Data/InstanceRepository.cs ve TenantRegistryRepository.cs içindeki inline DTO tanımları kaldırıldı, yeni namespace using eklendi",
+        "verified": true,
+        "verification_note": "Inline class tanımları kaldırıldı, 'using Invekto.Shared.Contracts.Inma.Dtos;' eklendi"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Full solution build PASS (dotnet build InvektoServis.sln)",
+        "verified": true,
+        "verification_note": "Build succeeded, 0 error, 8 önceden var olan warning alakasız"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Mikro servis izolasyon korundu — Backend yeni using'de sadece Invekto.Shared altından referans alıyor",
+        "verified": true,
+        "verification_note": "Tüm yeni using'ler 'Invekto.Shared.Contracts.Inma.Dtos', başka servise direkt ref yok"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmInstance.cs",
+    "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSettings.cs",
+    "src/Invekto.Shared/Contracts/Inma/README.md",
+    "src/Invekto.Backend/Data/InstanceRepository.cs",
+    "src/Invekto.Backend/Data/TenantRegistryRepository.cs",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmInstance.cs", "change": "Yeni — 3 DTO (WapCrmInstanceDto, WapCrmApiEnvelope, WapCrmRawInstance) canonical namespace altında", "is_new": true },
+    { "path": "src/Invekto.Shared/Contracts/Inma/Dtos/WapCrmSettings.cs", "change": "Yeni — WapCrmSettings canonical namespace altında", "is_new": true },
+    { "path": "src/Invekto.Shared/Contracts/Inma/README.md", "change": "Yeni — Contracts/Inma klasör kuralı ve UP0.1b roadmap", "is_new": true },
+    { "path": "src/Invekto.Backend/Data/InstanceRepository.cs", "change": "Inline 3 DTO kaldırıldı, using eklendi", "is_new": false },
+    { "path": "src/Invekto.Backend/Data/TenantRegistryRepository.cs", "change": "Inline WapCrmSettings kaldırıldı, using eklendi", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "using Invekto.Shared.Contracts.Inma.Dtos eklendi", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "16e3320df23e1cd6d5e9cf6840c0a29780dcd6c2d22cd44eb63fb230a0ebb1ee",
+    "full_path": "arch/plans/diffs/20260413-up01-inma-contract-reorg.diff",
+    "stats": {
+      "insertions": 89,
+      "deletions": 46,
+      "files_count": 6
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-13T17:10:00Z",
+    "duration_ms": 22890,
+    "output_tail": "Build succeeded. 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Invekto.Shared/DTOs/ChatAnalysis/WapCrmMessage.cs (UP0.1b)",
+      "Invekto.Shared/DTOs/Integration/IncomingWebhookEvent.cs (UP0.1b)",
+      "Davranış/logic değişikliği (sadece namespace reorg)"
+    ],
+    "non_goals": [
+      "Mevcut Shared DTO dosyalarını taşımak",
+      "Yeni DTO property eklemek",
+      "INMA send client kurmak (UP0.5)",
+      "Diğer servislerin inline DTO'larını temizlemek"
+    ],
+    "intentional_exclusions": [
+      "Mevcut 'Invekto.Shared.DTOs.ChatAnalysis' ve 'Invekto.Shared.DTOs.Integration' namespace'leri olduğu gibi bırakıldı — taşıma UP0.1b paketinde (10+ caller etkileneceği için ayrı risk yönetimi)",
+      "Webhooks/ alt klasör şimdilik boş — UP0.1b'de doldurulacak"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Mechanical namespace reorg. Hiçbir runtime path değişmedi, exception handling patern'lerine dokunulmadı."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "INMA contract'ları 3 farklı yerde (Shared DTOs, Backend inline x2) dağınık — değişiklik yapılırken kaçırılabiliyor",
+      "suggestion": "Tüm INMA contract'ları Invekto.Shared.Contracts.Inma.* altında topla, 'tek kaynak' kuralı README ile netleştir",
+      "aha_moment": "Developer yeni INMA field eklediğinde 'buraya koyacağım, başka yerde tanımlı olma ihtimali yok' netliği"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni geliştirici INMA DTO arayınca grep ile arıyor, dokümantasyon yok",
+      "suggestion": "Contracts/Inma/README.md ile namespace kuralı + consolidation roadmap açıkla",
+      "aha_moment": "README açıldığında 'aha, hangi DTO nerede ve sonraki adım UP0.1b' netliği"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Backend repo dosyaları hem DB logic hem DTO tanımı içeriyor — SRP ihlali, dosya şişiyor",
+      "suggestion": "Inline DTO'ları ayrıştır, repo sadece DB logic tutar",
+      "aha_moment": "InstanceRepository açıldığında sadece repo logic görmek"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "UP0.5 gelecekte INMA send client yazılırken DTO'lar dağınıksa refactor ağır olur",
+      "suggestion": "Şimdi canonical klasör aç, ileride send DTO'lar da buraya gelsin",
+      "aha_moment": "UP0.5 başlarken DTO'ları bir namespace'den import edebilmek"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Production'da INMA API hatası debug edilirken DTO'ların hangi dosyada olduğu bilinmiyor",
+      "suggestion": "Log mesajlarında/stack trace'de 'Invekto.Shared.Contracts.Inma.Dtos' görmek destek ekibi için kolay",
+      "aha_moment": "Hata loguna bakıp 'INMA contract sorunu, şu dosyaya bak' diyebilmek"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}
