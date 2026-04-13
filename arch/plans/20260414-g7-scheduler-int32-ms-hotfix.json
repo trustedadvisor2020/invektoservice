@@ -1,0 +1,108 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008-§12",
+  "slug": "20260414-g7-scheduler-int32-ms-hotfix",
+  "risk": "LOW",
+  "status": "DONE",
+  "commit_sha": null,
+  "codex_verdict": "PASS",
+  "codex_iteration": 1,
+  "created_at": "2026-04-14T01:10:00Z",
+  "updated_at": "2026-04-14T01:10:00Z",
+  "plan": {
+    "summary": "HOTFIX: Prior commit ad508b1 (follow-up #1) kullandığı TimeSpan.FromDays(36500) (100 yıl), Hangfire BackgroundJobServerOptions.SchedulePollingInterval setter'ının int32-milliseconds üst sınırını (int.MaxValue ≈ 24.86 gün) aşıyor. Production deploy sonrası 3 worker (Appointments, Automation, Integrations) ArgumentOutOfRangeException ile crash-loop'a girdi (WhatsAppAnalytics race nedeniyle aynı anda yakalanmadı ama aynı risk altında). Fix: TimeSpan.FromMilliseconds(int.MaxValue) — Hangfire'ın izin verdiği maksimum değer. Worker process'leri 25 günden çok daha sık recycle edildiği için pratikte scheduler tick atmıyor, leader (Backend) rejimi değişmiyor. Codex önceki review'da (ad508b1) bu limiti yakalayamadı; lesson kaydedildi.",
+    "q_intent": "Prod crash-loop hotfix. Sadece tek satır değişiklik: 36500 gün yerine int.MaxValue ms. Comment de gerçeği yansıtacak şekilde güncellendi. Prod'da zaten manuel deploy edildi (Shared.dll hot-swap) ve 10/10 servis healthy; bu JSON post-hoc review+commit için.",
+    "interview_notes": "Kökten çözüm için alternatifler: (a) FromMilliseconds(int.MaxValue) — tek satır, cap'e eşit, seçildi. (b) IBackgroundProcess[] override — fazla invaziv, daha önce elendi. (c) Hangfire 1.9+'a yükseltme — kapsam dışı, ayrı paket. (a) seçildi — minimal diff, önceki mantık korundu.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "HangfireSetup.cs, enableScheduler=false dalında SchedulePollingInterval = TimeSpan.FromMilliseconds(int.MaxValue) atıyor",
+        "verified": true,
+        "verification_note": "Diff: -TimeSpan.FromDays(36500) / +TimeSpan.FromMilliseconds(int.MaxValue)"
+      },
+      {
+        "id": "AC2",
+        "criterion": "Comment block, int32-ms cap (~24.86 gün) ve 'workers recycled far more frequently' rasyoneli yansıtıyor; eski '100 years' iddiası kaldırıldı",
+        "verified": true,
+        "verification_note": "Comment 4 satır güncellendi"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Full solution build PASS 0 error; warning sayısı baseline 18 ile eşit (yeni warning yok)",
+        "verified": true,
+        "verification_note": "dotnet build: 18 Warning(s), 0 Error(s), Time 00:00:14"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Production: 10/10 servis /health OK; 4 worker ArgumentOutOfRangeException vermiyor (Shared.dll hot-deploy sonrası)",
+        "verified": true,
+        "verification_note": "server-health all: 10 OK. Worker stderr logs empty (no post-hotfix exceptions)."
+      },
+      {
+        "id": "AC5",
+        "criterion": "Scope: sadece Invekto.Shared/Hosting/HangfireSetup.cs; başka dosya yok",
+        "verified": true,
+        "verification_note": "git diff shows single file"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Hosting/HangfireSetup.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Hosting/HangfireSetup.cs", "change": "SchedulePollingInterval: TimeSpan.FromDays(36500) -> TimeSpan.FromMilliseconds(int.MaxValue); comment updated", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "1ee96e908114d73134cb1a11e877b6c75b129e81878bfe3a93d8eda737bd0087",
+    "full_path": "arch/plans/diffs/20260414-g7-scheduler-int32-ms-hotfix.diff",
+    "stats": { "insertions": 5, "deletions": 4, "files_count": 1 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-14T01:09:30Z",
+    "duration_ms": 14580,
+    "output_tail": "Build succeeded. 18 Warning(s), 0 Error(s). Baseline preserved.",
+    "error_summary": null,
+    "services": ["Invekto.Shared"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "TimeSpan.FromMilliseconds(int.MaxValue) Hangfire 1.8.14 BackgroundJobServerOptions.SchedulePollingInterval setter validation'ı ('must be <= 2147483647 ms') kesin geçiyor mu? (Sınır değer dahil mi?)",
+      "category": "API Bounds",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "Diff'teki tek davranış değişikliği enableScheduler=false dalında SchedulePollingInterval değeridir (TimeSpan.FromDays(36500) -> TimeSpan.FromMilliseconds(int.MaxValue)). Başka Hangfire option (Queues, ShutdownTimeout, WorkerCount, ServerName) veya lifecycle kodu değişmedi — doğru mu?",
+      "category": "Scope/Behavior",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Önceki commit ad508b1 Codex PASS aldı ama int32 overflow'u yakalayamadı. Bu hotfix review'unda Codex ek bir runtime/bounds sınıfı kontrolü yapabilir mi? (Lesson: compile-time PASS ≠ runtime PASS for numeric bounds.)",
+      "category": "Review Gap",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Backend (enableScheduler default=true) call path bu satıra hiç girmiyor; davranışı 100% backward-compatible mi?",
+      "category": "Backward Compat",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Scope: sadece HangfireSetup.cs; error codes / arch/ güncellemesi gerekmiyor — doğru mu?",
+      "category": "Scope",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ]
+}

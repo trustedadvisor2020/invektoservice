@@ -82,10 +82,11 @@ public static class HangfireSetup
             {
                 // Follow-up #1: Worker servers must not race Backend for the shared
                 // `recurring-jobs` advisory lock. Hangfire 1.8 has no direct toggle to
-                // suppress RecurringJobScheduler, so we push its polling interval 100 years
-                // out — the process is instantiated but effectively dormant. Only the
-                // leader (Backend) owns scheduling.
-                options.SchedulePollingInterval = TimeSpan.FromDays(36500);
+                // suppress RecurringJobScheduler; push polling to the Int32-ms cap
+                // (~24.86 days). Worker processes are recycled far more frequently
+                // than that, so in practice the scheduler never fires. Leader
+                // (Backend) remains sole owner of recurring-job scheduling.
+                options.SchedulePollingInterval = TimeSpan.FromMilliseconds(int.MaxValue);
             }
         });
 
