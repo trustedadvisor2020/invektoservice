@@ -6,9 +6,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Npgsql;
 using Invekto.Shared.Middleware;
+using Hangfire;
 using Invekto.Backend.Data;
 using Invekto.Backend.Services;
 using Invekto.Shared.Auth;
+using Invekto.Shared.Hosting;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Contracts.Inma.Dtos;
 using Invekto.Shared.Contracts.Inma.Webhooks;
@@ -332,6 +334,19 @@ if (!string.IsNullOrEmpty(callbackUrl))
 
 builder.Services.AddAuthorization();
 
+// G7: Hangfire infrastructure — Backend hosts the dashboard and a placeholder server
+// (queue=backend) ready for Faz 4 scheduler migrations (TranslationCleanup, MetricsAggregation).
+// Enablement gate uses the SAME resolution as HangfireSetup (Hangfire-specific conn string
+// first, PostgreSQL as fallback) so a deployment providing only ConnectionStrings:Hangfire
+// still wires up the server and dashboard. When neither is present, Hangfire is skipped and
+// a warn is logged just after app.Build() below.
+var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
+var hangfireEnabled = !string.IsNullOrEmpty(hangfireConnStr);
+if (hangfireEnabled)
+{
+    builder.Services.AddInvektoHangfire("backend", hangfireConnStr);
+}
+
 // QNB VPos — ödeme servisi
 builder.Services.Configure<QnbVPosSettings>(builder.Configuration.GetSection("QnbVPos"));
 builder.Services.AddSingleton<QnbVPosService>();
@@ -383,6 +398,23 @@ if (!string.IsNullOrEmpty(pgConnectionString))
         ("/api/v1/outbound/", "Outbound"));
 }
 app.UseAuthorization();
+
+// G7: Hangfire dashboard — superadmin-only (tenant_id=0). Mounted after JWT middleware
+// so HttpContext.User is populated before SuperAdminDashboardFilter runs.
+if (hangfireEnabled)
+{
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new SuperAdminDashboardFilter() },
+        DisplayStorageConnectionString = false
+    });
+}
+else
+{
+    app.Services.GetRequiredService<JsonLinesLogger>().SystemWarn(
+        $"[{ErrorCodes.JobStorageConnectionFailed}] Hangfire dashboard + server DISABLED: " +
+        "ConnectionStrings:PostgreSQL is not configured. Recurring jobs will NOT run.");
+}
 
 // Health endpoint (no auth, no logging)
 app.MapGet("/health", () =>

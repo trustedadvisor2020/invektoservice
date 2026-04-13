@@ -1,6 +1,9 @@
 using System.Text.Json;
+using Hangfire;
 using Invekto.Automation.Data;
 using Invekto.Automation.Services;
+using Invekto.Automation.Services.Jobs;
+using Invekto.Shared.Hosting;
 using Invekto.Shared.Middleware;
 using Invekto.Shared.Services;
 using Invekto.Automation.Services.NodeHandlers;
@@ -157,9 +160,10 @@ builder.Services.AddSingleton<MockSentimentAnalyzer>();
 builder.Services.AddSingleton<CronSchedulerService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CronSchedulerService>());
 
-// G6: FlowWaitResumerService (60s timer, polls flow_execution_state for due rows, resumes via orchestrator)
-builder.Services.AddSingleton<FlowWaitResumerService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<FlowWaitResumerService>());
+// G7: Hangfire recurring flow-wait resumer job (replaces FlowWaitResumerService IHostedService)
+var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
+builder.Services.AddInvektoHangfire("automation", hangfireConnStr);
+builder.Services.AddScoped<FlowWaitResumerJob>();
 
 // PKT-6A: Register JwtGenerator for service-to-service auth
 var jwtGenerator = new JwtGenerator(jwtSettings);
@@ -265,6 +269,13 @@ app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
+
+// G7: Register Hangfire recurring flow-wait resumer (cron minutely; idempotent)
+RecurringJob.AddOrUpdate<FlowWaitResumerJob>(
+    "automation:flow-wait-resumer",
+    "automation",
+    j => j.RunAsync(CancellationToken.None),
+    Cron.Minutely());
 
 // ============================================================
 // Health endpoints

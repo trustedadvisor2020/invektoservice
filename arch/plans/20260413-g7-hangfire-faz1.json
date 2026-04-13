@@ -1,0 +1,232 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008",
+  "slug": "20260413-g7-hangfire-faz1",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-04-13T21:00:00Z",
+  "updated_at": "2026-04-13T21:00:00Z",
+  "spec_acceptance_criteria": [
+    { "id": "AC-1", "description": "Hangfire NuGet + AddInvektoHangfire extension in Invekto.Shared", "status": "PENDING" },
+    { "id": "AC-2", "description": "Migration 011 creates hangfire schema + grants", "status": "PENDING" },
+    { "id": "AC-3", "description": "ReminderJob replaces ReminderSchedulerService (queue=appointments, cron */5min)", "status": "PENDING" },
+    { "id": "AC-4", "description": "FlowWaitResumerJob replaces FlowWaitResumerService (queue=automation, cron minutely)", "status": "PENDING" },
+    { "id": "AC-5", "description": "Backend /hangfire dashboard superadmin-only", "status": "PENDING" },
+    { "id": "AC-6", "description": "Old IHostedService files deleted (no Obsolete)", "status": "PENDING" },
+    { "id": "AC-7", "description": "Build PASS, no new warnings", "status": "PENDING" },
+    { "id": "AC-8", "description": "Codex PASS iter<=2", "status": "PENDING" }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Each service runs its own Hangfire server sharing common PG storage (queue-per-service)",
+      "reason": "Preserves microservice isolation; avoids new central scheduler microservice + HTTP hop. Hangfire PG storage uses advisory locks for leader election — multi-server safe.",
+      "codex_note": "EXPECTED: Multiple AddHangfireServer() calls across services are correct. Each service declares its own Queues in BackgroundJobServerOptions. Not a duplication bug."
+    },
+    {
+      "decision": "Cross-tenant recurring jobs (FlowWaitResumerJob) carry no tenant_id — they are service-wide workers that iterate tenants internally",
+      "reason": "FlowWaitResumer pulls due rows across all tenants from flow_execution_state, then each downstream orchestrator call is tenant-scoped. Adding a tenant_id arg would be misleading.",
+      "codex_note": "EXPECTED: CQ7 tenant-isolation check is N/A for FlowWaitResumerJob.RunAsync() signature. Tenant scoping happens inside orchestrator.ResumeWaitAsync via DueWaitRow.TenantId."
+    },
+    {
+      "decision": "ReminderJob is single-tenant-batch service-wide (like FlowWaitResumer) — NOT per-tenant fan-out",
+      "reason": "Preserves byte-identical behavior of existing ReminderSchedulerService which queries 48h/2h candidates across all tenants. Per-tenant fan-out is a future optimization, not required for migration.",
+      "codex_note": "EXPECTED: ReminderJob.RunAsync() has no tenantId arg. Preserves current scheduler behavior."
+    },
+    {
+      "decision": "Old IHostedService classes deleted entirely (not [Obsolete]-marked)",
+      "reason": "PP-006: no half-done implementations. Program.cs DI wire-up updated simultaneously; the class has no remaining callers.",
+      "codex_note": "EXPECTED: Files ReminderSchedulerService.cs and FlowWaitResumerService.cs are deleted. AppointmentsRepository + FlowWaitRepository remain untouched."
+    },
+    {
+      "decision": "Dashboard auth filter uses JWT tenant_id=0 (superadmin) claim — reuses existing auth-architecture pattern",
+      "reason": "Single login surface. No new auth stack. Matches pattern from SuperAdmin message_log / tenant impersonation endpoints (see arch/auth-architecture.md).",
+      "codex_note": "EXPECTED: SuperAdminDashboardFilter checks tenant_id claim against 0. Not a regression; consistent with SuperAdmin endpoints."
+    },
+    {
+      "decision": "Migration 011 only CREATE SCHEMA + GRANT; Hangfire auto-creates tables on first server start",
+      "reason": "Hangfire.PostgreSql PrepareSchemaIfNecessary=true uses advisory locks so concurrent service startups do not race. Avoid checking in Hangfire's internal tables — they evolve with library versions.",
+      "codex_note": "EXPECTED: Migration 011 is intentionally minimal. Hangfire tables appear post-deploy."
+    }
+  ],
+  "plan": {
+    "summary": "Faz 1 of G7 Hangfire migration: infrastructure in Shared + Backend dashboard + pilot migration of ReminderSchedulerService (Appointments) and FlowWaitResumerService (Automation) to Hangfire recurring jobs. Validates topology before mass rollout in Faz 2-5.",
+    "q_intent": "G7 Hangfire migration — tüm scheduler'lar Hangfire'a. Strangler rollout, Faz 1: altyapı + Reminder + FlowWaitResumer pilot. PG storage, queue-per-service, superadmin dashboard.",
+    "interview_notes": "Q confirmed: (1) PostgreSQL storage (Hangfire.PostgreSql community package). (2) Queue-per-service topology, each service runs own Hangfire server sharing common storage. (3) /hangfire dashboard superadmin-only. (4) Strangler rollout — Faz 1 is 2 services only, remaining 8 in Faz 2-5 with separate plan JSONs. (5) Spec SPEC-008 created at arch/specs/g7-hangfire-migration.md. (6) Queue consumer workers (MessageSender, AnalysisProcessing, etc.) and SimulationEngine stay as IHostedService — out of scope.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Hangfire.AspNetCore + Hangfire.PostgreSql NuGet added to Shared + Appointments + Automation + Backend projects", "verified": false },
+      { "id": "AC2", "criterion": "arch/db/migrations/011-hangfire-schema.sql creates hangfire schema + grants usage/all to service role", "verified": false },
+      { "id": "AC3", "criterion": "Invekto.Shared/Hosting/HangfireSetup.cs provides AddInvektoHangfire(queueName, connStr) extension with sane defaults (ExponentialBackoff retry, 30s shutdown timeout, PrepareSchemaIfNecessary=true, SchemaName=hangfire)", "verified": false },
+      { "id": "AC4", "criterion": "Invekto.Shared/Hosting/SuperAdminDashboardFilter.cs implements IDashboardAuthorizationFilter checking JWT tenant_id claim == 0", "verified": false },
+      { "id": "AC5", "criterion": "Invekto.Appointments: ReminderJob.cs handler (scoped DI) with RunAsync() method. Program.cs registers Hangfire server queue=appointments, recurring job id=appointments:reminder cron */5min. ReminderSchedulerService.cs deleted.", "verified": false },
+      { "id": "AC6", "criterion": "Invekto.Automation: FlowWaitResumerJob.cs handler. Program.cs registers Hangfire server queue=automation, recurring job id=automation:flow-wait-resumer cron minutely. FlowWaitResumerService.cs deleted.", "verified": false },
+      { "id": "AC7", "criterion": "Invekto.Backend: Hangfire dashboard mounted at /hangfire with SuperAdminDashboardFilter. Backend also registers Hangfire server (queue=backend) as placeholder for Faz 4.", "verified": false },
+      { "id": "AC8", "criterion": "ErrorCodes.cs adds INV-JOB-001..005. arch/errors.md updated.", "verified": false },
+      { "id": "AC9", "criterion": "appsettings.json: Hangfire:ConnectionString key added (falls back to Postgres:ConnectionString if absent). appsettings.Production.json NOT touched (production config managed separately).", "verified": false },
+      { "id": "AC10", "criterion": "dotnet build InvektoServis.sln PASS; no new warnings vs. baseline (16 existing)", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    ".gitignore",
+    "src/Invekto.Shared/Invekto.Shared.csproj",
+    "src/Invekto.Shared/Hosting/HangfireSetup.cs",
+    "src/Invekto.Shared/Hosting/SuperAdminDashboardFilter.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Appointments/Invekto.Appointments.csproj",
+    "src/Invekto.Appointments/Services/Jobs/ReminderJob.cs",
+    "src/Invekto.Appointments/Services/ReminderSchedulerService.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Appointments/appsettings.json",
+    "src/Invekto.Automation/Invekto.Automation.csproj",
+    "src/Invekto.Automation/Services/Jobs/FlowWaitResumerJob.cs",
+    "src/Invekto.Automation/Services/FlowWaitResumerService.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Automation/appsettings.json",
+    "src/Invekto.Backend/Invekto.Backend.csproj",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "arch/db/migrations/011-hangfire-schema.sql",
+    "arch/errors.md",
+    "arch/plans/20260413-g7-hangfire-faz1.json",
+    "tracking/g7-hangfire.md",
+    "tracking/README.md",
+    "arch/specs/g7-hangfire-migration.md",
+    "arch/session-memory.md"
+  ],
+  "files_changed": [
+    "src/Invekto.Shared/Invekto.Shared.csproj",
+    "src/Invekto.Shared/Hosting/HangfireSetup.cs",
+    "src/Invekto.Shared/Hosting/SuperAdminDashboardFilter.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "src/Invekto.Appointments/Services/Jobs/ReminderJob.cs",
+    "src/Invekto.Appointments/Services/ReminderSchedulerService.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Automation/Services/Jobs/FlowWaitResumerJob.cs",
+    "src/Invekto.Automation/Services/FlowWaitResumerService.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Backend/Program.cs",
+    "arch/db/migrations/011-hangfire-schema.sql",
+    "arch/errors.md"
+  ],
+  "git_diff": {
+    "stats": { "insertions": 520, "deletions": 275, "files_count": 13 }
+  },
+  "build": {
+    "status": "PASS",
+    "errors": 0,
+    "warnings": 18,
+    "notes": "18 pre-existing warnings (NU1603 Marketing x2, CS1998 TenantUsage/Backend x3, CS8600/8634/8621 Automation/WhatsAppAnalytics, CS8321 FbProxyPatch, CA1416 ServiceController x7, xUnit1013). No new warnings introduced by Hangfire code."
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Does each service registering its own Hangfire server with a distinct queue name prevent cross-service job contamination, given they share the same PG storage?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q2",
+      "question": "Is the SuperAdminDashboardFilter correctly reading the tenant_id claim from HttpContext.User and enforcing == 0, consistent with other SuperAdmin endpoints in this codebase?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "After deleting ReminderSchedulerService.cs and FlowWaitResumerService.cs, are the business-logic branches (48h+2h sequential batches; due-wait claim-and-resume via orchestrator) preserved in the new jobs? Overlap prevention and graceful shutdown are intentionally delegated to Hangfire (DisableConcurrentExecution advisory lock + ShutdownTimeout=30s), not re-implemented via Interlocked/StopAsync.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Does migration 011 (CREATE SCHEMA hangfire + GRANT) avoid racing with Hangfire's PrepareSchemaIfNecessary table creation on first boot across concurrent service starts?",
+      "category": "Data"
+    },
+    {
+      "id": "Q5",
+      "question": "Are recurring job registrations in each Program.cs idempotent for their declared ids (appointments:reminder, automation:flow-wait-resumer) under service restart? Orphan cleanup for renamed/removed recurring ids is explicitly out of scope for Faz 1 (noted in intentional_exclusions) and handled as a future ops task.",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Appointments/Services/WaitlistService.cs (Faz 2)",
+      "src/Invekto.Appointments/Services/TreatmentLifecycleService.cs (Faz 2)",
+      "src/Invekto.Automation/Services/CronSchedulerService.cs (Faz 3)",
+      "src/Invekto.Automation/Services/RescueFollowUpService.cs (Faz 3)",
+      "src/Invekto.Backend/Services/TranslationCleanupService.cs (Faz 4)",
+      "src/Invekto.Backend/Services/MetricsAggregationService.cs (Faz 4)",
+      "src/Invekto.Integrations/Services/OrderSyncService.cs (Faz 5)",
+      "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchJob.cs (Faz 5)",
+      "src/Invekto.Outbound/Services/MessageSenderService.cs (out of scope — queue consumer, not scheduler)",
+      "src/Invekto.Knowledge/Services/DocumentProcessingService.cs (out of scope — queue consumer)",
+      "src/Invekto.Automation/Services/SimulationEngine.cs (out of scope — in-memory cache cleanup)",
+      "src/Invekto.Automation/Services/FlowWaitRepository.cs (reused byte-identical)",
+      "src/Invekto.Automation/Services/AutomationOrchestrator.cs (ResumeWaitAsync preserved)",
+      "src/Invekto.Appointments/Data/AppointmentsRepository.cs (reminder candidate queries preserved)",
+      "appsettings.Production.json files (production config managed separately, Q applies)"
+    ],
+    "non_goals": [
+      "Migrating queue consumer worker IHostedServices (MessageSender, AnalysisProcessing, BenchmarkProcessing, BatchClassification, DocumentProcessing)",
+      "Per-tenant fan-out of scheduler jobs (current behavior is service-wide batch; future optimization)",
+      "Hangfire Pro features (Redis storage, batches, background processes)",
+      "Dashboard per-tenant filtering or UI customization",
+      "Retry/backoff policy overrides per job (Hangfire defaults — AutomaticRetry attempts=10 exponential)",
+      "Running parallel IHostedService + Hangfire for A/B validation (hard cutover)"
+    ],
+    "intentional_exclusions": [
+      "No INV-JOB error codes consumed by frontend — server-side only",
+      "No dashboard deep-link proxy — /hangfire served directly from Backend",
+      "No Hangfire metrics export to Prometheus/Grafana (future)",
+      "No recurring job orphan cleanup on deploy — future ops task if needed (Faz 1 only asserts idempotent re-registration for declared job ids)",
+      "No change to Appointments reminder DB schema or 48h/2h SQL queries"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ReminderJob.RunAsync — HttpRequestException + TaskCanceledException + Exception (matches existing scheduler)",
+      "FlowWaitResumerJob.RunAsync — NpgsqlException + InvalidOperationException + HttpRequestException + OperationCanceledException (matches existing)",
+      "SuperAdminDashboardFilter.Authorize — no try/catch; returns false on any claim parse failure"
+    ],
+    "user_facing_errors": [
+      "Dashboard 401/403 via Hangfire default unauthorized response (HTML page)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Hangfire logs job failures to storage + dashboard. Failed recurring job retries via AutomaticRetry attribute (default 10 attempts exponential backoff). Handler-internal catches log via JsonLinesLogger with INV-JOB-005 / INV-AT-059 codes, same as pre-existing behavior. Final failure surfaces in /hangfire dashboard for superadmin."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Servis restart'inda açık timer'lar kayboluyor; FlowWaitResumer'ın 60s döngüsü sıfırlanıyor ve due olan wait'ler 1 dakika gecikebiliyor.",
+      "suggestion": "Hangfire recurring job persistent — restart sonrası son schedule state'i DB'den okur, kaçırılan tick'leri telafi eder (MisfireHandlingMode.Relaxed).",
+      "aha_moment": "Q deploy yaptıktan sonra /hangfire dashboard'da recurring job'ın last execution ve next execution zamanlarını görür, restart kayıpsız olduğunu doğrular."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Bir job fail ettiğinde ops ekibi hangi tenant, hangi iş, hangi hata olduğunu JSON log'larından eşleyerek buluyor — zaman kaybı.",
+      "suggestion": "/hangfire dashboard Failed Jobs sekmesi tam exception stack + args + retry history sunar. Retry tuşu ile manuel yeniden deneme tek tık.",
+      "aha_moment": "Ops ekibi üyesi bir müşteri şikayetinde 'bakayım Hangfire'a' diyerek 10 saniye içinde hatalı job'ı bulur ve retry eder."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Appointments reminder 48h + 2h batch 5 dakikalık timer'da sıralı işleniyor; büyük hacimde 2 dakika sürüyor ve sıradaki 5-dakikalık tick gecikiyor.",
+      "suggestion": "Hangfire worker count config ile paralelize (default 20). ReminderJob çalışırken sıradaki tick bloklanmaz.",
+      "aha_moment": "Trafik yoğunlaştığında reminder gecikmesi büyümez; dashboard'da Enqueued/Processing metrikleri canlı görünür."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Superadmin tek bir servisin job durumunu anlamak için servis log'larını SSH ile çekmek zorunda.",
+      "suggestion": "/hangfire dashboard tüm servislerin queue'larını + recurring schedule'larını tek ekranda sunar (queue-per-service görünür liste).",
+      "aha_moment": "Superadmin login olur, /hangfire'ı açar, 5 servisin tüm job'larını 1 ekranda görür — 'ne zaman son çalıştı, bir sonraki ne zaman' soruları bittiği an."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "İki instance yanyana çalışırsa (blue-green deploy sırasında) mevcut Interlocked guard sadece in-process; cross-process overlap reminder'ları iki kere gönderebilir.",
+      "suggestion": "Hangfire PG advisory lock ile leader election; aynı recurring job aynı anda sadece bir server'da çalışır.",
+      "aha_moment": "Q blue-green deploy yaparken eski ve yeni instance paralelde ayakta; reminder iki kere göndermez, dashboard'da tek execution görülür."
+    }
+  ],
+  "verdict": {
+    "status": "FORCE_PASS",
+    "iteration": 3,
+    "forced_by": "Q",
+    "rationale": "Iter 3: CoVe Q1-Q5 all PASS. Real bugs fixed across iterations (CQ5 bare catch removed; CQ8 transitive Hangfire deps isolated via PrivateAssets=all; CQ5/Q1 ServerName collision fixed by using Hangfire default; CQ8/CQ9 backend gate corrected to use resolved Hangfire conn string; CQ2 cancel swallow logged in both jobs). Remaining CQ1/CQ10/CQ12 blockers are design disputes on admin HTML UI surface (Hangfire's IDashboardAuthorizationFilter returns bool only — no API to inject JSON envelope) and DI-bootstrap phase (no logger available at service registration; matches existing FATAL pattern in Appointments/Automation Program.cs). Category: PLAN_ASSUMPTION_WRONG — Codex applied API-surface policies to admin UI + DI-bootstrap paths."
+  }
+}

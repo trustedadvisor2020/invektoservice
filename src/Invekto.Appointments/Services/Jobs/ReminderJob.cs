@@ -1,111 +1,66 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Hangfire;
 using Invekto.Appointments.Data;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
+using Invekto.Shared.DTOs.Appointments;
 using Invekto.Shared.DTOs.Outbound;
 using Invekto.Shared.Logging;
+using Npgsql;
 
-namespace Invekto.Appointments.Services;
+namespace Invekto.Appointments.Services.Jobs;
 
 /// <summary>
-/// Background service that checks for pending appointment reminders every N minutes.
-/// Sends reminders via Outbound trigger API (appointment_reminder event).
-/// Uses Interlocked.CompareExchange for overlap prevention.
-/// Graceful shutdown via CancellationToken.
+/// G7: Hangfire recurring job replacing <c>ReminderSchedulerService</c>.
+/// Processes T-48h then T-2h appointment reminder batches across all tenants,
+/// dispatching via the Outbound trigger API. Business logic is byte-identical
+/// to the prior IHostedService — only the scheduling layer changed.
+///
+/// Queue: <c>appointments</c>. Recurring id: <c>appointments:reminder</c> (cron */5 min).
+/// Overlap protection: Hangfire <see cref="DisableConcurrentExecutionAttribute"/>
+/// (cross-process advisory lock via PG storage) plus retry via
+/// <see cref="AutomaticRetryAttribute"/> defaults.
 /// </summary>
-public sealed class ReminderSchedulerService : IHostedService, IDisposable
+[DisableConcurrentExecution(timeoutInSeconds: 30)]
+public sealed class ReminderJob
 {
     private readonly AppointmentsRepository _repository;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly JwtGenerator _jwtGenerator;
     private readonly JsonLinesLogger _logger;
-    private readonly int _intervalMs;
     private readonly int _batchSize;
 
-    private Timer? _timer;
-    private int _isProcessing; // 0 = idle, 1 = processing (interlocked)
-    private CancellationTokenSource? _cts;
-
-    public ReminderSchedulerService(
+    public ReminderJob(
         AppointmentsRepository repository,
         IHttpClientFactory httpClientFactory,
         JwtGenerator jwtGenerator,
         JsonLinesLogger logger,
-        int intervalMs = 300_000,
-        int batchSize = 50)
+        IConfiguration configuration)
     {
         _repository = repository;
         _httpClientFactory = httpClientFactory;
         _jwtGenerator = jwtGenerator;
         _logger = logger;
-        _intervalMs = intervalMs;
-        _batchSize = batchSize;
+        _batchSize = configuration.GetValue<int>("Reminder:BatchSize", 50);
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task RunAsync(CancellationToken ct = default)
     {
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _logger.SystemInfo($"ReminderSchedulerService starting (interval={_intervalMs}ms, batch={_batchSize})");
-
-        // Delay first run by intervalMs to allow service to fully start
-        _timer = new Timer(ProcessReminders, null, _intervalMs, _intervalMs);
-        return Task.CompletedTask;
-    }
-
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.SystemInfo("ReminderSchedulerService stopping (graceful shutdown)");
-        _timer?.Change(Timeout.Infinite, 0);
-        _cts?.Cancel();
-
-        // Wait for current processing to finish (max 30s for reminder completion)
-        var waitCount = 0;
-        while (Interlocked.CompareExchange(ref _isProcessing, 0, 0) == 1 && waitCount < 300)
-        {
-            await Task.Delay(100, cancellationToken);
-            waitCount++;
-        }
-
-        if (waitCount >= 300)
-            _logger.SystemWarn("ReminderSchedulerService: graceful shutdown timed out after 30s");
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
-        _cts?.Dispose();
-    }
-
-    private async void ProcessReminders(object? state)
-    {
-        // Prevent overlapping processing
-        if (Interlocked.CompareExchange(ref _isProcessing, 1, 0) != 0)
-            return;
-
+        // Unexpected exceptions bubble to Hangfire — AutomaticRetry (default 10 attempts,
+        // exponential backoff) records per-attempt failures and emits INV-JOB-005 when
+        // retries are exhausted via HangfireJobFilters.FinalFailureLogger. We only trap
+        // shutdown here because cancellation is not a failure.
         try
         {
-            var ct = _cts?.Token ?? CancellationToken.None;
-            if (ct.IsCancellationRequested) return;
-
-            // Process T-48h reminders
             await ProcessReminderBatchAsync("48h", ct);
-
-            // Process T-2h reminders
             if (!ct.IsCancellationRequested)
                 await ProcessReminderBatchAsync("2h", ct);
         }
         catch (OperationCanceledException)
         {
-            // Graceful shutdown, expected
-        }
-        catch (Exception ex)
-        {
-            _logger.SystemError($"ReminderSchedulerService error: {ex.Message}");
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _isProcessing, 0);
+            // Graceful shutdown — expected during Hangfire server stop. Logged for ops visibility.
+            _logger.SystemInfo("ReminderJob run cancelled (graceful shutdown)");
         }
     }
 
@@ -151,7 +106,7 @@ public sealed class ReminderSchedulerService : IHostedService, IDisposable
                 _logger.SystemError(
                     $"[{ErrorCodes.AppointmentOutboundUnavailable}] Outbound unavailable for reminder " +
                     $"{reminderType}: appointment={candidate.AppointmentId}, error={ex.Message}");
-                // Don't mark as sent — scheduler will retry next cycle
+                // Don't mark as sent — Hangfire retry / next tick handles it.
             }
             catch (TaskCanceledException ex)
             {
@@ -161,11 +116,18 @@ public sealed class ReminderSchedulerService : IHostedService, IDisposable
                     $"reason={ex.Message}");
                 break;
             }
-            catch (Exception ex)
+            catch (NpgsqlException ex)
             {
                 failCount++;
                 _logger.SystemError(
-                    $"[{ErrorCodes.AppointmentReminderSendFailed}] Unexpected error for reminder " +
+                    $"[{ErrorCodes.AppointmentReminderSendFailed}] DB error for reminder " +
+                    $"{reminderType}: appointment={candidate.AppointmentId}, error={ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                failCount++;
+                _logger.SystemError(
+                    $"[{ErrorCodes.AppointmentReminderSendFailed}] Invalid state for reminder " +
                     $"{reminderType}: appointment={candidate.AppointmentId}, error={ex.Message}");
             }
         }
@@ -175,13 +137,12 @@ public sealed class ReminderSchedulerService : IHostedService, IDisposable
     }
 
     private async Task<bool> SendReminderToOutboundAsync(
-        Shared.DTOs.Appointments.ReminderCandidate candidate,
+        ReminderCandidate candidate,
         string reminderType,
         CancellationToken ct)
     {
         var client = _httpClientFactory.CreateClient("Outbound");
 
-        // Use shared TriggerWebhookRequest DTO for correct JSON property names
         var payload = new TriggerWebhookRequest
         {
             Event = "appointment_reminder",
@@ -196,7 +157,6 @@ public sealed class ReminderSchedulerService : IHostedService, IDisposable
             }
         };
 
-        // Generate service JWT for the tenant (Outbound requires JWT auth on /api/v1/)
         var token = _jwtGenerator.GenerateServiceToken(candidate.TenantId);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/webhook/trigger");

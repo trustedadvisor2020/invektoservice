@@ -30,6 +30,7 @@ services:
   EXT:  { name: External,      description: Dış servis hataları }
   WA:   { name: WhatsAppAnalytics, description: "WA Analytics pipeline + Revenue Intelligence hataları" }
   VA:   { name: VoiceAI,          description: "PKT-11: Voice Message AI — STT + intent hataları" }
+  JOB:  { name: HangfireJob,      description: "G7: Hangfire recurring/enqueued job altyapı hataları" }
 ```
 
 ## Error Registry
@@ -911,6 +912,23 @@ errors:
   - code: INV-MT-003
     description: Invalid date range
     user_message: Geçersiz tarih aralığı (başlangıç > bitiş veya negatif).
+
+  # ── JOB — Hangfire Job Infrastructure (G7) ──
+  - code: INV-JOB-001
+    description: Hangfire storage connection failed
+    user_message: Zamanlanmış görev altyapısı veritabanına bağlanamadı.
+  - code: INV-JOB-002
+    description: Job handler could not be resolved from DI
+    user_message: Zamanlanmış görev yüklenemedi.
+  - code: INV-JOB-003
+    description: Duplicate recurring job registration
+    user_message: Zamanlanmış görev yapılandırması çakışıyor.
+  - code: INV-JOB-004
+    description: Dashboard access denied (non-superadmin)
+    user_message: Bu sayfayı görüntüleme yetkiniz yok.
+  - code: INV-JOB-005
+    description: Recurring job final failure (retries exhausted)
+    user_message: Zamanlanmış görev başarısız oldu; tekrar deneme limiti aşıldı.
 
   # ── EXT — External ──
   - code: INV-EXT-001

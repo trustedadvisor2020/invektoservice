@@ -9,6 +9,9 @@
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
     <!-- INMA WaClient.Management SQL Server readonly access -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <!-- G7: Hangfire runtime + dashboard (Shared's refs are PrivateAssets=all; opt-in per consumer). -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.20.10" />
   </ItemGroup>
 
   <PropertyGroup>

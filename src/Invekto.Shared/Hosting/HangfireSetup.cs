@@ -1,0 +1,88 @@
+using Hangfire;
+using Hangfire.PostgreSql;
+using Invekto.Shared.Constants;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+// Note: ErrorCodes used for JobStorageConnectionFailed messaging.
+
+namespace Invekto.Shared.Hosting;
+
+/// <summary>
+/// G7: Shared Hangfire setup for all microservices. Each service registers its own
+/// server with a distinct queue name; all services share the same PostgreSQL storage
+/// under schema <c>hangfire</c>. Queue-per-service topology keeps microservice
+/// isolation intact while letting Hangfire's advisory-lock leader election
+/// coordinate multi-instance deployments.
+/// </summary>
+public static class HangfireSetup
+{
+    /// <summary>Schema used by Hangfire.PostgreSql for its internal tables.</summary>
+    public const string HangfireSchemaName = "hangfire";
+
+    /// <summary>Default shutdown grace period (matches existing IHostedService behaviour).</summary>
+    public static readonly TimeSpan DefaultShutdownTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Registers Hangfire services + a dedicated server for the calling microservice.
+    /// </summary>
+    /// <param name="services">DI container.</param>
+    /// <param name="queueName">Queue this service owns (e.g. <c>appointments</c>).</param>
+    /// <param name="connectionString">PostgreSQL connection string (shared DB).</param>
+    /// <param name="workerCount">Worker count; defaults to Hangfire's default (Environment.ProcessorCount * 5).</param>
+    public static IServiceCollection AddInvektoHangfire(
+        this IServiceCollection services,
+        string queueName,
+        string connectionString,
+        int? workerCount = null)
+    {
+        if (string.IsNullOrWhiteSpace(queueName))
+            throw new InvalidOperationException(
+                "FATAL: AddInvektoHangfire called without a queue name — set Queues:Name in appsettings.json or pass explicitly (e.g. \"appointments\").");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException(
+                $"FATAL: Hangfire connection string is empty. Set ConnectionStrings:Hangfire or ConnectionStrings:PostgreSQL in appsettings.json. Error code [{ErrorCodes.JobStorageConnectionFailed}].");
+
+        services.AddHangfire((_, config) =>
+        {
+            config
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UsePostgreSqlStorage(opt => opt.UseNpgsqlConnection(connectionString),
+                    new PostgreSqlStorageOptions
+                    {
+                        SchemaName = HangfireSchemaName,
+                        PrepareSchemaIfNecessary = true,
+                        QueuePollInterval = TimeSpan.FromSeconds(15),
+                        InvisibilityTimeout = TimeSpan.FromMinutes(30),
+                        DistributedLockTimeout = TimeSpan.FromMinutes(1)
+                    });
+        });
+
+        services.AddHangfireServer(options =>
+        {
+            // ServerName intentionally NOT set — Hangfire defaults to
+            // "<MachineName>:<ProcessId>" which is unique per instance and prevents
+            // identity collision in shared PG storage during blue-green / scale-out
+            // deployments. Setting a fixed name like "invekto-{queue}" would alias
+            // multiple replicas to the same server row.
+            options.Queues = new[] { queueName };
+            options.ShutdownTimeout = DefaultShutdownTimeout;
+            if (workerCount.HasValue && workerCount.Value > 0)
+                options.WorkerCount = workerCount.Value;
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Resolves the Hangfire connection string: prefers <c>ConnectionStrings:Hangfire</c>,
+    /// falls back to <c>ConnectionStrings:PostgreSQL</c> (shared DB).
+    /// </summary>
+    public static string ResolveConnectionString(IConfiguration config)
+    {
+        var cs = config.GetConnectionString("Hangfire");
+        if (!string.IsNullOrWhiteSpace(cs)) return cs;
+        return config.GetConnectionString("PostgreSQL") ?? string.Empty;
+    }
+}

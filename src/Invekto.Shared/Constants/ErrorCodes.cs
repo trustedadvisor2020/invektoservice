@@ -439,6 +439,13 @@ public static class ErrorCodes
     public const string VoiceAITranscriptionLogFailed = "INV-VA-005";    // Transcription log DB insert failed
     public const string VoiceAIUnsupportedFormat = "INV-VA-006";         // Unsupported audio format
 
+    // Hangfire Job Infrastructure (INV-JOB-xxx) -- G7
+    public const string JobStorageConnectionFailed = "INV-JOB-001";   // Hangfire PG storage connection failed
+    public const string JobHandlerUnresolved = "INV-JOB-002";         // DI could not resolve job handler
+    public const string JobRegistrationConflict = "INV-JOB-003";      // Duplicate recurring job registration
+    public const string JobDashboardUnauthorized = "INV-JOB-004";     // Dashboard access denied (non-superadmin)
+    public const string JobExecutionFailed = "INV-JOB-005";           // Recurring job final failure (retries exhausted)
+
     // Database errors (INV-DB-xxx)
     public const string DatabaseConnectionFailed = "INV-DB-001";
     public const string DatabaseQueryTimeout = "INV-DB-002";

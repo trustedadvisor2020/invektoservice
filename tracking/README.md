@@ -41,6 +41,7 @@
 | FM-1a | Flow Monitor Faz 1a | Flow Versioning Backend | [Detay](fm-1a-flow-versioning.md) | DONE | 5 Mar | iter 1, PASS |
 | FM-1b | Flow Monitor Faz 1b | Monitor Sayfasi | [Detay](fm-1b-flow-monitor-page.md) | PLANNED | - | - |
 | FM-1c | Flow Monitor Faz 1c | Monitor AI Chat | [Detay](fm-1c-monitor-ai-chat.md) | PLANNED | - | - |
+| G7 | Hangfire Migration | Scheduler → Hangfire (PG storage, queue-per-service, strangler) | [Detay](g7-hangfire.md) | Faz 1 IN_PROGRESS | 13 Nis | - |
 
 **Toplam:** 31 paket (25 done, 0 in-progress, 5 planned, 1 pending) | 50+ GR + RI-100+ task
 

@@ -6,17 +6,18 @@
 ## Last Update
 
 - **Date:** 2026-04-13
-- **Status:** DONE. G6 Flow state persistence — restart-safe long waits up to 30 days. Codex PASS iter=2 (12/12 CQ + 4/4 CoVe).
-- **Last Task:** G6 implementation. (1) Migration 010-flow-wait-state.sql + canonical schema in arch/db/automation.sql (GRANT ALL + sequence GRANT). (2) Yeni node: action_wait_until (30g max clamp, 5 duration formatı + ISO). (3) NodeAction.WaitPersist + NodeResult.WaitResumeAt + WaitRequest DTO. (4) FlowEngineV2 WaitPersist case: advance CurrentNodeId post-wait + emit WaitRequest. (5) FlowWaitRepository (Insert/GetDue/TryMarkResumed atomic/MarkFailed/CancelPendingForChat/GetMetrics). (6) FlowWaitResumerService IHostedService 60s timer Interlocked non-overlap batch=100. (7) AutomationOrchestrator: cancel-on-reply + PersistWaitAsync + public ResumeWaitAsync (tenant-scoped, typed catches). (8) GET /api/ops/flow-waits endpoint (FlowWaitsMetricsResponse strongly-typed). Iter 0 FAIL (diff görülmedi UNKNOWN); iter 1 FAIL (canonical schema + typed-catch); iter 2 PASS.
-- **Files Changed:** ADD: arch/db/migrations/010-flow-wait-state.sql, arch/plans/20260413-g6-flow-wait-persistence.json, src/Invekto.Automation/Data/FlowWaitRepository.cs, src/Invekto.Automation/Services/FlowWaitResumerService.cs, src/Invekto.Automation/Services/NodeHandlers/ActionWaitUntilHandler.cs. EDIT: arch/db/automation.sql, arch/errors.md, src/Invekto.Shared/Constants/ErrorCodes.cs, src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs, src/Invekto.Automation/Services/FlowEngineV2.cs, src/Invekto.Automation/Services/FlowValidator.cs, src/Invekto.Automation/Services/AutomationOrchestrator.cs, src/Invekto.Automation/Program.cs.
-- **Build:** PASS (0 errors, 16 warnings pre-existing).
-- **Next Task:** G7 Hangfire migration (5-7g) veya INMA kickoff feedback geldiyse UP0.2/0.3/0.5. Dent pilot Platform P0 sonrası.
+- **Status:** G7 Hangfire Migration — spec + Faz 1 plan approved. Implementation /clear sonra yeni session'da.
+- **Last Task:** G7 planlama (SPEC-008 + Faz 1 plan JSON). Strangler rollout: Faz 1 altyapı + Reminder + FlowWaitResumer pilot; Faz 2-5 kalan 8 scheduler. Queue-per-service topology (her servis kendi Hangfire server, ortak PG storage). /hangfire dashboard Backend'te, superadmin-only. Queue consumer worker'lar (MessageSender/AnalysisProcessing/DocumentProcessing/BenchmarkProcessing/BatchClassification) + SimulationEngine out of scope (Hangfire fit değil).
+- **Files Changed (this session):** ADD: arch/specs/g7-hangfire-migration.md, tracking/g7-hangfire.md, arch/plans/20260413-g7-hangfire-faz1.json. EDIT: tracking/README.md, arch/session-memory.md.
+- **Build:** N/A (planning only).
+- **Next Task:** G7 Faz 1 implementation — NuGet adds (Hangfire.AspNetCore + Hangfire.PostgreSql) in Shared/Appointments/Automation/Backend csproj, new HangfireSetup.cs + SuperAdminDashboardFilter.cs in Shared/Hosting, ReminderJob + FlowWaitResumerJob, delete old IHostedService files, migration 011 (hangfire schema + grant), Backend /hangfire dashboard mount, 3 Program.cs wire-ups, ErrorCodes INV-JOB-001..005. Plan: arch/plans/20260413-g7-hangfire-faz1.json.
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 3 | G7 Hangfire migration | PENDING | 5-7g platform yatırımı — ReminderSchedulerService replace |
+| 3 | G7 Faz 1 Hangfire implementation | PLAN APPROVED | Plan: arch/plans/20260413-g7-hangfire-faz1.json — /clear sonra yeni session'da başla |
+| 3b | G7 Faz 2-5 (8 scheduler) | PENDING | Faz 1 PASS sonrası ayrı plan JSON'ları |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
 | 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
 | 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |

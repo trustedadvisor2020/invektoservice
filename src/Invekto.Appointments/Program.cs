@@ -1,6 +1,9 @@
+using Hangfire;
 using Invekto.Appointments.Data;
 using Invekto.Appointments.Services;
+using Invekto.Appointments.Services.Jobs;
 using Invekto.Shared.Auth;
+using Invekto.Shared.Hosting;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
 using Invekto.Shared.DTOs;
@@ -21,8 +24,6 @@ var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
 var outboundUrl = builder.Configuration["Outbound:Url"] ?? "";
 var outboundTimeoutMs = builder.Configuration.GetValue<int>("Outbound:TimeoutMs", 10000);
-var reminderIntervalMs = builder.Configuration.GetValue<int>("Reminder:IntervalMs", 300_000);
-var reminderBatchSize = builder.Configuration.GetValue<int>("Reminder:BatchSize", 50);
 var lifecycleIntervalMs = builder.Configuration.GetValue<int>("Lifecycle:IntervalMs", 300_000);
 var lifecycleBatchSize = builder.Configuration.GetValue<int>("Lifecycle:BatchSize", 50);
 
@@ -85,16 +86,10 @@ builder.Services.AddHttpClient("Outbound", client =>
     client.Timeout = TimeSpan.FromMilliseconds(outboundTimeoutMs);
 });
 
-// Register reminder scheduler (IHostedService)
-builder.Services.AddSingleton<ReminderSchedulerService>(sp =>
-    new ReminderSchedulerService(
-        sp.GetRequiredService<AppointmentsRepository>(),
-        sp.GetRequiredService<IHttpClientFactory>(),
-        sp.GetRequiredService<JwtGenerator>(),
-        sp.GetRequiredService<JsonLinesLogger>(),
-        reminderIntervalMs,
-        reminderBatchSize));
-builder.Services.AddHostedService(sp => sp.GetRequiredService<ReminderSchedulerService>());
+// G7: Hangfire recurring reminder job (replaces ReminderSchedulerService IHostedService)
+var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
+builder.Services.AddInvektoHangfire("appointments", hangfireConnStr);
+builder.Services.AddScoped<ReminderJob>();
 
 // GR-3.19: Register WaitlistService (IHostedService - expiration timer + cancel-flow hook)
 builder.Services.AddSingleton<WaitlistService>(sp =>
@@ -137,6 +132,14 @@ app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
+
+// G7: Register Hangfire recurring reminder job (idempotent; AddOrUpdate overrides on restart)
+var reminderCron = builder.Configuration["Reminder:Cron"] ?? "*/5 * * * *";
+RecurringJob.AddOrUpdate<ReminderJob>(
+    "appointments:reminder",
+    "appointments",
+    j => j.RunAsync(CancellationToken.None),
+    reminderCron);
 
 // ============================================================
 // Health endpoints

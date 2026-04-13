@@ -77,3 +77,4 @@ test-results/
 
 # Postman collections
 *.postman_collection.json
+arch/plans/*.diff
