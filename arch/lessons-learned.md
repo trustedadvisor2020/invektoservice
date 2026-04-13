@@ -546,3 +546,4 @@
 3. Sadece proje-spesifik ogrenimler eklenir - genel best practice eklenmez
 4. TONIVA girdileri kalici olarak arsiv dosyasinda
 5. Yeni giris eklerken ilgili kategori basliginin altina ekle
+| 2026-04-14 | Hangfire 1.8.14 RecurringJobScheduler'ı tamamen disable eden doğrudan API yok (BackgroundJobServerOptions public toggle yok) | Çalışan pattern: `options.SchedulePollingInterval = TimeSpan.FromDays(36500)` → RecurringJobScheduler process instantiate olur ama 100 yıl poll etmez, pratikte dormant. Leader/worker topology'de sadece Backend scheduler sahibi; worker'lar `recurring-jobs` advisory lock'u yarışmaz. Shared extension optional param ile (default=true → backward compat) opt-in. Codex PASS iter 0 ile doğrulandı |

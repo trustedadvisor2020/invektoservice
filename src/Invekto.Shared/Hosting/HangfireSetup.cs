@@ -30,11 +30,18 @@ public static class HangfireSetup
     /// <param name="queueName">Queue this service owns (e.g. <c>appointments</c>).</param>
     /// <param name="connectionString">PostgreSQL connection string (shared DB).</param>
     /// <param name="workerCount">Worker count; defaults to Hangfire's default (Environment.ProcessorCount * 5).</param>
+    /// <param name="enableScheduler">
+    /// When <c>false</c>, effectively disables the server's <c>RecurringJobScheduler</c> by
+    /// pushing <see cref="BackgroundJobServerOptions.SchedulePollingInterval"/> far into the
+    /// future. Use for worker servers that must NOT compete for the shared
+    /// <c>recurring-jobs</c> advisory lock — only the leader (Backend) schedules. See §12.
+    /// </param>
     public static IServiceCollection AddInvektoHangfire(
         this IServiceCollection services,
         string queueName,
         string connectionString,
-        int? workerCount = null)
+        int? workerCount = null,
+        bool enableScheduler = true)
     {
         if (string.IsNullOrWhiteSpace(queueName))
             throw new InvalidOperationException(
@@ -71,6 +78,15 @@ public static class HangfireSetup
             options.ShutdownTimeout = DefaultShutdownTimeout;
             if (workerCount.HasValue && workerCount.Value > 0)
                 options.WorkerCount = workerCount.Value;
+            if (!enableScheduler)
+            {
+                // Follow-up #1: Worker servers must not race Backend for the shared
+                // `recurring-jobs` advisory lock. Hangfire 1.8 has no direct toggle to
+                // suppress RecurringJobScheduler, so we push its polling interval 100 years
+                // out — the process is instantiated but effectively dormant. Only the
+                // leader (Backend) owns scheduling.
+                options.SchedulePollingInterval = TimeSpan.FromDays(36500);
+            }
         });
 
         return services;

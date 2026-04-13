@@ -354,7 +354,28 @@ builder.Services.Configure<QnbVPosSettings>(builder.Configuration.GetSection("Qn
 builder.Services.AddSingleton<QnbVPosService>();
 
 var app = builder.Build();
-if (hangfireEnabled) app.EnsureJobStorageInitialized();
+if (hangfireEnabled)
+{
+    app.EnsureJobStorageInitialized();
+    // Follow-up #3: Hangfire 1.8.14 + PostgreSql 1.20.10 quirk — newly-registered recurring
+    // jobs land in hangfire.set with score=-1 and stay dormant until manually nudged. Sweep
+    // once at Backend (leader) startup so new RecurringJob.AddOrUpdate calls schedule
+    // immediately on next deploy.
+    try
+    {
+        using var conn = new Npgsql.NpgsqlConnection(hangfireConnStr);
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE hangfire.set SET score = EXTRACT(epoch FROM NOW())::bigint WHERE key = 'recurring-jobs' AND score = -1;";
+        var updated = cmd.ExecuteNonQuery();
+        if (updated > 0)
+            app.Logger.LogInformation("Hangfire score=-1 nudge: {Count} recurring-jobs row(s) updated.", updated);
+    }
+    catch (Npgsql.NpgsqlException ex)
+    {
+        app.Logger.LogWarning(ex, "Hangfire score=-1 nudge failed (non-fatal).");
+    }
+}
 
 // Enable traffic logging middleware (logs all HTTP request/response)
 app.UseTrafficLogging(

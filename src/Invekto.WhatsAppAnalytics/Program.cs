@@ -245,7 +245,7 @@ if (mssqlConfigured)
     builder.Configuration.GetSection("NightlyBatch").Bind(nightlyConfig);
     builder.Services.AddSingleton(nightlyConfig);
     var hangfireConnStr = Invekto.Shared.Hosting.HangfireSetup.ResolveConnectionString(builder.Configuration);
-    builder.Services.AddInvektoHangfire("waanalytics", hangfireConnStr);
+    builder.Services.AddInvektoHangfire("waanalytics", hangfireConnStr, enableScheduler: false);
     builder.Services.AddScoped<Invekto.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>();
 
     // Insight engines (RI Faz 3)

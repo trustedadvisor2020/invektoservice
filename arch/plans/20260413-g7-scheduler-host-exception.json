@@ -1,0 +1,171 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008",
+  "slug": "20260413-g7-scheduler-host-exception",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-04-13T20:45:00Z",
+  "updated_at": "2026-04-13T20:55:00Z",
+  "plan": {
+    "summary": "G7 Hangfire Faz 5 sonrasi leader scheduler (Backend) 7/9 recurring job'u JobLoadException ile fail etti. Backend'in bin'inde diger servislerin job type assembly'leri yok. Fix: Backend.csproj'a Appointments/Automation/Integrations/WhatsAppAnalytics icin compile-only ProjectReference (PrivateAssets=all) ekle; using statement YAZILMAZ. Spec'e §12 Exception, CLAUDE isolation kuralina istisna notu, roadmap Backlog'a Invekto.Scheduler takip fikri.",
+    "q_intent": "Yol A uygula — Backend csproj'a 4 compile-only reference ekle; Backend kodu degismez, sadece reflection icin DLL'ler publish output'a kopyalanir. §12 Exception spec'e eklensin, commit mesaji 'fix(g7): scheduler host exception — Backend compile-only refs for job type resolution'.",
+    "interview_notes": "Q continuation prompt ile direkt Yol A uygulandi. Publish output'ta birden fazla appsettings.json collision cikti; RemoveReferencedAppsettingsFromPublish Target ile diger servislerin appsettings.* dosyalari publish'ten stripliyor, Backend'in kendi appsettings.json'i korunuyor (appsettings.Production.json sunucuda yasar, zaten publish'te yok). System.ServiceProcess.ServiceController 8.0.0 -> 8.0.1 bump, referans servislerden gelen transitive downgrade hatasini cozer.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Backend.csproj 4 compile-only ProjectReference (PrivateAssets=all) icerir; Backend'in kaynak dosyalarinda (Program.cs dahil) 'using Invekto.Appointments', 'using Invekto.Automation', 'using Invekto.Integrations', 'using Invekto.WhatsAppAnalytics' ifadesi YOKTUR",
+        "verified": true,
+        "verification_note": "csproj diff + Backend source tree grep temiz"
+      },
+      {
+        "id": "AC2",
+        "criterion": "arch/specs/g7-hangfire-migration.md icinde §12 'Architectural Exception: Scheduler Host' bolumu vardir; neden, runtime isolation argumani ve follow-up backlog referansi acikca belirtilmistir",
+        "verified": true,
+        "verification_note": "Spec diff"
+      },
+      {
+        "id": "AC3",
+        "criterion": "INVEKTO_BASE.prompt.md Microservice Isolation bolumu §12 istisnasina refere eder; yeni servis/job eklendiginde Backend csproj guncellenmesi gerekligi not edilmistir",
+        "verified": true,
+        "verification_note": "Prompt diff"
+      },
+      {
+        "id": "AC4",
+        "criterion": "tracking/roadmap.md Backlog tablosuna 'Invekto.Scheduler ayri mikroservis' fikri IDEA statusunde eklenmistir",
+        "verified": true,
+        "verification_note": "Roadmap diff"
+      },
+      {
+        "id": "AC5",
+        "criterion": "dotnet build Invekto.Backend.csproj 0 error; dotnet publish 0 error; deploy_output/Backend/ icinde 4 servis DLL'si (Appointments, Automation, Integrations, WhatsAppAnalytics) mevcut ve Backend'in kendi appsettings.json'i tek kopya",
+        "verified": true,
+        "verification_note": "Build/publish loglari temiz; dir listing 4 DLL gosterdi"
+      }
+    ]
+  },
+  "allowed_files": [
+    ".claude/agents/INVEKTO_BASE.prompt.md",
+    "arch/specs/g7-hangfire-migration.md",
+    "src/Invekto.Backend/Invekto.Backend.csproj",
+    "tracking/roadmap.md"
+  ],
+  "files_changed": [
+    { "path": ".claude/agents/INVEKTO_BASE.prompt.md", "change": "Microservice Isolation bolumune §12 Exception notu", "is_new": false },
+    { "path": "arch/specs/g7-hangfire-migration.md", "change": "§12 Architectural Exception: Scheduler Host bolumu eklendi", "is_new": false },
+    { "path": "src/Invekto.Backend/Invekto.Backend.csproj", "change": "4 compile-only ProjectReference (PrivateAssets=all); System.ServiceProcess.ServiceController 8.0.0->8.0.1; RemoveReferencedAppsettingsFromPublish Target; ErrorOnDuplicatePublishOutputFiles=false", "is_new": false },
+    { "path": "tracking/roadmap.md", "change": "Backlog: Invekto.Scheduler ayri mikroservis IDEA", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "e917a5e578b3fe8bbfd7b066ac74e6593f140aa9b306457fa5b145af48b5acce",
+    "full_path": "arch/plans/diffs/20260413-g7-scheduler-host-exception.diff",
+    "stats": { "insertions": 51, "deletions": 1, "files_count": 4 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Invekto.Backend.csproj --no-restore -v q\"",
+    "timestamp": "2026-04-13T20:48:00Z",
+    "duration_ms": 14690,
+    "output_tail": "Build succeeded. 13 Warning(s) 0 Error(s). Publish: deploy_output/Backend, 4 Invekto service DLLs + Invekto.Shared + Invekto.Backend. appsettings.Production.json absent in publish output (server-managed, restored by deploy).",
+    "error_summary": null,
+    "services": ["Invekto.Backend", "Invekto.Appointments", "Invekto.Automation", "Invekto.Integrations", "Invekto.WhatsAppAnalytics", "Invekto.Shared"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Backend kaynak dosyalari (Program.cs, Services, Controllers) icinde 'using Invekto.Appointments', 'using Invekto.Automation', 'using Invekto.Integrations' veya 'using Invekto.WhatsAppAnalytics' ifadesi bulunuyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "RemoveReferencedAppsettingsFromPublish Target, Backend'in kendi appsettings.json/appsettings.Production.json dosyasini publish output'tan yanlislikla strip ediyor mu? Tek kopya garantisi saglaniyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "System.ServiceProcess.ServiceController 8.0.0 -> 8.0.1 bump, Backend disindaki servislerin (Appointments/Automation/Integrations/WhatsAppAnalytics) runtime davranisini etkileyecek bir API farki/breaking change iceriyor mu?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Backend'in Hangfire BackgroundJobServerOptions.Queues yapilandirmasi 'backend' kuyruguna kilitli mi? Compile-only referanslar Backend'i yanlislikla diger kuyruklarin worker'i yapacak bir DI registration tetikliyor mu?",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Program.cs (Backend kaynak kod degismez)",
+      "src/Invekto.Appointments/**, src/Invekto.Automation/**, src/Invekto.Integrations/**, src/Invekto.WhatsAppAnalytics/** (referans servisler dokunulmaz)"
+    ],
+    "non_goals": [
+      "Invekto.Scheduler ayri mikroservis implementasyonu (Backlog)",
+      "Dashboard/auth refactor",
+      "Yeni job eklemek"
+    ],
+    "intentional_exclusions": [
+      "Test yazilmadi: altyapi csproj/spec/doc degisikligi; davranis testi Hangfire recurring job execution verification ile prod'da yapiliyor (LastExecution populate + Error temizlenmesi)",
+      "wwwroot/app/assets Vite build artifacts bu committen haric (scheduler fix ile alakasiz)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Csproj/spec/doc degisikligi. Runtime davranisi: scheduler leader job'u enqueue ederken Type.GetType artik resolve eder, aksi takdirde Hangfire JobLoadException atar (sessiz fail yok, dashboard'da gorunur)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Production recurring job'lar sessizce calismiyor, Q yalnizca Hangfire dashboard'da gorunce fark ediyor",
+      "suggestion": "Hangfire dashboard'a alert: bir recurring job >2 cycle fail ettiyse superadmin'e email/Slack",
+      "aha_moment": "Q deploy sonrasi dashboard acmadan failing job bildirimini aliyor"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Backend'e yeni bir job tipi eklenen servis gelirse csproj guncellenmezse ayni JobLoadException sessizce doner",
+      "suggestion": "Smoke test: startup'ta tum kayitli recurring job'larin Type.GetType ile resolve edilebildigini dogrula; fail olursa servis startup'ta crash",
+      "aha_moment": "Deploy sonrasi Backend health check, 'all jobs resolvable' raporu veriyor"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her publish'te 4 ekstra servis DLL'i kopyaland\u0131gi icin Backend deploy paketi ~15 MB sisti",
+      "suggestion": "Invekto.Scheduler ayri servise cikarilinca Backend publish output'u tekrar incelecek — roadmap Backlog'da hazir",
+      "aha_moment": "Q scheduler servis ayrildiktan sonra Backend deploy hizi geri donuyor"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Support Hangfire hash'te birikmis 'Error' field'lari gordugunde gercek root cause'u bulmak zor",
+      "suggestion": "Hangfire dashboard'da job detayinda son 10 Error'u grafikleyen panel; ayrica /ops/hangfire/health endpoint'i JSON dokuyor",
+      "aha_moment": "Support ticket acilir acilmaz endpoint ciktisi Q'ya gidiyor, 30s'de root cause anlasiliyor"
+    },
+    {
+      "category": "UX",
+      "user_pain": "Q deploy sonrasi elle 'DELETE FROM hangfire.hash WHERE field=Error' calistirmak zorunda kaldi",
+      "suggestion": "Backend startup'ta resolve edilemeyen job bulunursa onun Error field'ini ve RetryAttempt'i otomatik temizle (self-heal)",
+      "aha_moment": "Q csproj fix deploy eder etmez job'lar elle mudahale gerekmeden calisiyor"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "source": null,
+    "received_at": null,
+    "updated_by": "DevAgent",
+    "updated_at": null,
+    "raw_text": null,
+    "code_quality_gate": {},
+    "cove_verification": {},
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

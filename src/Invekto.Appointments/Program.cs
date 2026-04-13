@@ -87,7 +87,7 @@ builder.Services.AddHttpClient("Outbound", client =>
 
 // G7: Hangfire recurring reminder job (replaces ReminderSchedulerService IHostedService)
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
-builder.Services.AddInvektoHangfire("appointments", hangfireConnStr);
+builder.Services.AddInvektoHangfire("appointments", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<ReminderJob>();
 
 // GR-3.19 + G7 Faz 2: WaitlistService (endpoint helper; tick moved to WaitlistJob)

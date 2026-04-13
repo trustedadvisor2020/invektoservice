@@ -1,0 +1,115 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008-§12",
+  "slug": "20260414-g7-scheduler-disable-workers",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-04-14T01:00:00Z",
+  "updated_at": "2026-04-14T01:05:00Z",
+  "plan": {
+    "summary": "G7 follow-up #1 + #3: Worker Hangfire servers must not race Backend (leader) for the shared `recurring-jobs` advisory lock. Non-leader servers without §12 foreign-assembly refs, when they win the lock, fail Type.GetType and write Error into the set hash. Fix: `AddInvektoHangfire` yeni optional `enableScheduler` parametresi (default true, geriye dönük uyumlu); false geldiğinde `BackgroundJobServerOptions.SchedulePollingInterval = 100 years` — RecurringJobScheduler instantiate edilir ama effectively dormant. 4 worker (Appointments, Automation, Integrations, WhatsAppAnalytics) `enableScheduler: false` geçer; Backend değişmez (scheduler sahibi). Follow-up #3: Hangfire 1.8.14 + PostgreSql 1.20.10 quirk — yeni recurring job'lar hangfire.set'e `score=-1` ile düşüp manuel nudge'a kadar dormant kalıyor. Backend startup'ta tek seferlik idempotent UPDATE sweep (try/catch non-fatal): `UPDATE hangfire.set SET score = EXTRACT(epoch FROM NOW())::bigint WHERE key='recurring-jobs' AND score=-1`.",
+    "q_intent": "1 ve 3 numaralı follow-up'lar birlikte. Opsiyon 1 (SchedulePollingInterval yaklaşımı) onaylandı — Hangfire 1.8'de scheduler'ı tamamen disable etmek için temiz API yok; bu en az invazif yol. 100 yıl polling interval = effectively dormant. Backend startup'ta score nudge ile yeni recurring job ekleyişlerde manuel DB müdahalesi gerekmesin.",
+    "interview_notes": "Hangfire 1.8 3 alternatif değerlendirildi: (a) SchedulePollingInterval=MaxValue/100y — tek satır, non-invasive, seçildi. (b) Custom IBackgroundProcess[] — hosted service wiring kaybolur. (c) Reflection — fragile. (a) seçildi. Backend default enableScheduler=true olduğu için call site değişmedi.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Invekto.Shared HangfireSetup.AddInvektoHangfire optional `bool enableScheduler = true` parametresi alır; default true olduğu için Backend (leader) call site değişikliği gerektirmez",
+        "verified": true,
+        "verification_note": "HangfireSetup.cs diff + Backend Program.cs çağrısı değişmemiş"
+      },
+      {
+        "id": "AC2",
+        "criterion": "enableScheduler=false durumunda BackgroundJobServerOptions.SchedulePollingInterval = TimeSpan.FromDays(36500) atanır; true iken Hangfire default değer korunur",
+        "verified": true,
+        "verification_note": "HangfireSetup.cs AddHangfireServer callback içinde conditional set"
+      },
+      {
+        "id": "AC3",
+        "criterion": "4 worker Program.cs (Appointments, Automation, Integrations, WhatsAppAnalytics) `enableScheduler: false` named-arg ile AddInvektoHangfire çağırır",
+        "verified": true,
+        "verification_note": "4 Program.cs diff; Backend değişmedi"
+      },
+      {
+        "id": "AC4",
+        "criterion": "Backend Program.cs app.Build() sonrası, hangfireEnabled=true iken EnsureJobStorageInitialized çağrısından hemen sonra score=-1 nudge UPDATE çalışır; Npgsql.NpgsqlException ile non-fatal try/catch sarılı; updated>0 ise Information log, exception ise Warning log",
+        "verified": true,
+        "verification_note": "Backend Program.cs diff, idempotent (WHERE score=-1 clause)"
+      },
+      {
+        "id": "AC5",
+        "criterion": "Full solution build PASS 0 error; warning sayısı baseline 18 ile eşit (yeni warning yok)",
+        "verified": true,
+        "verification_note": "dotnet build output: 18 Warning(s), 0 Error(s), Time 00:00:26"
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Hosting/HangfireSetup.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Appointments/Program.cs",
+    "src/Invekto.Automation/Program.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Hosting/HangfireSetup.cs", "change": "enableScheduler optional param (default true) + 100-year SchedulePollingInterval gate", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "Score=-1 nudge SQL sweep at startup (idempotent, try/catch non-fatal)", "is_new": false },
+    { "path": "src/Invekto.Appointments/Program.cs", "change": "AddInvektoHangfire call enableScheduler: false", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "change": "AddInvektoHangfire call enableScheduler: false", "is_new": false },
+    { "path": "src/Invekto.Integrations/Program.cs", "change": "AddInvektoHangfire call enableScheduler: false", "is_new": false },
+    { "path": "src/Invekto.WhatsAppAnalytics/Program.cs", "change": "AddInvektoHangfire call enableScheduler: false", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "b1b9a9b29f58368b1671d8ffa6ff9c2bd45c2ae6187e439839db92518e62abdd",
+    "full_path": "arch/plans/diffs/20260414-g7-scheduler-disable-workers.diff",
+    "stats": { "insertions": 43, "deletions": 6, "files_count": 6 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-14T01:03:00Z",
+    "duration_ms": 26470,
+    "output_tail": "Build succeeded. 18 Warning(s), 0 Error(s). All 18 warnings pre-existing baseline (no new diagnostics introduced).",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend", "Invekto.Appointments", "Invekto.Automation", "Invekto.Integrations", "Invekto.WhatsAppAnalytics"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Backend (leader) davranışı değişmedi mi? AddInvektoHangfire call site default enableScheduler=true alıyor ve önceki davranışı aynen koruyor mu?",
+      "category": "Backward Compat",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "4 worker servisinde RecurringJobScheduler process hâlâ instantiate ediliyor ama SchedulePollingInterval = 100 yıl olduğu için pratikte advisory lock için yarışmıyor — bu mekanizma Hangfire 1.8.14 davranışıyla tutarlı mı? (Scheduler poll atmadan lock almaz.)",
+      "category": "Hangfire Semantics",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Score=-1 nudge UPDATE idempotent ve güvenli mi? WHERE score=-1 clause var; birden fazla Backend instance paralel deploy olursa race condition veya data loss riski var mı?",
+      "category": "Idempotency",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "Score nudge exception durumunda servis startup fail etmiyor (try/catch Warning log); Hangfire'ın kendi boot'u bu UPDATE'e bağımlı değil, yalnızca hızlandırıcı — doğru mu?",
+      "category": "Fault Isolation",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q5",
+      "question": "Scope: sadece HangfireSetup + 5 Program.cs değişti, başka dosya yok; spec §12 veya error codes ekleme/güncelleme gerekmiyor — doğru mu?",
+      "category": "Scope",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ]
+}
