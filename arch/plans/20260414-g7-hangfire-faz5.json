@@ -1,0 +1,146 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": "SPEC-008",
+  "slug": "20260414-g7-hangfire-faz5",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-14T11:00:00Z",
+  "updated_at": "2026-04-14T11:00:00Z",
+  "spec_acceptance_criteria": [
+    { "id": "AC-1", "description": "OrderSyncJob replaces OrderSyncService (Integrations, queue=integrations, cron */5 min)", "status": "PENDING" },
+    { "id": "AC-2", "description": "NightlyBatchJob (Hangfire) replaces NightlyBatchJob (BackgroundService) (WhatsAppAnalytics, queue=waanalytics, cron '0 {RunHour} * * *')", "status": "PENDING" },
+    { "id": "AC-3", "description": "Integrations + WhatsAppAnalytics: AddInvektoHangfire servers added (new queues)", "status": "PENDING" },
+    { "id": "AC-4", "description": "NightlyBatchConfig + NightlyTenantConfig extracted to separate file; old BackgroundService deleted", "status": "PENDING" },
+    { "id": "AC-5", "description": "Build PASS, no new warnings", "status": "PENDING" },
+    { "id": "AC-6", "description": "Codex PASS iter<=2", "status": "PENDING" }
+  ],
+  "spec_architectural_decisions": [
+    {
+      "decision": "Two new Hangfire servers: queue=integrations (Invekto.Integrations) and queue=waanalytics (Invekto.WhatsAppAnalytics)",
+      "reason": "Queue-per-service isolation preserved. Short 'waanalytics' per Q's interview answer (vs long 'whatsappanalytics').",
+      "codex_note": "EXPECTED: Two new AddInvektoHangfire calls. Both services FATAL if Hangfire conn string is missing (not gated) — matches Faz 1 Automation/Appointments which also FATAL without Hangfire."
+    },
+    {
+      "decision": "NightlyBatch cron built from config RunHour at startup: $\"0 {RunHour} * * *\"",
+      "reason": "Config-driven cron matches existing appsettings semantics (default 02:00). Restart required if RunHour changes — acceptable per Q answer (option A).",
+      "codex_note": "EXPECTED: No per-hour tick + in-handler RunHour check."
+    },
+    {
+      "decision": "NightlyBatchJob class renamed — old BackgroundService class deleted; new Hangfire class same name NightlyBatchJob placed under Services/Jobs/. NightlyBatchConfig + NightlyTenantConfig moved to Services/NightlyBatchConfig.cs",
+      "reason": "Prior file was confusingly named NightlyBatchJob despite being a BackgroundService. New class reuses the cleaner name and lives alongside other Hangfire jobs.",
+      "codex_note": "EXPECTED: File rename visible as delete+add. Two new files: Services/Jobs/NightlyBatchJob.cs + Services/NightlyBatchConfig.cs."
+    },
+    {
+      "decision": "Config Enabled=false short-circuits the recurring job handler (not the registration)",
+      "reason": "Registration is idempotent; if config later flips Enabled=true without redeploy (not currently supported), handler already handles. Simpler than conditional registration at startup.",
+      "codex_note": "EXPECTED: Handler first-line check on _config.Enabled returning early."
+    },
+    {
+      "decision": "OrderSyncJob: no tenant_id top-level arg — service-wide iterator over GetActiveAccountsForSyncAsync",
+      "reason": "Matches prior OrderSyncService pattern; per-account processing is tenant-scoped.",
+      "codex_note": "EXPECTED: CQ7 N/A."
+    }
+  ],
+  "plan": {
+    "summary": "Faz 5 (final) of G7 Hangfire migration: OrderSyncService and NightlyBatchJob (BackgroundService) migrate to Hangfire recurring jobs. Integrations + WhatsAppAnalytics each get their own Hangfire server (queue=integrations / queue=waanalytics). All 10 original schedulers now on Hangfire; queue consumer workers remain IHostedService (out of scope).",
+    "q_intent": "Faz 5: Son faz. OrderSync + NightlyBatch. Integrations + WhatsAppAnalytics'e Hangfire server ekle.",
+    "interview_notes": "Q confirmed: (1) OrderSync cron */5, NightlyBatch cron config-driven 0 RunHour * * *. (2) Queue 'waanalytics' kısaltılmış. (3) NightlyBatch config A (restart on RunHour change). (4) Backend + integrations queue names. (5) Production config: Integrations + WhatsAppAnalytics Hangfire conn string Q tarafından elle eklenecek (deploy talimatına yazılacak).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "src/Invekto.Integrations/Services/Jobs/OrderSyncJob.cs owns full logic from OrderSyncService", "verified": false },
+      { "id": "AC2", "criterion": "src/Invekto.WhatsAppAnalytics/Services/Jobs/NightlyBatchJob.cs owns tenant-resolve + batch enqueue logic from old BackgroundService", "verified": false },
+      { "id": "AC3", "criterion": "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchConfig.cs contains NightlyBatchConfig + NightlyTenantConfig (extracted)", "verified": false },
+      { "id": "AC4", "criterion": "src/Invekto.Integrations/Services/OrderSyncService.cs DELETED", "verified": false },
+      { "id": "AC5", "criterion": "Old NightlyBatchJob BackgroundService file content replaced (same path, new class)", "verified": false },
+      { "id": "AC6", "criterion": "Integrations Program.cs: AddInvektoHangfire('integrations'), AddScoped<OrderSyncJob>, RecurringJob.AddOrUpdate integrations:order-sync cron '*/5 * * * *'", "verified": false },
+      { "id": "AC7", "criterion": "WhatsAppAnalytics Program.cs: AddInvektoHangfire('waanalytics'), AddScoped<NightlyBatchJob>, RecurringJob.AddOrUpdate waanalytics:nightly-batch cron built from config.RunHour", "verified": false },
+      { "id": "AC8", "criterion": "Both csproj have Hangfire NuGet (added)", "verified": false },
+      { "id": "AC9", "criterion": "Build PASS, 0 new warnings", "verified": false },
+      { "id": "AC10", "criterion": "Codex PASS iter<=2", "verified": false }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Integrations/Services/OrderSyncService.cs",
+    "src/Invekto.Integrations/Services/Jobs/OrderSyncJob.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Integrations/Invekto.Integrations.csproj",
+    "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchJob.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/NightlyBatchConfig.cs",
+    "src/Invekto.WhatsAppAnalytics/Services/Jobs/NightlyBatchJob.cs",
+    "src/Invekto.WhatsAppAnalytics/Program.cs",
+    "src/Invekto.WhatsAppAnalytics/Invekto.WhatsAppAnalytics.csproj",
+    "arch/plans/20260414-g7-hangfire-faz5.json",
+    "tracking/g7-hangfire.md",
+    "arch/session-memory.md"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": "PENDING", "errors": 0, "warnings": 0, "notes": "" },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Both new services add Hangfire NuGet references via Invekto.Shared (PrivateAssets=all pattern from Faz 1)?",
+      "category": "Dependency"
+    },
+    {
+      "id": "Q2",
+      "question": "NightlyBatch cron dynamically built from config.RunHour at startup (not hardcoded)?",
+      "category": "Config"
+    },
+    {
+      "id": "Q3",
+      "question": "NightlyBatch handler first-line Enabled gate preserved?",
+      "category": "Logic"
+    },
+    {
+      "id": "Q4",
+      "question": "OrderSync business logic (provider dispatch, per-tenant sync, 7-day window, UpdateLastSyncAsync, UpdateAccountStatusAsync on error) behaviorally equivalent to deleted service?",
+      "category": "Logic"
+    },
+    {
+      "id": "Q5",
+      "question": "Top-level exception swallow removed; per-tenant/account catches retained for row-level isolation?",
+      "category": "Observability"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Appointments/*",
+      "src/Invekto.Automation/*",
+      "src/Invekto.Backend/*",
+      "src/Invekto.Outbound/*",
+      "src/Invekto.Knowledge/*",
+      "src/Invekto.ChatAnalysis/*",
+      "src/Invekto.AgentAI/*",
+      "src/Invekto.Marketing/*",
+      "src/Invekto.Integrations/Data/*",
+      "src/Invekto.WhatsAppAnalytics/Services/BatchClassificationService.cs (queue consumer, out of scope)",
+      "src/Invekto.WhatsAppAnalytics/Services/AnalysisProcessingService.cs (queue consumer, out of scope)",
+      "src/Invekto.WhatsAppAnalytics/Services/Benchmark/BenchmarkProcessingService.cs (queue consumer)",
+      "appsettings.Production.json"
+    ],
+    "non_goals": [
+      "Migrating queue consumer IHostedServices (BatchClassification, Analysis, Benchmark, MessageSender, DocumentProcessing)",
+      "Changing OrderSync sinceDate window (7 days)",
+      "Changing batch enqueue contract"
+    ],
+    "intentional_exclusions": [
+      "No new error codes",
+      "No migration (Faz 1 schema 011)",
+      "Production config (ConnectionStrings:Hangfire for both services) — Q manual, documented in deploy notes"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "OrderSyncJob.RunAsync — OperationCanceledException caught; others bubble",
+      "OrderSyncJob per-account — HttpRequestException/TaskCanceledException/NpgsqlException caught+logged+UpdateAccountStatusAsync",
+      "NightlyBatchJob.RunAsync — OperationCanceledException caught; others bubble",
+      "NightlyBatchJob per-tenant enqueue — Exception caught (matches prior behavior — enqueue is fire-and-forget)"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Hangfire AutomaticRetry + INV-JOB-005 FinalFailureLogger (Faz 1 HangfireSetup)."
+  },
+  "verdict": { "status": "PASS", "iteration": 1, "notes": "Iter 0 FAIL (INV codes missing, Codex misread of pre-existing SqlClient). Iter 1 all 12 CQ + 5 CoVe PASS." }
+}

@@ -1,6 +1,9 @@
 using System.Text.Json;
+using Hangfire;
 using Invekto.Integrations.Data;
 using Invekto.Integrations.Services;
+using Invekto.Integrations.Services.Jobs;
+using Invekto.Shared.Hosting;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Data;
@@ -21,7 +24,6 @@ var listenPort = builder.Configuration.GetValue<int>("Service:ListenPort", Servi
 var logPath = builder.Configuration["Logging:FilePath"] ?? "logs";
 var pgConnStr = builder.Configuration.GetConnectionString("PostgreSQL") ?? "";
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "";
-var syncIntervalMs = builder.Configuration.GetValue<int>("Sync:IntervalMs", 300_000);
 
 // Validate required config
 if (string.IsNullOrEmpty(pgConnStr))
@@ -97,14 +99,10 @@ builder.Services.AddSingleton<IMarketplaceProvider>(sp =>
 builder.Services.AddSingleton<ICargoProvider, ArasCargoMockProvider>();
 builder.Services.AddSingleton<ICargoProvider, YurticiCargoMockProvider>();
 
-// Register background order sync
-builder.Services.AddSingleton<OrderSyncService>(sp =>
-    new OrderSyncService(
-        sp.GetRequiredService<IntegrationsRepository>(),
-        sp.GetServices<IMarketplaceProvider>(),
-        sp.GetRequiredService<JsonLinesLogger>(),
-        syncIntervalMs));
-builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderSyncService>());
+// G7 Faz 5: Hangfire (replaces OrderSyncService IHostedService)
+var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
+builder.Services.AddInvektoHangfire("integrations", hangfireConnStr);
+builder.Services.AddScoped<OrderSyncJob>();
 
 builder.Services.AddAuthorization();
 
@@ -121,6 +119,14 @@ var planCache = new TenantPlanCache(pgConnStr, logger);
 app.UseFeatureGuard(planCache, logger,
     ("/api/v1/", "Integrations"));
 app.UseAuthorization();
+
+// G7 Faz 5: OrderSync recurring job (idempotent via AddOrUpdate)
+var orderSyncCron = builder.Configuration["OrderSync:Cron"] ?? "*/5 * * * *";
+RecurringJob.AddOrUpdate<OrderSyncJob>(
+    "integrations:order-sync",
+    "integrations",
+    j => j.RunAsync(CancellationToken.None),
+    orderSyncCron);
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();

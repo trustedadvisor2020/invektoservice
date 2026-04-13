@@ -1,19 +1,23 @@
-using System.Text.Json;
+using Hangfire;
 using Invekto.Shared.Constants;
 using Invekto.Shared.Logging;
 using Invekto.WhatsAppAnalytics.Data;
 using Invekto.WhatsAppAnalytics.Models;
 using Microsoft.Data.SqlClient;
 
-namespace Invekto.WhatsAppAnalytics.Services;
+namespace Invekto.WhatsAppAnalytics.Services.Jobs;
 
 /// <summary>
-/// Nightly batch classification job. Runs at configured time (default 02:00).
-/// Supports two modes:
-/// - Config-only: process tenants from appsettings NightlyBatch:Tenants
-/// - AutoDiscovery: query WaClient.Management for all active tenants, merge with config overrides
+/// G7 Faz 5: Hangfire recurring job replacing the old NightlyBatchJob BackgroundService.
+/// Resolves the tenant list (config-only OR auto-discovered + config overrides) and
+/// enqueues each tenant to <see cref="BatchClassificationService"/>.
+///
+/// Queue: <c>waanalytics</c>. Recurring id: <c>waanalytics:nightly-batch</c>
+/// (cron <c>0 {RunHour} * * *</c>, built at startup from <see cref="NightlyBatchConfig.RunHour"/>).
+/// Config <c>Enabled=false</c> short-circuits the handler.
 /// </summary>
-public sealed class NightlyBatchJob : BackgroundService
+[DisableConcurrentExecution(timeoutInSeconds: 3600)]
+public sealed class NightlyBatchJob
 {
     private readonly BatchClassificationService _batchService;
     private readonly ConversationOutcomeRepository _outcomeRepo;
@@ -35,39 +39,23 @@ public sealed class NightlyBatchJob : BackgroundService
         _mssqlReader = mssqlReader;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task RunAsync(CancellationToken ct = default)
     {
         if (!_config.Enabled)
         {
-            _logger.SystemInfo("[NightlyBatch] Disabled via config");
+            _logger.SystemInfo("[NightlyBatch] Disabled via config — skipping run");
             return;
         }
 
-        _logger.SystemInfo($"[NightlyBatch] Started, run hour={_config.RunHour:D2}:00, " +
-            $"autoDiscovery={_config.AutoDiscovery}, {_config.Tenants.Count} config tenants");
-
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            var now = DateTime.Now;
-            var nextRun = new DateTime(now.Year, now.Month, now.Day, _config.RunHour, 0, 0);
-            if (nextRun <= now) nextRun = nextRun.AddDays(1);
-
-            var delay = nextRun - now;
-            _logger.SystemInfo($"[NightlyBatch] Next run at {nextRun:yyyy-MM-dd HH:mm}, waiting {delay.TotalHours:F1}h");
-
-            try
-            {
-                await Task.Delay(delay, stoppingToken);
-            }
-            catch (OperationCanceledException) { break; }
-
             _logger.StepInfo("[NightlyBatch] Starting nightly run", "nightly");
 
-            var tenants = await ResolveTenantListAsync(stoppingToken);
+            var tenants = await ResolveTenantListAsync(ct);
 
             foreach (var tenant in tenants)
             {
-                if (stoppingToken.IsCancellationRequested) break;
+                if (ct.IsCancellationRequested) break;
 
                 try
                 {
@@ -78,7 +66,7 @@ public sealed class NightlyBatchJob : BackgroundService
                         tenant.Sector,
                         "nightly",
                         _config.LookbackDays,
-                        stoppingToken);
+                        ct);
 
                     _batchService.Enqueue(new BatchProcessJob
                     {
@@ -91,16 +79,29 @@ public sealed class NightlyBatchJob : BackgroundService
                         MaxThreads = _config.MaxThreadsPerTenant
                     });
 
-                    _logger.StepInfo($"[NightlyBatch] Enqueued tenant {tenant.TenantId} ({tenant.Database}), job={jobId}", "nightly");
+                    _logger.StepInfo(
+                        $"[NightlyBatch] Enqueued tenant {tenant.TenantId} ({tenant.Database}), job={jobId}",
+                        "nightly");
                 }
-                catch (Exception ex)
+                catch (SqlException ex)
                 {
-                    _logger.SystemError($"[NightlyBatch] Failed to enqueue tenant {tenant.TenantId}: {ex.Message}");
+                    _logger.SystemError(
+                        $"[{ErrorCodes.WADiscoveryFailed}] [NightlyBatch] Failed to enqueue tenant {tenant.TenantId} (SQL): {ex.Message}");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.SystemError(
+                        $"[{ErrorCodes.WADiscoveryFailed}] [NightlyBatch] Failed to enqueue tenant {tenant.TenantId}: {ex.Message}");
                 }
             }
 
             _logger.StepInfo($"[NightlyBatch] Enqueued {tenants.Count} tenants", "nightly");
         }
+        catch (OperationCanceledException)
+        {
+            _logger.SystemInfo("[NightlyBatch] Cancelled (graceful shutdown)");
+        }
+        // Other exceptions bubble to Hangfire AutomaticRetry + INV-JOB-005.
     }
 
     /// <summary>
@@ -119,20 +120,17 @@ public sealed class NightlyBatchJob : BackgroundService
         }
         catch (SqlException ex)
         {
-            _logger.SystemError($"[NightlyBatch] {ErrorCodes.WADiscoveryFailed} Auto-discovery SQL error, falling back to config: {ex.Message}");
+            _logger.SystemError(
+                $"[{ErrorCodes.WADiscoveryFailed}] [NightlyBatch] Auto-discovery SQL error, falling back to config: {ex.Message}");
             return _config.Tenants;
-        }
-        catch (OperationCanceledException)
-        {
-            throw; // propagate cancellation
         }
         catch (InvalidOperationException ex)
         {
-            _logger.SystemError($"[NightlyBatch] {ErrorCodes.WADiscoveryFailed} Auto-discovery connection error, falling back to config: {ex.Message}");
+            _logger.SystemError(
+                $"[{ErrorCodes.WADiscoveryFailed}] [NightlyBatch] Auto-discovery connection error, falling back to config: {ex.Message}");
             return _config.Tenants;
         }
 
-        // Build lookup of config overrides by DatabaseName (case-insensitive)
         var configByDb = new Dictionary<string, NightlyTenantConfig>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in _config.Tenants)
             configByDb.TryAdd(t.Database, t);
@@ -143,51 +141,28 @@ public sealed class NightlyBatchJob : BackgroundService
         {
             if (configByDb.TryGetValue(d.DatabaseName, out var configOverride))
             {
-                // Config tenant takes priority (preserves custom TenantId, Sector, InstanceId)
                 result.Add(configOverride);
             }
             else
             {
-                // Auto-discovered: use CompanyId as TenantId, sector defaults to "genel"
                 result.Add(new NightlyTenantConfig
                 {
                     TenantId = d.CompanyId,
                     Database = d.DatabaseName,
-                    InstanceId = null, // process all instances
+                    InstanceId = null,
                     Sector = "genel"
                 });
             }
         }
 
-        // Add config tenants that weren't in discovery (e.g., custom DBs not in Management)
         foreach (var t in _config.Tenants)
         {
             if (!discovered.Any(d => d.DatabaseName.Equals(t.Database, StringComparison.OrdinalIgnoreCase)))
                 result.Add(t);
         }
 
-        _logger.SystemInfo($"[NightlyBatch] Resolved {result.Count} tenants ({discovered.Count} discovered, {_config.Tenants.Count} config overrides)");
+        _logger.SystemInfo(
+            $"[NightlyBatch] Resolved {result.Count} tenants ({discovered.Count} discovered, {_config.Tenants.Count} config overrides)");
         return result;
     }
-}
-
-/// <summary>
-/// Configuration for nightly batch job (from appsettings).
-/// </summary>
-public sealed class NightlyBatchConfig
-{
-    public bool Enabled { get; set; }
-    public int RunHour { get; set; } = 2;
-    public int LookbackDays { get; set; } = 7;
-    public int MaxThreadsPerTenant { get; set; } = 500;
-    public bool AutoDiscovery { get; set; }
-    public List<NightlyTenantConfig> Tenants { get; set; } = new();
-}
-
-public sealed class NightlyTenantConfig
-{
-    public int TenantId { get; set; }
-    public string Database { get; set; } = "";
-    public int? InstanceId { get; set; }
-    public string? Sector { get; set; }
 }

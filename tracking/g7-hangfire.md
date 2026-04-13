@@ -1,6 +1,6 @@
 # G7: Hangfire Migration
 
-> **Durum:** IN_PROGRESS (Faz 1) | **Tarih:** 13 Nis 2026 | **Spec:** `arch/specs/g7-hangfire-migration.md`
+> **Durum:** COMPLETE (5/5 faz) | **Tarih:** 14 Nis 2026 | **Spec:** `arch/specs/g7-hangfire-migration.md`
 > **Risk:** HIGH | **Topology:** PG storage + queue-per-service + strangler rollout
 
 ## Kapsam
@@ -17,7 +17,7 @@ Mevcut 10 zamanlanmis `IHostedService` (Timer + Interlocked loop) Hangfire recur
 | Faz 2 | Waitlist + TreatmentLifecycle (Appointments) | `arch/plans/20260414-g7-hangfire-faz2.json` | DONE | FORCE_PASS iter 2 (Q) |
 | Faz 3 | CronScheduler + RescueFollowUp (Automation) | `arch/plans/20260414-g7-hangfire-faz3.json` | DONE | PASS iter 1 |
 | Faz 4 | TranslationCleanup + MetricsAggregation (Backend) | `arch/plans/20260414-g7-hangfire-faz4.json` | DONE | FORCE_PASS iter 1 (Q) |
-| Faz 5 | OrderSync + NightlyBatch (Integrations, WhatsAppAnalytics) | - | PLANNED | - |
+| Faz 5 | OrderSync + NightlyBatch (Integrations, WhatsAppAnalytics) | `arch/plans/20260414-g7-hangfire-faz5.json` | DONE | PASS iter 1 |
 
 ## Acceptance Criteria (Faz 1)
 
@@ -31,6 +31,34 @@ Mevcut 10 zamanlanmis `IHostedService` (Timer + Interlocked loop) Hangfire recur
 | AC-6 | Eski `ReminderSchedulerService` + `FlowWaitResumerService` silinmis | DONE |
 | AC-7 | Build PASS, 0 new warnings | DONE |
 | AC-8 | Codex PASS iter<=2 | DONE |
+
+## Deploy Talimatı (Faz 2-5 tamamı — Q manuel)
+
+**Kod deploy sırası** (NSSM restart gerekli tüm servisler):
+1. Invekto.Appointments (Faz 2 — WaitlistJob + TreatmentLifecycleJob)
+2. Invekto.Automation (Faz 3 — CronSchedulerJob + RescueFollowUpJob)
+3. Invekto.Backend (Faz 4 — TranslationCleanupJob + MetricsAggregationJob)
+4. Invekto.Integrations (Faz 5 — OrderSyncJob) — **YENİ Hangfire conn string gerek**
+5. Invekto.WhatsAppAnalytics (Faz 5 — NightlyBatchJob) — **YENİ Hangfire conn string gerek**
+
+**Migration:** YOK. Schema 011 Faz 1'de prod'da çalıştı (Hangfire tablolarını kendi server startup'ında otomatik oluşturuyor).
+
+**Production appsettings:**
+- `Invekto.Integrations`: `ConnectionStrings:Hangfire` EKLE (veya mevcut PostgreSQL'den fallback resolve eder)
+- `Invekto.WhatsAppAnalytics`: aynı şekilde
+
+**Deploy sonrası doğrulama:**
+- `/hangfire` dashboard'a superadmin (tenant_id=0) login. Yeni recurring job'lar görünüyor mu:
+  - `appointments:waitlist` (cron */5)
+  - `appointments:treatment-lifecycle` (cron */5)
+  - `automation:cron-scheduler` (cron minutely)
+  - `automation:rescue-followup` (cron 0 */4)
+  - `backend:translation-cleanup` (cron hourly)
+  - `backend:metrics-aggregation` (cron */5)
+  - `integrations:order-sync` (cron */5)
+  - `waanalytics:nightly-batch` (cron 0 {RunHour})
+- "Last/Next execution" timestamp'leri geliyor mu
+- Servers sekmesinde 5 Hangfire server listeleniyor mu (appointments, automation, backend, integrations, waanalytics)
 
 ## Error Codes (yeni namespace INV-JOB)
 

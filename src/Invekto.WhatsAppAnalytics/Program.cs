@@ -1,6 +1,8 @@
 using System.Data.Common;
 using System.Text.Json;
+using Hangfire;
 using Invekto.Shared.Auth;
+using Invekto.Shared.Hosting;
 using Invekto.Shared.Constants;
 using Invekto.Shared.DTOs;
 using Invekto.Shared.Logging;
@@ -238,18 +240,13 @@ if (mssqlConfigured)
             benchmarkMaxMsgs));
     builder.Services.AddHostedService(sp => sp.GetRequiredService<BatchClassificationService>());
 
-    // Nightly batch job
+    // G7 Faz 5: NightlyBatch migrated to Hangfire recurring (queue=waanalytics)
     var nightlyConfig = new NightlyBatchConfig();
     builder.Configuration.GetSection("NightlyBatch").Bind(nightlyConfig);
     builder.Services.AddSingleton(nightlyConfig);
-    builder.Services.AddSingleton<NightlyBatchJob>(sp =>
-        new NightlyBatchJob(
-            sp.GetRequiredService<BatchClassificationService>(),
-            sp.GetRequiredService<ConversationOutcomeRepository>(),
-            sp.GetRequiredService<JsonLinesLogger>(),
-            sp.GetRequiredService<NightlyBatchConfig>(),
-            sp.GetService<MssqlReaderService>())); // nullable — null if MSSQL not configured
-    builder.Services.AddHostedService(sp => sp.GetRequiredService<NightlyBatchJob>());
+    var hangfireConnStr = Invekto.Shared.Hosting.HangfireSetup.ResolveConnectionString(builder.Configuration);
+    builder.Services.AddInvektoHangfire("waanalytics", hangfireConnStr);
+    builder.Services.AddScoped<Invekto.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>();
 
     // Insight engines (RI Faz 3)
     builder.Services.AddSingleton<InsightRepository>();
@@ -290,6 +287,15 @@ app.UseAuthorization();
 
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
+
+// G7 Faz 5: NightlyBatch recurring job (cron derived from config.RunHour)
+var nightlyCfg = app.Services.GetRequiredService<NightlyBatchConfig>();
+var nightlyCron = builder.Configuration["NightlyBatch:Cron"] ?? $"0 {nightlyCfg.RunHour} * * *";
+RecurringJob.AddOrUpdate<Invekto.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>(
+    "waanalytics:nightly-batch",
+    "waanalytics",
+    j => j.RunAsync(CancellationToken.None),
+    nightlyCron);
 
 // ============================================================
 // Helper: Get validated tenant from JWT context

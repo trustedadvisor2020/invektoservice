@@ -5,8 +5,8 @@
 
 ## Last Update
 
-- **Date:** 2026-04-13
-- **Status:** G7 Faz 1 DONE. Codex iter 3 FORCE_PASS (Q). Migration 011 prod'a çalıştırıldı.
+- **Date:** 2026-04-14
+- **Status:** G7 COMPLETE (5/5 faz). Faz 2 FORCE_PASS iter 2, Faz 3 PASS iter 1, Faz 4 FORCE_PASS iter 1, Faz 5 PASS iter 1. 10 IHostedService scheduler tamamı Hangfire recurring'e geçti. Migration 011 Faz 1'de prod'a çalıştı — yeni migration yok.
 - **Last Task:** G7 Faz 1 Hangfire migration — Shared HangfireSetup + SuperAdminDashboardFilter (PrivateAssets=all ile transitive izolasyon), migration 011 (hangfire schema + grants), ReminderJob (Appointments, cron */5 queue=appointments), FlowWaitResumerJob (Automation, Cron.Minutely queue=automation), Backend /hangfire dashboard mount (hangfireEnabled gate resolved Hangfire/PostgreSQL conn str), INV-JOB-001..005 error codes. Eski 2 IHostedService silindi.
 - **Files Changed (this session):** ADD: HangfireSetup.cs, SuperAdminDashboardFilter.cs, ReminderJob.cs, FlowWaitResumerJob.cs, 011-hangfire-schema.sql. MOD: 4 csproj, 3 Program.cs, ErrorCodes.cs, errors.md, .gitignore. DEL: ReminderSchedulerService.cs, FlowWaitResumerService.cs.
 - **Build:** PASS, 0 errors, 14 warnings (all pre-existing).
