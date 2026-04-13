@@ -25,6 +25,7 @@ using Invekto.Shared.DTOs.Translation;
 using Invekto.Shared.Logging;
 using Invekto.Shared.Logging.Reader;
 using Invekto.Shared.Services;
+using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -244,6 +245,10 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
     builder.Services.AddSingleton(jwtValidator);
     builder.Services.AddSingleton(jwtGenerator);
 }
+
+// UP0.6: server-side feature flag cache (5dk TTL, populated on inma token exchange)
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IFeatureFlagService, InMemoryFeatureFlagService>();
 
 // InmaJwtValidator + settings (singleton, thread-safe)
 InmaJwtValidator? inmaJwtValidator = null;
@@ -6255,7 +6260,7 @@ app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, Json
 // Akis 1: inma JWT -> inse JWT exchange (URL token flow)
 // inma'dan gelen ?accesstoken= parametresi bu endpoint'e gonderilir.
 // InmaAuth:SecretKey yoksa signature validation atlanir (decode-only fallback).
-app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
@@ -6360,6 +6365,9 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
         var inseToken = jwtGenerator.GenerateToken(
             inmaCtx.TenantId, inmaCtx.Role, "inma_exchange", tokenExpiry, inmaCtx.UserId.ToString());
 
+        // UP0.6: server-side feature flag cache (5dk TTL). Subsequent requests check flags without re-decoding the inma JWT.
+        featureFlagService.SetFeatures(inmaCtx.TenantId, inmaCtx.UserId, inmaCtx.InseFeatures);
+
         jsonLogger.StepInfo($"inma token exchange success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
         return Results.Ok(new
         {
@@ -6384,7 +6392,7 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
 
 // Akis 2: firma + kullanici + parola -> inma login -> inse JWT
 // inse login ekranindan kullanici inma credentials ile giris yapar.
-app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
+app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
@@ -6491,6 +6499,9 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
                 ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Token dogrulanamadi", requestId),
                 statusCode: 401);
         }
+
+        // UP0.6: server-side feature flag cache (5dk TTL) populated from the inma token claim.
+        featureFlagService.SetFeatures(inmaCtx.TenantId, inmaCtx.UserId, inmaCtx.InseFeatures);
 
         jsonLogger.StepInfo($"inma login success: tenant={inmaCtx.TenantId} user={inmaCtx.UserId}", requestId);
         return Results.Ok(new

@@ -1,0 +1,138 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "slug": "20260413-up06-feature-flag-service",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-04-13T17:30:00Z",
+  "updated_at": "2026-04-13T17:45:00Z",
+  "plan": {
+    "summary": "UP0.6 — IFeatureFlagService abstraction + InMemoryFeatureFlagService (IMemoryCache, 5dk TTL). Populated at inma token exchange/login endpoints from InmaTokenContext.InseFeatures. Closed-by-default (missing cache → false). Enables server-side feature gating without re-decoding inma JWT per request.",
+    "q_intent": "INMA-INSE unification UP0.6 paketi: JWT'deki InseFeatures claim'ini merkezi feature-flag service'e sar, 5dk cache. Diğer servisler IFeatureFlagService ile kontrol etsin.",
+    "interview_notes": "Q onayı: en minimal MVP. Separate feature-source abstraction yok, direkt InmaTokenContext.InseFeatures'den populate. Features inma-issued JWT claim'i olarak geliyor, exchange/login endpoint'lerinde set ediliyor.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "IFeatureFlagService interface Invekto.Shared.Services altında tanımlı (IsEnabled, SetFeatures, Invalidate metodları)",
+        "verified": true,
+        "verification_note": "src/Invekto.Shared/Services/IFeatureFlagService.cs oluşturuldu"
+      },
+      {
+        "id": "AC2",
+        "criterion": "InMemoryFeatureFlagService IMemoryCache-backed, default 5dk TTL, closed-by-default",
+        "verified": true,
+        "verification_note": "src/Invekto.Shared/Services/InMemoryFeatureFlagService.cs: HashSet + IMemoryCache, DefaultTtl=5min, missing entry → IsEnabled=false"
+      },
+      {
+        "id": "AC3",
+        "criterion": "Backend Program.cs DI registration: AddMemoryCache + IFeatureFlagService → InMemoryFeatureFlagService",
+        "verified": true,
+        "verification_note": "Program.cs:246-249 eklendi"
+      },
+      {
+        "id": "AC4",
+        "criterion": "inma token exchange + login endpoint'leri SetFeatures çağırıyor (cache populate)",
+        "verified": true,
+        "verification_note": "exchange endpoint (6263) ve login endpoint (6392) IFeatureFlagService inject ediyor + inmaCtx.InseFeatures ile SetFeatures çağırıyor"
+      },
+      {
+        "id": "AC5",
+        "criterion": "Full solution build PASS",
+        "verified": true,
+        "verification_note": "dotnet build InvektoServis.sln: 0 Error(s)"
+      },
+      {
+        "id": "AC6",
+        "criterion": "Mikro servis izolasyonu: Backend sadece Invekto.Shared.Services + Microsoft.Extensions.Caching.Memory (framework) referansı ekledi",
+        "verified": true,
+        "verification_note": "Yeni using'ler: Invekto.Shared.Services + Microsoft.Extensions.Caching.Memory. Cross-service ref yok."
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Services/IFeatureFlagService.cs",
+    "src/Invekto.Shared/Services/InMemoryFeatureFlagService.cs",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Services/IFeatureFlagService.cs", "change": "Yeni — interface: IsEnabled, SetFeatures, Invalidate", "is_new": true },
+    { "path": "src/Invekto.Shared/Services/InMemoryFeatureFlagService.cs", "change": "Yeni — IMemoryCache-backed impl, 5dk TTL, closed-by-default", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "DI registration + 2 exchange endpoint'inde IFeatureFlagService inject + SetFeatures çağrısı + using Microsoft.Extensions.Caching.Memory", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "ac46c5d2a8d1c1026167c7442c5d9a0cfd2df20710228554cf970732ea8a81cf",
+    "full_path": "arch/plans/diffs/20260413-up06-feature-flag-service.diff",
+    "stats": {
+      "insertions": 84,
+      "deletions": 2,
+      "files_count": 3
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-13T17:42:00Z",
+    "duration_ms": null,
+    "output_tail": "Build succeeded. 0 Error(s)",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Middleware/JwtAuthMiddleware.cs (bu paket flag'i request scope'una enjekte etmiyor; caller doğrudan IFeatureFlagService sorar)",
+      "InmaJwtValidator.cs (InseFeatures parse logic zaten var, dokunulmadı)"
+    ],
+    "non_goals": [
+      "Frontend feature gating (client-side zaten inse_features response field'ıyla var)",
+      "Distributed cache (Redis vb.) — pilot için process-local yeterli",
+      "JwtAuthMiddleware'a flag injection (ileride UP0.6b)",
+      "Feature definitions registry (tenant-wide kim ne alabilir) — INMA lisansı ayrı paket"
+    ],
+    "intentional_exclusions": [
+      "Invalidate otomatik tetikleme (logout hook) — UP0.6b'de eklenecek",
+      "Unit test — Shared infrastructure, izolasyon + build doğrulaması yeterli (CODEX UTANSIN kapsamında değil)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Closed-by-default behavior intentional: cache miss → IsEnabled returns false. Bu silent failure değil, explicit security posture (feature kapalıysa access yok). SetFeatures ArgumentNullException fırlatır, sessiz geçmez. IMemoryCache thread-safe, race yok."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Feature gate kontrolü her request'te inma JWT'sini re-decode etmek yavaş ve hataya açık",
+      "suggestion": "Token exchange anında features'ı cache'le, 5dk TTL ile hafif bellek kullanımı",
+      "aha_moment": "Developer IsEnabled çağırınca milisaniyede cevap alıyor"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni feature eklerken 'bu tenant erişebilir mi?' mantığını her servis kendi yazıyor",
+      "suggestion": "IFeatureFlagService tek abstraction, her servis aynı şekilde check ediyor",
+      "aha_moment": "Feature rollout'ta tek merkezi check, tutarlı davranış"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Cache entry yoksa açılmış mı kapalı mı belirsiz, silent enable riski",
+      "suggestion": "Closed-by-default: missing entry → false, güvenlik posture açık",
+      "aha_moment": "Güvenlik review'u sırasında 'kapalı=false' netliği"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Lisans bitti ama feature hâlâ açık görünüyor — destek ekibi debug edemiyor",
+      "suggestion": "5dk TTL sayesinde lisans güncellemesi otomatik yansıyor, Invalidate ile manuel refresh",
+      "aha_moment": "Destek 'şu an kapalı' diyebiliyor, kullanıcı refresh sonrası gerçek durumu görüyor"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "UP0.5 INMA send client yazılırken feature gate kontrolü eklenmek istendiğinde abstraction yok, inline kod çoğalır",
+      "suggestion": "Şimdi abstraction hazır, UP0.5 direkt IFeatureFlagService inject eder",
+      "aha_moment": "UP0.5 başladığında 'hazır var, direkt kullan' kolaylığı"
+    }
+  ],
+  "verdict": {
+    "status": null,
+    "iteration": 0
+  }
+}
