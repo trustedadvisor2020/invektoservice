@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Invekto.Shared.Constants;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 // Note: ErrorCodes used for JobStorageConnectionFailed messaging.
@@ -84,5 +85,17 @@ public static class HangfireSetup
         var cs = config.GetConnectionString("Hangfire");
         if (!string.IsNullOrWhiteSpace(cs)) return cs;
         return config.GetConnectionString("PostgreSQL") ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Forces Hangfire's static <see cref="JobStorage.Current"/> to initialize from DI.
+    /// Call this once after <c>app.Build()</c> and BEFORE any static
+    /// <c>RecurringJob.AddOrUpdate</c> invocation. Without this, the static API throws
+    /// "JobStorage instance has not been initialized yet" because Hangfire sets
+    /// <see cref="JobStorage.Current"/> lazily via the DI factory.
+    /// </summary>
+    public static void EnsureJobStorageInitialized(this WebApplication app)
+    {
+        _ = app.Services.GetRequiredService<JobStorage>();
     }
 }

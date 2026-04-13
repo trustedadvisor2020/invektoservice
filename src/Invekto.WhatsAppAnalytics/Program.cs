@@ -274,6 +274,7 @@ if (mssqlConfigured)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+if (mssqlConfigured) app.EnsureJobStorageInitialized();
 
 // Ensure upload directory exists
 Directory.CreateDirectory(uploadPath);
@@ -288,14 +289,18 @@ app.UseAuthorization();
 // Start log cleanup
 _ = app.Services.GetRequiredService<LogCleanupService>();
 
-// G7 Faz 5: NightlyBatch recurring job (cron derived from config.RunHour)
-var nightlyCfg = app.Services.GetRequiredService<NightlyBatchConfig>();
-var nightlyCron = builder.Configuration["NightlyBatch:Cron"] ?? $"0 {nightlyCfg.RunHour} * * *";
-RecurringJob.AddOrUpdate<Invekto.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>(
-    "waanalytics:nightly-batch",
-    "waanalytics",
-    j => j.RunAsync(CancellationToken.None),
-    nightlyCron);
+// G7 Faz 5: NightlyBatch recurring job (cron derived from config.RunHour).
+// Gated on mssqlConfigured — matches AddInvektoHangfire registration above.
+if (mssqlConfigured)
+{
+    var nightlyCfg = app.Services.GetRequiredService<NightlyBatchConfig>();
+    var nightlyCron = builder.Configuration["NightlyBatch:Cron"] ?? $"0 {nightlyCfg.RunHour} * * *";
+    RecurringJob.AddOrUpdate<Invekto.WhatsAppAnalytics.Services.Jobs.NightlyBatchJob>(
+        "waanalytics:nightly-batch",
+        "waanalytics",
+        j => j.RunAsync(CancellationToken.None),
+        nightlyCron);
+}
 
 // ============================================================
 // Helper: Get validated tenant from JWT context

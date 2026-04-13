@@ -354,6 +354,7 @@ builder.Services.Configure<QnbVPosSettings>(builder.Configuration.GetSection("Qn
 builder.Services.AddSingleton<QnbVPosService>();
 
 var app = builder.Build();
+if (hangfireEnabled) app.EnsureJobStorageInitialized();
 
 // Enable traffic logging middleware (logs all HTTP request/response)
 app.UseTrafficLogging(
@@ -409,6 +410,42 @@ if (hangfireEnabled)
     {
         Authorization = new[] { new SuperAdminDashboardFilter() },
         DisplayStorageConnectionString = false
+    });
+
+    // G7: Cookie bridge for browser access to /hangfire.
+    // HTML navigation cannot attach Authorization headers, so the dashboard sidebar link
+    // hits /ops/hangfire-login?token=<localStorage.access_token> first. This endpoint
+    // validates the JWT (tenant_id=0 required) and issues an HttpOnly+Secure cookie
+    // scoped to /hangfire, then 302-redirects there. No duplicate credential surface.
+    app.MapGet("/ops/hangfire-login", (HttpContext ctx, string? token, JwtValidator validator, JsonLinesLogger logger) =>
+    {
+        if (string.IsNullOrEmpty(token))
+            return Results.BadRequest(new { error = "token query param required" });
+
+        TenantContext? tctx;
+        string? err;
+        try { (tctx, err) = validator.ValidateToken(token); }
+        catch (Exception ex) { tctx = null; err = ex.Message; }
+        if (tctx == null)
+        {
+            logger.SystemWarn($"[{ErrorCodes.JobDashboardUnauthorized}] hangfire-login rejected: {err}");
+            return Results.Json(new { error = err ?? "invalid token" }, statusCode: 401);
+        }
+        if (tctx.TenantId != 0)
+        {
+            logger.SystemWarn($"[{ErrorCodes.JobDashboardUnauthorized}] hangfire-login non-superadmin tenant={tctx.TenantId}");
+            return Results.Json(new { error = "superadmin required" }, statusCode: 403);
+        }
+
+        ctx.Response.Cookies.Append(SuperAdminDashboardFilter.CookieName, token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = "/hangfire",
+            MaxAge = TimeSpan.FromHours(1)
+        });
+        return Results.Redirect("/hangfire");
     });
 
     // G7 Faz 4: Recurring job registration (idempotent via AddOrUpdate)

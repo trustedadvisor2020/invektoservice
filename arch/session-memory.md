@@ -6,18 +6,18 @@
 ## Last Update
 
 - **Date:** 2026-04-14
-- **Status:** G7 COMPLETE (5/5 faz). Faz 2 FORCE_PASS iter 2, Faz 3 PASS iter 1, Faz 4 FORCE_PASS iter 1, Faz 5 PASS iter 1. 10 IHostedService scheduler tamamı Hangfire recurring'e geçti. Migration 011 Faz 1'de prod'a çalıştı — yeni migration yok.
-- **Last Task:** G7 Faz 1 Hangfire migration — Shared HangfireSetup + SuperAdminDashboardFilter (PrivateAssets=all ile transitive izolasyon), migration 011 (hangfire schema + grants), ReminderJob (Appointments, cron */5 queue=appointments), FlowWaitResumerJob (Automation, Cron.Minutely queue=automation), Backend /hangfire dashboard mount (hangfireEnabled gate resolved Hangfire/PostgreSQL conn str), INV-JOB-001..005 error codes. Eski 2 IHostedService silindi.
-- **Files Changed (this session):** ADD: HangfireSetup.cs, SuperAdminDashboardFilter.cs, ReminderJob.cs, FlowWaitResumerJob.cs, 011-hangfire-schema.sql. MOD: 4 csproj, 3 Program.cs, ErrorCodes.cs, errors.md, .gitignore. DEL: ReminderSchedulerService.cs, FlowWaitResumerService.cs.
-- **Build:** PASS, 0 errors, 14 warnings (all pre-existing).
-- **Deploy Status:** Migration 011 prod'a çalıştırıldı (hangfire schema + grants + default privileges). Servis deploy'u (Appointments, Automation, Backend) Q'ya kaldı.
-- **Next Task:** Q deploy yapacak (3 servis: Appointments, Automation, Backend). Deploy sonrası: (a) /hangfire dashboard'a superadmin login ile doğrulama; (b) recurring job'ların son/next execution'ı dashboard'da görünüyor mu kontrol. Sonrası G7 Faz 2 plan JSON (Waitlist + TreatmentLifecycle Appointments).
+- **Status:** G7 COMPLETE (5/5 faz) + tüm servisler prod'a deploy edildi + Hangfire dashboard cookie-bridge ile erişilebilir. 10 scheduler Hangfire recurring'e geçti (9 kayıtlı, waanalytics:nightly-batch prod'da MSSQL yok → gate'li).
+- **Last Task:** G7 Faz 2-5 implementation + commit + deploy. Deploy sırasında 4 config debt fix (JWT 23→33 byte, PG password placeholder, E:\→C:\ logs, Hangfire conn string) + 2 kod bug fix (JobStorage.Current init, WA mssqlConfigured gate). Dashboard cookie-bridge: /ops/hangfire-login endpoint + hf_jwt HttpOnly cookie + Dashboard sidebar "Hangfire" butonu (SuperAdmin opsOnly).
+- **Files Changed (this session — uncommitted hotfixes):** MOD: HangfireSetup.cs (EnsureJobStorageInitialized extension), SuperAdminDashboardFilter.cs (JWT header OR hf_jwt cookie dual-path), Backend Program.cs (/ops/hangfire-login endpoint + EnsureJobStorage), Appointments/Automation/Integrations/WhatsAppAnalytics Program.cs (EnsureJobStorage calls), Layout.tsx (Hangfire sidebar button + external:hangfire handler). SPA rebuild artifacts.
+- **Build:** PASS 0 errors, 17 warnings (baseline).
+- **Deploy Status:** 5 servis prod'da HEALTHY (Appointments, Automation, Backend, Integrations, WhatsAppAnalytics). 9 recurring job kayıtlı. 4 Hangfire server aktif. Cookie bridge endpoint test edildi (400/401/200 gerçek JWT ile).
+- **Next Task:** Q tarayıcıda https://super.invekto.com/ login → sidebar "Hangfire" butonu → cookie-bridge ile dashboard açılır. Canlı job execution'ları izle.
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 3b | G7 Faz 2-5 (8 scheduler) | PENDING | Faz 1 DONE (commit). Faz 2: Waitlist + TreatmentLifecycle Appointments |
+| 3b | ~~G7 Faz 2-5 (8 scheduler)~~ | DONE | Tüm 4 faz commit + deploy + Hangfire UI link |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
 | 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
 | 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |
@@ -28,6 +28,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-14 | G7 Faz 2-5 COMPLETE + deploy: Faz 2 (Waitlist+TreatmentLifecycle FORCE_PASS iter 2) + Faz 3 (CronScheduler+RescueFollowUp PASS iter 1) + Faz 4 (TranslationCleanup+MetricsAggregation FORCE_PASS iter 1) + Faz 5 (OrderSync+NightlyBatch PASS iter 1). 4 commit (fc965a7, 285a629, 743fb06, d047f6c). Deploy: 5 servis publish+deploy prod'da HEALTHY. Deploy debt fix: JWT 23→33 byte (10 servis), PG password placeholder (Appointments), E:\→C:\ log paths (10 servis), Hangfire conn string (5 servis). Kod bug fix: JobStorage.Current lazy init (5 Program.cs + HangfireSetup.EnsureJobStorageInitialized extension), WA mssqlConfigured gate uyumsuzluğu. Dashboard cookie bridge: /ops/hangfire-login endpoint (JWT validate → HttpOnly Secure hf_jwt cookie → /hangfire redirect) + Dashboard sidebar "Hangfire" opsOnly buton. Filter JWT header OR cookie dual-path. 9 recurring job kayıtlı + 4 Hangfire server aktif prod'da. |
 | 2026-04-13 | G7 Faz 1 Hangfire migration: Shared HangfireSetup (PrivateAssets=all) + SuperAdminDashboardFilter (tenant_id=0) + migration 011 (hangfire schema + default privileges) + ReminderJob (Appointments, queue=appointments, cron */5) + FlowWaitResumerJob (Automation, queue=automation, Cron.Minutely) + Backend /hangfire dashboard + INV-JOB-001..005. Old 2 IHostedService deleted. Build PASS, 14 warnings (all pre-existing). Codex iter 3 FORCE_PASS (Q — CoVe Q1-Q5 all PASS; remaining CQ gates PLAN_ASSUMPTION_WRONG: admin HTML UI ≠ API envelope). Migration prod'a çalıştırıldı. |
 | 2026-04-13 | G6 Flow state persistence: action_wait_until node + flow_execution_state table (migration 010 + canonical automation.sql) + FlowWaitRepository + FlowWaitResumerService (60s IHostedService) + orchestrator cancel-on-reply + public ResumeWaitAsync + GET /api/ops/flow-waits. 30g max clamp, INV-AT-058/059/060. 13 files +1043 -1. Codex PASS iter=2 (iter 0: diff görülmedi; iter 1: canonical schema + GRANT fix; iter 2: typed catches + typed response envelope). |
 | 2026-04-15 | UP0.1b Shared DTO consolidation: WapCrmMessage + WapCrmApiResponse<T> → Contracts/Inma/Dtos/, IncomingWebhookEvent + WebhookMessage → Contracts/Inma/Webhooks/. 5 caller using update (ChatAnalysis WapCrmClient, Backend Program/AttributionService, Automation Program/Orchestrator). JsonPropertyName byte-identical. Codex PASS iter=2. |

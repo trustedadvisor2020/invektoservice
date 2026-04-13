@@ -107,6 +107,7 @@ builder.Services.AddScoped<OrderSyncJob>();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+app.EnsureJobStorageInitialized();
 
 // Enable traffic logging middleware
 app.UseTrafficLogging();

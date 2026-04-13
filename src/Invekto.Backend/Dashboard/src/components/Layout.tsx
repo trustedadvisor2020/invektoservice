@@ -28,6 +28,7 @@ import {
   Layers,
   Globe,
   Key,
+  Clock,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InvektoLogo } from './ui/InvektoLogo';
@@ -77,6 +78,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { path: '/webchat',         label: 'WebChat',          icon: Globe,         opsOnly: true, section: 'İletişim' },
   { path: '/messages',        label: 'Mesajlar',         icon: MessageSquare, opsOnly: true },
   { path: '/logs',            label: 'Loglar',            icon: FileText,     opsOnly: true },
+  { path: 'external:hangfire', label: 'Hangfire',         icon: Clock,        opsOnly: true },
   // — Shared —
   { path: '/onboarding',       label: 'Onboarding',       tenantLabel: 'Kurulum Sihirbazi', icon: Rocket },
   { path: '/onboarding-guide', label: 'Onboarding Rehberi', icon: GraduationCap, opsOnly: true },
@@ -124,20 +126,44 @@ export function Layout({ children }: LayoutProps) {
 
   const renderNavLink = (item: NavItem & { label: string }) => {
     const Icon = item.icon;
-    const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+    const isExternal = item.path.startsWith('external:');
+    const isActive = !isExternal && (item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path));
+    const commonClasses = cn(
+      'group flex items-center rounded-lg text-sm font-medium transition-all duration-150',
+      collapsed ? 'h-10 justify-center px-0' : 'h-[42px] gap-3 px-4 mx-1 mb-0.5',
+      isActive
+        ? 'nav-item-active'
+        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+    );
+
+    // G7: Hangfire external link — cookie bridge via /ops/hangfire-login.
+    // Uses current access_token from localStorage; backend validates (tenant_id=0
+    // required) and redirects to /hangfire with an HttpOnly cookie.
+    if (item.path === 'external:hangfire') {
+      return (
+        <button
+          key={item.path}
+          type="button"
+          title={collapsed ? item.label : undefined}
+          onClick={() => {
+            const t = localStorage.getItem('access_token');
+            if (!t) { alert('Oturum bulunamadı'); return; }
+            window.open('/ops/hangfire-login?token=' + encodeURIComponent(t), '_blank', 'noopener');
+          }}
+          className={cn(commonClasses, 'w-full text-left cursor-pointer bg-transparent')}
+        >
+          <Icon className={cn('w-5 h-5 flex-shrink-0', 'text-slate-500 group-hover:text-slate-900')} />
+          {!collapsed && <span className="truncate">{item.label}</span>}
+        </button>
+      );
+    }
 
     return (
       <Link
         key={item.path}
         to={item.path}
         title={collapsed ? item.label : undefined}
-        className={cn(
-          'group flex items-center rounded-lg text-sm font-medium transition-all duration-150',
-          collapsed ? 'h-10 justify-center px-0' : 'h-[42px] gap-3 px-4 mx-1 mb-0.5',
-          isActive
-            ? 'nav-item-active'
-            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-        )}
+        className={commonClasses}
       >
         <Icon className={cn('w-5 h-5 flex-shrink-0', isActive ? '' : 'text-slate-500 group-hover:text-slate-900')} />
         {!collapsed && <span className="truncate">{item.label}</span>}
