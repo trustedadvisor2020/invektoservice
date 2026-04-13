@@ -39,7 +39,7 @@ public sealed class FlowEngineV2
         FlowGraphV2 graph, SessionStateV2 state, CancellationToken ct,
         bool isSimulation = false, int tenantId = 0,
         string[]? tenantIntents = null, double tenantConfidenceThreshold = 0.5,
-        Action<string>? onMessage = null)
+        Action<string>? onMessage = null, string? contactKey = null)
     {
         var messages = new List<string>();
         var currentNodeId = state.CurrentNodeId;
@@ -128,7 +128,8 @@ public sealed class FlowEngineV2
                     IsSimulation = isSimulation,
                     TenantId = tenantId,
                     TenantIntents = tenantIntents,
-                    TenantConfidenceThreshold = tenantConfidenceThreshold
+                    TenantConfidenceThreshold = tenantConfidenceThreshold,
+                    ContactKey = contactKey
                 };
                 result = await handler.ExecuteAsync(node, ctx, ct);
             }

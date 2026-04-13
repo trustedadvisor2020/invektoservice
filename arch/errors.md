@@ -387,6 +387,11 @@ errors:
     description: Follow-up message send failed
     user_message: Takip mesaji gonderilemedi.
 
+  # G3: Template A/B Rotation
+  - code: INV-AT-057
+    description: message_text node has invalid text_variants JSON; falling back to single text field
+    user_message: Sablon yuklenemedi, varsayilan mesaj kullanildi.
+
   # ── AA — AgentAI ──
   - code: INV-AA-001
     description: Invalid request payload

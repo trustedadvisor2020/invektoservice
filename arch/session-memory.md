@@ -5,19 +5,18 @@
 
 ## Last Update
 
-- **Date:** 2026-04-13
-- **Status:** DONE. INMA↔INSE Unification Platform projesi kuruldu + UP0.1 (contract reorg) + UP0.6 (feature flag service) committed. Codex iteration=0 PASS (2/2 paket).
-- **Last Task:** (1) Dent Adavista müşteri analizi + tam plan (10 faz, DentAdavista/plan/). (2) INMA↔INSE unification platform kurumsal dokümantasyonu (arch/platform/inma-inse-unification/): topology, gap-matrix (42 feature), INMA feature audit (12 var, 30 yok/kısmi), INMA team kickoff brief (Angular 19 kod örnekleri + veri akış diyagramları ile), roadmap (P0/P1/P2), inse-current-state. (3) UP0.1 MVP: Backend inline WapCrm DTO'ları (WapCrmInstanceDto, WapCrmApiEnvelope, WapCrmRawInstance, WapCrmSettings) → Invekto.Shared/Contracts/Inma/Dtos/ canonical namespace. Codex PASS iter=0 (commit d4e753c). (4) UP0.6: IFeatureFlagService + InMemoryFeatureFlagService (IMemoryCache, 5dk TTL, closed-by-default, per-tenant+user key). DI registration + inma /exchange + /login endpoint'lerinde SetFeatures hook. Codex PASS iter=0 (commit 1ddb495). (5) Decisions.md: custom fields → INMA'nın 10 tenant field'ı kullanılacak (G4 iptal, 4-5g kazanç). Kanallar → INMA üzerinden WA+IG+Telegram (Email yok).
-- **Files Changed:** ADD: DentAdavista/plan/*.md (README, phase-0 to phase-9, customer-info, decisions, phase-0-audit-report, unified-platform-architecture), arch/platform/inma-inse-unification/{README, inma-feature-audit, gap-matrix, roadmap, inma-team-kickoff-brief, inse-current-state}.md, src/Invekto.Shared/Contracts/Inma/{README.md, Dtos/WapCrmInstance.cs, Dtos/WapCrmSettings.cs}, src/Invekto.Shared/Services/{IFeatureFlagService, InMemoryFeatureFlagService}.cs, arch/plans/20260413-up01-inma-contract-reorg.json, arch/plans/20260413-up06-feature-flag-service.json. EDIT: src/Invekto.Backend/{Program.cs (DI + exchange/login hooks), Data/InstanceRepository.cs, Data/TenantRegistryRepository.cs}.
+- **Date:** 2026-04-14
+- **Status:** DONE. G3 Template A/B rotation paketi. FlowConfigV2 message_text node'larina text_variants destegi (hash-based deterministik). Codex PASS iter=2.
+- **Last Task:** G3 Template A/B rotation. (1) Invekto.Shared: ITemplateRotationService + HashBasedTemplateRotationService (FNV-1a 32-bit, stateless, deterministik). (2) Invekto.Automation: MessageTextHandler text_variants JSON array destegi, INV-AT-057 invalid JSON fallback (log + text field). (3) ExecutionContext.ContactKey + FlowEngineV2 param propagation + AutomationOrchestrator fallback (chatId -> phone -> flow:{rootFlowId}). (4) node_trace JSONB'ye variant_index/variant_count enrichment (migration yok). (5) arch/errors.md INV-AT-057 kaydı. Codex PASS iter=2 (iter 0: allowed_files + fallback contract + error code çakışması; iter 1: `phone!` null-forgiving).
+- **Files Changed:** ADD: src/Invekto.Shared/Services/{ITemplateRotationService, HashBasedTemplateRotationService}.cs, arch/plans/20260414-g3-template-ab-rotation.json. EDIT: src/Invekto.Automation/{Program.cs (DI), Services/FlowEngineV2.cs (contactKey param), Services/NodeHandlers/INodeHandler.cs (ContactKey field), Services/NodeHandlers/MessageTextHandler.cs (variant support), Services/AutomationOrchestrator.cs (6 ExecuteAsync sites + trace enrichment + contactKey fallback)}, arch/errors.md (INV-AT-057).
 - **Build:** PASS (0 errors).
-- **Next Task:** G3 Template A/B rotation (1-2g, Dent için kritik) veya UP0.1b (mevcut Shared WapCrmMessage + IncomingWebhookEvent DTO'larını Contracts/Inma altına taşı, 10+ caller etkilenir).
+- **Next Task:** UP0.1b Shared DTO consolidation (1g) veya G6 Flow state persistence (2-3g) veya G7 Hangfire migration (5-7g). INMA kickoff feedback geldiyse UP0.2/0.3/0.5.
 
 ## Execution Queue
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | G3 Template A/B rotation | PENDING | 1-2g, Dent 46 welcome+FAQ varyantı için |
-| 2 | UP0.1b Shared DTO consolidation | PENDING | WapCrmMessage + IncomingWebhookEvent Contracts/Inma'ya, 10+ caller using update |
+| 1 | UP0.1b Shared DTO consolidation | PENDING | WapCrmMessage + IncomingWebhookEvent Contracts/Inma'ya, 10+ caller using update |
 | 3 | G7 Hangfire migration | PENDING | 5-7g platform yatırımı — ReminderSchedulerService replace |
 | 4 | G6 Flow state persistence | PENDING | 2-3g — 1.5 gün wait restart-safe |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
@@ -30,6 +29,7 @@
 
 | Date | Task |
 |------|------|
+| 2026-04-14 | G3 Template A/B rotation: ITemplateRotationService (Shared, FNV-1a stateless) + MessageTextHandler text_variants JSON array + ExecutionContext.ContactKey + orchestrator chatId/phone/flow fallback + node_trace variant_index/count. INV-AT-057 yeni error code. Codex PASS iter=2. |
 | 2026-04-13 | UP0.6 (feature flag service): IFeatureFlagService + InMemoryFeatureFlagService (Shared), IMemoryCache 5dk TTL, closed-by-default, per-(tenant,user) keyed. Backend DI + /inma/auth/exchange ve /login hooks. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit 1ddb495. |
 | 2026-04-13 | UP0.1 MVP (INMA contract reorg): Backend inline WapCrm DTO'ları Invekto.Shared.Contracts.Inma.Dtos namespace'ine taşındı. 3 yeni dosya, 3 Backend dosya using update. Codex PASS iter=0 (12/12 CQ, 3/3 CoVe). Commit d4e753c. |
 | 2026-04-13 | INMA↔INSE Unification Platform kurumsal dokümanı: arch/platform/inma-inse-unification/ (README, topology, inma-feature-audit 42 feature, gap-matrix, roadmap P0-P2, inma-team-kickoff-brief Angular 19 kod örnekleriyle, inse-current-state). Dent Adavista pilot planı 10 faz. INMA 10 custom field kullanılacak → G4 iptal. |

@@ -89,6 +89,10 @@ builder.Services.AddHttpClient<MainAppCallbackClient>();
 builder.Services.AddSingleton<WorkingHoursChecker>();
 builder.Services.AddSingleton<FlowEngine>();
 
+// G3: Template A/B rotation (deterministic hash-based)
+builder.Services.AddSingleton<Invekto.Shared.Services.ITemplateRotationService,
+    Invekto.Shared.Services.HashBasedTemplateRotationService>();
+
 // Register v2 node handlers (IMP-1: Strategy Pattern)
 builder.Services.AddSingleton<INodeHandler, TriggerStartHandler>();
 builder.Services.AddSingleton<INodeHandler, MessageTextHandler>();

@@ -429,9 +429,16 @@ public sealed class AutomationOrchestrator
 
         // 4b. Execute pure engine (no streaming — messages sent in order after execution)
         var pathSnapshotCount = state.ExecutionPath.Count;
+        // G3: stable contact key for deterministic template A/B rotation.
+        // Priority: chatId -> phone -> "flow:{rootFlowId}" (per-flow fallback per plan AC3,
+        // so unknown contacts at least vary across flows instead of all collapsing to one node-only bucket).
+        string contactKey;
+        if (!string.IsNullOrEmpty(chatId)) contactKey = chatId;
+        else if (!string.IsNullOrEmpty(phone)) contactKey = phone;
+        else contactKey = $"flow:{rootFlowId}";
         var result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
             tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-            onMessage: null);
+            onMessage: null, contactKey: contactKey);
 
         // Sub-flow dispatch loop: handle CallSubFlow and sub-flow completion
         const int maxSubFlowDepth = 5;
@@ -468,7 +475,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null);
+                        onMessage: null, contactKey: contactKey);
                     continue;
                 }
 
@@ -481,7 +488,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null);
+                        onMessage: null, contactKey: contactKey);
                     continue;
                 }
 
@@ -493,7 +500,7 @@ public sealed class AutomationOrchestrator
                     state.Variables["__sub_flow_completed"] = "true";
                     result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                         tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                        onMessage: null);
+                        onMessage: null, contactKey: contactKey);
                     continue;
                 }
 
@@ -538,7 +545,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: null);
+                    onMessage: null, contactKey: contactKey);
                 continue;
             }
 
@@ -609,7 +616,7 @@ public sealed class AutomationOrchestrator
 
                 result = await _flowEngineV2.ExecuteAsync(graph, state, ct, tenantId: tenantId,
                     tenantIntents: tenantIntents, tenantConfidenceThreshold: tenantConfidenceThreshold,
-                    onMessage: null);
+                    onMessage: null, contactKey: contactKey);
                 continue;
             }
 
@@ -792,6 +799,14 @@ public sealed class AutomationOrchestrator
                     ["exit_handle"] = (object?)null,
                     ["duration_ms"] = (object?)null,
                 };
+                // G3: attach template A/B variant info when MessageTextHandler recorded it
+                if (state.Variables.TryGetValue($"__variant_index:{nodeId}", out var vIdx) &&
+                    state.Variables.TryGetValue($"__variant_count:{nodeId}", out var vCnt))
+                {
+                    if (int.TryParse(vIdx, out var vIdxInt)) entry["variant_index"] = vIdxInt;
+                    if (int.TryParse(vCnt, out var vCntInt)) entry["variant_count"] = vCntInt;
+                }
+
                 // First node: attach user input
                 if (i == 0)
                     entry["user_input"] = messageText;

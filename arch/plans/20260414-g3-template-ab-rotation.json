@@ -1,0 +1,131 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260414-g3-template-ab-rotation",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-14T08:00:00Z",
+  "updated_at": "2026-04-14T09:30:00Z",
+  "plan": {
+    "summary": "FlowConfigV2 message_text node'una `text_variants` (N-varyantli) destegi ekle. Hash-based deterministik secim (contact_key + node_id -> stable index) + flow_execution_log node_trace'e secilen variant_id yaz. Dent Adavista 46 welcome/FAQ varyanti icin kritik.",
+    "q_intent": "G3 Template A/B rotation paketi. Hash-based deterministik, FlowConfigV2 node-level, basic logging dahil (flow_execution_log node_trace'e variant_id).",
+    "interview_notes": "Strateji: hash-based deterministic (FNV/xxhash contact_key+node_id). Storage: FlowConfigV2 node-level data.text_variants JSON array. Metrik: flow_execution_log node_trace'e variant_id ekle (dashboard yok).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Invekto.Shared'a ITemplateRotationService + HashBasedTemplateRotationService eklenir; deterministik (ayni contact_key + node_id + variants sayisi -> ayni index) ve pure (DI disi bagimlilik yok).", "verified": false, "verification_note": null },
+      { "id": "AC2", "criterion": "MessageTextHandler node.data['text_variants'] (JSON array of string) varsa bu listeden rotation service ile birini secer; yoksa mevcut 'text' alani kullanilir (backward compat).", "verified": false, "verification_note": null },
+      { "id": "AC3", "criterion": "ExecutionContext'e ContactKey (nullable string) eklenir; AutomationOrchestrator gelen chatId/phone'dan doldurur; null/bos ise fallback olarak flow_id+node_id kullanilir (secim yine deterministik).", "verified": false, "verification_note": null },
+      { "id": "AC4", "criterion": "Secilen variant index flow_execution_log node_trace JSONB entry'sine variant_index + variant_count field'lari olarak yazilir (mevcut append mekanizmasi uzerinden, schema migration YOK).", "verified": false, "verification_note": null },
+      { "id": "AC5", "criterion": "Build PASS (Shared + Automation). Unit-level sanity: ayni contact+node 10 cagri -> ayni variant; farkli contact'lar ile varyant dagilimi gozlemlenebilir (manual check, unit test bu paketta yok)."  , "verified": false, "verification_note": null },
+      { "id": "AC6", "criterion": "Mikro servis izolasyonu korunur: ITemplateRotationService Invekto.Shared'da; Automation servis icine yeni cross-service call eklenmez.", "verified": false, "verification_note": null }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Services/ITemplateRotationService.cs",
+    "src/Invekto.Shared/Services/HashBasedTemplateRotationService.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs",
+    "src/Invekto.Automation/Services/NodeHandlers/MessageTextHandler.cs",
+    "src/Invekto.Automation/Services/FlowEngineV2.cs",
+    "src/Invekto.Automation/Services/AutomationOrchestrator.cs",
+    "src/Invekto.Automation/Program.cs",
+    "arch/errors.md",
+    "arch/plans/diffs/20260414-g3-template-ab-rotation.diff",
+    "arch/session-memory.md",
+    "arch/plans/20260414-g3-template-ab-rotation.json"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Shared/Services/ITemplateRotationService.cs", "change": "New interface: deterministic variant picker", "is_new": true },
+    { "path": "src/Invekto.Shared/Services/HashBasedTemplateRotationService.cs", "change": "New impl: FNV-1a 32-bit hash of contactKey+nodeId", "is_new": true },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/INodeHandler.cs", "change": "ExecutionContext.ContactKey field added", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/FlowEngineV2.cs", "change": "ExecuteAsync: contactKey param propagated to ExecutionContext", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/NodeHandlers/MessageTextHandler.cs", "change": "text_variants JSON array support via ITemplateRotationService; fallback to 'text'; variant info into VariableUpdates", "is_new": false },
+    { "path": "src/Invekto.Automation/Services/AutomationOrchestrator.cs", "change": "contactKey derived from chatId/phone; 6 ExecuteAsync call sites updated; trace entry gets variant_index/variant_count", "is_new": false },
+    { "path": "src/Invekto.Automation/Program.cs", "change": "DI registration for ITemplateRotationService", "is_new": false },
+    { "path": "arch/errors.md", "change": "INV-AT-057 added (invalid text_variants JSON, fallback to text)", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "2b40da1ffaf3e9370ee6d2a680c765d742a5adf3d193ced32e092ad9b0007904",
+    "full_path": "arch/plans/diffs/20260414-g3-template-ab-rotation.diff",
+    "stats": { "insertions": 305, "deletions": 13, "files_count": 9 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln --no-restore -v q",
+    "timestamp": "2026-04-14T09:30:00Z",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Automation"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "HashBasedTemplateRotationService deterministik mi? Ayni (contact_key, node_id, N) icin her cagri ayni index'i dondurmeli — stateless, random/time bagimliligi olmamali.", "category": "Data" },
+    { "id": "Q2", "question": "ContactKey null/bos geldiginde fallback (flow_id+node_id) ile secim hala deterministik ve tum kullanicilarda ayni variant'a gitmiyor mu? (ayni node icin herkes ayni varyanti alir — bu kabul edilebilir mi?)", "category": "Lifecycle" },
+    { "id": "Q3", "question": "text_variants bos array veya null iken mevcut 'text' alani fallback olarak kullaniliyor mu? Backward compat kirilmiyor mu?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "node_trace JSONB append'i mevcut log yazma mekanizmasini bozmadan yapiliyor mu? Variant yazimi log basarisizsa mesaj gonderimi etkilenmiyor mu (silent-safe)?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "arch/db/migrations (schema change yok)",
+      "Invekto.Backend Dashboard UI (variant editor bu paketta degil)",
+      "Invekto.Knowledge template system (ayri entegrasyon)"
+    ],
+    "non_goals": [
+      "Variant performance dashboard",
+      "Weighted/random rotation",
+      "Per-variant conversion tracking",
+      "Yeni DB tablosu veya migration"
+    ],
+    "intentional_exclusions": [
+      "Dashboard variant editor UI (frontend paket ayri)",
+      "MessageMenuHandler variants (sadece message_text bu paketta)",
+      "Unit test yazimi (Invekto'da test altyapisi yok; Q onayi ile sonraki pakete)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "MessageTextHandler variant parse: JSON bozuksa exception degil, fallback to 'text'"
+    ],
+    "user_facing_errors": [],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "text_variants JSON bozuk gelirse warn log + 'text' fallback. Musteriye hata gitmemesi icin silent-fallback kasitli; log'da INV-AT-053 (yeni) ile gorunur olacak."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Ayni musteri her seferinde ayni sablonu goruyor, mesaj tekrari rahatsiz ediyor.",
+      "suggestion": "Hash-based rotation sayesinde farkli kisiler farkli varyant gorur; ayni kisi tutarli kalir — marka sesi kaybolmaz.",
+      "aha_moment": "Dent, 46 welcome varyantini deploy edince ayni contact'in tekrar etmeyen ama tutarli deneyim gordugunu farkeder."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Hangi mesaj varyanti daha iyi donusum getiriyor bilinmiyor.",
+      "suggestion": "node_trace'e variant_index yazilmasi ile post-hoc SQL analizi (variant X conversion_rate Y) mumkun.",
+      "aha_moment": "Q bir hafta sonra ham SQL ile 'variant #2 %18 daha iyi' raporunu cikarir — ayri dashboard beklemez."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Template editor her node icin tek text alani; A/B icin copy flow gerekir.",
+      "suggestion": "data.text_variants array ile tek node, N varyant. Flow duplikasyonu kalkiyor.",
+      "aha_moment": "Q yeni kampanya icin varyant eklerken flow'u kopyalamadigini farkeder — 5dk ile 30sn farki."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Random rotation'da ayni musteri farkli cevap alirsa kafa karisikligi yaratir.",
+      "suggestion": "Hash-based deterministik -> session icinde ayni musteri ayni varyant.",
+      "aha_moment": "Musteri 'az once bunu yazmamismiydik?' demez — brand voice tutarli kalir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Sorun yasayan musterinin hangi varyanti gordugu log'dan bulunamaz.",
+      "suggestion": "node_trace'de variant_index + variant_count destek ekibi icin kritik ipucu.",
+      "aha_moment": "Support agent Postgres'de tek query ile 'bu musteri varyant 3 gordu, %5 grup' diyebiliyor."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-14T10:15:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-14T10:15:00Z",
+    "iteration": 2
+  }
+}

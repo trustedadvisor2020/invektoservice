@@ -34,6 +34,12 @@ public sealed class ExecutionContext
 
     /// <summary>PKT-6A: Tenant confidence threshold from settings_json. Used as fallback by AiIntentHandler.</summary>
     public double TenantConfidenceThreshold { get; init; } = 0.5;
+
+    /// <summary>
+    /// G3: Stable contact identifier (chatId or phone) for deterministic template A/B rotation.
+    /// Null/empty = unknown contact → rotation falls back to node-only hash.
+    /// </summary>
+    public string? ContactKey { get; init; }
 }
 
 /// <summary>
