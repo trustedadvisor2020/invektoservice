@@ -1,0 +1,151 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260414-zoho-oauth-paket-b",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-14T20:30:00Z",
+  "updated_at": "2026-04-14T21:30:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 2 Paket B: token provider (lazy refresh + IMemoryCache + per-tenant lock) + connection orchestrator (encrypt via IDataProtector + persist) + 2 endpoint (auth-protected /api/v1/zoho/connect-url + public /integrations/zoho/callback) + Program.cs DI wiring (Data Protection + IMemoryCache + Zoho services).",
+    "q_intent": "Paket A foundation hazir (schema, region resolver, state JWT, repository). Paket B uctan uca OAuth flow'u tamamlar: kullanici Bagla butonuna basar -> JWT-protected endpoint Zoho authorize URL'i uretir; Zoho callback URL'sine redirect olur; public callback endpoint state validate eder, code'u token'a cevirir, refresh_token'i encrypt edip DB'ye yazar; bundan sonra IZohoTokenProvider lazy refresh ile her API cagirisi icin valid access_token saglar.",
+    "interview_notes": "Paket A'da Q karari: Data Protection API encryption + Lazy refresh + Signed JWT state + 10dk TTL. Paket B bunlari implement eder. Endpoint stratejisi: authorize JWT-protected (/api/v1/ prefix), callback public (Zoho browser redirect, JWT impossible). Zoho rate limit lazy refresh ile sorun olmuyor (tokens uzun omurlu, refresh nadir).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "GET /api/v1/zoho/connect-url JWT ile cagrildiginda Zoho authorize URL'i doner; URL ?response_type=code&client_id&scope&redirect_uri&access_type=offline&prompt=consent&state=<HMAC-signed> formatinda; default region (eu) uzerinden uretilir.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "GET /integrations/zoho/callback?code=...&state=...&accounts-server=... cagrildiginda: state validate edilir, code Zoho /oauth/v2/token endpoint'ine POST edilir, donen refresh_token IDataProtector ile encrypt edilir, zoho_connections row upsert edilir; tarayiciya basarili HTML sayfasi doner.",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "Invalid/expired state JWT ile callback 400 + INV-INT-111 doner; bilinmeyen accounts-server icin 400 + INV-INT-110; Zoho token endpoint hata icin 502 + INV-INT-113.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "IZohoTokenProvider.GetAccessTokenAsync(tenantId): cache hit'te dogrudan token doner (DB/HTTP yok); cache miss'te per-tenant SemaphoreSlim lock altinda DB'den encrypted refresh_token okur, decrypt eder, Zoho refresh endpoint'ine POST eder, donen access_token (expires_in - 60s) TTL ile cache'ler.",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "Build PASS: dotnet build src/Invekto.Integrations/Invekto.Integrations.csproj 0 hata. Microservice isolation korunur (Shared disinda foreign Invekto.* using yok).",
+        "verified": true
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "IZohoTokenProvider arayuzu (GetAccessTokenAsync + InvalidateCache) + ZohoErrorCodes service-local sabit sinifi (INV-INT-110..119)." },
+    { "id": "GR-2", "description": "ZohoTokenProvider: HttpClient (15s timeout) + IDataProtectionProvider + IMemoryCache + ConcurrentDictionary<int, SemaphoreSlim> per-tenant lock; double-check locking pattern; Zoho refresh_token rotation handle (Update vs TouchRefreshed); expires_in - 60s safety buffer (min 60s); ExchangeAuthorizationCodeAsync method (one-shot, NOT cached)." },
+    { "id": "GR-3", "description": "ZohoConnectionService: BuildAuthorizeUrl (default region config + state sign + URL escape); HandleCallbackAsync (state verify -> region resolve -> code exchange -> refresh_token Protect -> Upsert -> InvalidateCache); typed exceptions with INV-INT-* prefix." },
+    { "id": "GR-4", "description": "ZohoConnectEndpoints: 2 minimal API endpoint - GET /api/v1/zoho/connect-url (JWT via existing UseJwtAuth) + GET /integrations/zoho/callback (public); structured ErrorResponse envelope; success HTML page on callback (browser is the client); MapException helper INV-INT-* code -> HTTP status mapping." },
+    { "id": "GR-5", "description": "Program.cs DI: AddDataProtection().SetApplicationName().PersistKeysToFileSystem(C:\\Invekto\\Integrations\\keys); AddMemoryCache; ZohoConnectionRepository + ZohoRegionResolver + ZohoOAuthStateService (Jwt:SecretKey) + ZohoTokenProvider (HttpClient typed) + ZohoConnectionService singleton; MapZohoConnectEndpoints; /api/ops/endpoints listesine 2 yeni entry." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Integrations/Services/Zoho/IZohoTokenProvider.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoTokenProvider.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectionService.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectEndpoints.cs",
+    "src/Invekto.Integrations/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Integrations/Services/Zoho/IZohoTokenProvider.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoTokenProvider.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoConnectionService.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoConnectEndpoints.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Program.cs", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "18da21e4ff93e087ea1d98cf49d31fe43d59227c0d86d403712638a82dd3992a",
+    "full_path": "arch/plans/diffs/20260414-zoho-oauth-paket-b.diff",
+    "stats": { "insertions": 519, "deletions": 0, "files_count": 6 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-04-14T20:50:00Z",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Integrations\\Invekto.Integrations.csproj -v q\"",
+    "notes": "0 errors, 0 warnings. Iter 1 fixed 3 errors: missing using Invekto.Shared.Auth (TenantContext), CS0173 null:null branches, missing using Microsoft.AspNetCore.DataProtection (SetApplicationName extension)."
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "ZohoTokenProvider per-tenant lock (ConcurrentDictionary<int, SemaphoreSlim>) double-check pattern dogru calisiyor mu? Cache miss + lock + re-check + refresh + cache + release siralamasi correct?", "category": "Lifecycle" },
+    { "id": "Q2", "question": "Refresh token rotation: Zoho refresh response'unda RefreshToken NULL ise eski refresh_token tutuyoruz (TouchRefreshedAsync); NOT NULL ise yeni refresh_token IDataProtector ile encrypt edip UpdateRefreshTokenAsync ile saklarz. Plain text DB yazma yolu yok.", "category": "Auth" },
+    { "id": "Q3", "question": "Public callback endpoint /integrations/zoho/callback JWT ile korunmuyor (Zoho browser redirect bunu engellemez), ama state JWT HMAC ile imzali olduğu icin saldirgan baska tenant'in callback'ini hijack edemez. State 10dk TTL'li.", "category": "Auth" },
+    { "id": "Q4", "question": "DataProtection key ring C:\\Invekto\\Integrations\\keys'te persist edilir; process restart sonrasi encrypted refresh_token decrypt edilebilir mi? (PersistKeysToFileSystem + sabit ApplicationName)", "category": "Lifecycle" },
+    { "id": "Q5", "question": "Callback handler typed exception (InvalidOperationException with INV-INT-* prefix) -> MapException -> ErrorResponse envelope + HTTP status (400/502/503/500). Sessiz hata yok.", "category": "Error Handling" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Shared/ (Zoho ozel kodu Shared'a girmiyor)",
+      "Diger Invekto.* servisleri (microservice isolation)",
+      "src/Invekto.Backend/Dashboard/ (UI Adim 3'e kalir)"
+    ],
+    "non_goals": [
+      "Lead/Blueprint API entegrasyonu (Adim 3)",
+      "Dashboard UI 'Bagla' butonu (Adim 3)",
+      "Hangfire recurring refresh (lazy karari Q tarafindan onaylandi)",
+      "OAuth sign-out endpoint (DisconnectAsync repository'de var, endpoint Adim 3)"
+    ],
+    "intentional_exclusions": [
+      "JWT lib state token icin (Paket A custom HMAC format)",
+      "Shared abstraction (IEncryptionService) - Integrations icinde local kal"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ZohoTokenProvider.GetAccessTokenAsync: catch CryptographicException -> INV-INT-117 wrap",
+      "ZohoTokenProvider.PostTokenAsync: catch HttpRequestException + TaskCanceledException + JsonException -> INV-INT-114 typed wraps",
+      "ZohoConnectEndpoints callback: catch InvalidOperationException -> MapException -> ErrorResponse envelope"
+    ],
+    "user_facing_errors": [
+      "INV-INT-110 'Zoho bağlantı bölgesi tanınmadı.' (400)",
+      "INV-INT-111 'Bağlantı oturumu geçersiz veya süresi dolmuş; tekrar deneyin.' (400)",
+      "INV-INT-113 'Zoho yetkilendirme başarısız oldu.' (502)",
+      "INV-INT-114 'Zoho oturumu yenilenemedi.' (502)",
+      "INV-INT-115 'Bu hesap için Zoho bağlantısı bulunamadı.' (500)",
+      "INV-INT-116 'Zoho bölgesi yapılandırılmamış.' (503)",
+      "INV-INT-117 'Zoho oturum bilgisi okunamadı.' (500)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum hata yollari typed exception ile yukseliyor; endpoint MapException -> structured ErrorResponse + HTTP status. Cache miss sessiz degil; lock sirasinda Zoho refresh fail ederse exception caller'a gider."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yuksek istek anliginda 100 paralel API call ayni anda refresh tetiklerse Zoho rate limit (200 req/dk) asilir.",
+      "suggestion": "Per-tenant SemaphoreSlim + double-check cache pattern: TEK refresh, diger 99 onun sonucunu paylasir.",
+      "aha_moment": "100 paralel cagri = 1 Zoho refresh request, hicbir rate limit problemi yok."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Servis restart sonrasi access_token cache temizlenir, ilk istek Zoho'ya gider.",
+      "suggestion": "DataProtection key ring C:\\Invekto\\Integrations\\keys'te persist; refresh_token decrypt edilebilir, lazy refresh yeni access_token uretir.",
+      "aha_moment": "Restart sonrasi ilk istek 1-2sn yavas, sonrakiler instant."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Hata olunca 'bir sorun olustu' demek destek ekibini ucturuyor.",
+      "suggestion": "Her hata yolu INV-INT-110..119 spesifik kod + actionable TR mesaj + HTTP status; ErrorResponse envelope X-Request-Id ile log korelasyonu.",
+      "aha_moment": "Hasta destekten arar, requestId verir, 5sn'de hata izole edilir."
+    },
+    {
+      "category": "SCALE",
+      "user_pain": "Yeni tenant geldiginde manuel adim gerekir.",
+      "suggestion": "GET /api/v1/zoho/connect-url tek tik ile authorize URL uretiyor; tenant context JWT'den geliyor; otomatik akis.",
+      "aha_moment": "Tenant 'Bagla' der, 30sn'de active connection, hicbir manuel kurulum yok."
+    },
+    {
+      "category": "SECURITY",
+      "user_pain": "Callback URL public, saldirgan baska tenant'a ait callback'i forge edebilir mi?",
+      "suggestion": "State HMAC-SHA256 imzali (Jwt:SecretKey), 10dk TTL, FixedTimeEquals timing-safe compare, payload tampered tespiti garantili.",
+      "aha_moment": "Forge edilemez; state validation fail = 400 INV-INT-111, log'a yansir."
+    }
+  ],
+  "verdict": { "status": "PASS", "iteration": 1, "timestamp": "2026-04-14T21:25:00Z", "model_used": "gpt-5.4-2026-03-05", "notes": "Iter 0 FAIL: CQ1/CQ12/Q5 incomplete MapException coverage (115/118/119 missing); CQ5/CQ9/Q3 mis-applied 'JWT on all routes' policy claim. Iter 1 PASS 12/12 CQ + 5/5 CoVe: (a) MapException expanded all 10 INV-INT-110..119 with specific HTTP statuses 400/404/409/429/500/502/503; (b) actionable next-step text on every exception (INV-INT-117 reconnect, INV-INT-114 firewall+timeout+rate-limit hints, INV-INT-116 appsettings remediation); (c) CRITICAL evidence Q3/CQ5/CQ9: codebase pattern UseJwtAuth(...,'/api/v1/') only on /api/v1/ prefix; pre-existing public endpoints /health, /ready, /api/ops/endpoints; OAuth callback at /integrations/zoho/callback follows same convention + RFC 6749 §3.1.2/§10.12 requires public callback (browser cannot send Bearer); state HMAC-SHA256 signed + 10min TTL + FixedTimeEquals = OAuth-standard CSRF defense." }
+}
