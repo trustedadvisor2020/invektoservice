@@ -29,21 +29,24 @@ C:\CRMs\InvektoServices    ->     C:\Invekto\{Service}\current\
                                   nssm path: C:\Invekto\nssm.exe
 ```
 
-## Service List (11 services)
+## Service List (12 services)
+
+> **NSSM Name DASH KULLANMAZ.** Get-Service ile dogrulanmis (2026-04-15).
 
 | Service | Port | NSSM Name | Path |
 |---------|------|-----------|------|
-| Backend | 5100 | Invekto-Backend | `C:\Invekto\Backend\current\` |
-| WebChat | 5101 | Invekto-WebChat | `C:\Invekto\WebChat\current\` |
-| Automation | 5102 | Invekto-Automation | `C:\Invekto\Automation\current\` |
-| AgentAI | 5103 | Invekto-AgentAI | `C:\Invekto\AgentAI\current\` |
-| Outbound | 5104 | Invekto-Outbound | `C:\Invekto\Outbound\current\` |
-| Knowledge | 5105 | Invekto-Knowledge | `C:\Invekto\Knowledge\current\` |
-| WhatsAppAnalytics | 5106 | Invekto-WhatsAppAnalytics | `C:\Invekto\WhatsAppAnalytics\current\` |
-| VoiceAI | 7114 | Invekto-VoiceAI | `C:\Invekto\VoiceAI\current\` |
-| Marketing | — | Invekto-Marketing | `C:\Invekto\Marketing\current\` |
-| Translate | — | Invekto-Translate | `C:\Invekto\Translate\current\` |
-| +1 | — | — | (detay: `deploy-info.md`) |
+| Backend | 5100 | InvektoBackend | `C:\Invekto\Backend\current\` |
+| WebChat | 5101 | InvektoWebChat | `C:\Invekto\WebChat\current\` |
+| Automation | 5102 | InvektoAutomation | `C:\Invekto\Automation\current\` |
+| AgentAI | 5103 | InvektoAgentAI | `C:\Invekto\AgentAI\current\` |
+| Outbound | 5104 | InvektoOutbound | `C:\Invekto\Outbound\current\` |
+| Knowledge | 5105 | InvektoKnowledge | `C:\Invekto\Knowledge\current\` |
+| WhatsAppAnalytics | 5106 | InvektoWhatsAppAnalytics | `C:\Invekto\WhatsAppAnalytics\current\` |
+| VoiceAI | 7114 | InvektoVoiceAI | `C:\Invekto\VoiceAI\current\` |
+| Marketing | — | InvektoMarketing | `C:\Invekto\Marketing\current\` |
+| ChatAnalysis | — | InvektoChatAnalysis | `C:\Invekto\ChatAnalysis\current\` |
+| Appointments | — | InvektoAppointments | `C:\Invekto\Appointments\current\` |
+| Integrations | — | InvektoIntegrations | `C:\Invekto\Integrations\current\` |
 
 ## Deploy Steps (ORDER MATTERS)
 
@@ -51,7 +54,7 @@ C:\CRMs\InvektoServices    ->     C:\Invekto\{Service}\current\
 2. **(Backend special)** Dashboard SPA build: `cd src/Invekto.Backend/wwwroot && npx vite build` (output: `wwwroot/app/`). FlowBuilder Dashboard'a merge edildi (2026-02-22), tek build yeterli
 3. `dotnet publish -c Release` target service(s)
 4. `mcp__invekto-ops__server-upload` → `C:\Invekto\{Service}\current\`
-5. `mcp__invekto-ops__server-exec` → `C:\Invekto\nssm.exe restart Invekto-{Service}` (NOT `Restart-Service` — sib process kill sorunu)
+5. `mcp__invekto-ops__server-exec` → `C:\Invekto\nssm.exe restart Invekto{Service}` (DASHSIZ; NOT `Restart-Service` — sib process kill sorunu)
 6. `mcp__invekto-ops__server-health` ile doğrula
 
 ## Critical Rules

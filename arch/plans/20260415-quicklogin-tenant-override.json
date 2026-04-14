@@ -4,7 +4,7 @@
   "packet_id": null,
   "slug": "20260415-quicklogin-tenant-override",
   "risk": "LOW",
-  "status": "REVIEW",
+  "status": "DONE",
   "created_at": "2026-04-15T00:00:00Z",
   "updated_at": "2026-04-15T00:05:00Z",
   "plan": {
