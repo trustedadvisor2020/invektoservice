@@ -1,0 +1,157 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260414-zoho-oauth-paket-a",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-14T19:00:00Z",
+  "updated_at": "2026-04-14T20:15:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 2 Paket A: foundation layer (schema + region resolver + state JWT + repository). Endpoint/DI/token-provider Paket B'de.",
+    "q_intent": "Müşteri Zoho CRM Blueprint stage transition için OAuth integration istiyor. Adım 2 backend implementation; Adım 1 (Console kurulumu) tamamlandı. Q split kararı: 2 paket. Paket A salt foundation, runtime entry point yok.",
+    "interview_notes": "Encryption: .NET Data Protection API (Q sordu 'şifreleme yapmadan çalışmaz mı', refresh token long-lived credential olduğu için DP API'de karar kıldık). Refresh: lazy-on-demand IMemoryCache. State: HMAC-SHA256 signed token (compact custom format, JWT lib bağımlılığı yok), Jwt:SecretKey reuse, 10dk TTL. Scope: sadece token altyapısı (Lead/Blueprint API Adım 3'e kalıyor). Multi-DC: aynı client_id tüm DC'ler için (Console'da toggle açıldı), region accounts-server callback param'ından detect edilir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 012 calistirildigi zaman zoho_connections tablosu yaratilir, GRANT ALL TO invekto + sequence GRANT verilir, UNIQUE(tenant_id) kisiti aktiftir.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "ZohoOAuthStateService.Sign(tenantId) -> Verify(token) tur cevirimi ayni tenantId'yi geri verir; tampered token (HMAC mismatch) ve expire olmus token (TTL>10dk gectikten sonra) Verify() icin null doner.",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "ZohoRegionResolver.RegionFromAccountsServer('https://accounts.zoho.eu') -> 'eu' doner; bilinmeyen host icin null doner. GetConfig('eu') appsettings'teki Zoho:EU bloguna donusur, eksik field varsa null.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "ZohoConnectionRepository UpsertAsync iki kez ayni tenant_id ile cagrildiginda ON CONFLICT update yapar (yeni satir yaratmaz), DisconnectAsync sonrasi GetActiveAsync null doner.",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "Build PASS: dotnet build src/Invekto.Integrations/Invekto.Integrations.csproj 0 hata.",
+        "verified": true
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "Migration 012-zoho-connections.sql + arch/db/integrations.sql canonical append (tablo + GRANT + sequence GRANT + UNIQUE constraint + comments)." },
+    { "id": "GR-2", "description": "arch/errors.md INV-INT-110..119 (10 yeni Zoho OAuth error code, TR user_message)." },
+    { "id": "GR-3", "description": "ZohoModels.cs: ZohoRegionConfig record + ZohoConnection record + ZohoTokenResponse record + ZohoOAuthState record." },
+    { "id": "GR-4", "description": "ZohoRegionResolver: accounts-server URL -> region key map (8 DC), appsettings'ten Zoho:<REGION> blok yukleme (config key normalize: '.' -> '_')." },
+    { "id": "GR-5", "description": "ZohoOAuthStateService: HMAC-SHA256 sign/verify, base64url payload format 'tenantId|nonce|iat|exp', secret >=32 byte zorunlu, TTL clamp (0,3600] saniye, FixedTimeEquals timing-safe karsilastirma." },
+    { "id": "GR-6", "description": "ZohoConnectionRepository: UpsertAsync (ON CONFLICT update), GetActiveAsync (disconnected_at IS NULL filter), TouchRefreshedAsync, UpdateRefreshTokenAsync, DisconnectAsync (soft delete)." }
+  ],
+  "allowed_files": [
+    "arch/db/migrations/012-zoho-connections.sql",
+    "arch/db/integrations.sql",
+    "arch/errors.md",
+    "src/Invekto.Integrations/Services/Zoho/ZohoModels.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoRegionResolver.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoOAuthStateService.cs",
+    "src/Invekto.Integrations/Data/ZohoConnectionRepository.cs"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/012-zoho-connections.sql", "is_new": true },
+    { "path": "arch/db/integrations.sql", "is_new": false },
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoModels.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoRegionResolver.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoOAuthStateService.cs", "is_new": true },
+    { "path": "src/Invekto.Integrations/Data/ZohoConnectionRepository.cs", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "c45282b5839fa2ae1f12e40972db7896c406a7d4f90d877e4d44e89d858cf8a8",
+    "full_path": "arch/plans/diffs/20260414-zoho-oauth-paket-a.diff",
+    "stats": { "insertions": 496, "deletions": 0, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-04-14T19:25:00Z",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Integrations\\Invekto.Integrations.csproj --no-restore -v q\"",
+    "notes": "0 errors, 1 pre-existing warning (CS1998 TenantUsageService.cs:34 - Shared dependency, not in our scope)."
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Refresh token plain text DB'de yazilamiyor mu? Repository'nin UpsertAsync/UpdateRefreshTokenAsync metotlari sadece encrypted string parametresi alir; encryption catalogu service layer'da (Paket B), repo encrypt etmez/decrypt etmez.", "category": "Auth" },
+    { "id": "Q2", "question": "ZohoOAuthStateService HMAC validation timing-safe mi? CryptographicOperations.FixedTimeEquals kullaniliyor mu?", "category": "Auth" },
+    { "id": "Q3", "question": "State token expire kontrolu DateTimeOffset.UtcNow > expiry; ClockSkew tolerance gerekir mi? (Sadece bizim sunucumuzda Sign+Verify yapildigi icin saat farki yok, OAuth callback chain disinda baska makineye gitmiyor.)", "category": "Lifecycle" },
+    { "id": "Q4", "question": "ZohoRegionResolver bilinmeyen accounts-server icin null doner; caller (Paket B) bunu INV-INT-110 hata koduna mapleyecek. Repository iceride hicbir region whitelist enforcement yok (DB region kolonu sadece string saklar) - Paket B uygun mu?", "category": "Data" },
+    { "id": "Q5", "question": "Migration 012 zoho_connections.tenant_id INTEGER REFERENCES tenant_registry(tenant_id) - tenant_registry sema mevcut mu? (Mevcut integration_accounts ayni FK pattern'i kullaniyor, dolayisiyla evet.)", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Integrations/Program.cs (Paket B'de DI register)",
+      "src/Invekto.Integrations/appsettings*.json (config Adim 1'de yazildi)",
+      "src/Invekto.Shared/ (yeni abstraction Shared'a girmiyor - Integrations icinde kal)",
+      "Diger Invekto.* servisleri (microservice isolation)"
+    ],
+    "non_goals": [
+      "OAuth callback HTTP endpoint (Paket B)",
+      "Zoho /oauth/v2/token HTTP cagrisi (Paket B)",
+      "Token cache + lazy refresh logic (Paket B)",
+      "Lead/Blueprint API entegrasyonu (Adim 3)",
+      "Encryption (IDataProtector) entegrasyonu - Paket B'de DI ile gelecek, repo sadece encrypted string saklar"
+    ],
+    "intentional_exclusions": [
+      "JWT lib (System.IdentityModel.Tokens.Jwt) - state token icin custom HMAC format yeterli, daha kucuk attack surface",
+      "tenant_registry FK detayli validation (CONSTRAINT PostgreSQL'e havale)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ZohoOAuthStateService.Verify: catch FormatException (base64url decode hatalari -> null doner, INV-INT-111 caller)"
+    ],
+    "user_facing_errors": [
+      "INV-INT-110 'Zoho bağlantı bölgesi tanınmadı.'",
+      "INV-INT-111 'Bağlantı oturumu geçersiz veya süresi dolmuş; tekrar deneyin.'",
+      "INV-INT-112 'Bağlantı oturumu eşleşmedi.'",
+      "INV-INT-113 'Zoho yetkilendirme başarısız oldu.'",
+      "INV-INT-114 'Zoho oturumu yenilenemedi.'",
+      "INV-INT-115 'Bu hesap için Zoho bağlantısı bulunamadı.'",
+      "INV-INT-116 'Zoho bölgesi yapılandırılmamış.'",
+      "INV-INT-117 'Zoho oturum bilgisi okunamadı.'",
+      "INV-INT-118 'Zoho bağlantısı kapalı.'",
+      "INV-INT-119 'Zoho istek limiti aşıldı, lütfen sonra deneyin.'"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Verify() null doner ama caller (Paket B endpoint) bunu HTTP 400 + INV-INT-111 yanitina cevirir; sessiz drop yok."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "DB leak tum tenant'larin Zoho hesabini eline gecirir.",
+      "suggestion": "refresh_token_enc kolonu .NET Data Protection API ile encrypt edilir; key ring uygulama disinda saklanir.",
+      "aha_moment": "DB dump alan biri refresh token'i kullanamaz, encryption key olmadan plain text okunamaz."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "OAuth state plain tenant_id ise saldirgan baska tenant'in Zoho'sunu bizim uygulamaya baglayabilir.",
+      "suggestion": "HMAC-SHA256 imzali state token (10dk TTL); payload tampered ise FixedTimeEquals fail.",
+      "aha_moment": "CSRF saldirisi ve cross-tenant baglama imkansiz, iceride Sign+Verify yeterli (replay TTL ile sinirli)."
+    },
+    {
+      "category": "SCALE",
+      "user_pain": "Yeni musteri farkli DC'de (US/IN/AU vs) bagladiginda config kopyalamak zorunda kalmak.",
+      "suggestion": "ZohoRegionResolver appsettings'ten dinamik Zoho:<REGION> blok yukler; region key callback'ten detect edilir.",
+      "aha_moment": "Yeni DC eklemek = appsettings'e blok eklemek (kod degisikligi yok)."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant Zoho baglantisini kapatinca veri silinirse tekrar baglandiginda gecmis gorulemez.",
+      "suggestion": "DisconnectAsync soft-delete (disconnected_at timestamp), row silmiyor.",
+      "aha_moment": "Tenant tekrar baglanirsa eski connected_at gorulebilir, audit trail korunur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "JWT lib bagimliligi ile kucuk bug'lar (algoritma confusion, key type) buyuk problem.",
+      "suggestion": "State token icin minimal HMAC-SHA256 + base64url custom format; algoritma sabit, key type tek.",
+      "aha_moment": "Attack surface kucuk, debug kolay, dependency yok."
+    }
+  ],
+  "verdict": { "status": "PASS", "iteration": 3, "timestamp": "2026-04-14T20:10:00Z", "model_used": "gpt-5.4-2026-03-05", "notes": "Iter 0 FAIL: CQ1/CQ12 raw exceptions no INV-INT codes; Q4 region whitelist only at service layer not DB. Iter 1 PASS 12/12 CQ but Q2/Q3 UNKNOWN (Verify() body not in snippet). Iter 2 FAIL regression - sent only Verify() snippet, lost all other evidence (Codex stateless reminder). Iter 3 PASS: full combined evidence (schema + repo SQL + Verify() body + constructor INV-INT-116) - 12/12 CQ + 5/5 CoVe PASS, 0 blocking issues." }
+}

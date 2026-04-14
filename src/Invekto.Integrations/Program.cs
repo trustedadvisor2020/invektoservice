@@ -3,6 +3,8 @@ using Hangfire;
 using Invekto.Integrations.Data;
 using Invekto.Integrations.Services;
 using Invekto.Integrations.Services.Jobs;
+using Invekto.Integrations.Services.Zoho;
+using Microsoft.AspNetCore.DataProtection;
 using Invekto.Shared.Hosting;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Constants;
@@ -103,6 +105,32 @@ builder.Services.AddSingleton<ICargoProvider, YurticiCargoMockProvider>();
 var hangfireConnStr = HangfireSetup.ResolveConnectionString(builder.Configuration);
 builder.Services.AddInvektoHangfire("integrations", hangfireConnStr, enableScheduler: false);
 builder.Services.AddScoped<OrderSyncJob>();
+
+// Adim 2 Paket B: Zoho OAuth backend (token exchange + lazy refresh + endpoints)
+// Persist Data Protection keys to a stable on-disk location so encrypted refresh tokens
+// survive process restarts. Default uses C:\Invekto\Integrations\keys (override via Zoho:KeyRingPath).
+var zohoKeyRingPath = builder.Configuration["Zoho:KeyRingPath"] ?? @"C:\Invekto\Integrations\keys";
+Directory.CreateDirectory(zohoKeyRingPath);
+builder.Services.AddDataProtection()
+    .SetApplicationName("Invekto.Integrations.Zoho")
+    .PersistKeysToFileSystem(new DirectoryInfo(zohoKeyRingPath));
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ZohoConnectionRepository>();
+builder.Services.AddSingleton<ZohoRegionResolver>();
+builder.Services.AddSingleton<ZohoOAuthStateService>(_ => new ZohoOAuthStateService(jwtSecretKey));
+builder.Services.AddHttpClient<ZohoTokenProvider>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
+builder.Services.AddSingleton<IZohoTokenProvider>(sp => sp.GetRequiredService<ZohoTokenProvider>());
+builder.Services.AddSingleton<ZohoConnectionService>(sp => new ZohoConnectionService(
+    sp.GetRequiredService<ZohoConnectionRepository>(),
+    sp.GetRequiredService<ZohoRegionResolver>(),
+    sp.GetRequiredService<ZohoOAuthStateService>(),
+    sp.GetRequiredService<ZohoTokenProvider>(),
+    sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
+    builder.Configuration["Zoho:DefaultRegion"] ?? "eu"));
 
 builder.Services.AddAuthorization();
 
@@ -719,6 +747,9 @@ app.MapGet("/api/v1/reviews/stats", async (
 // Ops endpoints
 // ============================================================
 
+// Adim 2 Paket B: Zoho OAuth endpoints
+app.MapZohoConnectEndpoints();
+
 app.MapGet("/api/ops/endpoints", () =>
 {
     var endpoints = new List<EndpointInfo>
@@ -742,6 +773,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/reviews/alerts", Description = "List review alerts (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "PUT", Path = "/api/v1/reviews/alerts/{alertId}/status", Description = "Update review recovery status (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "GET", Path = "/api/v1/reviews/stats", Description = "Review recovery stats (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
+        new() { Method = "GET", Path = "/api/v1/zoho/connect-url", Description = "Build Zoho OAuth authorize URL for tenant (Adim 2)", Auth = "Bearer", Category = "Zoho" },
+        new() { Method = "GET", Path = "/integrations/zoho/callback", Description = "Zoho OAuth callback (public, processes code+state)", Auth = "none", Category = "Zoho" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
     return Results.Ok(endpoints);
