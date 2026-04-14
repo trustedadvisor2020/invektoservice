@@ -1,0 +1,80 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260415-quicklogin-tenant-override",
+  "risk": "LOW",
+  "status": "REVIEW",
+  "created_at": "2026-04-15T00:00:00Z",
+  "updated_at": "2026-04-15T00:05:00Z",
+  "plan": {
+    "summary": "Add optional ?tenant=<id> query parameter to POST /api/v1/ops/auth/quicklogin so smoke/ops scenarios can mint a tenant-scoped JWT (e.g., tenant=5050 for Zoho OAuth Adim 2 smoke). Default behaviour (tenant=0 superadmin) preserved. Endpoint remains gated by inmaAuthMockEnabled feature flag.",
+    "q_intent": "Zoho OAuth Adim 2 prod smoke testi icin tenant 5050 JWT'si gerekli. Mevcut quicklogin sadece tenant=0 (superadmin) verir; Zoho /api/v1/zoho/connect-url JWT'den tenant claim'i alir, dolayisiyla tenant-scoped JWT zorunlu. Q karari: quicklogin'e opsiyonel tenant query param ekle (mini paket). INMA gercek login alternatifi reddedildi (creds yok); /admin/quick-login pattern mevcut degil.",
+    "interview_notes": "Q sectigi: mini paket query param override. Default davranis korunuyor (back-compat). Endpoint inmaAuthMockEnabled gate'i altinda (prod'da kapali olmali). Validation: non-negative int, aksi 400.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "POST /api/v1/ops/auth/quicklogin (no query) -> 200 OK, tenant_id=0, role=admin (back-compat).", "verified": false },
+      { "id": "AC2", "criterion": "POST /api/v1/ops/auth/quicklogin?tenant=5050 -> 200 OK, tenant_id=5050, full_name='Admin (tenant 5050)', JWT decode'da tenantId=5050.", "verified": false },
+      { "id": "AC3", "criterion": "POST /api/v1/ops/auth/quicklogin?tenant=abc -> 400 + INV-GEN-VAL.", "verified": false },
+      { "id": "AC4", "criterion": "inmaAuthMockEnabled=false iken endpoint 503 doner (degisiklik bu gate'i bypass etmiyor).", "verified": true },
+      { "id": "AC5", "criterion": "Build PASS: dotnet build src/Invekto.Backend 0 hata.", "verified": true }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "Program.cs quicklogin handler: ctx.Request.Query['tenant'] oku, bos degilse int.TryParse + non-negative kontrol; basarisiz -> 400 ErrorResponse (GeneralValidation)." },
+    { "id": "GR-2", "description": "jwtGenerator.GenerateToken cagirisinda hardcoded 0 yerine parsed tenantId kullan." },
+    { "id": "GR-3", "description": "Response payload: tenant_id alanini parsed deger, full_name dinamik ('Super Admin' tenant=0; 'Admin (tenant N)' aksi)." },
+    { "id": "GR-4", "description": "Log mesajinda issued tenant_id'yi belirt (audit izi)." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Shared/Constants/ErrorCodes.cs",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "is_new": false },
+    { "path": "arch/errors.md", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "5225c07236e001ba5e320cd95a63aa92f9759715ab31d2c9d97ccb426995383b",
+    "full_path": "arch/plans/diffs/20260415-quicklogin-tenant-override.diff",
+    "stats": { "insertions": 24, "deletions": 4, "files_count": 3 }
+  },
+  "build": {
+    "status": "PASS",
+    "timestamp": "2026-04-15T00:00:00Z",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Invekto.Backend.csproj --no-restore -v q\"",
+    "notes": "Build succeeded, 0 errors, 15 pre-existing warnings (unrelated)."
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "Default davranis (no query) tenant=0 doner mi? Back-compat korundu mu?", "category": "Compatibility" },
+    { "id": "Q2", "question": "Negatif/non-numeric tenant input rejekt edilir mi (400 + spesifik error code)? Silent fallback yok mu?", "category": "Validation" },
+    { "id": "Q3", "question": "inmaAuthMockEnabled gate yerinde mi? Prod'da bu flag false oldugu icin override exposure yok mu?", "category": "Auth" },
+    { "id": "Q4", "question": "Microservice isolation: yeni Invekto.* using yok, sadece mevcut JwtGenerator (Invekto.Shared.Auth) kullaniliyor.", "category": "Architecture" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Diger Invekto.* servisleri",
+      "src/Invekto.Shared/",
+      "Auth middleware (TenantContext) - sadece JWT issuer degisiyor"
+    ],
+    "non_goals": [
+      "INMA gercek login flow degisikligi",
+      "Zoho endpoint'lerinde degisiklik",
+      "User table eklemek / persistence"
+    ],
+    "intentional_exclusions": [
+      "tenant_id existence check (DB lookup) - quicklogin zaten dev/mock gate altinda, ekstra DB roundtrip gereksiz"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "INV-GEN-VAL 'tenant query param must be non-negative integer' (400)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Invalid input -> explicit 400. Missing input -> default tenant=0 (documented back-compat). Gate failure (inmaAuthMockEnabled=false) -> 503 (mevcut davranis)."
+  },
+  "aha_moments": [],
+  "verdict": { "status": "PASS", "iteration": 1, "timestamp": "2026-04-15T00:15:00Z", "model_used": "gpt-5.4-2026-03-05", "notes": "Iter 0 FAIL: CQ12/Q2 generic ErrorCodes.GeneralValidation kullanimi spesifik INV-XX-NNN yerine. Iter 1 PASS 12/12 CQ + 5/5 CoVe: yeni INV-OPS-001 (OpsQuickLoginInvalidTenant) Shared/ErrorCodes.cs'e eklendi + arch/errors.md OPS bolumu dokumante edildi + Program.cs yeni kodu kullanir." }
+}

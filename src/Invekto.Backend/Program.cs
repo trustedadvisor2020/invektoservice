@@ -6719,17 +6719,29 @@ app.MapPost("/api/v1/ops/auth/quicklogin", (HttpContext ctx, JsonLinesLogger jso
             ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT not configured", requestId),
             statusCode: 503);
 
-    var tokenExpiry = TimeSpan.FromHours(8);
-    var inseToken = jwtGenerator.GenerateToken(0, "admin", "ops_quicklogin", tokenExpiry, "0");
+    // Optional ?tenant=<id> override — smoke/ops amaçlı tenant-spesifik JWT üretmek için.
+    // Yalnizca inmaAuthMockEnabled=true iken erisilebilir; prod'da kapali olmali.
+    var tenantId = 0;
+    var tenantQuery = ctx.Request.Query["tenant"].ToString();
+    if (!string.IsNullOrWhiteSpace(tenantQuery))
+    {
+        if (!int.TryParse(tenantQuery, out tenantId) || tenantId < 0)
+            return Results.Json(
+                ErrorResponse.Create(ErrorCodes.OpsQuickLoginInvalidTenant, "tenant query param must be non-negative integer (e.g., ?tenant=5050)", requestId),
+                statusCode: 400);
+    }
 
-    jsonLogger.StepInfo("ops quicklogin: superadmin JWT issued", requestId);
+    var tokenExpiry = TimeSpan.FromHours(8);
+    var inseToken = jwtGenerator.GenerateToken(tenantId, "admin", "ops_quicklogin", tokenExpiry, "0");
+
+    jsonLogger.StepInfo($"ops quicklogin: admin JWT issued (tenant={tenantId})", requestId);
     return Results.Ok(new
     {
         token = inseToken,
-        tenant_id = 0,
+        tenant_id = tenantId,
         user_id = 0,
         role = "admin",
-        full_name = "Super Admin",
+        full_name = tenantId == 0 ? "Super Admin" : $"Admin (tenant {tenantId})",
         lang = "tr",
         inse_features = new[] { "FlowBuilder", "Knowledge", "Outbound", "Appointments", "Analytics", "Integrations", "Marketing" },
         expires_in = (int)tokenExpiry.TotalSeconds,

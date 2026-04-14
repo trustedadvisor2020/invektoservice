@@ -10,6 +10,9 @@ public static class ErrorCodes
     public const string GeneralTimeout = "INV-GEN-002";
     public const string GeneralValidation = "INV-GEN-003";
 
+    // Ops/quicklogin errors (INV-OPS-xxx)
+    public const string OpsQuickLoginInvalidTenant = "INV-OPS-001"; // ?tenant query non-numeric or negative
+
     // Backend errors (INV-BE-xxx)
     public const string BackendMicroserviceUnavailable = "INV-BE-001";
     public const string BackendMicroserviceTimeout = "INV-BE-002";

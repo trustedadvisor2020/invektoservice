@@ -513,6 +513,11 @@ errors:
     description: Out of range
     user_message: "Değer geçerli aralıkta değil: {field}"
 
+  # ── OPS — Operational/diagnostic endpoints ──
+  - code: INV-OPS-001
+    description: Quicklogin tenant override invalid (non-numeric or negative)
+    user_message: "tenant query param must be non-negative integer (e.g., ?tenant=5050)"
+
   # ── INT — Integration (GR-1.9) ──
   - code: INV-INT-001
     description: Webhook payload invalid
