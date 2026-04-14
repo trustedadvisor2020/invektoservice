@@ -86,9 +86,29 @@ CREATE INDEX idx_products_cache_tenant ON products_cache(tenant_id, provider);
 CREATE INDEX idx_products_cache_name ON products_cache(tenant_id, product_name)
     WHERE product_name IS NOT NULL;
 
+-- Zoho OAuth connections (Adim 2 Paket A - migration 012)
+CREATE TABLE IF NOT EXISTS zoho_connections (
+    id                   BIGSERIAL PRIMARY KEY,
+    tenant_id            INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
+    region               VARCHAR(8) NOT NULL
+        CHECK (region IN ('eu','com','in','com.au','jp','uk','ca','sa')),  -- defense-in-depth: service-level whitelist + DB CHECK
+    api_domain           VARCHAR(128) NOT NULL,         -- www.zohoapis.eu
+    accounts_domain      VARCHAR(128) NOT NULL,         -- accounts.zoho.eu
+    refresh_token_enc    TEXT NOT NULL,                 -- DataProtection wrapped (Invekto.Integrations.Zoho.RefreshToken)
+    granted_scopes       TEXT NOT NULL,
+    zoho_user_email      VARCHAR(256),
+    connected_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_refreshed_at    TIMESTAMPTZ,
+    disconnected_at      TIMESTAMPTZ,
+    CONSTRAINT uq_zoho_connections_tenant UNIQUE (tenant_id)
+);
+CREATE INDEX IF NOT EXISTS idx_zoho_connections_tenant ON zoho_connections(tenant_id);
+
 -- Grants
 GRANT ALL ON integration_accounts TO invekto;
 GRANT ALL ON orders_cache TO invekto;
 GRANT ALL ON cargo_tracking_events TO invekto;
 GRANT ALL ON products_cache TO invekto;
+GRANT ALL ON zoho_connections TO invekto;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO invekto;

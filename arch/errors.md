@@ -550,6 +550,38 @@ errors:
     description: HTTP request failed after refresh retry
     user_message: İstek başarısız oldu.
 
+  # Zoho OAuth (INV-INT-110+) — Adim 2 backend integration
+  - code: INV-INT-110
+    description: Unknown Zoho region (accounts-server URL not in registry)
+    user_message: Zoho bağlantı bölgesi tanınmadı.
+  - code: INV-INT-111
+    description: OAuth state JWT invalid or expired
+    user_message: Bağlantı oturumu geçersiz veya süresi dolmuş; tekrar deneyin.
+  - code: INV-INT-112
+    description: OAuth state tenant mismatch
+    user_message: Bağlantı oturumu eşleşmedi.
+  - code: INV-INT-113
+    description: Zoho token exchange failed
+    user_message: Zoho yetkilendirme başarısız oldu.
+  - code: INV-INT-114
+    description: Zoho token refresh failed
+    user_message: Zoho oturumu yenilenemedi.
+  - code: INV-INT-115
+    description: Zoho connection not found for tenant
+    user_message: Bu hesap için Zoho bağlantısı bulunamadı.
+  - code: INV-INT-116
+    description: Zoho region not configured (missing client_id/secret block)
+    user_message: Zoho bölgesi yapılandırılmamış.
+  - code: INV-INT-117
+    description: Refresh token decryption failed
+    user_message: Zoho oturum bilgisi okunamadı.
+  - code: INV-INT-118
+    description: Zoho disconnected by tenant (refresh blocked)
+    user_message: Zoho bağlantısı kapalı.
+  - code: INV-INT-119
+    description: Zoho rate limit reached
+    user_message: Zoho istek limiti aşıldı, lütfen sonra deneyin.
+
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
     description: Invalid broadcast payload
