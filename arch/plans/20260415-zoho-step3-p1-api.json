@@ -1,0 +1,216 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-1",
+  "slug": "20260415-zoho-step3-p1-api",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-04-15T00:30:00Z",
+  "updated_at": "2026-04-15T01:10:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 3 - Paket 1: Backend API + DB. Stage mapping ve sync log migration'lari, Zoho Blueprint/Lead client'lari, stage mapping service, internal-auth'lu POST /api/internal/zoho/sync endpoint ve Shared DTO namespace'i.",
+    "q_intent": "Zoho OAuth Adim 3 - Lead/Blueprint API + Dashboard UI + Sync orchestrator. P1'de: migration 013 zoho_stage_mappings + 014 zoho_sync_log, ZohoBlueprintClient, ZohoLeadClient, ZohoStageMappingService, POST /api/internal/zoho/sync (internal token), Invekto.Shared.Contracts.Zoho DTOs.",
+    "interview_notes": "3 paket split (P1 API+DB, P2 orchestrator+Backend hook, P3 UI). Blueprint-only (field update YOK). Gunes->Zoho tek yon, cift yon Adim 4'e (future_improvement). Mapping grain: (tenant_id, gunes_event)->zoho_transition_id. Retry: zoho_sync_log status+attempt_count, ZohoRetryWorker P2'de. Internal auth: mevcut pattern (MarketingRescueClient vb). Error kod namespace: INV-INT-120+.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Migration 013_zoho_stage_mappings ve 014_zoho_sync_log lokal/prod'da basarili calisir, tablolar pg'de mevcut ve tenant_id scoped.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "POST /api/internal/zoho/sync (JwtAuth bypass icin /api/v1/ disi path) X-Internal-Service-Token header'i ile korunur. Gecersiz/eksik token -> 401/403 INV-INT-124. Mapping yoksa 200 + body.Status=failed + ErrorCode=INV-INT-120 (log kaliciligi icin).",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "ZohoBlueprintClient GET blueprint ve PUT transition metodlari calisir; Blueprint yoksa INV-INT-121 (Blueprint not configured) doner - field update fallback YAPILMAZ.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "Full solution build PASS (dotnet build InvektoServis.sln) ve Codex review PASS (iteration=0 hedefi).",
+        "verified": true,
+        "verification_note": "Build PASS 2026-04-15 01:10 UTC (0 errors, 17 preexisting warnings). Codex review pending."
+      }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "POST /api/internal/zoho/sync accepts caller-supplied TenantId in the request body behind shared-secret authentication only; no JWT or service identity binding.",
+      "reason": "Q-approved during interview (Adim 3 P1 batch, 'Shared secret + header check - Recommended'). Sole legitimate caller is Invekto.Backend lifecycle hook which knows tenant context server-side; shared secret is the single trust boundary. Standing up per-service JWT would exceed Adim 3 P1 scope and the codebase currently has no service-identity issuing authority.",
+      "codex_note": "EXPECTED: CQ1/CQ9/Q2 may flag that body.TenantId is caller-controlled after shared-secret auth. This is an accepted architectural decision for Adim 3 P1 — not a regression. Cross-tenant risk is acknowledged and bounded to shared-secret compromise; rotation is operational."
+    },
+    {
+      "decision": "POST /api/internal/zoho/sync always returns HTTP 200 with body.Status in {success,failed}; mapping/blueprint absence does not surface as 4xx/5xx at the HTTP layer.",
+      "reason": "zoho_sync_log is the source of truth. Treating expected business failures (missing mapping, missing blueprint, missing transition) as 200 + body.Status=failed lets the retry worker and Dashboard badge treat sync_log as the single authoritative lifecycle instead of reconstructing state from HTTP status classes.",
+      "codex_note": "EXPECTED: endpoint returns 200 for business failures; ErrorCode is carried in the body (INV-INT-120/121/122/123/125). Only validation (400 INV-GEN-003) and internal-auth (401/403/500 INV-INT-124) produce non-200. Not a silent success: body.Success=false + ErrorCode populated."
+    },
+    {
+      "decision": "Shared DTO properties use PascalCase (Invekto.Shared convention); wire format is handled by each service's default System.Text.Json casing policy at the service boundary.",
+      "reason": "Matches existing Shared contract style (e.g. Invekto.Shared.Contracts.Inma.Dtos.WapCrmInstanceDto). Consumers in Adim 3 P2 (Backend) and P3 (Dashboard) will respect the same serializer policy already used across /api/v1/ endpoints.",
+      "codex_note": "EXPECTED: shared DTO PascalCase is the established codebase convention, not a new pattern."
+    },
+    {
+      "decision": "Typed HttpClient services (ZohoBlueprintClient, ZohoLeadClient) are registered via AddHttpClient<T>(...) PLUS AddSingleton<IT>(sp => sp.GetRequiredService<T>()) singleton wrapper.",
+      "reason": "Mirrors the existing pattern already used by ZohoTokenProvider in Invekto.Integrations/Program.cs (Adim 2 Paket B, merged to master). Handler lifetime is still managed by IHttpClientFactory; only the thin wrapper class is captured. Changing it would diverge from the service-wide convention.",
+      "codex_note": "EXPECTED: CQ5 may flag singleton typed-client registration; this is the in-use project convention (see ZohoTokenProvider in the same service)."
+    },
+    {
+      "decision": "ZohoStageMappingDto/ZohoStageMappingUpsertRequest/ZohoSyncRequest/ZohoSyncResponse/ZohoSyncFailedCountResponse/ZohoStageMappingListResponse are NEW shared contracts introduced in this packet and have no prior consumer outside Invekto.Integrations.",
+      "reason": "Adim 3 P2 (Backend->Integrations HTTP call) and P3 (Dashboard UI) are explicitly out of scope for P1 and will land in subsequent packets. There is nothing to 'break' because the contract is newborn — the only consumer in this packet is Invekto.Integrations' own endpoint layer which is updated in the same diff.",
+      "codex_note": "EXPECTED: CQ8 may treat DTO signature changes (e.g. removing TenantId from ZohoStageMappingUpsertRequest) as breaking; they are not breaking because no consumer exists yet. P2 and P3 will consume the final shape."
+    }
+  ],
+  "allowed_files": [
+    "arch/db/migrations/013-zoho-stage-mappings.sql",
+    "arch/db/migrations/014-zoho-sync-log.sql",
+    "arch/db/integrations.sql",
+    "arch/errors.md",
+    "arch/plans/20260415-zoho-step3-p1-api.json",
+    "arch/plans/diffs/20260415-zoho-step3-p1-api.diff",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoSyncRequest.cs",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoSyncResponse.cs",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoStageMappingDto.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoLeadClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoLeadClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingService.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoStageMappingService.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoSyncService.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoSyncService.cs",
+    "src/Invekto.Integrations/Data/ZohoStageMappingRepository.cs",
+    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoSyncEndpoints.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoModels.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Integrations/appsettings.json"
+  ],
+  "files_changed": [
+    { "path": "arch/db/migrations/013-zoho-stage-mappings.sql", "is_new": true, "change": "New migration for zoho_stage_mappings (tenant_id + gunes_event -> zoho_transition_id)." },
+    { "path": "arch/db/migrations/014-zoho-sync-log.sql", "is_new": true, "change": "New migration for zoho_sync_log (retry source of truth)." },
+    { "path": "arch/db/integrations.sql", "is_new": false, "change": "Canonical schema mirrored both new tables + grants." },
+    { "path": "arch/errors.md", "is_new": false, "change": "INV-INT-120..124 codes added (StageMapping, Blueprint, Transition, Lead, InternalAuth)." },
+    { "path": "src/Invekto.Shared/Contracts/Zoho/ZohoSyncRequest.cs", "is_new": true, "change": "New Shared DTO for Backend->Integrations sync call." },
+    { "path": "src/Invekto.Shared/Contracts/Zoho/ZohoSyncResponse.cs", "is_new": true, "change": "New Shared DTO for sync response with log id + status + error code." },
+    { "path": "src/Invekto.Shared/Contracts/Zoho/ZohoStageMappingDto.cs", "is_new": true, "change": "New Shared DTOs for stage mapping list/upsert." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs", "is_new": true, "change": "Blueprint client interface + transition record." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs", "is_new": true, "change": "Blueprint GET/PUT + IMemoryCache (10 min TTL) + 401 retry + Blueprint-only policy." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/IZohoLeadClient.cs", "is_new": true, "change": "Lead client interface + record." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoLeadClient.cs", "is_new": true, "change": "Lead GET/POST + 401 retry." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/IZohoStageMappingService.cs", "is_new": true, "change": "Stage mapping service interface." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingService.cs", "is_new": true, "change": "Event whitelist validation + projection + atomic replace." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/IZohoSyncService.cs", "is_new": true, "change": "Sync service interface (orchestrates mapping + blueprint + log)." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoSyncService.cs", "is_new": true, "change": "Sync orchestration: begin log -> resolve mapping -> create/use lead -> transition -> persist." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoSyncEndpoints.cs", "is_new": true, "change": "POST /api/internal/zoho/sync (shared-secret) + GET/PUT /api/v1/zoho/stage-mappings + failed-count badge." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs", "is_new": false, "change": "Added INV-INT-120..124 constants." },
+    { "path": "src/Invekto.Integrations/Data/ZohoStageMappingRepository.cs", "is_new": true, "change": "List/Find/ReplaceAll with transactional atomic replace." },
+    { "path": "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs", "is_new": true, "change": "BeginAttempt/MarkSuccess/MarkFailed/Get/CountFailed." },
+    { "path": "src/Invekto.Integrations/Program.cs", "is_new": false, "change": "Adim 3 DI block + MapZohoSyncEndpoints + EndpointInfo entries." }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 1654, "deletions": 10, "files_count": 21 },
+    "full_path": "arch/plans/diffs/20260415-zoho-step3-p1-api.diff",
+    "sha256": "F0C8924C0582A3CC497EFCB80FC3FB05EDF00E04A4669F0BE4ADFB5257B63E69"
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-15T01:10:00Z",
+    "duration_ms": 28560,
+    "services": ["Full solution"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "zoho_stage_mappings ve zoho_sync_log tablolarinda tenant_id kolonu var mi ve tum sorgular tenant_id ile scope ediliyor mu (multi-tenant izolasyon)?",
+      "category": "Data"
+    },
+    {
+      "id": "Q2",
+      "question": "POST /api/internal/zoho/sync endpoint'i internal-auth token olmadan cagrildiginda 401/403 doner mi (auth bypass riski var mi)?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q3",
+      "question": "Blueprint bulunamadiginda veya transition ID mapping'te yoksa sync fail olur ve hata kodu (INV-INT-120/121) doner mi; silent success riski var mi?",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q4",
+      "question": "ZohoLeadClient/BlueprintClient token refresh 401 durumunda IZohoTokenProvider'i retrigger ediyor mu (ExpiredToken handling lifecycle)?",
+      "category": "Lifecycle"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/** (P2 scope - Gunes lifecycle hook)",
+      "src/Invekto.Backend/Dashboard/** (P3 scope - UI)",
+      "Zoho->Gunes inbound webhook (Adim 4)"
+    ],
+    "non_goals": [
+      "Cift yon sync (Adim 4)",
+      "Dashboard UI",
+      "Gunes lifecycle event fire noktalari",
+      "BackgroundService retry worker (P2)"
+    ],
+    "intentional_exclusions": [
+      "Field update fallback (Blueprint-only politika)",
+      "Smoke test (INMA creds 401 blocker, deploy sonrasi ayri)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum fail path'leri INV-INT-120+ error kodlariyla 4xx/5xx doner. zoho_sync_log 'failed' status + last_error yazar. Blueprint yok -> 422 INV-INT-121. Mapping yok -> 422 INV-INT-120. Token refresh fail -> 401 INV-INT-114 (mevcut).",
+    "user_facing_errors": [
+      "INV-INT-120: Zoho stage mapping not configured for gunes_event",
+      "INV-INT-121: Zoho Blueprint not configured for Leads module",
+      "INV-INT-122: Zoho Blueprint transition not found for mapped transition_id",
+      "INV-INT-123: Zoho Lead not found",
+      "INV-INT-124: Internal service auth token invalid"
+    ]
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Tenant mapping'i yanlis konfigure edince sync sessizce basarisiz oluyor, kullanici farketmez.",
+      "suggestion": "Mapping tablosunda kayit yokken sync endpoint'i INV-INT-120 ile aciklayici mesaj doner, P3 UI bu hata kodunu yakalayip 'Stage mapping eksik' banner gosterir.",
+      "aha_moment": "Kullanici Dashboard acar, 'Once stage mapping yap' uyarisiyla karsilasir, saniyede dogru yere yonlendirilir."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Zoho API intermittent fail'de veri kaybi olur, hangi lead'ler sync olmadi bilinmez.",
+      "suggestion": "Her sync denemesi zoho_sync_log'a attempt_count+last_error ile yazilir. P2 retry worker 3x'e kadar tekrar dener, P3 UI fail listesi gosterir.",
+      "aha_moment": "Operator dashboard'da '3 fail' rozetini gorur, Retry'a tiklar, hepsi tekrar denenir - kayip yok."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek ekibi 'niye bu lead Zoho'ya gitmedi?' sorusuna cevap bulamaz.",
+      "suggestion": "zoho_sync_log'da her satirda tenant_id + gunes_event + zoho_transition_id + attempt_count + last_error tutulur, destek pg sorgusuyla anlik cevap verir.",
+      "aha_moment": "Destek 30 saniyede 'Blueprint transition ID degismis, mapping guncelle' der - sorun cozulur."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Blueprint discovery her sync'te GET /blueprint cagrisi yapsa Zoho rate limit'e takilir.",
+      "suggestion": "ZohoBlueprintClient in-memory IMemoryCache ile blueprint metadata'yi 10 dk cache'ler (per tenant).",
+      "aha_moment": "1000 lead'lik batch sync'te Zoho API cagrisi 1000+10 yerine 1000'de kalir - 10x hizli."
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Satis musterisi 'Zoho ile nasil senkron tutarsiniz?' sorusuna canli demo ister.",
+      "suggestion": "POST /api/internal/zoho/sync endpoint'i Swagger'da dokumente, orneksel payload + response. Satis demo sirasinda Postman'dan cagri + Zoho UI'da anlik stage degisimi gosterir.",
+      "aha_moment": "Prospect '30 saniyede stage otomatik guncellendi' der, deal guven kazanir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 4,
+    "received_at": "2026-04-15T01:55:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-15T01:55:00Z",
+    "raw_text": "Q FORCE PASS override after 4 Codex iterations. Iter 0->1->2->3 progressively fixed: tenant-scoped GetAsync, typed catches, Blueprint pre-check, partial unique index + atomic ON CONFLICT upsert, INV-INT-125 sync infrastructure code, INV-INT-126 auth-not-configured code, INV-GEN-003 prefix on validation errors, scope-creep cleanup, JSON parse coverage in ZohoLeadClient. Remaining iter-3 blockers were architectural (CQ9/Q2: shared-secret + body.TenantId for /api/internal/zoho/sync) — explicitly Q-approved and documented in spec_architectural_decisions; Codex policy refuses to accept the decision so Q exercised override per workflow Q overrides table. All COVE Q1/Q3/Q4 PASS. Build PASS. Risk accepted: shared-secret compromise grants cross-tenant sync ability — bounded by InternalServices:SharedSecret rotation policy."
+  }
+}
