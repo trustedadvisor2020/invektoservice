@@ -527,6 +527,29 @@ errors:
     description: Tenant not found in registry
     user_message: Bu tenant kayıtlı değil.
 
+  # INMA Bridge (INV-INT-100+) — Dashboard iframe postMessage bridge
+  - code: INV-INT-100
+    description: Bridge not ready (no trustedParentOrigin yet)
+    user_message: Ana pencere ile bağlantı kurulamadı.
+  - code: INV-INT-101
+    description: Bridge disposed during pending refresh
+    user_message: Oturum yenilenemeden kapatıldı.
+  - code: INV-INT-102
+    description: Refresh timeout (parent did not respond in 15s)
+    user_message: Token yenileme zaman aşımına uğradı.
+  - code: INV-INT-103
+    description: Refresh failed (parent returned error)
+    user_message: Token yenilenemedi.
+  - code: INV-INT-104
+    description: Invalid access token from parent
+    user_message: Geçersiz oturum bilgisi.
+  - code: INV-INT-105
+    description: Invalid apiBaseUrl from parent (regex mismatch)
+    user_message: Geçersiz API adresi.
+  - code: INV-INT-106
+    description: HTTP request failed after refresh retry
+    user_message: İstek başarısız oldu.
+
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
     description: Invalid broadcast payload

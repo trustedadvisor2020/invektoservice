@@ -1,0 +1,145 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260414-inma-bridge-faz1",
+  "risk": "MEDIUM",
+  "status": "APPROVED",
+  "created_at": "2026-04-14T14:50:00Z",
+  "updated_at": "2026-04-14T17:45:00Z",
+  "plan": {
+    "summary": "Izole src/inma/ bridge modulu: INMA (Angular parent) ile postMessage handshake, refresh queue, fetch-based API client, debug UI. INSE auth/store/api dokunulmaz.",
+    "q_intent": "INMA iframe icinde INSE calisacak. Query string token akisindan vazgecildi; INMA postMessage tabanli bridge istiyor (refresh parent'ta). Bu Faz 1 sadece altyapi + debug component. Gercek WapCRM endpoint cagrilari Faz 2.",
+    "interview_notes": "Domain: *.wapcrm.net korunur (INMA teknik DNS'i). Kod sembolleri inma prefix. HTTP lib: fetch (axios yok). State: Zustand (mevcut). Use case: bridge + debug component, gercek fetch Faz 2. INSE auth/store/api DOKUNULMAZ.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "INMA dev (http://localhost:4200) iframe icinde Dashboard acilinca: (a) console'da 'inma:ready' postMessage gonderilir; (b) parent 'inma:auth' cevabi verdiginde InmaConnectionStatus component 'Bridge ready' durumunu gosterir.",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "Origin whitelist disindaki kaynaklardan gelen postMessage sessizce reddedilir (handler'in ilk satirinda origin check; state degismez, callback tetiklenmez).",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "Paralel iki 401 simulasyonunda TEK 'inma:refresh-request' postMessage gider (single-flight refresh queue); parent cevap verdiginde iki istek de yeni token ile retry edilir.",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "src/Invekto.Backend/Dashboard/src/{auth,stores,lib,pages,components}/ altindaki dosyalarda sifir degisiklik (git diff ile dogrulanir). Sadece yeni src/inma/ klasoru + App.tsx'e init cagrisi eklenir.",
+        "verified": false
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "inmaSession.ts: Zustand store (accessToken, apiBaseUrl, status, error). Sadece bellek." },
+    { "id": "GR-2", "description": "inmaBridge.ts: postMessage handshake, origin whitelist, trustedParentOrigin capture, requestRefresh single-flight + 15s timeout, callbacks (onReady/onLogout/onAuthError)." },
+    { "id": "GR-3", "description": "inmaApiClient.ts: fetch wrapper, request/response interceptor pattern, 401 -> bridge.requestRefresh() -> retry with new token." },
+    { "id": "GR-4", "description": "InmaConnectionStatus.tsx: debug UI component, handshake state + subscribe to bridge callbacks." },
+    { "id": "GR-5", "description": "index.ts: public exports (inmaBridge, inmaApiClient, inmaSession, InmaConnectionStatus)." },
+    { "id": "GR-6", "description": "App.tsx: useEffect ile inmaBridge.init() cagrisi (3 satir ekleme)." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaSession.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaApiClient.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/InmaConnectionStatus.tsx",
+    "src/Invekto.Backend/Dashboard/src/inma/index.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    { "path": "arch/errors.md", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/App.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/inma/InmaConnectionStatus.tsx", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/inma/index.ts", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/inma/inmaApiClient.ts", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts", "is_new": true },
+    { "path": "src/Invekto.Backend/Dashboard/src/inma/inmaSession.ts", "is_new": true }
+  ],
+  "git_diff": {
+    "sha256": "e2613c658d5f1cdb40f6e2364bd3e740702afe844ee082640011e87c1361efa7",
+    "full_path": "arch/plans/diffs/20260414-inma-bridge-faz1.diff",
+    "stats": { "insertions": 372, "deletions": 1, "files_count": 8 }
+  },
+  "build": { "status": "PASS", "timestamp": "2026-04-14T17:55:00Z", "command": "cd src/Invekto.Backend/Dashboard && npm run build", "notes": "tsc 0 hata + vite built 8.38s (iteration 1 sonrasi)" },
+  "verification_questions": [
+    { "id": "Q1", "question": "inmaBridge, 'inma:ready' disindaki tum outbound postMessage'larda trustedParentOrigin kullaniyor mu, asla '*' kullanmiyor mu?", "category": "Auth" },
+    { "id": "Q2", "question": "apiBaseUrl regex kontrolu (^https://[a-z0-9-]+\\.wapcrm\\.net/?$) 'inma:auth' handler'inda uygulaniyor, eslesmezse setError('invalid_api_base_url') tetikleniyor mu?", "category": "Auth" },
+    { "id": "Q3", "question": "requestRefresh() ayni anda iki kez cagrilirsa TEK pending Promise paylasiliyor mu (single-flight)? 15s timeout sonrasinda pending temizleniyor mu?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "inmaSession storage'a (localStorage/sessionStorage/cookie/IndexedDB) hic yazmiyor, sadece bellekte tutuyor mu?", "category": "Data" },
+    { "id": "Q5", "question": "INSE auth/store/api/pages/components dosyalarinda hic degisiklik yok, App.tsx'e sadece init cagrisi eklendi mi?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/auth/",
+      "src/Invekto.Backend/Dashboard/src/stores/",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+      "src/Invekto.Backend/Dashboard/src/pages/",
+      "src/Invekto.Backend/Dashboard/src/components/",
+      "src/Invekto.Backend/ (backend)",
+      "Invekto.Shared"
+    ],
+    "non_goals": [
+      "INSE kendi auth/session/refresh akisina dokunmak",
+      "Gercek WapCRM endpoint cagrilari (firma bilgisi, kanal listesi)",
+      "AI flow 'bunu yap' push aksiyonlari",
+      "CSP frame-ancestors header config",
+      "INMA exchange backend endpoint'ini kullanmak (artik iptal)"
+    ],
+    "intentional_exclusions": [
+      "axios paket install etmek (fetch wrapper kullanilacak)",
+      "URL query string ?token= okuma kodu (INMA postMessage bridge'e gecti)",
+      "Token persist (sadece bellek)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "inma: Bridge ready",
+      "inma: Bridge not ready",
+      "inma: Connection error ({reason})",
+      "inma: Session ended"
+    ],
+    "silent_failure_risk": true,
+    "silent_failure_explanation": "Origin whitelist disi mesajlar INTENTIONAL olarak sessiz drop edilir (guvenlik). Bu 'sessiz hata' gibi gorunse de tasarim karari: yetkisiz origin log'lanirsa attacker signal alir. Sadece debug modunda console.warn, production'da sessiz."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Token expire olunca kullanici 401 alir, iframe reload gerekir.",
+      "suggestion": "Single-flight refresh queue: paralel istekler tek refresh bekler, otomatik retry.",
+      "aha_moment": "Kullanici hicbir sey yapmadan istek basariyla tamamlanir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "INMA-INSE baglantisi kopuk mu calisiyor mu belli degil.",
+      "suggestion": "InmaConnectionStatus debug component her an handshake durumunu gosterir.",
+      "aha_moment": "Destek ekibi tek bakista 'bridge ready/error/idle' durumunu teshis eder."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Parent logout yapinca iframe hala eski state gosterebilir.",
+      "suggestion": "inma:logout mesaji onLogout callback tetikler, UI kullaniciya 'oturum bitti' mesaji gosterir.",
+      "aha_moment": "Kullanici parent'ta logout yaptigi anda iframe'de de ilgili uyari gorunur."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yanlis origin'den gelen mesaj session'i corrupt edebilir.",
+      "suggestion": "Hardcoded origin whitelist + her handler'in ilk satirinda origin check.",
+      "aha_moment": "Attacker mesaji sessizce drop edilir, kullanici etkilenmez."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Gelistirici lokalde iframe test ederken origin manuel degistirmek zorunda.",
+      "suggestion": "localhost:4200 whitelist'e dahil, hicbir config gerekmez.",
+      "aha_moment": "npm run dev -> INMA localhost:4200 -> iframe anında calisir."
+    }
+  ],
+  "verdict": { "status": "PASS", "iteration": 2, "timestamp": "2026-04-14T18:05:00Z", "model_used": "gpt-5.4-2026-03-05", "notes": "Iter 0 FAIL: App.tsx cleanup + INV-INT codes eksik. Iter 1 FAIL: parent data.reason leak + UI raw code + EN labels + actionable message eksik. Iter 2 PASS: inmaErrorMessage() helper + TR labels + fixed INV-INT-103 normalization + diagnostic title-only." }
+}

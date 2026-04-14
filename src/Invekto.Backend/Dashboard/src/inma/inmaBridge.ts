@@ -1,0 +1,152 @@
+import { useInmaSession } from './inmaSession';
+import { INMA_ERRORS, inmaErrorMessage, type InmaErrorCode } from './inmaErrors';
+
+const INMA_ALLOWED_ORIGINS: ReadonlyArray<string> = [
+  'https://developer.wapcrm.net',
+  'http://localhost:4200',
+];
+
+const INMA_API_BASE_URL_REGEX = /^https:\/\/[a-z0-9-]+\.wapcrm\.net\/?$/;
+const INMA_REFRESH_TIMEOUT_MS = 15_000;
+
+type InmaInboundMessage =
+  | { type: 'inma:auth'; accessToken: string; apiBaseUrl: string }
+  | { type: 'inma:refresh-response'; accessToken: string }
+  | { type: 'inma:refresh-error'; reason?: string }
+  | { type: 'inma:logout' };
+
+export interface InmaBridgeCallbacks {
+  onReady?: () => void;
+  onLogout?: () => void;
+  onAuthError?: (reason: string) => void;
+}
+
+interface PendingRefresh {
+  promise: Promise<string>;
+  resolve: (token: string) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+class InmaBridgeImpl {
+  private callbacks: InmaBridgeCallbacks = {};
+  private pendingRefresh: PendingRefresh | null = null;
+  private listenerAttached = false;
+  private readonly handleMessage = (event: MessageEvent) => this.onMessage(event);
+
+  init(callbacks: InmaBridgeCallbacks = {}): () => void {
+    this.callbacks = callbacks;
+    if (!this.listenerAttached) {
+      window.addEventListener('message', this.handleMessage);
+      this.listenerAttached = true;
+    }
+    // Parent origin not yet known; 'inma:ready' is the only outbound using '*'.
+    window.parent?.postMessage({ type: 'inma:ready' }, '*');
+    return () => this.dispose();
+  }
+
+  dispose(): void {
+    if (this.listenerAttached) {
+      window.removeEventListener('message', this.handleMessage);
+      this.listenerAttached = false;
+    }
+    if (this.pendingRefresh) {
+      clearTimeout(this.pendingRefresh.timer);
+      this.pendingRefresh.reject(new Error(inmaErrorMessage(INMA_ERRORS.BRIDGE_DISPOSED)));
+      this.pendingRefresh = null;
+    }
+    this.callbacks = {};
+  }
+
+  requestRefresh(): Promise<string> {
+    if (this.pendingRefresh) return this.pendingRefresh.promise;
+
+    const { trustedParentOrigin } = useInmaSession.getState();
+    if (!trustedParentOrigin) {
+      return Promise.reject(new Error(inmaErrorMessage(INMA_ERRORS.BRIDGE_NOT_READY)));
+    }
+
+    let resolve!: (token: string) => void;
+    let reject!: (err: Error) => void;
+    const promise = new Promise<string>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    const timer = setTimeout(() => {
+      if (this.pendingRefresh && this.pendingRefresh.promise === promise) {
+        this.pendingRefresh = null;
+        reject(new Error(inmaErrorMessage(INMA_ERRORS.REFRESH_TIMEOUT)));
+      }
+    }, INMA_REFRESH_TIMEOUT_MS);
+
+    this.pendingRefresh = { promise, resolve, reject, timer };
+
+    window.parent?.postMessage({ type: 'inma:refresh-request' }, trustedParentOrigin);
+    return promise;
+  }
+
+  private onMessage(event: MessageEvent): void {
+    if (!INMA_ALLOWED_ORIGINS.includes(event.origin)) return;
+    const data = event.data as InmaInboundMessage | undefined;
+    if (!data || typeof data !== 'object' || typeof (data as { type?: unknown }).type !== 'string') return;
+
+    const session = useInmaSession.getState();
+
+    switch (data.type) {
+      case 'inma:auth': {
+        if (typeof data.accessToken !== 'string' || !data.accessToken) {
+          session.setError(INMA_ERRORS.INVALID_ACCESS_TOKEN);
+          this.callbacks.onAuthError?.(INMA_ERRORS.INVALID_ACCESS_TOKEN);
+          return;
+        }
+        if (typeof data.apiBaseUrl !== 'string' || !INMA_API_BASE_URL_REGEX.test(data.apiBaseUrl)) {
+          session.setError(INMA_ERRORS.INVALID_API_BASE_URL);
+          this.callbacks.onAuthError?.(INMA_ERRORS.INVALID_API_BASE_URL);
+          return;
+        }
+        session.setAuth(data.accessToken, data.apiBaseUrl, event.origin);
+        this.callbacks.onReady?.();
+        return;
+      }
+      case 'inma:refresh-response': {
+        if (typeof data.accessToken !== 'string' || !data.accessToken) {
+          this.failPendingRefresh(INMA_ERRORS.INVALID_ACCESS_TOKEN);
+          return;
+        }
+        session.setAccessToken(data.accessToken);
+        if (this.pendingRefresh) {
+          clearTimeout(this.pendingRefresh.timer);
+          const { resolve } = this.pendingRefresh;
+          this.pendingRefresh = null;
+          resolve(data.accessToken);
+        }
+        return;
+      }
+      case 'inma:refresh-error': {
+        // Parent'in gonderdigi data.reason diagnostic detail olarak saklanir;
+        // ancak error code HER ZAMAN INV-INT-103'e normalize edilir (CQ9: parent-controlled string app'e sizdirmaz).
+        const parentDetail = typeof data.reason === 'string' ? data.reason : undefined;
+        this.failPendingRefresh(INMA_ERRORS.REFRESH_FAILED, parentDetail);
+        this.callbacks.onAuthError?.(INMA_ERRORS.REFRESH_FAILED);
+        return;
+      }
+      case 'inma:logout': {
+        session.clear();
+        this.failPendingRefresh(INMA_ERRORS.BRIDGE_DISPOSED);
+        this.callbacks.onLogout?.();
+        return;
+      }
+    }
+  }
+
+  private failPendingRefresh(code: InmaErrorCode, detail?: string): void {
+    if (!this.pendingRefresh) return;
+    clearTimeout(this.pendingRefresh.timer);
+    const { reject } = this.pendingRefresh;
+    this.pendingRefresh = null;
+    reject(new Error(inmaErrorMessage(code, detail)));
+  }
+}
+
+export const inmaBridge = new InmaBridgeImpl();

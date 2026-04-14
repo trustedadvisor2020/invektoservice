@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { inmaBridge } from './inma';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
@@ -65,6 +66,10 @@ function TenantDashboardPage() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const dispose = inmaBridge.init();
+    return dispose;
+  }, []);
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
