@@ -1,0 +1,114 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260414-dashboard-ts-errors-cleanup",
+  "risk": "LOW",
+  "status": "APPROVED",
+  "created_at": "2026-04-14T17:20:00Z",
+  "updated_at": "2026-04-14T17:35:00Z",
+  "plan": {
+    "summary": "Dashboard build'ini yesile cevirmek icin pages/ altindaki pre-existing TS hatalarini (TS6133 unused + TS2322 type) minimal duzeltme. Davranis degisikligi yok; sadece tip/kullanim temizligi. INMA bridge Faz 1 paketinin /rev gecmesi icin gerekli on kosul.",
+    "q_intent": "INMA bridge Faz 1 diff'i temiz ama 'npm run build' pre-existing pages/ hatalari yuzunden FAIL. Bu hatalar inma-bridge-faz1 paketinin forbidden_areas'i icinde (pages/) oldugu icin ayri kardes paket olarak temizlenecek. Davranis korunur; sadece build yesile doner.",
+    "interview_notes": "Q karari: INMA bridge /rev oncesi build gate'ini gecirmek icin option 3 (sibling cleanup plan). Kapsam sadece su an raporlanan TS hatalari. Yeni feature, refactor, style degisikligi YOK.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "`cd src/Invekto.Backend/Dashboard && npm run build` 0 hata ile tamamlanir (tsc + vite build PASS).",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "Runtime davranis degisikligi yok: hicbir JSX render ciktisi, event handler davranisi veya network cagrisi yolu degismez (sadece tip/unused cleanup).",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "FbAvailableInstance'a eklenen assignedFlowId ve assignedFlowName alanlari optional (`?`) olur; mevcut kullanicilar etkilenmez.",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "Sadece listelenen pages/ ve lib/api.ts dosyalari degisir; inma/, stores/, auth/, hooks/, components/, data/, types/ dokunulmaz.",
+        "verified": false
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "MessageTextNode.tsx:27 -> `{data.wait_for_input && (...)}` yerine `{!!data.wait_for_input && (...)}` (unknown -> boolean coerce)." },
+    { "id": "GR-2", "description": "lib/api.ts:601 FbAvailableInstance interface'ine `assignedFlowId?: number | null;` ve `assignedFlowName?: string | null;` alanlarini ekle (optional)." },
+    { "id": "GR-3", "description": "LoginPage.tsx: kullanilmayan `handleQuickAdminLogin` fonksiyonunu sil." },
+    { "id": "GR-4", "description": "OnboardingGuidePage.tsx: kullanilmayan `CardContent` import'unu sil." },
+    { "id": "GR-5", "description": "TemplateIngestionPage.tsx: kullanilmayan `setThreshold` ve `setSuggestionsPage` destructure'larini kaldir (sadece getter'lari birak)." },
+    { "id": "GR-6", "description": "TemplateLibraryPage.tsx:325 -> kullanilmayan `type` destructure parametresini kaldir." },
+    { "id": "GR-7", "description": "TemplateLibraryPage.tsx:354 ve OnboardingWizardPage.tsx:375 -> `<Icon style={...}>` kullanimini tip uyumlu hale getir (ya Icon component'ini `style?: CSSProperties` kabul edecek sekilde genislet, ya da Icon'u `<span style={...}><Icon className.../></span>` wrapper ile sar). Minimal davranisi koruyan yaklasim sec." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/OnboardingGuidePage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/OnboardingWizardPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateIngestionPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/MessageTextNode.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/flow-builder/panels/NodePropertyPanel.tsx"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/LoginPage.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/OnboardingGuidePage.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/OnboardingWizardPage.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateIngestionPage.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/TemplateLibraryPage.tsx", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/flow-builder/components/nodes/MessageTextNode.tsx", "is_new": false }
+  ],
+  "git_diff": {
+    "sha256": "24a39896e175ef67cf4a4522d594d6c9f2484d7673ea4438a53e546619102e85",
+    "full_path": "arch/plans/diffs/20260414-dashboard-ts-errors-cleanup.diff",
+    "stats": { "insertions": 11, "deletions": 14, "files_count": 7 }
+  },
+  "build": { "status": "PASS", "timestamp": "2026-04-14T17:33:00Z", "command": "cd src/Invekto.Backend/Dashboard && npm run build", "notes": "tsc PASS (0 errors) + vite build PASS" },
+  "verification_questions": [
+    { "id": "Q1", "question": "Davranis degisikligi var mi? (Render, event handler, network cagrisi etkilenmedi mi?)", "category": "Correctness" },
+    { "id": "Q2", "question": "FbAvailableInstance'a eklenen alanlar optional mi? Mevcut consumer'lar kirilmadi mi?", "category": "Contracts" },
+    { "id": "Q3", "question": "Icon style fix'i runtime'da ayni goruntuyu uretiyor mu? (renk ve konumlandirma korundu mu?)", "category": "UX" },
+    { "id": "Q4", "question": "Silinen unused kodlar (handleQuickAdminLogin, CardContent, setThreshold, setSuggestionsPage, type) gercekten baska yerden cagrilmiyor mu? (grep ile dogrulandi mi?)", "category": "Safety" },
+    { "id": "Q5", "question": "`npm run build` PASS mi? `npx tsc --noEmit` 0 hata mi?", "category": "Build" },
+    { "id": "Q6", "question": "Scope disi dosya degisti mi? (Git diff sadece allowed_files'a mi dokundu?)", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/inma/",
+      "src/Invekto.Backend/Dashboard/src/App.tsx",
+      "src/Invekto.Backend/Dashboard/src/auth/",
+      "src/Invekto.Backend/Dashboard/src/stores/",
+      "src/Invekto.Backend/Dashboard/src/hooks/",
+      "src/Invekto.Backend/Dashboard/src/components/",
+      "src/Invekto.Backend/Dashboard/src/data/",
+      "src/Invekto.Backend/Dashboard/src/types/",
+      "src/Invekto.Backend/ (backend .cs dosyalari)",
+      "Invekto.Shared"
+    ],
+    "non_goals": [
+      "Yeni feature eklemek",
+      "Davranis/UI degistirmek",
+      "Refactor yapmak",
+      "Lint/style rule dayatmak",
+      "Flow builder business logic'ini duzenlemek",
+      "assignedFlowId/assignedFlowName'i backend'den doldurmak (sadece tip eklenir)"
+    ],
+    "intentional_exclusions": [
+      "Backend API kontrat degisikligi (sadece frontend tip optional eklemesi)",
+      "Vite build config degisikligi",
+      "tsconfig esnetmesi (noUnusedLocals/noUnusedParameters korunur)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Sadece tip ve kullanim temizligi; runtime path degismez."
+  },
+  "aha_moments": [],
+  "verdict": { "status": "PASS", "iteration": 1, "timestamp": "2026-04-14T17:40:00Z", "model_used": "gpt-5.4-2026-03-05", "notes": "Iter 0 FAIL: Q4/Q5 evidence gap (UNKNOWN). Iter 1 PASS: grep + build output evidence provided; all CQ1-12 + Q1-Q6 PASS." }
+}

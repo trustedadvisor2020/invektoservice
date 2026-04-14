@@ -24,7 +24,7 @@ function MessageTextNodeComponent(props: NodeProps) {
       <span className={data.text ? 'text-navy-500' : 'text-navy-400 italic'}>
         {preview}
       </span>
-      {data.wait_for_input && (
+      {!!data.wait_for_input && (
         <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
           <PauseIcon /> Yanit bekler
         </span>

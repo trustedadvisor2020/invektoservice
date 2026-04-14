@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 
 interface StepMeta {
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   description: string;
   why: string;
   fallback: string;

@@ -18,7 +18,7 @@ export function TemplateIngestionPage() {
   const [analysisId, setAnalysisId] = useState('');
   const [tenantName, setTenantName] = useState('');
   const [sector, setSector] = useState('eticaret');
-  const [threshold, setThreshold] = useState('0.85');
+  const [threshold] = useState('0.85');
 
   // Results
   const [compareResult, setCompareResult] = useState<TemplateCompareResult | null>(null);
@@ -27,7 +27,7 @@ export function TemplateIngestionPage() {
   // Suggestions view
   const [suggestions, setSuggestions] = useState<TemplateSuggestionItem[]>([]);
   const [suggestionsTotal, setSuggestionsTotal] = useState(0);
-  const [suggestionsPage, setSuggestionsPage] = useState(1);
+  const [suggestionsPage] = useState(1);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState('');

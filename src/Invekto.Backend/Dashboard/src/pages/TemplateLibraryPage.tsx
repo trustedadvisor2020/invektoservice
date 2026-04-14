@@ -11,7 +11,7 @@ import { cn } from '../lib/utils';
 
 /* ── Shared constants ──────────────────────────────────────── */
 
-const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   faq: FileQuestion,
   message: MessageCircle,
   intent: Lightbulb,
@@ -41,7 +41,7 @@ const SCOPES = ['', 'platform', 'sector', 'tenant'];
 interface CategoryInfo {
   label: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   accentHex: string;
 }
 
@@ -322,7 +322,7 @@ function TenantTemplateView() {
 
 /* ── Category Section ──────────────────────────────────────── */
 
-function CategorySection({ type, info, templates, adoptedIds, isExpanded, onToggle, onAdopt, adoptingId, animDelay }: {
+function CategorySection({ info, templates, adoptedIds, isExpanded, onToggle, onAdopt, adoptingId, animDelay }: {
   type: string;
   info: CategoryInfo;
   templates: AvailableTemplate[];

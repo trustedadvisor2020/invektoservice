@@ -17,18 +17,13 @@ function getLoginMode(): { mode: LoginMode; locked: boolean } {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithInma, loginWithOps, loginWithMock, loginWithQuickAdmin, isLoading, error } = useAuth();
+  const { loginWithInma, loginWithOps, loginWithMock, isLoading, error } = useAuth();
 
   const [hostConfig] = useState(getLoginMode);
   const [mode, setMode] = useState<LoginMode>(hostConfig.mode);
   const [companyName, setCompanyName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
-  const handleQuickAdminLogin = async () => {
-    const success = await loginWithQuickAdmin();
-    if (success) navigate('/');
-  };
 
   const handleMockLogin = async (scenario: 'full' | 'klinik' | 'otel') => {
     const success = await loginWithMock(scenario);

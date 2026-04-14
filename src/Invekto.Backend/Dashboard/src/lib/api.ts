@@ -603,6 +603,8 @@ export interface FbAvailableInstance {
   instanceName: string;
   instanceType: number;
   account: string | null;
+  assignedFlowId?: number | null;
+  assignedFlowName?: string | null;
 }
 
 export interface FbWorkingHoursInfo {
