@@ -112,6 +112,81 @@ public sealed class ZohoSyncLogRepository
         return ReadRow(reader);
     }
 
+    /// <summary>
+    /// Adim 3 Paket 2: Enumerate tenants that currently have retry-eligible zoho_sync_log rows.
+    /// Used by ZohoRetryWorker to iterate per-tenant (preserves tenant_id scoping on the per-batch
+    /// ListRetryCandidatesForTenantAsync query below).
+    /// Schema reference: arch/db/migrations/014-zoho-sync-log.sql (columns status, updated_at, attempt_count).
+    /// </summary>
+    public async Task<IReadOnlyList<int>> ListTenantsWithRetryCandidatesAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT DISTINCT tenant_id
+              FROM zoho_sync_log
+             WHERE status = 'failed'
+               AND updated_at < NOW() - INTERVAL '10 minutes'
+               AND attempt_count < 2";
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        var rows = new List<int>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            rows.Add(reader.GetInt32(0));
+        return rows;
+    }
+
+    /// <summary>
+    /// Adim 3 Paket 2: Claim failed rows eligible for retry, scoped to a single tenant.
+    /// Contract: tenant_id=@tid AND status='failed' AND updated_at &lt; NOW() - INTERVAL '10 minutes' AND attempt_count &lt; 2.
+    /// Uses SELECT ... FOR UPDATE SKIP LOCKED for horizontal-scale safety; the lock window is bounded by the
+    /// explicit transaction. Worker calls IZohoSyncService.SyncAsync which itself runs BeginAttemptAsync
+    /// (attempt++) so this method does NOT mutate state — it only projects the request reconstruction fields.
+    /// Schema reference: arch/db/migrations/014-zoho-sync-log.sql.
+    /// </summary>
+    public async Task<IReadOnlyList<ZohoRetryCandidate>> ListRetryCandidatesForTenantAsync(
+        int tenantId, int limit, CancellationToken ct = default)
+    {
+        const string sql = @"
+            WITH claimed AS (
+                SELECT id
+                  FROM zoho_sync_log
+                 WHERE tenant_id = @tid
+                   AND status = 'failed'
+                   AND updated_at < NOW() - INTERVAL '10 minutes'
+                   AND attempt_count < 2
+                 ORDER BY updated_at ASC
+                 LIMIT @lim
+                 FOR UPDATE SKIP LOCKED
+            )
+            SELECT l.id, l.tenant_id, l.gunes_event, l.gunes_lead_id, l.zoho_lead_id, l.attempt_count
+              FROM zoho_sync_log l
+              JOIN claimed c ON c.id = l.id";
+
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var tx = await conn.BeginTransactionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("@tid", tenantId);
+        cmd.Parameters.AddWithValue("@lim", Math.Max(1, limit));
+
+        var rows = new List<ZohoRetryCandidate>();
+        await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new ZohoRetryCandidate(
+                    Id:           reader.GetInt64(0),
+                    TenantId:     reader.GetInt32(1),
+                    GunesEvent:   reader.GetString(2),
+                    GunesLeadId:  reader.GetString(3),
+                    ZohoLeadId:   reader.IsDBNull(4) ? null : reader.GetString(4),
+                    AttemptCount: reader.GetInt32(5)));
+            }
+        }
+
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+        return rows;
+    }
+
     public async Task<int> CountFailedAsync(int tenantId, CancellationToken ct = default)
     {
         const string sql = "SELECT COUNT(*) FROM zoho_sync_log WHERE tenant_id = @tid AND status = 'failed'";
@@ -138,6 +213,14 @@ public sealed class ZohoSyncLogRepository
     private static string Truncate(string s, int max) =>
         string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s.Substring(0, max));
 }
+
+public sealed record ZohoRetryCandidate(
+    long Id,
+    int TenantId,
+    string GunesEvent,
+    string GunesLeadId,
+    string? ZohoLeadId,
+    int AttemptCount);
 
 public sealed record ZohoSyncLogRow(
     long Id,

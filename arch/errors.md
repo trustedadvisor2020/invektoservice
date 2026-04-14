@@ -608,6 +608,9 @@ errors:
   - code: INV-INT-126
     description: Internal service auth shared secret not configured on integrations service
     user_message: Sistem yapılandırma hatası, lütfen yöneticiye bildirin.
+  - code: INV-INT-127
+    description: Backend-side Zoho sync HTTP transport failure (Adim 3 Paket 2, fire-and-forget dispatcher)
+    user_message: Zoho ile senkronizasyon arka planda başarısız oldu, otomatik yeniden denenecek.
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001

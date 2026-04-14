@@ -184,6 +184,27 @@ builder.Services.AddHttpClient<IntegrationsClient>(client =>
     client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
 });
 
+// Adim 3 Paket 2: Zoho sync client (Backend -> Integrations /api/internal/zoho/sync).
+// Shared secret binding happens at wrapper registration time so ZohoSyncClient ctor stays DI-simple.
+var zohoSharedSecret = builder.Configuration["InternalServices:SharedSecret"] ?? string.Empty;
+builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoSyncClient>(client =>
+{
+    client.BaseAddress = new Uri(integrationsUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
+});
+builder.Services.AddSingleton<Invekto.Backend.Services.Zoho.IZohoSyncClient>(sp =>
+{
+    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var http = httpFactory.CreateClient(nameof(Invekto.Backend.Services.Zoho.ZohoSyncClient));
+    http.BaseAddress = new Uri(integrationsUrl);
+    http.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
+    return new Invekto.Backend.Services.Zoho.ZohoSyncClient(
+        http,
+        zohoSharedSecret,
+        sp.GetRequiredService<JsonLinesLogger>());
+});
+builder.Services.AddSingleton<Invekto.Backend.Services.Zoho.ZohoLifecycleDispatcher>();
+
 // Configure Marketing HTTP client (GR-3.21/3.22)
 builder.Services.AddHttpClient<MarketingClient>(client =>
 {
@@ -4828,6 +4849,7 @@ app.MapGet("/api/v1/leads/{id:int}", async (HttpContext ctx, LeadRepository lead
 
 app.MapPut("/api/v1/leads/{id:int}/status", async (
     HttpContext ctx, LeadRepository leadRepo, JsonLinesLogger jsonLog,
+    Invekto.Backend.Services.Zoho.ZohoLifecycleDispatcher zohoDispatcher,
     int id, LeadPipelineUpdateRequest? request) =>
 {
     var rid = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
@@ -4851,6 +4873,11 @@ app.MapPut("/api/v1/leads/{id:int}/status", async (
             return Results.Json(ErrorResponse.Create(ErrorCodes.LeadNotFound, $"Lead {id} not found", rid), statusCode: 404);
 
         jsonLog.StepInfo($"Lead status updated: id={id}, status={request.PipelineStatus}", rid);
+
+        // Adim 3 Paket 2: fire-and-forget Zoho sync. Unknown pipeline_status -> no-op; transport
+        // failures logged as INV-INT-127 inside dispatcher; never throws back to this handler.
+        zohoDispatcher.DispatchLeadStatusChange(tenantContext.TenantId, id, request.PipelineStatus);
+
         return Results.Ok(new { id, pipeline_status = request.PipelineStatus });
     }
     catch (Npgsql.NpgsqlException ex)

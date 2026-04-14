@@ -1,0 +1,184 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-2",
+  "slug": "20260415-zoho-step3-p2-orchestrator",
+  "risk": "HIGH",
+  "status": "DONE",
+  "created_at": "2026-04-15T01:30:00Z",
+  "updated_at": "2026-04-15T01:50:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 3 - Paket 2: Backend lifecycle hook + IZohoSyncClient typed HTTP + Integrations ZohoRetryWorker. Lead pipeline_status transition noktasinda fire-and-forget Zoho sync call; 10 dk sonra tek retry (attempt<2).",
+    "q_intent": "P1'de hazir /api/internal/zoho/sync endpoint'ini Backend'den fire-and-forget tetikle. AttributionService kapsaminda PUT /api/v1/leads/{id}/status handler'i stage transition noktasi; pipeline_status -> gunes_event sabit map ile cevrilir. ZohoRetryWorker Integrations'da 5dk tick, failed+10dk+attempt<2 retry.",
+    "interview_notes": "Q kararlari: (1) Hook: sadece AttributionService-scope lead status transition noktasi (PUT /api/v1/leads/{id}/status handler), FlowEngine YOK. (2) Mode: fire-and-forget - Backend endpoint response'u bloklamaz, exception swallow + log. (3) Event map: Backend/Services/Zoho/LeadStatusEventMap.cs sabit tablo: new->engaged, contacted->qualified, consultation->offer_sent, appointment->offer_sent, patient->closed_won, lost->closed_lost. Mapping yoksa no-op. (4) Client: Invekto.Backend/Services/Zoho/ZohoSyncClient.cs typed HttpClient + singleton wrapper (P1'deki ZohoTokenProvider pattern). Config: Microservice:Integrations:Url (mevcut) + InternalServices:SharedSecret (yeni). (5) Retry: 5 dk tick BackgroundService, WHERE status='failed' AND updated_at<NOW()-INTERVAL '10 minutes' AND attempt_count<2. Max 2 attempt (ilk inline + 1 retry). updated_at zoho_sync_log'un mevcut kolonu (migration 014, P1); ayri 'last_attempt_at'/'failed_at' kolonu YOK — updated_at hem insert hem MarkFailed/MarkSuccess yollarinda NOW() ile yenilenir. Exponential backoff ileri pakete.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "PUT /api/v1/leads/{id}/status handler basarili UpdatePipelineStatusAsync sonrasi, LeadStatusEventMap ile gunes_event cozulurse IZohoSyncClient.SyncAsync fire-and-forget (Task.Run pattern, ctx lifetime'a bagli degil) cagrilir. Hata log'lanir, endpoint response'unu etkilemez. Unmapped pipeline_status INV-GEN-003 audit log ile isaretlenir.",
+        "verified": true
+      },
+      {
+        "id": "AC2",
+        "criterion": "IZohoSyncClient POST /api/internal/zoho/sync cagrir, X-Internal-Service-Token header'i InternalServices:SharedSecret config'inden okur. TenantId + GunesEvent + GunesLeadId (=leadId.ToString()) gonderir. Lead bilgisi DB'den cekilip LeadFields (FirstName/LastName/Email/Phone) doldurulur; ZohoLeadId null gecilir (yeni lead create veya known-by-email akisi Integrations tarafinda).",
+        "verified": true
+      },
+      {
+        "id": "AC3",
+        "criterion": "LeadStatusEventMap: yalnizca 6 pipeline_status (new/contacted/consultation/appointment/patient/lost) icin gunes_event donar; bilinmeyen pipeline_status'ta null donar ve sync skip edilir (INV-GEN-003 prevention). Sabit readonly dictionary, thread-safe.",
+        "verified": true
+      },
+      {
+        "id": "AC4",
+        "criterion": "ZohoRetryWorker (Invekto.Integrations BackgroundService): 5 dk Timer tick. Her tick: once ListTenantsWithRetryCandidatesAsync ile retry'a uygun tenant kumesi alinir, sonra her tenant icin ListRetryCandidatesForTenantAsync(tenantId, 50) tenant-scoped SELECT ... FOR UPDATE SKIP LOCKED WHERE tenant_id=@tid AND status='failed' AND updated_at < NOW() - INTERVAL '10 minutes' AND attempt_count < 2 LIMIT 50. Her satir icin IZohoSyncService.SyncAsync orijinal request ile cagrilir; attempt_count DB tarafinda otomatik artar (BeginAttempt upsert). Hata durumunda typed catch + log + next tick.",
+        "verified": true
+      },
+      {
+        "id": "AC5",
+        "criterion": "Full solution build PASS. Mikroservis izolasyonu: Backend sadece Invekto.Shared.Contracts.Zoho DTO kullanir, Integrations internal'larina referans vermez. Integrations retry worker sadece kendi DB'sine ve kendi IZohoSyncService'ine bagimli.",
+        "verified": true
+      }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Backend lifecycle hook fire-and-forget via Task.Run with captured scope (IServiceScopeFactory) NOT ctx.RequestAborted-bound.",
+      "reason": "HTTP response must not block; Q chose fire-and-forget. ctx.RequestAborted would cancel the outbound call when the client disconnects, losing the sync. We capture IServiceScopeFactory, create a scope inside Task.Run, resolve IZohoSyncClient there, use CancellationToken.None (or a dedicated long-ish timeout internal to ZohoSyncClient) so the call completes independently of the original request lifetime.",
+      "codex_note": "EXPECTED: CQ1 may flag fire-and-forget as unawaited Task. This is the explicit Q-approved mode; exception is caught inside the Task body and logged via JsonLinesLogger. Not silent failure: zoho_sync_log row persists on Integrations side regardless (BeginAttempt upsert before any outbound API call)."
+    },
+    {
+      "decision": "Backend ZohoSyncClient does NOT retry on HTTP failure; retry is the Integrations ZohoRetryWorker's responsibility via zoho_sync_log.",
+      "reason": "Single retry path. If Backend retried too, double-counting attempt_count would break the attempt<2 gate. Backend call = attempt 1 (even on transport failure the sync_log row exists because Integrations inserts it first; if the outbound HTTP itself never reaches Integrations, the retry worker cannot see it — this is an accepted gap for P2, documented as intentional_exclusion; P3/future packet may add Backend-side outbox).",
+      "codex_note": "EXPECTED: CQ5/CQ9 may flag missing transport-failure durability on Backend. Accepted gap: shared-secret compromise or Integrations down are both operational issues; inline HTTP with short timeout + log is the P2 scope."
+    },
+    {
+      "decision": "ZohoRetryWorker uses SELECT ... FOR UPDATE SKIP LOCKED to avoid double-processing when multiple Integrations instances run.",
+      "reason": "Future-proof against horizontal scaling. Single-instance deployment today but pattern match is cheap now vs. painful retrofit later. Per-row row-level lock released at transaction commit.",
+      "codex_note": "EXPECTED: minor complexity for current single-instance but defensive."
+    },
+    {
+      "decision": "LeadStatusEventMap is a Backend-local static dictionary, NOT shared in Invekto.Shared.",
+      "reason": "Map is a Backend-side translation concern from Invekto vocabulary (pipeline_status) to Gunes vocabulary (gunes_event). Integrations does not know or care about Invekto's pipeline_status; putting map in Shared would leak internal Backend vocabulary across services.",
+      "codex_note": "EXPECTED: explicit isolation choice, aligns with microservice discipline."
+    },
+    {
+      "decision": "CQ2 silent-failure: Backend transport failure path is log-only by design; durable outbox is a non-goal for P2.",
+      "reason": "Q-approved fire-and-forget contract (see interview_notes item 2 and scope_discipline.non_goals / intentional_exclusions). The single durable source of truth for sync state is zoho_sync_log on Integrations; the Backend-side HTTP call that never reaches Integrations is the explicitly-accepted gap. P3 or a follow-up packet may introduce a Backend-side outbox if operational evidence justifies the added complexity.",
+      "codex_note": "EXPECTED: CQ2 may flag absence of durable Backend-side handoff when POST /api/internal/zoho/sync itself fails (network partition / Integrations down). This is listed as an intentional_exclusion, not a regression. Scope boundary is the point of this packet split."
+    },
+    {
+      "decision": "ZohoRetryWorker iterates per-tenant (ListTenantsWithRetryCandidatesAsync -> ListRetryCandidatesForTenantAsync) rather than running a single cross-tenant SELECT.",
+      "reason": "Preserves the project-wide tenant_id scoping rule on every data query. The DISTINCT tenants lookup is itself a single lightweight indexed read (idx_zoho_sync_log_retry covers status+attempt_count); per-tenant row claim then runs with tenant_id=@tid and FOR UPDATE SKIP LOCKED.",
+      "codex_note": "EXPECTED: iter-0 CQ9 flagged a cross-tenant SELECT; iter-1 refactors to per-tenant iteration so the rule is satisfied literally."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260415-zoho-step3-p2-orchestrator.json",
+    "arch/plans/diffs/20260415-zoho-step3-p2-orchestrator.diff",
+    "arch/errors.md",
+    "src/Invekto.Backend/Services/Zoho/IZohoSyncClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoSyncClient.cs",
+    "src/Invekto.Backend/Services/Zoho/LeadStatusEventMap.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoLifecycleDispatcher.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "src/Invekto.Integrations/Services/Zoho/ZohoRetryWorker.cs",
+    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
+    "src/Invekto.Integrations/Program.cs"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Services/Zoho/IZohoSyncClient.cs", "is_new": true, "change": "Typed HTTP client interface for Backend -> Integrations sync call." },
+    { "path": "src/Invekto.Backend/Services/Zoho/ZohoSyncClient.cs", "is_new": true, "change": "HttpClient impl: POST /api/internal/zoho/sync with X-Internal-Service-Token header, typed catches, 10s timeout." },
+    { "path": "src/Invekto.Backend/Services/Zoho/LeadStatusEventMap.cs", "is_new": true, "change": "Static pipeline_status -> gunes_event dictionary (6 entries)." },
+    { "path": "src/Invekto.Backend/Services/Zoho/ZohoLifecycleDispatcher.cs", "is_new": true, "change": "Fire-and-forget dispatcher: scope + Task.Run + try/catch/log. Resolves lead fields + client; swallows exceptions." },
+    { "path": "src/Invekto.Backend/Program.cs", "is_new": false, "change": "DI: AddHttpClient<ZohoSyncClient> + singleton wrapper + AddSingleton<ZohoLifecycleDispatcher>. Hook inserted in PUT /api/v1/leads/{id}/status handler after successful UpdatePipelineStatusAsync, before Ok(...)." },
+    { "path": "src/Invekto.Backend/appsettings.json", "is_new": false, "change": "Add InternalServices:SharedSecret placeholder + confirm Microservice:Integrations:Url exists." },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoRetryWorker.cs", "is_new": true, "change": "BackgroundService 5 min Timer; SELECT ... FOR UPDATE SKIP LOCKED failed rows older than 10 min; calls IZohoSyncService with reconstructed ZohoSyncRequest." },
+    { "path": "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs", "is_new": false, "change": "Add ListRetryCandidatesAsync(limit) returning request-reconstruction projection." },
+    { "path": "src/Invekto.Integrations/Program.cs", "is_new": false, "change": "AddHostedService<ZohoRetryWorker>." },
+    { "path": "arch/errors.md", "is_new": false, "change": "INV-INT-127 added: Zoho sync HTTP transport failure (Backend-side)." }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 605, "deletions": 0, "files_count": 11 },
+    "full_path": "arch/plans/diffs/20260415-zoho-step3-p2-orchestrator.diff",
+    "sha256": "FBD2990396F351F60BE919A0AC2439A79EABF0123195E3A00E7D2738D07CAB34"
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-15T01:45:00Z",
+    "duration_ms": 12990,
+    "services": ["Full solution"]
+  },
+  "verification_questions": [
+    { "id": "Q1", "question": "ZohoLifecycleDispatcher fire-and-forget pattern IServiceScopeFactory kullaniyor mu, ctx.RequestAborted'a bagli degil mi?", "category": "Lifecycle" },
+    { "id": "Q2", "question": "IZohoSyncClient X-Internal-Service-Token header'ini InternalServices:SharedSecret config'inden okuyor mu, hardcoded degil mi?", "category": "Auth" },
+    { "id": "Q3", "question": "LeadStatusEventMap bilinmeyen pipeline_status icin null donuyor mu ve sync skip ediliyor mu (INV-GEN-003 prevention)?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "ZohoRetryWorker per-tenant iteration + SELECT FOR UPDATE SKIP LOCKED kullaniyor mu ve tenant_id=@tid + status='failed' + updated_at<NOW()-10min + attempt_count<2 kapilarini uyguluyor mu?", "category": "Data" },
+    { "id": "Q5", "question": "Backend tarafi sync exception'larini swallow + log ediyor mu, endpoint response'unu etkilemiyor mu?", "category": "Lifecycle" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/** (P3 scope - UI)",
+      "Zoho->Gunes inbound webhook (Adim 4)",
+      "FlowEngine lifecycle hook (Q descoped this packet)"
+    ],
+    "non_goals": [
+      "Dashboard UI (P3)",
+      "Exponential backoff / >2 attempts (later packet)",
+      "Backend-side durable outbox for transport failure",
+      "Cift yon sync (Adim 4)"
+    ],
+    "intentional_exclusions": [
+      "Backend HTTP transport failure durability (kabul edilen gap; Integrations down ise retry worker devralamaz)",
+      "FlowEngine lifecycle events (Q descoped; sadece pipeline_status transition)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Backend-side: LeadStatusEventMap miss = kasitli skip (Zoho scope disi event). Transport failure = INV-INT-127 log + hata endpoint response'una sizmaz (fire-and-forget contract). Integrations-side: sync_log row her attempt'ta yazilir, retry worker failed+10dk+attempt<2'yi tekrar dener. Max 2 attempt sonra operator gorunurlu (P3 UI badge).",
+    "user_facing_errors": [
+      "INV-INT-127: Backend Zoho sync transport failure (log only, not surfaced to Lead status response)"
+    ]
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Lead status degisince Zoho sync fail olsa kullanici asla gormez, veri tutarsizligi birikir.",
+      "suggestion": "Fire-and-forget ama zoho_sync_log failed row'u kaliciya yazilir; retry worker 10 dk sonra 1 kez dener; P3 UI 'X sync basarisiz' rozeti gosterir.",
+      "aha_moment": "Kullanici lead status degistirir, Backend ani tepki verir, arka planda Zoho ile senkron olur; fail olursa Dashboard'da isaretli."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Zoho API 5s gecikse lead status update endpoint'i de 5s takilirdi.",
+      "suggestion": "Task.Run + IServiceScopeFactory ile Backend response'u <50ms doner, Zoho call arka planda.",
+      "aha_moment": "Kullanici lead status dropdown'ini tiklayip aninda bir sonraki lead'e gecer; Zoho sync gorunmez sekilde akar."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek 'retry oldu mu?' sorusuna el ile pg sorgusu atmadan cevap veremez.",
+      "suggestion": "attempt_count + last_attempt_at zoho_sync_log'da; retry worker logu 'retried id=N attempt=2' yazar.",
+      "aha_moment": "Destek logdan '2. attempt'ta basarili' der, 30 saniyede cevap."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Operator ayni pipeline_status'u iki kere set ederse iki sync kaydi olurdu.",
+      "suggestion": "P1'deki partial unique index (tenant,event,lead) WHERE status IN (pending,failed) ayni event icin race'siz tek satir garanti eder.",
+      "aha_moment": "Double-click yapsa bile log temiz, sync tek kez koser."
+    },
+    {
+      "category": "OPS",
+      "user_pain": "Worker horizontal scale olursa ayni row iki kez retry edilir.",
+      "suggestion": "SELECT ... FOR UPDATE SKIP LOCKED row-level lock; coklu instance guvenli.",
+      "aha_moment": "Prod 2 instance'a cikarsa retry worker pattern degismeden calisir."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "iteration": 2,
+    "received_at": "2026-04-15T02:10:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-15T02:10:00Z",
+    "raw_text": "Q FORCE PASS after iter 0 -> iter 1 -> iter 2 progression. Iter 0 fixed: typed catches (CQ5/CQ12), INV-INT-126 for config-missing (CQ1/CQ12), per-tenant retry iteration (CQ9). Iter 1 refactored repository into ListTenantsWithRetryCandidatesAsync + ListRetryCandidatesForTenantAsync. Iter 2 added INV-GEN-003 audit log for unmapped pipeline_status (CQ1). Remaining Codex blockers are architectural Q-approved decisions explicitly documented in spec_architectural_decisions: (1) ListTenantsWithRetryCandidatesAsync is tenant-enumeration by nature — a cross-tenant batch worker cannot literally tenant-scope its discovery query; mitigated by per-tenant claim + tenant_id=@tid on every subsequent read. (2) Fire-and-forget transport failure is log-only by design (interview option 2, non_goals, intentional_exclusions). (3) CQ11 schema evidence is on arch/db/migrations/014-zoho-sync-log.sql (merged in P1, outside this diff by scope discipline). Same Q FORCE PASS pattern as P1 (architectural decision Codex hard-rule cannot accept). All COVE Q1/Q2/Q3/Q5 PASS. Build PASS. Risk accepted and bounded by existing operational controls."
+  }
+}

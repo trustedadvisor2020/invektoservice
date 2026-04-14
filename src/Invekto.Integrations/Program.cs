@@ -150,6 +150,9 @@ builder.Services.AddSingleton<IZohoBlueprintClient>(sp => sp.GetRequiredService<
 builder.Services.AddSingleton<IZohoLeadClient>(sp => sp.GetRequiredService<ZohoLeadClient>());
 builder.Services.AddSingleton<IZohoSyncService, ZohoSyncService>();
 
+// Adim 3 Paket 2: retry worker (5-min tick, failed + >10min + attempt<2).
+builder.Services.AddHostedService<ZohoRetryWorker>();
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
