@@ -586,6 +586,28 @@ errors:
   - code: INV-INT-119
     description: Zoho rate limit reached
     user_message: Zoho istek limiti aşıldı, lütfen sonra deneyin.
+  # Zoho Sync (INV-INT-120+) — Adim 3 Paket 1: Gunes -> Zoho sync pipeline
+  - code: INV-INT-120
+    description: Zoho stage mapping not configured for gunes_event
+    user_message: Zoho aşama eşleştirmesi yapılmamış, lütfen Zoho ayarlarını tamamlayın.
+  - code: INV-INT-121
+    description: Zoho Leads Blueprint not configured (Blueprint-only policy)
+    user_message: Zoho Leads modülünde Blueprint aktif değil.
+  - code: INV-INT-122
+    description: Zoho Blueprint transition id not found for lead
+    user_message: Zoho blueprint geçişi bulunamadı, eşleştirmeyi yenileyin.
+  - code: INV-INT-123
+    description: Zoho Lead not found
+    user_message: Zoho kaydı bulunamadı.
+  - code: INV-INT-124
+    description: Internal service auth token missing/invalid (POST /api/internal/zoho/sync)
+    user_message: Dahili servis yetki hatası.
+  - code: INV-INT-125
+    description: Zoho sync infrastructure failure (DB/transport/parse/unexpected Zoho API shape)
+    user_message: Zoho senkronizasyonunda beklenmeyen bir hata oluştu, tekrar denenecek.
+  - code: INV-INT-126
+    description: Internal service auth shared secret not configured on integrations service
+    user_message: Sistem yapılandırma hatası, lütfen yöneticiye bildirin.
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001

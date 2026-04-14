@@ -132,6 +132,24 @@ builder.Services.AddSingleton<ZohoConnectionService>(sp => new ZohoConnectionSer
     sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
     builder.Configuration["Zoho:DefaultRegion"] ?? "eu"));
 
+// Adim 3 Paket 1: Zoho sync (Blueprint + Lead + StageMapping + SyncService + internal-auth endpoint).
+builder.Services.AddSingleton<ZohoStageMappingRepository>();
+builder.Services.AddSingleton<ZohoSyncLogRepository>();
+builder.Services.AddSingleton<IZohoStageMappingService, ZohoStageMappingService>();
+builder.Services.AddHttpClient<ZohoBlueprintClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
+builder.Services.AddHttpClient<ZohoLeadClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
+builder.Services.AddSingleton<IZohoBlueprintClient>(sp => sp.GetRequiredService<ZohoBlueprintClient>());
+builder.Services.AddSingleton<IZohoLeadClient>(sp => sp.GetRequiredService<ZohoLeadClient>());
+builder.Services.AddSingleton<IZohoSyncService, ZohoSyncService>();
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -749,6 +767,7 @@ app.MapGet("/api/v1/reviews/stats", async (
 
 // Adim 2 Paket B: Zoho OAuth endpoints
 app.MapZohoConnectEndpoints();
+app.MapZohoSyncEndpoints();
 
 app.MapGet("/api/ops/endpoints", () =>
 {
@@ -775,6 +794,10 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/reviews/stats", Description = "Review recovery stats (PKT-6B1)", Auth = "Bearer", Category = "Reviews" },
         new() { Method = "GET", Path = "/api/v1/zoho/connect-url", Description = "Build Zoho OAuth authorize URL for tenant (Adim 2)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "GET", Path = "/integrations/zoho/callback", Description = "Zoho OAuth callback (public, processes code+state)", Auth = "none", Category = "Zoho" },
+        new() { Method = "POST", Path = "/api/internal/zoho/sync", Description = "Gunes -> Zoho sync (Adim 3 P1, internal-auth shared secret)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+        new() { Method = "GET", Path = "/api/v1/zoho/stage-mappings", Description = "List tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
+        new() { Method = "PUT", Path = "/api/v1/zoho/stage-mappings", Description = "Replace tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
+        new() { Method = "GET", Path = "/api/v1/zoho/sync-log/failed-count", Description = "Failed sync count badge (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
     return Results.Ok(endpoints);
