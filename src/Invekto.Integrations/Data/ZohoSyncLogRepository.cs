@@ -279,6 +279,165 @@ public sealed class ZohoSyncLogRepository
     }
 
     /// <summary>
+    /// Adim 3 Paket 3-C: Super-admin cross-tenant sync log listesi. tenant_id filtresi OPSIYONEL.
+    /// Diger filtreler (status, zoho_event, from/to) P3-B1 ListForDashboardAsync ile ayni.
+    /// Trust model: shared-secret caller (ops boundary), tenant_id her row'da geri doner.
+    /// </summary>
+    public async Task<(IReadOnlyList<OpsSyncLogRow> Items, int TotalCount)> ListAllForOpsAsync(
+        int? tenantFilter,
+        string? statusFilter,
+        string? eventFilter,
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var where = new System.Text.StringBuilder("WHERE 1=1");
+        if (tenantFilter.HasValue)                where.Append(" AND tenant_id = @tid");
+        if (!string.IsNullOrEmpty(statusFilter)) where.Append(" AND status = @status");
+        if (!string.IsNullOrEmpty(eventFilter))  where.Append(" AND zoho_event = @evt");
+        if (fromUtc.HasValue)                    where.Append(" AND updated_at >= @from");
+        if (toUtc.HasValue)                      where.Append(" AND updated_at <= @to");
+
+        var listSql =
+            "SELECT id, tenant_id, zoho_event, source_lead_id, zoho_lead_id, " +
+            "       status, attempt_count, last_error_code, last_error_message, completed_at, updated_at " +
+            "  FROM zoho_sync_log " + where +
+            " ORDER BY updated_at DESC, id DESC " +
+            " LIMIT @lim OFFSET @off";
+
+        var countSql = "SELECT COUNT(*) FROM zoho_sync_log " + where;
+
+        var safePage     = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? 1 : pageSize;
+        var offset       = (safePage - 1) * safePageSize;
+
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+
+        int total;
+        await using (var countCmd = new NpgsqlCommand(countSql, conn))
+        {
+            if (tenantFilter.HasValue)                countCmd.Parameters.AddWithValue("@tid", tenantFilter.Value);
+            if (!string.IsNullOrEmpty(statusFilter)) countCmd.Parameters.AddWithValue("@status", statusFilter);
+            if (!string.IsNullOrEmpty(eventFilter))  countCmd.Parameters.AddWithValue("@evt", eventFilter);
+            if (fromUtc.HasValue)                    countCmd.Parameters.AddWithValue("@from", fromUtc.Value);
+            if (toUtc.HasValue)                      countCmd.Parameters.AddWithValue("@to", toUtc.Value);
+            var raw = await countCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            total = raw is null ? 0 : Convert.ToInt32(raw);
+        }
+
+        var items = new List<OpsSyncLogRow>();
+        await using (var cmd = new NpgsqlCommand(listSql, conn))
+        {
+            if (tenantFilter.HasValue)                cmd.Parameters.AddWithValue("@tid", tenantFilter.Value);
+            if (!string.IsNullOrEmpty(statusFilter)) cmd.Parameters.AddWithValue("@status", statusFilter);
+            if (!string.IsNullOrEmpty(eventFilter))  cmd.Parameters.AddWithValue("@evt", eventFilter);
+            if (fromUtc.HasValue)                    cmd.Parameters.AddWithValue("@from", fromUtc.Value);
+            if (toUtc.HasValue)                      cmd.Parameters.AddWithValue("@to", toUtc.Value);
+            cmd.Parameters.AddWithValue("@lim", safePageSize);
+            cmd.Parameters.AddWithValue("@off", offset);
+
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                items.Add(new OpsSyncLogRow(
+                    Id:               reader.GetInt64(0),
+                    TenantId:         reader.GetInt32(1),
+                    ZohoEvent:        reader.GetString(2),
+                    SourceLeadId:     reader.GetString(3),
+                    ZohoLeadId:       reader.IsDBNull(4) ? null : reader.GetString(4),
+                    Status:           reader.GetString(5),
+                    AttemptCount:     reader.GetInt32(6),
+                    LastErrorCode:    reader.IsDBNull(7) ? null : reader.GetString(7),
+                    LastErrorMessage: reader.IsDBNull(8) ? null : reader.GetString(8),
+                    CompletedAt:      reader.IsDBNull(9) ? null : reader.GetDateTime(9),
+                    UpdatedAt:        reader.GetDateTime(10)));
+            }
+        }
+
+        return (items, total);
+    }
+
+    /// <summary>
+    /// Adim 3 Paket 3-C: Ops dashboard sayac — son 24 saatte failed olan row sayisi (cross-tenant).
+    /// </summary>
+    public async Task<int> CountFailedLast24hAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COUNT(*) FROM zoho_sync_log
+             WHERE status = 'failed'
+               AND updated_at >= NOW() - INTERVAL '24 hours'";
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        var raw = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return raw is null ? 0 : Convert.ToInt32(raw);
+    }
+
+    /// <summary>
+    /// Adim 3 Paket 3-C: Batch retry (cross-tenant). Set-based iki query:
+    /// (1) UPDATE ... WHERE id = ANY(@ids) AND status='failed' RETURNING id  -> updated ids.
+    /// (2) SELECT id, status FROM ... WHERE id = ANY(@ids)                    -> skipped reason map.
+    /// Toplam 2 round-trip (N'e bagli DEGIL). Tenant_id row'dan cozulur (shared-secret trust).
+    /// Returns: (updated ids, skipped entries with reason).
+    /// </summary>
+    public async Task<(IReadOnlyList<long> Updated, IReadOnlyList<(long Id, string Reason)> Skipped)> ResetBatchForOpsRetryAsync(
+        IReadOnlyList<long> ids,
+        CancellationToken ct = default)
+    {
+        if (ids.Count == 0) return (Array.Empty<long>(), Array.Empty<(long, string)>());
+
+        var idArray = new long[ids.Count];
+        for (int i = 0; i < ids.Count; i++) idArray[i] = ids[i];
+
+        const string updateSql = @"
+            UPDATE zoho_sync_log
+               SET status = 'pending',
+                   attempt_count = 0,
+                   updated_at = NOW()
+             WHERE id = ANY(@ids)
+               AND status = 'failed'
+            RETURNING id";
+
+        // Post-update lookup identifies skipped ids — successful updates already have status='pending'
+        // (won't mask; skip reasoning computes against the original input set minus updated set).
+        const string lookupSql = "SELECT id, status FROM zoho_sync_log WHERE id = ANY(@ids)";
+
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+
+        var updated = new List<long>();
+        await using (var cmd = new NpgsqlCommand(updateSql, conn))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("@ids", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Bigint) { Value = idArray });
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                updated.Add(reader.GetInt64(0));
+        }
+
+        var updatedSet = new HashSet<long>(updated);
+        var statusById = new Dictionary<long, string>();
+        await using (var cmd = new NpgsqlCommand(lookupSql, conn))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("@ids", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Bigint) { Value = idArray });
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                statusById[reader.GetInt64(0)] = reader.GetString(1);
+        }
+
+        var skipped = new List<(long Id, string Reason)>();
+        foreach (var id in ids)
+        {
+            if (updatedSet.Contains(id)) continue;
+            if (statusById.TryGetValue(id, out var st))
+                skipped.Add((id, $"Durum '{st}' — sadece 'failed' kayit tekrar denenebilir."));
+            else
+                skipped.Add((id, "Kayit bulunamadi."));
+        }
+
+        return (updated, skipped);
+    }
+
+    /// <summary>
     /// Adim 3 Paket 3-B1: Manuel retry. Sadece status='failed' olan (tenant-scoped) row icin
     /// status='pending' + attempt_count=0 + updated_at=NOW() set eder. RetryWorker bir sonraki
     /// tick'te pickup eder. Dondurulen tuple: (Updated, NewAttemptCount) — Updated=false ise
@@ -326,6 +485,25 @@ public sealed record ZohoRetryCandidate(
     string SourceLeadId,
     string? ZohoLeadId,
     int AttemptCount);
+
+/// <summary>
+/// Adim 3 Paket 3-C: Ops cross-tenant sync log projection. Differs from ZohoSyncLogRow:
+/// - TenantId explicit (tenant-scoped ZohoSyncLogRow doesn't expose it to DTO layer)
+/// - No ZohoTransitionId (ops dashboard doesn't need it)
+/// - UpdatedAt required
+/// </summary>
+public sealed record OpsSyncLogRow(
+    long Id,
+    int TenantId,
+    string ZohoEvent,
+    string SourceLeadId,
+    string? ZohoLeadId,
+    string Status,
+    int AttemptCount,
+    string? LastErrorCode,
+    string? LastErrorMessage,
+    DateTime? CompletedAt,
+    DateTime UpdatedAt);
 
 public sealed record ZohoSyncLogRow(
     long Id,

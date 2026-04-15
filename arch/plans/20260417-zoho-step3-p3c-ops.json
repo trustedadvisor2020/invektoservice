@@ -1,0 +1,147 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-3C",
+  "slug": "20260417-zoho-step3-p3c-ops",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "status_log": [
+    { "status": "DONE", "timestamp": "2026-04-17T10:30:00Z", "notes": "Codex iter 3 PASS (all CQ1-12 + CoVe Q1-Q5 PASS, 0 blocking). Iter 0/1/2 fixes: scope cleanup, typed catches, HttpClient DI simplified, batch-retry audit row_ids, frontend code-prefixed errors, schema sync evidence, set-based batch retry (CQ6 N+1 eliminated), INV-INT-135 ops query validation code." }
+  ],
+  "created_at": "2026-04-17T07:00:00Z",
+  "updated_at": "2026-04-17T07:00:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 3 P3-C — Super-admin cross-tenant Zoho ops dashboard. Backend /api/ops/zoho/* (ValidateOpsAuth) + Integrations /api/internal/ops/zoho/* (shared-secret). 4 ops endpoint: GET connections (cross-tenant list), GET sync-log (cross-tenant paginated+filtered), DELETE connections/{tenantId} (force-disconnect + audit), POST sync-log/retry (batch max 50 + audit). Dashboard /ops/zoho SPA page with status counters + connections tab + sync-log tab + DisconnectConfirmModal + RetryBatchConfirmModal. Audit: JsonLinesLogger SystemInfo super-admin identity + tenant_id + action.",
+    "q_intent": "Q direktifi (2026-04-17 session): Tier 0 ardarda bitir — P3-C + deploy bundle + Backend SPA deploy tek session. P3-C scope tum 4 action (list + sync-log + force-disconnect + batch-retry), /api/ops/* pattern auth (mevcut), UI Dashboard /ops/zoho + tek paket. Modal UX: sag-ust X + 'Vazgec' text + primary buton (P3-B2 pattern). Batch retry: checkbox multi-select, max 50/batch. Status cards: #connected, #disconnected, #failed-24h. Deploy: P1+P2+P3-A+P3-B1+P3-B2+P3-C tek bundle prod. Sidebar yeni entry ops-only.",
+    "interview_notes": "Q kararlari: (a) Backend /api/ops/zoho/* ValidateOpsAuth prefix whitelist (mevcut pattern). (b) Integrations /api/internal/ops/zoho/* shared-secret X-Internal-Service-Token (P2/P3-B1 icin /api/internal/zoho/sync ile ayni config anahtar). (c) Backend -> Integrations shared-secret (JWT forward DEGIL — super-admin JWT'si Integrations tenant kontrolune uymaz; cross-tenant trust shared-secret uzerinden). (d) Audit: JsonLinesLogger SystemInfo, super-admin = Basic username veya JWT username/role. (e) Batch retry max 50, aski row'lar skip edilir (status!=failed veya tenant-mismatch) — response: {requested, updated, skipped[]}. (f) Force-disconnect token revoke best-effort (INV-INT-130 reuse). (g) UI: OpsZohoPage tek dosya + 2 modal + Layout.tsx nav entry 'Zoho Yonetim' (opsOnly). (h) Error codes: INV-INT-131/132/133/134 yeni.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Super-admin /ops/zoho sayfasina girince tum tenant'larin Zoho baglanti durumu listelenir (tenant_id + region + connected badge + connected_at + last_refreshed_at + zoho_user_email). Backend GET /api/ops/zoho/connections -> Integrations GET /api/internal/ops/zoho/connections. ValidateOpsAuth yok ise 401.", "verified": false },
+      { "id": "AC2", "criterion": "Cross-tenant sync log filter (tenant_id + status + zoho_event + from/to + page/pageSize, pageSize max 100) + pagination calisir. Backend GET /api/ops/zoho/sync-log -> Integrations GET /api/internal/ops/zoho/sync-log. Response: items[] + page + pageSize + totalCount. Items'ta tenant_id kolonu mevcut.", "verified": false },
+      { "id": "AC3", "criterion": "Force-disconnect: Backend DELETE /api/ops/zoho/connections/{tenantId} -> Integrations DELETE /api/internal/ops/zoho/connections/{tenantId}. Integrations tarafi ZohoTokenProvider.RevokeRefreshTokenAsync best-effort + ZohoConnectionRepository.DisconnectAsync(tenantId) (mevcut metotlar). Backend JsonLinesLogger SystemInfo: super_admin=<username> action=disconnect target_tenant=<id>. Active connection yoksa 404.", "verified": false },
+      { "id": "AC4", "criterion": "Force-retry (batch): Backend POST /api/ops/zoho/sync-log/retry body {ids:[long], ...max 50} -> Integrations POST /api/internal/ops/zoho/sync-log/retry. Integrations: her id icin ZohoSyncLogRepository.ResetForRetryAsync (tenant_id de row'dan cozulur, cross-tenant) — failed olmayan veya bulunmayan id'ler skipped[]. Response: {requested, updated, skipped:[{id,reason}]}. Backend audit SystemInfo. ids.Count > 50 ise 400 (INV-INT-134). ids bos ise 400.", "verified": false },
+      { "id": "AC5", "criterion": "arch/errors.md yeni kodlar: INV-INT-131 (ops cross-tenant read failure), INV-INT-132 (force-disconnect target tenant not found / already disconnected), INV-INT-133 (ops batch retry empty / invalid payload), INV-INT-134 (ops batch retry max 50 exceeded). ZohoErrorCodes mirror guncellenir.", "verified": false },
+      { "id": "AC6", "criterion": "Dashboard /ops/zoho: Layout.tsx nav entry 'Zoho Yonetim' opsOnly:true. OpsZohoPage sayac kartlari (#connected, #disconnected, #failed-24h) + 2 tab (Baglantilar, Senkron Kaydi) + filter + pagination + batch checkbox + 'Secileni Tekrar Dene' buton + OpsZohoDisconnectModal (sag-ust X + 'Vazgec' + 'Bagi Kes') + OpsZohoRetryBatchModal (sag-ust X + 'Vazgec' + 'Tekrar Dene'). api.ts: 4 metot + DTO'lar. Tum UI TR.", "verified": false },
+      { "id": "AC7", "criterion": "Full solution build PASS + Dashboard build PASS. Mikroservis izolasyonu korunur (Backend -> Integrations HTTP only). /api/ops/endpoints handler'ina yeni 4 endpoint eklenir.", "verified": false }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Backend /api/ops/zoho/* -> Integrations /api/internal/ops/zoho/* uzerinden shared-secret X-Internal-Service-Token (JWT forward DEGIL).",
+      "reason": "Super-admin JWT'si Integrations /api/v1/ JwtAuth middleware'i icin gecersiz (tenant_id iceri tasinmiyor; TenantContext yok). Cross-tenant ops ayri bir trust boundary — mevcut InternalServices:SharedSecret (P1/P2/P3-B1'de kurulu) yeniden kullanilir, ayri bir secret veya yeni auth katmani acilmaz. Cross-tenant action'larin tum audit sorumlulugu Backend tarafinda (ValidateOpsAuth + JsonLinesLogger SystemInfo).",
+      "codex_note": "EXPECTED: Codex 'Neden JWT forward degil?' diye sorarsa: super-admin JWT -> Integrations /api/v1/ -> TenantContext null -> 401. Mevcut JwtAuth middleware cross-tenant ops icin tasarlanmadi. Shared-secret model tek trust boundary, tum audit Backend'de. P3-B1 JWT forward pattern user-facing tenant ops icin gecerliydi (Integrations kendi tenant_id'sini JWT'den cikarabiliyordu); burada tenant_id path/body'den geliyor, Integrations kendi authenticate ediyor."
+    },
+    {
+      "decision": "Batch retry max 50 + per-id skip reporting (whole-batch 400 DEGIL).",
+      "reason": "UI multi-select; kullanicinin sectigi 50 id'den bazilari arka planda state degistirmis olabilir (worker basarili olmus vs). Whole-batch reject UX'i bozar; skip + rapor UX secenegi Q onayli.",
+      "codex_note": "EXPECTED: Codex 'Batch partial success idempotency riski' diyebilir. Kabul: response skipped[] acik reason dokuman eder, UI banner gosterir. Row bazinda already-pending state de skip olarak donulur."
+    },
+    {
+      "decision": "Audit log SADECE Backend tarafinda (JsonLinesLogger SystemInfo) — Integrations'a ayri audit log/tablo eklenmez.",
+      "reason": "Backend /api/ops/* tum super-admin aksiyonunun giris kapisi; Basic Auth username veya JWT role:admin buradan cozulur. Integrations audit'in kaynagini (kim) bilmiyor (shared-secret internal caller). Cift audit kayit redundancy; kaynagi tutan Backend yeterli.",
+      "codex_note": "EXPECTED: Codex 'Integrations tarafi audit yok' diyebilir. Kabul: Q interview'de karar verildi (audit yalniz Backend). Integrations arka uc action log'u zaten JsonLinesLogger ile tutuyor (disconnect/retry action success/failure)."
+    },
+    {
+      "decision": "Force-disconnect endpoint path /api/ops/zoho/connections/{tenantId} — tenantId URL'de; Integrations tarafi path'ten okur.",
+      "reason": "RESTful convention; query/body'ye karistirilmaz. Integrations'ta TenantContext (JWT) yok, tenant_id path parametresi. Shared-secret caller trust boundary.",
+      "codex_note": "EXPECTED: Codex 'tenant_id path vs body' tutarsizlik diyebilir. Kabul: /api/internal/* shared-secret modelinde path parametresi standart — P1 POST /api/internal/zoho/sync body.TenantId vs burada DELETE path tenantId — DELETE ile body kullanmak HTTP semantigine uymaz."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260417-zoho-step3-p3c-ops.json",
+    "arch/plans/diffs/20260417-zoho-step3-p3c-ops.diff",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoOpsDtos.cs",
+    "src/Invekto.Integrations/Data/ZohoConnectionRepository.cs",
+    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoOpsEndpoints.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Backend/Services/Zoho/IZohoOpsProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoOpsProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoOpsEndpoints.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/OpsZohoPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoDisconnectModal.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoRetryBatchModal.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": "PASS", "command": "dotnet build InvektoServis.sln + npm run build (Dashboard)", "services": ["Invekto.Shared", "Invekto.Integrations", "Invekto.Backend", "Dashboard SPA"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "Ops endpoints tum super-admin auth kontrolunu ValidateOpsAuth uzerinden yapiyor mu, herhangi bir bypass path var mi?", "category": "Auth" },
+    { "id": "Q2", "question": "Cross-tenant sync log/connection sorgulari tenant_id filtrelemesinden bagimsiz olarak calisiyor, ancak her row'da tenant_id geri donuyor mu?", "category": "Data" },
+    { "id": "Q3", "question": "Batch retry max 50 sinirlamasi + skip reporting dogru sekilde donuyor mu; invalid payload (>50 veya empty) 400 mu?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "Force-disconnect + batch-retry action'lari Backend tarafinda JsonLinesLogger SystemInfo ile (super_admin + tenant_id + action) audit yaziyor mu?", "category": "Lifecycle" },
+    { "id": "Q5", "question": "Integrations /api/internal/ops/zoho/* endpoints shared-secret (X-Internal-Service-Token) ile koruma altinda mi; kayip/yanlis token icin 401/403 mu?", "category": "Auth" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "/api/v1/zoho/* (P3-B1 scope — tenant-JWT)",
+      "ZohoSyncService/ZohoBlueprintClient (P1 scope)",
+      "ZohoRetryWorker (P2 scope)",
+      "Stage mapping UI (P4 backlog)"
+    ],
+    "non_goals": [
+      "SuperAdmin tenant impersonation (TenantsPage pattern zaten mevcut, P3-C kapsamda yeni link eklenmez)",
+      "Yeni audit_log tablosu veya migration",
+      "Chart library kullanimi (basit sayac kartlari)",
+      "Integrations tarafi ayri audit kaydi"
+    ],
+    "intentional_exclusions": [
+      "Tenant bazinda detay drill-down modal (sync log Tenant ID'ye tiklanirca /tenants/{id} route'u olabilir — P4)",
+      "WebSocket/SSE live refresh (manual refresh yeterli)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ZohoOpsEndpoints.cs (Integrations) — NpgsqlException, ArgumentException, JsonException",
+      "ZohoOpsProxyClient.cs (Backend) — HttpRequestException, TaskCanceledException, IOException (P3-B1 pattern)",
+      "OpsZohoPage.tsx — try/catch around api calls, typed error display"
+    ],
+    "user_facing_errors": [
+      "INV-INT-131 kullanici mesaji",
+      "INV-INT-132 'Bu tenant icin aktif Zoho baglantisi bulunamadi.'",
+      "INV-INT-133 'Tekrar denenecek kayit listesi bos veya gecersiz.'",
+      "INV-INT-134 'Toplu tekrar deneme en fazla 50 kayit icerebilir.'",
+      "INV-INT-FE-xxx frontend fallback mesajlari (P3-B2 pattern)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum action path'leri ya basarili (200) ya da error code + TR message ile HTTP status donuyor. Background task yok. Token revoke INV-INT-130 ile observable."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Operator 50 failed sync row'u tek tek retry tiklamak zorunda kaliyor — dakika alir",
+      "suggestion": "Batch retry checkbox + 'Secileni Tekrar Dene' toplu action (max 50)",
+      "aha_moment": "Filtreledim, hepsini sectim, tek butonla retry — 5 saniye"
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Belli bir tenant'in Zoho baglantisi kopuk mu takili kaldi bilinmiyor, her tenant'a giris yapmak gerek",
+      "suggestion": "Cross-tenant connections tablosu + connected/disconnected/failed sayac kartlari",
+      "aha_moment": "Anasayfada 3 tenant 'disconnected' gorurum, sadece onlara odaklanirim"
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek tenant'tan 'Zoho calismiyor' dedi, hangi event'te takildi belli degil",
+      "suggestion": "Tenant + event + tarih filtreli sync log arama",
+      "aha_moment": "Tenant 5050, event offer_sent, son 24 saat — 3 failed row gorurum, hemen retry + audit"
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Yeni tenant onboarding'de Zoho baglantisi test etmek icin tenant hesabina login gerekli",
+      "suggestion": "Ops dashboard'ta tenant bazinda 'connected + last_refreshed_at' kolonu",
+      "aha_moment": "5 saniyede 50 tenant'in baglanti durumunu dogrularim"
+    },
+    {
+      "category": "SALES",
+      "user_pain": "Musteri uretim-disi kaldi, su an hangi entegrasyonlarin saglikli kac tenant'ta calistigini raporlamak zor",
+      "suggestion": "Status sayac kartlari (#connected tenant sayisi) screenshot'layabilir SLA raporuna",
+      "aha_moment": "42 tenant connected, 3 disconnected, 7 failed last-24h — tek bakista SLA veri"
+    }
+  ],
+  "verdict": { "status": "PASS", "iteration": 3, "source": "CODEX_TEXT_VIA_Q", "received_at": "2026-04-17T10:25:00Z" }
+}

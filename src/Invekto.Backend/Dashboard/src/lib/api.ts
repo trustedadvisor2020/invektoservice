@@ -1869,6 +1869,35 @@ class OpsApiClient {
   async retryZohoSyncLog(id: number): Promise<ZohoSyncLogRetryResponse> {
     return this.request<ZohoSyncLogRetryResponse>(`/api/v1/zoho/sync-log/${id}/retry`, { method: 'POST' });
   }
+
+  // --- Zoho Ops (Adim 3 P3-C): super-admin cross-tenant /api/ops/zoho/* ---
+  async getOpsZohoConnections(): Promise<ZohoOpsConnectionListResponse> {
+    return this.request<ZohoOpsConnectionListResponse>('/api/ops/zoho/connections');
+  }
+
+  async getOpsZohoSyncLog(params: ZohoOpsSyncLogQuery): Promise<ZohoOpsSyncLogPageResponse> {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', params.page.toString());
+    if (params.pageSize) qs.set('pageSize', params.pageSize.toString());
+    if (params.tenantId !== undefined && params.tenantId !== null) qs.set('tenantId', params.tenantId.toString());
+    if (params.status) qs.set('status', params.status);
+    if (params.event) qs.set('event', params.event);
+    if (params.from) qs.set('from', params.from);
+    if (params.to) qs.set('to', params.to);
+    const query = qs.toString();
+    return this.request<ZohoOpsSyncLogPageResponse>(`/api/ops/zoho/sync-log${query ? `?${query}` : ''}`);
+  }
+
+  async forceDisconnectOpsZoho(tenantId: number): Promise<ZohoOpsDisconnectResponse> {
+    return this.request<ZohoOpsDisconnectResponse>(`/api/ops/zoho/connections/${tenantId}`, { method: 'DELETE' });
+  }
+
+  async batchRetryOpsZoho(ids: number[]): Promise<ZohoOpsBatchRetryResponse> {
+    return this.request<ZohoOpsBatchRetryResponse>('/api/ops/zoho/sync-log/retry', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
 }
 
 // --- Zoho DTOs (mirror src/Invekto.Shared/Contracts/Zoho, camelCase per API serializer) ---
@@ -1935,6 +1964,71 @@ export interface ZohoSyncLogPageResponse {
 export interface ZohoSyncLogRetryResponse {
   retriedId: number;
   newAttemptCount: number;
+}
+
+// --- Zoho Ops (P3-C) DTOs (mirror Invekto.Shared.Contracts.Zoho.ZohoOpsDtos, camelCase) ---
+
+export interface ZohoOpsConnectionEntryDto {
+  tenantId: number;
+  region: string;
+  zohoUserEmail?: string | null;
+  connectedAt: string;
+  lastRefreshedAt?: string | null;
+  disconnectedAt?: string | null;
+}
+
+export interface ZohoOpsConnectionListResponse {
+  items: ZohoOpsConnectionEntryDto[];
+  connectedCount: number;
+  disconnectedCount: number;
+  failedLast24hCount: number;
+}
+
+export interface ZohoOpsSyncLogEntryDto {
+  id: number;
+  tenantId: number;
+  zohoEvent: string;
+  sourceLeadId: string;
+  zohoLeadId?: string | null;
+  status: ZohoSyncLogStatus;
+  attemptCount: number;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+  updatedAt: string;
+  completedAt?: string | null;
+}
+
+export interface ZohoOpsSyncLogQuery {
+  page?: number;
+  pageSize?: number;
+  tenantId?: number | null;
+  status?: ZohoSyncLogStatus | '';
+  event?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface ZohoOpsSyncLogPageResponse {
+  items: ZohoOpsSyncLogEntryDto[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ZohoOpsBatchRetrySkipEntry {
+  id: number;
+  reason: string;
+}
+
+export interface ZohoOpsBatchRetryResponse {
+  requested: number;
+  updated: number;
+  skipped: ZohoOpsBatchRetrySkipEntry[];
+}
+
+export interface ZohoOpsDisconnectResponse {
+  tenantId: number;
+  tokenRevoked: boolean;
 }
 
 // --- RI Types (RI-6) ---

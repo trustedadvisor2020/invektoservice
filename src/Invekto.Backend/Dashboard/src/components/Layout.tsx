@@ -69,6 +69,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // — Ops: Yönetim —
   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true, section: 'Yönetim' },
   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
+  { path: '/ops/zoho',        label: 'Zoho Yönetim',      icon: Link2,         opsOnly: true },
   // — Ops: İçerik —
   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true, section: 'İçerik' },
   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },

@@ -774,6 +774,8 @@ app.MapZohoSyncEndpoints();
 // Adim 3 Paket 3-B1: Dashboard UI icin tenant-scoped connection + sync-log endpoints.
 app.MapZohoConnectionEndpoints();
 app.MapZohoSyncLogEndpoints();
+// Adim 3 Paket 3-C: Super-admin cross-tenant ops endpoints (shared-secret).
+app.MapZohoOpsEndpoints();
 
 app.MapGet("/api/ops/endpoints", () =>
 {
@@ -804,6 +806,10 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/v1/zoho/stage-mappings", Description = "List tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "PUT", Path = "/api/v1/zoho/stage-mappings", Description = "Replace tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "GET", Path = "/api/v1/zoho/sync-log/failed-count", Description = "Failed sync count badge (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
+        new() { Method = "GET", Path = "/api/internal/ops/zoho/connections", Description = "Super-admin cross-tenant Zoho connections list (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+        new() { Method = "GET", Path = "/api/internal/ops/zoho/sync-log", Description = "Super-admin cross-tenant Zoho sync log (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+        new() { Method = "DELETE", Path = "/api/internal/ops/zoho/connections/{tenantId}", Description = "Super-admin force-disconnect tenant Zoho (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+        new() { Method = "POST", Path = "/api/internal/ops/zoho/sync-log/retry", Description = "Super-admin batch retry failed sync rows (Adim 3 P3-C, max 50)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
     return Results.Ok(endpoints);

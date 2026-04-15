@@ -111,6 +111,27 @@ public sealed class ZohoConnectionRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    /// <summary>
+    /// Adim 3 Paket 3-C: Super-admin cross-tenant listing. Returns BOTH active and soft-disconnected rows
+    /// ordered by connected_at desc. No tenant_id filter — caller is trusted via shared-secret (ops boundary).
+    /// </summary>
+    public async Task<IReadOnlyList<ZohoConnection>> ListAllForOpsAsync(CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, region, api_domain, accounts_domain, refresh_token_enc,
+                   granted_scopes, zoho_user_email, connected_at, updated_at, last_refreshed_at, disconnected_at
+            FROM zoho_connections
+            ORDER BY connected_at DESC";
+
+        await using var conn = await _db.OpenConnectionAsync(ct);
+        await using var cmd  = new NpgsqlCommand(sql, conn);
+        var rows = new List<ZohoConnection>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            rows.Add(Read(reader));
+        return rows;
+    }
+
     /// <summary>Soft-disconnects the tenant's Zoho connection (no row deletion).</summary>
     public async Task DisconnectAsync(int tenantId, CancellationToken ct = default)
     {

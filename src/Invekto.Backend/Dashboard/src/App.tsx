@@ -13,6 +13,7 @@ import { IntegrationsPage } from './pages/IntegrationsPage';
 import { MarketingPage } from './pages/MarketingPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { TenantsPage } from './pages/TenantsPage';
+import { OpsZohoPage } from './pages/OpsZohoPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingGuidePage } from './pages/OnboardingGuidePage';
 import { OnboardingWizardPage } from './pages/OnboardingWizardPage';
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/webchat" element={<WebChatPage />} />
         <Route path="/tenants" element={<TenantsPage />} />
+        <Route path="/ops/zoho" element={<OpsZohoPage />} />
         <Route path="/licenses" element={<LicensesPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
