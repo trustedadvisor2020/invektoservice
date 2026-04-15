@@ -105,26 +105,26 @@ CREATE TABLE IF NOT EXISTS zoho_connections (
 );
 CREATE INDEX IF NOT EXISTS idx_zoho_connections_tenant ON zoho_connections(tenant_id);
 
--- Zoho stage mappings (Adim 3 Paket 1 - migration 013) — Gunes event -> Zoho Blueprint transition
+-- Zoho stage mappings (Adim 3 Paket 1 - migration 013, renamed in 015) — lifecycle event -> Zoho Blueprint transition
 CREATE TABLE IF NOT EXISTS zoho_stage_mappings (
     id                    BIGSERIAL PRIMARY KEY,
     tenant_id             INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
-    gunes_event           VARCHAR(64) NOT NULL
-        CHECK (gunes_event IN ('welcome_sent','engaged','qualified','offer_sent','closed_won','deposit_paid','closed_lost')),
+    zoho_event            VARCHAR(64) NOT NULL
+        CHECK (zoho_event IN ('welcome_sent','engaged','qualified','offer_sent','closed_won','deposit_paid','closed_lost')),
     zoho_transition_id    VARCHAR(64) NOT NULL,
     zoho_transition_name  VARCHAR(256),
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_zoho_stage_mappings_tenant_event UNIQUE (tenant_id, gunes_event)
+    CONSTRAINT uq_zoho_stage_mappings_tenant_event UNIQUE (tenant_id, zoho_event)
 );
 CREATE INDEX IF NOT EXISTS idx_zoho_stage_mappings_tenant ON zoho_stage_mappings(tenant_id);
 
--- Zoho sync attempt log (Adim 3 Paket 1 - migration 014) — retry source of truth
+-- Zoho sync attempt log (Adim 3 Paket 1 - migration 014, renamed in 015) — retry source of truth
 CREATE TABLE IF NOT EXISTS zoho_sync_log (
     id                    BIGSERIAL PRIMARY KEY,
     tenant_id             INTEGER NOT NULL REFERENCES tenant_registry(tenant_id),
-    gunes_event           VARCHAR(64) NOT NULL,
-    gunes_lead_id         VARCHAR(128) NOT NULL,
+    zoho_event            VARCHAR(64) NOT NULL,
+    source_lead_id        VARCHAR(128) NOT NULL,
     zoho_lead_id          VARCHAR(64),
     zoho_transition_id    VARCHAR(64),
     status                VARCHAR(16) NOT NULL CHECK (status IN ('pending','success','failed')),
@@ -137,9 +137,9 @@ CREATE TABLE IF NOT EXISTS zoho_sync_log (
 );
 CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_tenant_status ON zoho_sync_log(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_retry ON zoho_sync_log(status, attempt_count) WHERE status = 'failed';
-CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_lead ON zoho_sync_log(tenant_id, gunes_lead_id);
+CREATE INDEX IF NOT EXISTS idx_zoho_sync_log_source_lead ON zoho_sync_log(tenant_id, source_lead_id);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_zoho_sync_log_open_attempt
-    ON zoho_sync_log(tenant_id, gunes_event, gunes_lead_id)
+    ON zoho_sync_log(tenant_id, zoho_event, source_lead_id)
     WHERE status IN ('pending','failed');
 
 -- Grants

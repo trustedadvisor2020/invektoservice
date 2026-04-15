@@ -586,9 +586,9 @@ errors:
   - code: INV-INT-119
     description: Zoho rate limit reached
     user_message: Zoho istek limiti aşıldı, lütfen sonra deneyin.
-  # Zoho Sync (INV-INT-120+) — Adim 3 Paket 1: Gunes -> Zoho sync pipeline
+  # Zoho Sync (INV-INT-120+) — Adim 3 Paket 1: Source -> Zoho sync pipeline
   - code: INV-INT-120
-    description: Zoho stage mapping not configured for gunes_event
+    description: Zoho stage mapping not configured for zoho_event
     user_message: Zoho aşama eşleştirmesi yapılmamış, lütfen Zoho ayarlarını tamamlayın.
   - code: INV-INT-121
     description: Zoho Leads Blueprint not configured (Blueprint-only policy)

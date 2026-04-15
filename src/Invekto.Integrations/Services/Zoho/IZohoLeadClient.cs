@@ -7,7 +7,7 @@ namespace Invekto.Integrations.Services.Zoho;
 
 /// <summary>
 /// Thin wrapper over Zoho CRM /crm/v6/Leads endpoints. Scope in Adim 3 P1 is read-only
-/// (Get by id) + minimal create; full CRUD arrives with Zoho->Gunes sync in Adim 4.
+/// (Get by id) + minimal create; full CRUD arrives with inbound Zoho sync in Adim 4.
 /// </summary>
 public interface IZohoLeadClient
 {

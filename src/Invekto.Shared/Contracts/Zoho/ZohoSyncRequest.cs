@@ -9,11 +9,11 @@ public sealed class ZohoSyncRequest
     /// <summary>Invekto tenant_id (multi-tenant scope).</summary>
     public required int TenantId { get; init; }
 
-    /// <summary>Gunes lifecycle event (welcome_sent / engaged / qualified / offer_sent / closed_won / deposit_paid / closed_lost).</summary>
-    public required string GunesEvent { get; init; }
+    /// <summary>Zoho lifecycle event (welcome_sent / engaged / qualified / offer_sent / closed_won / deposit_paid / closed_lost).</summary>
+    public required string ZohoEvent { get; init; }
 
-    /// <summary>Opaque Gunes-side lead identifier. Used as sync_log idempotency key with (tenant_id, gunes_event).</summary>
-    public required string GunesLeadId { get; init; }
+    /// <summary>Opaque source-side lead identifier (Invekto lead id). Used as sync_log idempotency key with (tenant_id, zoho_event).</summary>
+    public required string SourceLeadId { get; init; }
 
     /// <summary>Known Zoho CRM Lead id if already resolved. When null, LeadFields.LastName MUST be supplied and a new Zoho Lead is created.</summary>
     public string? ZohoLeadId { get; init; }
@@ -23,7 +23,7 @@ public sealed class ZohoSyncRequest
 }
 
 /// <summary>
-/// Minimal Zoho Lead fields used when Gunes side is the source of truth for the lead record.
+/// Minimal Zoho Lead fields used when the source side is the source of truth for the lead record.
 /// </summary>
 public sealed class ZohoLeadFields
 {

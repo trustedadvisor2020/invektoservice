@@ -7,7 +7,7 @@
 // Shared secret config: "InternalServices:SharedSecret" (appsettings / env override). Missing -> 500.
 // Tenant-scope trust model: caller (Invekto.Backend lifecycle hook) supplies TenantId in the body;
 // shared secret is the sole trust boundary. This is an accepted architectural decision for Adim 3 P1
-// (see spec_architectural_decisions in plan JSON). Zoho->Gunes path in Adim 4 will introduce
+// (see spec_architectural_decisions in plan JSON). Inbound Zoho path in Adim 4 will introduce
 // per-caller service identity if cross-tenant risk surfaces in operation.
 using System;
 using System.Linq;

@@ -1,4 +1,4 @@
-// Adim 3 Paket 1: persistence for zoho_sync_log (every Gunes -> Zoho sync attempt).
+// Adim 3 Paket 1: persistence for zoho_sync_log (every source -> Zoho sync attempt).
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -15,26 +15,26 @@ public sealed class ZohoSyncLogRepository
     public ZohoSyncLogRepository(PostgresConnectionFactory db) => _db = db;
 
     /// <summary>
-    /// Upsert-style: if a pending/failed row exists for (tenant_id, gunes_event, gunes_lead_id) it is reused;
+    /// Upsert-style: if a pending/failed row exists for (tenant_id, zoho_event, source_lead_id) it is reused;
     /// otherwise a new 'pending' row is inserted. Returns the log id.
     /// </summary>
     public async Task<long> BeginAttemptAsync(
         int tenantId,
-        string gunesEvent,
-        string gunesLeadId,
+        string zohoEvent,
+        string sourceLeadId,
         string? zohoLeadId,
         CancellationToken ct = default)
     {
         // Atomic upsert: relies on partial unique index `ux_zoho_sync_log_open_attempt` on
-        // (tenant_id, gunes_event, gunes_lead_id) WHERE status IN ('pending','failed').
+        // (tenant_id, zoho_event, source_lead_id) WHERE status IN ('pending','failed').
         // This gives a single-statement CAS: a new row is created OR the existing non-terminal
         // row's attempt_count is incremented — no read-then-write race window.
         const string sql = @"
             INSERT INTO zoho_sync_log
-                (tenant_id, gunes_event, gunes_lead_id, zoho_lead_id, status, attempt_count)
+                (tenant_id, zoho_event, source_lead_id, zoho_lead_id, status, attempt_count)
             VALUES
                 (@tid, @evt, @lid, @zlid, 'pending', 1)
-            ON CONFLICT (tenant_id, gunes_event, gunes_lead_id)
+            ON CONFLICT (tenant_id, zoho_event, source_lead_id)
                 WHERE status IN ('pending','failed')
             DO UPDATE SET
                 status        = 'pending',
@@ -46,8 +46,8 @@ public sealed class ZohoSyncLogRepository
         await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@tid", tenantId);
-        cmd.Parameters.AddWithValue("@evt", gunesEvent);
-        cmd.Parameters.AddWithValue("@lid", gunesLeadId);
+        cmd.Parameters.AddWithValue("@evt", zohoEvent);
+        cmd.Parameters.AddWithValue("@lid", sourceLeadId);
         cmd.Parameters.AddWithValue("@zlid", (object?)zohoLeadId ?? DBNull.Value);
         var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("INV-INT-125: zoho_sync_log insert/update returned no id.");
@@ -99,7 +99,7 @@ public sealed class ZohoSyncLogRepository
     {
         // Tenant isolation: every DB read must be scoped by tenant_id per project rules.
         const string sql = @"
-            SELECT id, tenant_id, gunes_event, gunes_lead_id, zoho_lead_id, zoho_transition_id,
+            SELECT id, tenant_id, zoho_event, source_lead_id, zoho_lead_id, zoho_transition_id,
                    status, attempt_count, last_error_code, last_error_message, completed_at
               FROM zoho_sync_log
              WHERE id = @id AND tenant_id = @tid";
@@ -116,7 +116,7 @@ public sealed class ZohoSyncLogRepository
     /// Adim 3 Paket 2: Enumerate tenants that currently have retry-eligible zoho_sync_log rows.
     /// Used by ZohoRetryWorker to iterate per-tenant (preserves tenant_id scoping on the per-batch
     /// ListRetryCandidatesForTenantAsync query below).
-    /// Schema reference: arch/db/migrations/014-zoho-sync-log.sql (columns status, updated_at, attempt_count).
+    /// Schema reference: arch/db/migrations/014-zoho-sync-log.sql + 015-rename-gunes-to-zoho.sql (columns status, updated_at, attempt_count).
     /// </summary>
     public async Task<IReadOnlyList<int>> ListTenantsWithRetryCandidatesAsync(CancellationToken ct = default)
     {
@@ -141,7 +141,6 @@ public sealed class ZohoSyncLogRepository
     /// Uses SELECT ... FOR UPDATE SKIP LOCKED for horizontal-scale safety; the lock window is bounded by the
     /// explicit transaction. Worker calls IZohoSyncService.SyncAsync which itself runs BeginAttemptAsync
     /// (attempt++) so this method does NOT mutate state — it only projects the request reconstruction fields.
-    /// Schema reference: arch/db/migrations/014-zoho-sync-log.sql.
     /// </summary>
     public async Task<IReadOnlyList<ZohoRetryCandidate>> ListRetryCandidatesForTenantAsync(
         int tenantId, int limit, CancellationToken ct = default)
@@ -158,7 +157,7 @@ public sealed class ZohoSyncLogRepository
                  LIMIT @lim
                  FOR UPDATE SKIP LOCKED
             )
-            SELECT l.id, l.tenant_id, l.gunes_event, l.gunes_lead_id, l.zoho_lead_id, l.attempt_count
+            SELECT l.id, l.tenant_id, l.zoho_event, l.source_lead_id, l.zoho_lead_id, l.attempt_count
               FROM zoho_sync_log l
               JOIN claimed c ON c.id = l.id";
 
@@ -176,8 +175,8 @@ public sealed class ZohoSyncLogRepository
                 rows.Add(new ZohoRetryCandidate(
                     Id:           reader.GetInt64(0),
                     TenantId:     reader.GetInt32(1),
-                    GunesEvent:   reader.GetString(2),
-                    GunesLeadId:  reader.GetString(3),
+                    ZohoEvent:    reader.GetString(2),
+                    SourceLeadId: reader.GetString(3),
                     ZohoLeadId:   reader.IsDBNull(4) ? null : reader.GetString(4),
                     AttemptCount: reader.GetInt32(5)));
             }
@@ -200,8 +199,8 @@ public sealed class ZohoSyncLogRepository
     private static ZohoSyncLogRow ReadRow(NpgsqlDataReader r) => new(
         Id:                 r.GetInt64(0),
         TenantId:           r.GetInt32(1),
-        GunesEvent:         r.GetString(2),
-        GunesLeadId:        r.GetString(3),
+        ZohoEvent:          r.GetString(2),
+        SourceLeadId:       r.GetString(3),
         ZohoLeadId:         r.IsDBNull(4) ? null : r.GetString(4),
         ZohoTransitionId:   r.IsDBNull(5) ? null : r.GetString(5),
         Status:             r.GetString(6),
@@ -217,16 +216,16 @@ public sealed class ZohoSyncLogRepository
 public sealed record ZohoRetryCandidate(
     long Id,
     int TenantId,
-    string GunesEvent,
-    string GunesLeadId,
+    string ZohoEvent,
+    string SourceLeadId,
     string? ZohoLeadId,
     int AttemptCount);
 
 public sealed record ZohoSyncLogRow(
     long Id,
     int TenantId,
-    string GunesEvent,
-    string GunesLeadId,
+    string ZohoEvent,
+    string SourceLeadId,
     string? ZohoLeadId,
     string? ZohoTransitionId,
     string Status,

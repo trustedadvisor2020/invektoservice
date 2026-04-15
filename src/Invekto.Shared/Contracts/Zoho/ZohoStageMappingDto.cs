@@ -1,13 +1,13 @@
 namespace Invekto.Shared.Contracts.Zoho;
 
 /// <summary>
-/// Per-tenant mapping: Gunes lifecycle event -> Zoho Blueprint transition.
+/// Per-tenant mapping: lifecycle event -> Zoho Blueprint transition.
 /// Source: zoho_stage_mappings table. Used by Dashboard UI (Adim 3 P3) and SyncOrchestrator.
 /// </summary>
 public sealed class ZohoStageMappingDto
 {
-    /// <summary>Gunes lifecycle event identifier.</summary>
-    public required string GunesEvent { get; init; }
+    /// <summary>Lifecycle event identifier.</summary>
+    public required string ZohoEvent { get; init; }
 
     /// <summary>Zoho Blueprint transition id (discovered via GET /crm/v6/settings/blueprint).</summary>
     public required string ZohoTransitionId { get; init; }
@@ -31,7 +31,7 @@ public sealed class ZohoStageMappingUpsertRequest
 
 public sealed class ZohoStageMappingEntry
 {
-    public required string GunesEvent { get; init; }
+    public required string ZohoEvent { get; init; }
     public required string ZohoTransitionId { get; init; }
     public string? ZohoTransitionName { get; init; }
 }

@@ -1,0 +1,84 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-3A",
+  "slug": "20260415-zoho-step3-p3a-rename",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-15T02:20:00Z",
+  "updated_at": "2026-04-15T02:20:00Z",
+  "plan": {
+    "summary": "Rename 'gunes_event' / 'GunesEvent' to 'zoho_event' / 'ZohoEvent' across Zoho integration (Shared contracts, Backend Zoho services, Integrations Zoho services, zoho_sync_log + zoho_stage_mappings columns). Zoho entegrasyonu tum tenantlar icin generic olacak, musteri-spesifik vokabul kaldiriliyor.",
+    "q_intent": "Q direktifi: 'adi gunes olan bisey istemiyorum. tek bir musteri icin yapmiyoruz bunlari.' Zoho entegrasyonu artik platform seviyesinde; P1+P2 kodu henuz prod'a cikmadi, backward-compat shim gerekmiyor. Migration 015 ALTER COLUMN RENAME ile data preserve edilerek kolon adlari degisir.",
+    "interview_notes": "Q kararlari: (1) Kolon rename yaklasimi: ALTER COLUMN RENAME (tek adim, data preserve, migration 013+014 henuz prod'a cikmadi). (2) Backward-compat shim YOK - eski alan adlari kabul edilmez, temiz rename. (3) UI (P3-B) ve super-admin dashboard (P3-C) ayri paketler. (4) flow-templates.ts icindeki 'gunes' Turkce 'gunes isigi' (UV bakim metni); Zoho ile ilgisiz, SKIP.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Invekto.Shared.Contracts.Zoho.ZohoSyncRequest.GunesEvent -> ZohoEvent; JSON serialization key 'gunes_event' -> 'zoho_event'. ZohoStageMappingDto.GunesEvent -> ZohoEvent aynI sekilde.", "verified": false },
+      { "id": "AC2", "criterion": "Migration 015-rename-gunes-to-zoho.sql: ALTER TABLE zoho_sync_log RENAME COLUMN gunes_event TO zoho_event; ALTER TABLE zoho_stage_mappings RENAME COLUMN gunes_event TO zoho_event; ilgili index/constraint isimleri de rename edilir (idx_zoho_sync_log_* + ux_zoho_stage_mappings_*).", "verified": false },
+      { "id": "AC3", "criterion": "Tum .cs dosyalarinda kod icindeki 'gunesEvent'/'GunesEvent' identifier'lari, SQL string literal'lardaki 'gunes_event' kolon referanslari ve log message'larindaki 'gunes' kelimeleri 'zoho_event'/'ZohoEvent'/'zoho' olarak degistirilir. LeadStatusEventMap, ZohoSyncClient, ZohoLifecycleDispatcher, ZohoRetryWorker, ZohoSyncService, ZohoStageMappingService, ZohoSyncLogRepository, ZohoStageMappingRepository, ZohoSyncEndpoints.", "verified": false },
+      { "id": "AC4", "criterion": "arch/db/integrations.sql schema source-of-truth guncellenir; arch/errors.md INV-INT-127 ve diger Zoho hata aciklamalarinda 'gunes_event' -> 'zoho_event'.", "verified": false },
+      { "id": "AC5", "criterion": "Full solution build PASS. Mikroservis izolasyonu korunur (hicbir cross-service reference eklenmedi). Grep 'gunes|Gunes' src/ altinda SADECE flow-templates (unrelated Turkish UV metni) dondurur.", "verified": false }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "ALTER COLUMN RENAME over new-column+backfill+drop.",
+      "reason": "Migration 013+014 henuz prod'a cikmadi, data yok, tek-adim rename guvenli ve geri donusu kolay. Yeni kolon+backfill deseni iki ayri migration ve Integrations re-deploy gerektirir - gereksiz karmasa.",
+      "codex_note": "EXPECTED: Codex ALTER RENAME'i production'da risk olarak isaretleyebilir; bu pakette kasitli karar - P1+P2 henuz deploy edilmedi, ayni deploy window icinde 013+014+015 birlikte cikacak."
+    },
+    {
+      "decision": "Backward-compat JSON shim YOK (eski 'gunes_event' key kabul edilmez).",
+      "reason": "HTTP yuzeyi sadece internal Backend <-> Integrations. P1+P2 prod'da degil, baska client yok. Shim teknik borc biriktirir.",
+      "codex_note": "EXPECTED: Breaking change; kabul edilmis. Prod'da P1+P2 yok."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260415-zoho-step3-p3a-rename.json",
+    "arch/plans/diffs/20260415-zoho-step3-p3a-rename.diff",
+    "arch/db/migrations/015-rename-gunes-to-zoho.sql",
+    "arch/db/integrations.sql",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoSyncRequest.cs",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoStageMappingDto.cs",
+    "src/Invekto.Backend/Services/Zoho/LeadStatusEventMap.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoSyncClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoLifecycleDispatcher.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoRetryWorker.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoSyncService.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingService.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoSyncService.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoStageMappingService.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoLeadClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoSyncEndpoints.cs",
+    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
+    "src/Invekto.Integrations/Data/ZohoStageMappingRepository.cs",
+    "src/Invekto.Integrations/Program.cs"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 216, "deletions": 107, "files_count": 19 }, "full_path": "arch/plans/diffs/20260415-zoho-step3-p3a-rename.diff", "sha256": "DC3B81D28E88C253A08FD8BA3A67E6E78A15E4D80A96212A99FBBCA0087869BB" },
+  "build": { "status": "PASS", "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"", "timestamp": "2026-04-15T02:35:00Z", "duration_ms": 22930, "services": ["Full solution"] },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/** (P3-B scope - UI)",
+      "Super-admin cross-tenant dashboard (P3-C scope)",
+      "Yeni feature, yeni endpoint - sadece rename"
+    ],
+    "non_goals": [
+      "UI katmanI",
+      "Backward-compat shim",
+      "Stage mapping davranis degisikligi",
+      "Super-admin role/endpoint"
+    ],
+    "intentional_exclusions": [
+      "flow-templates.ts 'gunes' (Turkce UV metni, Zoho ile ilgisiz)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Sadece rename; davranIs degisikligi yok. Migration 015 ALTER RENAME basarisiz olursa transaction rollback, veri kaybi yok.",
+    "user_facing_errors": []
+  },
+  "aha_moments": [
+    { "category": "MAINTAINABILITY", "user_pain": "Kod tabaninda tek musteri adI (Gunes) generic entegrasyonun icinde gozukuyor, yeni tenant icin anlamsiz.", "suggestion": "Erken rename - P1+P2 prod'da degil, maliyet minimum.", "aha_moment": "Yeni tenant'a Zoho baglanirken 'GunesEvent' gormeyecek, isim = gercekten ne oldugu." }
+  ],
+  "verdict": { "status": "PASS", "source": "CODEX_TEXT_VIA_Q", "iteration": 1, "received_at": "2026-04-15T02:45:00Z", "updated_by": "DevAgent", "updated_at": "2026-04-15T02:45:00Z", "raw_text": "Q FORCE PASS after iter 0 -> iter 1. Iter 0 fixed: CQ5 migration PK comment inaccuracy + CQ11/Q2 no-op unique-index rename line removed. Iter 1: CQ1-12 all PASS; COVE Q1/Q2/Q4 PASS; Q3 UNKNOWN only due to Codex diff-only evidence visibility (cannot see repo-wide grep). Grep confirms ZohoSyncRequest/ZohoStageMappingDto consumers are limited to Invekto.Shared (defs), Invekto.Backend/Services/Zoho/*, Invekto.Integrations/Services/Zoho/* — all updated in-packet. Same Q FORCE PASS precedent as P1 (iter 4) and P2 (iter 2) for Codex diff-only hard-rule architectural limitation. Build PASS. Risk accepted." }
+}

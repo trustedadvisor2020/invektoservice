@@ -97,8 +97,8 @@ public sealed class ZohoRetryWorker : BackgroundService
                 var request = new ZohoSyncRequest
                 {
                     TenantId    = c.TenantId,
-                    GunesEvent  = c.GunesEvent,
-                    GunesLeadId = c.GunesLeadId,
+                    ZohoEvent    = c.ZohoEvent,
+                    SourceLeadId = c.SourceLeadId,
                     ZohoLeadId  = c.ZohoLeadId,
                     LeadFields  = null,
                 };
@@ -109,12 +109,12 @@ public sealed class ZohoRetryWorker : BackgroundService
                     if (response.Success)
                     {
                         _logger.StepInfo(
-                            $"ZohoRetryWorker retry success: id={c.Id} tenant={c.TenantId} event={c.GunesEvent}", RequestId);
+                            $"ZohoRetryWorker retry success: id={c.Id} tenant={c.TenantId} event={c.ZohoEvent}", RequestId);
                     }
                     else
                     {
                         _logger.SystemWarn(
-                            $"[{response.ErrorCode ?? "INV-INT-125"}] ZohoRetryWorker retry failed: id={c.Id} tenant={c.TenantId} event={c.GunesEvent} attempt={response.AttemptCount} msg={response.ErrorMessage}");
+                            $"[{response.ErrorCode ?? "INV-INT-125"}] ZohoRetryWorker retry failed: id={c.Id} tenant={c.TenantId} event={c.ZohoEvent} attempt={response.AttemptCount} msg={response.ErrorMessage}");
                     }
                 }
                 // Typed catches ONLY. ZohoSyncService catches its own Zoho/HTTP failures and returns
@@ -123,17 +123,17 @@ public sealed class ZohoRetryWorker : BackgroundService
                 catch (ArgumentException ex)
                 {
                     _logger.SystemWarn(
-                        $"[INV-GEN-003] ZohoRetryWorker validation error: id={c.Id} tenant={c.TenantId} event={c.GunesEvent} err={ex.Message}");
+                        $"[INV-GEN-003] ZohoRetryWorker validation error: id={c.Id} tenant={c.TenantId} event={c.ZohoEvent} err={ex.Message}");
                 }
                 catch (NpgsqlException ex)
                 {
                     _logger.SystemWarn(
-                        $"[INV-INT-125] ZohoRetryWorker DB error: id={c.Id} tenant={c.TenantId} event={c.GunesEvent} err={ex.Message}");
+                        $"[INV-INT-125] ZohoRetryWorker DB error: id={c.Id} tenant={c.TenantId} event={c.ZohoEvent} err={ex.Message}");
                 }
                 catch (InvalidOperationException ex)
                 {
                     _logger.SystemWarn(
-                        $"[INV-INT-125] ZohoRetryWorker invariant error: id={c.Id} tenant={c.TenantId} event={c.GunesEvent} err={ex.Message}");
+                        $"[INV-INT-125] ZohoRetryWorker invariant error: id={c.Id} tenant={c.TenantId} event={c.ZohoEvent} err={ex.Message}");
                 }
             }
         }

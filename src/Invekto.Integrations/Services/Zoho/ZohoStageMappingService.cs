@@ -1,5 +1,5 @@
 // Adim 3 Paket 1: thin service over ZohoStageMappingRepository.
-// Validates Gunes event whitelist (same as DB CHECK) and projects rows to Shared DTOs.
+// Validates lifecycle event whitelist (same as DB CHECK) and projects rows to Shared DTOs.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,7 +30,7 @@ public sealed class ZohoStageMappingService : IZohoStageMappingService
         {
             list.Add(new ZohoStageMappingDto
             {
-                GunesEvent         = r.GunesEvent,
+                ZohoEvent         = r.ZohoEvent,
                 ZohoTransitionId   = r.ZohoTransitionId,
                 ZohoTransitionName = r.ZohoTransitionName,
                 UpdatedAt          = r.UpdatedAt.HasValue
@@ -42,14 +42,14 @@ public sealed class ZohoStageMappingService : IZohoStageMappingService
     }
 
     public async Task<string?> ResolveTransitionIdAsync(
-        int tenantId, string gunesEvent, CancellationToken ct = default)
+        int tenantId, string zohoEvent, CancellationToken ct = default)
     {
-        if (!AllowedEvents.Contains(gunesEvent))
+        if (!AllowedEvents.Contains(zohoEvent))
             throw new ArgumentException(
-                $"INV-GEN-003: Unknown Gunes event '{gunesEvent}'. Allowed: {string.Join(",", AllowedEvents)}",
-                nameof(gunesEvent));
+                $"INV-GEN-003: Unknown Zoho event '{zohoEvent}'. Allowed: {string.Join(",", AllowedEvents)}",
+                nameof(zohoEvent));
 
-        var row = await _repo.FindAsync(tenantId, gunesEvent, ct).ConfigureAwait(false);
+        var row = await _repo.FindAsync(tenantId, zohoEvent, ct).ConfigureAwait(false);
         return row?.ZohoTransitionId;
     }
 
@@ -61,27 +61,27 @@ public sealed class ZohoStageMappingService : IZohoStageMappingService
 
         foreach (var m in request.Mappings)
         {
-            if (!AllowedEvents.Contains(m.GunesEvent))
+            if (!AllowedEvents.Contains(m.ZohoEvent))
                 throw new ArgumentException(
-                    $"INV-GEN-003: Unknown Gunes event '{m.GunesEvent}'. Allowed: {string.Join(",", AllowedEvents)}",
+                    $"INV-GEN-003: Unknown Zoho event '{m.ZohoEvent}'. Allowed: {string.Join(",", AllowedEvents)}",
                     nameof(request));
             if (string.IsNullOrWhiteSpace(m.ZohoTransitionId))
                 throw new ArgumentException(
-                    $"INV-GEN-003: zoho_transition_id is required for '{m.GunesEvent}'",
+                    $"INV-GEN-003: zoho_transition_id is required for '{m.ZohoEvent}'",
                     nameof(request));
         }
 
-        // Reject duplicate gunes_event keys early (DB unique constraint would surface as opaque 23505).
+        // Reject duplicate zoho_event keys early (DB unique constraint would surface as opaque 23505).
         var dup = request.Mappings
-            .GroupBy(e => e.GunesEvent, StringComparer.Ordinal)
+            .GroupBy(e => e.ZohoEvent, StringComparer.Ordinal)
             .FirstOrDefault(g => g.Count() > 1);
         if (dup is not null)
             throw new ArgumentException(
-                $"INV-GEN-003: Duplicate Gunes event '{dup.Key}' in upsert payload.",
+                $"INV-GEN-003: Duplicate Zoho event '{dup.Key}' in upsert payload.",
                 nameof(request));
 
         var entries = request.Mappings
-            .Select(m => (m.GunesEvent, m.ZohoTransitionId, m.ZohoTransitionName))
+            .Select(m => (m.ZohoEvent, m.ZohoTransitionId, m.ZohoTransitionName))
             .ToList();
 
         return _repo.ReplaceAllAsync(tenantId, entries, ct);

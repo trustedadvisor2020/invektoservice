@@ -54,7 +54,7 @@ public sealed class ZohoSyncClient : IZohoSyncClient
             if (!response.IsSuccessStatusCode)
             {
                 _logger.SystemWarn(
-                    $"[{TransportErrorCode}] Zoho sync non-2xx from Integrations: status={(int)response.StatusCode} tenant={request.TenantId} event={request.GunesEvent} lead={request.GunesLeadId}");
+                    $"[{TransportErrorCode}] Zoho sync non-2xx from Integrations: status={(int)response.StatusCode} tenant={request.TenantId} event={request.ZohoEvent} lead={request.SourceLeadId}");
                 return null;
             }
 
@@ -66,19 +66,19 @@ public sealed class ZohoSyncClient : IZohoSyncClient
         catch (HttpRequestException ex)
         {
             _logger.SystemWarn(
-                $"[{TransportErrorCode}] Zoho sync HTTP transport failure: tenant={request.TenantId} event={request.GunesEvent} lead={request.GunesLeadId} err={ex.Message}");
+                $"[{TransportErrorCode}] Zoho sync HTTP transport failure: tenant={request.TenantId} event={request.ZohoEvent} lead={request.SourceLeadId} err={ex.Message}");
             return null;
         }
         catch (TaskCanceledException ex)
         {
             _logger.SystemWarn(
-                $"[{TransportErrorCode}] Zoho sync timeout: tenant={request.TenantId} event={request.GunesEvent} lead={request.GunesLeadId} err={ex.Message}");
+                $"[{TransportErrorCode}] Zoho sync timeout: tenant={request.TenantId} event={request.ZohoEvent} lead={request.SourceLeadId} err={ex.Message}");
             return null;
         }
         catch (JsonException ex)
         {
             _logger.SystemWarn(
-                $"[{TransportErrorCode}] Zoho sync response parse error: tenant={request.TenantId} event={request.GunesEvent} err={ex.Message}");
+                $"[{TransportErrorCode}] Zoho sync response parse error: tenant={request.TenantId} event={request.ZohoEvent} err={ex.Message}");
             return null;
         }
     }

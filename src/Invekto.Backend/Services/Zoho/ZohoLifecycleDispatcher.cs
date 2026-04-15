@@ -11,7 +11,7 @@ using Npgsql;
 namespace Invekto.Backend.Services.Zoho;
 
 /// <summary>
-/// Adim 3 Paket 2: Fire-and-forget dispatcher for Gunes lifecycle events -> Zoho sync.
+/// Adim 3 Paket 2: Fire-and-forget dispatcher for lifecycle events -> Zoho sync.
 /// Contract: NEVER throws back to the caller. Captures IServiceScopeFactory so the outbound
 /// HTTP call outlives the originating HTTP request (we do NOT bind to ctx.RequestAborted —
 /// a client disconnect must not cancel the Zoho sync).
@@ -34,19 +34,19 @@ public sealed class ZohoLifecycleDispatcher
     /// </summary>
     public void DispatchLeadStatusChange(int tenantId, int leadId, string pipelineStatus)
     {
-        var gunesEvent = LeadStatusEventMap.Resolve(pipelineStatus);
-        if (gunesEvent is null)
+        var zohoEvent = LeadStatusEventMap.Resolve(pipelineStatus);
+        if (zohoEvent is null)
         {
             // Audit trail: pipeline_status outside Zoho scope (not a failure, but must be visible).
             _logger.SystemWarn(
-                $"[INV-GEN-003] Zoho sync skipped: pipeline_status '{pipelineStatus}' is not mapped to a gunes_event. tenant={tenantId} lead={leadId}");
+                $"[INV-GEN-003] Zoho sync skipped: pipeline_status '{pipelineStatus}' is not mapped to a zoho_event. tenant={tenantId} lead={leadId}");
             return;
         }
 
-        _ = Task.Run(() => RunAsync(tenantId, leadId, gunesEvent));
+        _ = Task.Run(() => RunAsync(tenantId, leadId, zohoEvent));
     }
 
-    private async Task RunAsync(int tenantId, int leadId, string gunesEvent)
+    private async Task RunAsync(int tenantId, int leadId, string zohoEvent)
     {
         using var cts = new CancellationTokenSource(BackgroundTimeout);
         try
@@ -58,8 +58,8 @@ public sealed class ZohoLifecycleDispatcher
             var request = new ZohoSyncRequest
             {
                 TenantId = tenantId,
-                GunesEvent = gunesEvent,
-                GunesLeadId = leadId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ZohoEvent = zohoEvent,
+                SourceLeadId = leadId.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 ZohoLeadId = null,
                 LeadFields = lead is null ? null : new ZohoLeadFields
                 {
@@ -83,7 +83,7 @@ public sealed class ZohoLifecycleDispatcher
             if (!response.Success)
             {
                 _logger.SystemWarn(
-                    $"[{response.ErrorCode ?? "INV-INT-127"}] Zoho sync failed: tenant={tenantId} event={gunesEvent} lead={leadId} attempt={response.AttemptCount} msg={response.ErrorMessage}");
+                    $"[{response.ErrorCode ?? "INV-INT-127"}] Zoho sync failed: tenant={tenantId} event={zohoEvent} lead={leadId} attempt={response.AttemptCount} msg={response.ErrorMessage}");
             }
         }
         // Typed catches ONLY (project policy). Each enumerated type matches a real failure mode
@@ -94,22 +94,22 @@ public sealed class ZohoLifecycleDispatcher
         catch (NpgsqlException ex)
         {
             _logger.SystemWarn(
-                $"[INV-INT-127] Zoho lifecycle DB error: tenant={tenantId} event={gunesEvent} lead={leadId} err={ex.Message}");
+                $"[INV-INT-127] Zoho lifecycle DB error: tenant={tenantId} event={zohoEvent} lead={leadId} err={ex.Message}");
         }
         catch (OperationCanceledException ex)
         {
             _logger.SystemWarn(
-                $"[INV-INT-127] Zoho lifecycle timeout: tenant={tenantId} event={gunesEvent} lead={leadId} err={ex.Message}");
+                $"[INV-INT-127] Zoho lifecycle timeout: tenant={tenantId} event={zohoEvent} lead={leadId} err={ex.Message}");
         }
         catch (InvalidOperationException ex)
         {
             _logger.SystemWarn(
-                $"[INV-INT-127] Zoho lifecycle DI/scope error: tenant={tenantId} event={gunesEvent} lead={leadId} err={ex.Message}");
+                $"[INV-INT-127] Zoho lifecycle DI/scope error: tenant={tenantId} event={zohoEvent} lead={leadId} err={ex.Message}");
         }
         catch (JsonException ex)
         {
             _logger.SystemWarn(
-                $"[INV-INT-127] Zoho lifecycle serialization error: tenant={tenantId} event={gunesEvent} lead={leadId} err={ex.Message}");
+                $"[INV-INT-127] Zoho lifecycle serialization error: tenant={tenantId} event={zohoEvent} lead={leadId} err={ex.Message}");
         }
     }
 }

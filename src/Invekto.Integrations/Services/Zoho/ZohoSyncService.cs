@@ -1,4 +1,4 @@
-// Adim 3 Paket 1: Gunes -> Zoho sync orchestration (mapping -> blueprint transition -> log).
+// Adim 3 Paket 1: Source -> Zoho sync orchestration (mapping -> blueprint transition -> log).
 // Always returns ZohoSyncResponse; exceptions are caught, mapped to INV-INT-xxx codes, and persisted on zoho_sync_log.
 // Terminal failure policy: attempt_count >= 3 -> completed_at set (retry worker stops trying).
 using System;
@@ -39,11 +39,11 @@ public sealed class ZohoSyncService : IZohoSyncService
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
         if (request.TenantId <= 0) throw new ArgumentException("INV-GEN-003: TenantId is required", nameof(request));
-        if (string.IsNullOrWhiteSpace(request.GunesEvent)) throw new ArgumentException("INV-GEN-003: GunesEvent is required", nameof(request));
-        if (string.IsNullOrWhiteSpace(request.GunesLeadId)) throw new ArgumentException("INV-GEN-003: GunesLeadId is required", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.ZohoEvent)) throw new ArgumentException("INV-GEN-003: ZohoEvent is required", nameof(request));
+        if (string.IsNullOrWhiteSpace(request.SourceLeadId)) throw new ArgumentException("INV-GEN-003: SourceLeadId is required", nameof(request));
 
         var logId = await _logRepo.BeginAttemptAsync(
-            request.TenantId, request.GunesEvent, request.GunesLeadId, request.ZohoLeadId, ct).ConfigureAwait(false);
+            request.TenantId, request.ZohoEvent, request.SourceLeadId, request.ZohoLeadId, ct).ConfigureAwait(false);
 
         var currentRow = await _logRepo.GetAsync(request.TenantId, logId, ct).ConfigureAwait(false);
         var attemptCount = currentRow?.AttemptCount ?? 1;
@@ -51,7 +51,7 @@ public sealed class ZohoSyncService : IZohoSyncService
         try
         {
             var transitionId = await _mappingService
-                .ResolveTransitionIdAsync(request.TenantId, request.GunesEvent, ct)
+                .ResolveTransitionIdAsync(request.TenantId, request.ZohoEvent, ct)
                 .ConfigureAwait(false);
 
             if (string.IsNullOrEmpty(transitionId))
@@ -59,7 +59,7 @@ public sealed class ZohoSyncService : IZohoSyncService
                 return await FailAsync(
                     logId, attemptCount,
                     ZohoErrorCodes.StageMappingNotConfigured,
-                    $"No Zoho stage mapping configured for tenant {request.TenantId} event '{request.GunesEvent}'. Configure via Dashboard -> Entegrasyonlar -> Zoho CRM.",
+                    $"No Zoho stage mapping configured for tenant {request.TenantId} event '{request.ZohoEvent}'. Configure via Dashboard -> Entegrasyonlar -> Zoho CRM.",
                     terminal: true, // mapping won't self-heal via retry; user action required
                     ct).ConfigureAwait(false);
             }
@@ -134,7 +134,7 @@ public sealed class ZohoSyncService : IZohoSyncService
             var terminal = IsTerminal(code) || attemptCount >= MaxAttempts;
             _logger.LogWarning(ex,
                 "Zoho sync failed for tenant {TenantId} event {Event} lead {LeadId}: {Code}",
-                request.TenantId, request.GunesEvent, request.GunesLeadId, code);
+                request.TenantId, request.ZohoEvent, request.SourceLeadId, code);
             return await FailAsync(logId, attemptCount, code, message, terminal, ct).ConfigureAwait(false);
         }
         // Typed catches only: infrastructure errors (DB, transport, serialization) are recorded against the

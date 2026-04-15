@@ -9,7 +9,7 @@ namespace Invekto.Integrations.Services.Zoho;
 public interface IZohoSyncService
 {
     /// <summary>
-    /// Runs a single Gunes -> Zoho sync attempt end-to-end:
+    /// Runs a single source -> Zoho sync attempt end-to-end:
     /// 1) Open zoho_sync_log row (new or existing failed/pending), 2) resolve stage mapping,
     /// 3) resolve Zoho Lead id (create if missing + fields supplied), 4) execute blueprint transition,
     /// 5) mark log success/failed. Always returns a ZohoSyncResponse; exceptions caught internally.
