@@ -35,3 +35,16 @@ export function generateEdgeId(source: string, target: string, sourceHandle?: st
   const handlePart = sourceHandle ? `_${sourceHandle}` : '';
   return `e_${source}${handlePart}_${target}`;
 }
+
+/**
+ * Guarded ISO date -> Turkish locale string. Null/empty -> '-'. Invalid ISO -> raw value.
+ * UI-only display helper; used by Zoho pages (Adim 3 P3-B2) ve ileride diger tablolar.
+ */
+export function formatDateTr(iso?: string | null): string {
+  if (!iso) return '-';
+  try {
+    return new Date(iso).toLocaleString('tr-TR');
+  } catch (_err: unknown) {
+    return iso;
+  }
+}

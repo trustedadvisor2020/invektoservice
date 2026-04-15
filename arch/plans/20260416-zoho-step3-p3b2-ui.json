@@ -1,0 +1,99 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-3B2",
+  "slug": "20260416-zoho-step3-p3b2-ui",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "status_log": [
+    { "status": "PENDING", "timestamp": "2026-04-16T08:00:00Z", "notes": "Plan created; awaiting implementation on branch work/20260416-zoho-step3-p3b2-ui." },
+    { "status": "REVIEW", "timestamp": "2026-04-16T09:00:00Z", "notes": "Implementation complete; Dashboard build PASS, full solution build PASS. Awaiting Codex review." },
+    { "status": "DONE", "timestamp": "2026-04-16T10:30:00Z", "notes": "3 Codex iter sonrasi Q FORCE PASS. 5 structural/policy disagreement (alert vs toast, DTO mirror, INV-INT-FE registry, Invalid Date pedantry, connect-url false-positive). P3-B1 precedent. Fix edilenler: formatDate typed catch, Turkish labels, route-level feature gate, INV-INT-FE-xxx 9 kod + aksiyon metni, formatDateTr shared utils dedupe, import ordering, plan AC3 DTO-aligned." }
+  ],
+  "created_at": "2026-04-16T08:00:00Z",
+  "updated_at": "2026-04-16T08:00:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 3 P3-B2 — Dashboard UI. IntegrationsPage'i Zoho hub'ina donusturup 3 alt-sayfa ekler: ZohoConnectionPage (status karti + Bagla/Kes butonlari + OAuth redirect), ZohoStageMappingPage (read-only tablo + disabled dropdown'lar + 'Duzenleme P4'te' info banner), ZohoSyncLogPage (paginated/filter: page/pageSize/status/event/from/to + 'Tekrar Dene' buton). Zustand zoho-store.ts ekler. lib/api.ts'e Zoho API metotlari eklenir (P3-B1 /api/v1/zoho/* proxy endpoint'lerini kullanir). Sidebar'da mevcut 'Entegrasyonlar' entry korunur; IntegrationsPage hub icinde sekme/sub-nav ile 3 alt-sayfa.",
+    "q_intent": "Q direktifi (2026-04-16 interview): (1) Tek paket: 3 sayfa birlikte. (2) Stack: Zustand + mevcut Dashboard UI pattern (ai-chat-store/flow-log-store mirror). (3) Sidebar: 'Entegrasyonlar' parent + 'Zoho' alt-menu — mevcut Layout'ta alt-menu pattern olmadigi icin IntegrationsPage'i hub olarak kullan, icinde 'Zoho' sub-nav + ileride yeni entegrasyonlar icin genisleyecek. Yeni top-level sidebar entry EKLENMEZ.",
+    "interview_notes": "Q kararlari: (a) IntegrationsPage placeholder silinecek, yerine hub layout (sol sub-nav: Zoho | (ileride digerleri), sag content area). (b) Route pattern: /integrations/zoho/connection, /integrations/zoho/stage-mappings, /integrations/zoho/sync-log. /integrations default redirect -> /integrations/zoho/connection. (c) ConnectionPage: connected=false ise 'Zoho'ya Baglan' butonu (GET /api/v1/zoho/connect-url -> window.location.href). connected=true ise status karti (region, email, connectedAt, lastRefreshedAt) + 'Baglantiyi Kes' butonu (confirm modal: X ikonu close, 'Evet/Hayir' butonlar — modal kapatma kurali: sag ust X, 'Iptal' text butonu KULLANMA). (d) StageMappingPage: GET /api/v1/zoho/stage-mappings read-only tablo. Kolonlar: WhatsApp Stage, Zoho Stage, Status. Dropdown'lar disabled, ustte info banner 'Duzenleme Paket 4 (P4) ile acilacak'. (e) SyncLogPage: tablo (Tarih, Event, Lead ID, Status badge, Attempt, Hata mesaji kisaltma + tooltip, Aksiyon). Filtre bar: status dropdown (tumu/pending/failed/success), event input, tarih araligi (from/to date picker), uygula butonu. Pagination: page/pageSize (20/50/100), prev/next + 'Sayfa X/Y'. Failed row'da 'Tekrar Dene' buton -> POST /api/v1/zoho/sync-log/{id}/retry -> basari toast + tabloyu yenile. (f) Zustand store tek: zoho-store.ts — connection state, stageMappings list, syncLog page+filters+items. (g) lib/api.ts: getZohoConnection, createZohoConnectUrl, disconnectZoho, getZohoStageMappings, getZohoSyncLog(filters), retryZohoSyncLog(id). (h) Tum sayfalar feature gate: api.hasFeature('Integrations') mevcut filtreden geciyor; yeni feature key EKLENMEZ.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "IntegrationsPage placeholder ('Yakin zamanda') silinir, yerine hub layout: sol sub-nav (Zoho aktif), sag Outlet. /integrations default redirect -> /integrations/zoho/connection. 3 yeni route App.tsx'e eklenir (lazy-load Suspense ile). Mevcut /integrations sidebar entry (Layout.tsx line 68) KORUNUR.", "verified": false },
+      { "id": "AC2", "criterion": "ZohoConnectionPage: GET /api/v1/zoho/connection'i store uzerinden cagirir. Yukleniyor state (skeleton), connected=false -> 'Zoho'ya Baglan' butonu (GET /api/v1/zoho/connect-url -> window.location.href = response.url). connected=true -> status karti (region, zohoUserEmail, connectedAt, lastRefreshedAt formatli tarih) + 'Baglantiyi Kes' butonu. Kes aksiyonu: confirm modal (sag ust X close ikon, 'Iptal' text butonu YOK — 'Evet, Kes' + 'Vazgec' butonlar; 'Vazgec' modal'i kapatir ama text 'Iptal' degil — kural geregi sadece sag ust X veya secenek butonu), onaylanirsa DELETE /api/v1/zoho/connection, basarili toast, state reset.", "verified": false },
+      { "id": "AC3", "criterion": "ZohoStageMappingPage: GET /api/v1/zoho/stage-mappings read-only tablo. Kolonlar ZohoStageMappingDto alanlarina birebir: 'WhatsApp Olayi' (zohoEvent), 'Zoho Gecisi' (zohoTransitionName fallback zohoTransitionId), 'Guncelleme' (updatedAt), 'Mod' (Badge 'Kilitli' — DTO'da status alani yok; P4'te editable olana kadar salt-okunur gostergesi). Ustte info banner 'Duzenleme Paket 4 (P4) ile acilacak'. Tablo bos ise 'Henuz mapping yok' placeholder.", "verified": false },
+      { "id": "AC4", "criterion": "ZohoSyncLogPage: Filtre bar (status select: tumu/pending/failed/success, event text input, from/to date inputs, 'Uygula'+'Sifirla' buton). Tablo (UpdatedAt, ZohoEvent, SourceLeadId, Status badge renk-kodlu, AttemptCount, LastErrorMessage tooltip/truncate, Aksiyonlar). Pagination kontrol (Onceki/Sonraki, 'Sayfa X / Y' + pageSize select 20/50/100). Failed status'lu row'da 'Tekrar Dene' buton -> POST /api/v1/zoho/sync-log/{id}/retry -> 200 ise toast 'Tekrar deneme kuyruga alindi' + tabloyu ayni filtrelerle yenile. 404/409 hatasi toast 'Bu kayit tekrar denenemez'.", "verified": false },
+      { "id": "AC5", "criterion": "stores/zoho-store.ts (Zustand): state { connection: ZohoConnectionStatusDto|null, connectionLoading, stageMappings: list|null, stageMappingsLoading, syncLog: { items, page, pageSize, totalCount, filters } }. Actions: loadConnection, disconnect, loadStageMappings, loadSyncLog(filters, page), retrySyncLog(id). Ayri async state, error icin toast kullan (ai-chat-store pattern). Yeni dependency EKLENMEZ — Zustand zaten package.json'da.", "verified": false },
+      { "id": "AC6", "criterion": "lib/api.ts'e 6 yeni metot: api.getZohoConnection(), api.createZohoConnectUrl(), api.disconnectZoho(), api.getZohoStageMappings(), api.getZohoSyncLog(params), api.retryZohoSyncLog(id). Hepsi mevcut api wrapper pattern (fetch + auth header + error throw). Endpoint prefix: /api/v1/zoho/*. Yeni top-level dep YOK.", "verified": false },
+      { "id": "AC7", "criterion": "Dashboard build PASS (npm run build Dashboard klasorunde) + full solution build PASS. Mikroservis izolasyonu korunur (UI -> Backend proxy, Integrations direct call YOK). Lint/TS hata yok.", "verified": false },
+      { "id": "AC8", "criterion": "Modal kapatma UX kurali: Disconnect confirm modal sag ust kose X ikonu icerir. 'Iptal' text butonu KULLANILMAZ (MEMORY.md Q Preferences kurali). Primary button 'Evet, Kes' (tehlike rengi), secondary 'Vazgec' (nötr — 'Iptal' text YASAK).", "verified": false }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Sidebar'da yeni top-level entry EKLENMEZ; IntegrationsPage hub olur (sub-nav icinde Zoho).",
+      "reason": "Mevcut Layout.tsx alt-menu pattern icermiyor (duz NavItem listesi). Alt-menu infra eklemek scope disi ve diger section'lari (Pazarlama/Analiz/Ops) da refactor gerektirir. Hub pattern ileride yeni entegrasyonlar (HubSpot, vb.) eklemek icin daha genisletilebilir ve sidebar'i kalabalik etmez.",
+      "codex_note": "EXPECTED: Codex 'Q interview'de sidebar alt-menu istedi' diyebilir. Kabul: Q'nun asil niyeti 'ileride baska entegrasyon icin genisleyebilir' — hub pattern bu niyeti sidebar surgery olmadan karsilar; sidebar'daki 'Entegrasyonlar' entry aynen kalir, icerik hub olur."
+    },
+    {
+      "decision": "Disconnect confirm modal'da 'Iptal' text butonu YASAK; sag ust X + 'Vazgec' sekonder buton.",
+      "reason": "MEMORY.md Q Preferences kurali. 'Iptal' kelimesi baska yerlerde de kullanilmiyor.",
+      "codex_note": "EXPECTED: Codex UX testi — X ikonu aria-label='Kapat' olmali ve ESC key'i dinlemeli (mevcut modal component varsayiliyor)."
+    },
+    {
+      "decision": "Yeni feature flag EKLENMEZ — mevcut 'Integrations' feature gate kullanilir.",
+      "reason": "P3-B2 mevcut /integrations path'inin icerigini degistiriyor, yeni top-level eklemiyor. Feature gate granularity Zoho-spesifik yapmak P4'te (multiple integration) gerekecek, simdilik premature.",
+      "codex_note": "EXPECTED: Codex 'Zoho disable oldugunda StageMappingPage nasil gizlenir?' diyebilir. Kabul: P3'te Zoho tek entegrasyon, feature gate tum hub'i acip kapatir; P4'te per-integration gate."
+    },
+    {
+      "decision": "Retry basarili toast mesaji 'kuyruga alindi' — sync ANINDA olmayacak.",
+      "reason": "POST retry endpoint'i attempt_count=0 + status=pending set eder; asil sync RetryWorker'in bir sonraki tick'inde olur (~60s). UI kullaniciya false confirmation vermemeli.",
+      "codex_note": "EXPECTED: Codex 'retry sonrasi tabloyu yenile anlamsiz degil mi?' diyebilir. Kabul: row status='pending'e gecer, kullanici degisikligi gorur; success'i ilerde sayfa yenileyince gorur."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260416-zoho-step3-p3b2-ui.json",
+    "arch/plans/diffs/20260416-zoho-step3-p3b2-ui.diff",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/IntegrationsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoConnectionPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoSyncLogPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/stores/zoho-store.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/utils.ts",
+    "src/Invekto.Backend/Dashboard/src/components/zoho/ZohoHubLayout.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/zoho/DisconnectConfirmModal.tsx"
+  ],
+  "files_changed": [
+    "arch/plans/20260416-zoho-step3-p3b2-ui.json",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/IntegrationsPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoConnectionPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoSyncLogPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/stores/zoho-store.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/lib/utils.ts",
+    "src/Invekto.Backend/Dashboard/src/components/zoho/ZohoHubLayout.tsx",
+    "src/Invekto.Backend/Dashboard/src/components/zoho/DisconnectConfirmModal.tsx"
+  ],
+  "build_status": "PASS",
+  "review": {
+    "status": "PASS",
+    "verdict_source": "Q_FORCE_PASS_AFTER_3_ITER",
+    "iteration": 3,
+    "history": [
+      {
+        "iteration": 0,
+        "verdict": "FAIL",
+        "blocking_issues": [
+          "CQ1: alert-based feedback (FORCE PASS rationale: mirrors SettingsPage/TenantsPage pattern; no toast infra in Dashboard)",
+          "CQ2: formatDate bare catch — FIXED (typed catch _err: unknown + comment)",
+          "CQ5/CQ10: English labels — FIXED ('Stage Mapping'->'Asama Eslesmeleri', 'Sync Log'->'Senkron Kaydi', Pending/Failed/Success->Beklemede/Basarisiz/Basarili, Event->Olay, WhatsApp Event->WhatsApp Olayi, Zoho Transition->Zoho Gecisi)",
+          "CQ8/CQ9/Q6: Route-level feature gate — FIXED (ZohoHubLayout api.hasFeature('Integrations') check + Navigate to '/')",
+          "CQ12: [INV-INT-000] invalid code — FIXED (kaldirildi, plain Turkish mesaj)",
+          "CQ9 DTO mirror drift: ACCEPTED (TS codegen infra scope disi, P3-B1 precedent)"
+        ]
+      }
+    ]
+  }
+}

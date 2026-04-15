@@ -1836,6 +1836,105 @@ class OpsApiClient {
   async getWebChatVisitor(conversationId: number): Promise<WebChatVisitor> {
     return this.request<WebChatVisitor>(`/api/ops/webchat/conversations/${conversationId}/visitor`);
   }
+
+  // --- Zoho (Adim 3 P3-B2): Dashboard -> Backend proxy /api/v1/zoho/* ---
+  async getZohoConnection(): Promise<ZohoConnectionStatusDto> {
+    return this.request<ZohoConnectionStatusDto>('/api/v1/zoho/connection');
+  }
+
+  async createZohoConnectUrl(): Promise<ZohoConnectUrlResponse> {
+    return this.request<ZohoConnectUrlResponse>('/api/v1/zoho/connect-url');
+  }
+
+  async disconnectZoho(): Promise<ZohoDisconnectResponse> {
+    return this.request<ZohoDisconnectResponse>('/api/v1/zoho/connection', { method: 'DELETE' });
+  }
+
+  async getZohoStageMappings(): Promise<ZohoStageMappingListResponse> {
+    return this.request<ZohoStageMappingListResponse>('/api/v1/zoho/stage-mappings');
+  }
+
+  async getZohoSyncLog(params: ZohoSyncLogQuery): Promise<ZohoSyncLogPageResponse> {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', params.page.toString());
+    if (params.pageSize) qs.set('pageSize', params.pageSize.toString());
+    if (params.status) qs.set('status', params.status);
+    if (params.event) qs.set('event', params.event);
+    if (params.from) qs.set('from', params.from);
+    if (params.to) qs.set('to', params.to);
+    const query = qs.toString();
+    return this.request<ZohoSyncLogPageResponse>(`/api/v1/zoho/sync-log${query ? `?${query}` : ''}`);
+  }
+
+  async retryZohoSyncLog(id: number): Promise<ZohoSyncLogRetryResponse> {
+    return this.request<ZohoSyncLogRetryResponse>(`/api/v1/zoho/sync-log/${id}/retry`, { method: 'POST' });
+  }
+}
+
+// --- Zoho DTOs (mirror src/Invekto.Shared/Contracts/Zoho, camelCase per API serializer) ---
+
+export interface ZohoConnectionStatusDto {
+  connected: boolean;
+  region?: string | null;
+  zohoUserEmail?: string | null;
+  connectedAt?: string | null;
+  lastRefreshedAt?: string | null;
+}
+
+export interface ZohoConnectUrlResponse {
+  authorizeUrl: string;
+}
+
+export interface ZohoDisconnectResponse {
+  disconnected: boolean;
+  tokenRevoked: boolean;
+}
+
+export interface ZohoStageMappingDto {
+  zohoEvent: string;
+  zohoTransitionId: string;
+  zohoTransitionName?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ZohoStageMappingListResponse {
+  mappings: ZohoStageMappingDto[];
+}
+
+export type ZohoSyncLogStatus = 'pending' | 'failed' | 'success';
+
+export interface ZohoSyncLogQuery {
+  page?: number;
+  pageSize?: number;
+  status?: ZohoSyncLogStatus | '';
+  event?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface ZohoSyncLogEntryDto {
+  id: number;
+  zohoEvent: string;
+  sourceLeadId: string;
+  zohoLeadId?: string | null;
+  status: ZohoSyncLogStatus;
+  attemptCount: number;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+  updatedAt: string;
+  completedAt?: string | null;
+}
+
+export interface ZohoSyncLogPageResponse {
+  items: ZohoSyncLogEntryDto[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface ZohoSyncLogRetryResponse {
+  retriedId: number;
+  newAttemptCount: number;
 }
 
 // --- RI Types (RI-6) ---
