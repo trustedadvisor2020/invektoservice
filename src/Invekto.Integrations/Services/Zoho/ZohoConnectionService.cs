@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Invekto.Integrations.Data;
+using Invekto.Shared.Contracts.Zoho;
+using Invekto.Shared.Logging;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Invekto.Integrations.Services.Zoho;
@@ -115,6 +117,71 @@ public sealed class ZohoConnectionService
         _tokenProvider.InvalidateCache(state.TenantId);
 
         return state.TenantId;
+    }
+
+    /// <summary>
+    /// Adim 3 Paket 3-B1: Dashboard GET /api/v1/zoho/connection — tenant'in aktif baglanti durumu.
+    /// Hic kayit yoksa veya disconnected ise Connected=false, diger alanlar null.
+    /// </summary>
+    public async Task<ZohoConnectionStatusDto> GetStatusAsync(int tenantId, CancellationToken ct = default)
+    {
+        var active = await _repository.GetActiveAsync(tenantId, ct).ConfigureAwait(false);
+        if (active is null)
+        {
+            return new ZohoConnectionStatusDto { Connected = false };
+        }
+
+        return new ZohoConnectionStatusDto
+        {
+            Connected       = true,
+            Region          = active.Region,
+            ZohoUserEmail   = active.ZohoUserEmail,
+            ConnectedAt     = new DateTimeOffset(DateTime.SpecifyKind(active.ConnectedAt, DateTimeKind.Utc)),
+            LastRefreshedAt = active.LastRefreshedAt.HasValue
+                ? new DateTimeOffset(DateTime.SpecifyKind(active.LastRefreshedAt.Value, DateTimeKind.Utc))
+                : null,
+        };
+    }
+
+    /// <summary>
+    /// Adim 3 Paket 3-B1: Dashboard DELETE /api/v1/zoho/connection — tenant'in Zoho baglantisini keser.
+    /// Sirayla: (1) refresh_token decrypt + Zoho revoke best-effort (INV-INT-130 hatada log), (2) DB soft-delete,
+    /// (3) access token cache invalidate. Hic kayit yoksa no-op (idempotent) — endpoint 200 doner.
+    /// Revoke basarisiz olursa disconnect yine de basarili (local state authoritative); caller bool doner.
+    /// </summary>
+    public async Task<(bool Disconnected, bool RevokeOk)> DisconnectAsync(
+        int tenantId, JsonLinesLogger logger, CancellationToken ct = default)
+    {
+        var active = await _repository.GetActiveAsync(tenantId, ct).ConfigureAwait(false);
+        if (active is null)
+        {
+            return (Disconnected: false, RevokeOk: false);
+        }
+
+        var revokeOk = false;
+        try
+        {
+            var refreshPlain = _protector.Unprotect(active.EncryptedRefreshToken);
+            var regionConfig = _regionResolver.GetConfig(active.Region);
+            if (regionConfig is not null)
+            {
+                revokeOk = await _tokenProvider.RevokeRefreshTokenAsync(regionConfig, refreshPlain, ct).ConfigureAwait(false);
+            }
+        }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            // Decrypt failure = key ring rotated; disconnect proceeds (local state authoritative).
+            logger.SystemWarn($"[INV-INT-130] Zoho revoke skipped (refresh_token decrypt failed tenant={tenantId}): {ex.Message}");
+        }
+
+        if (!revokeOk)
+        {
+            logger.SystemWarn($"[INV-INT-130] Zoho token revoke best-effort did not succeed (tenant={tenantId}); proceeding with local disconnect.");
+        }
+
+        await _repository.DisconnectAsync(tenantId, ct).ConfigureAwait(false);
+        _tokenProvider.InvalidateCache(tenantId);
+        return (Disconnected: true, RevokeOk: revokeOk);
     }
 
     private static string TrimSlash(string url) => url.EndsWith('/') ? url.TrimEnd('/') : url;

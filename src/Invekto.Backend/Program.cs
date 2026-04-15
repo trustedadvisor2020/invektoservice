@@ -10,6 +10,7 @@ using Hangfire;
 using Invekto.Backend.Data;
 using Invekto.Backend.Services;
 using Invekto.Backend.Services.Jobs;
+using Invekto.Backend.Services.Zoho;
 using Invekto.Shared.Auth;
 using Invekto.Shared.Hosting;
 using Invekto.Shared.Constants;
@@ -204,6 +205,17 @@ builder.Services.AddSingleton<Invekto.Backend.Services.Zoho.IZohoSyncClient>(sp 
         sp.GetRequiredService<JsonLinesLogger>());
 });
 builder.Services.AddSingleton<Invekto.Backend.Services.Zoho.ZohoLifecycleDispatcher>();
+
+// Adim 3 Paket 3-B1: Zoho proxy client (Dashboard UI -> Backend -> Integrations tenant-JWT passthrough).
+// Different from ZohoSyncClient (P2, shared-secret internal) — this forwards end-user JWT verbatim.
+// Typed-client pattern: AddHttpClient<TClient> binds configured HttpClient to ZohoProxyClient ctor.
+builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoProxyClient>(client =>
+{
+    client.BaseAddress = new Uri(integrationsUrl);
+    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
+});
+builder.Services.AddTransient<Invekto.Backend.Services.Zoho.IZohoProxyClient>(sp =>
+    sp.GetRequiredService<Invekto.Backend.Services.Zoho.ZohoProxyClient>());
 
 // Configure Marketing HTTP client (GR-3.21/3.22)
 builder.Services.AddHttpClient<MarketingClient>(client =>
@@ -422,7 +434,7 @@ foreach (var ip in webhookIps)
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/");
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/zoho/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -7507,6 +7519,9 @@ app.MapGet("/api/v1/translate/languages", (HttpContext ctx) =>
 
     return Results.Ok(TranslationService.SupportedLanguages);
 });
+
+// Adim 3 Paket 3-B1: Zoho Dashboard proxy endpoints (UI -> Backend -> Integrations).
+app.MapZohoProxyEndpoints();
 
 // ============================================
 // SPA FALLBACK ROUTES

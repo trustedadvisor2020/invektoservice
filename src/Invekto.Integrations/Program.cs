@@ -771,6 +771,9 @@ app.MapGet("/api/v1/reviews/stats", async (
 // Adim 2 Paket B: Zoho OAuth endpoints
 app.MapZohoConnectEndpoints();
 app.MapZohoSyncEndpoints();
+// Adim 3 Paket 3-B1: Dashboard UI icin tenant-scoped connection + sync-log endpoints.
+app.MapZohoConnectionEndpoints();
+app.MapZohoSyncLogEndpoints();
 
 app.MapGet("/api/ops/endpoints", () =>
 {
