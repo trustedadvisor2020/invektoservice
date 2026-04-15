@@ -196,6 +196,112 @@ public sealed class ZohoSyncLogRepository
         return result is null ? 0 : Convert.ToInt32(result);
     }
 
+    /// <summary>
+    /// Adim 3 Paket 3-B1: Dashboard UI icin paginated+filtered sync log listesi.
+    /// Tenant izolasyonu: her sorgu tenant_id ile baslar. Filtre alanlari: status (tam esleme),
+    /// zoho_event (tam esleme), from/to (updated_at araligi). Sayfa boyutu yukarida endpoint'te clamp edilir.
+    /// </summary>
+    public async Task<(IReadOnlyList<ZohoSyncLogRow> Items, int TotalCount)> ListForDashboardAsync(
+        int tenantId,
+        string? statusFilter,
+        string? eventFilter,
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        // WHERE composition stays parameterized — no string concat of values.
+        var where = new System.Text.StringBuilder("WHERE tenant_id = @tid");
+        if (!string.IsNullOrEmpty(statusFilter)) where.Append(" AND status = @status");
+        if (!string.IsNullOrEmpty(eventFilter))  where.Append(" AND zoho_event = @evt");
+        if (fromUtc.HasValue)                    where.Append(" AND updated_at >= @from");
+        if (toUtc.HasValue)                      where.Append(" AND updated_at <= @to");
+
+        var listSql =
+            "SELECT id, tenant_id, zoho_event, source_lead_id, zoho_lead_id, zoho_transition_id, " +
+            "       status, attempt_count, last_error_code, last_error_message, completed_at, updated_at " +
+            "  FROM zoho_sync_log " + where +
+            " ORDER BY updated_at DESC, id DESC " +
+            " LIMIT @lim OFFSET @off";
+
+        var countSql = "SELECT COUNT(*) FROM zoho_sync_log " + where;
+
+        var safePage     = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? 1 : pageSize;
+        var offset       = (safePage - 1) * safePageSize;
+
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+
+        int total;
+        await using (var countCmd = new NpgsqlCommand(countSql, conn))
+        {
+            countCmd.Parameters.AddWithValue("@tid", tenantId);
+            if (!string.IsNullOrEmpty(statusFilter)) countCmd.Parameters.AddWithValue("@status", statusFilter);
+            if (!string.IsNullOrEmpty(eventFilter))  countCmd.Parameters.AddWithValue("@evt", eventFilter);
+            if (fromUtc.HasValue)                    countCmd.Parameters.AddWithValue("@from", fromUtc.Value);
+            if (toUtc.HasValue)                      countCmd.Parameters.AddWithValue("@to", toUtc.Value);
+            var raw = await countCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            total = raw is null ? 0 : Convert.ToInt32(raw);
+        }
+
+        var items = new List<ZohoSyncLogRow>();
+        await using (var cmd = new NpgsqlCommand(listSql, conn))
+        {
+            cmd.Parameters.AddWithValue("@tid", tenantId);
+            if (!string.IsNullOrEmpty(statusFilter)) cmd.Parameters.AddWithValue("@status", statusFilter);
+            if (!string.IsNullOrEmpty(eventFilter))  cmd.Parameters.AddWithValue("@evt", eventFilter);
+            if (fromUtc.HasValue)                    cmd.Parameters.AddWithValue("@from", fromUtc.Value);
+            if (toUtc.HasValue)                      cmd.Parameters.AddWithValue("@to", toUtc.Value);
+            cmd.Parameters.AddWithValue("@lim", safePageSize);
+            cmd.Parameters.AddWithValue("@off", offset);
+
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                items.Add(new ZohoSyncLogRow(
+                    Id:               reader.GetInt64(0),
+                    TenantId:         reader.GetInt32(1),
+                    ZohoEvent:        reader.GetString(2),
+                    SourceLeadId:     reader.GetString(3),
+                    ZohoLeadId:       reader.IsDBNull(4)  ? null : reader.GetString(4),
+                    ZohoTransitionId: reader.IsDBNull(5)  ? null : reader.GetString(5),
+                    Status:           reader.GetString(6),
+                    AttemptCount:     reader.GetInt32(7),
+                    LastErrorCode:    reader.IsDBNull(8)  ? null : reader.GetString(8),
+                    LastErrorMessage: reader.IsDBNull(9)  ? null : reader.GetString(9),
+                    CompletedAt:      reader.IsDBNull(10) ? null : reader.GetDateTime(10),
+                    UpdatedAt:        reader.GetDateTime(11)));
+            }
+        }
+
+        return (items, total);
+    }
+
+    /// <summary>
+    /// Adim 3 Paket 3-B1: Manuel retry. Sadece status='failed' olan (tenant-scoped) row icin
+    /// status='pending' + attempt_count=0 + updated_at=NOW() set eder. RetryWorker bir sonraki
+    /// tick'te pickup eder. Dondurulen tuple: (Updated, NewAttemptCount) — Updated=false ise
+    /// endpoint 404/409 cikarir (GetAsync ile ayirt edilir).
+    /// </summary>
+    public async Task<bool> ResetForRetryAsync(int tenantId, long id, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE zoho_sync_log
+               SET status = 'pending',
+                   attempt_count = 0,
+                   updated_at = NOW()
+             WHERE tenant_id = @tid
+               AND id = @id
+               AND status = 'failed'";
+        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@tid", tenantId);
+        cmd.Parameters.AddWithValue("@id", id);
+        var affected = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        return affected == 1;
+    }
+
     private static ZohoSyncLogRow ReadRow(NpgsqlDataReader r) => new(
         Id:                 r.GetInt64(0),
         TenantId:           r.GetInt32(1),
@@ -232,4 +338,5 @@ public sealed record ZohoSyncLogRow(
     int AttemptCount,
     string? LastErrorCode,
     string? LastErrorMessage,
-    DateTime? CompletedAt);
+    DateTime? CompletedAt,
+    DateTime UpdatedAt = default);

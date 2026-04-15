@@ -1,4 +1,4 @@
-// Adim 2 Paket B + Adim 3 Paket 1: service-local Zoho error code constants (mirror of arch/errors.md INV-INT-110..124).
+// Adim 2 Paket B + Adim 3 Paket 1/3-B1: service-local Zoho error code constants (mirror of arch/errors.md INV-INT-110..130).
 namespace Invekto.Integrations.Services.Zoho;
 
 public static class ZohoErrorCodes
@@ -22,4 +22,12 @@ public static class ZohoErrorCodes
     public const string InternalAuthInvalid         = "INV-INT-124";
     public const string SyncInfrastructureError     = "INV-INT-125";
     public const string InternalAuthNotConfigured   = "INV-INT-126";
+
+    // Adim 3 Paket 2: Backend-side transport
+    public const string BackendSyncTransport        = "INV-INT-127";
+
+    // Adim 3 Paket 3-B1: Dashboard UI API surface
+    public const string SyncLogNotFound             = "INV-INT-128";
+    public const string SyncLogNotRetryable         = "INV-INT-129";
+    public const string TokenRevokeBestEffort       = "INV-INT-130";
 }

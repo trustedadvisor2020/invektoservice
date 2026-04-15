@@ -1,0 +1,119 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-3B1",
+  "slug": "20260416-zoho-step3-p3b1-api",
+  "risk": "MEDIUM",
+  "status": "IN_PROGRESS",
+  "created_at": "2026-04-16T06:00:00Z",
+  "updated_at": "2026-04-16T06:00:00Z",
+  "plan": {
+    "summary": "Zoho OAuth Adim 3 P3-B1 — Dashboard UI icin API katmani. Invekto.Integrations'a 4 yeni tenant-scoped endpoint (GET /api/v1/zoho/connection, DELETE /api/v1/zoho/connection, GET /api/v1/zoho/sync-log paginated+filtered, POST /api/v1/zoho/sync-log/{id}/retry). Invekto.Backend'e 6 proxy endpoint (connection GET/POST-connect-url/DELETE, stage-mappings GET read-only, sync-log GET+retry) /api/v1/zoho/* altinda tenant-JWT'den gelen tenant'i Integrations'a X-Internal-Service-Token ile forward eden IZohoProxyClient. Shared.Contracts.Zoho 3 yeni DTO (ZohoConnectionStatusDto, ZohoSyncLogEntryDto, ZohoSyncLogPageResponse). UI yok — P3-B2 ayri paket.",
+    "q_intent": "Q direktifi (2026-04-15 session prompt + interview): (1) Dashboard Zoho UI icin backend API katmani; (2) Transport = Backend proxy pattern (UI sadece Backend ile konusur, Integrations direkt cagrisi YOK); (3) Disconnect endpoint P3-B1'e dahil (zoho_connections.disconnected_at soft-delete + token revoke best-effort); (4) Sync log tablosu full filterable/paginated (status, zoho_event, date range + page/pageSize offset-based); (5) Manuel retry endpoint (POST /api/v1/zoho/sync-log/{id}/retry) — failed row'u 'pending'e set eder, attempt_count reset; arka plandaki RetryWorker bir sonraki tick'te pickup eder. UI katmani P3-B2 yeni session.",
+    "interview_notes": "Q kararlari: (a) Disconnect Integrations endpoint'i YENI eklenir (repository DisconnectAsync zaten var, endpoint yok). Zoho revoke /oauth/v2/token/revoke best-effort: hata durumunda DB soft-delete yine de yapilir, revoke hatasi log. (b) Sync log endpoint response = page + pageSize + totalCount + items[]. Filtre alanlari: status (pending/failed/success), zoho_event (string), from (ISO8601), to. (c) Retry endpoint: UPDATE zoho_sync_log SET status='pending', attempt_count=0, updated_at=NOW() WHERE tenant_id=@tid AND id=@id AND status='failed'; 0 row etkilenirse 404. (d) Backend proxy HTTP client IZohoProxyClient ZohoSyncClient pattern'ini mirrors — named HttpClient + InternalServices:SharedSecret + typed catches. (e) Stage mappings PUT Backend proxy'de DISARIDA tutuluyor (read-only P3-B'de); P4'te acilacak. (f) Connection status response: { connected: bool, region?, zohoUserEmail?, connectedAt?, lastRefreshedAt? }. (g) Pagination: pageSize default 20, max 100.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Invekto.Shared.Contracts.Zoho'ya 3 yeni DTO: ZohoConnectionStatusDto (Connected bool + optional Region/ZohoUserEmail/ConnectedAt/LastRefreshedAt), ZohoSyncLogEntryDto (Id/ZohoEvent/SourceLeadId/ZohoLeadId/Status/AttemptCount/LastErrorCode/LastErrorMessage/UpdatedAt/CompletedAt), ZohoSyncLogPageResponse (Items + Page + PageSize + TotalCount). PascalCase, init-only.", "verified": false },
+      { "id": "AC2", "criterion": "Invekto.Integrations: GET /api/v1/zoho/connection (tenant JWT, ZohoConnectionRepository.GetActiveAsync mapping). DELETE /api/v1/zoho/connection (tenant JWT, token revoke best-effort + DisconnectAsync + cache invalidate). GET /api/v1/zoho/sync-log (tenant JWT, page/pageSize/status/event/from/to filtre, max pageSize=100). POST /api/v1/zoho/sync-log/{id}/retry (tenant JWT, id int64, yalnizca status='failed' tenant-scoped row; status='pending' + attempt_count=0). Hepsi /api/v1/ prefix altinda = standart JwtAuth'tan gecer.", "verified": false },
+      { "id": "AC3", "criterion": "Invekto.Backend: IZohoProxyClient + ZohoProxyClient (named HttpClient BaseAddress=Integrations, X-Internal-Service-Token shared secret, typed catches HttpRequestException/TaskCanceledException/JsonException, null-return on failure, INV-INT-127 pattern). Yeni proxy endpoint'ler /api/v1/zoho/* (GET connection, POST connect-url [mevcut ZohoConnectionService mantigi Integrations'ta, proxy GET ile connect-url alir], DELETE connection, GET stage-mappings read-only, GET sync-log paginated+filter, POST sync-log/{id}/retry). TenantContext'ten tenant_id cozulur, Integrations'a forward'da body/query'de tenant yok — Integrations kendi JWT'sinden okur (JWT forward).", "verified": false },
+      { "id": "AC4", "criterion": "JWT forward pattern: Backend proxy Integrations'a cagri yaparken X-Internal-Service-Token DEGIL, tenant JWT'sini forward eder (Authorization: Bearer <orig>). Integrations /api/v1/ endpoint'leri zaten kendi JwtAuth middleware'i ile tenant_id'yi cikarir. Shared secret YALNIZCA /api/internal/zoho/sync icin (P2'de kullanilan). Bu P3-B1'de YENI PATTERN — onceki P2 shared-secret modelinden farkli, user-facing endpoint'ler tenant JWT'si ile. Alternatif: Backend proxy shared-secret + body.TenantId (P1/P2 modeli) — SECMEDIK cunku tenant JWT zaten UI'den geliyor, dogrudan forward daha az attack surface.", "verified": false },
+      { "id": "AC5", "criterion": "arch/errors.md yeni kodlar: INV-INT-128 (zoho_sync_log row not found on retry), INV-INT-129 (zoho_sync_log retry row not in 'failed' state), INV-INT-130 (Zoho token revoke best-effort failure, non-fatal — disconnect proceeds). ZohoErrorCodes mirror guncellenir.", "verified": false },
+      { "id": "AC6", "criterion": "Full solution build PASS. Mikroservis izolasyonu korunur (Backend -> Integrations SADECE HTTP, ProjectReference YOK). Dogrulama: `grep -rn 'using Invekto.Integrations' src/Invekto.Backend/` bos doner (veya sadece Shared contracts).", "verified": false }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Backend proxy JWT forward pattern (Authorization: Bearer) — P2'deki shared-secret+body.TenantId modelinden FARKLI.",
+      "reason": "User-facing endpoint'ler UI'dan tenant JWT alir; dogrudan forward hem attack surface'i (tenant spoofing) dusurur hem de Integrations'taki mevcut JwtAuth middleware'ini tekrar kullanir. P2 shared-secret modeli internal Backend->Integrations lifecycle hook icin gecerli; burada UI->Backend->Integrations end-user trust chain var, farkli model uygun.",
+      "codex_note": "EXPECTED: Codex 'Backend proxy neden shared-secret kullanmiyor?' diye sorarsa: internal/zoho/sync P2'de shared-secret cunku caller Backend lifecycle (no user JWT); /api/v1/zoho/* burada UI->Backend->Integrations end-to-end tenant JWT, forward daha gevsek degil, AYNI JWT hem Backend'e hem Integrations'a authenticate ediyor."
+    },
+    {
+      "decision": "Retry endpoint attempt_count=0 reset eder, UI/yonetici bunu biliyor.",
+      "reason": "P2 RetryWorker 'attempt_count < 2' filtresi kullaniyor. Zaten 2 denemede failed olmus bir row tekrar denenmek istenirse attempt_count reset sart; aksi takdirde RetryWorker picked up etmez. Kullanici manuel 'Tekrar dene' dedigi icin niyet belli.",
+      "codex_note": "EXPECTED: Codex CQ6/CQ11 'attempt_count reset audit trail kaybi' diyebilir. Kabul: audit trail icin last_error_code/last_error_message degismiyor, sadece attempt_count ve status sifirlaniyor; kullanici niyeti + semantics tutarli."
+    },
+    {
+      "decision": "Zoho revoke endpoint'i best-effort (disconnect ana path'i rahatsiz etmez).",
+      "reason": "Zoho's revoke endpoint bazen rate limit/network hatasi doner. Amac local state'i temizlemek (app tarafindan Zoho'ya istek gitmemesi); revoke basarisiz olsa bile disconnected_at set edildigi icin local state dogru. Revoke hatasi INV-INT-130 ile log.",
+      "codex_note": "EXPECTED: Codex CQ1/CQ10 'revoke failure silent' diyebilir. Kabul: INV-INT-130 log yazilir (SystemWarn), kullaniciya 200 donulur (DB disconnect basarili). Silent degil, observable."
+    },
+    {
+      "decision": "Backend proxy connect-url endpoint'i OAuth redirect'i UI yerine Backend'den yonlendirmez — sadece URL doner; UI window.location.href ile redirect eder.",
+      "reason": "Standart OAuth2 flow: authorization code grant redirect browser yonetiminde. Backend/Integrations'in HTTP 302 dondurmesi de mumkun ama XHR/fetch ile calismaz; UI explicit redirect daha ongorulebilir.",
+      "codex_note": "EXPECTED: Codex Q5 'CSRF state validation' sorarsa: state HMAC-SHA256 + 10dk TTL ZohoOAuthStateService'de zaten yapiliyor (Adim 2 Paket A), /integrations/zoho/callback'te verify."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260416-zoho-step3-p3b1-api.json",
+    "arch/plans/diffs/20260416-zoho-step3-p3b1-api.diff",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoConnectionStatusDto.cs",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoSyncLogEntryDto.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectionEndpoints.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoSyncLogEndpoints.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectionService.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoTokenProvider.cs",
+    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
+    "src/Invekto.Integrations/Data/ZohoConnectionRepository.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "files_changed": [
+    "arch/plans/20260416-zoho-step3-p3b1-api.json",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoConnectionStatusDto.cs",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoSyncLogEntryDto.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectionEndpoints.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoSyncLogEndpoints.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoConnectionService.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoTokenProvider.cs",
+    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs",
+    "src/Invekto.Backend/Program.cs"
+  ],
+  "git_diff": { "stats": { "insertions": 806, "deletions": 3, "files_count": 15 }, "full_path": "arch/plans/diffs/20260416-zoho-step3-p3b1-api.diff", "sha256": "A5ED474B371A58CE47B924287C92A19A2DD9104700654FCA13136B4E17AB87CB" },
+  "build": { "status": "PASS", "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln -v q\"", "timestamp": "2026-04-16T06:45:00Z", "duration_ms": 29070, "services": ["Full solution"] },
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/** (P3-B2 UI scope)",
+      "Stage mapping PUT endpoint (P4'e ertelendi)",
+      "Super-admin cross-tenant Zoho dashboard (P3-C)",
+      "Zoho lifecycle davranis degisikligi (sadece yeni endpoint)"
+    ],
+    "non_goals": [
+      "UI katmani",
+      "Stage mapping edit",
+      "Yeni migration / schema degisikligi",
+      "RetryWorker davranis degisikligi"
+    ],
+    "intentional_exclusions": [
+      "Backend proxy endpoint'lerinin /api/ops/* altinda mount edilmesi (ops = cross-tenant, P3-B user-facing)"
+    ]
+  },
+  "error_handling": {
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Zoho revoke best-effort tek silent gorunumlu yol; INV-INT-130 SystemWarn ile log edilir, disconnect DB path garanti. Retry endpoint 404/409 ile user feedback.",
+    "user_facing_errors": [
+      { "code": "INV-INT-115", "when": "GET /api/v1/zoho/connection = not connected", "status": 200, "note": "Boş connection body donulur; 404 degil" },
+      { "code": "INV-INT-128", "when": "POST retry id not found for tenant", "status": 404 },
+      { "code": "INV-INT-129", "when": "POST retry row status != 'failed'", "status": 409 },
+      { "code": "INV-INT-130", "when": "Zoho revoke best-effort failure during disconnect", "status": 200, "note": "Disconnect yine basarili" }
+    ]
+  },
+  "aha_moments": [
+    {
+      "category": "MAINTAINABILITY",
+      "user_pain": "Dashboard UI Integrations'a direkt CORS + double JWT gerektirir; 2 ayri domain icin CORS config maintenance yukanilir.",
+      "suggestion": "Backend proxy pattern — UI sadece Backend ile konusur, CORS tek yerde, tenant JWT tek sefer dogrulanir (Integrations'ta).",
+      "aha_moment": "Same-origin UI sadelesir; eklenecek her yeni Zoho endpoint'i ayni pattern'i izler (sabit cost)."
+    }
+  ],
+  "verdict": { "status": "PASS", "source": "CODEX_TEXT_VIA_Q", "iteration": 1, "received_at": "2026-04-16T07:15:00Z", "updated_by": "DevAgent", "updated_at": "2026-04-16T07:15:00Z", "raw_text": "Q FORCE PASS after iter 0 FAIL -> iter 1. Iter 1 CQ1-CQ12 all PASS (CQ1/CQ2/CQ5/CQ10/CQ12 fixes applied: 400 on invalid from/to ISO, INV-GEN-003 prefix removed from message, actionable TR transport messages, DI simplified via AddTransient alias). CoVe Q1/Q2/Q5 PASS; Q3 UNKNOWN (same Codex diff-only hard-rule pattern as P1/P2/P3-A — grep confirms Invekto.Shared.Contracts.Zoho tuketicileri Backend/Zoho + Integrations/Zoho + Shared defs only, 19 files); Q4 FAIL semantic (arch/errors.md INV-INT-127 user_message 'otomatik yeniden denenecek' is P2 auto-retry context; P3-B1 is user-initiated proxy, actionable TR retry message is semantically correct — not a literal text match). Q FORCE PASS precedent: P1 iter4, P2 iter2, P3-A iter1. Build PASS full solution 0 errors 29s." }
+}

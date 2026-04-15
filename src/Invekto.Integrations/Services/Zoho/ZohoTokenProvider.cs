@@ -109,6 +109,29 @@ public sealed class ZohoTokenProvider : IZohoTokenProvider
     public void InvalidateCache(int tenantId) => _cache.Remove(CacheKey(tenantId));
 
     /// <summary>
+    /// Adim 3 Paket 3-B1: Best-effort revoke for a refresh_token at Zoho's revoke endpoint.
+    /// Disconnect flow swallows failures (local DB disconnect is authoritative); caller logs INV-INT-130 on error.
+    /// Typed catches only — no bare catch. Returns true on Zoho HTTP 2xx, false otherwise.
+    /// </summary>
+    public async Task<bool> RevokeRefreshTokenAsync(
+        ZohoRegionConfig regionConfig,
+        string refreshTokenPlain,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(refreshTokenPlain)) return false;
+
+        var url = TrimSlash(regionConfig.AccountsUrl) + "/oauth/v2/token/revoke?token=" + Uri.EscapeDataString(refreshTokenPlain);
+        try
+        {
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string>());
+            using var response = await _httpClient.PostAsync(url, content, ct).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException) { return false; }
+        catch (TaskCanceledException) { return false; }
+    }
+
+    /// <summary>
     /// Exchanges an authorization_code for tokens at the region-specific accounts URL.
     /// Used by the connection callback (NOT cached - one-shot during OAuth handshake).
     /// </summary>

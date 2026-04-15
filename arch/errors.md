@@ -611,6 +611,16 @@ errors:
   - code: INV-INT-127
     description: Backend-side Zoho sync HTTP transport failure (Adim 3 Paket 2, fire-and-forget dispatcher)
     user_message: Zoho ile senkronizasyon arka planda başarısız oldu, otomatik yeniden denenecek.
+  # Zoho Dashboard UI (INV-INT-128+) — Adim 3 Paket 3-B1: Dashboard UI API surface
+  - code: INV-INT-128
+    description: Zoho sync log row not found for tenant (retry endpoint)
+    user_message: Senkronizasyon kaydı bulunamadı.
+  - code: INV-INT-129
+    description: Zoho sync log row not in 'failed' state (retry allowed only on failed rows)
+    user_message: Sadece başarısız senkronizasyon kayıtları tekrar denenebilir.
+  - code: INV-INT-130
+    description: Zoho refresh_token revoke best-effort failure during disconnect (non-fatal; local disconnect proceeds)
+    user_message: Zoho bağlantısı kapatıldı (uzaktan iptal doğrulanamadı).
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
