@@ -1,0 +1,1958 @@
+diff --git a/arch/errors.md b/arch/errors.md
+index 0562e92..3695784 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -621,6 +621,25 @@ errors:
+   - code: INV-INT-130
+     description: Zoho refresh_token revoke best-effort failure during disconnect (non-fatal; local disconnect proceeds)
+     user_message: Zoho bağlantısı kapatıldı (uzaktan iptal doğrulanamadı).
++  # Zoho super-admin cross-tenant ops dashboard (INV-INT-131+) — Adim 3 Paket 3-C
++  - code: INV-INT-131
++    description: Super-admin cross-tenant Zoho ops read failure (DB/transport unexpected error)
++    user_message: Zoho yönetim verisi okunamadı, tekrar deneyin.
++  - code: INV-INT-132
++    description: Force-disconnect target tenant has no active Zoho connection (already disconnected or never connected)
++    user_message: Bu firma için aktif Zoho bağlantısı bulunamadı.
++  - code: INV-INT-133
++    description: Ops batch retry payload invalid (empty ids list or malformed body)
++    user_message: Tekrar denenecek kayıt listesi boş veya geçersiz.
++  - code: INV-INT-134
++    description: Ops batch retry exceeded max 50 ids per request
++    user_message: Toplu tekrar deneme en fazla 50 kayıt içerebilir.
++  - code: INV-INT-135
++    description: Ops query parameter validation failure (filter/status/event/date inputs on /api/internal/ops/zoho/*)
++    user_message: Filtre değerleri geçersiz, kontrol edin.
++  - code: INV-INT-FE-131
++    description: Frontend-only fallback when upstream envelope is missing (P3-C OpsZohoPage extractError)
++    user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
+ 
+   # ── OB — Outbound (GR-1.3) ──
+   - code: INV-OB-001
+diff --git a/arch/plans/20260417-zoho-step3-p3c-ops.json b/arch/plans/20260417-zoho-step3-p3c-ops.json
+new file mode 100644
+index 0000000..7885b8b
+--- /dev/null
++++ b/arch/plans/20260417-zoho-step3-p3c-ops.json
+@@ -0,0 +1,144 @@
++{
++  "schema_version": "5.1",
++  "review_protocol_version": "5.1",
++  "packet_id": "PKT-3C",
++  "slug": "20260417-zoho-step3-p3c-ops",
++  "risk": "MEDIUM",
++  "status": "IN_PROGRESS",
++  "created_at": "2026-04-17T07:00:00Z",
++  "updated_at": "2026-04-17T07:00:00Z",
++  "plan": {
++    "summary": "Zoho OAuth Adim 3 P3-C — Super-admin cross-tenant Zoho ops dashboard. Backend /api/ops/zoho/* (ValidateOpsAuth) + Integrations /api/internal/ops/zoho/* (shared-secret). 4 ops endpoint: GET connections (cross-tenant list), GET sync-log (cross-tenant paginated+filtered), DELETE connections/{tenantId} (force-disconnect + audit), POST sync-log/retry (batch max 50 + audit). Dashboard /ops/zoho SPA page with status counters + connections tab + sync-log tab + DisconnectConfirmModal + RetryBatchConfirmModal. Audit: JsonLinesLogger SystemInfo super-admin identity + tenant_id + action.",
++    "q_intent": "Q direktifi (2026-04-17 session): Tier 0 ardarda bitir — P3-C + deploy bundle + Backend SPA deploy tek session. P3-C scope tum 4 action (list + sync-log + force-disconnect + batch-retry), /api/ops/* pattern auth (mevcut), UI Dashboard /ops/zoho + tek paket. Modal UX: sag-ust X + 'Vazgec' text + primary buton (P3-B2 pattern). Batch retry: checkbox multi-select, max 50/batch. Status cards: #connected, #disconnected, #failed-24h. Deploy: P1+P2+P3-A+P3-B1+P3-B2+P3-C tek bundle prod. Sidebar yeni entry ops-only.",
++    "interview_notes": "Q kararlari: (a) Backend /api/ops/zoho/* ValidateOpsAuth prefix whitelist (mevcut pattern). (b) Integrations /api/internal/ops/zoho/* shared-secret X-Internal-Service-Token (P2/P3-B1 icin /api/internal/zoho/sync ile ayni config anahtar). (c) Backend -> Integrations shared-secret (JWT forward DEGIL — super-admin JWT'si Integrations tenant kontrolune uymaz; cross-tenant trust shared-secret uzerinden). (d) Audit: JsonLinesLogger SystemInfo, super-admin = Basic username veya JWT username/role. (e) Batch retry max 50, aski row'lar skip edilir (status!=failed veya tenant-mismatch) — response: {requested, updated, skipped[]}. (f) Force-disconnect token revoke best-effort (INV-INT-130 reuse). (g) UI: OpsZohoPage tek dosya + 2 modal + Layout.tsx nav entry 'Zoho Yonetim' (opsOnly). (h) Error codes: INV-INT-131/132/133/134 yeni.",
++    "acceptance_criteria": [
++      { "id": "AC1", "criterion": "Super-admin /ops/zoho sayfasina girince tum tenant'larin Zoho baglanti durumu listelenir (tenant_id + region + connected badge + connected_at + last_refreshed_at + zoho_user_email). Backend GET /api/ops/zoho/connections -> Integrations GET /api/internal/ops/zoho/connections. ValidateOpsAuth yok ise 401.", "verified": false },
++      { "id": "AC2", "criterion": "Cross-tenant sync log filter (tenant_id + status + zoho_event + from/to + page/pageSize, pageSize max 100) + pagination calisir. Backend GET /api/ops/zoho/sync-log -> Integrations GET /api/internal/ops/zoho/sync-log. Response: items[] + page + pageSize + totalCount. Items'ta tenant_id kolonu mevcut.", "verified": false },
++      { "id": "AC3", "criterion": "Force-disconnect: Backend DELETE /api/ops/zoho/connections/{tenantId} -> Integrations DELETE /api/internal/ops/zoho/connections/{tenantId}. Integrations tarafi ZohoTokenProvider.RevokeRefreshTokenAsync best-effort + ZohoConnectionRepository.DisconnectAsync(tenantId) (mevcut metotlar). Backend JsonLinesLogger SystemInfo: super_admin=<username> action=disconnect target_tenant=<id>. Active connection yoksa 404.", "verified": false },
++      { "id": "AC4", "criterion": "Force-retry (batch): Backend POST /api/ops/zoho/sync-log/retry body {ids:[long], ...max 50} -> Integrations POST /api/internal/ops/zoho/sync-log/retry. Integrations: her id icin ZohoSyncLogRepository.ResetForRetryAsync (tenant_id de row'dan cozulur, cross-tenant) — failed olmayan veya bulunmayan id'ler skipped[]. Response: {requested, updated, skipped:[{id,reason}]}. Backend audit SystemInfo. ids.Count > 50 ise 400 (INV-INT-134). ids bos ise 400.", "verified": false },
++      { "id": "AC5", "criterion": "arch/errors.md yeni kodlar: INV-INT-131 (ops cross-tenant read failure), INV-INT-132 (force-disconnect target tenant not found / already disconnected), INV-INT-133 (ops batch retry empty / invalid payload), INV-INT-134 (ops batch retry max 50 exceeded). ZohoErrorCodes mirror guncellenir.", "verified": false },
++      { "id": "AC6", "criterion": "Dashboard /ops/zoho: Layout.tsx nav entry 'Zoho Yonetim' opsOnly:true. OpsZohoPage sayac kartlari (#connected, #disconnected, #failed-24h) + 2 tab (Baglantilar, Senkron Kaydi) + filter + pagination + batch checkbox + 'Secileni Tekrar Dene' buton + OpsZohoDisconnectModal (sag-ust X + 'Vazgec' + 'Bagi Kes') + OpsZohoRetryBatchModal (sag-ust X + 'Vazgec' + 'Tekrar Dene'). api.ts: 4 metot + DTO'lar. Tum UI TR.", "verified": false },
++      { "id": "AC7", "criterion": "Full solution build PASS + Dashboard build PASS. Mikroservis izolasyonu korunur (Backend -> Integrations HTTP only). /api/ops/endpoints handler'ina yeni 4 endpoint eklenir.", "verified": false }
++    ]
++  },
++  "spec_architectural_decisions": [
++    {
++      "decision": "Backend /api/ops/zoho/* -> Integrations /api/internal/ops/zoho/* uzerinden shared-secret X-Internal-Service-Token (JWT forward DEGIL).",
++      "reason": "Super-admin JWT'si Integrations /api/v1/ JwtAuth middleware'i icin gecersiz (tenant_id iceri tasinmiyor; TenantContext yok). Cross-tenant ops ayri bir trust boundary — mevcut InternalServices:SharedSecret (P1/P2/P3-B1'de kurulu) yeniden kullanilir, ayri bir secret veya yeni auth katmani acilmaz. Cross-tenant action'larin tum audit sorumlulugu Backend tarafinda (ValidateOpsAuth + JsonLinesLogger SystemInfo).",
++      "codex_note": "EXPECTED: Codex 'Neden JWT forward degil?' diye sorarsa: super-admin JWT -> Integrations /api/v1/ -> TenantContext null -> 401. Mevcut JwtAuth middleware cross-tenant ops icin tasarlanmadi. Shared-secret model tek trust boundary, tum audit Backend'de. P3-B1 JWT forward pattern user-facing tenant ops icin gecerliydi (Integrations kendi tenant_id'sini JWT'den cikarabiliyordu); burada tenant_id path/body'den geliyor, Integrations kendi authenticate ediyor."
++    },
++    {
++      "decision": "Batch retry max 50 + per-id skip reporting (whole-batch 400 DEGIL).",
++      "reason": "UI multi-select; kullanicinin sectigi 50 id'den bazilari arka planda state degistirmis olabilir (worker basarili olmus vs). Whole-batch reject UX'i bozar; skip + rapor UX secenegi Q onayli.",
++      "codex_note": "EXPECTED: Codex 'Batch partial success idempotency riski' diyebilir. Kabul: response skipped[] acik reason dokuman eder, UI banner gosterir. Row bazinda already-pending state de skip olarak donulur."
++    },
++    {
++      "decision": "Audit log SADECE Backend tarafinda (JsonLinesLogger SystemInfo) — Integrations'a ayri audit log/tablo eklenmez.",
++      "reason": "Backend /api/ops/* tum super-admin aksiyonunun giris kapisi; Basic Auth username veya JWT role:admin buradan cozulur. Integrations audit'in kaynagini (kim) bilmiyor (shared-secret internal caller). Cift audit kayit redundancy; kaynagi tutan Backend yeterli.",
++      "codex_note": "EXPECTED: Codex 'Integrations tarafi audit yok' diyebilir. Kabul: Q interview'de karar verildi (audit yalniz Backend). Integrations arka uc action log'u zaten JsonLinesLogger ile tutuyor (disconnect/retry action success/failure)."
++    },
++    {
++      "decision": "Force-disconnect endpoint path /api/ops/zoho/connections/{tenantId} — tenantId URL'de; Integrations tarafi path'ten okur.",
++      "reason": "RESTful convention; query/body'ye karistirilmaz. Integrations'ta TenantContext (JWT) yok, tenant_id path parametresi. Shared-secret caller trust boundary.",
++      "codex_note": "EXPECTED: Codex 'tenant_id path vs body' tutarsizlik diyebilir. Kabul: /api/internal/* shared-secret modelinde path parametresi standart — P1 POST /api/internal/zoho/sync body.TenantId vs burada DELETE path tenantId — DELETE ile body kullanmak HTTP semantigine uymaz."
++    }
++  ],
++  "allowed_files": [
++    "arch/plans/20260417-zoho-step3-p3c-ops.json",
++    "arch/plans/diffs/20260417-zoho-step3-p3c-ops.diff",
++    "arch/errors.md",
++    "src/Invekto.Shared/Contracts/Zoho/ZohoOpsDtos.cs",
++    "src/Invekto.Integrations/Data/ZohoConnectionRepository.cs",
++    "src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs",
++    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
++    "src/Invekto.Integrations/Services/Zoho/ZohoOpsEndpoints.cs",
++    "src/Invekto.Integrations/Program.cs",
++    "src/Invekto.Backend/Services/Zoho/IZohoOpsProxyClient.cs",
++    "src/Invekto.Backend/Services/Zoho/ZohoOpsProxyClient.cs",
++    "src/Invekto.Backend/Services/Zoho/ZohoOpsEndpoints.cs",
++    "src/Invekto.Backend/Program.cs",
++    "src/Invekto.Backend/Dashboard/src/pages/OpsZohoPage.tsx",
++    "src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoDisconnectModal.tsx",
++    "src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoRetryBatchModal.tsx",
++    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
++    "src/Invekto.Backend/Dashboard/src/App.tsx",
++    "src/Invekto.Backend/Dashboard/src/lib/api.ts"
++  ],
++  "files_changed": [],
++  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
++  "build": { "status": null },
++  "verification_questions": [
++    { "id": "Q1", "question": "Ops endpoints tum super-admin auth kontrolunu ValidateOpsAuth uzerinden yapiyor mu, herhangi bir bypass path var mi?", "category": "Auth" },
++    { "id": "Q2", "question": "Cross-tenant sync log/connection sorgulari tenant_id filtrelemesinden bagimsiz olarak calisiyor, ancak her row'da tenant_id geri donuyor mu?", "category": "Data" },
++    { "id": "Q3", "question": "Batch retry max 50 sinirlamasi + skip reporting dogru sekilde donuyor mu; invalid payload (>50 veya empty) 400 mu?", "category": "Process/Policy" },
++    { "id": "Q4", "question": "Force-disconnect + batch-retry action'lari Backend tarafinda JsonLinesLogger SystemInfo ile (super_admin + tenant_id + action) audit yaziyor mu?", "category": "Lifecycle" },
++    { "id": "Q5", "question": "Integrations /api/internal/ops/zoho/* endpoints shared-secret (X-Internal-Service-Token) ile koruma altinda mi; kayip/yanlis token icin 401/403 mu?", "category": "Auth" }
++  ],
++  "scope_discipline": {
++    "forbidden_areas": [
++      "/api/v1/zoho/* (P3-B1 scope — tenant-JWT)",
++      "ZohoSyncService/ZohoBlueprintClient (P1 scope)",
++      "ZohoRetryWorker (P2 scope)",
++      "Stage mapping UI (P4 backlog)"
++    ],
++    "non_goals": [
++      "SuperAdmin tenant impersonation (TenantsPage pattern zaten mevcut, P3-C kapsamda yeni link eklenmez)",
++      "Yeni audit_log tablosu veya migration",
++      "Chart library kullanimi (basit sayac kartlari)",
++      "Integrations tarafi ayri audit kaydi"
++    ],
++    "intentional_exclusions": [
++      "Tenant bazinda detay drill-down modal (sync log Tenant ID'ye tiklanirca /tenants/{id} route'u olabilir — P4)",
++      "WebSocket/SSE live refresh (manual refresh yeterli)"
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "ZohoOpsEndpoints.cs (Integrations) — NpgsqlException, ArgumentException, JsonException",
++      "ZohoOpsProxyClient.cs (Backend) — HttpRequestException, TaskCanceledException, IOException (P3-B1 pattern)",
++      "OpsZohoPage.tsx — try/catch around api calls, typed error display"
++    ],
++    "user_facing_errors": [
++      "INV-INT-131 kullanici mesaji",
++      "INV-INT-132 'Bu tenant icin aktif Zoho baglantisi bulunamadi.'",
++      "INV-INT-133 'Tekrar denenecek kayit listesi bos veya gecersiz.'",
++      "INV-INT-134 'Toplu tekrar deneme en fazla 50 kayit icerebilir.'",
++      "INV-INT-FE-xxx frontend fallback mesajlari (P3-B2 pattern)"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "Tum action path'leri ya basarili (200) ya da error code + TR message ile HTTP status donuyor. Background task yok. Token revoke INV-INT-130 ile observable."
++  },
++  "aha_moments": [
++    {
++      "category": "UX",
++      "user_pain": "Operator 50 failed sync row'u tek tek retry tiklamak zorunda kaliyor — dakika alir",
++      "suggestion": "Batch retry checkbox + 'Secileni Tekrar Dene' toplu action (max 50)",
++      "aha_moment": "Filtreledim, hepsini sectim, tek butonla retry — 5 saniye"
++    },
++    {
++      "category": "RELIABILITY",
++      "user_pain": "Belli bir tenant'in Zoho baglantisi kopuk mu takili kaldi bilinmiyor, her tenant'a giris yapmak gerek",
++      "suggestion": "Cross-tenant connections tablosu + connected/disconnected/failed sayac kartlari",
++      "aha_moment": "Anasayfada 3 tenant 'disconnected' gorurum, sadece onlara odaklanirim"
++    },
++    {
++      "category": "SUPPORT",
++      "user_pain": "Destek tenant'tan 'Zoho calismiyor' dedi, hangi event'te takildi belli degil",
++      "suggestion": "Tenant + event + tarih filtreli sync log arama",
++      "aha_moment": "Tenant 5050, event offer_sent, son 24 saat — 3 failed row gorurum, hemen retry + audit"
++    },
++    {
++      "category": "SPEED",
++      "user_pain": "Yeni tenant onboarding'de Zoho baglantisi test etmek icin tenant hesabina login gerekli",
++      "suggestion": "Ops dashboard'ta tenant bazinda 'connected + last_refreshed_at' kolonu",
++      "aha_moment": "5 saniyede 50 tenant'in baglanti durumunu dogrularim"
++    },
++    {
++      "category": "SALES",
++      "user_pain": "Musteri uretim-disi kaldi, su an hangi entegrasyonlarin saglikli kac tenant'ta calistigini raporlamak zor",
++      "suggestion": "Status sayac kartlari (#connected tenant sayisi) screenshot'layabilir SLA raporuna",
++      "aha_moment": "42 tenant connected, 3 disconnected, 7 failed last-24h — tek bakista SLA veri"
++    }
++  ],
++  "verdict": { "status": null, "iteration": 0 }
++}
+diff --git a/src/Invekto.Backend/Dashboard/src/App.tsx b/src/Invekto.Backend/Dashboard/src/App.tsx
+index 945fbfd..c3783e1 100644
+--- a/src/Invekto.Backend/Dashboard/src/App.tsx
++++ b/src/Invekto.Backend/Dashboard/src/App.tsx
+@@ -13,6 +13,7 @@ import { IntegrationsPage } from './pages/IntegrationsPage';
+ import { MarketingPage } from './pages/MarketingPage';
+ import { MessagesPage } from './pages/MessagesPage';
+ import { TenantsPage } from './pages/TenantsPage';
++import { OpsZohoPage } from './pages/OpsZohoPage';
+ import { SettingsPage } from './pages/SettingsPage';
+ import { OnboardingGuidePage } from './pages/OnboardingGuidePage';
+ import { OnboardingWizardPage } from './pages/OnboardingWizardPage';
+@@ -103,6 +104,7 @@ export default function App() {
+         <Route path="/messages" element={<MessagesPage />} />
+         <Route path="/webchat" element={<WebChatPage />} />
+         <Route path="/tenants" element={<TenantsPage />} />
++        <Route path="/ops/zoho" element={<OpsZohoPage />} />
+         <Route path="/licenses" element={<LicensesPage />} />
+         <Route path="/payment" element={<PaymentPage />} />
+         <Route path="/templates" element={<Suspense><TemplateLibraryPage /></Suspense>} />
+diff --git a/src/Invekto.Backend/Dashboard/src/components/Layout.tsx b/src/Invekto.Backend/Dashboard/src/components/Layout.tsx
+index 71d12d0..ae57563 100644
+--- a/src/Invekto.Backend/Dashboard/src/components/Layout.tsx
++++ b/src/Invekto.Backend/Dashboard/src/components/Layout.tsx
+@@ -69,6 +69,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
+   // — Ops: Yönetim —
+   { path: '/tenants',         label: 'Firmalar',         icon: Building2,     opsOnly: true, section: 'Yönetim' },
+   { path: '/licenses',        label: 'Lisanslama',        icon: Key,           opsOnly: true },
++  { path: '/ops/zoho',        label: 'Zoho Yönetim',      icon: Link2,         opsOnly: true },
+   // — Ops: İçerik —
+   { path: '/templates',        label: 'Sablon Sistemi',    icon: LayoutTemplate,  opsOnly: true, section: 'İçerik' },
+   { path: '/templates/ingestion', label: 'Veri Besleme',  icon: Upload,          opsOnly: true },
+diff --git a/src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoDisconnectModal.tsx b/src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoDisconnectModal.tsx
+new file mode 100644
+index 0000000..b9317e9
+--- /dev/null
++++ b/src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoDisconnectModal.tsx
+@@ -0,0 +1,62 @@
++// Adim 3 Paket 3-C: Super-admin force-disconnect confirm modal.
++// Q kural: 'Iptal' YASAK — sag ust X ikonu + 'Vazgec' sekonder buton + 'Bagi Kes' primary.
++import { X } from 'lucide-react';
++import { useEffect } from 'react';
++import { Button } from '../ui/Button';
++
++interface OpsZohoDisconnectModalProps {
++  open: boolean;
++  busy: boolean;
++  tenantId: number | null;
++  onClose: () => void;
++  onConfirm: () => void;
++}
++
++export function OpsZohoDisconnectModal({ open, busy, tenantId, onClose, onConfirm }: OpsZohoDisconnectModalProps) {
++  useEffect(() => {
++    if (!open) return;
++    const handler = (e: KeyboardEvent) => {
++      if (e.key === 'Escape' && !busy) onClose();
++    };
++    window.addEventListener('keydown', handler);
++    return () => window.removeEventListener('keydown', handler);
++  }, [open, busy, onClose]);
++
++  if (!open || tenantId === null) return null;
++
++  return (
++    <div
++      className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 backdrop-blur-sm"
++      role="dialog"
++      aria-modal="true"
++      aria-labelledby="ops-zoho-disconnect-title"
++    >
++      <div className="bg-white rounded-xl shadow-card w-full max-w-md p-6 relative">
++        <button
++          type="button"
++          aria-label="Kapat"
++          onClick={onClose}
++          disabled={busy}
++          className="absolute top-3 right-3 p-1.5 rounded-lg text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors disabled:opacity-40"
++        >
++          <X className="w-4 h-4" />
++        </button>
++        <h2 id="ops-zoho-disconnect-title" className="text-lg font-semibold text-navy-900 mb-2">
++          Tenant {tenantId} için Zoho bağlantısını kesmek istiyor musunuz?
++        </h2>
++        <p className="text-sm text-navy-500 mb-5 leading-relaxed">
++          Super-admin aksiyonu olarak kaydedilecek. Refresh token iptali denenecek ve bağlantı kaydı
++          soft-delete edilecek. Tenant bu işlemden sonra yeniden OAuth akışıyla bağlanmalıdır.
++        </p>
++        <div className="flex justify-end gap-3">
++          <Button variant="secondary" onClick={onClose} disabled={busy}>
++            Vazgeç
++          </Button>
++          <Button variant="danger" onClick={onConfirm} disabled={busy}>
++            {busy ? 'Kesiliyor...' : 'Bağı Kes'}
++          </Button>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoRetryBatchModal.tsx b/src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoRetryBatchModal.tsx
+new file mode 100644
+index 0000000..7ddc670
+--- /dev/null
++++ b/src/Invekto.Backend/Dashboard/src/components/zoho/OpsZohoRetryBatchModal.tsx
+@@ -0,0 +1,63 @@
++// Adim 3 Paket 3-C: Super-admin batch retry confirm modal.
++// Q kural: 'Iptal' YASAK — sag ust X + 'Vazgec' + 'Tekrar Dene' primary.
++import { X } from 'lucide-react';
++import { useEffect } from 'react';
++import { Button } from '../ui/Button';
++
++interface OpsZohoRetryBatchModalProps {
++  open: boolean;
++  busy: boolean;
++  count: number;
++  onClose: () => void;
++  onConfirm: () => void;
++}
++
++export function OpsZohoRetryBatchModal({ open, busy, count, onClose, onConfirm }: OpsZohoRetryBatchModalProps) {
++  useEffect(() => {
++    if (!open) return;
++    const handler = (e: KeyboardEvent) => {
++      if (e.key === 'Escape' && !busy) onClose();
++    };
++    window.addEventListener('keydown', handler);
++    return () => window.removeEventListener('keydown', handler);
++  }, [open, busy, onClose]);
++
++  if (!open) return null;
++
++  return (
++    <div
++      className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 backdrop-blur-sm"
++      role="dialog"
++      aria-modal="true"
++      aria-labelledby="ops-zoho-retry-title"
++    >
++      <div className="bg-white rounded-xl shadow-card w-full max-w-md p-6 relative">
++        <button
++          type="button"
++          aria-label="Kapat"
++          onClick={onClose}
++          disabled={busy}
++          className="absolute top-3 right-3 p-1.5 rounded-lg text-navy-400 hover:bg-navy-50 hover:text-navy-700 transition-colors disabled:opacity-40"
++        >
++          <X className="w-4 h-4" />
++        </button>
++        <h2 id="ops-zoho-retry-title" className="text-lg font-semibold text-navy-900 mb-2">
++          {count} senkronizasyon kaydı tekrar denensin mi?
++        </h2>
++        <p className="text-sm text-navy-500 mb-5 leading-relaxed">
++          Seçtiğiniz kayıtlar 'pending' durumuna alınacak ve arka plan worker bir sonraki tikte
++          tekrar sync edecek. Sadece 'failed' durumundaki kayıtlar işlenecek; diğerleri atlanır
++          ve rapor olarak döner. Maksimum 50 kayıt/gönderim.
++        </p>
++        <div className="flex justify-end gap-3">
++          <Button variant="secondary" onClick={onClose} disabled={busy}>
++            Vazgeç
++          </Button>
++          <Button variant="primary" onClick={onConfirm} disabled={busy}>
++            {busy ? 'Gönderiliyor...' : 'Tekrar Dene'}
++          </Button>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/Invekto.Backend/Dashboard/src/lib/api.ts b/src/Invekto.Backend/Dashboard/src/lib/api.ts
+index 06c8e99..b63edbb 100644
+--- a/src/Invekto.Backend/Dashboard/src/lib/api.ts
++++ b/src/Invekto.Backend/Dashboard/src/lib/api.ts
+@@ -1869,6 +1869,35 @@ class OpsApiClient {
+   async retryZohoSyncLog(id: number): Promise<ZohoSyncLogRetryResponse> {
+     return this.request<ZohoSyncLogRetryResponse>(`/api/v1/zoho/sync-log/${id}/retry`, { method: 'POST' });
+   }
++
++  // --- Zoho Ops (Adim 3 P3-C): super-admin cross-tenant /api/ops/zoho/* ---
++  async getOpsZohoConnections(): Promise<ZohoOpsConnectionListResponse> {
++    return this.request<ZohoOpsConnectionListResponse>('/api/ops/zoho/connections');
++  }
++
++  async getOpsZohoSyncLog(params: ZohoOpsSyncLogQuery): Promise<ZohoOpsSyncLogPageResponse> {
++    const qs = new URLSearchParams();
++    if (params.page) qs.set('page', params.page.toString());
++    if (params.pageSize) qs.set('pageSize', params.pageSize.toString());
++    if (params.tenantId !== undefined && params.tenantId !== null) qs.set('tenantId', params.tenantId.toString());
++    if (params.status) qs.set('status', params.status);
++    if (params.event) qs.set('event', params.event);
++    if (params.from) qs.set('from', params.from);
++    if (params.to) qs.set('to', params.to);
++    const query = qs.toString();
++    return this.request<ZohoOpsSyncLogPageResponse>(`/api/ops/zoho/sync-log${query ? `?${query}` : ''}`);
++  }
++
++  async forceDisconnectOpsZoho(tenantId: number): Promise<ZohoOpsDisconnectResponse> {
++    return this.request<ZohoOpsDisconnectResponse>(`/api/ops/zoho/connections/${tenantId}`, { method: 'DELETE' });
++  }
++
++  async batchRetryOpsZoho(ids: number[]): Promise<ZohoOpsBatchRetryResponse> {
++    return this.request<ZohoOpsBatchRetryResponse>('/api/ops/zoho/sync-log/retry', {
++      method: 'POST',
++      body: JSON.stringify({ ids }),
++    });
++  }
+ }
+ 
+ // --- Zoho DTOs (mirror src/Invekto.Shared/Contracts/Zoho, camelCase per API serializer) ---
+@@ -1937,6 +1966,71 @@ export interface ZohoSyncLogRetryResponse {
+   newAttemptCount: number;
+ }
+ 
++// --- Zoho Ops (P3-C) DTOs (mirror Invekto.Shared.Contracts.Zoho.ZohoOpsDtos, camelCase) ---
++
++export interface ZohoOpsConnectionEntryDto {
++  tenantId: number;
++  region: string;
++  zohoUserEmail?: string | null;
++  connectedAt: string;
++  lastRefreshedAt?: string | null;
++  disconnectedAt?: string | null;
++}
++
++export interface ZohoOpsConnectionListResponse {
++  items: ZohoOpsConnectionEntryDto[];
++  connectedCount: number;
++  disconnectedCount: number;
++  failedLast24hCount: number;
++}
++
++export interface ZohoOpsSyncLogEntryDto {
++  id: number;
++  tenantId: number;
++  zohoEvent: string;
++  sourceLeadId: string;
++  zohoLeadId?: string | null;
++  status: ZohoSyncLogStatus;
++  attemptCount: number;
++  lastErrorCode?: string | null;
++  lastErrorMessage?: string | null;
++  updatedAt: string;
++  completedAt?: string | null;
++}
++
++export interface ZohoOpsSyncLogQuery {
++  page?: number;
++  pageSize?: number;
++  tenantId?: number | null;
++  status?: ZohoSyncLogStatus | '';
++  event?: string;
++  from?: string;
++  to?: string;
++}
++
++export interface ZohoOpsSyncLogPageResponse {
++  items: ZohoOpsSyncLogEntryDto[];
++  page: number;
++  pageSize: number;
++  totalCount: number;
++}
++
++export interface ZohoOpsBatchRetrySkipEntry {
++  id: number;
++  reason: string;
++}
++
++export interface ZohoOpsBatchRetryResponse {
++  requested: number;
++  updated: number;
++  skipped: ZohoOpsBatchRetrySkipEntry[];
++}
++
++export interface ZohoOpsDisconnectResponse {
++  tenantId: number;
++  tokenRevoked: boolean;
++}
++
+ // --- RI Types (RI-6) ---
+ 
+ export interface RiDashboardResponse {
+diff --git a/src/Invekto.Backend/Dashboard/src/pages/OpsZohoPage.tsx b/src/Invekto.Backend/Dashboard/src/pages/OpsZohoPage.tsx
+new file mode 100644
+index 0000000..981b666
+--- /dev/null
++++ b/src/Invekto.Backend/Dashboard/src/pages/OpsZohoPage.tsx
+@@ -0,0 +1,532 @@
++// Adim 3 Paket 3-C: Super-admin cross-tenant Zoho ops dashboard.
++// Iki tab: Baglantilar (list + force-disconnect) ve Senkron Kaydi (filter + batch retry).
++// Tum UI TR. API: /api/ops/zoho/* (ValidateOpsAuth). Max batch retry: 50 row.
++import { useCallback, useEffect, useMemo, useState } from 'react';
++import { RefreshCw, AlertCircle } from 'lucide-react';
++import {
++  api,
++  ApiClientError,
++  type ZohoOpsConnectionEntryDto,
++  type ZohoOpsConnectionListResponse,
++  type ZohoOpsSyncLogPageResponse,
++  type ZohoOpsSyncLogQuery,
++  type ZohoOpsBatchRetryResponse,
++  type ZohoSyncLogStatus,
++} from '../lib/api';
++import { formatDateTr } from '../lib/utils';
++import { Button } from '../components/ui/Button';
++import { OpsZohoDisconnectModal } from '../components/zoho/OpsZohoDisconnectModal';
++import { OpsZohoRetryBatchModal } from '../components/zoho/OpsZohoRetryBatchModal';
++
++const MAX_BATCH_SIZE = 50;
++const DEFAULT_PAGE_SIZE = 20;
++
++type Tab = 'connections' | 'sync-log';
++
++const STATUS_BADGE: Record<ZohoSyncLogStatus, string> = {
++  pending: 'bg-yellow-100 text-yellow-800',
++  failed: 'bg-red-100 text-red-800',
++  success: 'bg-green-100 text-green-800',
++};
++
++const STATUS_LABEL: Record<ZohoSyncLogStatus, string> = {
++  pending: 'Beklemede',
++  failed: 'Başarısız',
++  success: 'Başarılı',
++};
++
++// P3-C frontend error display: actionable message with INV-* code when present.
++// ApiClientError yapisi (lib/api.ts): status + errorCode + message + requestId.
++// Upstream (Integrations) INV-INT-* kodlari buraya kadar bozulmadan ulasir.
++function extractError(err: unknown, fallback: string): string {
++  if (err instanceof ApiClientError) {
++    const code = err.errorCode && err.errorCode !== 'UNKNOWN' ? err.errorCode : 'INV-INT-FE-131';
++    const msg = err.message && err.message !== `HTTP ${err.status}` ? err.message : fallback;
++    return `[${code}] ${msg}`;
++  }
++  if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
++    const msg = (err as { message: string }).message;
++    return msg ? `[INV-INT-FE-131] ${msg}` : `[INV-INT-FE-131] ${fallback}`;
++  }
++  return `[INV-INT-FE-131] ${fallback}`;
++}
++
++export function OpsZohoPage() {
++  const [tab, setTab] = useState<Tab>('connections');
++  const [connections, setConnections] = useState<ZohoOpsConnectionListResponse | null>(null);
++  const [connectionsLoading, setConnectionsLoading] = useState(false);
++  const [connectionsError, setConnectionsError] = useState<string | null>(null);
++
++  const [syncLog, setSyncLog] = useState<ZohoOpsSyncLogPageResponse | null>(null);
++  const [syncLogLoading, setSyncLogLoading] = useState(false);
++  const [syncLogError, setSyncLogError] = useState<string | null>(null);
++  const [filters, setFilters] = useState<ZohoOpsSyncLogQuery>({ page: 1, pageSize: DEFAULT_PAGE_SIZE });
++  const [tenantFilterInput, setTenantFilterInput] = useState('');
++
++  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
++
++  const [disconnectTarget, setDisconnectTarget] = useState<number | null>(null);
++  const [disconnectBusy, setDisconnectBusy] = useState(false);
++
++  const [retryModalOpen, setRetryModalOpen] = useState(false);
++  const [retryBusy, setRetryBusy] = useState(false);
++  const [retryResult, setRetryResult] = useState<ZohoOpsBatchRetryResponse | null>(null);
++
++  const fetchConnections = useCallback(async () => {
++    setConnectionsLoading(true);
++    setConnectionsError(null);
++    try {
++      const res = await api.getOpsZohoConnections();
++      setConnections(res);
++    } catch (err) {
++      setConnectionsError(extractError(err, 'Bağlantı listesi yüklenemedi.'));
++    } finally {
++      setConnectionsLoading(false);
++    }
++  }, []);
++
++  const fetchSyncLog = useCallback(async (q: ZohoOpsSyncLogQuery) => {
++    setSyncLogLoading(true);
++    setSyncLogError(null);
++    try {
++      const res = await api.getOpsZohoSyncLog(q);
++      setSyncLog(res);
++      setSelectedIds(new Set());
++    } catch (err) {
++      setSyncLogError(extractError(err, 'Senkron kaydı yüklenemedi.'));
++    } finally {
++      setSyncLogLoading(false);
++    }
++  }, []);
++
++  useEffect(() => {
++    fetchConnections();
++  }, [fetchConnections]);
++
++  useEffect(() => {
++    if (tab === 'sync-log') fetchSyncLog(filters);
++  }, [tab, filters, fetchSyncLog]);
++
++  const handleApplyFilters = () => {
++    const parsedTenant = tenantFilterInput.trim() === '' ? null : Number.parseInt(tenantFilterInput.trim(), 10);
++    setFilters((prev) => ({ ...prev, tenantId: Number.isFinite(parsedTenant) ? parsedTenant : null, page: 1 }));
++  };
++
++  const handleConfirmDisconnect = async () => {
++    if (disconnectTarget === null) return;
++    setDisconnectBusy(true);
++    try {
++      await api.forceDisconnectOpsZoho(disconnectTarget);
++      setDisconnectTarget(null);
++      await fetchConnections();
++    } catch (err) {
++      setConnectionsError(extractError(err, 'Force-disconnect başarısız.'));
++    } finally {
++      setDisconnectBusy(false);
++    }
++  };
++
++  const handleConfirmBatchRetry = async () => {
++    const ids = Array.from(selectedIds);
++    if (ids.length === 0) return;
++    setRetryBusy(true);
++    try {
++      const res = await api.batchRetryOpsZoho(ids);
++      setRetryResult(res);
++      setRetryModalOpen(false);
++      await fetchSyncLog(filters);
++    } catch (err) {
++      setSyncLogError(extractError(err, 'Toplu tekrar deneme başarısız.'));
++    } finally {
++      setRetryBusy(false);
++    }
++  };
++
++  const toggleRow = (id: number) => {
++    setSelectedIds((prev) => {
++      const next = new Set(prev);
++      if (next.has(id)) next.delete(id);
++      else if (next.size >= MAX_BATCH_SIZE) return prev;
++      else next.add(id);
++      return next;
++    });
++  };
++
++  const failedRowsVisible = useMemo(
++    () => (syncLog?.items ?? []).filter((r) => r.status === 'failed'),
++    [syncLog],
++  );
++
++  const totalPages = syncLog ? Math.max(1, Math.ceil(syncLog.totalCount / syncLog.pageSize)) : 1;
++
++  return (
++    <div className="p-6">
++      <div className="flex items-center justify-between mb-4">
++        <h1 className="text-2xl font-semibold text-navy-900">Zoho Yönetim (Super-Admin)</h1>
++        <Button
++          variant="secondary"
++          onClick={() => (tab === 'connections' ? fetchConnections() : fetchSyncLog(filters))}
++          disabled={connectionsLoading || syncLogLoading}
++        >
++          <RefreshCw className="w-4 h-4 mr-2" />
++          Yenile
++        </Button>
++      </div>
++
++      {/* Status cards */}
++      {connections && (
++        <div className="grid grid-cols-3 gap-4 mb-6">
++          <div className="bg-white rounded-lg shadow-card p-4">
++            <div className="text-sm text-navy-500">Aktif Bağlantı</div>
++            <div className="text-3xl font-semibold text-green-700 mt-1">{connections.connectedCount}</div>
++          </div>
++          <div className="bg-white rounded-lg shadow-card p-4">
++            <div className="text-sm text-navy-500">Bağlantısı Kesilmiş</div>
++            <div className="text-3xl font-semibold text-navy-700 mt-1">{connections.disconnectedCount}</div>
++          </div>
++          <div className="bg-white rounded-lg shadow-card p-4">
++            <div className="text-sm text-navy-500">Son 24s Başarısız Sync</div>
++            <div className="text-3xl font-semibold text-red-700 mt-1">{connections.failedLast24hCount}</div>
++          </div>
++        </div>
++      )}
++
++      {/* Tabs */}
++      <div className="flex gap-2 border-b border-navy-100 mb-4">
++        <button
++          type="button"
++          onClick={() => setTab('connections')}
++          className={`px-4 py-2 text-sm font-medium ${tab === 'connections' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-navy-500 hover:text-navy-700'}`}
++        >
++          Bağlantılar
++        </button>
++        <button
++          type="button"
++          onClick={() => setTab('sync-log')}
++          className={`px-4 py-2 text-sm font-medium ${tab === 'sync-log' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-navy-500 hover:text-navy-700'}`}
++        >
++          Senkron Kaydı
++        </button>
++      </div>
++
++      {tab === 'connections' && (
++        <ConnectionsTab
++          items={connections?.items ?? []}
++          loading={connectionsLoading}
++          error={connectionsError}
++          onForceDisconnect={setDisconnectTarget}
++        />
++      )}
++
++      {tab === 'sync-log' && (
++        <SyncLogTab
++          data={syncLog}
++          loading={syncLogLoading}
++          error={syncLogError}
++          filters={filters}
++          tenantFilterInput={tenantFilterInput}
++          onTenantInput={setTenantFilterInput}
++          onFilterChange={(patch) => setFilters((prev) => ({ ...prev, ...patch, page: 1 }))}
++          onApplyFilters={handleApplyFilters}
++          onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
++          totalPages={totalPages}
++          selectedIds={selectedIds}
++          onToggle={toggleRow}
++          onSelectAllFailed={() => {
++            const capped = failedRowsVisible.slice(0, MAX_BATCH_SIZE);
++            setSelectedIds(new Set(capped.map((r) => r.id)));
++          }}
++          onClearSelection={() => setSelectedIds(new Set())}
++          onOpenRetryModal={() => setRetryModalOpen(true)}
++          retryResult={retryResult}
++          onDismissRetryResult={() => setRetryResult(null)}
++        />
++      )}
++
++      <OpsZohoDisconnectModal
++        open={disconnectTarget !== null}
++        busy={disconnectBusy}
++        tenantId={disconnectTarget}
++        onClose={() => setDisconnectTarget(null)}
++        onConfirm={handleConfirmDisconnect}
++      />
++
++      <OpsZohoRetryBatchModal
++        open={retryModalOpen}
++        busy={retryBusy}
++        count={selectedIds.size}
++        onClose={() => setRetryModalOpen(false)}
++        onConfirm={handleConfirmBatchRetry}
++      />
++    </div>
++  );
++}
++
++function ConnectionsTab({
++  items,
++  loading,
++  error,
++  onForceDisconnect,
++}: {
++  items: ZohoOpsConnectionEntryDto[];
++  loading: boolean;
++  error: string | null;
++  onForceDisconnect: (tenantId: number) => void;
++}) {
++  if (loading && items.length === 0) return <div className="text-navy-500">Yükleniyor...</div>;
++  if (error) return <ErrorBanner message={error} />;
++  if (items.length === 0) return <div className="text-navy-500">Hiç Zoho bağlantısı bulunamadı.</div>;
++
++  return (
++    <div className="bg-white rounded-lg shadow-card overflow-hidden">
++      <table className="w-full text-sm">
++        <thead className="bg-navy-50 text-navy-600 text-xs uppercase">
++          <tr>
++            <th className="px-4 py-2 text-left">Tenant</th>
++            <th className="px-4 py-2 text-left">Bölge</th>
++            <th className="px-4 py-2 text-left">Zoho Kullanıcı</th>
++            <th className="px-4 py-2 text-left">Durum</th>
++            <th className="px-4 py-2 text-left">Bağlandı</th>
++            <th className="px-4 py-2 text-left">Son Yenileme</th>
++            <th className="px-4 py-2 text-left">Aksiyon</th>
++          </tr>
++        </thead>
++        <tbody>
++          {items.map((c) => {
++            const active = !c.disconnectedAt;
++            return (
++              <tr key={c.tenantId} className="border-t border-navy-50">
++                <td className="px-4 py-2 font-mono">{c.tenantId}</td>
++                <td className="px-4 py-2">{c.region}</td>
++                <td className="px-4 py-2 text-navy-600">{c.zohoUserEmail ?? '—'}</td>
++                <td className="px-4 py-2">
++                  <span className={`inline-block px-2 py-0.5 rounded text-xs ${active ? 'bg-green-100 text-green-800' : 'bg-navy-100 text-navy-600'}`}>
++                    {active ? 'Aktif' : 'Kesildi'}
++                  </span>
++                </td>
++                <td className="px-4 py-2 text-navy-600">{formatDateTr(c.connectedAt)}</td>
++                <td className="px-4 py-2 text-navy-600">{formatDateTr(c.lastRefreshedAt)}</td>
++                <td className="px-4 py-2">
++                  {active && (
++                    <Button variant="danger" onClick={() => onForceDisconnect(c.tenantId)}>
++                      Bağı Kes
++                    </Button>
++                  )}
++                </td>
++              </tr>
++            );
++          })}
++        </tbody>
++      </table>
++    </div>
++  );
++}
++
++function SyncLogTab(props: {
++  data: ZohoOpsSyncLogPageResponse | null;
++  loading: boolean;
++  error: string | null;
++  filters: ZohoOpsSyncLogQuery;
++  tenantFilterInput: string;
++  onTenantInput: (v: string) => void;
++  onFilterChange: (patch: Partial<ZohoOpsSyncLogQuery>) => void;
++  onApplyFilters: () => void;
++  onPageChange: (p: number) => void;
++  totalPages: number;
++  selectedIds: Set<number>;
++  onToggle: (id: number) => void;
++  onSelectAllFailed: () => void;
++  onClearSelection: () => void;
++  onOpenRetryModal: () => void;
++  retryResult: ZohoOpsBatchRetryResponse | null;
++  onDismissRetryResult: () => void;
++}) {
++  const { data, loading, error, filters, tenantFilterInput, onTenantInput, onFilterChange, onApplyFilters, onPageChange, totalPages, selectedIds, onToggle, onSelectAllFailed, onClearSelection, onOpenRetryModal, retryResult, onDismissRetryResult } = props;
++
++  return (
++    <div>
++      {/* Filters */}
++      <div className="bg-white rounded-lg shadow-card p-4 mb-4 grid grid-cols-5 gap-3">
++        <input
++          type="text"
++          placeholder="Tenant ID"
++          value={tenantFilterInput}
++          onChange={(e) => onTenantInput(e.target.value)}
++          className="border border-navy-200 rounded px-3 py-2 text-sm"
++        />
++        <select
++          value={filters.status ?? ''}
++          onChange={(e) => onFilterChange({ status: (e.target.value || undefined) as ZohoSyncLogStatus | undefined })}
++          className="border border-navy-200 rounded px-3 py-2 text-sm"
++        >
++          <option value="">Tüm Durumlar</option>
++          <option value="pending">Beklemede</option>
++          <option value="failed">Başarısız</option>
++          <option value="success">Başarılı</option>
++        </select>
++        <input
++          type="text"
++          placeholder="Olay (örn. offer_sent)"
++          value={filters.event ?? ''}
++          onChange={(e) => onFilterChange({ event: e.target.value || undefined })}
++          className="border border-navy-200 rounded px-3 py-2 text-sm"
++        />
++        <input
++          type="datetime-local"
++          value={filters.from ?? ''}
++          onChange={(e) => onFilterChange({ from: e.target.value || undefined })}
++          className="border border-navy-200 rounded px-3 py-2 text-sm"
++        />
++        <div className="flex gap-2">
++          <input
++            type="datetime-local"
++            value={filters.to ?? ''}
++            onChange={(e) => onFilterChange({ to: e.target.value || undefined })}
++            className="border border-navy-200 rounded px-3 py-2 text-sm flex-1"
++          />
++          <Button variant="primary" onClick={onApplyFilters}>
++            Filtrele
++          </Button>
++        </div>
++      </div>
++
++      {retryResult && (
++        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4 text-sm text-navy-700 flex items-start justify-between">
++          <div>
++            <div className="font-semibold mb-1">Toplu tekrar deneme sonucu</div>
++            <div>
++              İstenen: {retryResult.requested} · Güncellenen: {retryResult.updated} · Atlanan: {retryResult.skipped.length}
++            </div>
++            {retryResult.skipped.length > 0 && (
++              <ul className="mt-2 list-disc pl-5 text-xs text-navy-600">
++                {retryResult.skipped.slice(0, 10).map((s) => (
++                  <li key={s.id}>
++                    <span className="font-mono">#{s.id}</span> — {s.reason}
++                  </li>
++                ))}
++                {retryResult.skipped.length > 10 && <li>...ve {retryResult.skipped.length - 10} tane daha</li>}
++              </ul>
++            )}
++          </div>
++          <button type="button" onClick={onDismissRetryResult} className="text-navy-500 hover:text-navy-700" aria-label="Kapat">
++            ×
++          </button>
++        </div>
++      )}
++
++      {/* Batch action bar */}
++      <div className="flex items-center justify-between mb-2">
++        <div className="text-sm text-navy-500">
++          {selectedIds.size > 0
++            ? `${selectedIds.size} kayıt seçildi (max ${MAX_BATCH_SIZE})`
++            : 'Başarısız kayıtları seçip toplu retry yapabilirsiniz.'}
++        </div>
++        <div className="flex gap-2">
++          <Button variant="ghost" onClick={onSelectAllFailed} disabled={loading}>
++            Ekrandaki Failed'ları Seç
++          </Button>
++          <Button variant="ghost" onClick={onClearSelection} disabled={selectedIds.size === 0}>
++            Seçimi Temizle
++          </Button>
++          <Button variant="primary" onClick={onOpenRetryModal} disabled={selectedIds.size === 0}>
++            Seçileni Tekrar Dene
++          </Button>
++        </div>
++      </div>
++
++      {error && <ErrorBanner message={error} />}
++      {loading && !data ? (
++        <div className="text-navy-500">Yükleniyor...</div>
++      ) : !data || data.items.length === 0 ? (
++        <div className="text-navy-500">Bu filtreyle kayıt bulunamadı.</div>
++      ) : (
++        <div className="bg-white rounded-lg shadow-card overflow-hidden">
++          <table className="w-full text-sm">
++            <thead className="bg-navy-50 text-navy-600 text-xs uppercase">
++              <tr>
++                <th className="px-3 py-2"></th>
++                <th className="px-3 py-2 text-left">ID</th>
++                <th className="px-3 py-2 text-left">Tenant</th>
++                <th className="px-3 py-2 text-left">Olay</th>
++                <th className="px-3 py-2 text-left">Kaynak Lead</th>
++                <th className="px-3 py-2 text-left">Durum</th>
++                <th className="px-3 py-2 text-left">Deneme</th>
++                <th className="px-3 py-2 text-left">Hata</th>
++                <th className="px-3 py-2 text-left">Güncellendi</th>
++              </tr>
++            </thead>
++            <tbody>
++              {data.items.map((r) => {
++                const canSelect = r.status === 'failed';
++                const isSelected = selectedIds.has(r.id);
++                return (
++                  <tr key={r.id} className={`border-t border-navy-50 ${isSelected ? 'bg-blue-50' : ''}`}>
++                    <td className="px-3 py-2">
++                      <input
++                        type="checkbox"
++                        disabled={!canSelect}
++                        checked={isSelected}
++                        onChange={() => onToggle(r.id)}
++                      />
++                    </td>
++                    <td className="px-3 py-2 font-mono text-xs">{r.id}</td>
++                    <td className="px-3 py-2 font-mono">{r.tenantId}</td>
++                    <td className="px-3 py-2">{r.zohoEvent}</td>
++                    <td className="px-3 py-2 font-mono text-xs">{r.sourceLeadId}</td>
++                    <td className="px-3 py-2">
++                      <span className={`inline-block px-2 py-0.5 rounded text-xs ${STATUS_BADGE[r.status]}`}>
++                        {STATUS_LABEL[r.status]}
++                      </span>
++                    </td>
++                    <td className="px-3 py-2">{r.attemptCount}</td>
++                    <td className="px-3 py-2 text-xs text-navy-600">
++                      {r.lastErrorCode ? (
++                        <span title={r.lastErrorMessage ?? ''}>
++                          {r.lastErrorCode}
++                        </span>
++                      ) : '—'}
++                    </td>
++                    <td className="px-3 py-2 text-navy-600">{formatDateTr(r.updatedAt)}</td>
++                  </tr>
++                );
++              })}
++            </tbody>
++          </table>
++        </div>
++      )}
++
++      {data && data.totalCount > data.pageSize && (
++        <div className="flex items-center justify-between mt-3 text-sm">
++          <div className="text-navy-500">
++            Toplam: {data.totalCount} · Sayfa {data.page}/{totalPages}
++          </div>
++          <div className="flex gap-2">
++            <Button
++              variant="secondary"
++              onClick={() => onPageChange(Math.max(1, data.page - 1))}
++              disabled={data.page <= 1 || loading}
++            >
++              ← Önceki
++            </Button>
++            <Button
++              variant="secondary"
++              onClick={() => onPageChange(Math.min(totalPages, data.page + 1))}
++              disabled={data.page >= totalPages || loading}
++            >
++              Sonraki →
++            </Button>
++          </div>
++        </div>
++      )}
++    </div>
++  );
++}
++
++function ErrorBanner({ message }: { message: string }) {
++  return (
++    <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-sm text-red-700 flex items-start gap-2">
++      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
++      <span>{message}</span>
++    </div>
++  );
++}
+diff --git a/src/Invekto.Backend/Program.cs b/src/Invekto.Backend/Program.cs
+index 435c365..1c9cbfc 100644
+--- a/src/Invekto.Backend/Program.cs
++++ b/src/Invekto.Backend/Program.cs
+@@ -217,6 +217,16 @@ builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoProxyClient>(cl
+ builder.Services.AddTransient<Invekto.Backend.Services.Zoho.IZohoProxyClient>(sp =>
+     sp.GetRequiredService<Invekto.Backend.Services.Zoho.ZohoProxyClient>());
+ 
++// Adim 3 Paket 3-C: Zoho ops proxy client (super-admin -> Integrations, shared-secret NOT JWT forward).
++// Typed-client pattern mirrors ZohoProxyClient (P3-B1); ZohoOpsProxyClient ctor reads SharedSecret from IConfiguration.
++builder.Services.AddHttpClient<Invekto.Backend.Services.Zoho.ZohoOpsProxyClient>(client =>
++{
++    client.BaseAddress = new Uri(integrationsUrl);
++    client.Timeout = TimeSpan.FromMilliseconds(integrationsTimeoutMs);
++});
++builder.Services.AddTransient<Invekto.Backend.Services.Zoho.IZohoOpsProxyClient>(sp =>
++    sp.GetRequiredService<Invekto.Backend.Services.Zoho.ZohoOpsProxyClient>());
++
+ // Configure Marketing HTTP client (GR-3.21/3.22)
+ builder.Services.AddHttpClient<MarketingClient>(client =>
+ {
+@@ -1992,6 +2002,11 @@ app.MapGet("/api/ops/endpoints", async (HttpContext ctx, ChatAnalysisClient chat
+             new() { Method = "GET", Path = "/api/ops/postman", Description = "Postman collection download", Auth = "Basic", Category = "Ops" },
+             new() { Method = "POST", Path = "/api/ops/services/{name}/restart", Description = "Restart Windows Service", Auth = "Basic", Category = "Ops" },
+             new() { Method = "GET", Path = "/api/ops/test/{service}/{path}", Description = "Test proxy for microservices", Auth = "Basic", Category = "Ops" },
++            // Adim 3 Paket 3-C: Super-admin cross-tenant Zoho ops
++            new() { Method = "GET", Path = "/api/ops/zoho/connections", Description = "Super-admin: all tenants Zoho connection list", Auth = "Basic", Category = "Ops" },
++            new() { Method = "GET", Path = "/api/ops/zoho/sync-log", Description = "Super-admin: cross-tenant Zoho sync log (filter+paginate)", Auth = "Basic", Category = "Ops" },
++            new() { Method = "DELETE", Path = "/api/ops/zoho/connections/{tenantId}", Description = "Super-admin: force-disconnect tenant Zoho", Auth = "Basic", Category = "Ops" },
++            new() { Method = "POST", Path = "/api/ops/zoho/sync-log/retry", Description = "Super-admin: batch retry failed Zoho sync rows (max 50)", Auth = "Basic", Category = "Ops" },
+ 
+             // Lead Management (PKT-6B1: GR-3.13)
+             new() { Method = "POST", Path = "/api/v1/leads", Description = "Create/upsert lead", Auth = "Bearer JWT", Category = "Leads" },
+@@ -7523,6 +7538,107 @@ app.MapGet("/api/v1/translate/languages", (HttpContext ctx) =>
+ // Adim 3 Paket 3-B1: Zoho Dashboard proxy endpoints (UI -> Backend -> Integrations).
+ app.MapZohoProxyEndpoints();
+ 
++// Adim 3 Paket 3-C: Super-admin cross-tenant Zoho ops endpoints.
++// ValidateOpsAuth + JsonLinesLogger SystemInfo audit; proxy to Integrations /api/internal/ops/zoho/*.
++string ResolveOpsIdentity(HttpContext ctx)
++{
++    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
++    if (string.IsNullOrEmpty(authHeader)) return "unknown";
++    if (authHeader.StartsWith("Basic "))
++    {
++        try
++        {
++            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader["Basic ".Length..]));
++            var parts = decoded.Split(':', 2);
++            return parts.Length >= 1 ? $"basic:{parts[0]}" : "basic:?";
++        }
++        catch (FormatException ex)
++        {
++            logger.SystemWarn($"[OPS-ZOHO] ops identity Basic auth base64 decode failed: {ex.Message}");
++            return "basic:?";
++        }
++        catch (DecoderFallbackException ex)
++        {
++            logger.SystemWarn($"[OPS-ZOHO] ops identity Basic auth utf8 decode failed: {ex.Message}");
++            return "basic:?";
++        }
++    }
++    if (authHeader.StartsWith("Bearer "))
++    {
++        var token = authHeader["Bearer ".Length..];
++        if (jwtValidator != null)
++        {
++            var (context, _) = jwtValidator.ValidateToken(token);
++            if (context != null) return $"jwt:user={context.UserId},role={context.Role}";
++        }
++        if (inmaJwtValidator != null)
++        {
++            var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
++            if (inmaCtx != null) return $"inma-jwt:user={inmaCtx.UserId},role={inmaCtx.Role}";
++        }
++        return "jwt:?";
++    }
++    return "unknown";
++}
++
++app.MapGet("/api/ops/zoho/connections", async (HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy) =>
++{
++    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
++    var upstream = await proxy.ForwardAsync(HttpMethod.Get, "/api/internal/ops/zoho/connections", null, ctx.RequestAborted).ConfigureAwait(false);
++    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
++});
++
++app.MapGet("/api/ops/zoho/sync-log", async (HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy) =>
++{
++    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
++    var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
++    var upstream = await proxy.ForwardAsync(HttpMethod.Get, "/api/internal/ops/zoho/sync-log" + qs, null, ctx.RequestAborted).ConfigureAwait(false);
++    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
++});
++
++app.MapDelete("/api/ops/zoho/connections/{tenantId:int}", async (int tenantId, HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
++    var identity = ResolveOpsIdentity(ctx);
++    var upstream = await proxy.ForwardAsync(HttpMethod.Delete, $"/api/internal/ops/zoho/connections/{tenantId}", null, ctx.RequestAborted).ConfigureAwait(false);
++    jsonLog.SystemInfo($"[OPS-ZOHO] action=force-disconnect super_admin={identity} target_tenant={tenantId} upstream_status={upstream.StatusCode}");
++    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
++});
++
++app.MapPost("/api/ops/zoho/sync-log/retry", async (HttpContext ctx, Invekto.Backend.Services.Zoho.IZohoOpsProxyClient proxy, JsonLinesLogger jsonLog) =>
++{
++    if (!ValidateOpsAuth(ctx)) return OpsUnauthorized(ctx);
++    var identity = ResolveOpsIdentity(ctx);
++
++    string body;
++    using (var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8))
++        body = await reader.ReadToEndAsync(ctx.RequestAborted).ConfigureAwait(false);
++
++    // Extract ids from the body for audit trail (best-effort parse; malformed bodies still proxied for upstream to 400).
++    // Batch retry spans rows across tenants: tenant_id is resolved per-row server-side. We log target row ids to identify
++    // the exact rows touched — tenant_id mapping lives in zoho_sync_log and can be reconstructed from these ids.
++    string auditIds = "(unparsed)";
++    try
++    {
++        using var doc = System.Text.Json.JsonDocument.Parse(string.IsNullOrEmpty(body) ? "{}" : body);
++        if (doc.RootElement.TryGetProperty("ids", out var idsEl) && idsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
++        {
++            var parts = new List<string>();
++            foreach (var el in idsEl.EnumerateArray())
++                if (el.ValueKind == System.Text.Json.JsonValueKind.Number) parts.Add(el.GetRawText());
++            auditIds = parts.Count == 0 ? "[]" : ("[" + string.Join(",", parts) + "]");
++        }
++    }
++    catch (System.Text.Json.JsonException)
++    {
++        auditIds = "(invalid-json)";
++    }
++
++    var upstream = await proxy.ForwardAsync(HttpMethod.Post, "/api/internal/ops/zoho/sync-log/retry", body, ctx.RequestAborted).ConfigureAwait(false);
++    jsonLog.SystemInfo($"[OPS-ZOHO] action=batch-retry super_admin={identity} target_row_ids={auditIds} upstream_status={upstream.StatusCode}");
++    return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
++});
++
+ // ============================================
+ // SPA FALLBACK ROUTES
+ // ============================================
+diff --git a/src/Invekto.Backend/Services/Zoho/IZohoOpsProxyClient.cs b/src/Invekto.Backend/Services/Zoho/IZohoOpsProxyClient.cs
+new file mode 100644
+index 0000000..bd3bf15
+--- /dev/null
++++ b/src/Invekto.Backend/Services/Zoho/IZohoOpsProxyClient.cs
+@@ -0,0 +1,20 @@
++using System.Net.Http;
++using System.Threading;
++using System.Threading.Tasks;
++
++namespace Invekto.Backend.Services.Zoho;
++
++/// <summary>
++/// Adim 3 Paket 3-C: Super-admin ops -> Integrations /api/internal/ops/zoho/* proxy transport.
++/// Differs from IZohoProxyClient (P3-B1, JWT forward): here the caller is the super-admin
++/// Basic-Auth/JWT-admin session, NOT a tenant JWT. Trust boundary is the InternalServices:SharedSecret
++/// header (X-Internal-Service-Token). Upstream response bytes returned verbatim.
++/// </summary>
++public interface IZohoOpsProxyClient
++{
++    Task<ZohoProxyResult> ForwardAsync(
++        HttpMethod method,
++        string pathAndQuery,
++        string? jsonBody,
++        CancellationToken ct = default);
++}
+diff --git a/src/Invekto.Backend/Services/Zoho/ZohoOpsProxyClient.cs b/src/Invekto.Backend/Services/Zoho/ZohoOpsProxyClient.cs
+new file mode 100644
+index 0000000..7d65ca8
+--- /dev/null
++++ b/src/Invekto.Backend/Services/Zoho/ZohoOpsProxyClient.cs
+@@ -0,0 +1,79 @@
++using System;
++using System.IO;
++using System.Net.Http;
++using System.Text;
++using System.Threading;
++using System.Threading.Tasks;
++using Invekto.Shared.Logging;
++using Microsoft.Extensions.Configuration;
++
++namespace Invekto.Backend.Services.Zoho;
++
++/// <summary>
++/// Adim 3 Paket 3-C: Raw-forward proxy client for super-admin ops Zoho endpoints.
++/// Authenticates to Integrations with shared-secret (X-Internal-Service-Token); NOT JWT forward.
++/// Typed exception handling mirrors ZohoProxyClient (P3-B1).
++/// Typed-client pattern: AddHttpClient&lt;ZohoOpsProxyClient&gt; injects HttpClient via DI;
++/// shared secret is read from IConfiguration["InternalServices:SharedSecret"] at ctor time.
++/// </summary>
++public sealed class ZohoOpsProxyClient : IZohoOpsProxyClient
++{
++    private const string TransportErrorCode = "INV-INT-127";
++    public  const string InternalTokenHeader = "X-Internal-Service-Token";
++    private const string SharedSecretConfigKey = "InternalServices:SharedSecret";
++
++    private readonly HttpClient _http;
++    private readonly string _sharedSecret;
++    private readonly JsonLinesLogger _logger;
++
++    public ZohoOpsProxyClient(HttpClient http, IConfiguration config, JsonLinesLogger logger)
++    {
++        _http = http;
++        _sharedSecret = config[SharedSecretConfigKey] ?? string.Empty;
++        _logger = logger;
++    }
++
++    public async Task<ZohoProxyResult> ForwardAsync(
++        HttpMethod method,
++        string pathAndQuery,
++        string? jsonBody,
++        CancellationToken ct = default)
++    {
++        using var msg = new HttpRequestMessage(method, pathAndQuery);
++        if (!string.IsNullOrEmpty(_sharedSecret))
++            msg.Headers.TryAddWithoutValidation(InternalTokenHeader, _sharedSecret);
++
++        if (jsonBody is not null)
++            msg.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
++
++        try
++        {
++            using var response = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
++            var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
++            var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/json";
++            return new ZohoProxyResult((int)response.StatusCode, body, contentType);
++        }
++        catch (HttpRequestException ex)
++        {
++            _logger.SystemWarn($"[{TransportErrorCode}] Zoho ops proxy transport failure: method={method.Method} path={pathAndQuery} err={ex.Message}");
++            return BuildTransportError(502, "Invekto.Integrations servisine ulasilamiyor; birkac saniye icinde tekrar deneyin.");
++        }
++        catch (TaskCanceledException ex)
++        {
++            _logger.SystemWarn($"[{TransportErrorCode}] Zoho ops proxy timeout: method={method.Method} path={pathAndQuery} err={ex.Message}");
++            return BuildTransportError(504, "Invekto.Integrations yanit verme suresini asti; birkac saniye icinde tekrar deneyin.");
++        }
++        catch (IOException ex)
++        {
++            _logger.SystemWarn($"[{TransportErrorCode}] Zoho ops proxy IO failure: method={method.Method} path={pathAndQuery} err={ex.Message}");
++            return BuildTransportError(502, "Upstream yanit okumasi sirasinda IO hatasi olustu; tekrar deneyin.");
++        }
++    }
++
++    private static ZohoProxyResult BuildTransportError(int statusCode, string userMessage)
++    {
++        var escaped = userMessage.Replace("\\", "\\\\").Replace("\"", "\\\"");
++        var body = $"{{\"error\":{{\"code\":\"{TransportErrorCode}\",\"message\":\"{escaped}\"}}}}";
++        return new ZohoProxyResult(statusCode, body, "application/json");
++    }
++}
+diff --git a/src/Invekto.Integrations/Data/ZohoConnectionRepository.cs b/src/Invekto.Integrations/Data/ZohoConnectionRepository.cs
+index 54ca582..8bc52fa 100644
+--- a/src/Invekto.Integrations/Data/ZohoConnectionRepository.cs
++++ b/src/Invekto.Integrations/Data/ZohoConnectionRepository.cs
+@@ -111,6 +111,27 @@ public sealed class ZohoConnectionRepository
+         await cmd.ExecuteNonQueryAsync(ct);
+     }
+ 
++    /// <summary>
++    /// Adim 3 Paket 3-C: Super-admin cross-tenant listing. Returns BOTH active and soft-disconnected rows
++    /// ordered by connected_at desc. No tenant_id filter — caller is trusted via shared-secret (ops boundary).
++    /// </summary>
++    public async Task<IReadOnlyList<ZohoConnection>> ListAllForOpsAsync(CancellationToken ct = default)
++    {
++        const string sql = @"
++            SELECT id, tenant_id, region, api_domain, accounts_domain, refresh_token_enc,
++                   granted_scopes, zoho_user_email, connected_at, updated_at, last_refreshed_at, disconnected_at
++            FROM zoho_connections
++            ORDER BY connected_at DESC";
++
++        await using var conn = await _db.OpenConnectionAsync(ct);
++        await using var cmd  = new NpgsqlCommand(sql, conn);
++        var rows = new List<ZohoConnection>();
++        await using var reader = await cmd.ExecuteReaderAsync(ct);
++        while (await reader.ReadAsync(ct))
++            rows.Add(Read(reader));
++        return rows;
++    }
++
+     /// <summary>Soft-disconnects the tenant's Zoho connection (no row deletion).</summary>
+     public async Task DisconnectAsync(int tenantId, CancellationToken ct = default)
+     {
+diff --git a/src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs b/src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs
+index d70c637..a5ff4ef 100644
+--- a/src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs
++++ b/src/Invekto.Integrations/Data/ZohoSyncLogRepository.cs
+@@ -278,6 +278,165 @@ public sealed class ZohoSyncLogRepository
+         return (items, total);
+     }
+ 
++    /// <summary>
++    /// Adim 3 Paket 3-C: Super-admin cross-tenant sync log listesi. tenant_id filtresi OPSIYONEL.
++    /// Diger filtreler (status, zoho_event, from/to) P3-B1 ListForDashboardAsync ile ayni.
++    /// Trust model: shared-secret caller (ops boundary), tenant_id her row'da geri doner.
++    /// </summary>
++    public async Task<(IReadOnlyList<OpsSyncLogRow> Items, int TotalCount)> ListAllForOpsAsync(
++        int? tenantFilter,
++        string? statusFilter,
++        string? eventFilter,
++        DateTime? fromUtc,
++        DateTime? toUtc,
++        int page,
++        int pageSize,
++        CancellationToken ct = default)
++    {
++        var where = new System.Text.StringBuilder("WHERE 1=1");
++        if (tenantFilter.HasValue)                where.Append(" AND tenant_id = @tid");
++        if (!string.IsNullOrEmpty(statusFilter)) where.Append(" AND status = @status");
++        if (!string.IsNullOrEmpty(eventFilter))  where.Append(" AND zoho_event = @evt");
++        if (fromUtc.HasValue)                    where.Append(" AND updated_at >= @from");
++        if (toUtc.HasValue)                      where.Append(" AND updated_at <= @to");
++
++        var listSql =
++            "SELECT id, tenant_id, zoho_event, source_lead_id, zoho_lead_id, " +
++            "       status, attempt_count, last_error_code, last_error_message, completed_at, updated_at " +
++            "  FROM zoho_sync_log " + where +
++            " ORDER BY updated_at DESC, id DESC " +
++            " LIMIT @lim OFFSET @off";
++
++        var countSql = "SELECT COUNT(*) FROM zoho_sync_log " + where;
++
++        var safePage     = page < 1 ? 1 : page;
++        var safePageSize = pageSize < 1 ? 1 : pageSize;
++        var offset       = (safePage - 1) * safePageSize;
++
++        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
++
++        int total;
++        await using (var countCmd = new NpgsqlCommand(countSql, conn))
++        {
++            if (tenantFilter.HasValue)                countCmd.Parameters.AddWithValue("@tid", tenantFilter.Value);
++            if (!string.IsNullOrEmpty(statusFilter)) countCmd.Parameters.AddWithValue("@status", statusFilter);
++            if (!string.IsNullOrEmpty(eventFilter))  countCmd.Parameters.AddWithValue("@evt", eventFilter);
++            if (fromUtc.HasValue)                    countCmd.Parameters.AddWithValue("@from", fromUtc.Value);
++            if (toUtc.HasValue)                      countCmd.Parameters.AddWithValue("@to", toUtc.Value);
++            var raw = await countCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
++            total = raw is null ? 0 : Convert.ToInt32(raw);
++        }
++
++        var items = new List<OpsSyncLogRow>();
++        await using (var cmd = new NpgsqlCommand(listSql, conn))
++        {
++            if (tenantFilter.HasValue)                cmd.Parameters.AddWithValue("@tid", tenantFilter.Value);
++            if (!string.IsNullOrEmpty(statusFilter)) cmd.Parameters.AddWithValue("@status", statusFilter);
++            if (!string.IsNullOrEmpty(eventFilter))  cmd.Parameters.AddWithValue("@evt", eventFilter);
++            if (fromUtc.HasValue)                    cmd.Parameters.AddWithValue("@from", fromUtc.Value);
++            if (toUtc.HasValue)                      cmd.Parameters.AddWithValue("@to", toUtc.Value);
++            cmd.Parameters.AddWithValue("@lim", safePageSize);
++            cmd.Parameters.AddWithValue("@off", offset);
++
++            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
++            while (await reader.ReadAsync(ct).ConfigureAwait(false))
++            {
++                items.Add(new OpsSyncLogRow(
++                    Id:               reader.GetInt64(0),
++                    TenantId:         reader.GetInt32(1),
++                    ZohoEvent:        reader.GetString(2),
++                    SourceLeadId:     reader.GetString(3),
++                    ZohoLeadId:       reader.IsDBNull(4) ? null : reader.GetString(4),
++                    Status:           reader.GetString(5),
++                    AttemptCount:     reader.GetInt32(6),
++                    LastErrorCode:    reader.IsDBNull(7) ? null : reader.GetString(7),
++                    LastErrorMessage: reader.IsDBNull(8) ? null : reader.GetString(8),
++                    CompletedAt:      reader.IsDBNull(9) ? null : reader.GetDateTime(9),
++                    UpdatedAt:        reader.GetDateTime(10)));
++            }
++        }
++
++        return (items, total);
++    }
++
++    /// <summary>
++    /// Adim 3 Paket 3-C: Ops dashboard sayac — son 24 saatte failed olan row sayisi (cross-tenant).
++    /// </summary>
++    public async Task<int> CountFailedLast24hAsync(CancellationToken ct = default)
++    {
++        const string sql = @"
++            SELECT COUNT(*) FROM zoho_sync_log
++             WHERE status = 'failed'
++               AND updated_at >= NOW() - INTERVAL '24 hours'";
++        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
++        await using var cmd = new NpgsqlCommand(sql, conn);
++        var raw = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
++        return raw is null ? 0 : Convert.ToInt32(raw);
++    }
++
++    /// <summary>
++    /// Adim 3 Paket 3-C: Batch retry (cross-tenant). Set-based iki query:
++    /// (1) UPDATE ... WHERE id = ANY(@ids) AND status='failed' RETURNING id  -> updated ids.
++    /// (2) SELECT id, status FROM ... WHERE id = ANY(@ids)                    -> skipped reason map.
++    /// Toplam 2 round-trip (N'e bagli DEGIL). Tenant_id row'dan cozulur (shared-secret trust).
++    /// Returns: (updated ids, skipped entries with reason).
++    /// </summary>
++    public async Task<(IReadOnlyList<long> Updated, IReadOnlyList<(long Id, string Reason)> Skipped)> ResetBatchForOpsRetryAsync(
++        IReadOnlyList<long> ids,
++        CancellationToken ct = default)
++    {
++        if (ids.Count == 0) return (Array.Empty<long>(), Array.Empty<(long, string)>());
++
++        var idArray = new long[ids.Count];
++        for (int i = 0; i < ids.Count; i++) idArray[i] = ids[i];
++
++        const string updateSql = @"
++            UPDATE zoho_sync_log
++               SET status = 'pending',
++                   attempt_count = 0,
++                   updated_at = NOW()
++             WHERE id = ANY(@ids)
++               AND status = 'failed'
++            RETURNING id";
++
++        // Post-update lookup identifies skipped ids — successful updates already have status='pending'
++        // (won't mask; skip reasoning computes against the original input set minus updated set).
++        const string lookupSql = "SELECT id, status FROM zoho_sync_log WHERE id = ANY(@ids)";
++
++        await using var conn = await _db.OpenConnectionAsync(ct).ConfigureAwait(false);
++
++        var updated = new List<long>();
++        await using (var cmd = new NpgsqlCommand(updateSql, conn))
++        {
++            cmd.Parameters.Add(new NpgsqlParameter("@ids", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Bigint) { Value = idArray });
++            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
++            while (await reader.ReadAsync(ct).ConfigureAwait(false))
++                updated.Add(reader.GetInt64(0));
++        }
++
++        var updatedSet = new HashSet<long>(updated);
++        var statusById = new Dictionary<long, string>();
++        await using (var cmd = new NpgsqlCommand(lookupSql, conn))
++        {
++            cmd.Parameters.Add(new NpgsqlParameter("@ids", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Bigint) { Value = idArray });
++            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
++            while (await reader.ReadAsync(ct).ConfigureAwait(false))
++                statusById[reader.GetInt64(0)] = reader.GetString(1);
++        }
++
++        var skipped = new List<(long Id, string Reason)>();
++        foreach (var id in ids)
++        {
++            if (updatedSet.Contains(id)) continue;
++            if (statusById.TryGetValue(id, out var st))
++                skipped.Add((id, $"Durum '{st}' — sadece 'failed' kayit tekrar denenebilir."));
++            else
++                skipped.Add((id, "Kayit bulunamadi."));
++        }
++
++        return (updated, skipped);
++    }
++
+     /// <summary>
+     /// Adim 3 Paket 3-B1: Manuel retry. Sadece status='failed' olan (tenant-scoped) row icin
+     /// status='pending' + attempt_count=0 + updated_at=NOW() set eder. RetryWorker bir sonraki
+@@ -327,6 +486,25 @@ public sealed record ZohoRetryCandidate(
+     string? ZohoLeadId,
+     int AttemptCount);
+ 
++/// <summary>
++/// Adim 3 Paket 3-C: Ops cross-tenant sync log projection. Differs from ZohoSyncLogRow:
++/// - TenantId explicit (tenant-scoped ZohoSyncLogRow doesn't expose it to DTO layer)
++/// - No ZohoTransitionId (ops dashboard doesn't need it)
++/// - UpdatedAt required
++/// </summary>
++public sealed record OpsSyncLogRow(
++    long Id,
++    int TenantId,
++    string ZohoEvent,
++    string SourceLeadId,
++    string? ZohoLeadId,
++    string Status,
++    int AttemptCount,
++    string? LastErrorCode,
++    string? LastErrorMessage,
++    DateTime? CompletedAt,
++    DateTime UpdatedAt);
++
+ public sealed record ZohoSyncLogRow(
+     long Id,
+     int TenantId,
+diff --git a/src/Invekto.Integrations/Program.cs b/src/Invekto.Integrations/Program.cs
+index b8c2fdb..4d1eb81 100644
+--- a/src/Invekto.Integrations/Program.cs
++++ b/src/Invekto.Integrations/Program.cs
+@@ -774,6 +774,8 @@ app.MapZohoSyncEndpoints();
+ // Adim 3 Paket 3-B1: Dashboard UI icin tenant-scoped connection + sync-log endpoints.
+ app.MapZohoConnectionEndpoints();
+ app.MapZohoSyncLogEndpoints();
++// Adim 3 Paket 3-C: Super-admin cross-tenant ops endpoints (shared-secret).
++app.MapZohoOpsEndpoints();
+ 
+ app.MapGet("/api/ops/endpoints", () =>
+ {
+@@ -804,6 +806,10 @@ app.MapGet("/api/ops/endpoints", () =>
+         new() { Method = "GET", Path = "/api/v1/zoho/stage-mappings", Description = "List tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
+         new() { Method = "PUT", Path = "/api/v1/zoho/stage-mappings", Description = "Replace tenant Zoho stage mappings (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
+         new() { Method = "GET", Path = "/api/v1/zoho/sync-log/failed-count", Description = "Failed sync count badge (Adim 3 P1)", Auth = "Bearer", Category = "Zoho" },
++        new() { Method = "GET", Path = "/api/internal/ops/zoho/connections", Description = "Super-admin cross-tenant Zoho connections list (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
++        new() { Method = "GET", Path = "/api/internal/ops/zoho/sync-log", Description = "Super-admin cross-tenant Zoho sync log (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
++        new() { Method = "DELETE", Path = "/api/internal/ops/zoho/connections/{tenantId}", Description = "Super-admin force-disconnect tenant Zoho (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
++        new() { Method = "POST", Path = "/api/internal/ops/zoho/sync-log/retry", Description = "Super-admin batch retry failed sync rows (Adim 3 P3-C, max 50)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
+     };
+     return Results.Ok(endpoints);
+diff --git a/src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs b/src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs
+index 5e6e912..9b79103 100644
+--- a/src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs
++++ b/src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs
+@@ -30,4 +30,11 @@ public static class ZohoErrorCodes
+     public const string SyncLogNotFound             = "INV-INT-128";
+     public const string SyncLogNotRetryable         = "INV-INT-129";
+     public const string TokenRevokeBestEffort       = "INV-INT-130";
++
++    // Adim 3 Paket 3-C: Super-admin cross-tenant ops dashboard
++    public const string OpsReadFailed               = "INV-INT-131";
++    public const string OpsTargetConnectionNotFound = "INV-INT-132";
++    public const string OpsBatchRetryInvalid       = "INV-INT-133";
++    public const string OpsBatchRetryLimitExceeded = "INV-INT-134";
++    public const string OpsQueryValidation         = "INV-INT-135";
+ }
+diff --git a/src/Invekto.Integrations/Services/Zoho/ZohoOpsEndpoints.cs b/src/Invekto.Integrations/Services/Zoho/ZohoOpsEndpoints.cs
+new file mode 100644
+index 0000000..07a3285
+--- /dev/null
++++ b/src/Invekto.Integrations/Services/Zoho/ZohoOpsEndpoints.cs
+@@ -0,0 +1,349 @@
++// Adim 3 Paket 3-C: Super-admin cross-tenant ops endpoints.
++// Auth: X-Internal-Service-Token (shared-secret). Outside /api/v1/ prefix so JwtAuth middleware skips.
++//   GET    /api/internal/ops/zoho/connections
++//   GET    /api/internal/ops/zoho/sync-log           (filtre + paginate; tenantId opsiyonel)
++//   DELETE /api/internal/ops/zoho/connections/{tenantId}
++//   POST   /api/internal/ops/zoho/sync-log/retry     (body { ids:[...] }, max 50)
++// Trust: Backend /api/ops/* ValidateOpsAuth ile super-admin dogrulamasi yapar; Integrations
++// shared-secret ile Backend'e guvenir. Audit log Backend tarafinda (JsonLinesLogger SystemInfo).
++//
++// Schema source of truth (NO new migrations — reuses existing tables):
++//   - zoho_connections:  arch/db/migrations/012-zoho-connections.sql (Adim 2 Paket A)
++//                        Columns read: tenant_id, region, zoho_user_email, connected_at,
++//                        updated_at, last_refreshed_at, disconnected_at (soft-delete).
++//   - zoho_sync_log:     arch/db/migrations/014-zoho-sync-log.sql + 015-rename-gunes-to-zoho.sql
++//                        Columns read/written: id, tenant_id, zoho_event, source_lead_id,
++//                        zoho_lead_id, status, attempt_count, last_error_code/message,
++//                        updated_at, completed_at. Status whitelist: pending|failed|success.
++// Canonical: arch/db/integrations.sql.
++using System;
++using System.Collections.Generic;
++using System.Globalization;
++using System.Threading;
++using System.Threading.Tasks;
++using Invekto.Integrations.Data;
++using Invekto.Shared.Constants;
++using Invekto.Shared.Contracts.Zoho;
++using Invekto.Shared.DTOs;
++using Invekto.Shared.Logging;
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Routing;
++using Microsoft.Extensions.Configuration;
++using Npgsql;
++
++namespace Invekto.Integrations.Services.Zoho;
++
++public static class ZohoOpsEndpoints
++{
++    public const string InternalTokenHeader = "X-Internal-Service-Token";
++    private const string SharedSecretConfigKey = "InternalServices:SharedSecret";
++
++    private const int DefaultPageSize = 20;
++    private const int MaxPageSize     = 100;
++    public  const int MaxBatchRetryIds = 50;
++
++    private static readonly HashSet<string> AllowedStatusValues =
++        new(StringComparer.OrdinalIgnoreCase) { "pending", "failed", "success" };
++
++    public static IEndpointRouteBuilder MapZohoOpsEndpoints(this IEndpointRouteBuilder app)
++    {
++        // GET /api/internal/ops/zoho/connections
++        app.MapGet("/api/internal/ops/zoho/connections", async (
++            HttpContext ctx,
++            IConfiguration config,
++            ZohoConnectionRepository connRepo,
++            ZohoSyncLogRepository logRepo,
++            JsonLinesLogger logger,
++            CancellationToken ct) =>
++        {
++            var requestId = ResolveRequestId(ctx);
++            var auth = ValidateInternalAuth(ctx, config);
++            if (!auth.Ok)
++                return Results.Json(ErrorResponse.Create(auth.ErrorCode, auth.Reason, requestId), statusCode: auth.StatusCode);
++
++            try
++            {
++                var rows = await connRepo.ListAllForOpsAsync(ct).ConfigureAwait(false);
++                var items = new List<ZohoOpsConnectionEntryDto>(rows.Count);
++                int connected = 0;
++                int disconnected = 0;
++                foreach (var c in rows)
++                {
++                    var isConnected = c.DisconnectedAt is null;
++                    if (isConnected) connected++; else disconnected++;
++                    items.Add(new ZohoOpsConnectionEntryDto
++                    {
++                        TenantId       = c.TenantId,
++                        Region         = c.Region,
++                        ZohoUserEmail  = c.ZohoUserEmail,
++                        ConnectedAt    = new DateTimeOffset(DateTime.SpecifyKind(c.ConnectedAt, DateTimeKind.Utc)),
++                        LastRefreshedAt = c.LastRefreshedAt.HasValue
++                            ? new DateTimeOffset(DateTime.SpecifyKind(c.LastRefreshedAt.Value, DateTimeKind.Utc))
++                            : null,
++                        DisconnectedAt = c.DisconnectedAt.HasValue
++                            ? new DateTimeOffset(DateTime.SpecifyKind(c.DisconnectedAt.Value, DateTimeKind.Utc))
++                            : null,
++                    });
++                }
++
++                var failed24h = await logRepo.CountFailedLast24hAsync(ct).ConfigureAwait(false);
++                return Results.Ok(new ZohoOpsConnectionListResponse
++                {
++                    Items              = items,
++                    ConnectedCount     = connected,
++                    DisconnectedCount  = disconnected,
++                    FailedLast24hCount = failed24h,
++                });
++            }
++            catch (NpgsqlException ex)
++            {
++                logger.SystemWarn($"[{ZohoErrorCodes.OpsReadFailed}] ops connections list failed: {ex.Message}");
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsReadFailed,
++                        "Zoho yonetim verisi okunamadi, tekrar deneyin.", requestId),
++                    statusCode: 500);
++            }
++        });
++
++        // GET /api/internal/ops/zoho/sync-log
++        app.MapGet("/api/internal/ops/zoho/sync-log", async (
++            HttpContext ctx,
++            IConfiguration config,
++            ZohoSyncLogRepository repo,
++            JsonLinesLogger logger,
++            CancellationToken ct) =>
++        {
++            var requestId = ResolveRequestId(ctx);
++            var auth = ValidateInternalAuth(ctx, config);
++            if (!auth.Ok)
++                return Results.Json(ErrorResponse.Create(auth.ErrorCode, auth.Reason, requestId), statusCode: auth.StatusCode);
++
++            var query = ctx.Request.Query;
++            var page     = ParseInt(query["page"].ToString(), fallback: 1, min: 1);
++            var pageSize = ParseInt(query["pageSize"].ToString(), fallback: DefaultPageSize, min: 1, max: MaxPageSize);
++
++            int? tenantFilter = null;
++            var rawTenant = query["tenantId"].ToString();
++            if (!string.IsNullOrEmpty(rawTenant))
++            {
++                if (!int.TryParse(rawTenant, NumberStyles.Integer, CultureInfo.InvariantCulture, out var tid) || tid < 0)
++                    return Results.Json(
++                        ErrorResponse.Create(ZohoErrorCodes.OpsQueryValidation,
++                            $"Invalid tenantId '{rawTenant}'.", requestId),
++                        statusCode: 400);
++                tenantFilter = tid;
++            }
++
++            string? statusFilter = null;
++            var rawStatus = query["status"].ToString();
++            if (!string.IsNullOrEmpty(rawStatus))
++            {
++                if (!AllowedStatusValues.Contains(rawStatus))
++                    return Results.Json(
++                        ErrorResponse.Create(ZohoErrorCodes.OpsQueryValidation,
++                            $"Invalid status filter '{rawStatus}'. Allowed: pending, failed, success.", requestId),
++                        statusCode: 400);
++                statusFilter = rawStatus.ToLowerInvariant();
++            }
++
++            var rawEvent = query["event"].ToString();
++            string? eventFilter = string.IsNullOrEmpty(rawEvent) ? null : rawEvent;
++
++            DateTime? fromUtc = null, toUtc = null;
++            var rawFrom = query["from"].ToString();
++            var rawTo   = query["to"].ToString();
++            if (!string.IsNullOrEmpty(rawFrom))
++            {
++                if (!TryParseIso(rawFrom, out var f))
++                    return Results.Json(
++                        ErrorResponse.Create(ZohoErrorCodes.OpsQueryValidation,
++                            $"Invalid 'from' date '{rawFrom}'. Expected ISO8601.", requestId),
++                        statusCode: 400);
++                fromUtc = f;
++            }
++            if (!string.IsNullOrEmpty(rawTo))
++            {
++                if (!TryParseIso(rawTo, out var t))
++                    return Results.Json(
++                        ErrorResponse.Create(ZohoErrorCodes.OpsQueryValidation,
++                            $"Invalid 'to' date '{rawTo}'. Expected ISO8601.", requestId),
++                        statusCode: 400);
++                toUtc = t;
++            }
++
++            try
++            {
++                var (rows, total) = await repo.ListAllForOpsAsync(
++                    tenantFilter, statusFilter, eventFilter, fromUtc, toUtc, page, pageSize, ct).ConfigureAwait(false);
++
++                var items = new List<ZohoOpsSyncLogEntryDto>(rows.Count);
++                foreach (var r in rows)
++                {
++                    items.Add(new ZohoOpsSyncLogEntryDto
++                    {
++                        Id               = r.Id,
++                        TenantId         = r.TenantId,
++                        ZohoEvent        = r.ZohoEvent,
++                        SourceLeadId     = r.SourceLeadId,
++                        ZohoLeadId       = r.ZohoLeadId,
++                        Status           = r.Status,
++                        AttemptCount     = r.AttemptCount,
++                        LastErrorCode    = r.LastErrorCode,
++                        LastErrorMessage = r.LastErrorMessage,
++                        UpdatedAt        = new DateTimeOffset(DateTime.SpecifyKind(r.UpdatedAt, DateTimeKind.Utc)),
++                        CompletedAt      = r.CompletedAt.HasValue
++                            ? new DateTimeOffset(DateTime.SpecifyKind(r.CompletedAt.Value, DateTimeKind.Utc))
++                            : null,
++                    });
++                }
++
++                return Results.Ok(new ZohoOpsSyncLogPageResponse
++                {
++                    Items      = items,
++                    Page       = page,
++                    PageSize   = pageSize,
++                    TotalCount = total,
++                });
++            }
++            catch (NpgsqlException ex)
++            {
++                logger.SystemWarn($"[{ZohoErrorCodes.OpsReadFailed}] ops sync-log list failed: {ex.Message}");
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsReadFailed,
++                        "Zoho yonetim verisi okunamadi, tekrar deneyin.", requestId),
++                    statusCode: 500);
++            }
++        });
++
++        // DELETE /api/internal/ops/zoho/connections/{tenantId}
++        app.MapDelete("/api/internal/ops/zoho/connections/{tenantId:int}", async (
++            int tenantId,
++            HttpContext ctx,
++            IConfiguration config,
++            ZohoConnectionService service,
++            JsonLinesLogger logger,
++            CancellationToken ct) =>
++        {
++            var requestId = ResolveRequestId(ctx);
++            var auth = ValidateInternalAuth(ctx, config);
++            if (!auth.Ok)
++                return Results.Json(ErrorResponse.Create(auth.ErrorCode, auth.Reason, requestId), statusCode: auth.StatusCode);
++
++            var (disconnected, revokeOk) = await service.DisconnectAsync(tenantId, logger, ct).ConfigureAwait(false);
++            if (!disconnected)
++            {
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsTargetConnectionNotFound,
++                        $"Bu firma (tenant={tenantId}) icin aktif Zoho baglantisi bulunamadi.", requestId),
++                    statusCode: 404);
++            }
++
++            return Results.Ok(new ZohoOpsDisconnectResponse { TenantId = tenantId, TokenRevoked = revokeOk });
++        });
++
++        // POST /api/internal/ops/zoho/sync-log/retry
++        app.MapPost("/api/internal/ops/zoho/sync-log/retry", async (
++            HttpContext ctx,
++            IConfiguration config,
++            ZohoSyncLogRepository repo,
++            JsonLinesLogger logger,
++            ZohoOpsBatchRetryRequest body,
++            CancellationToken ct) =>
++        {
++            var requestId = ResolveRequestId(ctx);
++            var auth = ValidateInternalAuth(ctx, config);
++            if (!auth.Ok)
++                return Results.Json(ErrorResponse.Create(auth.ErrorCode, auth.Reason, requestId), statusCode: auth.StatusCode);
++
++            var ids = body?.Ids ?? Array.Empty<long>();
++            if (ids.Count == 0)
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsBatchRetryInvalid,
++                        "Tekrar denenecek kayit listesi bos veya gecersiz.", requestId),
++                    statusCode: 400);
++
++            if (ids.Count > MaxBatchRetryIds)
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsBatchRetryLimitExceeded,
++                        $"Toplu tekrar deneme en fazla {MaxBatchRetryIds} kayit icerebilir (istenen: {ids.Count}).",
++                        requestId),
++                    statusCode: 400);
++
++            try
++            {
++                var (updated, skipped) = await repo.ResetBatchForOpsRetryAsync(ids, ct).ConfigureAwait(false);
++                var skippedDtos = new List<ZohoOpsBatchRetrySkipEntry>(skipped.Count);
++                foreach (var s in skipped)
++                    skippedDtos.Add(new ZohoOpsBatchRetrySkipEntry { Id = s.Id, Reason = s.Reason });
++
++                return Results.Ok(new ZohoOpsBatchRetryResponse
++                {
++                    Requested = ids.Count,
++                    Updated   = updated.Count,
++                    Skipped   = skippedDtos,
++                });
++            }
++            catch (NpgsqlException ex)
++            {
++                logger.SystemWarn($"[{ZohoErrorCodes.OpsReadFailed}] ops batch retry failed: {ex.Message}");
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsReadFailed,
++                        "Toplu tekrar deneme sirasinda bir hata olustu.", requestId),
++                    statusCode: 500);
++            }
++        });
++
++        return app;
++    }
++
++    private static (bool Ok, int StatusCode, string ErrorCode, string Reason) ValidateInternalAuth(
++        HttpContext ctx, IConfiguration config)
++    {
++        var expected = config[SharedSecretConfigKey];
++        if (string.IsNullOrWhiteSpace(expected))
++            return (false, 500, ZohoErrorCodes.InternalAuthNotConfigured,
++                $"Internal service auth not configured (missing {SharedSecretConfigKey}).");
++
++        if (!ctx.Request.Headers.TryGetValue(InternalTokenHeader, out var provided) || provided.Count == 0)
++            return (false, 401, ZohoErrorCodes.InternalAuthInvalid,
++                $"Missing {InternalTokenHeader} header.");
++
++        if (!SlowEquals(provided[0], expected))
++            return (false, 403, ZohoErrorCodes.InternalAuthInvalid,
++                $"Invalid {InternalTokenHeader}.");
++
++        return (true, 200, string.Empty, string.Empty);
++    }
++
++    private static bool SlowEquals(string? a, string b)
++    {
++        if (a is null) return false;
++        if (a.Length != b.Length) return false;
++        int diff = 0;
++        for (int i = 0; i < a.Length; i++) diff |= a[i] ^ b[i];
++        return diff == 0;
++    }
++
++    private static int ParseInt(string raw, int fallback, int min = 1, int max = int.MaxValue)
++    {
++        if (string.IsNullOrEmpty(raw)) return fallback;
++        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)) return fallback;
++        if (v < min) return min;
++        if (v > max) return max;
++        return v;
++    }
++
++    private static bool TryParseIso(string raw, out DateTime utc)
++    {
++        utc = default;
++        if (!DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
++                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dto))
++            return false;
++        utc = dto.UtcDateTime;
++        return true;
++    }
++
++    private static string ResolveRequestId(HttpContext ctx) =>
++        ctx.Items["RequestId"] as string ?? ctx.TraceIdentifier;
++}
+diff --git a/src/Invekto.Shared/Contracts/Zoho/ZohoOpsDtos.cs b/src/Invekto.Shared/Contracts/Zoho/ZohoOpsDtos.cs
+new file mode 100644
+index 0000000..496b61a
+--- /dev/null
++++ b/src/Invekto.Shared/Contracts/Zoho/ZohoOpsDtos.cs
+@@ -0,0 +1,78 @@
++namespace Invekto.Shared.Contracts.Zoho;
++
++/// <summary>
++/// Adim 3 Paket 3-C: Super-admin cross-tenant ops dashboard DTOs.
++/// Tum response'larda tenant_id explicit — ops kullanicisi hangi firmaya ait oldugunu gorur.
++/// </summary>
++public sealed class ZohoOpsConnectionEntryDto
++{
++    public required int TenantId { get; init; }
++    public required string Region { get; init; }
++    public string? ZohoUserEmail { get; init; }
++    public required DateTimeOffset ConnectedAt { get; init; }
++    public DateTimeOffset? LastRefreshedAt { get; init; }
++    public DateTimeOffset? DisconnectedAt { get; init; }
++}
++
++public sealed class ZohoOpsConnectionListResponse
++{
++    public required IReadOnlyList<ZohoOpsConnectionEntryDto> Items { get; init; }
++    public required int ConnectedCount { get; init; }
++    public required int DisconnectedCount { get; init; }
++    public required int FailedLast24hCount { get; init; }
++}
++
++public sealed class ZohoOpsSyncLogEntryDto
++{
++    public required long Id { get; init; }
++    public required int TenantId { get; init; }
++    public required string ZohoEvent { get; init; }
++    public required string SourceLeadId { get; init; }
++    public string? ZohoLeadId { get; init; }
++    public required string Status { get; init; }
++    public required int AttemptCount { get; init; }
++    public string? LastErrorCode { get; init; }
++    public string? LastErrorMessage { get; init; }
++    public required DateTimeOffset UpdatedAt { get; init; }
++    public DateTimeOffset? CompletedAt { get; init; }
++}
++
++public sealed class ZohoOpsSyncLogPageResponse
++{
++    public required IReadOnlyList<ZohoOpsSyncLogEntryDto> Items { get; init; }
++    public required int Page { get; init; }
++    public required int PageSize { get; init; }
++    public required int TotalCount { get; init; }
++}
++
++/// <summary>
++/// Batch retry request: max 50 ids per call. Ids may span multiple tenants;
++/// tenant_id is resolved server-side from each row (cross-tenant trust via shared-secret).
++/// </summary>
++public sealed class ZohoOpsBatchRetryRequest
++{
++    public required IReadOnlyList<long> Ids { get; init; }
++}
++
++/// <summary>
++/// Per-id skip reporting: a row may be skipped because it's not in 'failed' status,
++/// or the id does not exist. UI shows reason banner.
++/// </summary>
++public sealed class ZohoOpsBatchRetrySkipEntry
++{
++    public required long Id { get; init; }
++    public required string Reason { get; init; }
++}
++
++public sealed class ZohoOpsBatchRetryResponse
++{
++    public required int Requested { get; init; }
++    public required int Updated { get; init; }
++    public required IReadOnlyList<ZohoOpsBatchRetrySkipEntry> Skipped { get; init; }
++}
++
++public sealed class ZohoOpsDisconnectResponse
++{
++    public required int TenantId { get; init; }
++    public required bool TokenRevoked { get; init; }
++}

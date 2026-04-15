@@ -30,4 +30,11 @@ public static class ZohoErrorCodes
     public const string SyncLogNotFound             = "INV-INT-128";
     public const string SyncLogNotRetryable         = "INV-INT-129";
     public const string TokenRevokeBestEffort       = "INV-INT-130";
+
+    // Adim 3 Paket 3-C: Super-admin cross-tenant ops dashboard
+    public const string OpsReadFailed               = "INV-INT-131";
+    public const string OpsTargetConnectionNotFound = "INV-INT-132";
+    public const string OpsBatchRetryInvalid       = "INV-INT-133";
+    public const string OpsBatchRetryLimitExceeded = "INV-INT-134";
+    public const string OpsQueryValidation         = "INV-INT-135";
 }

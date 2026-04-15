@@ -621,6 +621,25 @@ errors:
   - code: INV-INT-130
     description: Zoho refresh_token revoke best-effort failure during disconnect (non-fatal; local disconnect proceeds)
     user_message: Zoho bağlantısı kapatıldı (uzaktan iptal doğrulanamadı).
+  # Zoho super-admin cross-tenant ops dashboard (INV-INT-131+) — Adim 3 Paket 3-C
+  - code: INV-INT-131
+    description: Super-admin cross-tenant Zoho ops read failure (DB/transport unexpected error)
+    user_message: Zoho yönetim verisi okunamadı, tekrar deneyin.
+  - code: INV-INT-132
+    description: Force-disconnect target tenant has no active Zoho connection (already disconnected or never connected)
+    user_message: Bu firma için aktif Zoho bağlantısı bulunamadı.
+  - code: INV-INT-133
+    description: Ops batch retry payload invalid (empty ids list or malformed body)
+    user_message: Tekrar denenecek kayıt listesi boş veya geçersiz.
+  - code: INV-INT-134
+    description: Ops batch retry exceeded max 50 ids per request
+    user_message: Toplu tekrar deneme en fazla 50 kayıt içerebilir.
+  - code: INV-INT-135
+    description: Ops query parameter validation failure (filter/status/event/date inputs on /api/internal/ops/zoho/*)
+    user_message: Filtre değerleri geçersiz, kontrol edin.
+  - code: INV-INT-FE-131
+    description: Frontend-only fallback when upstream envelope is missing (P3-C OpsZohoPage extractError)
+    user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
