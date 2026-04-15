@@ -26,16 +26,28 @@ public sealed class ZohoProxyClient : IZohoProxyClient
         _logger = logger;
     }
 
+    public Task<ZohoProxyResult> ForwardAsync(
+        HttpMethod method,
+        string pathAndQuery,
+        string? bearerToken,
+        CancellationToken ct = default) =>
+        ForwardAsync(method, pathAndQuery, bearerToken, jsonBody: null, ct);
+
     public async Task<ZohoProxyResult> ForwardAsync(
         HttpMethod method,
         string pathAndQuery,
         string? bearerToken,
+        string? jsonBody,
         CancellationToken ct = default)
     {
         using var msg = new HttpRequestMessage(method, pathAndQuery);
         if (!string.IsNullOrEmpty(bearerToken))
         {
             msg.Headers.TryAddWithoutValidation("Authorization", "Bearer " + bearerToken);
+        }
+        if (jsonBody is not null)
+        {
+            msg.Content = new System.Net.Http.StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
         }
 
         try

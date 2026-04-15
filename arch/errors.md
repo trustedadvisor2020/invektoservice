@@ -640,6 +640,9 @@ errors:
   - code: INV-INT-FE-131
     description: Frontend-only fallback when upstream envelope is missing (P3-C OpsZohoPage extractError)
     user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
+  - code: INV-INT-FE-132
+    description: Frontend-only fallback for Stage Mapping editor (P4 ZohoStageMappingPage extractError)
+    user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001

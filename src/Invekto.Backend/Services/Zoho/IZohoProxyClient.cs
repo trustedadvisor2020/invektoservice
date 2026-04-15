@@ -18,6 +18,16 @@ public interface IZohoProxyClient
         string pathAndQuery,
         string? bearerToken,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Adim 4: body'li forward (PUT/POST). jsonBody null ise body eklenmez.
+    /// </summary>
+    Task<ZohoProxyResult> ForwardAsync(
+        HttpMethod method,
+        string pathAndQuery,
+        string? bearerToken,
+        string? jsonBody,
+        CancellationToken ct = default);
 }
 
 /// <summary>Upstream response projection: status code + raw JSON body (or empty).</summary>

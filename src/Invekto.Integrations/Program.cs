@@ -776,6 +776,8 @@ app.MapZohoConnectionEndpoints();
 app.MapZohoSyncLogEndpoints();
 // Adim 3 Paket 3-C: Super-admin cross-tenant ops endpoints (shared-secret).
 app.MapZohoOpsEndpoints();
+// Adim 4: Stage mapping editor endpoints (blueprint transitions + test).
+app.MapZohoStageMappingEditorEndpoints();
 
 app.MapGet("/api/ops/endpoints", () =>
 {
@@ -810,6 +812,8 @@ app.MapGet("/api/ops/endpoints", () =>
         new() { Method = "GET", Path = "/api/internal/ops/zoho/sync-log", Description = "Super-admin cross-tenant Zoho sync log (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
         new() { Method = "DELETE", Path = "/api/internal/ops/zoho/connections/{tenantId}", Description = "Super-admin force-disconnect tenant Zoho (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
         new() { Method = "POST", Path = "/api/internal/ops/zoho/sync-log/retry", Description = "Super-admin batch retry failed sync rows (Adim 3 P3-C, max 50)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+        new() { Method = "GET", Path = "/api/v1/zoho/blueprint/transitions", Description = "Adim 4: Module-level Blueprint transitions for stage mapping editor dropdown (?refresh=true bypasses cache)", Auth = "Bearer", Category = "Zoho" },
+        new() { Method = "POST", Path = "/api/v1/zoho/stage-mappings/test", Description = "Adim 4: Stage mapping dry-run (transition_id whitelist check, no Zoho mutation)", Auth = "Bearer", Category = "Zoho" },
         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
     };
     return Results.Ok(endpoints);

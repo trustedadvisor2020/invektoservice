@@ -1,0 +1,120 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-4",
+  "slug": "20260417-zoho-step4-stage-mapping-editor",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "status_log": [
+    { "status": "DONE", "timestamp": "2026-04-17T13:30:00Z", "notes": "Codex iter 1 PASS (all CQ1-12 + CoVe Q1-Q4 PASS, 0 blocking). Iter 0 fixes: INV-INT-122 ErrorCode in test response envelope, INV-INT-135 validation code, allowed_files scope fix, AC4 render+disabled pattern, schema sync header." }
+  ],
+  "created_at": "2026-04-17T12:00:00Z",
+  "updated_at": "2026-04-17T12:00:00Z",
+  "plan": {
+    "summary": "Zoho Adim 4 — Stage mapping editor (read-only P3-B2 sayfasini editable'a cevir). Integrations: GET /api/v1/zoho/blueprint/transitions (module-level, cached 10dk) + POST /api/v1/zoho/stage-mappings/test (dry-run, transition_id validation). Backend proxy: PUT /api/v1/zoho/stage-mappings (P3-B1 deferred) + GET blueprint/transitions + POST stage-mappings/test. Dashboard ZohoStageMappingPage: 7 lifecycle event satiri (welcome_sent/engaged/qualified/offer_sent/closed_won/deposit_paid/closed_lost), her biri Zoho transition dropdown + Test buton + Delete (satir clear) + Kaydet buton + Discover buton (cache bypass). Connection-yok gate (AC4) + banner.",
+    "q_intent": "Q: 'Stage mapping UI (P4) yap' — Tier 1 blokeri. Tenant dashboard'da read-only mevcut; editable hale getir. Zoho Blueprint transition'lari dropdown'dan secilsin. 4 AC: transitions dropdown dolu gelir, 7 event mapping PUT, reload'ta preselect, connection-yok editor disable + banner. Single paket API+UI.",
+    "interview_notes": "Q kararlari: (a) tum 4 scope (dropdown + discover + delete + test); (b) transitions endpoint Integrations tabanli (cached); (c) tek paket; (d) 4 AC. Architectural: (a) module-level transitions /crm/v6/settings/blueprint?module=Leads — yeni IZohoBlueprintClient.GetAllBlueprintTransitionsAsync; (b) delete row = local state'ten cikar + full Replace PUT (mevcut ReplaceAsync upsert); ayri DELETE endpoint YOK (scope control); (c) test endpoint transition_id whitelist validation — transitions listesinde var mi kontrol; (d) connection-yok gate = client tarafi GET /api/v1/zoho/connection check.",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "Tenant /integrations/zoho/stage-mappings sayfasi acilinca Backend proxy GET /api/v1/zoho/blueprint/transitions -> Integrations GET /api/v1/zoho/blueprint/transitions -> ZohoBlueprintClient.GetAllBlueprintTransitionsAsync(tenantId) cagirir; Zoho settings/blueprint API'sinden transition'lar cekilir, cache 10dk (key: zoho:bp:all:{tenantId}). Response: {items:[{transitionId, name, nextState?}]}. Transitions dropdown dolu gelir.", "verified": false },
+      { "id": "AC2", "criterion": "7 event icin transition secilip 'Kaydet' butonu -> Backend proxy PUT /api/v1/zoho/stage-mappings body {mappings:[{zohoEvent, zohoTransitionId, zohoTransitionName?}]} -> Integrations PUT (mevcut P3-B1). ZohoStageMappingService.ReplaceAsync tenant_id scoped full-upsert: yeni liste mevcut rowlari siler + yazar. Sadece secili event'ler persist. 200 response -> UI 'Kaydedildi' bildirimi.", "verified": false },
+      { "id": "AC3", "criterion": "Sayfa yeniden yuklendiginde GET /api/v1/zoho/stage-mappings mevcut kayitlari getirir; dropdown'lar kaydedilmis transition_id ile preselect olur (UI state dolu gelir).", "verified": false },
+      { "id": "AC4", "criterion": "Zoho bagli degilken (GET /api/v1/zoho/connection response.connected=false) sayfa info banner ('Once Zoho hesabinizi baglayin' + /integrations/zoho/connection linki) + tum form field'lari (dropdown, Kaydet, Test, Discover) disabled.", "verified": false },
+      { "id": "AC5", "criterion": "Test buton (per-row): Backend proxy POST /api/v1/zoho/stage-mappings/test body {zohoEvent, zohoTransitionId} -> Integrations POST -> GetAllBlueprintTransitionsAsync'ten transition_id whitelist kontrol; bulunursa {valid:true, transitionName}, bulunmazsa {valid:false, reason:'Transition not found in Blueprint'} (INV-INT-122). UI row-local banner gosterir.", "verified": false },
+      { "id": "AC6", "criterion": "Discover buton: cache bypass (IMemoryCache.Remove) + yeni fetch. Backend proxy GET /api/v1/zoho/blueprint/transitions?refresh=true -> Integrations endpoint refresh=true ise cache sil + fresh fetch. UI loading indicator + fresh dropdown.", "verified": false },
+      { "id": "AC7", "criterion": "Full sln build PASS + Dashboard build PASS. Mikroservis izolasyonu: Backend -> Integrations HTTP only, ProjectReference yok.", "verified": false }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "GetAllBlueprintTransitionsAsync yeni method — module-level settings/blueprint endpoint kullanir, lead-scoped existing GetLeadTransitionsAsync ile farkli cache key.",
+      "reason": "Editor UX'i tum transitions'a ihtiyac duyar (state-bagimsiz). Lead-scoped API sadece o lead'in suandaki state'inden cikan transition'lari doner — editor dropdown eksik olur. Settings API Zoho'nun blueprint metadata'sini vermek icindir.",
+      "codex_note": "EXPECTED: Codex CQ4 'duplicate code' diyebilir (mevcut GetLeadTransitionsAsync ile benzer parsing). Kabul: farkli semantik (module vs record-level), farkli cache key (zoho:bp:all:{tid} vs zoho:bp:{tid}:{leadId}); duplication intentional."
+    },
+    {
+      "decision": "Delete row = client tarafi state'ten cikar + full ReplaceAsync PUT (server tarafi DELETE endpoint YOK).",
+      "reason": "ZohoStageMappingService.ReplaceAsync tenant-scoped full-upsert (mevcut listedeki tum row'lari siler + yazar). UI'dan row silme = local mapping state'ten event'i cikar + Save. Ayri DELETE endpoint scope creep; partial semantik karmasasi (sync log rows orphan olabilir).",
+      "codex_note": "EXPECTED: Codex 'neden ayri DELETE endpoint yok' diyebilir. Kabul: ReplaceAsync zaten idempotent full-upsert; client silme = liste'den kaldir + Save. Tek source of truth."
+    },
+    {
+      "decision": "Test endpoint dry-run sadece transitions whitelist check — Zoho'ya PUT atmaz.",
+      "reason": "Test semantik = 'mapping dogru kurulmus mu'. Gercek PUT dry-run degil gercek mutation olur. Blueprint.GetAllBlueprintTransitionsAsync sonucunda transition_id whitelist check yeterli (user'in secimi hala var mi).",
+      "codex_note": "EXPECTED: Codex Q4 'test Zoho'ya cagri yapmalidir' diyebilir. Kabul: gercek PUT test side-effect; whitelist kontrol state-independent dogrulama yeterli."
+    },
+    {
+      "decision": "Test endpoint invalid whitelist cikisi 200 OK + {Valid:false, ErrorCode:'INV-INT-122', Reason:'INV-INT-122: ...'} envelope — error HTTP status (404/409) DEGIL.",
+      "reason": "Endpoint semantik 'validation check' (success/failure result), failed action DEGIL. Whitelist-miss = beklenen path, UI duzgun banner gostermeli. ErrorCode alani INV-INT-122 surface eder (arch/errors.md BlueprintTransitionNotFound kodu compliance). Valid=true durumu da ayni envelope kullanir (tutarli sozlesme).",
+      "codex_note": "EXPECTED: Codex CQ1/CQ9/CQ12 '404 INV-INT-122 olmali' diyebilir. Kabul: 200 envelope + ErrorCode alani actionable (UI for both valid/invalid ayni DTO'yu tuketir, test result banner gosterir). Test yalniz whitelist kontrol, failed action degil."
+    },
+    {
+      "decision": "Dashboard TS DTO'lar Shared.Contracts.Zoho C# DTO'lariyla manuel mirror — tek shared contract codegen YOK.",
+      "reason": "Proje genelinde (P3-B1, P3-B2, P3-C dahil) TS ↔ C# DTO'lar elle mirror'lanir; codegen pipeline yok. C# PascalCase init-only + TS camelCase interface dil-uyumu farki. Yeni sozlesme iki tarafa ekleyerek senkronize tutulur.",
+      "codex_note": "EXPECTED: Codex CQ8 'contract drift risk' diyebilir. Kabul: proje-wide pattern (20+ DTO ciftinde ayni); codegen ayri paket scope; bu paket scope'unda mirror tutarliligi yeterli (P3-B1/B2/C hepsi boyle PASS etti)."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260417-zoho-step4-stage-mapping-editor.json",
+    "arch/plans/diffs/20260417-zoho-step4-stage-mapping-editor.diff",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoBlueprintTransitionDto.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs",
+    "src/Invekto.Integrations/Program.cs",
+    "src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/stores/zoho-store.ts"
+  ],
+  "files_changed": [],
+  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
+  "build": { "status": "PASS", "command": "dotnet build + npm run build", "services": ["Invekto.Shared", "Invekto.Integrations", "Invekto.Backend", "Dashboard SPA"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "ZohoBlueprintClient.GetAllBlueprintTransitionsAsync tenant_id scoped + cache key ayri (lead-scoped ile karismiyor) mu?", "category": "Data" },
+    { "id": "Q2", "question": "PUT /api/v1/zoho/stage-mappings Backend proxy tenant JWT forward ediyor mu; full-upsert ReplaceAsync tenant_id'yi JWT'den cozuyor mu?", "category": "Auth" },
+    { "id": "Q3", "question": "Test endpoint Zoho'ya gercek PUT atmiyor — sadece whitelist check yapiyor mu?", "category": "Process/Policy" },
+    { "id": "Q4", "question": "Connection-yok gate (AC4) UI route-level gate ile tutarli mi; direkt URL ile bypass edilebiliyor mu?", "category": "Auth" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "P3-B1/B2 connection + sync-log UI",
+      "P3-C ops dashboard",
+      "ExecuteTransitionAsync (sync pipeline, P2 scope)",
+      "Layout API (Zoho Settings > Layouts)"
+    ],
+    "non_goals": [
+      "Zoho'ya gercek transition PUT (test endpoint sadece whitelist)",
+      "Per-event ayri DELETE endpoint",
+      "Blueprint-based workflow editor (sadece transition_id mapping)",
+      "Layout/picklist senkronizasyonu"
+    ],
+    "intentional_exclusions": [
+      "Transition'larin state'ine gore filtreleme (module-level list)",
+      "Bulk import mapping (CSV/JSON)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ZohoBlueprintClient.GetAllBlueprintTransitionsAsync — JsonException + typed HTTP catches (mevcut pattern)",
+      "ZohoStageMappingEditorEndpoints — ArgumentException (validation), InvalidOperationException (INV-INT-121/122/125)",
+      "ZohoStageMappingPage.tsx — ApiClientError + extractError [CODE] prefix (P3-C pattern)"
+    ],
+    "user_facing_errors": [
+      "INV-INT-121 blueprint not configured",
+      "INV-INT-122 transition not found",
+      "INV-INT-125 infrastructure",
+      "INV-INT-FE-132 frontend fallback"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum path'ler typed error; cache miss > upstream > Zoho error > user-facing message. Connection-yok UI gate ayni istege zaten bariyer."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Tenant Zoho transition_id'yi manuel typo riskiyle girmek zorunda", "suggestion": "Dropdown + Discover + Test dry-run", "aha_moment": "Dropdown'dan sec, Test de, yanlissa hemen ogren" },
+    { "category": "RELIABILITY", "user_pain": "Blueprint degisikligi sonrasi eski mapping kalir, sync INV-INT-122 doner", "suggestion": "Discover + Test buton ile anlik dogrulama", "aha_moment": "Save oncesi Test, invalid mapping'leri yakalar" },
+    { "category": "SPEED", "user_pain": "Onboarding flow: Zoho'ya gec -> transition_id kopyala -> Invekto'ya gel -> yapistir", "suggestion": "Tek ekranda dropdown + preview", "aha_moment": "5 dakikalik setup 30 saniyeye indi" },
+    { "category": "SUPPORT", "user_pain": "Destek 'sync neden calismiyor' ile geldiginde mapping+transition manuel kontrol", "suggestion": "Test buton = self-service mapping diagnostic", "aha_moment": "Tenant kendi dogrular; destek bileti azalir" },
+    { "category": "SALES", "user_pain": "Satis demosunda Zoho setup zaman aliyor", "suggestion": "Discover + 7-satir mapping editor demo", "aha_moment": "1 dakika icinde canli sync" }
+  ],
+  "verdict": { "status": "PASS", "iteration": 1, "source": "CODEX_TEXT_VIA_Q", "received_at": "2026-04-17T13:25:00Z" }
+}
