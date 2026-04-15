@@ -4,7 +4,10 @@
   "packet_id": "PKT-3B1",
   "slug": "20260416-zoho-step3-p3b1-api",
   "risk": "MEDIUM",
-  "status": "IN_PROGRESS",
+  "status": "DONE",
+  "status_log": [
+    { "status": "DONE", "timestamp": "2026-04-16T07:30:00Z", "commit_sha": "205ab57", "merge_sha": "069a80b", "notes": "Merged to master via --no-ff; branch deleted." }
+  ],
   "created_at": "2026-04-16T06:00:00Z",
   "updated_at": "2026-04-16T06:00:00Z",
   "plan": {
