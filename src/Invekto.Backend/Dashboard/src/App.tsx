@@ -36,6 +36,11 @@ const FlowMonitorPage = lazy(() => import('./pages/FlowMonitorPage').then(m => (
 const FlowTemplateGalleryPage = lazy(() => import('./pages/FlowTemplateGalleryPage').then(m => ({ default: m.FlowTemplateGalleryPage })));
 const RescueDashboardPage = lazy(() => import('./pages/RescueDashboardPage').then(m => ({ default: m.RescueDashboardPage })));
 
+// Adim 3 P3-B2: Zoho integration sub-pages (lazy).
+const ZohoConnectionPage = lazy(() => import('./pages/zoho/ZohoConnectionPage').then(m => ({ default: m.ZohoConnectionPage })));
+const ZohoStageMappingPage = lazy(() => import('./pages/zoho/ZohoStageMappingPage').then(m => ({ default: m.ZohoStageMappingPage })));
+const ZohoSyncLogPage = lazy(() => import('./pages/zoho/ZohoSyncLogPage').then(m => ({ default: m.ZohoSyncLogPage })));
+
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
 
@@ -86,7 +91,13 @@ export default function App() {
         <Route path="/revenue-intelligence" element={<Suspense><RevenueIntelligencePage /></Suspense>} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/appointments" element={<AppointmentsPage />} />
-        <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/integrations" element={<IntegrationsPage />}>
+          <Route index element={<Navigate to="/integrations/zoho/connection" replace />} />
+          <Route path="zoho" element={<Navigate to="/integrations/zoho/connection" replace />} />
+          <Route path="zoho/connection" element={<Suspense><ZohoConnectionPage /></Suspense>} />
+          <Route path="zoho/stage-mappings" element={<Suspense><ZohoStageMappingPage /></Suspense>} />
+          <Route path="zoho/sync-log" element={<Suspense><ZohoSyncLogPage /></Suspense>} />
+        </Route>
         <Route path="/marketing" element={<MarketingPage />} />
         <Route path="/rescue" element={<Suspense><RescueDashboardPage /></Suspense>} />
         <Route path="/messages" element={<MessagesPage />} />
