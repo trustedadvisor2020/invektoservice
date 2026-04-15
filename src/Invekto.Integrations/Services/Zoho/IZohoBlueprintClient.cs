@@ -21,6 +21,17 @@ public interface IZohoBlueprintClient
         CancellationToken ct = default);
 
     /// <summary>
+    /// Adim 4: Returns ALL Blueprint transitions for the Leads module (state-bagimsiz; editor dropdown).
+    /// Calls GET /crm/v6/settings/blueprint?module=Leads. Cached 10 min per tenant (key: zoho:bp:all:{tid}).
+    /// forceRefresh=true removes cache entry before fetch (Discover buton).
+    /// Throws InvalidOperationException(INV-INT-121) when no Blueprint is configured.
+    /// </summary>
+    Task<(IReadOnlyList<ZohoBlueprintTransition> Transitions, bool FromCache)> GetAllBlueprintTransitionsAsync(
+        int tenantId,
+        bool forceRefresh,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Executes a Blueprint transition on the given Lead. Throws InvalidOperationException
     /// with INV-INT-122 (transition not found), INV-INT-119 (rate limit), or INV-INT-125 (other infrastructure failure).
     /// On 401 the token cache is invalidated and the call is retried once.

@@ -1,0 +1,967 @@
+diff --git a/arch/errors.md b/arch/errors.md
+index 3695784..407a310 100644
+--- a/arch/errors.md
++++ b/arch/errors.md
+@@ -640,6 +640,9 @@ errors:
+   - code: INV-INT-FE-131
+     description: Frontend-only fallback when upstream envelope is missing (P3-C OpsZohoPage extractError)
+     user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
++  - code: INV-INT-FE-132
++    description: Frontend-only fallback for Stage Mapping editor (P4 ZohoStageMappingPage extractError)
++    user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
+ 
+   # ── OB — Outbound (GR-1.3) ──
+   - code: INV-OB-001
+diff --git a/arch/plans/20260417-zoho-step4-stage-mapping-editor.json b/arch/plans/20260417-zoho-step4-stage-mapping-editor.json
+new file mode 100644
+index 0000000..0d26dc1
+--- /dev/null
++++ b/arch/plans/20260417-zoho-step4-stage-mapping-editor.json
+@@ -0,0 +1,117 @@
++{
++  "schema_version": "5.1",
++  "review_protocol_version": "5.1",
++  "packet_id": "PKT-4",
++  "slug": "20260417-zoho-step4-stage-mapping-editor",
++  "risk": "MEDIUM",
++  "status": "IN_PROGRESS",
++  "created_at": "2026-04-17T12:00:00Z",
++  "updated_at": "2026-04-17T12:00:00Z",
++  "plan": {
++    "summary": "Zoho Adim 4 — Stage mapping editor (read-only P3-B2 sayfasini editable'a cevir). Integrations: GET /api/v1/zoho/blueprint/transitions (module-level, cached 10dk) + POST /api/v1/zoho/stage-mappings/test (dry-run, transition_id validation). Backend proxy: PUT /api/v1/zoho/stage-mappings (P3-B1 deferred) + GET blueprint/transitions + POST stage-mappings/test. Dashboard ZohoStageMappingPage: 7 lifecycle event satiri (welcome_sent/engaged/qualified/offer_sent/closed_won/deposit_paid/closed_lost), her biri Zoho transition dropdown + Test buton + Delete (satir clear) + Kaydet buton + Discover buton (cache bypass). Connection-yok gate (AC4) + banner.",
++    "q_intent": "Q: 'Stage mapping UI (P4) yap' — Tier 1 blokeri. Tenant dashboard'da read-only mevcut; editable hale getir. Zoho Blueprint transition'lari dropdown'dan secilsin. 4 AC: transitions dropdown dolu gelir, 7 event mapping PUT, reload'ta preselect, connection-yok editor disable + banner. Single paket API+UI.",
++    "interview_notes": "Q kararlari: (a) tum 4 scope (dropdown + discover + delete + test); (b) transitions endpoint Integrations tabanli (cached); (c) tek paket; (d) 4 AC. Architectural: (a) module-level transitions /crm/v6/settings/blueprint?module=Leads — yeni IZohoBlueprintClient.GetAllBlueprintTransitionsAsync; (b) delete row = local state'ten cikar + full Replace PUT (mevcut ReplaceAsync upsert); ayri DELETE endpoint YOK (scope control); (c) test endpoint transition_id whitelist validation — transitions listesinde var mi kontrol; (d) connection-yok gate = client tarafi GET /api/v1/zoho/connection check.",
++    "acceptance_criteria": [
++      { "id": "AC1", "criterion": "Tenant /integrations/zoho/stage-mappings sayfasi acilinca Backend proxy GET /api/v1/zoho/blueprint/transitions -> Integrations GET /api/v1/zoho/blueprint/transitions -> ZohoBlueprintClient.GetAllBlueprintTransitionsAsync(tenantId) cagirir; Zoho settings/blueprint API'sinden transition'lar cekilir, cache 10dk (key: zoho:bp:all:{tenantId}). Response: {items:[{transitionId, name, nextState?}]}. Transitions dropdown dolu gelir.", "verified": false },
++      { "id": "AC2", "criterion": "7 event icin transition secilip 'Kaydet' butonu -> Backend proxy PUT /api/v1/zoho/stage-mappings body {mappings:[{zohoEvent, zohoTransitionId, zohoTransitionName?}]} -> Integrations PUT (mevcut P3-B1). ZohoStageMappingService.ReplaceAsync tenant_id scoped full-upsert: yeni liste mevcut rowlari siler + yazar. Sadece secili event'ler persist. 200 response -> UI 'Kaydedildi' bildirimi.", "verified": false },
++      { "id": "AC3", "criterion": "Sayfa yeniden yuklendiginde GET /api/v1/zoho/stage-mappings mevcut kayitlari getirir; dropdown'lar kaydedilmis transition_id ile preselect olur (UI state dolu gelir).", "verified": false },
++      { "id": "AC4", "criterion": "Zoho bagli degilken (GET /api/v1/zoho/connection response.connected=false) sayfa info banner ('Once Zoho hesabinizi baglayin' + /integrations/zoho/connection linki) + tum form field'lari (dropdown, Kaydet, Test, Discover) disabled.", "verified": false },
++      { "id": "AC5", "criterion": "Test buton (per-row): Backend proxy POST /api/v1/zoho/stage-mappings/test body {zohoEvent, zohoTransitionId} -> Integrations POST -> GetAllBlueprintTransitionsAsync'ten transition_id whitelist kontrol; bulunursa {valid:true, transitionName}, bulunmazsa {valid:false, reason:'Transition not found in Blueprint'} (INV-INT-122). UI row-local banner gosterir.", "verified": false },
++      { "id": "AC6", "criterion": "Discover buton: cache bypass (IMemoryCache.Remove) + yeni fetch. Backend proxy GET /api/v1/zoho/blueprint/transitions?refresh=true -> Integrations endpoint refresh=true ise cache sil + fresh fetch. UI loading indicator + fresh dropdown.", "verified": false },
++      { "id": "AC7", "criterion": "Full sln build PASS + Dashboard build PASS. Mikroservis izolasyonu: Backend -> Integrations HTTP only, ProjectReference yok.", "verified": false }
++    ]
++  },
++  "spec_architectural_decisions": [
++    {
++      "decision": "GetAllBlueprintTransitionsAsync yeni method — module-level settings/blueprint endpoint kullanir, lead-scoped existing GetLeadTransitionsAsync ile farkli cache key.",
++      "reason": "Editor UX'i tum transitions'a ihtiyac duyar (state-bagimsiz). Lead-scoped API sadece o lead'in suandaki state'inden cikan transition'lari doner — editor dropdown eksik olur. Settings API Zoho'nun blueprint metadata'sini vermek icindir.",
++      "codex_note": "EXPECTED: Codex CQ4 'duplicate code' diyebilir (mevcut GetLeadTransitionsAsync ile benzer parsing). Kabul: farkli semantik (module vs record-level), farkli cache key (zoho:bp:all:{tid} vs zoho:bp:{tid}:{leadId}); duplication intentional."
++    },
++    {
++      "decision": "Delete row = client tarafi state'ten cikar + full ReplaceAsync PUT (server tarafi DELETE endpoint YOK).",
++      "reason": "ZohoStageMappingService.ReplaceAsync tenant-scoped full-upsert (mevcut listedeki tum row'lari siler + yazar). UI'dan row silme = local mapping state'ten event'i cikar + Save. Ayri DELETE endpoint scope creep; partial semantik karmasasi (sync log rows orphan olabilir).",
++      "codex_note": "EXPECTED: Codex 'neden ayri DELETE endpoint yok' diyebilir. Kabul: ReplaceAsync zaten idempotent full-upsert; client silme = liste'den kaldir + Save. Tek source of truth."
++    },
++    {
++      "decision": "Test endpoint dry-run sadece transitions whitelist check — Zoho'ya PUT atmaz.",
++      "reason": "Test semantik = 'mapping dogru kurulmus mu'. Gercek PUT dry-run degil gercek mutation olur. Blueprint.GetAllBlueprintTransitionsAsync sonucunda transition_id whitelist check yeterli (user'in secimi hala var mi).",
++      "codex_note": "EXPECTED: Codex Q4 'test Zoho'ya cagri yapmalidir' diyebilir. Kabul: gercek PUT test side-effect; whitelist kontrol state-independent dogrulama yeterli."
++    },
++    {
++      "decision": "Test endpoint invalid whitelist cikisi 200 OK + {Valid:false, ErrorCode:'INV-INT-122', Reason:'INV-INT-122: ...'} envelope — error HTTP status (404/409) DEGIL.",
++      "reason": "Endpoint semantik 'validation check' (success/failure result), failed action DEGIL. Whitelist-miss = beklenen path, UI duzgun banner gostermeli. ErrorCode alani INV-INT-122 surface eder (arch/errors.md BlueprintTransitionNotFound kodu compliance). Valid=true durumu da ayni envelope kullanir (tutarli sozlesme).",
++      "codex_note": "EXPECTED: Codex CQ1/CQ9/CQ12 '404 INV-INT-122 olmali' diyebilir. Kabul: 200 envelope + ErrorCode alani actionable (UI for both valid/invalid ayni DTO'yu tuketir, test result banner gosterir). Test yalniz whitelist kontrol, failed action degil."
++    },
++    {
++      "decision": "Dashboard TS DTO'lar Shared.Contracts.Zoho C# DTO'lariyla manuel mirror — tek shared contract codegen YOK.",
++      "reason": "Proje genelinde (P3-B1, P3-B2, P3-C dahil) TS ↔ C# DTO'lar elle mirror'lanir; codegen pipeline yok. C# PascalCase init-only + TS camelCase interface dil-uyumu farki. Yeni sozlesme iki tarafa ekleyerek senkronize tutulur.",
++      "codex_note": "EXPECTED: Codex CQ8 'contract drift risk' diyebilir. Kabul: proje-wide pattern (20+ DTO ciftinde ayni); codegen ayri paket scope; bu paket scope'unda mirror tutarliligi yeterli (P3-B1/B2/C hepsi boyle PASS etti)."
++    }
++  ],
++  "allowed_files": [
++    "arch/plans/20260417-zoho-step4-stage-mapping-editor.json",
++    "arch/plans/diffs/20260417-zoho-step4-stage-mapping-editor.diff",
++    "arch/errors.md",
++    "src/Invekto.Shared/Contracts/Zoho/ZohoBlueprintTransitionDto.cs",
++    "src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs",
++    "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs",
++    "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs",
++    "src/Invekto.Integrations/Program.cs",
++    "src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs",
++    "src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs",
++    "src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs",
++    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
++    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
++    "src/Invekto.Backend/Dashboard/src/stores/zoho-store.ts"
++  ],
++  "files_changed": [],
++  "git_diff": { "stats": { "insertions": 0, "deletions": 0, "files_count": 0 } },
++  "build": { "status": null },
++  "verification_questions": [
++    { "id": "Q1", "question": "ZohoBlueprintClient.GetAllBlueprintTransitionsAsync tenant_id scoped + cache key ayri (lead-scoped ile karismiyor) mu?", "category": "Data" },
++    { "id": "Q2", "question": "PUT /api/v1/zoho/stage-mappings Backend proxy tenant JWT forward ediyor mu; full-upsert ReplaceAsync tenant_id'yi JWT'den cozuyor mu?", "category": "Auth" },
++    { "id": "Q3", "question": "Test endpoint Zoho'ya gercek PUT atmiyor — sadece whitelist check yapiyor mu?", "category": "Process/Policy" },
++    { "id": "Q4", "question": "Connection-yok gate (AC4) UI route-level gate ile tutarli mi; direkt URL ile bypass edilebiliyor mu?", "category": "Auth" }
++  ],
++  "scope_discipline": {
++    "forbidden_areas": [
++      "P3-B1/B2 connection + sync-log UI",
++      "P3-C ops dashboard",
++      "ExecuteTransitionAsync (sync pipeline, P2 scope)",
++      "Layout API (Zoho Settings > Layouts)"
++    ],
++    "non_goals": [
++      "Zoho'ya gercek transition PUT (test endpoint sadece whitelist)",
++      "Per-event ayri DELETE endpoint",
++      "Blueprint-based workflow editor (sadece transition_id mapping)",
++      "Layout/picklist senkronizasyonu"
++    ],
++    "intentional_exclusions": [
++      "Transition'larin state'ine gore filtreleme (module-level list)",
++      "Bulk import mapping (CSV/JSON)"
++    ]
++  },
++  "error_handling": {
++    "try_catch_locations": [
++      "ZohoBlueprintClient.GetAllBlueprintTransitionsAsync — JsonException + typed HTTP catches (mevcut pattern)",
++      "ZohoStageMappingEditorEndpoints — ArgumentException (validation), InvalidOperationException (INV-INT-121/122/125)",
++      "ZohoStageMappingPage.tsx — ApiClientError + extractError [CODE] prefix (P3-C pattern)"
++    ],
++    "user_facing_errors": [
++      "INV-INT-121 blueprint not configured",
++      "INV-INT-122 transition not found",
++      "INV-INT-125 infrastructure",
++      "INV-INT-FE-132 frontend fallback"
++    ],
++    "silent_failure_risk": false,
++    "silent_failure_explanation": "Tum path'ler typed error; cache miss > upstream > Zoho error > user-facing message. Connection-yok UI gate ayni istege zaten bariyer."
++  },
++  "aha_moments": [
++    { "category": "UX", "user_pain": "Tenant Zoho transition_id'yi manuel typo riskiyle girmek zorunda", "suggestion": "Dropdown + Discover + Test dry-run", "aha_moment": "Dropdown'dan sec, Test de, yanlissa hemen ogren" },
++    { "category": "RELIABILITY", "user_pain": "Blueprint degisikligi sonrasi eski mapping kalir, sync INV-INT-122 doner", "suggestion": "Discover + Test buton ile anlik dogrulama", "aha_moment": "Save oncesi Test, invalid mapping'leri yakalar" },
++    { "category": "SPEED", "user_pain": "Onboarding flow: Zoho'ya gec -> transition_id kopyala -> Invekto'ya gel -> yapistir", "suggestion": "Tek ekranda dropdown + preview", "aha_moment": "5 dakikalik setup 30 saniyeye indi" },
++    { "category": "SUPPORT", "user_pain": "Destek 'sync neden calismiyor' ile geldiginde mapping+transition manuel kontrol", "suggestion": "Test buton = self-service mapping diagnostic", "aha_moment": "Tenant kendi dogrular; destek bileti azalir" },
++    { "category": "SALES", "user_pain": "Satis demosunda Zoho setup zaman aliyor", "suggestion": "Discover + 7-satir mapping editor demo", "aha_moment": "1 dakika icinde canli sync" }
++  ],
++  "verdict": { "status": null, "iteration": 0 }
++}
+diff --git a/src/Invekto.Backend/Dashboard/src/lib/api.ts b/src/Invekto.Backend/Dashboard/src/lib/api.ts
+index b63edbb..0242401 100644
+--- a/src/Invekto.Backend/Dashboard/src/lib/api.ts
++++ b/src/Invekto.Backend/Dashboard/src/lib/api.ts
+@@ -1854,6 +1854,26 @@ class OpsApiClient {
+     return this.request<ZohoStageMappingListResponse>('/api/v1/zoho/stage-mappings');
+   }
+ 
++  // Adim 4: Stage mapping editor
++  async putZohoStageMappings(mappings: ZohoStageMappingUpsertEntry[]): Promise<ZohoStageMappingListResponse> {
++    return this.request<ZohoStageMappingListResponse>('/api/v1/zoho/stage-mappings', {
++      method: 'PUT',
++      body: JSON.stringify({ mappings }),
++    });
++  }
++
++  async getZohoBlueprintTransitions(forceRefresh: boolean = false): Promise<ZohoBlueprintTransitionsResponse> {
++    const qs = forceRefresh ? '?refresh=true' : '';
++    return this.request<ZohoBlueprintTransitionsResponse>(`/api/v1/zoho/blueprint/transitions${qs}`);
++  }
++
++  async testZohoStageMapping(zohoEvent: string, zohoTransitionId: string): Promise<ZohoStageMappingTestResponse> {
++    return this.request<ZohoStageMappingTestResponse>('/api/v1/zoho/stage-mappings/test', {
++      method: 'POST',
++      body: JSON.stringify({ zohoEvent, zohoTransitionId }),
++    });
++  }
++
+   async getZohoSyncLog(params: ZohoSyncLogQuery): Promise<ZohoSyncLogPageResponse> {
+     const qs = new URLSearchParams();
+     if (params.page) qs.set('page', params.page.toString());
+@@ -1930,6 +1950,33 @@ export interface ZohoStageMappingListResponse {
+   mappings: ZohoStageMappingDto[];
+ }
+ 
++// Adim 4: Stage mapping editor DTOs
++export interface ZohoStageMappingUpsertEntry {
++  zohoEvent: string;
++  zohoTransitionId: string;
++  zohoTransitionName?: string | null;
++}
++
++export interface ZohoBlueprintTransitionDto {
++  transitionId: string;
++  name: string;
++  nextState?: string | null;
++}
++
++export interface ZohoBlueprintTransitionsResponse {
++  items: ZohoBlueprintTransitionDto[];
++  fromCache: boolean;
++}
++
++export interface ZohoStageMappingTestResponse {
++  valid: boolean;
++  transitionName?: string | null;
++  nextState?: string | null;
++  reason?: string | null;
++  /** INV-INT-122 when valid=false (transition not in blueprint whitelist); null when valid=true. */
++  errorCode?: string | null;
++}
++
+ export type ZohoSyncLogStatus = 'pending' | 'failed' | 'success';
+ 
+ export interface ZohoSyncLogQuery {
+diff --git a/src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx b/src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx
+index 61d880d..432a37d 100644
+--- a/src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx
++++ b/src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx
+@@ -1,93 +1,295 @@
+-// Adim 3 Paket 3-B2: Zoho stage mapping (read-only; PUT P4'te).
+-import { useEffect } from 'react';
+-import { Info } from 'lucide-react';
++// Adim 4: Zoho Stage Mapping editor. 7 lifecycle event rows, transitions dropdown, Test/Save/Discover.
++// Connection-yok gate (AC4): Zoho bagli degilken editor disabled + info banner.
++import { useCallback, useEffect, useState } from 'react';
++import { AlertCircle, Info, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
+ import { useZohoStore } from '../../stores/zoho-store';
+ import { Card, CardTitle } from '../../components/ui/Card';
+ import { Button } from '../../components/ui/Button';
+-import { Badge } from '../../components/ui/Badge';
+-import { formatDateTr } from '../../lib/utils';
++import {
++  api,
++  ApiClientError,
++  type ZohoBlueprintTransitionDto,
++  type ZohoStageMappingUpsertEntry,
++  type ZohoStageMappingTestResponse,
++} from '../../lib/api';
++
++const LIFECYCLE_EVENTS: { key: string; label: string }[] = [
++  { key: 'welcome_sent',  label: 'welcome_sent (Hos geldin mesaji gonderildi)' },
++  { key: 'engaged',       label: 'engaged (Etkilesime girdi)' },
++  { key: 'qualified',     label: 'qualified (Uygunluk dogrulandi)' },
++  { key: 'offer_sent',    label: 'offer_sent (Teklif gonderildi)' },
++  { key: 'closed_won',    label: 'closed_won (Kazanildi)' },
++  { key: 'deposit_paid',  label: 'deposit_paid (Kapora odendi)' },
++  { key: 'closed_lost',   label: 'closed_lost (Kaybedildi)' },
++];
++
++function extractError(err: unknown, fallback: string): string {
++  if (err instanceof ApiClientError) {
++    const code = err.errorCode && err.errorCode !== 'UNKNOWN' ? err.errorCode : 'INV-INT-FE-132';
++    const msg = err.message && err.message !== `HTTP ${err.status}` ? err.message : fallback;
++    return `[${code}] ${msg}`;
++  }
++  if (err instanceof Error && err.message) return `[INV-INT-FE-132] ${err.message}`;
++  return `[INV-INT-FE-132] ${fallback}`;
++}
+ 
+ export function ZohoStageMappingPage() {
+-  const { stageMappings, stageMappingsLoading, stageMappingsError, loadStageMappings } = useZohoStore();
++  const { connection, loadConnection, stageMappings, loadStageMappings } = useZohoStore();
++
++  const [transitions, setTransitions] = useState<ZohoBlueprintTransitionDto[] | null>(null);
++  const [transitionsLoading, setTransitionsLoading] = useState(false);
++  const [transitionsError, setTransitionsError] = useState<string | null>(null);
++  const [transitionsFromCache, setTransitionsFromCache] = useState<boolean>(false);
++
++  // Local editable mapping state: { event: transitionId | '' }
++  const [edited, setEdited] = useState<Record<string, string>>({});
++  const [saving, setSaving] = useState(false);
++  const [saveMessage, setSaveMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
++
++  const [testResult, setTestResult] = useState<Record<string, ZohoStageMappingTestResponse | { error: string }>>({});
++  const [testingKey, setTestingKey] = useState<string | null>(null);
++
++  const connected = connection?.connected ?? false;
++
++  const loadTransitions = useCallback(async (forceRefresh: boolean) => {
++    setTransitionsLoading(true);
++    setTransitionsError(null);
++    try {
++      const res = await api.getZohoBlueprintTransitions(forceRefresh);
++      setTransitions(res.items);
++      setTransitionsFromCache(res.fromCache);
++    } catch (err) {
++      setTransitionsError(extractError(err, 'Blueprint transition listesi alinamadi.'));
++    } finally {
++      setTransitionsLoading(false);
++    }
++  }, []);
+ 
+   useEffect(() => {
++    void loadConnection();
+     void loadStageMappings();
+-  }, [loadStageMappings]);
++  }, [loadConnection, loadStageMappings]);
++
++  useEffect(() => {
++    if (connected) void loadTransitions(false);
++  }, [connected, loadTransitions]);
++
++  // Preselect from existing mappings when loaded (AC3).
++  useEffect(() => {
++    if (!stageMappings) return;
++    const seeded: Record<string, string> = {};
++    for (const ev of LIFECYCLE_EVENTS) {
++      const match = stageMappings.find((m) => m.zohoEvent === ev.key);
++      seeded[ev.key] = match?.zohoTransitionId ?? '';
++    }
++    setEdited(seeded);
++  }, [stageMappings]);
++
++  const handleSave = async () => {
++    setSaving(true);
++    setSaveMessage(null);
++    try {
++      const payload: ZohoStageMappingUpsertEntry[] = [];
++      for (const ev of LIFECYCLE_EVENTS) {
++        const tid = edited[ev.key];
++        if (!tid) continue;
++        const t = transitions?.find((x) => x.transitionId === tid);
++        payload.push({ zohoEvent: ev.key, zohoTransitionId: tid, zohoTransitionName: t?.name });
++      }
++      await api.putZohoStageMappings(payload);
++      await loadStageMappings();
++      setSaveMessage({ kind: 'ok', text: `${payload.length} eslesme kaydedildi.` });
++    } catch (err) {
++      setSaveMessage({ kind: 'err', text: extractError(err, 'Eslesmeler kaydedilemedi.') });
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const handleTest = async (eventKey: string) => {
++    const tid = edited[eventKey];
++    if (!tid) return;
++    setTestingKey(eventKey);
++    try {
++      const res = await api.testZohoStageMapping(eventKey, tid);
++      setTestResult((prev) => ({ ...prev, [eventKey]: res }));
++    } catch (err) {
++      setTestResult((prev) => ({ ...prev, [eventKey]: { error: extractError(err, 'Test basarisiz.') } }));
++    } finally {
++      setTestingKey(null);
++    }
++  };
++
++  const handleClearRow = (eventKey: string) => {
++    setEdited((prev) => ({ ...prev, [eventKey]: '' }));
++    setTestResult((prev) => {
++      const next = { ...prev };
++      delete next[eventKey];
++      return next;
++    });
++  };
++
++  // AC4: Connection-yok gate = banner + tum controls disabled (tek sayfa render, disabled state).
++  const formDisabled = !connected;
+ 
+   return (
+     <div className="max-w-4xl">
+-      <div className="mb-4">
+-        <h1 className="text-xl font-semibold text-navy-900">Asama Eslesmeleri</h1>
+-        <p className="text-sm text-navy-500 mt-1">
+-          WhatsApp yasam dongusu olaylari ile Zoho Blueprint gecisleri arasindaki eslesme.
+-        </p>
+-      </div>
+-
+-      <div className="flex items-start gap-2 bg-brand-50 border border-brand-100 rounded-lg px-4 py-3 mb-4 text-sm text-brand-700">
+-        <Info className="w-4 h-4 shrink-0 mt-0.5" />
++      <div className="mb-4 flex items-start justify-between">
+         <div>
+-          <strong className="font-semibold">Duzenleme Paket 4 (P4) ile acilacak.</strong>
+-          <span className="ml-1 text-brand-700/80">
+-            Su an mappingler salt-okunur goruntuleniyor; degisiklik icin daha sonra tekrar ziyaret edin.
+-          </span>
++          <h1 className="text-xl font-semibold text-navy-900">Asama Eslesmeleri</h1>
++          <p className="text-sm text-navy-500 mt-1">
++            Her lifecycle olayi icin Zoho Blueprint gecisini secin. Sync sirasinda bu eslesme kullanilir.
++          </p>
+         </div>
++        <Button
++          variant="secondary"
++          onClick={() => void loadTransitions(true)}
++          disabled={transitionsLoading || formDisabled}
++        >
++          <RefreshCw className={`w-4 h-4 mr-2 ${transitionsLoading ? 'animate-spin' : ''}`} />
++          Discover
++        </Button>
+       </div>
+ 
+-      {stageMappingsLoading && !stageMappings && (
+-        <div className="text-sm text-navy-400">Yukleniyor...</div>
++      {!connected && (
++        <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-4 text-sm text-yellow-800">
++          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
++          <div>
++            <strong className="font-semibold">Zoho hesabiniz bagli degil.</strong>
++            <p className="mt-1">
++              Eslesme editorunu kullanmadan once{' '}
++              <a className="underline font-medium" href="/app/integrations/zoho/connection">
++                Zoho hesabinizi baglayin
++              </a>
++              . Asagidaki form Zoho bagli olana kadar devre disidir.
++            </p>
++          </div>
++        </div>
++      )}
++
++      {transitionsFromCache && !transitionsLoading && (
++        <div className="flex items-start gap-2 bg-brand-50 border border-brand-100 rounded-lg px-4 py-2 mb-3 text-xs text-brand-700">
++          <Info className="w-3 h-3 shrink-0 mt-0.5" />
++          <span>Transition listesi cache'ten yuklendi (10 dk). Guncellemek icin Discover.</span>
++        </div>
+       )}
+ 
+-      {stageMappingsError && (
++      {transitionsError && (
+         <Card className="border-red-100 bg-red-50/40 mb-3">
+-          <CardTitle className="text-red-700 mb-1">Mapping listesi alinamadi</CardTitle>
+-          <p className="text-sm text-red-600 mb-2">{stageMappingsError}</p>
+-          <Button variant="secondary" size="sm" onClick={() => void loadStageMappings()}>
++          <CardTitle className="text-red-700 mb-1">Blueprint transition'lari alinamadi</CardTitle>
++          <p className="text-sm text-red-600 mb-2">{transitionsError}</p>
++          <Button variant="secondary" size="sm" onClick={() => void loadTransitions(true)}>
+             Tekrar Dene
+           </Button>
+         </Card>
+       )}
+ 
+-      {stageMappings && stageMappings.length === 0 && !stageMappingsError && (
+-        <Card>
+-          <p className="text-sm text-navy-500">
+-            Henuz mapping yok. P4 ile bu tablodan yeni eslesme eklenebilecek.
+-          </p>
+-        </Card>
++      {transitionsLoading && !transitions && (
++        <div className="text-sm text-navy-400 mb-3">Transitions yukleniyor...</div>
+       )}
+ 
+-      {stageMappings && stageMappings.length > 0 && (
+-        <Card className="p-0 overflow-hidden">
+-          <table className="w-full text-sm">
+-            <thead className="bg-navy-50 text-navy-500 text-xs uppercase tracking-wide">
+-              <tr>
+-                <th className="text-left font-semibold px-4 py-3">WhatsApp Olayi</th>
+-                <th className="text-left font-semibold px-4 py-3">Zoho Gecisi</th>
+-                <th className="text-left font-semibold px-4 py-3">Guncelleme</th>
+-                <th className="text-left font-semibold px-4 py-3 w-24">Mod</th>
+-              </tr>
+-            </thead>
+-            <tbody className="divide-y divide-navy-100">
+-              {stageMappings.map((m) => (
+-                <tr key={m.zohoEvent}>
+-                  <td className="px-4 py-3 font-medium text-navy-900">{m.zohoEvent}</td>
+-                  <td className="px-4 py-3 text-navy-700">
+-                    <div className="flex flex-col">
+-                      <span>{m.zohoTransitionName ?? m.zohoTransitionId}</span>
+-                      {m.zohoTransitionName && (
+-                        <span className="text-xs text-navy-400 font-mono">{m.zohoTransitionId}</span>
+-                      )}
+-                    </div>
++      {saveMessage && (
++        <div className={`flex items-start gap-2 rounded-lg px-4 py-3 mb-3 text-sm ${
++          saveMessage.kind === 'ok'
++            ? 'bg-green-50 border border-green-200 text-green-800'
++            : 'bg-red-50 border border-red-200 text-red-700'
++        }`}>
++          {saveMessage.kind === 'ok'
++            ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
++            : <XCircle className="w-4 h-4 shrink-0 mt-0.5" />}
++          <span>{saveMessage.text}</span>
++        </div>
++      )}
++
++      <Card className="p-0 overflow-hidden">
++        <table className="w-full text-sm">
++          <thead className="bg-navy-50 text-navy-500 text-xs uppercase tracking-wide">
++            <tr>
++              <th className="text-left font-semibold px-4 py-3 w-1/3">Lifecycle Olayi</th>
++              <th className="text-left font-semibold px-4 py-3">Zoho Transition</th>
++              <th className="text-left font-semibold px-4 py-3 w-48">Aksiyon</th>
++            </tr>
++          </thead>
++          <tbody className="divide-y divide-navy-100">
++            {LIFECYCLE_EVENTS.map((ev) => {
++              const selected = edited[ev.key] ?? '';
++              const test = testResult[ev.key];
++              return (
++                <tr key={ev.key}>
++                  <td className="px-4 py-3 align-top">
++                    <div className="font-medium text-navy-900 font-mono text-xs">{ev.key}</div>
++                    <div className="text-xs text-navy-500 mt-0.5">{ev.label.split('(')[1]?.replace(')', '')}</div>
+                   </td>
+-                  <td className="px-4 py-3 text-navy-500">{formatDateTr(m.updatedAt)}</td>
+-                  <td className="px-4 py-3">
+-                    <Badge variant="default">Kilitli</Badge>
++                  <td className="px-4 py-3 align-top">
++                    <select
++                      value={selected}
++                      onChange={(e) => {
++                        setEdited((prev) => ({ ...prev, [ev.key]: e.target.value }));
++                        setTestResult((prev) => {
++                          const n = { ...prev };
++                          delete n[ev.key];
++                          return n;
++                        });
++                      }}
++                      disabled={formDisabled || !transitions || transitionsLoading}
++                      className="w-full border border-navy-200 rounded px-2 py-1.5 text-sm disabled:bg-navy-50 disabled:text-navy-400"
++                    >
++                      <option value="">— Eslesme yok —</option>
++                      {(transitions ?? []).map((t) => (
++                        <option key={t.transitionId} value={t.transitionId}>
++                          {t.name}{t.nextState ? ` → ${t.nextState}` : ''}
++                        </option>
++                      ))}
++                    </select>
++                    {test && 'valid' in test && (
++                      <div className={`mt-1 text-xs flex items-start gap-1 ${test.valid ? 'text-green-700' : 'text-red-700'}`}>
++                        {test.valid
++                          ? <><CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0" /> Gecerli: {test.transitionName}{test.nextState ? ` → ${test.nextState}` : ''}</>
++                          : <><XCircle className="w-3 h-3 mt-0.5 shrink-0" /> {test.reason}</>}
++                      </div>
++                    )}
++                    {test && 'error' in test && (
++                      <div className="mt-1 text-xs text-red-700 flex items-start gap-1">
++                        <XCircle className="w-3 h-3 mt-0.5 shrink-0" /> {test.error}
++                      </div>
++                    )}
++                  </td>
++                  <td className="px-4 py-3 align-top">
++                    <div className="flex gap-1">
++                      <Button
++                        variant="secondary"
++                        size="sm"
++                        onClick={() => void handleTest(ev.key)}
++                        disabled={formDisabled || !selected || testingKey === ev.key || !transitions}
++                      >
++                        {testingKey === ev.key ? 'Test...' : 'Test'}
++                      </Button>
++                      <Button
++                        variant="ghost"
++                        size="sm"
++                        onClick={() => handleClearRow(ev.key)}
++                        disabled={formDisabled || !selected}
++                      >
++                        Temizle
++                      </Button>
++                    </div>
+                   </td>
+                 </tr>
+-              ))}
+-            </tbody>
+-          </table>
+-        </Card>
+-      )}
++              );
++            })}
++          </tbody>
++        </table>
++      </Card>
++
++      <div className="mt-4 flex justify-end gap-2">
++        <Button
++          variant="primary"
++          onClick={() => void handleSave()}
++          disabled={formDisabled || saving || !transitions}
++        >
++          {saving ? 'Kaydediliyor...' : 'Kaydet'}
++        </Button>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs b/src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs
+index 05a0765..26b0684 100644
+--- a/src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs
++++ b/src/Invekto.Backend/Services/Zoho/IZohoProxyClient.cs
+@@ -18,6 +18,16 @@ public interface IZohoProxyClient
+         string pathAndQuery,
+         string? bearerToken,
+         CancellationToken ct = default);
++
++    /// <summary>
++    /// Adim 4: body'li forward (PUT/POST). jsonBody null ise body eklenmez.
++    /// </summary>
++    Task<ZohoProxyResult> ForwardAsync(
++        HttpMethod method,
++        string pathAndQuery,
++        string? bearerToken,
++        string? jsonBody,
++        CancellationToken ct = default);
+ }
+ 
+ /// <summary>Upstream response projection: status code + raw JSON body (or empty).</summary>
+diff --git a/src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs b/src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs
+index 8d643b5..11210c2 100644
+--- a/src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs
++++ b/src/Invekto.Backend/Services/Zoho/ZohoProxyClient.cs
+@@ -26,10 +26,18 @@ public sealed class ZohoProxyClient : IZohoProxyClient
+         _logger = logger;
+     }
+ 
++    public Task<ZohoProxyResult> ForwardAsync(
++        HttpMethod method,
++        string pathAndQuery,
++        string? bearerToken,
++        CancellationToken ct = default) =>
++        ForwardAsync(method, pathAndQuery, bearerToken, jsonBody: null, ct);
++
+     public async Task<ZohoProxyResult> ForwardAsync(
+         HttpMethod method,
+         string pathAndQuery,
+         string? bearerToken,
++        string? jsonBody,
+         CancellationToken ct = default)
+     {
+         using var msg = new HttpRequestMessage(method, pathAndQuery);
+@@ -37,6 +45,10 @@ public sealed class ZohoProxyClient : IZohoProxyClient
+         {
+             msg.Headers.TryAddWithoutValidation("Authorization", "Bearer " + bearerToken);
+         }
++        if (jsonBody is not null)
++        {
++            msg.Content = new System.Net.Http.StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
++        }
+ 
+         try
+         {
+diff --git a/src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs b/src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs
+index 0cad323..3f2eac6 100644
+--- a/src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs
++++ b/src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs
+@@ -42,9 +42,37 @@ public static class ZohoProxyEndpoints
+             (long id, HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
+                 Forward(ctx, proxy, HttpMethod.Post, $"/api/v1/zoho/sync-log/{id}/retry", ct));
+ 
++        // Adim 4: Stage mapping editor
++        app.MapPut("/api/v1/zoho/stage-mappings", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
++            ForwardWithBody(ctx, proxy, HttpMethod.Put, "/api/v1/zoho/stage-mappings", ct));
++
++        app.MapGet("/api/v1/zoho/blueprint/transitions", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
++        {
++            var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
++            return Forward(ctx, proxy, HttpMethod.Get, "/api/v1/zoho/blueprint/transitions" + qs, ct);
++        });
++
++        app.MapPost("/api/v1/zoho/stage-mappings/test", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
++            ForwardWithBody(ctx, proxy, HttpMethod.Post, "/api/v1/zoho/stage-mappings/test", ct));
++
+         return app;
+     }
+ 
++    private static async Task<IResult> ForwardWithBody(
++        HttpContext ctx,
++        IZohoProxyClient proxy,
++        HttpMethod method,
++        string pathAndQuery,
++        CancellationToken ct)
++    {
++        var bearer = ExtractBearer(ctx);
++        string body;
++        using (var reader = new System.IO.StreamReader(ctx.Request.Body, System.Text.Encoding.UTF8))
++            body = await reader.ReadToEndAsync(ct).ConfigureAwait(false);
++        var upstream = await proxy.ForwardAsync(method, pathAndQuery, bearer, body, ct).ConfigureAwait(false);
++        return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
++    }
++
+     private static async Task<IResult> Forward(
+         HttpContext ctx,
+         IZohoProxyClient proxy,
+diff --git a/src/Invekto.Integrations/Program.cs b/src/Invekto.Integrations/Program.cs
+index 4d1eb81..b93f611 100644
+--- a/src/Invekto.Integrations/Program.cs
++++ b/src/Invekto.Integrations/Program.cs
+@@ -776,6 +776,8 @@ app.MapZohoConnectionEndpoints();
+ app.MapZohoSyncLogEndpoints();
+ // Adim 3 Paket 3-C: Super-admin cross-tenant ops endpoints (shared-secret).
+ app.MapZohoOpsEndpoints();
++// Adim 4: Stage mapping editor endpoints (blueprint transitions + test).
++app.MapZohoStageMappingEditorEndpoints();
+ 
+ app.MapGet("/api/ops/endpoints", () =>
+ {
+@@ -810,6 +812,8 @@ app.MapGet("/api/ops/endpoints", () =>
+         new() { Method = "GET", Path = "/api/internal/ops/zoho/sync-log", Description = "Super-admin cross-tenant Zoho sync log (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+         new() { Method = "DELETE", Path = "/api/internal/ops/zoho/connections/{tenantId}", Description = "Super-admin force-disconnect tenant Zoho (Adim 3 P3-C)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
+         new() { Method = "POST", Path = "/api/internal/ops/zoho/sync-log/retry", Description = "Super-admin batch retry failed sync rows (Adim 3 P3-C, max 50)", Auth = "X-Internal-Service-Token", Category = "Zoho" },
++        new() { Method = "GET", Path = "/api/v1/zoho/blueprint/transitions", Description = "Adim 4: Module-level Blueprint transitions for stage mapping editor dropdown (?refresh=true bypasses cache)", Auth = "Bearer", Category = "Zoho" },
++        new() { Method = "POST", Path = "/api/v1/zoho/stage-mappings/test", Description = "Adim 4: Stage mapping dry-run (transition_id whitelist check, no Zoho mutation)", Auth = "Bearer", Category = "Zoho" },
+         new() { Method = "GET", Path = "/api/ops/endpoints", Description = "Endpoint discovery", Auth = "none", Category = "Ops" }
+     };
+     return Results.Ok(endpoints);
+diff --git a/src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs b/src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs
+index 6fdc2ac..6390fb2 100644
+--- a/src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs
++++ b/src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs
+@@ -20,6 +20,17 @@ public interface IZohoBlueprintClient
+         string zohoLeadId,
+         CancellationToken ct = default);
+ 
++    /// <summary>
++    /// Adim 4: Returns ALL Blueprint transitions for the Leads module (state-bagimsiz; editor dropdown).
++    /// Calls GET /crm/v6/settings/blueprint?module=Leads. Cached 10 min per tenant (key: zoho:bp:all:{tid}).
++    /// forceRefresh=true removes cache entry before fetch (Discover buton).
++    /// Throws InvalidOperationException(INV-INT-121) when no Blueprint is configured.
++    /// </summary>
++    Task<(IReadOnlyList<ZohoBlueprintTransition> Transitions, bool FromCache)> GetAllBlueprintTransitionsAsync(
++        int tenantId,
++        bool forceRefresh,
++        CancellationToken ct = default);
++
+     /// <summary>
+     /// Executes a Blueprint transition on the given Lead. Throws InvalidOperationException
+     /// with INV-INT-122 (transition not found), INV-INT-119 (rate limit), or INV-INT-125 (other infrastructure failure).
+diff --git a/src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs b/src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs
+index 14eb159..784dd49 100644
+--- a/src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs
++++ b/src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs
+@@ -91,6 +91,63 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
+         return transitions;
+     }
+ 
++    /// <summary>
++    /// Adim 4: Module-level Blueprint transitions (editor dropdown). Calls
++    /// GET /crm/v6/settings/blueprint?module=Leads and returns all transitions in the blueprint.
++    /// Cache key is distinct from lead-scoped GetLeadTransitionsAsync (zoho:bp:all:{tid}).
++    /// </summary>
++    public async Task<(IReadOnlyList<ZohoBlueprintTransition> Transitions, bool FromCache)> GetAllBlueprintTransitionsAsync(
++        int tenantId, bool forceRefresh, CancellationToken ct = default)
++    {
++        var cacheKey = "zoho:bp:all:" + tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture);
++        if (forceRefresh)
++        {
++            _cache.Remove(cacheKey);
++        }
++        else if (_cache.TryGetValue<IReadOnlyList<ZohoBlueprintTransition>>(cacheKey, out var cached) && cached is not null)
++        {
++            return (cached, FromCache: true);
++        }
++
++        var apiBase = await GetApiBaseAsync(tenantId, ct).ConfigureAwait(false);
++        var url = apiBase + "/crm/v6/settings/blueprint?module=Leads";
++
++        using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
++
++        if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
++            throw new InvalidOperationException(
++                ZohoErrorCodes.BlueprintNotConfigured +
++                $": Zoho Leads Blueprint not configured for tenant {tenantId}. Activate a Blueprint on the Leads module in Zoho Setup -> Automation -> Blueprint.");
++
++        if (!response.IsSuccessStatusCode)
++            throw await BuildHttpFailureAsync(response, "GET settings/blueprint", tenantId, ct).ConfigureAwait(false);
++
++        BlueprintResponseWire? wire;
++        try
++        {
++            wire = await response.Content.ReadFromJsonAsync<BlueprintResponseWire>(cancellationToken: ct).ConfigureAwait(false);
++        }
++        catch (JsonException ex)
++        {
++            throw new InvalidOperationException(
++                ZohoErrorCodes.SyncInfrastructureError +
++                $": Zoho settings/blueprint response was not valid JSON for tenant {tenantId}.",
++                ex);
++        }
++
++        var transitions = wire?.Blueprint?.Count > 0
++            ? ExtractTransitions(wire.Blueprint[0])
++            : Array.Empty<ZohoBlueprintTransition>();
++
++        if (transitions.Count == 0)
++            throw new InvalidOperationException(
++                ZohoErrorCodes.BlueprintNotConfigured +
++                $": Zoho Blueprint has no transitions for Leads module (tenant {tenantId}). Verify the Blueprint definition.");
++
++        _cache.Set(cacheKey, transitions, CacheTtl);
++        return (transitions, FromCache: false);
++    }
++
+     public async Task ExecuteTransitionAsync(
+         int tenantId, string zohoLeadId, string transitionId, CancellationToken ct = default)
+     {
+diff --git a/src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs b/src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs
+new file mode 100644
+index 0000000..00509e4
+--- /dev/null
++++ b/src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs
+@@ -0,0 +1,144 @@
++// Adim 4: Stage mapping editor endpoints (tenant JWT).
++//   GET  /api/v1/zoho/blueprint/transitions    -> module-level Blueprint transitions for dropdown; ?refresh=true bypasses cache.
++//   POST /api/v1/zoho/stage-mappings/test      -> dry-run: validate (zohoEvent, zohoTransitionId) against live Blueprint transitions whitelist.
++// PUT/GET /api/v1/zoho/stage-mappings already mapped in ZohoSyncEndpoints (P1).
++// Auth: mounted under /api/v1/ -> UseJwtAuth middleware (Integrations Program.cs:165) sets TenantContext.
++// Schema source of truth (NO new migration):
++//   - zoho_stage_mappings: arch/db/migrations/013-zoho-stage-mappings.sql + 015-rename-gunes-to-zoho.sql
++//                          (tenant_id, zoho_event, zoho_transition_id, zoho_transition_name; UNIQUE(tenant_id, zoho_event)).
++//   PUT /api/v1/zoho/stage-mappings (P1) via ZohoStageMappingService.ReplaceAsync -> tenant_id from TenantContext
++//   (NOT request body); full-upsert semantics: mevcut tenant rows DELETE + new list INSERT.
++using System;
++using System.Collections.Generic;
++using System.Threading;
++using System.Threading.Tasks;
++using Invekto.Shared.Auth;
++using Invekto.Shared.Constants;
++using Invekto.Shared.Contracts.Zoho;
++using Invekto.Shared.DTOs;
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Routing;
++
++namespace Invekto.Integrations.Services.Zoho;
++
++public static class ZohoStageMappingEditorEndpoints
++{
++    public static IEndpointRouteBuilder MapZohoStageMappingEditorEndpoints(this IEndpointRouteBuilder app)
++    {
++        app.MapGet("/api/v1/zoho/blueprint/transitions", async (
++            HttpContext ctx,
++            IZohoBlueprintClient blueprint,
++            CancellationToken ct) =>
++        {
++            var requestId = ResolveRequestId(ctx);
++            var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++            if (tenantContext is null)
++                return Results.Json(
++                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId),
++                    statusCode: 401);
++
++            var refresh = ctx.Request.Query["refresh"].ToString();
++            var forceRefresh = string.Equals(refresh, "true", StringComparison.OrdinalIgnoreCase);
++
++            try
++            {
++                var (transitions, fromCache) = await blueprint.GetAllBlueprintTransitionsAsync(
++                    tenantContext.TenantId, forceRefresh, ct).ConfigureAwait(false);
++
++                var items = new List<ZohoBlueprintTransitionDto>(transitions.Count);
++                foreach (var t in transitions)
++                {
++                    items.Add(new ZohoBlueprintTransitionDto
++                    {
++                        TransitionId = t.TransitionId,
++                        Name         = t.Name,
++                        NextState    = t.NextState,
++                    });
++                }
++
++                return Results.Ok(new ZohoBlueprintTransitionsResponse { Items = items, FromCache = fromCache });
++            }
++            catch (InvalidOperationException ex)
++            {
++                var (code, status) = MapBlueprintException(ex.Message);
++                return Results.Json(ErrorResponse.Create(code, ex.Message, requestId), statusCode: status);
++            }
++        });
++
++        app.MapPost("/api/v1/zoho/stage-mappings/test", async (
++            HttpContext ctx,
++            IZohoBlueprintClient blueprint,
++            ZohoStageMappingTestRequest body,
++            CancellationToken ct) =>
++        {
++            var requestId = ResolveRequestId(ctx);
++            var tenantContext = ctx.Items["TenantContext"] as TenantContext;
++            if (tenantContext is null)
++                return Results.Json(
++                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId),
++                    statusCode: 401);
++
++            if (body is null || string.IsNullOrWhiteSpace(body.ZohoEvent) || string.IsNullOrWhiteSpace(body.ZohoTransitionId))
++                return Results.Json(
++                    ErrorResponse.Create(ZohoErrorCodes.OpsQueryValidation,
++                        "ZohoEvent and ZohoTransitionId are required.", requestId),
++                    statusCode: 400);
++
++            try
++            {
++                // Test = whitelist check against live blueprint. No Zoho mutation (spec_architectural_decisions).
++                var (transitions, _) = await blueprint.GetAllBlueprintTransitionsAsync(
++                    tenantContext.TenantId, forceRefresh: false, ct).ConfigureAwait(false);
++
++                foreach (var t in transitions)
++                {
++                    if (string.Equals(t.TransitionId, body.ZohoTransitionId, StringComparison.Ordinal))
++                    {
++                        return Results.Ok(new ZohoStageMappingTestResponse
++                        {
++                            Valid          = true,
++                            TransitionName = t.Name,
++                            NextState      = t.NextState,
++                        });
++                    }
++                }
++
++                // Whitelist failure: surface INV-INT-122 in the envelope (200 with {valid:false}) rather than
++                // an error status, because the endpoint semantic is "validation check" not a failed action.
++                // UI reads ErrorCode + Reason for actionable display.
++                return Results.Ok(new ZohoStageMappingTestResponse
++                {
++                    Valid     = false,
++                    ErrorCode = ZohoErrorCodes.BlueprintTransitionNotFound,
++                    Reason    = $"{ZohoErrorCodes.BlueprintTransitionNotFound}: Transition id '{body.ZohoTransitionId}' not found in Zoho Blueprint for tenant {tenantContext.TenantId}. Discover ile fresh listeyi tekrar cekin.",
++                });
++            }
++            catch (InvalidOperationException ex)
++            {
++                var (code, status) = MapBlueprintException(ex.Message);
++                return Results.Json(ErrorResponse.Create(code, ex.Message, requestId), statusCode: status);
++            }
++        });
++
++        return app;
++    }
++
++    private static (string Code, int StatusCode) MapBlueprintException(string message)
++    {
++        if (message.StartsWith(ZohoErrorCodes.BlueprintNotConfigured, StringComparison.Ordinal))
++            return (ZohoErrorCodes.BlueprintNotConfigured, StatusCodes.Status409Conflict);
++        if (message.StartsWith(ZohoErrorCodes.BlueprintTransitionNotFound, StringComparison.Ordinal))
++            return (ZohoErrorCodes.BlueprintTransitionNotFound, StatusCodes.Status404NotFound);
++        if (message.StartsWith(ZohoErrorCodes.ConnectionNotFound, StringComparison.Ordinal))
++            return (ZohoErrorCodes.ConnectionNotFound, StatusCodes.Status404NotFound);
++        if (message.StartsWith(ZohoErrorCodes.RateLimitReached, StringComparison.Ordinal))
++            return (ZohoErrorCodes.RateLimitReached, StatusCodes.Status429TooManyRequests);
++        if (message.StartsWith(ZohoErrorCodes.SyncInfrastructureError, StringComparison.Ordinal))
++            return (ZohoErrorCodes.SyncInfrastructureError, StatusCodes.Status502BadGateway);
++        return (ZohoErrorCodes.SyncInfrastructureError, StatusCodes.Status502BadGateway);
++    }
++
++    private static string ResolveRequestId(HttpContext ctx) =>
++        ctx.Items["RequestId"] as string ?? ctx.TraceIdentifier;
++}
+diff --git a/src/Invekto.Shared/Contracts/Zoho/ZohoBlueprintTransitionDto.cs b/src/Invekto.Shared/Contracts/Zoho/ZohoBlueprintTransitionDto.cs
+new file mode 100644
+index 0000000..4b6df38
+--- /dev/null
++++ b/src/Invekto.Shared/Contracts/Zoho/ZohoBlueprintTransitionDto.cs
+@@ -0,0 +1,38 @@
++namespace Invekto.Shared.Contracts.Zoho;
++
++/// <summary>
++/// Adim 4: Single Blueprint transition projection for Stage Mapping editor dropdown.
++/// Module-level (state-bagimsiz). From GET /api/v1/zoho/blueprint/transitions.
++/// </summary>
++public sealed class ZohoBlueprintTransitionDto
++{
++    public required string TransitionId { get; init; }
++    public required string Name { get; init; }
++    public string? NextState { get; init; }
++}
++
++public sealed class ZohoBlueprintTransitionsResponse
++{
++    public required IReadOnlyList<ZohoBlueprintTransitionDto> Items { get; init; }
++    public required bool FromCache { get; init; }
++}
++
++/// <summary>
++/// Adim 4: Stage mapping test (dry-run) request. Validates transition_id against live Blueprint transitions whitelist.
++/// No Zoho PUT performed.
++/// </summary>
++public sealed class ZohoStageMappingTestRequest
++{
++    public required string ZohoEvent { get; init; }
++    public required string ZohoTransitionId { get; init; }
++}
++
++public sealed class ZohoStageMappingTestResponse
++{
++    public required bool Valid { get; init; }
++    public string? TransitionName { get; init; }
++    public string? NextState { get; init; }
++    public string? Reason { get; init; }
++    /// <summary>INV-INT-122 when Valid=false (transition not in blueprint whitelist); null when Valid=true.</summary>
++    public string? ErrorCode { get; init; }
++}

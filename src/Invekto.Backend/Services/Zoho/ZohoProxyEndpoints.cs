@@ -42,7 +42,35 @@ public static class ZohoProxyEndpoints
             (long id, HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
                 Forward(ctx, proxy, HttpMethod.Post, $"/api/v1/zoho/sync-log/{id}/retry", ct));
 
+        // Adim 4: Stage mapping editor
+        app.MapPut("/api/v1/zoho/stage-mappings", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
+            ForwardWithBody(ctx, proxy, HttpMethod.Put, "/api/v1/zoho/stage-mappings", ct));
+
+        app.MapGet("/api/v1/zoho/blueprint/transitions", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
+        {
+            var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
+            return Forward(ctx, proxy, HttpMethod.Get, "/api/v1/zoho/blueprint/transitions" + qs, ct);
+        });
+
+        app.MapPost("/api/v1/zoho/stage-mappings/test", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
+            ForwardWithBody(ctx, proxy, HttpMethod.Post, "/api/v1/zoho/stage-mappings/test", ct));
+
         return app;
+    }
+
+    private static async Task<IResult> ForwardWithBody(
+        HttpContext ctx,
+        IZohoProxyClient proxy,
+        HttpMethod method,
+        string pathAndQuery,
+        CancellationToken ct)
+    {
+        var bearer = ExtractBearer(ctx);
+        string body;
+        using (var reader = new System.IO.StreamReader(ctx.Request.Body, System.Text.Encoding.UTF8))
+            body = await reader.ReadToEndAsync(ct).ConfigureAwait(false);
+        var upstream = await proxy.ForwardAsync(method, pathAndQuery, bearer, body, ct).ConfigureAwait(false);
+        return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
     }
 
     private static async Task<IResult> Forward(

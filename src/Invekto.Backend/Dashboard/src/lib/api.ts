@@ -1854,6 +1854,26 @@ class OpsApiClient {
     return this.request<ZohoStageMappingListResponse>('/api/v1/zoho/stage-mappings');
   }
 
+  // Adim 4: Stage mapping editor
+  async putZohoStageMappings(mappings: ZohoStageMappingUpsertEntry[]): Promise<ZohoStageMappingListResponse> {
+    return this.request<ZohoStageMappingListResponse>('/api/v1/zoho/stage-mappings', {
+      method: 'PUT',
+      body: JSON.stringify({ mappings }),
+    });
+  }
+
+  async getZohoBlueprintTransitions(forceRefresh: boolean = false): Promise<ZohoBlueprintTransitionsResponse> {
+    const qs = forceRefresh ? '?refresh=true' : '';
+    return this.request<ZohoBlueprintTransitionsResponse>(`/api/v1/zoho/blueprint/transitions${qs}`);
+  }
+
+  async testZohoStageMapping(zohoEvent: string, zohoTransitionId: string): Promise<ZohoStageMappingTestResponse> {
+    return this.request<ZohoStageMappingTestResponse>('/api/v1/zoho/stage-mappings/test', {
+      method: 'POST',
+      body: JSON.stringify({ zohoEvent, zohoTransitionId }),
+    });
+  }
+
   async getZohoSyncLog(params: ZohoSyncLogQuery): Promise<ZohoSyncLogPageResponse> {
     const qs = new URLSearchParams();
     if (params.page) qs.set('page', params.page.toString());
@@ -1928,6 +1948,33 @@ export interface ZohoStageMappingDto {
 
 export interface ZohoStageMappingListResponse {
   mappings: ZohoStageMappingDto[];
+}
+
+// Adim 4: Stage mapping editor DTOs
+export interface ZohoStageMappingUpsertEntry {
+  zohoEvent: string;
+  zohoTransitionId: string;
+  zohoTransitionName?: string | null;
+}
+
+export interface ZohoBlueprintTransitionDto {
+  transitionId: string;
+  name: string;
+  nextState?: string | null;
+}
+
+export interface ZohoBlueprintTransitionsResponse {
+  items: ZohoBlueprintTransitionDto[];
+  fromCache: boolean;
+}
+
+export interface ZohoStageMappingTestResponse {
+  valid: boolean;
+  transitionName?: string | null;
+  nextState?: string | null;
+  reason?: string | null;
+  /** INV-INT-122 when valid=false (transition not in blueprint whitelist); null when valid=true. */
+  errorCode?: string | null;
 }
 
 export type ZohoSyncLogStatus = 'pending' | 'failed' | 'success';

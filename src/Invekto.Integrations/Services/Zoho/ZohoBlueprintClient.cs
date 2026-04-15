@@ -91,6 +91,63 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
         return transitions;
     }
 
+    /// <summary>
+    /// Adim 4: Module-level Blueprint transitions (editor dropdown). Calls
+    /// GET /crm/v6/settings/blueprint?module=Leads and returns all transitions in the blueprint.
+    /// Cache key is distinct from lead-scoped GetLeadTransitionsAsync (zoho:bp:all:{tid}).
+    /// </summary>
+    public async Task<(IReadOnlyList<ZohoBlueprintTransition> Transitions, bool FromCache)> GetAllBlueprintTransitionsAsync(
+        int tenantId, bool forceRefresh, CancellationToken ct = default)
+    {
+        var cacheKey = "zoho:bp:all:" + tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (forceRefresh)
+        {
+            _cache.Remove(cacheKey);
+        }
+        else if (_cache.TryGetValue<IReadOnlyList<ZohoBlueprintTransition>>(cacheKey, out var cached) && cached is not null)
+        {
+            return (cached, FromCache: true);
+        }
+
+        var apiBase = await GetApiBaseAsync(tenantId, ct).ConfigureAwait(false);
+        var url = apiBase + "/crm/v6/settings/blueprint?module=Leads";
+
+        using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
+
+        if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
+            throw new InvalidOperationException(
+                ZohoErrorCodes.BlueprintNotConfigured +
+                $": Zoho Leads Blueprint not configured for tenant {tenantId}. Activate a Blueprint on the Leads module in Zoho Setup -> Automation -> Blueprint.");
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildHttpFailureAsync(response, "GET settings/blueprint", tenantId, ct).ConfigureAwait(false);
+
+        BlueprintResponseWire? wire;
+        try
+        {
+            wire = await response.Content.ReadFromJsonAsync<BlueprintResponseWire>(cancellationToken: ct).ConfigureAwait(false);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException(
+                ZohoErrorCodes.SyncInfrastructureError +
+                $": Zoho settings/blueprint response was not valid JSON for tenant {tenantId}.",
+                ex);
+        }
+
+        var transitions = wire?.Blueprint?.Count > 0
+            ? ExtractTransitions(wire.Blueprint[0])
+            : Array.Empty<ZohoBlueprintTransition>();
+
+        if (transitions.Count == 0)
+            throw new InvalidOperationException(
+                ZohoErrorCodes.BlueprintNotConfigured +
+                $": Zoho Blueprint has no transitions for Leads module (tenant {tenantId}). Verify the Blueprint definition.");
+
+        _cache.Set(cacheKey, transitions, CacheTtl);
+        return (transitions, FromCache: false);
+    }
+
     public async Task ExecuteTransitionAsync(
         int tenantId, string zohoLeadId, string transitionId, CancellationToken ct = default)
     {
