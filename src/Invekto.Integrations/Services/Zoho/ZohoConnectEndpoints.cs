@@ -116,11 +116,14 @@ body{{font-family:Inter,system-ui,sans-serif;background:#f8fafc;color:#0f172a;di
 .box{{background:#fff;border:1px solid #e2e8f0;border-left:5px solid #134AA7;border-radius:12px;padding:32px 40px;box-shadow:0 4px 12px rgba(15,23,42,0.08);max-width:480px;text-align:center}}
 h1{{margin:0 0 8px;color:#134AA7;font-size:22px}}
 p{{margin:6px 0;color:#475569;font-size:14px;line-height:1.5}}
+a.btn{{display:inline-block;margin-top:18px;padding:10px 20px;background:#134AA7;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500}}
+a.btn:hover{{background:#0f3d8a}}
 .t{{color:#64748b;font-size:12px;margin-top:18px}}
 </style></head>
 <body><div class=""box"">
 <h1>✅ Zoho bağlantısı kuruldu</h1>
-<p>Hesabınız başarıyla bağlandı. Bu pencereyi kapatabilirsiniz.</p>
+<p>Hesabınız başarıyla bağlandı.</p>
+<a class=""btn"" href=""/app/integrations/zoho/connection"">Zoho Entegrasyon Sayfasına Dön</a>
 <p class=""t"">Tenant #{tenantId} · Invekto Integrations</p>
 </div></body></html>";
 

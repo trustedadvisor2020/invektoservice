@@ -7639,6 +7639,41 @@ app.MapPost("/api/ops/zoho/sync-log/retry", async (HttpContext ctx, Invekto.Back
     return Results.Content(upstream.Body, upstream.ContentType, statusCode: upstream.StatusCode);
 });
 
+// Adim 3 P3-C deploy follow-up: Public passthrough for Zoho OAuth callback.
+// Backend listens on :443 and Zoho redirect URI is https://ai.invekto.com/integrations/zoho/callback;
+// the actual handler lives in Invekto.Integrations (port 7106). This passthrough forwards the GET
+// (query string verbatim) and returns the upstream content (HTML success page or JSON error envelope).
+// Public by design (OAuth RFC 6749 §3.1.2 — browser redirect cannot carry JWT).
+app.MapGet("/integrations/zoho/callback", async (HttpContext ctx, IHttpClientFactory httpFactory) =>
+{
+    var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
+    var upstreamUrl = integrationsUrl.TrimEnd('/') + "/integrations/zoho/callback" + qs;
+    var client = httpFactory.CreateClient();
+    client.Timeout = TimeSpan.FromSeconds(30);
+
+    try
+    {
+        using var resp = await client.GetAsync(upstreamUrl, ctx.RequestAborted).ConfigureAwait(false);
+        var body = await resp.Content.ReadAsStringAsync(ctx.RequestAborted).ConfigureAwait(false);
+        var contentType = resp.Content.Headers.ContentType?.ToString() ?? "text/html; charset=utf-8";
+        return Results.Content(body, contentType, statusCode: (int)resp.StatusCode);
+    }
+    catch (HttpRequestException ex)
+    {
+        logger.SystemWarn($"[OPS-ZOHO] zoho callback transport failure: {ex.Message}");
+        return Results.Content(
+            "<html><body><h2>Zoho callback servisine ulaşılamadı</h2><p>Lütfen birkaç saniye sonra tekrar deneyin.</p></body></html>",
+            "text/html; charset=utf-8", statusCode: 502);
+    }
+    catch (TaskCanceledException ex)
+    {
+        logger.SystemWarn($"[OPS-ZOHO] zoho callback timeout: {ex.Message}");
+        return Results.Content(
+            "<html><body><h2>Zoho callback zaman aşımına uğradı</h2></body></html>",
+            "text/html; charset=utf-8", statusCode: 504);
+    }
+});
+
 // ============================================
 // SPA FALLBACK ROUTES
 // ============================================
