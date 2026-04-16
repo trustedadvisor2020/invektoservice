@@ -27,7 +27,7 @@
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 3b | ~~G7 Faz 2-5 (8 scheduler)~~ | DONE | Tüm 4 faz commit + deploy + Hangfire UI link |
-| 4 | INMA bridge Faz 2 (postMessage -> URL SSO auth chain koprisi) | DONE | slug 20260415-inma-bridge-faz2 master direct. Commit bekliyor. 2 Codex iter -> iter 1 PASS (all CQ1-12 + 10/10 CoVe PASS). 9 files 134/-30. Build PASS. Deploy = Dashboard SPA build (Backend deploy bundle icinde). Faz 2.5 backlog: inma:navigate postMessage handling. |
+| 4 | INMA bridge Faz 2 (postMessage -> URL SSO auth chain koprisi) | DONE+DEPLOYED | slug 20260415-inma-bridge-faz2 master (commit fc2d0df), prod deploy 2026-04-16 13:16. 2 Codex iter -> iter 1 PASS. Backend + Integrations (Zoho bundle birlikte) redeploy; health OK, endpoint'ler prod'da 401/503 (registered). Faz 2.5 backlog: inma:navigate postMessage. |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
 | 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
 | 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |
@@ -42,7 +42,7 @@
 | 12c-B2 | Zoho OAuth Adim 3 P3-B2 (Dashboard UI) | DONE | commit d3369cb merge d3a09fc master, 3 Codex iter Q FORCE PASS, 10 files +979/-11 (+ wwwroot build output), Dashboard build PASS + full solution PASS. |
 | 12c-C | Zoho OAuth Adim 3 P3-C (Super-admin cross-tenant dashboard) | DONE | branch work/20260417-zoho-step3-p3c-ops, 3 Codex iter -> iter 3 PASS (CQ1-12 + CoVe Q1-Q5 all PASS, 0 blocking). /api/ops/zoho/* + Integrations /api/internal/ops/zoho/* shared-secret. 17 files. Build PASS. Deploy bundle next. |
 | 12d | Zoho Adim 4 (Stage Mapping editor) | DONE | branch work/20260417-zoho-step4-stage-mapping-editor, 1 Codex iter -> PASS (all CQ1-12 + CoVe Q1-Q4 PASS). GetAllBlueprintTransitionsAsync + 2 Integrations endpoint + 3 Backend proxy + editable UI + connection-yok gate. 12 files. Build PASS. |
-| 12d | Zoho OAuth Adim 3 deploy + smoke | PENDING | migration 013+014+**015** prod'a + Backend + Integrations redeploy + InternalServices:SharedSecret config + tenant 5050 end-to-end smoke. |
+| 12d | Zoho OAuth Adim 3 deploy | DEPLOYED | 2026-04-16 13:16 prod. Migrations 013/014/015 prod'da zaten uygulanmisti. InternalServices.SharedSecret zaten SET (Backend+Integrations aynı değer). Backend + Integrations redeploy HEALTHY. 5 Zoho endpoint + /api/ops/zoho canli (401 auth gate). Tenant 5050 end-to-end smoke Q manuel browser'dan. |
 | 13 | Quicklogin tenant override mini paket | DONE | b68f77f, Codex iter 1 PASS, Backend deploy + health OK (2026-04-15). |
 
 ## Recently Completed
