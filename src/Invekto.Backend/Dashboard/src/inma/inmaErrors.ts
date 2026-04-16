@@ -6,6 +6,8 @@ export const INMA_ERRORS = {
   INVALID_ACCESS_TOKEN: 'INV-INT-104',
   INVALID_API_BASE_URL: 'INV-INT-105',
   HTTP_REQUEST_FAILED: 'INV-INT-106',
+  EXCHANGE_FAILED: 'INV-INT-107',
+  WELCOME_FAILED: 'INV-INT-108',
 } as const;
 
 export type InmaErrorCode = typeof INMA_ERRORS[keyof typeof INMA_ERRORS];
@@ -18,6 +20,8 @@ const INMA_ERROR_DESCRIPTIONS: Record<InmaErrorCode, string> = {
   'INV-INT-104': 'parent sent invalid access token',
   'INV-INT-105': 'parent sent invalid apiBaseUrl (regex mismatch)',
   'INV-INT-106': 'HTTP request failed after refresh retry',
+  'INV-INT-107': 'INMA -> INSE token exchange failed',
+  'INV-INT-108': 'welcome endpoint fetch failed (non-critical)',
 };
 
 export function inmaErrorMessage(code: InmaErrorCode, detail?: string): string {

@@ -1,0 +1,185 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260415-inma-bridge-faz2",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-15T16:40:00Z",
+  "updated_at": "2026-04-16T13:10:00Z",
+  "plan": {
+    "summary": "INMA Faz 2 — Faz 1 postMessage bridge'ten gelen JWT'yi MEVCUT URL SSO auth chain'ine kopruler. Yeni auth yazilmaz; 8c89df6 (2026-02-23) kurulu zincir (api.storeTokens + api.exchangeInmaToken + api.getWelcome) postMessage tetikleyicisi ile yeniden kullanilir. useAuth'a minimal event listener (2 CustomEvent, 5-8 satir) eklenir; session state sync bunun uzerinden isler. InmaConnectionStatus sadece error durumunda Layout'a mount. Origin whitelist prod=app.invekto.com. Diff ~60-80 satir.",
+    "q_intent": "Plan ilk versiyonu (2026-04-15) mevcut kodu kacirdi: 8c89df6 commit'i zaten api.getSession() CompanyCode -> tenantId, api.exchangeInmaToken, api.getWelcome, URL SSO flow + auto-exchange on mount implementasyonlarini icermekte. jwt-decode kurulu, localStorage persistence kurulu. Faz 2 gercekte yeni auth yazmak degil; postMessage geldiginde ayni zinciri tetiklemek.",
+    "interview_notes": "Q kararlari (2026-04-16 drift sonrasi): A) Token storage localStorage (mevcut pattern). B) InmaConnectionStatus Layout'a mount ama SADECE state='error' iken gorunur. C) Welcome non-critical (log & continue; token rebind check Backend JwtValidator'da zaten var, FE double-check YOK). useAuth'a dokunma kapsami: Opsiyon B secildi (CustomEvent listener, 2 event: inma:session-updated ve inma:session-cleared, signature breaking YOK).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "inma:auth postMessage geldiginde inmaBootstrap.run() cagrisi: (a) api.storeTokens(accessToken, '') yazar (localStorage), (b) api.exchangeInmaToken() ile INMA JWT -> INSE JWT swap eder, (c) api.getWelcome() non-critical cagrilir (log & continue), (d) window.dispatchEvent(new CustomEvent('inma:session-updated')) firar, (e) useAuth listener yeniden isAuthenticated=true + session=api.getSession() ile set eder, (f) kullanici LoginPage'i gormeden routed route'a duser.",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "inma:logout postMessage geldiginde: (a) api.removeTokens() localStorage'dan siler, (b) inmaSession.clear() Faz 1 store'u temizler, (c) window.dispatchEvent(new CustomEvent('inma:session-cleared')) firar, (d) useAuth listener isAuthenticated=false + session=null set eder, (e) ProtectedRoute LoginPage'e yonlendirir.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "inmaBootstrap idempotent: inma:auth ikinci kez ayni accessToken ile gelirse (iframe remount senaryosu) duplicate api.exchangeInmaToken + api.getWelcome cagrilmaz. Kontrol: localStorage.getAccessToken() === gelenToken ise skip, session-updated event yine firilir (useAuth stale degilse no-op).",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "inmaBootstrap.run hata durumlari: api.exchangeInmaToken 401/500 -> inmaBootstrap.state='error' + INV-INT-107 set, InmaConnectionStatus error olarak Layout'ta gorunur; session yazilmaz (isAuthenticated false kalir). api.getWelcome hatasi ise state='authenticated' KALIR (welcome non-critical), sadece console.warn.",
+        "verified": false
+      },
+      {
+        "id": "AC5",
+        "criterion": "Origin whitelist prod build (import.meta.env.PROD) = ['https://app.invekto.com']; dev build = ['https://developer.wapcrm.net', 'http://localhost:4200']. Yanlis ortamda yanlis origin sizmaz. Mevcut sabit whitelist GR-2 kapsaminda environment-aware hale getirilir.",
+        "verified": false
+      },
+      {
+        "id": "AC6",
+        "criterion": "InmaConnectionStatus Layout.tsx'te mount edilir AMA inmaBootstrap.state !== 'error' iken null render eder (pozitif akis goze carpmaz, sadece arıza gorulur). Icerik: 'Baglanti hatasi' label + diagnostic title (INV-INT-NNN kod + apiBaseUrl) tooltip'te.",
+        "verified": false
+      },
+      {
+        "id": "AC7",
+        "criterion": "useAuth.ts'e sadece bir useEffect (window.addEventListener('inma:session-updated') + 'inma:session-cleared' + cleanup) eklenir. useAuth return signature SIFIR degisiklik; existing loginWithInma/loginWithOps/loginWithMock/logout/quickAdmin metodlari DOKUNULMAZ. Codex CQ8 additive doğrulamasi."
+      },
+      {
+        "id": "AC8",
+        "criterion": "Mevcut URL SSO flow (?accessToken=JWT) davranisi DEGISMEZ — urlTokenHandled useEffect akisi + auto-exchange on mount bozulmaz. Faz 2 ekstra bir entry point (postMessage) ekler, mevcut yolu etkilemez.",
+        "verified": false
+      }
+    ]
+  },
+  "gr_list": [
+    { "id": "GR-1", "description": "inma/inmaBridge.ts: INMA_ALLOWED_ORIGINS environment-aware. import.meta.env.PROD ? ['https://app.invekto.com'] : ['https://developer.wapcrm.net','http://localhost:4200']. Baska degisiklik yok." },
+    { "id": "GR-2", "description": "inma/inmaErrors.ts: INV-INT-107 (exchange_failed) ve INV-INT-108 (welcome_failed) kodlari + descriptions ekle. HTTP_REQUEST_FAILED (106) hala kalir; 107 exchange-specific, 108 welcome-specific." },
+    { "id": "GR-3", "description": "arch/errors.md: INV-INT-107 ve INV-INT-108 kayitli yap (description, user_message TR). INMA Bridge bolumu altina." },
+    { "id": "GR-4", "description": "inma/inmaBootstrap.ts (YENI): module-level singleton. run() method: idempotency check (mevcut token ayni mi), api.storeTokens -> api.exchangeInmaToken -> api.getWelcome -> dispatchEvent('inma:session-updated'). clear() method: api.removeTokens + inmaSession.clear + dispatchEvent('inma:session-cleared'). state: 'idle'|'bootstrapping'|'authenticated'|'error' + lastCode:InmaErrorCode|null. Zustand store." },
+    { "id": "GR-5", "description": "inma/index.ts: inmaBootstrap ve useInmaBootstrap export et. Faz 1 exports korunur." },
+    { "id": "GR-6", "description": "App.tsx: inmaBridge.init({ onReady: () => inmaBootstrap.run(), onLogout: () => inmaBootstrap.clear() }) callback'leri baglanir. Mevcut useEffect cleanup return korunur." },
+    { "id": "GR-7", "description": "hooks/useAuth.ts: YENI useEffect (sadece listener, return ornek signature'larda SIFIR ekleme). Event handler: 'inma:session-updated' -> setIsAuthenticated(api.isAuthenticated()) + setSession(api.getSession()); 'inma:session-cleared' -> setIsAuthenticated(false) + setSession(null) + setWelcomeData(null). Cleanup return ile listener remove." },
+    { "id": "GR-8", "description": "components/Layout.tsx: <InmaConnectionStatus /> mount et. Component kendi icinde state='error' degilse null render eder (Faz 2 AC6 kapsaminda InmaConnectionStatus guncellemesi de bu GR'a dahil)." },
+    { "id": "GR-9", "description": "inma/InmaConnectionStatus.tsx: inmaBootstrap.state'e subscribe ol. state==='error' degilse null return. error iken mevcut label + diagnostic title devam. Pozitif akisi gizle." }
+  ],
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/InmaConnectionStatus.tsx",
+    "src/Invekto.Backend/Dashboard/src/inma/index.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "arch/errors.md"
+  ],
+  "files_changed": [
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBridge.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaErrors.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/inmaBootstrap.ts",
+    "src/Invekto.Backend/Dashboard/src/inma/InmaConnectionStatus.tsx",
+    "src/Invekto.Backend/Dashboard/src/inma/index.ts",
+    "src/Invekto.Backend/Dashboard/src/App.tsx",
+    "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts",
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "arch/errors.md"
+  ],
+  "git_diff": { "stats": { "insertions": 134, "deletions": 30, "files_count": 9 } },
+  "build": { "status": "PASS", "errors": 0, "warnings": 17, "warnings_note": "all pre-existing, unrelated to Faz 2 changes" },
+  "verification_questions": [
+    { "id": "Q1", "question": "inmaBridge.ts INMA_ALLOWED_ORIGINS import.meta.env.PROD dal ayirimi yapiyor mu? Prod'da SADECE app.invekto.com, dev'de developer.wapcrm.net + localhost:4200 ile sinirli mi?", "category": "Auth" },
+    { "id": "Q2", "question": "inmaBootstrap.run() idempotent mi — ayni accessToken ile ikinci cagri api.exchangeInmaToken ve api.getWelcome'i SKIP ediyor mu (duplicate network call engeli)?", "category": "Lifecycle" },
+    { "id": "Q3", "question": "inmaBootstrap.run() basarili akista dispatchEvent('inma:session-updated') firar; hata akisinda (exchange 401/500) FIRMAZ (useAuth stale kalmasin)? ", "category": "Lifecycle" },
+    { "id": "Q4", "question": "useAuth.ts'e eklenen useEffect sadece listener/cleanup icerir — return signature (loginWithInma, logout, isAuthenticated, session, vb.) SIFIR degisiklik mi? Mevcut URL SSO akisi (urlTokenHandled + auto-exchange on mount) etkilenmedi mi?", "category": "Contracts" },
+    { "id": "Q5", "question": "InmaConnectionStatus sadece state==='error' iken render ediliyor mu (pozitif akisi gizler)? Ops/mock login rotalarinda da gozukmedi mi?", "category": "UX" },
+    { "id": "Q6", "question": "inma:logout handler'i: api.removeTokens + inmaSession.clear + dispatchEvent('inma:session-cleared') ucunu de cagiriyor mu? useAuth listener isAuthenticated=false + session=null + welcomeData=null yapiyor mu?", "category": "Auth" },
+    { "id": "Q7", "question": "arch/errors.md INV-INT-107 (exchange_failed) ve INV-INT-108 (welcome_failed) kayitli mi? inmaErrors.ts INMA_ERRORS sabit map'i guncellendi mi?", "category": "ErrorCodes" },
+    { "id": "Q8", "question": "api.getWelcome hatasi inmaBootstrap.state='authenticated' durumunu BOZMAYACAK mi (non-critical, sadece console.warn)? Sadece api.exchangeInmaToken hatasi state='error' tetikliyor mu?", "category": "ErrorCodes" },
+    { "id": "Q9", "question": "CustomEvent contract'i inma/index.ts veya inmaBootstrap.ts icinde dokumante edildi mi (event name sabiti INMA_SESSION_UPDATED_EVENT / INMA_SESSION_CLEARED_EVENT olarak export)?", "category": "Contracts" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "src/Invekto.Backend/Dashboard/src/inma/inmaSession.ts (Faz 1 contract, dokunma)",
+      "src/Invekto.Backend/Dashboard/src/inma/inmaApiClient.ts (Faz 1 consume-only)",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (ZATEN mevcut INMA zinciri ile calisir — ekleme yapma)",
+      "src/Invekto.Backend/Dashboard/src/hooks/useAuth.ts (SADECE GR-7 useEffect listener ekleme — baska dokunma)",
+      "src/Invekto.Backend/Dashboard/src/stores/",
+      "src/Invekto.Backend/Dashboard/src/pages/",
+      "src/Invekto.Backend/ (backend .cs)",
+      "Invekto.Shared"
+    ],
+    "non_goals": [
+      "jwt-decode yeniden install (ZATEN kurulu)",
+      "api.getSession / api.getDecodedToken / api.exchangeInmaToken'i yeniden implementasyon (ZATEN mevcut)",
+      "URL SSO flow'unu degistirmek (urlTokenHandled + auto-exchange on mount DOKUNULMAZ)",
+      "Welcome response rebind check (Backend JwtValidator'in isi)",
+      "inma:navigate postMessage handling (Faz 2.5 backlog)",
+      "Tenant resolve endpoint cagrisi (JWT CompanyCode zaten parse ediliyor)",
+      "Yeni auth API endpoint'i backend'de yazmak",
+      "inmaAuthAdapter yeni bir dosya (gereksiz — api.* zaten public yuzey)"
+    ],
+    "intentional_exclusions": [
+      "useAuth'a yeni public method eklemek (applyInmaSession gibi — event listener ile yeterli, CQ8 kapsamini genisletme)",
+      "window.location.reload() ile auth state refresh (UX kirar, iframe loop riski)",
+      "Event handler'da try/catch ile hata yutma (exchange/welcome kendi error path'i var)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "inmaBootstrap.run(): api.exchangeInmaToken() basarisizsa catch -> state='error' + INV-INT-107. api.getWelcome() basarisiz olursa state DEGISMEZ (catch log & continue, INV-INT-108 sadece internal diagnostic)."
+    ],
+    "user_facing_errors": [
+      "InmaConnectionStatus overlay 'Baglanti hatasi' label + INV-INT kod tooltip (state='error' iken). Diger durumlarda UI sifir sizinti."
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Exchange hatasi state='error' + overlay. Welcome hatasi non-critical intentional (mevcut useAuth.loginWithInma ile ayni pattern — 'welcome fetch failed' warn log). Session henuz ayakta, welcome retry gerekmez."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "INMA iframe kullanici handshake sonrasi hala LoginPage goruyordu (Faz 1 sadece bridge bellegindeydi, useAuth haberdar degil).",
+      "suggestion": "postMessage geldiginde mevcut URL SSO zincirinin aynisi CustomEvent araciligi ile tetiklenir.",
+      "aha_moment": "Kullanici tek click ile INMA'dan INSE'ye 'icindeki bir sayfa gibi' geciyor; login ekrani asla gorunmez."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "iframe remount'ta (route change) duplicate exchange + welcome call'lari gereksiz Backend trafigi olustururdu.",
+      "suggestion": "inmaBootstrap.run() idempotency — mevcut token ile yeni gelen token ayni ise SKIP.",
+      "aha_moment": "Route change hafif, duplicate API cagrisi sifir."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Yanlis ortamda yanlis parent origin (dev whitelist'i prod'a siziyordu).",
+      "suggestion": "import.meta.env.PROD ile environment-aware whitelist.",
+      "aha_moment": "Prod build localhost/developer.wapcrm.net origin'lerini kabul etmez — saldiri yuzeyi daralir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Pozitif akis overlay'i UI'i kirletiyordu, oysa kullanici sadece arizayi bilmeli.",
+      "suggestion": "InmaConnectionStatus sadece state='error' iken render eder.",
+      "aha_moment": "Basarili oturumda sag alt tamamen temiz; ariza ciktiginda destek diagnostic title'dan kodu okur."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Eski Faz 2 plani gereksiz yeni katmanlar (inmaAuthAdapter, applyInmaSession method, jwt-decode install, yeni welcome endpoint URL) oneriyordu — zaman kaybi ve scope creep.",
+      "suggestion": "Mevcut api.* zincirini tekrar kullan; yeni yazim 60-80 satir ile sinirli tut.",
+      "aha_moment": "Faz 2 uygulamasi 1-2 saat; Codex review iter=0/1 hedefine uygun kucuk diff."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1,
+    "iter_0_blocking": [
+      "CQ1/CQ12: INV-INT-108 registered but not applied at runtime (welcome failure)",
+      "CQ9: storeTokens -> exchange fail -> stale raw INMA JWT in localStorage (cleanup missing)"
+    ],
+    "iter_1_fixes": [
+      "inmaBootstrap.run exchange catch -> api.removeTokens() (stale cleanup)",
+      "inmaBootstrap.run welcome catch -> setDiagnosticCode(INV-INT-108), state stays 'authenticated'",
+      "Added InmaBootstrapStore.setDiagnosticCode action (lastCode-only mutation)"
+    ],
+    "iter_1_result": "ALL 12 CQ gates PASS + all 10 CoVe questions PASS, 0 blocking issues"
+  }
+}

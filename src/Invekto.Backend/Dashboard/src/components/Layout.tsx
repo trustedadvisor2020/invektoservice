@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
+import { InmaConnectionStatus } from '../inma';
 import {
   FileText,
   Power,
@@ -308,6 +309,8 @@ export function Layout({ children }: LayoutProps) {
           )}
         </main>
       </div>
+
+      <InmaConnectionStatus />
     </>
   );
 }

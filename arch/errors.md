@@ -554,6 +554,12 @@ errors:
   - code: INV-INT-106
     description: HTTP request failed after refresh retry
     user_message: İstek başarısız oldu.
+  - code: INV-INT-107
+    description: INMA -> INSE token exchange failed (postMessage bootstrap, Faz 2)
+    user_message: Oturum açılamadı; lütfen tekrar deneyin.
+  - code: INV-INT-108
+    description: Welcome endpoint fetch failed after INMA bootstrap (non-critical; session stays active)
+    user_message: Karşılama bilgileri yüklenemedi.
 
   # Zoho OAuth (INV-INT-110+) — Adim 2 backend integration
   - code: INV-INT-110

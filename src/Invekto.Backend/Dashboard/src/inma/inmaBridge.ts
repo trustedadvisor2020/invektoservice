@@ -1,10 +1,9 @@
 import { useInmaSession } from './inmaSession';
 import { INMA_ERRORS, inmaErrorMessage, type InmaErrorCode } from './inmaErrors';
 
-const INMA_ALLOWED_ORIGINS: ReadonlyArray<string> = [
-  'https://developer.wapcrm.net',
-  'http://localhost:4200',
-];
+const INMA_ALLOWED_ORIGINS: ReadonlyArray<string> = import.meta.env.PROD
+  ? ['https://app.invekto.com']
+  : ['https://developer.wapcrm.net', 'http://localhost:4200'];
 
 const INMA_API_BASE_URL_REGEX = /^https:\/\/[a-z0-9-]+\.wapcrm\.net\/?$/;
 const INMA_REFRESH_TIMEOUT_MS = 15_000;

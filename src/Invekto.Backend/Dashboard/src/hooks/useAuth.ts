@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type InseSession } from '../lib/api';
+import { INMA_SESSION_UPDATED_EVENT, INMA_SESSION_CLEARED_EVENT } from '../inma';
 
 export function useAuth() {
   const navigate = useNavigate();
@@ -59,6 +60,26 @@ export function useAuth() {
       if (updated) setSession(updated);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Faz 2: postMessage bootstrap session sync. inmaBootstrap.run/clear
+  // CustomEvent firar; bu listener existing state hook'larini yeniden okur.
+  useEffect(() => {
+    const onUpdated = () => {
+      setIsAuthenticated(api.isAuthenticated());
+      setSession(api.getSession());
+    };
+    const onCleared = () => {
+      setIsAuthenticated(false);
+      setSession(null);
+      setWelcomeData(null);
+    };
+    window.addEventListener(INMA_SESSION_UPDATED_EVENT, onUpdated);
+    window.addEventListener(INMA_SESSION_CLEARED_EVENT, onCleared);
+    return () => {
+      window.removeEventListener(INMA_SESSION_UPDATED_EVENT, onUpdated);
+      window.removeEventListener(INMA_SESSION_CLEARED_EVENT, onCleared);
+    };
   }, []);
 
   // Ops Basic Auth login (degismiyor)

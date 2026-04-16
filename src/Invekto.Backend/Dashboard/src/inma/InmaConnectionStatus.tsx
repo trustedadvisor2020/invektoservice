@@ -1,34 +1,22 @@
 import { useEffect, useState } from 'react';
-import { useInmaSession, type InmaStatus } from './inmaSession';
+import { useInmaSession } from './inmaSession';
+import { useInmaBootstrap } from './inmaBootstrap';
 
-// Kullanici-yonelik TR etiketler; debug component olsa da uretimde gozukebilir.
-// Raw error code (INV-INT-*) UI'da gosterilmez — sadece title tooltip'te diagnostic olarak.
-const LABELS: Record<InmaStatus, string> = {
-  idle: 'Ana pencere baglantisi kuruluyor...',
-  ready: 'Ana pencere baglantisi hazir',
-  error: 'Baglanti hatasi',
-  ended: 'Oturum sona erdi',
-};
-
-const COLORS: Record<InmaStatus, string> = {
-  idle: '#999',
-  ready: '#16a34a',
-  error: '#dc2626',
-  ended: '#6b7280',
-};
-
+// Faz 2: Sadece bootstrap state='error' iken render. Pozitif akisi gizler.
+// Error label TR; diagnostic kod (INV-INT-*) + apiBaseUrl title tooltip'te destek icin.
 export function InmaConnectionStatus() {
-  const status = useInmaSession((s) => s.status);
-  const error = useInmaSession((s) => s.error);
+  const bootstrapState = useInmaBootstrap((s) => s.state);
+  const bootstrapCode = useInmaBootstrap((s) => s.lastCode);
+  const sessionError = useInmaSession((s) => s.error);
   const apiBaseUrl = useInmaSession((s) => s.apiBaseUrl);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
+  if (bootstrapState !== 'error') return null;
 
-  const label = LABELS[status];
-  // Diagnostic kod/apiBaseUrl sadece tooltip (title)'da dev/destek icin gosterilir.
-  const diagnostic = [apiBaseUrl ?? '', status === 'error' && error ? `kod: ${error}` : ''].filter(Boolean).join(' | ');
+  const code = bootstrapCode ?? sessionError ?? '';
+  const diagnostic = [apiBaseUrl ?? '', code ? `kod: ${code}` : ''].filter(Boolean).join(' | ');
 
   return (
     <div
@@ -43,12 +31,12 @@ export function InmaConnectionStatus() {
         fontFamily: 'monospace',
         borderRadius: 4,
         background: 'rgba(0,0,0,0.75)',
-        color: COLORS[status],
+        color: '#dc2626',
         pointerEvents: 'none',
       }}
       title={diagnostic}
     >
-      {label}
+      Baglanti hatasi
     </div>
   );
 }
