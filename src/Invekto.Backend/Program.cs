@@ -421,6 +421,18 @@ if (hangfireEnabled)
 builder.Services.Configure<QnbVPosSettings>(builder.Configuration.GetSection("QnbVPos"));
 builder.Services.AddSingleton<QnbVPosService>();
 
+// Selective CORS for INMA Angular consumers of /api/v1/inma/nav (Seçenek C, 2026-04-16).
+// Origins match the INMA bridge whitelist (parent INMA shell hosts).
+// AllowCredentials NOT enabled: Angular HttpClient sends Bearer header explicitly,
+// browser does NOT auto-propagate credentials cross-origin without it.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("InmaNavCors", policy => policy
+        .WithOrigins("https://app.wapcrm.net", "https://developer.wapcrm.net", "http://localhost:4200")
+        .WithMethods("GET")
+        .AllowAnyHeader());
+});
+
 var app = builder.Build();
 if (hangfireEnabled)
 {
@@ -466,10 +478,17 @@ foreach (var ip in webhookIps)
             webhookIpSet.Add($"::ffff:{ip}");
     }
 }
+// CORS for selective endpoints (INMA Angular consumers). Pipeline order: BEFORE JwtAuth
+// so that preflight OPTIONS requests reach the CORS middleware before any auth gate.
+app.UseCors();
+
 if (jwtValidator != null)
 {
     var jwtLogger = app.Services.GetRequiredService<JsonLinesLogger>();
-    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/zoho/", "/api/v1/inma/nav");
+    // /api/v1/inma/nav intentionally NOT whitelisted: endpoint accepts INMA JWT directly
+    // via ExtractTenantFromBearer (welcome introspection) so INMA Angular shell can call
+    // it with its own bearer. See plan 20260416-inma-nav-cors.
+    app.UseJwtAuth(jwtValidator, jwtLogger, webhookIpSet, "/api/v1/webhook/", "/api/v1/automation/", "/api/v1/outbound/", "/api/v1/flow-builder/flows/", "/api/v1/flow-builder/monitor/", "/api/v1/flow-builder/wizard/", "/api/v1/attribution/", "/api/v1/leads", "/api/v1/onboarding/", "/api/v1/zoho/");
 }
 
 // Enable static file serving for Dashboard UI (wwwroot/)
@@ -6879,8 +6898,17 @@ app.MapPost("/api/v1/inma/auth/refresh", async (HttpContext ctx, IHttpClientFact
 // Tenant-only: ops items are intentionally excluded at the source. Feature
 // licensing filtering is deferred — this phase returns the full tenant set.
 // Icon strings are lucide-react kebab-case identifiers; consumer maps them.
-app.MapGet("/api/v1/inma/nav", (HttpContext ctx) =>
+app.MapGet("/api/v1/inma/nav", async (HttpContext ctx) =>
 {
+    // Auth gate: accepts both INSE JWT (Dashboard React) and INMA JWT (Angular shell via
+    // welcome introspection). License/feature filtering deferred — full tenant set returned.
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
+    if (tenant == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
+            statusCode: 401);
+
     var navResponse = new InmaNavResponse
     {
         Sections =
@@ -6935,7 +6963,7 @@ app.MapGet("/api/v1/inma/nav", (HttpContext ctx) =>
     };
 
     return Results.Ok(navResponse);
-});
+}).RequireCors("InmaNavCors");
 
 app.MapGet("/api/v1/inma/welcome", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger) =>
 {

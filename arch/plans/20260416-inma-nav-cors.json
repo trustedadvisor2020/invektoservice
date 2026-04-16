@@ -1,0 +1,178 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260416-inma-nav-cors",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-16T23:55:00+03:00",
+  "updated_at": "2026-04-17T00:15:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-04-16T23:55:00+03:00", "note": "Plan after INMA team accepted Option C"},
+    {"status": "IN_PROGRESS", "at": "2026-04-17T00:00:00+03:00", "note": "Branch + Program.cs 4 changes"},
+    {"status": "REVIEW", "at": "2026-04-17T00:10:00+03:00", "note": "Build PASS + Codex submitted"},
+    {"status": "DONE", "at": "2026-04-17T00:15:00+03:00", "note": "Codex iter 0 PASS — 12/12 CQ + 3/3 CoVe, 0 blocking"}
+  ],
+  "plan": {
+    "summary": "INMA Angular tarafı /api/v1/inma/nav endpoint'ini Seçenek C ile tüketmek istiyor (doğrudan HTTP + INMA JWT). 3 değişiklik: (1) CORS policy 'InmaNavCors' (3 origin: app.wapcrm.net, developer.wapcrm.net, localhost:4200) — selective endpoint scope; (2) JwtAuth middleware whitelist'inden /api/v1/inma/nav çıkarıldı (INSE JWT zorunluluğu kalktı); (3) Endpoint body'sinde ExtractTenantFromBearer auth gate (INMA JWT welcome introspection ile validate edilir, mevcut refactor avantajı). Response shape değişmiyor — INMA Angular zaten Material Icons mapping + fallback menü hazırlamış, Lucide kebab-case korunur.",
+    "q_intent": "INMA takımı C seçeneğini implement etti (Angular GET https://ai.invekto.com/api/v1/inma/nav + Bearer <inma_jwt>). INSE tarafında 3 madde bekliyorlar: CORS whitelist + JwtAuth çıkarma + endpoint INMA JWT kabul.",
+    "interview_notes": "Q seçim 'plan yap önce, başla' — implement edilecek. Risk LOW: mevcut endpoint, response shape sabit, sadece auth katmanı + CORS değişiyor. License/yetki filtresi backlog (INMA'nın fallback menüsü mevcut). Selective CORS (RequireCors per endpoint) tercih: backend genelinde CORS policy yok, endpoint-specific exposure güvenli. Origins: app.wapcrm.net (prod), developer.wapcrm.net (dev), localhost:4200 (INMA dev) — INMA bridge whitelist ile aynı liste, tutarlılık.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "CORS policy 'InmaNavCors' eklendi (builder.Services.AddCors): WithOrigins('https://app.wapcrm.net', 'https://developer.wapcrm.net', 'http://localhost:4200') + AllowAnyHeader + WithMethods('GET'). app.UseCors() middleware pipeline'a uygun yere eklendi (UseRouting sonrası, UseAuthorization öncesi). Endpoint sadece GET destekliyor — diğer method'lar gerek yok.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "JwtAuth middleware whitelist'inden /api/v1/inma/nav çıkarıldı (line 472). Middleware artık bu prefix'i otomatik validate etmiyor — endpoint kendi auth gate'ini çalıştırır.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Endpoint body'sinde await ExtractTenantFromBearer(ctx) auth gate eklendi: extractFailure != null → return failure (503 INMA introspection unavailable); tenant == null → return 401. Tenant context çıkarıldıktan sonra mevcut statik nav response döner. License/yetki filtresi pre-existing slot (TODO yok, mevcut yorum bilgi olarak korunur).",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "MapGet endpoint'e .RequireCors('InmaNavCors') zincirlendi — sadece bu endpoint için CORS aktif. Lambda imzası async olur (await ExtractTenantFromBearer için).",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Program.cs",
+    "arch/plans/20260416-inma-nav-cors.json"
+  ],
+  "files_changed": [
+    {"path": "src/Invekto.Backend/Program.cs", "change": "(1) AddCors policy 'InmaNavCors' DI block (3 origin + GET only + AllowAnyHeader, no AllowCredentials). (2) app.UseCors() pipeline'da JwtAuth öncesi (preflight OPTIONS auth gate'inden önce). (3) JwtAuth whitelist'ten /api/v1/inma/nav çıkarıldı + comment. (4) Endpoint body async + ExtractTenantFromBearer auth gate (extractFailure propagate, tenant null=401). (5) MapGet sonuna .RequireCors('InmaNavCors').", "is_new": false},
+    {"path": "arch/plans/20260416-inma-nav-cors.json", "change": "Plan JSON (this file).", "is_new": true}
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "f9ffd6ed0e3bcd1913166dce71a4291fc9268c9789f20f2fdadc6395b583d58b",
+    "full_path": "arch/plans/diffs/20260416-inma-nav-cors.diff",
+    "stats": { "insertions": 183, "deletions": 3, "files_count": 2 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\src\\Invekto.Backend\\Invekto.Backend.csproj --no-restore -v q\"",
+    "timestamp": "2026-04-17T00:10:00+03:00",
+    "duration_ms": 14500,
+    "output_tail": "15 Warning(s) (all pre-existing) / 0 Error(s) / Time Elapsed 00:00:14.50",
+    "error_summary": null,
+    "services": ["Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "CORS policy origin listesi production'da güvenli mi: app.wapcrm.net (prod parent INMA), developer.wapcrm.net (dev parent INMA), localhost:4200 (INMA dev). Wildcard YOK, AllowAnyOrigin YOK. INMA bridge origin whitelist ile aynı liste — tutarlılık. Credential gerekmez (Bearer header browser tarafından otomatik gönderilmez cross-origin'de; Angular HttpClient explicit gönderir → AllowCredentials gerekmez).",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Endpoint auth gate doğru mu: extractFailure != null (INMA introspection 503 transient outage) → propagate failure verbatim; tenant == null → 401 Bearer token required; tenant != null → mevcut nav response. INSE JWT de hala kabul ediliyor (ExtractTenantFromBearer önce JwtValidator dener, başarısız ise InmaTokenIntrospector). Yani Dashboard React de hâlâ aynı endpoint'i çağırabilir.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "JwtAuth middleware whitelist'ten çıkarma güvenli mi: middleware bu prefix'i artık validate etmediği için endpoint'in KENDİ auth gate'ine güveniyoruz. AC3'teki ExtractTenantFromBearer guard yoksa endpoint anonymous olur (güvenlik açığı). Build PASS = compile-time check; runtime'da auth gate olmazsa 200 + nav döner = leak. AC3 zorunlu.",
+      "category": "Process/Policy"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "INSE-STYLE-GUIDE.md, arch/platform/inma-inse-unification/inma-team-kickoff-brief.md, DentAdavista/plan/flows.html|pdf (Q'nun diğer session pre-existing WIP)",
+      "Diğer endpoint'ler (sadece /api/v1/inma/nav scope'unda)",
+      "License/yetki filtresi implementation (backlog — endpoint statik nav döner; INMA Angular tarafı mapping/fallback hazır)"
+    ],
+    "non_goals": [
+      "Backend genelinde CORS policy (selective endpoint exposure tercih)",
+      "Bridge protokolüne yeni event ekleme (Seçenek A reddedildi)",
+      "INMA team notice doc güncellemesi (Seçenek C kabul deploy sonrası)",
+      "Mock token ile manual test (Q live INMA Angular ile smoke yapacak)"
+    ],
+    "intentional_exclusions": [
+      "RequireCors yerine [EnableCors] attribute kullanmak — minimal API endpoint chaining ile RequireCors daha temiz.",
+      "AllowCredentials YOK — Angular HttpClient Bearer header explicit gönderiyor, browser otomatik credential propagate etmiyor (CORS spec credentials=true gerektirmez)."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [],
+    "user_facing_errors": [
+      "401 (Bearer token missing/invalid) — INV-AUTH-002 üzerinden ExtractTenantFromBearer fallback",
+      "503 (INMA introspection unavailable) — INV-AUTH-008 ExtractTenantFromBearer extractFailure path",
+      "CORS preflight reddedildiğinde browser standart CORS error mesajı"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Endpoint sync nav response döner; auth gate ExtractTenantFromBearer üzerinden tüm error path'leri loglu (önceki paket InmaTokenIntrospector ILogger structured). CORS misconfiguration browser tarafında network tab'de açıkça görünür."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "INMA Angular tarafı menü için React bootstrap'ı beklemek zorundaydı (postMessage bridge bağımlılığı). Bootstrap fail durumunda menü gelmiyordu, kullanıcı boş sayfa görüyordu.",
+      "suggestion": "Endpoint INMA JWT direkt kabul ediyor → Angular React bootstrap'ından bağımsız menü çeker. Fallback: hardcoded menü yerel.",
+      "aha_moment": "INMA SSO başarısız olsa bile Angular sayfası içindeki menü çalışır — kullanıcı en azından nav'ı görür, error context daha net."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Hardcoded menü her INSE feature ekleme/değiştirme için INMA Angular kod değişikliği gerektiriyordu — release koordinasyonu yavaş.",
+      "suggestion": "Dinamik nav: INSE backend'den fresh menü her sayfa mount'ta. Yeni feature eklenince INMA tarafına deploy gerekmez.",
+      "aha_moment": "INSE'de yeni özellik canlıya çıkar çıkmaz (örn. 'Yeni Modül') Angular menüsünde otomatik gözükür. Kullanıcı 'bu yeni mi geldi?' yerine doğrudan kullanır."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Tenant'a göre değişen feature seti (license filtresi backlog) hardcoded menüde yansımıyordu — pasif feature menüde gözüküyor, tıklanınca 403 geliyordu.",
+      "suggestion": "Dinamik nav + license filtresi (backlog) ile tenant'a göre özelleştirilmiş menü. Pasif feature gizlenir → 403 deneyimi yok.",
+      "aha_moment": "Müşteri 'nereye tıklarsam tıklayım hata alıyorum' demez; menü zaten ona ait özellikleri gösterir."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Cross-origin Bearer token istekleri CORS preflight (OPTIONS) gerektirir — her menü çağrısı 2 round-trip (preflight + actual).",
+      "suggestion": "Browser preflight cache (Access-Control-Max-Age varsayılan + endpoint stabil) — ilk çağrı sonrası Angular session boyunca preflight tekrar etmez.",
+      "aha_moment": "İlk menü yüklemesi ~100ms (preflight + actual + INSE welcome introspection); sonraki menü güncellemeleri ~30ms (cache hit + actual)."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Bridge protokolüne yeni event eklemek (Seçenek A) destek tarafında 'hangi mesaj tipini ne tetikler?' karmaşası yaratıyordu — mesaj akışı dağınıklaşıyordu.",
+      "suggestion": "HTTP REST tek katmanlı, debug kolay. Browser DevTools Network tab'de istek+response tek yerde görünür (postMessage bridge'den çok daha kolay).",
+      "aha_moment": "Destek 'menü neden boş?' ticket'ında DevTools Network → /api/v1/inma/nav → status code görür → 401/503/CORS hangisi diye anında tespit eder."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-17T00:15:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-17T00:15:00+03:00",
+    "raw_text": "Iter 0 PASS — 12/12 CQ + 3/3 CoVe, 0 blocking. Tightly scoped, selective CORS + endpoint-level auth via ExtractTenantFromBearer. Model: gpt-5.4.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "extractFailure propagate + structured 401 ErrorResponse" },
+      "CQ2": { "result": "PASS", "evidence": "No silent catch; failure not ignored, anonymous fallback yok" },
+      "CQ3": { "result": "PASS", "evidence": "2 file scope (Program.cs + plan JSON)" },
+      "CQ4": { "result": "PASS", "evidence": "ExtractTenantFromBearer + ErrorResponse pattern reuse" },
+      "CQ5": { "result": "PASS", "evidence": "Minimal API style + standard ASP.NET Core CORS pipeline order" },
+      "CQ6": { "result": "PASS", "evidence": ".RequireCors selective scope; no perf regression" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Response shape preserved; auth path migrated whitelist→endpoint" },
+      "CQ9": { "result": "PASS", "evidence": "Tenant isolation strengthened (whitelist anonymous risk gone)" },
+      "CQ10": { "result": "PASS", "evidence": "Backend-only, response unchanged for valid tokens" },
+      "CQ11": { "result": "PASS", "evidence": "No DB changes" },
+      "CQ12": { "result": "PASS", "evidence": "ErrorCodes.AuthUnauthorized 401 structured envelope" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "Named policy 3-origin GET-only, no AllowCredentials, .RequireCors selective" },
+      "Q2": { "result": "PASS", "reasoning": "Three-branch auth gate confirmed in diff" },
+      "Q3": { "result": "PASS", "reasoning": "Whitelist removal + endpoint-level auth gate visible; no anonymous return path" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
