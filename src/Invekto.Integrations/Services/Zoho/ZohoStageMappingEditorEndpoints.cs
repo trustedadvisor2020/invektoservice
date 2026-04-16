@@ -1,6 +1,7 @@
 // Adim 4: Stage mapping editor endpoints (tenant JWT).
 //   GET  /api/v1/zoho/blueprint/transitions    -> module-level Blueprint transitions for dropdown; ?refresh=true bypasses cache.
 //   POST /api/v1/zoho/stage-mappings/test      -> dry-run: validate (zohoEvent, zohoTransitionId) against live Blueprint transitions whitelist.
+//   GET  /api/v1/zoho/lead-statuses            -> P4.1: Lead_Status picklist values (state-bagimsiz enum); ?refresh=true bypasses cache (5-dk per tenant).
 // PUT/GET /api/v1/zoho/stage-mappings already mapped in ZohoSyncEndpoints (P1).
 // Auth: mounted under /api/v1/ -> UseJwtAuth middleware (Integrations Program.cs:165) sets TenantContext.
 // Schema source of truth (NO new migration):
@@ -121,11 +122,47 @@ public static class ZohoStageMappingEditorEndpoints
             }
         });
 
+        // P4.1: Lead_Status picklist enum (state-bagimsiz; manuel input UI hint + AC6 fallback gate).
+        app.MapGet("/api/v1/zoho/lead-statuses", async (
+            HttpContext ctx,
+            IZohoBlueprintClient blueprint,
+            CancellationToken ct) =>
+        {
+            var requestId = ResolveRequestId(ctx);
+            var tenantContext = ctx.Items["TenantContext"] as TenantContext;
+            if (tenantContext is null)
+                return Results.Json(
+                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Tenant context not available", requestId),
+                    statusCode: 401);
+
+            var refresh = ctx.Request.Query["refresh"].ToString();
+            var forceRefresh = string.Equals(refresh, "true", StringComparison.OrdinalIgnoreCase);
+
+            try
+            {
+                var (statuses, fromCache) = await blueprint.GetLeadStatusPicklistAsync(
+                    tenantContext.TenantId, forceRefresh, ct).ConfigureAwait(false);
+
+                var items = new List<ZohoLeadStatusDto>(statuses.Count);
+                foreach (var s in statuses)
+                    items.Add(new ZohoLeadStatusDto { Value = s.Value, DisplayValue = s.DisplayValue });
+
+                return Results.Ok(new ZohoLeadStatusListResponse { Items = items, FromCache = fromCache });
+            }
+            catch (InvalidOperationException ex)
+            {
+                var (code, status) = MapBlueprintException(ex.Message);
+                return Results.Json(ErrorResponse.Create(code, ex.Message, requestId), statusCode: status);
+            }
+        });
+
         return app;
     }
 
     private static (string Code, int StatusCode) MapBlueprintException(string message)
     {
+        if (message.StartsWith(ZohoErrorCodes.LeadStatusFieldNotFound, StringComparison.Ordinal))
+            return (ZohoErrorCodes.LeadStatusFieldNotFound, StatusCodes.Status409Conflict);
         if (message.StartsWith(ZohoErrorCodes.BlueprintNotConfigured, StringComparison.Ordinal))
             return (ZohoErrorCodes.BlueprintNotConfigured, StatusCodes.Status409Conflict);
         if (message.StartsWith(ZohoErrorCodes.BlueprintTransitionNotFound, StringComparison.Ordinal))

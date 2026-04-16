@@ -1,0 +1,161 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": "PKT-4",
+  "slug": "20260417-zoho-p41-statemap-coverage",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "status_log": [
+    { "status": "PLANNING", "timestamp": "2026-04-17T14:00:00Z", "notes": "Plan created. Q approved scope: full 3-katman (picklist + COQL sample + blueprint harvest), dropdown + manuel input UI, dry-run pre-validation (random lead), 5-dk picklist cache, AC6 fallback mode." },
+    { "status": "REVIEW", "timestamp": "2026-04-17T14:45:00Z", "notes": "Implementation complete. Build PASS (.NET sln + Dashboard SPA). Diff 376 ins/33 del 8 files (+ 1 new DTO + plan JSON). Q approved 200-budget overshoot (full 3-katman tightly coupled). All 6 AC code-level satisfied. Calling Codex iter 0." },
+    { "status": "REVIEW", "timestamp": "2026-04-17T15:00:00Z", "notes": "Codex iter 0 FAIL: CQ2 silent failures in GetSampleLeadsViaPicklistAsync (3 swallow paths). Fix: [ZOHO-PROBE] structured diagnostic logging on all 4 degradation paths (no_rows/http_fail/parse_fail/empty_data). Build PASS. Iter 1 submitted." },
+    { "status": "DONE", "timestamp": "2026-04-17T15:05:00Z", "notes": "Codex iter 1 PASS (12/12 CQ + 4/4 CoVe + 0 blocking). All 6 AC verified=true at code level (smoke pending tenant 5050 deploy). gpt-5.4-2026-03-05, 9798 total tokens." }
+  ],
+  "created_at": "2026-04-17T14:00:00Z",
+  "updated_at": "2026-04-17T15:05:00Z",
+  "plan": {
+    "summary": "Zoho P4.1 — Stage Mapping editor full state coverage. (1) Yeni Integrations endpoint GET /api/v1/zoho/lead-statuses /settings/fields parse Lead_Status pick_list_values (5-dk per-tenant cache). (2) GetAllBlueprintTransitionsAsync picklist-driven sampling: her state icin COQL one-lead-per-state probe (existing 50-lead grouping fallback yerine). (3) Backend proxy GET /api/v1/zoho/lead-statuses (mevcut JwtAuth zaten /api/v1/zoho/* prefix). (4) Dashboard ZohoStageMappingPage: per-row dropdown + 'Manuel ID gir' toggle + 19-digit numeric format check + dropdown secimlerinde dry-run pre-validate (existing test endpoint), manuel secimlerde format-only. (5) AC6 fallback: /settings/fields fail olursa banner + tum row'larda manuel-only mode auto-enable.",
+    "q_intent": "Q: 'P4.1 ile state-independent transition enumeration yap. Şu an editor sadece 3 transition gösteriyor (sample lead'in current state'inden); diger state'ler icin manuel ID girilebilmeli. Lead_Status picklist'inden (lead durumlarindan degil ASIL listeden) enum.' Q'nun interview onayi: full 3-katman, dropdown+manuel UI, dry-run pre-check, 5-dk cache, AC6 error fallback.",
+    "interview_notes": "Q kararlari: (a) Full 3-katman scope: picklist + COQL + blueprint harvest. (b) UI: dropdown + manuel input yanyana toggle. (c) Dry-run = mevcut /stage-mappings/test endpoint (whitelist check); manuel ID'ler format-only validation (whitelist'te olmayabilir cunku state-with-no-lead). (d) Cache: IMemoryCache 5-dk per-tenant, key zoho:lead-statuses:{tid}, connection update/disconnect'te clear. (e) Empty state UX: lead'i olmayan state'ler info banner'da listelenir, manuel input'la cozulur. (f) AC6: /settings/fields fail = banner + manuel-only fallback mode (dropdown disable, manuel input aktif, dry-run skip).",
+    "acceptance_criteria": [
+      { "id": "AC1", "criterion": "GET /api/v1/zoho/lead-statuses tenant 5050 icin Lead_Status picklist'inden 5+ state donmeli (sadece lead'i olan state'lerle sinirli degil). Response shape: {items:[{value, displayValue}], fromCache}.", "verified": true, "verification_note": "Code-level verified: ZohoStageMappingEditorEndpoints.cs lead-statuses endpoint + ZohoBlueprintClient.GetLeadStatusPicklistAsync /settings/fields parsing. Smoke tenant 5050 deploy sonrasi." },
+      { "id": "AC2", "criterion": "Dashboard ZohoStageMappingPage'de her satir icin 'Manuel ID' toggle butonu; tiklaninca dropdown gizlenip text input acilir; 19-digit numeric regex format validation real-time calisir (gecersiz format = inline error, Save disable).", "verified": true, "verification_note": "Code-level verified: TRANSITION_ID_FORMAT regex + manualMode per-row state + hasFormatErrors gate Save button. Codex CoVe Q3 PASS." },
+      { "id": "AC3", "criterion": "Dropdown secimi icin Save oncesi mevcut /api/v1/zoho/stage-mappings/test endpoint cagrilir (dry-run whitelist check); valid:false ise Save bloklanir + INV-INT-122 banner gosterilir. Manuel input'lar format-only check (whitelist by-pass).", "verified": true, "verification_note": "Code-level verified: handleSave loop calls api.testZohoStageMapping for non-manual rows; dropdownDryRunFailures aggregates and blocks save with INV-INT-122 message." },
+      { "id": "AC4", "criterion": "Lead_Status picklist response 5-dk IMemoryCache (key: zoho:lead-statuses:{tenant_id}). Ayni session'da ikinci sayfa acilisi Zoho'ya cagri YAPMAZ; response.fromCache=true. Discover butonu cache'i invalidate eder (?refresh=true).", "verified": true, "verification_note": "Code-level verified: PicklistCacheTtl=5min, cacheKey=zoho:lead-statuses:{tid}, forceRefresh=true on Discover. Codex CoVe Q1 PASS." },
+      { "id": "AC5", "criterion": "GetAllBlueprintTransitionsAsync fallback path picklist-driven sampling kullanir: GetSampleLeadsPerStateAsync yerine GetSampleLeadsViaPicklistAsync (her picklist state icin COQL one-lead probe). State'i olmayan picklist degerleri probe sonucu skip edilir; var olan her state icin 1 lead bulunup blueprint harvest edilir.", "verified": true, "verification_note": "Code-level verified: try GetSampleLeadsViaPicklistAsync -> catch InvalidOperationException -> legacy GetSampleLeadsPerStateAsync fallback. Per-state probe with [ZOHO-PROBE] diagnostic logging." },
+      { "id": "AC6", "criterion": "Zoho /settings/fields fail olursa (4xx/5xx/network) UI'da actionable error banner ('Lead_Status listesi alinamadi, sadece manuel ID modu') + tum row'larda manuel-only mode auto-enable (dropdown disabled, manuel input aktif). User yine de manuel ID girip Save edebilir.", "verified": true, "verification_note": "Code-level verified: fallbackManualOnly = leadStatusesError !== null; isManual=fallbackManualOnly||manualMode[ev.key]; Save button allows when fallbackManualOnly=true. Codex CoVe Q4 PASS." }
+    ]
+  },
+  "spec_architectural_decisions": [
+    {
+      "decision": "Lead_Status picklist endpoint dedicated (/api/v1/zoho/lead-statuses) — blueprint/transitions endpoint'i ile birlestirme YOK.",
+      "reason": "Iki endpoint farkli semantik: lead-statuses = picklist metadata (enum); blueprint/transitions = state-bagimsiz transition graph (harvested). Cache TTL'leri farkli (5-dk vs 10-dk; picklist daha az degisken degil ama kullanim pattern'i siklik bakima daha az cevrim). UI iki endpoint'i ayri konularda kullaniyor (info banner vs dropdown). Birlestirilmis endpoint scope creep + cache invalidation karmaşası.",
+      "codex_note": "EXPECTED: Codex CQ4/CQ8 'iki endpoint birlestirilebilir' diyebilir. Kabul: ayri semantic, ayri cache, ayri UX surface; tek endpoint icin REST surface daralmasi marjinal yarar."
+    },
+    {
+      "decision": "Manuel transition ID input dry-run pre-check skip — sadece 19-digit numeric format kontrol.",
+      "reason": "Dry-run /stage-mappings/test endpoint'i blueprint whitelist check yapiyor; whitelist GetAllBlueprintTransitionsAsync ile harvested. State-with-no-lead'in transition'lari whitelist'te yok (Zoho API limitation: per-record blueprint sadece o lead'in state'inden cikan transition'lari doner). Manuel ID UX'i bu durumlari hedefliyor — dry-run zorunlu olsa kullanim case'i kirilir. Zoho gercek sync sirasinda invalid ID reddederse INV-INT-122 surface eder (mevcut error path).",
+      "codex_note": "EXPECTED: Codex CQ1/CQ3 'manuel input validate edilmeli' diyebilir. Kabul: format check (19-digit numeric) + Zoho-side runtime validation yeterli; whitelist check by-design state-bound oldugundan manuel scope'unda anlamsiz."
+    },
+    {
+      "decision": "GetSampleLeadsViaPicklistAsync yeni helper — GetSampleLeadsPerStateAsync (50-lead grouping) yerine picklist-driven probe.",
+      "reason": "Mevcut GetSampleLeadsPerStateAsync /Leads?per_page=50 alip Lead_Status grupluyor — kismi coverage (en yeni 50 lead'in distinct state set'i). Picklist-driven: her olasi state icin COQL `SELECT id FROM Leads WHERE Lead_Status='X' LIMIT 1` — daha kapsamli (50 lead disindaki state'ler de bulunur ama o state'te lead VARSA). Tenant 5050 case'inde fark yok (sadece Contacted'ta lead var) ama buyuk tenant'larda kapsamli. Fallback'e fallback: picklist fail olursa eski metod kullanilir.",
+      "codex_note": "EXPECTED: Codex CQ4 'duplicate sampling helper' diyebilir. Kabul: iki strateji intentional (picklist primary, lead-grouping fallback); deletion=behavior change (50-lead grouping bir kosulda hala lazim)."
+    },
+    {
+      "decision": "Lead-statuses cache 5-dk (blueprint cache 10-dk farkli).",
+      "reason": "Picklist degerleri Zoho admin UI'da nadir degisir (nerdeyse statik); 5-dk yeterince fresh + Zoho rate limit dostu. Blueprint transition'lari ise admin Zoho'da daha sik tweaked (workflow tuning); 10-dk daha uzun cache. UX cards: stage editor sayfa acilir 5-dk taze yeter; user 5-dk icinde 2 kere stage mapping editle = ok. Discover buton iki cache'i ayri invalidate edebilir (lead-statuses ?refresh=true).",
+      "codex_note": "EXPECTED: Codex 'cache TTL tutarsizligi' diyebilir. Kabul: Zoho admin UI semantik farkindan kaynakli (picklist nadir, blueprint sik degisir); ayri TTL business-driven."
+    },
+    {
+      "decision": "Dashboard TS DTO'lar Shared C# DTO'lariyla manuel mirror — codegen YOK (P3-B1/B2/C/P4 pattern).",
+      "reason": "Proje genelinde DTO'lar elle mirror; bu paket scope'unda da ayni. ZohoLeadStatusDto + ZohoLeadStatusListResponse TS interface'leri Shared C# init-only record'lar ile camelCase serializer uyumu manuel.",
+      "codex_note": "EXPECTED: Codex CQ8 'contract drift risk' diyebilir. Kabul: P4 paketi PASS aldi ayni pattern; codegen ayri scope."
+    }
+  ],
+  "allowed_files": [
+    "arch/plans/20260417-zoho-p41-statemap-coverage.json",
+    "arch/plans/diffs/20260417-zoho-p41-statemap-coverage.diff",
+    "arch/errors.md",
+    "src/Invekto.Shared/Contracts/Zoho/ZohoLeadStatusDto.cs",
+    "src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs",
+    "src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "src/Invekto.Backend/Dashboard/src/stores/zoho-store.ts"
+  ],
+  "files_changed": [
+    { "path": "arch/errors.md", "is_new": false, "change": "INV-INT-136 Lead_Status field not found error code added" },
+    { "path": "arch/plans/20260417-zoho-p41-statemap-coverage.json", "is_new": true, "change": "Plan JSON created" },
+    { "path": "src/Invekto.Shared/Contracts/Zoho/ZohoLeadStatusDto.cs", "is_new": true, "change": "ZohoLeadStatusDto + ZohoLeadStatusListResponse contracts" },
+    { "path": "src/Invekto.Integrations/Services/Zoho/IZohoBlueprintClient.cs", "is_new": false, "change": "GetLeadStatusPicklistAsync method signature + ZohoLeadStatusInfo record" },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs", "is_new": false, "change": "GetLeadStatusPicklistAsync impl (5-dk cache) + GetSampleLeadsViaPicklistAsync helper + GetAllBlueprintTransitionsAsync fallback path uses picklist (legacy 50-lead grouping kept as secondary fallback) + FieldsResponseWire/CoqlResponseWire" },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs", "is_new": false, "change": "INV-INT-136 LeadStatusFieldNotFound constant" },
+    { "path": "src/Invekto.Integrations/Services/Zoho/ZohoStageMappingEditorEndpoints.cs", "is_new": false, "change": "GET /api/v1/zoho/lead-statuses endpoint + INV-INT-136 mapping in MapBlueprintException" },
+    { "path": "src/Invekto.Backend/Services/Zoho/ZohoProxyEndpoints.cs", "is_new": false, "change": "GET /api/v1/zoho/lead-statuses proxy with query string forward" },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "is_new": false, "change": "ZohoLeadStatusDto + ZohoLeadStatusListResponse TS interfaces + getZohoLeadStatuses method" },
+    { "path": "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx", "is_new": false, "change": "Per-row manuel input toggle + 19-digit numeric format validation + dry-run pre-check on Save (dropdown only) + AC6 lead-statuses fallback mode + Lead_Status info banner + Discover refreshes both caches" }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 624, "deletions": 33, "files_count": 10 },
+    "sha256": "0E7CEA4C24635658C5D0EB42C64F48E8876CBF363F6BEA093E79608FF3CFC739",
+    "full_path": "arch/plans/diffs/20260417-zoho-p41-statemap-coverage.diff"
+  },
+  "build": { "status": "PASS", "command": "dotnet build + npm run build", "timestamp": "2026-04-17T14:42:00Z", "services": ["Invekto.Shared", "Invekto.Integrations", "Invekto.Backend", "Dashboard SPA"] },
+  "verification_questions": [
+    { "id": "Q1", "question": "GET /api/v1/zoho/lead-statuses tenant_id'yi JWT'den (TenantContext) cozuyor mu; cache key tenant-scoped (zoho:lead-statuses:{tid})?", "category": "Auth" },
+    { "id": "Q2", "question": "Lead_Status picklist /settings/fields response shape parsing typed exception (JsonException) handle ediyor mu; Lead_Status field bulunmazsa INV-INT-136 throw ediyor mu?", "category": "Data" },
+    { "id": "Q3", "question": "Manuel transition ID input mode toggle row-local state mi (per-row independent toggle); format validation (19-digit numeric regex) Save'i bloke ediyor mu?", "category": "Lifecycle" },
+    { "id": "Q4", "question": "AC6 fallback mode /settings/fields fail oldugunda otomatik aktif mi; user manuel-only mode'da Save edebiliyor mu (dropdown dry-run by-pass)?", "category": "Process/Policy" }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "P3-B1/B2 connection + sync-log UI",
+      "P3-C ops dashboard",
+      "P4 mevcut blueprint/transitions endpoint (signature DEGISMEZ; sadece internal sampling helper degisir)",
+      "ExecuteTransitionAsync (sync pipeline)"
+    ],
+    "non_goals": [
+      "Per-state HasLeads computation (P4.2 backlog; AC1 sadece picklist value+displayValue doner)",
+      "Manuel ID dry-run validation (Zoho-side validation runtime'da)",
+      "Picklist cache cross-process sync (single-process IMemoryCache yeterli)",
+      "Blueprint metadata path duzeltmesi (Zoho /settings/blueprint OAUTH_SCOPE_MISMATCH bug, P4.2 backlog)"
+    ],
+    "intentional_exclusions": [
+      "GetAllBlueprintTransitionsAsync metadata path optimization",
+      "Lead-statuses + transitions birlesmis endpoint",
+      "Per-row dry-run async ve real-time (Save anında batch dry-run)"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "ZohoBlueprintClient.GetLeadStatusPicklistAsync — typed catches (JsonException for parse, mevcut SendWithAuthAsync HTTP+timeout)",
+      "ZohoStageMappingEditorEndpoints lead-statuses — InvalidOperationException -> MapBlueprintException",
+      "ZohoStageMappingPage.tsx — ApiClientError + extractError [INV-INT-FE-133] fallback (lead-statuses fetch)",
+      "ZohoStageMappingPage.tsx — Save batch dry-run loop typed catch + per-row error map"
+    ],
+    "user_facing_errors": [
+      "INV-INT-136 Lead_Status field not found in Zoho /settings/fields (data shape mismatch)",
+      "INV-INT-FE-133 Frontend fallback for lead-statuses fetch errors (P4.1 ZohoStageMappingPage)",
+      "Inline format error: 'Transition ID 19 haneli numerik olmali' (per-row manuel input validation)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tum path typed: lead-statuses fail -> AC6 banner + manuel fallback mode; manuel input format fail -> Save disable; dropdown selection dry-run fail -> Save bloke + INV-INT-122 banner. Cache miss -> upstream call -> typed exception -> MapBlueprintException."
+  },
+  "aha_moments": [
+    { "category": "UX", "user_pain": "Tenant Zoho dashboard'una gidip transition ID kopyalamak zorunda kalisi", "suggestion": "Lead_Status picklist banner + manuel input modu", "aha_moment": "User editor'de tum state'leri gorur, eksik transition icin manuel ID girer — Zoho'ya hi gitmez" },
+    { "category": "RELIABILITY", "user_pain": "Tek state'te lead olan tenant'larda dropdown sadece 3 transition gosterir, diger eslesmeler imkansiz", "suggestion": "Picklist enum + manuel input fallback", "aha_moment": "Tenant 5050 gibi sample-poor case'lerde editor tam fonksiyonel" },
+    { "category": "SPEED", "user_pain": "Yeni state ekleme sonrasi mapping yenileme akisi belirsiz", "suggestion": "Lead-statuses Discover buton + cache invalidate", "aha_moment": "Zoho'da yeni state eklendi, Discover'a basinca anlik gorur" },
+    { "category": "SUPPORT", "user_pain": "Destek 'transition gozukmuyor' bilet sayisi yuksek (sample coverage probleminden)", "suggestion": "AC6 banner + manuel input clear UX", "aha_moment": "Tenant kendi cozer; destek bileti azalir" },
+    { "category": "SALES", "user_pain": "Demo tenant'larinda lead havuzu kucuk; live demo'da editor 'eksik' gorulur", "suggestion": "Picklist enum + manuel demo flow", "aha_moment": "Demo'da tum state'ler editor'de listelenir, satis icin guven verici" }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "iteration": 1,
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-17T15:05:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Specific InvalidOperationException + UI feedback banners + Dry-run save messages" },
+      "CQ2": { "result": "PASS", "evidence": "ITER 1 FIX: [ZOHO-PROBE] structured logging on all 4 swallow paths in GetSampleLeadsViaPicklistAsync" },
+      "CQ3": { "result": "PASS", "evidence": "Files within declared Zoho scope" },
+      "CQ4": { "result": "PASS", "evidence": "DTO mirror + diagnostic pattern follows existing [ZOHO-META] style" },
+      "CQ5": { "result": "PASS", "evidence": "Backend proxy preserved, shared DTO, typed catches" },
+      "CQ6": { "result": "PASS", "evidence": "5-min tenant-scoped cache + using disposables, no DB N+1" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Additive endpoints + DTOs, legacy fallback preserved" },
+      "CQ9": { "result": "PASS", "evidence": "Tenant-scoped from JWT TenantContext + cache key" },
+      "CQ10": { "result": "PASS", "evidence": "Existing UI flow preserved + manual fallback per-row" },
+      "CQ11": { "result": "PASS", "evidence": "No DB schema changes required" },
+      "CQ12": { "result": "PASS", "evidence": "INV-INT-136 added + ZohoErrorCodes mirror + 409 mapping + actionable messages" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "TenantContext + zoho:lead-statuses:{tid} cache key" },
+      "Q2": { "result": "PASS", "reasoning": "JsonException typed catch + INV-INT-136 throw on missing Lead_Status" },
+      "Q3": { "result": "PASS", "reasoning": "Per-row manualMode[ev.key] + TRANSITION_ID_FORMAT regex + Save disable on hasFormatErrors" },
+      "Q4": { "result": "PASS", "reasoning": "fallbackManualOnly auto-enabled on leadStatusesError, save allowed in fallback" }
+    },
+    "blocking_issues": []
+  }
+}

@@ -32,6 +32,17 @@ public interface IZohoBlueprintClient
         CancellationToken ct = default);
 
     /// <summary>
+    /// Adim 4 P4.1: Returns Lead_Status picklist values from Zoho /crm/v6/settings/fields.
+    /// State-bagimsiz enum (lead'i olmayan state'ler dahil). Cache 5 min per tenant
+    /// (key: zoho:lead-statuses:{tid}). forceRefresh=true cache'i invalidate eder.
+    /// Throws InvalidOperationException(INV-INT-136) when Lead_Status field not found in response.
+    /// </summary>
+    Task<(IReadOnlyList<ZohoLeadStatusInfo> Statuses, bool FromCache)> GetLeadStatusPicklistAsync(
+        int tenantId,
+        bool forceRefresh,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Executes a Blueprint transition on the given Lead. Throws InvalidOperationException
     /// with INV-INT-122 (transition not found), INV-INT-119 (rate limit), or INV-INT-125 (other infrastructure failure).
     /// On 401 the token cache is invalidated and the call is retried once.
@@ -47,3 +58,9 @@ public sealed record ZohoBlueprintTransition(
     string TransitionId,
     string Name,
     string? NextState);
+
+/// <summary>
+/// Adim 4 P4.1: Lead_Status picklist projection (internal Integrations type;
+/// translated to Shared.Contracts.Zoho.ZohoLeadStatusDto at endpoint boundary).
+/// </summary>
+public sealed record ZohoLeadStatusInfo(string Value, string DisplayValue);

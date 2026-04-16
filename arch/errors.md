@@ -646,6 +646,10 @@ errors:
   - code: INV-INT-135
     description: Ops query parameter validation failure (filter/status/event/date inputs on /api/internal/ops/zoho/*)
     user_message: Filtre değerleri geçersiz, kontrol edin.
+  # Adim 4 P4.1: Stage Mapping editor full state coverage
+  - code: INV-INT-136
+    description: Lead_Status field not found in Zoho /crm/v6/settings/fields response (Lead_Status field missing or pick_list_values empty)
+    user_message: Zoho Leads modulunde Lead_Status alani bulunamadi, alan ayarlarini kontrol edin.
   - code: INV-INT-FE-131
     description: Frontend-only fallback when upstream envelope is missing (P3-C OpsZohoPage extractError)
     user_message: Beklenmedik bir hata oluştu, tekrar deneyin.

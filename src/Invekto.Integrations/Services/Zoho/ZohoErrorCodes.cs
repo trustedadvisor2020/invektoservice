@@ -37,4 +37,7 @@ public static class ZohoErrorCodes
     public const string OpsBatchRetryInvalid       = "INV-INT-133";
     public const string OpsBatchRetryLimitExceeded = "INV-INT-134";
     public const string OpsQueryValidation         = "INV-INT-135";
+
+    // Adim 4 P4.1: Stage Mapping editor full state coverage
+    public const string LeadStatusFieldNotFound     = "INV-INT-136";
 }

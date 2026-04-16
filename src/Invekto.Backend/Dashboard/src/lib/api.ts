@@ -1862,6 +1862,12 @@ class OpsApiClient {
     });
   }
 
+  // P4.1: Lead_Status picklist (state-bagimsiz; manuel input UX + AC6 fallback gate).
+  async getZohoLeadStatuses(forceRefresh: boolean = false): Promise<ZohoLeadStatusListResponse> {
+    const qs = forceRefresh ? '?refresh=true' : '';
+    return this.request<ZohoLeadStatusListResponse>(`/api/v1/zoho/lead-statuses${qs}`);
+  }
+
   async getZohoBlueprintTransitions(forceRefresh: boolean = false): Promise<ZohoBlueprintTransitionsResponse> {
     const qs = forceRefresh ? '?refresh=true' : '';
     return this.request<ZohoBlueprintTransitionsResponse>(`/api/v1/zoho/blueprint/transitions${qs}`);
@@ -1965,6 +1971,17 @@ export interface ZohoBlueprintTransitionDto {
 
 export interface ZohoBlueprintTransitionsResponse {
   items: ZohoBlueprintTransitionDto[];
+  fromCache: boolean;
+}
+
+// P4.1: Lead_Status picklist (mirror of Invekto.Shared.Contracts.Zoho.ZohoLeadStatusDto).
+export interface ZohoLeadStatusDto {
+  value: string;
+  displayValue: string;
+}
+
+export interface ZohoLeadStatusListResponse {
+  items: ZohoLeadStatusDto[];
   fromCache: boolean;
 }
 

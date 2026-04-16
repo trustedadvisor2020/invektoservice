@@ -24,6 +24,7 @@ namespace Invekto.Integrations.Services.Zoho;
 public sealed class ZohoBlueprintClient : IZohoBlueprintClient
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan PicklistCacheTtl = TimeSpan.FromMinutes(5);
 
     private readonly HttpClient _httpClient;
     private readonly IZohoTokenProvider _tokenProvider;
@@ -121,9 +122,17 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
             return (metadataTransitions, FromCache: false);
         }
 
-        // Fallback: sample one lead per distinct Lead_Status; aggregate record-level transitions.
-        // Misses transitions from states with no leads — metadata path is preferred when scope allows.
-        var sampleLeadIds = await GetSampleLeadsPerStateAsync(tenantId, apiBase, ct).ConfigureAwait(false);
+        // P4.1: Picklist-driven sampling preferred — covers states beyond the latest 50 leads.
+        // Falls back to legacy 50-lead grouping when picklist fetch fails.
+        IReadOnlyList<string> sampleLeadIds;
+        try
+        {
+            sampleLeadIds = await GetSampleLeadsViaPicklistAsync(tenantId, apiBase, ct).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            sampleLeadIds = await GetSampleLeadsPerStateAsync(tenantId, apiBase, ct).ConfigureAwait(false);
+        }
 
         if (sampleLeadIds.Count == 0)
             throw new InvalidOperationException(
@@ -185,6 +194,65 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
 
         _cache.Set(cacheKey, transitions, CacheTtl);
         return (transitions, FromCache: false);
+    }
+
+    /// <summary>
+    /// P4.1: Lead_Status picklist values from Zoho /crm/v6/settings/fields?module=Leads.
+    /// Returns ALL configured states regardless of whether any lead is currently in them.
+    /// 5-min cache per tenant. Throws INV-INT-136 if Lead_Status field missing from response.
+    /// </summary>
+    public async Task<(IReadOnlyList<ZohoLeadStatusInfo> Statuses, bool FromCache)> GetLeadStatusPicklistAsync(
+        int tenantId, bool forceRefresh, CancellationToken ct = default)
+    {
+        var cacheKey = "zoho:lead-statuses:" + tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (forceRefresh)
+        {
+            _cache.Remove(cacheKey);
+        }
+        else if (_cache.TryGetValue<IReadOnlyList<ZohoLeadStatusInfo>>(cacheKey, out var cached) && cached is not null)
+        {
+            return (cached, FromCache: true);
+        }
+
+        var apiBase = await GetApiBaseAsync(tenantId, ct).ConfigureAwait(false);
+        var url = apiBase + "/crm/v6/settings/fields?module=Leads";
+
+        using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildHttpFailureAsync(response, "GET settings/fields?module=Leads", tenantId, ct).ConfigureAwait(false);
+
+        FieldsResponseWire? wire;
+        try
+        {
+            wire = await response.Content.ReadFromJsonAsync<FieldsResponseWire>(cancellationToken: ct).ConfigureAwait(false);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException(
+                ZohoErrorCodes.SyncInfrastructureError +
+                $": Zoho /settings/fields response was not valid JSON for tenant {tenantId}.",
+                ex);
+        }
+
+        var leadStatusField = wire?.Fields?.FirstOrDefault(f =>
+            string.Equals(f.ApiName, "Lead_Status", StringComparison.Ordinal));
+
+        if (leadStatusField?.PickListValues is null || leadStatusField.PickListValues.Count == 0)
+            throw new InvalidOperationException(
+                ZohoErrorCodes.LeadStatusFieldNotFound +
+                $": Zoho /settings/fields response did not contain Lead_Status picklist values for tenant {tenantId}. Verify Lead_Status field is configured on the Leads module.");
+
+        var statuses = new List<ZohoLeadStatusInfo>(leadStatusField.PickListValues.Count);
+        foreach (var v in leadStatusField.PickListValues)
+        {
+            if (string.IsNullOrEmpty(v.ActualValue)) continue;
+            statuses.Add(new ZohoLeadStatusInfo(v.ActualValue, v.DisplayValue ?? v.ActualValue));
+        }
+
+        var result = (IReadOnlyList<ZohoLeadStatusInfo>)statuses;
+        _cache.Set(cacheKey, result, PicklistCacheTtl);
+        return (result, FromCache: false);
     }
 
     public async Task ExecuteTransitionAsync(
@@ -320,6 +388,64 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
                 nextState = ntsName.GetString();
             sink[id] = new ZohoBlueprintTransition(id, name ?? id, nextState);
         }
+    }
+
+    /// <summary>
+    /// P4.1: Picklist-driven sample fetch. For each Lead_Status picklist value, runs a COQL probe
+    /// (`SELECT id FROM Leads WHERE Lead_Status='X' LIMIT 1`) and collects the first lead per state.
+    /// Returns 1 lead id per state that actually has at least one lead. Picklist enum gives broader
+    /// coverage than the legacy 50-most-recent grouping.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> GetSampleLeadsViaPicklistAsync(
+        int tenantId, string apiBase, CancellationToken ct)
+    {
+        var (statuses, _) = await GetLeadStatusPicklistAsync(tenantId, forceRefresh: false, ct).ConfigureAwait(false);
+        if (statuses.Count == 0) return Array.Empty<string>();
+
+        var coqlUrl = apiBase + "/crm/v6/coql";
+        var result = new List<string>(statuses.Count);
+        foreach (var s in statuses)
+        {
+            var escaped = s.Value.Replace("'", "''", StringComparison.Ordinal);
+            var query = $"select id from Leads where Lead_Status = '{escaped}' limit 1";
+            var payload = JsonSerializer.Serialize(new { select_query = query });
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await SendWithAuthAsync(tenantId, HttpMethod.Post, coqlUrl, content, ct).ConfigureAwait(false);
+
+            // Probe semantics: best-effort per state. Each non-success path is logged with
+            // [ZOHO-PROBE] prefix so silent-degradation is observable in logs (CQ2 visibility).
+            // 204 NoContent = expected case (state has no leads); informational.
+            if (response.StatusCode == HttpStatusCode.NoContent)
+            {
+                Console.WriteLine($"[ZOHO-PROBE] tenant={tenantId} state='{s.Value}' result=no_rows (HTTP 204)");
+                continue;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[ZOHO-PROBE] tenant={tenantId} state='{s.Value}' result=http_fail status={(int)response.StatusCode} reason={response.ReasonPhrase}");
+                continue;
+            }
+
+            CoqlResponseWire? wire;
+            try
+            {
+                wire = await response.Content.ReadFromJsonAsync<CoqlResponseWire>(cancellationToken: ct).ConfigureAwait(false);
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"[ZOHO-PROBE] tenant={tenantId} state='{s.Value}' result=parse_fail err={ex.Message}");
+                continue;
+            }
+
+            var id = wire?.Data?.FirstOrDefault()?.Id;
+            if (string.IsNullOrEmpty(id))
+            {
+                Console.WriteLine($"[ZOHO-PROBE] tenant={tenantId} state='{s.Value}' result=empty_data (200 but no id)");
+                continue;
+            }
+            result.Add(id);
+        }
+        return result;
     }
 
     // Fallback helper (kept for when /settings/blueprint unavailable):
@@ -519,5 +645,34 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
     private sealed class NextStateWire
     {
         [JsonPropertyName("name")] public string? Name { get; set; }
+    }
+
+    // P4.1: Zoho v6 /crm/v6/settings/fields?module=Leads response shape (subset).
+    private sealed class FieldsResponseWire
+    {
+        [JsonPropertyName("fields")] public List<FieldWire>? Fields { get; set; }
+    }
+
+    private sealed class FieldWire
+    {
+        [JsonPropertyName("api_name")]         public string? ApiName { get; set; }
+        [JsonPropertyName("pick_list_values")] public List<PickListValueWire>? PickListValues { get; set; }
+    }
+
+    private sealed class PickListValueWire
+    {
+        [JsonPropertyName("actual_value")]  public string? ActualValue { get; set; }
+        [JsonPropertyName("display_value")] public string? DisplayValue { get; set; }
+    }
+
+    // P4.1: Zoho v6 /crm/v6/coql response shape (subset; only id needed for sample probe).
+    private sealed class CoqlResponseWire
+    {
+        [JsonPropertyName("data")] public List<CoqlRowWire>? Data { get; set; }
+    }
+
+    private sealed class CoqlRowWire
+    {
+        [JsonPropertyName("id")] public string? Id { get; set; }
     }
 }

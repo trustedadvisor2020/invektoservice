@@ -55,6 +55,13 @@ public static class ZohoProxyEndpoints
         app.MapPost("/api/v1/zoho/stage-mappings/test", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
             ForwardWithBody(ctx, proxy, HttpMethod.Post, "/api/v1/zoho/stage-mappings/test", ct));
 
+        // P4.1: Lead_Status picklist proxy (state-bagimsiz enum for stage mapping editor info banner + manuel input UX).
+        app.MapGet("/api/v1/zoho/lead-statuses", (HttpContext ctx, IZohoProxyClient proxy, CancellationToken ct) =>
+        {
+            var qs = ctx.Request.QueryString.HasValue ? ctx.Request.QueryString.Value : string.Empty;
+            return Forward(ctx, proxy, HttpMethod.Get, "/api/v1/zoho/lead-statuses" + qs, ct);
+        });
+
         return app;
     }
 
