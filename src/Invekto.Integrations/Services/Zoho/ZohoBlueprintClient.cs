@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Invekto.Integrations.Data;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 
 namespace Invekto.Integrations.Services.Zoho;
 
@@ -30,17 +31,25 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
     private readonly IZohoTokenProvider _tokenProvider;
     private readonly ZohoConnectionRepository _connectionRepo;
     private readonly IMemoryCache _cache;
+    // P4.2: Feature-flag gate. /settings/blueprint is undocumented and the
+    // ZohoCRM.settings.ALL scope does NOT cover it (returns 401 OAUTH_SCOPE_MISMATCH
+    // in production). Default OFF so we skip the wasted request + log noise; can be
+    // toggled true if Zoho ever exposes the endpoint under a documented scope.
+    private readonly bool _enableMetadataPath;
 
     public ZohoBlueprintClient(
         HttpClient httpClient,
         IZohoTokenProvider tokenProvider,
         ZohoConnectionRepository connectionRepo,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IConfiguration configuration)
     {
         _httpClient     = httpClient;
         _tokenProvider  = tokenProvider;
         _connectionRepo = connectionRepo;
         _cache          = cache;
+        // GetValue<bool> returns false for missing/non-bool values — desired default.
+        _enableMetadataPath = configuration.GetValue<bool>("Zoho:EnableMetadataPath");
     }
 
     public async Task<IReadOnlyList<ZohoBlueprintTransition>> GetLeadTransitionsAsync(
@@ -115,11 +124,16 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
 
         // Primary: metadata-based enum via /settings/blueprint (requires ZohoCRM.settings.ALL scope).
         // Returns the complete blueprint graph (all transitions regardless of state).
-        var metadataTransitions = await TryGetBlueprintMetadataAsync(tenantId, apiBase, ct).ConfigureAwait(false);
-        if (metadataTransitions is { Count: > 0 })
+        // P4.2: gated behind EnableMetadataPath flag — endpoint is undocumented and returns
+        // 401 OAUTH_SCOPE_MISMATCH in production. Skipping eliminates wasted request + log noise.
+        if (_enableMetadataPath)
         {
-            _cache.Set(cacheKey, metadataTransitions, CacheTtl);
-            return (metadataTransitions, FromCache: false);
+            var metadataTransitions = await TryGetBlueprintMetadataAsync(tenantId, apiBase, ct).ConfigureAwait(false);
+            if (metadataTransitions is { Count: > 0 })
+            {
+                _cache.Set(cacheKey, metadataTransitions, CacheTtl);
+                return (metadataTransitions, FromCache: false);
+            }
         }
 
         // P4.1: Picklist-driven sampling preferred — covers states beyond the latest 50 leads.
@@ -140,31 +154,39 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
                 $": Zoho Leads modulunde hic kayit yok (tenant {tenantId}). Stage mapping editorunu kullanmak icin en az 1 lead olmali.");
 
         var aggregated = new Dictionary<string, ZohoBlueprintTransition>(StringComparer.Ordinal);
+        // P4.2: track per-sample outcomes for INV-INT-137 disambiguation. If every sampled
+        // lead returns RECORD_NOT_IN_PROCESS we throw a distinct error (leads exist but none
+        // are engaged in the blueprint workflow) instead of the generic "no transitions" message.
+        int recordNotInProcessCount = 0;
         foreach (var leadId in sampleLeadIds)
         {
             var url = apiBase + "/crm/v6/Leads/" + Uri.EscapeDataString(leadId) + "/actions/blueprint";
             using var response = await SendWithAuthAsync(tenantId, HttpMethod.Get, url, content: null, ct).ConfigureAwait(false);
 
-            // TEMP [ZOHO-BP-RAW] diagnostic: log EVERY response (status + body head) BEFORE routing logic.
-            var rawBody = response.Content is null
-                ? string.Empty
-                : await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            Console.WriteLine($"[ZOHO-BP-RAW] tenant={tenantId} lead={leadId} status={(int)response.StatusCode} len={rawBody.Length} head={Truncate(rawBody, 500)}");
-
             // 204/404 for this specific lead just means no transitions available from its state; continue.
             if (response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.NotFound)
+            {
+                Console.WriteLine($"[ZOHO-BP] tenant={tenantId} lead={leadId} status={(int)response.StatusCode} result=no_transitions");
                 continue;
+            }
 
             // 400 RECORD_NOT_IN_PROCESS: lead exists but isn't in the blueprint process (hasn't been
             // triggered into it). Not an error for aggregation — just means no transitions from that
             // lead. Continue to next sample. Any OTHER 400 body is still a hard failure.
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
-                if (rawBody.Contains("RECORD_NOT_IN_PROCESS", StringComparison.Ordinal))
+                var errorBody = response.Content is null
+                    ? string.Empty
+                    : await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                if (errorBody.Contains("RECORD_NOT_IN_PROCESS", StringComparison.Ordinal))
+                {
+                    recordNotInProcessCount++;
+                    Console.WriteLine($"[ZOHO-BP] tenant={tenantId} lead={leadId} status=400 result=record_not_in_process");
                     continue;
+                }
                 throw new InvalidOperationException(
                     ZohoErrorCodes.SyncInfrastructureError +
-                    $": Zoho blueprint returned 400 for tenant {tenantId} lead {leadId}. Body: {rawBody}");
+                    $": Zoho blueprint returned 400 for tenant {tenantId} lead {leadId}. Body: {Truncate(errorBody, 300)}");
             }
 
             if (!response.IsSuccessStatusCode)
@@ -173,7 +195,7 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
             BlueprintResponseWire? wire;
             try
             {
-                wire = JsonSerializer.Deserialize<BlueprintResponseWire>(rawBody);
+                wire = await response.Content.ReadFromJsonAsync<BlueprintResponseWire>(cancellationToken: ct).ConfigureAwait(false);
             }
             catch (JsonException ex)
             {
@@ -185,11 +207,11 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
 
             if (wire?.Blueprint is null)
             {
-                Console.WriteLine($"[ZOHO-BP-RAW] tenant={tenantId} lead={leadId} PARSE_FAIL wire.Blueprint=null (shape mismatch?)");
+                Console.WriteLine($"[ZOHO-BP] tenant={tenantId} lead={leadId} status=200 result=parse_fail (wire.Blueprint=null)");
                 continue;
             }
             var extracted = ExtractTransitions(wire.Blueprint);
-            Console.WriteLine($"[ZOHO-BP-RAW] tenant={tenantId} lead={leadId} extracted_count={extracted.Count}");
+            Console.WriteLine($"[ZOHO-BP] tenant={tenantId} lead={leadId} status=200 result=ok extracted={extracted.Count}");
             foreach (var t in extracted)
                 aggregated[t.TransitionId] = t;  // dedupe by id; later wins (same id == same transition)
         }
@@ -199,9 +221,21 @@ public sealed class ZohoBlueprintClient : IZohoBlueprintClient
             .ToList();
 
         if (transitions.Count == 0)
+        {
+            // P4.2: distinguish "no leads engaged" (INV-INT-137) from "blueprint missing" (INV-INT-121).
+            // sampleLeadIds.Count > 0 guaranteed here (we throw BlueprintNotConfigured above when 0).
+            // If EVERY sampled lead returned RECORD_NOT_IN_PROCESS, the blueprint exists but no lead
+            // has been triggered into it (criteria-based trigger missing OR free plan lacks "apply to
+            // existing records"). Manuel ID workaround is the supported fallback.
+            if (recordNotInProcessCount == sampleLeadIds.Count)
+                throw new InvalidOperationException(
+                    ZohoErrorCodes.LeadsNotInBlueprintProcess +
+                    $": Zoho Blueprint var ama hicbir lead surece dahil degil (tenant {tenantId}, {sampleLeadIds.Count} ornek lead denendi, hepsi RECORD_NOT_IN_PROCESS). " +
+                    "Manuel ID toggle ile her satir icin transition ID'sini elle girin (Zoho Setup -> Automation -> Blueprint -> ilgili Blueprint -> her gecise tiklayin -> URL son segmenti).");
             throw new InvalidOperationException(
                 ZohoErrorCodes.BlueprintNotConfigured +
                 $": Zoho Blueprint'ten transition alinamadi (tenant {tenantId}). {sampleLeadIds.Count} farkli state'teki lead denenmesine ragmen blueprint aktif degil olabilir — Zoho Setup -> Automation -> Blueprint kontrolu yapin.");
+        }
 
         _cache.Set(cacheKey, transitions, CacheTtl);
         return (transitions, FromCache: false);

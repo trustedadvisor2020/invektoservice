@@ -37,12 +37,22 @@ function extractError(err: unknown, fallback: string): string {
   return `[INV-INT-FE-132] ${fallback}`;
 }
 
+// P4.2: surface backend INV-INT-137 (LeadsNotInBlueprintProcess) so the UI can show a
+// dedicated "switch to Manuel ID" CTA. ApiClientError carries the parsed errorCode;
+// the formatted string fallback ([INV-INT-137] ...) covers the non-ApiClientError path.
+function extractErrorCode(err: unknown): string | null {
+  if (err instanceof ApiClientError && err.errorCode && err.errorCode !== 'UNKNOWN') return err.errorCode;
+  if (err instanceof Error && err.message.includes('INV-INT-137')) return 'INV-INT-137';
+  return null;
+}
+
 export function ZohoStageMappingPage() {
   const { connection, loadConnection, stageMappings, loadStageMappings } = useZohoStore();
 
   const [transitions, setTransitions] = useState<ZohoBlueprintTransitionDto[] | null>(null);
   const [transitionsLoading, setTransitionsLoading] = useState(false);
   const [transitionsError, setTransitionsError] = useState<string | null>(null);
+  const [transitionsErrorCode, setTransitionsErrorCode] = useState<string | null>(null);
   const [transitionsFromCache, setTransitionsFromCache] = useState<boolean>(false);
 
   // P4.1: Lead_Status picklist (state-bagimsiz enum) + AC6 fallback mode.
@@ -68,12 +78,14 @@ export function ZohoStageMappingPage() {
   const loadTransitions = useCallback(async (forceRefresh: boolean) => {
     setTransitionsLoading(true);
     setTransitionsError(null);
+    setTransitionsErrorCode(null);
     try {
       const res = await api.getZohoBlueprintTransitions(forceRefresh);
       setTransitions(res.items);
       setTransitionsFromCache(res.fromCache);
     } catch (err) {
       setTransitionsError(extractError(err, 'Blueprint transition listesi alinamadi.'));
+      setTransitionsErrorCode(extractErrorCode(err));
     } finally {
       setTransitionsLoading(false);
     }
@@ -262,8 +274,21 @@ export function ZohoStageMappingPage() {
 
       {transitionsError && (
         <Card className="border-red-100 bg-red-50/40 mb-3">
-          <CardTitle className="text-red-700 mb-1">Blueprint transition'lari alinamadi</CardTitle>
+          <CardTitle className="text-red-700 mb-1">
+            {transitionsErrorCode === 'INV-INT-137'
+              ? "Lead'ler Blueprint surecine dahil degil"
+              : "Blueprint transition'lari alinamadi"}
+          </CardTitle>
           <p className="text-sm text-red-600 mb-2">{transitionsError}</p>
+          {/* P4.2: INV-INT-137 dedicated CTA — Manuel ID is the supported workaround. */}
+          {transitionsErrorCode === 'INV-INT-137' && (
+            <p className="text-xs text-red-700 mb-2">
+              Asagida her satir icin <strong>Manuel ID</strong> butonuna tiklayip 19 haneli
+              transition ID'sini elle girin. ID'leri Zoho &rarr; Setup &rarr; Automation &rarr;
+              Blueprint &rarr; ilgili Blueprint &rarr; her gecisin URL'sinin son segmentinden
+              kopyalayabilirsiniz.
+            </p>
+          )}
           <Button variant="secondary" size="sm" onClick={() => void loadTransitions(true)}>
             Tekrar Dene
           </Button>

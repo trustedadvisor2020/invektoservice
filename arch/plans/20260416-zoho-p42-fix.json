@@ -1,0 +1,228 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260416-zoho-p42-fix",
+  "risk": "MEDIUM",
+  "status": "REVIEW",
+  "created_at": "2026-04-16T20:55:00+03:00",
+  "updated_at": "2026-04-16T21:25:00+03:00",
+  "plan": {
+    "summary": "Zoho P4.2 fix: gate undocumented /settings/blueprint metadata path behind a feature flag (default OFF), introduce INV-INT-137 LeadsNotInBlueprintProcess to disambiguate 'leads exist but none engaged' from BlueprintNotConfigured, replace TEMP [ZOHO-BP-RAW] noisy debug logs with persistent short-form [ZOHO-BP] structured lines, and surface a dedicated Manuel ID CTA in the Stage Mapping editor when INV-INT-137 fires.",
+    "q_intent": "Q seçim: 1 = AC6 fallback smoke (code review yeterli, deploy sonrası Q gözlemler), 2 = P4.2 fix paketi. P4.2 sorularına Q cevap: (1) Metadata path için B = feature flag ile gate'le. (2) INV-INT-137 koşulu = TÜM sample lead'ler RECORD_NOT_IN_PROCESS. (3) Smoke için Q gözlemler.",
+    "interview_notes": "P4.2 investigation dosyası (tracking/zoho-p42-oauth-scope-investigation.md) root cause + Fix 1/2/3 önerilerini Zoho v8 docs ile gerekçelendiriyor: ZohoCRM.settings.ALL Blueprint'i kapsamıyor (resmi scope listesinde yok), /settings/blueprint endpoint'i v8 docs'ta hiç dokumante değil. Q seçim B (flag) — A (tamamen sil) yerine — endpoint Zoho tarafından sonradan resmiyete bağlanırsa açma yolu açık kalsın. INV-INT-137 koşulu için TÜM sample = recordNotInProcessCount === sampleLeadIds.Count tercih edildi (kısmi RECORD_NOT_IN_PROCESS = mevcut transition aggregate semantiği bozulmasın diye). Pre-existing WIP (INSE-STYLE-GUIDE.md deletion + inma-team-kickoff-brief.md mod + DentAdavista flows.html/pdf untracked) explicit SKIP — Q'nun diğer session'larından kalan, bu paket dokunmuyor.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "appsettings:Zoho:EnableMetadataPath flag default false; flag false iken TryGetBlueprintMetadataAsync HİÇ çağrılmaz (production OAUTH_SCOPE_MISMATCH 401 noise sıfırlanır). Flag true iken mevcut davranış (try metadata first, fallback aggregation) korunur. Yanlış type / missing config → false (GetValue<bool> default).",
+        "verified": true,
+        "verification_note": "ZohoBlueprintClient ctor: _enableMetadataPath = configuration.GetValue<bool>(\"Zoho:EnableMetadataPath\"). Build PASS. GetAllBlueprintTransitionsAsync: 'if (_enableMetadataPath) { var metadataTransitions = await TryGetBlueprintMetadataAsync(...); ... }' — flag false iken hiçbir HTTP request gönderilmez."
+      },
+      {
+        "id": "AC2",
+        "criterion": "Yeni INV-INT-137 LeadsNotInBlueprintProcess; aggregation sonunda transitions.Count==0 + sampleLeadIds.Count>0 + recordNotInProcessCount==sampleLeadIds.Count → INV-INT-137 throw (mesaj actionable Manuel ID hint). Aksi halde mevcut INV-INT-121 BlueprintNotConfigured korunur. INV-INT-121 'sample 0 lead' ile INV-INT-137 'tüm sample RECORD_NOT_IN_PROCESS' anlamca ayrı.",
+        "verified": true,
+        "verification_note": "ZohoErrorCodes.LeadsNotInBlueprintProcess = \"INV-INT-137\". arch/errors.md kayıtlı. Aggregation loop: foreach iter'da RECORD_NOT_IN_PROCESS continue path'inde recordNotInProcessCount++. transitions.Count==0 dalında if (recordNotInProcessCount == sampleLeadIds.Count) INV-INT-137 throw, else mevcut INV-INT-121."
+      },
+      {
+        "id": "AC3",
+        "criterion": "[ZOHO-BP-RAW] TEMP debug log (her response için 500-byte body head Console.WriteLine) tamamen kaldırıldı. Onun yerine kalıcı [ZOHO-BP] short-form lines: per-sample status + result tag (no_transitions / record_not_in_process / parse_fail / ok extracted=N). Body dump sadece 400 hard-failure yolunda (Truncate 300) — error throw mesajına embed.",
+        "verified": true,
+        "verification_note": "Diff: 4 [ZOHO-BP-RAW] satırı silindi (line 148 raw read+log, line 152 raw log, line 188 PARSE_FAIL, line 192 extracted_count). Yerine 4 [ZOHO-BP] kısa-form line eklendi (status+result tag). 400 hard-failure path'inde body Truncate(300) ile error mesajına gömülü."
+      },
+      {
+        "id": "AC4",
+        "criterion": "ZohoStageMappingPage transitionsErrorCode state ekleniyor; loadTransitions catch'ında extractErrorCode(err) ile parse. transitionsErrorCode==='INV-INT-137' iken Card title 'Lead\\'ler Blueprint surecine dahil degil' + dedicated CTA paragraph (Manuel ID step-by-step talimat) + Tekrar Dene butonu korunur. Diğer kodlar mevcut UX (generic title) korur.",
+        "verified": true,
+        "verification_note": "TSX: extractErrorCode helper (ApiClientError.errorCode + Error.message INV-INT-137 substring fallback). transitionsErrorCode useState. loadTransitions setTransitionsErrorCode(extractErrorCode(err)) catch'te + null reset try öncesi. Card JSX: title koşullu, CTA paragraph koşullu (text-xs Manuel ID + Zoho Setup hint). TS typecheck (tsc --noEmit) clean."
+      }
+    ]
+  },
+  "allowed_files": [
+    "arch/errors.md",
+    "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
+    "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs",
+    "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+    "src/Invekto.Integrations/appsettings.json",
+    "arch/plans/20260416-zoho-p42-fix.json"
+  ],
+  "files_changed": [
+    {
+      "path": "arch/errors.md",
+      "change": "INV-INT-137 LeadsNotInBlueprintProcess registered (Adim 4 P4.2 section header + description + Turkish user_message with Manuel ID workaround instructions).",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Backend/Dashboard/src/pages/zoho/ZohoStageMappingPage.tsx",
+      "change": "extractErrorCode helper (ApiClientError.errorCode + INV-INT-137 substring fallback). transitionsErrorCode state. Card title + CTA conditional on INV-INT-137. ~25 ins / 1 del.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs",
+      "change": "IConfiguration ctor injection + _enableMetadataPath bool field. Metadata path call gated by flag. recordNotInProcessCount counter + INV-INT-137 throw on full-degenerate sample. [ZOHO-BP-RAW] removed; [ZOHO-BP] structured per-sample logs added. 400 errorBody read moved inside BadRequest branch (lazy + Truncate 300).",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Integrations/Services/Zoho/ZohoErrorCodes.cs",
+      "change": "Const string LeadsNotInBlueprintProcess = \"INV-INT-137\" added under P4.2 section header.",
+      "is_new": false
+    },
+    {
+      "path": "src/Invekto.Integrations/appsettings.json",
+      "change": "Added Zoho block: { EnableMetadataPath: false }. Default OFF for safe production behavior.",
+      "is_new": false
+    },
+    {
+      "path": "arch/plans/20260416-zoho-p42-fix.json",
+      "change": "New plan JSON for P4.2 fix paket (this file).",
+      "is_new": true
+    }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "bb324dec542febba9f089e523a984259b607017d236cfd13cccd176278f9dbb2",
+    "full_path": "arch/plans/diffs/20260416-zoho-p42-fix.diff",
+    "stats": {
+      "insertions": 296,
+      "deletions": 17,
+      "files_count": 6
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\" + (cd Dashboard && npx tsc --noEmit)",
+    "timestamp": "2026-04-16T21:20:00+03:00",
+    "duration_ms": 17050,
+    "output_tail": ".NET: 17 Warning(s) (all pre-existing) / 0 Error(s) / Time Elapsed 00:00:17.05. tsc --noEmit: clean (no output).",
+    "error_summary": null,
+    "services": ["Invekto.Integrations", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "Feature flag (Zoho:EnableMetadataPath) IConfiguration.GetValue<bool> ile read ediliyor; missing key veya non-bool string için davranış 'false' mı (varsayılan default), runtime exception throw etmiyor mu?",
+      "category": "Auth",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q2",
+      "question": "INV-INT-137 koşul mantığı doğru mu: sample lead sayısı 0 → mevcut BlueprintNotConfigured (zaten line 137-140 önce throw); sample>0 ve transitions.Count==0 ve recordNotInProcessCount==sampleLeadIds.Count → INV-INT-137; sample>0 ve transitions.Count==0 ve recordNotInProcessCount<sampleLeadIds.Count (kısmen RECORD_NOT_IN_PROCESS, kısmen 204/parse_fail vs.) → mevcut INV-INT-121?",
+      "category": "Lifecycle",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q3",
+      "question": "Production deploy sonrası mevcut working tenant'da regresyon riski yok mu? (a) Flag false iken: metadata path skip, fallback aggregation davranışı P4.1 ile birebir aynı (sadece [ZOHO-BP-RAW] log noise gitti, error code dağılımı korunur). (b) Flag true iken: P4.1 davranışı (try metadata first → fallback). (c) JSON parse moved from rawBody (sync Deserialize) to ReadFromJsonAsync — semantik aynı (BlueprintResponseWire shape).",
+      "category": "Process/Policy",
+      "codex_answer": null,
+      "codex_result": null
+    },
+    {
+      "id": "Q4",
+      "question": "INV-INT-137 throw mesajı (service-side) ile arch/errors.md user_message arasında semantic uyumluluk var mı? Lesson 581 (INV-INT-127 context drift) tekrarlanmasın diye: backend mesajı 'Manuel ID toggle ile her satir icin transition ID elle gir + Zoho Setup path' içeriyor; arch/errors.md user_message aynı semantic + same Manuel ID workaround instructions (TR localized).",
+      "category": "Data",
+      "codex_answer": null,
+      "codex_result": null
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "INSE-STYLE-GUIDE.md (Q'nun diğer session WIP — silindi state'inde, paket dokunmuyor)",
+      "arch/platform/inma-inse-unification/inma-team-kickoff-brief.md (Q'nun diğer session WIP — modified, paket dokunmuyor)",
+      "DentAdavista/plan/flows.html, DentAdavista/plan/flows.pdf (Q'nun diğer session untracked — paket dokunmuyor)",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (proxy katmanı değişikliği gerekmedi; INV-INT-137 mevcut envelope üzerinden surface oluyor)",
+      "Invekto.Shared.Contracts.Zoho DTOs (signature/wire format değişmedi)"
+    ],
+    "non_goals": [
+      "Metadata path tamamen silmek (Q seçimi B = flag-gated kalsın, A reddedildi)",
+      "Zoho Support ticket açmak (Fix 3 backlog, kod paketinde değil)",
+      "Toplu Blueprint engagement (paid plan yetkisi, kod scope'unda değil)",
+      "Production deploy / smoke (kod-yok smoke; Q manuel test edecek)",
+      "AC6 /settings/fields fail simulasyonu (artificial fail invasive; Q gözlemler kararı verildi)"
+    ],
+    "intentional_exclusions": [
+      "TryGetBlueprintMetadataAsync method body silmedik — flag false iken çağrılmıyor; gelecekte Zoho endpoint'i resmiyete bağlanırsa flag açılarak reuse edilebilir.",
+      "Lead_Status picklist fetch (GetLeadStatusPicklistAsync) ve AC6 fallback (fallbackManualOnly) kodu dokunulmadı; P4.1 kapsamında çözülmüştü, regresyon riski yok.",
+      "ZohoSyncService / Backend lifecycle hook (P2 sync chain) dokunulmadı — INV-INT-137 sadece Discover/editor enum path'inde fire ediyor, sync orchestration mevcut INV-INT-121/122 mantığını koruyor."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs:~199 (try { ReadFromJsonAsync<BlueprintResponseWire> } catch (JsonException ex) { throw INV-INT-125 SyncInfrastructureError })",
+      "src/Invekto.Integrations/Services/Zoho/ZohoBlueprintClient.cs (existing pre-paket): TryGetBlueprintMetadataAsync typed catches (JsonException / HttpRequestException / TaskCanceledException) — kept untouched, only call site now flag-gated"
+    ],
+    "user_facing_errors": [
+      "INV-INT-137 (backend throw + arch/errors.md user_message TR Manuel ID workaround)",
+      "ZohoStageMappingPage transitionsError Card: INV-INT-137 → 'Lead\\'ler Blueprint surecine dahil degil' + dedicated CTA; non-INV-INT-137 → 'Blueprint transition\\'lari alinamadi' (mevcut UX korundu)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tüm degradation path'leri [ZOHO-BP] structured log emit ediyor (no_transitions / record_not_in_process / parse_fail / ok). Bare catch / catch(Exception) yok — sadece typed JsonException mevcut throw'a re-route. Flag false iken metadata path silent skip değil; deliberate gate (config-driven, audit log değer üretmez)."
+  },
+  "aha_moments": [
+    {
+      "category": "UX",
+      "user_pain": "Discover başarısız olduğunda kullanıcı 'Blueprint kontrolu yapin' generic mesajıyla baş başa kalıyor; gerçek sorun 'Zoho lead'lerin hiçbirinin Blueprint process'inde olmaması' ve çözüm 'Manuel ID toggle' ama UI bunu söylemiyor.",
+      "suggestion": "INV-INT-137 algılandığında Card title değişir + Manuel ID step-by-step talimatı (Zoho Setup → Automation → Blueprint → URL son segment) inline gösterilir. Mevcut Manuel ID toggle aynı sayfada zaten görünür — kullanıcı CTA'yı okur okumaz hangi butona basacağını anlar.",
+      "aha_moment": "Discover fail sonrası 'şimdi ne yapacağım?' düşünmek yerine iki cümle okuyup direkt Manuel ID toggle'a basıyor; 30 saniyede mapping'i tamamlıyor."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Production'da her Discover bir bilinen-failed HTTP request (/settings/blueprint 401) atıyor; log gürültü + Zoho rate limit baremine yiyor + kullanıcıya hiçbir değer üretmiyor.",
+      "suggestion": "Feature flag default OFF — endpoint Zoho dokümante edip scope açana kadar tamamen by-pass. Flag true ile gelecekte tek satır config değişikliğiyle yeniden açılabilir.",
+      "aha_moment": "Production logs temizleniyor, Zoho rate limit /minute kotası %2-3 düşüyor (Discover sıklığı bazlı), her başarısız metadata call ile gelen 401 alarm gürültüsü duruyor."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek INV-INT-121 BlueprintNotConfigured ile karşılaştığında 'lead var mı, blueprint var mı, hiçbir lead engaged değil mi?' üç ayrı senaryo arasında ayrım yapamıyor — ticket tanı süresi uzuyor.",
+      "suggestion": "INV-INT-137 LeadsNotInBlueprintProcess ayrı kod = 'lead var, blueprint var, hiçbiri engaged değil' kesin tanısı. Destek log'da kodu görür görmez Zoho criteria-based trigger eksikliğini doğrudan tespit ediyor.",
+      "aha_moment": "Destek mühendisi ticket'ı 5 dakikada kapatıyor: 'INV-INT-137 görüyorum, Zoho Blueprint criteria trigger tanımlayın veya Manuel ID toggle ile geçin' — eski 30 dakikalık tanı turlu yok."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Her Discover (kullanıcı 'Discover' butonuna her bastığında) en az 2 ek HTTP request (settings/layouts + settings/blueprint) atıyor — ikisi de production'da fail; round-trip latency Discover'ın algılanan hızını ~800ms-1.5s yavaşlatıyor.",
+      "suggestion": "Flag-gated bypass: 0 metadata HTTP request, doğrudan picklist sampling ile başla. Picklist zaten 5-dk cache'li, çoğu Discover anında dönüyor.",
+      "aha_moment": "Kullanıcı Discover butonuna basıyor, 1 saniyede tablo dolu — 'eskiden 2-3 saniye sürerdi' algı farkı."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "[ZOHO-BP-RAW] her Discover'da N x 500-byte body dump üretiyordu (N = sampled lead count, ~5-10); production log dosyaları sürekli büyüyor + log search latency yükseliyor + sensitive-ish veri (Zoho lead body) log'a sızıyor.",
+      "suggestion": "Persistent [ZOHO-BP] structured short-form: lead per ~80 byte (status + result tag + extracted count), body dump sadece 400 hard-failure yolunda (300 byte truncate, error throw mesajına embed). 90% log boyutu azalması + structured grep dostu format.",
+      "aha_moment": "Log dosyaları küçülüyor, `grep [ZOHO-BP] | grep result=record_not_in_process | wc -l` gibi sorgularla destek hızla pattern tespit ediyor."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-16T21:35:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-16T21:35:00+03:00",
+    "raw_text": "OVERALL_VERDICT: PASS / 12/12 CQ PASS / 4/4 CoVe PASS / NONE blocking. Summary: scoped and consistent with stated P4.2 intent: safely gates undocumented metadata path, adds registered and semantically aligned INV-INT-137 distinction, improves observability/UI guidance without introducing tenant, DB, or contract regressions. Model: gpt-5.4-2026-03-05.",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "Disambiguates 400 RECORD_NOT_IN_PROCESS from hard 400; INV-INT-137 vs INV-INT-121 user-facing distinction; FE dedicated CTA on INV-INT-137." },
+      "CQ2": { "result": "PASS", "evidence": "[ZOHO-BP] structured logs cover no_content/not_found/record_not_in_process/parse_fail/ok; JsonException path logs before continuing." },
+      "CQ3": { "result": "PASS", "evidence": "Diff scoped to declared 6 files (5 code + plan JSON); no out-of-scope service or shared files." },
+      "CQ4": { "result": "PASS", "evidence": "extractErrorCode separate from extractError (distinct purpose); backend extends existing Zoho error-code pattern." },
+      "CQ5": { "result": "PASS", "evidence": "Error code/config/Backend+Integrations boundary all follow existing conventions; no null-forgiving / bare catch(Exception)." },
+      "CQ6": { "result": "PASS", "evidence": "Removed unconditional 500-byte body dumps; lazy body read for 400 only; flag-gate skips wasted metadata request when off." },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME markers." },
+      "CQ8": { "result": "PASS", "evidence": "Additive INV-INT-137; IConfiguration ctor change preserves behavior with flag false; no removed contracts/DTOs." },
+      "CQ9": { "result": "PASS", "evidence": "No microservice isolation violation; tenant context threaded through; no DB or cross-tenant access added." },
+      "CQ10": { "result": "PASS", "evidence": "Card/Button error pattern preserved; only specializes title/help text on INV-INT-137; fallback retains generic UX." },
+      "CQ11": { "result": "PASS", "evidence": "No DB/SQL/repository changes; appsettings is application config, not schema." },
+      "CQ12": { "result": "PASS", "evidence": "Registered INV-INT-137 in arch/errors.md + ZohoErrorCodes; thrown messages explain workaround; FE extracts code and reacts." }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "GetValue<bool> returns default(bool)=false on missing key; appsettings ships false; no manual parsing that could throw." },
+      "Q2": { "result": "PASS", "reasoning": "sampleLeadIds.Count==0 throws BlueprintNotConfigured before loop; only RECORD_NOT_IN_PROCESS increments counter; final branching matches truth table exactly (all RECORD → INV-INT-137; partial → INV-INT-121)." },
+      "Q3": { "result": "PASS", "reasoning": "Flag false: skips metadata path, fallback aggregation control flow identical to P4.1. Flag true: metadata first → fallback preserved. JsonException handler unchanged after Deserialize→ReadFromJsonAsync swap (same DTO shape). Only intentional behavioral diff is the INV-INT-137 split." },
+      "Q4": { "result": "PASS", "reasoning": "Backend throw + arch/errors.md user_message convey same semantic and same Manuel ID workaround/path; not byte-for-byte identical but user guidance and meaning aligned." }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}

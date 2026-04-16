@@ -40,4 +40,7 @@ public static class ZohoErrorCodes
 
     // Adim 4 P4.1: Stage Mapping editor full state coverage
     public const string LeadStatusFieldNotFound     = "INV-INT-136";
+
+    // Adim 4 P4.2: Stage Mapping discover fallback observability
+    public const string LeadsNotInBlueprintProcess  = "INV-INT-137";
 }

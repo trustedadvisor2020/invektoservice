@@ -656,6 +656,10 @@ errors:
   - code: INV-INT-FE-132
     description: Frontend-only fallback for Stage Mapping editor (P4 ZohoStageMappingPage extractError)
     user_message: Beklenmedik bir hata oluştu, tekrar deneyin.
+  # Adim 4 P4.2: Stage Mapping discover — fallback aggregation observability
+  - code: INV-INT-137
+    description: All sampled Zoho leads returned RECORD_NOT_IN_PROCESS during blueprint aggregation (no lead is engaged in the blueprint workflow); distinct from BlueprintNotConfigured (no leads at all)
+    user_message: Zoho'daki lead'ler Blueprint sürecine dahil değil. Manuel ID ile her satırı elle girin (Zoho → Setup → Automation → Blueprint → ilgili Blueprint → her geçişe tıklayın → URL'deki son segmenti kopyalayın).
 
   # ── OB — Outbound (GR-1.3) ──
   - code: INV-OB-001
