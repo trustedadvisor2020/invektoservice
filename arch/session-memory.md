@@ -29,7 +29,7 @@
 |---|------|--------|-------|
 | 3b | ~~G7 Faz 2-5 (8 scheduler)~~ | DONE | Tüm 4 faz commit + deploy + Hangfire UI link |
 | 4 | INMA bridge Faz 2 (postMessage -> URL SSO auth chain koprisi) | DONE+DEPLOYED | slug 20260415-inma-bridge-faz2 master (commit fc2d0df), prod deploy 2026-04-16 13:16. 2 Codex iter -> iter 1 PASS. Backend + Integrations (Zoho bundle birlikte) redeploy; health OK. |
-| 4b | INMA bridge Faz 2.5 (inma:navigate postMessage) | DONE | slug 20260416-inma-bridge-faz2-5-navigate master direct. 2 Codex iter -> iter 1 PASS (iter 0 clerical CQ3 plan JSON allowed_files; iter 1 tum 12 CQ + 7/7 CoVe PASS). 4 kod + plan = 5 dosya ~34/-3. Build PASS. Dashboard rebuild + Backend redeploy bekliyor. Faz 3 backlog: parent'a navigation complete bildirimi (inma:navigated). |
+| 4b | INMA bridge Faz 2.5 (inma:navigate postMessage) | DONE+DEPLOYED | slug 20260416-inma-bridge-faz2-5-navigate master (commit 9174481), prod deploy 2026-04-16 13:39 (Backend only, Integrations dokunulmadi). Dashboard SPA rebuild + Backend server-deploy HEALTHY. Faz 3 backlog: parent'a navigation complete bildirimi (inma:navigated). |
 | 5 | UP0.2 SSO doğrulama + role map tamamlama | PENDING (INMA blocked) | JWT public key lazım |
 | 6 | UP0.3 Tenant lifecycle handler | PENDING (INMA blocked) | INMA tenant.created event |
 | 7 | UP0.5 IInmaSendClient | PENDING (INMA partial) | Outbound send, J1/J4 bekliyor |
