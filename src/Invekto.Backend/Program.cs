@@ -297,22 +297,14 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IFeatureFlagService, InMemoryFeatureFlagService>();
 
-// InmaJwtValidator + settings (singleton, thread-safe)
-InmaJwtValidator? inmaJwtValidator = null;
-// Always create settings if any InmaAuth config exists (proxy endpoints need URLs even without SecretKey)
+// InmaJwtSettings (singleton — used by login/refresh/welcome proxy endpoints + introspector)
 var inmaJwtSettings = new InmaJwtSettings
 {
-    SecretKey = builder.Configuration["InmaAuth:SecretKey"] ?? string.Empty,
     LoginUrl = builder.Configuration["InmaAuth:LoginUrl"] ?? string.Empty,
-    ClockSkewSeconds = builder.Configuration.GetValue<int>("InmaAuth:ClockSkewSeconds", 60),
     LoginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000),
     RefreshUrl = builder.Configuration["InmaAuth:RefreshUrl"],
     ApiBaseUrl = builder.Configuration["InmaAuth:ApiBaseUrl"]
 };
-if (!string.IsNullOrEmpty(inmaJwtSettings.SecretKey))
-{
-    inmaJwtValidator = new InmaJwtValidator(inmaJwtSettings);
-}
 var inmaAuthMockEnabled = builder.Configuration.GetValue<bool>("InmaAuth:MockEnabled", false);
 
 // inma login proxy HTTP client (no base address — LoginUrl is full URL from config)
@@ -321,6 +313,39 @@ builder.Services.AddHttpClient("inma_login", client =>
     var loginTimeoutMs = builder.Configuration.GetValue<int>("InmaAuth:LoginTimeoutMs", 10000);
     client.Timeout = TimeSpan.FromMilliseconds(loginTimeoutMs);
 });
+
+// inma token introspection: welcome-endpoint check (5s timeout, 5dk per-token cache).
+// Replaces InmaJwtValidator HS256 signature verify (key never shared with downstream).
+// DI-managed: typed HttpClient + IMemoryCache + ILogger<T> via standard ASP.NET Core pipeline.
+// Singleton lifetime: container handles disposal; ApiBaseUrl boş = registered ama runtime null behavior
+// (introspector ApiBaseUrl boş ise INV-AUTH-008 graceful döner, exception throw etmez).
+builder.Services.AddHttpClient<InmaTokenIntrospector>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+// Override default constructor injection: IMemoryCache zaten singleton (UP0.6 L297), ILogger<T>
+// ASP.NET Core'un kurduğu pipeline'dan; settings outer-scope variable capture.
+builder.Services.AddSingleton<InmaTokenIntrospector>(sp => new InmaTokenIntrospector(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(InmaTokenIntrospector)),
+    sp.GetRequiredService<IMemoryCache>(),
+    inmaJwtSettings,
+    sp.GetRequiredService<ILogger<InmaTokenIntrospector>>()));
+
+// Helper: map InmaTokenIntrospector ErrorCode → correct HTTP status + ErrorResponse envelope.
+// Structured ErrorCode (from IntrospectResult) — no substring matching:
+//   INV-AUTH-008 = service unavailable (503)
+//   INV-AUTH-001/002 (or null fallback) = unauthorized (401)
+IResult MapInmaIntrospectError(string? errorCode, string? detail, string requestId)
+{
+    if (errorCode == ErrorCodes.AuthInmaIntrospectionUnavailable)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.AuthInmaIntrospectionUnavailable,
+                "INMA servisine ulaşılamadı, kısa süre sonra tekrar deneyin.", requestId),
+            statusCode: 503);
+    return Results.Json(
+        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, detail ?? "Invalid token", requestId),
+        statusCode: 401);
+}
 
 // PostgreSQL connection factory (singleton, thread-safe pooling)
 PostgresConnectionFactory? pgFactory = null;
@@ -585,14 +610,17 @@ bool ValidateOpsAuth(HttpContext ctx)
             if (context?.Role == "admin") return true;
         }
 
-        // inma JWT fallback (direct token from main app)
-        if (inmaJwtValidator != null)
+        // inma JWT fallback (direct token from main app) — welcome-endpoint introspection.
+        // Sync-over-async is intentional here: ValidateOpsAuth has 30+ call sites (async refactor
+        // would be scope creep). ASP.NET Core has no SynchronizationContext, so no deadlock.
+        // Cache hit (~95% of calls) is fully synchronous; cache-miss network wait is acceptable
+        // for low-frequency ops auth.
+        var introspector = ctx.RequestServices.GetService<InmaTokenIntrospector>();
+        if (introspector != null)
         {
-            var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
-            if (inmaCtx?.Role == "admin") return true;
+            var introspectResult = introspector.ValidateAsync(token).GetAwaiter().GetResult();
+            if (introspectResult.Context?.Role == "admin") return true;
         }
-
-        // decode-only fallback REMOVED (security: unsigned JWT must never grant access)
 
         return false;
     }
@@ -2239,40 +2267,9 @@ app.MapGet("/api/v1/automation/flows/{tenantId:int}", async (HttpContext ctx, Fl
 // Tenant-level automation analytics summary (manual JWT validation: INSE + INMA fallback)
 app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, AnalyticsRepository analyticsRepo, JsonLinesLogger jsonLogger, string? from, string? to) =>
 {
-    // Manual JWT validation (not under middleware-protected prefix)
-    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
-    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-    {
-        return Results.Json(
-            ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"),
-            statusCode: 401);
-    }
-
-    var token = authHeader["Bearer ".Length..].Trim();
-    TenantContext? tenantContext = null;
-
-    // Try INSE JwtValidator first, then INMA fallback
-    if (jwtValidator != null)
-    {
-        var (ctx1, _) = jwtValidator.ValidateToken(token);
-        tenantContext = ctx1;
-    }
-    if (tenantContext == null && inmaJwtValidator != null)
-    {
-        var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
-        if (inmaCtx != null)
-        {
-            tenantContext = new TenantContext
-            {
-                TenantId = inmaCtx.TenantId,
-                UserId = inmaCtx.UserId,
-                Role = inmaCtx.Role
-            };
-        }
-    }
-
-    // decode-only fallback REMOVED (security: unsigned JWT must never grant access)
-
+    // Single source of truth for INSE+INMA tenant extraction (CQ4 dedup, iter 2 fix).
+    var (tenantContext, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenantContext == null)
     {
         return Results.Json(
@@ -2313,38 +2310,54 @@ app.MapGet("/api/v1/dashboard/analytics/summary", async (HttpContext ctx, Analyt
 // JWT auth (INSE + INMA fallback), tenant-scoped
 // ============================================
 
-// Helper: extract TenantContext from Bearer token (INSE first, INMA fallback, then decode-only)
-TenantContext? ExtractTenantFromBearer(HttpContext ctx)
+// Helper: extract TenantContext from Bearer token (INSE first, INMA welcome introspection fallback).
+// Returns (Tenant, Failure):
+//   Failure != null  → caller should return failure verbatim (e.g. 503 INV-AUTH-008 transient outage)
+//   Failure == null + Tenant == null → caller should return its own 401 with appropriate message
+//   Failure == null + Tenant != null → success
+async Task<(TenantContext? Tenant, IResult? Failure)> ExtractTenantFromBearer(HttpContext ctx)
 {
     var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
     if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        return null;
+        return (null, null);
 
     var token = authHeader["Bearer ".Length..].Trim();
     TenantContext? tenantContext = null;
 
-    // Path A: INSE JWT
+    // Path A: INSE JWT (local signature verify, fast path)
     if (jwtValidator != null)
     {
         var (ctx1, _) = jwtValidator.ValidateToken(token);
         tenantContext = ctx1;
     }
-    // Path B: INMA JWT (validated)
-    if (tenantContext == null && inmaJwtValidator != null)
+    // Path B: INMA JWT (welcome-endpoint introspection — see InmaTokenIntrospector)
+    if (tenantContext == null)
     {
-        var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
-        if (inmaCtx != null)
-            tenantContext = new TenantContext { TenantId = inmaCtx.TenantId, UserId = inmaCtx.UserId, Role = inmaCtx.Role };
+        var introspector = ctx.RequestServices.GetService<InmaTokenIntrospector>();
+        if (introspector != null)
+        {
+            var result = await introspector.ValidateAsync(token, ctx.RequestAborted);
+            if (result.Context != null)
+            {
+                tenantContext = new TenantContext { TenantId = result.Context.TenantId, UserId = result.Context.UserId, Role = result.Context.Role };
+            }
+            else if (result.ErrorCode == ErrorCodes.AuthInmaIntrospectionUnavailable)
+            {
+                // Transient INMA outage → propagate as 503 (uniform with /api/v1/inma/auth/* endpoints).
+                var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? "-";
+                return (null, MapInmaIntrospectError(result.ErrorCode, result.Detail, requestId));
+            }
+        }
     }
-    // decode-only fallback REMOVED (security: unsigned JWT must never grant access)
 
-    return tenantContext;
+    return (tenantContext, null);
 }
 
 // GET /api/v1/settings/instances — list instances (fetches from WapCRM on first call, then from DB cache)
 app.MapGet("/api/v1/settings/instances", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2382,7 +2395,8 @@ app.MapGet("/api/v1/settings/instances", async (HttpContext ctx, JsonLinesLogger
 // POST /api/v1/settings/instances/refresh — force re-fetch from WapCRM
 app.MapPost("/api/v1/settings/instances/refresh", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2416,7 +2430,8 @@ app.MapPost("/api/v1/settings/instances/refresh", async (HttpContext ctx, JsonLi
 // PUT /api/v1/settings/instances/{instanceId}/toggle — enable/disable instance
 app.MapPut("/api/v1/settings/instances/{instanceId}/toggle", async (HttpContext ctx, JsonLinesLogger jsonLog, string instanceId) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2455,7 +2470,8 @@ app.MapPut("/api/v1/settings/instances/{instanceId}/toggle", async (HttpContext 
 // GET /api/v1/settings/working-hours — read tenant's working hours configuration
 app.MapGet("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2511,7 +2527,8 @@ app.MapGet("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLo
 // PUT /api/v1/settings/working-hours — update tenant's working hours configuration
 app.MapPut("/api/v1/settings/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2597,7 +2614,8 @@ var allowedSectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 // GET /api/v1/settings/sector — read tenant's sector
 app.MapGet("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2620,7 +2638,8 @@ app.MapGet("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger js
 // PUT /api/v1/settings/sector — update tenant's sector
 app.MapPut("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2665,7 +2684,8 @@ app.MapPut("/api/v1/settings/sector", async (HttpContext ctx, JsonLinesLogger js
 // GET /api/v1/templates/available — tenant's available templates (filtered by sector)
 app.MapGet("/api/v1/templates/available", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2685,7 +2705,8 @@ app.MapGet("/api/v1/templates/available", async (HttpContext ctx, KnowledgeClien
 // POST /api/v1/templates/adopt/{templateId} — tenant adopts a template
 app.MapPost("/api/v1/templates/adopt/{templateId:int}", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog, int templateId) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2704,7 +2725,8 @@ app.MapPost("/api/v1/templates/adopt/{templateId:int}", async (HttpContext ctx, 
 // GET /api/v1/templates/adoptions — tenant's adoption history
 app.MapGet("/api/v1/templates/adoptions", async (HttpContext ctx, KnowledgeClient knClient, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2724,7 +2746,8 @@ app.MapGet("/api/v1/templates/adoptions", async (HttpContext ctx, KnowledgeClien
 // GET /api/v1/flow-builder/instances/available — available instances for flow assignment
 app.MapGet("/api/v1/flow-builder/instances/available", async (HttpContext ctx, JsonLinesLogger jsonLog, int? flow_id) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -2739,7 +2762,8 @@ app.MapGet("/api/v1/flow-builder/instances/available", async (HttpContext ctx, J
 // GET /api/v1/flow-builder/tenant/working-hours — tenant working hours for FlowSettings tooltip
 app.MapGet("/api/v1/flow-builder/tenant/working-hours", async (HttpContext ctx, JsonLinesLogger jsonLog) =>
 {
-    var tenant = ExtractTenantFromBearer(ctx);
+    var (tenant, extractFailure) = await ExtractTenantFromBearer(ctx);
+    if (extractFailure != null) return extractFailure;
     if (tenant == null)
         return Results.Json(ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Bearer token required", "-"), statusCode: 401);
 
@@ -6435,7 +6459,7 @@ app.MapGet("/api/ops/tenants/{id}/license", async (HttpContext ctx, int id, Json
 
 // Akis 1: inma JWT -> inse JWT exchange (URL token flow)
 // inma'dan gelen ?accesstoken= parametresi bu endpoint'e gonderilir.
-// InmaAuth:SecretKey yoksa signature validation atlanir (decode-only fallback).
+// Validation: InmaTokenIntrospector welcome-endpoint check (signature verify YASAK — see class docs).
 app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFactory httpClientFactory, JsonLinesLogger jsonLogger, IFeatureFlagService featureFlagService) =>
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
@@ -6443,6 +6467,12 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
     if (jwtGenerator == null)
         return Results.Json(
             ErrorResponse.Create(ErrorCodes.GeneralUnknown, "JWT generator not configured", requestId),
+            statusCode: 503);
+
+    var introspectorEx = ctx.RequestServices.GetService<InmaTokenIntrospector>();
+    if (introspectorEx == null)
+        return Results.Json(
+            ErrorResponse.Create(ErrorCodes.GeneralUnknown, "INMA introspection not configured", requestId),
             statusCode: 503);
 
     try
@@ -6456,85 +6486,12 @@ app.MapPost("/api/v1/inma/auth/exchange", async (HttpContext ctx, IHttpClientFac
                 ErrorResponse.Create(ErrorCodes.GeneralValidation, "token field required", requestId),
                 statusCode: 400);
 
-        InmaTokenContext? inmaCtx = null;
-
-        // Path A: inmaJwtValidator configured → full signature validation
-        if (inmaJwtValidator != null)
+        var introspectExResult = await introspectorEx.ValidateAsync(inmaToken, ctx.RequestAborted);
+        var inmaCtx = introspectExResult.Context;
+        if (inmaCtx == null)
         {
-            var (ctx2, error) = inmaJwtValidator.ValidateToken(inmaToken);
-            if (ctx2 == null)
-            {
-                jsonLogger.StepWarn($"inma token exchange failed: {error}", requestId);
-                return Results.Json(
-                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Invalid token", requestId),
-                    statusCode: 401);
-            }
-            inmaCtx = ctx2;
-        }
-        else
-        {
-            // Decode-only fallback: SecretKey not configured, decode JWT without signature validation.
-            // This allows INMA SSO flow to work when SecretKey is not set in production.
-            jsonLogger.StepWarn("inma token exchange: decode-only mode (InmaAuth:SecretKey not configured)", requestId);
-
-            try
-            {
-                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                if (!handler.CanReadToken(inmaToken))
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Cannot decode INMA token", requestId),
-                        statusCode: 401);
-
-                var jwt = handler.ReadJwtToken(inmaToken);
-
-                // Check expiry with 60s clock skew
-                if (jwt.ValidTo != DateTime.MinValue && jwt.ValidTo < DateTime.UtcNow.AddSeconds(-60))
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Token expired", requestId),
-                        statusCode: 401);
-
-                // Extract claims (CompanyCode = Invekto tenant_id, CompanyId = internal INMA ID)
-                var companyIdStr = jwt.Claims.FirstOrDefault(c => c.Type == "CompanyCode")?.Value
-                                ?? jwt.Claims.FirstOrDefault(c => c.Type == "CompanyId")?.Value;
-                if (string.IsNullOrEmpty(companyIdStr) || !int.TryParse(companyIdStr, out var decTenantId) || decTenantId <= 0)
-                    return Results.Json(
-                        ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Missing CompanyId/CompanyCode claim", requestId),
-                        statusCode: 401);
-
-                var userIdStr = jwt.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                             ?? jwt.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                _ = int.TryParse(userIdStr, out var decUserId);
-
-                var chatRole = jwt.Claims.FirstOrDefault(c => c.Type == "ChatRole")?.Value;
-                var decRole = chatRole == "2" ? "admin" : "agent";
-                var decFullName = jwt.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? string.Empty;
-                var decLang = jwt.Claims.FirstOrDefault(c => c.Type == "Lang")?.Value ?? "tr";
-
-                string[] decFeatures;
-                try
-                {
-                    var featRaw = jwt.Claims.FirstOrDefault(c => c.Type == "InseFeatures")?.Value;
-                    decFeatures = string.IsNullOrWhiteSpace(featRaw) ? [] : System.Text.Json.JsonSerializer.Deserialize<string[]>(featRaw) ?? [];
-                }
-                catch { decFeatures = []; }
-
-                inmaCtx = new InmaTokenContext
-                {
-                    TenantId = decTenantId,
-                    UserId = decUserId,
-                    Role = decRole,
-                    FullName = decFullName,
-                    Lang = decLang,
-                    InseFeatures = decFeatures
-                };
-            }
-            catch (Exception ex)
-            {
-                jsonLogger.StepWarn($"inma token decode-only failed: {ex.Message}", requestId);
-                return Results.Json(
-                    ErrorResponse.Create(ErrorCodes.AuthUnauthorized, "Cannot decode INMA token", requestId),
-                    statusCode: 401);
-            }
+            jsonLogger.StepWarn($"inma token exchange failed: [{introspectExResult.ErrorCode}] {introspectExResult.Detail}", requestId);
+            return MapInmaIntrospectError(introspectExResult.ErrorCode, introspectExResult.Detail, requestId);
         }
 
         var tokenExpiry = TimeSpan.FromHours(8);
@@ -6572,7 +6529,8 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
 {
     var requestId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
 
-    if (inmaJwtValidator == null || jwtGenerator == null)
+    var introspectorLogin = ctx.RequestServices.GetService<InmaTokenIntrospector>();
+    if (introspectorLogin == null || jwtGenerator == null)
         return Results.Json(
             ErrorResponse.Create(ErrorCodes.GeneralUnknown, "inma auth not configured", requestId),
             statusCode: 503);
@@ -6667,13 +6625,12 @@ app.MapPost("/api/v1/inma/auth/login", async (HttpContext ctx, IHttpClientFactor
                 statusCode: 500);
         }
 
-        var (inmaCtx, error) = inmaJwtValidator.ValidateToken(inmaToken);
+        var introspectLoginResult = await introspectorLogin.ValidateAsync(inmaToken, ctx.RequestAborted);
+        var inmaCtx = introspectLoginResult.Context;
         if (inmaCtx == null)
         {
-            jsonLogger.StepWarn($"inma login token validation failed: {error}", requestId);
-            return Results.Json(
-                ErrorResponse.Create(ErrorCodes.AuthUnauthorized, error ?? "Token dogrulanamadi", requestId),
-                statusCode: 401);
+            jsonLogger.StepWarn($"inma login token validation failed: [{introspectLoginResult.ErrorCode}] {introspectLoginResult.Detail}", requestId);
+            return MapInmaIntrospectError(introspectLoginResult.ErrorCode, introspectLoginResult.Detail, requestId);
         }
 
         // UP0.6: server-side feature flag cache (5dk TTL) populated from the inma token claim.
@@ -7637,10 +7594,14 @@ string ResolveOpsIdentity(HttpContext ctx)
             var (context, _) = jwtValidator.ValidateToken(token);
             if (context != null) return $"jwt:user={context.UserId},role={context.Role}";
         }
-        if (inmaJwtValidator != null)
+        var introspectorOps = ctx.RequestServices.GetService<InmaTokenIntrospector>();
+        if (introspectorOps != null)
         {
-            var (inmaCtx, _) = inmaJwtValidator.ValidateToken(token);
-            if (inmaCtx != null) return $"inma-jwt:user={inmaCtx.UserId},role={inmaCtx.Role}";
+            // Sync-over-async: this helper is called from sync ops audit logger; ASP.NET Core
+            // has no SynchronizationContext so no deadlock. Cache hit (~95%) is fully sync.
+            var introspectOpsResult = introspectorOps.ValidateAsync(token).GetAwaiter().GetResult();
+            if (introspectOpsResult.Context != null)
+                return $"inma-jwt:user={introspectOpsResult.Context.UserId},role={introspectOpsResult.Context.Role}";
         }
         return "jwt:?";
     }

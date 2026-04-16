@@ -215,6 +215,9 @@ errors:
   - code: INV-AUTH-007
     description: Monthly usage quota exceeded (Paket 2)
     user_message: Aylık kullanım limitinize ulaştınız.
+  - code: INV-AUTH-008
+    description: INMA welcome endpoint introspection unavailable (network/transport fail; Backend cannot reach INMA API to validate token)
+    user_message: INMA servisine ulaşılamadı, kısa süre sonra tekrar deneyin.
 
   # ── AT — Automation (GR-1.1) ──
   - code: INV-AT-001

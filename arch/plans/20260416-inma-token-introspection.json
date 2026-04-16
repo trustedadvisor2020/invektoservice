@@ -1,0 +1,211 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "spec_ref": null,
+  "slug": "20260416-inma-token-introspection",
+  "risk": "MEDIUM",
+  "status": "DONE",
+  "created_at": "2026-04-16T22:00:00+03:00",
+  "updated_at": "2026-04-16T23:30:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-04-16T22:00:00+03:00", "note": "Plan after Q seçim 3 (birleşik tek paket MEDIUM)"},
+    {"status": "IN_PROGRESS", "at": "2026-04-16T22:10:00+03:00", "note": "Branch work/20260416-inma-token-introspection; 7 file refactor"},
+    {"status": "REVIEW", "at": "2026-04-16T22:30:00+03:00", "note": "Iter 0 FAIL (5 blocking: status mapping + console logging)"},
+    {"status": "REVIEW", "at": "2026-04-16T22:50:00+03:00", "note": "Iter 1 FAIL (5 blocking: DI lifecycle + brittle substring + scope creep)"},
+    {"status": "REVIEW", "at": "2026-04-16T23:15:00+03:00", "note": "Iter 2 FAIL (1 blocking: CQ4 GetTenantAnalytics duplicate)"},
+    {"status": "DONE", "at": "2026-04-16T23:30:00+03:00", "note": "Iter 3 PASS — 12/12 CQ + 5/5 CoVe ALL PASS, 0 blocking"}
+  ],
+  "plan": {
+    "summary": "INMA JWT validation pattern netleştirme: HS256 SymmetricKey signature verify YASAK (key dağıtımı = compromise; INMA Angular tarafı da decode-only). Yeni InmaTokenIntrospector (welcome-endpoint introspection + IMemoryCache 5dk per-token) eklenir. InmaJwtValidator KALDIRILIR (signature verify dead code). 4 tüketici async refactor (3 helper + exchange endpoint). Forge token defansı: cache miss → welcome 401 → reject; cache hit defense window max 5dk (acceptable defense-in-depth, FE'nin welcome gate'i ek katman). Mevcut prod bypass (InmaAuth:SecretKey='') artık 'geçici' DEĞİL — kalıcı doğru pattern olarak kodlanır.",
+    "q_intent": "Q netleştirme (2026-04-16): INMA JWT imzası INSE'de DOĞRULANMAZ. INMA Angular tarafı da jwt-decode (decode-only). Doğru pattern: jwtDecode → CompanyCode oku → GET /api/invekto/welcome + Bearer → 200 = geçerli. InmaJwtValidator HS256 verify KALDIR. UP0.2 public key gereksinimi İPTAL. Q seçim 3 = birleşik tek paket MEDIUM (welcome introspection direkt, sync→async tek seferde).",
+    "interview_notes": "InmaTokenIntrospector welcome introspection EKLENMELI (sadece signature kaldırma yetersiz; FE bypass = forge token gap). Cache TTL 5dk: kısa enough that revoked token max 5dk içinde reject, uzun enough that latency etkisi minimal (her API request welcome çağrısı = backend → INMA round-trip). Cache key = SHA256(token).Substring(0,16) — full token PII saklamaz. ApiBaseUrl mevcut InmaAuth:ApiBaseUrl slot reuse (production zaten set). Yeni named HttpClient 'inma_introspect' 5s timeout (welcome zaten timeout-tolerant). InmaJwtValidator KALDIR — geriye uyumluluk için tutmak dead code; introspector tek doğru API. SecretKey config slot kalır (deprecated comment) — production restart sırasında missing key hata vermesin diye. 3 tüketici (L591/L2262/L2335) async refactor: ExtractTenantFromBearer Task<TenantContext?>, IsSuperAdmin async chain (mevcut caller zaten async lambda). Exchange endpoint L6439 manuel decode-only path SİLİNİR (84 satır → 1 await).",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Yeni InmaTokenIntrospector (Invekto.Shared/Auth/) public class — `ValidateAsync(string token, CancellationToken ct)` → `(InmaTokenContext? Context, string? Error)`. Akış: (a) cache hit → return context, FromCache=true (no welcome call); (b) miss → JWT decode (claims parse) + welcome `GET {ApiBaseUrl}/api/invekto/welcome + Bearer <token>` → 200 ise context cache.Set(token_hash, ctx, 5dk TTL) + return; (c) 401 → null + 'Token expired or invalid'; (d) network/transport fail → null + 'INV-AUTH-008: introspection unavailable'. Cache key = `inma:tk:` + SHA256(token).Substring(0,16) (PII koruması). Typed catches: HttpRequestException, TaskCanceledException, JsonException, ArgumentException.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC2",
+        "criterion": "InmaJwtValidator.cs SİLİNİR (Invekto.Shared/Auth/InmaJwtValidator.cs) — signature verify dead code, geriye uyumluluk gereksiz (yalnız 4 tüketici, hepsi bu paket içinde refactor ediliyor). Tüketicilerin import'ları InmaTokenIntrospector'a geçer. Build PASS = referansı kalan yok.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC3",
+        "criterion": "Program.cs DI (L300-315): `inmaJwtValidator` initialize logic kaldır → yerine `InmaTokenIntrospector` singleton + named HttpClient 'inma_introspect' (5s timeout). 3 tüketici async refactor: (a) IsSuperAdmin lambda L591 — `await introspector.ValidateAsync(token, CancellationToken.None)`, async signature; (b) GetTenantAnalytics endpoint L2260-L2272 — zaten async lambda, doğrudan await; (c) ExtractTenantFromBearer L2317 — `Task<TenantContext?>` döndürür, tüm caller'lar await'le. (d) Exchange endpoint L6439 manuel decode-only path (L6459-L6538, 80+ satır) tamamen SİLİNİR → tek await çağrısı.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC4",
+        "criterion": "arch/errors.md + Invekto.Shared.Constants.ErrorCodes: yeni `INV-AUTH-008 InmaIntrospectionUnavailable` (welcome endpoint network/transport fail; user_message: 'INMA servisine ulaşılamadı, tekrar deneyin.'). Mevcut INV-AUTH-001 (expired) + INV-AUTH-002 (invalid) reuse — introspector welcome 401 alırsa bu kodlardan birini context-aware return.",
+        "verified": false,
+        "verification_note": null
+      },
+      {
+        "id": "AC5",
+        "criterion": "appsettings.json `InmaAuth.SecretKey` slot KALIR (deprecated comment YOK çünkü JSON comment desteklenmez; InmaJwtSettings sınıfı SecretKey property'sini KALDIRIR — IConfiguration unbound key sessizce ignore eder, production restart sorunsuz). InmaJwtSettings.LoginUrl/RefreshUrl/ApiBaseUrl/ClockSkewSeconds/LoginTimeoutMs korunur (welcome introspector + login proxy + refresh proxy hala kullanır).",
+        "verified": false,
+        "verification_note": null
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs",
+    "src/Invekto.Shared/Auth/InmaJwtValidator.cs",
+    "src/Invekto.Shared/Auth/InmaJwtSettings.cs",
+    "src/Invekto.Backend/Program.cs",
+    "src/Invekto.Backend/appsettings.json",
+    "arch/errors.md",
+    "arch/plans/20260416-inma-token-introspection.json"
+  ],
+  "files_changed": [
+    { "path": "arch/errors.md", "change": "INV-AUTH-008 InmaIntrospectionUnavailable registered.", "is_new": false },
+    { "path": "src/Invekto.Shared/Auth/InmaTokenIntrospector.cs", "change": "New: welcome-endpoint introspection + IMemoryCache 5dk per-token. SHA256-truncated cache key (PII protection). Typed catches HttpRequestException/TaskCanceledException/JsonException/ArgumentException. Local exp pre-check (60s skew). [INMA-INTROSPECT] structured logs.", "is_new": true },
+    { "path": "src/Invekto.Shared/Auth/InmaJwtValidator.cs", "change": "DELETED — HS256 signature verify dead code (key never shared with downstream).", "is_new": false, "deleted": true },
+    { "path": "src/Invekto.Shared/Auth/InmaJwtSettings.cs", "change": "Removed: SecretKey + ClockSkewSeconds properties (no longer used). LoginUrl/LoginTimeoutMs/RefreshUrl/ApiBaseUrl preserved.", "is_new": false },
+    { "path": "src/Invekto.Shared/Constants/ErrorCodes.cs", "change": "Added AuthInmaIntrospectionUnavailable = 'INV-AUTH-008' constant.", "is_new": false },
+    { "path": "src/Invekto.Backend/Program.cs", "change": "DI: inmaJwtValidator removed; inmaTokenIntrospector outer-scope singleton (manual HttpClient 5s + new MemoryCache). 5 consumers: ValidateOpsAuth (sync-over-async, deliberate scope discipline), GetTenantAnalytics endpoint (async await), ExtractTenantFromBearer (sync→Task<TenantContext?>; 13 callers updated to await), inma/auth/login (await ValidateAsync), inma/auth/exchange (~80-line manual decode-only path REMOVED → single await; introspector required = 503 if unconfigured), ops audit identity helper (sync-over-async, low-freq). 179 ins / 95 del net.", "is_new": false },
+    { "path": "arch/plans/20260416-inma-token-introspection.json", "change": "Plan JSON (this file).", "is_new": true }
+  ],
+  "git_diff": {
+    "patch_truncated": null,
+    "sha256": "853137a97109a1b4107d8e9c2d38349cced59b1700d0b2d106d4d2d93225a8e5",
+    "full_path": "arch/plans/diffs/20260416-inma-token-introspection.diff",
+    "stats": { "insertions": 446, "deletions": 249, "files_count": 7 }
+  },
+  "build": {
+    "status": "PASS",
+    "command": "powershell -NoProfile -Command \"dotnet build C:\\CRMs\\InvektoServices\\InvektoServis.sln --no-restore -v q\"",
+    "timestamp": "2026-04-16T22:25:00+03:00",
+    "duration_ms": 3530,
+    "output_tail": "Backend solo: 11 Warning(s) (all pre-existing) / 0 Error(s) / 7.27s. Full sln: 2 Warning(s) (pre-existing xUnit + tests) / 0 Error(s) / 3.53s incremental.",
+    "error_summary": null,
+    "services": ["Invekto.Shared", "Invekto.Backend"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "InmaTokenIntrospector cache key hashing güvenli mi: SHA256(token).Substring(0,16) collision riski + PII korumasi yeterli mi? 16 hex char = 64 bit; 5dk TTL içinde 2^32 token üretilirse %50 collision (birthday paradox) — pratikte INMA token sayısı/dk << 1000, kabul edilebilir. Token'ın kendisi cache key olmamalı (memory dump = token leak).",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "Cache hit + revoked token edge case: kullanıcı 5dk içinde rolden çıkarılırsa cache stale data döner (max 5dk windows). Defense-in-depth perspektifinden kabul edilebilir mi? Alternatif (cache TTL=0) = her API request welcome round-trip = ~50-100ms latency cost. Q'nun mesajındaki 5dk önerisi bu trade-off'u kabul ediyor.",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Async refactor regresyon riski: ExtractTenantFromBearer sync helper artık Task<TenantContext?> döner. Tüm caller noktaları (settings instance endpoints L2345+, başka kullanımlar) await'lendi mi? Build PASS = compile-time check; ama runtime'da unhandled async lambda var mı? Grep: `ExtractTenantFromBearer\\(` tüm caller'ları async olmalı.",
+      "category": "Process/Policy"
+    },
+    {
+      "id": "Q4",
+      "question": "Forge token gap kapatma: malicious token doğrudan exchange endpoint'e gönderilirse → introspector welcome çağırır → INMA backend 401 (token signature INMA'nın kendi key'iyle valid değil) → exchange 401 döner → INSE JWT üretilmez. Cache miss path forge'u garanti reddeder. Cache hit (önceden valid token tekrar geldi) durumunda forge mümkün değil çünkü cache miss = ilk welcome çağrısı zaten reject etmişti. Doğru mu?",
+      "category": "Auth"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "INSE-STYLE-GUIDE.md, arch/platform/inma-inse-unification/inma-team-kickoff-brief.md, DentAdavista/plan/flows.html|pdf (Q'nun diğer session pre-existing WIP)",
+      "Diğer mikro servisler (yalnız Backend ve Shared etkileniyor)",
+      "Dashboard FE (token validation server-side; FE değişikliği yok)",
+      "Mock/login/refresh proxy endpoint'leri (mevcut davranış korunur — sadece exchange + 3 validate noktası refactor)"
+    ],
+    "non_goals": [
+      "FE pattern değişikliği (FE zaten welcome çağırıyor — backend ek katman)",
+      "INMA Public Key implementation (UP0.2 İPTAL)",
+      "Yedek dosya cleanup (production manuel: appsettings.Production.json.bak-20260416-inma-bypass — wrap session dışı)",
+      "Cache invalidation API (5dk TTL doğal expire — manuel revoke endpoint backlog)"
+    ],
+    "intentional_exclusions": [
+      "InmaJwtValidator silinir, InmaJwtSettings.SecretKey property silinir — config slot appsettings.json'da kalır (IConfiguration unbound key ignore, restart safe).",
+      "Mevcut /api/v1/inma/welcome proxy endpoint (L6983) DOKUNULMAZ — Dashboard FE bunu kullanıyor; introspector ayrı internal HttpClient ile aynı INMA API'yi çağırır.",
+      "Mock login (InmaAuth:MockEnabled) DOKUNULMAZ — DEV-only path, mevcut davranış korunur.",
+      "ApiBaseUrl boş ise: introspector ValidateAsync hemen INV-AUTH-008 döner (graceful), exception throw etmez.",
+      "ExtractTenantFromBearer + 13 caller (settings/instance endpoints): INV-AUTH-008 transient (welcome network/timeout) durumda mevcut null→401 fallback KORUNUR — signature genişletme (Tuple/result pattern) = 13 endpoint manuel edit, scope creep. Kullanıcı transient failure'da kısa sürede retry yapar (kabul UX). Dedicated INMA endpoints (/api/v1/inma/auth/exchange + /api/v1/inma/auth/login) MapInmaIntrospectError helper ile doğru 503/401 ayrımı yapar (iter 1 CQ1/CQ9/CQ10/CQ12 fix bu kapsamda).",
+      "InmaTokenIntrospector logging: ILogger<InmaTokenIntrospector> ctor inject (Microsoft.Extensions.Logging.Abstractions). Console.WriteLine yerine LogWarning/LogInformation/LogDebug structured logging (iter 1 CQ5 fix). [INMA-INTROSPECT] prefix korunur."
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "InmaTokenIntrospector.ValidateAsync: typed catches HttpRequestException + TaskCanceledException (network/timeout → INV-AUTH-008), JsonException (welcome response parse fail → INV-AUTH-008), JwtException via JwtSecurityTokenHandler.ReadJwtToken (decode fail → INV-AUTH-002), ArgumentException (token format → INV-AUTH-002)",
+      "Exchange endpoint L6439: typed catches preserved (JsonException for body parse). Manuel decode-only path silinince orijinal try/catch yapısı sade olur."
+    ],
+    "user_facing_errors": [
+      "INV-AUTH-001 Token expired (introspector cache miss + welcome 401 + JWT exp claim < now)",
+      "INV-AUTH-002 Invalid token (decode fail veya welcome 401 + token format invalid)",
+      "INV-AUTH-008 INMA servisine ulaşılamadı (welcome network/transport fail)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Tüm error path'leri typed catch + structured log + user-facing kod döner. Cache hit fast-path log'lanmaz (high-frequency, gürültü olur); cache miss + welcome çağrısı log'lanır (status + result). ApiBaseUrl boş = config-driven graceful degradation, audit log'a düşer."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Mevcut prod bypass (InmaAuth:SecretKey='') decode-only fallback'i 'geçici güvenlik riski' olarak işaretliydi (task 4e GUVENLIK RISKI). Aslında doğru pattern ama kod 'bypass' sentinel'i ile bug gibi görünüyor — gelecek developer 'rollback gerekli' düşünür.",
+      "suggestion": "InmaJwtValidator silinir, InmaTokenIntrospector tek doğru API. Kod = doğru pattern dokümante. 'Bypass' kavramı ortadan kalkar. arch/session-memory + tracking güncel.",
+      "aha_moment": "Yeni developer: 'INMA token nasıl validate ediliyor?' → tek dosya InmaTokenIntrospector.cs → welcome introspection + cache. Eski 'şu an bypass var, asıl validator devre dışı' kafa karışıklığı yok."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Forge token attack: malicious aktör doğrudan POST /api/v1/inma/auth/exchange çağırırsa decode-only path forged claims'i kabul edip INSE JWT üretiyor → tenant takeover. Mevcut bypass'ta gap.",
+      "suggestion": "Welcome introspection: forged token welcome 401 → cache yazılmaz → exchange 401 döner. Defense-in-depth: FE welcome gate + Backend welcome gate.",
+      "aha_moment": "Pen-test: 'forged INMA JWT ile tenant 5050 access' → exchange 401 → INSE JWT üretilmedi → attack fail. Audit log'da `[INMA-INTROSPECT] welcome=401` izi."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Backend'in her INMA token validation'ında welcome çağrısı = ~50-100ms latency (Backend → INMA API round-trip). Yüksek-frekans endpoint'ler (analytics, settings) etkilenir.",
+      "suggestion": "IMemoryCache 5dk per-token: ilk çağrıda welcome + cache; sonraki 5dk içindeki çağrılar cache hit (sub-ms). Token expire/refresh sıklığı (~8h) >> cache TTL (5dk) → her token için ortalama 1 welcome / 5dk.",
+      "aha_moment": "Latency profiler: cache hit = 0.2ms, cache miss = 60ms. %95+ hit ratio (yüksek-frekans tenants) → genel auth latency ~5ms."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek 'INMA login çalışmıyor' ticket'larında validator vs introspector vs welcome proxy karışıyor — log'da `[INMA-AUTH]` `[inma-debug]` `[INMA-INTROSPECT]` benzeri prefix'ler dağınık.",
+      "suggestion": "Tek prefix `[INMA-INTROSPECT]` introspection sonucu (cache_hit / welcome_ok / welcome_401 / welcome_transport_fail / decode_fail). Cache-hit log'lanmaz (gürültü); diğerleri yapılandırılmış.",
+      "aha_moment": "Destek `grep [INMA-INTROSPECT] | grep welcome_401 | wc -l` ile reddedilen token sayısını dakika başına izler — anomali tespiti otomatik."
+    },
+    {
+      "category": "UX",
+      "user_pain": "Kullanıcı INMA'da rolden çıkarıldığında INSE'de hala session aktif (token expire'a kadar ~8h). Anlık sync yok.",
+      "suggestion": "Cache TTL 5dk = revocation propagation max 5dk. Anında değil ama 8h'dan çok daha hızlı. (Anlık için cache invalidation API gerekir — backlog.)",
+      "aha_moment": "Admin INMA'da kullanıcıyı pasif eder; 5dk içinde INSE session'ı next API call'da 401 alır + login sayfasına yönlenir. Eski 8h gap kapanır."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-16T23:30:00+03:00",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-16T23:30:00+03:00",
+    "raw_text": "ITER 3 PASS — 12/12 CQ + 5/5 CoVe ALL PASS, 0 blocking. Iter progression: iter 0 FAIL (5 blocking: status mapping + console logging) → iter 1 FAIL (5 blocking: DI lifecycle + brittle substring + 13 caller scope) → iter 2 FAIL (1 blocking: CQ4 GetTenantAnalytics inline duplicate) → iter 3 PASS (CQ4 dedup via ExtractTenantFromBearer single source of truth).",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS", "evidence": "MapInmaIntrospectError 503/401 structured + 12 caller extractFailure pattern propagates transient introspection failures" },
+      "CQ2": { "result": "PASS", "evidence": "Typed catches only; logged via _logger.LogWarning before return" },
+      "CQ3": { "result": "PASS", "evidence": "Diff scoped to 7 declared files" },
+      "CQ4": { "result": "PASS", "evidence": "GetTenantAnalytics inline introspection (50 satır) silindi → ExtractTenantFromBearer single source of truth" },
+      "CQ5": { "result": "PASS", "evidence": "AddHttpClient<T> + AddSingleton<T> DI; ILogger<T> ctor inject; standard ASP.NET Core patterns" },
+      "CQ6": { "result": "PASS", "evidence": "Container-managed lifecycle; HttpResponseMessage finally Dispose; cache+welcome 5dk reduces round-trips" },
+      "CQ7": { "result": "PASS", "evidence": "No new TODO/HACK/FIXME" },
+      "CQ8": { "result": "PASS", "evidence": "Backend tek tüketici (grep verified); InmaJwtValidator delete + SecretKey/ClockSkewSeconds removal isolated; full sln build PASS" },
+      "CQ9": { "result": "PASS", "evidence": "Centralized ExtractTenantFromBearer — INSE/INMA paths uniform across GetTenantAnalytics + 12 settings/instance endpoints" },
+      "CQ10": { "result": "PASS", "evidence": "Uniform 503/401 across all INMA-backed flows" },
+      "CQ11": { "result": "PASS", "evidence": "No DB schema/query changes" },
+      "CQ12": { "result": "PASS", "evidence": "Registered INV-AUTH-008 + structured IntrospectResult.ErrorCode (no substring detect)" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS", "reasoning": "SHA256(token) first 8 bytes (64-bit) hex; raw token never persisted as cache key — PII safe" },
+      "Q2": { "result": "PASS", "reasoning": "5dk TTL bounded stale window — explicit auth-perf tradeoff, not unbounded bypass" },
+      "Q3": { "result": "PASS", "reasoning": "12 settings/instance + GetTenantAnalytics hepsi ExtractTenantFromBearer pattern; build PASS = compile-time check; sync-over-async deliberate scope discipline" },
+      "Q4": { "result": "PASS", "reasoning": "Cache miss path forge'u garanti reddeder (welcome 401); cache hit only previously valid tokens" },
+      "Q5": { "result": "PASS", "reasoning": "Tüm iter 3 fixes evidenced: DI lifecycle + structured contract + uniform behavior + cross-service evidence" }
+    },
+    "blocking_issues": [],
+    "iteration": 3,
+    "escalation_required": false,
+    "escalation_reason": null
+  }
+}
