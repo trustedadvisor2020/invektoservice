@@ -677,6 +677,9 @@ class OpsApiClient {
   private credentials: string | null = null;
   private isRefreshing = false;
   private refreshPromise: Promise<boolean> | null = null;
+  // Dedupes concurrent INMA→INSE exchange attempts so parallel 401 retries
+  // fire only one /api/v1/inma/auth/exchange round-trip.
+  private inmaExchangePromise: Promise<void> | null = null;
   public readonly baseUrl: string = '';
 
   constructor() {
@@ -825,7 +828,7 @@ class OpsApiClient {
   /**
    * Exchanges raw INMA JWT for an INSE JWT and replaces the primary token.
    * FlowBuilder backend validates with INSE JwtValidator, so INMA JWTs fail 401.
-   * This method is fire-and-forget ΓÇö called after URL token SSO flow.
+   * Concurrent callers share a single in-flight request via inmaExchangePromise.
    */
   async exchangeInmaToken(): Promise<void> {
     const token = this.getAccessToken();
@@ -835,6 +838,17 @@ class OpsApiClient {
     const decoded = this.getDecodedToken();
     if (!decoded?.CompanyCode) return;
 
+    if (this.inmaExchangePromise) return this.inmaExchangePromise;
+
+    this.inmaExchangePromise = this.runInmaExchange(token);
+    try {
+      await this.inmaExchangePromise;
+    } finally {
+      this.inmaExchangePromise = null;
+    }
+  }
+
+  private async runInmaExchange(token: string): Promise<void> {
     try {
       const response = await fetch('/api/v1/inma/auth/exchange', {
         method: 'POST',
@@ -994,36 +1008,35 @@ class OpsApiClient {
 
   private async executeWithRefresh(doFetch: () => Promise<Response>): Promise<Response> {
     let response = await doFetch();
+    if (response.status !== 401) return response;
 
-    if (response.status === 401 && this.getRefreshToken()) {
-      const refreshed = await this.handleRefresh();
-      if (refreshed) {
+    // Attempt 1: refresh_token rotation (ops sessions + INMA sessions with refresh).
+    if (this.getRefreshToken() && await this.handleRefresh()) {
+      response = await doFetch();
+      if (response.status !== 401) return response;
+    }
+
+    // Attempt 2: raw INMA JWT → INSE JWT exchange. URL SSO path stores the raw
+    // INMA token synchronously then fires exchangeInmaToken() fire-and-forget,
+    // so a request issued before the exchange resolves hits backend JwtValidator
+    // with the wrong issuer → 401. After a successful exchange the CompanyCode
+    // claim is gone, so this branch is a single-shot retry.
+    if (this.isInmaSession() && this.getDecodedToken()?.CompanyCode) {
+      await this.exchangeInmaToken();
+      if (!this.getDecodedToken()?.CompanyCode) {
         response = await doFetch();
-      } else if (!this.isInmaSession()) {
-        // Ops/Basic Auth: refresh failed ΓåÆ session truly invalid, wipe everything.
-        this.removeTokens();
-        this.clearCredentials();
-        throw new Error('INV-AU-001: Session expired, refresh failed');
-      } else {
-        // INMA session: 401 from ops-only endpoint, NOT a session problem.
-        // Token validity is enforced by getDecodedToken() expiry check ΓÇö
-        // once JWT expires, isInmaSession() returns false and this branch
-        // is never reached, so stale tokens cannot persist.
-        throw new Error('INV-AU-002: Endpoint requires ops auth');
+        if (response.status !== 401) return response;
       }
     }
 
-    if (response.status === 401) {
-      if (!this.isInmaSession()) {
-        this.removeTokens();
-        this.clearCredentials();
-        throw new Error('INV-AU-001: Session expired, refresh failed');
-      }
-      // INMA session: endpoint rejected JWT but session is still valid
-      throw new Error('INV-AU-002: Endpoint requires ops auth');
+    // Still 401: classify as ops-only endpoint vs truly invalid session.
+    if (!this.isInmaSession()) {
+      this.removeTokens();
+      this.clearCredentials();
+      throw new Error('INV-AU-001: Session expired, refresh failed');
     }
-
-    return response;
+    // INMA session is valid but endpoint demands ops auth (or refused post-exchange).
+    throw new Error('INV-AU-002: Endpoint requires ops auth');
   }
 
   // --- internal request helpers ---

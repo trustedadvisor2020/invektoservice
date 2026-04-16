@@ -1,0 +1,170 @@
+{
+  "schema_version": "5.1",
+  "review_protocol_version": "5.1",
+  "packet_id": null,
+  "slug": "20260416-inma-iframe-hide-nav-auto-exchange",
+  "risk": "LOW",
+  "status": "DONE",
+  "created_at": "2026-04-16T16:45:00Z",
+  "updated_at": "2026-04-16T16:45:00Z",
+  "plan": {
+    "summary": "Dashboard SPA INMA iframe icinde iki kopya nav gosteriyordu (WapCRM parent outer + INSE Layout inner). Layout.tsx sidebar'i iframe tespit edildiginde (window !== window.parent) gizlendi. Ayrica INV-AU-002 hatasinin kok nedeni URL SSO race: useAuth.ts URL token flow'unda exchangeInmaToken fire-and-forget cagriliyor, navigate hemen oluyor, FlowListPage mount olup listFlows'u ham INMA JWT ile cagiriyor -> Backend INSE JwtValidator reddediyor -> 401 -> INV-AU-002. Duzeltme: executeWithRefresh icinde defansif retry - 401 alindiginda ham INMA JWT (CompanyCode claim) tespit edilirse exchangeInmaToken cagrilir + bir kez retry. exchangeInmaToken concurrent cagrilari inmaExchangePromise ile dedupe edildi (parallel 401 retry'lar tek /api/v1/inma/auth/exchange round-trip).",
+    "q_intent": "iki tane nav var. inse den geleni kaldir ve hatayi kontrol et. A.",
+    "interview_notes": "Q iki derdi ayirdi: (1) ic nav (INSE Layout) kaldirilsin, (2) INV-AU-002 arastir. Arastirma sonrasi 3 fix yolu sunuldu (A defansif retry, B race fix await, C prod log tani). Q 'a' sectiyok: defansif retry. Bridge path'inde await exchangeInmaToken zaten var -> bridge flow race'i yok. URL SSO + sayfa refresh icin auto-exchange-on-mount fallback'i de fire-and-forget, bu yuzden her iki path de defansif retry'dan faydalanir.",
+    "acceptance_criteria": [
+      {
+        "id": "AC1",
+        "criterion": "Layout.tsx window !== window.parent ise aside sidebar render edilmez; standalone (top-level) window'da aside eskisi gibi gorunur. Main content flex-1 oldugu icin sidebar gizlendiginde tam genislik kaplar.",
+        "verified": false
+      },
+      {
+        "id": "AC2",
+        "criterion": "executeWithRefresh 401 aldigi zaman, INMA session + ham INMA JWT (decoded.CompanyCode mevcut) ise exchangeInmaToken cagrilir; exchange basarili (CompanyCode claim artik yok) ise request BIR KEZ retry edilir. Exchange basarisiz kalirsa veya retry yine 401 donerse mevcut INV-AU-002 davranisi korunur.",
+        "verified": false
+      },
+      {
+        "id": "AC3",
+        "criterion": "exchangeInmaToken concurrent cagrilari dedupe edilir: inmaExchangePromise in-flight olani paylasir, finally blogunda null'a reset eder. Iki paralel 401 request tek /api/v1/inma/auth/exchange POST atar.",
+        "verified": false
+      },
+      {
+        "id": "AC4",
+        "criterion": "Refresh path onceligi korundu: refresh_token varsa ONCE handleRefresh denenir (mevcut davranis); sadece refresh sonrasi hala 401 ise veya refresh_token yoksa INMA exchange retry denenir. INV-AU-001 (ops session invalid) ve INV-AU-002 (ops-only endpoint) hata kodlari mevcut semantikleriyle atilmaya devam eder.",
+        "verified": false
+      }
+    ]
+  },
+  "allowed_files": [
+    "src/Invekto.Backend/Dashboard/src/components/Layout.tsx",
+    "src/Invekto.Backend/Dashboard/src/lib/api.ts",
+    "arch/plans/20260416-inma-iframe-hide-nav-auto-exchange.json",
+    "arch/plans/diffs/20260416-inma-iframe-hide-nav-auto-exchange.diff"
+  ],
+  "files_changed": [
+    { "path": "src/Invekto.Backend/Dashboard/src/components/Layout.tsx", "change": "isEmbedded = window !== window.parent; aside conditional render.", "is_new": false },
+    { "path": "src/Invekto.Backend/Dashboard/src/lib/api.ts", "change": "inmaExchangePromise field + exchangeInmaToken dedupe + runInmaExchange core + executeWithRefresh defensive exchange retry.", "is_new": false },
+    { "path": "arch/plans/20260416-inma-iframe-hide-nav-auto-exchange.json", "change": "plan JSON", "is_new": true },
+    { "path": "arch/plans/diffs/20260416-inma-iframe-hide-nav-auto-exchange.diff", "change": "full source diff for Codex audit", "is_new": true }
+  ],
+  "git_diff": {
+    "stats": { "insertions": 44, "deletions": 26, "files_count": 2 },
+    "full_path": "arch/plans/diffs/20260416-inma-iframe-hide-nav-auto-exchange.diff"
+  },
+  "build": {
+    "status": "PASS",
+    "command": "dotnet build InvektoServis.sln + npx tsc --noEmit + npx vite build (Dashboard)",
+    "timestamp": "2026-04-16T16:42:00Z",
+    "duration_ms": 45000,
+    "output_tail": "0 error, 17 pre-existing warnings; TS typecheck clean; vite built in 11.98s",
+    "services": ["Invekto.Backend (Dashboard SPA)"]
+  },
+  "verification_questions": [
+    {
+      "id": "Q1",
+      "question": "executeWithRefresh exchange retry yolu single-shot mi? Exchange sonrasi token hala CompanyCode claim'i tasiyorsa (exchange fail) sonsuz dongu olmuyor mu? Ikinci 401 sonrasi retry yapiliyor mu yoksa direkt INV-AU-002 atiliyor mu?",
+      "category": "Auth"
+    },
+    {
+      "id": "Q2",
+      "question": "inmaExchangePromise dedupe correctness: iki paralel request ayni anda 401 alirsa, exchangeInmaToken finally blogunda null'a reset etmeden once her iki awaiter ayni Promise'i alip cozmus oluyor mu? Race-free mi?",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q3",
+      "question": "Layout.tsx isEmbedded = window !== window.parent same-origin cross-origin iframe durumlari icin stabilite garanti mi? (SSR yok - Vite SPA - her zaman client-side; ancak sandbox veya farkli nested frame durumlari icin guvenli mi?)",
+      "category": "Lifecycle"
+    },
+    {
+      "id": "Q4",
+      "question": "Refresh-token path ONCE, exchange path SONRA. Refresh basarili olup yine 401 donerse (stale INSE JWT gibi), exchange path devreye girer mi? Kod akisi refresh-then-exchange cascade'i destekliyor mu?",
+      "category": "Auth"
+    }
+  ],
+  "scope_discipline": {
+    "forbidden_areas": [
+      "Diger Dashboard sayfalari (FlowListPage, ProtectedRoute, vb.)",
+      "useAuth.ts — race root cause orada ama defansif fix alt katmanda (api.ts) yapildi; upper-layer degisiklik non_goal",
+      "Backend C# kodu (JwtAuthMiddleware, ZohoExchange endpoint'i)",
+      "inmaBridge.ts / inmaBootstrap.ts — bridge path zaten await kullaniyor, degisiklik gerekmez"
+    ],
+    "non_goals": [
+      "URL SSO useAuth.ts race'ini await ile cozme (B yolu) - Q A yolunu secti",
+      "Prod log tani (C yolu) - defansif fix hem race hem exchange-fail senaryosunu kapsar",
+      "Iframe detection'i INMA-spesifik hale getirme (isInmaSession check yerine) - window !== window.parent herhangi bir iframe embedding icin genel",
+      "INV-AU-002 kodu kaldirmak - genuine ops-only endpoint reject case'i icin korundu"
+    ],
+    "intentional_exclusions": [
+      "wwwroot/app/assets/ hashed bundle'lar git diff'ten haric tutuldu - vite build output, source of truth Dashboard/src/*"
+    ]
+  },
+  "error_handling": {
+    "try_catch_locations": [
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (runInmaExchange): fetch fail typed catch -> console.warn",
+      "src/Invekto.Backend/Dashboard/src/lib/api.ts (runInmaExchange): !response.ok branch -> console.warn + return"
+    ],
+    "user_facing_errors": [
+      "INV-AU-001: Session expired, refresh failed (ops session korundu)",
+      "INV-AU-002: Endpoint requires ops auth (INMA session + genuine ops-only reject korundu)"
+    ],
+    "silent_failure_risk": false,
+    "silent_failure_explanation": "Exchange fail oldugunda console.warn atilir ve inmaExchangePromise reset olur, sonraki 401 retry tekrar dener. CompanyCode claim gittigi icin infinite loop olusmaz (single-shot check)."
+  },
+  "aha_moments": [
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Kullanici INMA'dan Invekto'ya yonlendikten sonra Flow Builder'da INV-AU-002 hatasi goruyor ve ne yapacagini bilmiyor.",
+      "suggestion": "executeWithRefresh 401 aldiginda ham INMA JWT tespit edilirse otomatik exchange + retry, kullaniciya sessiz iyilesme.",
+      "aha_moment": "Sayfa refresh / tekrar tikla yapmadan Flow Builder acilip flow listesi goruluyor."
+    },
+    {
+      "category": "UX",
+      "user_pain": "INMA iframe'de iki kopya nav (outer WapCRM + inner INSE) ekran yerini yiyor, kafa karistirici.",
+      "suggestion": "Iframe tespit edildiginde INSE kendi sidebar'ini gizler, parent shell navigation'i tek kaynak.",
+      "aha_moment": "Kullanici tek temiz nav goruyor, Flow Builder icerik alani tam genislik kaplaniyor."
+    },
+    {
+      "category": "SPEED",
+      "user_pain": "Paralel API call'lari ayni anda 401 alirsa N tane exchange round-trip olurdu (backend yuku + gecikme).",
+      "suggestion": "inmaExchangePromise in-flight cache ile concurrent exchange request'leri tek round-trip'e indirildi.",
+      "aha_moment": "Sayfa mount'ta 5 paralel request 401 alsa bile tek exchange call atilir; sonraki retry'lar zaten guncel token ile calisir."
+    },
+    {
+      "category": "RELIABILITY",
+      "user_pain": "Exchange endpoint gecici olarak yavaslayinca veya 5xx verince kullanici sayfa refresh etmeden cozulmezdi.",
+      "suggestion": "Her 401'de single-shot exchange retry; exchange tekrar denenebilir (finally reset).",
+      "aha_moment": "Gecici exchange fail'den sonra bir sonraki request'te otomatik iyilesir."
+    },
+    {
+      "category": "SUPPORT",
+      "user_pain": "Destek ekibi 'Flow Builder acilmiyor INV-AU-002' ticket'larini race condition'a baglayamazdi (sessiz, non-deterministic).",
+      "suggestion": "Defansif retry race'i sifira indirir; INV-AU-002 ortaya ciktiginda gercekten ops-only endpoint reject'i demek olur.",
+      "aha_moment": "Ticket sayisi dususu + INV-AU-002 anlami netlesti: artik tanilanabilir spesifik hata kodu."
+    }
+  ],
+  "verdict": {
+    "status": "PASS",
+    "source": "CODEX_TEXT_VIA_Q",
+    "received_at": "2026-04-16T16:48:00Z",
+    "updated_by": "DevAgent",
+    "updated_at": "2026-04-16T16:48:00Z",
+    "code_quality_gate": {
+      "CQ1": { "result": "PASS" },
+      "CQ2": { "result": "PASS" },
+      "CQ3": { "result": "PASS" },
+      "CQ4": { "result": "PASS" },
+      "CQ5": { "result": "PASS" },
+      "CQ6": { "result": "PASS" },
+      "CQ7": { "result": "PASS" },
+      "CQ8": { "result": "PASS" }
+    },
+    "cove_verification": {
+      "Q1": { "result": "PASS" },
+      "Q2": { "result": "PASS" },
+      "Q3": { "result": "PASS" },
+      "Q4": { "result": "PASS" }
+    },
+    "blocking_issues": [],
+    "iteration": 0,
+    "escalation_required": false
+  }
+}

@@ -92,6 +92,9 @@ export function Layout({ children }: LayoutProps) {
   const { logout, session } = useAuth();
   const isFullscreen = location.pathname.startsWith('/flow-builder');
   const isImpersonating = session && api.isImpersonating();
+  // INMA parent shell (WapCRM) already renders an outer sidebar with equivalent
+  // menu items; hide Dashboard's own sidebar when running inside an iframe.
+  const isEmbedded = window !== window.parent;
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
 
@@ -214,7 +217,8 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <div className={cn('min-h-screen flex bg-navy-50', isImpersonating && 'pt-10')}>
-        {/* Sidebar */}
+        {/* Sidebar — hidden when embedded in INMA iframe (parent shell provides nav) */}
+        {!isEmbedded && (
         <aside className={cn(
           'h-screen sticky top-0 bg-white border-r border-slate-200 z-10 flex flex-col transition-[width] duration-300 ease-out shadow-[4px_0_24px_rgba(0,0,0,0.02)]',
           collapsed ? 'w-[3.5rem]' : 'w-64'
@@ -299,6 +303,7 @@ export function Layout({ children }: LayoutProps) {
             </button>
           </div>
         </aside>
+        )}
 
         {/* Main content */}
         <main className="flex-1 overflow-auto">
