@@ -1,9 +1,27 @@
 # Zoho P4.2 — OAUTH_SCOPE_MISMATCH Investigation
 
-> **Status:** INVESTIGATED — root cause identified, no code fix ready yet
+> **Status:** IMPLEMENTED + DEPLOYED 2026-04-16 (commit bf45d29) — Adavista paid-plan retest pending for flag-flip decision
 > **Owner:** Q
 > **Discovered:** 2026-04-17 (P4.1 deploy + smoke tenant 5050)
+> **Resolved:** 2026-04-16 (slug `20260416-zoho-p42-fix`, Codex iter 0 PASS, prod 10/10 HEALTHY)
 > **Parent paket:** Zoho Step 4 / P4.1 Stage Mapping editor
+
+## Implementation Summary (2026-04-16)
+
+Fix paketi prod'da. 3 fix uygulandı:
+
+- **Fix 2 (chosen: variant B, not A):** `Zoho:EnableMetadataPath` flag default `false` —
+  `TryGetBlueprintMetadataAsync` artık `if (_enableMetadataPath)` gate'inde, method body
+  korundu (Adavista paid-plan retest sonrası flag-flip yolu açık).
+- **Fix 1:** Yeni `INV-INT-137 LeadsNotInBlueprintProcess` distinct error code; aggregation
+  loop'ta `recordNotInProcessCount` counter, `==sampleLeadIds.Count` durumunda INV-INT-137
+  throw (vs INV-INT-121). FE `ZohoStageMappingPage` Card title koşullu + dedicated CTA
+  paragraph (Manuel ID step-by-step Zoho Setup hint).
+- **Fix 3:** `[ZOHO-BP-RAW]` 4 TEMP debug satır kaldırıldı, kalıcı `[ZOHO-BP]` short-form
+  structured per-sample line eklendi (status + result tag).
+
+**Codex iter 0 PASS** (12/12 CQ + 4/4 CoVe, 0 blocking). Build PASS. Deploy: Backend +
+Integrations + Dashboard SPA, 10/10 HEALTHY (2026-04-16 18:17).
 
 ## Problem
 

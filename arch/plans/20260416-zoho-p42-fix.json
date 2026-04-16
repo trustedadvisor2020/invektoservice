@@ -5,9 +5,15 @@
   "spec_ref": null,
   "slug": "20260416-zoho-p42-fix",
   "risk": "MEDIUM",
-  "status": "REVIEW",
+  "status": "DONE",
   "created_at": "2026-04-16T20:55:00+03:00",
-  "updated_at": "2026-04-16T21:25:00+03:00",
+  "updated_at": "2026-04-16T21:50:00+03:00",
+  "status_log": [
+    {"status": "PLANNING", "at": "2026-04-16T20:55:00+03:00", "note": "Plan created after Q chose option 1+2 (AC6 smoke + P4.2 fix), Q answered B/all/observe"},
+    {"status": "IN_PROGRESS", "at": "2026-04-16T21:00:00+03:00", "note": "Branch work/20260416-zoho-p42-fix; 5 code files implemented"},
+    {"status": "REVIEW", "at": "2026-04-16T21:25:00+03:00", "note": "Build PASS + diff staged + Codex MCP submitted"},
+    {"status": "DONE", "at": "2026-04-16T21:50:00+03:00", "commit_sha": "bf45d29", "deploy": "2026-04-16T18:17:00Z prod 10/10 HEALTHY", "note": "Codex iter 0 PASS 12/12 CQ + 4/4 CoVe; master ff-merge + push; Backend + Integrations + Dashboard SPA deployed"}
+  ],
   "plan": {
     "summary": "Zoho P4.2 fix: gate undocumented /settings/blueprint metadata path behind a feature flag (default OFF), introduce INV-INT-137 LeadsNotInBlueprintProcess to disambiguate 'leads exist but none engaged' from BlueprintNotConfigured, replace TEMP [ZOHO-BP-RAW] noisy debug logs with persistent short-form [ZOHO-BP] structured lines, and surface a dedicated Manuel ID CTA in the Stage Mapping editor when INV-INT-137 fires.",
     "q_intent": "Q seçim: 1 = AC6 fallback smoke (code review yeterli, deploy sonrası Q gözlemler), 2 = P4.2 fix paketi. P4.2 sorularına Q cevap: (1) Metadata path için B = feature flag ile gate'le. (2) INV-INT-137 koşulu = TÜM sample lead'ler RECORD_NOT_IN_PROCESS. (3) Smoke için Q gözlemler.",
